@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
 
   import UserListApp from '$lib/components/UserListApp.svelte';
+  import IssuesTrackerApp from '$lib/components/IssuesTrackerApp.svelte'; 
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -153,10 +154,9 @@
         <UserListApp />
        
       {:else if activeApp === 'app2'}
-        <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
-          <h2 class="text-3xl font-bold mb-4">App Two</h2>
-          <p class="text-gray-400">This is the content area for App Two. Replace with your actual app component.</p>
-        </div>
+
+        <IssuesTrackerApp />
+
       {:else if activeApp === 'app3'}
         <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
           <h2 class="text-3xl font-bold mb-4">App Three</h2>
