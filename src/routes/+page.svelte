@@ -2,6 +2,8 @@
   import { auth } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
 
+  import UserListApp from '$lib/components/UserListApp.svelte';
+
   let activeApp = 'home';
   let menuOpen = false;
 
@@ -147,10 +149,9 @@
           </div>
         </div>
       {:else if activeApp === 'app1'}
-        <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
-          <h2 class="text-3xl font-bold mb-4">App One</h2>
-          <p class="text-gray-400">This is the content area for App One. Replace with your actual app component.</p>
-        </div>
+
+        <UserListApp />
+       
       {:else if activeApp === 'app2'}
         <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
           <h2 class="text-3xl font-bold mb-4">App Two</h2>
