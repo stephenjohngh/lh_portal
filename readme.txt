@@ -21,5 +21,7 @@ git config --global --add safe.directory U:/ai_dev/lh_portal
        git add .
        git commit -m "initial commit"
        git branch -M main
-       git remote add origin https://github.com/stephenjohngh/meeting-app.git
+       git remote add origin https://github.com/stephenjohngh/lh_portal.git
        git push -u origin main
+
+git add netlify.toml
