@@ -1,7 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
-//import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
 
-const PUBLIC_SUPABASE_URL = import.meta.env.PUBLIC_NF_SUPABASE_URL
-const PUBLIC_SUPABASE_ANON_KEY = import.meta.env.PUBLIC_NF_SUPABASE_ANON_KEY
+// Log to help debug
+console.log('Supabase URL:', PUBLIC_SUPABASE_URL ? 'Set' : 'Missing');
+console.log('Supabase Key:', PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Missing');
+
+if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
+  console.error('Missing Supabase environment variables!');
+}
 
 export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY)
