@@ -1,6 +1,6 @@
 <!-- src/lib/components/issues/IssuesTrackerApp.svelte -->
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { issuesStore } from './issuesStore';
   import IssueFilters from './IssueFilters.svelte';
   import IssueCard from './IssueCard.svelte';
@@ -47,6 +47,11 @@
 
   onMount(() => {
     issuesStore.fetchIssues();
+    issuesStore.initializeRealtime();
+  });
+
+  onDestroy(() => {
+    issuesStore.cleanup();
   });
 
   async function handleNewIssue(event) {

@@ -8,6 +8,8 @@ function createIssuesStore() {
     error: ''
   });
 
+  let realtimeChannel = null;
+
   return {
     subscribe,
 
@@ -43,6 +45,101 @@ function createIssuesStore() {
           error: err.message, 
           loading: false 
         }));
+      }
+    },
+
+    initializeRealtime() {
+      // Clean up existing channel if any
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+
+      // Create a channel for real-time updates
+      realtimeChannel = supabase.channel('issues-changes');
+
+      // Listen for INSERT on current_issues
+      realtimeChannel.on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'current_issues'
+        },
+        (payload) => {
+          console.log('New issue created:', payload.new);
+          // Refetch to get the complete data with relations
+          this.fetchIssues();
+        }
+      );
+
+      // Listen for UPDATE on current_issues
+      realtimeChannel.on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'current_issues'
+        },
+        (payload) => {
+          console.log('Issue updated:', payload.new);
+          this.fetchIssues();
+        }
+      );
+
+      // Listen for DELETE on current_issues
+      realtimeChannel.on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'current_issues'
+        },
+        (payload) => {
+          console.log('Issue deleted:', payload.old);
+          this.fetchIssues();
+        }
+      );
+
+      // Listen for changes on comments
+      realtimeChannel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments'
+        },
+        (payload) => {
+          console.log('Comment changed:', payload);
+          this.fetchIssues();
+        }
+      );
+
+      // Listen for changes on actions
+      realtimeChannel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'actions'
+        },
+        (payload) => {
+          console.log('Action changed:', payload);
+          this.fetchIssues();
+        }
+      );
+
+      // Subscribe to start receiving events
+      realtimeChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time updates enabled for Issues Tracker');
+        }
+      });
+    },
+
+    cleanup() {
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
       }
     },
 
