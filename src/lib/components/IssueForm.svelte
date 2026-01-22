@@ -72,11 +72,11 @@
               bind:value={formData.priority}
               class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
             >
-              <option value="1">1 - Critical</option>
-              <option value="2">2 - High</option>
-              <option value="3">3 - Medium</option>
-              <option value="4">4 - Low</option>
-              <option value="5">5 - Very Low</option>
+              <option value="1">1 - Top Priority</option>
+              <option value="2">2 - Major Project</option>
+              <option value="3">3 - Important</option>
+              <option value="4">4 - Minor</option>
+              <option value="5">5 - Pending</option>
             </select>
           </div>
           
