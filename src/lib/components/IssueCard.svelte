@@ -1,16 +1,24 @@
-//Display single issue with all its details
-
+<!-- src/lib/components/issues/IssueCard.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import CommentsSection from './CommentsSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
 
   export let issue;
+  export let showComments = false;
+  export let showActions = false;
   
   const dispatch = createEventDispatcher();
-  
-  let showComments = false;
-  let showActions = false;
+
+  // Calculate overdue actions count
+  $: overdueActionsCount = issue.actions?.filter(action => {
+    if (!action.date_deadline || action.status === 'completed') return false;
+    const deadline = new Date(action.date_deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deadline.setHours(0, 0, 0, 0);
+    return deadline < today;
+  }).length || 0;
 
   function getPriorityLabel(priority) {
     if (priority === 1) return { text: 'Critical', color: 'bg-red-600' };
@@ -80,35 +88,46 @@
     <!-- Toggle Buttons -->
     <div class="flex space-x-2 mt-3">
       <button
-        on:click={() => showComments = !showComments}
+        on:click={() => dispatch('toggleComments')}
         class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
       >
         {showComments ? 'Hide' : 'Show'} Comments ({issue.comments?.length || 0})
       </button>
       <button
-        on:click={() => showActions = !showActions}
-        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+        on:click={() => dispatch('toggleActions')}
+        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm flex items-center space-x-1"
       >
-        {showActions ? 'Hide' : 'Show'} Actions ({issue.actions?.length || 0})
+        <span>{showActions ? 'Hide' : 'Show'} Actions ({issue.actions?.length || 0})</span>
+        {#if overdueActionsCount > 0}
+          <span class="ml-1 px-1.5 py-0.5 bg-red-600 rounded text-xs font-semibold">
+            {overdueActionsCount} overdue
+          </span>
+        {/if}
       </button>
     </div>
   </div>
 
   <!-- Comments Section -->
   {#if showComments}
-    <CommentsSection 
-      issueId={issue.id}
-      comments={issue.comments || []}
-    />
+    <div class="ml-8 mr-4 mb-4">
+      <div class="border-l-4 border-blue-500 pl-4">
+        <CommentsSection 
+          issueId={issue.id}
+          comments={issue.comments || []}
+        />
+      </div>
+    </div>
   {/if}
 
   <!-- Actions Section -->
   {#if showActions}
-    <ActionsSection 
-      issueId={issue.id}
-      actions={issue.actions || []}
-    />
+    <div class="ml-8 mr-4 mb-4">
+      <div class="border-l-4 border-green-500 pl-4">
+        <ActionsSection 
+          issueId={issue.id}
+          actions={issue.actions || []}
+        />
+      </div>
+    </div>
   {/if}
 </div>
-
-
