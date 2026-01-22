@@ -1,5 +1,6 @@
+<!-- src/lib/components/issues/IssuesTrackerApp.svelte -->
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { issuesStore } from './issuesStore';
   import IssueFilters from './IssueFilters.svelte';
   import IssueCard from './IssueCard.svelte';
@@ -9,8 +10,26 @@
   let statusFilter = 'all';
   let showNewIssueModal = false;
   let editingIssue = null;
+  
+  // Persist UI state across data refreshes
+  let expandedSections = {}; // { issueId: { comments: bool, actions: bool } }
+  let scrollPosition = 0;
+  let containerElement;
 
   $: ({ issues, loading, error } = $issuesStore);
+
+  // Save scroll position before data refresh
+  $: if (loading && containerElement) {
+    scrollPosition = window.scrollY;
+  }
+
+  // Restore scroll position after data refresh
+  $: if (!loading && scrollPosition > 0) {
+    tick().then(() => {
+      window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+      scrollPosition = 0;
+    });
+  }
 
   // Filter issues
   $: filteredIssues = issues
@@ -43,9 +62,31 @@
     if (!confirm('Are you sure you want to delete this issue and all its comments and actions?')) return;
     await issuesStore.deleteIssue(event.detail);
   }
+  
+  function toggleSection(issueId, section) {
+    if (!expandedSections[issueId]) {
+      expandedSections[issueId] = { comments: false, actions: false };
+    }
+    expandedSections[issueId][section] = !expandedSections[issueId][section];
+    expandedSections = expandedSections; // Trigger reactivity
+  }
+
+  function expandAll() {
+    filteredIssues.forEach(issue => {
+      expandedSections[issue.id] = { comments: true, actions: true };
+    });
+    expandedSections = expandedSections;
+  }
+
+  function collapseAll() {
+    filteredIssues.forEach(issue => {
+      expandedSections[issue.id] = { comments: false, actions: false };
+    });
+    expandedSections = expandedSections;
+  }
 </script>
 
-<div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
+<div class="bg-slate-800 rounded-xl p-8 border border-slate-700" bind:this={containerElement}>
   <!-- Header -->
   <div class="flex justify-between items-start mb-6">
     <div>
@@ -73,6 +114,24 @@
       resultCount={filteredIssues.length}
     />
   </div>
+
+  <!-- Expand/Collapse All -->
+  {#if filteredIssues.length > 0}
+    <div class="flex space-x-2 mb-4">
+      <button
+        on:click={expandAll}
+        class="px-3 py-1 bg-slate-600 hover:bg-slate-500 rounded text-sm"
+      >
+        Expand All
+      </button>
+      <button
+        on:click={collapseAll}
+        class="px-3 py-1 bg-slate-600 hover:bg-slate-500 rounded text-sm"
+      >
+        Collapse All
+      </button>
+    </div>
+  {/if}
 
   <!-- Error Display -->
   {#if error}
@@ -102,6 +161,10 @@
       {#each filteredIssues as issue (issue.id)}
         <IssueCard 
           {issue}
+          showComments={expandedSections[issue.id]?.comments || false}
+          showActions={expandedSections[issue.id]?.actions || false}
+          on:toggleComments={() => toggleSection(issue.id, 'comments')}
+          on:toggleActions={() => toggleSection(issue.id, 'actions')}
           on:edit={(e) => editingIssue = e.detail}
           on:delete={handleDeleteIssue}
         />
@@ -124,3 +187,4 @@
   on:submit={handleEditIssue}
   on:close={() => editingIssue = null}
 />
+
