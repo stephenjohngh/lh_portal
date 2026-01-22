@@ -84,7 +84,7 @@
   {#if sortedActions.length > 0}
     <div class="space-y-2">
       {#each sortedActions as action}
-        <div class="bg-slate-700 rounded p-3 {action.status === 'completed' ? 'opacity-60' : ''}">
+        <div class="bg-slate-700/50 rounded p-3 border-l-2 border-green-400 {action.status === 'completed' ? 'opacity-60' : ''}">
           {#if editingAction?.id === action.id}
             <div class="space-y-3">
               <div>

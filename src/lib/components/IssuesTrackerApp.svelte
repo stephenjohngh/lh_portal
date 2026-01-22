@@ -7,7 +7,7 @@
   import IssueForm from './IssueForm.svelte';
 
   let searchTerm = '';
-  let statusFilter = 'all';
+  let statusFilter = 'current'; // Changed from 'all' to 'current'
   let showNewIssueModal = false;
   let editingIssue = null;
   
@@ -37,13 +37,12 @@
       const matchesSearch = issue.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      if (statusFilter === 'all') return matchesSearch;
+      // Filter by status (current or completed)
+      const matchesStatus = statusFilter === 'current' 
+        ? (issue.status === 'current' || !issue.status) // Show current issues (including null/undefined for backward compatibility)
+        : issue.status === 'completed';
       
-      const hasActions = issue.actions?.length > 0;
-      if (statusFilter === 'no-actions') return matchesSearch && !hasActions;
-      if (statusFilter === 'has-actions') return matchesSearch && hasActions;
-      
-      return matchesSearch;
+      return matchesSearch && matchesStatus;
     });
 
   onMount(() => {
@@ -61,6 +60,17 @@
   async function handleDeleteIssue(event) {
     if (!confirm('Are you sure you want to delete this issue and all its comments and actions?')) return;
     await issuesStore.deleteIssue(event.detail);
+  }
+  
+  async function handleToggleStatus(event) {
+    const issue = event.detail;
+    const newStatus = issue.status === 'completed' ? 'current' : 'completed';
+    await issuesStore.updateIssue(issue.id, {
+      name: issue.name,
+      description: issue.description,
+      priority: issue.priority,
+      status: newStatus
+    });
   }
   
   function toggleSection(issueId, section) {
@@ -166,6 +176,7 @@
           on:toggleComments={() => toggleSection(issue.id, 'comments')}
           on:toggleActions={() => toggleSection(issue.id, 'actions')}
           on:edit={(e) => editingIssue = e.detail}
+          on:toggleStatus={handleToggleStatus}
           on:delete={handleDeleteIssue}
         />
       {/each}
@@ -187,4 +198,3 @@
   on:submit={handleEditIssue}
   on:close={() => editingIssue = null}
 />
-
