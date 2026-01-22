@@ -25,11 +25,12 @@
   }).length || 0;
 
   function getPriorityLabel(priority) {
-    if (priority === 1) return { text: 'Critical', color: 'bg-red-600' };
-    if (priority === 2) return { text: 'High', color: 'bg-orange-600' };
-    if (priority === 3) return { text: 'Medium', color: 'bg-yellow-600' };
-    if (priority === 4) return { text: 'Low', color: 'bg-green-600' };
-    return { text: 'Normal', color: 'bg-blue-600' };
+    if (priority === 1) return { text: 'Top Priority', color: 'bg-red-600' };
+    if (priority === 2) return { text: 'Major Project', color: 'bg-orange-600' };
+    if (priority === 3) return { text: 'Important', color: 'bg-yellow-600' };
+    if (priority === 4) return { text: 'Minor', color: 'bg-green-600' };
+    if (priority === 5) return { text: 'Pending', color: 'bg-blue-600' };
+    return { text: 'Important', color: 'bg-yellow-600' };
   }
 
   function formatDate(dateString) {
