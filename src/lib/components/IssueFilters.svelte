@@ -1,6 +1,7 @@
+<!-- src/lib/components/issues/IssueFilters.svelte -->
 <script>
   export let searchTerm = '';
-  export let statusFilter = 'all';
+  export let statusFilter = 'current';
   export let onRefresh = () => {};
   export let loading = false;
   export let resultCount = 0;
@@ -21,9 +22,8 @@
       bind:value={statusFilter}
       class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
     >
-      <option value="all">All Issues</option>
-      <option value="has-actions">With Actions</option>
-      <option value="no-actions">No Actions</option>
+      <option value="current">Current Issues</option>
+      <option value="completed">Completed Issues</option>
     </select>
   </div>
 
@@ -31,6 +31,9 @@
   <div class="flex justify-between items-center">
     <div class="text-sm text-gray-400">
       {resultCount} {resultCount === 1 ? 'issue' : 'issues'} found
+      <span class="text-gray-500">
+        ({statusFilter === 'current' ? 'current' : 'completed'})
+      </span>
     </div>
     <button
       on:click={onRefresh}
@@ -44,4 +47,3 @@
     </button>
   </div>
 </div>
-

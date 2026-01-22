@@ -1,6 +1,3 @@
-//**Purpose**: All business logic and Supabase API calls
-
-
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 
@@ -57,6 +54,7 @@ function createIssuesStore() {
             name: issueData.name,
             description: issueData.description,
             priority: parseInt(issueData.priority) || 3,
+            status: issueData.status || 'current',
             original_date: new Date().toISOString()
           }]);
 
@@ -76,7 +74,8 @@ function createIssuesStore() {
           .update({
             name: issueData.name,
             description: issueData.description,
-            priority: parseInt(issueData.priority) || 3
+            priority: parseInt(issueData.priority) || 3,
+            status: issueData.status || 'current'
           })
           .eq('id', issueId);
 
@@ -222,5 +221,3 @@ function createIssuesStore() {
 }
 
 export const issuesStore = createIssuesStore();
-
-

@@ -10,6 +10,10 @@
   
   const dispatch = createEventDispatcher();
 
+  // Track if we're editing the issue inline
+  let editingInline = false;
+  let editedIssue = null;
+
   // Calculate overdue actions count
   $: overdueActionsCount = issue.actions?.filter(action => {
     if (!action.date_deadline || action.status === 'completed') return false;
@@ -57,6 +61,8 @@
           <span>•</span>
           <span>Priority: {issue.priority || 3}</span>
           <span>•</span>
+          <span class="capitalize">{issue.status || 'current'}</span>
+          <span>•</span>
           <span>{issue.comments?.length || 0} comments</span>
           <span>•</span>
           <span>{issue.actions?.length || 0} actions</span>
@@ -72,6 +78,21 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
           </svg>
+        </button>
+        <button
+          on:click={() => dispatch('toggleStatus', issue)}
+          class="p-2 hover:bg-slate-600 rounded"
+          title="{issue.status === 'completed' ? 'Mark as current' : 'Mark as completed'}"
+        >
+          {#if issue.status === 'completed'}
+            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          {:else}
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          {/if}
         </button>
         <button
           on:click={() => dispatch('delete', issue.id)}

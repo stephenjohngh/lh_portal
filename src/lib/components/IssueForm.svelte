@@ -1,3 +1,4 @@
+<!-- src/lib/components/issues/IssueForm.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
 
@@ -9,14 +10,16 @@
   let formData = {
     name: issue?.name || '',
     description: issue?.description || '',
-    priority: issue?.priority || 3
+    priority: issue?.priority || 3,
+    status: issue?.status || 'current'
   };
 
   $: if (issue) {
     formData = {
       name: issue.name,
       description: issue.description,
-      priority: issue.priority
+      priority: issue.priority,
+      status: issue.status || 'current'
     };
   }
 
@@ -61,19 +64,33 @@
           />
         </div>
         
-        <div>
-          <label for="issue-priority" class="block text-sm font-medium mb-2">Priority *</label>
-          <select
-            id="issue-priority"
-            bind:value={formData.priority}
-            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-          >
-            <option value="1">1 - Critical</option>
-            <option value="2">2 - High</option>
-            <option value="3">3 - Medium</option>
-            <option value="4">4 - Low</option>
-            <option value="5">5 - Very Low</option>
-          </select>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="issue-priority" class="block text-sm font-medium mb-2">Priority *</label>
+            <select
+              id="issue-priority"
+              bind:value={formData.priority}
+              class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            >
+              <option value="1">1 - Critical</option>
+              <option value="2">2 - High</option>
+              <option value="3">3 - Medium</option>
+              <option value="4">4 - Low</option>
+              <option value="5">5 - Very Low</option>
+            </select>
+          </div>
+          
+          <div>
+            <label for="issue-status" class="block text-sm font-medium mb-2">Status *</label>
+            <select
+              id="issue-status"
+              bind:value={formData.status}
+              class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            >
+              <option value="current">Current</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
         </div>
         
         <div class="flex space-x-2 justify-end">
@@ -94,4 +111,3 @@
     </div>
   </div>
 {/if}
-
