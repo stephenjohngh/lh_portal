@@ -18,7 +18,7 @@
     formData = {
       name: issue.name,
       description: issue.description,
-      priority: issue.priority,
+      priority: parseInt(issue.priority) || 3,
       status: issue.status || 'current'
     };
   }
@@ -72,11 +72,11 @@
               bind:value={formData.priority}
               class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
             >
-              <option value="1">1 - Top Priority</option>
-              <option value="2">2 - Major Project</option>
-              <option value="3">3 - Important</option>
-              <option value="4">4 - Minor</option>
-              <option value="5">5 - Pending</option>
+              <option value={1}>1 - Top Priority</option>
+              <option value={2}>2 - Major Project</option>
+              <option value={3}>3 - Important</option>
+              <option value={4}>4 - Minor</option>
+              <option value={5}>5 - Pending</option>
             </select>
           </div>
           
