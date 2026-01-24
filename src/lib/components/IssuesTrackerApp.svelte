@@ -65,7 +65,6 @@
   }
 
   async function handleDeleteIssue(event) {
-    if (!confirm('Are you sure you want to delete this issue and all its comments and actions?')) return;
     await issuesStore.deleteIssue(event.detail);
   }
   
