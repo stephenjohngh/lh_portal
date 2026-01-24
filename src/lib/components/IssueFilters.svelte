@@ -1,5 +1,7 @@
 <!-- src/lib/components/issues/IssueFilters.svelte -->
 <script>
+  import { STATUS_FILTERS } from '$lib/utils/constants';
+  
   export let searchTerm = '';
   export let statusFilter = 'current';
   export let onRefresh = () => {};
@@ -22,8 +24,9 @@
       bind:value={statusFilter}
       class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
     >
-      <option value="current">Current Issues</option>
-      <option value="completed">Completed Issues</option>
+      {#each STATUS_FILTERS as filter}
+        <option value={filter.value}>{filter.label}</option>
+      {/each}
     </select>
   </div>
 
@@ -32,7 +35,7 @@
     <div class="text-sm text-gray-400">
       {resultCount} {resultCount === 1 ? 'issue' : 'issues'} found
       <span class="text-gray-500">
-        ({statusFilter === 'current' ? 'current' : 'completed'})
+        ({STATUS_FILTERS.find(f => f.value === statusFilter)?.label || 'current'})
       </span>
     </div>
     <button

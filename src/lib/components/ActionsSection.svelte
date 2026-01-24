@@ -1,6 +1,8 @@
 <!-- src/lib/components/issues/ActionsSection.svelte -->
 <script>
   import { issuesStore } from './issuesStore';
+  import { formatDate, isOverdue } from '$lib/utils/dates';
+  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
 
   export let issueId;
   export let actions = [];
@@ -11,13 +13,13 @@
     action_text: '', 
     name_text: '', 
     date_deadline: '', 
-    status: 'pending' 
+    status: ACTION_STATUS.PENDING
   };
 
   // Sort actions: non-completed first by date, then completed by date
   $: sortedActions = [...actions].sort((a, b) => {
-    const aCompleted = a.status === 'completed';
-    const bCompleted = b.status === 'completed';
+    const aCompleted = a.status === ACTION_STATUS.COMPLETED;
+    const bCompleted = b.status === ACTION_STATUS.COMPLETED;
     
     // If one is completed and the other isn't, non-completed comes first
     if (aCompleted !== bCompleted) {
@@ -33,7 +35,12 @@
   async function addAction() {
     if (!newAction.action_text.trim()) return;
     await issuesStore.addAction(issueId, newAction);
-    newAction = { action_text: '', name_text: '', date_deadline: '', status: 'pending' };
+    newAction = { 
+      action_text: '', 
+      name_text: '', 
+      date_deadline: '', 
+      status: ACTION_STATUS.PENDING
+    };
     showAddModal = false;
   }
 
@@ -46,22 +53,6 @@
   async function deleteAction(actionId) {
     if (!confirm('Delete this action?')) return;
     await issuesStore.deleteAction(actionId);
-  }
-
-  function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      year: 'numeric', month: 'short', day: 'numeric'
-    });
-  }
-
-  function isOverdue(deadlineString) {
-    if (!deadlineString) return false;
-    const deadline = new Date(deadlineString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    deadline.setHours(0, 0, 0, 0);
-    return deadline < today;
   }
 </script>
 
@@ -84,7 +75,7 @@
   {#if sortedActions.length > 0}
     <div class="space-y-2">
       {#each sortedActions as action}
-        <div class="bg-slate-700/50 rounded p-3 border-l-2 border-green-400 {action.status === 'completed' ? 'opacity-60' : ''}">
+        <div class="bg-slate-700/50 rounded p-3 border-l-2 border-green-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
           {#if editingAction?.id === action.id}
             <div class="space-y-3">
               <div>
@@ -131,9 +122,9 @@
                   bind:value={editingAction.status}
                   class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
                 >
-                  <option value="pending">Pending</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="completed">Completed</option>
+                  {#each ACTION_STATUS_OPTIONS as statusOption}
+                    <option value={statusOption.value}>{statusOption.label}</option>
+                  {/each}
                 </select>
               </div>
               <div class="flex space-x-2">
@@ -154,7 +145,7 @@
           {:else}
             <div class="flex justify-between items-start">
               <div class="flex-1">
-                <p class="text-gray-200 font-medium {action.status === 'completed' ? 'line-through' : ''}">
+                <p class="text-gray-200 font-medium {action.status === ACTION_STATUS.COMPLETED ? 'line-through' : ''}">
                   {action.action_text}
                 </p>
                 <div class="flex flex-wrap gap-2 mt-2 text-xs">
@@ -164,9 +155,9 @@
                     </span>
                   {/if}
                   {#if action.date_deadline}
-                    <span class="px-2 py-1 rounded {isOverdue(action.date_deadline) && action.status !== 'completed' ? 'bg-red-600 text-white font-semibold' : 'bg-orange-600/20 text-orange-300'}">
+                    <span class="px-2 py-1 rounded {isOverdue(action.date_deadline) && action.status !== ACTION_STATUS.COMPLETED ? 'bg-red-600 text-white font-semibold' : 'bg-orange-600/20 text-orange-300'}">
                       📅 Due: {formatDate(action.date_deadline)}
-                      {#if isOverdue(action.date_deadline) && action.status !== 'completed'}
+                      {#if isOverdue(action.date_deadline) && action.status !== ACTION_STATUS.COMPLETED}
                         ⚠️
                       {/if}
                     </span>
@@ -249,9 +240,9 @@
             bind:value={newAction.status}
             class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
           >
-            <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
-            <option value="completed">Completed</option>
+            {#each ACTION_STATUS_OPTIONS as statusOption}
+              <option value={statusOption.value}>{statusOption.label}</option>
+            {/each}
           </select>
         </div>
         <div class="flex space-x-2 justify-end">

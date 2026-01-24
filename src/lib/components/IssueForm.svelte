@@ -1,6 +1,8 @@
 <!-- src/lib/components/issues/IssueForm.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { PRIORITIES } from '$lib/utils/priorities';
+  import { ISSUE_STATUS } from '$lib/utils/constants';
 
   export let show = false;
   export let issue = null; // null for new, object for edit
@@ -11,7 +13,7 @@
     name: issue?.name || '',
     description: issue?.description || '',
     priority: issue?.priority || 3,
-    status: issue?.status || 'current'
+    status: issue?.status || ISSUE_STATUS.CURRENT
   };
 
   $: if (issue) {
@@ -19,7 +21,7 @@
       name: issue.name,
       description: issue.description,
       priority: parseInt(issue.priority) || 3,
-      status: issue.status || 'current'
+      status: issue.status || ISSUE_STATUS.CURRENT
     };
   }
 
@@ -61,7 +63,7 @@
             class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
             rows="4"
             placeholder="Issue description"
-          />
+          ></textarea>
         </div>
         
         <div class="grid grid-cols-2 gap-4">
@@ -72,11 +74,11 @@
               bind:value={formData.priority}
               class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
             >
-              <option value={1}>1 - Top Priority</option>
-              <option value={2}>2 - Major Project</option>
-              <option value={3}>3 - Important</option>
-              <option value={4}>4 - Minor</option>
-              <option value={5}>5 - Pending</option>
+              {#each PRIORITIES as priority}
+                <option value={priority.value}>
+                  {priority.value} - {priority.label}
+                </option>
+              {/each}
             </select>
           </div>
           
@@ -87,8 +89,8 @@
               bind:value={formData.status}
               class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
             >
-              <option value="current">Current</option>
-              <option value="completed">Completed</option>
+              <option value={ISSUE_STATUS.CURRENT}>Current</option>
+              <option value={ISSUE_STATUS.COMPLETED}>Completed</option>
             </select>
           </div>
         </div>
