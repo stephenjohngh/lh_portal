@@ -3,6 +3,9 @@
   import { createEventDispatcher } from 'svelte';
   import CommentsSection from './CommentsSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
+  import { getPriorityLabel } from '$lib/utils/priorities';
+  import { formatDate } from '$lib/utils/dates';
+  import { ISSUE_STATUS } from '$lib/utils/constants';
 
   export let issue;
   export let showComments = false;
@@ -23,22 +26,6 @@
     deadline.setHours(0, 0, 0, 0);
     return deadline < today;
   }).length || 0;
-
-  function getPriorityLabel(priority) {
-    if (priority === 1) return { text: 'Top Priority', color: 'bg-red-600' };
-    if (priority === 2) return { text: 'Major Project', color: 'bg-orange-600' };
-    if (priority === 3) return { text: 'Important', color: 'bg-yellow-600' };
-    if (priority === 4) return { text: 'Minor', color: 'bg-green-600' };
-    if (priority === 5) return { text: 'Pending', color: 'bg-blue-600' };
-    return { text: 'Important', color: 'bg-yellow-600' };
-  }
-
-  function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      year: 'numeric', month: 'short', day: 'numeric'
-    });
-  }
 </script>
 
 <div class="bg-slate-700/50 rounded-lg border border-slate-600 overflow-hidden">
@@ -49,7 +36,7 @@
         <div class="flex items-center gap-2 mb-2">
           <h3 class="text-xl font-semibold text-white">{issue.name}</h3>
           <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
-            {getPriorityLabel(issue.priority).text}
+            {getPriorityLabel(issue.priority).label}
           </span>
         </div>
         
@@ -61,8 +48,6 @@
           <span>Created: {formatDate(issue.original_date)}</span>
           <span>•</span>
           <span>Priority: {issue.priority || 3}</span>
-          <span>•</span>
-          <span class="capitalize">{issue.status || 'current'}</span>
           <span>•</span>
           <span>{issue.comments?.length || 0} comments</span>
           <span>•</span>
@@ -79,21 +64,6 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
           </svg>
-        </button>
-        <button
-          on:click={() => dispatch('toggleStatus', issue)}
-          class="p-2 hover:bg-slate-600 rounded"
-          title="{issue.status === 'completed' ? 'Mark as current' : 'Mark as completed'}"
-        >
-          {#if issue.status === 'completed'}
-            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          {:else}
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          {/if}
         </button>
         <button
           on:click={() => dispatch('delete', issue.id)}

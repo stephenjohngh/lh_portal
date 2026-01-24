@@ -1,5 +1,7 @@
+// src/lib/components/issues/issuesStore.js
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
+import { ISSUE_STATUS } from '$lib/utils/constants';
 
 function createIssuesStore() {
   const { subscribe, set, update } = writable({
@@ -151,7 +153,7 @@ function createIssuesStore() {
             name: issueData.name,
             description: issueData.description,
             priority: parseInt(issueData.priority) || 3,
-            status: issueData.status || 'current',
+            status: issueData.status || ISSUE_STATUS.CURRENT,
             original_date: new Date().toISOString()
           }]);
 
@@ -172,7 +174,7 @@ function createIssuesStore() {
             name: issueData.name,
             description: issueData.description,
             priority: parseInt(issueData.priority) || 3,
-            status: issueData.status || 'current'
+            status: issueData.status || ISSUE_STATUS.CURRENT
           })
           .eq('id', issueId);
 

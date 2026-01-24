@@ -5,9 +5,10 @@
   import IssueFilters from './IssueFilters.svelte';
   import IssueCard from './IssueCard.svelte';
   import IssueForm from './IssueForm.svelte';
+  import { ISSUE_STATUS } from '$lib/utils/constants';
 
   let searchTerm = '';
-  let statusFilter = 'current'; // Changed from 'all' to 'current'
+  let statusFilter = ISSUE_STATUS.CURRENT;
   let showNewIssueModal = false;
   let editingIssue = null;
   
@@ -38,9 +39,9 @@
                            issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
       
       // Filter by status (current or completed)
-      const matchesStatus = statusFilter === 'current' 
-        ? (issue.status === 'current' || !issue.status) // Show current issues (including null/undefined for backward compatibility)
-        : issue.status === 'completed';
+      const matchesStatus = statusFilter === ISSUE_STATUS.CURRENT
+        ? (issue.status === ISSUE_STATUS.CURRENT || !issue.status) // Show current issues (including null/undefined for backward compatibility)
+        : issue.status === ISSUE_STATUS.COMPLETED;
       
       return matchesSearch && matchesStatus;
     });
@@ -69,7 +70,7 @@
   
   async function handleToggleStatus(event) {
     const issue = event.detail;
-    const newStatus = issue.status === 'completed' ? 'current' : 'completed';
+    const newStatus = issue.status === ISSUE_STATUS.COMPLETED ? ISSUE_STATUS.CURRENT : ISSUE_STATUS.COMPLETED;
     await issuesStore.updateIssue(issue.id, {
       name: issue.name,
       description: issue.description,
