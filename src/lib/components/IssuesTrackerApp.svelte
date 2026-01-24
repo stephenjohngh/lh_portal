@@ -5,6 +5,7 @@
   import IssueFilters from './IssueFilters.svelte';
   import IssueCard from './IssueCard.svelte';
   import IssueForm from './IssueForm.svelte';
+  import IssuesReport from './IssuesReport.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { ISSUE_STATUS } from '$lib/utils/constants';
 
@@ -12,6 +13,7 @@
   let statusFilter = ISSUE_STATUS.CURRENT;
   let showNewIssueModal = false;
   let editingIssue = null;
+  let showReport = false;
   
   // Persist UI state across data refreshes
   let expandedSections = {}; // { issueId: { comments: bool, actions: bool } }
@@ -109,15 +111,26 @@
       <h2 class="text-3xl font-bold mb-2">Issues Tracker</h2>
       <p class="text-gray-400">Manage current issues, actions, and comments</p>
     </div>
-    <button
-      on:click={() => showNewIssueModal = true}
-      class="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
-    >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-      </svg>
-      <span>New Issue</span>
-    </button>
+    <div class="flex space-x-2">
+      <button
+        on:click={() => showReport = true}
+        class="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <span>Report</span>
+      </button>
+      <button
+        on:click={() => showNewIssueModal = true}
+        class="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        <span>New Issue</span>
+      </button>
+    </div>
   </div>
 
   <!-- Filters -->
@@ -203,4 +216,10 @@
   issue={editingIssue}
   on:submit={handleEditIssue}
   on:close={() => editingIssue = null}
+/>
+
+<!-- Outstanding Actions Report -->
+<IssuesReport 
+  bind:show={showReport}
+  {issues}
 />
