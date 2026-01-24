@@ -95,13 +95,13 @@
                 <label for="edit-action-text" class="block text-sm font-medium mb-1 text-gray-300">
                   Action Description
                 </label>
-                <input
+                <textarea
                   id="edit-action-text"
-                  type="text"
                   bind:value={editingAction.action_text}
                   class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
                   placeholder="Action description"
-                />
+                  rows="3"
+                ></textarea>
               </div>
               <div>
                 <label for="edit-action-assignee" class="block text-sm font-medium mb-1 text-gray-300">
@@ -158,7 +158,7 @@
           {:else}
             <div class="flex justify-between items-start">
               <div class="flex-1">
-                <p class="text-gray-200 font-medium {action.status === ACTION_STATUS.COMPLETED ? 'line-through' : ''}">
+                <p class="text-gray-200 font-medium whitespace-pre-wrap {action.status === ACTION_STATUS.COMPLETED ? 'line-through' : ''}">
                   {action.action_text}
                 </p>
                 <div class="flex flex-wrap gap-2 mt-2 text-xs">
@@ -215,13 +215,13 @@
       <div class="space-y-4">
         <div>
           <label for="action-text" class="block text-sm font-medium mb-2">Action Description *</label>
-          <input
+          <textarea
             id="action-text"
-            type="text"
             bind:value={newAction.action_text}
             class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
             placeholder="What needs to be done?"
-          />
+            rows="3"
+          ></textarea>
         </div>
         <div>
           <label for="action-assignee" class="block text-sm font-medium mb-2">Assigned To</label>

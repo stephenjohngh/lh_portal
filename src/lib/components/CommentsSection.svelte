@@ -66,7 +66,7 @@
             <textarea
               bind:value={editingComment.comment_text}
               class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white mb-2"
-              rows="2"
+              rows="3"
             ></textarea>
             <div class="flex space-x-2">
               <button
@@ -85,7 +85,7 @@
           {:else}
             <div class="flex justify-between items-start">
               <div class="flex-1">
-                <p class="text-gray-200">{comment.comment_text}</p>
+                <p class="text-gray-200 whitespace-pre-wrap">{comment.comment_text}</p>
                 <p class="text-xs text-gray-500 mt-1">{formatDateTime(comment.date)}</p>
               </div>
               <div class="flex space-x-1">
@@ -122,7 +122,7 @@
       <textarea
         bind:value={newCommentText}
         class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-        rows="4"
+        rows="3"
         placeholder="Enter your comment..."
       ></textarea>
       <div class="flex space-x-2 justify-end mt-4">
