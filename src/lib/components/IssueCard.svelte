@@ -3,6 +3,8 @@
   import { createEventDispatcher } from 'svelte';
   import CommentsSection from './CommentsSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
+  import Icon from '$lib/components/icons/Icon.svelte';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { getPriorityLabel } from '$lib/utils/priorities';
   import { formatDate } from '$lib/utils/dates';
   import { ISSUE_STATUS } from '$lib/utils/constants';
@@ -16,6 +18,7 @@
   // Track if we're editing the issue inline
   let editingInline = false;
   let editedIssue = null;
+  let showDeleteConfirm = false;
 
   // Calculate overdue actions count
   $: overdueActionsCount = issue.actions?.filter(action => {
@@ -26,6 +29,15 @@
     deadline.setHours(0, 0, 0, 0);
     return deadline < today;
   }).length || 0;
+
+  function handleDelete() {
+    showDeleteConfirm = true;
+  }
+
+  function confirmDelete() {
+    dispatch('delete', issue.id);
+    showDeleteConfirm = false;
+  }
 </script>
 
 <div class="bg-slate-700/50 rounded-lg border border-slate-600 overflow-hidden">
@@ -61,18 +73,14 @@
           class="p-2 hover:bg-slate-600 rounded"
           title="Edit issue"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-          </svg>
+          <Icon name="edit" size={5} />
         </button>
         <button
-          on:click={() => dispatch('delete', issue.id)}
+          on:click={handleDelete}
           class="p-2 hover:bg-red-600/20 rounded text-red-400"
           title="Delete issue"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-          </svg>
+          <Icon name="delete" size={5} />
         </button>
       </div>
     </div>
@@ -81,14 +89,16 @@
     <div class="flex space-x-2 mt-3">
       <button
         on:click={() => dispatch('toggleComments')}
-        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm flex items-center gap-1"
       >
-        {showComments ? 'Hide' : 'Show'} Comments ({issue.comments?.length || 0})
+        <Icon name="comment" size={4} />
+        <span>{showComments ? 'Hide' : 'Show'} Comments ({issue.comments?.length || 0})</span>
       </button>
       <button
         on:click={() => dispatch('toggleActions')}
-        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm flex items-center space-x-1"
+        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm flex items-center gap-1"
       >
+        <Icon name="clipboard" size={4} />
         <span>{showActions ? 'Hide' : 'Show'} Actions ({issue.actions?.length || 0})</span>
         {#if overdueActionsCount > 0}
           <span class="ml-1 px-1.5 py-0.5 bg-red-600 rounded text-xs font-semibold">
@@ -123,3 +133,15 @@
     </div>
   {/if}
 </div>
+
+<!-- Delete Confirmation Dialog -->
+<ConfirmDialog
+  show={showDeleteConfirm}
+  title="Delete Issue"
+  message="Are you sure you want to delete '{issue.name}'? This will also delete all {issue.comments?.length || 0} comments and {issue.actions?.length || 0} actions. This action cannot be undone."
+  confirmText="Delete Issue"
+  cancelText="Cancel"
+  danger={true}
+  on:confirm={confirmDelete}
+  on:cancel={() => showDeleteConfirm = false}
+/>

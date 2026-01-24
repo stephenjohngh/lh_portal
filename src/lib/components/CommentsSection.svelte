@@ -2,6 +2,8 @@
 <script>
   import { issuesStore } from './issuesStore';
   import { formatDateTime } from '$lib/utils/dates';
+  import Icon from '$lib/components/icons/Icon.svelte';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let issueId;
   export let comments = [];
@@ -9,6 +11,8 @@
   let showAddModal = false;
   let editingComment = null;
   let newCommentText = '';
+  let showDeleteConfirm = false;
+  let pendingDeleteId = null;
 
   async function addComment() {
     if (!newCommentText.trim()) return;
@@ -23,18 +27,22 @@
     editingComment = null;
   }
 
-  async function deleteComment(commentId) {
-    if (!confirm('Delete this comment?')) return;
-    await issuesStore.deleteComment(commentId);
+  function confirmDeleteComment(commentId) {
+    pendingDeleteId = commentId;
+    showDeleteConfirm = true;
+  }
+
+  async function handleDeleteConfirm() {
+    await issuesStore.deleteComment(pendingDeleteId);
+    showDeleteConfirm = false;
+    pendingDeleteId = null;
   }
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-4">
   <div class="flex justify-between items-center mb-3">
     <h4 class="font-semibold flex items-center space-x-2">
-      <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-      </svg>
+      <Icon name="comment" size={5} className="text-blue-400" />
       <span>Comments</span>
     </h4>
     <button
@@ -81,18 +89,14 @@
                   class="p-1 hover:bg-slate-600 rounded"
                   title="Edit comment"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                  </svg>
+                  <Icon name="edit" size={4} />
                 </button>
                 <button
-                  on:click={() => deleteComment(comment.id)}
+                  on:click={() => confirmDeleteComment(comment.id)}
                   class="p-1 hover:bg-red-600/20 rounded text-red-400"
                   title="Delete comment"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
+                  <Icon name="delete" size={4} />
                 </button>
               </div>
             </div>

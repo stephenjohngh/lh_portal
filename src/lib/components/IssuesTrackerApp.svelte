@@ -5,6 +5,7 @@
   import IssueFilters from './IssueFilters.svelte';
   import IssueCard from './IssueCard.svelte';
   import IssueForm from './IssueForm.svelte';
+  import Icon from '$lib/components/icons/Icon.svelte';
   import { ISSUE_STATUS } from '$lib/utils/constants';
 
   let searchTerm = '';
