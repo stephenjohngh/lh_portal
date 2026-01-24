@@ -64,6 +64,11 @@
     showDeleteConfirm = false;
     pendingDeleteId = null;
   }
+
+  function handleDeleteCancel() {
+    showDeleteConfirm = false;
+    pendingDeleteId = null;
+  }
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-4">
@@ -267,3 +272,15 @@
     </div>
   </div>
 {/if}
+
+<!-- Delete Confirmation Dialog -->
+<ConfirmDialog
+  show={showDeleteConfirm}
+  title="Delete Action"
+  message="Are you sure you want to delete this action? This cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  danger={true}
+  on:confirm={handleDeleteConfirm}
+  on:cancel={handleDeleteCancel}
+/>
