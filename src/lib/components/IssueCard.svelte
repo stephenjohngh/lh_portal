@@ -138,7 +138,7 @@
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Issue"
-  message="Are you sure you want to delete '{issue.name}'? This will also delete all {issue.comments?.length || 0} comments and {issue.actions?.length || 0} actions. This action cannot be undone."
+  message="Are you sure you want to delete '{issue.name}'? This will also delete  {issue.comments?.length || 0} comment(s) and {issue.actions?.length || 0} action(s). This action cannot be undone."
   confirmText="Delete Issue"
   cancelText="Cancel"
   danger={true}
