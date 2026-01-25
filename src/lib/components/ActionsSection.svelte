@@ -179,8 +179,12 @@
                     {action.status}
                   </span>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Added: {formatDate(action.date_added)}</p>
-              </div>
+                <p class="text-xs text-gray-500 mt-1">
+                  Added: {formatDate(action.created_at)}
+                  {#if action.updated_at && action.updated_at !== action.created_at}
+                    • Modified: {formatDate(action.updated_at)}
+                  {/if}
+                </p>              </div>
               <div class="flex space-x-1">
                 <button
                   on:click={() => editingAction = {...action}}
