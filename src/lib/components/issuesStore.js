@@ -171,7 +171,7 @@ function createIssuesStore() {
     async updateIssue(issueId, issueData) {
       try {
         const { error } = await supabase
-          .from('_issues')
+          .from('issues')
           .update({
             name: issueData.name,
             description: issueData.description,
