@@ -50,6 +50,11 @@
           <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}
           </span>
+          {#if issue.status === 'parked'}
+            <span class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded">
+              🅿️ Parked
+            </span>
+          {/if}
         </div>
         
         {#if issue.description}
@@ -57,7 +62,11 @@
         {/if}
         
         <div class="flex items-center space-x-4 mt-2 text-sm text-gray-400">
-          <span>Created: {formatDate(issue.original_date)}</span>
+          <span>Created: {formatDate(issue.created_at)}</span>
+          {#if issue.updated_at && issue.updated_at !== issue.created_at}
+            <span>•</span>
+            <span>Modified: {formatDate(issue.updated_at)}</span>
+          {/if}
           <span>•</span>
           <span>Priority: {issue.priority || 3}</span>
           <span>•</span>

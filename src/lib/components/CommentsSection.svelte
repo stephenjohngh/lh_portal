@@ -86,7 +86,12 @@
             <div class="flex justify-between items-start">
               <div class="flex-1">
                 <p class="text-gray-200 whitespace-pre-wrap">{comment.comment_text}</p>
-                <p class="text-xs text-gray-500 mt-1">{formatDateTime(comment.date)}</p>
+                <p class="text-xs text-gray-500 mt-1">
+                  {formatDateTime(comment.date)}
+                  {#if comment.updated_at && comment.updated_at !== comment.created_at && comment.updated_at !== comment.created_at}
+                    • Modified: {formatDateTime(comment.updated_at)}
+                  {/if}
+                </p>
               </div>
               <div class="flex space-x-1">
                 <button

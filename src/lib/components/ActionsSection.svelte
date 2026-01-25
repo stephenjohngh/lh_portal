@@ -31,8 +31,8 @@
     }
     
     // Both have same completion status, sort by date (earlier first)
-    const aDate = new Date(a.date_added);
-    const bDate = new Date(b.date_added);
+    const aDate = new Date(a.created_at);
+    const bDate = new Date(b.created_at);
     return aDate - bDate;
   });
 

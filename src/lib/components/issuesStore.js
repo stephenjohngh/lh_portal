@@ -20,19 +20,19 @@ function createIssuesStore() {
       
       try {
         const { data, error } = await supabase
-          .from('current_issues')
+          .from('issues')
           .select(`
             *,
             comments (
-              id, comment_text, date, created_at
+              id, comment_text, created_at, updated_at
             ),
             actions (
-              id, action_text, name_text, date_added, 
-              date_deadline, status, created_at
+              id, action_text, name_text,  
+              date_deadline, status, created_at, updated_at
             )
           `)
           .order('priority', { ascending: true })
-          .order('original_date', { ascending: true });
+          .order('created_at', { ascending: true });
 
         if (error) throw error;
         
@@ -59,13 +59,13 @@ function createIssuesStore() {
       // Create a channel for real-time updates
       realtimeChannel = supabase.channel('issues-changes');
 
-      // Listen for INSERT on current_issues
+      // Listen for INSERT on issues
       realtimeChannel.on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'current_issues'
+          table: 'issues'
         },
         (payload) => {
           console.log('New issue created:', payload.new);
@@ -74,13 +74,13 @@ function createIssuesStore() {
         }
       );
 
-      // Listen for UPDATE on current_issues
+      // Listen for UPDATE on issues
       realtimeChannel.on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'current_issues'
+          table: 'issues'
         },
         (payload) => {
           console.log('Issue updated:', payload.new);
@@ -88,13 +88,13 @@ function createIssuesStore() {
         }
       );
 
-      // Listen for DELETE on current_issues
+      // Listen for DELETE on issues
       realtimeChannel.on(
         'postgres_changes',
         {
           event: 'DELETE',
           schema: 'public',
-          table: 'current_issues'
+          table: 'issues'
         },
         (payload) => {
           console.log('Issue deleted:', payload.old);
@@ -147,14 +147,16 @@ function createIssuesStore() {
 
     async addIssue(issueData) {
       try {
+        const now = new Date().toISOString();
         const { error } = await supabase
-          .from('current_issues')
+          .from('issues')
           .insert([{
             name: issueData.name,
             description: issueData.description,
             priority: parseInt(issueData.priority) || 3,
             status: issueData.status || ISSUE_STATUS.CURRENT,
-            original_date: new Date().toISOString()
+            created_at: now,
+            updated_at: now
           }]);
 
         if (error) throw error;
@@ -169,12 +171,13 @@ function createIssuesStore() {
     async updateIssue(issueId, issueData) {
       try {
         const { error } = await supabase
-          .from('current_issues')
+          .from('_issues')
           .update({
             name: issueData.name,
             description: issueData.description,
             priority: parseInt(issueData.priority) || 3,
-            status: issueData.status || ISSUE_STATUS.CURRENT
+            status: issueData.status || ISSUE_STATUS.CURRENT,
+            updated_at: new Date().toISOString()
           })
           .eq('id', issueId);
 
@@ -190,7 +193,7 @@ function createIssuesStore() {
     async deleteIssue(issueId) {
       try {
         const { error } = await supabase
-          .from('current_issues')
+          .from('issues')
           .delete()
           .eq('id', issueId);
 
@@ -205,12 +208,14 @@ function createIssuesStore() {
 
     async addComment(issueId, commentText) {
       try {
+        const now = new Date().toISOString();
         const { error } = await supabase
           .from('comments')
           .insert([{
             issue_id: issueId,
             comment_text: commentText,
-            date: new Date().toISOString()
+            created_at: now,
+            updated_at: now
           }]);
 
         if (error) throw error;
@@ -226,7 +231,10 @@ function createIssuesStore() {
       try {
         const { error } = await supabase
           .from('comments')
-          .update({ comment_text: commentText })
+          .update({ 
+            comment_text: commentText,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', commentId);
 
         if (error) throw error;
@@ -256,15 +264,17 @@ function createIssuesStore() {
 
     async addAction(issueId, actionData) {
       try {
+        const now = new Date().toISOString();
         const { error } = await supabase
           .from('actions')
           .insert([{
             issue_id: issueId,
             action_text: actionData.action_text,
             name_text: actionData.name_text,
-            date_added: new Date().toISOString(),
             date_deadline: actionData.date_deadline || null,
-            status: actionData.status
+            status: actionData.status,
+            created_at: now,
+            updated_at: now
           }]);
 
         if (error) throw error;
@@ -284,7 +294,8 @@ function createIssuesStore() {
             action_text: actionData.action_text,
             name_text: actionData.name_text,
             date_deadline: actionData.date_deadline,
-            status: actionData.status
+            status: actionData.status,
+            updated_at: new Date().toISOString()
           })
           .eq('id', actionId);
 
