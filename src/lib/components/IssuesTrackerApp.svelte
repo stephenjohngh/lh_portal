@@ -41,10 +41,15 @@
       const matchesSearch = issue.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Filter by status (current or completed)
-      const matchesStatus = statusFilter === ISSUE_STATUS.CURRENT
-        ? (issue.status === ISSUE_STATUS.CURRENT || !issue.status) // Show current issues (including null/undefined for backward compatibility)
-        : issue.status === ISSUE_STATUS.COMPLETED;
+      // Filter by status (current, parked, or completed)
+      let matchesStatus = false;
+      if (statusFilter === ISSUE_STATUS.CURRENT) {
+        matchesStatus = (issue.status === ISSUE_STATUS.CURRENT || !issue.status); // Show current issues (including null/undefined for backward compatibility)
+      } else if (statusFilter === ISSUE_STATUS.PARKED) {
+        matchesStatus = issue.status === ISSUE_STATUS.PARKED;
+      } else if (statusFilter === ISSUE_STATUS.COMPLETED) {
+        matchesStatus = issue.status === ISSUE_STATUS.COMPLETED;
+      }
       
       return matchesSearch && matchesStatus;
     });

@@ -5,6 +5,7 @@
  */
 export const ISSUE_STATUS = {
   CURRENT: 'current',
+  PARKED: 'parked',
   COMPLETED: 'completed'
 };
 
@@ -22,7 +23,17 @@ export const ACTION_STATUS = {
  */
 export const STATUS_FILTERS = [
   { value: ISSUE_STATUS.CURRENT, label: 'Current Issues' },
+  { value: ISSUE_STATUS.PARKED, label: 'Parked Issues' },
   { value: ISSUE_STATUS.COMPLETED, label: 'Completed Issues' }
+];
+
+/**
+ * Issue status options for forms
+ */
+export const ISSUE_STATUS_OPTIONS = [
+  { value: ISSUE_STATUS.CURRENT, label: 'Current' },
+  { value: ISSUE_STATUS.PARKED, label: 'Parked' },
+  { value: ISSUE_STATUS.COMPLETED, label: 'Completed' }
 ];
 
 /**
