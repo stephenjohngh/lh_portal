@@ -2,7 +2,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { PRIORITIES } from '$lib/utils/priorities';
-  import { ISSUE_STATUS } from '$lib/utils/constants';
+  import { ISSUE_STATUS, ISSUE_STATUS_OPTIONS } from '$lib/utils/constants';
 
   export let show = false;
   export let issue = null; // null for new, object for edit
@@ -89,8 +89,9 @@
               bind:value={formData.status}
               class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
             >
-              <option value={ISSUE_STATUS.CURRENT}>Current</option>
-              <option value={ISSUE_STATUS.COMPLETED}>Completed</option>
+              {#each ISSUE_STATUS_OPTIONS as statusOption}
+                <option value={statusOption.value}>{statusOption.label}</option>
+              {/each}
             </select>
           </div>
         </div>
