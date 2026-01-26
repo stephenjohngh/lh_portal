@@ -42,6 +42,26 @@
     showDeleteConfirm = false;
     pendingDeleteId = null;
   }
+
+
+  // Add this reactive statement to log comment timestamps
+  $: if (comments.length > 0) {
+    console.log('=== Comments Debug ===');
+    comments.forEach((comment, index) => {
+      console.log(`Comment ${index + 1}:`, {
+        id: comment.id,
+        text: comment.comment_text?.substring(0, 30) + '...',
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
+        are_equal: comment.created_at === comment.updated_at,
+        diff_milliseconds: comment.updated_at && comment.created_at 
+          ? new Date(comment.updated_at) - new Date(comment.created_at)
+          : null
+      });
+    });
+  }
+
+
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-4">
@@ -87,8 +107,15 @@
               <div class="flex-1">
                 <p class="text-gray-200 whitespace-pre-wrap">{comment.comment_text}</p>
                 <p class="text-xs text-gray-500 mt-1">
-  {formatDateTime(comment.created_at)}
-  {#if comment.updated_at && comment.updated_at !== comment.created_at}
+  Added: {formatDateTime(comment.created_at)}
+
+<!--
+{#if console.log(comment.created_at)}
+{/if}
+{#if console.log(comment.updated_at)}
+{/if}
+-->
+  {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()  }
     • Modified: {formatDateTime(comment.updated_at)}
   {/if}
 </p>

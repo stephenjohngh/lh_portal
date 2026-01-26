@@ -11,15 +11,40 @@
   let includeCurrent = true;
   let includeParked = false;
   let includeCompleted = false;
+  
+  // Set default date to one month ago
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  const defaultDate = oneMonthAgo.toISOString().split('T')[0];
+  
+  let filterDate = defaultDate;
 
-  // Get filtered issues based on checkboxes
+  // Get filtered issues based on checkboxes and date filter
   $: filteredIssues = issues
     .filter(issue => {
-      const status = issue.status || 'current'; // Default to current for backward compatibility
-      if (status === 'current' && includeCurrent) return true;
-      if (status === 'parked' && includeParked) return true;
-      if (status === 'completed' && includeCompleted) return true;
-      return false;
+      const status = issue.status || 'current';
+      if (status === 'current' && !includeCurrent) return false;
+      if (status === 'parked' && !includeParked) return false;
+      if (status === 'completed' && !includeCompleted) return false;
+      
+      // Check if issue or any of its comments/actions have been updated after the filter date
+      if (filterDate) {
+        const filterDateTime = new Date(filterDate).getTime();
+        const issueUpdated = issue.updated_at && new Date(issue.updated_at).getTime() >= filterDateTime;
+        const hasRecentComments = (issue.comments || []).some(c => 
+          c.updated_at && new Date(c.updated_at).getTime() >= filterDateTime
+        );
+        const hasRecentActions = (issue.actions || []).some(a => 
+          a.updated_at && new Date(a.updated_at).getTime() >= filterDateTime
+        );
+        
+        // Include issue if it or any of its children have been updated
+        if (!issueUpdated && !hasRecentComments && !hasRecentActions) {
+          return false;
+        }
+      }
+      
+      return true;
     })
     .map(issue => {
       const outstandingActions = (issue.actions || []).filter(
@@ -78,43 +103,62 @@
       <div class="flex justify-between items-center p-6 border-b border-gray-300 print:hidden bg-slate-800 text-white rounded-t-lg">
         <div>
           <h2 class="text-2xl font-bold mb-3">Issues Report</h2>
-          <!-- Filter Checkboxes -->
-          <div class="flex gap-4 text-sm">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                bind:checked={includeCurrent}
-                class="w-4 h-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+          <!-- Filter Checkboxes and Date -->
+          <div class="flex flex-col gap-3">
+            <div class="flex gap-4 text-sm">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  bind:checked={includeCurrent}
+                  class="w-4 h-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Current</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  bind:checked={includeParked}
+                  class="w-4 h-4 rounded border-gray-400 text-amber-600 focus:ring-amber-500"
+                />
+                <span>Parked</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  bind:checked={includeCompleted}
+                  class="w-4 h-4 rounded border-gray-400 text-green-600 focus:ring-green-500"
+                />
+                <span>Completed</span>
+              </label>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <label for="filter-date" class="whitespace-nowrap">Changes since:</label>
+              <input
+                id="filter-date"
+                type="date"
+                bind:value={filterDate}
+                class="px-3 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm"
               />
-              <span>Current</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                bind:checked={includeParked}
-                class="w-4 h-4 rounded border-gray-400 text-amber-600 focus:ring-amber-500"
-              />
-              <span>Parked</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                bind:checked={includeCompleted}
-                class="w-4 h-4 rounded border-gray-400 text-green-600 focus:ring-green-500"
-              />
-              <span>Completed</span>
-            </label>
+              <button
+                on:click={() => filterDate = ''}
+                class="px-2 py-1 bg-slate-600 hover:bg-slate-500 rounded text-xs"
+                title="Clear date filter"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         </div>
         <div class="flex space-x-2">
           <button
             on:click={printReport}
             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded flex items-center gap-2"
+            title="In the print dialog, select 'Save as PDF' as the destination"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
             </svg>
-            Print/Save as PDF
+            Save as PDF
           </button>
           <button
             on:click={close}
@@ -136,6 +180,11 @@
             {#if includeCurrent}Current{/if}
             {#if includeParked}{includeCurrent ? ', ' : ''}Parked{/if}
             {#if includeCompleted}{(includeCurrent || includeParked) ? ', ' : ''}Completed{/if}
+            {#if filterDate}
+              • Changes since {new Date(filterDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+            {:else}
+              • All changes
+            {/if}
           </p>
           <div class="border-b-2 border-gray-300 mt-4"></div>
         </div>
