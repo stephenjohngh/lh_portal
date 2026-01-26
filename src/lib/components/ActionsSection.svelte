@@ -1,7 +1,7 @@
 <!-- src/lib/components/issues/ActionsSection.svelte -->
 <script>
   import { issuesStore } from './issuesStore';
-  import { formatDate, isOverdue } from '$lib/utils/dates';
+  import { formatDate,formatDateTime, isOverdue } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -178,12 +178,14 @@
                   <span class="px-2 py-1 bg-purple-600/20 text-purple-300 rounded capitalize">
                     {action.status}
                   </span>
+
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
-                  Added: {formatDate(action.created_at)}
-                  {#if action.updated_at && action.updated_at !== action.created_at}
-                    • Modified: {formatDate(action.updated_at)}
-                  {/if}
+                  Added: {formatDateTime(action.created_at)}
+                    {#if action.updated_at && new Date(action.updated_at).getTime() !== new Date(action.created_at).getTime()  }
+    • Modified: {formatDateTime(action.updated_at)}
+  {/if}
+
                 </p>              </div>
               <div class="flex space-x-1">
                 <button
