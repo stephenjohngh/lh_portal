@@ -67,13 +67,7 @@
             <span>•</span>
             <span>Modified: {formatDate(issue.updated_at)}</span>
           {/if}
-          <span>•</span>
-          <span>Priority: {issue.priority || 3}</span>
-          <span>•</span>
-          <span>{issue.comments?.length || 0} comments</span>
-          <span>•</span>
-          <span>{issue.actions?.length || 0} actions</span>
-        </div>
+         </div>
       </div>
       
       <div class="flex space-x-2">
