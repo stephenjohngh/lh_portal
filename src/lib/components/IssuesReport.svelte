@@ -71,14 +71,6 @@
     completed: filteredIssues.filter(i => i.status === 'completed')
   };
 
-  // Calculate total outstanding actions across all filtered issues
-  $: totalOutstandingActions = filteredIssues.reduce((sum, issue) => sum + issue.outstandingActions.length, 0);
-  
-  // Calculate total overdue actions across all filtered issues  
-  $: totalOverdueActions = filteredIssues.reduce((sum, issue) => 
-    sum + issue.outstandingActions.filter(a => a.date_deadline && isOverdue(a.date_deadline)).length, 0
-  );
-
   function close() {
     show = false;
   }
@@ -198,28 +190,6 @@
             <p class="text-gray-500 mt-2">Try selecting different status filters.</p>
           </div>
         {:else}
-          <!-- Summary Stats -->
-          <div class="grid grid-cols-3 gap-4 mb-8 print:mb-6">
-            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div class="text-2xl font-bold text-blue-700">
-                {filteredIssues.length}
-              </div>
-              <div class="text-sm text-blue-600">Total Issues</div>
-            </div>
-            <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
-              <div class="text-2xl font-bold text-orange-700">
-                {totalOutstandingActions}
-              </div>
-              <div class="text-sm text-orange-600">Outstanding Actions</div>
-            </div>
-            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
-              <div class="text-2xl font-bold text-red-700">
-                {totalOverdueActions}
-              </div>
-              <div class="text-sm text-red-600">Overdue Actions</div>
-            </div>
-          </div>
-
           <!-- Issues List -->
           <div class="space-y-8">
             <!-- Current Issues -->
@@ -245,7 +215,7 @@
                               <p class="text-gray-700 text-sm whitespace-pre-wrap mb-2">{issue.description}</p>
                             {/if}
                             <div class="text-xs text-gray-600">
-                              Created: {formatDate(issue.original_date)} • 
+                              Created: {formatDate(issue.created_at)} • 
                               Priority: {issue.priority}
                               {#if issue.outstandingActions.length > 0}
                                 • {issue.outstandingActions.length} outstanding {issue.outstandingActions.length === 1 ? 'action' : 'actions'}
@@ -254,6 +224,33 @@
                           </div>
                         </div>
                       </div>
+                      
+                      <!-- Comments Section -->
+                      {#if issue.comments && issue.comments.length > 0}
+                        <div class="p-4 bg-white border-t border-gray-300">
+                          <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                            Comments ({issue.comments.length}):
+                          </h4>
+                          <div class="space-y-2">
+                            {#each issue.comments as comment}
+                              <div class="p-3 bg-gray-50 rounded border border-gray-200">
+                                <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                  {formatDate(comment.created_at)}
+                                  {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()}
+                                    • Modified: {formatDate(comment.updated_at)}
+                                  {/if}
+                                </p>
+                              </div>
+                            {/each}
+                          </div>
+                        </div>
+                      {/if}
+                      
+                      <!-- Outstanding Actions Section -->
                       {#if issue.outstandingActions.length > 0}
                         <div class="p-4 bg-white">
                           <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -332,7 +329,7 @@
                               <p class="text-gray-700 text-sm whitespace-pre-wrap mb-2">{issue.description}</p>
                             {/if}
                             <div class="text-xs text-gray-600">
-                              Created: {formatDate(issue.original_date)} • 
+                              Created: {formatDate(issue.created_at)} • 
                               Priority: {issue.priority}
                               {#if issue.outstandingActions.length > 0}
                                 • {issue.outstandingActions.length} outstanding {issue.outstandingActions.length === 1 ? 'action' : 'actions'}
@@ -341,6 +338,33 @@
                           </div>
                         </div>
                       </div>
+                      
+                      <!-- Comments Section -->
+                      {#if issue.comments && issue.comments.length > 0}
+                        <div class="p-4 bg-white border-t border-amber-200">
+                          <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                            Comments ({issue.comments.length}):
+                          </h4>
+                          <div class="space-y-2">
+                            {#each issue.comments as comment}
+                              <div class="p-3 bg-gray-50 rounded border border-gray-200">
+                                <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                  {formatDate(comment.created_at)}
+                                  {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()}
+                                    • Modified: {formatDate(comment.updated_at)}
+                                  {/if}
+                                </p>
+                              </div>
+                            {/each}
+                          </div>
+                        </div>
+                      {/if}
+                      
+                      <!-- Outstanding Actions Section -->
                       {#if issue.outstandingActions.length > 0}
                         <div class="p-4 bg-white">
                           <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -419,7 +443,7 @@
                               <p class="text-gray-700 text-sm whitespace-pre-wrap mb-2">{issue.description}</p>
                             {/if}
                             <div class="text-xs text-gray-600">
-                              Created: {formatDate(issue.original_date)} • 
+                              Created: {formatDate(issue.created_at)} • 
                               Priority: {issue.priority}
                             </div>
                           </div>
