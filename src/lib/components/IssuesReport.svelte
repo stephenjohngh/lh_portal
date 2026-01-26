@@ -61,7 +61,7 @@
         return a.priority - b.priority;
       }
       // Then by original date (older first)
-      return new Date(a.original_date) - new Date(b.original_date);
+      return new Date(a.created_at) - new Date(b.created_at);
     });
 
   // Group issues by status for display
@@ -215,8 +215,11 @@
                               <p class="text-gray-700 text-sm whitespace-pre-wrap mb-2">{issue.description}</p>
                             {/if}
                             <div class="text-xs text-gray-600">
-                              Created: {formatDate(issue.created_at)} • 
-                              Priority: {issue.priority}
+                              Created: {formatDate(issue.created_at)}
+                              {#if issue.updated_at && new Date(issue.updated_at).getTime() !== new Date(issue.created_at).getTime()}
+                                • Modified: {formatDate(issue.updated_at)}
+                              {/if}
+                              • Priority: {issue.priority}
                               {#if issue.outstandingActions.length > 0}
                                 • {issue.outstandingActions.length} outstanding {issue.outstandingActions.length === 1 ? 'action' : 'actions'}
                               {/if}
@@ -239,7 +242,7 @@
                               <div class="p-3 bg-gray-50 rounded border border-gray-200">
                                 <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
                                 <p class="text-xs text-gray-500 mt-1">
-                                  {formatDate(comment.created_at)}
+                                  Added: {formatDate(comment.created_at)}
                                   {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()}
                                     • Modified: {formatDate(comment.updated_at)}
                                   {/if}
@@ -252,7 +255,7 @@
                       
                       <!-- Outstanding Actions Section -->
                       {#if issue.outstandingActions.length > 0}
-                        <div class="p-4 bg-white">
+                        <div class="p-4 bg-white border-t border-gray-300">
                           <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -287,13 +290,19 @@
                                       {action.status}
                                     </span>
                                   </div>
+                                  <p class="text-xs text-gray-500 mt-2">
+                                    Added: {formatDate(action.created_at)}
+                                    {#if action.updated_at && new Date(action.updated_at).getTime() !== new Date(action.created_at).getTime()}
+                                      • Modified: {formatDate(action.updated_at)}
+                                    {/if}
+                                  </p>
                                 </div>
                               </div>
                             {/each}
                           </div>
                         </div>
                       {:else}
-                        <div class="p-4 bg-white">
+                        <div class="p-4 bg-white border-t border-gray-300">
                           <p class="text-gray-500 text-sm italic">No outstanding actions</p>
                         </div>
                       {/if}
@@ -329,8 +338,11 @@
                               <p class="text-gray-700 text-sm whitespace-pre-wrap mb-2">{issue.description}</p>
                             {/if}
                             <div class="text-xs text-gray-600">
-                              Created: {formatDate(issue.created_at)} • 
-                              Priority: {issue.priority}
+                              Created: {formatDate(issue.created_at)}
+                              {#if issue.updated_at && new Date(issue.updated_at).getTime() !== new Date(issue.created_at).getTime()}
+                                • Modified: {formatDate(issue.updated_at)}
+                              {/if}
+                              • Priority: {issue.priority}
                               {#if issue.outstandingActions.length > 0}
                                 • {issue.outstandingActions.length} outstanding {issue.outstandingActions.length === 1 ? 'action' : 'actions'}
                               {/if}
@@ -353,7 +365,7 @@
                               <div class="p-3 bg-gray-50 rounded border border-gray-200">
                                 <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
                                 <p class="text-xs text-gray-500 mt-1">
-                                  {formatDate(comment.created_at)}
+                                  Added: {formatDate(comment.created_at)}
                                   {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()}
                                     • Modified: {formatDate(comment.updated_at)}
                                   {/if}
@@ -366,7 +378,7 @@
                       
                       <!-- Outstanding Actions Section -->
                       {#if issue.outstandingActions.length > 0}
-                        <div class="p-4 bg-white">
+                        <div class="p-4 bg-white border-t border-amber-200">
                           <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -401,13 +413,19 @@
                                       {action.status}
                                     </span>
                                   </div>
+                                  <p class="text-xs text-gray-500 mt-2">
+                                    Added: {formatDate(action.created_at)}
+                                    {#if action.updated_at && new Date(action.updated_at).getTime() !== new Date(action.created_at).getTime()}
+                                      • Modified: {formatDate(action.updated_at)}
+                                    {/if}
+                                  </p>
                                 </div>
                               </div>
                             {/each}
                           </div>
                         </div>
                       {:else}
-                        <div class="p-4 bg-white">
+                        <div class="p-4 bg-white border-t border-amber-200">
                           <p class="text-gray-500 text-sm italic">No outstanding actions</p>
                         </div>
                       {/if}
@@ -443,13 +461,16 @@
                               <p class="text-gray-700 text-sm whitespace-pre-wrap mb-2">{issue.description}</p>
                             {/if}
                             <div class="text-xs text-gray-600">
-                              Created: {formatDate(issue.created_at)} • 
-                              Priority: {issue.priority}
+                              Created: {formatDate(issue.created_at)}
+                              {#if issue.updated_at && new Date(issue.updated_at).getTime() !== new Date(issue.created_at).getTime()}
+                                • Modified: {formatDate(issue.updated_at)}
+                              {/if}
+                              • Priority: {issue.priority}
                             </div>
                           </div>
                         </div>
                       </div>
-                      <div class="p-4 bg-white">
+                      <div class="p-4 bg-white border-t border-green-200">
                         <p class="text-gray-500 text-sm italic">Issue completed</p>
                       </div>
                     </div>
