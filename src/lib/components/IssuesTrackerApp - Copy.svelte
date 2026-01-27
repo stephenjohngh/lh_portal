@@ -5,7 +5,7 @@
   import IssueFilters from './IssueFilters.svelte';
   import IssueCard from './IssueCard.svelte';
   import IssueForm from './IssueForm.svelte';
-  import IssuesReport from './reports/IssuesReport.svelte';
+  import IssuesReport from './IssuesReport.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { ISSUE_STATUS } from '$lib/utils/constants';
 
