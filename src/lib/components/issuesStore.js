@@ -23,12 +23,18 @@ function createIssuesStore() {
           .from('issues')
           .select(`
             *,
+            created_by_profile:profiles!created_by(full_name),
+            updated_by_profile:profiles!updated_by(full_name),
             comments (
-              id, comment_text, created_at, updated_at
+              id, comment_text, created_at, updated_at,
+              created_by_profile:profiles!created_by(full_name),
+              updated_by_profile:profiles!updated_by(full_name)
             ),
             actions (
               id, action_text, name_text,  
-              date_deadline, status, created_at, updated_at
+              date_deadline, status, created_at, updated_at,
+              created_by_profile:profiles!created_by(full_name),
+              updated_by_profile:profiles!updated_by(full_name)
             )
           `)
           .order('priority', { ascending: true })
@@ -148,6 +154,8 @@ function createIssuesStore() {
     async addIssue(issueData) {
       try {
         const now = new Date().toISOString();
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { error } = await supabase
           .from('issues')
           .insert([{
@@ -156,7 +164,9 @@ function createIssuesStore() {
             priority: parseInt(issueData.priority) || 3,
             status: issueData.status || ISSUE_STATUS.CURRENT,
             created_at: now,
-            updated_at: now
+            updated_at: now,
+            created_by: user?.id,
+            updated_by: user?.id
           }]);
 
         if (error) throw error;
@@ -170,6 +180,8 @@ function createIssuesStore() {
 
     async updateIssue(issueId, issueData) {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { error } = await supabase
           .from('issues')
           .update({
@@ -177,7 +189,8 @@ function createIssuesStore() {
             description: issueData.description,
             priority: parseInt(issueData.priority) || 3,
             status: issueData.status || ISSUE_STATUS.CURRENT,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            updated_by: user?.id
           })
           .eq('id', issueId);
 
@@ -209,13 +222,17 @@ function createIssuesStore() {
     async addComment(issueId, commentText) {
       try {
         const now = new Date().toISOString();
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { error } = await supabase
           .from('comments')
           .insert([{
             issue_id: issueId,
             comment_text: commentText,
             created_at: now,
-            updated_at: now
+            updated_at: now,
+            created_by: user?.id,
+            updated_by: user?.id
           }]);
 
         if (error) throw error;
@@ -229,11 +246,14 @@ function createIssuesStore() {
 
     async updateComment(commentId, commentText) {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { error } = await supabase
           .from('comments')
           .update({ 
             comment_text: commentText,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            updated_by: user?.id
           })
           .eq('id', commentId);
 
@@ -265,6 +285,8 @@ function createIssuesStore() {
     async addAction(issueId, actionData) {
       try {
         const now = new Date().toISOString();
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { error } = await supabase
           .from('actions')
           .insert([{
@@ -274,7 +296,9 @@ function createIssuesStore() {
             date_deadline: actionData.date_deadline || null,
             status: actionData.status,
             created_at: now,
-            updated_at: now
+            updated_at: now,
+            created_by: user?.id,
+            updated_by: user?.id
           }]);
 
         if (error) throw error;
@@ -288,6 +312,8 @@ function createIssuesStore() {
 
     async updateAction(actionId, actionData) {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const { error } = await supabase
           .from('actions')
           .update({
@@ -295,7 +321,8 @@ function createIssuesStore() {
             name_text: actionData.name_text,
             date_deadline: actionData.date_deadline,
             status: actionData.status,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            updated_by: user?.id
           })
           .eq('id', actionId);
 

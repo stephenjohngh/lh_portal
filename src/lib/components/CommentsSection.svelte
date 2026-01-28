@@ -64,8 +64,8 @@
 
 </script>
 
-<div class="bg-slate-800/30 rounded-lg p-4">
-  <div class="flex justify-between items-center mb-3">
+<div class="bg-slate-800/30 rounded-lg p-3">
+  <div class="flex justify-between items-center mb-2">
     <h4 class="font-semibold flex items-center space-x-2">
       <Icon name="comment" size={5} className="text-blue-400" />
       <span>Comments</span>
@@ -79,9 +79,9 @@
   </div>
   
   {#if comments.length > 0}
-    <div class="space-y-2">
+    <div class="space-y-1">
       {#each comments as comment}
-        <div class="bg-slate-700/50 rounded p-3 border-l-2 border-blue-400">
+        <div class="bg-slate-700/50 rounded p-2 border-l-2 border-blue-400">
           {#if editingComment?.id === comment.id}
             <textarea
               bind:value={editingComment.comment_text}
@@ -107,7 +107,7 @@
               <div class="flex-1">
                 <p class="text-gray-200 whitespace-pre-wrap">{comment.comment_text}</p>
                 <p class="text-xs text-gray-500 mt-1">
-  Added: {formatDateTime(comment.created_at)}
+  Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}
 
 <!--
 {#if console.log(comment.created_at)}
@@ -116,7 +116,7 @@
 {/if}
 -->
   {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()  }
-    • Modified: {formatDateTime(comment.updated_at)}
+    • Modified: {formatDateTime(comment.updated_at, comment.updated_by_profile?.full_name)}
   {/if}
 </p>
 

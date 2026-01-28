@@ -109,11 +109,11 @@
   }
 </script>
 
-<div class="bg-slate-800 rounded-xl p-8 border border-slate-700" bind:this={containerElement}>
+<div class="bg-slate-800 rounded-xl p-6 border border-slate-700" bind:this={containerElement}>
   <!-- Header -->
-  <div class="flex justify-between items-start mb-6">
+  <div class="flex justify-between items-start mb-4">
     <div>
-      <h2 class="text-3xl font-bold mb-2">Issues Tracker</h2>
+      <h2 class="text-3xl font-bold mb-1">Issues Tracker</h2>
       <p class="text-gray-400">Manage current issues, actions, and comments</p>
     </div>
     <div class="flex space-x-2">
@@ -139,7 +139,7 @@
   </div>
 
   <!-- Filters -->
-  <div class="mb-6">
+  <div class="mb-4">
     <IssueFilters 
       bind:searchTerm
       bind:statusFilter
@@ -151,7 +151,7 @@
 
   <!-- Expand/Collapse All -->
   {#if filteredIssues.length > 0}
-    <div class="flex space-x-2 mb-4">
+    <div class="flex space-x-2 mb-3">
       <button
         on:click={expandAll}
         class="px-3 py-1 bg-slate-600 hover:bg-slate-500 rounded text-sm"
@@ -169,7 +169,7 @@
 
   <!-- Error Display -->
   {#if error}
-    <div class="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex justify-between items-center">
+    <div class="mb-3 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex justify-between items-center">
       <p class="text-red-400">{error}</p>
       <button on:click={() => issuesStore.clearError()} class="text-red-400 hover:text-red-300">
         ✕
@@ -191,7 +191,7 @@
 
   <!-- Issues List -->
   {:else}
-    <div class="space-y-4">
+    <div class="space-y-3">
       {#each filteredIssues as issue (issue.id)}
         <IssueCard 
           {issue}
