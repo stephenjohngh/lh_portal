@@ -55,10 +55,10 @@
 
 <div class="{backgroundClass} rounded-lg border {borderClass} overflow-hidden">
   <!-- Issue Header -->
-  <div class="p-4">
-    <div class="flex justify-between items-start mb-2">
+  <div class="p-3">
+    <div class="flex justify-between items-start mb-1">
       <div class="flex-1">
-        <div class="flex items-center gap-2 mb-2">
+        <div class="flex items-center gap-2 mb-1">
           <h3 class="text-xl font-semibold text-white">{issue.name}</h3>
           <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}
@@ -78,11 +78,11 @@
           <p class="text-gray-300 whitespace-pre-wrap">{issue.description}</p>
         {/if}
         
-        <div class="flex items-center space-x-4 mt-2 text-sm text-gray-400">
-          <span>Created: {formatDate(issue.created_at)}</span>
+        <div class="flex items-center space-x-4 mt-1 text-sm text-gray-400">
+          <span>Created: {formatDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
           {#if issue.updated_at && issue.updated_at !== issue.created_at}
             <span>•</span>
-            <span>Modified: {formatDate(issue.updated_at)}</span>
+            <span>Modified: {formatDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
           {/if}
          </div>
       </div>
@@ -106,7 +106,7 @@
     </div>
 
     <!-- Toggle Buttons -->
-    <div class="flex space-x-2 mt-3">
+    <div class="flex space-x-2 mt-2">
       <button
         on:click={() => dispatch('toggleComments')}
         class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm flex items-center gap-1"
@@ -131,8 +131,8 @@
 
   <!-- Comments Section -->
   {#if showComments}
-    <div class="ml-8 mr-4 mb-4">
-      <div class="border-l-4 border-blue-500 pl-4">
+    <div class="ml-8 mr-4 mb-3">
+      <div class="border-l-4 border-blue-500 pl-3">
         <CommentsSection 
           issueId={issue.id}
           comments={issue.comments || []}
@@ -143,8 +143,8 @@
 
   <!-- Actions Section -->
   {#if showActions}
-    <div class="ml-8 mr-4 mb-4">
-      <div class="border-l-4 border-green-500 pl-4">
+    <div class="ml-8 mr-4 mb-3">
+      <div class="border-l-4 border-green-500 pl-3">
         <ActionsSection 
           issueId={issue.id}
           actions={issue.actions || []}

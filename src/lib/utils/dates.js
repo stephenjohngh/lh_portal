@@ -3,31 +3,35 @@
 /**
  * Format a date string to a readable date (e.g., "Jan 15, 2025")
  * @param {string} dateString - ISO date string
+ * @param {string} userName - Optional username to append
  * @returns {string} Formatted date
  */
-export function formatDate(dateString) {
+export function formatDate(dateString, userName = null) {
   if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-US', { 
+  const formatted = new Date(dateString).toLocaleDateString('en-US', { 
     year: 'numeric', 
     month: 'short', 
     day: 'numeric'
   });
+  return userName ? `${formatted} (${userName})` : formatted;
 }
 
 /**
  * Format a date string to a readable date and time (e.g., "Jan 15, 2025, 2:30 PM")
  * @param {string} dateString - ISO date string
+ * @param {string} userName - Optional username to append
  * @returns {string} Formatted date and time
  */
-export function formatDateTime(dateString) {
+export function formatDateTime(dateString, userName = null) {
   if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleString('en-US', { 
+  const formatted = new Date(dateString).toLocaleString('en-US', { 
     year: 'numeric', 
     month: 'short', 
     day: 'numeric',
     hour: '2-digit', 
     minute: '2-digit'
   });
+  return userName ? `${formatted} (${userName})` : formatted;
 }
 
 /**

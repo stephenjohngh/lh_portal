@@ -71,8 +71,8 @@
   }
 </script>
 
-<div class="bg-slate-800/30 rounded-lg p-4">
-  <div class="flex justify-between items-center mb-3">
+<div class="bg-slate-800/30 rounded-lg p-3">
+  <div class="flex justify-between items-center mb-2">
     <h4 class="font-semibold flex items-center space-x-2">
       <Icon name="clipboard" size={5} className="text-green-400" />
       <span>Actions</span>
@@ -86,9 +86,9 @@
   </div>
   
   {#if sortedActions.length > 0}
-    <div class="space-y-2">
+    <div class="space-y-1">
       {#each sortedActions as action}
-        <div class="bg-slate-700/50 rounded p-3 border-l-2 border-green-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
+        <div class="bg-slate-700/50 rounded p-2 border-l-2 border-green-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
           {#if editingAction?.id === action.id}
             <div class="space-y-3">
               <div>
@@ -161,7 +161,7 @@
                 <p class="text-gray-200 font-medium whitespace-pre-wrap {action.status === ACTION_STATUS.COMPLETED ? 'line-through' : ''}">
                   {action.action_text}
                 </p>
-                <div class="flex flex-wrap gap-2 mt-2 text-xs">
+                <div class="flex flex-wrap gap-2 mt-1 text-xs">
                   {#if action.name_text}
                     <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">
                       👤 {action.name_text}
@@ -181,9 +181,9 @@
 
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
-                  Added: {formatDateTime(action.created_at)}
+                  Added: {formatDateTime(action.created_at, action.created_by_profile?.full_name)}
                     {#if action.updated_at && new Date(action.updated_at).getTime() !== new Date(action.created_at).getTime()  }
-    • Modified: {formatDateTime(action.updated_at)}
+    • Modified: {formatDateTime(action.updated_at, action.updated_by_profile?.full_name)}
   {/if}
 
                 </p>              </div>
