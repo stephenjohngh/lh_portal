@@ -38,9 +38,22 @@
     dispatch('delete', issue.id);
     showDeleteConfirm = false;
   }
+
+  // Get background color based on issue status
+  $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED 
+    ? 'bg-emerald-900/20' 
+    : issue.status === ISSUE_STATUS.PARKED 
+    ? 'bg-amber-900/20' 
+    : 'bg-slate-700/50';
+  
+  $: borderClass = issue.status === ISSUE_STATUS.COMPLETED
+    ? 'border-emerald-700/40'
+    : issue.status === ISSUE_STATUS.PARKED
+    ? 'border-amber-700/40'
+    : 'border-slate-600';
 </script>
 
-<div class="bg-slate-700/50 rounded-lg border border-slate-600 overflow-hidden">
+<div class="{backgroundClass} rounded-lg border {borderClass} overflow-hidden">
   <!-- Issue Header -->
   <div class="p-4">
     <div class="flex justify-between items-start mb-2">
@@ -50,9 +63,13 @@
           <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}
           </span>
-          {#if issue.status === 'parked'}
+          {#if issue.status === ISSUE_STATUS.PARKED}
             <span class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded">
               🅿️ Parked
+            </span>
+          {:else if issue.status === ISSUE_STATUS.COMPLETED}
+            <span class="px-2 py-1 text-xs font-semibold bg-emerald-600 text-white rounded">
+              ✓ Completed
             </span>
           {/if}
         </div>
