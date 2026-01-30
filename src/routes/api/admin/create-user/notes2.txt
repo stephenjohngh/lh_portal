@@ -1,0 +1,92 @@
+n SvelteKit, server endpoints (`+server.js`) are loaded **on-demand** when first requested, not when the dev server starts.
+
+### Your Experience:
+
+```javascript
+// This does NOT print when server starts
+console.log('=== SERVER ENDPOINT LOADED ===');
+
+const supabaseAdmin = createClient(...);
+
+export async function POST({ request }) {
+  // This DOES print when you make a request
+  console.log('\n=== CREATE USER REQUEST RECEIVED ===');
+  // ...
+}
+```
+
+**Why:**
+- Top-level code runs **once** when the module is first imported
+- SvelteKit only imports it when someone makes a request to that endpoint
+- After first request, the module stays in memory, so top-level code won't run again
+
+---
+
+## When Top-Level Code Runs
+
+### First Request:
+```
+You: Click "Create User" button
+  ↓
+Server: "Oh, someone needs /api/admin/create-user"
+  ↓
+Server: Import and execute +server.js
+  ↓
+Terminal: === SERVER ENDPOINT LOADED ===    ← Runs ONCE
+Terminal: === CREATE USER REQUEST RECEIVED ===
+```
+
+### Second Request:
+```
+You: Click "Create User" button again
+  ↓
+Server: "I already have this module loaded"
+  ↓
+Terminal: === CREATE USER REQUEST RECEIVED ===    ← Only this runs
+```
+
+The "LOADED" message only prints the very first time!
+
+---
+
+## How to See the "LOADED" Message
+
+### Option 1: Fresh Server Start + First Request
+
+1. **Stop server** (Ctrl+C)
+2. **Clear .svelte-kit cache:**
+   ```bash
+   rm -rf .svelte-kit
+   ```
+3. **Start server:**
+   ```bash
+   npm run dev
+   ```
+4. **Make your FIRST request** (click "Create User")
+5. You should see BOTH messages
+
+### Option 2: Force Module Reload
+
+Edit your `+server.js` file and save it. SvelteKit will reload the module.
+
+Then make a request - you'll see the "LOADED" message.
+
+### Option 3: Use a Function Instead
+
+Instead of top-level logs, put them in a function that runs every time:
+
+```javascript
+// ❌ This runs once on first load
+console.log('SERVER ENDPOINT LOADED');
+
+// ✅ This runs every request
+export async function POST({ request }) {
+  console.log('=== ENDPOINT CALLED ===');
+  console.log('Environment check:');
+  console.log('  - URL exists:', !!PUBLIC_SUPABASE_URL);
+  console.log('  - Service key exists:', !!SUPABASE_SERVICE_ROLE_KEY);
+  // ...
+}
+```
+
+---
