@@ -2,31 +2,73 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
+  import { auth } from '$lib/stores/auth';
 
   let users = [];
   let loading = true;
   let error = '';
   let searchTerm = '';
+  let isAdmin = false;
+  let showCreateModal = false;
+  
+  // New user form
+  let newUserEmail = '';
+  let newUserPassword = '';
+  let newUserFullName = '';
+  let createError = '';
+  let creating = false;
+
+  // Check if current user is admin
+  async function checkAdminStatus() {
+    if (!$auth.user) return;
+    
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', $auth.user.id)
+      .single();
+    
+    isAdmin = data?.is_admin || false;
+  }
 
   // Fetch users from database
   async function fetchUsers() {
+    console.log('🔄 fetchUsers() called');
+    console.log('Time:', new Date().toISOString());
+    
     loading = true;
     error = '';
     
     try {
+      console.log('📡 Querying profiles table...');
+      
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      console.log('Query result:');
+      console.log('  - Data:', data);
+      console.log('  - Count:', data?.length);
+      console.log('  - Error:', fetchError);
+
+      if (fetchError) {
+        console.error('❌ Fetch error:', fetchError);
+        throw fetchError;
+      }
       
       users = data || [];
+      console.log('✅ Users set to:', users.length, 'records');
+      console.log('User emails:', users.map(u => u.email));
+      
     } catch (err) {
       error = err.message;
-      console.error('Error fetching users:', err);
+      console.error('❌ Exception in fetchUsers:', err);
+      console.error('Error details:', err);
     } finally {
       loading = false;
+      console.log('Loading state set to false');
+      console.log('Final users array length:', users.length);
     }
   }
 
@@ -38,6 +80,73 @@
 
   // Load users when component mounts
   onMount(() => {
+    checkAdminStatus();
+    fetchUsers();
+  });
+
+  // Create new user (admin only)
+  async function createUser() {
+    if (!isAdmin) return;
+    
+    creating = true;
+    createError = '';
+    
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        createError = 'Not authenticated';
+        return;
+      }
+
+      console.log('Creating user, requesting user ID:', user.id);
+
+      // Call server endpoint to create user
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: newUserEmail,
+          password: newUserPassword,
+          full_name: newUserFullName,
+          requesting_user_id: user.id  // ← ADD THIS!
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        createError = result.error || 'Failed to create user';
+        console.error('Server error:', result);
+        return;
+      }
+
+      console.log('✅ User created successfully:', result);
+
+      // Success! Reset form and refresh list
+      newUserEmail = '';
+      newUserPassword = '';
+      newUserFullName = '';
+      showCreateModal = false;
+      
+      // Wait a moment then refresh to ensure database has written
+      setTimeout(async () => {
+        await fetchUsers();
+      }, 500);
+      
+    } catch (err) {
+      createError = err.message;
+      console.error('Create user error:', err);
+    } finally {
+      creating = false;
+    }
+  }
+
+  // Load users when component mounts
+  onMount(() => {
+    checkAdminStatus();
     fetchUsers();
   });
 
@@ -82,16 +191,29 @@
     <div class="text-sm text-gray-400">
       {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'} found
     </div>
-    <button
-      on:click={fetchUsers}
-      disabled={loading}
-      class="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 rounded-lg transition-colors"
-    >
-      <svg class="w-5 h-5 {loading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-      </svg>
-      <span>{loading ? 'Loading...' : 'Refresh'}</span>
-    </button>
+    <div class="flex space-x-2">
+      {#if isAdmin}
+        <button
+          on:click={() => showCreateModal = true}
+          class="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          <span>Create User</span>
+        </button>
+      {/if}
+      <button
+        on:click={fetchUsers}
+        disabled={loading}
+        class="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 rounded-lg transition-colors"
+      >
+        <svg class="w-5 h-5 {loading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span>{loading ? 'Loading...' : 'Refresh'}</span>
+      </button>
+    </div>
   </div>
 
   <!-- Error Message -->
@@ -197,3 +319,76 @@
     </div>
   {/if}
 </div>
+
+<!-- Create User Modal -->
+{#if showCreateModal}
+  <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 rounded-xl p-6 w-full max-w-md border border-slate-700">
+      <h3 class="text-2xl font-bold mb-4">Create New User</h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label for="email" class="block text-sm font-medium mb-2">Email</label>
+          <input
+            id="email"
+            type="email"
+            bind:value={newUserEmail}
+            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="user@example.com"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium mb-2">Password</label>
+          <input
+            id="password"
+            type="password"
+            bind:value={newUserPassword}
+            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="••••••••"
+          />
+        </div>
+
+        <div>
+          <label for="fullName" class="block text-sm font-medium mb-2">Full Name (optional)</label>
+          <input
+            id="fullName"
+            type="text"
+            bind:value={newUserFullName}
+            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="John Smith"
+          />
+        </div>
+
+        {#if createError}
+          <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+            <p class="text-red-400 text-sm">{createError}</p>
+          </div>
+        {/if}
+
+        <div class="flex space-x-3 pt-2">
+          <button
+            on:click={createUser}
+            disabled={creating || !newUserEmail || !newUserPassword}
+            class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg transition-colors font-semibold"
+          >
+            {creating ? 'Creating...' : 'Create User'}
+          </button>
+          <button
+            on:click={() => {
+              showCreateModal = false;
+              newUserEmail = '';
+              newUserPassword = '';
+              newUserFullName = '';
+              createError = '';
+            }}
+            disabled={creating}
+            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
