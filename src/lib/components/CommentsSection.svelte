@@ -13,6 +13,12 @@
   let newCommentText = '';
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
+  let showAllComments = false; // NEW: Show historic comments toggle
+
+  // Filter comments based on historic flag
+  $: visibleComments = showAllComments 
+    ? comments 
+    : comments.filter(c => !c.historic);
 
   async function addComment() {
     if (!newCommentText.trim()) return;
@@ -23,7 +29,11 @@
 
   async function updateComment() {
     if (!editingComment) return;
-    await issuesStore.updateComment(editingComment.id, editingComment.comment_text);
+    await issuesStore.updateComment(
+      editingComment.id, 
+      editingComment.comment_text,
+      editingComment.historic
+    );
     editingComment = null;
   }
 
@@ -68,26 +78,49 @@
   <div class="flex justify-between items-center mb-2">
     <h4 class="font-semibold flex items-center space-x-2">
       <Icon name="comment" size={5} className="text-blue-400" />
-      <span>Comments</span>
+      <span>Comments ({visibleComments.length})</span>
+      {#if comments.length !== visibleComments.length}
+        <span class="text-xs text-gray-400">({comments.length - visibleComments.length} hidden)</span>
+      {/if}
     </h4>
-    <button
-      on:click={() => showAddModal = true}
-      class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
-    >
-      Add Comment
-    </button>
+    <div class="flex items-center space-x-3">
+      <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={showAllComments}
+          class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-blue-600 focus:ring-blue-500"
+        />
+        <span>Show all</span>
+      </label>
+      <button
+        on:click={() => showAddModal = true}
+        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+      >
+        Add Comment
+      </button>
+    </div>
   </div>
   
-  {#if comments.length > 0}
+  {#if visibleComments.length > 0}
     <div class="space-y-1">
-      {#each comments as comment}
-        <div class="bg-slate-700/50 rounded p-2 border-l-2 border-blue-400">
+      {#each visibleComments as comment}
+        <div class="bg-slate-700/50 rounded p-2 border-l-2 border-blue-400 {comment.historic ? 'opacity-60' : ''}">
           {#if editingComment?.id === comment.id}
             <textarea
               bind:value={editingComment.comment_text}
               class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white mb-2"
               rows="3"
             ></textarea>
+            <div class="flex items-center space-x-2 mb-2">
+              <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  bind:checked={editingComment.historic}
+                  class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-blue-600"
+                />
+                <span class="text-gray-300">Historic</span>
+              </label>
+            </div>
             <div class="flex space-x-2">
               <button
                 on:click={updateComment}
@@ -105,7 +138,12 @@
           {:else}
             <div class="flex justify-between items-start">
               <div class="flex-1">
-                <p class="text-gray-200 whitespace-pre-wrap">{comment.comment_text}</p>
+                <div class="flex items-start space-x-2">
+                  <p class="text-gray-200 whitespace-pre-wrap flex-1">{comment.comment_text}</p>
+                  {#if comment.historic}
+                    <span class="px-2 py-0.5 bg-gray-600/50 text-gray-300 text-xs rounded">Historic</span>
+                  {/if}
+                </div>
                 <p class="text-xs text-gray-500 mt-1">
   Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}
 

@@ -13,6 +13,7 @@
   let editingAction = null;
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
+  let showAllActions = false; // NEW: Show completed actions toggle
   let newAction = { 
     action_text: '', 
     name_text: '', 
@@ -35,6 +36,11 @@
     const bDate = new Date(b.created_at);
     return aDate - bDate;
   });
+
+  // Filter actions based on completed status
+  $: visibleActions = showAllActions
+    ? sortedActions
+    : sortedActions.filter(a => a.status !== ACTION_STATUS.COMPLETED);
 
   async function addAction() {
     if (!newAction.action_text.trim()) return;
@@ -75,19 +81,32 @@
   <div class="flex justify-between items-center mb-2">
     <h4 class="font-semibold flex items-center space-x-2">
       <Icon name="clipboard" size={5} className="text-green-400" />
-      <span>Actions</span>
+      <span>Actions ({visibleActions.length})</span>
+      {#if actions.length !== visibleActions.length}
+        <span class="text-xs text-gray-400">({actions.length - visibleActions.length} completed)</span>
+      {/if}
     </h4>
-    <button
-      on:click={() => showAddModal = true}
-      class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
-    >
-      Add Action
-    </button>
+    <div class="flex items-center space-x-3">
+      <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={showAllActions}
+          class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-green-600 focus:ring-green-500"
+        />
+        <span>Show all</span>
+      </label>
+      <button
+        on:click={() => showAddModal = true}
+        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+      >
+        Add Action
+      </button>
+    </div>
   </div>
   
-  {#if sortedActions.length > 0}
+  {#if visibleActions.length > 0}
     <div class="space-y-1">
-      {#each sortedActions as action}
+      {#each visibleActions as action}
         <div class="bg-slate-700/50 rounded p-2 border-l-2 border-green-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
           {#if editingAction?.id === action.id}
             <div class="space-y-3">

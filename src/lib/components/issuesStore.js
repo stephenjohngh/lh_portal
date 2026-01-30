@@ -26,7 +26,7 @@ function createIssuesStore() {
             created_by_profile:profiles!created_by(full_name),
             updated_by_profile:profiles!updated_by(full_name),
             comments (
-              id, comment_text, created_at, updated_at,
+              id, comment_text, historic, created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             ),
@@ -244,7 +244,7 @@ function createIssuesStore() {
       }
     },
 
-    async updateComment(commentId, commentText) {
+    async updateComment(commentId, commentText, historic = false) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -252,6 +252,7 @@ function createIssuesStore() {
           .from('comments')
           .update({ 
             comment_text: commentText,
+            historic: historic,
             updated_at: new Date().toISOString(),
             updated_by: user?.id
           })
