@@ -5,11 +5,27 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          PageBreak } from 'docx';
 
 export async function POST({ request }) {
+  console.log('\n========================================');
+  console.log('📄 DOCX GENERATION REQUEST RECEIVED');
+  console.log('Time:', new Date().toISOString());
+  console.log('========================================');
+
   try {
+    console.log('📥 Parsing request body...');
     const { issues, filterDate, includeCurrent, includeParked, includeCompleted } = await request.json();
     
-    console.log('Generating DOCX report for', issues.length, 'issues');
+    console.log('✅ Request parsed successfully');
+    console.log('📊 Issues count:', issues?.length || 0);
+    console.log('📅 Filter date:', filterDate || 'none');
+    console.log('🎯 Filters:', { includeCurrent, includeParked, includeCompleted });
 
+    if (!issues || issues.length === 0) {
+      console.warn('⚠️ No issues provided in request');
+      return json({ error: 'No issues to generate report' }, { status: 400 });
+    }
+
+    console.log('🏗️ Creating document structure...');
+    
     // Create document
     const doc = new Document({
       styles: {
@@ -99,27 +115,56 @@ export async function POST({ request }) {
       }]
     });
 
+    console.log('✅ Document structure created');
+    console.log('📦 Generating buffer...');
+
     // Generate buffer
     const buffer = await Packer.toBuffer(doc);
+    
+    console.log('✅ Buffer generated successfully');
+    console.log('📏 Buffer size:', buffer.length, 'bytes');
+    console.log('📏 Buffer size (KB):', (buffer.length / 1024).toFixed(2), 'KB');
+
+    const filename = `Issues_Report_${new Date().toISOString().split('T')[0]}.docx`;
+    console.log('📁 Filename:', filename);
+
+    console.log('🚀 Sending response...');
+    console.log('========================================\n');
 
     // Return as downloadable file
     return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="Issues_Report_${new Date().toISOString().split('T')[0]}.docx"`
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': buffer.length.toString()
       }
     });
 
   } catch (err) {
-    console.error('Error generating DOCX:', err);
-    return json({ error: err.message }, { status: 500 });
+    console.error('\n========================================');
+    console.error('❌ ERROR GENERATING DOCX');
+    console.error('========================================');
+    console.error('Error type:', err.constructor.name);
+    console.error('Error message:', err.message);
+    console.error('Error stack:', err.stack);
+    console.error('========================================\n');
+    
+    return json({ 
+      error: err.message,
+      type: err.constructor.name,
+      stack: err.stack
+    }, { status: 500 });
   }
 }
 
 async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted) {
+  console.log('📝 Generating report content...');
+  console.log('   Issues to process:', issues.length);
+  
   const content = [];
   
   // Report header
+  console.log('   Adding report header...');
   content.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
@@ -166,12 +211,20 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
   );
 
   // Add each issue
+  console.log('   Processing issues...');
   let issueNumber = 1;
   for (const issue of issues) {
-    content.push(...await generateIssueContent(issue, issueNumber));
-    issueNumber++;
+    console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
+    try {
+      content.push(...await generateIssueContent(issue, issueNumber));
+      issueNumber++;
+    } catch (err) {
+      console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
+      throw err;
+    }
   }
 
+  console.log('   Adding report footer...');
   // Report footer
   content.push(
     new Paragraph({
@@ -193,6 +246,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     })
   );
 
+  console.log('✅ Report content generated:', content.length, 'elements');
   return content;
 }
 
