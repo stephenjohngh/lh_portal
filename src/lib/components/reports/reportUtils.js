@@ -68,17 +68,26 @@ export function filterIssues(issues, filterDate) {
   const filterDateTime = filterDate ? new Date(filterDate).getTime() : null;
   
   return issues
+    .filter(issue => !issue.historic) // Filter out historic issues
     .filter(issue => !filterDateTime || hasRecentChanges(issue, filterDateTime))
     .map(issue => ({
       ...issue,
+      // For completed issues, include ALL comments (even historic)
+      // For non-completed issues, filter out historic comments
+      comments: issue.status === ISSUE_STATUS.COMPLETED 
+        ? (issue.comments || [])
+        : (issue.comments || []).filter(c => !c.historic),
+      // Filter out completed actions (already done in outstandingActions)
       outstandingActions: (issue.actions || []).filter(
         action => action.status !== ACTION_STATUS.COMPLETED
       )
     }))
     .sort((a, b) => {
+      // Sort by priority first
       if (a.priority !== b.priority) {
         return a.priority - b.priority;
       }
+      // Then by created_at (not updated_at)
       return new Date(a.created_at) - new Date(b.created_at);
     });
 }

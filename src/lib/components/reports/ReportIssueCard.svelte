@@ -9,6 +9,16 @@
   export let statusType = 'current'; // 'current', 'parked', or 'completed'
 
   const colors = STATUS_COLORS[statusType];
+  
+  // Sort comments by created_at (oldest first)
+  $: sortedComments = (issue.comments || [])
+    .slice()
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  
+  // Sort outstanding actions by created_at (oldest first)
+  $: sortedActions = (issue.outstandingActions || [])
+    .slice()
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 </script>
 
 <div class="border border-gray-300 rounded-lg overflow-hidden break-inside-avoid">
@@ -43,20 +53,20 @@
   </div>
 
   <!-- Comments Section -->
-  {#if issue.comments && issue.comments.length > 0}
+  {#if sortedComments.length > 0}
     <div class="p-4 bg-white border-t {colors.sectionBorder}">
       <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
         </svg>
-        Comments ({issue.comments.length}):
+        Comments ({sortedComments.length}):
       </h4>
       <div class="space-y-2">
-        {#each issue.comments as comment}
+        {#each sortedComments as comment}
           <div class="p-3 bg-gray-50 rounded border border-gray-200">
             <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
             <p class="text-xs text-gray-500 mt-1">
-              Added: {formatTimestamp(comment.created_at, comment.updated_at)}
+              Added: {formatDate(comment.created_at)}
             </p>
           </div>
         {/each}
@@ -65,7 +75,7 @@
   {/if}
 
   <!-- Outstanding Actions Section -->
-  {#if issue.outstandingActions && issue.outstandingActions.length > 0}
+  {#if sortedActions.length > 0}
     <div class="p-4 bg-white border-t {colors.sectionBorder}">
       <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +84,7 @@
         Outstanding Actions:
       </h4>
       <div class="space-y-2">
-        {#each issue.outstandingActions as action}
+        {#each sortedActions as action}
           <div class="flex items-start gap-3 p-3 bg-gray-50 rounded border border-gray-200">
             <div class="flex-shrink-0 mt-1">
               <div class="w-5 h-5 border-2 border-gray-400 rounded"></div>
@@ -98,7 +108,7 @@
                 </span>
               </div>
               <p class="text-xs text-gray-500 mt-2">
-                Added: {formatTimestamp(action.created_at, action.updated_at)}
+                Added: {formatDate(action.created_at)}
               </p>
             </div>
           </div>
