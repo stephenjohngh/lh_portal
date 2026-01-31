@@ -29,6 +29,46 @@
   function printReport() {
     window.print();
   }
+
+  async function downloadWord() {
+    try {
+      console.log('Generating Word document...');
+      
+      const response = await fetch('/api/reports/generate-docx', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          issues: filteredIssues,
+          filterDate,
+          includeCurrent,
+          includeParked,
+          includeCompleted
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate Word document');
+      }
+
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Issues_Report_${new Date().toISOString().split('T')[0]}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('Word document downloaded successfully');
+    } catch (err) {
+      console.error('Error downloading Word document:', err);
+      alert('Failed to generate Word document. Please try again.');
+    }
+  }
 </script>
 
 {#if show}
@@ -42,6 +82,7 @@
         bind:includeCompleted
         bind:filterDate
         onPrint={printReport}
+        onDownloadWord={downloadWord}
         onClose={close}
       />
 
@@ -115,73 +156,35 @@
 
 <style>
   @media print {
+    /* Page setup */
     @page {
       margin: 1cm;
       size: A4;
     }
     
-    /* Hide the modal overlay and make content flow normally */
-    :global(.fixed.inset-0.bg-black\/80) {
+    /* Remove modal overlay background */
+    .fixed.inset-0 {
       position: static !important;
       background: white !important;
       display: block !important;
-      padding: 0 !important;
     }
     
-    /* Make the modal content fill the page */
-    :global(.bg-white.w-full.max-w-5xl) {
-      max-width: 100% !important;
-      width: 100% !important;
-      height: auto !important;
-      max-height: none !important;
-      display: block !important;
-      flex-direction: column !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-    }
-    
-    /* Hide the filters/controls bar */
-    :global(.flex.justify-between.items-center.p-4.bg-gray-100) {
-      display: none !important;
-    }
-    
-    /* Make content scrollable area fill page */
-    :global(.flex-1.overflow-y-auto) {
+    /* Make content flow normally */
+    .overflow-y-auto {
       overflow: visible !important;
       height: auto !important;
-      flex: none !important;
     }
     
-    /* Ensure body uses print colors */
-    :global(body) {
-      print-color-adjust: exact;
-      -webkit-print-color-adjust: exact;
-      background: white !important;
-    }
-    
-    /* Prevent page breaks inside issue cards */
+    /* Prevent issue cards from splitting */
     :global(.border.border-gray-300.rounded-lg) {
-      page-break-inside: avoid;
-      break-inside: avoid;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
     }
     
-    /* Allow page breaks between issues but not inside */
-    :global(.space-y-4 > *) {
-      page-break-inside: avoid;
-      break-inside: avoid;
-      margin-bottom: 1rem;
-    }
-    
-    /* Keep header at top of first page only */
-    :global(.mb-8) {
-      page-break-after: avoid;
-      break-after: avoid;
-    }
-    
-    /* Prevent orphan headers */
-    h1, h2, h3, h4 {
-      page-break-after: avoid;
-      break-after: avoid;
+    /* Print colors */
+    * {
+      print-color-adjust: exact !important;
+      -webkit-print-color-adjust: exact !important;
     }
   }
 </style>

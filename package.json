@@ -23,6 +23,7 @@
 	"dependencies": {
 		"@supabase/ssr": "^0.8.0",
 		"@supabase/supabase-js": "^2.90.1",
-		"@tailwindcss/postcss": "^4.1.18"
+		"@tailwindcss/postcss": "^4.1.18",
+		"docx": "^9.5.1"
 	}
 }
