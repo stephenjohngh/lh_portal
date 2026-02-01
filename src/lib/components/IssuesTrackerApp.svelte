@@ -6,6 +6,7 @@
   import IssueCard from './IssueCard.svelte';
   import IssueForm from './IssueForm.svelte';
   import IssuesReport from './reports/IssuesReport.svelte';
+  import ActionsReport from './reports/ActionsReport.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { ISSUE_STATUS } from '$lib/utils/constants';
 
@@ -14,6 +15,7 @@
   let showNewIssueModal = false;
   let editingIssue = null;
   let showReport = false;
+  let showActionsReport = false;
   
   // Persist UI state across data refreshes
   let expandedSections = {}; // { issueId: { comments: bool, actions: bool } }
@@ -124,7 +126,16 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
-        <span>Report</span>
+        <span>Issues Report</span>
+      </button>
+      <button
+        on:click={() => showActionsReport = true}
+        class="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+        </svg>
+        <span>Actions Report</span>
       </button>
       <button
         on:click={() => showNewIssueModal = true}
@@ -226,5 +237,11 @@
 <!-- Outstanding Actions Report -->
 <IssuesReport 
   bind:show={showReport}
+  {issues}
+/>
+
+<!-- Actions Report -->
+<ActionsReport 
+  bind:show={showActionsReport}
   {issues}
 />
