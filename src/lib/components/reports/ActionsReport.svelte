@@ -46,6 +46,8 @@
   // Filter by selected user
   $: filteredActions = selectedUser === 'all' 
     ? allActions 
+    : selectedUser === 'unallocated'
+    ? allActions.filter(action => !action.name_text || action.name_text.trim() === '')
     : allActions.filter(action => action.name_text === selectedUser);
 
   // Sort by: issue name, due date, modified date
@@ -74,60 +76,107 @@
 
   async function downloadWord() {
     console.log('\n========================================');
-    console.log('📥 DOWNLOAD ACTIONS REPORT');
+    console.log('📥 DOWNLOAD ACTIONS REPORT - CLIENT SIDE');
+    console.log('Time:', new Date().toISOString());
     console.log('========================================');
     
     isGenerating = true;
     
     try {
+      console.log('📋 Step 1: Preparing data...');
+      console.log('   Selected user:', selectedUser);
+      console.log('   Sorted actions count:', sortedActions.length);
+      console.log('   First action:', sortedActions[0]);
+      
+      const requestBody = {
+        actions: sortedActions,
+        selectedUser,
+        userName: selectedUser === 'all' ? 'All Users' : selectedUser === 'unallocated' ? 'Unallocated' : selectedUser
+      };
+      
+      console.log('   Request body keys:', Object.keys(requestBody));
+      console.log('   Request body size:', JSON.stringify(requestBody).length, 'characters');
+      
+      console.log('📡 Step 2: Sending request...');
       const response = await fetch('/api/reports/generate-actions-docx', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          actions: sortedActions,
-          selectedUser,
-          userName: selectedUser === 'all' ? 'All Users' : selectedUser
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      console.log('📨 Response received:', response.status);
+      console.log('📨 Step 3: Response received');
+      console.log('   Status:', response.status);
+      console.log('   Status text:', response.statusText);
+      console.log('   Headers:', [...response.headers.entries()]);
 
       if (!response.ok) {
+        console.error('❌ Response not OK');
         const contentType = response.headers.get('content-type');
+        console.log('   Content-Type:', contentType);
+        
         if (contentType?.includes('application/json')) {
           const errorData = await response.json();
+          console.error('   Error data:', errorData);
           throw new Error(errorData.error || 'Failed to generate report');
         } else {
-          throw new Error(`Server error: ${response.status}`);
+          const errorText = await response.text();
+          console.error('   Error text:', errorText);
+          throw new Error(`Server error: ${response.status} ${response.statusText}`);
         }
       }
 
+      console.log('📦 Step 4: Creating blob...');
       const blob = await response.blob();
-      console.log('✅ Blob created:', blob.size, 'bytes');
+      console.log('   Blob created');
+      console.log('   Blob size:', blob.size, 'bytes');
+      console.log('   Blob size:', (blob.size / 1024).toFixed(2), 'KB');
+      console.log('   Blob type:', blob.type);
 
       if (blob.size === 0) {
+        console.error('❌ Generated document is empty');
         throw new Error('Generated document is empty');
       }
 
+      console.log('🔗 Step 5: Creating download URL...');
       const url = window.URL.createObjectURL(blob);
+      console.log('   URL created:', url.substring(0, 50) + '...');
+      
+      console.log('📁 Step 6: Creating download link...');
       const a = document.createElement('a');
       a.href = url;
       const fileName = selectedUser === 'all' 
         ? `Actions_Report_All_Users_${new Date().toISOString().split('T')[0]}.docx`
+        : selectedUser === 'unallocated'
+        ? `Actions_Report_Unallocated_${new Date().toISOString().split('T')[0]}.docx`
         : `Actions_Report_${selectedUser.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
       a.download = fileName;
+      console.log('   Filename:', fileName);
+      
+      console.log('🖱️ Step 7: Triggering download...');
       document.body.appendChild(a);
       a.click();
+      console.log('   Download clicked');
+      
+      console.log('🧹 Step 8: Cleaning up...');
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      console.log('   Cleanup complete');
       
-      console.log('✅ Download successful!');
+      console.log('✅ SUCCESS - Download complete!');
+      console.log('========================================\n');
       
     } catch (err) {
-      console.error('❌ Error:', err);
-      alert(`Failed to generate report:\n\n${err.message}`);
+      console.error('\n========================================');
+      console.error('❌ ERROR DOWNLOADING ACTIONS REPORT');
+      console.error('========================================');
+      console.error('Error type:', err.constructor.name);
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+      console.error('========================================\n');
+      
+      alert(`Failed to generate report:\n\n${err.message}\n\nCheck browser console (F12) for details.`);
     } finally {
       isGenerating = false;
     }
@@ -169,6 +218,7 @@
             class="px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
           >
             <option value="all">All Users</option>
+            <option value="unallocated">Unallocated</option>
             {#each profiles as profile}
               <option value={profile.full_name}>{profile.full_name}</option>
             {/each}
@@ -200,6 +250,8 @@
             <p class="text-gray-500 mt-2">
               {#if selectedUser === 'all'}
                 No in-progress or pending actions across all issues.
+              {:else if selectedUser === 'unallocated'}
+                No Unallocated in-progress or pending actions.
               {:else}
                 No in-progress or pending actions for {selectedUser}.
               {/if}
@@ -211,7 +263,7 @@
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Actions Report</h1>
             <p class="text-gray-600 text-sm">Generated {getTodayDate()}</p>
             <div class="mt-2 text-sm text-gray-500">
-              Showing: {selectedUser === 'all' ? 'All Users' : selectedUser}
+              Showing: {selectedUser === 'all' ? 'All Users' : selectedUser === 'unallocated' ? 'Unallocated' : selectedUser}
               • {sortedActions.length} {sortedActions.length === 1 ? 'action' : 'actions'}
               (In-Progress, Pending)
             </div>
