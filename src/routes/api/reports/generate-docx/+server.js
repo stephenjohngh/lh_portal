@@ -2,7 +2,7 @@
 import { json } from '@sveltejs/kit';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
          AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
-         PageBreak } from 'docx';
+         VerticalAlign, PageBreak } from 'docx';
 
 export async function POST({ request }) {
   console.log('\n========================================');
@@ -20,8 +20,8 @@ export async function POST({ request }) {
     console.log('🎯 Filters:', { includeCurrent, includeParked, includeCompleted });
 
     if (!issues || issues.length === 0) {
-      console.warn('⚠️ No issues provided in request');
-      return json({ error: 'No issues to generate report' }, { status: 400 });
+      console.warn('⚠️ No issues provided in request - doing nothing');
+      return new Response('', { status: 204 }); // No Content
     }
 
     console.log('🏗️ Creating document structure...');
@@ -104,10 +104,10 @@ export async function POST({ request }) {
               height: 15840
             },
             margin: { 
-              top: 1440,    // 1 inch
-              right: 1440, 
-              bottom: 1440, 
-              left: 1440 
+              top: 720,    // 0.5 inch (was 1 inch)
+              right: 720,  // 0.5 inch (was 1 inch)
+              bottom: 720, // 0.5 inch (was 1 inch)
+              left: 720    // 0.5 inch (was 1 inch)
             }
           }
         },
@@ -179,7 +179,15 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     return new Date(a.created_at) - new Date(b.created_at);
   });
   
+  // Group by status
+  const currentIssues = filteredIssues.filter(i => (i.status || 'current') === 'current');
+  const parkedIssues = filteredIssues.filter(i => i.status === 'parked');
+  const completedIssues = filteredIssues.filter(i => i.status === 'completed');
+  
   console.log('   Issues after filtering:', filteredIssues.length);
+  console.log('   - Current:', currentIssues.length);
+  console.log('   - Parked:', parkedIssues.length);
+  console.log('   - Completed:', completedIssues.length);
   
   const content = [];
   
@@ -192,36 +200,35 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     })
   );
   
-  // Generated date
-  content.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: `Generated: ${new Date().toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}`,
-          size: 20,
-          color: "666666"
-        })
-      ],
-      spacing: { after: 120 }
-    })
-  );
-  
-  // Filter summary
+  // Generated date and filter summary on same line
   const statuses = [
     includeCurrent && 'Current',
     includeParked && 'Parked',
     includeCompleted && 'Completed'
   ].filter(Boolean).join(', ');
   
+  const generatedDate = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  
+  // Format filter date if present
+  let headerText = `Generated: ${generatedDate} • Showing: ${statuses}`;
+  if (filterDate) {
+    const filterDateFormatted = new Date(filterDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    headerText += ` modified since: ${filterDateFormatted}`;
+  }
+  
   content.push(
     new Paragraph({
       children: [
         new TextRun({
-          text: `Showing: ${statuses} • Total: ${filteredIssues.length} ${filteredIssues.length === 1 ? 'issue' : 'issues'}`,
+          text: headerText,
           size: 20,
           color: "666666"
         })
@@ -230,17 +237,73 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     })
   );
 
-  // Add each issue
+  // Add issues by status group
   console.log('   Processing issues...');
   let issueNumber = 1;
-  for (const issue of filteredIssues) {
-    console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
-    try {
-      content.push(...await generateIssueContent(issue, issueNumber));
-      issueNumber++;
-    } catch (err) {
-      console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
-      throw err;
+  
+  // Current issues
+  if (currentIssues.length > 0) {
+    content.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        children: [new TextRun("Current Issues")],
+        spacing: { after: 240 }
+      })
+    );
+    
+    for (const issue of currentIssues) {
+      console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
+      try {
+        content.push(...await generateIssueContent(issue, issueNumber));
+        issueNumber++;
+      } catch (err) {
+        console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
+        throw err;
+      }
+    }
+  }
+  
+  // Parked issues
+  if (parkedIssues.length > 0) {
+    content.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        children: [new TextRun("Parked Issues")],
+        spacing: { before: 480, after: 240 }
+      })
+    );
+    
+    for (const issue of parkedIssues) {
+      console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
+      try {
+        content.push(...await generateIssueContent(issue, issueNumber));
+        issueNumber++;
+      } catch (err) {
+        console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
+        throw err;
+      }
+    }
+  }
+  
+  // Completed issues
+  if (completedIssues.length > 0) {
+    content.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        children: [new TextRun("Completed Issues")],
+        spacing: { before: 480, after: 240 }
+      })
+    );
+    
+    for (const issue of completedIssues) {
+      console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
+      try {
+        content.push(...await generateIssueContent(issue, issueNumber));
+        issueNumber++;
+      } catch (err) {
+        console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
+        throw err;
+      }
     }
   }
 
@@ -275,19 +338,25 @@ async function generateIssueContent(issue, number) {
   const border = { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" };
   const borders = { top: border, bottom: border, left: border, right: border };
   
-  // Issue header table - just number/title and priority
+  // Calculate column widths in DXA (1440 DXA = 1 inch)
+  // US Letter with 0.5" margins: 12240 - 1440 = 10800 DXA content width
+  // Title: 9300 DXA (~86%), Priority: 1500 DXA (~14%)
+  const titleWidth = 9300;
+  const priorityWidth = 1500;
+  
+  // Issue header table - title and small priority badge
   const headerCells = [
-    // Number and title
+    // Issue name (no number)
     new TableCell({
       borders,
-      width: { size: 75, type: WidthType.PERCENTAGE },
+      width: { size: titleWidth, type: WidthType.DXA },
       shading: { fill: "F5F5F5", type: ShadingType.CLEAR },
       margins: { top: 120, bottom: 120, left: 180, right: 180 },
       children: [
         new Paragraph({
           children: [
             new TextRun({
-              text: `${number}. ${issue.name}`,
+              text: issue.name,
               bold: true,
               size: 26
             })
@@ -295,19 +364,20 @@ async function generateIssueContent(issue, number) {
         })
       ]
     }),
-    // Priority badge
+    // Priority badge (1500 DXA)
     new TableCell({
       borders,
-      width: { size: 25, type: WidthType.PERCENTAGE },
+      width: { size: priorityWidth, type: WidthType.DXA },
       shading: { fill: getPriorityColorHex(issue.priority), type: ShadingType.CLEAR },
-      margins: { top: 120, bottom: 120, left: 180, right: 180 },
+      margins: { top: 120, bottom: 120, left: 80, right: 80 },
+      verticalAlign: VerticalAlign.CENTER,
       children: [
         new Paragraph({
           children: [
             new TextRun({
               text: getPriorityLabel(issue.priority),
               bold: true,
-              size: 22,
+              size: 18, // 9pt
               color: "FFFFFF"
             })
           ],
@@ -319,7 +389,8 @@ async function generateIssueContent(issue, number) {
 
   content.push(
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: titleWidth + priorityWidth, type: WidthType.DXA },
+      columnWidths: [titleWidth, priorityWidth],
       rows: [
         new TableRow({
           children: headerCells
@@ -343,30 +414,44 @@ async function generateIssueContent(issue, number) {
     );
   }
 
-  // Created date and metadata
+  // Created and updated dates with usernames
   const createdDate = new Date(issue.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
   });
   
+  const createdBy = issue.created_by_profile?.full_name || 'Unknown';
+  
+  let dateInfo = `Created: ${createdDate} by ${createdBy}`;
+  
+  // Only add modified info if it exists and is ACTUALLY different from created
+  const createdTime = new Date(issue.created_at).getTime();
+  const updatedTime = issue.updated_at ? new Date(issue.updated_at).getTime() : createdTime;
+  
+  if (updatedTime > createdTime) {
+    const updatedDate = new Date(issue.updated_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    const updatedBy = issue.updated_by_profile?.full_name || 'Unknown';
+    dateInfo += ` • Modified: ${updatedDate} by ${updatedBy}`;
+  }
+  
   const outstandingCount = (issue.outstandingActions || []).length;
+  if (outstandingCount > 0) {
+    dateInfo += ` • ${outstandingCount} outstanding ${outstandingCount === 1 ? 'action' : 'actions'}`;
+  }
   
   content.push(
     new Paragraph({
       children: [
         new TextRun({
-          text: `Created: ${createdDate}`,
+          text: dateInfo,
           size: 18,
           color: "666666"
-        }),
-        ...(outstandingCount > 0 ? [
-          new TextRun({
-            text: ` • ${outstandingCount} outstanding ${outstandingCount === 1 ? 'action' : 'actions'}`,
-            size: 18,
-            color: "666666"
-          })
-        ] : [])
+        })
       ],
       spacing: { after: 180 }
     })
@@ -378,7 +463,7 @@ async function generateIssueContent(issue, number) {
       new Paragraph({
         children: [
           new TextRun({
-            text: `Comments (${issue.comments.length}):`,
+            text: "Comments:",
             bold: true,
             size: 24
           })
@@ -404,17 +489,35 @@ async function generateIssueContent(issue, number) {
         })
       );
 
-      const commentDate = new Date(comment.created_at).toLocaleDateString('en-US', {
+      const commentCreatedDate = new Date(comment.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
+      
+      const commentCreatedBy = comment.created_by_profile?.full_name || 'Unknown';
+      
+      let commentDateInfo = `Added: ${commentCreatedDate} by ${commentCreatedBy}`;
+      
+      // Only add modified info if it exists and is ACTUALLY different from created
+      const commentCreatedTime = new Date(comment.created_at).getTime();
+      const commentUpdatedTime = comment.updated_at ? new Date(comment.updated_at).getTime() : commentCreatedTime;
+      
+      if (commentUpdatedTime > commentCreatedTime) {
+        const commentUpdatedDate = new Date(comment.updated_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        const commentUpdatedBy = comment.updated_by_profile?.full_name || 'Unknown';
+        commentDateInfo += ` • Modified: ${commentUpdatedDate} by ${commentUpdatedBy}`;
+      }
 
       content.push(
         new Paragraph({
           children: [
             new TextRun({
-              text: `Added: ${commentDate}`,
+              text: commentDateInfo,
               size: 18,
               color: "999999",
               italics: true
@@ -490,17 +593,35 @@ async function generateIssueContent(issue, number) {
         );
       }
 
-      const actionDate = new Date(action.created_at).toLocaleDateString('en-US', {
+      const actionCreatedDate = new Date(action.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
+      
+      const actionCreatedBy = action.created_by_profile?.full_name || 'Unknown';
+      
+      let actionDateInfo = `Added: ${actionCreatedDate} by ${actionCreatedBy}`;
+      
+      // Only add modified info if it exists and is ACTUALLY different from created
+      const actionCreatedTime = new Date(action.created_at).getTime();
+      const actionUpdatedTime = action.updated_at ? new Date(action.updated_at).getTime() : actionCreatedTime;
+      
+      if (actionUpdatedTime > actionCreatedTime) {
+        const actionUpdatedDate = new Date(action.updated_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        const actionUpdatedBy = action.updated_by_profile?.full_name || 'Unknown';
+        actionDateInfo += ` • Modified: ${actionUpdatedDate} by ${actionUpdatedBy}`;
+      }
 
       content.push(
         new Paragraph({
           children: [
             new TextRun({
-              text: `Added: ${actionDate}`,
+              text: actionDateInfo,
               size: 18,
               color: "999999",
               italics: true

@@ -187,7 +187,7 @@
               {#if includeCurrent}Current{/if}
               {#if includeParked}{includeCurrent ? ', ' : ''}Parked{/if}
               {#if includeCompleted}{(includeCurrent || includeParked) ? ', ' : ''}Completed{/if}
-              • Total: {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
+              • Total: {issues.length} {issues.length === 1 ? 'issue' : 'issues'}
             </div>
           </div>
 
