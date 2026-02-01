@@ -159,7 +159,27 @@ export async function POST({ request }) {
 
 async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted) {
   console.log('📝 Generating report content...');
-  console.log('   Issues to process:', issues.length);
+  console.log('   Total issues provided:', issues.length);
+  console.log('   Filters:', { includeCurrent, includeParked, includeCompleted });
+  
+  // Filter issues by status based on what's selected
+  let filteredIssues = issues.filter(issue => {
+    const status = issue.status || 'current';
+    if (status === 'current' && includeCurrent) return true;
+    if (status === 'parked' && includeParked) return true;
+    if (status === 'completed' && includeCompleted) return true;
+    return false;
+  });
+  
+  // Sort by priority first, then by created_at
+  filteredIssues.sort((a, b) => {
+    if (a.priority !== b.priority) {
+      return a.priority - b.priority;
+    }
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+  
+  console.log('   Issues after filtering:', filteredIssues.length);
   
   const content = [];
   
@@ -201,7 +221,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     new Paragraph({
       children: [
         new TextRun({
-          text: `Showing: ${statuses} • Total: ${issues.length} ${issues.length === 1 ? 'issue' : 'issues'}`,
+          text: `Showing: ${statuses} • Total: ${filteredIssues.length} ${filteredIssues.length === 1 ? 'issue' : 'issues'}`,
           size: 20,
           color: "666666"
         })
@@ -213,7 +233,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
   // Add each issue
   console.log('   Processing issues...');
   let issueNumber = 1;
-  for (const issue of issues) {
+  for (const issue of filteredIssues) {
     console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
     try {
       content.push(...await generateIssueContent(issue, issueNumber));
@@ -255,12 +275,12 @@ async function generateIssueContent(issue, number) {
   const border = { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" };
   const borders = { top: border, bottom: border, left: border, right: border };
   
-  // Issue header table
+  // Issue header table - just number/title and priority
   const headerCells = [
     // Number and title
     new TableCell({
       borders,
-      width: { size: 70, type: WidthType.PERCENTAGE },
+      width: { size: 75, type: WidthType.PERCENTAGE },
       shading: { fill: "F5F5F5", type: ShadingType.CLEAR },
       margins: { top: 120, bottom: 120, left: 180, right: 180 },
       children: [
@@ -275,11 +295,11 @@ async function generateIssueContent(issue, number) {
         })
       ]
     }),
-    // Priority
+    // Priority badge
     new TableCell({
       borders,
-      width: { size: 30, type: WidthType.PERCENTAGE },
-      shading: { fill: getPriorityColor(issue.priority), type: ShadingType.CLEAR },
+      width: { size: 25, type: WidthType.PERCENTAGE },
+      shading: { fill: getPriorityColorHex(issue.priority), type: ShadingType.CLEAR },
       margins: { top: 120, bottom: 120, left: 180, right: 180 },
       children: [
         new Paragraph({
@@ -296,53 +316,6 @@ async function generateIssueContent(issue, number) {
       ]
     })
   ];
-  
-  // Add status badge if needed
-  if (issue.status === 'parked') {
-    headerCells.push(
-      new TableCell({
-        borders,
-        width: { size: 20, type: WidthType.PERCENTAGE },
-        shading: { fill: "F59E0B", type: ShadingType.CLEAR },
-        margins: { top: 120, bottom: 120, left: 180, right: 180 },
-        children: [
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "🅿️ Parked",
-                bold: true,
-                size: 20,
-                color: "FFFFFF"
-              })
-            ],
-            alignment: AlignmentType.CENTER
-          })
-        ]
-      })
-    );
-  } else if (issue.status === 'completed') {
-    headerCells.push(
-      new TableCell({
-        borders,
-        width: { size: 20, type: WidthType.PERCENTAGE },
-        shading: { fill: "10B981", type: ShadingType.CLEAR },
-        margins: { top: 120, bottom: 120, left: 180, right: 180 },
-        children: [
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "✓ Completed",
-                bold: true,
-                size: 20,
-                color: "FFFFFF"
-              })
-            ],
-            alignment: AlignmentType.CENTER
-          })
-        ]
-      })
-    );
-  }
 
   content.push(
     new Table({
@@ -383,7 +356,7 @@ async function generateIssueContent(issue, number) {
     new Paragraph({
       children: [
         new TextRun({
-          text: `Created: ${createdDate} • Priority: ${issue.priority}`,
+          text: `Created: ${createdDate}`,
           size: 18,
           color: "666666"
         }),
@@ -552,20 +525,23 @@ async function generateIssueContent(issue, number) {
 
 function getPriorityLabel(priority) {
   const labels = {
-    1: "Critical",
-    2: "High",
-    3: "Medium",
-    4: "Low"
+    1: "Top Priority",
+    2: "Major Project",
+    3: "Important",
+    4: "Minor",
+    5: "Pending"
   };
   return labels[priority] || `Priority ${priority}`;
 }
 
-function getPriorityColor(priority) {
+function getPriorityColorHex(priority) {
+  // Using neutral gray colors for all priorities as per the established design
   const colors = {
-    1: "DC2626", // Red
-    2: "EA580C", // Orange
-    3: "D97706", // Amber
-    4: "059669"  // Green
+    1: "475569", // Slate 600
+    2: "475569", // Slate 600
+    3: "475569", // Slate 600
+    4: "475569", // Slate 600
+    5: "475569"  // Slate 600
   };
   return colors[priority] || "6B7280";
 }
