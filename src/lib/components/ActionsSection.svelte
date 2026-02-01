@@ -5,6 +5,8 @@
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { onMount } from 'svelte';
+  import { supabase } from '$lib/supabaseClient';
 
   export let issueId;
   export let actions = [];
@@ -14,12 +16,40 @@
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
   let showAllActions = false; // NEW: Show completed actions toggle
+  let profiles = []; // List of all user profiles
+  
   let newAction = { 
     action_text: '', 
     name_text: '', 
     date_deadline: '', 
     status: ACTION_STATUS.PENDING
   };
+
+  // Fetch all profiles on mount
+  onMount(async () => {
+    await loadProfiles();
+  });
+
+  async function loadProfiles() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .order('full_name');
+    
+    if (error) {
+      console.error('Error loading profiles:', error);
+      profiles = [];
+    } else {
+      profiles = data || [];
+    }
+  }
+
+  // Create assignee options: all profiles + "External"
+  $: assigneeOptions = [
+    { value: '', label: '-- Select assignee --' },
+    ...profiles.map(p => ({ value: p.full_name, label: p.full_name })),
+    { value: 'External', label: 'External' }
+  ];
 
   // Sort actions: non-completed first by date, then completed by date
   $: sortedActions = [...actions].sort((a, b) => {
@@ -126,13 +156,15 @@
                 <label for="edit-action-assignee" class="block text-sm font-medium mb-1 text-gray-300">
                   Assigned To
                 </label>
-                <input
+                <select
                   id="edit-action-assignee"
-                  type="text"
                   bind:value={editingAction.name_text}
                   class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                  placeholder="Assigned to"
-                />
+                >
+                  {#each assigneeOptions as option}
+                    <option value={option.value}>{option.label}</option>
+                  {/each}
+                </select>
               </div>
               <div>
                 <label for="edit-action-deadline" class="block text-sm font-medium mb-1 text-gray-300">
@@ -250,13 +282,15 @@
         </div>
         <div>
           <label for="action-assignee" class="block text-sm font-medium mb-2">Assigned To</label>
-          <input
+          <select
             id="action-assignee"
-            type="text"
             bind:value={newAction.name_text}
             class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-            placeholder="Person or team name"
-          />
+          >
+            {#each assigneeOptions as option}
+              <option value={option.value}>{option.label}</option>
+            {/each}
+          </select>
         </div>
         <div>
           <label for="action-deadline" class="block text-sm font-medium mb-2">Deadline</label>

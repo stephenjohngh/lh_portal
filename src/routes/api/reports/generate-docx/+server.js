@@ -308,13 +308,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
   }
 
   console.log('   Adding report footer...');
-  // Report footer
-  content.push(
-    new Paragraph({
-      children: [new PageBreak()]
-    })
-  );
-  
+  // Report footer - no page break, just spacing
   content.push(
     new Paragraph({
       children: [
@@ -325,7 +319,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
         })
       ],
       alignment: AlignmentType.CENTER,
-      spacing: { before: 240 }
+      spacing: { before: 480 }
     })
   );
 

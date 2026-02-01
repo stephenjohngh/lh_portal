@@ -67,6 +67,9 @@
             <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
             <p class="text-xs text-gray-500 mt-1">
               Added: {formatDate(comment.created_at)}
+              {#if comment.updated_at && new Date(comment.updated_at).getTime() - new Date(comment.created_at).getTime() > 1000}
+                • Modified: {formatDate(comment.updated_at)}
+              {/if}
             </p>
           </div>
         {/each}
@@ -109,6 +112,9 @@
               </div>
               <p class="text-xs text-gray-500 mt-2">
                 Added: {formatDate(action.created_at)}
+                {#if action.updated_at && new Date(action.updated_at).getTime() - new Date(action.created_at).getTime() > 1000}
+                  • Modified: {formatDate(action.updated_at)}
+                {/if}
               </p>
             </div>
           </div>
