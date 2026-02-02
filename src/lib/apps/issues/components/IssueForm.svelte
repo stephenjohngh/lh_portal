@@ -1,4 +1,4 @@
-<!-- src/lib/components/issues/IssueForm.svelte -->
+<!-- src/lib/apps/issues/components/IssueForm.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { PRIORITIES } from '$lib/utils/priorities';

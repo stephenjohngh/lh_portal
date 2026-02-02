@@ -1,12 +1,12 @@
-<!-- src/lib/components/issues/IssuesTrackerApp.svelte -->
+<!-- src/lib/apps/issues/IssuesTrackerApp.svelte -->
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
-  import { issuesStore } from './issuesStore';
-  import IssueFilters from './IssueFilters.svelte';
-  import IssueCard from './IssueCard.svelte';
-  import IssueForm from './IssueForm.svelte';
-  import IssuesReport from './reports/IssuesReport.svelte';
-  import ActionsReport from './reports/ActionsReport.svelte';
+  import { issuesStore } from './stores/issuesStore';
+  import IssueFilters from './components/IssueFilters.svelte';
+  import IssueCard from './components/IssueCard.svelte';
+  import IssueForm from './components/IssueForm.svelte';
+  import IssuesReport from './components/reports/IssuesReport.svelte';
+  import ActionsReport from './components/reports/ActionsReport.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { ISSUE_STATUS } from '$lib/utils/constants';
 

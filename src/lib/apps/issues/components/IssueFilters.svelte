@@ -1,4 +1,4 @@
-<!-- src/lib/components/issues/IssueFilters.svelte -->
+<!-- src/lib/apps/issues/components/IssueFilters.svelte -->
 <script>
   import { STATUS_FILTERS } from '$lib/utils/constants';
   

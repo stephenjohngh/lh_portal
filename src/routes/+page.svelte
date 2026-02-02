@@ -2,16 +2,16 @@
   import { auth } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
 
-  import UserListApp from '$lib/components/UserListApp.svelte';
-  import IssuesTrackerApp from '$lib/components/IssuesTrackerApp.svelte'; 
+  import UserListApp from '$lib/apps/users/UserListApp.svelte';
+  import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte'; 
 
   let activeApp = 'home';
   let menuOpen = false;
 
   const apps = [
     { id: 'home', name: 'Home', icon: 'home' },
-    { id: 'app1', name: 'App One', icon: 'grid' },
-    { id: 'app2', name: 'App Two', icon: 'grid' },
+    { id: 'app1', name: 'Users', icon: 'grid' },
+    { id: 'app2', name: 'Issues Log', icon: 'grid' },
     { id: 'app3', name: 'App Three', icon: 'grid' },
     { id: 'settings', name: 'Settings', icon: 'settings' }
   ];
@@ -60,7 +60,7 @@
               <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={getIcon('grid')} />
               </svg>
-              <span class="font-bold text-xl">Portal</span>
+              <span class="font-bold text-xl">LH Apps</span>
             </div>
           </div>
 
@@ -132,7 +132,7 @@
     <main class="max-w-7xl mx-auto px-4 py-8">
       {#if activeApp === 'home'}
         <div>
-          <h1 class="text-4xl font-bold mb-4">Welcome to Your Portal</h1>
+          <h1 class="text-4xl font-bold mb-4">Welcome to the LH Apps Portal</h1>
           <p class="text-gray-400 mb-8">Select an app from the menu to get started.</p>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {#each apps.slice(1, -1) as app}
@@ -160,7 +160,7 @@
       {:else if activeApp === 'app3'}
         <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
           <h2 class="text-3xl font-bold mb-4">App Three</h2>
-          <p class="text-gray-400">This is the content area for App Three. Replace with your actual app component.</p>
+          <p class="text-gray-400">This is the content area for App Three. Replace with a new app component.</p>
         </div>
       {:else if activeApp === 'settings'}
         <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">

@@ -1,4 +1,4 @@
-<!-- src/lib/components/issues/IssueCard.svelte -->
+<!-- src/lib/apps/issues/components/IssueCard.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import CommentsSection from './CommentsSection.svelte';

@@ -1,6 +1,6 @@
-<!-- src/lib/components/issues/CommentsSection.svelte -->
+<!-- src/lib/apps/issues/components/CommentsSection.svelte -->
 <script>
-  import { issuesStore } from './issuesStore';
+  import { issuesStore } from '../stores/issuesStore';
   import { formatDateTime } from '$lib/utils/dates';
   import Icon from '$lib/components/icons/Icon.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -19,6 +19,21 @@
   $: visibleComments = showAllComments 
     ? comments 
     : comments.filter(c => !c.historic);
+
+  // Debug logging
+  $: if (comments.length > 0) {
+    console.log('=== Comments Debug (Historic) ===');
+    console.log('Total comments:', comments.length);
+    console.log('Visible comments:', visibleComments.length);
+    console.log('Show all:', showAllComments);
+    comments.forEach((c, i) => {
+      console.log(`Comment ${i + 1}:`, {
+        text: c.comment_text?.substring(0, 30),
+        historic: c.historic,
+        type: typeof c.historic
+      });
+    });
+  }
 
   async function addComment() {
     if (!newCommentText.trim()) return;

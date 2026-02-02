@@ -1,6 +1,6 @@
-<!-- src/lib/components/issues/ActionsSection.svelte -->
+<!-- src/lib/apps/issues/components/ActionsSection.svelte -->
 <script>
-  import { issuesStore } from './issuesStore';
+  import { issuesStore } from '../stores/issuesStore';
   import { formatDate,formatDateTime, isOverdue } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';

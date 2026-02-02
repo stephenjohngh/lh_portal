@@ -1,4 +1,4 @@
-<!-- src/lib/components/UserListApp.svelte -->
+<!-- src/lib/apps/users/UserListApp.svelte -->
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
