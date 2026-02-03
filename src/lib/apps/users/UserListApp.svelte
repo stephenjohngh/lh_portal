@@ -1,8 +1,13 @@
 <!-- src/lib/apps/users/UserListApp.svelte -->
+<!-- REFACTORED: Now uses API client, auth utilities, validation, and date formatters -->
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
   import { auth } from '$lib/stores/auth';
+  import { api } from '$lib/utils/api';
+  import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
+  import { isValidEmail, isRequired } from '$lib/utils/validation';
+  import { formatDateTimeFull } from '$lib/utils/dates';
 
   let users = [];
   let loading = true;
@@ -19,19 +24,14 @@
   let creating = false;
 
   // Check if current user is admin
+  // ✨ REFACTORED: Using auth utility
   async function checkAdminStatus() {
     if (!$auth.user) return;
-    
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', $auth.user.id)
-      .single();
-    
-    isAdmin = data?.is_admin || false;
+    isAdmin = await checkIsAdmin($auth.user.id);
   }
 
   // Fetch users from database
+  // ✨ REFACTORED: Using API client
   async function fetchUsers() {
     console.log('🔄 fetchUsers() called');
     console.log('Time:', new Date().toISOString());
@@ -42,22 +42,11 @@
     try {
       console.log('📡 Querying profiles table...');
       
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      users = await api.get('profiles', {
+        orderBy: 'created_at',
+        ascending: false
+      });
 
-      console.log('Query result:');
-      console.log('  - Data:', data);
-      console.log('  - Count:', data?.length);
-      console.log('  - Error:', fetchError);
-
-      if (fetchError) {
-        console.error('❌ Fetch error:', fetchError);
-        throw fetchError;
-      }
-      
-      users = data || [];
       console.log('✅ Users set to:', users.length, 'records');
       console.log('User emails:', users.map(u => u.email));
       
@@ -85,11 +74,45 @@
   });
 
   // Create new user (admin only)
+  // ✨ REFACTORED: Added validation
   async function createUser() {
     if (!isAdmin) return;
     
     creating = true;
     createError = '';
+    
+    // Validate email
+    if (!isRequired(newUserEmail)) {
+      createError = 'Email is required';
+      creating = false;
+      return;
+    }
+    
+    if (!isValidEmail(newUserEmail)) {
+      createError = 'Invalid email format';
+      creating = false;
+      return;
+    }
+    
+    // Validate password
+    if (!isRequired(newUserPassword)) {
+      createError = 'Password is required';
+      creating = false;
+      return;
+    }
+    
+    if (newUserPassword.length < 8) {
+      createError = 'Password must be at least 8 characters';
+      creating = false;
+      return;
+    }
+    
+    // Validate full name
+    if (!isRequired(newUserFullName)) {
+      createError = 'Full name is required';
+      creating = false;
+      return;
+    }
     
     try {
       // Get current user
@@ -150,18 +173,7 @@
     fetchUsers();
   });
 
-  // Format date
-  function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
+  // ✨ REFACTORED: Removed local formatDate function - using utility instead
 </script>
 
 <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
@@ -273,7 +285,7 @@
               <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
-              <span class="truncate">Joined: {formatDate(user.created_at)}</span>
+              <span class="truncate">Joined: {formatDateTimeFull(user.created_at)}</span>
             </div>
 
             {#if user.updated_at && user.updated_at !== user.created_at}
@@ -281,7 +293,7 @@
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
-                <span class="truncate">Updated: {formatDate(user.updated_at)}</span>
+                <span class="truncate">Updated: {formatDateTimeFull(user.updated_at)}</span>
               </div>
             {/if}
           </div>

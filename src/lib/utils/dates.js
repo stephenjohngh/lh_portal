@@ -84,3 +84,81 @@ export function daysUntilDeadline(deadlineString) {
   const diffMs = deadline - today;
   return Math.ceil(diffMs / 86400000);
 }
+
+/**
+ * Format date with full month name (e.g., "January 30, 2026")
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date with full month
+ */
+export function formatDateLong(dateString) {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric'
+  });
+}
+
+/**
+ * Format date and time with full details (for user management, etc.)
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date and time
+ */
+export function formatDateTimeFull(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+/**
+ * Format relative time with full words (e.g., "2 hours ago", "3 days ago")
+ * @param {string} dateString - ISO date string
+ * @returns {string} Relative time in full words
+ */
+export function formatRelativeTime(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffSecs < 60) return 'just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  return formatDate(dateString);
+}
+
+/**
+ * Check if date is today
+ * @param {string} dateString - ISO date string
+ * @returns {boolean} True if date is today
+ */
+export function isToday(dateString) {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+}
+
+/**
+ * Check if date is within the past week
+ * @param {string} dateString - ISO date string
+ * @returns {boolean} True if within past 7 days
+ */
+export function isWithinPastWeek(dateString) {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  return date >= weekAgo;
+}

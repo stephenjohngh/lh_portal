@@ -1,6 +1,8 @@
-// src/lib/components/issues/issuesStore.js
+// src/lib/apps/issues/stores/issuesStore.js
+// REFACTORED: Now uses API client for cleaner code
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
+import { api } from '$lib/utils/api';
 import { ISSUE_STATUS } from '$lib/utils/constants';
 
 function createIssuesStore() {
@@ -19,9 +21,9 @@ function createIssuesStore() {
       update(state => ({ ...state, loading: true, error: '' }));
       
       try {
-        const { data, error } = await supabase
-          .from('issues')
-          .select(`
+        // ✨ REFACTORED: Using API client instead of direct supabase
+        const data = await api.get('issues', {
+          select: `
             *,
             created_by_profile:profiles!created_by(full_name),
             updated_by_profile:profiles!updated_by(full_name),
@@ -36,15 +38,22 @@ function createIssuesStore() {
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             )
-          `)
-          .order('priority', { ascending: true })
-          .order('created_at', { ascending: true });
+          `,
+          orderBy: 'priority',
+          ascending: true
+        });
 
-        if (error) throw error;
+        // Apply secondary sort by created_at
+        const sortedData = data.sort((a, b) => {
+          if (a.priority === b.priority) {
+            return new Date(a.created_at) - new Date(b.created_at);
+          }
+          return 0;
+        });
         
         update(state => ({ 
           ...state, 
-          issues: data || [], 
+          issues: sortedData, 
           loading: false 
         }));
       } catch (err) {
@@ -156,20 +165,18 @@ function createIssuesStore() {
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
         
-        const { error } = await supabase
-          .from('issues')
-          .insert([{
-            name: issueData.name,
-            description: issueData.description,
-            priority: parseInt(issueData.priority) || 3,
-            status: issueData.status || ISSUE_STATUS.CURRENT,
-            created_at: now,
-            updated_at: now,
-            created_by: user?.id,
-            updated_by: user?.id
-          }]);
+        // ✨ REFACTORED: Using API client
+        await api.create('issues', {
+          name: issueData.name,
+          description: issueData.description,
+          priority: parseInt(issueData.priority) || 3,
+          status: issueData.status || ISSUE_STATUS.CURRENT,
+          created_at: now,
+          updated_at: now,
+          created_by: user?.id,
+          updated_by: user?.id
+        });
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -182,19 +189,16 @@ function createIssuesStore() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
-        const { error } = await supabase
-          .from('issues')
-          .update({
-            name: issueData.name,
-            description: issueData.description,
-            priority: parseInt(issueData.priority) || 3,
-            status: issueData.status || ISSUE_STATUS.CURRENT,
-            updated_at: new Date().toISOString(),
-            updated_by: user?.id
-          })
-          .eq('id', issueId);
+        // ✨ REFACTORED: Using API client
+        await api.update('issues', issueId, {
+          name: issueData.name,
+          description: issueData.description,
+          priority: parseInt(issueData.priority) || 3,
+          status: issueData.status || ISSUE_STATUS.CURRENT,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id
+        });
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -205,12 +209,9 @@ function createIssuesStore() {
 
     async deleteIssue(issueId) {
       try {
-        const { error } = await supabase
-          .from('issues')
-          .delete()
-          .eq('id', issueId);
+        // ✨ REFACTORED: Using API client
+        await api.delete('issues', issueId);
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -224,18 +225,16 @@ function createIssuesStore() {
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
         
-        const { error } = await supabase
-          .from('comments')
-          .insert([{
-            issue_id: issueId,
-            comment_text: commentText,
-            created_at: now,
-            updated_at: now,
-            created_by: user?.id,
-            updated_by: user?.id
-          }]);
+        // ✨ REFACTORED: Using API client
+        await api.create('comments', {
+          issue_id: issueId,
+          comment_text: commentText,
+          created_at: now,
+          updated_at: now,
+          created_by: user?.id,
+          updated_by: user?.id
+        });
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -248,17 +247,14 @@ function createIssuesStore() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
-        const { error } = await supabase
-          .from('comments')
-          .update({ 
-            comment_text: commentText,
-            historic: historic,
-            updated_at: new Date().toISOString(),
-            updated_by: user?.id
-          })
-          .eq('id', commentId);
+        // ✨ REFACTORED: Using API client
+        await api.update('comments', commentId, {
+          comment_text: commentText,
+          historic: historic,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id
+        });
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -269,12 +265,9 @@ function createIssuesStore() {
 
     async deleteComment(commentId) {
       try {
-        const { error } = await supabase
-          .from('comments')
-          .delete()
-          .eq('id', commentId);
+        // ✨ REFACTORED: Using API client
+        await api.delete('comments', commentId);
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -288,21 +281,19 @@ function createIssuesStore() {
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
         
-        const { error } = await supabase
-          .from('actions')
-          .insert([{
-            issue_id: issueId,
-            action_text: actionData.action_text,
-            name_text: actionData.name_text,
-            date_deadline: actionData.date_deadline || null,
-            status: actionData.status,
-            created_at: now,
-            updated_at: now,
-            created_by: user?.id,
-            updated_by: user?.id
-          }]);
+        // ✨ REFACTORED: Using API client
+        await api.create('actions', {
+          issue_id: issueId,
+          action_text: actionData.action_text,
+          name_text: actionData.name_text,
+          date_deadline: actionData.date_deadline || null,
+          status: actionData.status,
+          created_at: now,
+          updated_at: now,
+          created_by: user?.id,
+          updated_by: user?.id
+        });
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -315,19 +306,16 @@ function createIssuesStore() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
-        const { error } = await supabase
-          .from('actions')
-          .update({
-            action_text: actionData.action_text,
-            name_text: actionData.name_text,
-            date_deadline: actionData.date_deadline,
-            status: actionData.status,
-            updated_at: new Date().toISOString(),
-            updated_by: user?.id
-          })
-          .eq('id', actionId);
+        // ✨ REFACTORED: Using API client
+        await api.update('actions', actionId, {
+          action_text: actionData.action_text,
+          name_text: actionData.name_text,
+          date_deadline: actionData.date_deadline,
+          status: actionData.status,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id
+        });
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -338,12 +326,9 @@ function createIssuesStore() {
 
     async deleteAction(actionId) {
       try {
-        const { error } = await supabase
-          .from('actions')
-          .delete()
-          .eq('id', actionId);
+        // ✨ REFACTORED: Using API client
+        await api.delete('actions', actionId);
 
-        if (error) throw error;
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
