@@ -1,15 +1,9 @@
 <!-- src/lib/apps/issues/components/CommentsSection.svelte -->
-<!-- ✨ REFACTORED: Now uses Modal, FormTextarea, and validation -->
 <script>
   import { issuesStore } from '../stores/issuesStore';
   import { formatDateTime } from '$lib/utils/dates';
-  import { isRequired } from '$lib/utils/validation';
   import Icon from '$lib/components/icons/Icon.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  
-  // ✨ NEW: Import form components
-  import Modal from '$lib/components/common/Modal.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
 
   export let issueId;
   export let comments = [];
@@ -19,27 +13,30 @@
   let newCommentText = '';
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
-  let showAllComments = false;
-
-  // ✨ NEW: Validation errors
-  let errors = {
-    comment: ''
-  };
+  let showAllComments = false; // NEW: Show historic comments toggle
 
   // Filter comments based on historic flag
   $: visibleComments = showAllComments 
     ? comments 
     : comments.filter(c => !c.historic);
 
+  // Debug logging
+  $: if (comments.length > 0) {
+    console.log('=== Comments Debug (Historic) ===');
+    console.log('Total comments:', comments.length);
+    console.log('Visible comments:', visibleComments.length);
+    console.log('Show all:', showAllComments);
+    comments.forEach((c, i) => {
+      console.log(`Comment ${i + 1}:`, {
+        text: c.comment_text?.substring(0, 30),
+        historic: c.historic,
+        type: typeof c.historic
+      });
+    });
+  }
+
   async function addComment() {
-    // ✨ NEW: Validation
-    errors = { comment: '' };
-    
-    if (!isRequired(newCommentText)) {
-      errors.comment = 'Comment text is required';
-      return;
-    }
-    
+    if (!newCommentText.trim()) return;
     await issuesStore.addComment(issueId, newCommentText);
     newCommentText = '';
     showAddModal = false;
@@ -47,12 +44,6 @@
 
   async function updateComment() {
     if (!editingComment) return;
-    
-    // ✨ NEW: Validation for edit
-    if (!isRequired(editingComment.comment_text)) {
-      return;
-    }
-    
     await issuesStore.updateComment(
       editingComment.id, 
       editingComment.comment_text,
@@ -76,6 +67,26 @@
     showDeleteConfirm = false;
     pendingDeleteId = null;
   }
+
+
+  // Add this reactive statement to log comment timestamps
+  $: if (comments.length > 0) {
+    console.log('=== Comments Debug ===');
+    comments.forEach((comment, index) => {
+      console.log(`Comment ${index + 1}:`, {
+        id: comment.id,
+        text: comment.comment_text?.substring(0, 30) + '...',
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
+        are_equal: comment.created_at === comment.updated_at,
+        diff_milliseconds: comment.updated_at && comment.created_at 
+          ? new Date(comment.updated_at) - new Date(comment.created_at)
+          : null
+      });
+    });
+  }
+
+
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-3">
@@ -110,40 +121,34 @@
       {#each visibleComments as comment}
         <div class="bg-slate-700/50 rounded p-2 border-l-2 border-blue-400 {comment.historic ? 'opacity-60' : ''}">
           {#if editingComment?.id === comment.id}
-            <!-- ✨ REFACTORED: Inline edit now uses FormTextarea -->
-            <div class="space-y-3">
-              <FormTextarea
-                label="Comment"
-                bind:value={editingComment.comment_text}
-                rows={3}
-                required={true}
-              />
-              
-              <div class="flex items-center space-x-2">
-                <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    bind:checked={editingComment.historic}
-                    class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-blue-600"
-                  />
-                  <span class="text-gray-300">Mark as historic</span>
-                </label>
-              </div>
-              
-              <div class="flex space-x-2">
-                <button
-                  on:click={updateComment}
-                  class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
-                >
-                  Save
-                </button>
-                <button
-                  on:click={() => editingComment = null}
-                  class="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
+            <textarea
+              bind:value={editingComment.comment_text}
+              class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white mb-2"
+              rows="3"
+            ></textarea>
+            <div class="flex items-center space-x-2 mb-2">
+              <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  bind:checked={editingComment.historic}
+                  class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-blue-600"
+                />
+                <span class="text-gray-300">Historic</span>
+              </label>
+            </div>
+            <div class="flex space-x-2">
+              <button
+                on:click={updateComment}
+                class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded text-sm"
+              >
+                Save
+              </button>
+              <button
+                on:click={() => editingComment = null}
+                class="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-sm"
+              >
+                Cancel
+              </button>
             </div>
           {:else}
             <div class="flex justify-between items-start">
@@ -155,11 +160,19 @@
                   {/if}
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
-                  Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}
-                  {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()}
-                    • Modified: {formatDateTime(comment.updated_at, comment.updated_by_profile?.full_name)}
-                  {/if}
-                </p>
+  Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}
+
+<!--
+{#if console.log(comment.created_at)}
+{/if}
+{#if console.log(comment.updated_at)}
+{/if}
+-->
+  {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()  }
+    • Modified: {formatDateTime(comment.updated_at, comment.updated_by_profile?.full_name)}
+  {/if}
+</p>
+
               </div>
               <div class="flex space-x-1">
                 <button
@@ -187,42 +200,34 @@
   {/if}
 </div>
 
-<!-- ✨ REFACTORED: Add Comment Modal using Modal component -->
-<Modal 
-  bind:show={showAddModal} 
-  title="New Comment"
-  size="medium"
-  on:close={() => {
-    showAddModal = false;
-    errors = { comment: '' };
-  }}
->
-  <FormTextarea
-    label="Comment"
-    bind:value={newCommentText}
-    required={true}
-    error={errors.comment}
-    rows={4}
-    placeholder="Enter your comment..."
-    helpText="Add any relevant notes or updates"
-    maxlength={1000}
-  />
-  
-  <div slot="footer" class="flex justify-end space-x-2">
-    <button
-      on:click={() => showAddModal = false}
-      class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-    >
-      Cancel
-    </button>
-    <button
-      on:click={addComment}
-      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-    >
-      Add Comment
-    </button>
+<!-- Add Comment Modal -->
+{#if showAddModal}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 rounded-lg p-6 max-w-lg w-full border border-slate-700">
+      <h3 class="text-xl font-bold mb-4">New Comment</h3>
+      <textarea
+        bind:value={newCommentText}
+        class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+        rows="3"
+        placeholder="Enter your comment..."
+      ></textarea>
+      <div class="flex space-x-2 justify-end mt-4">
+        <button
+          on:click={() => showAddModal = false}
+          class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded"
+        >
+          Cancel
+        </button>
+        <button
+          on:click={addComment}
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+        >
+          Add Comment
+        </button>
+      </div>
+    </div>
   </div>
-</Modal>
+{/if}
 
 <!-- Delete Confirmation Dialog -->
 <ConfirmDialog

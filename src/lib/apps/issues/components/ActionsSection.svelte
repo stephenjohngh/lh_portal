@@ -1,20 +1,12 @@
 <!-- src/lib/apps/issues/components/ActionsSection.svelte -->
-<!-- ✨ REFACTORED: Now uses Modal, FormInput, FormTextarea, FormSelect, and validation -->
 <script>
   import { issuesStore } from '../stores/issuesStore';
-  import { formatDate, formatDateTime, isOverdue } from '$lib/utils/dates';
+  import { formatDate,formatDateTime, isOverdue } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
-  import { isRequired } from '$lib/utils/validation';
   import Icon from '$lib/components/icons/Icon.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
-
-  // ✨ NEW: Import form components
-  import Modal from '$lib/components/common/Modal.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import FormSelect from '$lib/components/common/FormSelect.svelte';
 
   export let issueId;
   export let actions = [];
@@ -23,19 +15,14 @@
   let editingAction = null;
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
-  let showAllActions = false;
-  let profiles = [];
+  let showAllActions = false; // NEW: Show completed actions toggle
+  let profiles = []; // List of all user profiles
   
   let newAction = { 
     action_text: '', 
     name_text: '', 
     date_deadline: '', 
     status: ACTION_STATUS.PENDING
-  };
-
-  // ✨ NEW: Validation errors
-  let errors = {
-    action_text: ''
   };
 
   // Fetch all profiles on mount
@@ -69,10 +56,12 @@
     const aCompleted = a.status === ACTION_STATUS.COMPLETED;
     const bCompleted = b.status === ACTION_STATUS.COMPLETED;
     
+    // If one is completed and the other isn't, non-completed comes first
     if (aCompleted !== bCompleted) {
       return aCompleted ? 1 : -1;
     }
     
+    // Both have same completion status, sort by date (earlier first)
     const aDate = new Date(a.created_at);
     const bDate = new Date(b.created_at);
     return aDate - bDate;
@@ -84,14 +73,7 @@
     : sortedActions.filter(a => a.status !== ACTION_STATUS.COMPLETED);
 
   async function addAction() {
-    // ✨ NEW: Validation
-    errors = { action_text: '' };
-    
-    if (!isRequired(newAction.action_text)) {
-      errors.action_text = 'Action description is required';
-      return;
-    }
-    
+    if (!newAction.action_text.trim()) return;
     await issuesStore.addAction(issueId, newAction);
     newAction = { 
       action_text: '', 
@@ -104,12 +86,6 @@
 
   async function updateAction() {
     if (!editingAction) return;
-    
-    // ✨ NEW: Validation for edit
-    if (!isRequired(editingAction.action_text)) {
-      return;
-    }
-    
     await issuesStore.updateAction(editingAction.id, editingAction);
     editingAction = null;
   }
@@ -163,38 +139,62 @@
       {#each visibleActions as action}
         <div class="bg-slate-700/50 rounded p-2 border-l-2 border-green-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
           {#if editingAction?.id === action.id}
-            <!-- ✨ REFACTORED: Inline edit form now uses form components -->
             <div class="space-y-3">
-              <FormTextarea
-                label="Action Description"
-                bind:value={editingAction.action_text}
-                rows={3}
-                required={true}
-                placeholder="Action description"
-              />
-              
-              <FormSelect
-                label="Assigned To"
-                bind:value={editingAction.name_text}
-                options={assigneeOptions}
-              />
-              
-              <FormInput
-                label="Deadline"
-                type="date"
-                bind:value={editingAction.date_deadline}
-              />
-              
-              <FormSelect
-                label="Status"
-                bind:value={editingAction.status}
-                options={ACTION_STATUS_OPTIONS}
-              />
-              
+              <div>
+                <label for="edit-action-text" class="block text-sm font-medium mb-1 text-gray-300">
+                  Action Description
+                </label>
+                <textarea
+                  id="edit-action-text"
+                  bind:value={editingAction.action_text}
+                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
+                  placeholder="Action description"
+                  rows="3"
+                ></textarea>
+              </div>
+              <div>
+                <label for="edit-action-assignee" class="block text-sm font-medium mb-1 text-gray-300">
+                  Assigned To
+                </label>
+                <select
+                  id="edit-action-assignee"
+                  bind:value={editingAction.name_text}
+                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
+                >
+                  {#each assigneeOptions as option}
+                    <option value={option.value}>{option.label}</option>
+                  {/each}
+                </select>
+              </div>
+              <div>
+                <label for="edit-action-deadline" class="block text-sm font-medium mb-1 text-gray-300">
+                  Deadline
+                </label>
+                <input
+                  id="edit-action-deadline"
+                  type="date"
+                  bind:value={editingAction.date_deadline}
+                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
+                />
+              </div>
+              <div>
+                <label for="edit-action-status" class="block text-sm font-medium mb-1 text-gray-300">
+                  Status
+                </label>
+                <select
+                  id="edit-action-status"
+                  bind:value={editingAction.status}
+                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
+                >
+                  {#each ACTION_STATUS_OPTIONS as statusOption}
+                    <option value={statusOption.value}>{statusOption.label}</option>
+                  {/each}
+                </select>
+              </div>
               <div class="flex space-x-2">
                 <button
                   on:click={updateAction}
-                  class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                  class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded text-sm"
                 >
                   Save
                 </button>
@@ -229,14 +229,15 @@
                   <span class="px-2 py-1 bg-purple-600/20 text-purple-300 rounded capitalize">
                     {action.status}
                   </span>
+
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
                   Added: {formatDateTime(action.created_at, action.created_by_profile?.full_name)}
-                  {#if action.updated_at && new Date(action.updated_at).getTime() !== new Date(action.created_at).getTime()}
-                    • Modified: {formatDateTime(action.updated_at, action.updated_by_profile?.full_name)}
-                  {/if}
-                </p>
-              </div>
+                    {#if action.updated_at && new Date(action.updated_at).getTime() !== new Date(action.created_at).getTime()  }
+    • Modified: {formatDateTime(action.updated_at, action.updated_by_profile?.full_name)}
+  {/if}
+
+                </p>              </div>
               <div class="flex space-x-1">
                 <button
                   on:click={() => editingAction = {...action}}
@@ -263,62 +264,73 @@
   {/if}
 </div>
 
-<!-- ✨ REFACTORED: Add Action Modal using Modal component -->
-<Modal 
-  bind:show={showAddModal} 
-  title="New Action"
-  size="medium"
-  on:close={() => {
-    showAddModal = false;
-    errors = { action_text: '' };
-  }}
->
-  <div class="space-y-4">
-    <FormTextarea
-      label="Action Description"
-      bind:value={newAction.action_text}
-      required={true}
-      error={errors.action_text}
-      rows={3}
-      placeholder="What needs to be done?"
-    />
-    
-    <FormSelect
-      label="Assigned To"
-      bind:value={newAction.name_text}
-      options={assigneeOptions}
-      helpText="Select who will handle this action"
-    />
-    
-    <FormInput
-      label="Deadline"
-      type="date"
-      bind:value={newAction.date_deadline}
-      helpText="Optional deadline for completion"
-    />
-    
-    <FormSelect
-      label="Status"
-      bind:value={newAction.status}
-      options={ACTION_STATUS_OPTIONS}
-    />
+<!-- Add Action Modal -->
+{#if showAddModal}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 rounded-lg p-6 max-w-lg w-full border border-slate-700">
+      <h3 class="text-xl font-bold mb-4">New Action</h3>
+      <div class="space-y-4">
+        <div>
+          <label for="action-text" class="block text-sm font-medium mb-2">Action Description *</label>
+          <textarea
+            id="action-text"
+            bind:value={newAction.action_text}
+            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            placeholder="What needs to be done?"
+            rows="3"
+          ></textarea>
+        </div>
+        <div>
+          <label for="action-assignee" class="block text-sm font-medium mb-2">Assigned To</label>
+          <select
+            id="action-assignee"
+            bind:value={newAction.name_text}
+            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+          >
+            {#each assigneeOptions as option}
+              <option value={option.value}>{option.label}</option>
+            {/each}
+          </select>
+        </div>
+        <div>
+          <label for="action-deadline" class="block text-sm font-medium mb-2">Deadline</label>
+          <input
+            id="action-deadline"
+            type="date"
+            bind:value={newAction.date_deadline}
+            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+          />
+        </div>
+        <div>
+          <label for="action-status" class="block text-sm font-medium mb-2">Status</label>
+          <select
+            id="action-status"
+            bind:value={newAction.status}
+            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+          >
+            {#each ACTION_STATUS_OPTIONS as statusOption}
+              <option value={statusOption.value}>{statusOption.label}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="flex space-x-2 justify-end">
+          <button
+            on:click={() => showAddModal = false}
+            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded"
+          >
+            Cancel
+          </button>
+          <button
+            on:click={addAction}
+            class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+          >
+            Add Action
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-  
-  <div slot="footer" class="flex justify-end space-x-2">
-    <button
-      on:click={() => showAddModal = false}
-      class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-    >
-      Cancel
-    </button>
-    <button
-      on:click={addAction}
-      class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-    >
-      Add Action
-    </button>
-  </div>
-</Modal>
+{/if}
 
 <!-- Delete Confirmation Dialog -->
 <ConfirmDialog

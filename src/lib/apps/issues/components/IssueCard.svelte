@@ -174,7 +174,7 @@
             dispatch('toggleActions');
           }
         }}
-        class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium flex items-center gap-1.5 transition-colors"
+        class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded text-sm font-medium flex items-center gap-1.5 transition-colors"
         title={showComments || showActions ? 'Collapse all sections' : 'Expand all sections'}
       >
         <Icon name={showComments || showActions ? 'chevron-up' : 'chevron-down'} size={4} />
