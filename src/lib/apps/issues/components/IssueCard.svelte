@@ -8,6 +8,7 @@
   import { getPriorityLabel } from '$lib/utils/priorities';
   import { formatDate } from '$lib/utils/dates';
   import { ISSUE_STATUS } from '$lib/utils/constants';
+  import { ACTION_STATUS } from '$lib/utils/constants';
 
   export let issue;
   export let showComments = false;
@@ -19,6 +20,14 @@
   let editingInline = false;
   let editedIssue = null;
   let showDeleteConfirm = false;
+
+  // Calculate historic comments count
+  $: historicCommentsCount = issue.comments?.filter(c => c.historic).length || 0;
+  
+  // Calculate outstanding actions (not completed)
+  $: outstandingActionsCount = issue.actions?.filter(action => 
+    action.status !== ACTION_STATUS.COMPLETED
+  ).length || 0;
 
   // Calculate overdue actions count
   $: overdueActionsCount = issue.actions?.filter(action => {
@@ -46,14 +55,32 @@
     ? 'bg-amber-900/20' 
     : 'bg-slate-700/50';
   
+  // ✨ NEW: Enhanced background when active (comments or actions visible)
+  $: activeBackgroundClass = (showComments || showActions)
+    ? (issue.status === ISSUE_STATUS.COMPLETED 
+        ? 'bg-emerald-900/30' 
+        : issue.status === ISSUE_STATUS.PARKED 
+        ? 'bg-amber-900/30' 
+        : 'bg-slate-700/70')
+    : backgroundClass;
+  
   $: borderClass = issue.status === ISSUE_STATUS.COMPLETED
     ? 'border-emerald-700/40'
     : issue.status === ISSUE_STATUS.PARKED
     ? 'border-amber-700/40'
     : 'border-slate-600';
+  
+  // ✨ NEW: Enhanced border when active
+  $: activeBorderClass = (showComments || showActions)
+    ? (issue.status === ISSUE_STATUS.COMPLETED
+        ? 'border-emerald-500/60'
+        : issue.status === ISSUE_STATUS.PARKED
+        ? 'border-amber-500/60'
+        : 'border-purple-500/50')
+    : borderClass;
 </script>
 
-<div class="{backgroundClass} rounded-lg border {borderClass} overflow-hidden">
+<div class="{activeBackgroundClass} rounded-lg border-2 {activeBorderClass} overflow-hidden transition-all duration-300 ease-in-out {showComments || showActions ? 'shadow-lg shadow-purple-500/20' : ''}">
   <!-- Issue Header -->
   <div class="p-3">
     <div class="flex justify-between items-start mb-1">
@@ -105,26 +132,53 @@
       </div>
     </div>
 
-    <!-- Toggle Buttons -->
-    <div class="flex space-x-2 mt-2">
-      <button
-        on:click={() => dispatch('toggleComments')}
-        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm flex items-center gap-1"
-      >
-        <Icon name="comment" size={4} />
-        <span>{showComments ? 'Hide' : 'Show'} Comments ({issue.comments?.length || 0})</span>
-      </button>
-      <button
-        on:click={() => dispatch('toggleActions')}
-        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm flex items-center gap-1"
-      >
-        <Icon name="clipboard" size={4} />
-        <span>{showActions ? 'Hide' : 'Show'} Actions ({issue.actions?.length || 0})</span>
-        {#if overdueActionsCount > 0}
-          <span class="ml-1 px-1.5 py-0.5 bg-red-600 rounded text-xs font-semibold">
-            {overdueActionsCount} overdue
+    <!-- Information Line with Expand/Collapse Button -->
+    <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-600/50">
+      <div class="flex items-center gap-4 text-sm text-gray-300">
+        <!-- Comments Info -->
+        <div class="flex items-center gap-1.5">
+          <Icon name="comment" size={4} className="text-blue-400" />
+          <span>
+            {issue.comments?.length || 0} comment{issue.comments?.length !== 1 ? 's' : ''}
+            {#if historicCommentsCount > 0}
+              <span class="text-gray-500">({historicCommentsCount} historic)</span>
+            {/if}
           </span>
-        {/if}
+        </div>
+        
+        <!-- Actions Info -->
+        <div class="flex items-center gap-1.5">
+          <Icon name="clipboard" size={4} className="text-green-400" />
+          <span>
+            {issue.actions?.length || 0} action{issue.actions?.length !== 1 ? 's' : ''}
+            {#if outstandingActionsCount > 0}
+              <span class="text-orange-400 font-medium">({outstandingActionsCount} outstanding)</span>
+            {/if}
+            {#if overdueActionsCount > 0}
+              <span class="text-red-400 font-semibold ml-1">• {overdueActionsCount} overdue</span>
+            {/if}
+          </span>
+        </div>
+      </div>
+      
+      <!-- Expand/Collapse Button -->
+      <button
+        on:click={() => {
+          if (showComments || showActions) {
+            // Collapse both
+            if (showComments) dispatch('toggleComments');
+            if (showActions) dispatch('toggleActions');
+          } else {
+            // Expand both
+            dispatch('toggleComments');
+            dispatch('toggleActions');
+          }
+        }}
+        class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium flex items-center gap-1.5 transition-colors"
+        title={showComments || showActions ? 'Collapse all sections' : 'Expand all sections'}
+      >
+        <Icon name={showComments || showActions ? 'chevron-up' : 'chevron-down'} size={4} />
+        <span>{showComments || showActions ? 'Collapse' : 'Expand'}</span>
       </button>
     </div>
   </div>
