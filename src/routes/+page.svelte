@@ -50,6 +50,7 @@
           <div class="flex items-center space-x-4">
             <button
               on:click={() => menuOpen = !menuOpen}
+               aria-label="menu"
               class="p-2 hover:bg-slate-700 rounded-lg transition-colors lg:hidden"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,6 +70,8 @@
             {#each apps as app}
               <button
                 on:click={() => activeApp = app.id}
+               aria-label="app"
+
                 class={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                   activeApp === app.id
                     ? 'bg-purple-600 text-white'

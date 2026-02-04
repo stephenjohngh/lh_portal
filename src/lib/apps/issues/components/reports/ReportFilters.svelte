@@ -6,7 +6,6 @@
   export let includeParked;
   export let includeCompleted;
   export let filterDate;
-  export let onPrint;
   export let onDownloadWord;
   export let onClose;
 
@@ -82,6 +81,8 @@
     <button 
       on:click={onClose} 
       class="p-2 hover:bg-slate-700 rounded"
+      aria-label="Close report"
+      title="Close report"
     >
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

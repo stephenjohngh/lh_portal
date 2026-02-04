@@ -28,14 +28,15 @@
     on:click={() => dispatch('cancel')}
     on:keydown={handleKeydown}
   >
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
     <div 
       class="bg-slate-800 rounded-lg p-6 max-w-md w-full border border-slate-700 shadow-2xl"
       on:click|stopPropagation
+      on:keydown={handleKeydown}
       role="dialog"
       aria-labelledby="dialog-title"
       aria-describedby="dialog-description"
+      tabindex="-1"
     >
       <!-- Header -->
       <div class="flex items-start justify-between mb-4">
