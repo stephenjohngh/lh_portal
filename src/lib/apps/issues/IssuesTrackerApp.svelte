@@ -182,9 +182,14 @@
   {#if error}
     <div class="mb-3 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex justify-between items-center">
       <p class="text-red-400">{error}</p>
-      <button on:click={() => issuesStore.clearError()} class="text-red-400 hover:text-red-300">
-        ✕
-      </button>
+      <Button
+        variant="danger"
+        size="small"
+        icon="close"
+        iconPosition="only"
+        on:click={() => issuesStore.clearError()}
+        title="Dismiss error"
+      />
     </div>
   {/if}
 

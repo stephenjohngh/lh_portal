@@ -3,6 +3,7 @@
   import { issuesStore } from '../stores/issuesStore';
   import { formatDateTime } from '$lib/utils/dates';
   import Icon from '$lib/components/icons/Icon.svelte';
+  import Button from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let issueId;
@@ -107,12 +108,14 @@
         />
         <span>Show all</span>
       </label>
-      <button
+      <Button
+        variant="blue"
+        size="small"
+        icon="comment"
         on:click={() => showAddModal = true}
-        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
       >
         Add Comment
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -137,18 +140,20 @@
               </label>
             </div>
             <div class="flex space-x-2">
-              <button
+              <Button
+                variant="primary"
+                size="small"
                 on:click={updateComment}
-                class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded text-sm"
               >
                 Save
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
                 on:click={() => editingComment = null}
-                class="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-sm"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           {:else}
             <div class="flex justify-between items-start">
@@ -175,20 +180,22 @@
 
               </div>
               <div class="flex space-x-1">
-                <button
+                <Button
+                  variant="secondary"
+                  size="small"
+                  icon="edit"
+                  iconPosition="only"
                   on:click={() => editingComment = {...comment}}
-                  class="p-1 hover:bg-slate-600 rounded"
                   title="Edit comment"
-                >
-                  <Icon name="edit" size={4} />
-                </button>
-                <button
+                />
+                <Button
+                  variant="danger"
+                  size="small"
+                  icon="delete"
+                  iconPosition="only"
                   on:click={() => confirmDeleteComment(comment.id)}
-                  class="p-1 hover:bg-red-600/20 rounded text-red-400"
                   title="Delete comment"
-                >
-                  <Icon name="delete" size={4} />
-                </button>
+                />
               </div>
             </div>
           {/if}
@@ -212,18 +219,20 @@
         placeholder="Enter your comment..."
       ></textarea>
       <div class="flex space-x-2 justify-end mt-4">
-        <button
+        <Button
+          variant="secondary"
+          size="large"
           on:click={() => showAddModal = false}
-          class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="blue"
+          size="large"
           on:click={addComment}
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
         >
           Add Comment
-        </button>
+        </Button>
       </div>
     </div>
   </div>

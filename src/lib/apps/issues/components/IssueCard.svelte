@@ -4,6 +4,7 @@
   import CommentsSection from './CommentsSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
+  import Button from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { getPriorityLabel } from '$lib/utils/priorities';
   import { formatDate } from '$lib/utils/dates';
@@ -115,20 +116,22 @@
       </div>
       
       <div class="flex space-x-2">
-        <button
+        <Button
+          variant="secondary"
+          size="medium"
+          icon="edit"
+          iconPosition="only"
           on:click={() => dispatch('edit', issue)}
-          class="p-2 hover:bg-slate-600 rounded"
           title="Edit issue"
-        >
-          <Icon name="edit" size={5} />
-        </button>
-        <button
+        />
+        <Button
+          variant="danger"
+          size="medium"
+          icon="delete"
+          iconPosition="only"
           on:click={handleDelete}
-          class="p-2 hover:bg-red-600/20 rounded text-red-400"
           title="Delete issue"
-        >
-          <Icon name="delete" size={5} />
-        </button>
+        />
       </div>
     </div>
 
@@ -162,7 +165,11 @@
       </div>
       
       <!-- Expand/Collapse Button -->
-      <button
+      <Button
+        variant="primary"
+        size="medium"
+        icon={showComments || showActions ? 'chevron-up' : 'chevron-down'}
+        title={showComments || showActions ? 'Collapse all sections' : 'Expand all sections'}
         on:click={() => {
           if (showComments || showActions) {
             // Collapse both
@@ -174,12 +181,9 @@
             dispatch('toggleActions');
           }
         }}
-        class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded text-sm font-medium flex items-center gap-1.5 transition-colors"
-        title={showComments || showActions ? 'Collapse all sections' : 'Expand all sections'}
       >
-        <Icon name={showComments || showActions ? 'chevron-up' : 'chevron-down'} size={4} />
-        <span>{showComments || showActions ? 'Collapse' : 'Expand'}</span>
-      </button>
+        {showComments || showActions ? 'Collapse' : 'Expand'}
+      </Button>
     </div>
   </div>
 

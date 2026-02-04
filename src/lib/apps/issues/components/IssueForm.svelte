@@ -1,16 +1,9 @@
 <!-- src/lib/apps/issues/components/IssueForm.svelte -->
-<!-- ✨ REFACTORED: Now uses Modal, FormInput, FormTextarea, FormSelect, and validation -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import Button from '$lib/components/common/Button.svelte';
   import { PRIORITIES } from '$lib/utils/priorities';
   import { ISSUE_STATUS, ISSUE_STATUS_OPTIONS } from '$lib/utils/constants';
-  import { isRequired, isValidLength } from '$lib/utils/validation';
-  
-  // ✨ NEW: Import reusable components
-  import Modal from '$lib/components/common/Modal.svelte';
-  import FormInput from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
-  import FormSelect from '$lib/components/common/FormSelect.svelte';
 
   export let show = false;
   export let issue = null; // null for new, object for edit
@@ -24,11 +17,6 @@
     status: issue?.status || ISSUE_STATUS.CURRENT
   };
 
-  // ✨ NEW: Validation errors
-  let errors = {
-    name: ''
-  };
-
   $: if (issue) {
     formData = {
       name: issue.name,
@@ -36,96 +24,96 @@
       priority: parseInt(issue.priority) || 3,
       status: issue.status || ISSUE_STATUS.CURRENT
     };
-    // Clear errors when issue changes
-    errors = { name: '' };
   }
 
   function handleSubmit() {
-    // ✨ NEW: Proper validation
-    errors = { name: '' };
-    
-    if (!isRequired(formData.name)) {
-      errors.name = 'Issue name is required';
-      return;
-    }
-    
-    if (!isValidLength(formData.name, 3, 200)) {
-      errors.name = 'Issue name must be between 3 and 200 characters';
-      return;
-    }
-    
+    if (!formData.name.trim()) return;
     dispatch('submit', formData);
     close();
   }
 
   function close() {
-    // Clear errors when closing
-    errors = { name: '' };
     dispatch('close');
   }
 </script>
 
-<!-- ✨ REFACTORED: Using Modal component instead of custom HTML -->
-<Modal 
-  bind:show={show} 
-  title={issue ? 'Edit Issue' : 'New Issue'}
-  size="medium"
-  on:close={close}
->
-  <!-- Modal body -->
-  <div class="space-y-4">
-    <!-- ✨ REFACTORED: Using FormInput instead of raw input -->
-    <FormInput
-      label="Name"
-      bind:value={formData.name}
-      required={true}
-      error={errors.name}
-      placeholder="Enter issue name"
-      helpText="Brief description of the issue"
-      maxlength={200}
-    />
-    
-    <!-- ✨ REFACTORED: Using FormTextarea instead of raw textarea -->
-    <FormTextarea
-      label="Description"
-      bind:value={formData.description}
-      rows={4}
-      placeholder="Detailed description of the issue"
-      helpText="Provide as much detail as needed"
-    />
-    
-    <div class="grid grid-cols-2 gap-4">
-      <!-- ✨ REFACTORED: Using FormSelect instead of raw select -->
-      <FormSelect
-        label="Priority"
-        bind:value={formData.priority}
-        options={PRIORITIES}
-        required={true}
-      />
+{#if show}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-800 rounded-lg p-6 max-w-lg w-full border border-slate-700">
+      <h3 class="text-xl font-bold mb-4">
+        {issue ? 'Edit Issue' : 'New Issue'}
+      </h3>
       
-      <!-- ✨ REFACTORED: Using FormSelect instead of raw select -->
-      <FormSelect
-        label="Status"
-        bind:value={formData.status}
-        options={ISSUE_STATUS_OPTIONS}
-        required={true}
-      />
+      <div class="space-y-4">
+        <div>
+          <label for="issue-name" class="block text-sm font-medium mb-2">Name *</label>
+          <input
+            id="issue-name"
+            type="text"
+            bind:value={formData.name}
+            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            placeholder="Issue name"
+          />
+        </div>
+        
+        <div>
+          <label for="issue-description" class="block text-sm font-medium mb-2">Description</label>
+          <textarea
+            id="issue-description"
+            bind:value={formData.description}
+            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            rows="4"
+            placeholder="Issue description"
+          ></textarea>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="issue-priority" class="block text-sm font-medium mb-2">Priority *</label>
+            <select
+              id="issue-priority"
+              bind:value={formData.priority}
+              class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            >
+              {#each PRIORITIES as priority}
+                <option value={priority.value}>
+                  {priority.value} - {priority.label}
+                </option>
+              {/each}
+            </select>
+          </div>
+          
+          <div>
+            <label for="issue-status" class="block text-sm font-medium mb-2">Status *</label>
+            <select
+              id="issue-status"
+              bind:value={formData.status}
+              class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            >
+              {#each ISSUE_STATUS_OPTIONS as statusOption}
+                <option value={statusOption.value}>{statusOption.label}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+        
+        <div class="flex space-x-2 justify-end">
+          <Button
+            variant="secondary"
+            size="large"
+            on:click={close}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="large"
+            on:click={handleSubmit}
+          >
+            {issue ? 'Update' : 'Create'} Issue
+          </Button>
+        </div>
+      </div>
     </div>
   </div>
-  
-  <!-- Modal footer -->
-  <div slot="footer" class="flex justify-end space-x-2">
-    <button
-      on:click={close}
-      class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-    >
-      Cancel
-    </button>
-    <button
-      on:click={handleSubmit}
-      class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
-    >
-      {issue ? 'Update' : 'Create'} Issue
-    </button>
-  </div>
-</Modal>
+{/if}

@@ -4,6 +4,7 @@
   import { formatDate,formatDateTime, isOverdue } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
+  import Button from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
@@ -125,12 +126,14 @@
         />
         <span>Show all</span>
       </label>
-      <button
+      <Button
+        variant="green"
+        size="small"
+        icon="clipboard"
         on:click={() => showAddModal = true}
-        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
       >
         Add Action
-      </button>
+      </Button>
     </div>
   </div>
   
@@ -192,18 +195,20 @@
                 </select>
               </div>
               <div class="flex space-x-2">
-                <button
+                <Button
+                  variant="primary"
+                  size="small"
                   on:click={updateAction}
-                  class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded text-sm"
                 >
                   Save
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
                   on:click={() => editingAction = null}
-                  class="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-sm"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           {:else}
@@ -239,20 +244,22 @@
 
                 </p>              </div>
               <div class="flex space-x-1">
-                <button
+                <Button
+                  variant="secondary"
+                  size="small"
+                  icon="edit"
+                  iconPosition="only"
                   on:click={() => editingAction = {...action}}
-                  class="p-1 hover:bg-slate-600 rounded"
                   title="Edit action"
-                >
-                  <Icon name="edit" size={4} />
-                </button>
-                <button
+                />
+                <Button
+                  variant="danger"
+                  size="small"
+                  icon="delete"
+                  iconPosition="only"
                   on:click={() => confirmDeleteAction(action.id)}
-                  class="p-1 hover:bg-red-600/20 rounded text-red-400"
                   title="Delete action"
-                >
-                  <Icon name="delete" size={4} />
-                </button>
+                />
               </div>
             </div>
           {/if}
@@ -314,18 +321,20 @@
           </select>
         </div>
         <div class="flex space-x-2 justify-end">
-          <button
+          <Button
+            variant="secondary"
+            size="large"
             on:click={() => showAddModal = false}
-            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="green"
+            size="large"
             on:click={addAction}
-            class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
           >
             Add Action
-          </button>
+          </Button>
         </div>
       </div>
     </div>
