@@ -1,6 +1,7 @@
 <!-- src/lib/components/reports/ReportFilters.svelte -->
 <script>
   import Button from '$lib/components/common/Button.svelte';
+  import Checkbox from '$lib/components/common/Checkbox.svelte';
   import { getFilterSummary, getTodayDate } from './reportUtils';
 
   export let includeCurrent;
@@ -21,30 +22,9 @@
     <div class="flex flex-col gap-3">
       <!-- Status Checkboxes -->
       <div class="flex gap-4 text-sm">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input 
-            type="checkbox" 
-            bind:checked={includeCurrent} 
-            class="w-4 h-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500"
-          />
-          <span>Current</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input 
-            type="checkbox" 
-            bind:checked={includeParked} 
-            class="w-4 h-4 rounded border-gray-400 text-amber-600 focus:ring-amber-500"
-          />
-          <span>Parked</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input 
-            type="checkbox" 
-            bind:checked={includeCompleted} 
-            class="w-4 h-4 rounded border-gray-400 text-green-600 focus:ring-green-500"
-          />
-          <span>Completed</span>
-        </label>
+        <Checkbox bind:checked={includeCurrent} color="blue" label="Current" />
+        <Checkbox bind:checked={includeParked} color="purple" label="Parked" />
+        <Checkbox bind:checked={includeCompleted} color="green" label="Completed" />
       </div>
       
       <!-- Date Filter -->

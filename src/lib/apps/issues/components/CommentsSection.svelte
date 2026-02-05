@@ -4,6 +4,7 @@
   import { formatDateTime } from '$lib/utils/dates';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import Checkbox from '$lib/components/common/Checkbox.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let issueId;
@@ -100,14 +101,7 @@
       {/if}
     </h4>
     <div class="flex items-center space-x-3">
-      <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
-        <input
-          type="checkbox"
-          bind:checked={showAllComments}
-          class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-blue-600 focus:ring-blue-500"
-        />
-        <span>Show all</span>
-      </label>
+      <Checkbox bind:checked={showAllComments} color="blue" label="Show all" />
       <Button
         variant="blue"
         size="small"
@@ -130,14 +124,7 @@
               rows="3"
             ></textarea>
             <div class="flex items-center space-x-2 mb-2">
-              <label class="flex items-center space-x-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  bind:checked={editingComment.historic}
-                  class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-blue-600"
-                />
-                <span class="text-gray-300">Historic</span>
-              </label>
+              <Checkbox bind:checked={editingComment.historic} color="blue" label="Historic" />
             </div>
             <div class="flex space-x-2">
               <Button

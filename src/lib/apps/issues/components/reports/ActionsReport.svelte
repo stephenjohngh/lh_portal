@@ -2,6 +2,7 @@
 <script>
   import { onMount } from 'svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import { supabase } from '$lib/supabaseClient';
   import { formatDate, isOverdue } from '$lib/utils/dates';
 
@@ -293,27 +294,27 @@
                 <div class="p-4 bg-white">
                   <div class="flex flex-wrap gap-2 mb-3">
                     {#if action.name_text}
-                      <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded border border-blue-200">
-                        👤 {action.name_text}
-                      </span>
+                      <Badge variant="info" icon="👤" outline>
+                        {action.name_text}
+                      </Badge>
                     {/if}
                     {#if action.date_deadline}
-                      <span class="text-xs px-2 py-1 rounded border {isOverdue(action.date_deadline) ? 'bg-red-100 text-red-700 border-red-300 font-semibold' : 'bg-orange-100 text-orange-700 border-orange-200'}">
-                        📅 Due: {formatDate(action.date_deadline)}
-                        {#if isOverdue(action.date_deadline)}⚠️{/if}
-                      </span>
+                      <Badge variant={isOverdue(action.date_deadline) ? 'danger' : 'warning'} icon="📅" outline>
+                        Due: {formatDate(action.date_deadline)}
+                        {#if isOverdue(action.date_deadline)} ⚠️{/if}
+                      </Badge>
                     {/if}
-                    <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded border border-purple-200 capitalize">
+                    <Badge variant="primary" outline className="capitalize">
                       {action.status}
-                    </span>
+                    </Badge>
                     {#if action.issue_status === 'parked'}
-                      <span class="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded border border-amber-200">
-                        🅿️ Issue Parked
-                      </span>
+                      <Badge variant="warning" icon="🅿️" outline>
+                        Issue Parked
+                      </Badge>
                     {:else if action.issue_status === 'completed'}
-                      <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded border border-green-200">
-                        ✓ Issue Completed
-                      </span>
+                      <Badge variant="success" icon="✓" outline>
+                        Issue Completed
+                      </Badge>
                     {/if}
                   </div>
                   <p class="text-xs text-gray-500">

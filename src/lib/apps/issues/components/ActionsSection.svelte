@@ -5,6 +5,8 @@
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
+  import Checkbox from '$lib/components/common/Checkbox.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
@@ -118,14 +120,7 @@
       {/if}
     </h4>
     <div class="flex items-center space-x-3">
-      <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
-        <input
-          type="checkbox"
-          bind:checked={showAllActions}
-          class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-green-600 focus:ring-green-500"
-        />
-        <span>Show all</span>
-      </label>
+      <Checkbox bind:checked={showAllActions} color="green" label="Show all" />
       <Button
         variant="green"
         size="small"

@@ -2,6 +2,7 @@
 <script>
   import { STATUS_FILTERS } from '$lib/utils/constants';
   import Button from '$lib/components/common/Button.svelte';
+  import Checkbox from '$lib/components/common/Checkbox.svelte';
   
   export let searchTerm = '';
   export let statusFilter = 'current';

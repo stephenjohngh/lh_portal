@@ -5,6 +5,7 @@
   import ActionsSection from './ActionsSection.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { getPriorityLabel } from '$lib/utils/priorities';
   import { formatDate } from '$lib/utils/dates';
@@ -88,17 +89,17 @@
       <div class="flex-1">
         <div class="flex items-center gap-2 mb-1">
           <h3 class="text-xl font-semibold text-white">{issue.name}</h3>
-          <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
+          <Badge variant="default">
             {getPriorityLabel(issue.priority).label}
-          </span>
+          </Badge>
           {#if issue.status === ISSUE_STATUS.PARKED}
-            <span class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded">
-              🅿️ Parked
-            </span>
+            <Badge variant="warning" icon="🅿️">
+              Parked
+            </Badge>
           {:else if issue.status === ISSUE_STATUS.COMPLETED}
-            <span class="px-2 py-1 text-xs font-semibold bg-emerald-600 text-white rounded">
-              ✓ Completed
-            </span>
+            <Badge variant="success" icon="✓">
+              Completed
+            </Badge>
           {/if}
         </div>
         
