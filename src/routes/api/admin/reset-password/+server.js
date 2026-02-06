@@ -20,9 +20,9 @@ export async function POST({ request }) {
     }
 
 	  //no length check
-    if (new_password.length < 0) {
+    if (new_password.length < 6) {
       return json(
-        { error: 'Password must be at least 8 characters' },
+        { error: 'Password must be at least 6 characters' },
         { status: 400 }
       );
     }
