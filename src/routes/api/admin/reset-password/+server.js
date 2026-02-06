@@ -19,7 +19,8 @@ export async function POST({ request }) {
       );
     }
 
-    if (new_password.length < 8) {
+	  //no length check
+    if (new_password.length < 0) {
       return json(
         { error: 'Password must be at least 8 characters' },
         { status: 400 }

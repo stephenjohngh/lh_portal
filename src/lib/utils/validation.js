@@ -27,17 +27,17 @@ export function isValidEmail(email) {
 }
 
 /**
- * Check password strength (minimum 8 characters)
+ * Check password strength (NO MINIMUM LENGTH - just checks if it exists)
  * @param {string} password - Password to check
- * @returns {boolean} True if password is strong enough
+ * @returns {boolean} True if password exists
  */
 export function isStrongPassword(password) {
   if (!password) return false;
-  return password.length >= 8;
+  return password.length > 0;
 }
 
 /**
- * Validate password strength with detailed requirements
+ * Validate password strength with detailed requirements (NO LENGTH REQUIREMENT)
  * @param {string} password - Password to validate
  * @returns {object} Validation result with details
  */
@@ -52,23 +52,13 @@ export function validatePassword(password) {
     return result;
   }
 
-  if (password.length < 8) {
-    result.errors.push('Password must be at least 8 characters');
-  }
+  // No minimum length requirement removed
+  // No uppercase requirement
+  // No lowercase requirement
+  // No number requirement
 
-  if (!/[A-Z]/.test(password)) {
-    result.errors.push('Password must contain an uppercase letter');
-  }
-
-  if (!/[a-z]/.test(password)) {
-    result.errors.push('Password must contain a lowercase letter');
-  }
-
-  if (!/[0-9]/.test(password)) {
-    result.errors.push('Password must contain a number');
-  }
-
-  result.isValid = result.errors.length === 0;
+  // Password just needs to exist
+  result.isValid = password.length > 0;
   return result;
 }
 
