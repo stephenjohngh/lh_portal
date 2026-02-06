@@ -2,11 +2,9 @@
 <script>
   import { issuesStore } from '../stores/issuesStore';
   import { formatDate,formatDateTime, isOverdue } from '$lib/utils/dates';
-  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
+  import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
-  import Checkbox from '$lib/components/common/Checkbox.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
@@ -113,16 +111,23 @@
 <div class="bg-slate-800/30 rounded-lg p-3">
   <div class="flex justify-between items-center mb-2">
     <h4 class="font-semibold flex items-center space-x-2">
-      <Icon name="clipboard" size={5} className="text-green-400" />
+      <Icon name="clipboard" size={5} className="text-{UI_COLORS.ACTION_TEXT}" />
       <span>Actions ({visibleActions.length})</span>
       {#if actions.length !== visibleActions.length}
         <span class="text-xs text-gray-400">({actions.length - visibleActions.length} completed)</span>
       {/if}
     </h4>
     <div class="flex items-center space-x-3">
-      <Checkbox bind:checked={showAllActions} color="green" label="Show all" />
+      <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={showAllActions}
+          class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-amber-600 focus:ring-amber-500"
+        />
+        <span>Show all</span>
+      </label>
       <Button
-        variant="green"
+        variant="amber"
         size="small"
         icon="clipboard"
         on:click={() => showAddModal = true}
@@ -135,7 +140,7 @@
   {#if visibleActions.length > 0}
     <div class="space-y-1">
       {#each visibleActions as action}
-        <div class="bg-slate-700/50 rounded p-2 border-l-2 border-green-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
+        <div class="bg-slate-700/50 rounded p-2 border-l-2 border-{UI_COLORS.ACTION_TEXT} {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
           {#if editingAction?.id === action.id}
             <div class="space-y-3">
               <div>
@@ -214,19 +219,19 @@
                 </p>
                 <div class="flex flex-wrap gap-2 mt-1 text-xs">
                   {#if action.name_text}
-                    <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded">
+                    <span class="px-2 py-1 bg-blue-600/20 text-blue-300 rounded border border-blue-200">
                       👤 {action.name_text}
                     </span>
                   {/if}
                   {#if action.date_deadline}
-                    <span class="px-2 py-1 rounded {isOverdue(action.date_deadline) && action.status !== ACTION_STATUS.COMPLETED ? 'bg-red-600 text-white font-semibold' : 'bg-orange-600/20 text-orange-300'}">
+                    <span class="px-2 py-1 rounded border {isOverdue(action.date_deadline) && action.status !== ACTION_STATUS.COMPLETED ? 'bg-red-600 text-white font-semibold' : 'bg-orange-600/20 text-orange-300 border-orange-200'}">
                       📅 Due: {formatDate(action.date_deadline)}
                       {#if isOverdue(action.date_deadline) && action.status !== ACTION_STATUS.COMPLETED}
                         ⚠️
                       {/if}
                     </span>
                   {/if}
-                  <span class="px-2 py-1 bg-purple-600/20 text-purple-300 rounded capitalize">
+                  <span class="px-2 py-1 bg-purple-600/20 text-purple-300 rounded border border-purple-200 capitalize">
                     {action.status}
                   </span>
 
@@ -324,7 +329,7 @@
             Cancel
           </Button>
           <Button
-            variant="green"
+            variant="amber"
             size="large"
             on:click={addAction}
           >

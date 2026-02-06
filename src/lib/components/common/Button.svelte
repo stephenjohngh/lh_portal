@@ -3,7 +3,7 @@
   import Icon from '$lib/components/icons/Icon.svelte';
 
   // Props
-  export let variant = 'primary'; // 'primary', 'blue', 'green', 'secondary', 'danger'
+  export let variant = 'primary'; // 'primary', 'amber', 'blue', 'green', 'secondary', 'danger'
   export let size = 'medium'; // 'small', 'medium', 'large'
   export let icon = ''; // Icon name from Icon.svelte
   export let iconPosition = 'left'; // 'left', 'right', 'only'
@@ -17,6 +17,7 @@
   // Color variant styles
   const variantStyles = {
     primary: 'bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700',
+    amber: 'bg-amber-800 hover:bg-amber-700 disabled:bg-amber-900', // NEW: Amber variant for actions
     blue: 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800',
     green: 'bg-green-600 hover:bg-green-700 disabled:bg-green-800',
     secondary: 'bg-slate-600 hover:bg-slate-700 disabled:bg-slate-800',
@@ -42,7 +43,7 @@
     'inline-flex items-center justify-center',
     'font-medium rounded-lg',
     'transition-colors duration-200',
-    'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
+    'focus:outline-none',
     'disabled:cursor-not-allowed',
     fullWidth ? 'w-full' : '',
     variantStyles[variant] || variantStyles.primary,

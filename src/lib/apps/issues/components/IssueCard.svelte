@@ -5,12 +5,10 @@
   import ActionsSection from './ActionsSection.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { getPriorityLabel } from '$lib/utils/priorities';
   import { formatDate } from '$lib/utils/dates';
-  import { ISSUE_STATUS } from '$lib/utils/constants';
-  import { ACTION_STATUS } from '$lib/utils/constants';
+  import { ISSUE_STATUS, ACTION_STATUS, UI_COLORS } from '$lib/utils/constants';
 
   export let issue;
   export let showComments = false;
@@ -23,10 +21,13 @@
   let editedIssue = null;
   let showDeleteConfirm = false;
 
+  // Calculate NON-HISTORIC comments count (changed)
+  $: nonHistoricCommentsCount = issue.comments?.filter(c => !c.historic).length || 0;
+  
   // Calculate historic comments count
   $: historicCommentsCount = issue.comments?.filter(c => c.historic).length || 0;
   
-  // Calculate outstanding actions (not completed)
+  // Calculate outstanding actions (not completed) - changed to match spec
   $: outstandingActionsCount = issue.actions?.filter(action => 
     action.status !== ACTION_STATUS.COMPLETED
   ).length || 0;
@@ -89,17 +90,17 @@
       <div class="flex-1">
         <div class="flex items-center gap-2 mb-1">
           <h3 class="text-xl font-semibold text-white">{issue.name}</h3>
-          <Badge variant="default">
+          <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}
-          </Badge>
+          </span>
           {#if issue.status === ISSUE_STATUS.PARKED}
-            <Badge variant="warning" icon="🅿️">
-              Parked
-            </Badge>
+            <span class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded">
+              🅿️ Parked
+            </span>
           {:else if issue.status === ISSUE_STATUS.COMPLETED}
-            <Badge variant="success" icon="✓">
-              Completed
-            </Badge>
+            <span class="px-2 py-1 text-xs font-semibold bg-emerald-600 text-white rounded">
+              ✓ Completed
+            </span>
           {/if}
         </div>
         
@@ -139,30 +140,31 @@
     <!-- Information Line with Expand/Collapse Button -->
     <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-600/50">
       <div class="flex items-center gap-4 text-sm text-gray-300">
-        <!-- Comments Info -->
-        <div class="flex items-center gap-1.5">
-          <Icon name="comment" size={4} className="text-blue-400" />
-          <span>
-            {issue.comments?.length || 0} comment{issue.comments?.length !== 1 ? 's' : ''}
-            {#if historicCommentsCount > 0}
-              <span class="text-gray-500">({historicCommentsCount} historic)</span>
-            {/if}
-          </span>
-        </div>
+        <!-- Comments Info - Only show if there are non-historic comments -->
+        {#if nonHistoricCommentsCount > 0}
+          <div class="flex items-center gap-1.5">
+            <Icon name="comment" size={4} className="text-blue-400" />
+            <span>
+              {nonHistoricCommentsCount} comment{nonHistoricCommentsCount !== 1 ? 's' : ''}
+              {#if historicCommentsCount > 0}
+                <span class="text-gray-500">• {historicCommentsCount} historic</span>
+              {/if}
+            </span>
+          </div>
+        {/if}
         
-        <!-- Actions Info -->
-        <div class="flex items-center gap-1.5">
-          <Icon name="clipboard" size={4} className="text-green-400" />
-          <span>
-            {issue.actions?.length || 0} action{issue.actions?.length !== 1 ? 's' : ''}
-            {#if outstandingActionsCount > 0}
-              <span class="text-orange-400 font-medium">({outstandingActionsCount} outstanding)</span>
-            {/if}
-            {#if overdueActionsCount > 0}
-              <span class="text-red-400 font-semibold ml-1">• {overdueActionsCount} overdue</span>
-            {/if}
-          </span>
-        </div>
+        <!-- Actions Info - Only show if there are outstanding actions -->
+        {#if outstandingActionsCount > 0}
+          <div class="flex items-center gap-1.5">
+            <Icon name="clipboard" size={4} className="text-{UI_COLORS.ACTION_TEXT}" />
+            <span>
+              {outstandingActionsCount} outstanding action{outstandingActionsCount !== 1 ? 's' : ''}
+              {#if overdueActionsCount > 0}
+                <span class="text-red-400 font-semibold ml-1">• {overdueActionsCount} overdue</span>
+              {/if}
+            </span>
+          </div>
+        {/if}
       </div>
       
       <!-- Expand/Collapse Button -->
@@ -203,7 +205,7 @@
   <!-- Actions Section -->
   {#if showActions}
     <div class="ml-8 mr-4 mb-3">
-      <div class="border-l-4 border-green-500 pl-3">
+      <div class="border-l-4 border-{UI_COLORS.ACTION_BORDER} pl-3">
         <ActionsSection 
           issueId={issue.id}
           actions={issue.actions || []}

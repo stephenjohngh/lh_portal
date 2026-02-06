@@ -1,5 +1,5 @@
 <!-- src/lib/apps/users/UserListApp.svelte -->
-<!-- REFACTORED: Now uses API client, auth utilities, validation, and date formatters -->
+<!-- REFACTORED: Now uses common components (Button, FormInput, Modal) -->
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
@@ -8,6 +8,10 @@
   import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
   import { isValidEmail, isRequired } from '$lib/utils/validation';
   import { formatDateTimeFull } from '$lib/utils/dates';
+  import Button from '$lib/components/common/Button.svelte';
+  import FormInput from '$lib/components/common/FormInput.svelte';
+  import Modal from '$lib/components/common/Modal.svelte';
+  import Icon from '$lib/components/icons/Icon.svelte';
 
   let users = [];
   let loading = true;
@@ -22,16 +26,18 @@
   let newUserFullName = '';
   let createError = '';
   let creating = false;
+  
+  // Form validation errors
+  let emailError = '';
+  let passwordError = '';
 
   // Check if current user is admin
-  // ✨ REFACTORED: Using auth utility
   async function checkAdminStatus() {
     if (!$auth.user) return;
     isAdmin = await checkIsAdmin($auth.user.id);
   }
 
   // Fetch users from database
-  // ✨ REFACTORED: Using API client
   async function fetchUsers() {
     console.log('🔄 fetchUsers() called');
     console.log('Time:', new Date().toISOString());
@@ -73,46 +79,45 @@
     fetchUsers();
   });
 
-  // Create new user (admin only)
-  // ✨ REFACTORED: Added validation
-  async function createUser() {
-    if (!isAdmin) return;
-    
-    creating = true;
+  // Validate form
+  function validateForm() {
+    emailError = '';
+    passwordError = '';
     createError = '';
     
     // Validate email
     if (!isRequired(newUserEmail)) {
-      createError = 'Email is required';
-      creating = false;
-      return;
+      emailError = 'Email is required';
+      return false;
     }
     
     if (!isValidEmail(newUserEmail)) {
-      createError = 'Invalid email format';
-      creating = false;
-      return;
+      emailError = 'Invalid email format';
+      return false;
     }
     
     // Validate password
     if (!isRequired(newUserPassword)) {
-      createError = 'Password is required';
-      creating = false;
-      return;
+      passwordError = 'Password is required';
+      return false;
     }
     
     if (newUserPassword.length < 8) {
-      createError = 'Password must be at least 8 characters';
-      creating = false;
-      return;
+      passwordError = 'Password must be at least 8 characters';
+      return false;
     }
     
-    // Validate full name
-    if (!isRequired(newUserFullName)) {
-      createError = 'Full name is required';
-      creating = false;
-      return;
-    }
+    return true;
+  }
+
+  // Create new user (admin only)
+  async function createUser() {
+    if (!isAdmin) return;
+    
+    if (!validateForm()) return;
+    
+    creating = true;
+    createError = '';
     
     try {
       // Get current user
@@ -134,7 +139,7 @@
           email: newUserEmail,
           password: newUserPassword,
           full_name: newUserFullName,
-          requesting_user_id: user.id  // ← ADD THIS!
+          requesting_user_id: user.id
         })
       });
 
@@ -149,9 +154,7 @@
       console.log('✅ User created successfully:', result);
 
       // Success! Reset form and refresh list
-      newUserEmail = '';
-      newUserPassword = '';
-      newUserFullName = '';
+      resetForm();
       showCreateModal = false;
       
       // Wait a moment then refresh to ensure database has written
@@ -167,13 +170,19 @@
     }
   }
 
-  // Load users when component mounts
-  onMount(() => {
-    checkAdminStatus();
-    fetchUsers();
-  });
+  function resetForm() {
+    newUserEmail = '';
+    newUserPassword = '';
+    newUserFullName = '';
+    emailError = '';
+    passwordError = '';
+    createError = '';
+  }
 
-  // ✨ REFACTORED: Removed local formatDate function - using utility instead
+  function handleCloseModal() {
+    showCreateModal = false;
+    resetForm();
+  }
 </script>
 
 <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
@@ -192,39 +201,36 @@
         placeholder="Search by name or email..."
         class="w-full px-4 py-3 pl-10 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
       />
-      <svg class="w-5 h-5 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-      </svg>
+      <Icon name="search" size={5} className="text-gray-400 absolute left-3 top-3.5" />
     </div>
   </div>
 
-  <!-- Refresh Button -->
+  <!-- Action Buttons -->
   <div class="mb-4 flex justify-between items-center">
     <div class="text-sm text-gray-400">
       {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'} found
     </div>
     <div class="flex space-x-2">
       {#if isAdmin}
-        <button
+        <Button
+          variant="green"
+          size="large"
+          icon="plus"
           on:click={() => showCreateModal = true}
-          class="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-          </svg>
-          <span>Create User</span>
-        </button>
+          Create User
+        </Button>
       {/if}
-      <button
-        on:click={fetchUsers}
+      <Button
+        variant="primary"
+        size="large"
+        icon="refresh"
         disabled={loading}
-        class="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 rounded-lg transition-colors"
+        loading={loading}
+        on:click={fetchUsers}
       >
-        <svg class="w-5 h-5 {loading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-        </svg>
-        <span>{loading ? 'Loading...' : 'Refresh'}</span>
-      </button>
+        {loading ? 'Loading...' : 'Refresh'}
+      </Button>
     </div>
   </div>
 
@@ -244,9 +250,7 @@
   <!-- Empty State -->
   {:else if filteredUsers.length === 0}
     <div class="text-center py-12">
-      <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-      </svg>
+      <Icon name="users" size={16} className="text-gray-600 mx-auto mb-4" />
       <p class="text-gray-400">
         {searchTerm ? 'No users found matching your search' : 'No users found'}
       </p>
@@ -275,24 +279,18 @@
           <!-- User Details -->
           <div class="space-y-2 text-sm">
             <div class="flex items-center space-x-2 text-gray-400">
-              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-              </svg>
+              <Icon name="user" size={4} className="flex-shrink-0" />
               <span class="truncate">ID: {user.id.substring(0, 8)}...</span>
             </div>
             
             <div class="flex items-center space-x-2 text-gray-400">
-              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-              </svg>
+              <Icon name="calendar" size={4} className="flex-shrink-0" />
               <span class="truncate">Joined: {formatDateTimeFull(user.created_at)}</span>
             </div>
 
             {#if user.updated_at && user.updated_at !== user.created_at}
               <div class="flex items-center space-x-2 text-gray-400">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
+                <Icon name="refresh" size={4} className="flex-shrink-0" />
                 <span class="truncate">Updated: {formatDateTimeFull(user.updated_at)}</span>
               </div>
             {/if}
@@ -333,74 +331,68 @@
 </div>
 
 <!-- Create User Modal -->
-{#if showCreateModal}
-  <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-    <div class="bg-slate-800 rounded-xl p-6 w-full max-w-md border border-slate-700">
-      <h3 class="text-2xl font-bold mb-4">Create New User</h3>
-      
-      <div class="space-y-4">
-        <div>
-          <label for="email" class="block text-sm font-medium mb-2">Email</label>
-          <input
-            id="email"
-            type="email"
-            bind:value={newUserEmail}
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="user@example.com"
-          />
-        </div>
+<Modal 
+  bind:show={showCreateModal}
+  title="Create New User"
+  size="small"
+  on:close={handleCloseModal}
+>
+  <div class="space-y-4">
+    <FormInput
+      label="Email"
+      type="email"
+      bind:value={newUserEmail}
+      placeholder="user@example.com"
+      required={true}
+      error={emailError}
+      on:input={() => emailError = ''}
+    />
 
-        <div>
-          <label for="password" class="block text-sm font-medium mb-2">Password</label>
-          <input
-            id="password"
-            type="password"
-            bind:value={newUserPassword}
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="••••••••"
-          />
-        </div>
+    <FormInput
+      label="Password"
+      type="password"
+      bind:value={newUserPassword}
+      placeholder="••••••••"
+      required={true}
+      error={passwordError}
+      helpText="Minimum 8 characters"
+      on:input={() => passwordError = ''}
+    />
 
-        <div>
-          <label for="fullName" class="block text-sm font-medium mb-2">Full Name (optional)</label>
-          <input
-            id="fullName"
-            type="text"
-            bind:value={newUserFullName}
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="John Smith"
-          />
-        </div>
+    <FormInput
+      label="Full Name"
+      type="text"
+      bind:value={newUserFullName}
+      placeholder="John Smith"
+      helpText="Optional"
+    />
 
-        {#if createError}
-          <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
-            <p class="text-red-400 text-sm">{createError}</p>
-          </div>
-        {/if}
-
-        <div class="flex space-x-3 pt-2">
-          <button
-            on:click={createUser}
-            disabled={creating || !newUserEmail || !newUserPassword}
-            class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg transition-colors font-semibold"
-          >
-            {creating ? 'Creating...' : 'Create User'}
-          </button>
-          <button
-            on:click={() => {
-              showCreateModal = false;
-              newUserEmail = '';
-              newUserPassword = '';
-              newUserFullName = '';
-              createError = '';
-            }}
-            disabled={creating}
-            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
+    {#if createError}
+      <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+        <p class="text-red-400 text-sm">{createError}</p>
       </div>
-    </div>
+    {/if}
   </div>
-{/if}
+
+  <div slot="footer" class="flex space-x-3">
+    <Button
+      variant="secondary"
+      size="large"
+      fullWidth={true}
+      disabled={creating}
+      on:click={handleCloseModal}
+    >
+      Cancel
+    </Button>
+    <Button
+      variant="green"
+      size="large"
+      fullWidth={true}
+      disabled={creating || !newUserEmail || !newUserPassword}
+      loading={creating}
+      on:click={createUser}
+    >
+      {creating ? 'Creating...' : 'Create User'}
+    </Button>
+  </div>
+</Modal>
