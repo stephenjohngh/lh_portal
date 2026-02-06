@@ -19,6 +19,8 @@
   let searchTerm = '';
   let isAdmin = false;
   let showCreateModal = false;
+  let showPasswordResetModal = false;
+  let selectedUser = null;
   
   // New user form
   let newUserEmail = '';
@@ -26,6 +28,12 @@
   let newUserFullName = '';
   let createError = '';
   let creating = false;
+  
+  // Password reset form
+  let resetPassword = '';
+  let resetPasswordConfirm = '';
+  let resetPasswordError = '';
+  let resettingPassword = false;
   
   // Form validation errors
   let emailError = '';
@@ -99,11 +107,6 @@
     // Validate password
     if (!isRequired(newUserPassword)) {
       passwordError = 'Password is required';
-      return false;
-    }
-    
-    if (newUserPassword.length < 8) {
-      passwordError = 'Password must be at least 8 characters';
       return false;
     }
     
@@ -182,6 +185,74 @@
   function handleCloseModal() {
     showCreateModal = false;
     resetForm();
+  }
+
+  function openPasswordResetModal(user) {
+    selectedUser = user;
+    resetPassword = '';
+    resetPasswordConfirm = '';
+    resetPasswordError = '';
+    showPasswordResetModal = true;
+  }
+
+  function closePasswordResetModal() {
+    showPasswordResetModal = false;
+    selectedUser = null;
+    resetPassword = '';
+    resetPasswordConfirm = '';
+    resetPasswordError = '';
+  }
+
+  async function handleResetPassword() {
+    resetPasswordError = '';
+
+    // Validate
+    if (!resetPassword) {
+      resetPasswordError = 'Password is required';
+      return;
+    }
+
+    if (resetPassword !== resetPasswordConfirm) {
+      resetPasswordError = 'Passwords do not match';
+      return;
+    }
+
+    resettingPassword = true;
+
+    try {
+      // Call admin API to reset user password
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: selectedUser.id,
+          new_password: resetPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        resetPasswordError = result.error || 'Failed to reset password';
+        return;
+      }
+
+      console.log('✅ Password reset successfully:', result);
+      
+      // Success - close modal
+      closePasswordResetModal();
+      
+      // Show success message (you could add a toast notification here)
+      alert(`Password for ${selectedUser.email} has been reset successfully.`);
+
+    } catch (err) {
+      resetPasswordError = err.message;
+      console.error('Reset password error:', err);
+    } finally {
+      resettingPassword = false;
+    }
   }
 </script>
 
@@ -295,6 +366,21 @@
               </div>
             {/if}
           </div>
+
+          <!-- Admin Actions -->
+          {#if isAdmin}
+            <div class="mt-3 pt-3 border-t border-slate-600">
+              <Button
+                variant="amber"
+                size="small"
+                icon="settings"
+                fullWidth={true}
+                on:click={() => openPasswordResetModal(user)}
+              >
+                Reset Password
+              </Button>
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -355,7 +441,6 @@
       placeholder="••••••••"
       required={true}
       error={passwordError}
-      helpText="Minimum 8 characters"
       on:input={() => passwordError = ''}
     />
 
@@ -396,3 +481,67 @@
     </Button>
   </div>
 </Modal>
+
+<!-- Reset Password Modal (Admin Only) -->
+{#if selectedUser}
+  <Modal 
+    bind:show={showPasswordResetModal}
+    title="Reset Password for {selectedUser.email}"
+    size="small"
+    on:close={closePasswordResetModal}
+  >
+    <div class="space-y-4">
+      <div class="p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg">
+        <p class="text-amber-400 text-sm">
+          <strong>Warning:</strong> This will immediately change the user's password. They will need to use the new password to log in.
+        </p>
+      </div>
+
+      <FormInput
+        label="New Password"
+        type="password"
+        bind:value={resetPassword}
+        placeholder="Enter new password"
+        required={true}
+        on:input={() => resetPasswordError = ''}
+      />
+
+      <FormInput
+        label="Confirm Password"
+        type="password"
+        bind:value={resetPasswordConfirm}
+        placeholder="Confirm new password"
+        required={true}
+        on:input={() => resetPasswordError = ''}
+      />
+
+      {#if resetPasswordError}
+        <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+          <p class="text-red-400 text-sm">{resetPasswordError}</p>
+        </div>
+      {/if}
+    </div>
+
+    <div slot="footer" class="flex space-x-3">
+      <Button
+        variant="secondary"
+        size="large"
+        fullWidth={true}
+        disabled={resettingPassword}
+        on:click={closePasswordResetModal}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="amber"
+        size="large"
+        fullWidth={true}
+        loading={resettingPassword}
+        disabled={resettingPassword || !resetPassword || !resetPasswordConfirm}
+        on:click={handleResetPassword}
+      >
+        {resettingPassword ? 'Resetting...' : 'Reset Password'}
+      </Button>
+    </div>
+  </Modal>
+{/if}

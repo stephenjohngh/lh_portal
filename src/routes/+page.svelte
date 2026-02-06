@@ -7,6 +7,7 @@
   import UserListApp from '$lib/apps/users/UserListApp.svelte';
   import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte'; 
   import DemoApp from '$lib/apps/demo/DemoApp.svelte';
+import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -142,11 +143,8 @@
       {:else if activeApp === 'app3'}
         <DemoApp />
       {:else if activeApp === 'settings'}
-        <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
-          <h2 class="text-3xl font-bold mb-4">Settings</h2>
-          <p class="text-gray-400">Configure your portal settings here.</p>
-        </div>
-      {/if}
+     <SettingsApp />
+              {/if}
     </main>
   </div>
 {/if}
