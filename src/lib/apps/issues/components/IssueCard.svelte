@@ -1,228 +1,194 @@
 <!-- src/lib/apps/issues/components/IssueCard.svelte -->
+<!-- UPDATED: Now uses ProtectedButton for read-only user support -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import CommentsSection from './CommentsSection.svelte';
-  import ActionsSection from './ActionsSection.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { getPriorityLabel } from '$lib/utils/priorities';
+  import { issuesStore } from '../stores/issuesStore';
   import { formatDate } from '$lib/utils/dates';
-  import { ISSUE_STATUS, ACTION_STATUS, UI_COLORS } from '$lib/utils/constants';
+  import { PRIORITIES, getPriorityColor } from '$lib/utils/priorities';
+  
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
+  import Button from '$lib/components/common/Button.svelte';
+  import Icon from '$lib/components/icons/Icon.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  
+  import IssueForm from './IssueForm.svelte';
+  import ActionsSection from './ActionsSection.svelte';
+  import CommentsSection from './CommentsSection.svelte';
 
   export let issue;
-  export let showComments = false;
-  export let showActions = false;
-  
+
   const dispatch = createEventDispatcher();
 
-  // Track if we're editing the issue inline
-  let editingInline = false;
-  let editedIssue = null;
+  let expanded = false;
+  let showEditModal = false;
   let showDeleteConfirm = false;
 
-  // Calculate NON-HISTORIC comments count (changed)
+  // Calculate counts
   $: nonHistoricCommentsCount = issue.comments?.filter(c => !c.historic).length || 0;
-  
-  // Calculate historic comments count
   $: historicCommentsCount = issue.comments?.filter(c => c.historic).length || 0;
-  
-  // Calculate outstanding actions (not completed) - changed to match spec
-  $: outstandingActionsCount = issue.actions?.filter(action => 
-    action.status !== ACTION_STATUS.COMPLETED
-  ).length || 0;
-
-  // Calculate overdue actions count
-  $: overdueActionsCount = issue.actions?.filter(action => {
-    if (!action.date_deadline || action.status === 'completed') return false;
-    const deadline = new Date(action.date_deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    deadline.setHours(0, 0, 0, 0);
-    return deadline < today;
+  $: outstandingActionsCount = issue.actions?.filter(a => a.status !== 'completed').length || 0;
+  $: overdueActionsCount = issue.actions?.filter(a => {
+    if (a.status === 'completed') return false;
+    if (!a.date_deadline) return false;
+    return new Date(a.date_deadline) < new Date();
   }).length || 0;
 
-  function handleDelete() {
-    showDeleteConfirm = true;
+  // Get priority info
+  $: priority = PRIORITIES.find(p => p.value === issue.priority) || PRIORITIES[2];
+  $: priorityColor = getPriorityColor(issue.priority);
+
+  // Status badge variant
+  $: statusVariant = {
+    'current': 'primary',
+    'completed': 'success',
+    'parked': 'warning'
+  }[issue.status] || 'secondary';
+
+  async function handleEdit(event) {
+    await issuesStore.updateIssue(issue.id, event.detail);
+    showEditModal = false;
   }
 
-  function confirmDelete() {
-    dispatch('delete', issue.id);
+  async function handleDelete() {
+    await issuesStore.deleteIssue(issue.id);
     showDeleteConfirm = false;
   }
-
-  // Get background color based on issue status
-  $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED 
-    ? 'bg-emerald-900/20' 
-    : issue.status === ISSUE_STATUS.PARKED 
-    ? 'bg-amber-900/20' 
-    : 'bg-slate-700/50';
-  
-  // ✨ NEW: Enhanced background when active (comments or actions visible)
-  $: activeBackgroundClass = (showComments || showActions)
-    ? (issue.status === ISSUE_STATUS.COMPLETED 
-        ? 'bg-emerald-900/30' 
-        : issue.status === ISSUE_STATUS.PARKED 
-        ? 'bg-amber-900/30' 
-        : 'bg-slate-700/70')
-    : backgroundClass;
-  
-  $: borderClass = issue.status === ISSUE_STATUS.COMPLETED
-    ? 'border-emerald-700/40'
-    : issue.status === ISSUE_STATUS.PARKED
-    ? 'border-amber-700/40'
-    : 'border-slate-600';
-  
-  // ✨ NEW: Enhanced border when active
-  $: activeBorderClass = (showComments || showActions)
-    ? (issue.status === ISSUE_STATUS.COMPLETED
-        ? 'border-emerald-500/60'
-        : issue.status === ISSUE_STATUS.PARKED
-        ? 'border-amber-500/60'
-        : 'border-purple-500/50')
-    : borderClass;
 </script>
 
-<div class="{activeBackgroundClass} rounded-lg border-2 {activeBorderClass} overflow-hidden transition-all duration-300 ease-in-out {showComments || showActions ? 'shadow-lg shadow-purple-500/20' : ''}">
-  <!-- Issue Header -->
-  <div class="p-3">
-    <div class="flex justify-between items-start mb-1">
-      <div class="flex-1">
-        <div class="flex items-center gap-2 mb-1">
-          <h3 class="text-xl font-semibold text-white">{issue.name}</h3>
-          <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
-            {getPriorityLabel(issue.priority).label}
-          </span>
-          {#if issue.status === ISSUE_STATUS.PARKED}
-            <span class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded">
-              🅿️ Parked
-            </span>
-          {:else if issue.status === ISSUE_STATUS.COMPLETED}
-            <span class="px-2 py-1 text-xs font-semibold bg-emerald-600 text-white rounded">
-              ✓ Completed
-            </span>
-          {/if}
+<div class="bg-slate-700/50 rounded-lg border border-slate-600 hover:border-purple-500 transition-colors">
+  <!-- Card Header -->
+  <div class="p-4">
+    <div class="flex items-start justify-between mb-2">
+      <!-- Title and Priority -->
+      <div class="flex-1 min-w-0 mr-4">
+        <div class="flex items-center space-x-2 mb-1">
+          <h3 class="text-lg font-semibold text-white truncate">{issue.name}</h3>
+          <Badge variant={priorityColor} size="small">
+            {priority.label}
+          </Badge>
         </div>
-        
         {#if issue.description}
-          <p class="text-gray-300 whitespace-pre-wrap">{issue.description}</p>
+          <p class="text-sm text-gray-400 line-clamp-2">{issue.description}</p>
         {/if}
-        
-        <div class="flex items-center space-x-4 mt-1 text-sm text-gray-400">
-          <span>Created: {formatDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
-          {#if issue.updated_at && issue.updated_at !== issue.created_at}
-            <span>•</span>
-            <span>Modified: {formatDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
-          {/if}
-         </div>
       </div>
-      
-      <div class="flex space-x-2">
-        <Button
-          variant="secondary"
-          size="medium"
-          icon="edit"
-          iconPosition="only"
-          on:click={() => dispatch('edit', issue)}
-          title="Edit issue"
-        />
-        <Button
-          variant="danger"
-          size="medium"
-          icon="delete"
-          iconPosition="only"
-          on:click={handleDelete}
-          title="Delete issue"
-        />
-      </div>
+
+      <!-- Status Badge -->
+      <Badge variant={statusVariant} size="medium">
+        {issue.status}
+      </Badge>
     </div>
 
-    <!-- Information Line with Expand/Collapse Button -->
-    <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-600/50">
-      <div class="flex items-center gap-4 text-sm text-gray-300">
-        <!-- Comments Info - Only show if there are non-historic comments -->
-        {#if nonHistoricCommentsCount > 0}
-          <div class="flex items-center gap-1.5">
-            <Icon name="comment" size={4} className="text-blue-400" />
-            <span>
-              {nonHistoricCommentsCount} comment{nonHistoricCommentsCount !== 1 ? 's' : ''}
-              {#if historicCommentsCount > 0}
-                <span class="text-gray-500">• {historicCommentsCount} historic</span>
-              {/if}
-            </span>
-          </div>
-        {/if}
-        
-        <!-- Actions Info - Only show if there are outstanding actions -->
-        {#if outstandingActionsCount > 0}
-          <div class="flex items-center gap-1.5">
-            <Icon name="clipboard" size={4} className="text-{UI_COLORS.ACTION_TEXT}" />
-            <span>
-              {outstandingActionsCount} outstanding action{outstandingActionsCount !== 1 ? 's' : ''}
-              {#if overdueActionsCount > 0}
-                <span class="text-red-400 font-semibold ml-1">• {overdueActionsCount} overdue</span>
-              {/if}
-            </span>
-          </div>
-        {/if}
-      </div>
-      
-      <!-- Expand/Collapse Button -->
+    <!-- Summary Line -->
+    <div class="flex items-center space-x-4 text-sm text-gray-400 mb-3">
+      <!-- Comments count (only non-historic) -->
+      {#if nonHistoricCommentsCount > 0}
+        <div class="flex items-center space-x-1">
+          <Icon name="comment" size={4} className="text-blue-400" />
+          <span>
+            {nonHistoricCommentsCount} {nonHistoricCommentsCount === 1 ? 'comment' : 'comments'}
+            {#if historicCommentsCount > 0}
+              <span class="text-gray-500">• {historicCommentsCount} historic</span>
+            {/if}
+          </span>
+        </div>
+      {/if}
+
+      <!-- Actions count (outstanding) -->
+      {#if outstandingActionsCount > 0}
+        <div class="flex items-center space-x-1">
+          <Icon name="clipboard" size={4} className="text-amber-400" />
+          <span>
+            {outstandingActionsCount} outstanding {outstandingActionsCount === 1 ? 'action' : 'actions'}
+            {#if overdueActionsCount > 0}
+              <span class="text-red-400">• {overdueActionsCount} overdue</span>
+            {/if}
+          </span>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center space-x-2">
+      <!-- Expand/Collapse - visible to everyone -->
       <Button
-        variant="primary"
-        size="medium"
-        icon={showComments || showActions ? 'chevron-up' : 'chevron-down'}
-        title={showComments || showActions ? 'Collapse all sections' : 'Expand all sections'}
-        on:click={() => {
-          if (showComments || showActions) {
-            // Collapse both
-            if (showComments) dispatch('toggleComments');
-            if (showActions) dispatch('toggleActions');
-          } else {
-            // Expand both
-            dispatch('toggleComments');
-            dispatch('toggleActions');
-          }
-        }}
+        variant="secondary"
+        size="small"
+        icon={expanded ? 'chevron-up' : 'chevron-down'}
+        on:click={() => expanded = !expanded}
       >
-        {showComments || showActions ? 'Collapse' : 'Expand'}
+        {expanded ? 'Collapse' : 'Expand'}
       </Button>
+
+      <!-- Edit button - hides for read-only users -->
+      <ProtectedButton
+        action="modify"
+        variant="secondary"
+        size="small"
+        icon="edit"
+        on:click={() => showEditModal = true}
+      >
+        Edit
+      </ProtectedButton>
+
+      <!-- Delete button - hides for read-only users -->
+      <ProtectedButton
+        action="modify"
+        variant="danger"
+        size="small"
+        icon="delete"
+        on:click={() => showDeleteConfirm = true}
+      >
+        Delete
+      </ProtectedButton>
     </div>
   </div>
 
-  <!-- Comments Section -->
-  {#if showComments}
-    <div class="ml-8 mr-4 mb-3">
-      <div class="border-l-4 border-blue-500 pl-3">
-        <CommentsSection 
-          issueId={issue.id}
-          comments={issue.comments || []}
-        />
-      </div>
-    </div>
-  {/if}
+  <!-- Expanded Content -->
+  {#if expanded}
+    <div class="border-t border-slate-600 p-4 space-y-4 bg-slate-800/50">
+      <!-- Full Description -->
+      {#if issue.description}
+        <div>
+          <h4 class="text-sm font-semibold text-gray-300 mb-2">Description</h4>
+          <p class="text-gray-400 whitespace-pre-wrap">{issue.description}</p>
+        </div>
+      {/if}
 
-  <!-- Actions Section -->
-  {#if showActions}
-    <div class="ml-8 mr-4 mb-3">
-      <div class="border-l-4 border-{UI_COLORS.ACTION_BORDER} pl-3">
-        <ActionsSection 
-          issueId={issue.id}
-          actions={issue.actions || []}
-        />
+      <!-- Metadata -->
+      <div class="flex items-center space-x-4 text-sm text-gray-400">
+        <span>Created: {formatDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
+        {#if issue.updated_at && issue.updated_at !== issue.created_at}
+          <span>•</span>
+          <span>Modified: {formatDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
+        {/if}
       </div>
+
+      <!-- Actions Section -->
+      <ActionsSection {issue} />
+
+      <!-- Comments Section -->
+      <CommentsSection {issue} />
     </div>
   {/if}
 </div>
 
-<!-- Delete Confirmation Dialog -->
+<!-- Edit Modal -->
+{#if showEditModal}
+  <IssueForm 
+    show={showEditModal}
+    {issue}
+    on:submit={handleEdit}
+    on:close={() => showEditModal = false}
+  />
+{/if}
+
+<!-- Delete Confirmation -->
 <ConfirmDialog
-  show={showDeleteConfirm}
+  bind:show={showDeleteConfirm}
   title="Delete Issue"
-  message="Are you sure you want to delete '{issue.name}'? This will also delete {issue.comments?.length || 0} comments and {issue.actions?.length || 0} actions. This action cannot be undone."
-  confirmText="Delete Issue"
-  cancelText="Cancel"
-  danger={true}
-  on:confirm={confirmDelete}
-  on:cancel={() => showDeleteConfirm = false}
+  message="Are you sure you want to delete '{issue.name}'? This will also delete all associated comments and actions. This action cannot be undone."
+  confirmText="Delete"
+  confirmVariant="danger"
+  on:confirm={handleDelete}
 />
