@@ -1,33 +1,62 @@
 <!-- src/lib/apps/issues/IssuesTrackerApp.svelte -->
-<!-- UPDATED: Now uses ProtectedButton for read-only user support -->
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { issuesStore } from './stores/issuesStore';
-  import { permissions, isReadOnlyUser } from '$lib/stores/permissions';
-  
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
-  
+  import IssueFilters from './components/IssueFilters.svelte';
   import IssueCard from './components/IssueCard.svelte';
   import IssueForm from './components/IssueForm.svelte';
-  import IssueFilters from './components/IssueFilters.svelte';
+  import IssuesReport from './components/reports/IssuesReport.svelte';
+  import ActionsReport from './components/reports/ActionsReport.svelte';
+  import Icon from '$lib/components/icons/Icon.svelte';
+  import Button from '$lib/components/common/Button.svelte';
+  import { ISSUE_STATUS } from '$lib/utils/constants';
 
-  let showNewIssueModal = false;
   let searchTerm = '';
-  let statusFilter = 'current';
-  let priorityFilter = 'all';
+  let statusFilter = ISSUE_STATUS.CURRENT;
+  let showNewIssueModal = false;
+  let showEditModal = false;
+  let editingIssue = null;
+  let showReport = false;
+  let showActionsReport = false;
+  
+  // Persist UI state across data refreshes
+  let expandedSections = {}; // { issueId: { comments: bool, actions: bool } }
+  let scrollPosition = 0;
+  let containerElement;
 
   $: ({ issues, loading, error } = $issuesStore);
-  
-  // Filtered issues
-  $: filteredIssues = issues.filter(issue => {
-    const matchesSearch = issue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || issue.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || issue.priority === parseInt(priorityFilter);
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+
+  // Save scroll position before data refresh
+  $: if (loading && containerElement) {
+    scrollPosition = window.scrollY;
+  }
+
+  // Restore scroll position after data refresh
+  $: if (!loading && scrollPosition > 0) {
+    tick().then(() => {
+      window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+      scrollPosition = 0;
+    });
+  }
+
+  // Filter issues
+  $: filteredIssues = issues
+    .filter(issue => {
+      const matchesSearch = issue.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filter by status (current, parked, or completed)
+      let matchesStatus = false;
+      if (statusFilter === ISSUE_STATUS.CURRENT) {
+        matchesStatus = (issue.status === ISSUE_STATUS.CURRENT || !issue.status); // Show current issues (including null/undefined for backward compatibility)
+      } else if (statusFilter === ISSUE_STATUS.PARKED) {
+        matchesStatus = issue.status === ISSUE_STATUS.PARKED;
+      } else if (statusFilter === ISSUE_STATUS.COMPLETED) {
+        matchesStatus = issue.status === ISSUE_STATUS.COMPLETED;
+      }
+      
+      return matchesSearch && matchesStatus;
+    });
 
   onMount(() => {
     issuesStore.fetchIssues();
@@ -39,154 +68,197 @@
   });
 
   async function handleNewIssue(event) {
+    console.log('handleNewIssue called');
     await issuesStore.addIssue(event.detail);
+    showNewIssueModal = false;
+  }
+
+  async function handleEditIssue(event) {
+    console.log('handleEditIssue called');
+    await issuesStore.updateIssue(editingIssue.id, event.detail);
+    showEditModal = false;
+    editingIssue = null;
+  }
+
+  async function handleDeleteIssue(event) {
+    await issuesStore.deleteIssue(event.detail);
+  }
+  
+  async function handleToggleStatus(event) {
+    const issue = event.detail;
+    const newStatus = issue.status === ISSUE_STATUS.COMPLETED ? ISSUE_STATUS.CURRENT : ISSUE_STATUS.COMPLETED;
+    await issuesStore.updateIssue(issue.id, {
+      name: issue.name,
+      description: issue.description,
+      priority: issue.priority,
+      status: newStatus
+    });
+  }
+  
+  function toggleSection(issueId, section) {
+    console.log('Toggle section called:', issueId, section);
+    if (!expandedSections[issueId]) {
+      expandedSections[issueId] = { comments: false, actions: false };
+    }
+    expandedSections[issueId][section] = !expandedSections[issueId][section];
+    // Force Svelte to detect the change
+    expandedSections = expandedSections;
+  }
+
+  function expandAll() {
+    console.log('Expand all called');
+    filteredIssues.forEach(issue => {
+      expandedSections[issue.id] = { comments: true, actions: true };
+    });
+    // Force Svelte to detect the change
+    expandedSections = expandedSections;
+  }
+
+  function collapseAll() {
+    console.log('Collapse all called');
+    filteredIssues.forEach(issue => {
+      expandedSections[issue.id] = { comments: false, actions: false };
+    });
+    // Force Svelte to detect the change
+    expandedSections = expandedSections;
   }
 </script>
 
-<div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
+<div class="bg-slate-800 rounded-xl p-6 border border-slate-700" bind:this={containerElement}>
   <!-- Header -->
-  <div class="mb-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-3xl font-bold mb-2">Issues Tracker</h2>
-        <p class="text-gray-400">Track and manage project issues</p>
-      </div>
-      
-      <!-- Permission level indicator -->
-      {#if $permissions.level && !$permissions.loading}
-        <Badge 
-          variant={$permissions.isAdmin ? 'primary' : $permissions.isReadOnly ? 'secondary' : 'success'} 
-          size="medium"
-        >
-          {$permissions.isAdmin ? 'Admin' : $permissions.isReadOnly ? 'Viewer' : 'Editor'}
-        </Badge>
-      {/if}
+  <div class="flex justify-between items-start mb-4">
+    <div>
+      <h2 class="text-3xl font-bold mb-1">Issues Tracker</h2>
+      <p class="text-gray-400">Manage current issues, actions, and comments</p>
     </div>
-  </div>
-
-  <!-- Read-Only Banner -->
-  {#if $isReadOnlyUser}
-    <div class="mb-6 bg-gray-700/50 border-l-4 border-gray-500 p-4 rounded">
-      <div class="flex items-center space-x-3">
-        <Icon name="user" size={5} className="text-gray-400 flex-shrink-0" />
-        <div>
-          <p class="font-medium text-white">Read-Only Access</p>
-          <p class="text-sm text-gray-400">
-            You can view issues but cannot create, edit, or delete them. Contact your administrator for full access.
-          </p>
-        </div>
-      </div>
-    </div>
-  {/if}
-
-  <!-- Filters and Search -->
-  <IssueFilters 
-    bind:searchTerm 
-    bind:statusFilter 
-    bind:priorityFilter
-  />
-
-  <!-- Action Buttons -->
-  <div class="mb-6 flex justify-between items-center">
-    <div class="text-sm text-gray-400">
-      {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'} found
-    </div>
-    
     <div class="flex space-x-2">
-      <!-- Create button - hides for read-only users -->
-      <ProtectedButton
-        action="modify"
+      <Button
+        variant="primary"
+        size="large"
+        icon="chart"
+        on:click={() => showReport = true}
+      >
+        Issues Report
+      </Button>
+      <Button
+        variant="primary"
+        size="large"
+        icon="clipboard"
+        on:click={() => showActionsReport = true}
+      >
+        Actions Report
+      </Button>
+      <Button
         variant="primary"
         size="large"
         icon="plus"
         on:click={() => showNewIssueModal = true}
       >
         New Issue
-      </ProtectedButton>
+      </Button>
     </div>
   </div>
 
+  <!-- Filters -->
+  <div class="mb-4">
+    <IssueFilters 
+      bind:searchTerm
+      bind:statusFilter
+      onRefresh={() => issuesStore.fetchIssues()}
+      {loading}
+      resultCount={filteredIssues.length}
+    />
+  </div>
+
+  <!-- Expand/Collapse All -->
+  {#if filteredIssues.length > 0}
+    <div class="flex space-x-2 mb-3">
+      <Button
+        variant="secondary"
+        size="medium"
+        on:click={expandAll}
+      >
+        Expand All
+      </Button>
+      <Button
+        variant="secondary"
+        size="medium"
+        on:click={collapseAll}
+      >
+        Collapse All
+      </Button>
+    </div>
+  {/if}
+
   <!-- Error Display -->
   {#if error}
-    <div class="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+    <div class="mb-3 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex justify-between items-center">
       <p class="text-red-400">{error}</p>
+      <Button
+        variant="danger"
+        size="small"
+        icon="close"
+        iconPosition="only"
+        on:click={() => issuesStore.clearError()}
+        title="Dismiss error"
+      />
     </div>
   {/if}
 
   <!-- Loading State -->
   {#if loading}
-    <div class="flex justify-center items-center py-12">
+    <div class="flex justify-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
     </div>
-  
+
   <!-- Empty State -->
   {:else if filteredIssues.length === 0}
-    <div class="text-center py-12">
-      <Icon name="clipboard" size={16} className="text-gray-600 mx-auto mb-4" />
-      <p class="text-gray-400 mb-2">
-        {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all'
-          ? 'No issues match your filters' 
-          : 'No issues found'}
-      </p>
-      
-      <!-- Create first issue button - hides for read-only users -->
-      {#if !searchTerm && statusFilter === 'all' && priorityFilter === 'all'}
-        <ProtectedButton
-          action="modify"
-          variant="primary"
-          size="medium"
-          icon="plus"
-          className="mt-4"
-          on:click={() => showNewIssueModal = true}
-        >
-          Create First Issue
-        </ProtectedButton>
-      {/if}
+    <div class="text-center py-12 text-gray-400">
+      No issues found. {searchTerm ? 'Try a different search.' : 'Click "New Issue" to create one.'}
     </div>
 
   <!-- Issues List -->
   {:else}
-    <div class="space-y-4">
+    <div class="space-y-3">
       {#each filteredIssues as issue (issue.id)}
-        <IssueCard {issue} />
+        <IssueCard 
+          {issue}
+          showComments={expandedSections[issue.id]?.comments || false}
+          showActions={expandedSections[issue.id]?.actions || false}
+          on:toggleComments={() => toggleSection(issue.id, 'comments')}
+          on:toggleActions={() => toggleSection(issue.id, 'actions')}
+          on:edit={(e) => { editingIssue = e.detail; showEditModal = true; }}
+          on:toggleStatus={handleToggleStatus}
+          on:delete={handleDeleteIssue}
+        />
       {/each}
-    </div>
-  {/if}
-
-  <!-- Stats Footer -->
-  {#if !loading && issues.length > 0}
-    <div class="mt-6 pt-6 border-t border-slate-700">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-        <div class="bg-slate-700/30 rounded-lg p-3">
-          <div class="text-2xl font-bold text-purple-400">{issues.length}</div>
-          <div class="text-sm text-gray-400">Total Issues</div>
-        </div>
-        <div class="bg-slate-700/30 rounded-lg p-3">
-          <div class="text-2xl font-bold text-blue-400">
-            {issues.filter(i => i.status === 'current').length}
-          </div>
-          <div class="text-sm text-gray-400">Current</div>
-        </div>
-        <div class="bg-slate-700/30 rounded-lg p-3">
-          <div class="text-2xl font-bold text-green-400">
-            {issues.filter(i => i.status === 'completed').length}
-          </div>
-          <div class="text-sm text-gray-400">Completed</div>
-        </div>
-        <div class="bg-slate-700/30 rounded-lg p-3">
-          <div class="text-2xl font-bold text-amber-400">
-            {issues.filter(i => i.status === 'parked').length}
-          </div>
-          <div class="text-sm text-gray-400">Parked</div>
-        </div>
-      </div>
     </div>
   {/if}
 </div>
 
 <!-- New Issue Modal -->
 <IssueForm 
-  show={showNewIssueModal}
+  bind:show={showNewIssueModal}
   on:submit={handleNewIssue}
   on:close={() => showNewIssueModal = false}
+/>
+
+<!-- Edit Issue Modal -->
+<IssueForm 
+  bind:show={showEditModal}
+  issue={editingIssue}
+  on:submit={handleEditIssue}
+  on:close={() => { showEditModal = false; editingIssue = null; }}
+/>
+
+<!-- Outstanding Actions Report -->
+<IssuesReport 
+  bind:show={showReport}
+  {issues}
+/>
+
+<!-- Actions Report -->
+<ActionsReport 
+  bind:show={showActionsReport}
+  {issues}
 />
