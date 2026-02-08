@@ -187,7 +187,7 @@ class ApiClient {
       }
       
       const { data: result, error } = await query;
-      
+ 
       if (error) throw this.handleError('UPDATE', table, error);
       return result;
     } catch (error) {

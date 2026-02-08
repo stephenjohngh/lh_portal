@@ -356,9 +356,17 @@
     try {
       const newValue = !user.is_read_only;
       
-      await api.update('profiles', user.id, {
-        is_read_only: newValue
+      console.log('Toggling read-only for user:', {
+        userId: user.id,
+        email: user.email,
+        currentValue: user.is_read_only,
+        newValue: newValue
       });
+      
+      // Use api.update with returnRecord=false to avoid .single() which can cause errors
+      const result = await api.update('profiles', user.id, { is_read_only: newValue }, false);
+      
+      console.log('Update result:', result);
       
       // Update local state
       users = users.map(u => 
@@ -368,6 +376,12 @@
       console.log(`Set ${user.email} read-only: ${newValue}`);
     } catch (err) {
       console.error('Error toggling read-only:', err);
+      console.error('Error details:', {
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+        code: err.code
+      });
       alert('Failed to update user: ' + err.message);
     }
   }
