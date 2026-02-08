@@ -9,6 +9,7 @@
   import ActionsReport from './components/reports/ActionsReport.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import { ISSUE_STATUS } from '$lib/utils/constants';
 
   let searchTerm = '';
@@ -148,14 +149,15 @@
       >
         Actions Report
       </Button>
-      <Button
+      <ProtectedButton
+        action="modify"
         variant="primary"
         size="large"
         icon="plus"
         on:click={() => showNewIssueModal = true}
       >
         New Issue
-      </Button>
+      </ProtectedButton>
     </div>
   </div>
 
