@@ -5,6 +5,7 @@
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
@@ -126,14 +127,15 @@
         />
         <span>Show all</span>
       </label>
-      <Button
+      <ProtectedButton
+        action="modify"
         variant="amber"
         size="small"
         icon="clipboard"
         on:click={() => showAddModal = true}
       >
         Add Action
-      </Button>
+      </ProtectedButton>
     </div>
   </div>
   
@@ -195,13 +197,14 @@
                 </select>
               </div>
               <div class="flex space-x-2">
-                <Button
+                <ProtectedButton
+                  action="modify"
                   variant="primary"
                   size="small"
                   on:click={updateAction}
                 >
                   Save
-                </Button>
+                </ProtectedButton>
                 <Button
                   variant="secondary"
                   size="small"
@@ -244,7 +247,8 @@
 
                 </p>              </div>
               <div class="flex space-x-1">
-                <Button
+                <ProtectedButton
+                  action="modify"
                   variant="secondary"
                   size="small"
                   icon="edit"
@@ -252,7 +256,8 @@
                   on:click={() => editingAction = {...action}}
                   title="Edit action"
                 />
-                <Button
+                <ProtectedButton
+                  action="modify"
                   variant="danger"
                   size="small"
                   icon="delete"
@@ -328,13 +333,14 @@
           >
             Cancel
           </Button>
-          <Button
+          <ProtectedButton
+            action="modify"
             variant="amber"
             size="large"
             on:click={addAction}
           >
             Add Action
-          </Button>
+          </ProtectedButton>
         </div>
       </div>
     </div>

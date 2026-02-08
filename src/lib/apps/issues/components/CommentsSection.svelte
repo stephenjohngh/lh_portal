@@ -4,6 +4,7 @@
   import { formatDateTime } from '$lib/utils/dates';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let issueId;
@@ -79,14 +80,15 @@
           <span>Show historic</span>
         </label>
       {/if}
-      <Button
+      <ProtectedButton
+        action="modify"
         variant="blue"
         size="small"
         icon="comment"
         on:click={() => showAddModal = true}
       >
         Add Comment
-      </Button>
+      </ProtectedButton>
     </div>
   </div>
 
@@ -107,14 +109,15 @@
         >
           Cancel
         </Button>
-        <Button
+        <ProtectedButton
+          action="modify"
           variant="blue"
           size="small"
           icon="plus"
           on:click={addComment}
         >
           Add Comment
-        </Button>
+        </ProtectedButton>
       </div>
     </div>
   {/if}
@@ -137,7 +140,15 @@
             </label>
             <div class="flex justify-end gap-2 mt-2">
               <Button variant="secondary" size="small" on:click={cancelEdit}>Cancel</Button>
-              <Button variant="blue" size="small" icon="edit" on:click={updateComment}>Update</Button>
+              <ProtectedButton 
+                action="modify"
+                variant="blue" 
+                size="small" 
+                icon="edit" 
+                on:click={updateComment}
+              >
+                Update
+              </ProtectedButton>
             </div>
           </div>
         {:else}
@@ -146,7 +157,8 @@
             <div class="flex justify-between items-start gap-2">
               <p class="text-gray-200 text-sm flex-1 whitespace-pre-wrap">{comment.comment_text}</p>
               <div class="flex gap-1 flex-shrink-0">
-                <Button
+                <ProtectedButton
+                  action="modify"
                   variant="secondary"
                   size="small"
                   icon="edit"
@@ -154,7 +166,8 @@
                   on:click={() => startEdit(comment)}
                   title="Edit comment"
                 />
-                <Button
+                <ProtectedButton
+                  action="modify"
                   variant="danger"
                   size="small"
                   icon="delete"
@@ -165,9 +178,11 @@
               </div>
             </div>
             <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
-              <span>{comment.created_by_profile?.full_name || 'Unknown'}</span>
-              <span>•</span>
-              <span>{formatDateTime(comment.created_at)}</span>
+              <span>Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}</span>
+              {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()}
+                <span>•</span>
+                <span>Modified: {formatDateTime(comment.updated_at, comment.updated_by_profile?.full_name)}</span>
+              {/if}
               {#if comment.historic}
                 <span>•</span>
                 <span class="text-amber-400">Historic</span>

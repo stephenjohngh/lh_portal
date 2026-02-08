@@ -8,6 +8,7 @@
   export let variant = 'primary';
   export let size = 'medium';
   export let icon = '';
+  export let iconPosition = 'left'; // NEW: support iconPosition
   export let loading = false;
   export let disabled = false;
   export let fullWidth = false;
@@ -65,6 +66,7 @@
       {variant}
       {size}
       {icon}
+      {iconPosition}
       {loading}
       {disabled}
       {fullWidth}
@@ -77,7 +79,7 @@
 {:else if $permissions.loading}
   <!-- Invisible placeholder while loading to prevent layout shift -->
   <span class="invisible inline-block">
-    <Button {variant} {size} {icon} {fullWidth} className={className}>
+    <Button {variant} {size} {icon} {iconPosition} {fullWidth} className={className}>
       <slot />
     </Button>
   </span>

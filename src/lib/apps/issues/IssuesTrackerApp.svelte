@@ -59,6 +59,11 @@
       return matchesSearch && matchesStatus;
     });
 
+  // Check if all sections are expanded
+  $: allExpanded = filteredIssues.length > 0 && filteredIssues.every(issue => 
+    expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
+  );
+
   onMount(() => {
     issuesStore.fetchIssues();
     issuesStore.initializeRealtime();
@@ -106,20 +111,18 @@
     expandedSections = expandedSections;
   }
 
-  function expandAll() {
-    console.log('Expand all called');
-    filteredIssues.forEach(issue => {
-      expandedSections[issue.id] = { comments: true, actions: true };
-    });
-    // Force Svelte to detect the change
-    expandedSections = expandedSections;
-  }
-
-  function collapseAll() {
-    console.log('Collapse all called');
-    filteredIssues.forEach(issue => {
-      expandedSections[issue.id] = { comments: false, actions: false };
-    });
+  function toggleExpandAll() {
+    if (allExpanded) {
+      // Collapse all
+      filteredIssues.forEach(issue => {
+        expandedSections[issue.id] = { comments: false, actions: false };
+      });
+    } else {
+      // Expand all
+      filteredIssues.forEach(issue => {
+        expandedSections[issue.id] = { comments: true, actions: true };
+      });
+    }
     // Force Svelte to detect the change
     expandedSections = expandedSections;
   }
@@ -172,22 +175,17 @@
     />
   </div>
 
-  <!-- Expand/Collapse All -->
+  <!-- Single Expand/Collapse Toggle on Right -->
   {#if filteredIssues.length > 0}
-    <div class="flex space-x-2 mb-3">
+    <div class="flex justify-end mb-3">
       <Button
-        variant="secondary"
+        variant="primary"
         size="medium"
-        on:click={expandAll}
+        icon={allExpanded ? 'chevron-up' : 'chevron-down'}
+        on:click={toggleExpandAll}
+        title={allExpanded ? 'Collapse all sections' : 'Expand all sections'}
       >
-        Expand All
-      </Button>
-      <Button
-        variant="secondary"
-        size="medium"
-        on:click={collapseAll}
-      >
-        Collapse All
+        {allExpanded ? 'Collapse All' : 'Expand All'}
       </Button>
     </div>
   {/if}

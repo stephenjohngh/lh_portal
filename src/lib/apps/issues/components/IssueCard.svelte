@@ -5,6 +5,7 @@
   import ActionsSection from './ActionsSection.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { getPriorityLabel } from '$lib/utils/priorities';
   import { formatDate } from '$lib/utils/dates';
@@ -118,7 +119,8 @@
       </div>
       
       <div class="flex space-x-2">
-        <Button
+        <ProtectedButton
+          action="modify"
           variant="secondary"
           size="medium"
           icon="edit"
@@ -126,7 +128,8 @@
           on:click={() => dispatch('edit', issue)}
           title="Edit issue"
         />
-        <Button
+        <ProtectedButton
+          action="modify"
           variant="danger"
           size="medium"
           icon="delete"
