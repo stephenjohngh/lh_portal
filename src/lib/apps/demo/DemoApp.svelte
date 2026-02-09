@@ -1,7 +1,10 @@
 <!-- src/lib/apps/demo/DemoApp.svelte -->
 <script>
   import { onMount } from 'svelte';
+  import { auth } from '$lib/stores/auth';
+  import { permissions } from '$lib/stores/permissions';
   import Button from '$lib/components/common/Button.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import FormSelect from '$lib/components/common/FormSelect.svelte';
@@ -66,7 +69,12 @@
   });
 
   // Lifecycle
-  onMount(() => {
+  onMount(async () => {
+    // Initialize permissions for 'demo' app
+    if ($auth.user) {
+      await permissions.init($auth.user.id, 'demo');
+    }
+    
     console.log('Demo App mounted');
   });
 
@@ -186,14 +194,15 @@
       >
         View Report
       </Button>
-      <Button
+      <ProtectedButton
+        action="modify"
         variant="amber"
         size="large"
         icon="plus"
         on:click={() => showAddModal = true}
       >
         Add Item
-      </Button>
+      </ProtectedButton>
     </div>
   </div>
 
@@ -247,9 +256,14 @@
     <Button variant="secondary" size="small" icon="settings">
       Settings
     </Button>
-    <Button variant="danger" size="small" icon="delete">
+    <ProtectedButton 
+      action="modify"
+      variant="danger" 
+      size="small" 
+      icon="delete"
+    >
       Clear All
-    </Button>
+    </ProtectedButton>
   </div>
 
   <!-- Items List -->
@@ -307,7 +321,8 @@
 
             <!-- Action Buttons -->
             <div class="flex space-x-1">
-              <Button
+              <ProtectedButton
+                action="modify"
                 variant="secondary"
                 size="small"
                 icon="edit"
@@ -315,7 +330,8 @@
                 on:click={() => openEditModal(item)}
                 title="Edit item"
               />
-              <Button
+              <ProtectedButton
+                action="modify"
                 variant="danger"
                 size="small"
                 icon="delete"
@@ -411,7 +427,8 @@
     >
       Cancel
     </Button>
-    <Button
+    <ProtectedButton
+      action="modify"
       variant="amber"
       size="large"
       fullWidth={true}
@@ -419,7 +436,7 @@
       on:click={handleAddItem}
     >
       Add Item
-    </Button>
+    </ProtectedButton>
   </div>
 </Modal>
 
@@ -478,7 +495,8 @@
       >
         Cancel
       </Button>
-      <Button
+      <ProtectedButton
+        action="modify"
         variant="primary"
         size="large"
         fullWidth={true}
@@ -486,7 +504,7 @@
         on:click={handleEditItem}
       >
         Save Changes
-      </Button>
+      </ProtectedButton>
     </div>
   </Modal>
 {/if}

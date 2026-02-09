@@ -1,13 +1,9 @@
 <!-- src/lib/apps/issues/components/IssueFilters.svelte -->
 <script>
   import { STATUS_FILTERS } from '$lib/utils/constants';
-  import Button from '$lib/components/common/Button.svelte';
-  import Checkbox from '$lib/components/common/Checkbox.svelte';
   
   export let searchTerm = '';
   export let statusFilter = 'current';
-  export let onRefresh = () => {};
-  export let loading = false;
   export let resultCount = 0;
 </script>
 
@@ -32,7 +28,7 @@
     </select>
   </div>
 
-  <!-- Results and Refresh -->
+  <!-- Results Count with optional slot for Expand All button -->
   <div class="flex justify-between items-center">
     <div class="text-sm text-gray-400">
       {resultCount} {resultCount === 1 ? 'issue' : 'issues'} found
@@ -40,15 +36,6 @@
         ({STATUS_FILTERS.find(f => f.value === statusFilter)?.label || 'current'})
       </span>
     </div>
-    <Button
-      variant="primary"
-      size="large"
-      icon="refresh"
-      {loading}
-      disabled={loading}
-      on:click={onRefresh}
-    >
-      {loading ? 'Loading...' : 'Refresh'}
-    </Button>
+    <slot name="actions" />
   </div>
 </div>

@@ -169,26 +169,24 @@
     <IssueFilters 
       bind:searchTerm
       bind:statusFilter
-      onRefresh={() => issuesStore.fetchIssues()}
-      {loading}
       resultCount={filteredIssues.length}
-    />
+    >
+      <!-- Expand/Collapse All Button in slot -->
+      <svelte:fragment slot="actions">
+        {#if filteredIssues.length > 0}
+          <Button
+            variant="primary"
+            size="medium"
+            icon={allExpanded ? 'chevron-up' : 'chevron-down'}
+            on:click={toggleExpandAll}
+            title={allExpanded ? 'Collapse all sections' : 'Expand all sections'}
+          >
+            {allExpanded ? 'Collapse All' : 'Expand All'}
+          </Button>
+        {/if}
+      </svelte:fragment>
+    </IssueFilters>
   </div>
-
-  <!-- Single Expand/Collapse Toggle on Right -->
-  {#if filteredIssues.length > 0}
-    <div class="flex justify-end mb-3">
-      <Button
-        variant="primary"
-        size="medium"
-        icon={allExpanded ? 'chevron-up' : 'chevron-down'}
-        on:click={toggleExpandAll}
-        title={allExpanded ? 'Collapse all sections' : 'Expand all sections'}
-      >
-        {allExpanded ? 'Collapse All' : 'Expand All'}
-      </Button>
-    </div>
-  {/if}
 
   <!-- Error Display -->
   {#if error}

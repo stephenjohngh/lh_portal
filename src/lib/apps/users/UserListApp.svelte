@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
   import { auth } from '$lib/stores/auth';
+  import { permissions } from '$lib/stores/permissions';
   import { api } from '$lib/utils/api';
   import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
   import { isValidEmail, isRequired } from '$lib/utils/validation';
@@ -50,6 +51,7 @@
     { id: 'demo', name: 'Demo', icon: 'grid' }
   ];
   let userAppPermissions = {}; // { user_id: ['app1', 'app2'] }
+  let userAppReadOnly = {}; // { userId: { appId: boolean } }
   let loadingUserApps = {};
 
   // Check if current user is admin
@@ -110,6 +112,31 @@
     }
   }
 
+  // Load user's app read-only status
+  async function loadUserAppReadOnly(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('app_permissions')
+        .select('app_id, is_read_only')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      const readOnlyMap = {};
+      (data || []).forEach(perm => {
+        readOnlyMap[perm.app_id] = perm.is_read_only || false;
+      });
+
+      userAppReadOnly[userId] = readOnlyMap;
+      userAppReadOnly = userAppReadOnly; // Trigger reactivity
+      
+      console.log('Loaded read-only status for user:', userId, readOnlyMap);
+    } catch (error) {
+      console.error('Error loading app read-only status:', error);
+      userAppReadOnly[userId] = {};
+    }
+  }
+
   // Filter users based on search
   $: filteredUsers = users.filter(user => 
     user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -117,9 +144,14 @@
   );
 
   // Load users when component mounts
-  onMount(() => {
-    checkAdminStatus();
-    fetchUsers();
+  onMount(async () => {
+    // Initialize permissions for 'users' app
+    if ($auth.user) {
+      await permissions.init($auth.user.id, 'users');
+    }
+    
+    await checkAdminStatus();
+    await fetchUsers();
   });
 
   // Validate form
@@ -299,6 +331,11 @@
       loadUserAppPermissions(user.id);
     }
     
+    // Load user's app read-only settings
+    if (!userAppReadOnly[user.id]) {
+      loadUserAppReadOnly(user.id);
+    }
+    
     showManageAppsModal = true;
   }
 
@@ -351,38 +388,33 @@
     }
   }
 
-  // Toggle read-only status for user
-  async function toggleReadOnly(user) {
+  // Toggle read-only status for user in specific app
+  async function toggleAppReadOnly(userId, appId) {
     try {
-      const newValue = !user.is_read_only;
-      
-      console.log('Toggling read-only for user:', {
-        userId: user.id,
-        email: user.email,
-        currentValue: user.is_read_only,
-        newValue: newValue
-      });
-      
-      // Use api.update with returnRecord=false to avoid .single() which can cause errors
-      const result = await api.update('profiles', user.id, { is_read_only: newValue }, false);
-      
-      console.log('Update result:', result);
-      
+      const current = (userAppReadOnly[userId] || {})[appId] || false;
+      const newValue = !current;
+
+      console.log('Toggling read-only:', { userId, appId, current, newValue });
+
+      const { error } = await supabase
+        .from('app_permissions')
+        .update({ is_read_only: newValue })
+        .eq('user_id', userId)
+        .eq('app_id', appId);
+
+      if (error) throw error;
+
       // Update local state
-      users = users.map(u => 
-        u.id === user.id ? { ...u, is_read_only: newValue } : u
-      );
-      
-      console.log(`Set ${user.email} read-only: ${newValue}`);
+      if (!userAppReadOnly[userId]) {
+        userAppReadOnly[userId] = {};
+      }
+      userAppReadOnly[userId][appId] = newValue;
+      userAppReadOnly = userAppReadOnly; // Trigger reactivity
+
+      console.log(`✅ Set read-only for ${appId}: ${newValue}`);
     } catch (err) {
-      console.error('Error toggling read-only:', err);
-      console.error('Error details:', {
-        message: err.message,
-        details: err.details,
-        hint: err.hint,
-        code: err.code
-      });
-      alert('Failed to update user: ' + err.message);
+      console.error('Error toggling app read-only:', err);
+      alert('Failed to update permission: ' + err.message);
     }
   }
 </script>
@@ -507,21 +539,6 @@
 
           <!-- Admin Controls -->
           {#if isAdmin}
-            <!-- Read-Only Toggle (only for non-admin users) -->
-            {#if !user.is_admin}
-              <div class="mt-3 pt-3 border-t border-slate-600">
-                <label class="flex items-center space-x-2 cursor-pointer group">
-                  <Checkbox
-                    checked={user.is_read_only || false}
-                    on:change={() => toggleReadOnly(user)}
-                  />
-                  <span class="text-sm text-gray-400 group-hover:text-gray-300">
-                    Read-only access
-                  </span>
-                </label>
-              </div>
-            {/if}
-
             <div class="mt-3 pt-3 border-t border-slate-600 space-y-2">
               <Button
                 variant="amber"
@@ -731,8 +748,11 @@
         <div class="space-y-3">
           {#each availableApps as app}
             {@const hasPermission = (userAppPermissions[selectedUserForApps.id] || []).includes(app.id)}
-            <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-purple-500 transition-colors">
-              <div class="flex items-center space-x-3">
+            {@const appReadOnly = (userAppReadOnly[selectedUserForApps.id] || {})[app.id] || false}
+            
+            <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+              <!-- App Access Checkbox -->
+              <div class="flex items-center space-x-3 {hasPermission ? 'mb-3' : ''}">
                 <Checkbox
                   checked={hasPermission}
                   on:change={() => toggleAppPermission(selectedUserForApps.id, app.id)}
@@ -744,6 +764,21 @@
                   </div>
                 </div>
               </div>
+              
+              <!-- Read-Only Toggle (only if has access) -->
+              {#if hasPermission}
+                <div class="ml-8 pl-3 border-l-2 border-slate-600">
+                  <label class="flex items-center space-x-2 cursor-pointer group">
+                    <Checkbox
+                      checked={appReadOnly}
+                      on:change={() => toggleAppReadOnly(selectedUserForApps.id, app.id)}
+                    />
+                    <span class="text-sm text-gray-400 group-hover:text-gray-300">
+                      Read-only access (view only, cannot modify)
+                    </span>
+                  </label>
+                </div>
+              {/if}
             </div>
           {/each}
         </div>

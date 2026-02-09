@@ -106,7 +106,7 @@
         </div>
         
         {#if issue.description}
-          <p class="text-gray-300 whitespace-pre-wrap">{issue.description}</p>
+          <p class="text-gray-300 whitespace-pre-wrap py-2">{issue.description}</p>
         {/if}
         
         <div class="flex items-center space-x-4 mt-1 text-sm text-gray-400">
