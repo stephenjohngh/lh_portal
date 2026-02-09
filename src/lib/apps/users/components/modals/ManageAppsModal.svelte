@@ -22,20 +22,27 @@
   let readOnly = {};
   let loading = false;
 
-  // Subscribe to store
-  $: appPermissionsStore = $usersStore.appPermissions;
-  $: appReadOnlyStore = $usersStore.appReadOnly;
-  $: loadingStore = $usersStore.loadingApps;
+  // Get the separate stores
+  const appPermissionsStore = usersStore.appPermissions;
+  const appReadOnlyStore = usersStore.appReadOnly;
+  const loadingStore = usersStore.loadingApps;
 
   // Update local state when user changes
   $: if (user && show) {
     loadUserData();
   }
 
-  $: if (user) {
-    permissions = appPermissionsStore[user.id] || [];
-    readOnly = appReadOnlyStore[user.id] || {};
-    loading = loadingStore[user.id] || false;
+  // Subscribe to store values and update local state
+  $: if (user && $appPermissionsStore) {
+    permissions = $appPermissionsStore[user.id] || [];
+  }
+  
+  $: if (user && $appReadOnlyStore) {
+    readOnly = $appReadOnlyStore[user.id] || {};
+  }
+  
+  $: if (user && $loadingStore) {
+    loading = $loadingStore[user.id] || false;
   }
 
   async function loadUserData() {
@@ -72,6 +79,7 @@
   }
 
   function handleClose() {
+    show = false;
     dispatch('close');
   }
 </script>

@@ -9,7 +9,7 @@ import { supabase } from '$lib/supabaseClient';
 import { api } from '$lib/utils/api';
 import { getLogger } from '$lib/utils/logger';
 
-const logger = getLogger("auth");
+const logger = getLogger("usersStore");
 
 // Create stores
 function createUsersStore() {

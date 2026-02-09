@@ -5,7 +5,8 @@
   import Icon from '$lib/components/icons/Icon.svelte';
 
   import UserListApp from '$lib/apps/users/UserListApp.svelte';
-  import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte'; 
+  import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte';
+  import DemoApp from '$lib/apps/demo/DemoApp.svelte'; 
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -14,7 +15,7 @@
     { id: 'home', name: 'Home', icon: 'home' },
     { id: 'app1', name: 'Users', icon: 'users' },
     { id: 'app2', name: 'Issues Log', icon: 'clipboard' },
-    { id: 'app3', name: 'App Three', icon: 'grid' },
+    { id: 'app3', name: 'Demo', icon: 'grid' },
     { id: 'settings', name: 'Settings', icon: 'settings' }
   ];
 
@@ -139,10 +140,7 @@
       {:else if activeApp === 'app2'}
         <IssuesTrackerApp />
       {:else if activeApp === 'app3'}
-        <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
-          <h2 class="text-3xl font-bold mb-4">App Three</h2>
-          <p class="text-gray-400">This is the content area for App Three. Replace with a new app component.</p>
-        </div>
+        <DemoApp />
       {:else if activeApp === 'settings'}
         <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
           <h2 class="text-3xl font-bold mb-4">Settings</h2>

@@ -58,14 +58,18 @@
     // Store automatically refreshes, modal handles its own close
   }
 
+  function handleCreateClose() {
+    showCreateModal = false;
+  }
+
   function handlePasswordResetClose() {
-    selectedUser = null;
     showPasswordResetModal = false;
+    selectedUser = null;
   }
 
   function handleManageAppsClose() {
-    selectedUser = null;
     showManageAppsModal = false;
+    selectedUser = null;
   }
 </script>
 
@@ -149,6 +153,7 @@
 <CreateUserModal 
   bind:show={showCreateModal}
   on:success={handleCreateSuccess}
+  on:close={handleCreateClose}
 />
 
 <PasswordResetModal 

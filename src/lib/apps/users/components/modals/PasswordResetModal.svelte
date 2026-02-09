@@ -68,6 +68,7 @@
 
   function handleClose() {
     resetForm();
+    show = false;
     dispatch('close');
   }
 </script>
