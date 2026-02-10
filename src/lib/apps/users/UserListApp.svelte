@@ -1,5 +1,5 @@
 <!-- src/lib/apps/users/UserListApp.svelte -->
-<!-- REFACTORED: Broken down into smaller, maintainable components -->
+<!-- Updated to use ErrorDisplay and LoadingSpinner components -->
 <script>
   import { onMount } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
@@ -14,6 +14,8 @@
   import PasswordResetModal from './components/modals/PasswordResetModal.svelte';
   import ManageAppsModal from './components/modals/ManageAppsModal.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   let searchTerm = '';
   let isAdmin = false;
@@ -99,25 +101,14 @@
   />
 
   <!-- Error Display -->
-  {#if error}
-    <div class="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex justify-between items-center">
-      <p class="text-red-400">{error}</p>
-      <Button
-        variant="danger"
-        size="small"
-        icon="close"
-        iconPosition="only"
-        on:click={() => usersStore.clearError()}
-        title="Dismiss error"
-      />
-    </div>
-  {/if}
+  <ErrorDisplay 
+    message={error} 
+    onDismiss={() => usersStore.clearError()}
+  />
 
   <!-- Loading State -->
   {#if loading}
-    <div class="flex justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-    </div>
+    <LoadingSpinner />
 
   <!-- Empty State -->
   {:else if filteredUsers.length === 0}

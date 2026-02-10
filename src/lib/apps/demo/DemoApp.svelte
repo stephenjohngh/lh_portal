@@ -1,12 +1,15 @@
 <!-- src/lib/apps/demo/DemoApp.svelte -->
+<!-- Updated to use LoadingSpinner component -->
 <script>
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   const logger = getLogger('DemoApp');
+  
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
@@ -27,6 +30,7 @@
   let searchTerm = '';
   let selectedStatus = 'all';
   let showAllItems = true;
+  let loading = false;
 
   // Modal states
   let showAddModal = false;
@@ -269,8 +273,12 @@
     </ProtectedButton>
   </div>
 
+  <!-- Loading State Example -->
+  {#if loading}
+    <LoadingSpinner text="Loading demo data..." />
+
   <!-- Items List -->
-  {#if filteredItems.length === 0}
+  {:else if filteredItems.length === 0}
     <div class="text-center py-12">
       <Icon name="clipboard" size={16} className="text-gray-600 mx-auto mb-4" />
       <p class="text-gray-400">No items found. Click "Add Item" to create one.</p>

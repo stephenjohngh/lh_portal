@@ -1,10 +1,20 @@
 <!-- src/lib/apps/issues/components/IssueFilters.svelte -->
 <script>
+  import { createEventDispatcher } from 'svelte';
   import { STATUS_FILTERS } from '$lib/utils/constants';
+  import Button from '$lib/components/common/Button.svelte';
   
   export let searchTerm = '';
   export let statusFilter = 'current';
   export let resultCount = 0;
+  export let showExpandToggle = false;
+  export let allExpanded = false;
+
+  const dispatch = createEventDispatcher();
+
+  function handleToggleExpand() {
+    dispatch('toggleExpand', !allExpanded);
+  }
 </script>
 
 <div class="space-y-3">
@@ -28,7 +38,7 @@
     </select>
   </div>
 
-  <!-- Results Count with optional slot for Expand All button -->
+  <!-- Results Count and Toggle -->
   <div class="flex justify-between items-center">
     <div class="text-sm text-gray-400">
       {resultCount} {resultCount === 1 ? 'issue' : 'issues'} found
@@ -36,6 +46,17 @@
         ({STATUS_FILTERS.find(f => f.value === statusFilter)?.label || 'current'})
       </span>
     </div>
-    <slot name="actions" />
+    
+    <!-- Expand/Collapse Toggle -->
+    {#if showExpandToggle}
+      <Button
+        variant="primary"
+        size="medium"
+        icon={allExpanded ? 'chevron-up' : 'chevron-down'}
+        on:click={handleToggleExpand}
+      >
+        {allExpanded ? 'Collapse All' : 'Expand All'}
+      </Button>
+    {/if}
   </div>
 </div>

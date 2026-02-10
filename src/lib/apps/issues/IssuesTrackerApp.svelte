@@ -1,12 +1,11 @@
 <!-- src/lib/apps/issues/IssuesTrackerApp.svelte -->
+<!-- Updated to use ErrorDisplay and LoadingSpinner components -->
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
   import { auth } from '$lib/stores/auth';
   import { getLogger } from '$lib/utils/logger';
   import { issuesStore } from './stores/issuesStore';
-
-  const logger = getLogger('IssuesTrackerApp');
   import IssueFilters from './components/IssueFilters.svelte';
   import IssueCard from './components/IssueCard.svelte';
   import IssueForm from './components/IssueForm.svelte';
@@ -14,13 +13,15 @@
   import ActionsReport from './components/reports/ActionsReport.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { ISSUE_STATUS } from '$lib/utils/constants';
+
+  const logger = getLogger('IssuesTrackerApp');
 
   let searchTerm = '';
   let statusFilter = ISSUE_STATUS.CURRENT;
   let showNewIssueModal = false;
-  let showEditModal = false;
   let editingIssue = null;
   let showReport = false;
   let showActionsReport = false;
@@ -54,7 +55,7 @@
       // Filter by status (current, parked, or completed)
       let matchesStatus = false;
       if (statusFilter === ISSUE_STATUS.CURRENT) {
-        matchesStatus = (issue.status === ISSUE_STATUS.CURRENT || !issue.status); // Show current issues (including null/undefined for backward compatibility)
+        matchesStatus = (issue.status === ISSUE_STATUS.CURRENT || !issue.status);
       } else if (statusFilter === ISSUE_STATUS.PARKED) {
         matchesStatus = issue.status === ISSUE_STATUS.PARKED;
       } else if (statusFilter === ISSUE_STATUS.COMPLETED) {
@@ -64,18 +65,12 @@
       return matchesSearch && matchesStatus;
     });
 
-  // Check if all sections are expanded
-  $: allExpanded = filteredIssues.length > 0 && filteredIssues.every(issue => 
-    expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
-  );
-
   onMount(async () => {
     // Initialize permissions for 'issues' app
     if ($auth.user) {
       await permissions.init($auth.user.id, 'issues');
     }
     
-    // Load data
     issuesStore.fetchIssues();
     issuesStore.initializeRealtime();
   });
@@ -87,14 +82,11 @@
   async function handleNewIssue(event) {
     logger('handleNewIssue called');
     await issuesStore.addIssue(event.detail);
-    showNewIssueModal = false;
   }
 
   async function handleEditIssue(event) {
     logger('handleEditIssue called');
     await issuesStore.updateIssue(editingIssue.id, event.detail);
-    showEditModal = false;
-    editingIssue = null;
   }
 
   async function handleDeleteIssue(event) {
@@ -118,23 +110,20 @@
       expandedSections[issueId] = { comments: false, actions: false };
     }
     expandedSections[issueId][section] = !expandedSections[issueId][section];
-    // Force Svelte to detect the change
     expandedSections = expandedSections;
   }
 
-  function toggleExpandAll() {
-    if (allExpanded) {
-      // Collapse all
-      filteredIssues.forEach(issue => {
-        expandedSections[issue.id] = { comments: false, actions: false };
-      });
-    } else {
-      // Expand all
-      filteredIssues.forEach(issue => {
-        expandedSections[issue.id] = { comments: true, actions: true };
-      });
-    }
-    // Force Svelte to detect the change
+  function expandAll() {
+    filteredIssues.forEach(issue => {
+      expandedSections[issue.id] = { comments: true, actions: true };
+    });
+    expandedSections = expandedSections;
+  }
+
+  function collapseAll() {
+    filteredIssues.forEach(issue => {
+      expandedSections[issue.id] = { comments: false, actions: false };
+    });
     expandedSections = expandedSections;
   }
 </script>
@@ -163,62 +152,40 @@
       >
         Actions Report
       </Button>
-      <ProtectedButton
-        action="modify"
+      <Button
         variant="primary"
         size="large"
         icon="plus"
         on:click={() => showNewIssueModal = true}
       >
         New Issue
-      </ProtectedButton>
+      </Button>
     </div>
   </div>
 
-  <!-- Filters -->
+  <!-- Filters with Expand/Collapse Toggle -->
   <div class="mb-4">
     <IssueFilters 
       bind:searchTerm
       bind:statusFilter
       resultCount={filteredIssues.length}
-    >
-      <!-- Expand/Collapse All Button in slot -->
-      <svelte:fragment slot="actions">
-        {#if filteredIssues.length > 0}
-          <Button
-            variant="primary"
-            size="medium"
-            icon={allExpanded ? 'chevron-up' : 'chevron-down'}
-            on:click={toggleExpandAll}
-            title={allExpanded ? 'Collapse all sections' : 'Expand all sections'}
-          >
-            {allExpanded ? 'Collapse All' : 'Expand All'}
-          </Button>
-        {/if}
-      </svelte:fragment>
-    </IssueFilters>
+      showExpandToggle={filteredIssues.length > 0}
+      allExpanded={filteredIssues.every(issue => 
+        expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
+      )}
+      on:toggleExpand={(e) => e.detail ? expandAll() : collapseAll()}
+    />
   </div>
 
   <!-- Error Display -->
-  {#if error}
-    <div class="mb-3 p-3 bg-red-500/10 border border-red-500/50 rounded-lg flex justify-between items-center">
-      <p class="text-red-400">{error}</p>
-      <Button
-        variant="danger"
-        size="small"
-        icon="close"
-        iconPosition="only"
-        on:click={() => issuesStore.clearError()}
-        title="Dismiss error"
-      />
-    </div>
-  {/if}
+  <ErrorDisplay 
+    message={error} 
+    onDismiss={() => issuesStore.clearError()}
+  />
 
   <!-- Loading State -->
   {#if loading}
-    <div class="flex justify-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-    </div>
+    <LoadingSpinner />
 
   <!-- Empty State -->
   {:else if filteredIssues.length === 0}
@@ -236,7 +203,7 @@
           showActions={expandedSections[issue.id]?.actions || false}
           on:toggleComments={() => toggleSection(issue.id, 'comments')}
           on:toggleActions={() => toggleSection(issue.id, 'actions')}
-          on:edit={(e) => { editingIssue = e.detail; showEditModal = true; }}
+          on:edit={(e) => editingIssue = e.detail}
           on:toggleStatus={handleToggleStatus}
           on:delete={handleDeleteIssue}
         />
@@ -247,17 +214,17 @@
 
 <!-- New Issue Modal -->
 <IssueForm 
-  bind:show={showNewIssueModal}
+  show={showNewIssueModal}
   on:submit={handleNewIssue}
   on:close={() => showNewIssueModal = false}
 />
 
 <!-- Edit Issue Modal -->
 <IssueForm 
-  bind:show={showEditModal}
+  show={editingIssue !== null}
   issue={editingIssue}
   on:submit={handleEditIssue}
-  on:close={() => { showEditModal = false; editingIssue = null; }}
+  on:close={() => editingIssue = null}
 />
 
 <!-- Outstanding Actions Report -->

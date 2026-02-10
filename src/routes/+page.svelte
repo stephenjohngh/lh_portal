@@ -1,3 +1,5 @@
+<!-- src/routes/+page.svelte -->
+<!-- Updated to use apps.js config from $lib/apps/apps -->
 <script>
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
@@ -5,6 +7,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
   import { getLogger } from '$lib/utils/logger';
+  import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
 
@@ -21,19 +24,9 @@
   let isAdmin = false;
   let loading = true;
 
-  // Define all available apps
-  const allApps = [
-    { id: 'home', name: 'Home', icon: 'home', alwaysVisible: true },
-    { id: 'users', name: 'Users', icon: 'users', requiresPermission: true },
-    { id: 'issues', name: 'Issues', icon: 'clipboard', requiresPermission: true },
-    { id: 'demo', name: 'Demo', icon: 'grid', requiresPermission: true },
-    { id: 'settings', name: 'Settings', icon: 'settings', alwaysVisible: true }
-  ];
-
-  // Apps to display in menu
+  const allApps = AVAILABLE_APPS;
   $: displayedApps = userApps;
 
-  // Redirect if not authenticated
   $: if (!$auth.loading && !$auth.user) {
     goto('/login');
   }
@@ -44,7 +37,6 @@
     }
   });
 
-  // Reload permissions when user changes
   $: if ($auth.user) {
     loadUserPermissions();
   }
@@ -53,10 +45,8 @@
     loading = true;
     
     try {
-      // Check if user is admin
       isAdmin = await checkIsAdmin($auth.user.id);
 
-      // Get user's app permissions
       const { data: permissions, error } = await supabase
         .from('app_permissions')
         .select('app_id')
@@ -68,21 +58,7 @@
       }
 
       const permittedAppIds = (permissions || []).map(p => p.app_id);
-
-      // Build list of apps user can access
-      const apps = allApps.filter(app => {
-        // Always show apps marked as alwaysVisible
-        if (app.alwaysVisible) return true;
-        
-        // Show apps user has permission for
-        if (app.requiresPermission && permittedAppIds.includes(app.id)) {
-          return true;
-        }
-        
-        return false;
-      });
-
-      userApps = apps;
+      userApps = getAppsForUser(permittedAppIds);
 
       logger('User permissions loaded');
       logger('Is admin:', isAdmin);
@@ -91,8 +67,7 @@
 
     } catch (err) {
       logger('Error loading user permissions:', err);
-      // Show at least home and settings on error
-      userApps = allApps.filter(app => app.alwaysVisible);
+      userApps = getAppsForUser([]);
     } finally {
       loading = false;
     }
@@ -102,7 +77,6 @@
     auth.logout();
   }
 
-  // Get the component for the active app
   function getAppComponent(appId) {
     const components = {
       'users': UserListApp,
@@ -113,9 +87,7 @@
     return components[appId];
   }
 
-  // Check if user has access to current app
   $: if (!loading && activeApp !== 'home' && !displayedApps.find(a => a.id === activeApp)) {
-    // User doesn't have access to this app, redirect to home
     activeApp = 'home';
   }
 </script>
@@ -126,12 +98,10 @@
   </div>
 {:else if $auth.user}
   <div class="min-h-screen bg-slate-900 text-white">
-    <!-- Top Navigation Bar -->
     <nav class="bg-slate-800/50 backdrop-blur-lg border-b border-slate-700 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center space-x-4">
-            <!-- Mobile Menu Toggle -->
             <button
               on:click={() => menuOpen = !menuOpen}
               aria-label="Toggle menu"
@@ -140,14 +110,12 @@
               <Icon name="menu" size={6} />
             </button>
             
-            <!-- Logo -->
             <div class="flex items-center space-x-2">
               <Icon name="grid" size={6} className="text-purple-400" />
               <span class="font-bold text-xl">LH Apps</span>
             </div>
           </div>
 
-          <!-- Desktop Navigation -->
           <div class="hidden lg:flex items-center space-x-1">
             {#each displayedApps as app}
               <button
@@ -165,7 +133,6 @@
             {/each}
           </div>
 
-          <!-- User Info & Logout -->
           <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
               <Icon name="user" size={5} className="text-gray-400" />
@@ -183,7 +150,6 @@
         </div>
       </div>
 
-      <!-- Mobile Menu -->
       {#if menuOpen}
         <div class="lg:hidden border-t border-slate-700 bg-slate-800">
           {#each displayedApps as app}
@@ -207,7 +173,6 @@
       {/if}
     </nav>
 
-    <!-- Main Content Area -->
     <main class="max-w-7xl mx-auto px-4 py-8">
       {#if activeApp === 'home'}
         <div>
@@ -220,7 +185,6 @@
             {/if}
           </p>
           
-          <!-- App Grid -->
           {#if displayedApps.filter(a => a.id !== 'home').length === 0}
             <div class="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
               <Icon name="grid" size={16} className="text-gray-600 mx-auto mb-4" />
@@ -240,17 +204,7 @@
                   <Icon name={app.icon} size={12} className="text-purple-400 mb-4" />
                   <h3 class="text-xl font-semibold">{app.name}</h3>
                   <p class="text-gray-400 mt-2 text-sm">
-                    {#if app.id === 'users'}
-                      Manage users and app permissions
-                    {:else if app.id === 'issues'}
-                      Track and manage issues
-                    {:else if app.id === 'demo'}
-                      Explore app components
-                    {:else if app.id === 'settings'}
-                      Update your account settings
-                    {:else}
-                      Click to open
-                    {/if}
+                    {app.description || 'Click to open'}
                   </p>
                 </button>
               {/each}
@@ -258,7 +212,6 @@
           {/if}
         </div>
       {:else}
-        <!-- Dynamic App Component Loading -->
         {#if getAppComponent(activeApp)}
           <svelte:component this={getAppComponent(activeApp)} />
         {:else}

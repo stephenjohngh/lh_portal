@@ -3,6 +3,9 @@
 
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('Permissions');
 
 function createPermissionsStore() {
   const { subscribe, set, update } = writable({
@@ -74,7 +77,7 @@ function createPermissionsStore() {
           userId
         });
 
-        console.log('✅ Permissions initialized:', {
+        logger('Permissions initialized:', {
           isAdmin,
           currentApp,
           canModify,
@@ -82,7 +85,7 @@ function createPermissionsStore() {
         });
 
       } catch (error) {
-        console.error('❌ Error initializing permissions:', error);
+        logger('Error initializing permissions:', error);
         set({
           loading: false,
           isAdmin: false,

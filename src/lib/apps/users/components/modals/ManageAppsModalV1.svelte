@@ -1,31 +1,29 @@
 <!-- src/lib/apps/users/components/modals/ManageAppsModal.svelte -->
-<!-- Updated to use apps.js, ErrorDisplay, and LoadingSpinner -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { usersStore } from '../../stores/usersStore';
   import { getLogger } from '$lib/utils/logger';
-  import { getPermissionedApps } from '$lib/apps/apps';
   import Modal from '$lib/components/common/Modal.svelte';
+
+  const logger = getLogger('ManageAppsModal');
   import Button from '$lib/components/common/Button.svelte';
   import Checkbox from '$lib/components/common/Checkbox.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-
-  const logger = getLogger('ManageAppsModal');
 
   export let show = false;
   export let user = null;
 
   const dispatch = createEventDispatcher();
 
-  // Use centralized app config
-  const availableApps = getPermissionedApps();
+  const availableApps = [
+    { id: 'users', name: 'Users', icon: 'users' },
+    { id: 'issues', name: 'Issues', icon: 'clipboard' },
+    { id: 'demo', name: 'Demo', icon: 'grid' }
+  ];
 
   let permissions = [];
   let readOnly = {};
   let loading = false;
-  let error = '';
 
   // Get the separate stores
   const appPermissionsStore = usersStore.appPermissions;
@@ -53,47 +51,38 @@
   async function loadUserData() {
     if (!user) return;
     
-    error = '';
-    
     try {
       await usersStore.loadAppPermissions(user.id);
       await usersStore.loadAppReadOnly(user.id);
     } catch (err) {
       logger('Failed to load user data:', err);
-      error = 'Failed to load user permissions. Please try again.';
     }
   }
 
   async function toggleAppPermission(appId) {
     if (!user) return;
 
-    error = '';
-
     try {
       await usersStore.toggleAppPermission(user.id, appId, permissions);
     } catch (err) {
-      logger('Failed to update app permission:', err);
-      error = `Failed to update ${appId} permission: ${err.message}`;
+      alert('Failed to update app permission: ' + err.message);
     }
   }
 
   async function toggleAppReadOnly(appId) {
     if (!user) return;
 
-    error = '';
     const currentValue = readOnly[appId] || false;
 
     try {
       await usersStore.toggleAppReadOnly(user.id, appId, currentValue);
     } catch (err) {
-      logger('Failed to update read-only status:', err);
-      error = `Failed to update read-only status: ${err.message}`;
+      alert('Failed to update read-only status: ' + err.message);
     }
   }
 
   function handleClose() {
     show = false;
-    error = '';
     dispatch('close');
   }
 </script>
@@ -111,15 +100,11 @@
       Changes take effect immediately but user must refresh their browser.
     </p>
 
-    <!-- Error Display -->
-    <ErrorDisplay 
-      message={error} 
-      onDismiss={() => error = ''}
-    />
-
     <!-- Loading State -->
     {#if loading}
-      <LoadingSpinner size="medium" />
+      <div class="flex justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+      </div>
 
     <!-- Apps List -->
     {:else}
@@ -140,9 +125,6 @@
                   <Icon name={app.icon} size={5} className="text-purple-400" />
                   <span class="font-medium">{app.name}</span>
                 </div>
-                {#if app.description}
-                  <p class="text-xs text-gray-500 mt-1">{app.description}</p>
-                {/if}
               </div>
             </div>
             
