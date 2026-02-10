@@ -4,8 +4,11 @@
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabaseClient';
   import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
+  import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
+
+  const logger = getLogger('MainApp');
 
   import UserListApp from '$lib/apps/users/UserListApp.svelte';
   import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte'; 
@@ -60,7 +63,7 @@
         .eq('user_id', $auth.user.id);
 
       if (error) {
-        console.error('Error loading permissions:', error);
+        logger('Error loading permissions:', error);
         throw error;
       }
 
@@ -81,13 +84,13 @@
 
       userApps = apps;
 
-      console.log('User permissions loaded');
-      console.log('Is admin:', isAdmin);
-      console.log('Permitted app IDs:', permittedAppIds);
-      console.log('Displayed apps:', userApps.map(a => a.id));
+      logger('User permissions loaded');
+      logger('Is admin:', isAdmin);
+      logger('Permitted app IDs:', permittedAppIds);
+      logger('Displayed apps:', userApps.map(a => a.id));
 
     } catch (err) {
-      console.error('Error loading user permissions:', err);
+      logger('Error loading user permissions:', err);
       // Show at least home and settings on error
       userApps = allApps.filter(app => app.alwaysVisible);
     } finally {

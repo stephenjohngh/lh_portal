@@ -2,7 +2,10 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { usersStore } from '../../stores/usersStore';
+  import { getLogger } from '$lib/utils/logger';
   import Modal from '$lib/components/common/Modal.svelte';
+
+  const logger = getLogger('ManageAppsModal');
   import Button from '$lib/components/common/Button.svelte';
   import Checkbox from '$lib/components/common/Checkbox.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
@@ -52,7 +55,7 @@
       await usersStore.loadAppPermissions(user.id);
       await usersStore.loadAppReadOnly(user.id);
     } catch (err) {
-      console.error('Failed to load user data:', err);
+      logger('Failed to load user data:', err);
     }
   }
 

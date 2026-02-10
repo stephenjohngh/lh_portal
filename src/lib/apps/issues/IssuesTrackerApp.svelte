@@ -1,7 +1,12 @@
 <!-- src/lib/apps/issues/IssuesTrackerApp.svelte -->
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
+  import { permissions } from '$lib/stores/permissions';
+  import { auth } from '$lib/stores/auth';
+  import { getLogger } from '$lib/utils/logger';
   import { issuesStore } from './stores/issuesStore';
+
+  const logger = getLogger('IssuesTrackerApp');
   import IssueFilters from './components/IssueFilters.svelte';
   import IssueCard from './components/IssueCard.svelte';
   import IssueForm from './components/IssueForm.svelte';
@@ -64,7 +69,13 @@
     expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
   );
 
-  onMount(() => {
+  onMount(async () => {
+    // Initialize permissions for 'issues' app
+    if ($auth.user) {
+      await permissions.init($auth.user.id, 'issues');
+    }
+    
+    // Load data
     issuesStore.fetchIssues();
     issuesStore.initializeRealtime();
   });
@@ -74,13 +85,13 @@
   });
 
   async function handleNewIssue(event) {
-    console.log('handleNewIssue called');
+    logger('handleNewIssue called');
     await issuesStore.addIssue(event.detail);
     showNewIssueModal = false;
   }
 
   async function handleEditIssue(event) {
-    console.log('handleEditIssue called');
+    logger('handleEditIssue called');
     await issuesStore.updateIssue(editingIssue.id, event.detail);
     showEditModal = false;
     editingIssue = null;
@@ -102,7 +113,7 @@
   }
   
   function toggleSection(issueId, section) {
-    console.log('Toggle section called:', issueId, section);
+    logger('Toggle section called:', issueId, section);
     if (!expandedSections[issueId]) {
       expandedSections[issueId] = { comments: false, actions: false };
     }

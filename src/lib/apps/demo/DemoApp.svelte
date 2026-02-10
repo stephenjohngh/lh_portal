@@ -3,7 +3,10 @@
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
+  import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
+
+  const logger = getLogger('DemoApp');
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
@@ -75,7 +78,7 @@
       await permissions.init($auth.user.id, 'demo');
     }
     
-    console.log('Demo App mounted');
+    logger('Demo App mounted');
   });
 
   // Functions
