@@ -10,9 +10,18 @@
   <!-- Search Bar -->
   <div class="relative">
     <input
-      type="text"
+      type="search"
+      name="user-search-filter"
+      id="user-search-filter-input"
       bind:value={searchTerm}
       placeholder="Search users by name or email..."
+      autocomplete="off"
+      autocapitalize="off"
+      autocorrect="off"
+      spellcheck="false"
+      data-lpignore="true"
+      data-form-type="other"
+      data-1p-ignore="true"
       class="w-full px-4 py-3 pl-12 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
     />
     <Icon 

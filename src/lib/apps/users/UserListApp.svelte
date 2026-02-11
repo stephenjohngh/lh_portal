@@ -20,6 +20,14 @@
   let searchTerm = '';
   let isAdmin = false;
   
+  // DEBUG: Track searchTerm changes
+  $: {
+    if (searchTerm) {
+      console.log('🔍 searchTerm changed to:', searchTerm);
+      console.trace('Stack trace:');
+    }
+  }
+  
   // Modal states
   let showCreateModal = false;
   let showPasswordResetModal = false;
@@ -57,21 +65,35 @@
   }
 
   function handleCreateSuccess() {
+    // User created successfully
     // Store automatically refreshes, modal handles its own close
+    // Clear search to prevent bug and show new user
+    searchTerm = '';
   }
 
   function handleCreateClose() {
     showCreateModal = false;
+    // Clear search - CreateUser modal has email input that triggers autocomplete
+    searchTerm = '';
+  }
+
+  function handlePasswordResetSuccess() {
+    // Password reset successful
+    // Clear search to prevent bug and give fresh view
+    searchTerm = '';
   }
 
   function handlePasswordResetClose() {
     showPasswordResetModal = false;
     selectedUser = null;
+    // Clear search - PasswordReset has user context that triggers autocomplete
+    searchTerm = '';
   }
 
   function handleManageAppsClose() {
     showManageAppsModal = false;
     selectedUser = null;
+    // No clear - ManageApps doesn't trigger autocomplete bug
   }
 </script>
 
@@ -150,6 +172,7 @@
 <PasswordResetModal 
   bind:show={showPasswordResetModal}
   user={selectedUser}
+  on:success={handlePasswordResetSuccess}
   on:close={handlePasswordResetClose}
 />
 
