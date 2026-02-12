@@ -1,6 +1,4 @@
 <!-- src/lib/apps/users/components/UserCard.svelte -->
-<!-- ADD DELETE FUNCTIONALITY -->
-
 <script>
   import { createEventDispatcher } from 'svelte';
   import { auth } from '$lib/stores/auth';
@@ -21,7 +19,6 @@
     dispatch('manageApps', user);
   }
 
-  // NEW: Delete user handler
   function handleDelete() {
     dispatch('deleteUser', user);
   }
@@ -30,12 +27,12 @@
   $: isCurrentUser = $auth.user?.id === user.id;
 </script>
 
-<div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-purple-500 transition-colors">
+<div class="card">
   <!-- User Header -->
-  <div class="flex items-start justify-between mb-3">
-    <div class="flex items-start space-x-3">
+  <div class="flex-start mb-3">
+    <div class="flex-row-md">
       <div class="flex-shrink-0">
-        <div class="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center">
+        <div class="avatar-md bg-purple-600">
           <Icon name="user" size={6} className="text-white" />
         </div>
       </div>
@@ -44,7 +41,7 @@
         <h3 class="font-semibold text-white truncate">
           {user.full_name || user.email}
         </h3>
-        <p class="text-sm text-gray-400 truncate">{user.email}</p>
+        <p class="text-muted-sm truncate">{user.email}</p>
       </div>
     </div>
 
@@ -57,13 +54,13 @@
   </div>
 
   <!-- User Info -->
-  <div class="space-y-1 text-sm text-gray-400 mb-4">
-    <div class="flex items-center space-x-2">
+  <div class="space-y-1 mb-4">
+    <div class="flex-row text-muted-sm">
       <Icon name="calendar" size={4} />
       <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
     </div>
     {#if user.last_sign_in_at}
-      <div class="flex items-center space-x-2">
+      <div class="flex-row text-muted-sm">
         <Icon name="clock" size={4} />
         <span>Last login {new Date(user.last_sign_in_at).toLocaleDateString()}</span>
       </div>
@@ -93,7 +90,6 @@
         Manage Apps
       </ProtectedButton>
 
-      <!-- NEW: Delete Button - disabled for current user -->
       <ProtectedButton
         action="modify"
         variant="danger"

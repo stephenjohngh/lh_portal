@@ -22,7 +22,7 @@
       data-lpignore="true"
       data-form-type="other"
       data-1p-ignore="true"
-      class="w-full px-4 py-3 pl-12 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+      class="input-search"
     />
     <Icon 
       name="search" 
@@ -32,7 +32,7 @@
   </div>
 
   <!-- Results Count -->
-  <div class="mt-2 text-sm text-gray-400">
+  <div class="mt-2 text-muted-sm">
     {resultCount} {resultCount === 1 ? 'user' : 'users'} found
   </div>
 </div>

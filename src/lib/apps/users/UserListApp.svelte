@@ -1,6 +1,4 @@
 <!-- src/lib/apps/users/UserListApp.svelte -->
-<!-- ADD DELETE USER FUNCTIONALITY -->
-
 <script>
   import { onMount } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
@@ -14,7 +12,7 @@
   import CreateUserModal from './components/modals/CreateUserModal.svelte';
   import PasswordResetModal from './components/modals/PasswordResetModal.svelte';
   import ManageAppsModal from './components/modals/ManageAppsModal.svelte';
-  import DeleteUserModal from './components/modals/DeleteUserModal.svelte'; // NEW
+  import DeleteUserModal from './components/modals/DeleteUserModal.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -26,7 +24,7 @@
   let showCreateModal = false;
   let showPasswordResetModal = false;
   let showManageAppsModal = false;
-  let showDeleteModal = false; // NEW
+  let showDeleteModal = false;
   let selectedUser = null;
 
   // Subscribe to store
@@ -59,49 +57,37 @@
     showManageAppsModal = true;
   }
 
-  // NEW: Delete user handler
   function handleDeleteUser(event) {
     selectedUser = event.detail;
     showDeleteModal = true;
   }
 
   function handleCreateSuccess() {
-    // User created successfully
-    // Store automatically refreshes, modal handles its own close
-    // Clear search to prevent bug and show new user
     searchTerm = '';
   }
 
   function handleCreateClose() {
     showCreateModal = false;
-    // Clear search - CreateUser modal has email input that triggers autocomplete
     searchTerm = '';
   }
 
   function handlePasswordResetSuccess() {
-    // Password reset successful
-    // Clear search to prevent bug and give fresh view
     searchTerm = '';
   }
 
   function handlePasswordResetClose() {
     showPasswordResetModal = false;
     selectedUser = null;
-    // Clear search - PasswordReset has user context that triggers autocomplete
     searchTerm = '';
   }
 
   function handleManageAppsClose() {
     showManageAppsModal = false;
     selectedUser = null;
-    // No clear - ManageApps doesn't trigger autocomplete bug
   }
 
-  // NEW: Delete modal handlers
   function handleDeleteSuccess() {
-    // User deleted successfully
-    // Store automatically refreshes
-    searchTerm = ''; // Clear search to show updated list
+    searchTerm = '';
   }
 
   function handleDeleteClose() {
@@ -110,12 +96,12 @@
   }
 </script>
 
-<div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
+<div class="app-container">
   <!-- Header -->
-  <div class="flex justify-between items-start mb-6">
+  <div class="flex-start mb-6">
     <div>
-      <h2 class="text-3xl font-bold mb-1">User Management</h2>
-      <p class="text-gray-400">Manage user accounts and permissions</p>
+      <h2 class="heading-page">User Management</h2>
+      <p class="text-muted">Manage user accounts and permissions</p>
     </div>
     {#if isAdmin}
       <Button
@@ -147,7 +133,7 @@
 
   <!-- Empty State -->
   {:else if filteredUsers.length === 0}
-    <div class="text-center py-12 text-gray-400">
+    <div class="empty-state">
       {#if searchTerm}
         No users found matching "{searchTerm}". Try a different search.
       {:else}
@@ -157,7 +143,7 @@
 
   <!-- Users Grid -->
   {:else}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid-cards">
       {#each filteredUsers as user (user.id)}
         <UserCard 
           {user}
@@ -196,7 +182,6 @@
   on:close={handleManageAppsClose}
 />
 
-<!-- NEW: Delete User Modal -->
 <DeleteUserModal 
   bind:show={showDeleteModal}
   user={selectedUser}

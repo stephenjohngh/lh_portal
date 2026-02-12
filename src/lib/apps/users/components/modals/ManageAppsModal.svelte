@@ -104,9 +104,9 @@
   size="medium"
   on:close={handleClose}
 >
-  <div class="space-y-4">
+  <div class="form-spacing">
     <!-- Instructions -->
-    <p class="text-gray-400 text-sm">
+    <p class="text-muted-sm">
       Select which apps <strong>{user?.email || 'this user'}</strong> can access. 
       Changes take effect immediately but user must refresh their browser.
     </p>
@@ -123,20 +123,20 @@
 
     <!-- Apps List -->
     {:else}
-      <div class="space-y-3">
+      <div class="section-spacing">
         {#each availableApps as app}
           {@const hasPermission = permissions.includes(app.id)}
           {@const appReadOnly = readOnly[app.id] || false}
           
           <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
             <!-- App Access Checkbox -->
-            <div class="flex items-center space-x-3 {hasPermission ? 'mb-3' : ''}">
+            <div class="flex-row-md {hasPermission ? 'mb-3' : ''}">
               <Checkbox
                 checked={hasPermission}
                 on:change={() => toggleAppPermission(app.id)}
               />
               <div class="flex-1">
-                <div class="flex items-center space-x-2">
+                <div class="flex-row">
                   <Icon name={app.icon} size={5} className="text-purple-400" />
                   <span class="font-medium">{app.name}</span>
                 </div>
@@ -149,7 +149,7 @@
             <!-- Read-Only Toggle (only if has access) -->
             {#if hasPermission}
               <div class="ml-8 pl-3 border-l-2 border-slate-600">
-                <label class="flex items-center space-x-2 cursor-pointer group">
+                <label class="flex-row cursor-pointer group">
                   <Checkbox
                     checked={appReadOnly}
                     on:change={() => toggleAppReadOnly(app.id)}
@@ -165,8 +165,8 @@
       </div>
 
       <!-- Info Message -->
-      <div class="p-3 bg-blue-500/10 border border-blue-500/50 rounded-lg">
-        <p class="text-blue-400 text-sm">
+      <div class="alert-info">
+        <p class="text-sm">
           <Icon name="refresh" size={4} className="inline mr-1" />
           User must refresh their browser to see app changes.
         </p>

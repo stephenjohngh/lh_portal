@@ -128,12 +128,12 @@
   }
 </script>
 
-<div class="bg-slate-800 rounded-xl p-6 border border-slate-700" bind:this={containerElement}>
+<div class="app-container" bind:this={containerElement}>
   <!-- Header -->
-  <div class="flex justify-between items-start mb-4">
+  <div class="flex-start mb-4">
     <div>
-      <h2 class="text-3xl font-bold mb-1">Issues Tracker</h2>
-      <p class="text-gray-400">Manage current issues, actions, and comments</p>
+      <h2 class="heading-page">Issues Tracker</h2>
+      <p class="text-muted">Manage current issues, actions, and comments</p>
     </div>
     <div class="flex space-x-2">
       <Button
@@ -189,13 +189,13 @@
 
   <!-- Empty State -->
   {:else if filteredIssues.length === 0}
-    <div class="text-center py-12 text-gray-400">
+    <div class="empty-state">
       No issues found. {searchTerm ? 'Try a different search.' : 'Click "New Issue" to create one.'}
     </div>
 
   <!-- Issues List -->
   {:else}
-    <div class="space-y-3">
+    <div class="section-spacing">
       {#each filteredIssues as issue (issue.id)}
         <IssueCard 
           {issue}
