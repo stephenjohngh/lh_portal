@@ -132,6 +132,48 @@ function createUsersStore() {
       }
     },
 
+
+async deleteUser(userId) {
+  logger('Deleting user:', userId);
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Call admin API to delete user
+    const response = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        requesting_user_id: user.id
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to delete user');
+    }
+
+    logger('User deleted successfully:', result);
+    
+    // Refresh users list after deletion
+    setTimeout(() => this.fetchUsers(), 500);
+    
+    return result;
+
+  } catch (err) {
+    logger('Failed to delete user:', err);
+    throw err;
+  }
+},
+
+
+
+
+
+
     /**
      * Load app permissions for a user
      */

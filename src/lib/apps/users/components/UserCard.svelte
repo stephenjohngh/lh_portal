@@ -1,9 +1,12 @@
 <!-- src/lib/apps/users/components/UserCard.svelte -->
+<!-- ADD DELETE FUNCTIONALITY -->
+
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/common/Button.svelte';
+  import { auth } from '$lib/stores/auth';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import { formatDateTimeFull } from '$lib/utils/dates';
+  import Badge from '$lib/components/common/Badge.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
 
   export let user;
   export let isAdmin = false;
@@ -17,75 +20,97 @@
   function handleManageApps() {
     dispatch('manageApps', user);
   }
+
+  // NEW: Delete user handler
+  function handleDelete() {
+    dispatch('deleteUser', user);
+  }
+
+  // Check if this is the current logged-in user
+  $: isCurrentUser = $auth.user?.id === user.id;
 </script>
 
 <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-purple-500 transition-colors">
   <!-- User Header -->
   <div class="flex items-start justify-between mb-3">
-    <div class="flex items-center space-x-3">
-      <div class="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center">
-        <Icon name="user" size={6} className="text-white" />
+    <div class="flex items-start space-x-3">
+      <div class="flex-shrink-0">
+        <div class="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center">
+          <Icon name="user" size={6} className="text-white" />
+        </div>
       </div>
-      <div>
-        <h3 class="text-lg font-semibold text-white">
-          {user.full_name || 'Unknown User'}
+      
+      <div class="flex-1 min-w-0">
+        <h3 class="font-semibold text-white truncate">
+          {user.full_name || user.email}
         </h3>
-        <p class="text-sm text-gray-400">{user.email}</p>
+        <p class="text-sm text-gray-400 truncate">{user.email}</p>
       </div>
     </div>
 
     <!-- Admin Badge -->
     {#if user.is_admin}
-      <div class="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full">
+      <Badge color="bg-purple-600">
         Admin
-      </div>
+      </Badge>
     {/if}
   </div>
 
   <!-- User Info -->
-  <div class="space-y-2 text-sm">
-    <!-- Created Date -->
-    <div class="flex items-center space-x-2 text-gray-400">
+  <div class="space-y-1 text-sm text-gray-400 mb-4">
+    <div class="flex items-center space-x-2">
       <Icon name="calendar" size={4} />
-      <span>Created: {formatDateTimeFull(user.created_at)}</span>
+      <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
     </div>
-
-    <!-- Last Sign In -->
     {#if user.last_sign_in_at}
-      <div class="flex items-center space-x-2 text-gray-400">
+      <div class="flex items-center space-x-2">
         <Icon name="clock" size={4} />
-        <span>Last sign in: {formatDateTimeFull(user.last_sign_in_at)}</span>
+        <span>Last login {new Date(user.last_sign_in_at).toLocaleDateString()}</span>
       </div>
     {/if}
-
-    <!-- User ID -->
-    <div class="flex items-center space-x-2 text-gray-500 text-xs">
-      <span>ID: {user.id.substring(0, 8)}...</span>
-    </div>
   </div>
 
-  <!-- Admin Controls -->
-  {#if isAdmin && !user.is_admin}
-    <div class="mt-4 pt-4 border-t border-slate-600 space-y-2">
-      <Button
-        variant="blue"
+  <!-- Actions -->
+  {#if isAdmin}
+    <div class="flex flex-wrap gap-2">
+      <ProtectedButton
+        action="modify"
+        variant="secondary"
         size="small"
         icon="settings"
-        fullWidth={true}
         on:click={handleResetPassword}
       >
         Reset Password
-      </Button>
-      
-      <Button
-        variant="blue"
+      </ProtectedButton>
+
+      <ProtectedButton
+        action="modify"
+        variant="primary"
         size="small"
         icon="grid"
-        fullWidth={true}
         on:click={handleManageApps}
       >
         Manage Apps
-      </Button>
+      </ProtectedButton>
+
+      <!-- NEW: Delete Button - disabled for current user -->
+      <ProtectedButton
+        action="modify"
+        variant="danger"
+        size="small"
+        icon="delete"
+        disabled={isCurrentUser}
+        title={isCurrentUser ? 'Cannot delete your own account' : 'Delete user'}
+        on:click={handleDelete}
+      >
+        Delete
+      </ProtectedButton>
     </div>
+
+    {#if isCurrentUser}
+      <p class="text-xs text-gray-500 mt-2">
+        (You cannot delete your own account)
+      </p>
+    {/if}
   {/if}
 </div>

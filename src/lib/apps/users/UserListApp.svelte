@@ -1,5 +1,6 @@
 <!-- src/lib/apps/users/UserListApp.svelte -->
-<!-- Updated to use ErrorDisplay and LoadingSpinner components -->
+<!-- ADD DELETE USER FUNCTIONALITY -->
+
 <script>
   import { onMount } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
@@ -13,6 +14,7 @@
   import CreateUserModal from './components/modals/CreateUserModal.svelte';
   import PasswordResetModal from './components/modals/PasswordResetModal.svelte';
   import ManageAppsModal from './components/modals/ManageAppsModal.svelte';
+  import DeleteUserModal from './components/modals/DeleteUserModal.svelte'; // NEW
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -20,18 +22,11 @@
   let searchTerm = '';
   let isAdmin = false;
   
-  // DEBUG: Track searchTerm changes
-  $: {
-    if (searchTerm) {
-      console.log('🔍 searchTerm changed to:', searchTerm);
-      console.trace('Stack trace:');
-    }
-  }
-  
   // Modal states
   let showCreateModal = false;
   let showPasswordResetModal = false;
   let showManageAppsModal = false;
+  let showDeleteModal = false; // NEW
   let selectedUser = null;
 
   // Subscribe to store
@@ -64,6 +59,12 @@
     showManageAppsModal = true;
   }
 
+  // NEW: Delete user handler
+  function handleDeleteUser(event) {
+    selectedUser = event.detail;
+    showDeleteModal = true;
+  }
+
   function handleCreateSuccess() {
     // User created successfully
     // Store automatically refreshes, modal handles its own close
@@ -94,6 +95,18 @@
     showManageAppsModal = false;
     selectedUser = null;
     // No clear - ManageApps doesn't trigger autocomplete bug
+  }
+
+  // NEW: Delete modal handlers
+  function handleDeleteSuccess() {
+    // User deleted successfully
+    // Store automatically refreshes
+    searchTerm = ''; // Clear search to show updated list
+  }
+
+  function handleDeleteClose() {
+    showDeleteModal = false;
+    selectedUser = null;
   }
 </script>
 
@@ -151,6 +164,7 @@
           {isAdmin}
           on:resetPassword={handlePasswordReset}
           on:manageApps={handleManageApps}
+          on:deleteUser={handleDeleteUser}
         />
       {/each}
     </div>
@@ -180,4 +194,12 @@
   bind:show={showManageAppsModal}
   user={selectedUser}
   on:close={handleManageAppsClose}
+/>
+
+<!-- NEW: Delete User Modal -->
+<DeleteUserModal 
+  bind:show={showDeleteModal}
+  user={selectedUser}
+  on:success={handleDeleteSuccess}
+  on:close={handleDeleteClose}
 />
