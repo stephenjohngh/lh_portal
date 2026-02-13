@@ -90,13 +90,6 @@
     <div class="flex justify-between items-start mb-1">
       <div class="flex-1">
         <div class="flex items-center gap-2 mb-1">
-          <!-- ISSUE NUMBER DISPLAY - ONLY NEW CODE -->
-          {#if issue.issue_number}
-            <span class="text-sm font-mono text-purple-400 font-semibold">
-              #{issue.issue_number})
-            </span>
-          {/if}
-          <!-- END NEW CODE -->
           <h3 class="text-xl font-semibold text-white">{issue.name}</h3>
           <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}

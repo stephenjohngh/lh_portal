@@ -3,7 +3,6 @@
   import ReportIssueCard from './ReportIssueCard.svelte';
   import { STATUS_COLORS } from './reportUtils';
 
-
   export let issues = [];
   export let title = '';
   export let statusType = 'current'; // 'current', 'parked', or 'completed'

@@ -34,13 +34,6 @@
     };
   }
 
-  // NEW: Dynamic modal title with issue number
-  $: modalTitle = issue && issue.issue_number 
-    ? `Edit Issue #${issue.issue_number}`
-    : issue 
-    ? 'Edit Issue' 
-    : 'New Issue';
-
   function validateForm() {
     formErrors.name = '';
     
@@ -72,29 +65,11 @@
 
 <Modal 
   bind:show
-  title={modalTitle}
+  title={issue ? 'Edit Issue' : 'New Issue'}
   size="medium"
   on:close={close}
 >
   <div class="space-y-4">
-    <!-- NEW: Issue Number Display when editing -->
-    {#if issue?.issue_number}
-      <div class="p-3 bg-purple-500/10 border border-purple-500/50 rounded-lg">
-        <div class="flex items-center space-x-2">
-          <span class="text-2xl">🔢</span>
-          <div>
-            <p class="text-sm font-semibold text-purple-400">
-              Issue #{issue.issue_number}
-            </p>
-            <p class="text-xs text-gray-400">
-              Created {new Date(issue.created_at).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-      </div>
-    {/if}
-    <!-- END NEW CODE -->
-    
     <FormInput
       label="Name"
       type="text"

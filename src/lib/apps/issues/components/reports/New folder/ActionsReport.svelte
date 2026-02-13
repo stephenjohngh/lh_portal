@@ -9,7 +9,6 @@
   export let show = false;
   export let issues = [];
 
-
   let profiles = [];
   let selectedUser = 'all'; // 'all' or specific user name
   let isGenerating = false;

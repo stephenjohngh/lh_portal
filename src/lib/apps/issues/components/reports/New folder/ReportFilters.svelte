@@ -11,7 +11,6 @@
   export let onDownloadWord;
   export let onClose;
 
-
   function clearDateFilter() {
     filterDate = '';
   }

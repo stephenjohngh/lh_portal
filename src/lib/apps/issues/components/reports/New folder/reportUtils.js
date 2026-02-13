@@ -2,7 +2,6 @@
 import { ACTION_STATUS, ISSUE_STATUS } from '$lib/utils/constants';
 import { formatDate } from '$lib/utils/dates';
 
-
 /**
  * Status color configurations for different issue states
  */

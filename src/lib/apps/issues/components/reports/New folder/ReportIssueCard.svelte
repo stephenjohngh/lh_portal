@@ -4,7 +4,6 @@
   import { formatDate, isOverdue } from '$lib/utils/dates';
   import { formatTimestamp, STATUS_COLORS } from './reportUtils';
 
-
   export let issue;
   export let index;
   export let statusType = 'current'; // 'current', 'parked', or 'completed'

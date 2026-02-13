@@ -9,7 +9,6 @@
     getTodayDate 
   } from './reportUtils';
 
-
   export let show = false;
   export let issues = [];
 
