@@ -350,7 +350,7 @@ async function generateIssueContent(issue, number) {
         new Paragraph({
           children: [
             new TextRun({
-              text: issue.name,
+              text: issue.issue_number +'.  ' + issue.name,
               bold: true,
               size: 26
             })
