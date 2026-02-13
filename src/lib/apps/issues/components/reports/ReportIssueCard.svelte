@@ -6,7 +6,6 @@
 
 
   export let issue;
-  export let index;
   export let statusType = 'current'; // 'current', 'parked', or 'completed'
 
   const colors = STATUS_COLORS[statusType];
@@ -28,8 +27,13 @@
     <div class="flex items-start justify-between">
       <div class="flex-1">
         <div class="flex items-center gap-2 mb-2">
-          <span class="text-lg font-bold text-gray-900">{index}.</span>
-          <h3 class="text-lg font-bold text-gray-900">{issue.name}</h3>
+          <!-- ISSUE NUMBER DISPLAY -->
+          <h3 class="text-lg font-bold text-gray-900">
+            {#if issue.issue_number}
+              {issue.issue_number}.
+            {/if}
+            {issue.name}
+          </h3>
           <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}
           </span>

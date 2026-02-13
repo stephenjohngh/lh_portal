@@ -192,33 +192,30 @@
             </div>
           </div>
 
-          <!-- Issues List (no section headers) -->
+          <!-- Issues List (no section headers, no index prop) -->
           <div class="space-y-4">
             {#if includeCurrent}
-              {#each groupedIssues.current as issue, index}
+              {#each groupedIssues.current as issue}
                 <ReportIssueCard 
                   {issue}
-                  index={index + 1}
                   statusType="current"
                 />
               {/each}
             {/if}
 
             {#if includeParked}
-              {#each groupedIssues.parked as issue, index}
+              {#each groupedIssues.parked as issue}
                 <ReportIssueCard 
                   {issue}
-                  index={includeCurrent ? groupedIssues.current.length + index + 1 : index + 1}
                   statusType="parked"
                 />
               {/each}
             {/if}
 
             {#if includeCompleted}
-              {#each groupedIssues.completed as issue, index}
+              {#each groupedIssues.completed as issue}
                 <ReportIssueCard 
                   {issue}
-                  index={(includeCurrent ? groupedIssues.current.length : 0) + (includeParked ? groupedIssues.parked.length : 0) + index + 1}
                   statusType="completed"
                 />
               {/each}
