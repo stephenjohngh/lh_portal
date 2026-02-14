@@ -1,9 +1,12 @@
 // src/lib/apps/issues/stores/issuesStore.js
-// REFACTORED: Now uses API client for cleaner code
+// UPDATED: Uses general audit logging API endpoint for all events
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { api } from '$lib/utils/api';
 import { ISSUE_STATUS } from '$lib/utils/constants';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('issuesStore');
 
 function createIssuesStore() {
   const { subscribe, set, update } = writable({
@@ -14,6 +17,60 @@ function createIssuesStore() {
 
   let realtimeChannel = null;
 
+  // ✨ GENERAL HELPER - Log any audit event via API
+  async function logAudit(eventType, targetType, targetId, targetName, data = {}) {
+    try {
+      // Get current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        logger('⚠️ No user found, skipping audit log');
+        return;
+      }
+
+      // Get user email
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', user.id)
+        .single();
+
+      const userEmail = profile?.email || user.email;
+
+      logger('📝 Logging audit event:', { 
+        eventType, 
+        targetType, 
+        targetId, 
+        targetName,
+        userId: user.id,
+        userEmail 
+      });
+      
+      const response = await fetch('/api/audit/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          userEmail: userEmail,
+          eventType,
+          targetType,
+          targetId,
+          targetName,
+          ...data
+        })
+      });
+
+      const result = await response.json();
+      logger('✅ Audit log response:', result);
+      
+      if (!response.ok) {
+        logger('⚠️ Audit log failed:', result);
+      }
+    } catch (err) {
+      logger('❌ Failed to log audit event:', err);
+      // Don't fail the main operation if audit logging fails
+    }
+  }
+
   return {
     subscribe,
 
@@ -21,7 +78,6 @@ function createIssuesStore() {
       update(state => ({ ...state, loading: true, error: '' }));
       
       try {
-        // ✨ REFACTORED: Using API client instead of direct supabase
         const data = await api.get('issues', {
           select: `
             *,
@@ -44,7 +100,6 @@ function createIssuesStore() {
           ascending: true
         });
 
-        // Apply secondary sort by created_at
         const sortedData = data.sort((a, b) => {
           if (a.priority === b.priority) {
             return new Date(a.created_at) - new Date(b.created_at);
@@ -67,89 +122,60 @@ function createIssuesStore() {
     },
 
     initializeRealtime() {
-      // Clean up existing channel if any
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
 
-      // Create a channel for real-time updates
       realtimeChannel = supabase.channel('issues-changes');
 
-      // Listen for INSERT on issues
       realtimeChannel.on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'issues'
-        },
+        { event: 'INSERT', schema: 'public', table: 'issues' },
         (payload) => {
-          console.log('New issue created:', payload.new);
-          // Refetch to get the complete data with relations
+          logger('New issue created:', payload.new);
           this.fetchIssues();
         }
       );
 
-      // Listen for UPDATE on issues
       realtimeChannel.on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'issues'
-        },
+        { event: 'UPDATE', schema: 'public', table: 'issues' },
         (payload) => {
-          console.log('Issue updated:', payload.new);
+          logger('Issue updated:', payload.new);
           this.fetchIssues();
         }
       );
 
-      // Listen for DELETE on issues
       realtimeChannel.on(
         'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'issues'
-        },
+        { event: 'DELETE', schema: 'public', table: 'issues' },
         (payload) => {
-          console.log('Issue deleted:', payload.old);
+          logger('Issue deleted:', payload.old);
           this.fetchIssues();
         }
       );
 
-      // Listen for changes on comments
       realtimeChannel.on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'comments'
-        },
+        { event: '*', schema: 'public', table: 'comments' },
         (payload) => {
-          console.log('Comment changed:', payload);
+          logger('Comment changed:', payload);
           this.fetchIssues();
         }
       );
 
-      // Listen for changes on actions
       realtimeChannel.on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'actions'
-        },
+        { event: '*', schema: 'public', table: 'actions' },
         (payload) => {
-          console.log('Action changed:', payload);
+          logger('Action changed:', payload);
           this.fetchIssues();
         }
       );
 
-      // Subscribe to start receiving events
       realtimeChannel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Real-time updates enabled for Issues Tracker');
+          logger('✅ Real-time updates enabled for Issues Tracker');
         }
       });
     },
@@ -166,7 +192,6 @@ function createIssuesStore() {
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
         
-        // ✨ REFACTORED: Using API client
         await api.create('issues', {
           name: issueData.name,
           description: issueData.description,
@@ -190,7 +215,6 @@ function createIssuesStore() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
-        // ✨ REFACTORED: Using API client
         await api.update('issues', issueId, {
           name: issueData.name,
           description: issueData.description,
@@ -210,9 +234,7 @@ function createIssuesStore() {
 
     async deleteIssue(issueId) {
       try {
-        // ✨ REFACTORED: Using API client
         await api.delete('issues', issueId);
-
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
@@ -221,24 +243,63 @@ function createIssuesStore() {
       }
     },
 
+    // ============================================
+    // COMMENTS - With Audit Logging
+    // ============================================
+
     async addComment(issueId, commentText) {
       try {
+        logger('➕ Adding comment to issue:', issueId);
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
+        logger('User:', user?.id, user?.email);
+
+        // Get issue for audit context
+        const { data: issue } = await supabase
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', issueId)
+          .single();
         
-        // ✨ REFACTORED: Using API client
-        await api.create('comments', {
-          issue_id: issueId,
-          comment_text: commentText,
-          created_at: now,
-          updated_at: now,
-          created_by: user?.id,
-          updated_by: user?.id
-        });
+        logger('Issue found:', issue);
+        
+        // Create comment
+        const { data: newComment, error: createError } = await supabase
+          .from('comments')
+          .insert({
+            issue_id: issueId,
+            comment_text: commentText,
+            created_at: now,
+            updated_at: now,
+            created_by: user?.id,
+            updated_by: user?.id
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        
+        logger('✅ Comment created:', newComment.id);
+
+        // ✨ LOG AUDIT EVENT
+        logger('📝 Calling logAudit for comment creation...');
+        await logAudit(
+          'create',
+          'comment',
+          newComment.id,
+          `Comment on Issue #${issue?.issue_number}`,
+          {
+            afterData: {
+              comment_text: commentText,
+              issue_name: issue?.name
+            }
+          }
+        );
 
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error adding comment:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -247,14 +308,46 @@ function createIssuesStore() {
     async updateComment(commentId, commentText, historic = false) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+
+        // Get comment before update
+        const { data: beforeComment } = await supabase
+          .from('comments')
+          .select('comment_text, historic, issue_id')
+          .eq('id', commentId)
+          .single();
+
+        // Get issue for context
+        const { data: issue } = await supabase
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', beforeComment?.issue_id)
+          .single();
         
-        // ✨ REFACTORED: Using API client
+        // Update comment
         await api.update('comments', commentId, {
           comment_text: commentText,
           historic: historic,
           updated_at: new Date().toISOString(),
           updated_by: user?.id
         });
+
+        // ✨ LOG AUDIT EVENT
+        await logAudit(
+          'update',
+          'comment',
+          commentId,
+          `Comment on Issue #${issue?.issue_number}`,
+          {
+            beforeData: {
+              comment_text: beforeComment?.comment_text,
+              historic: beforeComment?.historic
+            },
+            afterData: {
+              comment_text: commentText,
+              historic: historic
+            }
+          }
+        );
 
         await this.fetchIssues();
         return { success: true };
@@ -266,8 +359,39 @@ function createIssuesStore() {
 
     async deleteComment(commentId) {
       try {
-        // ✨ REFACTORED: Using API client
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // Get comment data before deletion
+        const { data: comment } = await supabase
+          .from('comments')
+          .select('comment_text, historic, issue_id')
+          .eq('id', commentId)
+          .single();
+
+        // Get issue for context
+        const { data: issue } = await supabase
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', comment?.issue_id)
+          .single();
+        
+        // Delete comment
         await api.delete('comments', commentId);
+
+        // ✨ LOG AUDIT EVENT
+        await logAudit(
+          'delete',
+          'comment',
+          commentId,
+          `Comment on Issue #${issue?.issue_number}`,
+          {
+            beforeData: {
+              comment_text: comment?.comment_text,
+              historic: comment?.historic,
+              issue_name: issue?.name
+            }
+          }
+        );
 
         await this.fetchIssues();
         return { success: true };
@@ -277,12 +401,15 @@ function createIssuesStore() {
       }
     },
 
+    // ============================================
+    // ACTIONS - Can add audit logging here too
+    // ============================================
+
     async addAction(issueId, actionData) {
       try {
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
         
-        // ✨ REFACTORED: Using API client
         await api.create('actions', {
           issue_id: issueId,
           action_text: actionData.action_text,
@@ -307,7 +434,6 @@ function createIssuesStore() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
-        // ✨ REFACTORED: Using API client
         await api.update('actions', actionId, {
           action_text: actionData.action_text,
           name_text: actionData.name_text,
@@ -327,9 +453,7 @@ function createIssuesStore() {
 
     async deleteAction(actionId) {
       try {
-        // ✨ REFACTORED: Using API client
         await api.delete('actions', actionId);
-
         await this.fetchIssues();
         return { success: true };
       } catch (err) {

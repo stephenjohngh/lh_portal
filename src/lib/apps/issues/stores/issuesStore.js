@@ -189,23 +189,52 @@ function createIssuesStore() {
 
     async addIssue(issueData) {
       try {
+        logger('➕ Adding issue');
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
+        logger('User:', user?.id, user?.email);
         
-        await api.create('issues', {
-          name: issueData.name,
-          description: issueData.description,
-          priority: parseInt(issueData.priority) || 3,
-          status: issueData.status || ISSUE_STATUS.CURRENT,
-          created_at: now,
-          updated_at: now,
-          created_by: user?.id,
-          updated_by: user?.id
-        });
+        // Create issue
+        const { data: newIssue, error: createError } = await supabase
+          .from('issues')
+          .insert({
+            name: issueData.name,
+            description: issueData.description,
+            priority: parseInt(issueData.priority) || 3,
+            status: issueData.status || ISSUE_STATUS.CURRENT,
+            created_at: now,
+            updated_at: now,
+            created_by: user?.id,
+            updated_by: user?.id
+          })
+          .select('id, issue_number, name')
+          .single();
+
+        if (createError) throw createError;
+        
+        logger('✅ Issue created:', newIssue.id, newIssue.issue_number);
+
+        // ✨ LOG AUDIT EVENT
+        logger('📝 Calling logAudit for issue creation...');
+        await logAudit(
+          'create',
+          'issue',
+          newIssue.id,
+          `Issue #${newIssue.issue_number}: ${newIssue.name}`,
+          {
+            afterData: {
+              name: issueData.name,
+              description: issueData.description,
+              priority: parseInt(issueData.priority) || 3,
+              status: issueData.status || ISSUE_STATUS.CURRENT
+            }
+          }
+        );
 
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error adding issue:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -213,8 +242,19 @@ function createIssuesStore() {
 
     async updateIssue(issueId, issueData) {
       try {
+        logger('✏️ Updating issue:', issueId);
         const { data: { user } } = await supabase.auth.getUser();
+
+        // Get issue before update for audit log
+        const { data: beforeIssue } = await supabase
+          .from('issues')
+          .select('issue_number, name, description, priority, status')
+          .eq('id', issueId)
+          .single();
+
+        logger('Issue before update:', beforeIssue);
         
+        // Update issue
         await api.update('issues', issueId, {
           name: issueData.name,
           description: issueData.description,
@@ -224,9 +264,35 @@ function createIssuesStore() {
           updated_by: user?.id
         });
 
+        logger('✅ Issue updated');
+
+        // ✨ LOG AUDIT EVENT
+        logger('📝 Calling logAudit for issue update...');
+        await logAudit(
+          'update',
+          'issue',
+          issueId,
+          `Issue #${beforeIssue?.issue_number}: ${issueData.name}`,
+          {
+            beforeData: {
+              name: beforeIssue?.name,
+              description: beforeIssue?.description,
+              priority: beforeIssue?.priority,
+              status: beforeIssue?.status
+            },
+            afterData: {
+              name: issueData.name,
+              description: issueData.description,
+              priority: parseInt(issueData.priority) || 3,
+              status: issueData.status || ISSUE_STATUS.CURRENT
+            }
+          }
+        );
+
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error updating issue:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -234,10 +300,44 @@ function createIssuesStore() {
 
     async deleteIssue(issueId) {
       try {
+        logger('🗑️ Deleting issue:', issueId);
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // Get issue data before deletion for audit log
+        const { data: issue } = await supabase
+          .from('issues')
+          .select('issue_number, name, description, priority, status')
+          .eq('id', issueId)
+          .single();
+
+        logger('Issue to delete:', issue);
+        
+        // Delete issue
         await api.delete('issues', issueId);
+
+        logger('✅ Issue deleted');
+
+        // ✨ LOG AUDIT EVENT
+        logger('📝 Calling logAudit for issue deletion...');
+        await logAudit(
+          'delete',
+          'issue',
+          issueId,
+          `Issue #${issue?.issue_number}: ${issue?.name}`,
+          {
+            beforeData: {
+              name: issue?.name,
+              description: issue?.description,
+              priority: issue?.priority,
+              status: issue?.status
+            }
+          }
+        );
+
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error deleting issue:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -407,24 +507,62 @@ function createIssuesStore() {
 
     async addAction(issueId, actionData) {
       try {
+        logger('➕ Adding action to issue:', issueId);
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
+        logger('User:', user?.id, user?.email);
+
+        // Get issue for audit context
+        const { data: issue } = await supabase
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', issueId)
+          .single();
         
-        await api.create('actions', {
-          issue_id: issueId,
-          action_text: actionData.action_text,
-          name_text: actionData.name_text,
-          date_deadline: actionData.date_deadline || null,
-          status: actionData.status,
-          created_at: now,
-          updated_at: now,
-          created_by: user?.id,
-          updated_by: user?.id
-        });
+        logger('Issue found:', issue);
+        
+        // Create action
+        const { data: newAction, error: createError } = await supabase
+          .from('actions')
+          .insert({
+            issue_id: issueId,
+            action_text: actionData.action_text,
+            name_text: actionData.name_text,
+            date_deadline: actionData.date_deadline || null,
+            status: actionData.status,
+            created_at: now,
+            updated_at: now,
+            created_by: user?.id,
+            updated_by: user?.id
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        
+        logger('✅ Action created:', newAction.id);
+
+        // ✨ LOG AUDIT EVENT
+        logger('📝 Calling logAudit for action creation...');
+        await logAudit(
+          'create',
+          'action',
+          newAction.id,
+          `Action on Issue #${issue?.issue_number}`,
+          {
+            afterData: {
+              action_text: actionData.action_text,
+              name_text: actionData.name_text,
+              status: actionData.status,
+              issue_name: issue?.name
+            }
+          }
+        );
 
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error adding action:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -432,8 +570,26 @@ function createIssuesStore() {
 
     async updateAction(actionId, actionData) {
       try {
+        logger('✏️ Updating action:', actionId);
         const { data: { user } } = await supabase.auth.getUser();
+
+        // Get action before update for audit log
+        const { data: beforeAction } = await supabase
+          .from('actions')
+          .select('action_text, name_text, status, date_deadline, issue_id')
+          .eq('id', actionId)
+          .single();
+
+        // Get issue for context
+        const { data: issue } = await supabase
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', beforeAction?.issue_id)
+          .single();
         
+        logger('Action before update:', beforeAction);
+        
+        // Update action
         await api.update('actions', actionId, {
           action_text: actionData.action_text,
           name_text: actionData.name_text,
@@ -443,9 +599,35 @@ function createIssuesStore() {
           updated_by: user?.id
         });
 
+        logger('✅ Action updated');
+
+        // ✨ LOG AUDIT EVENT
+        logger('📝 Calling logAudit for action update...');
+        await logAudit(
+          'update',
+          'action',
+          actionId,
+          `Action on Issue #${issue?.issue_number}`,
+          {
+            beforeData: {
+              action_text: beforeAction?.action_text,
+              name_text: beforeAction?.name_text,
+              status: beforeAction?.status,
+              date_deadline: beforeAction?.date_deadline
+            },
+            afterData: {
+              action_text: actionData.action_text,
+              name_text: actionData.name_text,
+              status: actionData.status,
+              date_deadline: actionData.date_deadline
+            }
+          }
+        );
+
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error updating action:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -453,10 +635,52 @@ function createIssuesStore() {
 
     async deleteAction(actionId) {
       try {
+        logger('🗑️ Deleting action:', actionId);
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // Get action data before deletion for audit log
+        const { data: action } = await supabase
+          .from('actions')
+          .select('action_text, name_text, status, date_deadline, issue_id')
+          .eq('id', actionId)
+          .single();
+
+        // Get issue for context
+        const { data: issue } = await supabase
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', action?.issue_id)
+          .single();
+        
+        logger('Action to delete:', action);
+        
+        // Delete action
         await api.delete('actions', actionId);
+
+        logger('✅ Action deleted');
+
+        // ✨ LOG AUDIT EVENT
+        logger('📝 Calling logAudit for action deletion...');
+        await logAudit(
+          'delete',
+          'action',
+          actionId,
+          `Action on Issue #${issue?.issue_number}`,
+          {
+            beforeData: {
+              action_text: action?.action_text,
+              name_text: action?.name_text,
+              status: action?.status,
+              date_deadline: action?.date_deadline,
+              issue_name: issue?.name
+            }
+          }
+        );
+
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error deleting action:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
