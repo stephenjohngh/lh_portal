@@ -4,9 +4,6 @@ import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { api } from '$lib/utils/api';
 import { ISSUE_STATUS } from '$lib/utils/constants';
-import { getLogger } from '$lib/utils/logger';
-
-const logger = getLogger('issuesStore');
 
 function createIssuesStore() {
   const { subscribe, set, update } = writable({
@@ -28,7 +25,7 @@ function createIssuesStore() {
         const data = await api.get('issues', {
           select: `
             *,
-	    issue_number,
+            issue_number,
             created_by_profile:profiles!created_by(full_name),
             updated_by_profile:profiles!updated_by(full_name),
             comments (
@@ -46,8 +43,6 @@ function createIssuesStore() {
           orderBy: 'priority',
           ascending: true
         });
-
-        logger('Issues fetched:', data?.length || 0);
 
         // Apply secondary sort by created_at
         const sortedData = data.sort((a, b) => {
@@ -89,7 +84,7 @@ function createIssuesStore() {
           table: 'issues'
         },
         (payload) => {
-          logger('New issue created:', payload.new);
+          console.log('New issue created:', payload.new);
           // Refetch to get the complete data with relations
           this.fetchIssues();
         }
@@ -104,7 +99,7 @@ function createIssuesStore() {
           table: 'issues'
         },
         (payload) => {
-          logger('Issue updated:', payload.new);
+          console.log('Issue updated:', payload.new);
           this.fetchIssues();
         }
       );
@@ -118,7 +113,7 @@ function createIssuesStore() {
           table: 'issues'
         },
         (payload) => {
-          logger('Issue deleted:', payload.old);
+          console.log('Issue deleted:', payload.old);
           this.fetchIssues();
         }
       );

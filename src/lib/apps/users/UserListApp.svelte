@@ -1,4 +1,5 @@
 <!-- src/lib/apps/users/UserListApp.svelte -->
+<!-- UPDATED: Added Audit Logs tab for admin users -->
 <script>
   import { onMount } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
@@ -13,12 +14,14 @@
   import PasswordResetModal from './components/modals/PasswordResetModal.svelte';
   import ManageAppsModal from './components/modals/ManageAppsModal.svelte';
   import DeleteUserModal from './components/modals/DeleteUserModal.svelte';
+  import AuditLogsView from './components/AuditLogsView.svelte'; // NEW
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   let searchTerm = '';
   let isAdmin = false;
+  let activeTab = 'users'; // NEW: 'users' or 'audit'
   
   // Modal states
   let showCreateModal = false;
@@ -97,68 +100,108 @@
 </script>
 
 <div class="app-container">
-  <!-- Header -->
-  <div class="flex-start mb-6">
-    <div>
-      <h2 class="heading-page">User Management</h2>
-      <p class="text-muted">Manage user accounts and permissions</p>
-    </div>
-    {#if isAdmin}
-      <Button
-        variant="primary"
-        size="large"
-        icon="plus"
-        on:click={() => showCreateModal = true}
-      >
-        Create User
-      </Button>
-    {/if}
-  </div>
-
-  <!-- Filters -->
-  <UserFilters 
-    bind:searchTerm 
-    resultCount={filteredUsers.length}
-  />
-
-  <!-- Error Display -->
-  <ErrorDisplay 
-    message={error} 
-    onDismiss={() => usersStore.clearError()}
-  />
-
-  <!-- Loading State -->
-  {#if loading}
-    <LoadingSpinner />
-
-  <!-- Empty State -->
-  {:else if filteredUsers.length === 0}
-    <div class="empty-state">
-      {#if searchTerm}
-        No users found matching "{searchTerm}". Try a different search.
-      {:else}
-        No users found.
+  <!-- Header with Tabs (NEW) -->
+  <div class="mb-6">
+    <div class="flex-start mb-4">
+      <div>
+        <h2 class="heading-page">Admin Portal</h2>
+        <p class="text-muted">User management and activity monitoring</p>
+      </div>
+      {#if isAdmin && activeTab === 'users'}
+        <Button
+          variant="primary"
+          size="large"
+          icon="plus"
+          on:click={() => showCreateModal = true}
+        >
+          Create User
+        </Button>
       {/if}
     </div>
 
-  <!-- Users Grid -->
-  {:else}
-    <div class="grid-cards">
-      {#each filteredUsers as user (user.id)}
-        <UserCard 
-          {user}
-          {isAdmin}
-          on:resetPassword={handlePasswordReset}
-          on:manageApps={handleManageApps}
-          on:deleteUser={handleDeleteUser}
-        />
-      {/each}
+    <!-- Tab Navigation (NEW) -->
+    <div class="flex space-x-2 border-b border-slate-600">
+      <button
+        class="px-4 py-2 transition-colors {activeTab === 'users' 
+          ? 'border-b-2 border-purple-500 text-white font-semibold' 
+          : 'text-gray-400 hover:text-white'}"
+        on:click={() => activeTab = 'users'}
+      >
+        <span class="flex items-center space-x-2">
+          <span>👥</span>
+          <span>Users</span>
+          <span class="text-xs text-muted">({users.length})</span>
+        </span>
+      </button>
+      {#if isAdmin}
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'audit' 
+            ? 'border-b-2 border-purple-500 text-white font-semibold' 
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activeTab = 'audit'}
+        >
+          <span class="flex items-center space-x-2">
+            <span>📋</span>
+            <span>Audit Logs</span>
+          </span>
+        </button>
+      {/if}
     </div>
-  {/if}
+  </div>
 
-  <!-- Statistics -->
-  {#if !loading && users.length > 0}
-    <UserStats {users} />
+  <!-- Tab Content (NEW) -->
+  {#if activeTab === 'users'}
+    <!-- USERS TAB - Existing Content -->
+    
+    <!-- Filters -->
+    <UserFilters 
+      bind:searchTerm 
+      resultCount={filteredUsers.length}
+    />
+
+    <!-- Error Display -->
+    <ErrorDisplay 
+      message={error} 
+      onDismiss={() => usersStore.clearError()}
+    />
+
+    <!-- Loading State -->
+    {#if loading}
+      <LoadingSpinner />
+
+    <!-- Empty State -->
+    {:else if filteredUsers.length === 0}
+      <div class="empty-state">
+        {#if searchTerm}
+          No users found matching "{searchTerm}". Try a different search.
+        {:else}
+          No users found.
+        {/if}
+      </div>
+
+    <!-- Users Grid -->
+    {:else}
+      <div class="grid-cards">
+        {#each filteredUsers as user (user.id)}
+          <UserCard 
+            {user}
+            {isAdmin}
+            on:resetPassword={handlePasswordReset}
+            on:manageApps={handleManageApps}
+            on:deleteUser={handleDeleteUser}
+          />
+        {/each}
+      </div>
+    {/if}
+
+    <!-- Statistics -->
+    {#if !loading && users.length > 0}
+      <UserStats {users} />
+    {/if}
+
+  {:else if activeTab === 'audit'}
+    <!-- AUDIT LOGS TAB - New Content -->
+    <AuditLogsView />
   {/if}
 </div>
 
