@@ -1,14 +1,12 @@
 // src/routes/api/admin/delete-user/+server.js
-/**
- * Admin API endpoint to delete a user
- * Matches the pattern of reset-password endpoint
- */
+// UPDATED: Added audit logging for user deletion
 
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { getLogger } from '$lib/utils/logger';
+import { logDelete } from '$lib/server/auditLogger';
 
 const logger = getLogger('DeleteUserAPI');
 
@@ -20,7 +18,6 @@ export async function POST({ request }) {
     logger('Target user ID:', user_id);
     logger('Requesting user ID:', requesting_user_id);
 
-    // Validate input
     if (!user_id || !requesting_user_id) {
       return json(
         { error: 'User ID and requesting user ID are required' },
@@ -28,7 +25,6 @@ export async function POST({ request }) {
       );
     }
 
-    // Create Supabase admin client with service role key
     const supabaseAdmin = createClient(
       PUBLIC_SUPABASE_URL,
       SUPABASE_SERVICE_ROLE_KEY,
@@ -41,13 +37,13 @@ export async function POST({ request }) {
     );
 
     // Verify requesting user is admin
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: adminProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('is_admin')
+      .select('is_admin, email')
       .eq('id', requesting_user_id)
       .single();
 
-    if (profileError || !profile?.is_admin) {
+    if (profileError || !adminProfile?.is_admin) {
       logger('Unauthorized - user is not admin');
       return json(
         { error: 'Unauthorized - admin access required' },
@@ -64,10 +60,10 @@ export async function POST({ request }) {
       );
     }
 
-    // Get user details before deletion (for logging and response)
+    // ✨ Get user details before deletion for audit log
     const { data: userToDelete } = await supabaseAdmin
       .from('profiles')
-      .select('email, full_name')
+      .select('email, full_name, is_admin, created_at')
       .eq('id', user_id)
       .single();
 
@@ -81,8 +77,7 @@ export async function POST({ request }) {
 
     logger('Deleting user:', userToDelete.email);
 
-    // Step 1: Delete profile FIRST (before auth)
-    // This way if it fails, we haven't orphaned the auth user
+    // Delete profile FIRST
     logger('Deleting profile and app_permissions...');
     const { error: profileDeleteError } = await supabaseAdmin
       .from('profiles')
@@ -91,16 +86,15 @@ export async function POST({ request }) {
 
     if (profileDeleteError) {
       logger('Profile delete error:', profileDeleteError);
-      logger('Error details:', JSON.stringify(profileDeleteError));
       return json(
-        { error: `Database error deleting user: ${profileDeleteError.message || 'Unknown error'}` },
+        { error: `Database error deleting user: ${profileDeleteError.message}` },
         { status: 500 }
       );
     }
 
-    logger('Profile deleted successfully (app_permissions CASCADE deleted)');
+    logger('Profile deleted successfully');
 
-    // Step 2: Delete from auth
+    // Delete from auth
     logger('Deleting auth user...');
     const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
       user_id
@@ -109,12 +103,29 @@ export async function POST({ request }) {
     if (authDeleteError) {
       logger('Auth delete error:', authDeleteError);
       logger('Warning: Profile deleted but auth deletion failed');
-      // We continue because profile is already deleted
-      // User can't login anymore anyway (no profile = no access)
     } else {
       logger('Auth user deleted successfully');
     }
 
+    // ✨ LOG USER DELETION
+    await logDelete(
+      requesting_user_id,
+      adminProfile.email,
+      'user',
+      user_id,
+      userToDelete.email,
+      {
+        email: userToDelete.email,
+        full_name: userToDelete.full_name,
+        is_admin: userToDelete.is_admin,
+        created_at: userToDelete.created_at
+      },
+      {
+        deleted_by_admin: true
+      }
+    );
+
+    logger('✅ User deletion logged to audit trail');
     logger('User deletion completed for:', userToDelete.email);
 
     return json({

@@ -1,16 +1,21 @@
 // src/routes/api/auth/login/+server.js
-// Complete login endpoint with audit logging and brute force protection
-// READY TO DEPLOY - Just copy to your project
+// FIXED: Now uses direct Supabase client like your other endpoints
 
 import { json } from '@sveltejs/kit';
+import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { logLogin, logFailedLogin } from '$lib/server/auditLogger';
 
+// Create Supabase client (matches your existing endpoint pattern)
+const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
 // Brute force protection
-const failedLoginAttempts = new Map(); // email -> { count, firstAttempt }
+const failedLoginAttempts = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 
-export async function POST({ request, locals }) {
+export async function POST({ request }) {
   try {
     const { email, password } = await request.json();
 
@@ -20,20 +25,15 @@ export async function POST({ request, locals }) {
 
     console.log('🔐 Login attempt for:', email);
 
-    // Check if account is locked due to failed attempts
+    // Check if account is locked
     const attempts = failedLoginAttempts.get(email.toLowerCase());
     if (attempts) {
       const timeSinceFirst = Date.now() - attempts.firstAttempt;
       
       if (attempts.count >= MAX_FAILED_ATTEMPTS && timeSinceFirst < LOCKOUT_DURATION) {
-        console.log('🚨 Account locked due to failed attempts:', email);
+        console.log('🚨 Account locked:', email);
         
-        // ✨ LOG ACCOUNT LOCKOUT
-        await logFailedLogin(
-          email,
-          request,
-          'account_locked_too_many_attempts'
-        );
+        await logFailedLogin(email, request, 'account_locked_too_many_attempts');
 
         return json({ 
           error: 'Too many failed attempts. Please try again in 15 minutes.',
@@ -41,20 +41,19 @@ export async function POST({ request, locals }) {
         }, { status: 429 });
       }
       
-      // Reset if lockout period has passed
       if (timeSinceFirst >= LOCKOUT_DURATION) {
         failedLoginAttempts.delete(email.toLowerCase());
       }
     }
 
     // Attempt login
-    const { data, error } = await locals.supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) {
-      console.log('❌ Login failed:', email, error.message);
+      console.log('❌ Login failed:', email);
       
       // Track failed attempt
       const emailLower = email.toLowerCase();
@@ -64,8 +63,6 @@ export async function POST({ request, locals }) {
       };
       current.count++;
       failedLoginAttempts.set(emailLower, current);
-
-      console.log(`Failed login attempts for ${email}: ${current.count}/${MAX_FAILED_ATTEMPTS}`);
       
       // ✨ LOG FAILED LOGIN
       await logFailedLogin(
@@ -80,7 +77,7 @@ export async function POST({ request, locals }) {
       }, { status: 401 });
     }
 
-    // Successful login - clear failed attempts
+    // Success
     const previousFailedAttempts = attempts?.count || 0;
     failedLoginAttempts.delete(email.toLowerCase());
 
@@ -93,7 +90,7 @@ export async function POST({ request, locals }) {
       request,
       {
         session_id: data.session.access_token.substring(0, 20),
-        provider: data.user.app_metadata?.provider || 'email',
+        provider: 'email',
         previous_failed_attempts: previousFailedAttempts
       }
     );
@@ -109,15 +106,3 @@ export async function POST({ request, locals }) {
     return json({ error: 'An error occurred during login' }, { status: 500 });
   }
 }
-
-// Cleanup old failed attempts periodically (every 5 minutes)
-setInterval(() => {
-  const now = Date.now();
-  for (const [email, attempts] of failedLoginAttempts.entries()) {
-    const timeSinceFirst = now - attempts.firstAttempt;
-    if (timeSinceFirst >= LOCKOUT_DURATION) {
-      failedLoginAttempts.delete(email);
-      console.log('🧹 Cleaned up expired failed attempts for:', email);
-    }
-  }
-}, 5 * 60 * 1000);

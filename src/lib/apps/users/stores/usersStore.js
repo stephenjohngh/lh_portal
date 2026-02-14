@@ -1,8 +1,5 @@
 // src/lib/apps/users/stores/usersStore.js
-/**
- * Users Store - Centralized state management for user operations
- * Handles all API calls and data management for the Users app
- */
+// FIXED: Added requesting_user_id to resetPassword function
 
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
@@ -11,7 +8,6 @@ import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger("usersStore");
 
-// Create stores
 function createUsersStore() {
   const { subscribe, set, update } = writable({
     users: [],
@@ -19,10 +15,9 @@ function createUsersStore() {
     error: null
   });
 
-  // App permissions cache
-  const appPermissions = writable({}); // { userId: ['app1', 'app2'] }
-  const appReadOnly = writable({}); // { userId: { appId: boolean } }
-  const loadingApps = writable({}); // { userId: boolean }
+  const appPermissions = writable({});
+  const appReadOnly = writable({});
+  const loadingApps = writable({});
 
   return {
     subscribe,
@@ -30,12 +25,8 @@ function createUsersStore() {
     appReadOnly,
     loadingApps,
 
-    /**
-     * Fetch all users from database
-     */
     async fetchUsers() {
       logger('Fetching users...');
-
       update(state => ({ ...state, loading: true, error: null }));
 
       try {
@@ -45,25 +36,16 @@ function createUsersStore() {
         });
 
         logger('Users loaded:', users.length);
-        logger(users);
-
         update(state => ({ ...state, users, loading: false }));
         return users;
 
       } catch (err) {
         logger('Failed to fetch users:', err);
-        update(state => ({ 
-          ...state, 
-          loading: false, 
-          error: err.message 
-        }));
+        update(state => ({ ...state, loading: false, error: err.message }));
         throw err;
       }
     },
 
-    /**
-     * Create a new user
-     */
     async createUser(userData) {
       logger('Creating user:', userData.email);
 
@@ -89,10 +71,7 @@ function createUsersStore() {
         }
 
         logger('User created successfully:', result);
-        
-        // Refresh users list after creation
         setTimeout(() => this.fetchUsers(), 500);
-        
         return result;
 
       } catch (err) {
@@ -101,19 +80,21 @@ function createUsersStore() {
       }
     },
 
-    /**
-     * Reset user password
-     */
+    // ✨ FIXED: Now includes requesting_user_id
     async resetPassword(userId, newPassword) {
       logger('Resetting password for user:', userId);
 
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
         const response = await fetch('/api/admin/reset-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             user_id: userId,
-            new_password: newPassword
+            new_password: newPassword,
+            requesting_user_id: user.id  // ✨ ADDED THIS
           })
         });
 
@@ -132,54 +113,40 @@ function createUsersStore() {
       }
     },
 
+    async deleteUser(userId) {
+      logger('Deleting user:', userId);
 
-async deleteUser(userId) {
-  logger('Deleting user:', userId);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+        const response = await fetch('/api/admin/delete-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            requesting_user_id: user.id
+          })
+        });
 
-    // Call admin API to delete user
-    const response = await fetch('/api/admin/delete-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: userId,
-        requesting_user_id: user.id
-      })
-    });
+        const result = await response.json();
 
-    const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to delete user');
+        }
 
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to delete user');
-    }
+        logger('User deleted successfully:', result);
+        setTimeout(() => this.fetchUsers(), 500);
+        return result;
 
-    logger('User deleted successfully:', result);
-    
-    // Refresh users list after deletion
-    setTimeout(() => this.fetchUsers(), 500);
-    
-    return result;
+      } catch (err) {
+        logger('Failed to delete user:', err);
+        throw err;
+      }
+    },
 
-  } catch (err) {
-    logger('Failed to delete user:', err);
-    throw err;
-  }
-},
-
-
-
-
-
-
-    /**
-     * Load app permissions for a user
-     */
     async loadAppPermissions(userId) {
       logger('Loading app permissions for user:', userId);
-      
       loadingApps.update(state => ({ ...state, [userId]: true }));
 
       try {
@@ -191,20 +158,13 @@ async deleteUser(userId) {
         if (error) throw error;
 
         const apps = (data || []).map(p => p.app_id);
-        appPermissions.update(state => ({ 
-          ...state, 
-          [userId]: apps 
-        }));
-
+        appPermissions.update(state => ({ ...state, [userId]: apps }));
         logger('Loaded app permissions:', apps);
         return apps;
 
       } catch (err) {
         logger('Failed to load app permissions:', err);
-        appPermissions.update(state => ({ 
-          ...state, 
-          [userId]: [] 
-        }));
+        appPermissions.update(state => ({ ...state, [userId]: [] }));
         throw err;
 
       } finally {
@@ -212,9 +172,6 @@ async deleteUser(userId) {
       }
     },
 
-    /**
-     * Load read-only status for user's apps
-     */
     async loadAppReadOnly(userId) {
       logger('Loading read-only status for user:', userId);
 
@@ -231,35 +188,23 @@ async deleteUser(userId) {
           readOnlyMap[perm.app_id] = perm.is_read_only || false;
         });
 
-        appReadOnly.update(state => ({ 
-          ...state, 
-          [userId]: readOnlyMap 
-        }));
-
+        appReadOnly.update(state => ({ ...state, [userId]: readOnlyMap }));
         logger('Loaded read-only status:', readOnlyMap);
         return readOnlyMap;
 
       } catch (err) {
         logger('Failed to load read-only status:', err);
-        appReadOnly.update(state => ({ 
-          ...state, 
-          [userId]: {} 
-        }));
+        appReadOnly.update(state => ({ ...state, [userId]: {} }));
         throw err;
       }
     },
 
-    /**
-     * Toggle app permission for user
-     */
     async toggleAppPermission(userId, appId, currentPermissions) {
       logger('Toggling app permission:', { userId, appId });
-
       const hasPermission = currentPermissions.includes(appId);
 
       try {
         if (hasPermission) {
-          // Remove permission
           const { error } = await supabase
             .from('app_permissions')
             .delete()
@@ -276,7 +221,6 @@ async deleteUser(userId) {
           logger('Removed permission:', appId);
 
         } else {
-          // Add permission
           const { data: { user } } = await supabase.auth.getUser();
 
           const { error } = await supabase
@@ -304,12 +248,8 @@ async deleteUser(userId) {
       }
     },
 
-    /**
-     * Toggle read-only status for user's app
-     */
     async toggleAppReadOnly(userId, appId, currentValue) {
       logger('Toggling read-only:', { userId, appId, currentValue });
-
       const newValue = !currentValue;
 
       try {
@@ -337,21 +277,14 @@ async deleteUser(userId) {
       }
     },
 
-    /**
-     * Clear error state
-     */
     clearError() {
       update(state => ({ ...state, error: null }));
     },
 
-    /**
-     * Refresh - alias for fetchUsers
-     */
     refresh() {
       return this.fetchUsers();
     }
   };
 }
 
-// Export singleton instance
 export const usersStore = createUsersStore();
