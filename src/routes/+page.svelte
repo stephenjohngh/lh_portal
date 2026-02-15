@@ -16,6 +16,7 @@
   import UserListApp from '$lib/apps/users/UserListApp.svelte';
   import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte'; 
   import DemoApp from '$lib/apps/demo/DemoApp.svelte';
+  import Demo from '$lib/apps/demo/Demo.svelte';
   import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
 
   let activeApp = 'home';
@@ -82,6 +83,7 @@
       'users': UserListApp,
       'issues': IssuesTrackerApp,
       'demo': DemoApp,
+      'demo2': Demo,
       'settings': SettingsApp
     };
     return components[appId];

@@ -162,3 +162,25 @@ export function isWithinPastWeek(dateString) {
   weekAgo.setDate(weekAgo.getDate() - 7);
   return date >= weekAgo;
 }
+
+
+/**
+ * Check if a record was modified after creation
+ * @param {string} createdAt - ISO date string of creation
+ * @param {string} updatedAt - ISO date string of last update
+ * @returns {boolean} True if modified more than 1 second after creation
+ */
+export function wasModified(createdAt, updatedAt) {
+  if (!updatedAt || !createdAt) return false;
+  
+  const created = new Date(createdAt).getTime();
+  const updated = new Date(updatedAt).getTime();
+  
+  // Consider modified if updated more than 1 second after created
+  return Math.abs(updated - created) > 1000;
+}
+
+// Example usage in components:
+// {#if wasModified(action.created_at, action.updated_at)}
+//   • Modified: {formatDateTime(action.updated_at, action.updated_by_profile?.full_name)}
+// {/if}

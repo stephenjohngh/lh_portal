@@ -1,7 +1,7 @@
 <!-- src/lib/apps/issues/components/CommentsSection.svelte -->
 <script>
   import { issuesStore } from '../stores/issuesStore';
-  import { formatDateTime } from '$lib/utils/dates';
+  import { formatDateTime, wasModified } from '$lib/utils/dates';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -71,14 +71,13 @@
     </h4>
     <div class="flex items-center space-x-3">
       {#if historicCount > 0}
-        <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
-          <input
-            type="checkbox"
-            bind:checked={showHistoric}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-blue-600 focus:ring-blue-500"
-          />
-          <span>Show historic</span>
-        </label>
+        <Button
+          variant="secondary"
+          size="small"
+          on:click={() => showHistoric = !showHistoric}
+        >
+          {showHistoric ? 'Hide' : 'Include'} Historic
+        </Button>
       {/if}
       <ProtectedButton
         action="modify"
@@ -179,7 +178,7 @@
             </div>
             <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
               <span>Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}</span>
-              {#if comment.updated_at && new Date(comment.updated_at).getTime() !== new Date(comment.created_at).getTime()}
+              {#if wasModified(comment.created_at, comment.updated_at)}
                 <span>•</span>
                 <span>Modified: {formatDateTime(comment.updated_at, comment.updated_by_profile?.full_name)}</span>
               {/if}

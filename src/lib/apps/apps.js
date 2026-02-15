@@ -48,6 +48,15 @@ export const AVAILABLE_APPS = [
     requiresPermission: true,
     description: 'Explore app components'
   },
+{
+    id: 'demo2',
+    name: 'Demo App 2',
+    icon: 'grid',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Explore app components'
+  },
+
   {
     id: 'settings',
     name: 'Settings',
@@ -67,6 +76,7 @@ export const APP_IDS = {
   USERS: 'users',
   ISSUES: 'issues',
   DEMO: 'demo',
+  DEMO2: 'demo2',
   SETTINGS: 'settings'
 };
 

@@ -1,7 +1,7 @@
 <!-- src/lib/apps/issues/components/ActionsSection.svelte -->
 <script>
   import { issuesStore } from '../stores/issuesStore';
-  import { formatDate,formatDateTime, isOverdue } from '$lib/utils/dates';
+  import { formatDate,formatDateTime, isOverdue, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
@@ -47,15 +47,27 @@
     }
   }
 
-  // Create assignee options: all profiles + "External"
+  function resetNewAction() {
+    newAction = { 
+      action_text: '', 
+      name_text: '', 
+      date_deadline: '', 
+      status: ACTION_STATUS.PENDING
+    };
+  }
+
+  // Create assignee options: blank + all profiles + "External"
   $: assigneeOptions = [
-    { value: '', label: '-- Select assignee --' },
+    { value: '', label: '' },
     ...profiles.map(p => ({ value: p.full_name, label: p.full_name })),
     { value: 'External', label: 'External' }
   ];
 
   // NEW SORTING: Status → Deadline → Created (using utility function)
   $: sortedActions = sortActions(actions);
+
+  // Count completed actions (computed once)
+  $: completedCount = actions.filter(a => a.status === ACTION_STATUS.COMPLETED).length;
 
   // Filter actions based on completed status
   $: visibleActions = showAllActions
@@ -65,12 +77,7 @@
   async function addAction() {
     if (!newAction.action_text.trim()) return;
     await issuesStore.addAction(issueId, newAction);
-    newAction = { 
-      action_text: '', 
-      name_text: '', 
-      date_deadline: '', 
-      status: ACTION_STATUS.PENDING
-    };
+    resetNewAction();
     showAddModal = false;
   }
 
@@ -107,14 +114,15 @@
       {/if}
     </h4>
     <div class="flex items-center space-x-3">
-      <label class="flex items-center space-x-2 text-sm text-gray-300 cursor-pointer">
-        <input
-          type="checkbox"
-          bind:checked={showAllActions}
-          class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-amber-600 focus:ring-amber-500"
-        />
-        <span>Show all</span>
-      </label>
+      {#if completedCount > 0}
+        <Button
+          variant="secondary"
+          size="small"
+          on:click={() => showAllActions = !showAllActions}
+        >
+          {showAllActions ? 'Hide' : 'Include'} Completed
+        </Button>
+      {/if}
       <ProtectedButton
         action="modify"
         variant="amber"
@@ -145,44 +153,46 @@
                   rows="3"
                 ></textarea>
               </div>
-              <div>
-                <label for="edit-action-assignee" class="block text-sm font-medium mb-1 text-gray-300">
-                  Assigned To
-                </label>
-                <select
-                  id="edit-action-assignee"
-                  bind:value={editingAction.name_text}
-                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                >
-                  {#each assigneeOptions as option}
-                    <option value={option.value}>{option.label}</option>
-                  {/each}
-                </select>
-              </div>
-              <div>
-                <label for="edit-action-deadline" class="block text-sm font-medium mb-1 text-gray-300">
-                  Deadline
-                </label>
-                <input
-                  id="edit-action-deadline"
-                  type="date"
-                  bind:value={editingAction.date_deadline}
-                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                />
-              </div>
-              <div>
-                <label for="edit-action-status" class="block text-sm font-medium mb-1 text-gray-300">
-                  Status
-                </label>
-                <select
-                  id="edit-action-status"
-                  bind:value={editingAction.status}
-                  class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
-                >
-                  {#each ACTION_STATUS_OPTIONS as statusOption}
-                    <option value={statusOption.value}>{statusOption.label}</option>
-                  {/each}
-                </select>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label for="edit-action-assignee" class="block text-sm font-medium mb-1 text-gray-300">
+                    Assigned To
+                  </label>
+                  <select
+                    id="edit-action-assignee"
+                    bind:value={editingAction.name_text}
+                    class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
+                  >
+                    {#each assigneeOptions as option}
+                      <option value={option.value}>{option.label}</option>
+                    {/each}
+                  </select>
+                </div>
+                <div>
+                  <label for="edit-action-deadline" class="block text-sm font-medium mb-1 text-gray-300">
+                    Deadline
+                  </label>
+                  <input
+                    id="edit-action-deadline"
+                    type="date"
+                    bind:value={editingAction.date_deadline}
+                    class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
+                  />
+                </div>
+                <div>
+                  <label for="edit-action-status" class="block text-sm font-medium mb-1 text-gray-300">
+                    Status
+                  </label>
+                  <select
+                    id="edit-action-status"
+                    bind:value={editingAction.status}
+                    class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
+                  >
+                    {#each ACTION_STATUS_OPTIONS as statusOption}
+                      <option value={statusOption.value}>{statusOption.label}</option>
+                    {/each}
+                  </select>
+                </div>
               </div>
               <div class="flex space-x-2">
                 <ProtectedButton
@@ -229,10 +239,9 @@
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
                   Added: {formatDateTime(action.created_at, action.created_by_profile?.full_name)}
-                    {#if action.updated_at && new Date(action.updated_at).getTime() !== new Date(action.created_at).getTime()  }
-    • Modified: {formatDateTime(action.updated_at, action.updated_by_profile?.full_name)}
-  {/if}
-
+                  {#if wasModified(action.created_at, action.updated_at)}
+                    • Modified: {formatDateTime(action.updated_at, action.updated_by_profile?.full_name)}
+                  {/if}
                 </p>              </div>
               <div class="flex space-x-1">
                 <ProtectedButton
