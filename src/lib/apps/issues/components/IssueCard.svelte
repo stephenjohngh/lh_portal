@@ -1,4 +1,5 @@
 <!-- src/lib/apps/issues/components/IssueCard.svelte -->
+<!-- REFACTORED: Uses new CSS utility classes -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import CommentsSection from './CommentsSection.svelte';
@@ -17,23 +18,15 @@
   
   const dispatch = createEventDispatcher();
 
-  // Track if we're editing the issue inline
-  let editingInline = false;
-  let editedIssue = null;
   let showDeleteConfirm = false;
 
-  // Calculate NON-HISTORIC comments count (changed)
   $: nonHistoricCommentsCount = issue.comments?.filter(c => !c.historic).length || 0;
-  
-  // Calculate historic comments count
   $: historicCommentsCount = issue.comments?.filter(c => c.historic).length || 0;
   
-  // Calculate outstanding actions (not completed) - changed to match spec
   $: outstandingActionsCount = issue.actions?.filter(action => 
     action.status !== ACTION_STATUS.COMPLETED
   ).length || 0;
 
-  // Calculate overdue actions count
   $: overdueActionsCount = issue.actions?.filter(action => {
     if (!action.date_deadline || action.status === 'completed') return false;
     const deadline = new Date(action.date_deadline);
@@ -52,14 +45,12 @@
     showDeleteConfirm = false;
   }
 
-  // Get background color based on issue status
   $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED 
     ? 'bg-emerald-900/20' 
     : issue.status === ISSUE_STATUS.PARKED 
     ? 'bg-amber-900/20' 
     : 'bg-slate-700/50';
   
-  // ✨ NEW: Enhanced background when active (comments or actions visible)
   $: activeBackgroundClass = (showComments || showActions)
     ? (issue.status === ISSUE_STATUS.COMPLETED 
         ? 'bg-emerald-900/30' 
@@ -74,7 +65,6 @@
     ? 'border-amber-700/40'
     : 'border-slate-600';
   
-  // ✨ NEW: Enhanced border when active
   $: activeBorderClass = (showComments || showActions)
     ? (issue.status === ISSUE_STATUS.COMPLETED
         ? 'border-emerald-500/60'
@@ -87,25 +77,24 @@
 <div class="{activeBackgroundClass} rounded-lg border-2 {activeBorderClass} overflow-hidden transition-all duration-300 ease-in-out {showComments || showActions ? 'shadow-lg shadow-purple-500/20' : ''}">
   <!-- Issue Header -->
   <div class="p-3">
-    <div class="flex justify-between items-start mb-1">
+    <div class="flex-between items-start mb-1">
       <div class="flex-1">
-        <div class="flex items-center gap-2 mb-1">
-          <!-- ISSUE NUMBER DISPLAY -->
+        <div class="flex-row mb-1">
           <h3 class="text-xl font-semibold text-white">
             {#if issue.issue_number}
               {issue.issue_number}.
             {/if}
             {issue.name}
           </h3>
-          <span class="px-2 py-1 text-xs font-semibold text-white rounded {getPriorityLabel(issue.priority).color}">
+          <span class="badge {getPriorityLabel(issue.priority).color}">
             {getPriorityLabel(issue.priority).label}
           </span>
           {#if issue.status === ISSUE_STATUS.PARKED}
-            <span class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded">
+            <span class="badge-amber">
               🅿️ Parked
             </span>
           {:else if issue.status === ISSUE_STATUS.COMPLETED}
-            <span class="px-2 py-1 text-xs font-semibold bg-emerald-600 text-white rounded">
+            <span class="badge-emerald">
               ✓ Completed
             </span>
           {/if}
@@ -115,7 +104,7 @@
           <p class="text-gray-300 whitespace-pre-wrap py-2">{issue.description}</p>
         {/if}
         
-        <div class="flex items-center space-x-4 mt-1 text-sm text-gray-400">
+        <div class="flex-row-lg mt-1 text-muted-sm">
           <span>Created: {formatDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
           {#if issue.updated_at && issue.updated_at !== issue.created_at}
             <span>•</span>
@@ -124,7 +113,7 @@
          </div>
       </div>
       
-      <div class="flex space-x-2">
+      <div class="btn-group">
         <ProtectedButton
           action="modify"
           variant="secondary"
@@ -146,12 +135,11 @@
       </div>
     </div>
 
-    <!-- Information Line with Expand/Collapse Button -->
-    <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-600/50">
-      <div class="flex items-center gap-4 text-sm text-gray-300">
-        <!-- Comments Info - Only show if there are non-historic comments -->
+    <!-- Information Line -->
+    <div class="flex-between mt-3 pt-3 border-t border-slate-600/50">
+      <div class="flex-row-lg text-sm text-gray-300">
         {#if nonHistoricCommentsCount > 0}
-          <div class="flex items-center gap-1.5">
+          <div class="text-icon">
             <Icon name="comment" size={4} className="text-blue-400" />
             <span>
               {nonHistoricCommentsCount} comment{nonHistoricCommentsCount !== 1 ? 's' : ''}
@@ -162,9 +150,8 @@
           </div>
         {/if}
         
-        <!-- Actions Info - Only show if there are outstanding actions -->
         {#if outstandingActionsCount > 0}
-          <div class="flex items-center gap-1.5">
+          <div class="text-icon">
             <Icon name="clipboard" size={4} className="text-{UI_COLORS.ACTION_TEXT}" />
             <span>
               {outstandingActionsCount} outstanding action{outstandingActionsCount !== 1 ? 's' : ''}
@@ -176,7 +163,6 @@
         {/if}
       </div>
       
-      <!-- Expand/Collapse Button -->
       <Button
         variant="primary"
         size="medium"
@@ -184,11 +170,9 @@
         title={showComments || showActions ? 'Collapse all sections' : 'Expand all sections'}
         on:click={() => {
           if (showComments || showActions) {
-            // Collapse both
             if (showComments) dispatch('toggleComments');
             if (showActions) dispatch('toggleActions');
           } else {
-            // Expand both
             dispatch('toggleComments');
             dispatch('toggleActions');
           }
@@ -224,7 +208,6 @@
   {/if}
 </div>
 
-<!-- Delete Confirmation Dialog -->
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Issue"

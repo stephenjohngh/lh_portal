@@ -1,4 +1,5 @@
 <!-- src/lib/apps/users/components/UserCard.svelte -->
+<!-- REFACTORED: Uses new CSS utility classes -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { auth } from '$lib/stores/auth';
@@ -23,7 +24,6 @@
     dispatch('deleteUser', user);
   }
 
-  // Check if this is the current logged-in user
   $: isCurrentUser = $auth.user?.id === user.id;
 </script>
 
@@ -45,22 +45,19 @@
       </div>
     </div>
 
-    <!-- Admin Badge -->
     {#if user.is_admin}
-      <Badge color="bg-purple-600">
-        Admin
-      </Badge>
+      <Badge color="bg-purple-600">Admin</Badge>
     {/if}
   </div>
 
   <!-- User Info -->
-  <div class="space-y-1 mb-4">
-    <div class="flex-row text-muted-sm">
+  <div class="section-spacing mb-4">
+    <div class="text-icon text-muted-sm">
       <Icon name="calendar" size={4} />
       <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
     </div>
     {#if user.last_sign_in_at}
-      <div class="flex-row text-muted-sm">
+      <div class="text-icon text-muted-sm">
         <Icon name="clock" size={4} />
         <span>Last login {new Date(user.last_sign_in_at).toLocaleDateString()}</span>
       </div>
@@ -69,7 +66,7 @@
 
   <!-- Actions -->
   {#if isAdmin}
-    <div class="flex flex-wrap gap-2">
+    <div class="btn-group-wrap">
       <ProtectedButton
         action="modify"
         variant="secondary"

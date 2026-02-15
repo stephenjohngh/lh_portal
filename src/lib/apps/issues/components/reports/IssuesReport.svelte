@@ -1,4 +1,5 @@
-<!-- src/lib/components/reports/IssuesReport.svelte -->
+<!-- src/lib/apps/issues/components/reports/IssuesReport.svelte -->
+<!-- CLEANED: All console.log replaced with logger -->
 <script>
   import ReportFilters from './ReportFilters.svelte';
   import ReportIssueCard from './ReportIssueCard.svelte';
@@ -8,18 +9,18 @@
     getDefaultFilterDate,
     getTodayDate 
   } from './reportUtils';
+  import { getLogger } from '$lib/utils/logger';
 
+  const logger = getLogger('IssuesReport');
 
   export let show = false;
   export let issues = [];
 
-  // Filter state
   let includeCurrent = true;
   let includeParked = false;
   let includeCompleted = false;
   let filterDate = getDefaultFilterDate();
 
-  // Process and group issues
   $: filteredIssues = filterIssues(issues, filterDate);
   $: groupedIssues = groupIssuesByStatus(filteredIssues);
 
@@ -32,22 +33,16 @@
   }
 
   async function downloadWord() {
-    console.log('\n========================================');
-    console.log('📥 DOWNLOAD WORD CLICKED');
-    console.log('Time:', new Date().toISOString());
-    console.log('========================================');
+    logger('Download Word clicked');
     
     try {
-      console.log('📊 Preparing data...');
-      console.log('   Filtered issues:', filteredIssues.length);
-      console.log('   Filter date:', filterDate);
-      console.log('   Include current:', includeCurrent);
-      console.log('   Include parked:', includeParked);
-      console.log('   Include completed:', includeCompleted);
+      logger('Preparing data...');
+      logger('Filtered issues:', filteredIssues.length);
+      logger('Filter date:', filterDate);
+      logger('Filters:', { includeCurrent, includeParked, includeCompleted });
       
-      // Log first issue details
       if (filteredIssues.length > 0) {
-        console.log('   First issue:', {
+        logger('First issue:', {
           name: filteredIssues[0].name?.substring(0, 50),
           status: filteredIssues[0].status,
           commentsCount: filteredIssues[0].comments?.length || 0,
@@ -55,7 +50,7 @@
         });
       }
       
-      console.log('🌐 Sending request to /api/reports/generate-docx...');
+      logger('Sending request to /api/reports/generate-docx');
       
       const requestBody = {
         issues: filteredIssues,
@@ -65,7 +60,7 @@
         includeCompleted
       };
       
-      console.log('📤 Request body size:', JSON.stringify(requestBody).length, 'characters');
+      logger('Request body size:', JSON.stringify(requestBody).length, 'characters');
       
       const response = await fetch('/api/reports/generate-docx', {
         method: 'POST',
@@ -75,78 +70,55 @@
         body: JSON.stringify(requestBody)
       });
 
-      console.log('📨 Response received');
-      console.log('   Status:', response.status);
-      console.log('   Status text:', response.statusText);
-      console.log('   OK:', response.ok);
-      console.log('   Headers:');
-      response.headers.forEach((value, key) => {
-        console.log(`      ${key}: ${value}`);
-      });
+      logger('Response received:', response.status, response.statusText);
 
       if (!response.ok) {
-        console.error('❌ Response not OK');
+        logger('❌ Response not OK');
         
-        // Try to get error details
         const contentType = response.headers.get('content-type');
-        console.log('   Content-Type:', contentType);
+        logger('Content-Type:', contentType);
         
         if (contentType?.includes('application/json')) {
           const errorData = await response.json();
-          console.error('   Error data:', errorData);
+          logger('Error data:', errorData);
           throw new Error(errorData.error || 'Failed to generate Word document');
         } else {
           const errorText = await response.text();
-          console.error('   Error text:', errorText);
+          logger('Error text:', errorText);
           throw new Error(`Server error: ${response.status} ${response.statusText}`);
         }
       }
 
-      console.log('📦 Converting response to blob...');
+      logger('Converting response to blob');
       const blob = await response.blob();
-      console.log('✅ Blob created');
-      console.log('   Blob size:', blob.size, 'bytes');
-      console.log('   Blob size (KB):', (blob.size / 1024).toFixed(2), 'KB');
-      console.log('   Blob type:', blob.type);
+      logger('✅ Blob created, size:', blob.size, 'bytes (', (blob.size / 1024).toFixed(2), 'KB)');
 
       if (blob.size === 0) {
-        console.error('❌ Blob is empty!');
+        logger('❌ Blob is empty');
         throw new Error('Generated document is empty');
       }
 
-      console.log('🔗 Creating download URL...');
+      logger('Creating download URL');
       const url = window.URL.createObjectURL(blob);
-      console.log('   URL created:', url.substring(0, 50) + '...');
       
       const filename = `Issues_Report_${new Date().toISOString().split('T')[0]}.docx`;
-      console.log('   Filename:', filename);
+      logger('Filename:', filename);
       
-      console.log('📎 Creating download link...');
+      logger('Triggering download');
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
-      
-      console.log('🖱️ Triggering download...');
       a.click();
       
-      console.log('🧹 Cleaning up...');
+      logger('Cleaning up');
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      console.log('✅ Download triggered successfully!');
-      console.log('   Check your Downloads folder for:', filename);
-      console.log('========================================\n');
+      logger('✅ Download triggered successfully');
       
     } catch (err) {
-      console.error('\n========================================');
-      console.error('❌ ERROR DOWNLOADING WORD DOCUMENT');
-      console.error('========================================');
-      console.error('Error type:', err.constructor.name);
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
-      console.error('========================================\n');
-      
+      logger('❌ Error downloading Word document:', err.message);
       alert(`Failed to generate Word document:\n\n${err.message}\n\nCheck browser console (F12) for details.`);
     }
   }
@@ -192,7 +164,7 @@
             </div>
           </div>
 
-          <!-- Issues List (no section headers, no index prop) -->
+          <!-- Issues List -->
           <div class="space-y-4">
             {#if includeCurrent}
               {#each groupedIssues.current as issue}
@@ -234,32 +206,27 @@
 
 <style>
   @media print {
-    /* Page setup */
     @page {
       margin: 1cm;
       size: A4;
     }
     
-    /* Remove modal overlay background */
     .fixed.inset-0 {
       position: static !important;
       background: white !important;
       display: block !important;
     }
     
-    /* Make content flow normally */
     .overflow-y-auto {
       overflow: visible !important;
       height: auto !important;
     }
     
-    /* Prevent issue cards from splitting */
     :global(.border.border-gray-300.rounded-lg) {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
     
-    /* Print colors */
     * {
       print-color-adjust: exact !important;
       -webkit-print-color-adjust: exact !important;

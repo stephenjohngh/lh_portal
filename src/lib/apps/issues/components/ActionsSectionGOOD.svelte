@@ -9,7 +9,6 @@
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
-  import { sortActions } from '$lib/utils/actionSort'; // ← NEW: Import sorting utility
 
   export let issueId;
   export let actions = [];
@@ -54,8 +53,21 @@
     { value: 'External', label: 'External' }
   ];
 
-  // NEW SORTING: Status → Deadline → Created (using utility function)
-  $: sortedActions = sortActions(actions);
+  // Sort actions: non-completed first by date, then completed by date
+  $: sortedActions = [...actions].sort((a, b) => {
+    const aCompleted = a.status === ACTION_STATUS.COMPLETED;
+    const bCompleted = b.status === ACTION_STATUS.COMPLETED;
+    
+    // If one is completed and the other isn't, non-completed comes first
+    if (aCompleted !== bCompleted) {
+      return aCompleted ? 1 : -1;
+    }
+    
+    // Both have same completion status, sort by date (earlier first)
+    const aDate = new Date(a.created_at);
+    const bDate = new Date(b.created_at);
+    return aDate - bDate;
+  });
 
   // Filter actions based on completed status
   $: visibleActions = showAllActions

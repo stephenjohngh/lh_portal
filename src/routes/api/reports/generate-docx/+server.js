@@ -1,37 +1,38 @@
 // src/routes/api/reports/generate-docx/+server.js
+// CLEANED: All console.log replaced with logger
+
 import { json } from '@sveltejs/kit';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
          AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
          VerticalAlign, PageBreak } from 'docx';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('GenerateDocx');
 
 export async function POST({ request }) {
-  console.log('\n========================================');
-  console.log('📄 DOCX GENERATION REQUEST RECEIVED');
-  console.log('Time:', new Date().toISOString());
-  console.log('========================================');
+  logger('DOCX generation request received');
 
   try {
-    console.log('📥 Parsing request body...');
+    logger('Parsing request body');
     const { issues, filterDate, includeCurrent, includeParked, includeCompleted } = await request.json();
     
-    console.log('✅ Request parsed successfully');
-    console.log('📊 Issues count:', issues?.length || 0);
-    console.log('📅 Filter date:', filterDate || 'none');
-    console.log('🎯 Filters:', { includeCurrent, includeParked, includeCompleted });
+    logger('✅ Request parsed successfully');
+    logger('Issues count:', issues?.length || 0);
+    logger('Filter date:', filterDate || 'none');
+    logger('Filters:', { includeCurrent, includeParked, includeCompleted });
 
     if (!issues || issues.length === 0) {
-      console.warn('⚠️ No issues provided in request - doing nothing');
-      return new Response('', { status: 204 }); // No Content
+      logger('⚠️ No issues provided - returning 204');
+      return new Response('', { status: 204 });
     }
 
-    console.log('🏗️ Creating document structure...');
+    logger('Creating document structure');
     
-    // Create document
     const doc = new Document({
       styles: {
         default: { 
           document: { 
-            run: { font: "Arial", size: 24 } // 12pt
+            run: { font: "Arial", size: 24 }
           } 
         },
         paragraphStyles: [
@@ -100,14 +101,14 @@ export async function POST({ request }) {
         properties: {
           page: {
             size: {
-              width: 12240,   // US Letter
+              width: 12240,
               height: 15840
             },
             margin: { 
-              top: 720,    // 0.5 inch (was 1 inch)
-              right: 720,  // 0.5 inch (was 1 inch)
-              bottom: 720, // 0.5 inch (was 1 inch)
-              left: 720    // 0.5 inch (was 1 inch)
+              top: 720,
+              right: 720,
+              bottom: 720,
+              left: 720
             }
           }
         },
@@ -115,23 +116,19 @@ export async function POST({ request }) {
       }]
     });
 
-    console.log('✅ Document structure created');
-    console.log('📦 Generating buffer...');
+    logger('✅ Document structure created');
+    logger('Generating buffer');
 
-    // Generate buffer
     const buffer = await Packer.toBuffer(doc);
     
-    console.log('✅ Buffer generated successfully');
-    console.log('📏 Buffer size:', buffer.length, 'bytes');
-    console.log('📏 Buffer size (KB):', (buffer.length / 1024).toFixed(2), 'KB');
+    logger('✅ Buffer generated successfully');
+    logger('Buffer size:', buffer.length, 'bytes (', (buffer.length / 1024).toFixed(2), 'KB)');
 
     const filename = `Issues_Report_${new Date().toISOString().split('T')[0]}.docx`;
-    console.log('📁 Filename:', filename);
+    logger('Filename:', filename);
 
-    console.log('🚀 Sending response...');
-    console.log('========================================\n');
+    logger('✅ Sending response');
 
-    // Return as downloadable file
     return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -141,13 +138,8 @@ export async function POST({ request }) {
     });
 
   } catch (err) {
-    console.error('\n========================================');
-    console.error('❌ ERROR GENERATING DOCX');
-    console.error('========================================');
-    console.error('Error type:', err.constructor.name);
-    console.error('Error message:', err.message);
-    console.error('Error stack:', err.stack);
-    console.error('========================================\n');
+    logger('❌ Error generating DOCX:', err.message);
+    logger('Stack:', err.stack);
     
     return json({ 
       error: err.message,
@@ -158,11 +150,10 @@ export async function POST({ request }) {
 }
 
 async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted) {
-  console.log('📝 Generating report content...');
-  console.log('   Total issues provided:', issues.length);
-  console.log('   Filters:', { includeCurrent, includeParked, includeCompleted });
+  logger('Generating report content');
+  logger('Total issues provided:', issues.length);
+  logger('Filters:', { includeCurrent, includeParked, includeCompleted });
   
-  // Filter issues by status based on what's selected
   let filteredIssues = issues.filter(issue => {
     const status = issue.status || 'current';
     if (status === 'current' && includeCurrent) return true;
@@ -171,7 +162,6 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     return false;
   });
   
-  // Sort by priority first, then by created_at
   filteredIssues.sort((a, b) => {
     if (a.priority !== b.priority) {
       return a.priority - b.priority;
@@ -179,20 +169,18 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     return new Date(a.created_at) - new Date(b.created_at);
   });
   
-  // Group by status
   const currentIssues = filteredIssues.filter(i => (i.status || 'current') === 'current');
   const parkedIssues = filteredIssues.filter(i => i.status === 'parked');
   const completedIssues = filteredIssues.filter(i => i.status === 'completed');
   
-  console.log('   Issues after filtering:', filteredIssues.length);
-  console.log('   - Current:', currentIssues.length);
-  console.log('   - Parked:', parkedIssues.length);
-  console.log('   - Completed:', completedIssues.length);
+  logger('Issues after filtering:', filteredIssues.length);
+  logger('- Current:', currentIssues.length);
+  logger('- Parked:', parkedIssues.length);
+  logger('- Completed:', completedIssues.length);
   
   const content = [];
   
-  // Report header
-  console.log('   Adding report header...');
+  logger('Adding report header');
   content.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
@@ -200,7 +188,6 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     })
   );
   
-  // Generated date and filter summary on same line
   const statuses = [
     includeCurrent && 'Current',
     includeParked && 'Parked',
@@ -213,7 +200,6 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     day: 'numeric' 
   });
   
-  // Format filter date if present
   let headerText = `Generated: ${generatedDate} • Showing: ${statuses}`;
   if (filterDate) {
     const filterDateFormatted = new Date(filterDate).toLocaleDateString('en-US', {
@@ -237,11 +223,9 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     })
   );
 
-  // Add issues by status group
-  console.log('   Processing issues...');
+  logger('Processing issues');
   let issueNumber = 1;
   
-  // Current issues
   if (currentIssues.length > 0) {
     content.push(
       new Paragraph({
@@ -252,18 +236,17 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     );
     
     for (const issue of currentIssues) {
-      console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
+      logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
         content.push(...await generateIssueContent(issue, issueNumber));
         issueNumber++;
       } catch (err) {
-        console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
+        logger('❌ Error processing issue', issueNumber, ':', err.message);
         throw err;
       }
     }
   }
   
-  // Parked issues
   if (parkedIssues.length > 0) {
     content.push(
       new Paragraph({
@@ -274,18 +257,17 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     );
     
     for (const issue of parkedIssues) {
-      console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
+      logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
         content.push(...await generateIssueContent(issue, issueNumber));
         issueNumber++;
       } catch (err) {
-        console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
+        logger('❌ Error processing issue', issueNumber, ':', err.message);
         throw err;
       }
     }
   }
   
-  // Completed issues
   if (completedIssues.length > 0) {
     content.push(
       new Paragraph({
@@ -296,19 +278,18 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     );
     
     for (const issue of completedIssues) {
-      console.log(`   - Issue ${issueNumber}: ${issue.name?.substring(0, 50)}...`);
+      logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
         content.push(...await generateIssueContent(issue, issueNumber));
         issueNumber++;
       } catch (err) {
-        console.error(`   ❌ Error processing issue ${issueNumber}:`, err.message);
+        logger('❌ Error processing issue', issueNumber, ':', err.message);
         throw err;
       }
     }
   }
 
-  console.log('   Adding report footer...');
-  // Report footer - no page break, just spacing
+  logger('Adding report footer');
   content.push(
     new Paragraph({
       children: [
@@ -323,7 +304,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     })
   );
 
-  console.log('✅ Report content generated:', content.length, 'elements');
+  logger('✅ Report content generated:', content.length, 'elements');
   return content;
 }
 
@@ -332,15 +313,10 @@ async function generateIssueContent(issue, number) {
   const border = { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" };
   const borders = { top: border, bottom: border, left: border, right: border };
   
-  // Calculate column widths in DXA (1440 DXA = 1 inch)
-  // US Letter with 0.5" margins: 12240 - 1440 = 10800 DXA content width
-  // Title: 9300 DXA (~86%), Priority: 1500 DXA (~14%)
   const titleWidth = 9300;
   const priorityWidth = 1500;
   
-  // Issue header table - title and small priority badge
   const headerCells = [
-    // Issue name (no number)
     new TableCell({
       borders,
       width: { size: titleWidth, type: WidthType.DXA },
@@ -358,7 +334,6 @@ async function generateIssueContent(issue, number) {
         })
       ]
     }),
-    // Priority badge (1500 DXA)
     new TableCell({
       borders,
       width: { size: priorityWidth, type: WidthType.DXA },
@@ -371,7 +346,7 @@ async function generateIssueContent(issue, number) {
             new TextRun({
               text: getPriorityLabel(issue.priority),
               bold: true,
-              size: 18, // 9pt
+              size: 18,
               color: "FFFFFF"
             })
           ],
@@ -393,7 +368,6 @@ async function generateIssueContent(issue, number) {
     })
   );
 
-  // Description
   if (issue.description) {
     content.push(
       new Paragraph({
@@ -408,7 +382,6 @@ async function generateIssueContent(issue, number) {
     );
   }
 
-  // Created and updated dates with usernames
   const createdDate = new Date(issue.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -419,7 +392,6 @@ async function generateIssueContent(issue, number) {
   
   let dateInfo = `Created: ${createdDate} by ${createdBy}`;
   
-  // Only add modified info if it exists and is ACTUALLY different from created
   const createdTime = new Date(issue.created_at).getTime();
   const updatedTime = issue.updated_at ? new Date(issue.updated_at).getTime() : createdTime;
   
@@ -451,7 +423,6 @@ async function generateIssueContent(issue, number) {
     })
   );
 
-  // Comments
   if (issue.comments && issue.comments.length > 0) {
     content.push(
       new Paragraph({
@@ -493,7 +464,6 @@ async function generateIssueContent(issue, number) {
       
       let commentDateInfo = `Added: ${commentCreatedDate} by ${commentCreatedBy}`;
       
-      // Only add modified info if it exists and is ACTUALLY different from created
       const commentCreatedTime = new Date(comment.created_at).getTime();
       const commentUpdatedTime = comment.updated_at ? new Date(comment.updated_at).getTime() : commentCreatedTime;
       
@@ -523,7 +493,6 @@ async function generateIssueContent(issue, number) {
     }
   }
 
-  // Outstanding Actions
   if (issue.outstandingActions && issue.outstandingActions.length > 0) {
     content.push(
       new Paragraph({
@@ -597,7 +566,6 @@ async function generateIssueContent(issue, number) {
       
       let actionDateInfo = `Added: ${actionCreatedDate} by ${actionCreatedBy}`;
       
-      // Only add modified info if it exists and is ACTUALLY different from created
       const actionCreatedTime = new Date(action.created_at).getTime();
       const actionUpdatedTime = action.updated_at ? new Date(action.updated_at).getTime() : actionCreatedTime;
       
@@ -627,7 +595,6 @@ async function generateIssueContent(issue, number) {
     }
   }
 
-  // Spacing between issues
   content.push(
     new Paragraph({
       children: [new TextRun("")],
@@ -650,13 +617,12 @@ function getPriorityLabel(priority) {
 }
 
 function getPriorityColorHex(priority) {
-  // Using neutral gray colors for all priorities as per the established design
   const colors = {
-    1: "475569", // Slate 600
-    2: "475569", // Slate 600
-    3: "475569", // Slate 600
-    4: "475569", // Slate 600
-    5: "475569"  // Slate 600
+    1: "475569",
+    2: "475569",
+    3: "475569",
+    4: "475569",
+    5: "475569"
   };
   return colors[priority] || "6B7280";
 }

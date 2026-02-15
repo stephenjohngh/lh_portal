@@ -1,17 +1,21 @@
-<!-- src/lib/components/reports/ActionsReport.svelte -->
+<!-- src/lib/apps/issues/components/reports/ActionsReport.svelte -->
+<!-- UPDATED: New action sorting logic -->
 <script>
   import { onMount } from 'svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import { supabase } from '$lib/supabaseClient';
   import { formatDate, isOverdue } from '$lib/utils/dates';
+  import { getLogger } from '$lib/utils/logger';
+  import { sortActions } from '$lib/utils/actionSort';
+
+  const logger = getLogger('ActionsReport');
 
   export let show = false;
   export let issues = [];
 
-
   let profiles = [];
-  let selectedUser = 'all'; // 'all' or specific user name
+  let selectedUser = 'all';
   let isGenerating = false;
 
   onMount(async () => {
@@ -25,14 +29,13 @@
       .order('full_name');
     
     if (error) {
-      console.error('Error loading profiles:', error);
+      logger('❌ Error loading profiles:', error.message);
       profiles = [];
     } else {
       profiles = data || [];
     }
   }
 
-  // Get all actions that are in-progress or pending
   $: allActions = issues.flatMap(issue => 
     (issue.actions || [])
       .filter(action => 
@@ -46,50 +49,28 @@
       }))
   );
 
-  // Filter by selected user
   $: filteredActions = selectedUser === 'all' 
     ? allActions 
     : selectedUser === 'unallocated'
     ? allActions.filter(action => !action.name_text || action.name_text.trim() === '')
     : allActions.filter(action => action.name_text === selectedUser);
 
-  // Sort by: issue name, due date, modified date
-  $: sortedActions = [...filteredActions].sort((a, b) => {
-    // First by issue name
-    const issueCompare = a.issue_name.localeCompare(b.issue_name);
-    if (issueCompare !== 0) return issueCompare;
-
-    // Then by due date (nulls last)
-    if (a.date_deadline && !b.date_deadline) return -1;
-    if (!a.date_deadline && b.date_deadline) return 1;
-    if (a.date_deadline && b.date_deadline) {
-      const dateCompare = new Date(a.date_deadline) - new Date(b.date_deadline);
-      if (dateCompare !== 0) return dateCompare;
-    }
-
-    // Finally by modified date (newest first)
-    const aModified = a.updated_at || a.created_at;
-    const bModified = b.updated_at || b.created_at;
-    return new Date(bModified) - new Date(aModified);
-  });
+  // NEW SORTING: Status → Deadline → Created
+  $: sortedActions = sortActions(filteredActions);
 
   function close() {
     show = false;
   }
 
   async function downloadWord() {
-    console.log('\n========================================');
-    console.log('📥 DOWNLOAD ACTIONS REPORT - CLIENT SIDE');
-    console.log('Time:', new Date().toISOString());
-    console.log('========================================');
+    logger('Download Actions Report clicked');
     
     isGenerating = true;
     
     try {
-      console.log('📋 Step 1: Preparing data...');
-      console.log('   Selected user:', selectedUser);
-      console.log('   Sorted actions count:', sortedActions.length);
-      console.log('   First action:', sortedActions[0]);
+      logger('Preparing data');
+      logger('Selected user:', selectedUser);
+      logger('Sorted actions count:', sortedActions.length);
       
       const requestBody = {
         actions: sortedActions,
@@ -97,10 +78,9 @@
         userName: selectedUser === 'all' ? 'All Users' : selectedUser === 'unallocated' ? 'Unallocated' : selectedUser
       };
       
-      console.log('   Request body keys:', Object.keys(requestBody));
-      console.log('   Request body size:', JSON.stringify(requestBody).length, 'characters');
+      logger('Request body size:', JSON.stringify(requestBody).length, 'characters');
       
-      console.log('📡 Step 2: Sending request...');
+      logger('Sending request');
       const response = await fetch('/api/reports/generate-actions-docx', {
         method: 'POST',
         headers: {
@@ -109,76 +89,58 @@
         body: JSON.stringify(requestBody)
       });
 
-      console.log('📨 Step 3: Response received');
-      console.log('   Status:', response.status);
-      console.log('   Status text:', response.statusText);
-      console.log('   Headers:', [...response.headers.entries()]);
+      logger('Response received:', response.status, response.statusText);
 
       if (!response.ok) {
-        console.error('❌ Response not OK');
+        logger('❌ Response not OK');
         const contentType = response.headers.get('content-type');
-        console.log('   Content-Type:', contentType);
         
         if (contentType?.includes('application/json')) {
           const errorData = await response.json();
-          console.error('   Error data:', errorData);
+          logger('Error data:', errorData);
           throw new Error(errorData.error || 'Failed to generate report');
         } else {
           const errorText = await response.text();
-          console.error('   Error text:', errorText);
+          logger('Error text:', errorText);
           throw new Error(`Server error: ${response.status} ${response.statusText}`);
         }
       }
 
-      console.log('📦 Step 4: Creating blob...');
+      logger('Creating blob');
       const blob = await response.blob();
-      console.log('   Blob created');
-      console.log('   Blob size:', blob.size, 'bytes');
-      console.log('   Blob size:', (blob.size / 1024).toFixed(2), 'KB');
-      console.log('   Blob type:', blob.type);
+      logger('Blob created, size:', blob.size, 'bytes (', (blob.size / 1024).toFixed(2), 'KB)');
 
       if (blob.size === 0) {
-        console.error('❌ Generated document is empty');
+        logger('❌ Generated document is empty');
         throw new Error('Generated document is empty');
       }
 
-      console.log('🔗 Step 5: Creating download URL...');
+      logger('Creating download URL');
       const url = window.URL.createObjectURL(blob);
-      console.log('   URL created:', url.substring(0, 50) + '...');
       
-      console.log('📁 Step 6: Creating download link...');
-      const a = document.createElement('a');
-      a.href = url;
       const fileName = selectedUser === 'all' 
         ? `Actions_Report_All_Users_${new Date().toISOString().split('T')[0]}.docx`
         : selectedUser === 'unallocated'
         ? `Actions_Report_Unallocated_${new Date().toISOString().split('T')[0]}.docx`
         : `Actions_Report_${selectedUser.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
-      a.download = fileName;
-      console.log('   Filename:', fileName);
       
-      console.log('🖱️ Step 7: Triggering download...');
+      logger('Filename:', fileName);
+      
+      logger('Triggering download');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      console.log('   Download clicked');
       
-      console.log('🧹 Step 8: Cleaning up...');
+      logger('Cleaning up');
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      console.log('   Cleanup complete');
       
-      console.log('✅ SUCCESS - Download complete!');
-      console.log('========================================\n');
+      logger('✅ Download complete');
       
     } catch (err) {
-      console.error('\n========================================');
-      console.error('❌ ERROR DOWNLOADING ACTIONS REPORT');
-      console.error('========================================');
-      console.error('Error type:', err.constructor.name);
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
-      console.error('========================================\n');
-      
+      logger('❌ Error downloading report:', err.message);
       alert(`Failed to generate report:\n\n${err.message}\n\nCheck browser console (F12) for details.`);
     } finally {
       isGenerating = false;
@@ -269,6 +231,9 @@
               Showing: {selectedUser === 'all' ? 'All Users' : selectedUser === 'unallocated' ? 'Unallocated' : selectedUser}
               • {sortedActions.length} {sortedActions.length === 1 ? 'action' : 'actions'}
               (In-Progress, Pending)
+            </div>
+            <div class="mt-1 text-xs text-gray-400">
+              Sorted by: Status → Deadline → Created Date
             </div>
           </div>
 

@@ -1,11 +1,11 @@
 /* src/app.css */
 /* Tailwind v4 compatible utilities */
+/* UPDATED: Added 25 new utility classes for better consolidation */
 
 @import "tailwindcss";
 
-/* Custom utilities for common patterns */
 @layer components {
-  /* Containers */
+  /* ========== CONTAINERS ========== */
   .app-container {
     @apply bg-slate-800 rounded-xl p-8 border border-slate-700;
   }
@@ -14,7 +14,19 @@
     @apply bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-purple-500 transition-colors;
   }
 
-  /* Forms */
+  .card-info {
+    @apply p-4 bg-blue-500/10 border border-blue-500/50 rounded-lg;
+  }
+
+  .card-success {
+    @apply p-4 bg-green-500/10 border border-green-500/50 rounded-lg;
+  }
+
+  .card-warning-light {
+    @apply p-4 bg-amber-500/5 border border-amber-500/30 rounded-lg;
+  }
+
+  /* ========== FORMS ========== */
   .input {
     @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50;
   }
@@ -31,7 +43,7 @@
     @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none disabled:opacity-50;
   }
 
-  /* Typography */
+  /* ========== TYPOGRAPHY ========== */
   .heading-page {
     @apply text-3xl font-bold mb-1;
   }
@@ -52,11 +64,25 @@
     @apply text-sm font-medium text-gray-300;
   }
 
-  /* Layout */
-  .flex-row {
-    @apply flex items-center space-x-2;
+  /* ========== LAYOUT ========== */
+  /* Flex rows with different gaps */
+  .flex-row-sm {
+    @apply flex items-center gap-1;
   }
 
+  .flex-row {
+    @apply flex items-center gap-2;
+  }
+
+  .flex-row-md {
+    @apply flex items-center gap-3;
+  }
+
+  .flex-row-lg {
+    @apply flex items-center gap-4;
+  }
+
+  /* Flex utilities */
   .flex-between {
     @apply flex items-center justify-between;
   }
@@ -69,7 +95,20 @@
     @apply flex items-center justify-center;
   }
 
-  /* Grids */
+  /* Text with icon patterns */
+  .text-icon-sm {
+    @apply flex items-center gap-1 text-xs;
+  }
+
+  .text-icon {
+    @apply flex items-center gap-1.5 text-sm;
+  }
+
+  .text-icon-lg {
+    @apply flex items-center gap-2 text-base;
+  }
+
+  /* ========== GRIDS ========== */
   .grid-cards {
     @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
   }
@@ -78,7 +117,7 @@
     @apply grid grid-cols-1 md:grid-cols-2 gap-4;
   }
 
-  /* Spacing */
+  /* ========== SPACING ========== */
   .section-spacing {
     @apply space-y-3;
   }
@@ -87,7 +126,7 @@
     @apply space-y-4;
   }
 
-  /* States */
+  /* ========== STATES ========== */
   .empty-state {
     @apply text-center py-12 text-gray-400;
   }
@@ -96,7 +135,20 @@
     @apply flex justify-center py-12;
   }
 
-  /* Badges */
+  /* Status backgrounds */
+  .status-completed {
+    @apply bg-emerald-900/20 border-emerald-700/40;
+  }
+
+  .status-parked {
+    @apply bg-amber-900/20 border-amber-700/40;
+  }
+
+  .status-active {
+    @apply bg-slate-700/50 border-slate-600;
+  }
+
+  /* ========== BADGES ========== */
   .badge {
     @apply inline-block px-2 py-1 rounded text-xs font-semibold;
   }
@@ -113,7 +165,48 @@
     @apply inline-block px-2 py-1 rounded text-xs font-semibold bg-green-600 text-white;
   }
 
-  /* Alerts */
+  .badge-amber {
+    @apply inline-block px-2 py-1 rounded text-xs font-semibold bg-amber-600 text-white;
+  }
+
+  .badge-emerald {
+    @apply inline-block px-2 py-1 rounded text-xs font-semibold bg-emerald-600 text-white;
+  }
+
+  .badge-blue {
+    @apply inline-block px-2 py-1 rounded text-xs font-semibold bg-blue-600 text-white;
+  }
+
+  .badge-gray {
+    @apply inline-block px-2 py-1 rounded text-xs font-semibold bg-gray-600 text-white;
+  }
+
+  /* ========== INFO PILLS ========== */
+  .pill-purple {
+    @apply px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs capitalize;
+  }
+
+  .pill-amber {
+    @apply px-2 py-1 bg-amber-600/20 text-amber-400 rounded text-xs capitalize;
+  }
+
+  .pill-slate {
+    @apply px-2 py-1 bg-slate-600/50 text-gray-300 rounded text-xs capitalize;
+  }
+
+  .pill-blue {
+    @apply px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs capitalize;
+  }
+
+  .pill-red {
+    @apply px-2 py-1 bg-red-600/20 text-red-400 rounded text-xs capitalize;
+  }
+
+  .pill-green {
+    @apply px-2 py-1 bg-green-600/20 text-green-400 rounded text-xs capitalize;
+  }
+
+  /* ========== ALERTS ========== */
   .alert-error {
     @apply p-4 rounded-lg border bg-red-500/10 border-red-500/50 text-red-400;
   }
@@ -126,12 +219,34 @@
     @apply p-4 rounded-lg border bg-blue-500/10 border-blue-500/50 text-blue-400;
   }
 
-  /* Avatars */
+  /* ========== AVATARS ========== */
+  .avatar-sm {
+    @apply w-8 h-8 rounded-full flex items-center justify-center;
+  }
+
   .avatar-md {
     @apply w-12 h-12 rounded-full flex items-center justify-center;
   }
 
-  /* Interactive */
+  .avatar-lg {
+    @apply w-16 h-16 rounded-full flex items-center justify-center;
+  }
+
+  /* ========== CODE BLOCKS ========== */
+  .code-block {
+    @apply text-xs overflow-x-auto bg-slate-800 p-3 rounded border border-slate-700;
+  }
+
+  /* ========== BUTTON GROUPS ========== */
+  .btn-group {
+    @apply flex gap-2;
+  }
+
+  .btn-group-wrap {
+    @apply flex flex-wrap gap-2;
+  }
+
+  /* ========== INTERACTIVE ========== */
   .hover-card {
     @apply transition-all hover:scale-105 hover:border-purple-500;
   }
@@ -142,7 +257,7 @@
 }
 
 @layer utilities {
-  /* Custom utilities that can't use @apply */
+  /* Multi-line truncation */
   .truncate-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;

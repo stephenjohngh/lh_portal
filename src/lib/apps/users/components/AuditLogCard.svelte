@@ -1,5 +1,5 @@
 <!-- src/lib/apps/users/components/AuditLogCard.svelte -->
-<!-- Individual audit log card with expandable details -->
+<!-- REFACTORED: Uses new CSS utility classes -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
@@ -16,7 +16,6 @@
   let showFlagDialog = false;
   let flagReason = '';
 
-  // Severity badge colors
   const severityColors = {
     info: 'bg-blue-600',
     warning: 'bg-amber-600',
@@ -24,7 +23,6 @@
     critical: 'bg-purple-600'
   };
 
-  // Event type icons
   const eventIcons = {
     login: 'login',
     logout: 'logout',
@@ -38,7 +36,6 @@
     suspicious_activity: 'alert-triangle'
   };
 
-  // Event type colors
   const eventColors = {
     login: 'text-green-400',
     logout: 'text-gray-400',
@@ -89,7 +86,7 @@
 
 <div class="card {selected ? 'ring-2 ring-purple-500' : ''}">
   <div class="flex-between">
-    <div class="flex items-start space-x-3 flex-1">
+    <div class="flex-row-md items-start flex-1">
       <!-- Checkbox -->
       <input
         type="checkbox"
@@ -110,7 +107,7 @@
       <!-- Content -->
       <div class="flex-1 min-w-0">
         <!-- Header Row -->
-        <div class="flex items-center flex-wrap gap-2 mb-1">
+        <div class="flex-row-wrap gap-2 mb-1">
           <span class="font-semibold text-white">{log.user_email}</span>
           <span class="text-muted">•</span>
           <span class="text-sm capitalize {eventColors[log.event_type] || 'text-gray-400'}">
@@ -138,16 +135,16 @@
           {/if}
         </div>
 
-        <!-- Category & Action -->
-        <div class="flex items-center flex-wrap gap-2 text-xs">
-          <span class="px-2 py-1 bg-purple-600/20 text-purple-400 rounded capitalize">
+        <!-- Category & Action Pills -->
+        <div class="flex-row-wrap text-xs">
+          <span class="pill-purple">
             {log.event_category}
           </span>
-          <span class="px-2 py-1 bg-slate-600/50 text-gray-300 rounded capitalize">
+          <span class="pill-slate">
             {log.event_action}
           </span>
           {#if log.target_type}
-            <span class="px-2 py-1 bg-slate-600/50 text-gray-300 rounded capitalize">
+            <span class="pill-slate">
               Target: {log.target_type}
             </span>
           {/if}
@@ -156,7 +153,7 @@
         <!-- Changes Preview -->
         {#if log.changes}
           <button
-            class="text-sm text-purple-400 hover:text-purple-300 mt-2 flex items-center space-x-1"
+            class="text-sm text-purple-400 hover:text-purple-300 mt-2 flex-row-sm"
             on:click={() => expanded = !expanded}
           >
             <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={4} />
@@ -166,7 +163,7 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex items-start space-x-1">
+      <div class="flex-row-sm items-start">
         {#if !log.flagged}
           <Button
             variant="secondary"
@@ -198,29 +195,28 @@
   <!-- Expanded Details -->
   {#if expanded && log.changes}
     <div class="mt-4 p-4 bg-slate-700/50 rounded border border-slate-600">
-      <h4 class="font-semibold mb-3 flex items-center space-x-2">
+      <h4 class="font-semibold mb-3 flex-row">
         <Icon name="info" size={4} />
         <span>Change Details</span>
       </h4>
       
-      <!-- Before/After for Updates -->
       {#if log.changes.before && log.changes.after}
         <div class="grid grid-cols-2 gap-4">
           <div>
             <h5 class="text-sm font-semibold text-red-400 mb-2">Before:</h5>
-            <pre class="text-xs overflow-x-auto bg-slate-800 p-3 rounded">{JSON.stringify(log.changes.before, null, 2)}</pre>
+            <pre class="code-block">{JSON.stringify(log.changes.before, null, 2)}</pre>
           </div>
           <div>
             <h5 class="text-sm font-semibold text-green-400 mb-2">After:</h5>
-            <pre class="text-xs overflow-x-auto bg-slate-800 p-3 rounded">{JSON.stringify(log.changes.after, null, 2)}</pre>
+            <pre class="code-block">{JSON.stringify(log.changes.after, null, 2)}</pre>
           </div>
         </div>
         {#if log.changes.fields_changed}
           <div class="mt-3">
             <span class="text-sm font-semibold">Fields Changed:</span>
-            <div class="flex flex-wrap gap-2 mt-1">
+            <div class="flex-row-wrap mt-1">
               {#each log.changes.fields_changed as field}
-                <span class="px-2 py-1 bg-amber-600/20 text-amber-400 rounded text-xs">
+                <span class="pill-amber">
                   {field}
                 </span>
               {/each}
@@ -228,18 +224,16 @@
           </div>
         {/if}
       {:else}
-        <pre class="text-xs overflow-x-auto bg-slate-800 p-3 rounded">{JSON.stringify(log.changes, null, 2)}</pre>
+        <pre class="code-block">{JSON.stringify(log.changes, null, 2)}</pre>
       {/if}
 
-      <!-- Metadata -->
       {#if log.metadata}
         <div class="mt-4">
           <h5 class="text-sm font-semibold mb-2">Metadata:</h5>
-          <pre class="text-xs overflow-x-auto bg-slate-800 p-3 rounded">{JSON.stringify(log.metadata, null, 2)}</pre>
+          <pre class="code-block">{JSON.stringify(log.metadata, null, 2)}</pre>
         </div>
       {/if}
 
-      <!-- User Agent -->
       {#if log.user_agent}
         <div class="mt-3 text-xs text-muted">
           <strong>User Agent:</strong> {log.user_agent}
@@ -250,7 +244,7 @@
 
   <!-- Flag Dialog -->
   {#if showFlagDialog}
-    <div class="mt-4 p-4 bg-red-500/10 border border-red-500/50 rounded">
+    <div class="mt-4 card-warning-light">
       <h4 class="font-semibold text-red-400 mb-3">Flag as Suspicious</h4>
       <textarea
         bind:value={flagReason}
@@ -258,7 +252,7 @@
         rows="3"
         class="textarea mb-3"
       />
-      <div class="flex space-x-2">
+      <div class="btn-group">
         <Button
           variant="danger"
           size="small"

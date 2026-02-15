@@ -1,48 +1,46 @@
 // src/routes/api/reports/generate-actions-docx/+server.js
+// CLEANED: All console.log replaced with logger
+
 import { json } from '@sveltejs/kit';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
          AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType } from 'docx';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('GenerateActionsDocx');
 
 export async function POST({ request }) {
-  console.log('\n========================================');
-  console.log('📄 ACTIONS DOCX GENERATION REQUEST');
-  console.log('Time:', new Date().toISOString());
-  console.log('========================================');
+  logger('Actions DOCX generation request received');
 
   try {
-    console.log('📥 Step 1: Parsing request body...');
+    logger('Parsing request body');
     const requestBody = await request.json();
-    console.log('✅ Request body parsed successfully');
-    console.log('   Keys in body:', Object.keys(requestBody));
+    logger('✅ Request body parsed successfully');
     
     const { actions, selectedUser, userName } = requestBody;
     
-    console.log('📊 Step 2: Validating data...');
-    console.log('   actions type:', typeof actions);
-    console.log('   actions is array:', Array.isArray(actions));
-    console.log('   actions count:', actions?.length || 0);
-    console.log('   selectedUser:', selectedUser);
-    console.log('   userName:', userName);
+    logger('Validating data');
+    logger('Actions type:', typeof actions);
+    logger('Actions is array:', Array.isArray(actions));
+    logger('Actions count:', actions?.length || 0);
+    logger('Selected user:', selectedUser);
+    logger('User name:', userName);
 
     if (!actions) {
-      console.error('❌ No actions provided');
+      logger('❌ No actions provided');
       return json({ error: 'No actions provided' }, { status: 400 });
     }
 
     if (!Array.isArray(actions)) {
-      console.error('❌ Actions is not an array');
+      logger('❌ Actions is not an array');
       return json({ error: 'Actions must be an array' }, { status: 400 });
     }
 
     if (actions.length === 0) {
-      console.warn('⚠️ No actions - returning 204');
+      logger('⚠️ No actions - returning 204');
       return new Response('', { status: 204 });
     }
 
-    console.log('📋 Step 3: Sample action data...');
-    console.log('   First action:', JSON.stringify(actions[0], null, 2));
-
-    console.log('🏗️ Step 4: Creating document structure...');
+    logger('Creating document structure');
     const doc = new Document({
       styles: {
         default: { 
@@ -82,14 +80,13 @@ export async function POST({ request }) {
       }]
     });
 
-    console.log('✅ Document structure created');
+    logger('✅ Document structure created');
 
-    console.log('📦 Step 5: Generating buffer...');
+    logger('Generating buffer');
     const buffer = await Packer.toBuffer(doc);
     
-    console.log('✅ Buffer generated successfully');
-    console.log('   Buffer size:', buffer.length, 'bytes');
-    console.log('   Buffer size:', (buffer.length / 1024).toFixed(2), 'KB');
+    logger('✅ Buffer generated successfully');
+    logger('Buffer size:', buffer.length, 'bytes (', (buffer.length / 1024).toFixed(2), 'KB)');
 
     const filename = selectedUser === 'all'
       ? `Actions_Report_All_Users_${new Date().toISOString().split('T')[0]}.docx`
@@ -97,11 +94,8 @@ export async function POST({ request }) {
       ? `Actions_Report_Unallocated_${new Date().toISOString().split('T')[0]}.docx`
       : `Actions_Report_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
 
-    console.log('📁 Step 6: Preparing response...');
-    console.log('   Filename:', filename);
-
-    console.log('✅ SUCCESS - Sending response');
-    console.log('========================================\n');
+    logger('Filename:', filename);
+    logger('✅ Sending response');
 
     return new Response(buffer, {
       headers: {
@@ -112,13 +106,8 @@ export async function POST({ request }) {
     });
 
   } catch (err) {
-    console.error('\n========================================');
-    console.error('❌ ERROR GENERATING ACTIONS REPORT');
-    console.error('========================================');
-    console.error('Error type:', err.constructor.name);
-    console.error('Error message:', err.message);
-    console.error('Error stack:', err.stack);
-    console.error('========================================\n');
+    logger('❌ Error generating actions report:', err.message);
+    logger('Stack:', err.stack);
     
     return json({ 
       error: err.message,
@@ -129,32 +118,28 @@ export async function POST({ request }) {
 }
 
 function generateReportContent(actions, userName) {
-  console.log('\n📝 generateReportContent called');
-  console.log('   Actions count:', actions.length);
-  console.log('   User name:', userName);
+  logger('Generating report content');
+  logger('Actions count:', actions.length);
+  logger('User name:', userName);
   
   const content = [];
   
   try {
-    console.log('   Adding report header...');
-    // Report header
+    logger('Adding report header');
     content.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_1,
         children: [new TextRun("Actions Report")]
       })
     );
-    console.log('   ✅ Header added');
     
-    // Generated date and user filter
     const generatedDate = new Date().toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'long', 
       day: 'numeric' 
     });
-    console.log('   Generated date:', generatedDate);
     
-    console.log('   Adding metadata paragraph...');
+    logger('Adding metadata paragraph');
     content.push(
       new Paragraph({
         children: [
@@ -167,25 +152,20 @@ function generateReportContent(actions, userName) {
         spacing: { after: 360 }
       })
     );
-    console.log('   ✅ Metadata added');
 
-    // Add each action
-    console.log('   Processing', actions.length, 'actions...');
+    logger('Processing', actions.length, 'actions');
     actions.forEach((action, index) => {
-      console.log(`   Processing action ${index + 1}/${actions.length}:`, action.action_text?.substring(0, 50));
+      logger('Processing action', index + 1, '/', actions.length);
       try {
         const actionContent = generateActionContent(action, index + 1);
-        console.log(`   - Generated ${actionContent.length} content elements`);
         content.push(...actionContent);
       } catch (err) {
-        console.error(`   ❌ Error processing action ${index + 1}:`, err.message);
+        logger('❌ Error processing action', index + 1, ':', err.message);
         throw err;
       }
     });
-    console.log('   ✅ All actions processed');
 
-    // Footer
-    console.log('   Adding footer...');
+    logger('Adding footer');
     content.push(
       new Paragraph({
         children: [
@@ -199,33 +179,22 @@ function generateReportContent(actions, userName) {
         spacing: { before: 480 }
       })
     );
-    console.log('   ✅ Footer added');
 
-    console.log('✅ generateReportContent complete:', content.length, 'elements');
+    logger('✅ Report content generated:', content.length, 'elements');
     return content;
     
   } catch (err) {
-    console.error('❌ Error in generateReportContent:', err.message);
-    console.error('   Stack:', err.stack);
+    logger('❌ Error in generateReportContent:', err.message);
     throw err;
   }
 }
 
 function generateActionContent(action, number) {
-  console.log(`\n     🔧 generateActionContent for action #${number}`);
-  console.log('        Action text:', action.action_text);
-  console.log('        Issue name:', action.issue_name);
-  console.log('        Assignee:', action.name_text);
-  console.log('        Due date:', action.date_deadline);
-  console.log('        Status:', action.status);
-  
   const content = [];
   const border = { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" };
   const borders = { top: border, bottom: border, left: border, right: border };
   
   try {
-    console.log('        Creating action header table...');
-    // Action header with number and text
     content.push(
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -254,10 +223,7 @@ function generateActionContent(action, number) {
         ]
       })
     );
-    console.log('        ✅ Header table added');
 
-    console.log('        Adding issue name...');
-    // Issue name
     content.push(
       new Paragraph({
         children: [
@@ -275,15 +241,11 @@ function generateActionContent(action, number) {
         spacing: { before: 120, after: 80 }
       })
     );
-    console.log('        ✅ Issue name added');
 
-    console.log('        Building action details...');
-    // Action details (assignee, due date, status, issue status)
     const details = [];
     
     if (action.name_text) {
       details.push(`👤 Assigned to: ${action.name_text}`);
-      console.log('        - Assignee added');
     }
     
     if (action.date_deadline) {
@@ -294,21 +256,16 @@ function generateActionContent(action, number) {
       });
       const isOverdue = new Date(action.date_deadline) < new Date();
       details.push(`📅 Due: ${deadline}${isOverdue ? ' ⚠️ OVERDUE' : ''}`);
-      console.log('        - Due date added:', deadline);
     }
     
     details.push(`Status: ${action.status}`);
-    console.log('        - Status added');
     
     if (action.issue_status === 'parked') {
       details.push('🅿️ Issue is Parked');
-      console.log('        - Parked badge added');
     } else if (action.issue_status === 'completed') {
       details.push('✓ Issue is Completed');
-      console.log('        - Completed badge added');
     }
 
-    console.log('        Adding details paragraph...');
     content.push(
       new Paragraph({
         children: [
@@ -321,10 +278,7 @@ function generateActionContent(action, number) {
         spacing: { after: 80 }
       })
     );
-    console.log('        ✅ Details added');
 
-    console.log('        Building date info...');
-    // Created/Modified dates
     const createdDate = new Date(action.created_at).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -332,7 +286,6 @@ function generateActionContent(action, number) {
     });
     
     const createdBy = action.created_by_profile?.full_name || 'Unknown';
-    console.log('        - Created:', createdDate, 'by', createdBy);
     
     let dateInfo = `Added: ${createdDate} by ${createdBy}`;
     
@@ -347,10 +300,8 @@ function generateActionContent(action, number) {
       });
       const updatedBy = action.updated_by_profile?.full_name || 'Unknown';
       dateInfo += ` • Modified: ${updatedDate} by ${updatedBy}`;
-      console.log('        - Modified:', updatedDate, 'by', updatedBy);
     }
     
-    console.log('        Adding date info paragraph...');
     content.push(
       new Paragraph({
         children: [
@@ -364,14 +315,11 @@ function generateActionContent(action, number) {
         spacing: { after: 360 }
       })
     );
-    console.log('        ✅ Date info added');
 
-    console.log(`     ✅ Action #${number} complete: ${content.length} elements`);
     return content;
     
   } catch (err) {
-    console.error(`     ❌ Error in generateActionContent for action #${number}:`, err.message);
-    console.error('        Stack:', err.stack);
+    logger('❌ Error in generateActionContent for action', number, ':', err.message);
     throw err;
   }
 }
