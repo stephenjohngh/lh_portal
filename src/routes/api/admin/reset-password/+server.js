@@ -1,22 +1,24 @@
 // src/routes/api/admin/reset-password/+server.js
-// UPDATED: Added audit logging for password resets
+// CLEANED: All console.log replaced with logger
 
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { logPasswordReset } from '$lib/server/auditLogger';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('ResetPasswordAPI');
 
 export async function POST({ request }) {
   try {
     const { user_id, new_password, requesting_user_id } = await request.json();
 
-    console.log('📝 Admin password reset request');
-    console.log('   Target user ID:', user_id);
-    console.log('   Requesting user ID:', requesting_user_id);
+    logger('Password reset request for:', user_id, 'by:', requesting_user_id);
 
     // Validate input
     if (!user_id || !new_password) {
+      logger('❌ Missing user_id or new_password');
       return json(
         { error: 'User ID and new password are required' },
         { status: 400 }
@@ -24,6 +26,7 @@ export async function POST({ request }) {
     }
 
     if (!requesting_user_id) {
+      logger('❌ Missing requesting_user_id');
       return json(
         { error: 'Requesting user ID is required' },
         { status: 400 }
@@ -31,6 +34,7 @@ export async function POST({ request }) {
     }
 
     if (new_password.length < 6) {
+      logger('❌ Password too short');
       return json(
         { error: 'Password must be at least 6 characters' },
         { status: 400 }
@@ -49,7 +53,7 @@ export async function POST({ request }) {
       }
     );
 
-    // ✨ Verify requesting user is admin
+    // Verify requesting user is admin
     const { data: adminProfile } = await supabaseAdmin
       .from('profiles')
       .select('is_admin, email')
@@ -57,14 +61,16 @@ export async function POST({ request }) {
       .single();
 
     if (!adminProfile?.is_admin) {
-      console.log('❌ Unauthorized - user is not admin');
+      logger('❌ Unauthorized - user is not admin');
       return json(
         { error: 'Unauthorized - admin access required' },
         { status: 403 }
       );
     }
 
-    // ✨ Get target user email for audit log
+    logger('✅ Admin verified');
+
+    // Get target user email for audit log
     const { data: targetProfile } = await supabaseAdmin
       .from('profiles')
       .select('email')
@@ -72,11 +78,14 @@ export async function POST({ request }) {
       .single();
 
     if (!targetProfile) {
+      logger('❌ User not found:', user_id);
       return json(
         { error: 'User not found' },
         { status: 404 }
       );
     }
+
+    logger('Resetting password for:', targetProfile.email);
 
     // Update user password using admin API
     const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
@@ -85,16 +94,16 @@ export async function POST({ request }) {
     );
 
     if (error) {
-      console.error('❌ Supabase admin error:', error);
+      logger('❌ Password reset error:', error.message);
       return json(
         { error: error.message || 'Failed to reset password' },
         { status: 500 }
       );
     }
 
-    console.log('✅ Password reset successful for user:', user_id);
+    logger('✅ Password reset successful');
 
-    // ✨ LOG PASSWORD RESET (uses pre-built function)
+    // Log password reset
     await logPasswordReset(
       requesting_user_id,
       adminProfile.email,
@@ -102,7 +111,7 @@ export async function POST({ request }) {
       targetProfile.email
     );
 
-    console.log('✅ Password reset logged to audit trail');
+    logger('✅ Password reset logged to audit trail');
 
     return json({
       success: true,
@@ -114,7 +123,7 @@ export async function POST({ request }) {
     });
 
   } catch (err) {
-    console.error('❌ Server error:', err);
+    logger('❌ Server error:', err.message);
     return json(
       { error: err.message || 'Internal server error' },
       { status: 500 }

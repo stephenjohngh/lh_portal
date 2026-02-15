@@ -1,6 +1,6 @@
 // src/lib/server/auditLogger.js
 // Server-side audit logging utility
-// Logs all user actions, data changes, and security events
+// CLEANED: All console.log replaced with logger
 
 import { createClient } from '@supabase/supabase-js';
 import { getLogger } from '$lib/utils/logger';
@@ -18,26 +18,19 @@ let supabaseAdmin = null;
 
 function getSupabaseAdmin() {
   if (!supabaseAdmin) {
-    console.log('🔧 Initializing Supabase admin client');
-    logger('🔧 Initializing Supabase admin client');
+    logger('Initializing Supabase admin client');
     
     const supabaseUrl = PUBLIC_SUPABASE_URL;
     const supabaseKey = SUPABASE_SERVICE_ROLE_KEY;
     
-    console.log('Supabase URL:', supabaseUrl);
-    console.log('Service key exists:', !!supabaseKey);
-    console.log('Service key length:', supabaseKey?.length);
-    
     if (!supabaseUrl || !supabaseKey) {
-      console.log('❌ Missing Supabase credentials');
-      console.log('- PUBLIC_SUPABASE_URL:', !!supabaseUrl);
-      console.log('- SUPABASE_SERVICE_ROLE_KEY:', !!supabaseKey);
       logger('❌ Missing Supabase credentials');
+      logger('- PUBLIC_SUPABASE_URL:', !!supabaseUrl);
+      logger('- SUPABASE_SERVICE_ROLE_KEY:', !!supabaseKey);
       throw new Error('Supabase credentials not configured');
     }
     
-    logger('✅ Supabase URL:', supabaseUrl);
-    logger('✅ Service key exists:', !!supabaseKey);
+    logger('✅ Supabase admin client created');
     
     supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
       auth: {
@@ -45,11 +38,39 @@ function getSupabaseAdmin() {
         persistSession: false
       }
     });
-    
-    console.log('✅ Supabase admin client created');
-    logger('✅ Supabase admin client created');
   }
   return supabaseAdmin;
+}
+
+/**
+ * Extract IP address from request
+ */
+export function getIpAddress(request) {
+  return request?.headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+         request?.headers?.get('x-real-ip') ||
+         request?.headers?.get('cf-connecting-ip') ||
+         null;
+}
+
+/**
+ * Extract user agent from request
+ */
+export function getUserAgent(request) {
+  return request?.headers?.get('user-agent') || null;
+}
+
+/**
+ * Get event category from target type
+ */
+function getCategoryFromType(targetType) {
+  const categories = {
+    user: 'users',
+    issue: 'issues',
+    comment: 'comments',
+    action: 'actions',
+    permission: 'permissions'
+  };
+  return categories[targetType] || targetType + 's';
 }
 
 /**
@@ -58,9 +79,6 @@ function getSupabaseAdmin() {
  * @returns {Promise<string|null>} - Log ID or null if failed
  */
 export async function logAudit(event) {
-  console.log('🟡🟡🟡 logAudit function called!');
-  console.log('🟡 event:', JSON.stringify(event, null, 2));
-  
   const {
     userId,
     userEmail,
@@ -78,27 +96,15 @@ export async function logAudit(event) {
     flagged = false
   } = event;
 
-  logger('📝 logAudit called with:', {
-    userId,
-    userEmail,
-    eventType,
-    eventCategory,
-    targetType,
-    targetId,
-    targetName
-  });
+  logger('logAudit:', { eventType, eventCategory, targetType, userEmail });
 
   // Validate required fields
   if (!userEmail || !eventType || !eventCategory) {
-    console.log('❌ Audit log missing required fields:', { userEmail, eventType, eventCategory });
-    logger('❌ Audit log missing required fields:', { userEmail, eventType, eventCategory });
+    logger('❌ Missing required fields:', { userEmail, eventType, eventCategory });
     return null;
   }
 
   try {
-    console.log('💾 Inserting audit log to database...');
-    logger('💾 Inserting audit log to database...');
-    
     const logData = {
       user_id: userId || null,
       user_email: userEmail,
@@ -116,71 +122,31 @@ export async function logAudit(event) {
       flagged: flagged
     };
     
-    console.log('📦 Log data to insert:', JSON.stringify(logData, null, 2));
-    logger('📦 Log data to insert:', JSON.stringify(logData, null, 2));
-    
-    console.log('🔧 Getting Supabase client...');
     const supabaseClient = getSupabaseAdmin();
-    console.log('✅ Got Supabase client:', !!supabaseClient);
-    logger('✅ Got Supabase client');
-    
-    console.log('🔄 Calling insert on audit_logs table...');
-    logger('🔄 Calling insert...');
     const { data, error } = await supabaseClient
       .from('audit_logs')
       .insert([logData])
       .select('id')
       .single();
 
-    console.log('📥 Insert completed - data:', data);
-    console.log('📥 Insert completed - error:', error);
-    logger('📥 Insert response:', { data, error });
-
     if (error) {
-      console.log('❌ Database error occurred!');
-      console.log('❌ Error:', JSON.stringify(error, null, 2));
-      logger('❌ Failed to log audit event:', error);
-      logger('❌ Error details:', JSON.stringify(error, null, 2));
+      logger('❌ Database error:', error.message);
       return null;
     }
 
     if (!data) {
-      console.log('⚠️ No data returned from insert');
       logger('⚠️ No data returned from insert');
       return null;
     }
 
-    console.log('✅✅✅ SUCCESS! Audit log ID:', data.id);
-    logger('✅ Audit log saved successfully! ID:', data.id);
+    logger('✅ Audit log saved:', data.id);
     return data.id;
 
   } catch (err) {
-    console.log('❌❌❌ EXCEPTION caught!');
-    console.log('❌ Error:', err);
-    console.log('❌ Message:', err.message);
-    console.log('❌ Stack:', err.stack);
-    logger('❌ Audit logging exception:', err);
-    logger('❌ Exception stack:', err.stack);
+    logger('❌ Exception:', err.message);
     // Don't throw - audit logging should never break main functionality
     return null;
   }
-}
-
-/**
- * Extract IP address from request
- */
-function getIpAddress(request) {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-         request.headers.get('x-real-ip') ||
-         request.headers.get('cf-connecting-ip') || // Cloudflare
-         null;
-}
-
-/**
- * Extract user agent from request
- */
-function getUserAgent(request) {
-  return request.headers.get('user-agent') || null;
 }
 
 // ============================================
@@ -191,6 +157,7 @@ function getUserAgent(request) {
  * Log successful login
  */
 export async function logLogin(userId, userEmail, request, metadata = {}) {
+  logger('Logging login:', userEmail);
   return await logAudit({
     userId,
     userEmail,
@@ -211,6 +178,7 @@ export async function logLogin(userId, userEmail, request, metadata = {}) {
  * Log failed login attempt
  */
 export async function logFailedLogin(userEmail, request, reason = 'invalid_credentials') {
+  logger('Logging failed login:', userEmail);
   return await logAudit({
     userId: null,
     userEmail,
@@ -231,6 +199,7 @@ export async function logFailedLogin(userEmail, request, reason = 'invalid_crede
  * Log user logout
  */
 export async function logLogout(userId, userEmail, metadata = {}) {
+  logger('Logging logout:', userEmail);
   return await logAudit({
     userId,
     userEmail,
@@ -246,6 +215,7 @@ export async function logLogout(userId, userEmail, metadata = {}) {
  * Log session expired
  */
 export async function logSessionExpired(userId, userEmail, reason = 'timeout') {
+  logger('Logging session expired:', userEmail);
   return await logAudit({
     userId,
     userEmail,
@@ -261,6 +231,7 @@ export async function logSessionExpired(userId, userEmail, reason = 'timeout') {
  * Log password reset
  */
 export async function logPasswordReset(adminUserId, adminEmail, targetUserId, targetEmail) {
+  logger('Logging password reset by admin:', adminEmail, 'for:', targetEmail);
   return await logAudit({
     userId: adminUserId,
     userEmail: adminEmail,
@@ -285,27 +256,13 @@ export async function logPasswordReset(adminUserId, adminEmail, targetUserId, ta
  * Log data creation
  */
 export async function logCreate(userId, userEmail, targetType, targetId, targetName, data) {
-  console.log('🟢🟢🟢 logCreate function called!');
-  console.log('  userId:', userId);
-  console.log('  userEmail:', userEmail);
-  console.log('  targetType:', targetType);
-  console.log('  targetId:', targetId);
-  console.log('  targetName:', targetName);
-  console.log('  data:', data);
+  logger('Logging create:', targetType, targetName);
   
-  logger('🔵 logCreate called');
-  logger('  userId:', userId);
-  logger('  userEmail:', userEmail);
-  logger('  targetType:', targetType);
-  logger('  targetId:', targetId);
-  logger('  targetName:', targetName);
-  logger('  data:', data);
-  
-  const result = await logAudit({
+  return await logAudit({
     userId,
     userEmail,
     eventType: 'create',
-    eventCategory: targetType + 's',
+    eventCategory: getCategoryFromType(targetType),
     eventAction: 'success',
     targetType,
     targetId,
@@ -315,10 +272,6 @@ export async function logCreate(userId, userEmail, targetType, targetId, targetN
     },
     severity: 'info'
   });
-  
-  console.log('🟢 logCreate result:', result);
-  logger('🔵 logCreate result:', result);
-  return result;
 }
 
 /**
@@ -332,14 +285,17 @@ export async function logUpdate(userId, userEmail, targetType, targetId, targetN
 
   // Only log if there were actual changes
   if (fieldsChanged.length === 0) {
+    logger('No changes detected, skipping update log');
     return null;
   }
+
+  logger('Logging update:', targetType, targetName, 'fields:', fieldsChanged.join(', '));
 
   return await logAudit({
     userId,
     userEmail,
     eventType: 'update',
-    eventCategory: targetType + 's',
+    eventCategory: getCategoryFromType(targetType),
     eventAction: 'success',
     targetType,
     targetId,
@@ -357,11 +313,13 @@ export async function logUpdate(userId, userEmail, targetType, targetId, targetN
  * Log data deletion
  */
 export async function logDelete(userId, userEmail, targetType, targetId, targetName, data, metadata = {}) {
+  logger('Logging delete:', targetType, targetName);
+  
   return await logAudit({
     userId,
     userEmail,
     eventType: 'delete',
-    eventCategory: targetType + 's',
+    eventCategory: getCategoryFromType(targetType),
     eventAction: 'success',
     targetType,
     targetId,
@@ -382,6 +340,8 @@ export async function logDelete(userId, userEmail, targetType, targetId, targetN
  * Log permission grant
  */
 export async function logPermissionGrant(adminId, adminEmail, targetUserId, targetUserEmail, app, readOnly = false) {
+  logger('Logging permission grant:', app, 'to:', targetUserEmail);
+  
   return await logAudit({
     userId: adminId,
     userEmail: adminEmail,
@@ -407,6 +367,8 @@ export async function logPermissionGrant(adminId, adminEmail, targetUserId, targ
  * Log permission revoke
  */
 export async function logPermissionRevoke(adminId, adminEmail, targetUserId, targetUserEmail, app) {
+  logger('Logging permission revoke:', app, 'from:', targetUserEmail);
+  
   return await logAudit({
     userId: adminId,
     userEmail: adminEmail,
@@ -431,6 +393,8 @@ export async function logPermissionRevoke(adminId, adminEmail, targetUserId, tar
  * Log read-only permission change
  */
 export async function logReadOnlyChange(adminId, adminEmail, targetUserId, targetUserEmail, app, readOnly) {
+  logger('Logging read-only change:', app, 'for:', targetUserEmail, 'readOnly:', readOnly);
+  
   return await logAudit({
     userId: adminId,
     userEmail: adminEmail,
@@ -457,6 +421,8 @@ export async function logReadOnlyChange(adminId, adminEmail, targetUserId, targe
  * Log suspicious activity
  */
 export async function logSuspicious(userId, userEmail, reason, metadata = {}, request = null) {
+  logger('⚠️ Logging suspicious activity:', reason, 'user:', userEmail);
+  
   return await logAudit({
     userId,
     userEmail,
@@ -479,6 +445,8 @@ export async function logSuspicious(userId, userEmail, reason, metadata = {}, re
  */
 export async function flagAuditLog(logId, reason) {
   try {
+    logger('Flagging audit log:', logId, 'reason:', reason);
+    
     const { error } = await getSupabaseAdmin()
       .from('audit_logs')
       .update({
@@ -491,110 +459,14 @@ export async function flagAuditLog(logId, reason) {
       .eq('id', logId);
 
     if (error) {
-      logger('Failed to flag audit log:', error);
+      logger('❌ Failed to flag audit log:', error.message);
       return false;
     }
 
+    logger('✅ Audit log flagged successfully');
     return true;
   } catch (err) {
-    logger('Exception flagging audit log:', err);
-    return false;
-  }
-}
-
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-/**
- * Get recent audit logs
- */
-export async function getRecentLogs(limit = 100) {
-  try {
-    const { data, error } = await getSupabaseAdmin()
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      logger('Failed to fetch audit logs:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (err) {
-    logger('Exception fetching audit logs:', err);
-    return [];
-  }
-}
-
-/**
- * Get logs for specific user
- */
-export async function getUserLogs(userId, limit = 50) {
-  try {
-    const { data, error } = await getSupabaseAdmin()
-      .from('audit_logs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      logger('Failed to fetch user logs:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (err) {
-    logger('Exception fetching user logs:', err);
-    return [];
-  }
-}
-
-/**
- * Get flagged logs
- */
-export async function getFlaggedLogs(limit = 50) {
-  try {
-    const { data, error } = await getSupabaseAdmin()
-      .from('audit_logs')
-      .select('*')
-      .eq('flagged', true)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      logger('Failed to fetch flagged logs:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (err) {
-    logger('Exception fetching flagged logs:', err);
-    return [];
-  }
-}
-
-/**
- * Delete audit logs (admin only - for testing)
- */
-export async function deleteAuditLogs(logIds) {
-  try {
-    const { error } = await getSupabaseAdmin()
-      .from('audit_logs')
-      .delete()
-      .in('id', logIds);
-
-    if (error) {
-      logger('Failed to delete audit logs:', error);
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    logger('Exception deleting audit logs:', err);
+    logger('❌ Exception flagging audit log:', err.message);
     return false;
   }
 }
@@ -625,9 +497,7 @@ export default {
   logSuspicious,
   flagAuditLog,
   
-  // Utility
-  getRecentLogs,
-  getUserLogs,
-  getFlaggedLogs,
-  deleteAuditLogs
+  // Utilities
+  getIpAddress,
+  getUserAgent
 };

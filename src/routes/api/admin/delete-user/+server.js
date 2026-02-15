@@ -1,5 +1,5 @@
 // src/routes/api/admin/delete-user/+server.js
-// UPDATED: Added audit logging for user deletion
+// CLEANED: All console.log replaced with logger
 
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
@@ -14,11 +14,10 @@ export async function POST({ request }) {
   try {
     const { user_id, requesting_user_id } = await request.json();
 
-    logger('Delete user request');
-    logger('Target user ID:', user_id);
-    logger('Requesting user ID:', requesting_user_id);
+    logger('Delete user request for:', user_id, 'by:', requesting_user_id);
 
     if (!user_id || !requesting_user_id) {
+      logger('❌ Missing user_id or requesting_user_id');
       return json(
         { error: 'User ID and requesting user ID are required' },
         { status: 400 }
@@ -44,7 +43,7 @@ export async function POST({ request }) {
       .single();
 
     if (profileError || !adminProfile?.is_admin) {
-      logger('Unauthorized - user is not admin');
+      logger('❌ Unauthorized - user is not admin');
       return json(
         { error: 'Unauthorized - admin access required' },
         { status: 403 }
@@ -53,14 +52,14 @@ export async function POST({ request }) {
 
     // Prevent self-deletion
     if (user_id === requesting_user_id) {
-      logger('Prevented self-deletion attempt');
+      logger('❌ Prevented self-deletion attempt');
       return json(
         { error: 'Cannot delete your own account' },
         { status: 400 }
       );
     }
 
-    // ✨ Get user details before deletion for audit log
+    // Get user details before deletion for audit log
     const { data: userToDelete } = await supabaseAdmin
       .from('profiles')
       .select('email, full_name, is_admin, created_at')
@@ -68,7 +67,7 @@ export async function POST({ request }) {
       .single();
 
     if (!userToDelete) {
-      logger('User not found:', user_id);
+      logger('❌ User not found:', user_id);
       return json(
         { error: 'User not found' },
         { status: 404 }
@@ -78,36 +77,36 @@ export async function POST({ request }) {
     logger('Deleting user:', userToDelete.email);
 
     // Delete profile FIRST
-    logger('Deleting profile and app_permissions...');
+    logger('Deleting profile and app_permissions');
     const { error: profileDeleteError } = await supabaseAdmin
       .from('profiles')
       .delete()
       .eq('id', user_id);
 
     if (profileDeleteError) {
-      logger('Profile delete error:', profileDeleteError);
+      logger('❌ Profile delete error:', profileDeleteError.message);
       return json(
         { error: `Database error deleting user: ${profileDeleteError.message}` },
         { status: 500 }
       );
     }
 
-    logger('Profile deleted successfully');
+    logger('✅ Profile deleted successfully');
 
     // Delete from auth
-    logger('Deleting auth user...');
+    logger('Deleting auth user');
     const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
       user_id
     );
 
     if (authDeleteError) {
-      logger('Auth delete error:', authDeleteError);
+      logger('⚠️ Auth delete error:', authDeleteError.message);
       logger('Warning: Profile deleted but auth deletion failed');
     } else {
-      logger('Auth user deleted successfully');
+      logger('✅ Auth user deleted successfully');
     }
 
-    // ✨ LOG USER DELETION
+    // Log user deletion
     await logDelete(
       requesting_user_id,
       adminProfile.email,
@@ -126,7 +125,7 @@ export async function POST({ request }) {
     );
 
     logger('✅ User deletion logged to audit trail');
-    logger('User deletion completed for:', userToDelete.email);
+    logger('✅ User deletion completed for:', userToDelete.email);
 
     return json({
       success: true,
@@ -139,8 +138,7 @@ export async function POST({ request }) {
     });
 
   } catch (err) {
-    logger('Server error:', err);
-    logger('Error stack:', err.stack);
+    logger('❌ Server error:', err.message);
     return json(
       { error: err.message || 'Internal server error' },
       { status: 500 }

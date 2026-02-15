@@ -1,8 +1,11 @@
 // src/lib/stores/auth.js
-// FIXED: Keep original Supabase login (so apps work), just add logging
+// CLEANED: All console.log/console.error replaced with getLogger
 
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('authStore');
 
 function createAuthStore() {
   const { subscribe, set, update } = writable({
@@ -21,9 +24,10 @@ function createAuthStore() {
       });
     },
     
-    // ✨ FIXED: Use Supabase directly (so apps work), then log
     login: async (email, password) => {
       try {
+        logger('Login attempt for:', email);
+        
         // Login via Supabase (original way - this works!)
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -31,7 +35,9 @@ function createAuthStore() {
         });
         
         if (error) {
-          // ✨ LOG FAILED LOGIN
+          logger('❌ Login failed:', error.message);
+          
+          // Log failed login
           fetch('/api/audit/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -45,12 +51,14 @@ function createAuthStore() {
                 ip: null
               }
             })
-          }).catch(err => console.error('Failed to log failed login:', err));
+          }).catch(err => logger('Failed to log failed login:', err.message));
           
           return { success: false, error: error.message };
         }
 
-        // ✨ LOG SUCCESSFUL LOGIN
+        logger('✅ Login successful:', email);
+
+        // Log successful login
         fetch('/api/audit/log', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -66,28 +74,40 @@ function createAuthStore() {
               session_id: data.session.access_token.substring(0, 20)
             }
           })
-        }).catch(err => console.error('Failed to log login:', err));
+        }).catch(err => logger('Failed to log login:', err.message));
 
         return { success: true, data };
       } catch (error) {
+        logger('❌ Login exception:', error.message);
         return { success: false, error: error.message };
       }
     },
     
     signup: async (email, password, fullName) => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName }
+      try {
+        logger('Signup attempt for:', email);
+        
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName }
+          }
+        });
+        
+        if (error) {
+          logger('❌ Signup failed:', error.message);
+          return { success: false, error: error.message };
         }
-      });
-      
-      if (error) return { success: false, error: error.message };
-      return { success: true, data };
+        
+        logger('✅ Signup successful:', email);
+        return { success: true, data };
+      } catch (error) {
+        logger('❌ Signup exception:', error.message);
+        return { success: false, error: error.message };
+      }
     },
     
-    // ✨ FIXED: Wait for logging before redirecting
     logout: async () => {
       try {
         // Get user info BEFORE logging out
@@ -95,17 +115,19 @@ function createAuthStore() {
         const userId = session?.user?.id;
         const userEmail = session?.user?.email;
 
+        logger('Logout request for:', userEmail);
+
         // Sign out from Supabase FIRST
         const { error } = await supabase.auth.signOut();
         
         if (error) {
-          console.error('Logout error:', error);
+          logger('❌ Logout error:', error.message);
         }
 
         // Clear local state immediately
         set({ user: null, loading: false });
 
-        // ✨ LOG LOGOUT - WAIT for it to complete before redirecting
+        // Log logout - WAIT for it to complete before redirecting
         if (userId && userEmail) {
           try {
             await fetch('/api/audit/log', {
@@ -123,9 +145,9 @@ function createAuthStore() {
                 }
               })
             });
-            console.log('✅ Logout logged successfully');
+            logger('✅ Logout logged successfully');
           } catch (logError) {
-            console.error('Failed to log logout:', logError);
+            logger('Failed to log logout:', logError.message);
             // Continue with logout even if logging fails
           }
         }
@@ -135,7 +157,7 @@ function createAuthStore() {
 
         return { success: true };
       } catch (error) {
-        console.error('Logout error:', error);
+        logger('❌ Logout exception:', error.message);
         // Force clear even on error
         set({ user: null, loading: false });
         window.location.href = '/login';

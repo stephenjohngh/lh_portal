@@ -1,11 +1,14 @@
 // src/routes/api/admin/create-user/+server.js
-// UPDATED: Added audit logging for user creation
+// CLEANED: All console.log replaced with logger
 
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { logCreate } from '$lib/server/auditLogger';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('CreateUserAPI');
 
 const supabaseAdmin = createClient(
   PUBLIC_SUPABASE_URL,
@@ -13,17 +16,14 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST({ request }) {
-  console.log('\n=== CREATE USER REQUEST RECEIVED ===');
-  console.log('Timestamp:', new Date().toISOString());
-  
   try {
     const body = await request.json();
     const { email, password, full_name, requesting_user_id } = body;
     
-    console.log('Create user request for:', email);
+    logger('Create user request for:', email, 'by:', requesting_user_id);
 
     if (!requesting_user_id) {
-      console.log('❌ No requesting_user_id provided');
+      logger('❌ No requesting_user_id provided');
       return json({ error: 'No user ID provided' }, { status: 400 });
     }
 
@@ -35,25 +35,25 @@ export async function POST({ request }) {
       .single();
 
     if (profileError || !adminProfile) {
-      console.error('❌ Profile lookup error:', profileError);
+      logger('❌ Profile lookup error:', profileError?.message);
       return json({ error: 'Could not verify admin status' }, { status: 500 });
     }
 
     if (!adminProfile.is_admin) {
-      console.log('❌ User is NOT admin');
+      logger('❌ User is not admin:', requesting_user_id);
       return json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
     }
 
-    console.log('✅ User is admin! Proceeding with user creation...');
+    logger('✅ Admin verified, proceeding with user creation');
 
     // Validate input
     if (!email || !password) {
-      console.log('❌ Missing email or password');
+      logger('❌ Missing email or password');
       return json({ error: 'Email and password are required' }, { status: 400 });
     }
 
     // Create new user
-    console.log('Creating user with email:', email);
+    logger('Creating user:', email);
     
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -63,9 +63,9 @@ export async function POST({ request }) {
     });
 
     if (createError) {
-      console.error('❌ Create user error:', createError);
+      logger('❌ Create user error:', createError.message);
       
-      // ✨ LOG FAILED USER CREATION
+      // Log failed user creation
       await logCreate(
         requesting_user_id,
         adminProfile.email,
@@ -81,7 +81,7 @@ export async function POST({ request }) {
       return json({ error: createError.message }, { status: 400 });
     }
 
-    console.log('✅ User created successfully! ID:', newUser.user.id);
+    logger('✅ User created successfully:', newUser.user.id);
 
     // Update profile with full_name if provided
     if (full_name) {
@@ -91,11 +91,13 @@ export async function POST({ request }) {
         .eq('id', newUser.user.id);
       
       if (updateError) {
-        console.log('⚠️ Warning: Could not update profile:', updateError.message);
+        logger('⚠️ Could not update profile:', updateError.message);
+      } else {
+        logger('✅ Profile updated with full_name');
       }
     }
 
-    // ✨ LOG SUCCESSFUL USER CREATION
+    // Log successful user creation
     await logCreate(
       requesting_user_id,
       adminProfile.email,
@@ -109,7 +111,7 @@ export async function POST({ request }) {
       }
     );
 
-    console.log('✅ User creation logged to audit trail');
+    logger('✅ User creation logged to audit trail');
     
     return json({ 
       success: true, 
@@ -121,7 +123,7 @@ export async function POST({ request }) {
     });
 
   } catch (err) {
-    console.error('=== UNEXPECTED ERROR ===', err);
+    logger('❌ Unexpected error:', err.message);
     return json({ error: 'Internal server error', message: err.message }, { status: 500 });
   }
 }
