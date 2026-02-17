@@ -40,6 +40,15 @@ export const AVAILABLE_APPS = [
     requiresPermission: true,
     description: 'Track and manage issues'
   },
+	  {
+    id: 'plans',
+    name: 'Plans',
+    icon: 'grid',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Building Plans'
+  },
+
   {
     id: 'demo',
     name: 'Demo App',
@@ -75,6 +84,7 @@ export const APP_IDS = {
   HOME: 'home',
   USERS: 'users',
   ISSUES: 'issues',
+  PLANS: 'plans',
   DEMO: 'demo',
   DEMO2: 'demo2',
   SETTINGS: 'settings'
