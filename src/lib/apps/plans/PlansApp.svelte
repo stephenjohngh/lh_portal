@@ -3,19 +3,22 @@
 <script>
   import { onMount } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
-  import { auth } from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
-  import { plansStore } from './stores/plansStore';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import PlansList from './components/PlansList.svelte';
   import PlanViewer from './components/PlanViewer.svelte';
   import PlanUploader from './components/PlanUploader.svelte';
-
+  import { plansStore } from './stores/plansStore';
+  
   const logger = getLogger('PlansApp');
+
+  import { permissions } from '$lib/stores/permissions';
+  import { auth } from '$lib/stores/auth';
 
   // Read from permissions store - same pattern as IssuesTrackerApp
   $: isAdmin   = $permissions.isAdmin;
+  $: canEdit   = $permissions.isAdmin || $permissions.canModify;
 
   let showUploader = false;
   let selectedPlanId = null;
@@ -83,49 +86,54 @@
   }
 </script>
 
-<div>
-  <!-- Page Header -->
-  <div class="flex items-center justify-between mb-6">
-    <div class="flex items-center gap-3">
-      {#if selectedPlan}
+<div class="text-white">
+  <!-- Header — inline, no sticky wrapper (portal shell already has a sticky nav) -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        {#if selectedPlan}
+          <Button
+            variant="secondary"
+            size="small"
+            icon="arrow-left"
+            on:click={handleBackToList}
+          >
+            Back
+          </Button>
+        {/if}
+        
+        <Icon name="map" size={8} className="text-blue-400" />
+        
+        <div>
+          <h1 class="text-2xl font-bold">
+            {selectedPlan ? selectedPlan.name : 'Floor Plans'}
+          </h1>
+          {#if selectedPlan}
+            <p class="text-sm text-gray-400">
+              {selectedPlan.building}
+              {#if selectedPlan.floor_level !== null && selectedPlan.floor_level !== undefined}
+                · Floor {selectedPlan.floor_level}
+              {/if}
+            </p>
+          {:else if plans.length > 0}
+            <p class="text-sm text-gray-400">
+              {plans.length} {plans.length === 1 ? 'plan' : 'plans'} available
+            </p>
+          {/if}
+        </div>
+      </div>
+      
+      {#if !selectedPlan && isAdmin}
         <Button
-          variant="secondary"
-          size="small"
-          icon="arrow-left"
-          on:click={handleBackToList}
+          variant="primary"
+          size="medium"
+          icon="plus"
+          on:click={handleNewPlan}
         >
-          Back
+          New Floor Plan
         </Button>
       {/if}
-      <div>
-        <h2 class="text-2xl font-bold">
-          {selectedPlan ? selectedPlan.name : 'Floor Plans'}
-        </h2>
-        {#if selectedPlan}
-          <p class="text-sm text-gray-400">
-            {selectedPlan.building}
-            {#if selectedPlan.floor_level !== null && selectedPlan.floor_level !== undefined}
-              · Floor {selectedPlan.floor_level}
-            {/if}
-          </p>
-        {:else if plans.length > 0}
-          <p class="text-sm text-gray-400">
-            {plans.length} {plans.length === 1 ? 'plan' : 'plans'} available
-          </p>
-        {/if}
-      </div>
     </div>
-
-    {#if !selectedPlan && isAdmin}
-      <Button
-        variant="primary"
-        size="medium"
-        icon="plus"
-        on:click={handleNewPlan}
-      >
-        New Floor Plan
-      </Button>
-    {/if}
   </div>
 
   <!-- Main Content -->

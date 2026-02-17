@@ -8,6 +8,13 @@ import { supabase } from '$lib/supabaseClient';
 
 const logger = getLogger('plansStore');
 
+/** Get current authenticated user ID */
+async function getCurrentUserId() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  return user.id;
+}
+
 function createPlansStore() {
   const { subscribe, set, update } = writable({
     plans: [],
@@ -82,13 +89,11 @@ function createPlansStore() {
       logger('Creating plan:', planData.name);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const plan = await api.create('plans', {
           ...planData,
-          created_by: user.id,
-          updated_by: user.id
+          created_by: userId,
+          updated_by: userId
         });
         
         logger('✅ Created plan:', plan.id);
@@ -113,12 +118,10 @@ function createPlansStore() {
       logger('Updating plan:', planId);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const plan = await api.update('plans', planId, {
           ...updates,
-          updated_by: user.id
+          updated_by: userId
         });
         
         logger('✅ Updated plan:', plan.id);
@@ -137,49 +140,15 @@ function createPlansStore() {
     },
 
     /**
-     * Delete a floor plan and its associated image from Storage
+     * Delete a floor plan
      */
     async deletePlan(planId) {
       logger('Deleting plan:', planId);
 
       try {
-        // Get the plan's image_url before deleting so we can clean up Storage
-        let imageUrl = null;
-        update(state => {
-          const plan = state.plans.find(p => p.id === planId);
-          if (plan) imageUrl = plan.image_url;
-          return state;
-        });
-
         await api.delete('plans', planId);
+        
         logger('✅ Deleted plan:', planId);
-
-        // Delete image from Storage if we have a URL
-        if (imageUrl) {
-          try {
-            // Extract the storage path from the public URL
-            // URL format: .../storage/v1/object/public/plan-images/plans/filename.ext
-            const match = imageUrl.match(/\/plan-images\/(.+)$/);
-            if (match) {
-              const storagePath = match[1];
-              logger('Deleting image from storage:', storagePath);
-              const { error: storageError } = await supabase.storage
-                .from('plan-images')
-                .remove([storagePath]);
-              if (storageError) {
-                // Log but don't throw — plan is already deleted, storage cleanup is best-effort
-                logger('⚠️ Storage cleanup failed (plan already deleted):', storageError.message);
-              } else {
-                logger('✅ Deleted image from storage:', storagePath);
-              }
-            } else {
-              logger('⚠️ Could not extract storage path from URL:', imageUrl);
-            }
-          } catch (storageErr) {
-            // Best-effort cleanup — don't fail the whole operation
-            logger('⚠️ Storage cleanup error:', storageErr.message);
-          }
-        }
         
         // Remove from store
         update(state => ({
@@ -202,14 +171,12 @@ function createPlansStore() {
       logger('Creating element:', elementData.label, elementData.asset_id);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const element = await api.create('plan_elements', {
           ...elementData,
           plan_id: planId,
-          created_by: user.id,
-          updated_by: user.id
+          created_by: userId,
+          updated_by: userId
         });
 
         logger('✅ Created element:', element.id);
@@ -237,12 +204,10 @@ function createPlansStore() {
       logger('Updating element:', elementId);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const element = await api.update('plan_elements', elementId, {
           ...updates,
-          updated_by: user.id
+          updated_by: userId
         });
         
         logger('✅ Updated element:', element.id);

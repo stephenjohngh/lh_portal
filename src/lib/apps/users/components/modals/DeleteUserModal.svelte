@@ -125,10 +125,11 @@
 
     <!-- Confirmation Input -->
     <div class="space-y-2">
-      <label class="text-label block">
+      <label for="confirm-delete" class="text-label block">
         Type <span class="font-bold text-red-400">DELETE</span> to confirm:
       </label>
       <input
+        id="confirm-delete"
         type="text"
         bind:value={confirmText}
         placeholder="Type DELETE to confirm"

@@ -19,12 +19,7 @@
   let uploading = false;
   let errors = {};
   
-  let formData = {
-    name: '',
-    building: '',
-    floor_level: 0,
-    description: ''
-  };
+  let formData = { name: '', building: '', floor_level: 0, description: '' };
   
   function handleFileSelect(event) {
     const file = event.target.files[0];
@@ -38,80 +33,41 @@
     if (file) processFile(file);
   }
   
-  function handleDragOver(event) {
-    event.preventDefault();
-    dragActive = true;
-  }
-  
-  function handleDragLeave() {
-    dragActive = false;
-  }
+  function handleDragOver(event) { event.preventDefault(); dragActive = true; }
+  function handleDragLeave() { dragActive = false; }
   
   function processFile(file) {
     logger('Processing file:', file.name, file.type, file.size);
-    
-    // Validate file type
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       alert('Invalid file type. Please upload PNG, JPG, or SVG files.');
       return;
     }
-    
-    // Validate file size
     if (file.size > MAX_IMAGE_SIZE) {
       alert(`File too large. Maximum size is ${MAX_IMAGE_SIZE / 1024 / 1024}MB`);
       return;
     }
-    
     selectedFile = file;
-    
-    // Create preview URL
     const reader = new FileReader();
-    reader.onload = (e) => {
-      previewUrl = e.target.result;
-    };
+    reader.onload = (e) => { previewUrl = e.target.result; };
     reader.readAsDataURL(file);
-    
-    // Auto-fill name from filename if empty
-    if (!formData.name) {
-      formData.name = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
-    }
+    if (!formData.name) formData.name = file.name.replace(/\.[^/.]+$/, '');
   }
   
   function validate() {
     errors = {};
-    
-    if (!selectedFile) {
-      errors.file = 'Please select an image file';
-    }
-    
-    if (!formData.name.trim()) {
-      errors.name = 'Plan name is required';
-    }
-    
-    if (!formData.building.trim()) {
-      errors.building = 'Building name is required';
-    }
-    
+    if (!selectedFile) errors.file = 'Please select an image file';
+    if (!formData.name.trim()) errors.name = 'Plan name is required';
+    if (!formData.building.trim()) errors.building = 'Building name is required';
     return Object.keys(errors).length === 0;
   }
   
   async function handleUpload() {
-    if (!validate()) {
-      logger('❌ Validation failed:', errors);
-      return;
-    }
-    
+    if (!validate()) { logger('❌ Validation failed:', errors); return; }
     uploading = true;
     logger('Starting upload...');
-    
     try {
-      // Upload image to storage
       const { url } = await plansStore.uploadImage(selectedFile);
-      
-      // Get image dimensions
       const dimensions = await plansStore.getImageDimensions(url);
-      
-      // Create plan record
       const plan = await plansStore.createPlan({
         name: formData.name.trim(),
         building: formData.building.trim(),
@@ -121,11 +77,8 @@
         image_width: dimensions.width,
         image_height: dimensions.height
       });
-      
       logger('✅ Plan created:', plan.id);
-      
       dispatch('created', { planId: plan.id });
-      
     } catch (error) {
       logger('❌ Upload error:', error.message);
       alert('Failed to upload floor plan: ' + error.message);
@@ -134,9 +87,7 @@
     }
   }
   
-  function handleClose() {
-    dispatch('close');
-  }
+  function handleClose() { dispatch('close'); }
   
   function removeFile() {
     selectedFile = null;
@@ -149,24 +100,24 @@
   <h3 slot="header" class="text-xl font-bold">Upload Floor Plan</h3>
   
   <div class="section-spacing">
-    <!-- File Upload Area -->
     <div>
-      <label class="block text-sm font-medium mb-2">
+      <p class="block text-sm font-medium mb-2">
         Floor Plan Image <span class="text-red-400">*</span>
-      </label>
+      </p>
       
       {#if !selectedFile}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
+          role="region"
+          aria-label="File drop zone"
           class="border-2 border-dashed rounded-lg p-8 text-center transition-colors {dragActive ? 'border-purple-500 bg-purple-500/10' : errors.file ? 'border-red-500' : 'border-slate-600 hover:border-slate-500'}"
           on:drop={handleDrop}
           on:dragover={handleDragOver}
           on:dragleave={handleDragLeave}
         >
           <Icon name="upload" size={12} className="text-gray-400 mx-auto mb-4" />
-          
           <p class="text-lg mb-2">Drag and drop image here</p>
           <p class="text-sm text-gray-400 mb-4">or click to browse</p>
-          
           <input
             type="file"
             accept=".png,.jpg,.jpeg,.svg"
@@ -174,16 +125,9 @@
             on:change={handleFileSelect}
             class="hidden"
           />
-          
-          <Button
-            variant="primary"
-            size="medium"
-            icon="upload"
-            on:click={() => fileInput.click()}
-          >
+          <Button variant="primary" size="medium" icon="upload" on:click={() => fileInput.click()}>
             Browse Files
           </Button>
-          
           <p class="text-xs text-gray-500 mt-4">
             PNG, JPG, or SVG • Max {MAX_IMAGE_SIZE / 1024 / 1024}MB
           </p>
@@ -192,14 +136,9 @@
           <p class="text-red-400 text-sm mt-1">{errors.file}</p>
         {/if}
       {:else}
-        <!-- Preview -->
         <div class="border border-slate-600 rounded-lg overflow-hidden">
           <div class="relative bg-slate-900 p-4">
-            <img
-              src={previewUrl}
-              alt="Preview"
-              class="max-h-64 mx-auto"
-            />
+            <img src={previewUrl} alt="Preview" class="max-h-64 mx-auto" />
             <button
               on:click={removeFile}
               class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-2"
@@ -209,97 +148,54 @@
           </div>
           <div class="p-3 bg-slate-800 text-sm">
             <p class="font-medium">{selectedFile.name}</p>
-            <p class="text-gray-400">
-              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-            </p>
+            <p class="text-gray-400">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
           </div>
         </div>
       {/if}
     </div>
     
-    <!-- Plan Details -->
     <div>
-      <label for="plan-name" class="block text-sm font-medium mb-2">
+      <label for="upload-plan-name" class="block text-sm font-medium mb-2">
         Plan Name <span class="text-red-400">*</span>
       </label>
-      <input
-        id="plan-name"
-        type="text"
-        bind:value={formData.name}
+      <input id="upload-plan-name" type="text" bind:value={formData.name}
         placeholder="e.g., Ground Floor"
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        class:border-red-500={errors.name}
-      />
-      {#if errors.name}
-        <p class="text-red-400 text-sm mt-1">{errors.name}</p>
-      {/if}
+        class:border-red-500={errors.name} />
+      {#if errors.name}<p class="text-red-400 text-sm mt-1">{errors.name}</p>{/if}
     </div>
     
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label for="building" class="block text-sm font-medium mb-2">
+        <label for="upload-building" class="block text-sm font-medium mb-2">
           Building <span class="text-red-400">*</span>
         </label>
-        <input
-          id="building"
-          type="text"
-          bind:value={formData.building}
+        <input id="upload-building" type="text" bind:value={formData.building}
           placeholder="e.g., Building A"
           class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          class:border-red-500={errors.building}
-        />
-        {#if errors.building}
-          <p class="text-red-400 text-sm mt-1">{errors.building}</p>
-        {/if}
+          class:border-red-500={errors.building} />
+        {#if errors.building}<p class="text-red-400 text-sm mt-1">{errors.building}</p>{/if}
       </div>
-      
       <div>
-        <label for="floor-level" class="block text-sm font-medium mb-2">
-          Floor Level
-        </label>
-        <input
-          id="floor-level"
-          type="number"
-          bind:value={formData.floor_level}
-          placeholder="0"
-          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-        <p class="text-xs text-gray-500 mt-1">
-          0 = Ground, 1 = First, etc.
-        </p>
+        <label for="upload-floor" class="block text-sm font-medium mb-2">Floor Level</label>
+        <input id="upload-floor" type="number" bind:value={formData.floor_level} placeholder="0"
+          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+        <p class="text-xs text-gray-500 mt-1">0 = Ground, 1 = First, etc.</p>
       </div>
     </div>
     
     <div>
-      <label for="description" class="block text-sm font-medium mb-2">
-        Description
-      </label>
-      <textarea
-        id="description"
-        bind:value={formData.description}
-        placeholder="Optional description..."
-        rows="3"
+      <label for="upload-description" class="block text-sm font-medium mb-2">Description</label>
+      <textarea id="upload-description" bind:value={formData.description}
+        placeholder="Optional description..." rows="3"
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
       ></textarea>
     </div>
   </div>
   
   <div slot="footer" class="btn-group justify-end">
-    <Button
-      variant="secondary"
-      size="large"
-      on:click={handleClose}
-      disabled={uploading}
-    >
-      Cancel
-    </Button>
-    <Button
-      variant="primary"
-      size="large"
-      icon="check"
-      on:click={handleUpload}
-      disabled={uploading || !selectedFile}
-    >
+    <Button variant="secondary" size="large" on:click={handleClose} disabled={uploading}>Cancel</Button>
+    <Button variant="primary" size="large" icon="check" on:click={handleUpload} disabled={uploading || !selectedFile}>
       {uploading ? 'Uploading...' : 'Create Floor Plan'}
     </Button>
   </div>

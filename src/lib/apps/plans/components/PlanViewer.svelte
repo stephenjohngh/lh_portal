@@ -1,10 +1,11 @@
 <!-- src/lib/apps/plans/components/PlanViewer.svelte -->
 <!-- Interactive floor plan viewer with clickable elements -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import ElementMarker from './ElementMarker.svelte';
   import ElementModal from './ElementModal.svelte';
   import PlanFilters from './PlanFilters.svelte';
@@ -12,7 +13,7 @@
   import PlanInfoModal from './PlanInfoModal.svelte';
   import CopyPlanModal from './CopyPlanModal.svelte';
   import { plansStore } from '../stores/plansStore';
-  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, getElementDescription } from '$lib/utils/planConstants';
   import { permissions } from '$lib/stores/permissions';
   
   const logger = getLogger('PlanViewer');
@@ -23,7 +24,7 @@
   // Read from permissions store - same pattern as IssuesTrackerApp
   $: isAdmin    = $permissions.isAdmin;
   $: canEdit    = $permissions.isAdmin || $permissions.canModify;
-  $: isReadOnly = !$permissions.loading && !$permissions.isAdmin && !$permissions.canModify;
+  $: isReadOnly = !$permissions.isAdmin && !$permissions.canModify;
 
   let imageElement;
   let containerElement;
@@ -37,6 +38,14 @@
   let newElementPosition = null;
   let hoveredElement = null;
   let imageLoaded = false;
+  let containerWidth = 0;
+  let containerHeight = 0;
+
+  // Drag-to-move state
+  let dragElement = null;       // element currently being dragged
+  let dragMoved = false;        // true once cursor moves beyond threshold
+  let dragJustEnded = false;    // suppress container click after a completed drag
+
   let filters = {
     types: [],
     statuses: [],
@@ -55,25 +64,38 @@
     return acc;
   }, {});
   
-  // Sort elements for table display: type then derived name (floor/asset_id)
-  $: sortedElementsForTable = [...elements].sort((a, b) => {
-    // First sort by element type
+  $: hasActiveFilters = filters.types.length > 0 || filters.statuses.length > 0 || filters.searchText.length > 0;
+
+  // Apply filters once — used by both SVG markers and table
+  $: filteredElements = hasActiveFilters ? applyFilters(elements, filters) : elements;
+  $: filteredElementIds = new Set(filteredElements.map(e => e.id));
+
+  // Sort filtered elements for table display: type then asset_id
+  $: sortedElementsForTable = [...filteredElements].sort((a, b) => {
     if (a.element_type !== b.element_type) {
       return a.element_type.localeCompare(b.element_type);
     }
-    // Then sort by asset_id (the meaningful part of derived name)
     const idA = a.asset_id || '';
     const idB = b.asset_id || '';
     return idA.localeCompare(idB, undefined, { numeric: true });
   });
   
-  $: {
-    // Apply filters and store filtered IDs
-    const filtered = applyFilters(elements, filters);
-    filteredElementIds = new Set(filtered.map(e => e.id));
-  }
-  
-  $: hasActiveFilters = filters.types.length > 0 || filters.statuses.length > 0 || filters.searchText.length > 0;
+  onMount(() => {
+    // Setup resize observer for responsive rendering
+    const resizeObserver = new ResizeObserver(entries => {
+      if (entries[0]) {
+        const { width, height } = entries[0].contentRect;
+        containerWidth = width;
+        containerHeight = height;
+      }
+    });
+    
+    if (containerElement) {
+      resizeObserver.observe(containerElement);
+    }
+    
+    return () => resizeObserver.disconnect();
+  });
   
   async function loadElements() {
     logger('Loading elements for plan:', plan.id);
@@ -115,6 +137,8 @@
   function handleContainerClick(event) {
     // Read-only users cannot add elements
     if (isReadOnly) return;
+    // Suppress click if a drag just finished (mouseup already handled the action)
+    if (dragJustEnded) return;
     
     // Ignore clicks that originated from a marker <g> or its children
     let node = event.target;
@@ -155,6 +179,70 @@
   function handleElementLeave() {
     hoveredElement = null;
   }
+
+  // ── Drag-to-move ─────────────────────────────────────────────────────────
+  function handleMarkerMousedown(event, element) {
+    if (isReadOnly || !canEdit) return;
+    event.stopPropagation();  // prevent container click from firing
+
+    dragElement = element;
+    dragMoved = false;
+
+    const onMousemove = (e) => {
+      if (!dragElement || !imageElement) return;
+
+      const rect = imageElement.getBoundingClientRect();
+      const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const ny = Math.min(1, Math.max(0, (e.clientY - rect.top)  / rect.height));
+
+      // Once cursor moves >4px equivalent treat as drag (not click)
+      dragMoved = true;
+
+      // Optimistic local update for smooth visual feedback
+      elements = elements.map(el =>
+        el.id === dragElement.id
+          ? { ...el, x_position: nx, y_position: ny }
+          : el
+      );
+    };
+
+    const onMouseup = async (e) => {
+      window.removeEventListener('mousemove', onMousemove);
+      window.removeEventListener('mouseup', onMouseup);
+
+      if (!dragMoved || !dragElement || !imageElement) {
+        dragElement = null;
+        return;
+      }
+
+      // Final position
+      const rect = imageElement.getBoundingClientRect();
+      const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const ny = Math.min(1, Math.max(0, (e.clientY - rect.top)  / rect.height));
+
+      const movedEl = dragElement;
+      dragElement = null;
+      dragJustEnded = true;
+      // Allow the container click event to fire first, then clear the flag
+      setTimeout(() => { dragJustEnded = false; }, 50);
+
+      try {
+        await plansStore.updateElement(movedEl.id, { x_position: nx, y_position: ny });
+        logger('✅ Element moved:', movedEl.id);
+        // Reload to get server-confirmed positions
+        await loadElements();
+      } catch (error) {
+        logger('❌ Error moving element:', error.message);
+        // Revert optimistic update on failure
+        await loadElements();
+        alert('Failed to move element: ' + error.message);
+      }
+    };
+
+    window.addEventListener('mousemove', onMousemove);
+    window.addEventListener('mouseup', onMouseup);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
   
   async function handleElementSave(event) {
     const { element, isNew } = event.detail;
@@ -174,7 +262,7 @@
       newElementPosition = null;
     } catch (error) {
       logger('❌ Error saving element:', error.message);
-      // Error stays in logger; modal remains open so user sees the failure
+      alert('Failed to save element: ' + error.message);
     }
   }
   
@@ -190,7 +278,7 @@
       selectedElement = null;
     } catch (error) {
       logger('❌ Error deleting element:', error.message);
-      // Error stays in logger; modal remains open so user sees the failure
+      alert('Failed to delete element: ' + error.message);
     }
   }
   
@@ -213,12 +301,6 @@
       x: element.x_position * rect.width,
       y: element.y_position * rect.height
     };
-  }
-  
-  // Check if element is in filtered set
-  function isElementFiltered(element) {
-    if (!hasActiveFilters) return false;
-    return !filteredElementIds.has(element.id);
   }
 </script>
 
@@ -324,14 +406,16 @@
             class="absolute inset-0 w-full h-full"
             style="z-index: 10; pointer-events: none;"
           >
-            {#each elements as element (element.id)}
+            {#each filteredElements as element (element.id)}
               <ElementMarker
                 {element}
                 floorLevel={plan.floor_level}
                 position={getPixelPosition(element)}
                 isHovered={hoveredElement?.id === element.id}
-                isFiltered={isElementFiltered(element)}
-                on:click={() => handleElementClick(element)}
+                isDragging={dragElement?.id === element.id}
+                isFiltered={false}
+                on:mousedown={(e) => handleMarkerMousedown(e, element)}
+                on:click={() => { if (!dragMoved) handleElementClick(element); }}
                 on:mouseenter={() => handleElementHover(element)}
                 on:mouseleave={handleElementLeave}
               />
@@ -340,14 +424,14 @@
         {/if}
         
         <!-- Hover Tooltip -->
-        {#if hoveredElement && !isElementFiltered(hoveredElement)}
+        {#if hoveredElement && filteredElementIds.has(hoveredElement.id)}
           {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === hoveredElement.element_type)}
           {@const pos = getPixelPosition(hoveredElement)}
           <div 
             class="absolute bg-slate-800 text-white px-3 py-2 rounded-lg shadow-xl text-sm pointer-events-none border border-slate-600"
             style="
               left: {pos.x}px;
-              top: {pos.y - 60}px;
+              top: {pos.y + 40}px;
               transform: translateX(-50%);
               z-index: 20;
               max-width: 250px;
@@ -381,10 +465,11 @@
             <span class="text-amber-400">Read-only access — editing is disabled.</span>
           {:else if canEdit}
             <strong>Click anywhere</strong> on the floor plan to add a new element, 
-            or <strong>click existing markers</strong> to view and edit details.
+            <strong>click a marker</strong> to view and edit details,
+            or <strong>drag a marker</strong> to move it.
           {/if}
           {#if hasActiveFilters}
-            <span class="text-amber-400 ml-1">Filters active — some elements are dimmed.</span>
+            <span class="text-amber-400 ml-1">Filters active — {elements.length - filteredElements.length} elements hidden.</span>
           {/if}
         </p>
       </div>
@@ -480,10 +565,11 @@
   />
 {/if}
 
-<!-- Plan Info Modal -->
+<!-- Plan Info Modal — pass elements.length so delete confirmation shows correct count -->
 {#if showPlanInfoModal}
   <PlanInfoModal
     {plan}
+    elementCount={elements.length}
     on:updated={() => {
       showPlanInfoModal = false;
       dispatch('planUpdated');

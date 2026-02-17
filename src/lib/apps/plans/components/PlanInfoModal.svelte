@@ -13,6 +13,7 @@
   const dispatch = createEventDispatcher();
   
   export let plan;
+  export let elementCount = 0;
   
   let formData = {
     name: plan.name,
@@ -229,7 +230,7 @@
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Floor Plan"
-  message="Are you sure you want to delete this floor plan? This will also delete all {plan.elements?.length || 0} elements on this plan. This action cannot be undone."
+  message="Are you sure you want to delete this floor plan? This will also delete all {elementCount} elements on this plan. This action cannot be undone."
   confirmText="Delete Plan"
   cancelText="Cancel"
   danger={true}

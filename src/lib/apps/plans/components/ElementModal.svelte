@@ -19,9 +19,9 @@
   const logger = getLogger('ElementModal');
   const dispatch = createEventDispatcher();
   
-  export let element = null; // Existing element or null for new
-  export let position = null; // { x, y } for new element (normalized 0-1)
-  export let plan; // parent plan (used for floor_level in derived name)
+  export let element = null;
+  export let position = null;
+  export let plan;
   
   let formData = element ? { ...element } : {
     element_type: 'door',
@@ -39,38 +39,21 @@
   let saving = false;
   
   $: isNew = !element;
-  // New elements always editable (PlanViewer already blocks read-only users from clicking)
-  // Existing elements: editable if admin or canModify
   $: editable = isNew ? true : ($permissions.isAdmin || $permissions.canModify);
   $: subtypeOptions = getSubtypesForType(formData.element_type);
   $: selectedTypeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === formData.element_type);
   $: modalTitle = isNew ? 'Add Element' : 'Edit Element';
-  
-  // Live-derived display name: updates as user changes asset_id or plan floor changes
-  $: derivedName = getElementDisplayName(
-    { asset_id: formData.asset_id },
-    plan?.floor_level
-  );
+  $: derivedName = getElementDisplayName({ asset_id: formData.asset_id }, plan?.floor_level);
   
   function validate() {
     errors = {};
-    
-    if (!formData.element_type) {
-      errors.element_type = 'Element type is required';
-    }
-    
+    if (!formData.element_type) errors.element_type = 'Element type is required';
     return Object.keys(errors).length === 0;
   }
   
   async function handleSave() {
-    if (!validate()) {
-      logger('❌ Validation failed:', errors);
-      return;
-    }
-    
+    if (!validate()) { logger('❌ Validation failed:', errors); return; }
     saving = true;
-    logger('Saving element:', formData);
-    
     try {
       dispatch('save', {
         element: {
@@ -89,29 +72,18 @@
     }
   }
   
-  function handleDelete() {
-    showDeleteConfirm = true;
-  }
+  function handleDelete() { showDeleteConfirm = true; }
   
   function confirmDelete() {
     logger('Deleting element:', element.id);
-    dispatch('delete', { 
-      elementId: element.id,
-      planId: plan.id
-    });
+    dispatch('delete', { elementId: element.id, planId: plan.id });
     showDeleteConfirm = false;
   }
   
-  function handleClose() {
-    dispatch('close');
-  }
+  function handleClose() { dispatch('close'); }
   
-  // Update subtype when element type changes
-  function handleTypeChange() {
-    formData.subtype = '';
-  }
+  function handleTypeChange() { formData.subtype = ''; }
   
-  // Format position for display
   function formatPosition(pos) {
     if (!pos) return 'N/A';
     return `(${(pos.x * 100).toFixed(1)}%, ${(pos.y * 100).toFixed(1)}%)`;
@@ -138,7 +110,7 @@
       </div>
     {/if}
     
-    <!-- Derived Name Display (live, read-only) -->
+    <!-- Derived Name Display -->
     <div class="bg-slate-700/30 border border-slate-600 rounded p-3">
       <div class="flex items-center justify-between">
         <div>
@@ -146,87 +118,81 @@
           <div class="text-lg font-bold font-mono mt-0.5 text-white">{derivedName}</div>
         </div>
         <div class="text-xs text-gray-500 text-right">
-          <span>Floor {plan?.floor_level ?? '?'} / Asset ID</span>
-          <br/>
+          <span>Floor {plan?.floor_level ?? '?'} / Asset ID</span><br/>
           <span class="italic">(auto-generated)</span>
         </div>
       </div>
     </div>
     
-    <!-- Element Type -->
-    <div>
-      <label for="element-type" class="block text-sm font-medium mb-2">
-        Element Type <span class="text-red-400">*</span>
-      </label>
-      <select
-        id="element-type"
-        bind:value={formData.element_type}
-        on:change={handleTypeChange}
-        disabled={!editable}
-        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        class:border-red-500={errors.element_type}
-      >
-        {#each ELEMENT_TYPE_OPTIONS as option}
-          <option value={option.value}>
-            {option.icon} {option.label}
-          </option>
-        {/each}
-      </select>
-      {#if errors.element_type}
-        <p class="text-red-400 text-sm mt-1">{errors.element_type}</p>
-      {/if}
-      {#if selectedTypeConfig}
-        <p class="text-xs text-gray-400 mt-1">{selectedTypeConfig.description}</p>
-      {/if}
+    <!-- Row 1: Type | Subtype (50/50) -->
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label for="element-type" class="block text-sm font-medium mb-2">
+          Element Type <span class="text-red-400">*</span>
+        </label>
+        <select
+          id="element-type"
+          bind:value={formData.element_type}
+          on:change={handleTypeChange}
+          disabled={!editable}
+          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          class:border-red-500={errors.element_type}
+        >
+          {#each ELEMENT_TYPE_OPTIONS as option}
+            <option value={option.value}>{option.icon} {option.label}</option>
+          {/each}
+        </select>
+        {#if errors.element_type}
+          <p class="text-red-400 text-sm mt-1">{errors.element_type}</p>
+        {/if}
+      </div>
+      <div>
+        <label for="element-subtype" class="block text-sm font-medium mb-2">
+          Subtype
+        </label>
+        <select
+          id="element-subtype"
+          bind:value={formData.subtype}
+          disabled={!editable}
+          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <option value="">-- Select subtype --</option>
+          {#each subtypeOptions as subtype}
+            <option value={subtype}>{subtype}</option>
+          {/each}
+        </select>
+      </div>
     </div>
     
-    <!-- Label (optional user description) -->
-    <div>
-      <label for="element-label" class="block text-sm font-medium mb-2">
-        Label <span class="text-gray-500 text-xs font-normal">(optional description)</span>
-      </label>
-      <input
-        id="element-label"
-        type="text"
-        bind:value={formData.label}
-        placeholder="e.g., Main Entrance"
-        disabled={!editable}
-        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      />
-    </div>
-    
-    <!-- Subtype -->
-    <div>
-      <label for="element-subtype" class="block text-sm font-medium mb-2">
-        Subtype
-      </label>
-      <select
-        id="element-subtype"
-        bind:value={formData.subtype}
-        disabled={!editable}
-        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <option value="">-- Select subtype --</option>
-        {#each subtypeOptions as subtype}
-          <option value={subtype}>{subtype}</option>
-        {/each}
-      </select>
-    </div>
-    
-    <!-- Asset ID — this is the key component of the derived name -->
-    <div>
-      <label for="asset-id" class="block text-sm font-medium mb-2">
-        Asset ID
-        <span class="text-gray-500 text-xs font-normal ml-1">— used in element name above</span>
-      </label>
-      <input
-        id="asset-id"
-        type="text"
-        bind:value={formData.asset_id}
-        placeholder="e.g., DR-001"
-        disabled={!editable}
-        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      />
+    <!-- Row 2: Asset ID | Label (50/50) -->
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label for="asset-id" class="block text-sm font-medium mb-2">
+          Asset ID
+          <span class="text-gray-500 text-xs font-normal ml-1">— used in name</span>
+        </label>
+        <input
+          id="asset-id"
+          type="text"
+          bind:value={formData.asset_id}
+          placeholder="e.g., DR-001"
+          disabled={!editable}
+          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+      </div>
+      <div>
+        <label for="element-label" class="block text-sm font-medium mb-2">
+          Label <span class="text-gray-500 text-xs font-normal">(optional)</span>
+        </label>
+        <input
+          id="element-label"
+          type="text"
+          bind:value={formData.label}
+          placeholder="e.g., Main Entrance"
+          disabled={!editable}
+          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+      </div>
     </div>
     
     <!-- Status -->
@@ -248,9 +214,7 @@
     
     <!-- Notes -->
     <div>
-      <label for="notes" class="block text-sm font-medium mb-2">
-        Notes
-      </label>
+      <label for="notes" class="block text-sm font-medium mb-2">Notes</label>
       <textarea
         id="notes"
         bind:value={formData.notes}
@@ -262,17 +226,10 @@
     </div>
     
     {#if !isNew && element}
-      <!-- Metadata (no profile join on elements - just timestamps) -->
       <div class="text-sm text-gray-400 border-t border-slate-700 pt-3 space-y-1">
-        <p>
-          <span class="font-medium">Created:</span>
-          {formatDateTime(element.created_at)}
-        </p>
+        <p><span class="font-medium">Created:</span> {formatDateTime(element.created_at)}</p>
         {#if element.updated_at && element.updated_at !== element.created_at}
-          <p>
-            <span class="font-medium">Modified:</span>
-            {formatDateTime(element.updated_at)}
-          </p>
+          <p><span class="font-medium">Modified:</span> {formatDateTime(element.updated_at)}</p>
         {/if}
       </div>
     {/if}
@@ -281,34 +238,17 @@
   <div slot="footer" class="flex items-center justify-between">
     <div>
       {#if !isNew && editable}
-        <Button
-          variant="danger"
-          size="medium"
-          icon="delete"
-          on:click={handleDelete}
-        >
+        <Button variant="danger" size="medium" icon="delete" on:click={handleDelete}>
           Delete
         </Button>
       {/if}
     </div>
-    
     <div class="btn-group">
-      <Button
-        variant="secondary"
-        size="medium"
-        on:click={handleClose}
-        disabled={saving}
-      >
+      <Button variant="secondary" size="medium" on:click={handleClose} disabled={saving}>
         {editable ? 'Cancel' : 'Close'}
       </Button>
       {#if editable}
-        <Button
-          variant="primary"
-          size="medium"
-          icon="check"
-          on:click={handleSave}
-          disabled={saving}
-        >
+        <Button variant="primary" size="medium" icon="check" on:click={handleSave} disabled={saving}>
           {saving ? 'Saving...' : isNew ? 'Add Element' : 'Save Changes'}
         </Button>
       {/if}
@@ -316,7 +256,6 @@
   </div>
 </Modal>
 
-<!-- Delete Confirmation -->
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Element"

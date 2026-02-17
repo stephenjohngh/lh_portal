@@ -10,7 +10,7 @@
   
   const dispatch = createEventDispatcher();
   
-  export let elements = [];
+  export const elements = [];
   export let elementCounts = {};
   
   let selectedTypes = [];
@@ -19,7 +19,6 @@
   
   $: hasFilters = selectedTypes.length > 0 || selectedStatuses.length > 0 || searchText.length > 0;
   
-  // Emit filter changes
   $: {
     dispatch('change', {
       types: selectedTypes,
@@ -58,21 +57,14 @@
       <span>Filters</span>
     </h3>
     {#if hasFilters}
-      <Button
-        variant="secondary"
-        size="small"
-        on:click={clearFilters}
-      >
-        Clear
-      </Button>
+      <Button variant="secondary" size="small" on:click={clearFilters}>Clear</Button>
     {/if}
   </div>
   
-  <!-- Search -->
   <div class="mb-4">
-    <label for="search" class="block text-sm font-medium mb-2">Search</label>
+    <label for="filter-search" class="block text-sm font-medium mb-2">Search</label>
     <input
-      id="search"
+      id="filter-search"
       type="text"
       bind:value={searchText}
       placeholder="Name or ID..."
@@ -80,7 +72,6 @@
     />
   </div>
   
-  <!-- Element Types -->
   <div class="mb-4">
     <h4 class="text-sm font-semibold mb-2">Element Type</h4>
     <div class="space-y-2">
@@ -94,15 +85,12 @@
           />
           <span class="text-lg">{type.icon}</span>
           <span class="flex-1 text-sm">{type.label}</span>
-          <Badge variant="info" outline>
-            {elementCounts[type.value] || 0}
-          </Badge>
+          <Badge variant="info" outline>{elementCounts[type.value] || 0}</Badge>
         </label>
       {/each}
     </div>
   </div>
   
-  <!-- Status -->
   <div class="mb-4">
     <h4 class="text-sm font-semibold mb-2">Status</h4>
     <div class="space-y-2">
@@ -114,17 +102,13 @@
             on:change={() => toggleStatus(status.value)}
             class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
           />
-          <div 
-            class="w-3 h-3 rounded-full"
-            style="background-color: {status.color}"
-          />
+          <div class="w-3 h-3 rounded-full" style="background-color: {status.color}"></div>
           <span class="flex-1 text-sm capitalize">{status.label}</span>
         </label>
       {/each}
     </div>
   </div>
   
-  <!-- Legend -->
   <div class="border-t border-slate-700 pt-4">
     <h4 class="text-sm font-semibold mb-2">Legend</h4>
     <div class="space-y-1 text-xs text-gray-400">

@@ -2,7 +2,6 @@
 <!-- Individual floor plan card with summary -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/common/Button.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
@@ -19,7 +18,12 @@
   }
 </script>
 
-<div class="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-purple-500 transition-colors">
+<!-- Whole card is a button — same effect as the old "View Plan" button -->
+<button
+  class="w-full text-left bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-purple-500 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
+  on:click={handleView}
+  aria-label="View plan: {plan.name}"
+>
   <!-- Plan Image Preview -->
   <div class="relative h-48 bg-slate-900 overflow-hidden">
     <img
@@ -54,7 +58,7 @@
     
     <!-- Element Counts -->
     {#if totalElements > 0}
-      <div class="flex flex-wrap gap-2 mb-3">
+      <div class="flex flex-wrap gap-2">
         {#each ELEMENT_TYPE_OPTIONS as type}
           {#if elementCounts[type.value] > 0}
             <div class="text-xs flex items-center gap-1">
@@ -65,21 +69,10 @@
         {/each}
       </div>
     {:else}
-      <p class="text-sm text-gray-500 mb-3 italic">No elements yet</p>
+      <p class="text-sm text-gray-500 italic">No elements yet</p>
     {/if}
-    
-    <!-- Actions -->
-    <Button
-      variant="primary"
-      size="medium"
-      icon="map"
-      on:click={handleView}
-      className="w-full"
-    >
-      View Plan
-    </Button>
   </div>
-</div>
+</button>
 
 <style>
   .line-clamp-2 {
