@@ -147,3 +147,34 @@ export function isValidElementType(type) {
 export function isValidElementStatus(status) {
   return Object.values(ELEMENT_STATUS).includes(status);
 }
+
+// ============================================
+// DERIVED NAME HELPERS
+// ============================================
+
+/**
+ * Derive the display name for an element.
+ * Format: "Floor Level / Asset ID"
+ * e.g. "0 / DR-001"  or  "2 / LT-005"
+ * Falls back gracefully when either part is missing.
+ *
+ * @param {object} element  - plan_elements row
+ * @param {number|string} floorLevel - from parent plan.floor_level
+ * @returns {string}
+ */
+export function getElementDisplayName(element, floorLevel) {
+  const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
+  const id    = element.asset_id ? element.asset_id : 'No ID';
+  return `${floor} / ${id}`;
+}
+
+/**
+ * Get a short description for tooltips and table display.
+ * Shows label if set, otherwise falls back to subtype, then type.
+ *
+ * @param {object} element
+ * @returns {string}
+ */
+export function getElementDescription(element) {
+  return element.label || element.subtype || element.element_type;
+}

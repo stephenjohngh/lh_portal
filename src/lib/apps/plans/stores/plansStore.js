@@ -53,7 +53,7 @@ function createPlansStore() {
       try {
         const elements = await api.get('plan_elements', {
           filters: { plan_id: planId },
-          select: '*, created_by_profile:profiles!created_by(full_name), updated_by_profile:profiles!updated_by(full_name)',
+          select: '*',
           orderBy: 'created_at',
           ascending: false
         });
@@ -165,7 +165,7 @@ function createPlansStore() {
      * Create a new element on a plan
      */
     async createElement(planId, elementData) {
-      logger('Creating element:', elementData.name);
+      logger('Creating element:', elementData.label, elementData.asset_id);
 
       try {
         // Get current user

@@ -6,7 +6,7 @@
   import Modal from '$lib/components/common/Modal.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
   
   const logger = getLogger('PlansReport');
   const dispatch = createEventDispatcher();
@@ -155,7 +155,7 @@
               </p>
               <ul class="text-xs text-gray-400 ml-6 mt-1">
                 {#each elementsByType[type].slice(0, 3) as element}
-                  <li>• {element.name}</li>
+                  <li>• {getElementDisplayName(element, plan.floor_level)}{element.label ? ` — ${element.label}` : ''}</li>
                 {/each}
                 {#if elementsByType[type].length > 3}
                   <li class="italic">... and {elementsByType[type].length - 3} more</li>

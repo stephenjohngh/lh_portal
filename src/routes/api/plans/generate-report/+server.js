@@ -7,6 +7,13 @@ import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('generatePlanReport');
 
+// Derived display name: "floor_level / asset_id"
+function getElementDisplayName(element, floorLevel) {
+  const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
+  const id    = element.asset_id ? element.asset_id : 'No ID';
+  return `${floor} / ${id}`;
+}
+
 export async function POST({ request }) {
   try {
     const { plan, elements, options } = await request.json();
@@ -115,23 +122,23 @@ export async function POST({ request }) {
               children: [
                 new TableCell({
                   children: [new Paragraph({ text: 'Name', bold: true })],
-                  width: { size: 25, type: WidthType.PERCENTAGE }
-                }),
-                new TableCell({
-                  children: [new Paragraph({ text: 'Subtype', bold: true })],
                   width: { size: 20, type: WidthType.PERCENTAGE }
                 }),
                 new TableCell({
-                  children: [new Paragraph({ text: 'Asset ID', bold: true })],
+                  children: [new Paragraph({ text: 'Label', bold: true })],
+                  width: { size: 20, type: WidthType.PERCENTAGE }
+                }),
+                new TableCell({
+                  children: [new Paragraph({ text: 'Subtype', bold: true })],
                   width: { size: 15, type: WidthType.PERCENTAGE }
                 }),
                 new TableCell({
                   children: [new Paragraph({ text: 'Status', bold: true })],
-                  width: { size: 15, type: WidthType.PERCENTAGE }
+                  width: { size: 10, type: WidthType.PERCENTAGE }
                 }),
                 new TableCell({
                   children: [new Paragraph({ text: 'Notes', bold: true })],
-                  width: { size: 25, type: WidthType.PERCENTAGE }
+                  width: { size: 35, type: WidthType.PERCENTAGE }
                 })
               ]
             })
@@ -143,13 +150,13 @@ export async function POST({ request }) {
               new TableRow({
                 children: [
                   new TableCell({
-                    children: [new Paragraph(element.name)]
+                    children: [new Paragraph(getElementDisplayName(element, plan.floor_level))]
+                  }),
+                  new TableCell({
+                    children: [new Paragraph(element.label || '-')]
                   }),
                   new TableCell({
                     children: [new Paragraph(element.subtype || '-')]
-                  }),
-                  new TableCell({
-                    children: [new Paragraph(element.asset_id || '-')]
                   }),
                   new TableCell({
                     children: [new Paragraph(element.status)]
@@ -202,20 +209,20 @@ export async function POST({ request }) {
             tableHeader: true,
             children: [
               new TableCell({
-                children: [new Paragraph({ text: 'Type', bold: true })],
-                width: { size: 15, type: WidthType.PERCENTAGE }
+                children: [new Paragraph({ text: 'Name', bold: true })],
+                width: { size: 18, type: WidthType.PERCENTAGE }
               }),
               new TableCell({
-                children: [new Paragraph({ text: 'Name', bold: true })],
-                width: { size: 20, type: WidthType.PERCENTAGE }
+                children: [new Paragraph({ text: 'Type', bold: true })],
+                width: { size: 10, type: WidthType.PERCENTAGE }
+              }),
+              new TableCell({
+                children: [new Paragraph({ text: 'Label', bold: true })],
+                width: { size: 18, type: WidthType.PERCENTAGE }
               }),
               new TableCell({
                 children: [new Paragraph({ text: 'Subtype', bold: true })],
-                width: { size: 15, type: WidthType.PERCENTAGE }
-              }),
-              new TableCell({
-                children: [new Paragraph({ text: 'Asset ID', bold: true })],
-                width: { size: 15, type: WidthType.PERCENTAGE }
+                width: { size: 14, type: WidthType.PERCENTAGE }
               }),
               new TableCell({
                 children: [new Paragraph({ text: 'Status', bold: true })],
@@ -223,7 +230,7 @@ export async function POST({ request }) {
               }),
               new TableCell({
                 children: [new Paragraph({ text: 'Notes', bold: true })],
-                width: { size: 25, type: WidthType.PERCENTAGE }
+                width: { size: 30, type: WidthType.PERCENTAGE }
               })
             ]
           })
@@ -234,16 +241,16 @@ export async function POST({ request }) {
             new TableRow({
               children: [
                 new TableCell({
+                  children: [new Paragraph(getElementDisplayName(element, plan.floor_level))]
+                }),
+                new TableCell({
                   children: [new Paragraph(element.element_type)]
                 }),
                 new TableCell({
-                  children: [new Paragraph(element.name)]
+                  children: [new Paragraph(element.label || '-')]
                 }),
                 new TableCell({
                   children: [new Paragraph(element.subtype || '-')]
-                }),
-                new TableCell({
-                  children: [new Paragraph(element.asset_id || '-')]
                 }),
                 new TableCell({
                   children: [new Paragraph(element.status)]

@@ -13,6 +13,13 @@
   
   const logger = getLogger('PlansApp');
   
+  // 'admin' | 'editor' | 'readonly' — set by routes/plans/+page.svelte
+  export let permissionLevel;
+  
+  $: isAdmin   = permissionLevel === 'admin';
+  $: canEdit   = permissionLevel === 'admin' || permissionLevel === 'editor';
+  $: isReadOnly = permissionLevel === 'readonly';
+
   let showUploader = false;
   let selectedPlanId = null;
   let loading = true;
@@ -114,7 +121,7 @@
           </div>
         </div>
         
-        {#if !selectedPlan}
+        {#if !selectedPlan && isAdmin}
           <Button
             variant="primary"
             size="medium"
@@ -137,13 +144,14 @@
       </div>
     {:else if selectedPlan}
       <PlanViewer 
-        plan={selectedPlan} 
+        plan={selectedPlan}
+        {permissionLevel}
         on:planUpdated={handlePlanUpdated}
         on:planDeleted={handlePlanDeleted}
         on:planCopied={handlePlanCopied}
       />
     {:else}
-      <PlansList {plans} on:selectPlan={handlePlanSelect} />
+      <PlansList {plans} {permissionLevel} on:selectPlan={handlePlanSelect} />
     {/if}
   </div>
 </div>

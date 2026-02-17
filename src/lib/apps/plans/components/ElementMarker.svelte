@@ -1,7 +1,9 @@
 <!-- src/lib/apps/plans/components/ElementMarker.svelte -->
 <!-- SVG marker for floor plan elements -->
 <script>
-  import { ELEMENT_TYPE_OPTIONS, MARKER_RADIUS, MARKER_HOVER_RADIUS } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, MARKER_RADIUS, MARKER_HOVER_RADIUS, getElementDisplayName, getElementDescription } from '$lib/utils/planConstants';
+  
+  export let floorLevel = 0; // passed from parent plan
   
   export let element;
   export let position; // { x, y } in pixels
@@ -17,8 +19,9 @@
   $: displayOpacity = isFiltered ? 0.2 : opacity;
 </script>
 
+<!-- class element-marker-group is used by PlanViewer to detect marker clicks vs empty area clicks -->
 <g
-  class="element-marker"
+  class="element-marker-group"
   on:click
   on:mouseenter
   on:mouseleave
@@ -97,7 +100,7 @@
 </g>
 
 <style>
-  .element-marker {
+  .element-marker-group {
     transition: all 0.2s ease;
   }
 </style>

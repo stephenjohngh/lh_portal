@@ -12,6 +12,8 @@
   const dispatch = createEventDispatcher();
   
   export let plans = [];
+  export let permissionLevel = 'readonly';
+  $: isAdmin = permissionLevel === 'admin';
   
   let elementCounts = {};
   let loading = true;
@@ -55,12 +57,12 @@
     <div class="card-info text-center py-12">
       <Icon name="map" size={16} className="text-gray-600 mx-auto mb-4" />
       <h3 class="text-xl font-bold mb-2">No Floor Plans Yet</h3>
-      <p class="text-gray-400 mb-4">
-        Get started by uploading your first floor plan
-      </p>
-      <p class="text-sm text-gray-500">
-        💡 Click "New Floor Plan" to upload an image and start adding elements
-      </p>
+      {#if isAdmin}
+        <p class="text-gray-400 mb-2">Get started by uploading your first floor plan.</p>
+        <p class="text-sm text-gray-500">💡 Click "New Floor Plan" above to upload an image.</p>
+      {:else}
+        <p class="text-gray-400">No floor plans have been created yet.</p>
+      {/if}
     </div>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

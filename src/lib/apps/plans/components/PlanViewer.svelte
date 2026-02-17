@@ -11,14 +11,21 @@
   import PlanFilters from './PlanFilters.svelte';
   import PlansReport from './reports/PlansReport.svelte';
   import PlanInfoModal from './PlanInfoModal.svelte';
+  import CopyPlanModal from './CopyPlanModal.svelte';
   import { plansStore } from '../stores/plansStore';
-  import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, getElementDescription } from '$lib/utils/planConstants';
   
   const logger = getLogger('PlanViewer');
   const dispatch = createEventDispatcher();
   
   export let plan;
   
+  // 'admin' | 'editor' | 'readonly' — no default: missing prop = visible error
+  export let permissionLevel;
+  $: isAdmin   = permissionLevel === 'admin';
+  $: canEdit   = permissionLevel === 'admin' || permissionLevel === 'editor';
+  $: isReadOnly = permissionLevel === 'readonly';
+
   let imageElement;
   let containerElement;
   let elements = [];
@@ -27,6 +34,7 @@
   let showElementModal = false;
   let showReportModal = false;
   let showPlanInfoModal = false;
+  let showCopyModal = false;
   let newElementPosition = null;
   let hoveredElement = null;
   let imageLoaded = false;
@@ -38,7 +46,10 @@
     searchText: ''
   };
   
-  $: if (plan) {
+  // Only reload elements when plan.id changes - not on every reactive update
+  let lastLoadedPlanId = null;
+  $: if (plan?.id && plan.id !== lastLoadedPlanId) {
+    lastLoadedPlanId = plan.id;
     loadElements();
   }
   
@@ -47,14 +58,16 @@
     return acc;
   }, {});
   
-  // Sort elements for table display: type then name
+  // Sort elements for table display: type then derived name (floor/asset_id)
   $: sortedElementsForTable = [...elements].sort((a, b) => {
     // First sort by element type
     if (a.element_type !== b.element_type) {
       return a.element_type.localeCompare(b.element_type);
     }
-    // Then sort by name
-    return a.name.localeCompare(b.name);
+    // Then sort by asset_id (the meaningful part of derived name)
+    const idA = a.asset_id || '';
+    const idB = b.asset_id || '';
+    return idA.localeCompare(idB, undefined, { numeric: true });
   });
   
   $: {
@@ -105,24 +118,41 @@
       result = result.filter(el => filters.statuses.includes(el.status));
     }
     
-    // Filter by search text
+    // Filter by search text (searches label, asset_id, subtype, derived name)
     if (filters.searchText) {
       const search = filters.searchText.toLowerCase();
       result = result.filter(el => 
-        el.name.toLowerCase().includes(search) ||
+        el.label?.toLowerCase().includes(search) ||
         el.asset_id?.toLowerCase().includes(search) ||
-        el.subtype?.toLowerCase().includes(search)
+        el.subtype?.toLowerCase().includes(search) ||
+        getElementDisplayName(el, plan.floor_level).toLowerCase().includes(search)
       );
     }
     
     return result;
   }
   
-  function handleImageClick(event) {
-    // Only handle clicks directly on the image, not on markers
-    if (event.target !== imageElement) return;
+  function handleContainerClick(event) {
+    // Read-only users cannot add elements
+    if (isReadOnly) return;
+    
+    // Ignore clicks that originated from a marker <g> or its children
+    // Walk up from event.target - if we hit an element-marker group, bail out
+    let node = event.target;
+    while (node && node !== containerElement) {
+      if (node.classList && node.classList.contains('element-marker-group')) return;
+      node = node.parentNode;
+    }
+    
+    // Must have a loaded image to get coordinates from
+    if (!imageElement || !imageLoaded) return;
     
     const rect = imageElement.getBoundingClientRect();
+    
+    // Ignore clicks outside the image bounds
+    if (event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top  || event.clientY > rect.bottom) return;
+    
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     
@@ -130,19 +160,15 @@
     const normalizedX = x / rect.width;
     const normalizedY = y / rect.height;
     
-    logger('Image clicked at:', { x: normalizedX.toFixed(3), y: normalizedY.toFixed(3) });
+    logger('Plan clicked at:', { x: normalizedX.toFixed(3), y: normalizedY.toFixed(3) });
     
-    newElementPosition = {
-      x: normalizedX,
-      y: normalizedY
-    };
-    
+    newElementPosition = { x: normalizedX, y: normalizedY };
     selectedElement = null;
     showElementModal = true;
   }
   
   function handleElementClick(element) {
-    logger('Element clicked:', element.id, element.name);
+    logger('Element clicked:', element.id, element.asset_id);
     selectedElement = element;
     newElementPosition = null;
     showElementModal = true;
@@ -258,6 +284,16 @@
         </div>
         
         <div class="btn-group">
+          {#if isAdmin}
+          <Button
+            variant="secondary"
+            size="small"
+            icon="copy"
+            on:click={() => showCopyModal = true}
+          >
+            Copy Plan
+          </Button>
+          {/if}
           <Button
             variant="secondary"
             size="small"
@@ -266,6 +302,7 @@
           >
             Export Report
           </Button>
+          {#if isAdmin}
           <Button
             variant="secondary"
             size="small"
@@ -274,14 +311,18 @@
           >
             Edit Plan Info
           </Button>
+          {/if}
         </div>
       </div>
 
-      <!-- Image Container -->
+      <!-- Image Container — click handler here catches all non-marker clicks -->
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div 
         bind:this={containerElement}
         class="relative border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900"
-        style="min-height: 600px;"
+        style="min-height: 600px; cursor: {isReadOnly ? 'default' : 'crosshair'};"
+        on:click={handleContainerClick}
       >
         {#if !imageLoaded}
           <div class="absolute inset-0 flex items-center justify-center">
@@ -292,28 +333,27 @@
           </div>
         {/if}
         
-        <!-- Floor Plan Image -->
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+        <!-- Floor Plan Image (no click handler here - handled by container) -->
         <img
           bind:this={imageElement}
           src={plan.image_url}
-          alt={plan.name}
-          class="w-full h-auto cursor-crosshair"
-          on:click={handleImageClick}
+          alt={plan.building}
+          class="w-full h-auto"
           on:load={handleImageLoad}
           style="display: {imageLoaded ? 'block' : 'none'};"
         />
         
-        <!-- SVG Overlay for Elements -->
+        <!-- SVG Overlay — pointer-events:none on svg itself so clicks pass through to container -->
+        <!-- Individual markers re-enable pointer-events via pointer-events:all on their <g> -->
         {#if imageLoaded && imageElement}
           <svg
             class="absolute inset-0 w-full h-full"
-            style="z-index: 10;"
+            style="z-index: 10; pointer-events: none;"
           >
             {#each elements as element (element.id)}
               <ElementMarker
                 {element}
+                floorLevel={plan.floor_level}
                 position={getPixelPosition(element)}
                 isHovered={hoveredElement?.id === element.id}
                 isFiltered={isElementFiltered(element)}
@@ -341,13 +381,13 @@
           >
             <div class="font-semibold flex items-center gap-2">
               <span>{typeConfig?.icon}</span>
-              <span>{hoveredElement.name}</span>
+              <span>{getElementDisplayName(hoveredElement, plan.floor_level)}</span>
             </div>
-            <div class="text-xs text-gray-300 mt-1">
+            {#if hoveredElement.label}
+              <div class="text-xs text-gray-200 mt-0.5">{hoveredElement.label}</div>
+            {/if}
+            <div class="text-xs text-gray-400 mt-0.5">
               {hoveredElement.subtype || hoveredElement.element_type}
-              {#if hoveredElement.asset_id}
-                · {hoveredElement.asset_id}
-              {/if}
             </div>
             {#if hoveredElement.status !== 'active'}
               <div class="text-xs text-amber-400 mt-1 capitalize">
@@ -362,10 +402,15 @@
       <div class="mt-4 flex items-start gap-2 text-sm text-gray-400">
         <Icon name="info" size={5} className="text-blue-400 flex-shrink-0 mt-0.5" />
         <p>
-          <strong>Click anywhere</strong> on the floor plan to add a new element, 
-          or <strong>click existing markers</strong> to view and edit details.
+          {#if isReadOnly}
+            <strong>Click markers</strong> to view element details. 
+            <span class="text-amber-400">Read-only access — editing is disabled.</span>
+          {:else if canEdit}
+            <strong>Click anywhere</strong> on the floor plan to add a new element, 
+            or <strong>click existing markers</strong> to view and edit details.
+          {/if}
           {#if hasActiveFilters}
-            <span class="text-amber-400">Filters active - some elements are dimmed.</span>
+            <span class="text-amber-400 ml-1">Filters active — some elements are dimmed.</span>
           {/if}
         </p>
       </div>
@@ -385,10 +430,9 @@
               <tr class="border-b border-slate-700">
                 <th class="text-left py-3 px-4 font-semibold text-sm">Type</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Name</th>
+                <th class="text-left py-3 px-4 font-semibold text-sm">Label</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Subtype</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Asset ID</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Status</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Position</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Actions</th>
               </tr>
             </thead>
@@ -406,28 +450,25 @@
                       <span class="text-sm capitalize">{element.element_type}</span>
                     </div>
                   </td>
-                  <td class="py-3 px-4 font-medium">{element.name}</td>
+                  <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, plan.floor_level)}</td>
+                  <td class="py-3 px-4 text-sm text-gray-400">{element.label || '-'}</td>
                   <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '-'}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.asset_id || '-'}</td>
                   <td class="py-3 px-4">
                     <span class="text-sm capitalize {statusConfig[element.status] || 'text-gray-400'}">
                       {element.status}
                     </span>
                   </td>
-                  <td class="py-3 px-4 text-xs text-gray-500">
-                    ({(element.x_position * 100).toFixed(1)}%, {(element.y_position * 100).toFixed(1)}%)
-                  </td>
                   <td class="py-3 px-4">
                     <Button
                       variant="secondary"
                       size="small"
-                      icon="edit"
+                      icon={canEdit ? 'edit' : 'eye'}
                       on:click={(e) => {
                         e.stopPropagation();
                         handleElementClick(element);
                       }}
                     >
-                      Edit
+                      {canEdit ? 'Edit' : 'View'}
                     </Button>
                   </td>
                 </tr>
@@ -446,6 +487,7 @@
     element={selectedElement}
     position={newElementPosition}
     {plan}
+    {canEdit}
     on:save={handleElementSave}
     on:delete={handleElementDelete}
     on:close={() => {
@@ -478,5 +520,18 @@
       dispatch('planDeleted');
     }}
     on:close={() => showPlanInfoModal = false}
+  />
+{/if}
+
+<!-- Copy Plan Modal -->
+{#if showCopyModal}
+  <CopyPlanModal
+    {plan}
+    {elements}
+    on:copied={(event) => {
+      showCopyModal = false;
+      dispatch('planCopied', { planId: event.detail.planId });
+    }}
+    on:close={() => showCopyModal = false}
   />
 {/if}

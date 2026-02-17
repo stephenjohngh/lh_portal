@@ -68,14 +68,14 @@
       // Step 2: Copy all elements
       let copiedCount = 0;
       for (const element of elements) {
-        logger(`Copying element ${copiedCount + 1}/${elements.length}:`, element.name);
+        logger(`Copying element ${copiedCount + 1}/${elements.length}: label=${element.label} asset_id=${element.asset_id}`);
         
         // Create new element with same properties but null name and asset_id
         const newElement = {
           element_type: element.element_type,
-          name: element.name, // Keep the name from original
+          label: element.label,     // Keep label from original
           subtype: element.subtype,
-          asset_id: null, // Set to null as requested
+          asset_id: null,            // Reset asset_id to null (new plan, new IDs)
           x_position: element.x_position,
           y_position: element.y_position,
           status: element.status,
@@ -211,9 +211,9 @@
         <ul class="text-sm text-gray-400 space-y-1">
           <li>✓ Floor plan image ({plan.image_width} × {plan.image_height})</li>
           <li>✓ All {elements.length} elements with their positions</li>
-          <li>✓ Element types, subtypes, names, and status</li>
+          <li>✓ Element types, subtypes, labels, and status</li>
           <li>✓ Element notes</li>
-          <li class="text-amber-400">⚠ Asset IDs will be set to null (you can assign new IDs later)</li>
+          <li class="text-amber-400">⚠ Asset IDs reset to null — derived name will show as "floor / No ID"</li>
         </ul>
       </div>
     {:else}
