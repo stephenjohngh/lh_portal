@@ -1,11 +1,10 @@
 <!-- src/lib/apps/plans/components/PlanViewer.svelte -->
 <!-- Interactive floor plan viewer with clickable elements -->
 <script>
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
   import ElementMarker from './ElementMarker.svelte';
   import ElementModal from './ElementModal.svelte';
   import PlanFilters from './PlanFilters.svelte';
@@ -13,7 +12,7 @@
   import PlanInfoModal from './PlanInfoModal.svelte';
   import CopyPlanModal from './CopyPlanModal.svelte';
   import { plansStore } from '../stores/plansStore';
-  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, getElementDescription } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
   import { permissions } from '$lib/stores/permissions';
   
   const logger = getLogger('PlanViewer');
@@ -24,7 +23,7 @@
   // Read from permissions store - same pattern as IssuesTrackerApp
   $: isAdmin    = $permissions.isAdmin;
   $: canEdit    = $permissions.isAdmin || $permissions.canModify;
-  $: isReadOnly = !$permissions.isAdmin && !$permissions.canModify;
+  $: isReadOnly = !$permissions.loading && !$permissions.isAdmin && !$permissions.canModify;
 
   let imageElement;
   let containerElement;
@@ -38,8 +37,6 @@
   let newElementPosition = null;
   let hoveredElement = null;
   let imageLoaded = false;
-  let containerWidth = 0;
-  let containerHeight = 0;
   let filters = {
     types: [],
     statuses: [],
@@ -77,23 +74,6 @@
   }
   
   $: hasActiveFilters = filters.types.length > 0 || filters.statuses.length > 0 || filters.searchText.length > 0;
-  
-  onMount(() => {
-    // Setup resize observer for responsive rendering
-    const resizeObserver = new ResizeObserver(entries => {
-      if (entries[0]) {
-        const { width, height } = entries[0].contentRect;
-        containerWidth = width;
-        containerHeight = height;
-      }
-    });
-    
-    if (containerElement) {
-      resizeObserver.observe(containerElement);
-    }
-    
-    return () => resizeObserver.disconnect();
-  });
   
   async function loadElements() {
     logger('Loading elements for plan:', plan.id);
@@ -194,7 +174,7 @@
       newElementPosition = null;
     } catch (error) {
       logger('❌ Error saving element:', error.message);
-      alert('Failed to save element: ' + error.message);
+      // Error stays in logger; modal remains open so user sees the failure
     }
   }
   
@@ -210,7 +190,7 @@
       selectedElement = null;
     } catch (error) {
       logger('❌ Error deleting element:', error.message);
-      alert('Failed to delete element: ' + error.message);
+      // Error stays in logger; modal remains open so user sees the failure
     }
   }
   

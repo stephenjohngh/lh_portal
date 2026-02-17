@@ -8,6 +8,13 @@ import { supabase } from '$lib/supabaseClient';
 
 const logger = getLogger('plansStore');
 
+/** Get current authenticated user ID */
+async function getCurrentUserId() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  return user.id;
+}
+
 function createPlansStore() {
   const { subscribe, set, update } = writable({
     plans: [],
@@ -82,13 +89,11 @@ function createPlansStore() {
       logger('Creating plan:', planData.name);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const plan = await api.create('plans', {
           ...planData,
-          created_by: user.id,
-          updated_by: user.id
+          created_by: userId,
+          updated_by: userId
         });
         
         logger('✅ Created plan:', plan.id);
@@ -113,12 +118,10 @@ function createPlansStore() {
       logger('Updating plan:', planId);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const plan = await api.update('plans', planId, {
           ...updates,
-          updated_by: user.id
+          updated_by: userId
         });
         
         logger('✅ Updated plan:', plan.id);
@@ -168,14 +171,12 @@ function createPlansStore() {
       logger('Creating element:', elementData.label, elementData.asset_id);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const element = await api.create('plan_elements', {
           ...elementData,
           plan_id: planId,
-          created_by: user.id,
-          updated_by: user.id
+          created_by: userId,
+          updated_by: userId
         });
 
         logger('✅ Created element:', element.id);
@@ -203,12 +204,10 @@ function createPlansStore() {
       logger('Updating element:', elementId);
 
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId = await getCurrentUserId();
         const element = await api.update('plan_elements', elementId, {
           ...updates,
-          updated_by: user.id
+          updated_by: userId
         });
         
         logger('✅ Updated element:', element.id);
