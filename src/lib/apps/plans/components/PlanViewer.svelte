@@ -14,17 +14,17 @@
   import CopyPlanModal from './CopyPlanModal.svelte';
   import { plansStore } from '../stores/plansStore';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, getElementDescription } from '$lib/utils/planConstants';
+  import { permissions } from '$lib/stores/permissions';
   
   const logger = getLogger('PlanViewer');
   const dispatch = createEventDispatcher();
   
   export let plan;
-  
-  // 'admin' | 'editor' | 'readonly' — no default: missing prop = visible error
-  export let permissionLevel;
-  $: isAdmin   = permissionLevel === 'admin';
-  $: canEdit   = permissionLevel === 'admin' || permissionLevel === 'editor';
-  $: isReadOnly = permissionLevel === 'readonly';
+
+  // Read from permissions store - same pattern as IssuesTrackerApp
+  $: isAdmin    = $permissions.isAdmin;
+  $: canEdit    = $permissions.isAdmin || $permissions.canModify;
+  $: isReadOnly = !$permissions.isAdmin && !$permissions.canModify;
 
   let imageElement;
   let containerElement;
@@ -137,26 +137,20 @@
     if (isReadOnly) return;
     
     // Ignore clicks that originated from a marker <g> or its children
-    // Walk up from event.target - if we hit an element-marker group, bail out
     let node = event.target;
     while (node && node !== containerElement) {
       if (node.classList && node.classList.contains('element-marker-group')) return;
       node = node.parentNode;
     }
     
-    // Must have a loaded image to get coordinates from
     if (!imageElement || !imageLoaded) return;
     
     const rect = imageElement.getBoundingClientRect();
-    
-    // Ignore clicks outside the image bounds
     if (event.clientX < rect.left || event.clientX > rect.right ||
         event.clientY < rect.top  || event.clientY > rect.bottom) return;
     
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    
-    // Normalize coordinates (0-1 range)
     const normalizedX = x / rect.width;
     const normalizedY = y / rect.height;
     
@@ -487,7 +481,6 @@
     element={selectedElement}
     position={newElementPosition}
     {plan}
-    {canEdit}
     on:save={handleElementSave}
     on:delete={handleElementDelete}
     on:close={() => {

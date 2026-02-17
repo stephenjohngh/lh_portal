@@ -10,10 +10,10 @@
   
   const logger = getLogger('PlansList');
   const dispatch = createEventDispatcher();
+  import { permissions } from '$lib/stores/permissions';
   
   export let plans = [];
-  export let permissionLevel = 'readonly';
-  $: isAdmin = permissionLevel === 'admin';
+  $: isAdmin = $permissions.isAdmin;
   
   let elementCounts = {};
   let loading = true;

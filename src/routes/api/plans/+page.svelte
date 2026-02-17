@@ -1,6 +1,5 @@
 <!-- src/routes/plans/+page.svelte -->
 <script>
-  import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { supabase } from '$lib/supabaseClient';
@@ -8,34 +7,29 @@
   import PlansApp from '$lib/apps/plans/PlansApp.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
 
-  // 'admin' | 'editor' | 'readonly' | null (still loading)
+  // null = not yet loaded, then 'admin' | 'editor' | 'readonly'
   let permissionLevel = null;
-  let permissionLoaded = false;
+  let loading = false; // tracks whether loadPermissions is in flight
 
-  // React to auth changes - handles both initial load and session restore
-  // This is the correct pattern: watch $auth.user reactively, not just onMount
-  $: if ($auth.user && !permissionLoaded) {
+  // Fires whenever auth resolves. The `loading` guard prevents double-runs.
+  $: if ($auth.user && !$auth.loading && permissionLevel === null && !loading) {
     loadPermissions($auth.user.id);
   }
 
-  // Redirect if auth has finished loading and there is no user
   $: if (!$auth.loading && !$auth.user) {
     goto('/login');
   }
 
   async function loadPermissions(userId) {
-    // Guard against running twice
-    permissionLoaded = true;
-
+    loading = true;
     try {
-      // Admin check first
       const admin = await checkIsAdmin(userId);
       if (admin) {
         permissionLevel = 'admin';
+        console.log('[PlansRoute] permissionLevel set to: admin');
         return;
       }
 
-      // Check app_permissions for 'plans'
       const { data, error } = await supabase
         .from('app_permissions')
         .select('read_only')
@@ -44,21 +38,21 @@
         .single();
 
       if (error || !data) {
-        // No permission entry - redirect home
         goto('/');
         return;
       }
 
       permissionLevel = data.read_only ? 'readonly' : 'editor';
-
+      console.log('[PlansRoute] permissionLevel set to:', permissionLevel, '(read_only was:', data.read_only, ')');
     } catch (err) {
       goto('/');
+    } finally {
+      loading = false;
     }
   }
 </script>
 
-{#if $auth.loading || !permissionLevel}
-  <!-- Still resolving auth or permissions -->
+{#if $auth.loading || permissionLevel === null}
   <div class="min-h-screen bg-slate-900 flex items-center justify-center">
     <div class="text-center">
       <Icon name="loading" size={12} className="animate-spin mx-auto mb-4 text-purple-400" />

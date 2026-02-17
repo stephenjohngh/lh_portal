@@ -7,6 +7,7 @@
   import Button from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { formatDateTime } from '$lib/utils/dates';
+  import { permissions } from '$lib/stores/permissions';
   import { 
     ELEMENT_TYPE_OPTIONS, 
     ELEMENT_STATUS_OPTIONS,
@@ -21,7 +22,6 @@
   export let element = null; // Existing element or null for new
   export let position = null; // { x, y } for new element (normalized 0-1)
   export let plan; // parent plan (used for floor_level in derived name)
-  export let canEdit = true; // false = read-only view mode
   
   let formData = element ? { ...element } : {
     element_type: 'door',
@@ -39,6 +39,9 @@
   let saving = false;
   
   $: isNew = !element;
+  // New elements always editable (PlanViewer already blocks read-only users from clicking)
+  // Existing elements: editable if admin or canModify
+  $: editable = isNew ? true : ($permissions.isAdmin || $permissions.canModify);
   $: subtypeOptions = getSubtypesForType(formData.element_type);
   $: selectedTypeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === formData.element_type);
   $: modalTitle = isNew ? 'Add Element' : 'Edit Element';
@@ -121,7 +124,7 @@
       <span class="text-2xl">{selectedTypeConfig.icon}</span>
     {/if}
     {modalTitle}
-    {#if !canEdit}
+    {#if !isNew && !$permissions.isAdmin && !$permissions.canModify}
       <span class="text-xs font-normal bg-amber-600/20 text-amber-400 border border-amber-600/30 rounded px-2 py-0.5 ml-2">
         Read Only
       </span>
@@ -159,7 +162,7 @@
         id="element-type"
         bind:value={formData.element_type}
         on:change={handleTypeChange}
-        disabled={!canEdit}
+        disabled={!editable}
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
         class:border-red-500={errors.element_type}
       >
@@ -187,7 +190,7 @@
         type="text"
         bind:value={formData.label}
         placeholder="e.g., Main Entrance"
-        disabled={!canEdit}
+        disabled={!editable}
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
       />
     </div>
@@ -200,7 +203,7 @@
       <select
         id="element-subtype"
         bind:value={formData.subtype}
-        disabled={!canEdit}
+        disabled={!editable}
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <option value="">-- Select subtype --</option>
@@ -221,7 +224,7 @@
         type="text"
         bind:value={formData.asset_id}
         placeholder="e.g., DR-001"
-        disabled={!canEdit}
+        disabled={!editable}
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
       />
     </div>
@@ -234,7 +237,7 @@
       <select
         id="element-status"
         bind:value={formData.status}
-        disabled={!canEdit}
+        disabled={!editable}
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {#each ELEMENT_STATUS_OPTIONS as status}
@@ -253,7 +256,7 @@
         bind:value={formData.notes}
         placeholder="Additional information..."
         rows="3"
-        disabled={!canEdit}
+        disabled={!editable}
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
       ></textarea>
     </div>
@@ -277,7 +280,7 @@
   
   <div slot="footer" class="flex items-center justify-between">
     <div>
-      {#if !isNew && canEdit}
+      {#if !isNew && editable}
         <Button
           variant="danger"
           size="medium"
@@ -296,9 +299,9 @@
         on:click={handleClose}
         disabled={saving}
       >
-        {canEdit ? 'Cancel' : 'Close'}
+        {editable ? 'Cancel' : 'Close'}
       </Button>
-      {#if canEdit}
+      {#if editable}
         <Button
           variant="primary"
           size="medium"

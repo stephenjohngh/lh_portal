@@ -12,13 +12,13 @@
   import { plansStore } from './stores/plansStore';
   
   const logger = getLogger('PlansApp');
-  
-  // 'admin' | 'editor' | 'readonly' — set by routes/plans/+page.svelte
-  export let permissionLevel;
-  
-  $: isAdmin   = permissionLevel === 'admin';
-  $: canEdit   = permissionLevel === 'admin' || permissionLevel === 'editor';
-  $: isReadOnly = permissionLevel === 'readonly';
+
+  import { permissions } from '$lib/stores/permissions';
+  import { auth } from '$lib/stores/auth';
+
+  // Read from permissions store - same pattern as IssuesTrackerApp
+  $: isAdmin   = $permissions.isAdmin;
+  $: canEdit   = $permissions.isAdmin || $permissions.canModify;
 
   let showUploader = false;
   let selectedPlanId = null;
@@ -29,6 +29,9 @@
   
   onMount(async () => {
     logger('Plans app mounted');
+    if ($auth.user) {
+      await permissions.init($auth.user.id, 'plans');
+    }
     await loadPlans();
   });
   
@@ -145,13 +148,12 @@
     {:else if selectedPlan}
       <PlanViewer 
         plan={selectedPlan}
-        {permissionLevel}
         on:planUpdated={handlePlanUpdated}
         on:planDeleted={handlePlanDeleted}
         on:planCopied={handlePlanCopied}
       />
     {:else}
-      <PlansList {plans} {permissionLevel} on:selectPlan={handlePlanSelect} />
+      <PlansList {plans} on:selectPlan={handlePlanSelect} />
     {/if}
   </div>
 </div>
