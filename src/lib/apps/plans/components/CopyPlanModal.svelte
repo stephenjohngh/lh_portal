@@ -7,6 +7,7 @@
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { plansStore } from '../stores/plansStore';
+  import { FLOOR_LEVELS } from '$lib/utils/planConstants';
   
   const logger = getLogger('CopyPlanModal');
   const dispatch = createEventDispatcher();
@@ -92,7 +93,7 @@
       <div class="text-sm space-y-1">
         <p><strong>Name:</strong> {plan.name}</p>
         <p><strong>Building:</strong> {plan.building}</p>
-        <p><strong>Floor:</strong> Level {plan.floor_level}</p>
+        <p><strong>Floor:</strong> {plan.floor_level}</p>
         <p><strong>Elements:</strong> {elements.length}</p>
       </div>
     </div>
@@ -123,8 +124,11 @@
           </div>
           <div>
             <label for="copy-floor" class="block text-sm font-medium mb-2">Floor Level</label>
-            <input id="copy-floor" type="number" bind:value={formData.floor_level} placeholder="0"
-              class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <select id="copy-floor" bind:value={formData.floor_level} class="select w-full">
+              {#each FLOOR_LEVELS as level}
+                <option value={level.value}>{level.label}</option>
+              {/each}
+            </select>
           </div>
         </div>
         <div>

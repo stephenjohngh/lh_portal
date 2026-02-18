@@ -8,6 +8,7 @@
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { plansStore } from '../stores/plansStore';
   import { formatDateTime } from '$lib/utils/dates';
+  import { FLOOR_LEVELS } from '$lib/utils/planConstants';
   
   const logger = getLogger('PlanInfoModal');
   const dispatch = createEventDispatcher();
@@ -141,16 +142,15 @@
         <label for="floor-level" class="block text-sm font-medium mb-2">
           Floor Level
         </label>
-        <input
+        <select
           id="floor-level"
-          type="number"
           bind:value={formData.floor_level}
-          placeholder="0"
-          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-        <p class="text-xs text-gray-500 mt-1">
-          0 = Ground, 1 = First, etc.
-        </p>
+          class="select w-full"
+        >
+          {#each FLOOR_LEVELS as level}
+            <option value={level.value}>{level.label}</option>
+          {/each}
+        </select>
       </div>
     </div>
     

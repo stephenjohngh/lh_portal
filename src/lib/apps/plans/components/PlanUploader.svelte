@@ -7,7 +7,7 @@
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { plansStore } from '../stores/plansStore';
-  import { MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES } from '$lib/utils/planConstants';
+  import { MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES, FLOOR_LEVELS, DEFAULT_FLOOR_LEVEL } from '$lib/utils/planConstants';
   
   const logger = getLogger('PlanUploader');
   const dispatch = createEventDispatcher();
@@ -19,7 +19,7 @@
   let uploading = false;
   let errors = {};
   
-  let formData = { name: '', building: '', floor_level: 0, description: '' };
+  let formData = { name: '', building: '', floor_level: DEFAULT_FLOOR_LEVEL, description: '' };
   
   function handleFileSelect(event) {
     const file = event.target.files[0];
@@ -178,9 +178,12 @@
       </div>
       <div>
         <label for="upload-floor" class="block text-sm font-medium mb-2">Floor Level</label>
-        <input id="upload-floor" type="number" bind:value={formData.floor_level} placeholder="0"
-          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500" />
-        <p class="text-xs text-gray-500 mt-1">0 = Ground, 1 = First, etc.</p>
+        <select id="upload-floor" bind:value={formData.floor_level}
+          class="select w-full">
+          {#each FLOOR_LEVELS as level}
+            <option value={level.value}>{level.label}</option>
+          {/each}
+        </select>
       </div>
     </div>
     
