@@ -13,7 +13,7 @@
   import PlanInfoModal from './PlanInfoModal.svelte';
   import CopyPlanModal from './CopyPlanModal.svelte';
   import { plansStore } from '../stores/plansStore';
-  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, getElementDescription } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, getElementDescription, getAttributeSummary } from '$lib/utils/planConstants';
   import { permissions } from '$lib/stores/permissions';
   
   const logger = getLogger('PlanViewer');
@@ -47,9 +47,12 @@
   let dragJustEnded = false;    // suppress container click after a completed drag
 
   let filters = {
-    types: [],
-    statuses: [],
-    searchText: ''
+    types:       [],
+    statuses:    [],
+    searchText:  '',
+    lightFilters: { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
+    doorFilters:  { subtypes: [], security: [], retained: false },
+    fireFilters:  { subtypes: [] }
   };
   
   // Only reload elements when plan.id changes - not on every reactive update
@@ -129,6 +132,39 @@
         el.subtype?.toLowerCase().includes(search) ||
         getElementDisplayName(el, plan.floor_level).toLowerCase().includes(search)
       );
+    }
+
+    // Light attribute filters — only applied to light elements; non-lights pass through
+    const lf = filters.lightFilters;
+    if (lf) {
+      if (lf.subtypes?.length > 0)
+        result = result.filter(el => el.element_type !== 'light' || lf.subtypes.includes(el.subtype));
+      if (lf.battery?.length > 0)
+        result = result.filter(el => el.element_type !== 'light' || lf.battery.includes(el.battery));
+      if (lf.emergency)
+        result = result.filter(el => el.element_type !== 'light' || el.emergency === true);
+      if (lf.movementSensor)
+        result = result.filter(el => el.element_type !== 'light' || el.movement_sensor === true);
+      if (lf.lightSensor)
+        result = result.filter(el => el.element_type !== 'light' || el.light_sensor === true);
+    }
+
+    // Door attribute filters
+    const df = filters.doorFilters;
+    if (df) {
+      if (df.subtypes?.length > 0)
+        result = result.filter(el => el.element_type !== 'door' || df.subtypes.includes(el.subtype));
+      if (df.security?.length > 0)
+        result = result.filter(el => el.element_type !== 'door' || df.security.includes(el.security));
+      if (df.retained)
+        result = result.filter(el => el.element_type !== 'door' || el.retained === true);
+    }
+
+    // Fire Control attribute filters
+    const ff = filters.fireFilters;
+    if (ff) {
+      if (ff.subtypes?.length > 0)
+        result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
     }
     
     return result;
@@ -491,6 +527,7 @@
                 <th class="text-left py-3 px-4 font-semibold text-sm">Name</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Label</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Subtype</th>
+                <th class="text-left py-3 px-4 font-semibold text-sm">Attributes</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Status</th>
                 <th class="text-left py-3 px-4 font-semibold text-sm">Actions</th>
               </tr>
@@ -498,7 +535,7 @@
             <tbody>
               {#each sortedElementsForTable as element (element.id)}
                 {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
-                {@const statusConfig = { active: 'text-green-400', inactive: 'text-gray-400', maintenance: 'text-amber-400', removed: 'text-red-400' }}
+                {@const statusConfig = { active: 'text-green-400', failed: 'text-red-400', inactive: 'text-gray-400' }}
                 <tr 
                   class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
                   on:click={() => handleElementClick(element)}
@@ -506,12 +543,13 @@
                   <td class="py-3 px-4">
                     <div class="flex items-center gap-2">
                       <span class="text-lg">{typeConfig?.icon}</span>
-                      <span class="text-sm capitalize">{element.element_type}</span>
+                      <span class="text-sm">{typeConfig?.label ?? element.element_type}</span>
                     </div>
                   </td>
                   <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, plan.floor_level)}</td>
                   <td class="py-3 px-4 text-sm text-gray-400">{element.label || '-'}</td>
                   <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '-'}</td>
+                  <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
                   <td class="py-3 px-4">
                     <span class="text-sm capitalize {statusConfig[element.status] || 'text-gray-400'}">
                       {element.status}

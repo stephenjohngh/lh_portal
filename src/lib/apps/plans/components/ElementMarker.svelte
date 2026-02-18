@@ -103,13 +103,13 @@
     {typeConfig.icon}
   </text>
   
-  <!-- Status indicator (small circle in top-right) -->
-  {#if element.status === 'maintenance'}
+  <!-- Status indicator (small circle in top-right, hidden when active) -->
+  {#if element.status === 'failed'}
     <circle
       cx={position.x + radius - 3}
       cy={position.y - radius + 3}
       r="4"
-      fill="#f59e0b"
+      fill="#ef4444"
       stroke="white"
       stroke-width="1.5"
       pointer-events="none"
@@ -120,16 +120,6 @@
       cy={position.y - radius + 3}
       r="4"
       fill="#64748b"
-      stroke="white"
-      stroke-width="1.5"
-      pointer-events="none"
-    />
-  {:else if element.status === 'removed'}
-    <circle
-      cx={position.x + radius - 3}
-      cy={position.y - radius + 3}
-      r="4"
-      fill="#ef4444"
       stroke="white"
       stroke-width="1.5"
       pointer-events="none"

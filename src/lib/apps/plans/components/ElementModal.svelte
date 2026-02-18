@@ -11,9 +11,12 @@
   import { 
     ELEMENT_TYPE_OPTIONS, 
     ELEMENT_STATUS_OPTIONS,
+    BATTERY_OPTIONS,
+    SECURITY_OPTIONS,
     getSubtypesForType,
     getElementDisplayName,
-    getElementDescription
+    getElementDescription,
+    blankAttributes
   } from '$lib/utils/planConstants';
   
   const logger = getLogger('ElementModal');
@@ -24,14 +27,23 @@
   export let plan;
   
   let formData = element ? { ...element } : {
-    element_type: 'door',
-    label: '',
-    subtype: '',
-    asset_id: '',
-    status: 'active',
-    notes: '',
-    x_position: position?.x || 0,
-    y_position: position?.y || 0
+    element_type:    'door',
+    label:           '',
+    subtype:         '',
+    asset_id:        '',
+    status:          'active',
+    notes:           '',
+    x_position:      position?.x || 0,
+    y_position:      position?.y || 0,
+    // Light attributes
+    emergency:       false,
+    battery:         null,
+    movement_sensor: false,
+    light_sensor:    false,
+    wattage:         null,
+    // Door attributes
+    security:        null,
+    retained:        false
   };
   
   let showDeleteConfirm = false;
@@ -43,7 +55,9 @@
   $: subtypeOptions = getSubtypesForType(formData.element_type);
   $: selectedTypeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === formData.element_type);
   $: modalTitle = isNew ? 'Add Element' : 'Edit Element';
-  $: derivedName = getElementDisplayName({ asset_id: formData.asset_id }, plan?.floor_level);
+  $: derivedName = getElementDisplayName({ asset_id: formData.asset_id, element_type: formData.element_type }, plan?.floor_level);
+  $: isLight = formData.element_type === 'light';
+  $: isDoor  = formData.element_type === 'door';
   
   function validate() {
     errors = {};
@@ -82,7 +96,11 @@
   
   function handleClose() { dispatch('close'); }
   
-  function handleTypeChange() { formData.subtype = ''; }
+  function handleTypeChange() {
+    formData.subtype = '';
+    // Reset all type-specific attribute fields to prevent stale data
+    Object.assign(formData, blankAttributes());
+  }
   
   function formatPosition(pos) {
     if (!pos) return 'N/A';
@@ -118,7 +136,7 @@
           <div class="text-lg font-bold font-mono mt-0.5 text-white">{derivedName}</div>
         </div>
         <div class="text-xs text-gray-500 text-right">
-          <span>Floor {plan?.floor_level ?? '?'} / Asset ID</span><br/>
+          <span>Floor/Type/ID</span><br/>
           <span class="italic">(auto-generated)</span>
         </div>
       </div>
@@ -147,9 +165,7 @@
         {/if}
       </div>
       <div>
-        <label for="element-subtype" class="block text-sm font-medium mb-2">
-          Subtype
-        </label>
+        <label for="element-subtype" class="block text-sm font-medium mb-2">Subtype</label>
         <select
           id="element-subtype"
           bind:value={formData.subtype}
@@ -194,12 +210,94 @@
         />
       </div>
     </div>
+
+    <!-- Light Attributes — only shown when element_type = 'light' -->
+    {#if isLight}
+      <div class="border border-slate-600 rounded-lg p-4 bg-slate-700/20">
+        <h4 class="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+          💡 Light Attributes
+        </h4>
+        <!-- Battery | Wattage -->
+        <div class="grid grid-cols-2 gap-4 mb-3">
+          <div>
+            <label for="light-battery" class="block text-sm font-medium mb-2">Battery</label>
+            <select
+              id="light-battery"
+              bind:value={formData.battery}
+              disabled={!editable}
+              class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value={null}>-- Not set --</option>
+              {#each BATTERY_OPTIONS as opt}
+                <option value={opt.value}>{opt.label}</option>
+              {/each}
+            </select>
+          </div>
+          <div>
+            <label for="light-wattage" class="block text-sm font-medium mb-2">Wattage (W)</label>
+            <input
+              id="light-wattage"
+              type="number"
+              min="1"
+              bind:value={formData.wattage}
+              placeholder="e.g., 18"
+              disabled={!editable}
+              class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+        </div>
+        <!-- Boolean flags -->
+        <div class="flex flex-wrap gap-6">
+          <label class="flex items-center gap-2 cursor-pointer {!editable ? 'opacity-50 cursor-not-allowed' : ''}">
+            <input type="checkbox" bind:checked={formData.emergency} disabled={!editable}
+              class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+            <span class="text-sm">Emergency</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer {!editable ? 'opacity-50 cursor-not-allowed' : ''}">
+            <input type="checkbox" bind:checked={formData.movement_sensor} disabled={!editable}
+              class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+            <span class="text-sm">Movement Sensor</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer {!editable ? 'opacity-50 cursor-not-allowed' : ''}">
+            <input type="checkbox" bind:checked={formData.light_sensor} disabled={!editable}
+              class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+            <span class="text-sm">Light Sensor</span>
+          </label>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Door Attributes — only shown when element_type = 'door' -->
+    {#if isDoor}
+      <div class="border border-slate-600 rounded-lg p-4 bg-slate-700/20">
+        <h4 class="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+          🚪 Door Attributes
+        </h4>
+        <div class="mb-3">
+          <label for="door-security" class="block text-sm font-medium mb-2">Security</label>
+          <select
+            id="door-security"
+            bind:value={formData.security}
+            disabled={!editable}
+            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value={null}>-- Not set --</option>
+            {#each SECURITY_OPTIONS as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer {!editable ? 'opacity-50 cursor-not-allowed' : ''}">
+          <input type="checkbox" bind:checked={formData.retained} disabled={!editable}
+            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+          <span class="text-sm">Retained</span>
+        </label>
+      </div>
+    {/if}
     
     <!-- Status -->
     <div>
-      <label for="element-status" class="block text-sm font-medium mb-2">
-        Status
-      </label>
+      <label for="element-status" class="block text-sm font-medium mb-2">Status</label>
       <select
         id="element-status"
         bind:value={formData.status}
@@ -214,7 +312,12 @@
     
     <!-- Notes -->
     <div>
-      <label for="notes" class="block text-sm font-medium mb-2">Notes</label>
+      <label for="notes" class="block text-sm font-medium mb-2">
+        Notes
+        {#if isLight && formData.subtype === 'Exit'}
+          <span class="text-gray-500 text-xs font-normal ml-1">— include exit direction here (Left / Right / No Direction)</span>
+        {/if}
+      </label>
       <textarea
         id="notes"
         bind:value={formData.notes}

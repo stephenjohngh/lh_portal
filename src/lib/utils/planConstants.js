@@ -2,63 +2,27 @@
 // Constants for Plans app - element types, subtypes, colors, and configurations
 
 export const ELEMENT_TYPES = {
-  DOOR: 'door',
-  LIGHT: 'light',
-  SENSOR: 'sensor',
-  OUTLET: 'outlet',
-  OTHER: 'other'
+  DOOR:         'door',
+  LIGHT:        'light',
+  FIRE_CONTROL: 'fire_control'
 };
 
 export const ELEMENT_TYPE_OPTIONS = [
-  { 
-    value: 'door', 
-    label: 'Door', 
-    icon: '🚪', 
-    color: '#f97316',
-    description: 'Entry points, fire doors, emergency exits'
-  },
-  { 
-    value: 'light', 
-    label: 'Light', 
-    icon: '💡', 
-    color: '#eab308',
-    description: 'Lighting fixtures, emergency lights, exit signs'
-  },
-  { 
-    value: 'sensor', 
-    label: 'Sensor', 
-    icon: '📡', 
-    color: '#3b82f6',
-    description: 'Motion sensors, smoke detectors, cameras'
-  },
-  { 
-    value: 'outlet', 
-    label: 'Outlet', 
-    icon: '🔌', 
-    color: '#22c55e',
-    description: 'Power outlets, data ports, connections'
-  },
-  { 
-    value: 'other', 
-    label: 'Other', 
-    icon: '📍', 
-    color: '#a855f7',
-    description: 'Junction boxes, panels, other fixtures'
-  }
+  { value: 'door',         label: 'Door',         icon: '🚪', color: '#f97316', description: 'Entrance, fire, emergency and interior doors' },
+  { value: 'light',        label: 'Light',        icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
+  { value: 'fire_control', label: 'Fire Control', icon: '🔴', color: '#ef4444', description: 'Sensors and call points' }
 ];
 
 export const ELEMENT_STATUS = {
-  ACTIVE: 'active',
-  INACTIVE: 'inactive',
-  MAINTENANCE: 'maintenance',
-  REMOVED: 'removed'
+  ACTIVE:   'active',
+  FAILED:   'failed',
+  INACTIVE: 'inactive'
 };
 
 export const ELEMENT_STATUS_OPTIONS = [
-  { value: 'active',      label: 'Active',      color: '#22c55e' },
-  { value: 'inactive',    label: 'Inactive',    color: '#64748b' },
-  { value: 'maintenance', label: 'Maintenance', color: '#f59e0b' },
-  { value: 'removed',     label: 'Removed',     color: '#ef4444' }
+  { value: 'active',   label: 'Active',   color: '#22c55e' },
+  { value: 'failed',   label: 'Failed',   color: '#ef4444' },
+  { value: 'inactive', label: 'Inactive', color: '#64748b' }
 ];
 
 // ============================================
@@ -85,27 +49,24 @@ export const DEFAULT_FLOOR_LEVEL = 'G';
 
 // Subtype options per element type
 export const ELEMENT_SUBTYPES = {
-  door: [
-    'Entry Door', 'Fire Door', 'Emergency Exit', 'Interior Door',
-    'Sliding Door', 'Revolving Door', 'Double Door', 'Security Door'
-  ],
-  light: [
-    'LED Downlight', 'Fluorescent', 'Track Light', 'Pendant Light',
-    'Wall Sconce', 'Emergency Light', 'Exit Sign', 'Spotlight'
-  ],
-  sensor: [
-    'Motion Sensor', 'Smoke Detector', 'CO Detector', 'Temperature Sensor',
-    'Humidity Sensor', 'Security Camera', 'Access Control', 'Door Contact'
-  ],
-  outlet: [
-    'Standard Outlet', 'USB Outlet', 'GFCI Outlet', 'Floor Outlet',
-    '220V Outlet', 'Data Port', 'Phone Jack', 'Coax Port'
-  ],
-  other: [
-    'Junction Box', 'Breaker Panel', 'Thermostat', 'Sprinkler Head',
-    'Vent', 'Access Panel', 'Other'
-  ]
+  light:        ['Bulkhead', 'Batten', 'Exit', 'Downlight', 'Pendant'],
+  door:         ['Entrance', 'Fire Door', 'Double Fire Door', 'Emergency Exit', 'Gate', 'Apartment', 'Interior'],
+  fire_control: ['Sensor', 'Call Point']
 };
+
+// Battery options — for Light elements
+export const BATTERY_OPTIONS = [
+  { value: 'central', label: 'Central Battery' },
+  { value: 'local',   label: 'Local Battery' },
+  { value: 'none',    label: 'None (Mains)' }
+];
+
+// Security options — for Door elements
+export const SECURITY_OPTIONS = [
+  { value: 'electronic', label: 'Electronic' },
+  { value: 'mechanical', label: 'Mechanical' },
+  { value: 'none',       label: 'None' }
+];
 
 // SVG marker configuration
 export const MARKER_RADIUS       = 12;
@@ -146,18 +107,73 @@ export function getFloorLevelLabel(value) {
 }
 
 // ============================================
-// DERIVED NAME HELPERS
+// ATTRIBUTE HELPERS
 // ============================================
 
 /**
+ * Returns zeroed-out values for all type-specific attribute fields.
+ * Call this in handleTypeChange() to prevent stale data persisting
+ * when the user switches element type in the modal.
+ */
+export function blankAttributes() {
+  return {
+    emergency:       false,
+    battery:         null,
+    movement_sensor: false,
+    light_sensor:    false,
+    wattage:         null,
+    security:        null,
+    retained:        false
+  };
+}
+
+/**
+ * Returns a compact human-readable summary of an element's type-specific attributes.
+ * Used in the PlanViewer element table Attributes column.
+ */
+export function getAttributeSummary(element) {
+  if (element.element_type === 'light') {
+    const parts = [];
+    if (element.battery === 'central') parts.push('Central Batt.');
+    if (element.battery === 'local')   parts.push('Local Batt.');
+    if (element.battery === 'none')    parts.push('Mains');
+    if (element.wattage)               parts.push(`${element.wattage}W`);
+    if (element.emergency)             parts.push('⚠ Emerg');
+    if (element.movement_sensor)       parts.push('👁 Motion');
+    if (element.light_sensor)          parts.push('☀ Light Snsr');
+    return parts.length ? parts.join(' · ') : '—';
+  }
+  if (element.element_type === 'door') {
+    const parts = [];
+    if (element.security === 'electronic') parts.push('Electronic');
+    if (element.security === 'mechanical') parts.push('Mechanical');
+    if (element.retained)                  parts.push('Retained');
+    return parts.length ? parts.join(' · ') : '—';
+  }
+  return '—'; // fire_control has no structured attributes
+}
+
+// ============================================
+// DERIVED NAME HELPERS
+// ============================================
+
+// Initial letter per element type used in derived name
+const TYPE_INITIALS = {
+  light:        'L',
+  door:         'D',
+  fire_control: 'F'
+};
+
+/**
  * Derive the display name for an element.
- * Format: "Floor Level / Asset ID"
- * e.g. "G / DR-001"  or  "1 / LT-005"
+ * Format: FloorCode/TypeInitial/AssetID
+ * e.g. "G/L/001"  "3/D/042"  "G/F/007"
  */
 export function getElementDisplayName(element, floorLevel) {
   const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
+  const type  = TYPE_INITIALS[element.element_type] ?? '?';
   const id    = element.asset_id ? element.asset_id : 'No ID';
-  return `${floor} / ${id}`;
+  return `${floor}/${type}/${id}`;
 }
 
 /**
