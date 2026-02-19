@@ -9,7 +9,7 @@
   let stats = {
     totalEvents: 0, totalLogins: 0, failedLogins: 0, dataChanges: 0,
     permissionChanges: 0, criticalEvents: 0, warningEvents: 0,
-    flaggedEvents: 0, authEvents: 0, userEvents: 0, issueEvents: 0
+    flaggedEvents: 0, authEvents: 0, userEvents: 0, issueEvents: 0, planEvents: 0
   };
 
   let loading = false;
@@ -31,17 +31,18 @@
   function calculateStats(logs) {
     if (!logs || logs.length === 0) return;
     stats = {
-      totalEvents: logs.length,
-      totalLogins: logs.filter(l => l.event_type === 'login').length,
-      failedLogins: logs.filter(l => l.event_type === 'failed_login').length,
-      dataChanges: logs.filter(l => ['create', 'update', 'delete'].includes(l.event_type)).length,
+      totalEvents:       logs.length,
+      totalLogins:       logs.filter(l => l.event_type === 'login').length,
+      failedLogins:      logs.filter(l => l.event_type === 'failed_login').length,
+      dataChanges:       logs.filter(l => ['create', 'update', 'delete'].includes(l.event_type)).length,
       permissionChanges: logs.filter(l => l.event_type === 'permission_change').length,
-      criticalEvents: logs.filter(l => l.severity === 'critical').length,
-      warningEvents: logs.filter(l => l.severity === 'warning').length,
-      flaggedEvents: logs.filter(l => l.flagged).length,
-      authEvents: logs.filter(l => l.event_category === 'auth').length,
-      userEvents: logs.filter(l => l.event_category === 'users').length,
-      issueEvents: logs.filter(l => l.event_category === 'issues').length
+      criticalEvents:    logs.filter(l => l.severity === 'critical').length,
+      warningEvents:     logs.filter(l => l.severity === 'warning').length,
+      flaggedEvents:     logs.filter(l => l.flagged).length,
+      authEvents:        logs.filter(l => l.app_id === 'users' && l.event_category === 'auth').length,
+      userEvents:        logs.filter(l => l.app_id === 'users' && l.event_category === 'users').length,
+      issueEvents:       logs.filter(l => l.app_id === 'issues').length,
+      planEvents:        logs.filter(l => l.app_id === 'plans').length
     };
   }
 
@@ -97,41 +98,46 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-3 gap-4">
+  <!-- Activity by app -->
+  <div class="grid grid-cols-4 gap-4">
     <div class="card">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-muted-sm">Authentication</span>
+        <span class="text-muted-sm">🔐 Authentication</span>
         <span class="text-2xl font-bold text-blue-400">{stats.authEvents}</span>
       </div>
       <div class="w-full bg-slate-700 rounded-full h-2">
-        <div
-          class="bg-blue-400 h-2 rounded-full"
-          style="width: {stats.totalEvents > 0 ? (stats.authEvents / stats.totalEvents * 100) : 0}%"
-        ></div>
+        <div class="bg-blue-400 h-2 rounded-full"
+          style="width: {stats.totalEvents > 0 ? (stats.authEvents / stats.totalEvents * 100) : 0}%"></div>
       </div>
     </div>
     <div class="card">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-muted-sm">User Management</span>
+        <span class="text-muted-sm">👥 User Management</span>
         <span class="text-2xl font-bold text-purple-400">{stats.userEvents}</span>
       </div>
       <div class="w-full bg-slate-700 rounded-full h-2">
-        <div
-          class="bg-purple-400 h-2 rounded-full"
-          style="width: {stats.totalEvents > 0 ? (stats.userEvents / stats.totalEvents * 100) : 0}%"
-        ></div>
+        <div class="bg-purple-400 h-2 rounded-full"
+          style="width: {stats.totalEvents > 0 ? (stats.userEvents / stats.totalEvents * 100) : 0}%"></div>
       </div>
     </div>
     <div class="card">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-muted-sm">Issues</span>
+        <span class="text-muted-sm">📋 Issues</span>
         <span class="text-2xl font-bold text-green-400">{stats.issueEvents}</span>
       </div>
       <div class="w-full bg-slate-700 rounded-full h-2">
-        <div
-          class="bg-green-400 h-2 rounded-full"
-          style="width: {stats.totalEvents > 0 ? (stats.issueEvents / stats.totalEvents * 100) : 0}%"
-        ></div>
+        <div class="bg-green-400 h-2 rounded-full"
+          style="width: {stats.totalEvents > 0 ? (stats.issueEvents / stats.totalEvents * 100) : 0}%"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-muted-sm">🗺 Floor Plans</span>
+        <span class="text-2xl font-bold text-amber-400">{stats.planEvents}</span>
+      </div>
+      <div class="w-full bg-slate-700 rounded-full h-2">
+        <div class="bg-amber-400 h-2 rounded-full"
+          style="width: {stats.totalEvents > 0 ? (stats.planEvents / stats.totalEvents * 100) : 0}%"></div>
       </div>
     </div>
   </div>

@@ -3,15 +3,37 @@
 
 import { writable } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
+import { logAuditEvent } from '$lib/utils/auditLogger';
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
 
 const logger = getLogger('plansStore');
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 async function getCurrentUserId() {
   const { data: { user } } = await supabase.auth.getUser();
   return user.id;
+}
+
+// Fire-and-forget audit log — never throws, never blocks the main operation.
+function audit(eventType, eventAction, targetType, targetId, targetName, changes = null) {
+  logAuditEvent({
+    event_type:     eventType,
+    event_category: 'plans',
+    event_action:   eventAction,
+    target_type:    targetType,
+    target_id:      targetId,
+    target_name:    targetName,
+    app_id:         'plans',
+    severity:       eventType === 'delete' ? 'warning' : 'info',
+    changes
+  }).catch(err => logger('⚠️ Audit log failed (non-fatal):', err.message));
+}
+
+// Return a subset of an object by key list
+function pick(obj, keys) {
+  return Object.fromEntries(keys.map(k => [k, obj[k]]));
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -70,6 +92,7 @@ function createPlansStore() {
         const plan   = await api.create('plans', { ...planData, created_by: userId, updated_by: userId });
         logger('✅ Created plan:', plan.id);
         update(s => ({ ...s, plans: [plan, ...s.plans] }));
+        audit('create', 'create_plan', 'plan', plan.id, plan.name);
         return plan;
       } catch (error) {
         logger('❌ Error creating plan:', error.message);
@@ -81,9 +104,17 @@ function createPlansStore() {
       logger('Updating plan:', planId);
       try {
         const userId = await getCurrentUserId();
-        const plan   = await api.update('plans', planId, { ...updates, updated_by: userId });
+        let oldPlan  = null;
+        update(s => { oldPlan = s.plans.find(p => p.id === planId); return s; });
+
+        const plan = await api.update('plans', planId, { ...updates, updated_by: userId });
         logger('✅ Updated plan:', plan.id);
         update(s => ({ ...s, plans: s.plans.map(p => p.id === planId ? plan : p) }));
+
+        const changedFields = Object.keys(updates).filter(k => oldPlan && oldPlan[k] !== updates[k]);
+        audit('update', 'update_plan', 'plan', plan.id, plan.name,
+          oldPlan ? { before: pick(oldPlan, changedFields), after: pick(updates, changedFields), fields_changed: changedFields } : null
+        );
         return plan;
       } catch (error) {
         logger('❌ Error updating plan:', error.message);
@@ -95,10 +126,16 @@ function createPlansStore() {
       logger('Deleting plan:', planId);
       try {
         let imageUrl = null;
-        update(s => { const plan = s.plans.find(p => p.id === planId); if (plan) imageUrl = plan.image_url; return s; });
+        let planName = null;
+        update(s => {
+          const plan = s.plans.find(p => p.id === planId);
+          if (plan) { imageUrl = plan.image_url; planName = plan.name; }
+          return s;
+        });
 
         await api.delete('plans', planId);
         logger('✅ Deleted plan:', planId);
+        audit('delete', 'delete_plan', 'plan', planId, planName);
 
         // Best-effort storage cleanup
         if (imageUrl) {
@@ -135,6 +172,8 @@ function createPlansStore() {
           ...s,
           elements: { ...s.elements, [planId]: [element, ...(s.elements[planId] || [])] }
         }));
+        const elementName = element.asset_id || element.label || element.element_type;
+        audit('create', 'create_element', 'plan_element', element.id, elementName);
         return element;
       } catch (error) {
         logger('❌ Error creating element:', error.message);
@@ -145,7 +184,16 @@ function createPlansStore() {
     async updateElement(elementId, updates) {
       logger('Updating element:', elementId);
       try {
-        const userId  = await getCurrentUserId();
+        const userId = await getCurrentUserId();
+        let oldElement = null;
+        update(s => {
+          for (const elList of Object.values(s.elements)) {
+            const found = elList.find(e => e.id === elementId);
+            if (found) { oldElement = found; break; }
+          }
+          return s;
+        });
+
         const element = await api.update('plan_elements', elementId, { ...updates, updated_by: userId });
         logger('✅ Updated element:', element.id);
         update(s => {
@@ -158,6 +206,12 @@ function createPlansStore() {
             }
           };
         });
+
+        const elementName = element.asset_id || element.label || element.element_type;
+        const changedFields = Object.keys(updates).filter(k => k !== 'updated_by' && oldElement && oldElement[k] !== updates[k]);
+        audit('update', 'update_element', 'plan_element', element.id, elementName,
+          oldElement ? { before: pick(oldElement, changedFields), after: pick(updates, changedFields), fields_changed: changedFields } : null
+        );
         return element;
       } catch (error) {
         logger('❌ Error updating element:', error.message);
@@ -168,8 +222,17 @@ function createPlansStore() {
     async deleteElement(elementId, planId) {
       logger('Deleting element:', elementId);
       try {
+        let elementName = elementId;
+        update(s => {
+          const el = (s.elements[planId] || []).find(e => e.id === elementId);
+          if (el) elementName = el.asset_id || el.label || el.element_type;
+          return s;
+        });
+
         await api.delete('plan_elements', elementId);
         logger('✅ Deleted element:', elementId);
+        audit('delete', 'delete_element', 'plan_element', elementId, elementName);
+
         update(s => ({
           ...s,
           elements: { ...s.elements, [planId]: (s.elements[planId] || []).filter(e => e.id !== elementId) }
@@ -198,10 +261,10 @@ function createPlansStore() {
 
     async getImageDimensions(imageUrl) {
       return new Promise((resolve, reject) => {
-        const img  = new Image();
-        img.onload = () => { logger('Image dimensions:', img.width, 'x', img.height); resolve({ width: img.width, height: img.height }); };
-        img.onerror = () => reject(new Error('Failed to load image'));
-        img.src = imageUrl;
+        const img    = new Image();
+        img.onload   = () => { logger('Image dimensions:', img.width, 'x', img.height); resolve({ width: img.width, height: img.height }); };
+        img.onerror  = () => reject(new Error('Failed to load image'));
+        img.src      = imageUrl;
       });
     }
   };

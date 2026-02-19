@@ -47,6 +47,10 @@ function createAuditLogsStore() {
           .select('*', { count: 'exact' });
 
         // Apply filters
+        if (filters.appId) {
+           query = query.eq('app_id', filters.appId);
+        }
+
         if (userId) {
           query = query.eq('user_id', userId);
         }
@@ -171,6 +175,9 @@ function createAuditLogsStore() {
           .select('*');
 
         // Apply filters
+	if (filters.appId) {
+            query = query.eq('app_id', filters.appId);
+        }
         if (filters.userId) query = query.eq('user_id', filters.userId);
         if (filters.eventType) query = query.eq('event_type', filters.eventType);
         if (filters.eventCategory) query = query.eq('event_category', filters.eventCategory);

@@ -11,20 +11,21 @@
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
 
   let filters = {
-    userId: null,
-    eventType: null,
+    appId:         null,   // ← new: filter by originating app
+    userId:        null,
+    eventType:     null,
     eventCategory: null,
-    severity: null,
-    startDate: null,
-    endDate: null,
-    search: '',
-    flaggedOnly: false,
-    limit: 100,
-    offset: 0
+    severity:      null,
+    startDate:     null,
+    endDate:       null,
+    search:        '',
+    flaggedOnly:   false,
+    limit:         100,
+    offset:        0
   };
 
-  let showDashboard = true;
-  let selectedLogs = new Set();
+  let showDashboard   = true;
+  let selectedLogs    = new Set();
   let showBulkActions = false;
 
   $: ({ logs, loading, error, totalCount, hasMore } = $auditLogsStore);
@@ -64,19 +65,13 @@
   }
 
   function toggleSelect(logId) {
-    if (selectedLogs.has(logId)) {
-      selectedLogs.delete(logId);
-    } else {
-      selectedLogs.add(logId);
-    }
+    if (selectedLogs.has(logId)) { selectedLogs.delete(logId); }
+    else                          { selectedLogs.add(logId);    }
     selectedLogs = selectedLogs;
   }
 
   async function handleBulkDelete() {
-    if (!confirm(`Delete ${selectedLogs.size} audit logs? This cannot be undone.`)) {
-      return;
-    }
-
+    if (!confirm(`Delete ${selectedLogs.size} audit logs? This cannot be undone.`)) return;
     try {
       await auditLogsStore.deleteLogs(Array.from(selectedLogs));
       selectedLogs.clear();
@@ -87,10 +82,7 @@
   }
 
   async function handleDeleteLog(logId) {
-    if (!confirm('Delete this audit log? This cannot be undone.')) {
-      return;
-    }
-
+    if (!confirm('Delete this audit log? This cannot be undone.')) return;
     try {
       await auditLogsStore.deleteLog(logId);
     } catch (err) {
@@ -99,19 +91,13 @@
   }
 
   async function handleFlagLog(logId, reason) {
-    try {
-      await auditLogsStore.flagLog(logId, reason);
-    } catch (err) {
-      alert(err.message);
-    }
+    try { await auditLogsStore.flagLog(logId, reason); }
+    catch (err) { alert(err.message); }
   }
 
   async function handleUnflagLog(logId) {
-    try {
-      await auditLogsStore.unflagLog(logId);
-    } catch (err) {
-      alert(err.message);
-    }
+    try { await auditLogsStore.unflagLog(logId); }
+    catch (err) { alert(err.message); }
   }
 </script>
 
@@ -131,27 +117,17 @@
       >
         {showDashboard ? 'Hide' : 'Show'} Dashboard
       </Button>
-      <Button
-        variant="primary"
-        size="large"
-        icon="download"
-        on:click={handleExport}
-      >
+      <Button variant="primary" size="large" icon="download" on:click={handleExport}>
         Export CSV
       </Button>
     </div>
   </div>
 
-  <!-- Dashboard -->
   {#if showDashboard}
     <AuditDashboard {logs} />
   {/if}
 
-  <!-- Filters -->
-  <AuditLogFilters 
-    bind:filters
-    on:change={handleFilterChange}
-  />
+  <AuditLogFilters bind:filters on:change={handleFilterChange} />
 
   <!-- Bulk Actions Bar -->
   {#if showBulkActions}
@@ -161,20 +137,11 @@
           <span class="font-semibold text-purple-400">
             {selectedLogs.size} log{selectedLogs.size !== 1 ? 's' : ''} selected
           </span>
-          <Button
-            variant="secondary"
-            size="small"
-            on:click={() => { selectedLogs.clear(); selectedLogs = selectedLogs; }}
-          >
+          <Button variant="secondary" size="small" on:click={() => { selectedLogs.clear(); selectedLogs = selectedLogs; }}>
             Clear Selection
           </Button>
         </div>
-        <Button
-          variant="danger"
-          size="small"
-          icon="delete"
-          on:click={handleBulkDelete}
-        >
+        <Button variant="danger" size="small" icon="delete" on:click={handleBulkDelete}>
           Delete Selected
         </Button>
       </div>
@@ -187,41 +154,28 @@
       Showing {logs.length} of {totalCount} log{totalCount !== 1 ? 's' : ''}
     </div>
     {#if logs.length > 0}
-      <Button
-        variant="secondary"
-        size="small"
-        on:click={toggleSelectAll}
-      >
+      <Button variant="secondary" size="small" on:click={toggleSelectAll}>
         {selectedLogs.size === logs.length ? 'Deselect All' : 'Select All'}
       </Button>
     {/if}
   </div>
 
-  <!-- Error Display -->
-  <ErrorDisplay 
-    message={error}
-    onDismiss={() => auditLogsStore.clearError()}
-  />
+  <ErrorDisplay message={error} onDismiss={() => auditLogsStore.clearError()} />
 
-  <!-- Loading State -->
   {#if loading && logs.length === 0}
     <LoadingSpinner />
-
-  <!-- Empty State -->
   {:else if logs.length === 0}
     <div class="empty-state">
-      {#if filters.search || filters.eventType || filters.eventCategory}
+      {#if filters.search || filters.appId || filters.eventType || filters.eventCategory}
         No audit logs found matching your filters. Try adjusting your search criteria.
       {:else}
         No audit logs found. Events will appear here once users start taking actions.
       {/if}
     </div>
-
-  <!-- Logs List -->
   {:else}
     <div class="section-spacing">
       {#each logs as log (log.id)}
-        <AuditLogCard 
+        <AuditLogCard
           {log}
           selected={selectedLogs.has(log.id)}
           on:select={() => toggleSelect(log.id)}
@@ -232,15 +186,9 @@
       {/each}
     </div>
 
-    <!-- Load More -->
     {#if hasMore}
       <div class="text-center mt-6">
-        <Button
-          variant="secondary"
-          size="large"
-          loading={loading}
-          on:click={handleLoadMore}
-        >
+        <Button variant="secondary" size="large" loading={loading} on:click={handleLoadMore}>
           {loading ? 'Loading...' : `Load More (${totalCount - logs.length} remaining)`}
         </Button>
       </div>
