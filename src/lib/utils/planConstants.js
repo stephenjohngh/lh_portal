@@ -53,7 +53,7 @@ export const DEFAULT_FLOOR_LEVEL = 'G';
 export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
-  light:          ['Bulkhead', 'Batten', 'Exit', 'Downlight', 'Pendant'],
+  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant'],
   fire_control:   ['Sensor', 'Call Point']
 };
 

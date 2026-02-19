@@ -8,66 +8,54 @@ import { supabase } from '$lib/supabaseClient';
 
 const logger = getLogger('plansStore');
 
+// ── Helper ────────────────────────────────────────────────────────────────────
+async function getCurrentUserId() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user.id;
+}
+
+// ── Store ─────────────────────────────────────────────────────────────────────
 function createPlansStore() {
   const { subscribe, set, update } = writable({
-    plans: [],
-    elements: {}, // Keyed by plan_id
-    loading: false,
-    error: null
+    plans:    [],
+    elements: {}, // keyed by plan_id
+    loading:  false,
+    error:    null
   });
 
   return {
     subscribe,
 
-    /**
-     * Load all floor plans
-     */
     async loadPlans() {
       logger('Loading plans...');
-      update(state => ({ ...state, loading: true, error: null }));
-
+      update(s => ({ ...s, loading: true, error: null }));
       try {
         const plans = await api.get('plans', {
-          select: '*, created_by_profile:profiles!created_by(full_name), updated_by_profile:profiles!updated_by(full_name)',
-          orderBy: 'created_at',
+          select:    '*, created_by_profile:profiles!created_by(full_name), updated_by_profile:profiles!updated_by(full_name)',
+          orderBy:   'created_at',
           ascending: false
         });
-
         logger('✅ Loaded plans:', plans.length);
-        update(state => ({ ...state, plans, loading: false }));
-        
+        update(s => ({ ...s, plans, loading: false }));
         return plans;
       } catch (error) {
         logger('❌ Error loading plans:', error.message);
-        update(state => ({ ...state, error: error.message, loading: false }));
+        update(s => ({ ...s, error: error.message, loading: false }));
         throw error;
       }
     },
 
-    /**
-     * Load elements for a specific plan
-     */
     async loadElements(planId) {
       logger('Loading elements for plan:', planId);
-
       try {
         const elements = await api.get('plan_elements', {
-          filters: { plan_id: planId },
-          select: '*',
-          orderBy: 'created_at',
+          filters:   { plan_id: planId },
+          select:    '*',
+          orderBy:   'created_at',
           ascending: false
         });
-
         logger('✅ Loaded elements:', elements.length);
-        
-        update(state => ({
-          ...state,
-          elements: {
-            ...state.elements,
-            [planId]: elements
-          }
-        }));
-
+        update(s => ({ ...s, elements: { ...s.elements, [planId]: elements } }));
         return elements;
       } catch (error) {
         logger('❌ Error loading elements:', error.message);
@@ -75,30 +63,13 @@ function createPlansStore() {
       }
     },
 
-    /**
-     * Create a new floor plan
-     */
     async createPlan(planData) {
       logger('Creating plan:', planData.name);
-
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        const plan = await api.create('plans', {
-          ...planData,
-          created_by: user.id,
-          updated_by: user.id
-        });
-        
+        const userId = await getCurrentUserId();
+        const plan   = await api.create('plans', { ...planData, created_by: userId, updated_by: userId });
         logger('✅ Created plan:', plan.id);
-        
-        // Add to store
-        update(state => ({
-          ...state,
-          plans: [plan, ...state.plans]
-        }));
-
+        update(s => ({ ...s, plans: [plan, ...s.plans] }));
         return plan;
       } catch (error) {
         logger('❌ Error creating plan:', error.message);
@@ -106,29 +77,13 @@ function createPlansStore() {
       }
     },
 
-    /**
-     * Update a floor plan
-     */
     async updatePlan(planId, updates) {
       logger('Updating plan:', planId);
-
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        const plan = await api.update('plans', planId, {
-          ...updates,
-          updated_by: user.id
-        });
-        
+        const userId = await getCurrentUserId();
+        const plan   = await api.update('plans', planId, { ...updates, updated_by: userId });
         logger('✅ Updated plan:', plan.id);
-        
-        // Update in store
-        update(state => ({
-          ...state,
-          plans: state.plans.map(p => p.id === planId ? plan : p)
-        }));
-
+        update(s => ({ ...s, plans: s.plans.map(p => p.id === planId ? plan : p) }));
         return plan;
       } catch (error) {
         logger('❌ Error updating plan:', error.message);
@@ -136,58 +91,31 @@ function createPlansStore() {
       }
     },
 
-    /**
-     * Delete a floor plan and its associated image from Storage
-     */
     async deletePlan(planId) {
       logger('Deleting plan:', planId);
-
       try {
-        // Get the plan's image_url before deleting so we can clean up Storage
         let imageUrl = null;
-        update(state => {
-          const plan = state.plans.find(p => p.id === planId);
-          if (plan) imageUrl = plan.image_url;
-          return state;
-        });
+        update(s => { const plan = s.plans.find(p => p.id === planId); if (plan) imageUrl = plan.image_url; return s; });
 
         await api.delete('plans', planId);
         logger('✅ Deleted plan:', planId);
 
-        // Delete image from Storage if we have a URL
+        // Best-effort storage cleanup
         if (imageUrl) {
           try {
-            // Extract the storage path from the public URL
-            // URL format: .../storage/v1/object/public/plan-images/plans/filename.ext
             const match = imageUrl.match(/\/plan-images\/(.+)$/);
             if (match) {
-              const storagePath = match[1];
-              logger('Deleting image from storage:', storagePath);
-              const { error: storageError } = await supabase.storage
-                .from('plan-images')
-                .remove([storagePath]);
-              if (storageError) {
-                // Log but don't throw — plan is already deleted, storage cleanup is best-effort
-                logger('⚠️ Storage cleanup failed (plan already deleted):', storageError.message);
-              } else {
-                logger('✅ Deleted image from storage:', storagePath);
-              }
-            } else {
-              logger('⚠️ Could not extract storage path from URL:', imageUrl);
+              const { error: storageError } = await supabase.storage.from('plan-images').remove([match[1]]);
+              if (storageError) logger('⚠️ Storage cleanup failed:', storageError.message);
+              else logger('✅ Deleted image from storage:', match[1]);
             }
-          } catch (storageErr) {
-            // Best-effort cleanup — don't fail the whole operation
-            logger('⚠️ Storage cleanup error:', storageErr.message);
-          }
+          } catch (err) { logger('⚠️ Storage cleanup error:', err.message); }
         }
-        
-        // Remove from store
-        update(state => ({
-          ...state,
-          plans: state.plans.filter(p => p.id !== planId),
-          elements: Object.fromEntries(
-            Object.entries(state.elements).filter(([key]) => key !== planId)
-          )
+
+        update(s => ({
+          ...s,
+          plans:    s.plans.filter(p => p.id !== planId),
+          elements: Object.fromEntries(Object.entries(s.elements).filter(([k]) => k !== planId))
         }));
       } catch (error) {
         logger('❌ Error deleting plan:', error.message);
@@ -195,34 +123,18 @@ function createPlansStore() {
       }
     },
 
-    /**
-     * Create a new element on a plan
-     */
     async createElement(planId, elementData) {
-      logger('Creating element:', elementData.label, elementData.asset_id);
-
+      logger('Creating element:', elementData.asset_id);
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const userId  = await getCurrentUserId();
         const element = await api.create('plan_elements', {
-          ...elementData,
-          plan_id: planId,
-          created_by: user.id,
-          updated_by: user.id
+          ...elementData, plan_id: planId, created_by: userId, updated_by: userId
         });
-
         logger('✅ Created element:', element.id);
-
-        // Add to store
-        update(state => ({
-          ...state,
-          elements: {
-            ...state.elements,
-            [planId]: [element, ...(state.elements[planId] || [])]
-          }
+        update(s => ({
+          ...s,
+          elements: { ...s.elements, [planId]: [element, ...(s.elements[planId] || [])] }
         }));
-
         return element;
       } catch (error) {
         logger('❌ Error creating element:', error.message);
@@ -230,37 +142,22 @@ function createPlansStore() {
       }
     },
 
-    /**
-     * Update an element
-     */
     async updateElement(elementId, updates) {
       logger('Updating element:', elementId);
-
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        const element = await api.update('plan_elements', elementId, {
-          ...updates,
-          updated_by: user.id
-        });
-        
+        const userId  = await getCurrentUserId();
+        const element = await api.update('plan_elements', elementId, { ...updates, updated_by: userId });
         logger('✅ Updated element:', element.id);
-
-        // Update in store
-        update(state => {
+        update(s => {
           const planId = element.plan_id;
           return {
-            ...state,
+            ...s,
             elements: {
-              ...state.elements,
-              [planId]: (state.elements[planId] || []).map(e => 
-                e.id === elementId ? element : e
-              )
+              ...s.elements,
+              [planId]: (s.elements[planId] || []).map(e => e.id === elementId ? element : e)
             }
           };
         });
-
         return element;
       } catch (error) {
         logger('❌ Error updating element:', error.message);
@@ -268,24 +165,14 @@ function createPlansStore() {
       }
     },
 
-    /**
-     * Delete an element
-     */
     async deleteElement(elementId, planId) {
       logger('Deleting element:', elementId);
-
       try {
         await api.delete('plan_elements', elementId);
-        
         logger('✅ Deleted element:', elementId);
-
-        // Remove from store
-        update(state => ({
-          ...state,
-          elements: {
-            ...state.elements,
-            [planId]: (state.elements[planId] || []).filter(e => e.id !== elementId)
-          }
+        update(s => ({
+          ...s,
+          elements: { ...s.elements, [planId]: (s.elements[planId] || []).filter(e => e.id !== elementId) }
         }));
       } catch (error) {
         logger('❌ Error deleting element:', error.message);
@@ -293,61 +180,27 @@ function createPlansStore() {
       }
     },
 
-    /**
-     * Upload an image to Supabase Storage
-     */
     async uploadImage(file) {
-      logger('Uploading image:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-
+      logger('Uploading image:', file.name, `${(file.size / 1024 / 1024).toFixed(2)}MB`);
       try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `plans/${fileName}`;
-
-        logger('Uploading to path:', filePath);
-
-        const { data, error } = await supabase.storage
-          .from('plan-images')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (error) {
-          logger('❌ Upload error:', error.message);
-          throw error;
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('plan-images')
-          .getPublicUrl(filePath);
-
+        const fileExt  = file.name.split('.').pop();
+        const filePath = `plans/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { error } = await supabase.storage.from('plan-images').upload(filePath, file, { cacheControl: '3600', upsert: false });
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from('plan-images').getPublicUrl(filePath);
         logger('✅ Uploaded image:', urlData.publicUrl);
-
-        return {
-          url: urlData.publicUrl,
-          path: filePath
-        };
+        return { url: urlData.publicUrl, path: filePath };
       } catch (error) {
         logger('❌ Error uploading image:', error.message);
         throw error;
       }
     },
 
-    /**
-     * Get image dimensions
-     */
     async getImageDimensions(imageUrl) {
       return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          logger('Image dimensions:', img.width, 'x', img.height);
-          resolve({ width: img.width, height: img.height });
-        };
-        img.onerror = () => {
-          reject(new Error('Failed to load image'));
-        };
+        const img  = new Image();
+        img.onload = () => { logger('Image dimensions:', img.width, 'x', img.height); resolve({ width: img.width, height: img.height }); };
+        img.onerror = () => reject(new Error('Failed to load image'));
         img.src = imageUrl;
       });
     }

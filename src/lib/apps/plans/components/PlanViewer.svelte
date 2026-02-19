@@ -13,94 +13,94 @@
   import PlanInfoModal from './PlanInfoModal.svelte';
   import CopyPlanModal from './CopyPlanModal.svelte';
   import { plansStore } from '../stores/plansStore';
-  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, getElementDescription, getAttributeSummary } from '$lib/utils/planConstants';
+  import {
+    ELEMENT_TYPE_OPTIONS,
+    getElementDisplayName,
+    getAttributeSummary
+  } from '$lib/utils/planConstants';
   import { permissions } from '$lib/stores/permissions';
-  
+
   const logger = getLogger('PlanViewer');
   const dispatch = createEventDispatcher();
-  
+
   export let plan;
 
-  // Read from permissions store - same pattern as IssuesTrackerApp
   $: isAdmin    = $permissions.isAdmin;
   $: canEdit    = $permissions.isAdmin || $permissions.canModify;
   $: isReadOnly = !$permissions.isAdmin && !$permissions.canModify;
 
   let imageElement;
   let containerElement;
-  let elements = [];
-  let filteredElementIds = new Set();
-  let selectedElement = null;
-  let showElementModal = false;
-  let showReportModal = false;
-  let showPlanInfoModal = false;
-  let showCopyModal = false;
+  let elements           = [];
+  let selectedElement    = null;
+  let showElementModal   = false;
+  let showReportModal    = false;
+  let showPlanInfoModal  = false;
+  let showCopyModal      = false;
   let newElementPosition = null;
-  let hoveredElement = null;
-  let imageLoaded = false;
-  let containerWidth = 0;
-  let containerHeight = 0;
+  let hoveredElement     = null;
+  let imageLoaded        = false;
+  let containerWidth     = 0;
+  let containerHeight    = 0;
 
   // Drag-to-move state
-  let dragElement = null;       // element currently being dragged
-  let dragMoved = false;        // true once cursor moves beyond threshold
-  let dragJustEnded = false;    // suppress container click after a completed drag
+  let dragElement  = null;
+  let dragMoved    = false;
+  let dragJustEnded = false;
+
+  // New-element mode — must be explicitly enabled before clicking to place or dragging
+  let newMode = false;
 
   let filters = {
-    types:       [],
-    statuses:    [],
-    searchText:  '',
+    types:    [], statuses: [], searchText: '',
     lightFilters:    { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
     communalFilters: { subtypes: [], security: [], retained: false },
-    apartmentFilters:{ security: [], retained: false },
+    apartmentFilters:{},
     fireFilters:     { subtypes: [] }
   };
-  
-  // Only reload elements when plan.id changes - not on every reactive update
+
+  // Only reload when plan.id changes
   let lastLoadedPlanId = null;
   $: if (plan?.id && plan.id !== lastLoadedPlanId) {
     lastLoadedPlanId = plan.id;
     loadElements();
   }
-  
+
   $: elementCounts = elements.reduce((acc, el) => {
     acc[el.element_type] = (acc[el.element_type] || 0) + 1;
     return acc;
   }, {});
-  
-  $: hasActiveFilters = filters.types.length > 0 || filters.statuses.length > 0 || filters.searchText.length > 0;
 
-  // Apply filters once — used by both SVG markers and table
-  $: filteredElements = hasActiveFilters ? applyFilters(elements, filters) : elements;
+  // hasActiveFilters covers both top-level and attribute sub-filters
+  $: hasActiveFilters = (
+    filters.types.length > 0 || filters.statuses.length > 0 || filters.searchText.length > 0 ||
+    (filters.lightFilters?.subtypes?.length  > 0) || (filters.lightFilters?.battery?.length > 0) ||
+    filters.lightFilters?.emergency || filters.lightFilters?.movementSensor || filters.lightFilters?.lightSensor ||
+    (filters.communalFilters?.subtypes?.length > 0) || (filters.communalFilters?.security?.length > 0) ||
+    filters.communalFilters?.retained ||
+    (filters.fireFilters?.subtypes?.length > 0)
+  );
+
+  $: filteredElements   = hasActiveFilters ? applyFilters(elements, filters) : elements;
   $: filteredElementIds = new Set(filteredElements.map(e => e.id));
 
-  // Sort filtered elements for table display: type then asset_id
   $: sortedElementsForTable = [...filteredElements].sort((a, b) => {
-    if (a.element_type !== b.element_type) {
-      return a.element_type.localeCompare(b.element_type);
-    }
-    const idA = a.asset_id || '';
-    const idB = b.asset_id || '';
-    return idA.localeCompare(idB, undefined, { numeric: true });
+    if (a.element_type !== b.element_type) return a.element_type.localeCompare(b.element_type);
+    return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
-  
+
   onMount(() => {
-    // Setup resize observer for responsive rendering
-    const resizeObserver = new ResizeObserver(entries => {
+    const ro = new ResizeObserver(entries => {
       if (entries[0]) {
         const { width, height } = entries[0].contentRect;
-        containerWidth = width;
+        containerWidth  = width;
         containerHeight = height;
       }
     });
-    
-    if (containerElement) {
-      resizeObserver.observe(containerElement);
-    }
-    
-    return () => resizeObserver.disconnect();
+    if (containerElement) ro.observe(containerElement);
+    return () => ro.disconnect();
   });
-  
+
   async function loadElements() {
     logger('Loading elements for plan:', plan.id);
     try {
@@ -110,33 +110,27 @@
       logger('❌ Error loading elements:', error.message);
     }
   }
-  
-  function applyFilters(allElements, filters) {
+
+  function applyFilters(allElements, f) {
     let result = [...allElements];
-    
-    // Filter by type
-    if (filters.types.length > 0) {
-      result = result.filter(el => filters.types.includes(el.element_type));
-    }
-    
-    // Filter by status
-    if (filters.statuses.length > 0) {
-      result = result.filter(el => filters.statuses.includes(el.status));
-    }
-    
-    // Filter by search text (searches label, asset_id, subtype, derived name)
-    if (filters.searchText) {
-      const search = filters.searchText.toLowerCase();
-      result = result.filter(el => 
-        el.label?.toLowerCase().includes(search) ||
-        el.asset_id?.toLowerCase().includes(search) ||
-        el.subtype?.toLowerCase().includes(search) ||
-        getElementDisplayName(el, plan.floor_level).toLowerCase().includes(search)
+
+    if (f.types.length > 0)
+      result = result.filter(el => f.types.includes(el.element_type));
+
+    if (f.statuses.length > 0)
+      result = result.filter(el => f.statuses.includes(el.status));
+
+    if (f.searchText) {
+      const q = f.searchText.toLowerCase();
+      result = result.filter(el =>
+        el.label?.toLowerCase().includes(q)    ||
+        el.asset_id?.toLowerCase().includes(q) ||
+        el.subtype?.toLowerCase().includes(q)  ||
+        getElementDisplayName(el, plan.floor_level).toLowerCase().includes(q)
       );
     }
 
-    // Light attribute filters — only applied to light elements; non-lights pass through
-    const lf = filters.lightFilters;
+    const lf = f.lightFilters;
     if (lf) {
       if (lf.subtypes?.length > 0)
         result = result.filter(el => el.element_type !== 'light' || lf.subtypes.includes(el.subtype));
@@ -150,8 +144,7 @@
         result = result.filter(el => el.element_type !== 'light' || el.light_sensor === true);
     }
 
-    // Communal door attribute filters
-    const cf = filters.communalFilters;
+    const cf = f.communalFilters;
     if (cf) {
       if (cf.subtypes?.length > 0)
         result = result.filter(el => el.element_type !== 'communal_door' || cf.subtypes.includes(el.subtype));
@@ -161,138 +154,101 @@
         result = result.filter(el => el.element_type !== 'communal_door' || el.retained === true);
     }
 
-    // Apartment door attribute filters
-    const af = filters.apartmentFilters;
-    if (af) {
-      if (af.security?.length > 0)
-        result = result.filter(el => el.element_type !== 'apartment_door' || af.security.includes(el.security));
-      if (af.retained)
-        result = result.filter(el => el.element_type !== 'apartment_door' || el.retained === true);
-    }
+    const ff = f.fireFilters;
+    if (ff?.subtypes?.length > 0)
+      result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
 
-    // Fire Control attribute filters
-    const ff = filters.fireFilters;
-    if (ff) {
-      if (ff.subtypes?.length > 0)
-        result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
-    }
-    
     return result;
   }
-  
+
   function handleContainerClick(event) {
-    // Read-only users cannot add elements
-    if (isReadOnly) return;
-    // Suppress click if a drag just finished (mouseup already handled the action)
-    if (dragJustEnded) return;
-    
-    // Ignore clicks that originated from a marker <g> or its children
+    if (isReadOnly || dragJustEnded) return;
+    if (!newMode) return;  // must be in New mode to place elements
+
     let node = event.target;
     while (node && node !== containerElement) {
-      if (node.classList && node.classList.contains('element-marker-group')) return;
+      if (node.classList?.contains('element-marker-group')) return;
       node = node.parentNode;
     }
-    
+
     if (!imageElement || !imageLoaded) return;
-    
+
     const rect = imageElement.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right ||
         event.clientY < rect.top  || event.clientY > rect.bottom) return;
-    
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const normalizedX = x / rect.width;
-    const normalizedY = y / rect.height;
-    
+
+    const normalizedX = (event.clientX - rect.left) / rect.width;
+    const normalizedY = (event.clientY - rect.top)  / rect.height;
+
     logger('Plan clicked at:', { x: normalizedX.toFixed(3), y: normalizedY.toFixed(3) });
-    
+
     newElementPosition = { x: normalizedX, y: normalizedY };
-    selectedElement = null;
-    showElementModal = true;
+    selectedElement    = null;
+    showElementModal   = true;
   }
-  
+
   function handleElementClick(element) {
     logger('Element clicked:', element.id, element.asset_id);
-    selectedElement = element;
+    selectedElement    = element;
     newElementPosition = null;
-    showElementModal = true;
-  }
-  
-  function handleElementHover(element) {
-    hoveredElement = element;
-  }
-  
-  function handleElementLeave() {
-    hoveredElement = null;
+    showElementModal   = true;
   }
 
-  // ── Drag-to-move ─────────────────────────────────────────────────────────
+  function handleElementHover(element) { hoveredElement = element; }
+  function handleElementLeave()        { hoveredElement = null; }
+
+  // ── Drag-to-move ──────────────────────────────────────────────────────────
   function handleMarkerMousedown(event, element) {
-    if (isReadOnly || !canEdit) return;
-    event.stopPropagation();  // prevent container click from firing
+    if (isReadOnly || !canEdit || !newMode) return;
+    event.stopPropagation();
 
     dragElement = element;
-    dragMoved = false;
+    dragMoved   = false;
 
     const onMousemove = (e) => {
       if (!dragElement || !imageElement) return;
-
       const rect = imageElement.getBoundingClientRect();
       const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
       const ny = Math.min(1, Math.max(0, (e.clientY - rect.top)  / rect.height));
-
-      // Once cursor moves >4px equivalent treat as drag (not click)
       dragMoved = true;
-
-      // Optimistic local update for smooth visual feedback
-      elements = elements.map(el =>
-        el.id === dragElement.id
-          ? { ...el, x_position: nx, y_position: ny }
-          : el
+      elements  = elements.map(el =>
+        el.id === dragElement.id ? { ...el, x_position: nx, y_position: ny } : el
       );
     };
 
     const onMouseup = async (e) => {
       window.removeEventListener('mousemove', onMousemove);
-      window.removeEventListener('mouseup', onMouseup);
+      window.removeEventListener('mouseup',   onMouseup);
 
-      if (!dragMoved || !dragElement || !imageElement) {
-        dragElement = null;
-        return;
-      }
+      if (!dragMoved || !dragElement || !imageElement) { dragElement = null; return; }
 
-      // Final position
       const rect = imageElement.getBoundingClientRect();
       const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
       const ny = Math.min(1, Math.max(0, (e.clientY - rect.top)  / rect.height));
 
-      const movedEl = dragElement;
-      dragElement = null;
-      dragJustEnded = true;
-      // Allow the container click event to fire first, then clear the flag
+      const movedEl    = dragElement;
+      dragElement      = null;
+      dragJustEnded    = true;
       setTimeout(() => { dragJustEnded = false; }, 50);
 
       try {
         await plansStore.updateElement(movedEl.id, { x_position: nx, y_position: ny });
         logger('✅ Element moved:', movedEl.id);
-        // Reload to get server-confirmed positions
         await loadElements();
       } catch (error) {
         logger('❌ Error moving element:', error.message);
-        // Revert optimistic update on failure
         await loadElements();
         alert('Failed to move element: ' + error.message);
       }
     };
 
     window.addEventListener('mousemove', onMousemove);
-    window.addEventListener('mouseup', onMouseup);
+    window.addEventListener('mouseup',   onMouseup);
   }
   // ─────────────────────────────────────────────────────────────────────────
-  
+
   async function handleElementSave(event) {
     const { element, isNew } = event.detail;
-    
     try {
       if (isNew) {
         await plansStore.createElement(plan.id, element);
@@ -301,47 +257,42 @@
         await plansStore.updateElement(element.id, element);
         logger('✅ Element updated');
       }
-      
       await loadElements();
-      showElementModal = false;
-      selectedElement = null;
+      showElementModal   = false;
+      selectedElement    = null;
       newElementPosition = null;
     } catch (error) {
       logger('❌ Error saving element:', error.message);
       alert('Failed to save element: ' + error.message);
     }
   }
-  
+
   async function handleElementDelete(event) {
     const { elementId, planId } = event.detail;
-    
     try {
       await plansStore.deleteElement(elementId, planId);
       logger('✅ Element deleted');
-      
       await loadElements();
       showElementModal = false;
-      selectedElement = null;
+      selectedElement  = null;
     } catch (error) {
       logger('❌ Error deleting element:', error.message);
       alert('Failed to delete element: ' + error.message);
     }
   }
-  
+
   function handleFilterChange(event) {
     filters = event.detail;
     logger('Filters changed:', filters);
   }
-  
+
   function handleImageLoad() {
     imageLoaded = true;
     logger('Image loaded successfully');
   }
-  
-  // Convert normalized coordinates (0-1) to pixel coordinates
+
   function getPixelPosition(element) {
     if (!imageElement) return { x: 0, y: 0 };
-    
     const rect = imageElement.getBoundingClientRect();
     return {
       x: element.x_position * rect.width,
@@ -353,11 +304,7 @@
 <div class="grid grid-cols-12 gap-6">
   <!-- Filters Sidebar -->
   <div class="col-span-3">
-    <PlanFilters
-      {elements}
-      {elementCounts}
-      on:change={handleFilterChange}
-    />
+    <PlanFilters {elements} {elementCounts} on:change={handleFilterChange} />
   </div>
 
   <!-- Floor Plan Viewer -->
@@ -368,12 +315,12 @@
         <div class="flex-row-md">
           <div class="text-sm">
             <span class="font-semibold">{elements.length}</span>
-            <span class="text-gray-400">total elements</span>
+            <span class="text-gray-400"> total elements</span>
           </div>
           <div class="flex-row-sm">
             {#each ELEMENT_TYPE_OPTIONS as type}
               {#if elementCounts[type.value] > 0}
-                <div 
+                <div
                   class="px-2 py-1 rounded text-xs flex items-center gap-1"
                   style="background-color: {type.color}20; border: 1px solid {type.color}40;"
                 >
@@ -384,46 +331,41 @@
             {/each}
           </div>
         </div>
-        
+
         <div class="btn-group">
-          {#if isAdmin}
-          <Button
-            variant="secondary"
-            size="small"
-            icon="copy"
-            on:click={() => showCopyModal = true}
-          >
-            Copy Plan
-          </Button>
+          {#if canEdit}
+            <Button
+              variant={newMode ? 'primary' : 'secondary'}
+              size="small"
+              icon={newMode ? 'close' : 'plus'}
+              on:click={() => newMode = !newMode}
+            >
+              {newMode ? 'New Off' : 'New'}
+            </Button>
           {/if}
-          <Button
-            variant="secondary"
-            size="small"
-            icon="download"
-            on:click={() => showReportModal = true}
-          >
+          {#if isAdmin}
+            <Button variant="secondary" size="small" icon="copy" on:click={() => showCopyModal = true}>
+              Copy Plan
+            </Button>
+          {/if}
+          <Button variant="secondary" size="small" icon="download" on:click={() => showReportModal = true}>
             Export Report
           </Button>
           {#if isAdmin}
-          <Button
-            variant="secondary"
-            size="small"
-            icon="edit"
-            on:click={() => showPlanInfoModal = true}
-          >
-            Edit Plan Info
-          </Button>
+            <Button variant="secondary" size="small" icon="edit" on:click={() => showPlanInfoModal = true}>
+              Edit Plan Info
+            </Button>
           {/if}
         </div>
       </div>
 
-      <!-- Image Container — click handler here catches all non-marker clicks -->
+      <!-- Image Container -->
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div 
+      <div
         bind:this={containerElement}
         class="relative border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900"
-        style="min-height: 600px; cursor: {isReadOnly ? 'default' : 'crosshair'};"
+        style="min-height: 600px; cursor: {isReadOnly ? 'default' : newMode ? 'crosshair' : 'default'};"
         on:click={handleContainerClick}
       >
         {#if !imageLoaded}
@@ -434,8 +376,7 @@
             </div>
           </div>
         {/if}
-        
-        <!-- Floor Plan Image (no click handler here - handled by container) -->
+
         <img
           bind:this={imageElement}
           src={plan.image_url}
@@ -444,14 +385,9 @@
           on:load={handleImageLoad}
           style="display: {imageLoaded ? 'block' : 'none'};"
         />
-        
-        <!-- SVG Overlay — pointer-events:none on svg itself so clicks pass through to container -->
-        <!-- Individual markers re-enable pointer-events via pointer-events:all on their <g> -->
+
         {#if imageLoaded && imageElement}
-          <svg
-            class="absolute inset-0 w-full h-full"
-            style="z-index: 10; pointer-events: none;"
-          >
+          <svg class="absolute inset-0 w-full h-full" style="z-index: 10; pointer-events: none;">
             {#each filteredElements as element (element.id)}
               <ElementMarker
                 {element}
@@ -468,20 +404,14 @@
             {/each}
           </svg>
         {/if}
-        
+
         <!-- Hover Tooltip -->
         {#if hoveredElement && filteredElementIds.has(hoveredElement.id)}
           {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === hoveredElement.element_type)}
           {@const pos = getPixelPosition(hoveredElement)}
-          <div 
+          <div
             class="absolute bg-slate-800 text-white px-3 py-2 rounded-lg shadow-xl text-sm pointer-events-none border border-slate-600"
-            style="
-              left: {pos.x}px;
-              top: {pos.y + 40}px;
-              transform: translateX(-50%);
-              z-index: 20;
-              max-width: 250px;
-            "
+            style="left:{pos.x}px; top:{pos.y + 40}px; transform:translateX(-50%); z-index:20; max-width:250px;"
           >
             <div class="font-semibold flex items-center gap-2">
               <span>{typeConfig?.icon}</span>
@@ -490,32 +420,36 @@
             {#if hoveredElement.label}
               <div class="text-xs text-gray-200 mt-0.5">{hoveredElement.label}</div>
             {/if}
-            <div class="text-xs text-gray-400 mt-0.5">
-              {hoveredElement.subtype || hoveredElement.element_type}
-            </div>
+            <div class="text-xs text-gray-400 mt-0.5">{hoveredElement.subtype || hoveredElement.element_type}</div>
             {#if hoveredElement.status !== 'active'}
-              <div class="text-xs text-amber-400 mt-1 capitalize">
-                Status: {hoveredElement.status}
-              </div>
+              <div class="text-xs text-amber-400 mt-1 capitalize">Status: {hoveredElement.status}</div>
             {/if}
           </div>
         {/if}
       </div>
-      
+
       <!-- Instructions -->
       <div class="mt-4 flex items-start gap-2 text-sm text-gray-400">
         <Icon name="info" size={5} className="text-blue-400 flex-shrink-0 mt-0.5" />
         <p>
           {#if isReadOnly}
-            <strong>Click markers</strong> to view element details. 
-            <span class="text-amber-400">Read-only access — editing is disabled.</span>
+            <strong>Click markers</strong> to view element details.
+            <span class="text-amber-400"> Read-only access — editing is disabled.</span>
           {:else if canEdit}
-            <strong>Click anywhere</strong> on the floor plan to add a new element, 
-            <strong>click a marker</strong> to view and edit details,
-            or <strong>drag a marker</strong> to move it.
+            {#if newMode}
+              <span class="text-green-400 font-medium">New mode on</span> —
+              <strong>click anywhere</strong> on the plan to place a new element,
+              or <strong>drag a marker</strong> to move it.
+              Click <strong>New Off</strong> when done.
+            {:else}
+              <strong>Click a marker</strong> to view or edit details.
+              Enable <strong>New</strong> mode to place or move elements.
+            {/if}
           {/if}
           {#if hasActiveFilters}
-            <span class="text-amber-400 ml-1">Filters active — {elements.length - filteredElements.length} elements hidden.</span>
+            <span class="text-amber-400 ml-1">
+              Filters active — {elements.length - filteredElements.length} elements hidden.
+            </span>
           {/if}
         </p>
       </div>
@@ -526,27 +460,22 @@
       <div class="bg-slate-800/50 rounded-lg p-6 mt-6">
         <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
           <Icon name="table" size={5} className="text-purple-400" />
-          Elements List
+          Inventory
         </h3>
-        
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
               <tr class="border-b border-slate-700">
-                <th class="text-left py-3 px-4 font-semibold text-sm">Type</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Name</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Label</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Subtype</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Attributes</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Status</th>
-                <th class="text-left py-3 px-4 font-semibold text-sm">Actions</th>
+                {#each ['Type','Name','Label','Subtype','Attributes','Status','Actions'] as col}
+                  <th class="text-left py-3 px-4 font-semibold text-sm">{col}</th>
+                {/each}
               </tr>
             </thead>
             <tbody>
               {#each sortedElementsForTable as element (element.id)}
-                {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
-                {@const statusConfig = { active: 'text-green-400', failed: 'text-red-400', inactive: 'text-gray-400' }}
-                <tr 
+                {@const typeConfig   = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
+                {@const statusColors = { active: 'text-green-400', failed: 'text-red-400', inactive: 'text-gray-400' }}
+                <tr
                   class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
                   on:click={() => handleElementClick(element)}
                 >
@@ -557,11 +486,11 @@
                     </div>
                   </td>
                   <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, plan.floor_level)}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.label || '-'}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '-'}</td>
+                  <td class="py-3 px-4 text-sm text-gray-400">{element.label   || '—'}</td>
+                  <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
                   <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
                   <td class="py-3 px-4">
-                    <span class="text-sm capitalize {statusConfig[element.status] || 'text-gray-400'}">
+                    <span class="text-sm capitalize {statusColors[element.status] || 'text-gray-400'}">
                       {element.status}
                     </span>
                   </td>
@@ -570,10 +499,7 @@
                       variant="secondary"
                       size="small"
                       icon={canEdit ? 'edit' : 'eye'}
-                      on:click={(e) => {
-                        e.stopPropagation();
-                        handleElementClick(element);
-                      }}
+                      on:click={(e) => { e.stopPropagation(); handleElementClick(element); }}
                     >
                       {canEdit ? 'Edit' : 'View'}
                     </Button>
@@ -588,7 +514,7 @@
   </div>
 </div>
 
-<!-- Element Modal -->
+<!-- Modals -->
 {#if showElementModal}
   <ElementModal
     element={selectedElement}
@@ -596,49 +522,29 @@
     {plan}
     on:save={handleElementSave}
     on:delete={handleElementDelete}
-    on:close={() => {
-      showElementModal = false;
-      selectedElement = null;
-      newElementPosition = null;
-    }}
+    on:close={() => { showElementModal = false; selectedElement = null; newElementPosition = null; }}
   />
 {/if}
 
-<!-- Report Modal -->
 {#if showReportModal}
-  <PlansReport
-    {plan}
-    {elements}
-    on:close={() => showReportModal = false}
-  />
+  <PlansReport {plan} {elements} on:close={() => showReportModal = false} />
 {/if}
 
-<!-- Plan Info Modal — pass elements.length so delete confirmation shows correct count -->
 {#if showPlanInfoModal}
   <PlanInfoModal
     {plan}
     elementCount={elements.length}
-    on:updated={() => {
-      showPlanInfoModal = false;
-      dispatch('planUpdated');
-    }}
-    on:deleted={() => {
-      showPlanInfoModal = false;
-      dispatch('planDeleted');
-    }}
+    on:updated={() => { showPlanInfoModal = false; dispatch('planUpdated'); }}
+    on:deleted={() => { showPlanInfoModal = false; dispatch('planDeleted'); }}
     on:close={() => showPlanInfoModal = false}
   />
 {/if}
 
-<!-- Copy Plan Modal -->
 {#if showCopyModal}
   <CopyPlanModal
     {plan}
     {elements}
-    on:copied={(event) => {
-      showCopyModal = false;
-      dispatch('planCopied', { planId: event.detail.planId });
-    }}
+    on:copied={(e) => { showCopyModal = false; dispatch('planCopied', { planId: e.detail.planId }); }}
     on:close={() => showCopyModal = false}
   />
 {/if}

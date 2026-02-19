@@ -1,6 +1,6 @@
 /* src/app.css */
 /* Tailwind v4 compatible utilities */
-/* UPDATED: Added 25 new utility classes for better consolidation */
+/* UPDATED: Added checkbox, checkbox-sm, field-error, meta-row, attr-panel, filter-subpanel classes */
 
 @import "tailwindcss";
 
@@ -28,7 +28,11 @@
 
   /* ========== FORMS ========== */
   .input {
-    @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50;
+    @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input.error {
+    @apply border-red-400;
   }
 
   .input-search {
@@ -36,11 +40,26 @@
   }
 
   .select {
-    @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500;
+    @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .textarea {
-    @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none disabled:opacity-50;
+    @apply w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Checkbox — standard size (modals, forms) */
+  .checkbox {
+    @apply w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500 flex-shrink-0;
+  }
+
+  /* Checkbox — compact size (filter panels, dense lists) */
+  .checkbox-sm {
+    @apply w-3.5 h-3.5 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500 flex-shrink-0;
+  }
+
+  /* Validation error message below a field */
+  .field-error {
+    @apply text-red-400 text-sm mt-1;
   }
 
   /* ========== TYPOGRAPHY ========== */
@@ -253,6 +272,32 @@
 
   .clickable {
     @apply cursor-pointer transition-colors hover:bg-slate-700;
+  }
+
+  /* ========== METADATA / AUDIT ROWS ========== */
+  /* Created / Modified date line at bottom of modals */
+  .meta-row {
+    @apply text-sm text-gray-400 border-t border-slate-700 pt-3 flex flex-wrap gap-x-6;
+  }
+
+  /* ========== ATTRIBUTE PANELS (Plans app) ========== */
+  /* Coloured bordered attribute section within a modal */
+  .attr-panel {
+    @apply border border-slate-600 rounded-lg p-4 bg-slate-700/20;
+  }
+
+  .attr-panel-title {
+    @apply text-sm font-semibold mb-3;
+  }
+
+  /* ========== FILTER SUB-PANELS (Plans app) ========== */
+  /* Indented panel shown under a selected filter type checkbox */
+  .filter-subpanel {
+    @apply ml-6 mt-1 mb-2 pl-3 border-l-2 border-solid flex flex-col gap-3;
+  }
+
+  .filter-subpanel-label {
+    @apply text-xs text-gray-400 font-medium mb-1;
   }
 }
 

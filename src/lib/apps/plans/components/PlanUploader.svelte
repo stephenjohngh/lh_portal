@@ -8,34 +8,34 @@
   import Icon from '$lib/components/icons/Icon.svelte';
   import { plansStore } from '../stores/plansStore';
   import { MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES, FLOOR_LEVELS, DEFAULT_FLOOR_LEVEL } from '$lib/utils/planConstants';
-  
+
   const logger = getLogger('PlanUploader');
   const dispatch = createEventDispatcher();
-  
+
   let fileInput;
   let selectedFile = null;
-  let previewUrl = null;
-  let dragActive = false;
-  let uploading = false;
-  let errors = {};
-  
+  let previewUrl   = null;
+  let dragActive   = false;
+  let uploading    = false;
+  let errors       = {};
+
   let formData = { name: '', building: '', floor_level: DEFAULT_FLOOR_LEVEL, description: '' };
-  
+
   function handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) processFile(file);
   }
-  
+
   function handleDrop(event) {
     event.preventDefault();
     dragActive = false;
     const file = event.dataTransfer.files[0];
     if (file) processFile(file);
   }
-  
-  function handleDragOver(event) { event.preventDefault(); dragActive = true; }
-  function handleDragLeave() { dragActive = false; }
-  
+
+  function handleDragOver(event)  { event.preventDefault(); dragActive = true; }
+  function handleDragLeave()      { dragActive = false; }
+
   function processFile(file) {
     logger('Processing file:', file.name, file.type, file.size);
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -52,29 +52,28 @@
     reader.readAsDataURL(file);
     if (!formData.name) formData.name = file.name.replace(/\.[^/.]+$/, '');
   }
-  
+
   function validate() {
     errors = {};
-    if (!selectedFile) errors.file = 'Please select an image file';
-    if (!formData.name.trim()) errors.name = 'Plan name is required';
+    if (!selectedFile)             errors.file     = 'Please select an image file';
+    if (!formData.name.trim())     errors.name     = 'Plan name is required';
     if (!formData.building.trim()) errors.building = 'Building name is required';
     return Object.keys(errors).length === 0;
   }
-  
+
   async function handleUpload() {
     if (!validate()) { logger('❌ Validation failed:', errors); return; }
     uploading = true;
-    logger('Starting upload...');
     try {
-      const { url } = await plansStore.uploadImage(selectedFile);
+      const { url }  = await plansStore.uploadImage(selectedFile);
       const dimensions = await plansStore.getImageDimensions(url);
       const plan = await plansStore.createPlan({
-        name: formData.name.trim(),
-        building: formData.building.trim(),
-        floor_level: formData.floor_level,
-        description: formData.description.trim() || null,
-        image_url: url,
-        image_width: dimensions.width,
+        name:         formData.name.trim(),
+        building:     formData.building.trim(),
+        floor_level:  formData.floor_level,
+        description:  formData.description.trim() || null,
+        image_url:    url,
+        image_width:  dimensions.width,
         image_height: dimensions.height
       });
       logger('✅ Plan created:', plan.id);
@@ -86,25 +85,24 @@
       uploading = false;
     }
   }
-  
-  function handleClose() { dispatch('close'); }
-  
-  function removeFile() {
+
+  function handleClose()  { dispatch('close'); }
+  function removeFile()   {
     selectedFile = null;
-    previewUrl = null;
+    previewUrl   = null;
     if (fileInput) fileInput.value = '';
   }
 </script>
 
 <Modal show={true} size="large" on:close={handleClose}>
   <h3 slot="header" class="text-xl font-bold">Upload Floor Plan</h3>
-  
+
   <div class="section-spacing">
     <div>
       <p class="block text-sm font-medium mb-2">
         Floor Plan Image <span class="text-red-400">*</span>
       </p>
-      
+
       {#if !selectedFile}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -118,23 +116,16 @@
           <Icon name="upload" size={12} className="text-gray-400 mx-auto mb-4" />
           <p class="text-lg mb-2">Drag and drop image here</p>
           <p class="text-sm text-gray-400 mb-4">or click to browse</p>
-          <input
-            type="file"
-            accept=".png,.jpg,.jpeg,.svg"
-            bind:this={fileInput}
-            on:change={handleFileSelect}
-            class="hidden"
-          />
+          <input type="file" accept=".png,.jpg,.jpeg,.svg"
+            bind:this={fileInput} on:change={handleFileSelect} class="hidden" />
           <Button variant="primary" size="medium" icon="upload" on:click={() => fileInput.click()}>
             Browse Files
           </Button>
           <p class="text-xs text-gray-500 mt-4">
-            PNG, JPG, or SVG • Max {MAX_IMAGE_SIZE / 1024 / 1024}MB
+            PNG, JPG, or SVG · Max {MAX_IMAGE_SIZE / 1024 / 1024}MB
           </p>
         </div>
-        {#if errors.file}
-          <p class="text-red-400 text-sm mt-1">{errors.file}</p>
-        {/if}
+        {#if errors.file}<p class="field-error mt-1">{errors.file}</p>{/if}
       {:else}
         <div class="border border-slate-600 rounded-lg overflow-hidden">
           <div class="relative bg-slate-900 p-4">
@@ -153,18 +144,17 @@
         </div>
       {/if}
     </div>
-    
+
     <div>
       <label for="upload-plan-name" class="block text-sm font-medium mb-2">
         Plan Name <span class="text-red-400">*</span>
       </label>
       <input id="upload-plan-name" type="text" bind:value={formData.name}
         placeholder="e.g., Ground Floor"
-        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        class:border-red-500={errors.name} />
-      {#if errors.name}<p class="text-red-400 text-sm mt-1">{errors.name}</p>{/if}
+        class="input" class:error={errors.name} />
+      {#if errors.name}<p class="field-error">{errors.name}</p>{/if}
     </div>
-    
+
     <div class="grid grid-cols-2 gap-4">
       <div>
         <label for="upload-building" class="block text-sm font-medium mb-2">
@@ -172,33 +162,30 @@
         </label>
         <input id="upload-building" type="text" bind:value={formData.building}
           placeholder="e.g., Building A"
-          class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          class:border-red-500={errors.building} />
-        {#if errors.building}<p class="text-red-400 text-sm mt-1">{errors.building}</p>{/if}
+          class="input" class:error={errors.building} />
+        {#if errors.building}<p class="field-error">{errors.building}</p>{/if}
       </div>
       <div>
         <label for="upload-floor" class="block text-sm font-medium mb-2">Floor Level</label>
-        <select id="upload-floor" bind:value={formData.floor_level}
-          class="select w-full">
+        <select id="upload-floor" bind:value={formData.floor_level} class="select w-full">
           {#each FLOOR_LEVELS as level}
             <option value={level.value}>{level.label}</option>
           {/each}
         </select>
       </div>
     </div>
-    
+
     <div>
       <label for="upload-description" class="block text-sm font-medium mb-2">Description</label>
       <textarea id="upload-description" bind:value={formData.description}
-        placeholder="Optional description..." rows="3"
-        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-      ></textarea>
+        placeholder="Optional description..." rows="2"
+        class="textarea"></textarea>
     </div>
   </div>
-  
+
   <div slot="footer" class="btn-group justify-end">
     <Button variant="secondary" size="large" on:click={handleClose} disabled={uploading}>Cancel</Button>
-    <Button variant="primary" size="large" icon="check" on:click={handleUpload} disabled={uploading || !selectedFile}>
+    <Button variant="primary"   size="large" icon="check" on:click={handleUpload} disabled={uploading || !selectedFile}>
       {uploading ? 'Uploading...' : 'Create Floor Plan'}
     </Button>
   </div>
