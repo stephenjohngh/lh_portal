@@ -3,7 +3,7 @@
 
 import { writable } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
-import { logAuditEvent } from '$lib/utils/auditLogger';
+import { logAudit } from '$lib/utils/auditLogger';
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
 
@@ -16,24 +16,21 @@ async function getCurrentUserId() {
   return user.id;
 }
 
-// Fire-and-forget audit log — never throws, never blocks the main operation.
-function audit(eventType, eventAction, targetType, targetId, targetName, changes = null) {
-  logAuditEvent({
-    event_type:     eventType,
-    event_category: 'plans',
-    event_action:   eventAction,
-    target_type:    targetType,
-    target_id:      targetId,
-    target_name:    targetName,
-    app_id:         'plans',
-    severity:       eventType === 'delete' ? 'warning' : 'info',
-    changes
-  }).catch(err => logger('⚠️ Audit log failed (non-fatal):', err.message));
+// Thin wrapper — bakes in app-level defaults, stays fire-and-forget.
+function audit(eventType, targetType, targetId, targetName, data = {}) {
+  logAudit(eventType, targetType, targetId, targetName, {
+    appId:         'plans',
+    eventCategory: 'plans',
+    severity:      eventType === 'delete' ? 'warning' : 'info',
+    ...data
+  });
+  // Intentionally not awaited — audit must never block or throw to the caller.
 }
 
-// Return a subset of an object by key list
+// Return a subset of an object by key list (for before/after diffs)
 function pick(obj, keys) {
-  return Object.fromEntries(keys.map(k => [k, obj[k]]));
+  if (!obj) return {};
+  return Object.fromEntries(keys.filter(k => k in obj).map(k => [k, obj[k]]));
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -92,7 +89,10 @@ function createPlansStore() {
         const plan   = await api.create('plans', { ...planData, created_by: userId, updated_by: userId });
         logger('✅ Created plan:', plan.id);
         update(s => ({ ...s, plans: [plan, ...s.plans] }));
-        audit('create', 'create_plan', 'plan', plan.id, plan.name);
+        audit('create', 'plan', plan.id, plan.name, {
+          eventAction: 'create_plan',
+          afterData:   { name: plan.name, building: plan.building, floor_level: plan.floor_level }
+        });
         return plan;
       } catch (error) {
         logger('❌ Error creating plan:', error.message);
@@ -111,10 +111,12 @@ function createPlansStore() {
         logger('✅ Updated plan:', plan.id);
         update(s => ({ ...s, plans: s.plans.map(p => p.id === planId ? plan : p) }));
 
-        const changedFields = Object.keys(updates).filter(k => oldPlan && oldPlan[k] !== updates[k]);
-        audit('update', 'update_plan', 'plan', plan.id, plan.name,
-          oldPlan ? { before: pick(oldPlan, changedFields), after: pick(updates, changedFields), fields_changed: changedFields } : null
-        );
+        const fields = Object.keys(updates);
+        audit('update', 'plan', plan.id, plan.name, {
+          eventAction: 'update_plan',
+          beforeData:  pick(oldPlan, fields),
+          afterData:   pick(updates, fields)
+        });
         return plan;
       } catch (error) {
         logger('❌ Error updating plan:', error.message);
@@ -127,15 +129,19 @@ function createPlansStore() {
       try {
         let imageUrl = null;
         let planName = null;
+        let oldPlan  = null;
         update(s => {
-          const plan = s.plans.find(p => p.id === planId);
-          if (plan) { imageUrl = plan.image_url; planName = plan.name; }
+          oldPlan = s.plans.find(p => p.id === planId);
+          if (oldPlan) { imageUrl = oldPlan.image_url; planName = oldPlan.name; }
           return s;
         });
 
         await api.delete('plans', planId);
         logger('✅ Deleted plan:', planId);
-        audit('delete', 'delete_plan', 'plan', planId, planName);
+        audit('delete', 'plan', planId, planName, {
+          eventAction: 'delete_plan',
+          beforeData:  oldPlan ? { name: oldPlan.name, building: oldPlan.building, floor_level: oldPlan.floor_level } : undefined
+        });
 
         // Best-effort storage cleanup
         if (imageUrl) {
@@ -173,7 +179,10 @@ function createPlansStore() {
           elements: { ...s.elements, [planId]: [element, ...(s.elements[planId] || [])] }
         }));
         const elementName = element.asset_id || element.label || element.element_type;
-        audit('create', 'create_element', 'plan_element', element.id, elementName);
+        audit('create', 'plan_element', element.id, elementName, {
+          eventAction: 'create_element',
+          afterData:   { element_type: element.element_type, subtype: element.subtype, asset_id: element.asset_id, status: element.status }
+        });
         return element;
       } catch (error) {
         logger('❌ Error creating element:', error.message);
@@ -208,10 +217,12 @@ function createPlansStore() {
         });
 
         const elementName = element.asset_id || element.label || element.element_type;
-        const changedFields = Object.keys(updates).filter(k => k !== 'updated_by' && oldElement && oldElement[k] !== updates[k]);
-        audit('update', 'update_element', 'plan_element', element.id, elementName,
-          oldElement ? { before: pick(oldElement, changedFields), after: pick(updates, changedFields), fields_changed: changedFields } : null
-        );
+        const fields = Object.keys(updates).filter(k => k !== 'updated_by');
+        audit('update', 'plan_element', element.id, elementName, {
+          eventAction: 'update_element',
+          beforeData:  pick(oldElement, fields),
+          afterData:   pick(updates, fields)
+        });
         return element;
       } catch (error) {
         logger('❌ Error updating element:', error.message);
@@ -223,15 +234,19 @@ function createPlansStore() {
       logger('Deleting element:', elementId);
       try {
         let elementName = elementId;
+        let oldElement  = null;
         update(s => {
-          const el = (s.elements[planId] || []).find(e => e.id === elementId);
-          if (el) elementName = el.asset_id || el.label || el.element_type;
+          oldElement = (s.elements[planId] || []).find(e => e.id === elementId);
+          if (oldElement) elementName = oldElement.asset_id || oldElement.label || oldElement.element_type;
           return s;
         });
 
         await api.delete('plan_elements', elementId);
         logger('✅ Deleted element:', elementId);
-        audit('delete', 'delete_element', 'plan_element', elementId, elementName);
+        audit('delete', 'plan_element', elementId, elementName, {
+          eventAction: 'delete_element',
+          beforeData:  oldElement ? { element_type: oldElement.element_type, subtype: oldElement.subtype, asset_id: oldElement.asset_id, status: oldElement.status } : undefined
+        });
 
         update(s => ({
           ...s,

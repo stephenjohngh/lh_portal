@@ -39,10 +39,10 @@
       criticalEvents:    logs.filter(l => l.severity === 'critical').length,
       warningEvents:     logs.filter(l => l.severity === 'warning').length,
       flaggedEvents:     logs.filter(l => l.flagged).length,
-      authEvents:        logs.filter(l => l.app_id === 'users' && l.event_category === 'auth').length,
-      userEvents:        logs.filter(l => l.app_id === 'users' && l.event_category === 'users').length,
-      issueEvents:       logs.filter(l => l.app_id === 'issues').length,
-      planEvents:        logs.filter(l => l.app_id === 'plans').length
+      authEvents:        logs.filter(l => l.event_category === 'auth').length,
+      userEvents:        logs.filter(l => l.event_category === 'users').length,
+      issueEvents:       logs.filter(l => ['issues', 'comments', 'actions'].includes(l.event_category)).length,
+      planEvents:        logs.filter(l => l.event_category === 'plans' || l.app_id === 'plans').length
     };
   }
 
