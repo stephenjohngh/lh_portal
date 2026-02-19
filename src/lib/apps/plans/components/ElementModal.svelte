@@ -27,9 +27,9 @@
   export let plan;
   
   let formData = element ? { ...element } : {
-    element_type:    'door',
+    element_type:    'communal_door',
     label:           '',
-    subtype:         '',
+    subtype:         'Fire Door',
     asset_id:        '',
     status:          'active',
     notes:           '',
@@ -37,12 +37,12 @@
     y_position:      position?.y || 0,
     // Light attributes
     emergency:       false,
-    battery:         null,
+    battery:         'none',
     movement_sensor: false,
     light_sensor:    false,
     wattage:         null,
     // Door attributes
-    security:        null,
+    security:        'none',
     retained:        false
   };
   
@@ -56,8 +56,8 @@
   $: selectedTypeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === formData.element_type);
   $: modalTitle = isNew ? 'Add Element' : 'Edit Element';
   $: derivedName = getElementDisplayName({ asset_id: formData.asset_id, element_type: formData.element_type }, plan?.floor_level);
-  $: isLight = formData.element_type === 'light';
-  $: isDoor  = formData.element_type === 'door';
+  $: isLight  = formData.element_type === 'light';
+  $: isDoor   = formData.element_type === 'communal_door' || formData.element_type === 'apartment_door';
   
   function validate() {
     errors = {};
@@ -97,8 +97,10 @@
   function handleClose() { dispatch('close'); }
   
   function handleTypeChange() {
-    formData.subtype = '';
-    // Reset all type-specific attribute fields to prevent stale data
+    // Set subtype default for the new type
+    const subtypeDefaults = { communal_door: 'Fire Door', apartment_door: 'Fire Door', light: 'Bulkhead', fire_control: 'Sensor' };
+    formData.subtype = subtypeDefaults[formData.element_type] ?? '';
+    // Reset all type-specific attribute fields to their defaults
     Object.assign(formData, blankAttributes());
   }
   
@@ -172,7 +174,6 @@
           disabled={!editable}
           class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <option value="">-- Select subtype --</option>
           {#each subtypeOptions as subtype}
             <option value={subtype}>{subtype}</option>
           {/each}
@@ -227,7 +228,6 @@
               disabled={!editable}
               class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value={null}>-- Not set --</option>
               {#each BATTERY_OPTIONS as opt}
                 <option value={opt.value}>{opt.label}</option>
               {/each}
@@ -267,12 +267,10 @@
       </div>
     {/if}
 
-    <!-- Door Attributes — only shown when element_type = 'door' -->
-    {#if isDoor}
+    <!-- Door Attributes — communal_door only (apartment door has no attributes) -->
+    {#if formData.element_type === 'communal_door'}
       <div class="border border-slate-600 rounded-lg p-4 bg-slate-700/20">
-        <h4 class="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
-          🚪 Door Attributes
-        </h4>
+        <h4 class="text-sm font-semibold text-orange-700 mb-3">Door Attributes</h4>
         <div class="mb-3">
           <label for="door-security" class="block text-sm font-medium mb-2">Security</label>
           <select
@@ -281,7 +279,6 @@
             disabled={!editable}
             class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value={null}>-- Not set --</option>
             {#each SECURITY_OPTIONS as opt}
               <option value={opt.value}>{opt.label}</option>
             {/each}
@@ -322,17 +319,17 @@
         id="notes"
         bind:value={formData.notes}
         placeholder="Additional information..."
-        rows="3"
+        rows="2"
         disabled={!editable}
         class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
       ></textarea>
     </div>
     
     {#if !isNew && element}
-      <div class="text-sm text-gray-400 border-t border-slate-700 pt-3 space-y-1">
-        <p><span class="font-medium">Created:</span> {formatDateTime(element.created_at)}</p>
+      <div class="text-sm text-gray-400 border-t border-slate-700 pt-3 flex flex-wrap gap-x-6">
+        <span><span class="font-medium">Created:</span> {formatDateTime(element.created_at)}</span>
         {#if element.updated_at && element.updated_at !== element.created_at}
-          <p><span class="font-medium">Modified:</span> {formatDateTime(element.updated_at)}</p>
+          <span><span class="font-medium">Modified:</span> {formatDateTime(element.updated_at)}</span>
         {/if}
       </div>
     {/if}

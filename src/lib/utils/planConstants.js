@@ -2,15 +2,17 @@
 // Constants for Plans app - element types, subtypes, colors, and configurations
 
 export const ELEMENT_TYPES = {
-  DOOR:         'door',
-  LIGHT:        'light',
-  FIRE_CONTROL: 'fire_control'
+  COMMUNAL_DOOR:   'communal_door',
+  APARTMENT_DOOR:  'apartment_door',
+  LIGHT:           'light',
+  FIRE_CONTROL:    'fire_control'
 };
 
 export const ELEMENT_TYPE_OPTIONS = [
-  { value: 'door',         label: 'Door',         icon: '🚪', color: '#f97316', description: 'Entrance, fire, emergency and interior doors' },
-  { value: 'light',        label: 'Light',        icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
-  { value: 'fire_control', label: 'Fire Control', icon: '🔴', color: '#ef4444', description: 'Sensors and call points' }
+  { value: 'communal_door',  label: 'Communal Door',  icon: '🚪', color: '#c2410c', description: 'Entrance, fire, emergency and interior communal doors' },
+  { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#a855f7', description: 'Apartment fire doors' },
+  { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
+  { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors and call points' }
 ];
 
 export const ELEMENT_STATUS = {
@@ -49,16 +51,17 @@ export const DEFAULT_FLOOR_LEVEL = 'G';
 
 // Subtype options per element type
 export const ELEMENT_SUBTYPES = {
-  light:        ['Bulkhead', 'Batten', 'Exit', 'Downlight', 'Pendant'],
-  door:         ['Entrance', 'Fire Door', 'Double Fire Door', 'Emergency Exit', 'Gate', 'Apartment', 'Interior'],
-  fire_control: ['Sensor', 'Call Point']
+  communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
+  apartment_door: ['Fire Door'],
+  light:          ['Bulkhead', 'Batten', 'Exit', 'Downlight', 'Pendant'],
+  fire_control:   ['Sensor', 'Call Point']
 };
 
 // Battery options — for Light elements
 export const BATTERY_OPTIONS = [
   { value: 'central', label: 'Central Battery' },
   { value: 'local',   label: 'Local Battery' },
-  { value: 'none',    label: 'None (Mains)' }
+  { value: 'none',    label: 'None' }
 ];
 
 // Security options — for Door elements
@@ -118,11 +121,11 @@ export function getFloorLevelLabel(value) {
 export function blankAttributes() {
   return {
     emergency:       false,
-    battery:         null,
+    battery:         'none',
     movement_sensor: false,
     light_sensor:    false,
     wattage:         null,
-    security:        null,
+    security:        'none',
     retained:        false
   };
 }
@@ -136,14 +139,14 @@ export function getAttributeSummary(element) {
     const parts = [];
     if (element.battery === 'central') parts.push('Central Batt.');
     if (element.battery === 'local')   parts.push('Local Batt.');
-    if (element.battery === 'none')    parts.push('Mains');
+    if (element.battery === 'none')    parts.push('No Battery');
     if (element.wattage)               parts.push(`${element.wattage}W`);
     if (element.emergency)             parts.push('⚠ Emerg');
     if (element.movement_sensor)       parts.push('👁 Motion');
     if (element.light_sensor)          parts.push('☀ Light Snsr');
     return parts.length ? parts.join(' · ') : '—';
   }
-  if (element.element_type === 'door') {
+  if (element.element_type === 'communal_door' || element.element_type === 'apartment_door') {
     const parts = [];
     if (element.security === 'electronic') parts.push('Electronic');
     if (element.security === 'mechanical') parts.push('Mechanical');
@@ -159,9 +162,10 @@ export function getAttributeSummary(element) {
 
 // Initial letter per element type used in derived name
 const TYPE_INITIALS = {
-  light:        'L',
-  door:         'D',
-  fire_control: 'F'
+  communal_door:  'D',
+  apartment_door: 'A',
+  light:          'L',
+  fire_control:   'F'
 };
 
 /**

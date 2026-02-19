@@ -50,9 +50,10 @@
     types:       [],
     statuses:    [],
     searchText:  '',
-    lightFilters: { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
-    doorFilters:  { subtypes: [], security: [], retained: false },
-    fireFilters:  { subtypes: [] }
+    lightFilters:    { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
+    communalFilters: { subtypes: [], security: [], retained: false },
+    apartmentFilters:{ security: [], retained: false },
+    fireFilters:     { subtypes: [] }
   };
   
   // Only reload elements when plan.id changes - not on every reactive update
@@ -149,15 +150,24 @@
         result = result.filter(el => el.element_type !== 'light' || el.light_sensor === true);
     }
 
-    // Door attribute filters
-    const df = filters.doorFilters;
-    if (df) {
-      if (df.subtypes?.length > 0)
-        result = result.filter(el => el.element_type !== 'door' || df.subtypes.includes(el.subtype));
-      if (df.security?.length > 0)
-        result = result.filter(el => el.element_type !== 'door' || df.security.includes(el.security));
-      if (df.retained)
-        result = result.filter(el => el.element_type !== 'door' || el.retained === true);
+    // Communal door attribute filters
+    const cf = filters.communalFilters;
+    if (cf) {
+      if (cf.subtypes?.length > 0)
+        result = result.filter(el => el.element_type !== 'communal_door' || cf.subtypes.includes(el.subtype));
+      if (cf.security?.length > 0)
+        result = result.filter(el => el.element_type !== 'communal_door' || cf.security.includes(el.security));
+      if (cf.retained)
+        result = result.filter(el => el.element_type !== 'communal_door' || el.retained === true);
+    }
+
+    // Apartment door attribute filters
+    const af = filters.apartmentFilters;
+    if (af) {
+      if (af.security?.length > 0)
+        result = result.filter(el => el.element_type !== 'apartment_door' || af.security.includes(el.security));
+      if (af.retained)
+        result = result.filter(el => el.element_type !== 'apartment_door' || el.retained === true);
     }
 
     // Fire Control attribute filters

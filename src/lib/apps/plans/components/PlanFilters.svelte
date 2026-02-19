@@ -29,21 +29,23 @@
   let lightMovement       = false;
   let lightLightSensor    = false;
 
-  // Door sub-filters
-  let doorSubtypes  = [];
-  let doorSecurity  = [];
-  let doorRetained  = false;
+  // Communal door sub-filters
+  let communalSubtypes  = [];
+  let communalSecurity  = [];
+  let communalRetained  = false;
+
+  // Apartment door has no sub-filters
 
   // Fire Control sub-filters
   let fireSubtypes = [];
 
-  $: lightSelected = selectedTypes.includes('light');
-  $: doorSelected  = selectedTypes.includes('door');
-  $: fireSelected  = selectedTypes.includes('fire_control');
+  $: communalSelected   = selectedTypes.includes('communal_door');
+  $: lightSelected      = selectedTypes.includes('light');
+  $: fireSelected       = selectedTypes.includes('fire_control');
 
   $: hasFilters = selectedTypes.length > 0 || selectedStatuses.length > 0 || searchText.length > 0 ||
     lightSubtypes.length > 0 || lightBattery.length > 0 || lightEmergency || lightMovement || lightLightSensor ||
-    doorSubtypes.length > 0 || doorSecurity.length > 0 || doorRetained ||
+    communalSubtypes.length > 0 || communalSecurity.length > 0 || communalRetained ||
     fireSubtypes.length > 0;
   
   $: {
@@ -51,9 +53,10 @@
       types:       selectedTypes,
       statuses:    selectedStatuses,
       searchText,
-      lightFilters: { subtypes: lightSubtypes, battery: lightBattery, emergency: lightEmergency, movementSensor: lightMovement, lightSensor: lightLightSensor },
-      doorFilters:  { subtypes: doorSubtypes,  security: doorSecurity, retained: doorRetained },
-      fireFilters:  { subtypes: fireSubtypes }
+      lightFilters:    { subtypes: lightSubtypes, battery: lightBattery, emergency: lightEmergency, movementSensor: lightMovement, lightSensor: lightLightSensor },
+      communalFilters: { subtypes: communalSubtypes, security: communalSecurity, retained: communalRetained },
+      apartmentFilters:{ },
+      fireFilters:     { subtypes: fireSubtypes }
     });
   }
   
@@ -61,9 +64,10 @@
     if (selectedTypes.includes(type)) {
       selectedTypes = selectedTypes.filter(t => t !== type);
       // Clear sub-filters for this type when deselected
-      if (type === 'light')        { lightSubtypes = []; lightBattery = []; lightEmergency = false; lightMovement = false; lightLightSensor = false; }
-      if (type === 'door')         { doorSubtypes = []; doorSecurity = []; doorRetained = false; }
-      if (type === 'fire_control') { fireSubtypes = []; }
+      if (type === 'light')         { lightSubtypes = []; lightBattery = []; lightEmergency = false; lightMovement = false; lightLightSensor = false; }
+      if (type === 'communal_door') { communalSubtypes = []; communalSecurity = []; communalRetained = false; }
+      if (type === 'apartment_door'){ /* no sub-filters */ }
+      if (type === 'fire_control')  { fireSubtypes = []; }
     } else {
       selectedTypes = [...selectedTypes, type];
     }
@@ -84,7 +88,7 @@
     selectedStatuses = [];
     searchText       = '';
     lightSubtypes = []; lightBattery = []; lightEmergency = false; lightMovement = false; lightLightSensor = false;
-    doorSubtypes  = []; doorSecurity  = []; doorRetained   = false;
+    communalSubtypes  = []; communalSecurity  = []; communalRetained  = false;
     fireSubtypes  = [];
   }
 </script>
@@ -125,7 +129,6 @@
               on:change={() => toggleType(type.value)}
               class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
             />
-            <span class="text-lg">{type.icon}</span>
             <span class="flex-1 text-sm">{type.label}</span>
             <Badge variant="info" outline>{elementCounts[type.value] || 0}</Badge>
           </label>
@@ -163,7 +166,7 @@
                 <label class="flex items-center gap-1.5 cursor-pointer">
                   <input type="checkbox" bind:checked={lightEmergency}
                     class="w-3.5 h-3.5 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-                  <span class="text-xs">Emergency only</span>
+                  <span class="text-xs">Emergency</span>
                 </label>
                 <label class="flex items-center gap-1.5 cursor-pointer">
                   <input type="checkbox" bind:checked={lightMovement}
@@ -179,16 +182,16 @@
             </div>
           {/if}
 
-          <!-- Door sub-filters -->
-          {#if type.value === 'door' && isSelected}
+          <!-- Communal Door sub-filters -->
+          {#if type.value === 'communal_door' && isSelected}
             <div class="ml-6 mt-1 mb-2 pl-3 border-l-2 border-orange-500/30 space-y-3">
               <div>
                 <p class="text-xs text-gray-400 font-medium mb-1">Subtype</p>
                 <div class="flex flex-wrap gap-x-3 gap-y-1">
-                  {#each ELEMENT_SUBTYPES.door as sub}
+                  {#each ELEMENT_SUBTYPES.communal_door as sub}
                     <label class="flex items-center gap-1.5 cursor-pointer">
-                      <input type="checkbox" checked={doorSubtypes.includes(sub)}
-                        on:change={() => doorSubtypes = toggleArr(doorSubtypes, sub)}
+                      <input type="checkbox" checked={communalSubtypes.includes(sub)}
+                        on:change={() => communalSubtypes = toggleArr(communalSubtypes, sub)}
                         class="w-3.5 h-3.5 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
                       <span class="text-xs">{sub}</span>
                     </label>
@@ -200,8 +203,8 @@
                 <div class="space-y-1">
                   {#each SECURITY_OPTIONS as opt}
                     <label class="flex items-center gap-1.5 cursor-pointer">
-                      <input type="checkbox" checked={doorSecurity.includes(opt.value)}
-                        on:change={() => doorSecurity = toggleArr(doorSecurity, opt.value)}
+                      <input type="checkbox" checked={communalSecurity.includes(opt.value)}
+                        on:change={() => communalSecurity = toggleArr(communalSecurity, opt.value)}
                         class="w-3.5 h-3.5 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
                       <span class="text-xs">{opt.label}</span>
                     </label>
@@ -209,9 +212,9 @@
                 </div>
               </div>
               <label class="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" bind:checked={doorRetained}
+                <input type="checkbox" bind:checked={communalRetained}
                   class="w-3.5 h-3.5 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-                <span class="text-xs">Retained only</span>
+                <span class="text-xs">Retained</span>
               </label>
             </div>
           {/if}
@@ -250,7 +253,6 @@
             on:change={() => toggleStatus(status.value)}
             class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
           />
-          <div class="w-3 h-3 rounded-full" style="background-color: {status.color}"></div>
           <span class="flex-1 text-sm">{status.label}</span>
         </label>
       {/each}
@@ -261,15 +263,19 @@
     <h4 class="text-sm font-semibold mb-2">Legend</h4>
     <div class="space-y-1 text-xs text-gray-400">
       <div class="flex items-center gap-2">
-        <div class="w-3 h-3 rounded-full bg-orange-500"></div>
-        <span>Orange = Doors</span>
+        <div class="w-3 h-3 rounded-sm bg-orange-800"></div>
+        <span>Brown = Communal Doors</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="w-3 h-3 rounded-sm bg-purple-500"></div>
+        <span>Purple = Apartment Doors</span>
       </div>
       <div class="flex items-center gap-2">
         <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
         <span>Yellow = Lights</span>
       </div>
       <div class="flex items-center gap-2">
-        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+        <div class="w-3 h-3 rounded-sm bg-red-500"></div>
         <span>Red = Fire Control</span>
       </div>
     </div>

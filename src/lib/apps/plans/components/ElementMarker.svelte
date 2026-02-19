@@ -14,7 +14,7 @@
   export let isDragging = false;
   export let isFiltered = false;
   
-  $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type) || ELEMENT_TYPE_OPTIONS[4];
+  $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type) || ELEMENT_TYPE_OPTIONS[0];
   $: radius = (isHovered || isDragging) ? MARKER_HOVER_RADIUS : MARKER_RADIUS;
   $: opacity = element.status === 'active' ? 1 : 0.5;
   $: strokeWidth = (isHovered || isDragging) ? 3 : 2;
@@ -22,7 +22,9 @@
   // Dim non-filtered elements when filtering is active
   $: displayOpacity = isFiltered ? 0.2 : opacity;
 
-  $: isDoor = element.element_type === 'door';
+  $: isDoor          = element.element_type === 'communal_door';
+  $: isApartmentDoor = element.element_type === 'apartment_door';
+  $: isFireControl   = element.element_type === 'fire_control';
 </script>
 
 <!-- class element-marker-group is used by PlanViewer to detect marker clicks vs empty area clicks -->
@@ -39,7 +41,7 @@
 >
   <!-- Outer glow on hover or drag -->
   {#if isHovered || isDragging}
-    {#if isDoor}
+    {#if isDoor || isApartmentDoor || isFireControl}
       <rect
         x={position.x - radius - 4}
         y={position.y - radius - 4}
@@ -62,8 +64,9 @@
     {/if}
   {/if}
   
-  <!-- Main shape: square for doors, circle for everything else -->
+  <!-- Main shape per type -->
   {#if isDoor}
+    <!-- Communal door: orange square -->
     <rect
       x={position.x - radius}
       y={position.y - radius}
@@ -76,7 +79,56 @@
       stroke-width={strokeWidth}
       class="transition-all"
     />
+  {:else if isApartmentDoor}
+    <!-- Apartment door: purple square with small inner square -->
+    <rect
+      x={position.x - radius}
+      y={position.y - radius}
+      width={radius * 2}
+      height={radius * 2}
+      rx="3"
+      fill={typeConfig.color}
+      opacity={displayOpacity}
+      stroke="white"
+      stroke-width={strokeWidth}
+      class="transition-all"
+    />
+    <rect
+      x={position.x - radius * 0.45}
+      y={position.y - radius * 0.45}
+      width={radius * 0.9}
+      height={radius * 0.9}
+      rx="1"
+      fill="white"
+      opacity={displayOpacity}
+      pointer-events="none"
+    />
+  {:else if isFireControl}
+    <!-- Fire control: red square with white centre square -->
+    <rect
+      x={position.x - radius}
+      y={position.y - radius}
+      width={radius * 2}
+      height={radius * 2}
+      rx="3"
+      fill={typeConfig.color}
+      opacity={displayOpacity}
+      stroke="white"
+      stroke-width={strokeWidth}
+      class="transition-all"
+    />
+    <rect
+      x={position.x - radius * 0.45}
+      y={position.y - radius * 0.45}
+      width={radius * 0.9}
+      height={radius * 0.9}
+      rx="1"
+      fill="white"
+      opacity={displayOpacity}
+      pointer-events="none"
+    />
   {:else}
+    <!-- Light: yellow circle with emoji -->
     <circle
       cx={position.x}
       cy={position.y}
@@ -87,31 +139,29 @@
       stroke-width={strokeWidth}
       class="transition-all"
     />
+    <text
+      x={position.x}
+      y={position.y}
+      text-anchor="middle"
+      dominant-baseline="central"
+      font-size={radius * 1.2}
+      fill="white"
+      pointer-events="none"
+      class="transition-all"
+    >
+      {typeConfig.icon}
+    </text>
   {/if}
   
-  <!-- Element type icon (using text as emoji) -->
-  <text
-    x={position.x}
-    y={position.y}
-    text-anchor="middle"
-    dominant-baseline="central"
-    font-size={radius * 1.2}
-    fill="white"
-    pointer-events="none"
-    class="transition-all"
-  >
-    {typeConfig.icon}
-  </text>
-  
-  <!-- Status indicator (small circle in top-right, hidden when active) -->
+  <!-- Status indicator (top-right corner, hidden when active) -->
   {#if element.status === 'failed'}
     <circle
       cx={position.x + radius - 3}
       cy={position.y - radius + 3}
-      r="4"
+      r="8"
       fill="#ef4444"
       stroke="white"
-      stroke-width="1.5"
+      stroke-width="2"
       pointer-events="none"
     />
   {:else if element.status === 'inactive'}
