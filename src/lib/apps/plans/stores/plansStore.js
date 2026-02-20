@@ -6,6 +6,25 @@ import { getLogger } from '$lib/utils/logger';
 import { logAudit } from '$lib/utils/auditLogger';
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
+import { FLOOR_LEVELS } from '$lib/utils/planConstants';
+
+// Custom floor level sort order — mirrors the dropdown menu order exactly.
+// L (Lower), U (Upper), G (Ground), 1–7
+const FLOOR_LEVEL_ORDER = Object.fromEntries(
+  FLOOR_LEVELS.map((f, i) => [f.value, i])
+);
+
+function sortPlans(plans) {
+  return plans.slice().sort((a, b) => {
+    // Primary: building name alphabetically
+    const buildingCmp = (a.building ?? '').localeCompare(b.building ?? '');
+    if (buildingCmp !== 0) return buildingCmp;
+    // Secondary: floor level by dropdown order (L, U, G, 1, 2 … 7)
+    const aOrder = FLOOR_LEVEL_ORDER[String(a.floor_level)] ?? 999;
+    const bOrder = FLOOR_LEVEL_ORDER[String(b.floor_level)] ?? 999;
+    return aOrder - bOrder;
+  });
+}
 
 const logger = getLogger('plansStore');
 
@@ -51,11 +70,12 @@ function createPlansStore() {
       try {
         const plans = await api.get('plans', {
           select:    '*, created_by_profile:profiles!created_by(full_name), updated_by_profile:profiles!updated_by(full_name)',
-          orderBy:   'created_at',
-          ascending: false
+          orderBy:   'building',
+          ascending: true
         });
-        logger('✅ Loaded plans:', plans.length);
-        update(s => ({ ...s, plans, loading: false }));
+        const sorted = sortPlans(plans);
+        logger('✅ Loaded plans:', sorted.length);
+        update(s => ({ ...s, plans: sorted, loading: false }));
         return plans;
       } catch (error) {
         logger('❌ Error loading plans:', error.message);
@@ -143,14 +163,31 @@ function createPlansStore() {
           beforeData:  oldPlan ? { name: oldPlan.name, building: oldPlan.building, floor_level: oldPlan.floor_level } : undefined
         });
 
-        // Best-effort storage cleanup
+        // Storage cleanup — delete the image file from the plan-images bucket.
+        // We parse the URL properly rather than using a bare regex so that
+        // query-string cache tokens (e.g. ?t=...) and URL-encoded characters
+        // don't corrupt the storage path passed to remove().
         if (imageUrl) {
           try {
-            const match = imageUrl.match(/\/plan-images\/(.+)$/);
-            if (match) {
-              const { error: storageError } = await supabase.storage.from('plan-images').remove([match[1]]);
+            // Supabase public URL format:
+            //   https://<project>.supabase.co/storage/v1/object/public/plan-images/<path>
+            // We need just <path> — everything after /plan-images/
+            const parsed    = new URL(imageUrl);
+            const marker    = '/plan-images/';
+            const markerIdx = parsed.pathname.indexOf(marker);
+            if (markerIdx !== -1) {
+              // Decode any %2F / %20 etc so the path matches what was uploaded
+              const storagePath = decodeURIComponent(
+                parsed.pathname.slice(markerIdx + marker.length)
+              );
+              logger('Removing storage file:', storagePath);
+              const { error: storageError } = await supabase.storage
+                .from('plan-images')
+                .remove([storagePath]);
               if (storageError) logger('⚠️ Storage cleanup failed:', storageError.message);
-              else logger('✅ Deleted image from storage:', match[1]);
+              else              logger('✅ Deleted image from storage:', storagePath);
+            } else {
+              logger('⚠️ Could not parse storage path from URL:', imageUrl);
             }
           } catch (err) { logger('⚠️ Storage cleanup error:', err.message); }
         }

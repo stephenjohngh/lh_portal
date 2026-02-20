@@ -58,9 +58,9 @@
         // Copy all fields including the 7 typed attribute columns
         await plansStore.createElement(newPlan.id, {
           element_type:    el.element_type,
-          label:           el.label,
+          asset_id:        el.asset_id,   // preserve — asset IDs are physical identifiers, not names
+          label:           null,          // reset — labels are plan-specific descriptions
           subtype:         el.subtype,
-          asset_id:        null,          // reset — derived name will show "No ID" until reassigned
           x_position:      el.x_position,
           y_position:      el.y_position,
           status:          el.status,
@@ -162,7 +162,7 @@
         <h4 class="font-semibold text-white mb-2">What will be copied</h4>
         <p>✓ Floor plan image ({plan.image_width} × {plan.image_height})</p>
         <p>✓ All {elements.length} elements with positions, types, subtypes, attributes, status and notes</p>
-        <p class="text-amber-400">⚠ Asset IDs reset to null — names will show as "No ID" until reassigned</p>
+        <p>✓ Asset IDs preserved — labels reset to blank</p>
       </div>
 
     {:else}

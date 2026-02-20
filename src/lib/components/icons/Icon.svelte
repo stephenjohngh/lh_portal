@@ -9,10 +9,6 @@
     home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
     menu: 'M4 6h16M4 12h16M4 18h16',
     grid: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z',
-    
-//lhlogo
-lhlogo: 'M1.357 1.461h5.426v5.426H1.357zm8.557 0h5.426v5.426H9.913zM1.357 8.974h5.426v5.426H1.357zm8.557 0h5.426v5.739H9.913zm0 7.513h5.426v5.426H9.913zm-0.313 7.2h5.739v5.739H9.6zm8.139 0h5.426v5.739h-5.426zM14.817 8.974c1.099 -0.004 2.195 -0.001 3.294 0.039l0.343 0.01c1.427 0.052 2.517 0.388 3.564 1.412 1.128 1.364 1.208 2.636 1.189 4.335 -0.007 2.415 -0.024 4.832 -0.041 7.143h-5.426v-7.2c-0.104 0.104 -0.104 0.104 -2.922 0zM1.461 16.487h5.322l0.104 7.096c1.394 0 2.817 0.104 2.817 0.104v5.739c-2.009 0 -4.054 0 -6.47 -0.835 -0.98 -0.737 -1.51 -1.675 -1.774 -2.609 -0.04 -0.73 -0.035 -1.461 -0.03 -2.191 0.009 -2.504 0.016 -4.904 0.03 -7.304',
-
 
     // User & Auth
     user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
@@ -40,13 +36,44 @@ lhlogo: 'M1.357 1.461h5.426v5.426H1.357zm8.557 0h5.426v5.426H9.913zM1.357 8.974h
     
     // Reports & Downloads
     download: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
-    chart: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
+    chart: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+
+    // Map / Floor plans
+    map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
   };
-  
+
+  // lhlogo is the only icon drawn natively for the 24×30 viewBox.
+  // All other icons were drawn for 24×24, so we shift them down 3 units
+  // to centre them vertically in the taller canvas.
+  $: isNative30 = name === 'lhlogo';
   $: path = icons[name] || icons.grid;
   $: sizeClass = `w-${size} h-${size}`;
 </script>
 
-<svg class={`${sizeClass} ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 30">
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={path} />
+<svg
+  class={`${sizeClass} ${className}`}
+  fill="none"
+  stroke="currentColor"
+  viewBox="0 0 24 30"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  {#if name === 'lhlogo'}
+    <!-- lhlogo path is native to the 24×30 viewBox — no transform needed -->
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M1.357 1.461h5.426v5.426H1.357zm8.557 0h5.426v5.426H9.913zM1.357 8.974h5.426v5.426H1.357zm8.557 0h5.426v5.739H9.913zm0 7.513h5.426v5.426H9.913zm-0.313 7.2h5.739v5.739H9.6zm8.139 0h5.426v5.739h-5.426zM14.817 8.974c1.099 -0.004 2.195 -0.001 3.294 0.039l0.343 0.01c1.427 0.052 2.517 0.388 3.564 1.412 1.128 1.364 1.208 2.636 1.189 4.335 -0.007 2.415 -0.024 4.832 -0.041 7.143h-5.426v-7.2c-0.104 0.104 -0.104 0.104 -2.922 0zM1.461 16.487h5.322l0.104 7.096c1.394 0 2.817 0.104 2.817 0.104v5.739c-2.009 0 -4.054 0 -6.47 -0.835 -0.98 -0.737 -1.51 -1.675 -1.774 -2.609 -0.04 -0.73 -0.035 -1.461 -0.03 -2.191 0.009 -2.504 0.016 -4.904 0.03 -7.304"
+    />
+  {:else}
+    <!-- All other icons: drawn for 24×24, centred in 24×30 by shifting down 3 units -->
+    <g transform="translate(0, 3)">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d={path}
+      />
+    </g>
+  {/if}
 </svg>
