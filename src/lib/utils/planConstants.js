@@ -22,7 +22,7 @@ export const ELEMENT_STATUS = {
 };
 
 export const ELEMENT_STATUS_OPTIONS = [
-  { value: 'active',   label: 'Active',   color: '#22c55e' },
+  { value: 'active',   label: 'OK',       color: '#22c55e' },
   { value: 'failed',   label: 'Failed',   color: '#ef4444' },
   { value: 'inactive', label: 'Inactive', color: '#64748b' }
 ];

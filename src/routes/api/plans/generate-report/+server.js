@@ -1,323 +1,248 @@
 // src/routes/api/plans/generate-report/+server.js
-// Generate Word document report for floor plan
+// Generate Word document report for a single floor plan.
 
 import { json } from '@sveltejs/kit';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle } from 'docx';
+import {
+  Document, Packer,
+  Paragraph, TextRun,
+  Table, TableRow, TableCell,
+  ImageRun,
+  WidthType, AlignmentType, HeadingLevel, BorderStyle
+} from 'docx';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('generatePlanReport');
 
-// Derived display name: "floor_level / asset_id"
+// ── Type initials — matches planConstants.js TYPE_INITIALS ─────────────────
+const TYPE_INITIALS = {
+  communal_door:  'D',
+  apartment_door: 'A',
+  light:          'L',
+  fire_control:   'F'
+};
+
+// ── Display name: FloorCode/TypeInitial/AssetID e.g. "G/D/001" ───────────
 function getElementDisplayName(element, floorLevel) {
   const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
-  const id    = element.asset_id ? element.asset_id : 'No ID';
-  return `${floor} / ${id}`;
+  const type  = TYPE_INITIALS[element.element_type] ?? '?';
+  const id    = element.asset_id || 'No ID';
+  return `${floor}/${type}/${id}`;
 }
 
-// Sort elements: by asset_id (numeric-aware), fallback to id
-function sortElementsByName(a, b) {
-  const idA = a.asset_id || '';
-  const idB = b.asset_id || '';
-  return idA.localeCompare(idB, undefined, { numeric: true });
+// ── Status label — 'active' → 'OK' ────────────────────────────────────────
+function statusLabel(s) {
+  return { active: 'OK', failed: 'Failed', inactive: 'Inactive',
+           maintenance: 'Maintenance', removed: 'Removed' }[s] ?? s ?? '—';
 }
 
+// ── Sort elements by asset_id (numeric-aware) ─────────────────────────────
+function sortByAssetId(a, b) {
+  return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
+}
+
+// ── Detect image type from URL ────────────────────────────────────────────
+function imageTypeFromUrl(url) {
+  const lower = (url || '').toLowerCase();
+  if (lower.includes('.jpg') || lower.includes('.jpeg')) return 'jpg';
+  if (lower.includes('.gif'))  return 'gif';
+  if (lower.includes('.bmp'))  return 'bmp';
+  return 'png'; // safe default
+}
+
+// ── Table borders ─────────────────────────────────────────────────────────
+const BORDERS = {
+  top:              { style: BorderStyle.SINGLE, size: 1 },
+  bottom:           { style: BorderStyle.SINGLE, size: 1 },
+  left:             { style: BorderStyle.SINGLE, size: 1 },
+  right:            { style: BorderStyle.SINGLE, size: 1 },
+  insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
+  insideVertical:   { style: BorderStyle.SINGLE, size: 1 }
+};
+
+function headerCell(text, size) {
+  return new TableCell({
+    children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })],
+    width: { size, type: WidthType.PERCENTAGE }
+  });
+}
+
+function dataCell(text) {
+  return new TableCell({ children: [new Paragraph(String(text ?? '—'))] });
+}
+
+// ── POST handler ──────────────────────────────────────────────────────────
 export async function POST({ request }) {
   logger('📄 POST /api/plans/generate-report — request received');
 
   try {
-    logger('Step 1: Parsing request body');
     const { plan, elements, options } = await request.json();
 
-    logger('Step 2: Parsed OK —', {
-      planName: plan?.name,
-      planBuilding: plan?.building,
-      floorLevel: plan?.floor_level,
-      elementCount: elements?.length,
-      options
-    });
-
     if (!plan || !elements || !options) {
-      logger('❌ Missing required fields in request body');
       return json({ error: 'Missing plan, elements, or options' }, { status: 400 });
     }
 
-    // Create document sections
+    logger('Plan:', plan.name, '| Elements:', elements.length, '| Options:', options);
+
     const docSections = [];
-    logger('Step 3: Building document sections');
 
-    // Title
-    docSections.push(
-      new Paragraph({
-        text: `Floor Plan Report`,
-        heading: HeadingLevel.HEADING_1,
-        spacing: { after: 200 }
-      })
-    );
+    // ── Title ───────────────────────────────────────────────────────────────
+    docSections.push(new Paragraph({
+      text: 'Floor Plan Report',
+      heading: HeadingLevel.HEADING_1,
+      spacing: { after: 200 }
+    }));
 
-    // Plan details
-    docSections.push(
-      new Paragraph({
+    // ── Plan metadata ───────────────────────────────────────────────────────
+    const metaRows = [
+      ['Plan',        plan.name],
+      ['Building',    plan.building],
+      ['Floor Level', String(plan.floor_level ?? '—')],
+      ['Total Elements', String(elements.length)],
+    ];
+    if (plan.description) metaRows.splice(3, 0, ['Description', plan.description]);
+
+    for (const [label, value] of metaRows) {
+      docSections.push(new Paragraph({
+        spacing: { after: 100 },
         children: [
-          new TextRun({ text: 'Plan: ', bold: true }),
-          new TextRun(plan.name)
-        ],
-        spacing: { after: 100 }
-      })
-    );
-
-    docSections.push(
-      new Paragraph({
-        children: [
-          new TextRun({ text: 'Building: ', bold: true }),
-          new TextRun(plan.building)
-        ],
-        spacing: { after: 100 }
-      })
-    );
-
-    docSections.push(
-      new Paragraph({
-        children: [
-          new TextRun({ text: 'Floor Level: ', bold: true }),
-          new TextRun(String(plan.floor_level))
-        ],
-        spacing: { after: 100 }
-      })
-    );
-
-    if (plan.description) {
-      docSections.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'Description: ', bold: true }),
-            new TextRun(plan.description)
-          ],
-          spacing: { after: 200 }
-        })
-      );
+          new TextRun({ text: `${label}: `, bold: true }),
+          new TextRun(value)
+        ]
+      }));
     }
 
-    docSections.push(
-      new Paragraph({
+    // ── Plan image ──────────────────────────────────────────────────────────
+    // Image is fetched client-side and sent as base64 — avoids server-side
+    // outbound fetch issues with Supabase Storage URLs.
+    if (options.includeImage && options.imageBase64) {
+      const imgBuffer = Buffer.from(options.imageBase64, 'base64');
+      const srcW  = plan.image_width  || 800;
+      const srcH  = plan.image_height || 600;
+      const maxW  = 600;  // points — fits A4 portrait with margins
+      const scale = Math.min(1, maxW / srcW);
+      const dispW = Math.round(srcW * scale);
+      const dispH = Math.round(srcH * scale);
+
+      docSections.push(new Paragraph({ spacing: { before: 300, after: 100 }, children: [] }));
+      docSections.push(new Paragraph({
+        spacing: { after: 300 },
         children: [
-          new TextRun({ text: 'Total Elements: ', bold: true }),
-          new TextRun(String(elements.length))
-        ],
-        spacing: { after: 400 }
-      })
-    );
+          new ImageRun({
+            data: imgBuffer,
+            type: 'png',  // canvas always exports PNG
+            transformation: { width: dispW, height: dispH }
+          })
+        ]
+      }));
+      logger(`✅ Plan image embedded from base64 (${dispW}×${dispH}pt)`);
 
-    logger('Step 4: Plan header sections built. includeElementList =', options.includeElementList, ', elements =', elements.length);
+    } else if (options.includeImage && !options.imageBase64) {
+      // Client couldn't fetch the image — insert a note
+      docSections.push(new Paragraph({
+        spacing: { before: 200, after: 200 },
+        children: [new TextRun({ text: '[Plan image could not be loaded]', italics: true, color: '888888' })]
+      }));
+    }
 
-    // Element list
+    // ── Element list ────────────────────────────────────────────────────────
     if (options.includeElementList && elements.length > 0) {
 
       if (options.groupByType) {
-        logger('Step 5: Building grouped-by-type tables');
-
-        // Group by type
-        const elementsByType = elements.reduce((acc, element) => {
-          if (!acc[element.element_type]) {
-            acc[element.element_type] = [];
-          }
-          acc[element.element_type].push(element);
+        const byType = elements.reduce((acc, el) => {
+          (acc[el.element_type] = acc[el.element_type] || []).push(el);
           return acc;
         }, {});
 
-        const sortedTypes = Object.keys(elementsByType).sort();
-        logger('Step 5a: Types found —', sortedTypes);
+        for (const type of Object.keys(byType).sort()) {
+          const sorted = [...byType[type]].sort(sortByAssetId);
+          const typeLabel = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-        for (const type of sortedTypes) {
-          logger(`Step 5b: Building table for type "${type}" (${elementsByType[type].length} elements)`);
+          docSections.push(new Paragraph({
+            text: `${typeLabel}s (${sorted.length})`,
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 400, after: 200 }
+          }));
 
-          // Type heading
-          docSections.push(
-            new Paragraph({
-              text: `${type.charAt(0).toUpperCase() + type.slice(1)}s (${elementsByType[type].length})`,
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 400, after: 200 }
-            })
-          );
-
-          // Sort elements by asset_id (FIX: was a.name which doesn't exist)
-          const sortedElements = [...elementsByType[type]].sort(sortElementsByName);
-
-          // Header row
           const rows = [
             new TableRow({
               tableHeader: true,
               children: [
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Name', bold: true })] })],
-                  width: { size: 20, type: WidthType.PERCENTAGE }
-                }),
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Label', bold: true })] })],
-                  width: { size: 20, type: WidthType.PERCENTAGE }
-                }),
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Subtype', bold: true })] })],
-                  width: { size: 15, type: WidthType.PERCENTAGE }
-                }),
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Status', bold: true })] })],
-                  width: { size: 10, type: WidthType.PERCENTAGE }
-                }),
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Notes', bold: true })] })],
-                  width: { size: 35, type: WidthType.PERCENTAGE }
-                })
+                headerCell('ID',      20),
+                headerCell('Label',   20),
+                headerCell('Subtype', 15),
+                headerCell('Status',  10),
+                headerCell('Notes',   35),
               ]
-            })
+            }),
+            ...sorted.map(el => new TableRow({
+              children: [
+                dataCell(getElementDisplayName(el, plan.floor_level)),
+                dataCell(el.label),
+                dataCell(el.subtype),
+                dataCell(statusLabel(el.status)),
+                dataCell(el.notes),
+              ]
+            }))
           ];
 
-          // Data rows
-          for (const element of sortedElements) {
-            rows.push(
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph(getElementDisplayName(element, plan.floor_level))] }),
-                  new TableCell({ children: [new Paragraph(element.label || '-')] }),
-                  new TableCell({ children: [new Paragraph(element.subtype || '-')] }),
-                  new TableCell({ children: [new Paragraph(element.status)] }),
-                  new TableCell({ children: [new Paragraph(element.notes || '-')] })
-                ]
-              })
-            );
-          }
-
-          docSections.push(
-            new Table({
-              rows,
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: {
-                top:             { style: BorderStyle.SINGLE, size: 1 },
-                bottom:          { style: BorderStyle.SINGLE, size: 1 },
-                left:            { style: BorderStyle.SINGLE, size: 1 },
-                right:           { style: BorderStyle.SINGLE, size: 1 },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
-                insideVertical:  { style: BorderStyle.SINGLE, size: 1 }
-              }
-            })
-          );
-
-          docSections.push(new Paragraph({ text: '', spacing: { after: 200 } }));
-          logger(`Step 5c: ✅ Table for "${type}" built`);
+          docSections.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE }, borders: BORDERS }));
+          docSections.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
         }
 
       } else {
-        logger('Step 5: Building flat (all elements) table');
+        docSections.push(new Paragraph({
+          text: 'All Elements',
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 400, after: 200 }
+        }));
 
-        docSections.push(
-          new Paragraph({
-            text: 'All Elements',
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 400, after: 200 }
-          })
-        );
-
-        // Sort: type first, then asset_id (FIX: was a.name which doesn't exist)
-        const sortedElements = [...elements].sort((a, b) => {
-          if (a.element_type !== b.element_type) {
-            return a.element_type.localeCompare(b.element_type);
-          }
-          return sortElementsByName(a, b);
+        const sorted = [...elements].sort((a, b) => {
+          if (a.element_type !== b.element_type) return a.element_type.localeCompare(b.element_type);
+          return sortByAssetId(a, b);
         });
 
-        logger('Step 5a: Sorted', sortedElements.length, 'elements');
-
         const rows = [
-          // Header row
           new TableRow({
             tableHeader: true,
             children: [
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: 'Name', bold: true })] })],
-                width: { size: 18, type: WidthType.PERCENTAGE }
-              }),
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: 'Type', bold: true })] })],
-                width: { size: 10, type: WidthType.PERCENTAGE }
-              }),
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: 'Label', bold: true })] })],
-                width: { size: 18, type: WidthType.PERCENTAGE }
-              }),
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: 'Subtype', bold: true })] })],
-                width: { size: 14, type: WidthType.PERCENTAGE }
-              }),
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: 'Status', bold: true })] })],
-                width: { size: 10, type: WidthType.PERCENTAGE }
-              }),
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: 'Notes', bold: true })] })],
-                width: { size: 30, type: WidthType.PERCENTAGE }
-              })
+              headerCell('ID',      18),
+              headerCell('Type',    10),
+              headerCell('Label',   18),
+              headerCell('Subtype', 14),
+              headerCell('Status',  10),
+              headerCell('Notes',   30),
             ]
-          })
+          }),
+          ...sorted.map(el => new TableRow({
+            children: [
+              dataCell(getElementDisplayName(el, plan.floor_level)),
+              dataCell(el.element_type),
+              dataCell(el.label),
+              dataCell(el.subtype),
+              dataCell(statusLabel(el.status)),
+              dataCell(el.notes),
+            ]
+          }))
         ];
 
-        for (const element of sortedElements) {
-          rows.push(
-            new TableRow({
-              children: [
-                new TableCell({ children: [new Paragraph(getElementDisplayName(element, plan.floor_level))] }),
-                new TableCell({ children: [new Paragraph(element.element_type)] }),
-                new TableCell({ children: [new Paragraph(element.label || '-')] }),
-                new TableCell({ children: [new Paragraph(element.subtype || '-')] }),
-                new TableCell({ children: [new Paragraph(element.status)] }),
-                new TableCell({ children: [new Paragraph(element.notes || '-')] })
-              ]
-            })
-          );
-        }
-
-        docSections.push(
-          new Table({
-            rows,
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: {
-              top:             { style: BorderStyle.SINGLE, size: 1 },
-              bottom:          { style: BorderStyle.SINGLE, size: 1 },
-              left:            { style: BorderStyle.SINGLE, size: 1 },
-              right:           { style: BorderStyle.SINGLE, size: 1 },
-              insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
-              insideVertical:  { style: BorderStyle.SINGLE, size: 1 }
-            }
-          })
-        );
-
-        logger('Step 5b: ✅ Flat table built');
+        docSections.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE }, borders: BORDERS }));
       }
-    } else {
-      logger('Step 5: Skipping element list (includeElementList =', options.includeElementList, ', elements =', elements.length, ')');
     }
 
-    logger('Step 6: Creating Document object');
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: docSections
-      }]
-    });
-
-    logger('Step 7: Packing document to buffer');
+    // ── Build and return document ───────────────────────────────────────────
+    const doc    = new Document({ sections: [{ properties: {}, children: docSections }] });
     const buffer = await Packer.toBuffer(doc);
-
-    logger('✅ Report generated successfully, buffer size:', buffer.byteLength);
+    logger('✅ Report generated, size:', buffer.byteLength);
 
     return new Response(buffer, {
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Type':        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${plan.building}_${plan.name}_Report.docx"`
       }
     });
 
   } catch (error) {
-    logger('❌ Error generating report:', error.message);
-    logger('❌ Stack:', error.stack);
+    logger('❌ Error:', error.message, error.stack);
     return json({ error: error.message }, { status: 500 });
   }
 }

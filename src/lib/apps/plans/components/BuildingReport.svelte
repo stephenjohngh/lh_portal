@@ -44,21 +44,30 @@
   // Reset subtype when type changes
   $: if (elementType) { filterSubtype = ''; filterEmergency = false; filterFailed = false; }
 
-  // Preview: count of matching elements across all floors using cached store elements
+  // Preview: count of matching elements across all floors using cached store elements.
+  // Filter variables are referenced directly inside the $: block so Svelte tracks
+  // them as reactive dependencies and recomputes whenever any filter changes.
   $: storeElements = $plansStore.elements;
   $: previewCounts = plans.map(plan => {
     const els = storeElements[plan.id] ?? [];
-    const matched = els.filter(el => matchesFilters(el));
+    const matched = els.filter(el => {
+      if (el.element_type !== elementType)                    return false;
+      if (filterFailed    && el.status !== 'failed')          return false;
+      if (filterEmergency && isLight && !el.emergency)        return false;
+      if (filterSubtype   && el.subtype !== filterSubtype)    return false;
+      return true;
+    });
     return { plan, count: matched.length, total: els.filter(e => e.element_type === elementType).length };
   });
   $: totalMatched = previewCounts.reduce((s, p) => s + p.count, 0);
   $: floorCount   = previewCounts.filter(p => p.count > 0).length;
 
+  // matchesFilters is still used by handleGenerate when building elementsByPlan
   function matchesFilters(el) {
-    if (el.element_type !== elementType)     return false;
-    if (filterFailed    && el.status !== 'failed') return false;
-    if (isLight && filterEmergency && !el.emergency) return false;
-    if (filterSubtype   && el.subtype !== filterSubtype) return false;
+    if (el.element_type !== elementType)                    return false;
+    if (filterFailed    && el.status !== 'failed')          return false;
+    if (filterEmergency && isLight && !el.emergency)        return false;
+    if (filterSubtype   && el.subtype !== filterSubtype)    return false;
     return true;
   }
 
