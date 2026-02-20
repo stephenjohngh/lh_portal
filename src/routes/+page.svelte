@@ -115,7 +115,7 @@
             </button>
             
             <div class="flex items-center space-x-2">
-              <Icon name="grid" size={6} className="text-purple-400" />
+              <Icon name="lhlogo" size={6} className="text-purple-400" />
               <span class="font-bold text-xl">LH Apps</span>
             </div>
           </div>
@@ -169,7 +169,7 @@
                   : 'hover:bg-slate-700 text-gray-300'
               }`}
             >
-              <Icon name={app.icon} size={5} />
+              <Icon name={app.icon} size={8} />
               <span>{app.name}</span>
             </button>
           {/each}

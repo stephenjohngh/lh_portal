@@ -52,7 +52,7 @@ export const AVAILABLE_APPS = [
   {
     id: 'demo',
     name: 'Demo App',
-    icon: 'grid',
+    icon: 'lhlogo',
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Explore app components'
