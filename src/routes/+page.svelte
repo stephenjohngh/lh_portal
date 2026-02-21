@@ -19,6 +19,7 @@
   import Demo from '$lib/apps/demo/Demo.svelte';
   import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
   import PlansApp from '$lib/apps/plans/PlansApp.svelte';
+  import WalkApp from '$lib/apps/walk/WalkApp.svelte';
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -84,6 +85,7 @@
       'users': UserListApp,
       'issues': IssuesTrackerApp,
       'plans': PlansApp,
+      'walk':  WalkApp, 
       'demo': DemoApp,
       'demo2': Demo,
       'settings': SettingsApp

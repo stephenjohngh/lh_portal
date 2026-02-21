@@ -50,17 +50,17 @@ export const AVAILABLE_APPS = [
   },
 
   {
-    id: 'demo',
-    name: 'Demo App',
-    icon: 'lhlogo',
+    id: 'walk',
+    name: 'walk App',
+    icon: 'walk',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Explore app components'
+    description: 'inspection walk'
   },
 {
     id: 'demo2',
     name: 'Demo App 2',
-    icon: 'grid',
+    icon: 'lhlogo',
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Explore app components'
@@ -85,6 +85,7 @@ export const APP_IDS = {
   USERS: 'users',
   ISSUES: 'issues',
   PLANS: 'plans',
+  WALK: 'walk',	
   DEMO: 'demo',
   DEMO2: 'demo2',
   SETTINGS: 'settings'
