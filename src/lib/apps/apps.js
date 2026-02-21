@@ -40,7 +40,7 @@ export const AVAILABLE_APPS = [
     requiresPermission: true,
     description: 'Track and manage issues'
   },
-	  {
+  {
     id: 'plans',
     name: 'Plans',
     icon: 'grid',
