@@ -6,14 +6,16 @@
   import { permissions } from '$lib/stores/permissions';
   import { auth } from '$lib/stores/auth';
   import { walkStore } from './stores/walkStore.js';
-  import WalkHome from './components/WalkHome.svelte';
+  import WalkHome           from './components/WalkHome.svelte';
+  import WalkSessionSummary from './components/WalkSessionSummary.svelte';
   import WalkSessionStart from './components/WalkSessionStart.svelte';
   import WalkSession from './components/WalkSession.svelte';
 
   const logger = getLogger('WalkApp');
 
-  // Screen: 'home' | 'start' | 'walk'
+  // Screen: 'home' | 'start' | 'walk' | 'summary'
   let screen    = 'home';
+  let summarySession = null;
   let loading   = true;
   let initError = null;
 
@@ -72,6 +74,11 @@
     screen = 'home';
   }
 
+  function handleViewSummary(event) {
+    summarySession = event.detail.session;
+    screen = 'summary';
+  }
+
   async function handleSessionClosed() {
     await walkStore.loadSessions();
     screen = 'home';
@@ -96,6 +103,7 @@
       {canEdit}
       on:startNew={handleStartNew}
       on:resume={handleResume}
+      on:viewSummary={handleViewSummary}
     />
 
   {:else if screen === 'start'}
@@ -108,6 +116,12 @@
     <WalkSession
       {canEdit}
       on:closed={handleSessionClosed}
+    />
+
+  {:else if screen === 'summary' && summarySession}
+    <WalkSessionSummary
+      session={summarySession}
+      on:back={() => { summarySession = null; screen = 'home'; }}
     />
   {/if}
 </div>

@@ -86,6 +86,7 @@ function createWalkStore() {
     const userId = await getCurrentUserId();
     try {
       const session = await api.create('walk_sessions', {
+        // plan_id stored after walk-plan-id-migration.sql is run
         building,
         floor_level:    floorLevel,
         element_type:   elementType,
@@ -112,6 +113,9 @@ function createWalkStore() {
         if (found >= 0) startIndex = found;
       }
 
+      // Persist planId across page refreshes (no DB column needed yet)
+      try { localStorage.setItem('walk_plan_id', JSON.stringify({ sessionId: session.id, planId })); } catch (_) {}
+
       update(s => ({
         ...s,
         activeSession: { ...session, planId },
@@ -128,6 +132,7 @@ function createWalkStore() {
 
   async function closeSession(sessionId, notes = '') {
     logger('Closing session:', sessionId);
+    try { localStorage.removeItem('walk_plan_id'); } catch (_) {}
     const userId = await getCurrentUserId();
     try {
       await api.update('walk_sessions', sessionId, {
@@ -157,13 +162,20 @@ function createWalkStore() {
     let state;
     subscribe(s => { state = s; })();
 
-    // Find the plan matching building+floor
-    const plan = state.plans.find(
-      p => p.building === session.building && p.floor_level === session.floor_level
-    );
+    // Prefer direct plan_id lookup (set on sessions created after this fix).
+    // Fall back to building+floor_level match for older sessions.
+    const plan = session.plan_id
+      ? state.plans.find(p => p.id === session.plan_id)
+      : state.plans.find(p => p.building === session.building && p.floor_level === session.floor_level);
+
     if (!plan) {
-      logger('❌ No plan found for session building/floor');
-      throw new Error(`No plan found for ${session.building} floor ${session.floor_level}`);
+      logger('❌ No plan found for session — plan_id:', session.plan_id,
+             'building:', session.building, 'floor:', session.floor_level);
+      throw new Error(
+        session.plan_id
+          ? `Plan no longer exists (id: ${session.plan_id})`
+          : `No plan found for ${session.building} floor ${session.floor_level}`
+      );
     }
 
     const planElements = state.allElements[plan.id] || [];
@@ -255,7 +267,7 @@ function createWalkStore() {
       const inspection = await api.create('element_inspections', {
         session_id:     sessionId,
         element_id:     elementId,
-        plan_id:        planId,
+        // plan_id stored after walk-plan-id-migration.sql is run
         result,
         notes:          notes || null,
         inspector_id:   userId,
@@ -301,6 +313,23 @@ function createWalkStore() {
     }
   }
 
+  // Load all inspections for a completed session (for summary view)
+  async function loadSessionInspections(sessionId) {
+    logger('Loading inspections for session:', sessionId);
+    try {
+      const rows = await api.get('element_inspections', {
+        filters:   { session_id: sessionId },
+        orderBy:   'inspected_at',
+        ascending: true
+      });
+      logger('✅ Loaded', rows.length, 'inspections');
+      return rows;
+    } catch (error) {
+      logger('❌ loadSessionInspections:', error.message);
+      throw error;
+    }
+  }
+
   return {
     subscribe,
     loadPlans,
@@ -313,7 +342,8 @@ function createWalkStore() {
     goPrev,
     updateElement,
     addInspection,
-    loadElementInspectionHistory
+    loadElementInspectionHistory,
+    loadSessionInspections
   };
 }
 

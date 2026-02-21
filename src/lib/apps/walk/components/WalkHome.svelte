@@ -46,6 +46,10 @@
   function handleResumeSession(session) {
     dispatch('resume', { session });
   }
+
+  function handleViewSummary(session) {
+    dispatch('viewSummary', { session });
+  }
 </script>
 
 <div class="home">
@@ -101,7 +105,7 @@
       <div class="section-title">RECENT SESSIONS</div>
       <div class="session-list">
         {#each closedSessions as session (session.id)}
-          <div class="session-card">
+          <button class="session-card session-card-clickable" on:click={() => handleViewSummary(session)}>
             <div class="session-card-icon">{typeIcon(session.element_type)}</div>
             <div class="session-card-body">
               <div class="session-card-type">{typeLabel(session.element_type)}</div>
@@ -115,8 +119,8 @@
                 {/if}
               </div>
             </div>
-            <div class="session-card-status closed">CLOSED</div>
-          </div>
+            <div class="session-card-chevron">›</div>
+          </button>
         {/each}
       </div>
     </div>
@@ -330,10 +334,26 @@
     flex-shrink: 0;
   }
 
-  .session-card-status.closed {
-    background: #1a1a1a;
-    color: #444;
+  .session-card-clickable {
+    width: 100%;
+    text-align: left;
+    background: #111118;
+    border: 1px solid #1e1e2a;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    padding: 0.875rem 1rem;
   }
+  .session-card-clickable:hover { border-color: #f97316; }
+
+  .session-card-chevron {
+    font-size: 1.25rem;
+    color: #333;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .session-card-clickable:hover .session-card-chevron { color: #f97316; }
 
   /* ── Empty state ─────────────────────────────────────────────────────── */
   .empty-state {
