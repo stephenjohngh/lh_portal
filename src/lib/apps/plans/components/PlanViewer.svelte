@@ -37,6 +37,9 @@
   let showReportModal    = false;
   let showPlanInfoModal  = false;
   let showCopyModal      = false;
+  let replacingImage     = false;
+  let replaceImageError  = null;
+  let replaceFileInput;   // bound to hidden <input type="file">
   let newElementPosition = null;
   let hoveredElement     = null;
   let imageLoaded        = false;
@@ -299,6 +302,26 @@
       y: element.y_position * rect.height
     };
   }
+  // ── Replace plan image ────────────────────────────────────────────────────
+  async function handleReplaceImage(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    replacingImage    = true;
+    replaceImageError = null;
+    try {
+      await plansStore.replaceImage(plan, file);
+      dispatch('planUpdated');
+      logger('✅ Plan image replaced');
+    } catch (err) {
+      replaceImageError = err.message;
+      logger('❌ Replace image error:', err.message);
+    } finally {
+      replacingImage = false;
+      // Reset file input so the same file can be re-selected if needed
+      if (replaceFileInput) replaceFileInput.value = '';
+    }
+  }
+
 </script>
 
 <div class="grid grid-cols-12 gap-6">
@@ -355,6 +378,26 @@
             <Button variant="secondary" size="small" icon="edit" on:click={() => showPlanInfoModal = true}>
               Edit Plan Info
             </Button>
+            <!-- Hidden file input for image replacement -->
+            <input
+              type="file"
+              accept="image/*"
+              bind:this={replaceFileInput}
+              on:change={handleReplaceImage}
+              class="hidden"
+            />
+            <Button
+              variant="secondary"
+              size="small"
+              icon={replacingImage ? 'loading' : 'upload'}
+              disabled={replacingImage}
+              on:click={() => replaceFileInput.click()}
+            >
+              {replacingImage ? 'Replacing…' : 'Replace Image'}
+            </Button>
+          {/if}
+          {#if replaceImageError}
+            <span class="text-xs text-red-400">{replaceImageError}</span>
           {/if}
         </div>
       </div>

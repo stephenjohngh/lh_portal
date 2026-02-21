@@ -311,6 +311,46 @@ function createPlansStore() {
       }
     },
 
+    // Replace the image of an existing plan in-place.
+    // Uploads to the same storage path (upsert), updates image_url / dimensions on the plan.
+    async replaceImage(plan, file) {
+      logger('Replacing image for plan:', plan.id, file.name);
+      try {
+        // Extract the storage path from the existing public URL
+        const marker    = '/plan-images/';
+        const parsed    = new URL(plan.image_url);
+        const markerIdx = parsed.pathname.indexOf(marker);
+        if (markerIdx === -1) throw new Error('Could not parse storage path from image URL');
+        const storagePath = decodeURIComponent(parsed.pathname.slice(markerIdx + marker.length));
+
+        logger('Uploading replacement to path:', storagePath);
+        const { error: uploadError } = await supabase.storage
+          .from('plan-images')
+          .upload(storagePath, file, { cacheControl: '3600', upsert: true });
+        if (uploadError) throw uploadError;
+
+        // Get fresh public URL (may include cache-busting if Supabase changes it)
+        const { data: urlData } = supabase.storage.from('plan-images').getPublicUrl(storagePath);
+        const newUrl = urlData.publicUrl;
+
+        // Measure new image dimensions
+        const dims = await this.getImageDimensions(newUrl);
+
+        // Update the plan record
+        await this.updatePlan(plan.id, {
+          image_url:    newUrl,
+          image_width:  dims.width,
+          image_height: dims.height
+        });
+
+        logger('✅ Image replaced successfully:', newUrl);
+        return { url: newUrl, width: dims.width, height: dims.height };
+      } catch (error) {
+        logger('❌ Error replacing image:', error.message);
+        throw error;
+      }
+    },
+
     async getImageDimensions(imageUrl) {
       return new Promise((resolve, reject) => {
         const img    = new Image();
