@@ -22,9 +22,10 @@
   // Dim non-filtered elements when filtering is active
   $: displayOpacity = isFiltered ? 0.2 : opacity;
 
-  $: isDoor          = element.element_type === 'communal_door';
-  $: isApartmentDoor = element.element_type === 'apartment_door';
-  $: isFireControl   = element.element_type === 'fire_control';
+  // Shape groups: square = communal door; square-with-inner = apartment door / fire control; circle = light
+  $: isSquare          = element.element_type === 'communal_door';
+  $: isSquareWithInner = element.element_type === 'apartment_door' || element.element_type === 'fire_control';
+  $: isSquareShape     = isSquare || isSquareWithInner;  // glow uses same rect for all square types
 </script>
 
 <!-- class element-marker-group is used by PlanViewer to detect marker clicks vs empty area clicks -->
@@ -41,7 +42,7 @@
 >
   <!-- Outer glow on hover or drag -->
   {#if isHovered || isDragging}
-    {#if isDoor || isApartmentDoor || isFireControl}
+    {#if isSquareShape}
       <rect
         x={position.x - radius - 4}
         y={position.y - radius - 4}
@@ -65,8 +66,8 @@
   {/if}
   
   <!-- Main shape per type -->
-  {#if isDoor}
-    <!-- Communal door: orange square -->
+  {#if isSquareShape}
+    <!-- Square types: communal door (plain), apartment door & fire control (with inner square) -->
     <rect
       x={position.x - radius}
       y={position.y - radius}
@@ -79,54 +80,18 @@
       stroke-width={strokeWidth}
       class="transition-all"
     />
-  {:else if isApartmentDoor}
-    <!-- Apartment door: purple square with small inner square -->
-    <rect
-      x={position.x - radius}
-      y={position.y - radius}
-      width={radius * 2}
-      height={radius * 2}
-      rx="3"
-      fill={typeConfig.color}
-      opacity={displayOpacity}
-      stroke="white"
-      stroke-width={strokeWidth}
-      class="transition-all"
-    />
-    <rect
-      x={position.x - radius * 0.45}
-      y={position.y - radius * 0.45}
-      width={radius * 0.9}
-      height={radius * 0.9}
-      rx="1"
-      fill="white"
-      opacity={displayOpacity}
-      pointer-events="none"
-    />
-  {:else if isFireControl}
-    <!-- Fire control: red square with white centre square -->
-    <rect
-      x={position.x - radius}
-      y={position.y - radius}
-      width={radius * 2}
-      height={radius * 2}
-      rx="3"
-      fill={typeConfig.color}
-      opacity={displayOpacity}
-      stroke="white"
-      stroke-width={strokeWidth}
-      class="transition-all"
-    />
-    <rect
-      x={position.x - radius * 0.45}
-      y={position.y - radius * 0.45}
-      width={radius * 0.9}
-      height={radius * 0.9}
-      rx="1"
-      fill="white"
-      opacity={displayOpacity}
-      pointer-events="none"
-    />
+    {#if isSquareWithInner}
+      <rect
+        x={position.x - radius * 0.45}
+        y={position.y - radius * 0.45}
+        width={radius * 0.9}
+        height={radius * 0.9}
+        rx="1"
+        fill="white"
+        opacity={displayOpacity}
+        pointer-events="none"
+      />
+    {/if}
   {:else}
     <!-- Light: yellow circle with emoji -->
     <circle

@@ -6,7 +6,7 @@
   import Modal from '$lib/components/common/Modal.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import { ELEMENT_TYPE_OPTIONS, ELEMENT_STATUS_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, ELEMENT_STATUS_OPTIONS, MARKER_RADIUS, getElementDisplayName, getElementTypeConfig } from '$lib/utils/planConstants';
   import ElementTypeFilter from '../ElementTypeFilter.svelte';
   
   const logger = getLogger('PlansReport');
@@ -89,14 +89,13 @@
 
   $: sortedTypes = Object.keys(elementsByType).sort();
 
-  // ── Element type colours and shape rules (mirrors ElementMarker.svelte) ──
-  const TYPE_CONFIG = {
-    communal_door:  { color: '#c2410c', shape: 'square' },
-    apartment_door: { color: '#a855f7', shape: 'square_inner' },
-    fire_control:   { color: '#ef4444', shape: 'square_inner' },
-    light:          { color: '#eab308', shape: 'circle' },
+  // ── Canvas marker shape lookup (mirrors ElementMarker.svelte logic) ────────
+  const MARKER_SHAPE = {
+    communal_door:  'square',
+    apartment_door: 'square_inner',
+    fire_control:   'square_inner',
+    light:          'circle',
   };
-  const MARKER_RADIUS = 12;
 
   // Draw annotated plan (plan image + element markers) on an offscreen canvas
   async function buildAnnotatedImageBase64(imageUrl, els, imgW, imgH) {
@@ -120,7 +119,8 @@
     for (const el of els) {
       const cx  = el.x_position * W;
       const cy  = el.y_position * H;
-      const cfg = TYPE_CONFIG[el.element_type] || { color: '#888888', shape: 'circle' };
+      const typeConf = getElementTypeConfig(el.element_type);
+      const cfg = { color: typeConf?.color ?? '#888888', shape: MARKER_SHAPE[el.element_type] ?? 'circle' };
       ctx.globalAlpha = el.status === 'active' ? 1 : 0.5;
       ctx.strokeStyle = 'white';
       ctx.lineWidth   = 2;

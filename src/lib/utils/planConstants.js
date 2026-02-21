@@ -1,25 +1,12 @@
 // src/lib/utils/planConstants.js
 // Constants for Plans app - element types, subtypes, colors, and configurations
 
-export const ELEMENT_TYPES = {
-  COMMUNAL_DOOR:   'communal_door',
-  APARTMENT_DOOR:  'apartment_door',
-  LIGHT:           'light',
-  FIRE_CONTROL:    'fire_control'
-};
-
 export const ELEMENT_TYPE_OPTIONS = [
   { value: 'communal_door',  label: 'Communal Door',  icon: '🚪', color: '#c2410c', description: 'Entrance, fire, emergency and interior communal doors' },
   { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#a855f7', description: 'Apartment fire doors' },
   { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
   { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors and call points' }
 ];
-
-export const ELEMENT_STATUS = {
-  ACTIVE:   'active',
-  FAILED:   'failed',
-  INACTIVE: 'inactive'
-};
 
 export const ELEMENT_STATUS_OPTIONS = [
   { value: 'active',   label: 'OK',       color: '#22c55e' },
@@ -93,13 +80,6 @@ export function getSubtypesForType(type) {
   return ELEMENT_SUBTYPES[type] || [];
 }
 
-export function isValidElementType(type) {
-  return Object.values(ELEMENT_TYPES).includes(type);
-}
-
-export function isValidElementStatus(status) {
-  return Object.values(ELEMENT_STATUS).includes(status);
-}
 
 /**
  * Get the display label for a floor level value.

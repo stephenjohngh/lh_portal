@@ -15,7 +15,9 @@
   import { plansStore } from '../stores/plansStore';
   import {
     ELEMENT_TYPE_OPTIONS,
+    ELEMENT_STATUS_OPTIONS,
     getElementDisplayName,
+    getElementStatusConfig,
     getAttributeSummary
   } from '$lib/utils/planConstants';
   import { permissions } from '$lib/stores/permissions';
@@ -25,9 +27,8 @@
 
   export let plan;
 
-  $: isAdmin    = $permissions.isAdmin;
-  $: canEdit    = $permissions.isAdmin || $permissions.canModify;
-  $: isReadOnly = !$permissions.isAdmin && !$permissions.canModify;
+  $: isAdmin  = $permissions.isAdmin;
+  $: canEdit  = $permissions.isAdmin || $permissions.canModify;
 
   let imageElement;
   let containerElement;
@@ -165,7 +166,7 @@
   }
 
   function handleContainerClick(event) {
-    if (isReadOnly || dragJustEnded) return;
+    if (!canEdit || dragJustEnded) return;
     if (!newMode) return;  // must be in New mode to place elements
 
     let node = event.target;
@@ -202,7 +203,7 @@
 
   // ── Drag-to-move ──────────────────────────────────────────────────────────
   function handleMarkerMousedown(event, element) {
-    if (isReadOnly || !canEdit || !newMode) return;
+    if (!canEdit || !newMode) return;
     event.stopPropagation();
 
     dragElement = element;
@@ -406,7 +407,7 @@
       <div
         bind:this={containerElement}
         class="relative border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900"
-        style="min-height: 600px; cursor: {isReadOnly ? 'default' : newMode ? 'crosshair' : 'default'};"
+        style="min-height: 600px; cursor: {newMode && canEdit ? 'crosshair' : 'default'};"
         on:click={handleContainerClick}
       >
         {#if !imageLoaded}
@@ -473,7 +474,7 @@
       <div class="mt-4 flex items-start gap-2 text-sm text-gray-400">
         <Icon name="info" size={5} className="text-blue-400 flex-shrink-0 mt-0.5" />
         <p>
-          {#if isReadOnly}
+          {#if !canEdit}
             <strong>Click markers</strong> to view element details.
             <span class="text-amber-400"> Read-only access — editing is disabled.</span>
           {:else if canEdit}
@@ -515,7 +516,7 @@
             <tbody>
               {#each sortedElementsForTable as element (element.id)}
                 {@const typeConfig   = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
-                {@const statusColors = { active: 'text-green-400', failed: 'text-red-400', inactive: 'text-gray-400' }}
+                {@const statusConfig = getElementStatusConfig(element.status)}
                 <tr
                   class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
                   on:click={() => handleElementClick(element)}
@@ -531,8 +532,8 @@
                   <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
                   <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
                   <td class="py-3 px-4">
-                    <span class="text-sm capitalize {statusColors[element.status] || 'text-gray-400'}">
-                      {element.status}
+                    <span class="text-sm font-medium" style="color: {statusConfig?.color ?? '#9ca3af'}">
+                      {statusConfig?.label ?? element.status}
                     </span>
                   </td>
                   <td class="py-3 px-4">

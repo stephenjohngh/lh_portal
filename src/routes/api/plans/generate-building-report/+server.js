@@ -15,6 +15,7 @@ import {
   VerticalAlign
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
+import { elementDisplayId, statusLabel, trunc, sortByAssetId, subtypeSummary } from '$lib/apps/plans/utils/reportHelpers';
 
 const logger = getLogger('generateBuildingReport');
 
@@ -31,34 +32,9 @@ function floorDisplayLabel(floorLevel) {
   return map[v] ? `Floor ${v} — ${map[v]}` : `Floor ${v}`;
 }
 
-// ── Type initials — matches planConstants.js TYPE_INITIALS ─────────────────
-const TYPE_INITIALS = {
-  communal_door:  'D',
-  apartment_door: 'A',
-  light:          'L',
-  fire_control:   'F'
-};
-
-// ── Display name: FloorCode/TypeInitial/AssetID e.g. "G/D/001" ───────────
+// ── Display name wrapper (truncated for column width) ────────────────────
 function displayId(element, floorLevel) {
-  const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
-  const type  = TYPE_INITIALS[element.element_type] ?? '?';
-  const id    = element.asset_id || 'No ID';
-  return trunc(`${floor}/${type}/${id}`, 8);
-}
-
-// ── Truncate to max chars ─────────────────────────────────────────────────
-function trunc(val, maxLen) {
-  if (!val) return '—';
-  const s = String(val);
-  return s.length > maxLen ? s.slice(0, maxLen) : s;
-}
-
-// ── Status label (truncated to 8) ────────────────────────────────────────
-function statusLabel(s) {
-  const labels = { active: 'OK', failed: 'Failed', inactive: 'Inactv',
-                   maintenance: 'Maint', removed: 'Removd' };
-  return labels[s] ?? trunc(s, 8) ?? '—';
+  return trunc(elementDisplayId(element, floorLevel), 8);
 }
 
 // ── Shared border / style helpers ──────────────────────────────────────────
@@ -170,19 +146,7 @@ function lightCells(element, floorLevel, shade) {
   ];
 }
 
-// ── Subtype breakdown helper ──────────────────────────────────────────────
-// Returns e.g. "Entrance: 4, Fire Door: 2, Gate: 1"
-function subtypeSummary(elements) {
-  const counts = {};
-  for (const el of elements) {
-    const k = el.subtype || 'Unspecified';
-    counts[k] = (counts[k] || 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([sub, n]) => `${sub}: ${n}`)
-    .join('  ·  ');
-}
+
 
 // ── Table builder for one floor ─────────────────────────────────────────
 function buildFloorTable(elements, floorLevel, elementType) {
