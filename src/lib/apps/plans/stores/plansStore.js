@@ -311,37 +311,57 @@ function createPlansStore() {
       }
     },
 
-    // Replace the image of an existing plan in-place.
-    // Uploads to the same storage path (upsert), updates image_url / dimensions on the plan.
+    // Replace the image of a plan with a new file.
+    // Always uploads to a NEW storage path so copied plans sharing the same
+    // original file are not affected. The old file is deleted from storage.
     async replaceImage(plan, file) {
       logger('Replacing image for plan:', plan.id, file.name);
       try {
-        // Extract the storage path from the existing public URL
-        const marker    = '/plan-images/';
-        const parsed    = new URL(plan.image_url);
-        const markerIdx = parsed.pathname.indexOf(marker);
-        if (markerIdx === -1) throw new Error('Could not parse storage path from image URL');
-        const storagePath = decodeURIComponent(parsed.pathname.slice(markerIdx + marker.length));
+        // Upload to a fresh path (same as uploadImage — never overwrites shared files)
+        const fileExt    = file.name.split('.').pop();
+        const newPath    = `plans/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        logger('Uploading replacement to path:', storagePath);
+        logger('Uploading replacement to new path:', newPath);
         const { error: uploadError } = await supabase.storage
           .from('plan-images')
-          .upload(storagePath, file, { cacheControl: '3600', upsert: true });
+          .upload(newPath, file, { cacheControl: '3600', upsert: false });
         if (uploadError) throw uploadError;
 
-        // Get fresh public URL (may include cache-busting if Supabase changes it)
-        const { data: urlData } = supabase.storage.from('plan-images').getPublicUrl(storagePath);
+        const { data: urlData } = supabase.storage.from('plan-images').getPublicUrl(newPath);
         const newUrl = urlData.publicUrl;
 
         // Measure new image dimensions
         const dims = await this.getImageDimensions(newUrl);
 
-        // Update the plan record
+        // Update this plan's record to point at the new file
         await this.updatePlan(plan.id, {
           image_url:    newUrl,
           image_width:  dims.width,
           image_height: dims.height
         });
+
+        // Delete the old file — but only if no other plan shares it.
+        // Check by scanning current plans in the store.
+        let oldPlans = [];
+        update(s => { oldPlans = s.plans; return s; });
+        const oldUrl     = plan.image_url.split('?')[0]; // strip any ?t= param
+        const stillUsed  = oldPlans.some(p => p.id !== plan.id && p.image_url.split('?')[0] === oldUrl);
+        if (!stillUsed) {
+          try {
+            const marker    = '/plan-images/';
+            const parsed    = new URL(plan.image_url);
+            const markerIdx = parsed.pathname.indexOf(marker);
+            if (markerIdx !== -1) {
+              const oldPath = decodeURIComponent(parsed.pathname.slice(markerIdx + marker.length));
+              await supabase.storage.from('plan-images').remove([oldPath]);
+              logger('✅ Old image deleted from storage:', oldPath);
+            }
+          } catch (delErr) {
+            logger('⚠️ Could not delete old image (non-fatal):', delErr.message);
+          }
+        } else {
+          logger('ℹ Old image still used by another plan — not deleted');
+        }
 
         logger('✅ Image replaced successfully:', newUrl);
         return { url: newUrl, width: dims.width, height: dims.height };

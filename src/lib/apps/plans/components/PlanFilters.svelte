@@ -15,7 +15,7 @@
 
   const dispatch = createEventDispatcher();
 
-  export let elements     = [];   // was incorrectly `const` — now `let` so parent can update
+  export const elements   = [];   // read-only external reference — not mutated internally
   export let elementCounts = {};
 
   let selectedTypes    = [];

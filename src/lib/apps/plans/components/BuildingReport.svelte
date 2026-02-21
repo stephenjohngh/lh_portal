@@ -1,7 +1,7 @@
 <!-- src/lib/apps/plans/components/BuildingReport.svelte -->
 <!-- Building-level report: covers all floors for a building, filtered by element type -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }   from '$lib/utils/logger';
   import Modal           from '$lib/components/common/Modal.svelte';
   import Button          from '$lib/components/common/Button.svelte';
@@ -81,7 +81,6 @@
     .map(p => p.id);
 
   // Auto-load missing elements when the modal opens
-  import { onMount } from 'svelte';
   onMount(async () => {
     if (missingPlanIds.length > 0) {
       loading   = true;

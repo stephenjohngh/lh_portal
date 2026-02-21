@@ -54,7 +54,7 @@ export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
   light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant'],
-  fire_control:   ['Sensor', 'Call Point']
+  fire_control:   ['Sensor', 'Call Point', 'Vent', 'Dry Riser']
 };
 
 // Battery options — for Light elements
