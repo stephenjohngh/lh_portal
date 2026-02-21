@@ -356,7 +356,7 @@
         </div>
 
         <div class="btn-group">
-          {#if canEdit}
+          {#if isAdmin}
             <Button
               variant={newMode ? 'primary' : 'secondary'}
               size="small"
@@ -365,18 +365,16 @@
             >
               {newMode ? 'New Off' : 'New'}
             </Button>
-          {/if}
-          {#if isAdmin}
             <Button variant="secondary" size="small" icon="copy" on:click={() => showCopyModal = true}>
-              Copy Plan
+              Copy
             </Button>
           {/if}
           <Button variant="secondary" size="small" icon="download" on:click={() => showReportModal = true}>
-            Export Report
+            Create Report
           </Button>
           {#if isAdmin}
             <Button variant="secondary" size="small" icon="edit" on:click={() => showPlanInfoModal = true}>
-              Edit Plan Info
+              Edit Info
             </Button>
             <!-- Hidden file input for image replacement -->
             <input
@@ -393,7 +391,7 @@
               disabled={replacingImage}
               on:click={() => replaceFileInput.click()}
             >
-              {replacingImage ? 'Replacing…' : 'Replace Image'}
+              {replacingImage ? 'Replacing…' : 'Image'}
             </Button>
           {/if}
           {#if replaceImageError}
@@ -570,7 +568,7 @@
 {/if}
 
 {#if showReportModal}
-  <PlansReport {plan} {elements} on:close={() => showReportModal = false} />
+  <PlansReport {plan} {elements} {filters} on:close={() => showReportModal = false} />
 {/if}
 
 {#if showPlanInfoModal}

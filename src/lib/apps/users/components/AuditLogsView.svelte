@@ -20,7 +20,7 @@
     endDate:       null,
     search:        '',
     flaggedOnly:   false,
-    limit:         100,
+    limit:         50,
     offset:        0
   };
 

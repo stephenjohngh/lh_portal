@@ -111,6 +111,17 @@ export async function POST({ request }) {
       }));
     }
 
+    // ── Filter summary ─────────────────────────────────────────────────────
+    if (options.filterSummary) {
+      docSections.push(new Paragraph({
+        spacing: { after: 100 },
+        children: [
+          new TextRun({ text: 'Filters: ', bold: true }),
+          new TextRun({ text: options.filterSummary, italics: true, color: '6b7280' })
+        ]
+      }));
+    }
+
     // ── Plan image ──────────────────────────────────────────────────────────
     // Image is fetched client-side and sent as base64 — avoids server-side
     // outbound fetch issues with Supabase Storage URLs.

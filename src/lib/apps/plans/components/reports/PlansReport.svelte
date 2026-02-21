@@ -6,48 +6,87 @@
   import Modal from '$lib/components/common/Modal.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
+  import { ELEMENT_TYPE_OPTIONS, ELEMENT_STATUS_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
+  import ElementTypeFilter from '../ElementTypeFilter.svelte';
   
   const logger = getLogger('PlansReport');
   const dispatch = createEventDispatcher();
   
   export let plan;
-  export let elements = [];
-  
+  export let elements   = [];
+  export let filters    = null;  // current PlanViewer filters to pre-populate
+
   let generating = false;
   let options = {
-    includeImage: true,
+    includeImage:       true,
     includeElementList: true,
-    groupByType: true,
-    includeInactive: false
   };
 
-  // Type filter — all types shown by default; user can deselect
-  $: allTypes = [...new Set(elements.map(e => e.element_type))].sort();
-  let selectedTypes = new Set();                   // empty = all types shown
-  $: if (allTypes) selectedTypes = new Set(allTypes); // initialise when elements load
+  // groupByType is always on — no checkbox needed
+  const groupByType = true;
 
-  function toggleType(type) {
-    const s = new Set(selectedTypes);
-    s.has(type) ? s.delete(type) : s.add(type);
-    selectedTypes = s;
+  // Status filter — pre-populated from current viewer filters; empty = all statuses shown
+  let selectedStatuses = [];
+
+  // Type + sub-filters from ElementTypeFilter component
+  let typeFilters   = { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
+  let typeFilterRef;
+
+  function handleTypeChange(event) {
+    typeFilters = event.detail;
   }
 
+  function toggleStatus(status) {
+    selectedStatuses = selectedStatuses.includes(status)
+      ? selectedStatuses.filter(s => s !== status)
+      : [...selectedStatuses, status];
+  }
+
+  // Pre-populate status from carried-in viewer filters
+  $: if (filters?.statuses) selectedStatuses = filters.statuses;
+
+  // Compute element counts for badges in ElementTypeFilter
+  $: elementCounts = ELEMENT_TYPE_OPTIONS.reduce((acc, t) => {
+    acc[t.value] = elements.filter(e => e.element_type === t.value).length;
+    return acc;
+  }, {});
+
+  // Filter elements: status selection + type/subtype filters from ElementTypeFilter
   $: filteredElements = elements.filter(e => {
-    if (e.status !== 'active' && !options.includeInactive &&
-        (e.status === 'inactive' || e.status === 'removed')) return false;
-    if (selectedTypes.size > 0 && !selectedTypes.has(e.element_type)) return false;
+    // Status — empty selectedStatuses means show all
+    if (selectedStatuses.length > 0 && !selectedStatuses.includes(e.status)) return false;
+    // Type filter — empty types means all
+    if (typeFilters.types?.length > 0 && !typeFilters.types.includes(e.element_type)) return false;
+    // Light sub-filters
+    if (e.element_type === 'light') {
+      const lf = typeFilters.lightFilters ?? {};
+      if (lf.subtypes?.length > 0 && !lf.subtypes.includes(e.subtype))         return false;
+      if (lf.battery?.length  > 0 && !lf.battery.includes(e.battery))          return false;
+      if (lf.emergency        && !e.emergency)                                  return false;
+      if (lf.movementSensor   && !e.movement_sensor)                            return false;
+      if (lf.lightSensor      && !e.light_sensor)                               return false;
+    }
+    // Communal door sub-filters
+    if (e.element_type === 'communal_door') {
+      const cf = typeFilters.communalFilters ?? {};
+      if (cf.subtypes?.length > 0 && !cf.subtypes.includes(e.subtype))         return false;
+      if (cf.security?.length > 0 && !cf.security.includes(e.security))        return false;
+      if (cf.retained         && !e.retained)                                   return false;
+    }
+    // Fire control sub-filters
+    if (e.element_type === 'fire_control') {
+      const ff = typeFilters.fireFilters ?? {};
+      if (ff.subtypes?.length > 0 && !ff.subtypes.includes(e.subtype))         return false;
+    }
     return true;
   });
-  
+
   $: elementsByType = filteredElements.reduce((acc, element) => {
-    if (!acc[element.element_type]) {
-      acc[element.element_type] = [];
-    }
+    if (!acc[element.element_type]) acc[element.element_type] = [];
     acc[element.element_type].push(element);
     return acc;
   }, {});
-  
+
   $: sortedTypes = Object.keys(elementsByType).sort();
 
   // ── Element type colours and shape rules (mirrors ElementMarker.svelte) ──
@@ -59,11 +98,8 @@
   };
   const MARKER_RADIUS = 12;
 
-  // Draw all element markers onto an offscreen canvas over the plan image,
-  // then export as a PNG base64 string. This produces a fully-annotated
-  // image that embeds directly into the Word doc.
-  async function buildAnnotatedImageBase64(imageUrl, elements, imgW, imgH) {
-    // Load the plan image
+  // Draw annotated plan (plan image + element markers) on an offscreen canvas
+  async function buildAnnotatedImageBase64(imageUrl, els, imgW, imgH) {
     const planImg = await new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -74,107 +110,115 @@
 
     const W = imgW || planImg.naturalWidth  || 800;
     const H = imgH || planImg.naturalHeight || 600;
-
     const canvas = document.createElement('canvas');
     canvas.width  = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
-
-    // Draw base plan image
     ctx.drawImage(planImg, 0, 0, W, H);
 
     const R = MARKER_RADIUS;
-
-    for (const el of elements) {
-      const cx = el.x_position * W;
-      const cy = el.y_position * H;
+    for (const el of els) {
+      const cx  = el.x_position * W;
+      const cy  = el.y_position * H;
       const cfg = TYPE_CONFIG[el.element_type] || { color: '#888888', shape: 'circle' };
-      const alpha = el.status === 'active' ? 1 : 0.5;
-
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = el.status === 'active' ? 1 : 0.5;
       ctx.strokeStyle = 'white';
       ctx.lineWidth   = 2;
       ctx.fillStyle   = cfg.color;
 
       if (cfg.shape === 'circle') {
-        // Light: yellow circle
-        ctx.beginPath();
-        ctx.arc(cx, cy, R, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       } else {
-        // Door types: rounded square
-        const x = cx - R, y = cy - R, s = R * 2;
-        ctx.beginPath();
-        ctx.roundRect(x, y, s, s, 3);
-        ctx.fill();
-        ctx.stroke();
-
+        ctx.beginPath(); ctx.roundRect(cx - R, cy - R, R * 2, R * 2, 3); ctx.fill(); ctx.stroke();
         if (cfg.shape === 'square_inner') {
-          // Apartment door / fire control: white inner square
           const ir = R * 0.45;
-          ctx.globalAlpha = alpha;
           ctx.fillStyle = 'white';
-          ctx.beginPath();
-          ctx.roundRect(cx - ir, cy - ir, ir * 2, ir * 2, 1);
-          ctx.fill();
+          ctx.beginPath(); ctx.roundRect(cx - ir, cy - ir, ir * 2, ir * 2, 1); ctx.fill();
         }
       }
 
-      // Status dot
       ctx.globalAlpha = 1;
       if (el.status === 'failed') {
-        ctx.fillStyle   = '#ef4444';
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth   = 2;
-        ctx.beginPath();
-        ctx.arc(cx + R - 3, cy - R + 3, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        ctx.fillStyle = '#ef4444'; ctx.strokeStyle = 'white'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx + R - 3, cy - R + 3, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       } else if (el.status === 'inactive') {
-        ctx.fillStyle   = '#64748b';
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth   = 1.5;
-        ctx.beginPath();
-        ctx.arc(cx + R - 3, cy - R + 3, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        ctx.fillStyle = '#64748b'; ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx + R - 3, cy - R + 3, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }
 
       // ID label below marker
-      const TYPE_INITIALS = { communal_door: 'D', apartment_door: 'A', light: 'L', fire_control: 'F' };
-      const label = `${el.asset_id || '?'}`;
-      ctx.globalAlpha = 0.9;
-      ctx.font        = `bold ${R * 0.85 + 6}px Arial, sans-serif`;
-      ctx.textAlign   = 'center';
+      const label = el.asset_id || '?';
+      ctx.globalAlpha  = 0.9;
+      ctx.font         = `bold ${R * 0.85 + 6}px Arial, sans-serif`;
+      ctx.textAlign    = 'center';
       ctx.textBaseline = 'top';
-      // White shadow for legibility
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth   = 3;
+      ctx.strokeStyle  = 'white'; ctx.lineWidth = 3;
       ctx.strokeText(label, cx, cy + R + 2);
-      ctx.fillStyle   = '#1a1a2e';
+      ctx.fillStyle = '#1a1a2e';
       ctx.fillText(label, cx, cy + R + 2);
     }
 
     ctx.globalAlpha = 1;
-    // Export as PNG base64 (strip "data:image/png;base64," prefix)
     return canvas.toDataURL('image/png').split(',')[1];
   }
-  
+
+  // Build a human-readable summary of active filters for the report header
+  function buildFilterSummary(typeFilters, selectedStatuses, totalElements, filteredCount) {
+    const parts = [];
+
+    // Type filter
+    if (typeFilters.types?.length > 0) {
+      const labels = typeFilters.types.map(t => {
+        const cfg = ELEMENT_TYPE_OPTIONS.find(o => o.value === t);
+        return cfg?.label ?? t;
+      });
+      parts.push(`Types: ${labels.join(', ')}`);
+    }
+
+    // Light sub-filters
+    const lf = typeFilters.lightFilters ?? {};
+    if (lf.subtypes?.length > 0)  parts.push(`Light subtypes: ${lf.subtypes.join(', ')}`);
+    if (lf.battery?.length  > 0)  parts.push(`Battery: ${lf.battery.join(', ')}`);
+    if (lf.emergency)              parts.push('Emergency lights only');
+    if (lf.movementSensor)         parts.push('Movement sensor only');
+    if (lf.lightSensor)            parts.push('Light sensor only');
+
+    // Communal door sub-filters
+    const cf = typeFilters.communalFilters ?? {};
+    if (cf.subtypes?.length > 0)  parts.push(`Door subtypes: ${cf.subtypes.join(', ')}`);
+    if (cf.security?.length > 0)  parts.push(`Security: ${cf.security.join(', ')}`);
+    if (cf.retained)               parts.push('Retained doors only');
+
+    // Fire control sub-filters
+    const ff = typeFilters.fireFilters ?? {};
+    if (ff.subtypes?.length > 0)  parts.push(`Fire subtypes: ${ff.subtypes.join(', ')}`);
+
+    // Status
+    if (selectedStatuses.length > 0) {
+      const labels = selectedStatuses.map(s => {
+        const opt = ELEMENT_STATUS_OPTIONS.find(o => o.value === s);
+        return opt?.label ?? s;
+      });
+      parts.push(`Status: ${labels.join(', ')}`);
+    }
+
+    if (parts.length === 0) return null;  // no filters — don't show anything
+
+    const excluded = totalElements - filteredCount;
+    const suffix   = excluded > 0 ? ` (${excluded} element${excluded !== 1 ? 's' : ''} excluded)` : '';
+    return parts.join(' · ') + suffix;
+  }
+
   async function generateReport() {
     generating = true;
-    logger('Generating report for plan:', plan.id);
+    logger('Generating report for plan:', plan.id, '| elements:', filteredElements.length);
     
     try {
-      // Build annotated plan image (plan + element markers) client-side
       let imageBase64 = null;
       if (options.includeImage && plan.image_url) {
         try {
           imageBase64 = await buildAnnotatedImageBase64(
-            plan.image_url,
-            filteredElements,
-            plan.image_width,
-            plan.image_height
+            plan.image_url, filteredElements, plan.image_width, plan.image_height
           );
           logger('Annotated image built, base64 length:', imageBase64?.length);
         } catch (imgErr) {
@@ -183,23 +227,26 @@
       }
 
       const response = await fetch('/api/plans/generate-report', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body:    JSON.stringify({
           plan,
           elements: filteredElements,
-          options: { ...options, imageBase64 }
+          options:  {
+            ...options,
+            imageBase64,
+            groupByType,
+            filterSummary: buildFilterSummary(typeFilters, selectedStatuses, elements.length, filteredElements.length)
+          }
         })
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
+      const url  = window.URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
       a.download = `${plan.building}_${plan.name}_Report.docx`;
       document.body.appendChild(a);
       a.click();
@@ -217,15 +264,14 @@
     }
   }
   
-  function handleClose() {
-    dispatch('close');
-  }
+  function handleClose() { dispatch('close'); }
 </script>
 
 <Modal show={true} size="medium" on:close={handleClose}>
-  <h3 slot="header" class="text-xl font-bold">Generate Floor Plan Report</h3>
+  <h3 slot="header" class="text-xl font-bold">Create Report</h3>
   
   <div class="section-spacing">
+    <!-- Plan summary -->
     <div class="card-info">
       <h4 class="font-semibold mb-2">Report Details</h4>
       <div class="text-sm space-y-1">
@@ -240,113 +286,87 @@
     <!-- Report Options -->
     <div>
       <h4 class="font-semibold mb-3">Report Options</h4>
-      
       <div class="space-y-3">
         <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            bind:checked={options.includeImage}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
-          />
+          <input type="checkbox" bind:checked={options.includeImage}
+            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
           <span class="text-sm">Include floor plan image</span>
         </label>
-        
         <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            bind:checked={options.includeElementList}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
-          />
+          <input type="checkbox" bind:checked={options.includeElementList}
+            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
           <span class="text-sm">Include element list</span>
-        </label>
-        
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            bind:checked={options.groupByType}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
-          />
-          <span class="text-sm">Group elements by type</span>
-        </label>
-        
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            bind:checked={options.includeInactive}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
-          />
-          <span class="text-sm">Include inactive/removed elements</span>
         </label>
       </div>
     </div>
 
-    <!-- Type filter -->
-    {#if allTypes.length > 1}
-      <div>
-        <h4 class="font-semibold mb-2">Element types to include</h4>
-        <div class="space-y-2">
-          {#each allTypes as type}
-            {@const cfg = ELEMENT_TYPE_OPTIONS.find(t => t.value === type)}
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedTypes.has(type)}
-                on:change={() => toggleType(type)}
-                class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
-              />
-              <span class="text-sm">{cfg?.label ?? type}</span>
-              <span class="text-xs text-gray-400">
-                ({elements.filter(e => e.element_type === type).length})
-              </span>
-            </label>
-          {/each}
-        </div>
+    <!-- Status filter — matches sidebar -->
+    <div>
+      <h4 class="font-semibold mb-3">Status</h4>
+      <div class="space-y-2">
+        {#each ELEMENT_STATUS_OPTIONS as status}
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 px-2 py-1 rounded">
+            <input
+              type="checkbox"
+              checked={selectedStatuses.includes(status.value)}
+              on:change={() => toggleStatus(status.value)}
+              class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
+            />
+            <span class="flex-1 text-sm">{status.label}</span>
+          </label>
+        {/each}
       </div>
-    {/if}
-    
-    <!-- Preview -->
-    {#if options.includeElementList && options.groupByType}
+    </div>
+
+
+
+    <!-- Element type filter — same component as plan sidebar -->
+    <div>
+      <h4 class="font-semibold mb-2">Element Types</h4>
+      <ElementTypeFilter
+        bind:this={typeFilterRef}
+        {elementCounts}
+        initialFilters={filters}
+        on:change={handleTypeChange}
+      />
+    </div>
+
+    <!-- Preview grouped by type -->
+    {#if options.includeElementList}
       <div>
         <h4 class="font-semibold mb-2">Preview: Elements by Type</h4>
         <div class="bg-slate-700/50 rounded p-3 max-h-48 overflow-y-auto">
-          {#each sortedTypes as type}
-            {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === type)}
-            <div class="mb-2">
-              <p class="text-sm font-medium flex items-center gap-2">
-                <span>{typeConfig?.icon}</span>
-                <span class="capitalize">{type}s ({elementsByType[type].length})</span>
-              </p>
-              <ul class="text-xs text-gray-400 ml-6 mt-1">
-                {#each elementsByType[type].slice(0, 3) as element}
-                  <li>• {getElementDisplayName(element, plan.floor_level)}{element.label ? ` — ${element.label}` : ''}</li>
-                {/each}
-                {#if elementsByType[type].length > 3}
-                  <li class="italic">... and {elementsByType[type].length - 3} more</li>
-                {/if}
-              </ul>
-            </div>
-          {/each}
+          {#if sortedTypes.length === 0}
+            <p class="text-xs text-gray-400 italic">No elements match current filters.</p>
+          {:else}
+            {#each sortedTypes as type}
+              {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === type)}
+              <div class="mb-2">
+                <p class="text-sm font-medium flex items-center gap-2">
+                  <span>{typeConfig?.icon}</span>
+                  <span class="capitalize">{typeConfig?.label ?? type} ({elementsByType[type].length})</span>
+                </p>
+                <ul class="text-xs text-gray-400 ml-6 mt-1">
+                  {#each elementsByType[type].slice(0, 3) as element}
+                    <li>• {getElementDisplayName(element, plan.floor_level)}{element.label ? ` — ${element.label}` : ''}</li>
+                  {/each}
+                  {#if elementsByType[type].length > 3}
+                    <li class="italic">... and {elementsByType[type].length - 3} more</li>
+                  {/if}
+                </ul>
+              </div>
+            {/each}
+          {/if}
         </div>
       </div>
     {/if}
   </div>
   
   <div slot="footer" class="btn-group justify-end">
-    <Button
-      variant="secondary"
-      size="large"
-      on:click={handleClose}
-      disabled={generating}
-    >
+    <Button variant="secondary" size="large" on:click={handleClose} disabled={generating}>
       Cancel
     </Button>
-    <Button
-      variant="primary"
-      size="large"
-      icon="download"
-      on:click={generateReport}
-      disabled={generating}
-    >
+    <Button variant="primary" size="large" icon="download" on:click={generateReport} disabled={generating}>
       {generating ? 'Generating...' : 'Generate Report'}
     </Button>
   </div>

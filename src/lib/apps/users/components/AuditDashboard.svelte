@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { auditLogsStore } from '../stores/auditLogsStore';
 
-  export let logs = [];
+  export let logs = [];  // current page — not used for stats (would show wrong totals)
 
   let stats = {
     totalEvents: 0, totalLogins: 0, failedLogins: 0, dataChanges: 0,
@@ -15,7 +15,8 @@
   let loading = false;
   let timeRange = 30;
 
-  $: calculateStats(logs);
+  // totalCount from the store reflects the full DB count (not just the page)
+  $: totalCount = $auditLogsStore.totalCount;
 
   async function loadStats() {
     loading = true;
@@ -28,33 +29,14 @@
     }
   }
 
-  function calculateStats(logs) {
-    if (!logs || logs.length === 0) return;
-    stats = {
-      totalEvents:       logs.length,
-      totalLogins:       logs.filter(l => l.event_type === 'login').length,
-      failedLogins:      logs.filter(l => l.event_type === 'failed_login').length,
-      dataChanges:       logs.filter(l => ['create', 'update', 'delete'].includes(l.event_type)).length,
-      permissionChanges: logs.filter(l => l.event_type === 'permission_change').length,
-      criticalEvents:    logs.filter(l => l.severity === 'critical').length,
-      warningEvents:     logs.filter(l => l.severity === 'warning').length,
-      flaggedEvents:     logs.filter(l => l.flagged).length,
-      authEvents:        logs.filter(l => l.event_category === 'auth').length,
-      userEvents:        logs.filter(l => l.event_category === 'users').length,
-      issueEvents:       logs.filter(l => ['issues', 'comments', 'actions'].includes(l.event_category)).length,
-      planEvents:        logs.filter(l => l.event_category === 'plans' || l.app_id === 'plans').length
-    };
-  }
-
-  onMount(() => {
-    if (logs.length === 0) loadStats();
-  });
+  // Always load from DB so all stat cards reflect the full dataset
+  onMount(loadStats);
 </script>
 
 <div class="mb-6">
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
     <div class="card">
-      <div class="text-3xl font-bold text-white">{stats.totalEvents}</div>
+      <div class="text-3xl font-bold text-white">{totalCount}</div>
       <div class="text-muted-sm">Total Events</div>
       <div class="text-xs text-muted mt-1">All logged activities</div>
     </div>
