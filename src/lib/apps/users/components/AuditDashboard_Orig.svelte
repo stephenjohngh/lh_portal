@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { auditLogsStore } from '../stores/auditLogsStore';
 
-  export const logs = [];  // passed in for external reference only — stats load from the store
+  export let logs = [];  // current page — not used for stats (would show wrong totals)
 
   let stats = {
     totalEvents: 0, totalLogins: 0, failedLogins: 0, dataChanges: 0,

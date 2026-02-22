@@ -1,389 +1,325 @@
 <!-- src/lib/apps/walk/components/WalkSessionStart.svelte -->
-<!-- Session configuration: type, building, floor, starting element -->
+<!-- Session setup: type, light subtype filter, floor, session name, start element -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { getLogger } from '$lib/utils/logger';
-  import { walkStore } from '../stores/walkStore.js';
-  import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { getLogger }             from '$lib/utils/logger';
+  import { walkStore }             from '../stores/walkStore.js';
+  import { ELEMENT_TYPE_OPTIONS }  from '$lib/utils/planConstants';
 
-  const logger = getLogger('WalkSessionStart');
+  const logger   = getLogger('WalkSessionStart');
   const dispatch = createEventDispatcher();
 
-  // Only door types are relevant for walk — but allow all
-  const typeOptions = ELEMENT_TYPE_OPTIONS;
+  $: plans       = $walkStore.plans;
+  $: allElements = $walkStore.allElements;
 
-  $: plans        = $walkStore.plans;
-  $: allElements  = $walkStore.allElements;
+  let selectedType       = 'communal_door';
+  let lightFilter        = 'all';          // 'all' | 'emergency'
+  let selectedPlanId     = '';
+  let sessionName        = '';
+  let startAssetId       = '';
+  let saving             = false;
+  let error              = null;
 
-  // Form state
-  let selectedType     = 'communal_door';
-  let selectedPlanId   = '';
-  let startAssetId     = '';
-  let saving           = false;
-  let error            = null;
+  $: selectedPlan   = plans.find(p => p.id === selectedPlanId);
+  $: availablePlans = plans.slice().sort((a, b) =>
+    a.building.localeCompare(b.building) || String(a.floor_level).localeCompare(String(b.floor_level))
+  );
 
-  // Derived
-  $: selectedPlan = plans.find(p => p.id === selectedPlanId);
-
-  $: availablePlans = plans
-    .slice()
-    .sort((a, b) => a.building.localeCompare(b.building) || a.floor_level - b.floor_level);
-
+  // Elements for chosen plan, filtered by type + emergency toggle
   $: elementsForPlan = selectedPlanId
-    ? (allElements[selectedPlanId] || [])
-        .filter(el => el.element_type === selectedType)
-        .sort((a, b) => (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true }))
+    ? (allElements[selectedPlanId] || []).filter(el => {
+        if (el.element_type !== selectedType) return false;
+        if (selectedType === 'light' && lightFilter === 'emergency') return el.emergency === true;
+        return true;
+      }).sort((a, b) => (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true }))
     : [];
 
   $: elementCount = elementsForPlan.length;
 
-  $: planLabel = (plan) =>
-    `${plan.building} — Floor ${plan.floor_level}${plan.name ? ` (${plan.name})` : ''}`;
+  // Count per plan for the plan-picker badges (respects current filters)
+  function countForPlan(planId) {
+    return (allElements[planId] || []).filter(el => {
+      if (el.element_type !== selectedType) return false;
+      if (selectedType === 'light' && lightFilter === 'emergency') return el.emergency === true;
+      return true;
+    }).length;
+  }
 
-  // When plan changes, reset start element
+  // Auto-generate name whenever meaningful fields change
+  $: if (selectedPlanId && selectedPlan) {
+    const mon  = new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    const typ  = typeLabel(selectedType).replace(/\s+/g, '_');
+    const sub  = selectedType === 'light' && lightFilter === 'emergency' ? '_Emergency' : '';
+    sessionName = `${typ}${sub}_${selectedPlan.building}_F${selectedPlan.floor_level}_${mon}`;
+  }
+
+  // Reset start element on plan / type changes
   $: if (selectedPlanId) startAssetId = '';
-
-  // When type changes, reset start element
-  $: if (selectedType) startAssetId = '';
+  $: if (selectedType)   startAssetId = '';
 
   async function handleStart() {
-    if (!selectedPlanId) { error = 'Please select a building / floor.'; return; }
-    if (elementCount === 0) { error = `No ${typeLabel(selectedType)} elements found on this floor.`; return; }
-
-    saving = true;
-    error  = null;
+    if (!selectedPlanId)    { error = 'Please select a floor.'; return; }
+    if (elementCount === 0) {
+      const note = selectedType === 'light' && lightFilter === 'emergency' ? ' (emergency)' : '';
+      error = `No ${typeLabel(selectedType)}${note} elements found on this floor.`;
+      return;
+    }
+    saving = true; error = null;
     try {
       await walkStore.startSession({
-        building:    selectedPlan.building,
-        floorLevel:  selectedPlan.floor_level,
-        elementType: selectedType,
-        startAssetId: startAssetId || null,
-        planId:      selectedPlanId
+        building:           selectedPlan.building,
+        floorLevel:         selectedPlan.floor_level,
+        elementType:        selectedType,
+        startAssetId:       startAssetId || null,
+        planId:             selectedPlanId,
+        sessionName:        sessionName.trim() || null,
+        lightSubtypeFilter: selectedType === 'light' ? lightFilter : null,
       });
       dispatch('started');
     } catch (err) {
-      logger('❌ Start session failed:', err.message);
+      logger('Failed:', err.message);
       error = err.message;
     } finally {
       saving = false;
     }
   }
 
-  function typeLabel(type) {
-    return ELEMENT_TYPE_OPTIONS.find(t => t.value === type)?.label ?? type;
-  }
-
-  function typeIcon(type) {
-    return ELEMENT_TYPE_OPTIONS.find(t => t.value === type)?.icon ?? '■';
-  }
+  function typeLabel(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t; }
+  function typeIcon(t)  { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon  ?? '■'; }
+  function planLabel(p) { return `${p.building} — Floor ${p.floor_level}${p.name ? ` (${p.name})` : ''}`; }
 </script>
 
-<div class="start-screen">
+<div class="ss">
 
   <!-- Header -->
-  <div class="start-header">
-    <button class="back-btn" on:click={() => dispatch('cancel')}>← Back</button>
-    <div class="start-title">NEW SESSION</div>
+  <div class="hdr">
+    <button class="back" on:click={() => dispatch('cancel')}>← Back</button>
+    <span class="hdr-title">NEW SESSION</span>
   </div>
 
-  <div class="start-body">
+  <div class="body">
 
-    <!-- Step 1: Element type -->
-    <div class="field-group">
-      <div class="field-label">01 — WHAT ARE YOU INSPECTING?</div>
+    <!-- 01 — Type -->
+    <section class="grp">
+      <div class="grp-lbl">01 — WHAT ARE YOU INSPECTING?</div>
       <div class="type-grid">
-        {#each typeOptions as type}
-          <button
-            class="type-btn"
-            class:selected={selectedType === type.value}
-            on:click={() => selectedType = type.value}
-          >
-            <span class="type-btn-icon">{type.icon}</span>
-            <span class="type-btn-label">{type.label}</span>
+        {#each ELEMENT_TYPE_OPTIONS as opt}
+          <button class="type-btn" class:on={selectedType === opt.value}
+                  on:click={() => selectedType = opt.value}>
+            <span class="type-icon">{opt.icon}</span>
+            <span class="type-lbl">{opt.label}</span>
           </button>
         {/each}
       </div>
-    </div>
 
-    <!-- Step 2: Building / floor -->
-    <div class="field-group">
-      <div class="field-label">02 — WHICH FLOOR?</div>
+      <!-- Light emergency toggle — only shown when Light selected -->
+      {#if selectedType === 'light'}
+        <div class="light-toggle">
+          <span class="lt-label">INCLUDE</span>
+          <div class="lt-row">
+            <button class="lt-btn" class:on={lightFilter === 'all'}
+                    on:click={() => lightFilter = 'all'}>All lights</button>
+            <button class="lt-btn" class:on={lightFilter === 'emergency'}
+                    on:click={() => lightFilter = 'emergency'}>⚠ Emergency only</button>
+          </div>
+        </div>
+      {/if}
+    </section>
+
+    <!-- 02 — Floor -->
+    <section class="grp">
+      <div class="grp-lbl">02 — WHICH FLOOR?</div>
       {#if availablePlans.length === 0}
-        <div class="field-hint">No floor plans available. Add plans in the Floor Plans app first.</div>
+        <p class="hint">No floor plans available — add plans in the Floor Plans app first.</p>
       {:else}
         <div class="plan-list">
           {#each availablePlans as plan}
-            {@const count = (allElements[plan.id] || []).filter(el => el.element_type === selectedType).length}
-            <button
-              class="plan-btn"
-              class:selected={selectedPlanId === plan.id}
-              class:empty={count === 0}
-              on:click={() => { selectedPlanId = plan.id; startAssetId = ''; }}
-            >
-              <div class="plan-btn-main">
-                <span class="plan-building">{plan.building}</span>
-                <span class="plan-floor">Floor {plan.floor_level}</span>
+            {@const cnt = countForPlan(plan.id)}
+            <button class="plan-btn" class:on={selectedPlanId === plan.id} class:zero={cnt === 0}
+                    on:click={() => { if (cnt > 0) { selectedPlanId = plan.id; startAssetId = ''; } }}>
+              <div class="plan-info">
+                <span class="plan-bld">{plan.building}</span>
+                <span class="plan-flr">Floor {plan.floor_level}</span>
               </div>
-              <span class="plan-count" class:zero={count === 0}>
-                {count} {count === 1 ? 'element' : 'elements'}
-              </span>
+              <span class="plan-cnt" class:zero={cnt === 0}>{cnt} {cnt === 1 ? 'element' : 'elements'}</span>
             </button>
           {/each}
         </div>
       {/if}
-    </div>
+    </section>
 
-    <!-- Step 3: Start element (optional) -->
+    <!-- 03 — Session name (shown once floor chosen) -->
+    {#if selectedPlanId}
+      <section class="grp">
+        <div class="grp-lbl">03 — SESSION NAME</div>
+        <p class="hint">Auto-generated — edit if needed</p>
+        <input class="text-input" type="text" bind:value={sessionName}
+               placeholder="Session name…" maxlength="80" />
+      </section>
+    {/if}
+
+    <!-- 04 — Start element -->
     {#if elementsForPlan.length > 0}
-      <div class="field-group">
-        <div class="field-label">03 — START FROM (OPTIONAL)</div>
-        <div class="field-hint">Leave blank to start from the first element.</div>
-        <select class="field-select" bind:value={startAssetId}>
+      <section class="grp">
+        <div class="grp-lbl">04 — START FROM (OPTIONAL)</div>
+        <p class="hint">Leave blank to start from the first element.</p>
+        <select class="sel-input" bind:value={startAssetId}>
           <option value="">— First element ({elementsForPlan[0]?.asset_id ?? 'unknown'}) —</option>
           {#each elementsForPlan as el}
-            <option value={el.asset_id ?? ''}>
-              {el.asset_id ?? 'No ID'}{el.label ? ` — ${el.label}` : ''}
-            </option>
+            <option value={el.asset_id ?? ''}>{el.asset_id ?? 'No ID'}{el.label ? ` — ${el.label}` : ''}</option>
           {/each}
         </select>
-      </div>
+      </section>
     {/if}
 
-    <!-- Summary -->
+    <!-- Summary box -->
     {#if selectedPlanId && elementCount > 0}
-      <div class="summary-box">
-        <div class="summary-row">
-          <span class="summary-key">TYPE</span>
-          <span class="summary-val">{typeIcon(selectedType)} {typeLabel(selectedType)}</span>
+      <div class="summary">
+        <div class="s-row"><span class="s-key">TYPE</span>
+          <span class="s-val">{typeIcon(selectedType)} {typeLabel(selectedType)}
+            {#if selectedType === 'light' && lightFilter === 'emergency'}
+              <span class="s-pill">Emergency</span>
+            {/if}
+          </span>
         </div>
-        <div class="summary-row">
-          <span class="summary-key">FLOOR</span>
-          <span class="summary-val">{planLabel(selectedPlan)}</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-key">ELEMENTS</span>
-          <span class="summary-val">{elementCount} to inspect</span>
-        </div>
-        {#if startAssetId}
-          <div class="summary-row">
-            <span class="summary-key">STARTING AT</span>
-            <span class="summary-val">{startAssetId}</span>
-          </div>
-        {/if}
+        <div class="s-row"><span class="s-key">FLOOR</span><span class="s-val">{planLabel(selectedPlan)}</span></div>
+        <div class="s-row"><span class="s-key">ELEMENTS</span><span class="s-val">{elementCount} to inspect</span></div>
+        {#if startAssetId}<div class="s-row"><span class="s-key">START</span><span class="s-val">{startAssetId}</span></div>{/if}
+        {#if sessionName}<div class="s-row"><span class="s-key">NAME</span><span class="s-val s-name">{sessionName}</span></div>{/if}
       </div>
     {/if}
 
-    <!-- Error -->
-    {#if error}
-      <div class="error-msg">⚠ {error}</div>
-    {/if}
+    {#if error}<div class="err-box">⚠ {error}</div>{/if}
 
-    <!-- Start -->
-    <button
-      class="start-action-btn"
-      on:click={handleStart}
-      disabled={saving || !selectedPlanId || elementCount === 0}
-    >
-      {#if saving}
-        STARTING…
-      {:else}
-        BEGIN WALK →
-      {/if}
+    <button class="go-btn" on:click={handleStart}
+            disabled={saving || !selectedPlanId || elementCount === 0}>
+      {saving ? 'STARTING…' : 'BEGIN WALK →'}
     </button>
 
   </div>
 </div>
 
 <style>
-  .start-screen {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
+  /* ── Root ─────────────────────────────────────────────────────────────── */
+  .ss {
+    display: flex; flex-direction: column;
+    min-height: calc(100vh - 64px);
+    background: #0d0d14;
+    color: #f0f0f0;
+    font-family: 'DM Mono', 'Courier New', monospace;
   }
 
-  /* ── Header ─────────────────────────────────────────────────────────── */
-  .start-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1.25rem 1.25rem 1rem;
-    border-bottom: 1px solid #1e1e2a;
+  /* ── Header ───────────────────────────────────────────────────────────── */
+  .hdr {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid #252535;
+    background: #111120;
   }
-
-  .back-btn {
-    background: none;
-    border: none;
-    color: #f97316;
-    font-family: inherit;
-    font-size: 0.8rem;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    padding: 0;
+  .back {
+    background: none; border: none; color: #fb923c;
+    font-family: inherit; font-size: 0.9rem; font-weight: 700;
+    letter-spacing: 0.04em; cursor: pointer; padding: 0;
   }
+  .back:hover { color: #fdba74; }
+  .hdr-title { font-size: 0.7rem; letter-spacing: 0.25em; color: #999; }
 
-  .start-title {
-    font-size: 0.7rem;
-    letter-spacing: 0.25em;
-    color: #444;
-  }
+  /* ── Body ─────────────────────────────────────────────────────────────── */
+  .body { padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; flex: 1; }
 
-  /* ── Body ────────────────────────────────────────────────────────────── */
-  .start-body {
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
-    flex: 1;
-  }
+  /* ── Section groups ───────────────────────────────────────────────────── */
+  .grp { display: flex; flex-direction: column; gap: 0.75rem; }
+  .grp-lbl { font-size: 0.65rem; letter-spacing: 0.2em; color: #fb923c; font-weight: 700; }
+  .hint { font-size: 0.8rem; color: #999; margin: 0; }
 
-  /* ── Field groups ────────────────────────────────────────────────────── */
-  .field-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-
-  .field-label {
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    color: #f97316;
-  }
-
-  .field-hint {
-    font-size: 0.75rem;
-    color: #444;
-  }
-
-  /* ── Type grid ───────────────────────────────────────────────────────── */
-  .type-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
-
+  /* ── Type selector grid ───────────────────────────────────────────────── */
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
   .type-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.875rem 0.5rem;
-    background: #111118;
-    border: 1px solid #1e1e2a;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+    padding: 1rem 0.5rem;
+    background: #16162a; border: 2px solid #252540;
+    border-radius: 10px; cursor: pointer;
+    font-family: inherit; transition: all 0.15s;
   }
+  .type-btn:hover     { border-color: #4040608; background: #1c1c2e; }
+  .type-btn.on        { border-color: #fb923c; background: #2a1600; }
+  .type-icon          { font-size: 1.75rem; }
+  .type-lbl           { font-size: 0.75rem; color: #ccc; letter-spacing: 0.03em; }
+  .type-btn.on .type-lbl { color: #fb923c; font-weight: 700; }
 
-  .type-btn:hover    { border-color: #333; }
-  .type-btn.selected { border-color: #f97316; background: #1a0f00; }
-
-  .type-btn-icon  { font-size: 1.5rem; }
-  .type-btn-label { font-size: 0.7rem; letter-spacing: 0.05em; color: #aaa; }
-  .type-btn.selected .type-btn-label { color: #f97316; }
-
-  /* ── Plan list ───────────────────────────────────────────────────────── */
-  .plan-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  /* ── Light emergency toggle ───────────────────────────────────────────── */
+  .light-toggle {
+    padding: 0.875rem 1rem;
+    background: #13131f; border: 1px solid #252535; border-radius: 8px;
+    display: flex; flex-direction: column; gap: 0.6rem;
   }
+  .lt-label { font-size: 0.6rem; letter-spacing: 0.18em; color: #999; }
+  .lt-row   { display: flex; gap: 0.5rem; }
+  .lt-btn {
+    flex: 1; padding: 0.7rem 0.75rem;
+    background: #16162a; border: 2px solid #252540; border-radius: 7px;
+    color: #ccc; font-family: inherit; font-size: 0.82rem;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .lt-btn:hover  { border-color: #40405e; color: #eee; }
+  .lt-btn.on     { border-color: #fb923c; background: #2a1600; color: #fb923c; font-weight: 700; }
 
+  /* ── Plan list ────────────────────────────────────────────────────────── */
+  .plan-list { display: flex; flex-direction: column; gap: 0.5rem; }
   .plan-btn {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 0.875rem 1rem;
-    background: #111118;
-    border: 1px solid #1e1e2a;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: inherit;
-    text-align: left;
-    transition: all 0.15s;
+    background: #16162a; border: 2px solid #252540; border-radius: 10px;
+    cursor: pointer; font-family: inherit; text-align: left; transition: all 0.15s;
+  }
+  .plan-btn:hover:not(.zero) { border-color: #40405e; background: #1c1c2e; }
+  .plan-btn.on               { border-color: #fb923c; background: #2a1600; }
+  .plan-btn.zero             { opacity: 0.35; cursor: not-allowed; }
+  .plan-info   { display: flex; flex-direction: column; gap: 0.15rem; }
+  .plan-bld    { font-size: 0.9rem; color: #f0f0f0; font-weight: 600; }
+  .plan-flr    { font-size: 0.72rem; color: #bbb; }
+  .plan-cnt    { font-size: 0.78rem; color: #bbb; }
+  .plan-cnt.zero { color: #555; }
+
+  /* ── Text / select inputs ─────────────────────────────────────────────── */
+  .text-input, .sel-input {
+    background: #16162a; border: 2px solid #252540; border-radius: 8px;
+    color: #f0f0f0; font-family: inherit; font-size: 0.875rem;
+    padding: 0.875rem 1rem; width: 100%; box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .text-input:focus, .sel-input:focus { outline: none; border-color: #fb923c; }
+  .text-input::placeholder { color: #555; }
+  .sel-input { appearance: none; cursor: pointer; }
+
+  /* ── Summary ──────────────────────────────────────────────────────────── */
+  .summary {
+    background: #0f1f14; border: 2px solid #1a3a22; border-radius: 10px;
+    padding: 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.625rem;
+  }
+  .s-row  { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+  .s-key  { font-size: 0.6rem; letter-spacing: 0.15em; color: #888; flex-shrink: 0; padding-top: 0.1rem; }
+  .s-val  { font-size: 0.825rem; color: #f0f0f0; text-align: right; }
+  .s-name { color: #fb923c; font-size: 0.78rem; }
+  .s-pill {
+    display: inline-block; font-size: 0.58rem; padding: 0.1rem 0.4rem;
+    border-radius: 4px; background: #2a1600; color: #fb923c;
+    margin-left: 0.4rem; vertical-align: middle;
   }
 
-  .plan-btn:hover:not(.empty) { border-color: #333; }
-  .plan-btn.selected          { border-color: #f97316; background: #1a0f00; }
-  .plan-btn.empty             { opacity: 0.4; cursor: not-allowed; }
-
-  .plan-btn-main {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
+  /* ── Error ────────────────────────────────────────────────────────────── */
+  .err-box {
+    font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem;
+    background: #2a0000; border: 2px solid #ef4444; border-radius: 8px;
   }
 
-  .plan-building { font-size: 0.875rem; color: #e8e8e0; }
-  .plan-floor    { font-size: 0.7rem;   color: #555; }
-
-  .plan-count      { font-size: 0.7rem; color: #555; }
-  .plan-count.zero { color: #333; }
-
-  /* ── Select ──────────────────────────────────────────────────────────── */
-  .field-select {
-    background: #111118;
-    border: 1px solid #1e1e2a;
-    border-radius: 8px;
-    color: #e8e8e0;
-    font-family: inherit;
-    font-size: 0.825rem;
-    padding: 0.875rem 1rem;
-    width: 100%;
-    appearance: none;
-    cursor: pointer;
+  /* ── Go button ────────────────────────────────────────────────────────── */
+  .go-btn {
+    padding: 1.125rem; background: #fb923c; border: none; border-radius: 10px;
+    color: #0a0a0a; font-family: inherit; font-size: 0.9rem;
+    font-weight: 800; letter-spacing: 0.2em;
+    cursor: pointer; transition: all 0.15s; margin-top: auto;
   }
-
-  .field-select:focus {
-    outline: none;
-    border-color: #f97316;
-  }
-
-  /* ── Summary box ─────────────────────────────────────────────────────── */
-  .summary-box {
-    background: #0d1117;
-    border: 1px solid #1e2d1e;
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .summary-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .summary-key { font-size: 0.6rem; letter-spacing: 0.15em; color: #444; }
-  .summary-val { font-size: 0.8rem; color: #e8e8e0; }
-
-  /* ── Error ───────────────────────────────────────────────────────────── */
-  .error-msg {
-    font-size: 0.8rem;
-    color: #ef4444;
-    padding: 0.75rem 1rem;
-    background: #1a0000;
-    border: 1px solid #ef4444;
-    border-radius: 6px;
-  }
-
-  /* ── Start action ────────────────────────────────────────────────────── */
-  .start-action-btn {
-    padding: 1.25rem;
-    background: #f97316;
-    border: none;
-    border-radius: 8px;
-    color: #0a0a0f;
-    font-family: inherit;
-    font-size: 0.875rem;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    cursor: pointer;
-    transition: all 0.15s;
-    margin-top: auto;
-  }
-
-  .start-action-btn:hover:not(:disabled) { background: #ea6a0a; }
-  .start-action-btn:disabled             { opacity: 0.35; cursor: not-allowed; }
+  .go-btn:hover:not(:disabled) { background: #f97316; }
+  .go-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 </style>

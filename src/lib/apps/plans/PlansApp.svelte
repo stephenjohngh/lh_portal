@@ -1,37 +1,33 @@
 <!-- src/lib/apps/plans/PlansApp.svelte -->
 <!-- Main Plans App - Interactive floor plan management -->
 <script>
-  import { onMount }      from 'svelte';
-  import { getLogger }    from '$lib/utils/logger';
-  import Button           from '$lib/components/common/Button.svelte';
-  import Icon             from '$lib/components/icons/Icon.svelte';
-  import Badge            from '$lib/components/common/Badge.svelte';
-  import PlansList        from './components/PlansList.svelte';
-  import PlanViewer       from './components/PlanViewer.svelte';
-  import PlanUploader     from './components/PlanUploader.svelte';
-  import BuildingReport   from './components/BuildingReport.svelte';
-  import { plansStore }   from './stores/plansStore';
-  import { permissions }  from '$lib/stores/permissions';
-  import { auth }         from '$lib/stores/auth';
+  import { onMount }            from 'svelte';
+  import { getLogger }          from '$lib/utils/logger';
+  import Button                 from '$lib/components/common/Button.svelte';
+  import Icon                   from '$lib/components/icons/Icon.svelte';
+  import Badge                  from '$lib/components/common/Badge.svelte';
+  import PlansList              from './components/PlansList.svelte';
+  import PlanViewer             from './components/PlanViewer.svelte';
+  import PlanUploader           from './components/PlanUploader.svelte';
+  import BuildingReport         from './components/BuildingReport.svelte';
+  import WalkInspectionsModal   from './components/WalkInspectionsModal.svelte';
+  import { plansStore }         from './stores/plansStore';
+  import { permissions }        from '$lib/stores/permissions';
+  import { auth }               from '$lib/stores/auth';
 
   const logger = getLogger('PlansApp');
 
   $: isAdmin = $permissions.isAdmin;
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
-  let showUploader        = false;
-  let showBuildingReport  = false;
-  let selectedPlanId      = null;
-  let loading             = true;
+  let showUploader          = false;
+  let showBuildingReport    = false;
+  let showWalkInspections   = false;
+  let selectedPlanId        = null;
+  let loading               = true;
 
   $: plans        = $plansStore.plans;
   $: selectedPlan = plans.find(p => p.id === selectedPlanId);
-
-  // ── Building report: group plans by building name ─────────────────────────
-  // We only offer the report at the list level (no plan selected), so we need
-  // a way to pick which building to report on when there is more than one.
-  // Strategy: show a "Building Report" button per building group on the list,
-  // or — when there is only one building — just a single top-level button.
 
   $: buildingGroups = groupByBuilding(plans);
   $: buildingNames  = Object.keys(buildingGroups).sort();
@@ -45,7 +41,6 @@
     }, {});
   }
 
-  // Which building's report modal is open (null = none)
   let reportBuilding = null;
 
   function openBuildingReport(buildingName) {
@@ -54,7 +49,6 @@
     logger('Opening building report for:', buildingName);
   }
 
-  // ── Lifecycle / data ──────────────────────────────────────────────────────
   onMount(async () => {
     logger('Plans app mounted');
     if ($auth.user) {
@@ -86,7 +80,7 @@
 
 <div class="text-white">
 
-  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
   <div class="mb-6">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -120,7 +114,19 @@
       <!-- List-level action buttons -->
       {#if !selectedPlan}
         <div class="flex items-center gap-2">
-          <!-- Single-building shortcut: one Report button -->
+
+          <!-- Walk Inspections button — always shown at list level -->
+          <Button
+            variant="secondary"
+            size="medium"
+            icon="clipboard"
+            on:click={() => showWalkInspections = true}
+            disabled={loading}
+          >
+            Inspections
+          </Button>
+
+          <!-- Building report shortcut for single-building setup -->
           {#if buildingNames.length === 1}
             <Button
               variant="secondary"
@@ -143,7 +149,7 @@
     </div>
   </div>
 
-  <!-- ── Main content ────────────────────────────────────────────────────────── -->
+  <!-- ── Main content ─────────────────────────────────────────────────────── -->
   <div>
     {#if loading}
       <div class="text-center py-12">
@@ -160,7 +166,6 @@
       />
 
     {:else}
-      <!-- Multi-building layout: group cards with a per-building report button -->
       {#if buildingNames.length > 1}
         {#each buildingNames as buildingName}
           <div class="mb-8">
@@ -189,7 +194,7 @@
 
 </div>
 
-<!-- ── Modals ──────────────────────────────────────────────────────────────── -->
+<!-- ── Modals ─────────────────────────────────────────────────────────────── -->
 
 {#if showUploader}
   <PlanUploader
@@ -203,5 +208,12 @@
     building={reportBuilding}
     plans={buildingGroups[reportBuilding]}
     on:close={() => { showBuildingReport = false; reportBuilding = null; }}
+  />
+{/if}
+
+{#if showWalkInspections}
+  <WalkInspectionsModal
+    show={showWalkInspections}
+    on:close={() => showWalkInspections = false}
   />
 {/if}
