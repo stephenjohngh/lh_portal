@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { fmtDate, fmtTime } from '$lib/utils/dates';
 
   const dispatch = createEventDispatcher();
 
@@ -15,15 +16,6 @@
 
   function typeLabel(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t; }
   function typeIcon(t)  { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon  ?? '■'; }
-
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
-  function fmtTime(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  }
 </script>
 
 <div class="home">

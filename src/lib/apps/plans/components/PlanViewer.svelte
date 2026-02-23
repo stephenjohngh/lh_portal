@@ -19,6 +19,7 @@
     getElementStatusConfig,
     getAttributeSummary
   } from '$lib/utils/planConstants';
+  import { applyElementFilters } from '$lib/apps/plans/utils/filterHelpers';
   import { permissions } from '$lib/stores/permissions';
 
   const logger = getLogger('PlanViewer');
@@ -81,7 +82,11 @@
     (filters.fireFilters?.subtypes?.length > 0)
   );
 
-  $: filteredElements   = hasActiveFilters ? applyFilters(elements, filters) : elements;
+  // applyElementFilters expects: { types, statuses, searchText, lightFilters, communalFilters, fireFilters }
+  // The filters object from PlanFilters already has this exact shape, plus apartmentFilters which is ignored.
+  $: filteredElements   = hasActiveFilters
+    ? applyElementFilters(elements, { ...filters, searchText: filters.searchText, plan })
+    : elements;
   $: filteredElementIds = new Set(filteredElements.map(e => e.id));
 
   $: sortedElementsForTable = [...filteredElements].sort((a, b) => {
@@ -109,46 +114,6 @@
     } catch (error) {
       logger('❌ Error loading elements:', error.message);
     }
-  }
-
-  function applyFilters(allElements, f) {
-    let result = [...allElements];
-
-    if (f.types.length > 0)
-      result = result.filter(el => f.types.includes(el.element_type));
-    if (f.statuses.length > 0)
-      result = result.filter(el => f.statuses.includes(el.status));
-    if (f.searchText) {
-      const q = f.searchText.toLowerCase();
-      result = result.filter(el =>
-        el.label?.toLowerCase().includes(q)    ||
-        el.asset_id?.toLowerCase().includes(q) ||
-        el.subtype?.toLowerCase().includes(q)  ||
-        getElementDisplayName(el, plan.floor_level).toLowerCase().includes(q)
-      );
-    }
-
-    const lf = f.lightFilters;
-    if (lf) {
-      if (lf.subtypes?.length > 0) result = result.filter(el => el.element_type !== 'light' || lf.subtypes.includes(el.subtype));
-      if (lf.battery?.length  > 0) result = result.filter(el => el.element_type !== 'light' || lf.battery.includes(el.battery));
-      if (lf.emergency)             result = result.filter(el => el.element_type !== 'light' || el.emergency === true);
-      if (lf.movementSensor)        result = result.filter(el => el.element_type !== 'light' || el.movement_sensor === true);
-      if (lf.lightSensor)           result = result.filter(el => el.element_type !== 'light' || el.light_sensor === true);
-    }
-
-    const cf = f.communalFilters;
-    if (cf) {
-      if (cf.subtypes?.length > 0) result = result.filter(el => el.element_type !== 'communal_door' || cf.subtypes.includes(el.subtype));
-      if (cf.security?.length > 0) result = result.filter(el => el.element_type !== 'communal_door' || cf.security.includes(el.security));
-      if (cf.retained)              result = result.filter(el => el.element_type !== 'communal_door' || el.retained === true);
-    }
-
-    const ff = f.fireFilters;
-    if (ff?.subtypes?.length > 0)
-      result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
-
-    return result;
   }
 
   function handleContainerClick(event) {

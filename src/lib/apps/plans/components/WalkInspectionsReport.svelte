@@ -9,6 +9,8 @@
   import { api }  from '$lib/utils/api';
   import { getLogger } from '$lib/utils/logger';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import { downloadResponse } from '$lib/utils/download';
 
   const logger   = getLogger('WalkInspectionsReport');
   const dispatch = createEventDispatcher();
@@ -49,7 +51,6 @@
     generating = true; genError = null; genProgress = '';
 
     try {
-      // Load inspections for any sessions we don't have yet
       const sessionsWithInspections = [];
 
       for (let i = 0; i < selectedSessions.length; i++) {
@@ -77,14 +78,9 @@
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const blob = await response.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      const date = new Date().toISOString().slice(0, 10);
-      a.href     = url;
-      a.download = `Inspections_${reportType === 'summary' ? 'Summary' : 'Detailed'}_${date}.docx`;
-      document.body.appendChild(a); a.click();
-      URL.revokeObjectURL(url); document.body.removeChild(a);
+      const date     = new Date().toISOString().slice(0, 10);
+      const filename = `Inspections_${reportType === 'summary' ? 'Summary' : 'Detailed'}_${date}.docx`;
+      await downloadResponse(response, filename);
 
       dispatch('close');
     } catch (err) {
@@ -98,16 +94,6 @@
   // ── Helpers ───────────────────────────────────────────────────────────────
   function typeLabel(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t; }
   function typeIcon(t)  { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon  ?? '■'; }
-
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
-  function fmtDateTime(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit' });
-  }
 </script>
 
 <Modal show={true} size="medium" on:close={() => dispatch('close')}>
@@ -211,7 +197,6 @@
 </Modal>
 
 <style>
-  /* Report type buttons */
   .type-btn {
     flex: 1; display: flex; align-items: flex-start; gap: 0.75rem;
     padding: 0.875rem 1rem; border-radius: 8px; text-align: left;
@@ -223,7 +208,6 @@
   .type-btn-active   { border-color: rgb(139 92 246); background: rgb(139 92 246 / 0.1); }
   .type-icon         { font-size: 1.25rem; flex-shrink: 0; }
 
-  /* Session list */
   .session-list {
     display: flex; flex-direction: column; gap: 0.25rem;
     max-height: 320px; overflow-y: auto;

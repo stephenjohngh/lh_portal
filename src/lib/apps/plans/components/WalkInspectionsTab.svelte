@@ -7,6 +7,8 @@
   import { getLogger } from '$lib/utils/logger';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
   import { walkStore }           from '$lib/apps/walk/stores/walkStore.js';
+  import { sessionStats, groupByElement, worstResult } from '$lib/apps/walk/utils/walkHelpers.js';
+  import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
   import WalkInspectionsReport   from './WalkInspectionsReport.svelte';
 
   const logger = getLogger('WalkInspectionsTab');
@@ -21,8 +23,8 @@
   let error        = null;
   let expandedId   = null;
   let showReport   = false;
-  let deletingId   = null;  // session id currently being deleted
-  let confirmId    = null;  // session id awaiting delete confirmation
+  let deletingId   = null;
+  let confirmId    = null;
 
   // ── Filters ──────────────────────────────────────────────────────────────
   let filterBuilding = '';
@@ -87,12 +89,7 @@
   }
 
   async function handleDelete(session) {
-    if (confirmId !== session.id) {
-      // First click: ask for confirmation
-      confirmId = session.id;
-      return;
-    }
-    // Second click: confirmed
+    if (confirmId !== session.id) { confirmId = session.id; return; }
     confirmId  = null;
     deletingId = session.id;
     try {
@@ -104,9 +101,7 @@
     } catch (err) {
       logger('❌ deleteSession:', err.message);
       error = err.message;
-    } finally {
-      deletingId = null;
-    }
+    } finally { deletingId = null; }
   }
 
   function clearFilters() {
@@ -116,55 +111,6 @@
   // ── Helpers ──────────────────────────────────────────────────────────────
   function typeLabel(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t; }
   function typeIcon(t)  { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon  ?? '■'; }
-
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
-  function fmtTime(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  }
-  function fmtDateTime(iso) { return iso ? `${fmtDate(iso)} ${fmtTime(iso)}` : '—'; }
-
-  function duration(s) {
-    if (!s.closed_at) return null;
-    const min = Math.round((new Date(s.closed_at) - new Date(s.started_at)) / 60000);
-    return min < 60 ? `${min}m` : `${Math.floor(min / 60)}h ${min % 60}m`;
-  }
-
-  function sessionStats(sessionId) {
-    const rows = inspections[sessionId] || [];
-    return {
-      pass:     rows.filter(r => r.result === 'pass').length,
-      fail:     rows.filter(r => r.result === 'fail').length,
-      na:       rows.filter(r => r.result === 'na').length,
-      elements: new Set(rows.map(r => r.element_id)).size,
-      total:    rows.length
-    };
-  }
-
-  function groupByElement(rows) {
-    const map = {};
-    for (const row of rows) {
-      if (!map[row.element_id]) {
-        map[row.element_id] = { asset_id: row.asset_id, subtype: row.subtype, rows: [] };
-      }
-      map[row.element_id].rows.push(row);
-    }
-    return Object.values(map).sort((a, b) => {
-      const aF = a.rows.some(r => r.result === 'fail');
-      const bF = b.rows.some(r => r.result === 'fail');
-      if (aF !== bF) return aF ? -1 : 1;
-      return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
-    });
-  }
-
-  function worstResult(rows) {
-    if (rows.some(r => r.result === 'fail')) return 'fail';
-    if (rows.some(r => r.result === 'pass')) return 'pass';
-    return 'na';
-  }
 </script>
 
 <div class="wi-tab">
@@ -175,7 +121,7 @@
 
       <div class="fld">
         <label for="wi-building" class="flbl">Building</label>
-        <select id="wi-building" class="fsel" bind:value={filterBuilding}>
+        <select id="wi-building" class="select text-sm" bind:value={filterBuilding}>
           <option value="">All buildings</option>
           {#each buildings as b}<option value={b}>{b}</option>{/each}
         </select>
@@ -183,7 +129,7 @@
 
       <div class="fld">
         <label for="wi-type" class="flbl">Type</label>
-        <select id="wi-type" class="fsel" bind:value={filterType}>
+        <select id="wi-type" class="select text-sm" bind:value={filterType}>
           <option value="">All types</option>
           {#each ELEMENT_TYPE_OPTIONS as t}<option value={t.value}>{t.icon} {t.label}</option>{/each}
         </select>
@@ -191,7 +137,7 @@
 
       <div class="fld">
         <label for="wi-status" class="flbl">Status</label>
-        <select id="wi-status" class="fsel" bind:value={filterStatus}>
+        <select id="wi-status" class="select text-sm" bind:value={filterStatus}>
           <option value="">All</option>
           <option value="open">Open</option>
           <option value="closed">Closed</option>
@@ -200,12 +146,12 @@
 
       <div class="fld">
         <label for="wi-from" class="flbl">From</label>
-        <input id="wi-from" type="date" class="finput" bind:value={filterDateFrom} />
+        <input id="wi-from" type="date" class="input text-sm" bind:value={filterDateFrom} />
       </div>
 
       <div class="fld">
         <label for="wi-to" class="flbl">To</label>
-        <input id="wi-to" type="date" class="finput" bind:value={filterDateTo} />
+        <input id="wi-to" type="date" class="input text-sm" bind:value={filterDateTo} />
       </div>
 
       {#if hasFilters}
@@ -247,8 +193,8 @@
   {:else}
     <div class="session-list">
       {#each filtered as session (session.id)}
-        {@const isExpanded     = expandedId === session.id}
-        {@const isLoadingThis  = loadingId === session.id}
+        {@const isExpanded    = expandedId === session.id}
+        {@const isLoadingThis = loadingId === session.id}
 
         <div class="sess-card">
 
@@ -275,7 +221,8 @@
                 <span>{fmtDateTime(session.started_at)}</span>
                 {#if session.closed_at}
                   <span>→ {fmtTime(session.closed_at)}</span>
-                  {#if duration(session)}<span class="dur">({duration(session)})</span>{/if}
+                  {@const dur = fmtDuration(session.started_at, session.closed_at)}
+                  {#if dur !== 'Open'}<span class="dur">({dur})</span>{/if}
                 {/if}
                 {#if session.inspector_name}
                   <span class="sep-dot">·</span>
@@ -289,7 +236,7 @@
 
             <!-- Quick stats if already loaded -->
             {#if inspections[session.id]}
-              {@const st = sessionStats(session.id)}
+              {@const st = sessionStats(inspections[session.id])}
               <div class="quick-stats">
                 {#if st.fail > 0}<span class="qs-fail">✗ {st.fail}</span>{/if}
                 {#if st.pass > 0}<span class="qs-pass">✓ {st.pass}</span>{/if}
@@ -330,7 +277,7 @@
 
               {:else}
                 {@const els = groupByElement(inspections[session.id])}
-                {@const st  = sessionStats(session.id)}
+                {@const st  = sessionStats(inspections[session.id])}
 
                 <div class="detail-stats">
                   <span>{st.elements} elements inspected</span>
@@ -344,7 +291,7 @@
                 {/if}
 
                 <div class="el-grid">
-                  {#each els as el}
+                  {#each els as el (el.element_id)}
                     {@const worst = worstResult(el.rows)}
                     <div class="el-card el-{worst}">
                       <span class="el-icon el-icon-{worst}">
@@ -394,12 +341,7 @@
   .fld     { display: flex; flex-direction: column; gap: 0.25rem; }
   .flbl    { font-size: 0.7rem; color: rgb(156 163 175); }
 
-  .fsel, .finput {
-    font-size: 0.875rem; padding: 0.375rem 0.625rem;
-    background: rgb(30 41 59); border: 1px solid rgb(71 85 105);
-    border-radius: 6px; color: #e2e8f0;
-  }
-  .fsel:focus, .finput:focus { outline: none; border-color: rgb(139 92 246); }
+  /* .fsel and .finput removed — now using .select and .input from app.css */
 
   .clear-btn {
     font-size: 0.75rem; color: rgb(156 163 175); background: none; border: none;

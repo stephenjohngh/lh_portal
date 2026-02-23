@@ -4,6 +4,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { groupByElement, worstResult, resultLabel, resultRank } from '../utils/walkHelpers.js';
+  import { fmtDate, fmtTime } from '$lib/utils/dates';
 
   const dispatch = createEventDispatcher();
 
@@ -13,13 +15,14 @@
   let loading     = true;
   let error       = null;
 
-  $: byElement = groupByElement(inspections);
-  $: elements  = Object.values(byElement);
+  // groupByElement returns an array sorted fail-first; convert to object keyed by element_id
+  // so the template can iterate with #each and keep the sorted order.
+  $: grouped   = groupByElement(inspections);
 
   $: passCount      = inspections.filter(i => i.result === 'pass').length;
   $: failCount      = inspections.filter(i => i.result === 'fail').length;
   $: naCount        = inspections.filter(i => i.result === 'na').length;
-  $: totalInspected = elements.length;
+  $: totalInspected = grouped.length;
 
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === session?.element_type);
 
@@ -32,43 +35,6 @@
       loading = false;
     }
   });
-
-  function groupByElement(rows) {
-    const map = {};
-    for (const row of rows) {
-      if (!map[row.element_id]) {
-        map[row.element_id] = {
-          element_id: row.element_id, asset_id: row.asset_id,
-          element_type: row.element_type, subtype: row.subtype, inspections: []
-        };
-      }
-      map[row.element_id].inspections.push(row);
-    }
-    return Object.fromEntries(
-      Object.entries(map).sort(([, a], [, b]) => {
-        const aw = worstResult(a.inspections), bw = worstResult(b.inspections);
-        if (aw !== bw) return resultRank(aw) - resultRank(bw);
-        return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
-      })
-    );
-  }
-
-  function worstResult(list) {
-    if (list.some(i => i.result === 'fail')) return 'fail';
-    if (list.some(i => i.result === 'pass')) return 'pass';
-    return 'na';
-  }
-  function resultRank(r) { return { fail: 0, pass: 1, na: 2 }[r] ?? 3; }
-  function resultLabel(r) { return { pass: '✓ PASS', fail: '✗ FAIL', na: '— N/A' }[r] ?? r; }
-
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
-  function fmtTime(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  }
 </script>
 
 <div class="sum">
@@ -149,9 +115,9 @@
     <div class="sec-title">ELEMENTS</div>
 
     <div class="el-list">
-      {#each elements as el (el.element_id)}
-        {@const worst = worstResult(el.inspections)}
-        {@const latest = el.inspections[el.inspections.length - 1]}
+      {#each grouped as el (el.element_id)}
+        {@const worst  = worstResult(el.rows)}
+        {@const latest = el.rows[el.rows.length - 1]}
         <div class="el-row res-{worst}">
           <div class="el-top">
             <div class="el-id">{el.asset_id || '—'}</div>
@@ -159,9 +125,9 @@
             <div class="el-res el-res-{worst}">{resultLabel(worst)}</div>
           </div>
 
-          {#if el.inspections.length > 1}
+          {#if el.rows.length > 1}
             <div class="insp-list">
-              {#each el.inspections as ins}
+              {#each el.rows as ins}
                 <div class="insp-row">
                   <span class="insp-t">{fmtTime(ins.inspected_at)}</span>
                   <span class="insp-r r-{ins.result}">{resultLabel(ins.result)}</span>

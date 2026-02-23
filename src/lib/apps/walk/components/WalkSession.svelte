@@ -5,6 +5,7 @@
   import { getLogger } from '$lib/utils/logger';
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
+  import { fmtTime } from '$lib/utils/dates';
   import WalkElementEditor    from './WalkElementEditor.svelte';
   import WalkInspectionPanel  from './WalkInspectionPanel.svelte';
   import WalkJumpList         from './WalkJumpList.svelte';
@@ -58,10 +59,6 @@
   function resultCls(r) {
     return { pass: 'r-pass', fail: 'r-fail', na: 'r-na' }[r] || '';
   }
-  function fmt(iso) {
-    if (!iso) return '';
-    return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  }
 </script>
 
 <div class="ws">
@@ -112,7 +109,7 @@
         <div class="insp-last {resultCls(lastInspection.result)}">
           <div class="insp-hdr">
             <span class="insp-lbl">LAST INSPECTION</span>
-            <span class="insp-time">{fmt(lastInspection.inspected_at)}</span>
+            <span class="insp-time">{fmtTime(lastInspection.inspected_at)}</span>
           </div>
           <div class="insp-result">
             {lastInspection.result === 'pass' ? '✓ PASS' : lastInspection.result === 'fail' ? '✗ FAIL' : '— N/A'}

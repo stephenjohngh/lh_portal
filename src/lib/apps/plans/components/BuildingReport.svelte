@@ -9,6 +9,7 @@
   import Icon            from '$lib/components/icons/Icon.svelte';
   import { plansStore }  from '../stores/plansStore';
   import { ELEMENT_SUBTYPES, getFloorLevelLabel } from '$lib/utils/planConstants';
+  import { downloadResponse } from '$lib/utils/download';
 
   const logger   = getLogger('BuildingReport');
   const dispatch = createEventDispatcher();
@@ -16,7 +17,7 @@
   export let building;   // string
   export let plans;      // Plan[] sorted L→U→G→1→2…
 
-  // ── Filters ──────────────────────────────────────────────────────────────────
+  // ── Filters ──────────────────────────────────────────────────────────────
   let elementType     = 'communal_door';
   let filterFailed    = false;
   let filterEmergency = false;
@@ -26,7 +27,7 @@
   $: subtypeOptions = ELEMENT_SUBTYPES[elementType] ?? [];
   $: if (elementType) { filterSubtype = ''; filterEmergency = false; filterFailed = false; }
 
-  // ── Preview ───────────────────────────────────────────────────────────────────
+  // ── Preview ───────────────────────────────────────────────────────────────
   $: storeElements = $plansStore.elements;
 
   $: previewCounts = plans.map(plan => {
@@ -47,7 +48,7 @@
     return true;
   }
 
-  // ── Load missing elements ─────────────────────────────────────────────────────
+  // ── Load missing elements ─────────────────────────────────────────────────
   let loading   = false;
   let loadError = null;
 
@@ -61,7 +62,7 @@
     }
   });
 
-  // ── Generation ────────────────────────────────────────────────────────────────
+  // ── Generation ────────────────────────────────────────────────────────────
   let generating    = false;
   let generateError = null;
 
@@ -95,11 +96,7 @@
         throw new Error(err.error || `HTTP ${response.status}`);
       }
 
-      const blob = await response.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = buildFilename(); a.click();
-      URL.revokeObjectURL(url);
+      await downloadResponse(response, buildFilename());
       dispatch('close');
     } catch (err) {
       generateError = err.message;

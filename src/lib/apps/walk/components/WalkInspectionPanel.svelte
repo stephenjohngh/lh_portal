@@ -5,6 +5,7 @@
   import { getLogger } from '$lib/utils/logger';
   import { walkStore } from '../stores/walkStore.js';
   import { getElementDisplayName } from '$lib/utils/planConstants';
+  import { fmtDateTime } from '$lib/utils/dates';
 
   const logger   = getLogger('WalkInspectionPanel');
   const dispatch = createEventDispatcher();
@@ -42,13 +43,6 @@
       logger('Save failed:', err.message);
       error = err.message;
     } finally { saving = false; }
-  }
-
-  function fmtDT(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-      + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
 </script>
 
@@ -102,7 +96,7 @@
                 <div class="hist-result">
                   {rec.result === 'pass' ? '✓ PASS' : rec.result === 'fail' ? '✗ FAIL' : '— N/A'}
                 </div>
-                <div class="hist-date">{fmtDT(rec.inspected_at)}</div>
+                <div class="hist-date">{fmtDateTime(rec.inspected_at)}</div>
               </div>
               {#if rec.inspector?.full_name}
                 <div class="hist-who">by {rec.inspector.full_name}</div>
