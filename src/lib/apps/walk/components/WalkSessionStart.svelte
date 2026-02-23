@@ -13,7 +13,7 @@
   $: allElements = $walkStore.allElements;
 
   let selectedType       = 'communal_door';
-  let lightFilter        = 'all';          // 'all' | 'emergency'
+  let lightFilter        = 'all';    // 'all' | 'emergency'
   let selectedPlanId     = '';
   let sessionName        = '';
   let startAssetId       = '';
@@ -21,11 +21,12 @@
   let error              = null;
 
   $: selectedPlan   = plans.find(p => p.id === selectedPlanId);
+  // Sort by building name, then floor level using natural sort (handles G, L, B1, 1, 2 etc.)
   $: availablePlans = plans.slice().sort((a, b) =>
-    a.building.localeCompare(b.building) || String(a.floor_level).localeCompare(String(b.floor_level))
+    a.building.localeCompare(b.building) ||
+    String(a.floor_level).localeCompare(String(b.floor_level), undefined, { numeric: true })
   );
 
-  // Elements for chosen plan, filtered by type + emergency toggle
   $: elementsForPlan = selectedPlanId
     ? (allElements[selectedPlanId] || []).filter(el => {
         if (el.element_type !== selectedType) return false;
@@ -36,7 +37,6 @@
 
   $: elementCount = elementsForPlan.length;
 
-  // Count per plan for the plan-picker badges (respects current filters)
   function countForPlan(planId) {
     return (allElements[planId] || []).filter(el => {
       if (el.element_type !== selectedType) return false;
@@ -45,23 +45,31 @@
     }).length;
   }
 
-  // Auto-generate name whenever meaningful fields change
+  // Extract initials from a building name: "Lincoln House" → "LH", "Block A" → "BA"
+  function buildingInitials(name) {
+    return name
+      .split(/\s+/)
+      .map(w => w[0]?.toUpperCase() ?? '')
+      .join('');
+  }
+
+  // Auto-generate session name whenever key fields change
   $: if (selectedPlanId && selectedPlan) {
     const mon  = new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
     const typ  = typeLabel(selectedType).replace(/\s+/g, '_');
     const sub  = selectedType === 'light' && lightFilter === 'emergency' ? '_Emergency' : '';
-    sessionName = `${typ}${sub}_${selectedPlan.building}_F${selectedPlan.floor_level}_${mon}`;
+    const bld  = buildingInitials(selectedPlan.building);
+    sessionName = `${typ}${sub}_${bld}_F${selectedPlan.floor_level}_${mon}`;
   }
 
-  // Reset start element on plan / type changes
   $: if (selectedPlanId) startAssetId = '';
   $: if (selectedType)   startAssetId = '';
 
   async function handleStart() {
     if (!selectedPlanId)    { error = 'Please select a floor.'; return; }
     if (elementCount === 0) {
-      const note = selectedType === 'light' && lightFilter === 'emergency' ? ' (emergency)' : '';
-      error = `No ${typeLabel(selectedType)}${note} elements found on this floor.`;
+      const suffix = selectedType === 'light' && lightFilter === 'emergency' ? ' (emergency)' : '';
+      error = `No ${typeLabel(selectedType)}${suffix} elements found on this floor.`;
       return;
     }
     saving = true; error = null;
@@ -73,11 +81,11 @@
         startAssetId:       startAssetId || null,
         planId:             selectedPlanId,
         sessionName:        sessionName.trim() || null,
-        lightSubtypeFilter: selectedType === 'light' ? lightFilter : null,
+        lightSubtypeFilter: selectedType === 'light' ? lightFilter : null
       });
       dispatch('started');
     } catch (err) {
-      logger('Failed:', err.message);
+      logger('Start failed:', err.message);
       error = err.message;
     } finally {
       saving = false;
@@ -86,18 +94,19 @@
 
   function typeLabel(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t; }
   function typeIcon(t)  { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon  ?? '■'; }
-  function planLabel(p) { return `${p.building} — Floor ${p.floor_level}${p.name ? ` (${p.name})` : ''}`; }
+  function planLabel(p) {
+    return `${p.building} — Floor ${p.floor_level}${p.name ? ` (${p.name})` : ''}`;
+  }
 </script>
 
 <div class="ss">
 
-  <!-- Header -->
-  <div class="hdr">
-    <button class="back" on:click={() => dispatch('cancel')}>← Back</button>
-    <span class="hdr-title">NEW SESSION</span>
+  <div class="ss-hdr">
+    <button class="back-btn" on:click={() => dispatch('cancel')}>← Back</button>
+    <span class="ss-title">NEW SESSION</span>
   </div>
 
-  <div class="body">
+  <div class="ss-body">
 
     <!-- 01 — Type -->
     <section class="grp">
@@ -112,10 +121,9 @@
         {/each}
       </div>
 
-      <!-- Light emergency toggle — only shown when Light selected -->
       {#if selectedType === 'light'}
-        <div class="light-toggle">
-          <span class="lt-label">INCLUDE</span>
+        <div class="lt-box">
+          <span class="lt-lbl">INCLUDE</span>
           <div class="lt-row">
             <button class="lt-btn" class:on={lightFilter === 'all'}
                     on:click={() => lightFilter = 'all'}>All lights</button>
@@ -148,12 +156,12 @@
       {/if}
     </section>
 
-    <!-- 03 — Session name (shown once floor chosen) -->
+    <!-- 03 — Session name -->
     {#if selectedPlanId}
       <section class="grp">
         <div class="grp-lbl">03 — SESSION NAME</div>
         <p class="hint">Auto-generated — edit if needed</p>
-        <input class="text-input" type="text" bind:value={sessionName}
+        <input class="txt-input" type="text" bind:value={sessionName}
                placeholder="Session name…" maxlength="80" />
       </section>
     {/if}
@@ -172,27 +180,24 @@
       </section>
     {/if}
 
-    <!-- Summary box -->
+    <!-- Summary -->
     {#if selectedPlanId && elementCount > 0}
       <div class="summary">
-        <div class="s-row"><span class="s-key">TYPE</span>
-          <span class="s-val">{typeIcon(selectedType)} {typeLabel(selectedType)}
-            {#if selectedType === 'light' && lightFilter === 'emergency'}
-              <span class="s-pill">Emergency</span>
-            {/if}
+        <div class="s-row"><span class="s-k">TYPE</span>
+          <span class="s-v">{typeIcon(selectedType)} {typeLabel(selectedType)}
+            {#if selectedType === 'light' && lightFilter === 'emergency'}<span class="s-pill">Emergency</span>{/if}
           </span>
         </div>
-        <div class="s-row"><span class="s-key">FLOOR</span><span class="s-val">{planLabel(selectedPlan)}</span></div>
-        <div class="s-row"><span class="s-key">ELEMENTS</span><span class="s-val">{elementCount} to inspect</span></div>
-        {#if startAssetId}<div class="s-row"><span class="s-key">START</span><span class="s-val">{startAssetId}</span></div>{/if}
-        {#if sessionName}<div class="s-row"><span class="s-key">NAME</span><span class="s-val s-name">{sessionName}</span></div>{/if}
+        <div class="s-row"><span class="s-k">FLOOR</span><span class="s-v">{planLabel(selectedPlan)}</span></div>
+        <div class="s-row"><span class="s-k">ELEMENTS</span><span class="s-v">{elementCount} to inspect</span></div>
+        {#if startAssetId}<div class="s-row"><span class="s-k">START</span><span class="s-v">{startAssetId}</span></div>{/if}
+        {#if sessionName}<div class="s-row"><span class="s-k">NAME</span><span class="s-v s-name">{sessionName}</span></div>{/if}
       </div>
     {/if}
 
     {#if error}<div class="err-box">⚠ {error}</div>{/if}
 
-    <button class="go-btn" on:click={handleStart}
-            disabled={saving || !selectedPlanId || elementCount === 0}>
+    <button class="go-btn" on:click={handleStart} disabled={saving || !selectedPlanId || elementCount === 0}>
       {saving ? 'STARTING…' : 'BEGIN WALK →'}
     </button>
 
@@ -200,125 +205,105 @@
 </div>
 
 <style>
-  /* ── Root ─────────────────────────────────────────────────────────────── */
   .ss {
     display: flex; flex-direction: column;
     min-height: calc(100vh - 64px);
-    background: #0d0d14;
-    color: #f0f0f0;
+    background: #0d0d14; color: #f0f0f0;
     font-family: 'DM Mono', 'Courier New', monospace;
   }
 
-  /* ── Header ───────────────────────────────────────────────────────────── */
-  .hdr {
+  .ss-hdr {
     display: flex; align-items: center; gap: 1rem;
     padding: 1.25rem 1.5rem 1rem;
-    border-bottom: 1px solid #252535;
-    background: #111120;
+    border-bottom: 1px solid #2e2e42;
+    background: #111122;
   }
-  .back {
+  .back-btn {
     background: none; border: none; color: #fb923c;
-    font-family: inherit; font-size: 0.9rem; font-weight: 700;
-    letter-spacing: 0.04em; cursor: pointer; padding: 0;
+    font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; padding: 0;
   }
-  .back:hover { color: #fdba74; }
-  .hdr-title { font-size: 0.7rem; letter-spacing: 0.25em; color: #999; }
+  .back-btn:hover { color: #fdba74; }
+  .ss-title { font-size: 0.7rem; letter-spacing: 0.25em; color: #aaa; }
 
-  /* ── Body ─────────────────────────────────────────────────────────────── */
-  .body { padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; flex: 1; }
+  .ss-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; flex: 1; }
 
-  /* ── Section groups ───────────────────────────────────────────────────── */
-  .grp { display: flex; flex-direction: column; gap: 0.75rem; }
+  .grp  { display: flex; flex-direction: column; gap: 0.75rem; }
   .grp-lbl { font-size: 0.65rem; letter-spacing: 0.2em; color: #fb923c; font-weight: 700; }
-  .hint { font-size: 0.8rem; color: #999; margin: 0; }
+  .hint { font-size: 0.82rem; color: #bbb; margin: 0; }
 
-  /* ── Type selector grid ───────────────────────────────────────────────── */
   .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
   .type-btn {
     display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
-    padding: 1rem 0.5rem;
-    background: #16162a; border: 2px solid #252540;
-    border-radius: 10px; cursor: pointer;
-    font-family: inherit; transition: all 0.15s;
+    padding: 1rem 0.5rem; background: #1a1a2e; border: 2px solid #2e2e48;
+    border-radius: 10px; cursor: pointer; font-family: inherit; transition: all 0.15s;
   }
-  .type-btn:hover     { border-color: #4040608; background: #1c1c2e; }
-  .type-btn.on        { border-color: #fb923c; background: #2a1600; }
-  .type-icon          { font-size: 1.75rem; }
-  .type-lbl           { font-size: 0.75rem; color: #ccc; letter-spacing: 0.03em; }
+  .type-btn:hover { border-color: #4e4e78; background: #1e1e38; }
+  .type-btn.on    { border-color: #fb923c; background: #2a1800; }
+  .type-icon { font-size: 1.75rem; }
+  .type-lbl  { font-size: 0.75rem; color: #ccc; letter-spacing: 0.03em; }
   .type-btn.on .type-lbl { color: #fb923c; font-weight: 700; }
 
-  /* ── Light emergency toggle ───────────────────────────────────────────── */
-  .light-toggle {
-    padding: 0.875rem 1rem;
-    background: #13131f; border: 1px solid #252535; border-radius: 8px;
+  .lt-box {
+    padding: 0.875rem 1rem; background: #141428;
+    border: 1px solid #2e2e42; border-radius: 8px;
     display: flex; flex-direction: column; gap: 0.6rem;
   }
-  .lt-label { font-size: 0.6rem; letter-spacing: 0.18em; color: #999; }
-  .lt-row   { display: flex; gap: 0.5rem; }
+  .lt-lbl { font-size: 0.6rem; letter-spacing: 0.18em; color: #bbb; }
+  .lt-row { display: flex; gap: 0.5rem; }
   .lt-btn {
-    flex: 1; padding: 0.7rem 0.75rem;
-    background: #16162a; border: 2px solid #252540; border-radius: 7px;
-    color: #ccc; font-family: inherit; font-size: 0.82rem;
-    cursor: pointer; transition: all 0.15s;
+    flex: 1; padding: 0.65rem 0.75rem; background: #1a1a2e;
+    border: 2px solid #2e2e48; border-radius: 7px; color: #ccc;
+    font-family: inherit; font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
   }
-  .lt-btn:hover  { border-color: #40405e; color: #eee; }
-  .lt-btn.on     { border-color: #fb923c; background: #2a1600; color: #fb923c; font-weight: 700; }
+  .lt-btn:hover { border-color: #5e5e88; color: #eee; }
+  .lt-btn.on    { border-color: #fb923c; background: #2a1800; color: #fb923c; font-weight: 700; }
 
-  /* ── Plan list ────────────────────────────────────────────────────────── */
   .plan-list { display: flex; flex-direction: column; gap: 0.5rem; }
   .plan-btn {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0.875rem 1rem;
-    background: #16162a; border: 2px solid #252540; border-radius: 10px;
-    cursor: pointer; font-family: inherit; text-align: left; transition: all 0.15s;
+    padding: 0.875rem 1rem; background: #1a1a2e; border: 2px solid #2e2e48;
+    border-radius: 10px; cursor: pointer; font-family: inherit; text-align: left; transition: all 0.15s;
   }
-  .plan-btn:hover:not(.zero) { border-color: #40405e; background: #1c1c2e; }
-  .plan-btn.on               { border-color: #fb923c; background: #2a1600; }
+  .plan-btn:hover:not(.zero) { border-color: #4e4e78; background: #1e1e38; }
+  .plan-btn.on               { border-color: #fb923c; background: #2a1800; }
   .plan-btn.zero             { opacity: 0.35; cursor: not-allowed; }
-  .plan-info   { display: flex; flex-direction: column; gap: 0.15rem; }
-  .plan-bld    { font-size: 0.9rem; color: #f0f0f0; font-weight: 600; }
-  .plan-flr    { font-size: 0.72rem; color: #bbb; }
-  .plan-cnt    { font-size: 0.78rem; color: #bbb; }
-  .plan-cnt.zero { color: #555; }
+  .plan-info { display: flex; flex-direction: column; gap: 0.15rem; }
+  .plan-bld  { font-size: 0.9rem; color: #f0f0f0; font-weight: 600; }
+  .plan-flr  { font-size: 0.75rem; color: #ccc; }
+  .plan-cnt  { font-size: 0.78rem; color: #ccc; }
+  .plan-cnt.zero { color: #666; }
 
-  /* ── Text / select inputs ─────────────────────────────────────────────── */
-  .text-input, .sel-input {
-    background: #16162a; border: 2px solid #252540; border-radius: 8px;
+  .txt-input, .sel-input {
+    background: #1a1a2e; border: 2px solid #2e2e48; border-radius: 8px;
     color: #f0f0f0; font-family: inherit; font-size: 0.875rem;
-    padding: 0.875rem 1rem; width: 100%; box-sizing: border-box;
-    transition: border-color 0.15s;
+    padding: 0.875rem 1rem; width: 100%; box-sizing: border-box; transition: border-color 0.15s;
   }
-  .text-input:focus, .sel-input:focus { outline: none; border-color: #fb923c; }
-  .text-input::placeholder { color: #555; }
+  .txt-input:focus, .sel-input:focus { outline: none; border-color: #fb923c; }
+  .txt-input::placeholder { color: #666; }
   .sel-input { appearance: none; cursor: pointer; }
 
-  /* ── Summary ──────────────────────────────────────────────────────────── */
   .summary {
-    background: #0f1f14; border: 2px solid #1a3a22; border-radius: 10px;
+    background: #0f1f14; border: 2px solid #1a3d24; border-radius: 10px;
     padding: 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.625rem;
   }
-  .s-row  { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
-  .s-key  { font-size: 0.6rem; letter-spacing: 0.15em; color: #888; flex-shrink: 0; padding-top: 0.1rem; }
-  .s-val  { font-size: 0.825rem; color: #f0f0f0; text-align: right; }
+  .s-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+  .s-k   { font-size: 0.62rem; letter-spacing: 0.15em; color: #aaa; flex-shrink: 0; padding-top: 0.1rem; }
+  .s-v   { font-size: 0.85rem; color: #f0f0f0; text-align: right; }
   .s-name { color: #fb923c; font-size: 0.78rem; }
   .s-pill {
     display: inline-block; font-size: 0.58rem; padding: 0.1rem 0.4rem;
-    border-radius: 4px; background: #2a1600; color: #fb923c;
-    margin-left: 0.4rem; vertical-align: middle;
+    border-radius: 4px; background: #2a1800; color: #fb923c; margin-left: 0.4rem; vertical-align: middle;
   }
 
-  /* ── Error ────────────────────────────────────────────────────────────── */
   .err-box {
     font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem;
     background: #2a0000; border: 2px solid #ef4444; border-radius: 8px;
   }
 
-  /* ── Go button ────────────────────────────────────────────────────────── */
   .go-btn {
     padding: 1.125rem; background: #fb923c; border: none; border-radius: 10px;
-    color: #0a0a0a; font-family: inherit; font-size: 0.9rem;
-    font-weight: 800; letter-spacing: 0.2em;
-    cursor: pointer; transition: all 0.15s; margin-top: auto;
+    color: #0a0a0a; font-family: inherit; font-size: 0.9rem; font-weight: 800;
+    letter-spacing: 0.2em; cursor: pointer; transition: all 0.15s; margin-top: auto;
   }
   .go-btn:hover:not(:disabled) { background: #f97316; }
   .go-btn:disabled { opacity: 0.3; cursor: not-allowed; }

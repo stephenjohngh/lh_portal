@@ -1,5 +1,5 @@
 // src/lib/apps/walk/stores/walkStore.js
-// State management for Walk App
+// State management for Walk App — inspection sessions and element walk-throughs
 
 import { writable } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
@@ -8,20 +8,59 @@ import { supabase } from '$lib/supabaseClient';
 
 const logger = getLogger('walkStore');
 
-async function getCurrentUserId() {
+async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+async function getCurrentUserId() {
+  const user = await getCurrentUser();
   return user.id;
+}
+
+// Fetch the current user's display name from profiles
+async function getCurrentUserName(userId) {
+  try {
+    const rows = await api.get('profiles', {
+      select:  'full_name',
+      filters: { id: userId }
+    });
+    return rows?.[0]?.full_name ?? null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Build the ordered walk element list for a session, respecting the light subtype filter
+function buildWalkElements(planElements, elementType, lightSubtypeFilter) {
+  return planElements
+    .filter(el => {
+      if (el.element_type !== elementType) return false;
+      if (elementType === 'light' && lightSubtypeFilter === 'emergency') {
+        return el.emergency === true;
+      }
+      return true;
+    })
+    .sort((a, b) =>
+      (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true })
+    );
 }
 
 function createWalkStore() {
   const { subscribe, set, update } = writable({
+    // Plans data (loaded once on mount)
     plans:         [],
-    allElements:   {},   // { [planId]: element[] }
-    sessions:      [],
-    activeSession: null,
-    walkElements:  [],
+    allElements:   {},    // { [planId]: element[] }
+
+    // Session state
+    sessions:      [],    // recent walk sessions
+    activeSession: null,  // the open session object
+
+    // Walk state (set when a session is active)
+    walkElements:  [],    // sorted elements for this session's type+plan
     currentIndex:  0,
-    inspections:   {},   // { [elementId]: inspection[] }
+    inspections:   {},    // { [elementId]: inspection[] }
+
     loading:       false,
     error:         null
   });
@@ -35,11 +74,14 @@ function createWalkStore() {
       const allElements = {};
       for (const plan of plans) {
         allElements[plan.id] = await api.get('plan_elements', {
-          filters: { plan_id: plan.id }, orderBy: 'asset_id', ascending: true
+          filters: { plan_id: plan.id },
+          orderBy: 'asset_id',
+          ascending: true
         });
       }
       update(s => ({ ...s, plans, allElements }));
       logger('✅ Loaded', plans.length, 'plans');
+      return { plans, allElements };
     } catch (error) {
       logger('❌ loadPlans:', error.message);
       throw error;
@@ -49,11 +91,14 @@ function createWalkStore() {
   // ── Sessions ───────────────────────────────────────────────────────────────
 
   async function loadSessions() {
+    logger('Loading walk sessions…');
     update(s => ({ ...s, loading: true }));
     try {
       const userId   = await getCurrentUserId();
       const sessions = await api.get('walk_sessions', {
-        filters: { created_by: userId }, orderBy: 'started_at', ascending: false
+        filters:   { created_by: userId },
+        orderBy:   'started_at',
+        ascending: false
       });
       update(s => ({ ...s, sessions, loading: false }));
       logger('✅ Loaded', sessions.length, 'sessions');
@@ -65,33 +110,32 @@ function createWalkStore() {
     }
   }
 
-  // Build the ordered walk list for a session, respecting light emergency filter
-  function buildWalkElements(planElements, elementType, lightSubtypeFilter) {
-    return planElements
-      .filter(el => {
-        if (el.element_type !== elementType) return false;
-        if (elementType === 'light' && lightSubtypeFilter === 'emergency') {
-          return el.emergency === true;
-        }
-        return true;
-      })
-      .sort((a, b) => (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true }));
-  }
-
-  async function startSession({ building, floorLevel, elementType, startAssetId, planId, sessionName, lightSubtypeFilter }) {
+  async function startSession({
+    building,
+    floorLevel,
+    elementType,
+    startAssetId,
+    planId,
+    sessionName       = null,
+    lightSubtypeFilter = null
+  }) {
     logger('Starting session:', { building, floorLevel, elementType });
-    const userId = await getCurrentUserId();
+    const userId        = await getCurrentUserId();
+    const inspectorName = await getCurrentUserName(userId);
+
     try {
       const session = await api.create('walk_sessions', {
+        plan_id:              planId,
         building,
-        floor_level:         floorLevel,
-        element_type:        elementType,
-        start_asset_id:      startAssetId || null,
-        session_name:        sessionName  || null,
-        light_subtype_filter: lightSubtypeFilter || null,
-        status:              'open',
-        created_by:          userId,
-        updated_by:          userId
+        floor_level:          floorLevel,
+        element_type:         elementType,
+        start_asset_id:       startAssetId        || null,
+        session_name:         sessionName          || null,
+        inspector_name:       inspectorName        || null,
+        light_subtype_filter: lightSubtypeFilter   || null,
+        status:               'open',
+        created_by:           userId,
+        updated_by:           userId
       });
       logger('✅ Session created:', session.id);
 
@@ -109,7 +153,9 @@ function createWalkStore() {
         if (found >= 0) startIndex = found;
       }
 
-      try { localStorage.setItem('walk_plan_id', JSON.stringify({ sessionId: session.id, planId })); } catch (_) {}
+      try {
+        localStorage.setItem('walk_plan_id', JSON.stringify({ sessionId: session.id, planId }));
+      } catch (_) {}
 
       update(s => ({
         ...s,
@@ -136,7 +182,13 @@ function createWalkStore() {
         notes:      notes || null,
         updated_by: userId
       });
-      update(s => ({ ...s, activeSession: null, walkElements: [], currentIndex: 0, inspections: {} }));
+      update(s => ({
+        ...s,
+        activeSession: null,
+        walkElements:  [],
+        currentIndex:  0,
+        inspections:   {}
+      }));
       await loadSessions();
       logger('✅ Session closed');
     } catch (error) {
@@ -150,21 +202,24 @@ function createWalkStore() {
     let state;
     subscribe(s => { state = s; })();
 
-    // Try plan_id first, fall back to building+floor match for old sessions
-    const plan = session.plan_id
-      ? state.plans.find(p => p.id === session.plan_id)
-      : (() => {
-          // Also check localStorage bridge
-          try {
-            const stored = JSON.parse(localStorage.getItem('walk_plan_id') || 'null');
-            if (stored?.sessionId === session.id) {
-              return state.plans.find(p => p.id === stored.planId);
-            }
-          } catch (_) {}
-          return state.plans.find(p =>
-            p.building === session.building && String(p.floor_level) === String(session.floor_level)
-          );
-        })();
+    // Find plan: prefer plan_id column, fall back to localStorage bridge, then building+floor match
+    let plan = null;
+    if (session.plan_id) {
+      plan = state.plans.find(p => p.id === session.plan_id);
+    } else {
+      try {
+        const stored = JSON.parse(localStorage.getItem('walk_plan_id') || 'null');
+        if (stored?.sessionId === session.id) {
+          plan = state.plans.find(p => p.id === stored.planId);
+        }
+      } catch (_) {}
+      if (!plan) {
+        plan = state.plans.find(p =>
+          p.building === session.building &&
+          String(p.floor_level) === String(session.floor_level)
+        );
+      }
+    }
 
     if (!plan) {
       throw new Error(`No plan found for ${session.building} floor ${session.floor_level}`);
@@ -178,7 +233,9 @@ function createWalkStore() {
 
     // Load existing inspections
     const rows = await api.get('element_inspections', {
-      filters: { session_id: session.id }, orderBy: 'inspected_at', ascending: true
+      filters:   { session_id: session.id },
+      orderBy:   'inspected_at',
+      ascending: true
     });
     const inspections = {};
     for (const row of rows) {
@@ -210,9 +267,13 @@ function createWalkStore() {
   // ── Element editing ────────────────────────────────────────────────────────
 
   async function updateElement(elementId, updates) {
+    logger('Updating element:', elementId);
     const userId = await getCurrentUserId();
     try {
-      const updated = await api.update('plan_elements', elementId, { ...updates, updated_by: userId });
+      const updated = await api.update('plan_elements', elementId, {
+        ...updates,
+        updated_by: userId
+      });
       update(s => {
         const newAll = { ...s.allElements };
         for (const pid of Object.keys(newAll)) {
@@ -224,6 +285,7 @@ function createWalkStore() {
           walkElements: s.walkElements.map(el => el.id === elementId ? { ...el, ...updated } : el)
         };
       });
+      logger('✅ Element updated');
       return updated;
     } catch (error) {
       logger('❌ updateElement:', error.message);
@@ -233,16 +295,19 @@ function createWalkStore() {
 
   // ── Inspections ────────────────────────────────────────────────────────────
 
-  async function addInspection({ sessionId, elementId, result, notes, element }) {
+  async function addInspection({ sessionId, elementId, planId, result, notes, element }) {
+    logger('Adding inspection:', elementId, result);
     const userId = await getCurrentUserId();
     try {
       const inspection = await api.create('element_inspections', {
         session_id:     sessionId,
         element_id:     elementId,
+        plan_id:        planId        || null,
         result,
-        notes:          notes || null,
+        notes:          notes         || null,
         inspector_id:   userId,
         inspected_at:   new Date().toISOString(),
+        // Snapshot of element state at time of inspection
         element_type:   element.element_type,
         asset_id:       element.asset_id,
         subtype:        element.subtype,
@@ -250,7 +315,10 @@ function createWalkStore() {
       });
       update(s => {
         const existing = s.inspections[elementId] || [];
-        return { ...s, inspections: { ...s.inspections, [elementId]: [...existing, inspection] } };
+        return {
+          ...s,
+          inspections: { ...s.inspections, [elementId]: [...existing, inspection] }
+        };
       });
       logger('✅ Inspection recorded');
       return inspection;
@@ -261,11 +329,13 @@ function createWalkStore() {
   }
 
   async function loadElementInspectionHistory(elementId) {
+    logger('Loading inspection history for element:', elementId);
     try {
       return await api.get('element_inspections', {
-        select:  '*, inspector:profiles!inspector_id(full_name), session:walk_sessions!session_id(building, floor_level, started_at)',
-        filters: { element_id: elementId },
-        orderBy: 'inspected_at', ascending: false
+        select:    '*, inspector:profiles!inspector_id(full_name), session:walk_sessions!session_id(building, floor_level, started_at)',
+        filters:   { element_id: elementId },
+        orderBy:   'inspected_at',
+        ascending: false
       });
     } catch (error) {
       logger('❌ loadElementInspectionHistory:', error.message);
@@ -274,12 +344,28 @@ function createWalkStore() {
   }
 
   async function loadSessionInspections(sessionId) {
+    logger('Loading inspections for session:', sessionId);
     try {
       return await api.get('element_inspections', {
-        filters: { session_id: sessionId }, orderBy: 'inspected_at', ascending: true
+        filters:   { session_id: sessionId },
+        orderBy:   'inspected_at',
+        ascending: true
       });
     } catch (error) {
       logger('❌ loadSessionInspections:', error.message);
+      throw error;
+    }
+  }
+
+  async function deleteSession(sessionId) {
+    logger('Deleting session:', sessionId);
+    try {
+      // Delete child inspections first (FK constraint; cascade may handle but be explicit)
+      await api.deleteMany('element_inspections', { session_id: sessionId });
+      await api.delete('walk_sessions', sessionId);
+      logger('✅ Session deleted');
+    } catch (error) {
+      logger('❌ deleteSession:', error.message);
       throw error;
     }
   }
@@ -297,7 +383,8 @@ function createWalkStore() {
     updateElement,
     addInspection,
     loadElementInspectionHistory,
-    loadSessionInspections
+    loadSessionInspections,
+    deleteSession
   };
 }
 

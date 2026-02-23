@@ -6,28 +6,23 @@
 
   const dispatch = createEventDispatcher();
 
-  export let elements    = [];
+  export let elements     = [];
   export let currentIndex = 0;
   export let inspections  = {};
   export let floorLevel;
 
   $: inspectedIds = new Set(Object.keys(inspections));
-
   $: passCount = Object.values(inspections).flat().filter(i => i.result === 'pass').length;
   $: failCount = Object.values(inspections).flat().filter(i => i.result === 'fail').length;
 
-  function handleJump(index) {
-    dispatch('jump', { index });
-  }
-
-  function lastResultFor(element) {
-    const list = inspections[element.id];
+  function lastResultFor(el) {
+    const list = inspections[el.id];
     if (!list || list.length === 0) return null;
     return list[list.length - 1].result;
   }
 
-  function statusDot(element) {
-    const r = lastResultFor(element);
+  function dotCls(el) {
+    const r = lastResultFor(el);
     if (r === 'pass') return 'dot-pass';
     if (r === 'fail') return 'dot-fail';
     if (r === 'na')   return 'dot-na';
@@ -35,59 +30,48 @@
   }
 </script>
 
-<div class="jump-list">
+<div class="jl">
 
-  <div class="jump-header">
+  <div class="jl-hdr">
     <button class="close-btn" on:click={() => dispatch('close')}>✕ CLOSE</button>
-    <div class="jump-title">ALL ELEMENTS</div>
-    <div class="jump-stats">
+    <div class="jl-title">ALL ELEMENTS</div>
+    <div class="jl-stats">
       <span class="stat-pass">✓ {passCount}</span>
       <span class="stat-fail">✗ {failCount}</span>
       <span class="stat-total">{inspectedIds.size}/{elements.length}</span>
     </div>
   </div>
 
-  <div class="list-body">
-    {#each elements as element, index}
-      {@const isCurrent = index === currentIndex}
-      {@const result = lastResultFor(element)}
+  <div class="jl-body">
+    {#each elements as el, idx}
+      {@const isCurrent = idx === currentIndex}
+      {@const result    = lastResultFor(el)}
       <button
-        class="list-item"
+        class="jl-item"
         class:is-current={isCurrent}
         class:is-pass={result === 'pass'}
         class:is-fail={result === 'fail'}
-        on:click={() => handleJump(index)}
+        on:click={() => dispatch('jump', { index: idx })}
       >
-        <!-- Status dot -->
-        <div class="dot {statusDot(element)}"></div>
+        <div class="dot {dotCls(el)}"></div>
 
-        <!-- Name + label -->
         <div class="item-body">
-          <div class="item-name">
-            {getElementDisplayName(element, floorLevel)}
-          </div>
-          {#if element.label}
-            <div class="item-label">{element.label}</div>
-          {/if}
-          {#if element.subtype}
-            <div class="item-sub">{element.subtype}</div>
-          {/if}
+          <div class="item-name">{getElementDisplayName(el, floorLevel)}</div>
+          {#if el.label}<div class="item-label">{el.label}</div>{/if}
+          {#if el.subtype}<div class="item-sub">{el.subtype}</div>{/if}
         </div>
 
-        <!-- Status badge -->
-        <div class="item-right">
-          {#if element.status !== 'active'}
-            <span class="item-status status-{element.status}">{element.status}</span>
+        <div class="item-r">
+          {#if el.status !== 'active'}
+            <span class="item-status st-{el.status}">{el.status}</span>
           {/if}
-          {#if isCurrent}
-            <span class="item-here">HERE</span>
-          {/if}
+          {#if isCurrent}<span class="item-here">HERE</span>{/if}
           {#if result === 'pass'}
-            <span class="item-result result-pass">✓</span>
+            <span class="item-res res-pass">✓</span>
           {:else if result === 'fail'}
-            <span class="item-result result-fail">✗</span>
+            <span class="item-res res-fail">✗</span>
           {:else if result === 'na'}
-            <span class="item-result result-na">—</span>
+            <span class="item-res res-na">—</span>
           {/if}
         </div>
       </button>
@@ -97,146 +81,68 @@
 </div>
 
 <style>
-  .jump-list {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
+  .jl {
+    display: flex; flex-direction: column; flex: 1;
+    background: #0d0d14; color: #f0f0f0;
+    font-family: 'DM Mono', 'Courier New', monospace;
     overflow: hidden;
-    background: #0a0a0f;
   }
 
-  /* ── Header ─────────────────────────────────────────────────────────── */
-  .jump-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid #1e1e2a;
-    flex-shrink: 0;
+  /* ── Header ───────────────────────────────────────────────────────────────*/
+  .jl-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.25rem; border-bottom: 1px solid #2e2e42; flex-shrink: 0;
+    background: #111122;
   }
-
   .close-btn {
-    background: none;
-    border: none;
-    color: #f97316;
-    font-family: inherit;
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    cursor: pointer;
-    padding: 0;
+    background: none; border: none; color: #fb923c;
+    font-family: inherit; font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.1em; cursor: pointer; padding: 0;
   }
+  .close-btn:hover { color: #fdba74; }
+  .jl-title { font-size: 0.65rem; letter-spacing: 0.2em; color: #ccc; }
+  .jl-stats { display: flex; gap: 0.625rem; font-size: 0.75rem; letter-spacing: 0.05em; }
+  .stat-pass  { color: #4ade80; }
+  .stat-fail  { color: #f87171; }
+  .stat-total { color: #ccc; }
 
-  .jump-title {
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    color: #444;
+  /* ── List ─────────────────────────────────────────────────────────────────*/
+  .jl-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  .jl-item {
+    width: 100%; display: flex; align-items: center; gap: 0.875rem;
+    padding: 0.875rem 1.25rem; background: none; border: none;
+    border-bottom: 1px solid #1a1a2a; text-align: left;
+    cursor: pointer; font-family: inherit; transition: background 0.1s;
   }
+  .jl-item:hover      { background: #111122; }
+  .jl-item.is-current { background: #1a1200; border-left: 3px solid #fb923c; padding-left: calc(1.25rem - 3px); }
+  .jl-item.is-pass    { border-left: 3px solid #22c55e; padding-left: calc(1.25rem - 3px); }
+  .jl-item.is-fail    { border-left: 3px solid #ef4444; padding-left: calc(1.25rem - 3px); }
 
-  .jump-stats {
-    display: flex;
-    gap: 0.5rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.05em;
-  }
-
-  .stat-pass  { color: #22c55e; }
-  .stat-fail  { color: #ef4444; }
-  .stat-total { color: #444; }
-
-  /* ── List ────────────────────────────────────────────────────────────── */
-  .list-body {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .list-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.875rem;
-    padding: 0.875rem 1.25rem;
-    background: none;
-    border: none;
-    border-bottom: 1px solid #111118;
-    text-align: left;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.1s;
-  }
-
-  .list-item:hover     { background: #0d0d13; }
-  .list-item.is-current { background: #0f1a00; border-left: 3px solid #f97316; padding-left: calc(1.25rem - 3px); }
-  .list-item.is-pass   { border-left: 3px solid #22c55e; padding-left: calc(1.25rem - 3px); }
-  .list-item.is-fail   { border-left: 3px solid #ef4444; padding-left: calc(1.25rem - 3px); }
-
-  /* Status dot */
   .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
+    width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
   }
-
-  .dot-none { background: #2a2a3a; }
+  .dot-none { background: #3e3e58; }
   .dot-pass { background: #22c55e; }
   .dot-fail { background: #ef4444; }
-  .dot-na   { background: #555; }
+  .dot-na   { background: #888; }
 
-  /* Item text */
   .item-body { flex: 1; min-width: 0; }
+  .item-name  { font-size: 0.9rem; color: #f0f0f0; font-weight: 600; letter-spacing: 0.02em; }
+  .item-label { font-size: 0.72rem; color: #ccc; margin-top: 0.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item-sub   { font-size: 0.67rem; color: #bbb; margin-top: 0.1rem; }
 
-  .item-name {
-    font-size: 0.875rem;
-    color: #e8e8e0;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-  }
+  .item-r { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex-shrink: 0; }
+  .item-here { font-size: 0.58rem; letter-spacing: 0.15em; color: #fb923c; font-weight: 700; }
 
-  .item-label {
-    font-size: 0.7rem;
-    color: #666;
-    margin-top: 0.1rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  .item-status { font-size: 0.58rem; letter-spacing: 0.08em; padding: 0.15rem 0.4rem; border-radius: 3px; }
+  .st-inactive    { background: #222235; color: #ccc; }
+  .st-maintenance { background: #2a1800; color: #fbbf24; }
+  .st-removed     { background: #2a0000; color: #f87171; }
 
-  .item-sub {
-    font-size: 0.65rem;
-    color: #444;
-    margin-top: 0.1rem;
-  }
-
-  /* Right badges */
-  .item-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.2rem;
-    flex-shrink: 0;
-  }
-
-  .item-here {
-    font-size: 0.55rem;
-    letter-spacing: 0.15em;
-    color: #f97316;
-    font-weight: 700;
-  }
-
-  .item-status {
-    font-size: 0.55rem;
-    letter-spacing: 0.08em;
-    padding: 0.15rem 0.4rem;
-    border-radius: 3px;
-  }
-
-  .status-inactive    { background: #1a1a1a; color: #555; }
-  .status-maintenance { background: #2a1a00; color: #f59e0b; }
-  .status-removed     { background: #2a0000; color: #ef4444; }
-
-  .item-result { font-size: 1rem; font-weight: 700; }
-  .result-pass { color: #22c55e; }
-  .result-fail { color: #ef4444; }
-  .result-na   { color: #555; }
+  .item-res   { font-size: 1.1rem; font-weight: 800; }
+  .res-pass   { color: #4ade80; }
+  .res-fail   { color: #f87171; }
+  .res-na     { color: #ccc; }
 </style>

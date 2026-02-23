@@ -5,16 +5,17 @@
   import { getLogger } from '$lib/utils/logger';
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
-  import WalkElementEditor from './WalkElementEditor.svelte';
-  import WalkInspectionPanel from './WalkInspectionPanel.svelte';
-  import WalkJumpList from './WalkJumpList.svelte';
+  import WalkElementEditor    from './WalkElementEditor.svelte';
+  import WalkInspectionPanel  from './WalkInspectionPanel.svelte';
+  import WalkJumpList         from './WalkJumpList.svelte';
 
-  const logger = getLogger('WalkSession');
+  const logger   = getLogger('WalkSession');
   const dispatch = createEventDispatcher();
 
   export let canEdit = false;
 
-  let view = 'card';
+  // 'card' | 'edit' | 'inspect' | 'jump' | 'close'
+  let view       = 'card';
   let closeNotes = '';
   let closing    = false;
   let closeError = null;
@@ -27,17 +28,17 @@
   $: currentElement    = elements[currentIndex];
   $: isFirst           = currentIndex === 0;
   $: isLast            = currentIndex === elements.length - 1;
-  $: progress          = elements.length > 0 ? ((currentIndex + 1) / elements.length) : 0;
+  $: progress          = elements.length > 0 ? (currentIndex + 1) / elements.length : 0;
   $: inspectedCount    = Object.keys(inspections).length;
   $: typeConfig        = ELEMENT_TYPE_OPTIONS.find(t => t.value === session?.element_type);
   $: currentInspections = currentElement ? (inspections[currentElement.id] || []) : [];
   $: hasInspection      = currentInspections.length > 0;
   $: lastInspection     = currentInspections[currentInspections.length - 1];
 
-  function handlePrev()          { view = 'card'; walkStore.goPrev(); }
-  function handleNext()          { view = 'card'; walkStore.goNext(); }
-  function handleJumpTo(e)       { view = 'card'; walkStore.goToIndex(e.detail.index); }
-  function handleEditSaved()     { view = 'card'; }
+  function handlePrev()            { view = 'card'; walkStore.goPrev(); }
+  function handleNext()            { view = 'card'; walkStore.goNext(); }
+  function handleJumpTo(e)         { view = 'card'; walkStore.goToIndex(e.detail.index); }
+  function handleEditSaved()       { view = 'card'; }
   function handleInspectionSaved() { view = 'card'; }
 
   async function handleCloseSession() {
@@ -51,11 +52,13 @@
     } finally { closing = false; }
   }
 
-  function statusClass(s) {
+  function statusCls(s) {
     return { active: 'st-active', inactive: 'st-inactive', maintenance: 'st-maint', removed: 'st-removed' }[s] || 'st-inactive';
   }
-  function resultClass(r) { return { pass: 'r-pass', fail: 'r-fail', na: 'r-na' }[r] || ''; }
-  function formatTime(iso) {
+  function resultCls(r) {
+    return { pass: 'r-pass', fail: 'r-fail', na: 'r-na' }[r] || '';
+  }
+  function fmt(iso) {
     if (!iso) return '';
     return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
@@ -63,17 +66,22 @@
 
 <div class="ws">
 
-  <!-- Session bar -->
+  <!-- ── Session bar ──────────────────────────────────────────────────────── -->
   <div class="sbar">
     <div class="sbar-l">
       <span class="sbar-icon">{typeConfig?.icon}</span>
-      <div>
+      <div class="sbar-info">
         <div class="sbar-name">
-          {session?.session_name || (session?.building + ' · Floor ' + session?.floor_level)}
+          {session?.session_name || (session?.building + ' · F' + session?.floor_level)}
         </div>
-        <div class="sbar-type">{typeConfig?.label}
+        <div class="sbar-meta">
+          {typeConfig?.label}
           {#if session?.light_subtype_filter === 'emergency'}
-            <span class="sbar-badge">Emergency</span>
+            <span class="badge-em">Emergency</span>
+          {/if}
+          {#if session?.inspector_name}
+            <span class="sbar-sep">·</span>
+            <span class="sbar-inspector">{session.inspector_name}</span>
           {/if}
         </div>
       </div>
@@ -84,10 +92,10 @@
     </div>
   </div>
 
-  <!-- Progress bar -->
-  <div class="prog-track"><div class="prog-fill" style="width: {progress * 100}%"></div></div>
+  <!-- Progress -->
+  <div class="prog-track"><div class="prog-fill" style="width:{progress*100}%"></div></div>
 
-  <!-- Element card -->
+  <!-- ── Element card ─────────────────────────────────────────────────────── -->
   {#if view === 'card' && currentElement}
     <div class="ecard">
 
@@ -95,16 +103,16 @@
         <div class="ename">{getElementDisplayName(currentElement, session?.floor_level)}</div>
         {#if currentElement.label}<div class="elabel">{currentElement.label}</div>{/if}
         <div class="emeta">
-          {#if currentElement.subtype}<span class="esubtype">{currentElement.subtype}</span>{/if}
-          <span class="estatus {statusClass(currentElement.status)}">{currentElement.status}</span>
+          {#if currentElement.subtype}<span class="esub">{currentElement.subtype}</span>{/if}
+          <span class="estatus {statusCls(currentElement.status)}">{currentElement.status}</span>
         </div>
       </div>
 
       {#if hasInspection}
-        <div class="insp-last {resultClass(lastInspection.result)}">
+        <div class="insp-last {resultCls(lastInspection.result)}">
           <div class="insp-hdr">
             <span class="insp-lbl">LAST INSPECTION</span>
-            <span class="insp-time">{formatTime(lastInspection.inspected_at)}</span>
+            <span class="insp-time">{fmt(lastInspection.inspected_at)}</span>
           </div>
           <div class="insp-result">
             {lastInspection.result === 'pass' ? '✓ PASS' : lastInspection.result === 'fail' ? '✗ FAIL' : '— N/A'}
@@ -117,21 +125,21 @@
 
       <div class="fields">
         {#if currentElement.element_type === 'light'}
-          <div class="frow"><span class="fk">SUBTYPE</span><span class="fv">{currentElement.subtype || '—'}</span></div>
-          <div class="frow"><span class="fk">BATTERY</span><span class="fv">{currentElement.battery || '—'}</span></div>
-          {#if currentElement.wattage}<div class="frow"><span class="fk">WATTAGE</span><span class="fv">{currentElement.wattage}W</span></div>{/if}
-          <div class="frow"><span class="fk">EMERGENCY</span><span class="fv">{currentElement.emergency ? 'Yes' : 'No'}</span></div>
-          <div class="frow"><span class="fk">MOTION</span><span class="fv">{currentElement.movement_sensor ? 'Yes' : 'No'}</span></div>
-          <div class="frow"><span class="fk">LIGHT SNS</span><span class="fv">{currentElement.light_sensor ? 'Yes' : 'No'}</span></div>
+          <div class="fr"><span class="fk">SUBTYPE</span><span class="fv">{currentElement.subtype || '—'}</span></div>
+          <div class="fr"><span class="fk">BATTERY</span><span class="fv">{currentElement.battery || '—'}</span></div>
+          {#if currentElement.wattage}<div class="fr"><span class="fk">WATTAGE</span><span class="fv">{currentElement.wattage}W</span></div>{/if}
+          <div class="fr"><span class="fk">EMERGENCY</span><span class="fv">{currentElement.emergency ? 'Yes' : 'No'}</span></div>
+          <div class="fr"><span class="fk">MOTION</span><span class="fv">{currentElement.movement_sensor ? 'Yes' : 'No'}</span></div>
+          <div class="fr"><span class="fk">LIGHT SNS</span><span class="fv">{currentElement.light_sensor ? 'Yes' : 'No'}</span></div>
         {:else if currentElement.element_type === 'communal_door' || currentElement.element_type === 'apartment_door'}
-          <div class="frow"><span class="fk">SUBTYPE</span><span class="fv">{currentElement.subtype || '—'}</span></div>
-          <div class="frow"><span class="fk">SECURITY</span><span class="fv">{currentElement.security || '—'}</span></div>
-          <div class="frow"><span class="fk">RETAINED</span><span class="fv">{currentElement.retained ? 'Yes' : 'No'}</span></div>
+          <div class="fr"><span class="fk">SUBTYPE</span><span class="fv">{currentElement.subtype || '—'}</span></div>
+          <div class="fr"><span class="fk">SECURITY</span><span class="fv">{currentElement.security || '—'}</span></div>
+          <div class="fr"><span class="fk">RETAINED</span><span class="fv">{currentElement.retained ? 'Yes' : 'No'}</span></div>
         {:else}
-          <div class="frow"><span class="fk">SUBTYPE</span><span class="fv">{currentElement.subtype || '—'}</span></div>
+          <div class="fr"><span class="fk">SUBTYPE</span><span class="fv">{currentElement.subtype || '—'}</span></div>
         {/if}
-        {#if currentElement.notes}<div class="frow"><span class="fk">NOTES</span><span class="fv">{currentElement.notes}</span></div>{/if}
-        <div class="frow"><span class="fk">ASSET ID</span><span class="fv">{currentElement.asset_id || '—'}</span></div>
+        {#if currentElement.notes}<div class="fr"><span class="fk">NOTES</span><span class="fv">{currentElement.notes}</span></div>{/if}
+        <div class="fr"><span class="fk">ASSET ID</span><span class="fv">{currentElement.asset_id || '—'}</span></div>
       </div>
 
       {#if canEdit}
@@ -144,7 +152,6 @@
           <button class="act act-inspect" on:click={() => view = 'inspect'}>✓ RECORD INSPECTION</button>
         </div>
       {/if}
-
     </div>
 
   {:else if view === 'card' && elements.length === 0}
@@ -167,20 +174,21 @@
   {/if}
 
   {#if view === 'close'}
-    <div class="close-confirm">
+    <div class="cc">
       <div class="cc-hdr">CLOSE SESSION</div>
-      <div class="cc-summary">
+      <div class="cc-sum">
+        <div class="cc-row"><span class="cc-k">SESSION</span><span class="cc-v">{session?.session_name || '—'}</span></div>
+        <div class="cc-row"><span class="cc-k">INSPECTOR</span><span class="cc-v">{session?.inspector_name || '—'}</span></div>
         <div class="cc-row"><span class="cc-k">INSPECTED</span><span class="cc-v">{inspectedCount} / {elements.length} elements</span></div>
         <div class="cc-row"><span class="cc-k">BUILDING</span><span class="cc-v">{session?.building} · Floor {session?.floor_level}</span></div>
-        {#if session?.session_name}<div class="cc-row"><span class="cc-k">SESSION</span><span class="cc-v">{session.session_name}</span></div>{/if}
       </div>
       <div class="cc-field">
-        <label class="cc-label" for="close-notes">Session notes (optional)</label>
+        <label class="cc-lbl" for="close-notes">Session notes (optional)</label>
         <textarea id="close-notes" class="cc-ta" bind:value={closeNotes}
-          placeholder="Any overall observations for this session…" rows="3"></textarea>
+          placeholder="Any overall observations…" rows="3"></textarea>
       </div>
       {#if closeError}<div class="cc-err">⚠ {closeError}</div>{/if}
-      <div class="cc-actions">
+      <div class="cc-acts">
         <button class="cc-continue" on:click={() => view = 'card'}>CONTINUE WALK</button>
         <button class="cc-close" on:click={handleCloseSession} disabled={closing}>
           {closing ? 'CLOSING…' : 'CLOSE SESSION'}
@@ -196,11 +204,10 @@
       <button class="nb nb-next" on:click={handleNext} disabled={isLast}>NEXT →</button>
     </div>
   {/if}
-
 </div>
 
 <style>
-  /* ── Root ─────────────────────────────────────────────────────────────── */
+  /* ── Root ─────────────────────────────────────────────────────────────────*/
   .ws {
     display: flex; flex-direction: column;
     min-height: calc(100vh - 64px);
@@ -209,164 +216,160 @@
     position: relative;
   }
 
-  /* ── Session bar ──────────────────────────────────────────────────────── */
+  /* ── Session bar ──────────────────────────────────────────────────────────*/
   .sbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 0.875rem 1.25rem;
-    border-bottom: 1px solid #252535;
-    background: #111120;
+    border-bottom: 1px solid #2e2e42; background: #111122;
   }
-  .sbar-l { display: flex; align-items: center; gap: 0.625rem; }
-  .sbar-icon { font-size: 1.25rem; }
-  .sbar-name { font-size: 0.85rem; color: #f0f0f0; font-weight: 600; }
-  .sbar-type { font-size: 0.68rem; letter-spacing: 0.1em; color: #bbb; margin-top: 0.1rem; }
-  .sbar-badge {
-    display: inline-block; font-size: 0.58rem; padding: 0.1rem 0.35rem;
-    background: #2a1600; color: #fb923c; border-radius: 3px; margin-left: 0.4rem;
+  .sbar-l { display: flex; align-items: center; gap: 0.75rem; }
+  .sbar-icon { font-size: 1.35rem; }
+  .sbar-info { display: flex; flex-direction: column; gap: 0.15rem; }
+  .sbar-name { font-size: 0.875rem; color: #f0f0f0; font-weight: 700; }
+  .sbar-meta { font-size: 0.7rem; letter-spacing: 0.06em; color: #ccc; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .sbar-sep  { color: #888; }
+  .sbar-inspector { color: #fb923c; }
+  .badge-em  {
+    font-size: 0.58rem; padding: 0.1rem 0.35rem;
+    background: #2a1800; color: #fb923c; border-radius: 3px;
   }
   .sbar-r { display: flex; align-items: center; gap: 0.75rem; }
-  .sbar-count { font-size: 0.8rem; color: #bbb; font-weight: 600; }
+  .sbar-count { font-size: 0.85rem; color: #ccc; font-weight: 600; }
   .close-btn {
-    background: none; border: 1px solid #3a3a4a; border-radius: 4px;
-    color: #bbb; font-family: inherit; font-size: 0.8rem;
+    background: none; border: 1px solid #3e3e52; border-radius: 4px;
+    color: #ccc; font-family: inherit; font-size: 0.8rem;
     padding: 0.3rem 0.6rem; cursor: pointer; transition: all 0.15s;
   }
-  .close-btn:hover { border-color: #ef4444; color: #ef4444; }
+  .close-btn:hover { border-color: #ef4444; color: #f87171; }
 
-  /* ── Progress ─────────────────────────────────────────────────────────── */
-  .prog-track { height: 3px; background: #252535; flex-shrink: 0; }
+  /* ── Progress ─────────────────────────────────────────────────────────────*/
+  .prog-track { height: 3px; background: #2e2e42; flex-shrink: 0; }
   .prog-fill  { height: 100%; background: #fb923c; transition: width 0.3s ease; }
 
-  /* ── Element card ─────────────────────────────────────────────────────── */
+  /* ── Element card ─────────────────────────────────────────────────────────*/
   .ecard {
     flex: 1; display: flex; flex-direction: column;
-    padding: 1.5rem 1.25rem 6rem; gap: 1.25rem; overflow-y: auto;
+    padding: 1.5rem 1.25rem 6.5rem; gap: 1.25rem; overflow-y: auto;
   }
 
-  .ename {
-    font-size: 2rem; font-weight: 700; letter-spacing: 0.05em;
-    color: #fb923c; line-height: 1;
-  }
-  .elabel { font-size: 0.9rem; color: #d0d0d0; margin-top: 0.375rem; }
+  .ename { font-size: 2.25rem; font-weight: 800; letter-spacing: 0.04em; color: #fb923c; line-height: 1; }
+  .elabel { font-size: 0.925rem; color: #ddd; margin-top: 0.375rem; }
   .emeta  { display: flex; align-items: center; gap: 0.625rem; margin-top: 0.625rem; }
 
-  .esubtype {
-    font-size: 0.78rem; color: #d0d0d0;
-    background: #1e1e30; padding: 0.2rem 0.5rem; border-radius: 4px;
-    border: 1px solid #2a2a40;
+  .esub {
+    font-size: 0.8rem; color: #eee;
+    background: #222235; padding: 0.25rem 0.625rem;
+    border-radius: 4px; border: 1px solid #3e3e58;
   }
-  .estatus { font-size: 0.68rem; letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 600; }
-  .st-active      { background: #0d2a0d; color: #4ade80; border: 1px solid #166534; }
-  .st-inactive    { background: #1e1e2e; color: #aaa;    border: 1px solid #2a2a3a; }
-  .st-maint       { background: #2a1800; color: #fbbf24; border: 1px solid #92400e; }
-  .st-removed     { background: #2a0000; color: #f87171; border: 1px solid #7f1d1d; }
+  .estatus { font-size: 0.68rem; letter-spacing: 0.1em; padding: 0.25rem 0.6rem; border-radius: 4px; font-weight: 700; }
+  .st-active   { background: #0d2a0d; color: #4ade80; border: 1px solid #166534; }
+  .st-inactive { background: #222235; color: #ccc;    border: 1px solid #3e3e58; }
+  .st-maint    { background: #2a1800; color: #fbbf24; border: 1px solid #92400e; }
+  .st-removed  { background: #2a0000; color: #f87171; border: 1px solid #7f1d1d; }
 
-  /* ── Last inspection ──────────────────────────────────────────────────── */
-  .insp-last { padding: 1rem 1.125rem; border-radius: 8px; border: 2px solid transparent; }
+  /* ── Last inspection box ──────────────────────────────────────────────────*/
+  .insp-last { padding: 1rem 1.125rem; border-radius: 10px; border: 2px solid transparent; }
   .r-pass { background: #0a1f0a; border-color: #22c55e; }
   .r-fail { background: #1f0a0a; border-color: #ef4444; }
-  .r-na   { background: #141420; border-color: #3a3a4a; }
+  .r-na   { background: #181828; border-color: #3e3e58; }
 
-  .insp-hdr { display: flex; justify-content: space-between; margin-bottom: 0.375rem; }
-  .insp-lbl  { font-size: 0.62rem; letter-spacing: 0.15em; color: #aaa; }
-  .insp-time { font-size: 0.68rem; color: #bbb; }
+  .insp-hdr  { display: flex; justify-content: space-between; margin-bottom: 0.375rem; }
+  .insp-lbl  { font-size: 0.62rem; letter-spacing: 0.15em; color: #ccc; }
+  .insp-time { font-size: 0.7rem; color: #ccc; }
 
-  .insp-result { font-size: 1.4rem; font-weight: 800; letter-spacing: 0.05em; }
+  .insp-result { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.04em; }
   .r-pass .insp-result { color: #4ade80; }
   .r-fail .insp-result { color: #f87171; }
   .r-na   .insp-result { color: #aaa; }
 
-  .insp-notes { font-size: 0.8rem; color: #ccc; margin-top: 0.375rem; }
+  .insp-notes { font-size: 0.82rem; color: #ddd; margin-top: 0.375rem; line-height: 1.4; }
 
   .not-inspected {
-    font-size: 0.7rem; letter-spacing: 0.15em; color: #aaa;
-    border: 1px dashed #3a3a4a; border-radius: 8px;
-    padding: 0.875rem 1rem;
+    font-size: 0.72rem; letter-spacing: 0.15em; color: #ccc;
+    border: 1px dashed #3e3e58; border-radius: 10px; padding: 1rem 1.125rem;
   }
 
-  /* ── Fields table ─────────────────────────────────────────────────────── */
-  .fields {
-    background: #111120; border: 1px solid #252535; border-radius: 8px; overflow: hidden;
-  }
-  .frow {
+  /* ── Fields table ─────────────────────────────────────────────────────────*/
+  .fields { background: #111122; border: 1px solid #2e2e42; border-radius: 10px; overflow: hidden; }
+  .fr {
     display: flex; justify-content: space-between; align-items: flex-start;
-    padding: 0.7rem 1rem; border-bottom: 1px solid #1e1e2e; gap: 0.5rem;
+    padding: 0.7rem 1rem; border-bottom: 1px solid #1e1e32; gap: 0.5rem;
   }
-  .frow:last-child { border-bottom: none; }
-  .fk { font-size: 0.62rem; letter-spacing: 0.15em; color: #aaa; flex-shrink: 0; padding-top: 0.1rem; }
-  .fv { font-size: 0.85rem; color: #f0f0f0; text-align: right; }
+  .fr:last-child { border-bottom: none; }
+  .fk { font-size: 0.62rem; letter-spacing: 0.15em; color: #ccc; flex-shrink: 0; padding-top: 0.1rem; }
+  .fv { font-size: 0.88rem; color: #f0f0f0; text-align: right; }
 
-  /* ── Action buttons ───────────────────────────────────────────────────── */
+  /* ── Action buttons ───────────────────────────────────────────────────────*/
   .actions { display: flex; gap: 0.625rem; }
   .act {
     flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.375rem;
-    padding: 1rem; border-radius: 8px; border: 2px solid transparent;
-    font-family: inherit; font-size: 0.8rem; font-weight: 700;
+    padding: 1rem; border-radius: 10px; border: 2px solid transparent;
+    font-family: inherit; font-size: 0.82rem; font-weight: 700;
     letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s;
   }
   .act-inspect { background: #0a1f0a; border-color: #22c55e; color: #4ade80; }
   .act-inspect:hover { background: #22c55e; color: #0a0a0f; }
-  .act-edit    { background: #141420; border-color: #3a3a4a; color: #d0d0d0; }
+  .act-edit    { background: #181828; border-color: #3e3e58; color: #eee; }
   .act-edit:hover { border-color: #fb923c; color: #fb923c; }
 
-  /* ── Nav bar ──────────────────────────────────────────────────────────── */
+  /* ── Nav bar ──────────────────────────────────────────────────────────────*/
   .nav {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; max-width: 480px;
-    display: flex; background: #0d0d14; border-top: 1px solid #252535; z-index: 10;
+    display: flex; background: #0d0d14; border-top: 1px solid #2e2e42; z-index: 10;
   }
   .nb {
     flex: 1; padding: 1.125rem 0.5rem;
     background: none; border: none;
-    font-family: inherit; font-size: 0.75rem; font-weight: 700;
-    letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s; color: #bbb;
+    font-family: inherit; font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s; color: #ccc;
   }
-  .nb:hover:not(:disabled) { color: #f0f0f0; background: #1a1a28; }
+  .nb:hover:not(:disabled) { color: #f0f0f0; background: #1a1a2e; }
   .nb:disabled { opacity: 0.25; cursor: not-allowed; }
-  .nb-prev { border-right: 1px solid #252535; }
-  .nb-list { border-right: 1px solid #252535; }
+  .nb-prev { border-right: 1px solid #2e2e42; }
+  .nb-list { border-right: 1px solid #2e2e42; }
   .nb-next { color: #fb923c; font-weight: 800; }
-  .nb-next:hover:not(:disabled) { background: #2a1600; color: #fb923c; }
+  .nb-next:hover:not(:disabled) { background: #2a1800; color: #fb923c; }
 
-  /* ── Empty ────────────────────────────────────────────────────────────── */
+  /* ── Empty ────────────────────────────────────────────────────────────────*/
   .empty-walk {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    color: #aaa; font-size: 0.875rem;
+    color: #ccc; font-size: 0.875rem;
   }
 
-  /* ── Close session confirm ────────────────────────────────────────────── */
-  .close-confirm { flex: 1; padding: 1.5rem 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  /* ── Close confirm ────────────────────────────────────────────────────────*/
+  .cc { flex: 1; padding: 1.5rem 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
   .cc-hdr { font-size: 0.65rem; letter-spacing: 0.25em; color: #f87171; font-weight: 700; }
-  .cc-summary {
-    background: #111120; border: 1px solid #252535; border-radius: 8px;
+  .cc-sum {
+    background: #111122; border: 1px solid #2e2e42; border-radius: 10px;
     padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
   }
-  .cc-row { display: flex; justify-content: space-between; }
-  .cc-k   { font-size: 0.62rem; letter-spacing: 0.15em; color: #aaa; }
-  .cc-v   { font-size: 0.85rem; color: #f0f0f0; }
+  .cc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .cc-k   { font-size: 0.62rem; letter-spacing: 0.15em; color: #ccc; flex-shrink: 0; }
+  .cc-v   { font-size: 0.88rem; color: #f0f0f0; text-align: right; }
   .cc-field { display: flex; flex-direction: column; gap: 0.5rem; }
-  .cc-label { font-size: 0.65rem; letter-spacing: 0.1em; color: #bbb; }
+  .cc-lbl   { font-size: 0.65rem; letter-spacing: 0.1em; color: #ccc; }
   .cc-ta {
-    background: #111120; border: 2px solid #252535; border-radius: 8px;
+    background: #111122; border: 2px solid #2e2e42; border-radius: 8px;
     color: #f0f0f0; font-family: inherit; font-size: 0.875rem;
     padding: 0.875rem 1rem; resize: none; width: 100%; box-sizing: border-box;
   }
   .cc-ta:focus { outline: none; border-color: #fb923c; }
-  .cc-ta::placeholder { color: #666; }
+  .cc-ta::placeholder { color: #777; }
   .cc-err {
-    font-size: 0.825rem; color: #fca5a5; padding: 0.75rem 1rem;
-    background: #2a0000; border: 1px solid #ef4444; border-radius: 6px;
+    font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem;
+    background: #2a0000; border: 2px solid #ef4444; border-radius: 8px;
   }
-  .cc-actions { display: flex; flex-direction: column; gap: 0.625rem; margin-top: auto; }
+  .cc-acts { display: flex; flex-direction: column; gap: 0.625rem; margin-top: auto; }
   .cc-continue {
-    padding: 1rem; background: none; border: 2px solid #3a3a4a; border-radius: 8px;
-    color: #d0d0d0; font-family: inherit; font-size: 0.8rem; font-weight: 700;
+    padding: 1rem; background: none; border: 2px solid #3e3e58; border-radius: 8px;
+    color: #eee; font-family: inherit; font-size: 0.82rem; font-weight: 700;
     letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s;
   }
-  .cc-continue:hover { border-color: #6060708; color: #f0f0f0; }
+  .cc-continue:hover { border-color: #6e6e88; color: #f0f0f0; }
   .cc-close {
     padding: 1rem; background: #ef4444; border: none; border-radius: 8px;
-    color: #fff; font-family: inherit; font-size: 0.8rem; font-weight: 800;
+    color: #fff; font-family: inherit; font-size: 0.82rem; font-weight: 800;
     letter-spacing: 0.15em; cursor: pointer; transition: all 0.15s;
   }
   .cc-close:hover:not(:disabled) { background: #dc2626; }

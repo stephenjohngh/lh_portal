@@ -1,36 +1,42 @@
 <!-- src/lib/apps/plans/PlansApp.svelte -->
-<!-- Main Plans App - Interactive floor plan management -->
+<!-- Main Plans App — Plans tab + Inspections tab -->
 <script>
-  import { onMount }            from 'svelte';
-  import { getLogger }          from '$lib/utils/logger';
-  import Button                 from '$lib/components/common/Button.svelte';
-  import Icon                   from '$lib/components/icons/Icon.svelte';
-  import Badge                  from '$lib/components/common/Badge.svelte';
-  import PlansList              from './components/PlansList.svelte';
-  import PlanViewer             from './components/PlanViewer.svelte';
-  import PlanUploader           from './components/PlanUploader.svelte';
-  import BuildingReport         from './components/BuildingReport.svelte';
-  import WalkInspectionsModal   from './components/WalkInspectionsModal.svelte';
-  import { plansStore }         from './stores/plansStore';
-  import { permissions }        from '$lib/stores/permissions';
-  import { auth }               from '$lib/stores/auth';
+  import { onMount }          from 'svelte';
+  import { getLogger }        from '$lib/utils/logger';
+  import Button               from '$lib/components/common/Button.svelte';
+  import Icon                 from '$lib/components/icons/Icon.svelte';
+  import PlansList            from './components/PlansList.svelte';
+  import PlanViewer           from './components/PlanViewer.svelte';
+  import PlanUploader         from './components/PlanUploader.svelte';
+  import BuildingReport       from './components/BuildingReport.svelte';
+  import PlansReport          from './components/reports/PlansReport.svelte';
+  import WalkInspectionsTab   from './components/WalkInspectionsTab.svelte';
+  import { plansStore }       from './stores/plansStore';
+  import { permissions }      from '$lib/stores/permissions';
+  import { auth }             from '$lib/stores/auth';
 
   const logger = getLogger('PlansApp');
 
   $: isAdmin = $permissions.isAdmin;
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
-  let showUploader          = false;
-  let showBuildingReport    = false;
-  let showWalkInspections   = false;
-  let selectedPlanId        = null;
-  let loading               = true;
+  // Tab state
+  let activeTab = 'plans'; // 'plans' | 'inspections'
+
+  // Plans tab state
+  let showUploader       = false;
+  let showBuildingReport = false;
+  let showPlanReport     = false;
+  let selectedPlanId     = null;
+  let loading            = true;
 
   $: plans        = $plansStore.plans;
   $: selectedPlan = plans.find(p => p.id === selectedPlanId);
 
   $: buildingGroups = groupByBuilding(plans);
   $: buildingNames  = Object.keys(buildingGroups).sort();
+
+  let reportBuilding = null;
 
   function groupByBuilding(ps) {
     return ps.reduce((acc, p) => {
@@ -41,19 +47,14 @@
     }, {});
   }
 
-  let reportBuilding = null;
-
   function openBuildingReport(buildingName) {
     reportBuilding     = buildingName;
     showBuildingReport = true;
-    logger('Opening building report for:', buildingName);
   }
 
   onMount(async () => {
     logger('Plans app mounted');
-    if ($auth.user) {
-      await permissions.init($auth.user.id, 'plans');
-    }
+    if ($auth.user) await permissions.init($auth.user.id, 'plans');
     await loadPlans();
   });
 
@@ -62,36 +63,37 @@
     try {
       await plansStore.loadPlans();
       logger('✅ Plans loaded');
-    } catch (error) {
-      logger('❌ Error loading plans:', error.message);
-    } finally {
-      loading = false;
-    }
+    } catch (err) {
+      logger('❌ Error loading plans:', err.message);
+    } finally { loading = false; }
   }
 
-  function handlePlanSelect(event)   { selectedPlanId = event.detail.planId; }
-  function handleBackToList()        { selectedPlanId = null; }
-  function handlePlanCreated(event)  { showUploader = false; selectedPlanId = event.detail.planId; loadPlans(); }
-  function handleNewPlan()           { showUploader = true; }
-  function handlePlanUpdated()       { loadPlans(); }
-  function handlePlanDeleted()       { selectedPlanId = null; loadPlans(); }
-  function handlePlanCopied(event)   { selectedPlanId = event.detail.planId; loadPlans(); }
+  function handlePlanSelect(e)   { selectedPlanId = e.detail.planId; }
+  function handleBackToList()    { selectedPlanId = null; }
+  function handlePlanCreated(e)  { showUploader = false; selectedPlanId = e.detail.planId; loadPlans(); }
+  function handlePlanUpdated()   { loadPlans(); }
+  function handlePlanDeleted()   { selectedPlanId = null; loadPlans(); }
+  function handlePlanCopied(e)   { selectedPlanId = e.detail.planId; loadPlans(); }
+
+  // When switching tabs, clear plan selection
+  function switchTab(tab) {
+    activeTab = tab;
+    if (tab !== 'plans') selectedPlanId = null;
+  }
 </script>
 
 <div class="text-white">
 
-  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
   <div class="mb-6">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
         {#if selectedPlan}
           <Button variant="secondary" size="small" icon="arrow-left" on:click={handleBackToList}>
             Back
           </Button>
         {/if}
-
         <Icon name="map" size={8} className="text-blue-400" />
-
         <div>
           <h1 class="text-2xl font-bold">
             {selectedPlan ? selectedPlan.name : 'Floor Plans'}
@@ -103,58 +105,73 @@
                 · Floor {selectedPlan.floor_level}
               {/if}
             </p>
-          {:else if plans.length > 0}
-            <p class="text-sm text-gray-400">
-              {plans.length} {plans.length === 1 ? 'plan' : 'plans'} available
-            </p>
+          {:else if activeTab === 'plans' && plans.length > 0}
+            <p class="text-sm text-gray-400">{plans.length} {plans.length === 1 ? 'plan' : 'plans'} available</p>
           {/if}
         </div>
       </div>
 
-      <!-- List-level action buttons -->
-      {#if !selectedPlan}
+      <!-- Header action buttons — Plans tab only -->
+      {#if activeTab === 'plans' && plans.length > 0 && !loading}
         <div class="flex items-center gap-2">
-
-          <!-- Walk Inspections button — always shown at list level -->
-          <Button
-            variant="secondary"
-            size="medium"
-            icon="clipboard"
-            on:click={() => showWalkInspections = true}
-            disabled={loading}
-          >
-            Inspections
+          <Button variant="secondary" size="medium" icon="download"
+                  on:click={() => showPlanReport = true}
+                  disabled={plans.length === 0}>
+            Floor Plan Report
           </Button>
-
-          <!-- Building report shortcut for single-building setup -->
-          {#if buildingNames.length === 1}
-            <Button
-              variant="secondary"
-              size="medium"
-              icon="download"
-              on:click={() => openBuildingReport(buildingNames[0])}
-              disabled={loading || plans.length === 0}
-            >
-              Building Report
-            </Button>
-          {/if}
-
-          {#if isAdmin}
-            <Button variant="primary" size="medium" icon="plus" on:click={handleNewPlan}>
+          <Button variant="secondary" size="medium" icon="chart"
+                  on:click={() => openBuildingReport(buildingNames[0])}
+                  disabled={plans.length === 0}>
+            Building Report
+          </Button>
+          {#if isAdmin && !selectedPlan}
+            <Button variant="primary" size="medium" icon="plus" on:click={() => showUploader = true}>
               New Floor Plan
             </Button>
           {/if}
         </div>
       {/if}
     </div>
+
+    <!-- ── Tab navigation (same pattern as UserListApp) ───────────────────── -->
+    {#if !selectedPlan}
+      <div class="flex space-x-2 border-b border-slate-600">
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'plans'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => switchTab('plans')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>🗺</span>
+            <span>Plans</span>
+            <span class="text-xs text-gray-500">({plans.length})</span>
+          </span>
+        </button>
+
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'inspections'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => switchTab('inspections')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>✓</span>
+            <span>Inspections</span>
+          </span>
+        </button>
+      </div>
+    {/if}
   </div>
 
-  <!-- ── Main content ─────────────────────────────────────────────────────── -->
-  <div>
+  <!-- ── Main content ────────────────────────────────────────────────────────── -->
+
+  {#if activeTab === 'plans'}
+    <!-- PLANS TAB -->
     {#if loading}
       <div class="text-center py-12">
         <Icon name="loading" size={12} className="animate-spin mx-auto mb-4 text-purple-400" />
-        <p class="text-gray-400">Loading floor plans...</p>
+        <p class="text-gray-400">Loading floor plans…</p>
       </div>
 
     {:else if selectedPlan}
@@ -169,32 +186,23 @@
       {#if buildingNames.length > 1}
         {#each buildingNames as buildingName}
           <div class="mb-8">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold text-gray-200">{buildingName}</h2>
-              <Button
-                variant="secondary"
-                size="small"
-                icon="download"
-                on:click={() => openBuildingReport(buildingName)}
-              >
-                Building Report
-              </Button>
-            </div>
-            <PlansList
-              plans={buildingGroups[buildingName]}
-              on:selectPlan={handlePlanSelect}
-            />
+            <h2 class="text-lg font-semibold text-gray-200 mb-3">{buildingName}</h2>
+            <PlansList plans={buildingGroups[buildingName]} on:selectPlan={handlePlanSelect} />
           </div>
         {/each}
       {:else}
         <PlansList {plans} on:selectPlan={handlePlanSelect} />
       {/if}
     {/if}
-  </div>
+
+  {:else if activeTab === 'inspections'}
+    <!-- INSPECTIONS TAB -->
+    <WalkInspectionsTab {isAdmin} />
+  {/if}
 
 </div>
 
-<!-- ── Modals ─────────────────────────────────────────────────────────────── -->
+<!-- ── Modals ──────────────────────────────────────────────────────────────── -->
 
 {#if showUploader}
   <PlanUploader
@@ -203,17 +211,17 @@
   />
 {/if}
 
+{#if showPlanReport && plans.length > 0}
+  <PlansReport
+    {plans}
+    on:close={() => showPlanReport = false}
+  />
+{/if}
+
 {#if showBuildingReport && reportBuilding}
   <BuildingReport
     building={reportBuilding}
     plans={buildingGroups[reportBuilding]}
     on:close={() => { showBuildingReport = false; reportBuilding = null; }}
-  />
-{/if}
-
-{#if showWalkInspections}
-  <WalkInspectionsModal
-    show={showWalkInspections}
-    on:close={() => showWalkInspections = false}
   />
 {/if}

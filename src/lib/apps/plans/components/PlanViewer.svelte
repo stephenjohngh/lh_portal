@@ -9,7 +9,6 @@
   import ElementMarker from './ElementMarker.svelte';
   import ElementModal from './ElementModal.svelte';
   import PlanFilters from './PlanFilters.svelte';
-  import PlansReport from './reports/PlansReport.svelte';
   import PlanInfoModal from './PlanInfoModal.svelte';
   import CopyPlanModal from './CopyPlanModal.svelte';
   import { plansStore } from '../stores/plansStore';
@@ -35,12 +34,11 @@
   let elements           = [];
   let selectedElement    = null;
   let showElementModal   = false;
-  let showReportModal    = false;
   let showPlanInfoModal  = false;
   let showCopyModal      = false;
   let replacingImage     = false;
   let replaceImageError  = null;
-  let replaceFileInput;   // bound to hidden <input type="file">
+  let replaceFileInput;
   let newElementPosition = null;
   let hoveredElement     = null;
   let imageLoaded        = false;
@@ -48,22 +46,21 @@
   let containerHeight    = 0;
 
   // Drag-to-move state
-  let dragElement  = null;
-  let dragMoved    = false;
+  let dragElement   = null;
+  let dragMoved     = false;
   let dragJustEnded = false;
 
-  // New-element mode — must be explicitly enabled before clicking to place or dragging
+  // New-element mode
   let newMode = false;
 
   let filters = {
-    types:    [], statuses: [], searchText: '',
-    lightFilters:    { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
-    communalFilters: { subtypes: [], security: [], retained: false },
-    apartmentFilters:{},
-    fireFilters:     { subtypes: [] }
+    types: [], statuses: [], searchText: '',
+    lightFilters:     { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
+    communalFilters:  { subtypes: [], security: [], retained: false },
+    apartmentFilters: {},
+    fireFilters:      { subtypes: [] }
   };
 
-  // Only reload when plan.id changes
   let lastLoadedPlanId = null;
   $: if (plan?.id && plan.id !== lastLoadedPlanId) {
     lastLoadedPlanId = plan.id;
@@ -75,7 +72,6 @@
     return acc;
   }, {});
 
-  // hasActiveFilters covers both top-level and attribute sub-filters
   $: hasActiveFilters = (
     filters.types.length > 0 || filters.statuses.length > 0 || filters.searchText.length > 0 ||
     (filters.lightFilters?.subtypes?.length  > 0) || (filters.lightFilters?.battery?.length > 0) ||
@@ -120,10 +116,8 @@
 
     if (f.types.length > 0)
       result = result.filter(el => f.types.includes(el.element_type));
-
     if (f.statuses.length > 0)
       result = result.filter(el => f.statuses.includes(el.status));
-
     if (f.searchText) {
       const q = f.searchText.toLowerCase();
       result = result.filter(el =>
@@ -136,26 +130,18 @@
 
     const lf = f.lightFilters;
     if (lf) {
-      if (lf.subtypes?.length > 0)
-        result = result.filter(el => el.element_type !== 'light' || lf.subtypes.includes(el.subtype));
-      if (lf.battery?.length > 0)
-        result = result.filter(el => el.element_type !== 'light' || lf.battery.includes(el.battery));
-      if (lf.emergency)
-        result = result.filter(el => el.element_type !== 'light' || el.emergency === true);
-      if (lf.movementSensor)
-        result = result.filter(el => el.element_type !== 'light' || el.movement_sensor === true);
-      if (lf.lightSensor)
-        result = result.filter(el => el.element_type !== 'light' || el.light_sensor === true);
+      if (lf.subtypes?.length > 0) result = result.filter(el => el.element_type !== 'light' || lf.subtypes.includes(el.subtype));
+      if (lf.battery?.length  > 0) result = result.filter(el => el.element_type !== 'light' || lf.battery.includes(el.battery));
+      if (lf.emergency)             result = result.filter(el => el.element_type !== 'light' || el.emergency === true);
+      if (lf.movementSensor)        result = result.filter(el => el.element_type !== 'light' || el.movement_sensor === true);
+      if (lf.lightSensor)           result = result.filter(el => el.element_type !== 'light' || el.light_sensor === true);
     }
 
     const cf = f.communalFilters;
     if (cf) {
-      if (cf.subtypes?.length > 0)
-        result = result.filter(el => el.element_type !== 'communal_door' || cf.subtypes.includes(el.subtype));
-      if (cf.security?.length > 0)
-        result = result.filter(el => el.element_type !== 'communal_door' || cf.security.includes(el.security));
-      if (cf.retained)
-        result = result.filter(el => el.element_type !== 'communal_door' || el.retained === true);
+      if (cf.subtypes?.length > 0) result = result.filter(el => el.element_type !== 'communal_door' || cf.subtypes.includes(el.subtype));
+      if (cf.security?.length > 0) result = result.filter(el => el.element_type !== 'communal_door' || cf.security.includes(el.security));
+      if (cf.retained)              result = result.filter(el => el.element_type !== 'communal_door' || el.retained === true);
     }
 
     const ff = f.fireFilters;
@@ -166,8 +152,7 @@
   }
 
   function handleContainerClick(event) {
-    if (!canEdit || dragJustEnded) return;
-    if (!newMode) return;  // must be in New mode to place elements
+    if (!canEdit || dragJustEnded || !newMode) return;
 
     let node = event.target;
     while (node && node !== containerElement) {
@@ -184,15 +169,12 @@
     const normalizedX = (event.clientX - rect.left) / rect.width;
     const normalizedY = (event.clientY - rect.top)  / rect.height;
 
-    logger('Plan clicked at:', { x: normalizedX.toFixed(3), y: normalizedY.toFixed(3) });
-
     newElementPosition = { x: normalizedX, y: normalizedY };
     selectedElement    = null;
     showElementModal   = true;
   }
 
   function handleElementClick(element) {
-    logger('Element clicked:', element.id, element.asset_id);
     selectedElement    = element;
     newElementPosition = null;
     showElementModal   = true;
@@ -205,7 +187,6 @@
   function handleMarkerMousedown(event, element) {
     if (!canEdit || !newMode) return;
     event.stopPropagation();
-
     dragElement = element;
     dragMoved   = false;
 
@@ -223,24 +204,20 @@
     const onMouseup = async (e) => {
       window.removeEventListener('mousemove', onMousemove);
       window.removeEventListener('mouseup',   onMouseup);
-
       if (!dragMoved || !dragElement || !imageElement) { dragElement = null; return; }
 
-      const rect = imageElement.getBoundingClientRect();
-      const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-      const ny = Math.min(1, Math.max(0, (e.clientY - rect.top)  / rect.height));
-
-      const movedEl    = dragElement;
-      dragElement      = null;
-      dragJustEnded    = true;
+      const rect  = imageElement.getBoundingClientRect();
+      const nx    = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const ny    = Math.min(1, Math.max(0, (e.clientY - rect.top)  / rect.height));
+      const moved = dragElement;
+      dragElement   = null;
+      dragJustEnded = true;
       setTimeout(() => { dragJustEnded = false; }, 50);
 
       try {
-        await plansStore.updateElement(movedEl.id, { x_position: nx, y_position: ny });
-        logger('✅ Element moved:', movedEl.id);
+        await plansStore.updateElement(moved.id, { x_position: nx, y_position: ny });
         await loadElements();
       } catch (error) {
-        logger('❌ Error moving element:', error.message);
         await loadElements();
         alert('Failed to move element: ' + error.message);
       }
@@ -249,24 +226,20 @@
     window.addEventListener('mousemove', onMousemove);
     window.addEventListener('mouseup',   onMouseup);
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
   async function handleElementSave(event) {
     const { element, isNew } = event.detail;
     try {
       if (isNew) {
         await plansStore.createElement(plan.id, element);
-        logger('✅ Element created');
       } else {
         await plansStore.updateElement(element.id, element);
-        logger('✅ Element updated');
       }
       await loadElements();
       showElementModal   = false;
       selectedElement    = null;
       newElementPosition = null;
     } catch (error) {
-      logger('❌ Error saving element:', error.message);
       alert('Failed to save element: ' + error.message);
     }
   }
@@ -275,35 +248,23 @@
     const { elementId, planId } = event.detail;
     try {
       await plansStore.deleteElement(elementId, planId);
-      logger('✅ Element deleted');
       await loadElements();
       showElementModal = false;
       selectedElement  = null;
     } catch (error) {
-      logger('❌ Error deleting element:', error.message);
       alert('Failed to delete element: ' + error.message);
     }
   }
 
-  function handleFilterChange(event) {
-    filters = event.detail;
-    logger('Filters changed:', filters);
-  }
-
-  function handleImageLoad() {
-    imageLoaded = true;
-    logger('Image loaded successfully');
-  }
+  function handleFilterChange(event) { filters = event.detail; }
+  function handleImageLoad()         { imageLoaded = true; }
 
   function getPixelPosition(element) {
     if (!imageElement) return { x: 0, y: 0 };
     const rect = imageElement.getBoundingClientRect();
-    return {
-      x: element.x_position * rect.width,
-      y: element.y_position * rect.height
-    };
+    return { x: element.x_position * rect.width, y: element.y_position * rect.height };
   }
-  // ── Replace plan image ────────────────────────────────────────────────────
+
   async function handleReplaceImage(event) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -312,17 +273,13 @@
     try {
       await plansStore.replaceImage(plan, file);
       dispatch('planUpdated');
-      logger('✅ Plan image replaced');
     } catch (err) {
       replaceImageError = err.message;
-      logger('❌ Replace image error:', err.message);
     } finally {
       replacingImage = false;
-      // Reset file input so the same file can be re-selected if needed
       if (replaceFileInput) replaceFileInput.value = '';
     }
   }
-
 </script>
 
 <div class="grid grid-cols-12 gap-6">
@@ -369,15 +326,9 @@
             <Button variant="secondary" size="small" icon="copy" on:click={() => showCopyModal = true}>
               Copy
             </Button>
-          {/if}
-          <Button variant="secondary" size="small" icon="download" on:click={() => showReportModal = true}>
-            Create Report
-          </Button>
-          {#if isAdmin}
             <Button variant="secondary" size="small" icon="edit" on:click={() => showPlanInfoModal = true}>
               Edit Info
             </Button>
-            <!-- Hidden file input for image replacement -->
             <input
               type="file"
               accept="image/*"
@@ -477,16 +428,14 @@
           {#if !canEdit}
             <strong>Click markers</strong> to view element details.
             <span class="text-amber-400"> Read-only access — editing is disabled.</span>
-          {:else if canEdit}
-            {#if newMode}
-              <span class="text-green-400 font-medium">New mode on</span> —
-              <strong>click anywhere</strong> on the plan to place a new element,
-              or <strong>drag a marker</strong> to move it.
-              Click <strong>New Off</strong> when done.
-            {:else}
-              <strong>Click a marker</strong> to view or edit details.
-              Enable <strong>New</strong> mode to place or move elements.
-            {/if}
+          {:else if newMode}
+            <span class="text-green-400 font-medium">New mode on</span> —
+            <strong>click anywhere</strong> on the plan to place a new element,
+            or <strong>drag a marker</strong> to move it.
+            Click <strong>New Off</strong> when done.
+          {:else}
+            <strong>Click a marker</strong> to view or edit details.
+            Enable <strong>New</strong> mode to place or move elements.
           {/if}
           {#if hasActiveFilters}
             <span class="text-amber-400 ml-1">
@@ -566,10 +515,6 @@
     on:delete={handleElementDelete}
     on:close={() => { showElementModal = false; selectedElement = null; newElementPosition = null; }}
   />
-{/if}
-
-{#if showReportModal}
-  <PlansReport {plan} {elements} {filters} on:close={() => showReportModal = false} />
 {/if}
 
 {#if showPlanInfoModal}
