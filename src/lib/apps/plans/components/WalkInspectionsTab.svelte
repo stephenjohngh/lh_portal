@@ -6,7 +6,8 @@
   import { api }       from '$lib/utils/api';
   import { getLogger } from '$lib/utils/logger';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
-  import { walkStore } from '$lib/apps/walk/stores/walkStore.js';
+  import { walkStore }           from '$lib/apps/walk/stores/walkStore.js';
+  import WalkInspectionsReport   from './WalkInspectionsReport.svelte';
 
   const logger = getLogger('WalkInspectionsTab');
 
@@ -19,6 +20,7 @@
   let loadingId    = null;
   let error        = null;
   let expandedId   = null;
+  let showReport   = false;
   let deletingId   = null;  // session id currently being deleted
   let confirmId    = null;  // session id awaiting delete confirmation
 
@@ -212,6 +214,12 @@
     </div>
 
     <div class="toolbar-summary">
+      {#if filtered.length > 0}
+        <button class="report-btn" on:click={() => showReport = true}>
+          <Icon name="download" size={4} />
+          Report
+        </button>
+      {/if}
       <span class="ts-count">{totalSessions} session{totalSessions !== 1 ? 's' : ''}</span>
       {#if openSessions > 0}   <span class="ts-open">{openSessions} open</span>   {/if}
       {#if closedSessions > 0} <span class="ts-closed">{closedSessions} closed</span> {/if}
@@ -366,6 +374,14 @@
 
 </div>
 
+{#if showReport}
+  <WalkInspectionsReport
+    sessions={filtered}
+    inspectionsCache={inspections}
+    on:close={() => showReport = false}
+  />
+{/if}
+
 <style>
   .wi-tab { display: flex; flex-direction: column; gap: 1rem; }
 
@@ -392,6 +408,14 @@
   .clear-btn:hover { color: #fff; }
 
   .toolbar-summary { margin-left: auto; display: flex; align-items: center; gap: 1rem; font-size: 0.875rem; }
+
+  .report-btn {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.8rem; padding: 0.375rem 0.75rem;
+    background: rgb(139 92 246 / 0.15); border: 1px solid rgb(139 92 246 / 0.4);
+    border-radius: 6px; color: rgb(167 139 250); cursor: pointer; transition: all 0.15s;
+  }
+  .report-btn:hover { background: rgb(139 92 246 / 0.25); border-color: rgb(139 92 246 / 0.7); color: #c4b5fd; }
   .ts-count  { color: rgb(156 163 175); }
   .ts-open   { color: rgb(251 191 36); }
   .ts-closed { color: rgb(107 114 128); }
