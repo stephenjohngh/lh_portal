@@ -8,7 +8,6 @@
   import PlansList            from './components/PlansList.svelte';
   import PlanViewer           from './components/PlanViewer.svelte';
   import PlanUploader         from './components/PlanUploader.svelte';
-  import BuildingReport       from './components/BuildingReport.svelte';
   import PlansReport          from './components/reports/PlansReport.svelte';
   import WalkInspectionsTab   from './components/WalkInspectionsTab.svelte';
   import { plansStore }       from './stores/plansStore';
@@ -25,32 +24,12 @@
 
   // Plans tab state
   let showUploader       = false;
-  let showBuildingReport = false;
   let showPlanReport     = false;
   let selectedPlanId     = null;
   let loading            = true;
 
   $: plans        = $plansStore.plans;
   $: selectedPlan = plans.find(p => p.id === selectedPlanId);
-
-  $: buildingGroups = groupByBuilding(plans);
-  $: buildingNames  = Object.keys(buildingGroups).sort();
-
-  let reportBuilding = null;
-
-  function groupByBuilding(ps) {
-    return ps.reduce((acc, p) => {
-      const b = p.building ?? 'Unknown';
-      if (!acc[b]) acc[b] = [];
-      acc[b].push(p);
-      return acc;
-    }, {});
-  }
-
-  function openBuildingReport(buildingName) {
-    reportBuilding     = buildingName;
-    showBuildingReport = true;
-  }
 
   onMount(async () => {
     logger('Plans app mounted');
@@ -119,11 +98,6 @@
                   disabled={plans.length === 0}>
             Floor Plan Report
           </Button>
-          <Button variant="secondary" size="medium" icon="chart"
-                  on:click={() => openBuildingReport(buildingNames[0])}
-                  disabled={plans.length === 0}>
-            Building Report
-          </Button>
           {#if isAdmin && !selectedPlan}
             <Button variant="primary" size="medium" icon="plus" on:click={() => showUploader = true}>
               New Floor Plan
@@ -183,16 +157,7 @@
       />
 
     {:else}
-      {#if buildingNames.length > 1}
-        {#each buildingNames as buildingName}
-          <div class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-200 mb-3">{buildingName}</h2>
-            <PlansList plans={buildingGroups[buildingName]} on:selectPlan={handlePlanSelect} />
-          </div>
-        {/each}
-      {:else}
-        <PlansList {plans} on:selectPlan={handlePlanSelect} />
-      {/if}
+      <PlansList {plans} on:selectPlan={handlePlanSelect} />
     {/if}
 
   {:else if activeTab === 'inspections'}
@@ -215,13 +180,5 @@
   <PlansReport
     {plans}
     on:close={() => showPlanReport = false}
-  />
-{/if}
-
-{#if showBuildingReport && reportBuilding}
-  <BuildingReport
-    building={reportBuilding}
-    plans={buildingGroups[reportBuilding]}
-    on:close={() => { showBuildingReport = false; reportBuilding = null; }}
   />
 {/if}

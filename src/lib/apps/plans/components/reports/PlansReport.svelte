@@ -14,8 +14,6 @@
     MARKER_RADIUS, getElementDisplayName, getElementTypeConfig,
     getFloorLevelLabel
   } from '$lib/utils/planConstants';
-  import { applyElementFilters } from '$lib/apps/plans/utils/filterHelpers';
-  import { downloadResponse }    from '$lib/utils/download';
 
   const logger   = getLogger('PlansReport');
   const dispatch = createEventDispatcher();
@@ -23,12 +21,13 @@
   export let plans;   // Plan[] — all plans sorted by floor
 
   // ── Floor scope ───────────────────────────────────────────────────────────────
+  // 'all' or a specific plan.id
   let floorScope  = 'all';
   $: activePlans  = floorScope === 'all' ? plans : plans.filter(p => p.id === floorScope);
 
   // ── Load ALL floors' elements on mount ────────────────────────────────────────
   $: storeElements = $plansStore.elements;
-  let loading   = false;
+  let loading  = false;
   let loadError = null;
 
   onMount(async () => {
@@ -41,7 +40,11 @@
   });
 
   // ── Options ───────────────────────────────────────────────────────────────────
-  let options = { includeImage: true, includeElementList: true };
+  let options = { 
+    includeImage: true, 
+    includeElementList: true,
+    includeSummary: true  // NEW: Summary section option
+  };
 
   let selectedStatuses = [];
   let typeFilters      = { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
@@ -53,16 +56,45 @@
   }
   function handleTypeChange(e) { typeFilters = e.detail; }
 
+  // ── Filter function (applied per-floor) ───────────────────────────────────────
+  function filterEls(els) {
+    return els.filter(e => {
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(e.status))       return false;
+      if (typeFilters.types?.length > 0 && !typeFilters.types.includes(e.element_type)) return false;
+      if (e.element_type === 'light') {
+        const lf = typeFilters.lightFilters ?? {};
+        if (lf.subtypes?.length > 0 && !lf.subtypes.includes(e.subtype))  return false;
+        if (lf.battery?.length  > 0 && !lf.battery.includes(e.battery))   return false;
+        if (lf.emergency        && !e.emergency)                           return false;
+        if (lf.movementSensor   && !e.movement_sensor)                     return false;
+        if (lf.lightSensor      && !e.light_sensor)                        return false;
+      }
+      if (e.element_type === 'communal_door') {
+        const cf = typeFilters.communalFilters ?? {};
+        if (cf.subtypes?.length > 0 && !cf.subtypes.includes(e.subtype))  return false;
+        if (cf.security?.length > 0 && !cf.security.includes(e.security)) return false;
+        if (cf.retained         && !e.retained)                            return false;
+      }
+      if (e.element_type === 'fire_control') {
+        const ff = typeFilters.fireFilters ?? {};
+        if (ff.subtypes?.length > 0 && !ff.subtypes.includes(e.subtype))  return false;
+      }
+      return true;
+    });
+  }
+
   // ── Per-floor preview — reactive to filters + scope ─────────────────────────
+  // selectedStatuses and typeFilters are referenced directly so Svelte tracks
+  // them as dependencies (they're otherwise hidden inside filterEls()).
   $: previewRows = [selectedStatuses, typeFilters] && activePlans.map(plan => {
     const all      = storeElements[plan.id] ?? [];
-    const filtered = applyElementFilters(all, { statuses: selectedStatuses, ...typeFilters });
+    const filtered = filterEls(all);
     return { plan, count: filtered.length, total: all.length };
   });
 
-  $: totalMatched   = previewRows.reduce((n, r) => n + r.count, 0);
-  $: floorsIncluded = previewRows.filter(r => r.count > 0).length;
-  $: floorsSkipped  = activePlans.length - floorsIncluded;
+  $: totalMatched    = previewRows.reduce((n, r) => n + r.count, 0);
+  $: floorsIncluded  = previewRows.filter(r => r.count > 0).length;
+  $: floorsSkipped   = activePlans.length - floorsIncluded;
 
   // elementCounts for the type-filter badge — aggregate across ALL plans in scope
   $: elementCounts = ELEMENT_TYPE_OPTIONS.reduce((acc, t) => {
@@ -161,9 +193,10 @@
   async function generateReport() {
     generating = true; genError = null; genProgress = '';
     try {
+      // Build per-floor payload — skip floors with no matching elements
       const floors = [];
       for (const plan of activePlans) {
-        const els = applyElementFilters(storeElements[plan.id] ?? [], { statuses: selectedStatuses, ...typeFilters });
+        const els = filterEls(storeElements[plan.id] ?? []);
         if (els.length === 0) continue;
 
         let imageBase64 = null;
@@ -186,15 +219,25 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           floors,
-          options: { ...options, groupByType: true, filterSummary: buildFilterSummary(), building }
+          options: { 
+            ...options, 
+            groupByType: true, 
+            filterSummary: buildFilterSummary(), 
+            building 
+          }
         })
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const slug     = floorScope === 'all' ? 'AllFloors' : `Floor${activePlans[0]?.floor_level}`;
-      const filename = `${building}_${slug}_PlanReport.docx`;
-      await downloadResponse(response, filename);
+      const blob = await response.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const slug = floorScope === 'all' ? 'AllFloors' : `Floor${activePlans[0]?.floor_level}`;
+      a.href     = url;
+      a.download = `${building}_${slug}_PlanReport.docx`;
+      document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(url); document.body.removeChild(a);
 
       dispatch('close');
     } catch (err) {
@@ -215,6 +258,7 @@
     <div>
       <h4 class="font-semibold mb-3">Floors</h4>
       <div class="flex gap-2 flex-wrap">
+        <!-- All floors -->
         <button
           class="px-4 py-2 rounded-lg border text-sm transition-colors"
           class:border-purple-500={floorScope === 'all'}
@@ -226,6 +270,7 @@
         >
           All floors <span class="text-xs opacity-60 ml-1">({plans.length})</span>
         </button>
+        <!-- Individual floors -->
         {#each plans as plan}
           <button
             class="px-4 py-2 rounded-lg border text-sm transition-colors"
@@ -265,20 +310,25 @@
             class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
           <span class="text-sm">Include element list per floor</span>
         </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" bind:checked={options.includeSummary}
+            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+          <span class="text-sm">Include summary table (Type, Subtype, Status, Total)</span>
+        </label>
       </div>
     </div>
 
-    <!-- Status filter -->
+    <!-- Status filter - HORIZONTAL LAYOUT -->
     <div>
       <h4 class="font-semibold mb-3">Status</h4>
-      <div class="space-y-2">
+      <div class="flex flex-wrap gap-3">
         {#each ELEMENT_STATUS_OPTIONS as status}
-          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 px-2 py-1 rounded">
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 px-3 py-2 rounded">
             <input type="checkbox"
               checked={selectedStatuses.includes(status.value)}
               on:change={() => toggleStatus(status.value)}
               class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-            <span class="flex-1 text-sm">{status.label}</span>
+            <span class="text-sm">{status.label}</span>
           </label>
         {/each}
       </div>
