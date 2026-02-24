@@ -21,9 +21,23 @@
   export let plans;   // Plan[] — all plans sorted by floor
 
   // ── Floor scope ───────────────────────────────────────────────────────────────
-  // 'all' or a specific plan.id
+  // 'all' | 'basement' | 'residential' | specific plan.id
   let floorScope  = 'all';
-  $: activePlans  = floorScope === 'all' ? plans : plans.filter(p => p.id === floorScope);
+  
+  // Compute active plans based on scope
+  $: activePlans = (() => {
+    if (floorScope === 'all') return plans;
+    if (floorScope === 'basement') {
+      // U (Upper) + L (Lower)
+      return plans.filter(p => p.floor_level === 'U' || p.floor_level === 'L');
+    }
+    if (floorScope === 'residential') {
+      // G (Ground) + 1-7
+      return plans.filter(p => ['G', '1', '2', '3', '4', '5', '6', '7'].includes(p.floor_level));
+    }
+    // Specific floor
+    return plans.filter(p => p.id === floorScope);
+  })();
 
   // ── Load ALL floors' elements on mount ────────────────────────────────────────
   $: storeElements = $plansStore.elements;
@@ -43,7 +57,7 @@
   let options = { 
     includeImage: true, 
     includeElementList: true,
-    includeSummary: true  // NEW: Summary section option
+    includeSummary: true
   };
 
   let selectedStatuses = [];
@@ -84,8 +98,6 @@
   }
 
   // ── Per-floor preview — reactive to filters + scope ─────────────────────────
-  // selectedStatuses and typeFilters are referenced directly so Svelte tracks
-  // them as dependencies (they're otherwise hidden inside filterEls()).
   $: previewRows = [selectedStatuses, typeFilters] && activePlans.map(plan => {
     const all      = storeElements[plan.id] ?? [];
     const filtered = filterEls(all);
@@ -96,13 +108,17 @@
   $: floorsIncluded  = previewRows.filter(r => r.count > 0).length;
   $: floorsSkipped   = activePlans.length - floorsIncluded;
 
-  // elementCounts for the type-filter badge — aggregate across ALL plans in scope
+  // elementCounts for the type-filter badge
   $: elementCounts = ELEMENT_TYPE_OPTIONS.reduce((acc, t) => {
     acc[t.value] = activePlans.reduce(
       (n, p) => n + (storeElements[p.id] ?? []).filter(e => e.element_type === t.value).length, 0
     );
     return acc;
   }, {});
+
+  // Check if basement or residential options are available
+  $: hasBasement = plans.some(p => p.floor_level === 'U' || p.floor_level === 'L');
+  $: hasResidential = plans.some(p => ['G', '1', '2', '3', '4', '5', '6', '7'].includes(p.floor_level));
 
   // ── Annotated image builder ───────────────────────────────────────────────────
   const MARKER_SHAPE = {
@@ -193,7 +209,6 @@
   async function generateReport() {
     generating = true; genError = null; genProgress = '';
     try {
-      // Build per-floor payload — skip floors with no matching elements
       const floors = [];
       for (const plan of activePlans) {
         const els = filterEls(storeElements[plan.id] ?? []);
@@ -233,7 +248,10 @@
       const blob = await response.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      const slug = floorScope === 'all' ? 'AllFloors' : `Floor${activePlans[0]?.floor_level}`;
+      const slug = floorScope === 'all' ? 'AllFloors' : 
+                   floorScope === 'basement' ? 'Basement' :
+                   floorScope === 'residential' ? 'Residential' :
+                   `Floor${activePlans[0]?.floor_level}`;
       a.href     = url;
       a.download = `${building}_${slug}_PlanReport.docx`;
       document.body.appendChild(a); a.click();
@@ -250,131 +268,140 @@
 </script>
 
 <Modal show={true} size="medium" on:close={() => dispatch('close')}>
-  <h3 slot="header" class="text-xl font-bold">Floor Plan Report</h3>
+  <!-- Compact header -->
+  <div slot="header" class="text-lg font-bold">Floor Plan Report</div>
 
-  <div class="section-spacing">
+  <div class="space-y-3">
 
-    <!-- Floor scope -->
+    <!-- Floor scope - BUTTONS + DROPDOWN -->
     <div>
-      <h4 class="font-semibold mb-3">Floors</h4>
-      <div class="flex gap-2 flex-wrap">
-        <!-- All floors -->
+      <h4 class="text-sm font-semibold mb-2">Floors</h4>
+      <div class="flex gap-2 items-center flex-wrap">
         <button
-          class="px-4 py-2 rounded-lg border text-sm transition-colors"
-          class:border-purple-500={floorScope === 'all'}
-          class:text-purple-300={floorScope === 'all'}
-          class:border-slate-600={floorScope !== 'all'}
-          class:text-gray-400={floorScope !== 'all'}
-          style={floorScope === 'all' ? 'background:rgba(168,85,247,0.1)' : ''}
+          class="scope-btn"
+          class:scope-btn-active={floorScope === 'all'}
           on:click={() => floorScope = 'all'}
         >
-          All floors <span class="text-xs opacity-60 ml-1">({plans.length})</span>
+          All <span class="count">({plans.length})</span>
         </button>
-        <!-- Individual floors -->
-        {#each plans as plan}
+        
+        {#if hasBasement}
           <button
-            class="px-4 py-2 rounded-lg border text-sm transition-colors"
-            class:border-purple-500={floorScope === plan.id}
-            class:text-purple-300={floorScope === plan.id}
-            class:border-slate-600={floorScope !== plan.id}
-            class:text-gray-400={floorScope !== plan.id}
-            style={floorScope === plan.id ? 'background:rgba(168,85,247,0.1)' : ''}
-            on:click={() => floorScope = plan.id}
+            class="scope-btn"
+            class:scope-btn-active={floorScope === 'basement'}
+            on:click={() => floorScope = 'basement'}
           >
-            Floor {plan.floor_level}
+            Basement <span class="count">(U+L)</span>
           </button>
-        {/each}
+        {/if}
+        
+        {#if hasResidential}
+          <button
+            class="scope-btn"
+            class:scope-btn-active={floorScope === 'residential'}
+            on:click={() => floorScope = 'residential'}
+          >
+            Residential <span class="count">(G-7)</span>
+          </button>
+        {/if}
+        
+        <span class="text-sm text-gray-400">or</span>
+        
+        <select 
+          bind:value={floorScope}
+          class="select text-sm py-1.5 px-3"
+        >
+          <option value="all">-- Select single floor --</option>
+          {#each plans as plan}
+            <option value={plan.id}>Floor {plan.floor_level} - {plan.name}</option>
+          {/each}
+        </select>
       </div>
     </div>
 
     <!-- Loading -->
     {#if loading}
-      <div class="flex items-center gap-2 text-sm text-gray-400">
-        <Icon name="loading" size={4} className="animate-spin" /> Loading element data…
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        <Icon name="loading" size={4} className="animate-spin" /> Loading…
       </div>
     {:else if loadError}
-      <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-sm text-red-400">⚠ {loadError}</div>
+      <div class="p-2 bg-red-500/10 border border-red-500/50 rounded text-xs text-red-400">⚠ {loadError}</div>
     {/if}
 
-    <!-- Options -->
+    <!-- Options - TRUE ONE LINE -->
+    <div class="flex items-center gap-4 flex-wrap text-sm">
+      <span class="font-semibold">Options:</span>
+      <label class="flex items-center gap-1.5 cursor-pointer">
+        <input type="checkbox" bind:checked={options.includeImage} class="checkbox-sm" />
+        <span>Floor Plan</span>
+      </label>
+      <label class="flex items-center gap-1.5 cursor-pointer">
+        <input type="checkbox" bind:checked={options.includeElementList} class="checkbox-sm" />
+        <span>List</span>
+      </label>
+      <label class="flex items-center gap-1.5 cursor-pointer">
+        <input type="checkbox" bind:checked={options.includeSummary} class="checkbox-sm" />
+        <span>Summary</span>
+      </label>
+    </div>
+
+    <!-- Status - TRUE ONE LINE -->
+    <div class="flex items-center gap-3 flex-wrap text-sm">
+      <span class="font-semibold">Status:</span>
+      {#each ELEMENT_STATUS_OPTIONS as status}
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox"
+            checked={selectedStatuses.includes(status.value)}
+            on:change={() => toggleStatus(status.value)}
+            class="checkbox-sm" />
+          <span>{status.label}</span>
+        </label>
+      {/each}
+    </div>
+
+    <!-- Element type filter - REDUCED SPACING -->
     <div>
-      <h4 class="font-semibold mb-3">Options</h4>
-      <div class="space-y-3">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" bind:checked={options.includeImage}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-          <span class="text-sm">Include annotated floor plan image per floor</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" bind:checked={options.includeElementList}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-          <span class="text-sm">Include element list per floor</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" bind:checked={options.includeSummary}
-            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-          <span class="text-sm">Include summary table (Type, Subtype, Status, Total)</span>
-        </label>
+      <h4 class="text-sm font-semibold mb-1.5">Element Types</h4>
+      <div class="element-types-compact">
+        <ElementTypeFilter {elementCounts} on:change={handleTypeChange} />
       </div>
     </div>
 
-    <!-- Status filter - HORIZONTAL LAYOUT -->
-    <div>
-      <h4 class="font-semibold mb-3">Status</h4>
-      <div class="flex flex-wrap gap-3">
-        {#each ELEMENT_STATUS_OPTIONS as status}
-          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 px-3 py-2 rounded">
-            <input type="checkbox"
-              checked={selectedStatuses.includes(status.value)}
-              on:change={() => toggleStatus(status.value)}
-              class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-            <span class="text-sm">{status.label}</span>
-          </label>
-        {/each}
-      </div>
-    </div>
-
-    <!-- Element type filter -->
-    <div>
-      <h4 class="font-semibold mb-2">Element Types</h4>
-      <ElementTypeFilter {elementCounts} on:change={handleTypeChange} />
-    </div>
-
-    <!-- Per-floor preview table -->
+    <!-- Preview - COMPACT -->
     {#if !loading}
       <div>
-        <h4 class="font-semibold mb-2">
+        <h4 class="text-sm font-semibold mb-1.5">
           Preview
-          <span class="font-normal text-sm text-gray-400 ml-2">
+          <span class="font-normal text-xs text-gray-400 ml-2">
             {totalMatched} element{totalMatched !== 1 ? 's' : ''}
-            · {floorsIncluded} floor{floorsIncluded !== 1 ? 's' : ''} included
+            · {floorsIncluded} floor{floorsIncluded !== 1 ? 's' : ''}
             {#if floorsSkipped > 0}
               <span class="text-amber-400">· {floorsSkipped} skipped</span>
             {/if}
           </span>
         </h4>
-        <div class="bg-slate-700/40 rounded-lg overflow-hidden">
-          <table class="w-full text-sm">
+        <div class="bg-slate-700/40 rounded overflow-hidden">
+          <table class="w-full text-xs">
             <thead>
               <tr class="border-b border-slate-600">
-                <th class="text-left px-4 py-2 text-gray-400 font-medium">Floor</th>
-                <th class="text-right px-4 py-2 text-gray-400 font-medium">Matching</th>
-                <th class="text-right px-4 py-2 text-gray-400 font-medium">Total</th>
+                <th class="text-left px-3 py-1.5 text-gray-400 font-medium">Floor</th>
+                <th class="text-right px-3 py-1.5 text-gray-400 font-medium">Match</th>
+                <th class="text-right px-3 py-1.5 text-gray-400 font-medium">Total</th>
               </tr>
             </thead>
             <tbody>
               {#each previewRows as { plan, count, total }}
                 <tr class="border-b border-slate-700/50 last:border-0" class:opacity-40={count === 0}>
-                  <td class="px-4 py-2 text-gray-300">
+                  <td class="px-3 py-1.5 text-gray-300">
                     {getFloorLevelLabel(String(plan.floor_level))}
                     {#if count === 0}
-                      <span class="text-xs text-amber-500/70 italic ml-2">skipped</span>
+                      <span class="text-xs text-amber-500/70 italic ml-1">skip</span>
                     {/if}
                   </td>
-                  <td class="px-4 py-2 text-right font-medium"
+                  <td class="px-3 py-1.5 text-right font-medium"
                       class:text-purple-300={count > 0}
                       class:text-gray-500={count === 0}>{count}</td>
-                  <td class="px-4 py-2 text-right text-gray-500">{total}</td>
+                  <td class="px-3 py-1.5 text-right text-gray-500">{total}</td>
                 </tr>
               {/each}
             </tbody>
@@ -383,29 +410,68 @@
       </div>
 
       {#if totalMatched === 0}
-        <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-sm text-amber-400">
+        <div class="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
           ⚠ No elements match the current filters.
         </div>
       {/if}
     {/if}
 
     {#if genError}
-      <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-sm text-red-400">⚠ {genError}</div>
+      <div class="p-2 bg-red-500/10 border border-red-500/50 rounded text-xs text-red-400">⚠ {genError}</div>
     {/if}
 
   </div>
 
   <div slot="footer" class="btn-group justify-end">
-    <Button variant="secondary" size="large" on:click={() => dispatch('close')} disabled={generating}>
+    <Button variant="secondary" size="medium" on:click={() => dispatch('close')} disabled={generating}>
       Cancel
     </Button>
-    <Button variant="primary" size="large" icon="download" on:click={generateReport}
+    <Button variant="primary" size="medium" icon="download" on:click={generateReport}
             disabled={generating || loading || totalMatched === 0}>
       {#if generating}
         {genProgress || 'Generating…'}
       {:else}
-        Generate ({floorsIncluded} floor{floorsIncluded !== 1 ? 's' : ''})
+        Generate ({floorsIncluded})
       {/if}
     </Button>
   </div>
 </Modal>
+
+<style>
+  /* Compact scope buttons */
+  .scope-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    border-radius: 0.375rem;
+    border: 1px solid rgb(71 85 105);
+    background: rgb(51 65 85 / 0.3);
+    color: rgb(156 163 175);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .scope-btn:hover {
+    border-color: rgb(139 92 246 / 0.5);
+    background: rgb(139 92 246 / 0.05);
+  }
+  .scope-btn-active {
+    border-color: rgb(139 92 246);
+    background: rgb(139 92 246 / 0.15);
+    color: rgb(196 181 253);
+  }
+  .count {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    margin-left: 0.25rem;
+  }
+
+  /* Compact element types filter */
+  :global(.element-types-compact) {
+    font-size: 0.8125rem;
+  }
+  :global(.element-types-compact .space-y-1) {
+    gap: 0.25rem;
+  }
+  :global(.element-types-compact label) {
+    padding: 0.25rem 0.375rem;
+  }
+</style>
