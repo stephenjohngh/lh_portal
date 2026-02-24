@@ -268,55 +268,54 @@
 </script>
 
 <Modal show={true} size="medium" on:close={() => dispatch('close')}>
-  <!-- Compact header -->
-  <div slot="header" class="text-lg font-bold">Floor Plan Report</div>
+  <!-- Ultra-minimal header -->
+  <div slot="header" class="compact-header">Floor Plan Report</div>
 
   <div class="space-y-3">
 
-    <!-- Floor scope - BUTTONS + DROPDOWN -->
-    <div>
-      <h4 class="text-sm font-semibold mb-2">Floors</h4>
-      <div class="flex gap-2 items-center flex-wrap">
+    <!-- Floor scope - INLINE BUTTONS AND DROPDOWN -->
+    <div class="flex items-center gap-2 flex-wrap text-sm">
+      <span class="font-semibold">Floors:</span>
+      
+      <button
+        class="scope-btn"
+        class:scope-btn-active={floorScope === 'all'}
+        on:click={() => floorScope = 'all'}
+      >
+        All <span class="count">({plans.length})</span>
+      </button>
+      
+      {#if hasBasement}
         <button
           class="scope-btn"
-          class:scope-btn-active={floorScope === 'all'}
-          on:click={() => floorScope = 'all'}
+          class:scope-btn-active={floorScope === 'basement'}
+          on:click={() => floorScope = 'basement'}
         >
-          All <span class="count">({plans.length})</span>
+          Basement <span class="count">(U+L)</span>
         </button>
-        
-        {#if hasBasement}
-          <button
-            class="scope-btn"
-            class:scope-btn-active={floorScope === 'basement'}
-            on:click={() => floorScope = 'basement'}
-          >
-            Basement <span class="count">(U+L)</span>
-          </button>
-        {/if}
-        
-        {#if hasResidential}
-          <button
-            class="scope-btn"
-            class:scope-btn-active={floorScope === 'residential'}
-            on:click={() => floorScope = 'residential'}
-          >
-            Residential <span class="count">(G-7)</span>
-          </button>
-        {/if}
-        
-        <span class="text-sm text-gray-400">or</span>
-        
-        <select 
-          bind:value={floorScope}
-          class="select text-sm py-1.5 px-3"
+      {/if}
+      
+      {#if hasResidential}
+        <button
+          class="scope-btn"
+          class:scope-btn-active={floorScope === 'residential'}
+          on:click={() => floorScope = 'residential'}
         >
-          <option value="all">-- Select single floor --</option>
-          {#each plans as plan}
-            <option value={plan.id}>Floor {plan.floor_level} - {plan.name}</option>
-          {/each}
-        </select>
-      </div>
+          Residential <span class="count">(G-7)</span>
+        </button>
+      {/if}
+      
+      <span class="text-gray-400">or</span>
+      
+      <select 
+        bind:value={floorScope}
+        class="select-compact"
+      >
+        <option value="all">-- Select single floor --</option>
+        {#each plans as plan}
+          <option value={plan.id}>Floor {plan.floor_level} - {plan.name}</option>
+        {/each}
+      </select>
     </div>
 
     <!-- Loading -->
@@ -328,7 +327,7 @@
       <div class="p-2 bg-red-500/10 border border-red-500/50 rounded text-xs text-red-400">⚠ {loadError}</div>
     {/if}
 
-    <!-- Options - TRUE ONE LINE -->
+    <!-- Options - ONE LINE -->
     <div class="flex items-center gap-4 flex-wrap text-sm">
       <span class="font-semibold">Options:</span>
       <label class="flex items-center gap-1.5 cursor-pointer">
@@ -345,7 +344,7 @@
       </label>
     </div>
 
-    <!-- Status - TRUE ONE LINE -->
+    <!-- Status - ONE LINE -->
     <div class="flex items-center gap-3 flex-wrap text-sm">
       <span class="font-semibold">Status:</span>
       {#each ELEMENT_STATUS_OPTIONS as status}
@@ -438,9 +437,17 @@
 </Modal>
 
 <style>
+  /* Ultra-compact header */
+  .compact-header {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    padding: 0.5rem 0;
+    line-height: 1.2;
+  }
+
   /* Compact scope buttons */
   .scope-btn {
-    padding: 0.375rem 0.75rem;
+    padding: 0.25rem 0.625rem;
     font-size: 0.8125rem;
     border-radius: 0.375rem;
     border: 1px solid rgb(71 85 105);
@@ -462,6 +469,25 @@
     font-size: 0.7rem;
     opacity: 0.6;
     margin-left: 0.25rem;
+  }
+
+  /* Compact select dropdown to match buttons */
+  .select-compact {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.8125rem;
+    border-radius: 0.375rem;
+    border: 1px solid rgb(71 85 105);
+    background: rgb(51 65 85 / 0.3);
+    color: rgb(156 163 175);
+    cursor: pointer;
+  }
+  .select-compact:hover {
+    border-color: rgb(139 92 246 / 0.5);
+    background: rgb(139 92 246 / 0.05);
+  }
+  .select-compact:focus {
+    outline: none;
+    border-color: rgb(139 92 246);
   }
 
   /* Compact element types filter */
