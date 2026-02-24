@@ -25,7 +25,13 @@
   $: displayName = getElementDisplayName({ asset_id: form.asset_id, element_type: form.element_type }, floorLevel);
 
   function handleTypeChange() {
-    const defaults = { communal_door: 'Fire Door', apartment_door: 'Fire Door', light: 'Bulkhead', fire_control: 'Sensor' };
+    const defaults = {
+      communal_door:  'Fire Door',
+      apartment_door: 'Fire Door',
+      light:          'Bulkhead',
+      fire_control:   'Sensor',
+      other:          'Camera'
+    };
     form.subtype         = defaults[form.element_type] ?? '';
     form.emergency       = false;
     form.battery         = 'none';

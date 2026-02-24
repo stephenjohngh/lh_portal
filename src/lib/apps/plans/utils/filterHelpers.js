@@ -14,15 +14,16 @@ import { getElementDisplayName } from '$lib/utils/planConstants';
  *   searchText: string   — substring match against label, asset_id, subtype,
  *                          and getElementDisplayName (when plan is supplied)
  *   plan:     object     — optional; when supplied, searchText also matches the
- *                          element's display name (e.g. "CD-001" / "L-G-001")
+ *                          element's display name (e.g. "G/O/001")
  *   lightFilters:    { subtypes[], battery[], emergency, movementSensor, lightSensor }
  *   communalFilters: { subtypes[], security[], retained }
  *   apartmentFilters: {}  (reserved)
  *   fireFilters:     { subtypes[] }
+ *   otherFilters:    { subtypes[] }
  * }
  *
  * Rules: AND across groups, OR within arrays inside a group.
- * Type-specific sub-filters only affect elements of the relevant element_type.
+ * Type-specific sub-filters only affect elements of the matching element_type.
  *
  * @param {Array}  elements  — plan_elements rows
  * @param {object} filters   — filter object (missing keys = "no filter")
@@ -94,6 +95,12 @@ export function applyElementFilters(elements, filters) {
   const ff = f.fireFilters;
   if (ff?.subtypes?.length > 0) {
     result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
+  }
+
+  // ── Other sub-filters ────────────────────────────────────────────────────
+  const of_ = f.otherFilters;
+  if (of_?.subtypes?.length > 0) {
+    result = result.filter(el => el.element_type !== 'other' || of_.subtypes.includes(el.subtype));
   }
 
   return result;

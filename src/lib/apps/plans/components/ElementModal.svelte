@@ -49,17 +49,17 @@
   let errors  = {};
   let saving  = false;
 
-  $: isNew             = !element;
-  $: editable          = isNew ? true : ($permissions.isAdmin || $permissions.canModify);
-  $: subtypeOptions    = getSubtypesForType(formData.element_type);
+  $: isNew              = !element;
+  $: editable           = isNew ? true : ($permissions.isAdmin || $permissions.canModify);
+  $: subtypeOptions     = getSubtypesForType(formData.element_type);
   $: selectedTypeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === formData.element_type);
-  $: modalTitle        = isNew ? 'Add Element' : 'Edit Element';
-  $: derivedName       = getElementDisplayName(
+  $: modalTitle         = isNew ? 'Add Element' : 'Edit Element';
+  $: derivedName        = getElementDisplayName(
     { asset_id: formData.asset_id, element_type: formData.element_type },
     plan?.floor_level
   );
-  $: isLight          = formData.element_type === 'light';
-  $: isCommunalDoor   = formData.element_type === 'communal_door';
+  $: isLight        = formData.element_type === 'light';
+  $: isCommunalDoor = formData.element_type === 'communal_door';
 
   function validate() {
     errors = {};
@@ -101,7 +101,8 @@
       communal_door:  'Fire Door',
       apartment_door: 'Fire Door',
       light:          'Bulkhead',
-      fire_control:   'Sensor'
+      fire_control:   'Sensor',
+      other:          'Camera'
     };
     formData.subtype = subtypeDefaults[formData.element_type] ?? '';
     Object.assign(formData, blankAttributes());

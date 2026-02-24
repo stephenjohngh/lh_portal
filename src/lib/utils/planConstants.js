@@ -5,7 +5,8 @@ export const ELEMENT_TYPE_OPTIONS = [
   { value: 'communal_door',  label: 'Communal Door',  icon: '🚪', color: '#c2410c', description: 'Entrance, fire, emergency and interior communal doors' },
   { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#a855f7', description: 'Apartment fire doors' },
   { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
-  { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors and call points' }
+  { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors and call points' },
+  { value: 'other',          label: 'Other',          icon: '⚙',  color: '#06b6d4', description: 'Cameras, pumps, tanks, fans, sprinklers and other assets' }
 ];
 
 export const ELEMENT_STATUS_OPTIONS = [
@@ -41,7 +42,8 @@ export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
   light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant'],
-  fire_control:   ['Sensor', 'Call Point', 'Vent', 'Dry Riser']
+  fire_control:   ['Sensor', 'Call Point', 'Vent', 'Dry Riser'],
+  other:          ['Camera', 'Pump', 'Tank', 'Fan', 'Sprinkler']
 };
 
 // Battery options — for Light elements
@@ -79,7 +81,6 @@ export function getElementStatusConfig(status) {
 export function getSubtypesForType(type) {
   return ELEMENT_SUBTYPES[type] || [];
 }
-
 
 /**
  * Get the display label for a floor level value.
@@ -133,7 +134,8 @@ export function getAttributeSummary(element) {
     if (element.retained)                  parts.push('Retained');
     return parts.length ? parts.join(' · ') : '—';
   }
-  return '—'; // fire_control has no structured attributes
+  // fire_control and other: no structured attributes beyond subtype
+  return '—';
 }
 
 // ============================================
@@ -145,13 +147,14 @@ const TYPE_INITIALS = {
   communal_door:  'D',
   apartment_door: 'A',
   light:          'L',
-  fire_control:   'F'
+  fire_control:   'F',
+  other:          'O'
 };
 
 /**
  * Derive the display name for an element.
  * Format: FloorCode/TypeInitial/AssetID
- * e.g. "G/L/001"  "3/D/042"  "G/F/007"
+ * e.g. "G/L/001"  "3/D/042"  "G/O/007"
  */
 export function getElementDisplayName(element, floorLevel) {
   const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';

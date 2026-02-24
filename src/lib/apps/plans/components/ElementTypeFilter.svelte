@@ -7,7 +7,7 @@
        initialFilters — pre-populate from current viewer filters (optional)
      
      Events:
-       change — { types, lightFilters, communalFilters, apartmentFilters, fireFilters }
+       change — { types, lightFilters, communalFilters, apartmentFilters, fireFilters, otherFilters }
 -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
@@ -22,7 +22,7 @@
   const dispatch = createEventDispatcher();
 
   export let elementCounts  = {};
-  export let initialFilters = null;  // carry filters in from PlanViewer
+  export let initialFilters = null;
 
   let selectedTypes    = [];
 
@@ -41,10 +41,12 @@
   // Fire control sub-filters
   let fireSubtypes = [];
 
-  // Initialise from passed-in filters (e.g. current PlanViewer state)
+  // Other sub-filters
+  let otherSubtypes = [];
+
   onMount(() => {
     if (initialFilters) {
-      selectedTypes    = initialFilters.types        ?? [];
+      selectedTypes    = initialFilters.types                        ?? [];
       lightSubtypes    = initialFilters.lightFilters?.subtypes       ?? [];
       lightBattery     = initialFilters.lightFilters?.battery        ?? [];
       lightEmergency   = initialFilters.lightFilters?.emergency      ?? false;
@@ -54,10 +56,10 @@
       communalSecurity = initialFilters.communalFilters?.security    ?? [];
       communalRetained = initialFilters.communalFilters?.retained    ?? false;
       fireSubtypes     = initialFilters.fireFilters?.subtypes        ?? [];
+      otherSubtypes    = initialFilters.otherFilters?.subtypes       ?? [];
     }
   });
 
-  // Emit change whenever any filter value changes
   $: dispatch('change', {
     types: selectedTypes,
     lightFilters: {
@@ -73,7 +75,8 @@
       retained:  communalRetained
     },
     apartmentFilters: {},
-    fireFilters: { subtypes: fireSubtypes }
+    fireFilters:  { subtypes: fireSubtypes },
+    otherFilters: { subtypes: otherSubtypes }
   });
 
   function toggleType(type) {
@@ -81,7 +84,8 @@
       selectedTypes = selectedTypes.filter(t => t !== type);
       if (type === 'light')         clearLightFilters();
       if (type === 'communal_door') clearCommunalFilters();
-      if (type === 'fire_control')  fireSubtypes = [];
+      if (type === 'fire_control')  fireSubtypes  = [];
+      if (type === 'other')         otherSubtypes = [];
     } else {
       selectedTypes = [...selectedTypes, type];
     }
@@ -104,7 +108,8 @@
     selectedTypes = [];
     clearLightFilters();
     clearCommunalFilters();
-    fireSubtypes = [];
+    fireSubtypes  = [];
+    otherSubtypes = [];
   }
 </script>
 
@@ -225,6 +230,26 @@
           </div>
         </div>
       {/if}
+
+      <!-- Other sub-filters -->
+      {#if type.value === 'other' && isSelected}
+        <div class="filter-subpanel border-cyan-500/30">
+          <div>
+            <p class="filter-subpanel-label">Subtype</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-1">
+              {#each ELEMENT_SUBTYPES.other as sub}
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={otherSubtypes.includes(sub)}
+                    on:change={() => otherSubtypes = toggleArr(otherSubtypes, sub)}
+                    class="checkbox-sm" />
+                  <span class="text-xs">{sub}</span>
+                </label>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
+
     </div>
   {/each}
 </div>
