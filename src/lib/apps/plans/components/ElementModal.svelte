@@ -143,7 +143,8 @@
       communal_door:  'Fire Door',
       apartment_door: 'Fire Door',
       light:          'Bulkhead',
-      fire_control:   'Sensor'
+      fire_control:   'Sensor',
+      other:          'Sprinkler'
     };
     formData.subtype = subtypeDefaults[formData.element_type] ?? '';
     Object.assign(formData, blankAttributes());

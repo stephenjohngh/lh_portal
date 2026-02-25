@@ -22,7 +22,7 @@
   const dispatch = createEventDispatcher();
 
   export let elementCounts  = {};
-  export let initialFilters = null;
+  export let initialFilters = null;  // carry filters in from PlanViewer
 
   let selectedTypes    = [];
 
@@ -44,9 +44,10 @@
   // Other sub-filters
   let otherSubtypes = [];
 
+  // Initialise from passed-in filters (e.g. current PlanViewer state)
   onMount(() => {
     if (initialFilters) {
-      selectedTypes    = initialFilters.types                        ?? [];
+      selectedTypes    = initialFilters.types        ?? [];
       lightSubtypes    = initialFilters.lightFilters?.subtypes       ?? [];
       lightBattery     = initialFilters.lightFilters?.battery        ?? [];
       lightEmergency   = initialFilters.lightFilters?.emergency      ?? false;
@@ -60,6 +61,7 @@
     }
   });
 
+  // Emit change whenever any filter value changes
   $: dispatch('change', {
     types: selectedTypes,
     lightFilters: {
@@ -75,7 +77,7 @@
       retained:  communalRetained
     },
     apartmentFilters: {},
-    fireFilters:  { subtypes: fireSubtypes },
+    fireFilters: { subtypes: fireSubtypes },
     otherFilters: { subtypes: otherSubtypes }
   });
 
@@ -84,7 +86,7 @@
       selectedTypes = selectedTypes.filter(t => t !== type);
       if (type === 'light')         clearLightFilters();
       if (type === 'communal_door') clearCommunalFilters();
-      if (type === 'fire_control')  fireSubtypes  = [];
+      if (type === 'fire_control')  fireSubtypes = [];
       if (type === 'other')         otherSubtypes = [];
     } else {
       selectedTypes = [...selectedTypes, type];
@@ -108,7 +110,7 @@
     selectedTypes = [];
     clearLightFilters();
     clearCommunalFilters();
-    fireSubtypes  = [];
+    fireSubtypes = [];
     otherSubtypes = [];
   }
 </script>
@@ -249,7 +251,6 @@
           </div>
         </div>
       {/if}
-
     </div>
   {/each}
 </div>

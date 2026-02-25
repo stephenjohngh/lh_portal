@@ -4,8 +4,9 @@
 export const ELEMENT_TYPE_OPTIONS = [
   { value: 'communal_door',  label: 'Communal Door',  icon: '🚪', color: '#c2410c', description: 'Entrance, fire, emergency and interior communal doors' },
   { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#a855f7', description: 'Apartment fire doors' },
-  { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
-  { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors, call points, sounders' }
+  { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants, floodlights' },
+  { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors, call points, sounders, hoppers, dry risers' },
+  { value: 'other',          label: 'Other',          icon: '⚙️', color: '#06b6d4', description: 'Sprinklers, tanks, pumps, fans, batteries, vents' }
 ];
 
 export const ELEMENT_STATUS_OPTIONS = [
@@ -40,8 +41,9 @@ export const DEFAULT_FLOOR_LEVEL = 'G';
 export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
-  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant'],
-  fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Vent', 'Dry Riser']
+  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant', 'Floodlight'],
+  fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Hopper', 'Dry Riser'],
+  other:          ['Sprinkler', 'Tank', 'Pump', 'Fan', 'Battery', 'Vent']
 };
 
 // Battery options — for Light elements
@@ -133,7 +135,8 @@ export function getAttributeSummary(element) {
     if (element.retained)                  parts.push('Retained');
     return parts.length ? parts.join(' · ') : '—';
   }
-  return '—'; // fire_control has no structured attributes
+  // fire_control and other have no structured attributes
+  return '—';
 }
 
 // ============================================
@@ -145,13 +148,14 @@ const TYPE_INITIALS = {
   communal_door:  'D',
   apartment_door: 'A',
   light:          'L',
-  fire_control:   'F'
+  fire_control:   'F',
+  other:          'O'
 };
 
 /**
  * Derive the display name for an element.
  * Format: FloorCode/TypeInitial/AssetID
- * e.g. "G/L/001"  "3/D/042"  "G/F/007"
+ * e.g. "G/L/001"  "3/D/042"  "G/F/007"  "G/O/015"
  */
 export function getElementDisplayName(element, floorLevel) {
   const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';

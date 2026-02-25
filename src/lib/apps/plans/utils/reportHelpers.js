@@ -9,15 +9,16 @@ export const TYPE_INITIALS = {
   apartment_door: 'A',
   light:          'L',
   fire_control:   'F',
-  other:          'O'  // For any other/unknown element types
+  other:          'O'
 };
 
 // ── Valid subtypes per element type (from planConstants.js) ───────────────
 export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
-  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant'],
-  fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Vent', 'Dry Riser']
+  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant', 'Floodlight'],
+  fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Hopper', 'Dry Riser'],
+  other:          ['Sprinkler', 'Tank', 'Pump', 'Fan', 'Battery', 'Vent']
 };
 
 // ── Derived element ID: FloorCode/TypeInitial/AssetID e.g. "G/D/001" ──────
