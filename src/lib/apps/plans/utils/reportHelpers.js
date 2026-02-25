@@ -28,7 +28,8 @@ export function elementDisplayId(element, floorLevel) {
   const type = typeMap[element.element_type] || 'O';
   
   // Convert floor level to lowercase for consistency
-  const floor = String(floorLevel).toLowerCase();
+  // Handle null/undefined floor levels
+  const floor = floorLevel ? String(floorLevel).toLowerCase() : '?';
   
   // Pad asset_id to 3 digits (e.g., "5" → "005")
   const num = String(element.asset_id || '000').padStart(3, '0');
