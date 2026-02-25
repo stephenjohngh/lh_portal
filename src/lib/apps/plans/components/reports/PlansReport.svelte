@@ -14,6 +14,12 @@
     MARKER_RADIUS, getElementDisplayName, getElementTypeConfig,
     getFloorLevelLabel
   } from '$lib/utils/planConstants';
+  import {
+    loadPersistedFilters,
+    createFilterSaver,
+    clearPersistedFilters,
+    getDefaultFilters
+  } from '../../utils/filterPersistence';
 
   const logger   = getLogger('PlansReport');
   const dispatch = createEventDispatcher();
@@ -44,13 +50,28 @@
   let loading  = false;
   let loadError = null;
 
+  // ── Filter persistence ────────────────────────────────────────────────────────
+  const saveFilters = createFilterSaver();
+  
   onMount(async () => {
+    // Load elements
     const missing = plans.filter(p => storeElements[p.id] === undefined).map(p => p.id);
-    if (!missing.length) return;
-    loading = true; loadError = null;
-    try   { await Promise.all(missing.map(id => plansStore.loadElements(id))); }
-    catch (err) { loadError = err.message; }
-    finally     { loading = false; }
+    if (missing.length) {
+      loading = true; loadError = null;
+      try   { await Promise.all(missing.map(id => plansStore.loadElements(id))); }
+      catch (err) { loadError = err.message; }
+      finally     { loading = false; }
+    }
+    
+    // Restore persisted filters
+    const persisted = loadPersistedFilters();
+    if (persisted) {
+      floorScope = persisted.floorScope;
+      options = { ...options, ...persisted.options };
+      selectedStatuses = persisted.selectedStatuses;
+      typeFilters = persisted.typeFilters;
+      logger('Restored persisted filters');
+    }
   });
 
   // ── Options ───────────────────────────────────────────────────────────────────
@@ -63,12 +84,35 @@
   let selectedStatuses = [];
   let typeFilters      = { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
 
+  // ── Save filters reactively ───────────────────────────────────────────────────
+  $: {
+    // Save filters whenever they change (debounced)
+    const currentFilters = {
+      floorScope,
+      options,
+      selectedStatuses,
+      typeFilters
+    };
+    saveFilters(currentFilters);
+  }
+
   function toggleStatus(s) {
     selectedStatuses = selectedStatuses.includes(s)
       ? selectedStatuses.filter(x => x !== s)
       : [...selectedStatuses, s];
   }
   function handleTypeChange(e) { typeFilters = e.detail; }
+
+  // ── Reset filters ─────────────────────────────────────────────────────────────
+  function resetFilters() {
+    const defaults = getDefaultFilters();
+    floorScope = defaults.floorScope;
+    options = defaults.options;
+    selectedStatuses = defaults.selectedStatuses;
+    typeFilters = defaults.typeFilters;
+    clearPersistedFilters();
+    logger('Filters reset to defaults');
+  }
 
   // ── Filter function (applied per-floor) ───────────────────────────────────────
   function filterEls(els) {
@@ -421,18 +465,30 @@
 
   </div>
 
-  <div slot="footer" class="btn-group justify-end">
-    <Button variant="secondary" size="medium" on:click={() => dispatch('close')} disabled={generating}>
-      Cancel
-    </Button>
-    <Button variant="primary" size="medium" icon="download" on:click={generateReport}
-            disabled={generating || loading || totalMatched === 0}>
-      {#if generating}
-        {genProgress || 'Generating…'}
-      {:else}
-        Generate ({floorsIncluded})
-      {/if}
-    </Button>
+  <div slot="footer" class="flex items-center justify-between">
+    <!-- Reset button on left -->
+    <button
+      class="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+      on:click={resetFilters}
+      title="Reset all filters to defaults"
+    >
+      Reset Filters
+    </button>
+    
+    <!-- Action buttons on right -->
+    <div class="btn-group">
+      <Button variant="secondary" size="medium" on:click={() => dispatch('close')} disabled={generating}>
+        Cancel
+      </Button>
+      <Button variant="primary" size="medium" icon="download" on:click={generateReport}
+              disabled={generating || loading || totalMatched === 0}>
+        {#if generating}
+          {genProgress || 'Generating…'}
+        {:else}
+          Generate ({floorsIncluded})
+        {/if}
+      </Button>
+    </div>
   </div>
 </Modal>
 

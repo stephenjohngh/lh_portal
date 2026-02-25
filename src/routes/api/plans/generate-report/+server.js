@@ -222,7 +222,7 @@ function buildFloorContent(plan, elements, options) {
             new TableRow({
               tableHeader: true,
               children: [
-                headerCell('ID',        5),
+                headerCell('Name',      5),
                 headerCell('Label',     8),
                 headerCell('Subtype',  12),
                 headerCell('Status',    6),
@@ -255,7 +255,7 @@ function buildFloorContent(plan, elements, options) {
             new TableRow({
               tableHeader: true,
               children: [
-                headerCell('ID',       5),
+                headerCell('Name',     5),
                 headerCell('Label',    8),
                 headerCell('Subtype', 12),
                 headerCell('Status',   6),
@@ -284,7 +284,7 @@ function buildFloorContent(plan, elements, options) {
             new TableRow({
               tableHeader: true,
               children: [
-                headerCell('ID',       5),
+                headerCell('Name',     5),
                 headerCell('Label',    8),
                 headerCell('Subtype', 12),
                 headerCell('Status',   6),

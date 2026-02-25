@@ -1,81 +1,141 @@
-// src/lib/apps/plans/utils/reportHelpers.js
-// Shared helpers used by server-side report generators.
-// Kept in lib (not routes) so all +server.js files can import it.
+// $lib/apps/plans/utils/reportHelpers.js
+// Helper functions for floor plan report generation
 
-// ── Type initials — must stay in sync with planConstants.js ───────────────
-export const TYPE_INITIALS = {
-  communal_door:  'D',
-  apartment_door: 'A',
-  light:          'L',
-  fire_control:   'F',
-};
-
-// ── Derived element ID: FloorCode/TypeInitial/AssetID e.g. "G/D/001" ──────
+/**
+ * Generate display ID for an element
+ * Format: floor/type/number
+ * Example: "g/L/001" (ground floor, light, number 001)
+ *          "l/O/042" (lower basement, others, number 042)
+ * 
+ * @param {Object} element - Element object with element_type and asset_id
+ * @param {string} floorLevel - Floor level code (U, L, G, 1, 2, etc.)
+ * @returns {string} Formatted element ID
+ */
 export function elementDisplayId(element, floorLevel) {
-  const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
-  const type  = TYPE_INITIALS[element.element_type] ?? '?';
-  const id    = element.asset_id || 'No ID';
-  return `${floor}/${type}/${id}`;
-}
-
-// ── Status display label ───────────────────────────────────────────────────
-export function statusLabel(s) {
-  return {
-    active:      'OK',
-    failed:      'Failed',
-    inactive:    'Inactive',
-    maintenance: 'Maintenance',
-    removed:     'Removed',
-  }[s] ?? s ?? '—';
-}
-
-// ── Truncate to max chars (used by building report for column widths) ──────
-export function trunc(val, maxLen) {
-  if (!val) return '—';
-  const s = String(val);
-  return s.length > maxLen ? s.slice(0, maxLen) : s;
-}
-
-// ── Sort by asset_id, numeric-aware ───────────────────────────────────────
-export function sortByAssetId(a, b) {
-  return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
-}
-
-// ── Subtype count summary e.g. "Fire Door: 4  ·  Entrance: 2" ─────────────
-export function subtypeSummary(elements) {
-  const counts = {};
-  for (const el of elements) {
-    const k = el.subtype || 'Unspecified';
-    counts[k] = (counts[k] || 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([sub, n]) => `${sub}: ${n}`)
-    .join('  ·  ');
-}
-
-// ── Floor level helpers ────────────────────────────────────────────────────
-// Canonical sort order: L, U, G, 1–7
-export const FLOOR_ORDER = {
-  L: 0, U: 1, G: 2,
-  '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9,
-};
-
-/** Numeric sort key for floor_level text values. Unknown levels sort last. */
-export function floorSortKey(fl) {
-  return FLOOR_ORDER[String(fl)] ?? 99;
+  // Type code mapping
+  // L = Light
+  // C = Communal Door
+  // A = Apartment Door
+  // O = Others (Fire Control and any future types)
+  const typeMap = {
+    light: 'L',
+    communal_door: 'C',
+    apartment_door: 'A',
+    fire_control: 'O'  // FIXED: Was '?', now 'O' for "Others"
+  };
+  
+  // Get type code, default to 'O' for unknown types
+  const type = typeMap[element.element_type] || 'O';
+  
+  // Convert floor level to lowercase for consistency
+  const floor = String(floorLevel).toLowerCase();
+  
+  // Pad asset_id to 3 digits (e.g., "5" → "005")
+  const num = String(element.asset_id || '000').padStart(3, '0');
+  
+  // Return formatted ID: "floor/type/number"
+  // Examples:
+  //   - Light on Ground floor: "g/L/001"
+  //   - Fire Control on Lower basement: "l/O/042"
+  //   - Communal Door on Floor 1: "1/C/015"
+  return `${floor}/${type}/${num}`;
 }
 
 /**
- * Human-readable floor level label.
- * "G" → "Floor G — Ground",  "1" → "Floor 1 — First"
+ * Get human-readable status label
+ * @param {string} status - Status code ('ok', 'failed', 'inactive')
+ * @returns {string} Display label
  */
-export function floorDisplayLabel(fl) {
-  const names = {
-    L: 'Lower', U: 'Upper', G: 'Ground',
-    '1': 'First', '2': 'Second', '3': 'Third', '4': 'Fourth',
-    '5': 'Fifth', '6': 'Sixth', '7': 'Seventh',
+export function statusLabel(status) {
+  const labels = {
+    ok: 'OK',
+    failed: 'Failed',
+    inactive: 'Inactive'
   };
-  const v = String(fl ?? '');
-  return names[v] ? `Floor ${v} — ${names[v]}` : `Floor ${v}`;
+  return labels[status] || status;
+}
+
+/**
+ * Sort elements by asset_id (numeric sort)
+ * @param {Object[]} elements - Array of elements
+ * @returns {Object[]} Sorted array
+ */
+export function sortByAssetId(elements) {
+  return [...elements].sort((a, b) => {
+    const aNum = parseInt(a.asset_id) || 0;
+    const bNum = parseInt(b.asset_id) || 0;
+    return aNum - bNum;
+  });
+}
+
+/**
+ * Format boolean value for display
+ * @param {boolean} value - Boolean value
+ * @returns {string} 'Yes' or 'No'
+ */
+export function formatBoolean(value) {
+  return value ? 'Yes' : 'No';
+}
+
+/**
+ * Get display name for element subtype
+ * @param {string} elementType - Element type
+ * @param {string} subtype - Subtype code
+ * @returns {string} Display name
+ */
+export function subtypeDisplayName(elementType, subtype) {
+  const subtypeMap = {
+    light: {
+      bulkhead: 'Bulkhead',
+      emergency: 'Emergency',
+      exit: 'Exit'
+    },
+    communal_door: {
+      entrance: 'Entrance',
+      exit: 'Exit',
+      lobby: 'Lobby',
+      stairwell: 'Stairwell'
+    },
+    apartment_door: {
+      main: 'Main',
+      service: 'Service',
+      balcony: 'Balcony'
+    },
+    fire_control: {
+      extinguisher: 'Extinguisher',
+      alarm: 'Alarm',
+      panel: 'Panel',
+      hose: 'Hose'
+    }
+  };
+  
+  return subtypeMap[elementType]?.[subtype] || subtype;
+}
+
+/**
+ * Get display name for battery status
+ * @param {string} battery - Battery status code
+ * @returns {string} Display name
+ */
+export function batteryDisplayName(battery) {
+  const batteryMap = {
+    yes: 'Yes',
+    no: 'No',
+    needs_attention: 'Needs Attention'
+  };
+  return batteryMap[battery] || battery;
+}
+
+/**
+ * Get display name for security level
+ * @param {string} security - Security level code
+ * @returns {string} Display name
+ */
+export function securityDisplayName(security) {
+  const securityMap = {
+    standard: 'Standard',
+    enhanced: 'Enhanced',
+    keycard: 'Keycard'
+  };
+  return securityMap[security] || security;
 }
