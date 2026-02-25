@@ -7,6 +7,7 @@
   import PlanCard from './PlanCard.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import { plansStore } from '../stores/plansStore';
+  import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
   
   const logger = getLogger('PlansList');
   const dispatch = createEventDispatcher();
@@ -16,6 +17,7 @@
   $: isAdmin = $permissions.isAdmin;
   
   let elementCounts = {};
+  let totalElementCounts = {};
   let loading = true;
   
   onMount(async () => {
@@ -26,17 +28,26 @@
   async function loadElementCounts() {
     logger('Loading element counts for all plans');
     
+    // Initialize total counts
+    totalElementCounts = {};
+    
     for (const plan of plans) {
       try {
         const elements = await plansStore.loadElements(plan.id);
         
-        // Count elements by type
+        // Count elements by type for this plan
         const counts = elements.reduce((acc, element) => {
           acc[element.element_type] = (acc[element.element_type] || 0) + 1;
           return acc;
         }, {});
         
         elementCounts[plan.id] = counts;
+        
+        // Add to total counts
+        Object.keys(counts).forEach(type => {
+          totalElementCounts[type] = (totalElementCounts[type] || 0) + counts[type];
+        });
+        
       } catch (error) {
         logger('❌ Error loading elements for plan:', plan.id, error);
         elementCounts[plan.id] = {};
@@ -45,10 +56,15 @@
     
     // Trigger reactivity
     elementCounts = { ...elementCounts };
+    totalElementCounts = { ...totalElementCounts };
   }
   
   function handleViewPlan(event) {
     dispatch('selectPlan', { planId: event.detail.planId });
+  }
+
+  function handleViewBuilding() {
+    dispatch('selectPlan', { planId: 'building' });
   }
 </script>
 
@@ -66,6 +82,69 @@
     </div>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      
+      <!-- Building Overview Card (always first) -->
+      <button
+        class="card-info text-left hover:border-purple-500 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 cursor-pointer relative overflow-hidden group"
+        on:click={handleViewBuilding}
+      >
+        <!-- Gradient overlay for visual distinction -->
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-blue-900/20"></div>
+        
+        <div class="relative z-10">
+          <!-- Header with icon -->
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="text-4xl">🏢</div>
+              <div>
+                <h3 class="text-lg font-bold">Building Overview</h3>
+                <p class="text-sm text-gray-400">All Floors</p>
+              </div>
+            </div>
+            <Icon name="arrow-right" size={5} className="text-purple-400 group-hover:translate-x-1 transition-transform" />
+          </div>
+
+          <!-- Stats -->
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-400">Total Elements</span>
+              <span class="font-bold text-lg">
+                {Object.values(totalElementCounts).reduce((sum, count) => sum + count, 0)}
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-400">Floors</span>
+              <span class="font-semibold">{plans.length}</span>
+            </div>
+          </div>
+
+          <!-- Element type badges -->
+          {#if Object.keys(totalElementCounts).length > 0}
+            <div class="flex flex-wrap gap-2">
+              {#each ELEMENT_TYPE_OPTIONS as type}
+                {#if totalElementCounts[type.value] > 0}
+                  <div
+                    class="px-2 py-1 rounded text-xs flex items-center gap-1.5 font-medium"
+                    style="background-color: {type.color}20; border: 1px solid {type.color}40; color: {type.color};"
+                  >
+                    <span>{type.icon}</span>
+                    <span>{totalElementCounts[type.value]}</span>
+                  </div>
+                {/if}
+              {/each}
+            </div>
+          {/if}
+
+          <!-- View all elements text -->
+          <div class="mt-4 pt-4 border-t border-slate-700">
+            <p class="text-xs text-gray-400 group-hover:text-purple-400 transition-colors">
+              View all elements across all floors →
+            </p>
+          </div>
+        </div>
+      </button>
+
+      <!-- Individual Floor Plans -->
       {#each plans as plan (plan.id)}
         <PlanCard
           {plan}

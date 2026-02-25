@@ -17,6 +17,10 @@
     getElementDisplayName,
     blankAttributes
   } from '$lib/utils/planConstants';
+  import {
+    loadPersistedTemplate,
+    saveTemplate
+  } from '../utils/elementTemplatePersistence';
 
   const logger = getLogger('ElementModal');
   const dispatch = createEventDispatcher();
@@ -25,41 +29,71 @@
   export let position = null;
   export let plan;
 
-  let formData = element ? { ...element } : {
-    element_type:    'communal_door',
-    label:           '',
-    subtype:         'Fire Door',
-    asset_id:        '',
-    status:          'active',
-    notes:           '',
-    x_position:      position?.x || 0,
-    y_position:      position?.y || 0,
-    // Light attributes
-    emergency:       false,
-    battery:         'none',
-    movement_sensor: false,
-    light_sensor:    false,
-    wattage:         null,
-    // Door attributes
-    security:        'none',
-    retained:        false
-  };
+  // Initialize formData - if creating new, try to load persisted template
+  let formData = element ? { ...element } : (() => {
+    const template = loadPersistedTemplate();
+    
+    if (template) {
+      // Use persisted template values
+      logger('📋 Loaded persisted template:', template.element_type, template.subtype);
+      return {
+        element_type:    template.element_type,
+        label:           '',
+        subtype:         template.subtype,
+        asset_id:        '',
+        status:          template.status,
+        notes:           '',
+        x_position:      position?.x || 0,
+        y_position:      position?.y || 0,
+        // Light attributes
+        emergency:       template.emergency,
+        battery:         template.battery,
+        movement_sensor: template.movement_sensor,
+        light_sensor:    template.light_sensor,
+        wattage:         template.wattage,
+        // Door attributes
+        security:        template.security,
+        retained:        template.retained
+      };
+    } else {
+      // Use hardcoded defaults
+      return {
+        element_type:    'communal_door',
+        label:           '',
+        subtype:         'Fire Door',
+        asset_id:        '',
+        status:          'active',
+        notes:           '',
+        x_position:      position?.x || 0,
+        y_position:      position?.y || 0,
+        // Light attributes
+        emergency:       false,
+        battery:         'none',
+        movement_sensor: false,
+        light_sensor:    false,
+        wattage:         null,
+        // Door attributes
+        security:        'none',
+        retained:        false
+      };
+    }
+  })();
 
   let showDeleteConfirm = false;
   let errors  = {};
   let saving  = false;
 
-  $: isNew              = !element;
-  $: editable           = isNew ? true : ($permissions.isAdmin || $permissions.canModify);
-  $: subtypeOptions     = getSubtypesForType(formData.element_type);
+  $: isNew             = !element;
+  $: editable          = isNew ? true : ($permissions.isAdmin || $permissions.canModify);
+  $: subtypeOptions    = getSubtypesForType(formData.element_type);
   $: selectedTypeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === formData.element_type);
-  $: modalTitle         = isNew ? 'Add Element' : 'Edit Element';
-  $: derivedName        = getElementDisplayName(
+  $: modalTitle        = isNew ? 'Add Element' : 'Edit Element';
+  $: derivedName       = getElementDisplayName(
     { asset_id: formData.asset_id, element_type: formData.element_type },
     plan?.floor_level
   );
-  $: isLight        = formData.element_type === 'light';
-  $: isCommunalDoor = formData.element_type === 'communal_door';
+  $: isLight          = formData.element_type === 'light';
+  $: isCommunalDoor   = formData.element_type === 'communal_door';
 
   function validate() {
     errors = {};
@@ -71,14 +105,22 @@
     if (!validate()) { logger('❌ Validation failed:', errors); return; }
     saving = true;
     try {
+      const elementData = {
+        ...formData,
+        label:    formData.label?.trim()    || null,
+        subtype:  formData.subtype          || null,
+        asset_id: formData.asset_id?.trim() || null,
+        notes:    formData.notes            || null
+      };
+
+      // If creating a new element, save the template for next time
+      if (isNew) {
+        saveTemplate(elementData);
+        logger('✅ Saved template for next element creation');
+      }
+
       dispatch('save', {
-        element: {
-          ...formData,
-          label:    formData.label?.trim()    || null,
-          subtype:  formData.subtype          || null,
-          asset_id: formData.asset_id?.trim() || null,
-          notes:    formData.notes            || null
-        },
+        element: elementData,
         isNew
       });
     } catch (error) {
@@ -101,8 +143,7 @@
       communal_door:  'Fire Door',
       apartment_door: 'Fire Door',
       light:          'Bulkhead',
-      fire_control:   'Sensor',
-      other:          'Camera'
+      fire_control:   'Sensor'
     };
     formData.subtype = subtypeDefaults[formData.element_type] ?? '';
     Object.assign(formData, blankAttributes());
@@ -131,6 +172,14 @@
     {#if position}
       <div class="text-sm text-gray-400 bg-slate-700/50 rounded p-2">
         📍 Position: {formatPosition(position)}
+      </div>
+    {/if}
+
+    <!-- Template indicator for new elements -->
+    {#if isNew && loadPersistedTemplate()}
+      <div class="text-xs text-purple-400 bg-purple-900/20 border border-purple-500/30 rounded p-2 flex items-center gap-2">
+        <span>📋</span>
+        <span>Using settings from last created element</span>
       </div>
     {/if}
 

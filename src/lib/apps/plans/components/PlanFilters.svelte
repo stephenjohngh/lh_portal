@@ -28,22 +28,31 @@
     typeFilters.communalFilters?.retained ||
     (typeFilters.fireFilters?.subtypes?.length     > 0);
 
+  function emitChange() {
+    dispatch('change', { ...typeFilters, statuses: selectedStatuses, searchText });
+  }
+
   function handleTypeChange(event) {
     typeFilters = event.detail;
-    dispatch('change', { ...typeFilters, statuses: selectedStatuses, searchText });
+    emitChange();
   }
 
   function toggleStatus(status) {
     selectedStatuses = selectedStatuses.includes(status)
       ? selectedStatuses.filter(s => s !== status)
       : [...selectedStatuses, status];
-    dispatch('change', { ...typeFilters, statuses: selectedStatuses, searchText });
+    emitChange();
+  }
+
+  function handleSearchInput() {
+    emitChange();
   }
 
   function clearFilters() {
     selectedStatuses = [];
     searchText       = '';
     typeFilterRef?.clearAll();
+    emitChange();
   }
 </script>
 
@@ -66,9 +75,15 @@
       id="filter-search"
       type="text"
       bind:value={searchText}
-      placeholder="Name or ID..."
+      on:input={handleSearchInput}
+      placeholder="Asset ID, label, or notes..."
       class="input"
     />
+    {#if searchText.length > 0}
+      <p class="text-xs text-gray-400 mt-1">
+        Searching asset ID, label, notes, and element names
+      </p>
+    {/if}
   </div>
 
   <!-- Element Type (shared component) -->

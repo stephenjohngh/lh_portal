@@ -7,6 +7,7 @@
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import PlansList            from './components/PlansList.svelte';
   import PlanViewer           from './components/PlanViewer.svelte';
+  import BuildingOverview     from './components/BuildingOverview.svelte';
   import PlanUploader         from './components/PlanUploader.svelte';
   import PlansReport          from './components/reports/PlansReport.svelte';
   import WalkInspectionsTab   from './components/WalkInspectionsTab.svelte';
@@ -25,11 +26,12 @@
   // Plans tab state
   let showUploader       = false;
   let showPlanReport     = false;
-  let selectedPlanId     = null;
+  let selectedPlanId     = null;  // null = list view, 'building' = building overview, or actual plan ID
   let loading            = true;
 
   $: plans        = $plansStore.plans;
-  $: selectedPlan = plans.find(p => p.id === selectedPlanId);
+  $: selectedPlan = selectedPlanId && selectedPlanId !== 'building' ? plans.find(p => p.id === selectedPlanId) : null;
+  $: showingBuildingView = selectedPlanId === 'building';
 
   onMount(async () => {
     logger('Plans app mounted');
@@ -47,12 +49,33 @@
     } finally { loading = false; }
   }
 
-  function handlePlanSelect(e)   { selectedPlanId = e.detail.planId; }
-  function handleBackToList()    { selectedPlanId = null; }
-  function handlePlanCreated(e)  { showUploader = false; selectedPlanId = e.detail.planId; loadPlans(); }
-  function handlePlanUpdated()   { loadPlans(); }
-  function handlePlanDeleted()   { selectedPlanId = null; loadPlans(); }
-  function handlePlanCopied(e)   { selectedPlanId = e.detail.planId; loadPlans(); }
+  function handlePlanSelect(e) {
+    selectedPlanId = e.detail.planId;
+  }
+
+  function handleBackToList() {
+    selectedPlanId = null;
+  }
+
+  function handlePlanCreated(e) {
+    showUploader = false;
+    selectedPlanId = e.detail.planId;
+    loadPlans();
+  }
+
+  function handlePlanUpdated() {
+    loadPlans();
+  }
+
+  function handlePlanDeleted() {
+    selectedPlanId = null;
+    loadPlans();
+  }
+
+  function handlePlanCopied(e) {
+    selectedPlanId = e.detail.planId;
+    loadPlans();
+  }
 
   // When switching tabs, clear plan selection
   function switchTab(tab) {
@@ -67,7 +90,7 @@
   <div class="mb-6">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
-        {#if selectedPlan}
+        {#if selectedPlan || showingBuildingView}
           <Button variant="secondary" size="small" icon="arrow-left" on:click={handleBackToList}>
             Back
           </Button>
@@ -75,9 +98,17 @@
         <Icon name="map" size={8} className="text-blue-400" />
         <div>
           <h1 class="text-2xl font-bold">
-            {selectedPlan ? selectedPlan.name : 'Floor Plans'}
+            {#if showingBuildingView}
+              Building Overview
+            {:else if selectedPlan}
+              {selectedPlan.name}
+            {:else}
+              Floor Plans
+            {/if}
           </h1>
-          {#if selectedPlan}
+          {#if showingBuildingView}
+            <p class="text-sm text-gray-400">All elements across all floors</p>
+          {:else if selectedPlan}
             <p class="text-sm text-gray-400">
               {selectedPlan.building}
               {#if selectedPlan.floor_level !== null && selectedPlan.floor_level !== undefined}
@@ -98,7 +129,7 @@
                   disabled={plans.length === 0}>
             Floor Plan Report
           </Button>
-          {#if isAdmin && !selectedPlan}
+          {#if isAdmin && !selectedPlan && !showingBuildingView}
             <Button variant="primary" size="medium" icon="plus" on:click={() => showUploader = true}>
               New Floor Plan
             </Button>
@@ -108,7 +139,7 @@
     </div>
 
     <!-- ── Tab navigation (same pattern as UserListApp) ───────────────────── -->
-    {#if !selectedPlan}
+    {#if !selectedPlan && !showingBuildingView}
       <div class="flex space-x-2 border-b border-slate-600">
         <button
           class="px-4 py-2 transition-colors {activeTab === 'plans'
@@ -147,6 +178,9 @@
         <Icon name="loading" size={12} className="animate-spin mx-auto mb-4 text-purple-400" />
         <p class="text-gray-400">Loading floor plans…</p>
       </div>
+
+    {:else if showingBuildingView}
+      <BuildingOverview {plans} />
 
     {:else if selectedPlan}
       <PlanViewer
