@@ -15,6 +15,7 @@
   import { permissions }      from '$lib/stores/permissions';
   import { auth }             from '$lib/stores/auth';
 
+
   const logger = getLogger('PlansApp');
 
   $: isAdmin = $permissions.isAdmin;
