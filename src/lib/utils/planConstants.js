@@ -6,7 +6,7 @@ export const ELEMENT_TYPE_OPTIONS = [
   { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#a855f7', description: 'Apartment fire doors' },
   { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants, floodlights' },
   { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors, call points, sounders, hoppers, dry risers' },
-  { value: 'other',          label: 'Other',          icon: '⚙️', color: '#06b6d4', description: 'Sprinklers, tanks, pumps, fans, batteries, vents' }
+  { value: 'other',          label: 'Other',          icon: '⚙️', color: '#06b6d4', description: 'tanks, pumps, fans, batteries, vents' }
 ];
 
 export const ELEMENT_STATUS_OPTIONS = [
@@ -42,8 +42,8 @@ export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
   light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant', 'Floodlight'],
-  fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Hopper', 'Dry Riser'],
-  other:          ['Sprinkler', 'Tank', 'Pump', 'Fan', 'Battery', 'Vent']
+  fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Hopper', 'Dry Riser', 'Panel', 'Sprinkler'],
+  other:          ['Camera', 'Vent','Tank', 'Pump', 'Fan', 'Battery',  'Aerial', 'Misc']
 };
 
 // Battery options — for Light elements
