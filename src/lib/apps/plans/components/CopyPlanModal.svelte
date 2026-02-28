@@ -1,5 +1,5 @@
 <!-- src/lib/apps/plans/components/CopyPlanModal.svelte -->
-<!-- Modal for copying a floor plan with its elements -->
+<!-- UPDATED: Copy plan WITH label and notes -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
@@ -55,16 +55,16 @@
       let copiedCount = 0;
 
       for (const el of elements) {
-        // Copy all fields including the 7 typed attribute columns
+        // UPDATED: Copy all fields INCLUDING label and notes
         await plansStore.createElement(newPlan.id, {
           element_type:    el.element_type,
-          asset_id:        el.asset_id,   // preserve — asset IDs are physical identifiers, not names
-          label:           null,          // reset — labels are plan-specific descriptions
+          asset_id:        el.asset_id,
+          label:           el.label || null,           // CHANGED: Copy label
           subtype:         el.subtype,
           x_position:      el.x_position,
           y_position:      el.y_position,
           status:          el.status,
-          notes:           el.notes,
+          notes:           el.notes || null,           // CHANGED: Copy notes
           // Light attributes
           emergency:       el.emergency       ?? false,
           battery:         el.battery         ?? 'none',
@@ -161,8 +161,8 @@
       <div class="bg-slate-700/50 rounded p-3 text-sm text-gray-400 space-y-1">
         <h4 class="font-semibold text-white mb-2">What will be copied</h4>
         <p>✓ Floor plan image ({plan.image_width} × {plan.image_height})</p>
-        <p>✓ All {elements.length} elements with positions, types, subtypes, attributes, status and notes</p>
-        <p>✓ Asset IDs preserved — labels reset to blank</p>
+        <p>✓ All {elements.length} elements with positions, types, subtypes, attributes, status</p>
+        <p>✓ Asset IDs, labels, and notes preserved</p>
       </div>
 
     {:else}

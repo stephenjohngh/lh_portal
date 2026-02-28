@@ -1,5 +1,5 @@
 <!-- src/lib/apps/plans/PlansApp.svelte -->
-<!-- Main Plans App — Plans tab + Inspections tab -->
+<!-- UPDATED: Added contextSource and contextPlanId props to PlansReport -->
 <script>
   import { onMount }          from 'svelte';
   import { getLogger }        from '$lib/utils/logger';
@@ -7,14 +7,12 @@
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import PlansList            from './components/PlansList.svelte';
   import PlanViewer           from './components/PlanViewer.svelte';
-  import BuildingOverview     from './components/BuildingOverview.svelte';
   import PlanUploader         from './components/PlanUploader.svelte';
   import PlansReport          from './components/reports/PlansReport.svelte';
   import WalkInspectionsTab   from './components/WalkInspectionsTab.svelte';
   import { plansStore }       from './stores/plansStore';
   import { permissions }      from '$lib/stores/permissions';
   import { auth }             from '$lib/stores/auth';
-
 
   const logger = getLogger('PlansApp');
 
@@ -27,12 +25,11 @@
   // Plans tab state
   let showUploader       = false;
   let showPlanReport     = false;
-  let selectedPlanId     = null;  // null = list view, 'building' = building overview, or actual plan ID
+  let selectedPlanId     = null;
   let loading            = true;
 
   $: plans        = $plansStore.plans;
-  $: selectedPlan = selectedPlanId && selectedPlanId !== 'building' ? plans.find(p => p.id === selectedPlanId) : null;
-  $: showingBuildingView = selectedPlanId === 'building';
+  $: selectedPlan = plans.find(p => p.id === selectedPlanId);
 
   onMount(async () => {
     logger('Plans app mounted');
@@ -50,33 +47,12 @@
     } finally { loading = false; }
   }
 
-  function handlePlanSelect(e) {
-    selectedPlanId = e.detail.planId;
-  }
-
-  function handleBackToList() {
-    selectedPlanId = null;
-  }
-
-  function handlePlanCreated(e) {
-    showUploader = false;
-    selectedPlanId = e.detail.planId;
-    loadPlans();
-  }
-
-  function handlePlanUpdated() {
-    loadPlans();
-  }
-
-  function handlePlanDeleted() {
-    selectedPlanId = null;
-    loadPlans();
-  }
-
-  function handlePlanCopied(e) {
-    selectedPlanId = e.detail.planId;
-    loadPlans();
-  }
+  function handlePlanSelect(e)   { selectedPlanId = e.detail.planId; }
+  function handleBackToList()    { selectedPlanId = null; }
+  function handlePlanCreated(e)  { showUploader = false; selectedPlanId = e.detail.planId; loadPlans(); }
+  function handlePlanUpdated()   { loadPlans(); }
+  function handlePlanDeleted()   { selectedPlanId = null; loadPlans(); }
+  function handlePlanCopied(e)   { selectedPlanId = e.detail.planId; loadPlans(); }
 
   // When switching tabs, clear plan selection
   function switchTab(tab) {
@@ -91,7 +67,7 @@
   <div class="mb-6">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
-        {#if selectedPlan || showingBuildingView}
+        {#if selectedPlan}
           <Button variant="secondary" size="small" icon="arrow-left" on:click={handleBackToList}>
             Back
           </Button>
@@ -99,17 +75,9 @@
         <Icon name="map" size={8} className="text-blue-400" />
         <div>
           <h1 class="text-2xl font-bold">
-            {#if showingBuildingView}
-              Building Overview
-            {:else if selectedPlan}
-              {selectedPlan.name}
-            {:else}
-              Floor Plans
-            {/if}
+            {selectedPlan ? selectedPlan.name : 'Floor Plans'}
           </h1>
-          {#if showingBuildingView}
-            <p class="text-sm text-gray-400">All elements across all floors</p>
-          {:else if selectedPlan}
+          {#if selectedPlan}
             <p class="text-sm text-gray-400">
               {selectedPlan.building}
               {#if selectedPlan.floor_level !== null && selectedPlan.floor_level !== undefined}
@@ -130,7 +98,7 @@
                   disabled={plans.length === 0}>
             Floor Plan Report
           </Button>
-          {#if isAdmin && !selectedPlan && !showingBuildingView}
+          {#if isAdmin && !selectedPlan}
             <Button variant="primary" size="medium" icon="plus" on:click={() => showUploader = true}>
               New Floor Plan
             </Button>
@@ -140,7 +108,7 @@
     </div>
 
     <!-- ── Tab navigation (same pattern as UserListApp) ───────────────────── -->
-    {#if !selectedPlan && !showingBuildingView}
+    {#if !selectedPlan}
       <div class="flex space-x-2 border-b border-slate-600">
         <button
           class="px-4 py-2 transition-colors {activeTab === 'plans'
@@ -180,9 +148,6 @@
         <p class="text-gray-400">Loading floor plans…</p>
       </div>
 
-    {:else if showingBuildingView}
-      <BuildingOverview {plans} />
-
     {:else if selectedPlan}
       <PlanViewer
         plan={selectedPlan}
@@ -211,9 +176,12 @@
   />
 {/if}
 
+<!-- UPDATED: Added context props for smart floor defaults -->
 {#if showPlanReport && plans.length > 0}
   <PlansReport
     {plans}
+    contextSource="building"
+    contextPlanId={null}
     on:close={() => showPlanReport = false}
   />
 {/if}

@@ -1,6 +1,5 @@
 <!-- src/lib/apps/plans/components/reports/PlansReport.svelte -->
-<!-- Floor Plan Report: one page per floor — annotated plan image + element table.  -->
-<!-- All floors or a specific floor. Floors with 0 matching elements are skipped.   -->
+<!-- UPDATED: Smart floor defaults + notes parsing -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }      from '$lib/utils/logger';
@@ -14,87 +13,44 @@
     MARKER_RADIUS, getElementDisplayName, getElementTypeConfig,
     getFloorLevelLabel
   } from '$lib/utils/planConstants';
-  import {
-    loadPersistedFilters,
-    createFilterSaver,
-    clearPersistedFilters,
-    getDefaultFilters
-  } from '../../utils/filterPersistence';
+  import { parseNotesValue } from '$lib/utils/notesParser';
 
   const logger   = getLogger('PlansReport');
   const dispatch = createEventDispatcher();
 
   export let plans;   // Plan[] — all plans sorted by floor
-
-  // ── Floor scope ───────────────────────────────────────────────────────────────
-  // 'all' | 'basement' | 'residential' | specific plan.id
-  let floorScope  = 'all';
   
-  // Compute active plans based on scope
-  $: activePlans = (() => {
-    if (floorScope === 'all') return plans;
-    if (floorScope === 'basement') {
-      // U (Upper) + L (Lower)
-      return plans.filter(p => p.floor_level === 'U' || p.floor_level === 'L');
-    }
-    if (floorScope === 'residential') {
-      // G (Ground) + 1-7
-      return plans.filter(p => ['G', '1', '2', '3', '4', '5', '6', '7'].includes(p.floor_level));
-    }
-    // Specific floor
-    return plans.filter(p => p.id === floorScope);
-  })();
+  // NEW: Context for smart defaults
+  export let contextSource = 'building';  // 'building' or 'floor'
+  export let contextPlanId = null;        // If opened from specific floor
 
-  // ── Load ALL floors' elements on mount ────────────────────────────────────────
+  // ── Floor scope with SMART DEFAULTS ───────────────────────────────────────
+  // CHANGED: Initialize based on context
+  let floorScope = contextSource === 'floor' && contextPlanId 
+    ? contextPlanId    // Default to specific floor
+    : 'all';           // Default to all floors
+  
+  $: activePlans  = floorScope === 'all' ? plans : plans.filter(p => p.id === floorScope);
+
+  // ── Load ALL floors' elements on mount ────────────────────────────────────
   $: storeElements = $plansStore.elements;
   let loading  = false;
   let loadError = null;
 
-  // ── Filter persistence ────────────────────────────────────────────────────────
-  const saveFilters = createFilterSaver();
-  
   onMount(async () => {
-    // Load elements
     const missing = plans.filter(p => storeElements[p.id] === undefined).map(p => p.id);
-    if (missing.length) {
-      loading = true; loadError = null;
-      try   { await Promise.all(missing.map(id => plansStore.loadElements(id))); }
-      catch (err) { loadError = err.message; }
-      finally     { loading = false; }
-    }
-    
-    // Restore persisted filters
-    const persisted = loadPersistedFilters();
-    if (persisted) {
-      floorScope = persisted.floorScope;
-      options = { ...options, ...persisted.options };
-      selectedStatuses = persisted.selectedStatuses;
-      typeFilters = persisted.typeFilters;
-      logger('Restored persisted filters');
-    }
+    if (!missing.length) return;
+    loading = true; loadError = null;
+    try   { await Promise.all(missing.map(id => plansStore.loadElements(id))); }
+    catch (err) { loadError = err.message; }
+    finally     { loading = false; }
   });
 
-  // ── Options ───────────────────────────────────────────────────────────────────
-  let options = { 
-    includeImage: true, 
-    includeElementList: true,
-    includeSummary: true
-  };
+  // ── Options ───────────────────────────────────────────────────────────────
+  let options = { includeImage: true, includeElementList: true };
 
   let selectedStatuses = [];
   let typeFilters      = { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
-
-  // ── Save filters reactively ───────────────────────────────────────────────────
-  $: {
-    // Save filters whenever they change (debounced)
-    const currentFilters = {
-      floorScope,
-      options,
-      selectedStatuses,
-      typeFilters
-    };
-    saveFilters(currentFilters);
-  }
 
   function toggleStatus(s) {
     selectedStatuses = selectedStatuses.includes(s)
@@ -103,18 +59,7 @@
   }
   function handleTypeChange(e) { typeFilters = e.detail; }
 
-  // ── Reset filters ─────────────────────────────────────────────────────────────
-  function resetFilters() {
-    const defaults = getDefaultFilters();
-    floorScope = defaults.floorScope;
-    options = defaults.options;
-    selectedStatuses = defaults.selectedStatuses;
-    typeFilters = defaults.typeFilters;
-    clearPersistedFilters();
-    logger('Filters reset to defaults');
-  }
-
-  // ── Filter function (applied per-floor) ───────────────────────────────────────
+  // ── Filter function (applied per-floor) ───────────────────────────────────
   function filterEls(els) {
     return els.filter(e => {
       if (selectedStatuses.length > 0 && !selectedStatuses.includes(e.status))       return false;
@@ -141,7 +86,7 @@
     });
   }
 
-  // ── Per-floor preview — reactive to filters + scope ─────────────────────────
+  // ── Per-floor preview — reactive to filters + scope ─────────────────────
   $: previewRows = [selectedStatuses, typeFilters] && activePlans.map(plan => {
     const all      = storeElements[plan.id] ?? [];
     const filtered = filterEls(all);
@@ -152,7 +97,6 @@
   $: floorsIncluded  = previewRows.filter(r => r.count > 0).length;
   $: floorsSkipped   = activePlans.length - floorsIncluded;
 
-  // elementCounts for the type-filter badge
   $: elementCounts = ELEMENT_TYPE_OPTIONS.reduce((acc, t) => {
     acc[t.value] = activePlans.reduce(
       (n, p) => n + (storeElements[p.id] ?? []).filter(e => e.element_type === t.value).length, 0
@@ -160,11 +104,7 @@
     return acc;
   }, {});
 
-  // Check if basement or residential options are available
-  $: hasBasement = plans.some(p => p.floor_level === 'U' || p.floor_level === 'L');
-  $: hasResidential = plans.some(p => ['G', '1', '2', '3', '4', '5', '6', '7'].includes(p.floor_level));
-
-  // ── Annotated image builder ───────────────────────────────────────────────────
+  // ── Annotated image builder ───────────────────────────────────────────────
   const MARKER_SHAPE = {
     communal_door:  'square',
     apartment_door: 'square_inner',
@@ -245,7 +185,7 @@
     return parts.length ? parts.join(' · ') : null;
   }
 
-  // ── Generation ────────────────────────────────────────────────────────────────
+  // ── Generation with NOTES PARSING ──────────────────────────────────────────
   let generating  = false;
   let genProgress = '';
   let genError    = null;
@@ -253,19 +193,26 @@
   async function generateReport() {
     generating = true; genError = null; genProgress = '';
     try {
+      // Build per-floor payload — skip floors with no matching elements
       const floors = [];
       for (const plan of activePlans) {
         const els = filterEls(storeElements[plan.id] ?? []);
         if (els.length === 0) continue;
 
+        // CHANGED: Parse notes for each element
+        const processedElements = els.map(el => ({
+          ...el,
+          notes: parseNotesValue(el.notes)  // Extract value from key:value format
+        }));
+
         let imageBase64 = null;
         if (options.includeImage && plan.image_url) {
           genProgress = `Building image for floor ${plan.floor_level}…`;
-          try { imageBase64 = await buildAnnotatedImage(plan, els); }
+          try { imageBase64 = await buildAnnotatedImage(plan, processedElements); }
           catch (e) { logger('⚠ Image failed floor', plan.floor_level, e.message); }
         }
 
-        floors.push({ plan, elements: els, imageBase64 });
+        floors.push({ plan, elements: processedElements, imageBase64 });
       }
 
       if (!floors.length) { genError = 'No floors have elements matching the filters.'; return; }
@@ -278,12 +225,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           floors,
-          options: { 
-            ...options, 
-            groupByType: true, 
-            filterSummary: buildFilterSummary(), 
-            building 
-          }
+          options: { ...options, groupByType: true, filterSummary: buildFilterSummary(), building }
         })
       });
 
@@ -292,10 +234,7 @@
       const blob = await response.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      const slug = floorScope === 'all' ? 'AllFloors' : 
-                   floorScope === 'basement' ? 'Basement' :
-                   floorScope === 'residential' ? 'Residential' :
-                   `Floor${activePlans[0]?.floor_level}`;
+      const slug = floorScope === 'all' ? 'AllFloors' : `Floor${activePlans[0]?.floor_level}`;
       a.href     = url;
       a.download = `${building}_${slug}_PlanReport.docx`;
       document.body.appendChild(a); a.click();
@@ -312,139 +251,137 @@
 </script>
 
 <Modal show={true} size="medium" on:close={() => dispatch('close')}>
-  <!-- Ultra-minimal header -->
-  <div slot="header" class="compact-header">Floor Plan Report</div>
+  <h3 slot="header" class="text-xl font-bold">Floor Plan Report</h3>
 
-  <div class="space-y-3">
+  <div class="section-spacing">
 
-    <!-- Floor scope - INLINE BUTTONS AND DROPDOWN -->
-    <div class="flex items-center gap-2 flex-wrap text-sm">
-      <span class="font-semibold">Floors:</span>
-      
-      <button
-        class="scope-btn"
-        class:scope-btn-active={floorScope === 'all'}
-        on:click={() => floorScope = 'all'}
-      >
-        All <span class="count">({plans.length})</span>
-      </button>
-      
-      {#if hasBasement}
+    <!-- Floor scope with smart defaults indicator -->
+    <div>
+      <h4 class="font-semibold mb-3">
+        Floors
+        {#if contextSource === 'floor' && contextPlanId}
+          <span class="text-xs text-purple-400 ml-2">
+            (Auto-selected from current floor)
+          </span>
+        {:else if contextSource === 'building'}
+          <span class="text-xs text-purple-400 ml-2">
+            (Auto-selected: All floors)
+          </span>
+        {/if}
+      </h4>
+      <div class="flex gap-2 flex-wrap">
+        <!-- All floors -->
         <button
-          class="scope-btn"
-          class:scope-btn-active={floorScope === 'basement'}
-          on:click={() => floorScope = 'basement'}
+          class="px-4 py-2 rounded-lg border text-sm transition-colors"
+          class:border-purple-500={floorScope === 'all'}
+          class:text-purple-300={floorScope === 'all'}
+          class:border-slate-600={floorScope !== 'all'}
+          class:text-gray-400={floorScope !== 'all'}
+          style={floorScope === 'all' ? 'background:rgba(168,85,247,0.1)' : ''}
+          on:click={() => floorScope = 'all'}
         >
-          Basement <span class="count">(U+L)</span>
+          All floors <span class="text-xs opacity-60 ml-1">({plans.length})</span>
         </button>
-      {/if}
-      
-      {#if hasResidential}
-        <button
-          class="scope-btn"
-          class:scope-btn-active={floorScope === 'residential'}
-          on:click={() => floorScope = 'residential'}
-        >
-          Residential <span class="count">(G-7)</span>
-        </button>
-      {/if}
-      
-      <span class="text-gray-400">or</span>
-      
-      <select 
-        bind:value={floorScope}
-        class="select-compact"
-      >
-        <option value="all">-- Select single floor --</option>
+        <!-- Individual floors -->
         {#each plans as plan}
-          <option value={plan.id}>Floor {plan.floor_level} - {plan.name}</option>
+          <button
+            class="px-4 py-2 rounded-lg border text-sm transition-colors"
+            class:border-purple-500={floorScope === plan.id}
+            class:text-purple-300={floorScope === plan.id}
+            class:border-slate-600={floorScope !== plan.id}
+            class:text-gray-400={floorScope !== plan.id}
+            style={floorScope === plan.id ? 'background:rgba(168,85,247,0.1)' : ''}
+            on:click={() => floorScope = plan.id}
+          >
+            Floor {plan.floor_level}
+          </button>
         {/each}
-      </select>
+      </div>
     </div>
 
     <!-- Loading -->
     {#if loading}
-      <div class="flex items-center gap-2 text-xs text-gray-400">
-        <Icon name="loading" size={4} className="animate-spin" /> Loading…
+      <div class="flex items-center gap-2 text-sm text-gray-400">
+        <Icon name="loading" size={4} className="animate-spin" /> Loading element data…
       </div>
     {:else if loadError}
-      <div class="p-2 bg-red-500/10 border border-red-500/50 rounded text-xs text-red-400">⚠ {loadError}</div>
+      <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-sm text-red-400">⚠ {loadError}</div>
     {/if}
 
-    <!-- Options - ONE LINE -->
-    <div class="flex items-center gap-4 flex-wrap text-sm">
-      <span class="font-semibold">Options:</span>
-      <label class="flex items-center gap-1.5 cursor-pointer">
-        <input type="checkbox" bind:checked={options.includeImage} class="checkbox-sm" />
-        <span>Floor Plan</span>
-      </label>
-      <label class="flex items-center gap-1.5 cursor-pointer">
-        <input type="checkbox" bind:checked={options.includeElementList} class="checkbox-sm" />
-        <span>List</span>
-      </label>
-      <label class="flex items-center gap-1.5 cursor-pointer">
-        <input type="checkbox" bind:checked={options.includeSummary} class="checkbox-sm" />
-        <span>Summary</span>
-      </label>
-    </div>
-
-    <!-- Status - ONE LINE -->
-    <div class="flex items-center gap-3 flex-wrap text-sm">
-      <span class="font-semibold">Status:</span>
-      {#each ELEMENT_STATUS_OPTIONS as status}
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox"
-            checked={selectedStatuses.includes(status.value)}
-            on:change={() => toggleStatus(status.value)}
-            class="checkbox-sm" />
-          <span>{status.label}</span>
-        </label>
-      {/each}
-    </div>
-
-    <!-- Element type filter - REDUCED SPACING -->
+    <!-- Options -->
     <div>
-      <h4 class="text-sm font-semibold mb-1.5">Element Types</h4>
-      <div class="element-types-compact">
-        <ElementTypeFilter {elementCounts} on:change={handleTypeChange} />
+      <h4 class="font-semibold mb-3">Options</h4>
+      <div class="space-y-3">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" bind:checked={options.includeImage}
+            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+          <span class="text-sm">Include annotated floor plan image per floor</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" bind:checked={options.includeElementList}
+            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+          <span class="text-sm">Include element list per floor</span>
+        </label>
       </div>
     </div>
 
-    <!-- Preview - COMPACT -->
+    <!-- Status filter -->
+    <div>
+      <h4 class="font-semibold mb-3">Status</h4>
+      <div class="space-y-2">
+        {#each ELEMENT_STATUS_OPTIONS as status}
+          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 px-2 py-1 rounded">
+            <input type="checkbox"
+              checked={selectedStatuses.includes(status.value)}
+              on:change={() => toggleStatus(status.value)}
+              class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+            <span class="flex-1 text-sm">{status.label}</span>
+          </label>
+        {/each}
+      </div>
+    </div>
+
+    <!-- Element type filter -->
+    <div>
+      <h4 class="font-semibold mb-2">Element Types</h4>
+      <ElementTypeFilter {elementCounts} on:change={handleTypeChange} />
+    </div>
+
+    <!-- Per-floor preview table -->
     {#if !loading}
       <div>
-        <h4 class="text-sm font-semibold mb-1.5">
+        <h4 class="font-semibold mb-2">
           Preview
-          <span class="font-normal text-xs text-gray-400 ml-2">
+          <span class="font-normal text-sm text-gray-400 ml-2">
             {totalMatched} element{totalMatched !== 1 ? 's' : ''}
-            · {floorsIncluded} floor{floorsIncluded !== 1 ? 's' : ''}
+            · {floorsIncluded} floor{floorsIncluded !== 1 ? 's' : ''} included
             {#if floorsSkipped > 0}
               <span class="text-amber-400">· {floorsSkipped} skipped</span>
             {/if}
           </span>
         </h4>
-        <div class="bg-slate-700/40 rounded overflow-hidden">
-          <table class="w-full text-xs">
+        <div class="bg-slate-700/40 rounded-lg overflow-hidden">
+          <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-slate-600">
-                <th class="text-left px-3 py-1.5 text-gray-400 font-medium">Floor</th>
-                <th class="text-right px-3 py-1.5 text-gray-400 font-medium">Match</th>
-                <th class="text-right px-3 py-1.5 text-gray-400 font-medium">Total</th>
+                <th class="text-left px-4 py-2 text-gray-400 font-medium">Floor</th>
+                <th class="text-right px-4 py-2 text-gray-400 font-medium">Matching</th>
+                <th class="text-right px-4 py-2 text-gray-400 font-medium">Total</th>
               </tr>
             </thead>
             <tbody>
               {#each previewRows as { plan, count, total }}
                 <tr class="border-b border-slate-700/50 last:border-0" class:opacity-40={count === 0}>
-                  <td class="px-3 py-1.5 text-gray-300">
+                  <td class="px-4 py-2 text-gray-300">
                     {getFloorLevelLabel(String(plan.floor_level))}
                     {#if count === 0}
-                      <span class="text-xs text-amber-500/70 italic ml-1">skip</span>
+                      <span class="text-xs text-amber-500/70 italic ml-2">skipped</span>
                     {/if}
                   </td>
-                  <td class="px-3 py-1.5 text-right font-medium"
+                  <td class="px-4 py-2 text-right font-medium"
                       class:text-purple-300={count > 0}
                       class:text-gray-500={count === 0}>{count}</td>
-                  <td class="px-3 py-1.5 text-right text-gray-500">{total}</td>
+                  <td class="px-4 py-2 text-right text-gray-500">{total}</td>
                 </tr>
               {/each}
             </tbody>
@@ -453,107 +390,29 @@
       </div>
 
       {#if totalMatched === 0}
-        <div class="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
+        <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-sm text-amber-400">
           ⚠ No elements match the current filters.
         </div>
       {/if}
     {/if}
 
     {#if genError}
-      <div class="p-2 bg-red-500/10 border border-red-500/50 rounded text-xs text-red-400">⚠ {genError}</div>
+      <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-sm text-red-400">⚠ {genError}</div>
     {/if}
 
   </div>
 
-  <div slot="footer" class="flex items-center justify-between">
-    <!-- Reset button on left -->
-    <button
-      class="text-xs text-gray-400 hover:text-gray-200 transition-colors"
-      on:click={resetFilters}
-      title="Reset all filters to defaults"
-    >
-      Reset Filters
-    </button>
-    
-    <!-- Action buttons on right -->
-    <div class="btn-group">
-      <Button variant="secondary" size="medium" on:click={() => dispatch('close')} disabled={generating}>
-        Cancel
-      </Button>
-      <Button variant="primary" size="medium" icon="download" on:click={generateReport}
-              disabled={generating || loading || totalMatched === 0}>
-        {#if generating}
-          {genProgress || 'Generating…'}
-        {:else}
-          Generate ({floorsIncluded})
-        {/if}
-      </Button>
-    </div>
+  <div slot="footer" class="btn-group justify-end">
+    <Button variant="secondary" size="large" on:click={() => dispatch('close')} disabled={generating}>
+      Cancel
+    </Button>
+    <Button variant="primary" size="large" icon="download" on:click={generateReport}
+            disabled={generating || loading || totalMatched === 0}>
+      {#if generating}
+        {genProgress || 'Generating…'}
+      {:else}
+        Generate ({floorsIncluded} floor{floorsIncluded !== 1 ? 's' : ''})
+      {/if}
+    </Button>
   </div>
 </Modal>
-
-<style>
-  /* Ultra-compact header */
-  .compact-header {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    padding: 0.5rem 0;
-    line-height: 1.2;
-  }
-
-  /* Compact scope buttons */
-  .scope-btn {
-    padding: 0.25rem 0.625rem;
-    font-size: 0.8125rem;
-    border-radius: 0.375rem;
-    border: 1px solid rgb(71 85 105);
-    background: rgb(51 65 85 / 0.3);
-    color: rgb(156 163 175);
-    transition: all 0.15s;
-    cursor: pointer;
-  }
-  .scope-btn:hover {
-    border-color: rgb(139 92 246 / 0.5);
-    background: rgb(139 92 246 / 0.05);
-  }
-  .scope-btn-active {
-    border-color: rgb(139 92 246);
-    background: rgb(139 92 246 / 0.15);
-    color: rgb(196 181 253);
-  }
-  .count {
-    font-size: 0.7rem;
-    opacity: 0.6;
-    margin-left: 0.25rem;
-  }
-
-  /* Compact select dropdown to match buttons */
-  .select-compact {
-    padding: 0.25rem 0.625rem;
-    font-size: 0.8125rem;
-    border-radius: 0.375rem;
-    border: 1px solid rgb(71 85 105);
-    background: rgb(51 65 85 / 0.3);
-    color: rgb(156 163 175);
-    cursor: pointer;
-  }
-  .select-compact:hover {
-    border-color: rgb(139 92 246 / 0.5);
-    background: rgb(139 92 246 / 0.05);
-  }
-  .select-compact:focus {
-    outline: none;
-    border-color: rgb(139 92 246);
-  }
-
-  /* Compact element types filter */
-  :global(.element-types-compact) {
-    font-size: 0.8125rem;
-  }
-  :global(.element-types-compact .space-y-1) {
-    gap: 0.25rem;
-  }
-  :global(.element-types-compact label) {
-    padding: 0.25rem 0.375rem;
-  }
-</style>

@@ -1,5 +1,5 @@
 <!-- src/lib/apps/plans/components/PlanViewer.svelte -->
-<!-- Interactive floor plan viewer with clickable elements -->
+<!-- UPDATED: Added contextSource and contextPlanId props to PlansReport, and notes parsing in table -->
 <script>
   import { onMount, createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
@@ -11,6 +11,7 @@
   import PlanFilters from './PlanFilters.svelte';
   import PlanInfoModal from './PlanInfoModal.svelte';
   import CopyPlanModal from './CopyPlanModal.svelte';
+  import PlansReport from './reports/PlansReport.svelte';
   import { plansStore } from '../stores/plansStore';
   import {
     ELEMENT_TYPE_OPTIONS,
@@ -19,6 +20,7 @@
     getElementStatusConfig,
     getAttributeSummary
   } from '$lib/utils/planConstants';
+  import { formatNotesForDisplay } from '$lib/utils/notesParser';
   import { permissions } from '$lib/stores/permissions';
 
   const logger = getLogger('PlanViewer');
@@ -36,6 +38,7 @@
   let showElementModal   = false;
   let showPlanInfoModal  = false;
   let showCopyModal      = false;
+  let showPlanReport     = false;  // NEW: Floor-level report
   let replacingImage     = false;
   let replaceImageError  = null;
   let replaceFileInput;
@@ -58,8 +61,7 @@
     lightFilters:     { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
     communalFilters:  { subtypes: [], security: [], retained: false },
     apartmentFilters: {},
-    fireFilters:      { subtypes: [] },
-    otherFilters:     { subtypes: [] }
+    fireFilters:      { subtypes: [] }
   };
 
   let lastLoadedPlanId = null;
@@ -79,8 +81,7 @@
     filters.lightFilters?.emergency || filters.lightFilters?.movementSensor || filters.lightFilters?.lightSensor ||
     (filters.communalFilters?.subtypes?.length > 0) || (filters.communalFilters?.security?.length > 0) ||
     filters.communalFilters?.retained ||
-    (filters.fireFilters?.subtypes?.length > 0) ||
-    (filters.otherFilters?.subtypes?.length > 0)
+    (filters.fireFilters?.subtypes?.length > 0)
   );
 
   $: filteredElements   = hasActiveFilters ? applyFilters(elements, filters) : elements;
@@ -126,7 +127,6 @@
         el.label?.toLowerCase().includes(q)    ||
         el.asset_id?.toLowerCase().includes(q) ||
         el.subtype?.toLowerCase().includes(q)  ||
-        el.notes?.toLowerCase().includes(q)    ||
         getElementDisplayName(el, plan.floor_level).toLowerCase().includes(q)
       );
     }
@@ -150,10 +150,6 @@
     const ff = f.fireFilters;
     if (ff?.subtypes?.length > 0)
       result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
-
-    const of = f.otherFilters;
-    if (of?.subtypes?.length > 0)
-      result = result.filter(el => el.element_type !== 'other' || of.subtypes.includes(el.subtype));
 
     return result;
   }
@@ -287,6 +283,9 @@
       if (replaceFileInput) replaceFileInput.value = '';
     }
   }
+
+  // NEW: Get all plans for building (for floor-level report)
+  $: allPlansInBuilding = $plansStore.plans.filter(p => p.building === plan.building);
 </script>
 
 <div class="grid grid-cols-12 gap-6">
@@ -321,6 +320,15 @@
         </div>
 
         <div class="btn-group">
+          <!-- NEW: Floor-level report button -->
+          <Button
+            variant="secondary"
+            size="small"
+            icon="download"
+            on:click={() => showPlanReport = true}
+          >
+            Report
+          </Button>
           {#if isAdmin}
             <Button
               variant={newMode ? 'primary' : 'secondary'}
@@ -464,7 +472,7 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-slate-700">
-                {#each ['Type','Name','Label','Subtype','Attributes','Status'] as col}
+                {#each ['Type','Name','Label','Subtype','Notes','Attributes','Status','Actions'] as col}
                   <th class="text-left py-3 px-4 font-semibold text-sm">{col}</th>
                 {/each}
               </tr>
@@ -477,15 +485,32 @@
                   class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
                   on:click={() => handleElementClick(element)}
                 >
-                  <td class="py-3 px-4 text-sm">{typeConfig?.label ?? element.element_type}</td>
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">{typeConfig?.icon}</span>
+                      <span class="text-sm">{typeConfig?.label ?? element.element_type}</span>
+                    </div>
+                  </td>
                   <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, plan.floor_level)}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.label   || '—'}</td>
+                  <td class="py-3 px-4 text-sm text-gray-400">{element.label || '—'}</td>
                   <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
+                  <!-- UPDATED: Use notes parser to show value only -->
+                  <td class="py-3 px-4 text-xs text-gray-400">{formatNotesForDisplay(element.notes, 40)}</td>
                   <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
                   <td class="py-3 px-4">
                     <span class="text-sm font-medium" style="color: {statusConfig?.color ?? '#9ca3af'}">
                       {statusConfig?.label ?? element.status}
                     </span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      icon={canEdit ? 'edit' : 'eye'}
+                      on:click={(e) => { e.stopPropagation(); handleElementClick(element); }}
+                    >
+                      {canEdit ? 'Edit' : 'View'}
+                    </Button>
                   </td>
                 </tr>
               {/each}
@@ -525,5 +550,15 @@
     {elements}
     on:copied={(e) => { showCopyModal = false; dispatch('planCopied', { planId: e.detail.planId }); }}
     on:close={() => showCopyModal = false}
+  />
+{/if}
+
+<!-- UPDATED: Added contextSource and contextPlanId props for floor-level report -->
+{#if showPlanReport && allPlansInBuilding.length > 0}
+  <PlansReport
+    plans={allPlansInBuilding}
+    contextSource="floor"
+    contextPlanId={plan.id}
+    on:close={() => showPlanReport = false}
   />
 {/if}
