@@ -1,12 +1,46 @@
 // src/lib/apps/walk/stores/walkStore.js
-// State management for Walk App — inspection sessions and element walk-throughs
+// REFACTORED: Cleaned up, DRY principles, better abstractions
 
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
 
 const logger = getLogger('walkStore');
+
+// ============================================================================
+// Constants
+// ============================================================================
+const FLOOR_ORDER = { 'L': 0, 'U': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
+
+const INITIAL_STATE = {
+  plans: [],
+  allElements: {},
+  sessions: [],
+  activeSession: null,
+  walkElements: [],
+  currentIndex: 0,
+  inspections: {},
+  buildingPlans: [],
+  currentFloor: null,
+  floorProgress: {},
+  loading: false,
+  error: null
+};
+
+const RESET_SESSION_STATE = {
+  activeSession: null,
+  walkElements: [],
+  currentIndex: 0,
+  inspections: {},
+  buildingPlans: [],
+  currentFloor: null,
+  floorProgress: {}
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -15,23 +49,27 @@ async function getCurrentUser() {
 
 async function getCurrentUserId() {
   const user = await getCurrentUser();
-  return user.id;
+  return user?.id;
 }
 
-// Fetch the current user's display name from profiles
 async function getCurrentUserName(userId) {
   try {
     const rows = await api.get('profiles', {
-      select:  'full_name',
+      select: 'full_name',
       filters: { id: userId }
     });
     return rows?.[0]?.full_name ?? null;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
 
-// Build the ordered walk element list for a session, respecting the light subtype filter
+function sortPlansByFloor(plans) {
+  return [...plans].sort((a, b) => 
+    (FLOOR_ORDER[a.floor_level] ?? 999) - (FLOOR_ORDER[b.floor_level] ?? 999)
+  );
+}
+
 function buildWalkElements(planElements, elementType, lightSubtypeFilter) {
   return planElements
     .filter(el => {
@@ -46,39 +84,80 @@ function buildWalkElements(planElements, elementType, lightSubtypeFilter) {
     );
 }
 
+function calculateTotalElements(plans, allElements, elementType, lightSubtypeFilter) {
+  return plans.reduce((sum, plan) => {
+    const elements = buildWalkElements(
+      allElements[plan.id] || [],
+      elementType,
+      lightSubtypeFilter
+    );
+    return sum + elements.length;
+  }, 0);
+}
+
+function initializeFloorProgress(plans, allElements, elementType, lightSubtypeFilter) {
+  return plans.reduce((progress, plan) => {
+    const elements = buildWalkElements(
+      allElements[plan.id] || [],
+      elementType,
+      lightSubtypeFilter
+    );
+    progress[plan.floor_level] = {
+      inspected: 0,
+      total: elements.length
+    };
+    return progress;
+  }, {});
+}
+
+function calculateFloorProgress(plans, allElements, elementType, lightSubtypeFilter, inspections) {
+  return plans.reduce((progress, plan) => {
+    const elements = buildWalkElements(
+      allElements[plan.id] || [],
+      elementType,
+      lightSubtypeFilter
+    );
+    const inspectedCount = elements.filter(el => inspections[el.id]).length;
+    progress[plan.floor_level] = {
+      inspected: inspectedCount,
+      total: elements.length
+    };
+    return progress;
+  }, {});
+}
+
+// ============================================================================
+// Store Factory
+// ============================================================================
+
 function createWalkStore() {
-  const { subscribe, set, update } = writable({
-    // Plans data (loaded once on mount)
-    plans:         [],
-    allElements:   {},    // { [planId]: element[] }
+  const { subscribe, update } = writable(INITIAL_STATE);
 
-    // Session state
-    sessions:      [],    // recent walk sessions
-    activeSession: null,  // the open session object
+  // ── Utility ──────────────────────────────────────────────────────────────
 
-    // Walk state (set when a session is active)
-    walkElements:  [],    // sorted elements for this session's type+plan
-    currentIndex:  0,
-    inspections:   {},    // { [elementId]: inspection[] }
+  function getState() {
+    return get({ subscribe });
+  }
 
-    loading:       false,
-    error:         null
-  });
-
-  // ── Plans ──────────────────────────────────────────────────────────────────
+  // ── Plans ────────────────────────────────────────────────────────────────
 
   async function loadPlans() {
     logger('Loading plans…');
     try {
       const plans = await api.get('plans', { orderBy: 'building', ascending: true });
       const allElements = {};
-      for (const plan of plans) {
-        allElements[plan.id] = await api.get('plan_elements', {
-          filters: { plan_id: plan.id },
-          orderBy: 'asset_id',
-          ascending: true
-        });
-      }
+      
+      // Load elements in parallel for better performance
+      await Promise.all(
+        plans.map(async (plan) => {
+          allElements[plan.id] = await api.get('plan_elements', {
+            filters: { plan_id: plan.id },
+            orderBy: 'asset_id',
+            ascending: true
+          });
+        })
+      );
+      
       update(s => ({ ...s, plans, allElements }));
       logger('✅ Loaded', plans.length, 'plans');
       return { plans, allElements };
@@ -88,16 +167,16 @@ function createWalkStore() {
     }
   }
 
-  // ── Sessions ───────────────────────────────────────────────────────────────
+  // ── Sessions ─────────────────────────────────────────────────────────────
 
   async function loadSessions() {
     logger('Loading walk sessions…');
     update(s => ({ ...s, loading: true }));
     try {
-      const userId   = await getCurrentUserId();
+      const userId = await getCurrentUserId();
       const sessions = await api.get('walk_sessions', {
-        filters:   { created_by: userId },
-        orderBy:   'started_at',
+        filters: { created_by: userId },
+        orderBy: 'started_at',
         ascending: false
       });
       update(s => ({ ...s, sessions, loading: false }));
@@ -110,60 +189,137 @@ function createWalkStore() {
     }
   }
 
-  async function startSession({
-    building,
-    floorLevel,
-    elementType,
-    startAssetId,
-    planId,
-    sessionName       = null,
-    lightSubtypeFilter = null
+  async function createSession(sessionData) {
+    const userId = await getCurrentUserId();
+    const inspectorName = await getCurrentUserName(userId);
+    
+    return api.create('walk_sessions', {
+      ...sessionData,
+      inspector_name: inspectorName,
+      status: 'open',
+      created_by: userId,
+      updated_by: userId
+    });
+  }
+
+  // ── Start Building-Wide Session ──────────────────────────────────────────
+
+  async function startBuildingWideSession({ building, elementType, sessionName = null, lightSubtypeFilter = null }) {
+    logger('Starting building-wide session:', { building, elementType });
+    
+    try {
+      const state = getState();
+      const buildingPlans = sortPlansByFloor(
+        state.plans.filter(p => p.building === building)
+      );
+      
+      if (buildingPlans.length === 0) {
+        throw new Error(`No plans found for building: ${building}`);
+      }
+      
+      const totalElements = calculateTotalElements(
+        buildingPlans,
+        state.allElements,
+        elementType,
+        lightSubtypeFilter
+      );
+      
+      const session = await createSession({
+        session_scope: 'building',
+        building_name: building,
+        element_type: elementType,
+        session_name: sessionName,
+        light_subtype_filter: lightSubtypeFilter,
+        total_elements_count: totalElements,
+        inspected_elements_count: 0
+      });
+      
+      logger('✅ Building-wide session created:', session.id);
+      
+      const firstPlan = buildingPlans[0];
+      const walkElements = buildWalkElements(
+        state.allElements[firstPlan.id] || [],
+        elementType,
+        lightSubtypeFilter
+      );
+      
+      const floorProgress = initializeFloorProgress(
+        buildingPlans,
+        state.allElements,
+        elementType,
+        lightSubtypeFilter
+      );
+      
+      update(s => ({
+        ...s,
+        activeSession: { ...session, planId: firstPlan.id },
+        buildingPlans,
+        currentFloor: firstPlan.floor_level,
+        floorProgress,
+        walkElements,
+        currentIndex: 0,
+        inspections: {}
+      }));
+      
+      return session;
+    } catch (error) {
+      logger('❌ startBuildingWideSession:', error.message);
+      throw error;
+    }
+  }
+
+  // ── Start Single-Plan Session ────────────────────────────────────────────
+
+  async function startSession({ 
+    building, 
+    floorLevel, 
+    elementType, 
+    startAssetId, 
+    planId, 
+    sessionName = null, 
+    lightSubtypeFilter = null 
   }) {
     logger('Starting session:', { building, floorLevel, elementType });
-    const userId        = await getCurrentUserId();
-    const inspectorName = await getCurrentUserName(userId);
-
+    
     try {
-      const session = await api.create('walk_sessions', {
-        plan_id:              planId,
-        building,
-        floor_level:          floorLevel,
-        element_type:         elementType,
-        start_asset_id:       startAssetId        || null,
-        session_name:         sessionName          || null,
-        inspector_name:       inspectorName        || null,
-        light_subtype_filter: lightSubtypeFilter   || null,
-        status:               'open',
-        created_by:           userId,
-        updated_by:           userId
-      });
-      logger('✅ Session created:', session.id);
-
-      let state;
-      subscribe(s => { state = s; })();
+      const state = getState();
       const walkElements = buildWalkElements(
         state.allElements[planId] || [],
         elementType,
         lightSubtypeFilter
       );
 
-      let startIndex = 0;
-      if (startAssetId) {
-        const found = walkElements.findIndex(el => el.asset_id === startAssetId);
-        if (found >= 0) startIndex = found;
-      }
+      const session = await createSession({
+        plan_id: planId,
+        session_scope: 'single_plan',
+        building: building,
+        building_name: building,
+        floor_level: floorLevel,
+        element_type: elementType,
+        start_asset_id: startAssetId,
+        session_name: sessionName,
+        light_subtype_filter: lightSubtypeFilter,
+        total_elements_count: walkElements.length,
+        inspected_elements_count: 0
+      });
+      
+      logger('✅ Session created:', session.id);
 
-      try {
-        localStorage.setItem('walk_plan_id', JSON.stringify({ sessionId: session.id, planId }));
-      } catch (_) {}
+      const startIndex = startAssetId
+        ? Math.max(0, walkElements.findIndex(el => el.asset_id === startAssetId))
+        : 0;
 
       update(s => ({
         ...s,
         activeSession: { ...session, planId },
         walkElements,
-        currentIndex:  startIndex,
-        inspections:   {}
+        currentIndex: startIndex,
+        inspections: {},
+        buildingPlans: [],
+        currentFloor: floorLevel,
+        floorProgress: {}
       }));
+      
       return session;
     } catch (error) {
       logger('❌ startSession:', error.message);
@@ -171,24 +327,21 @@ function createWalkStore() {
     }
   }
 
+  // ── Close Session ────────────────────────────────────────────────────────
+
   async function closeSession(sessionId, notes = '') {
     logger('Closing session:', sessionId);
-    try { localStorage.removeItem('walk_plan_id'); } catch (_) {}
     const userId = await getCurrentUserId();
+    
     try {
       await api.update('walk_sessions', sessionId, {
-        status:     'closed',
-        closed_at:  new Date().toISOString(),
-        notes:      notes || null,
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        notes: notes || null,
         updated_by: userId
       });
-      update(s => ({
-        ...s,
-        activeSession: null,
-        walkElements:  [],
-        currentIndex:  0,
-        inspections:   {}
-      }));
+      
+      update(s => ({ ...s, ...RESET_SESSION_STATE }));
       await loadSessions();
       logger('✅ Session closed');
     } catch (error) {
@@ -197,33 +350,54 @@ function createWalkStore() {
     }
   }
 
-  async function resumeSession(session) {
-    logger('Resuming session:', session.id);
-    let state;
-    subscribe(s => { state = s; })();
+  // ── Resume Session ───────────────────────────────────────────────────────
 
-    // Find plan: prefer plan_id column, fall back to localStorage bridge, then building+floor match
-    let plan = null;
-    if (session.plan_id) {
-      plan = state.plans.find(p => p.id === session.plan_id);
-    } else {
-      try {
-        const stored = JSON.parse(localStorage.getItem('walk_plan_id') || 'null');
-        if (stored?.sessionId === session.id) {
-          plan = state.plans.find(p => p.id === stored.planId);
-        }
-      } catch (_) {}
-      if (!plan) {
-        plan = state.plans.find(p =>
-          p.building === session.building &&
-          String(p.floor_level) === String(session.floor_level)
-        );
-      }
-    }
+  async function resumeBuildingSession(session, state) {
+    const buildingPlans = sortPlansByFloor(
+      state.plans.filter(p => p.building === session.building_name)
+    );
+    
+    const inspections = await loadInspectionsMap(session.id);
+    
+    const floorProgress = calculateFloorProgress(
+      buildingPlans,
+      state.allElements,
+      session.element_type,
+      session.light_subtype_filter,
+      inspections
+    );
+    
+    // Find first incomplete floor or use first floor
+    const currentPlan = buildingPlans.find(p => 
+      floorProgress[p.floor_level].inspected < floorProgress[p.floor_level].total
+    ) || buildingPlans[0];
+    
+    const walkElements = buildWalkElements(
+      state.allElements[currentPlan.id] || [],
+      session.element_type,
+      session.light_subtype_filter
+    );
+    
+    update(s => ({
+      ...s,
+      activeSession: { ...session, planId: currentPlan.id },
+      buildingPlans,
+      currentFloor: currentPlan.floor_level,
+      floorProgress,
+      walkElements,
+      currentIndex: 0,
+      inspections
+    }));
+  }
 
-    if (!plan) {
-      throw new Error(`No plan found for ${session.building} floor ${session.floor_level}`);
-    }
+  async function resumeSinglePlanSession(session, state) {
+    const plan = state.plans.find(p => p.id === session.plan_id) ||
+                 state.plans.find(p => 
+                   p.building === session.building && 
+                   String(p.floor_level) === String(session.floor_level)
+                 );
+    
+    if (!plan) throw new Error('No plan found for session');
 
     const walkElements = buildWalkElements(
       state.allElements[plan.id] || [],
@@ -231,60 +405,111 @@ function createWalkStore() {
       session.light_subtype_filter
     );
 
-    // Load existing inspections
-    const rows = await api.get('element_inspections', {
-      filters:   { session_id: session.id },
-      orderBy:   'inspected_at',
-      ascending: true
-    });
-    const inspections = {};
-    for (const row of rows) {
-      if (!inspections[row.element_id]) inspections[row.element_id] = [];
-      inspections[row.element_id].push(row);
-    }
+    const inspections = await loadInspectionsMap(session.id);
 
     update(s => ({
       ...s,
       activeSession: { ...session, planId: plan.id },
       walkElements,
-      currentIndex:  0,
-      inspections
+      currentIndex: 0,
+      inspections,
+      currentFloor: session.floor_level
     }));
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
+  async function resumeSession(session) {
+    logger('Resuming session:', session.id);
+    
+    try {
+      const state = getState();
+      
+      if (session.session_scope === 'building') {
+        await resumeBuildingSession(session, state);
+      } else {
+        await resumeSinglePlanSession(session, state);
+      }
+    } catch (error) {
+      logger('❌ resumeSession:', error.message);
+      throw error;
+    }
+  }
+
+  // ── Navigation ───────────────────────────────────────────────────────────
+
+  async function goToFloor(floorLevel) {
+    logger('Navigating to floor:', floorLevel);
+    const state = getState();
+    
+    const plan = state.buildingPlans.find(p => p.floor_level === floorLevel);
+    if (!plan) throw new Error(`No plan found for floor: ${floorLevel}`);
+    
+    const walkElements = buildWalkElements(
+      state.allElements[plan.id] || [],
+      state.activeSession.element_type,
+      state.activeSession.light_subtype_filter
+    );
+    
+    update(s => ({
+      ...s,
+      activeSession: { ...s.activeSession, planId: plan.id },
+      currentFloor: floorLevel,
+      walkElements,
+      currentIndex: 0
+    }));
+  }
 
   function goToIndex(index) {
-    update(s => ({ ...s, currentIndex: Math.max(0, Math.min(index, s.walkElements.length - 1)) }));
-  }
-  function goNext() {
-    update(s => ({ ...s, currentIndex: Math.min(s.currentIndex + 1, s.walkElements.length - 1) }));
-  }
-  function goPrev() {
-    update(s => ({ ...s, currentIndex: Math.max(s.currentIndex - 1, 0) }));
+    update(s => ({
+      ...s,
+      currentIndex: Math.max(0, Math.min(index, s.walkElements.length - 1))
+    }));
   }
 
-  // ── Element editing ────────────────────────────────────────────────────────
+  function goNext() {
+    update(s => ({
+      ...s,
+      currentIndex: Math.min(s.currentIndex + 1, s.walkElements.length - 1)
+    }));
+  }
+
+  function goPrev() {
+    update(s => ({
+      ...s,
+      currentIndex: Math.max(s.currentIndex - 1, 0)
+    }));
+  }
+
+  // ── Element Updates ──────────────────────────────────────────────────────
 
   async function updateElement(elementId, updates) {
     logger('Updating element:', elementId);
     const userId = await getCurrentUserId();
+    
     try {
       const updated = await api.update('plan_elements', elementId, {
         ...updates,
         updated_by: userId
       });
+      
       update(s => {
-        const newAll = { ...s.allElements };
-        for (const pid of Object.keys(newAll)) {
-          newAll[pid] = newAll[pid].map(el => el.id === elementId ? { ...el, ...updated } : el);
+        const newAllElements = { ...s.allElements };
+        
+        // Update in all plan element lists
+        for (const pid of Object.keys(newAllElements)) {
+          newAllElements[pid] = newAllElements[pid].map(el =>
+            el.id === elementId ? { ...el, ...updated } : el
+          );
         }
+        
         return {
           ...s,
-          allElements:  newAll,
-          walkElements: s.walkElements.map(el => el.id === elementId ? { ...el, ...updated } : el)
+          allElements: newAllElements,
+          walkElements: s.walkElements.map(el =>
+            el.id === elementId ? { ...el, ...updated } : el
+          )
         };
       });
+      
       logger('✅ Element updated');
       return updated;
     } catch (error) {
@@ -293,37 +518,74 @@ function createWalkStore() {
     }
   }
 
-  // ── Inspections ────────────────────────────────────────────────────────────
+  // ── Inspections ──────────────────────────────────────────────────────────
 
-  async function addInspection({ sessionId, elementId, planId, result, notes, element }) {
-    logger('Adding inspection:', elementId, result);
+  async function loadInspectionsMap(sessionId) {
+    const rows = await api.get('walk_element_inspections', {
+      filters: { walk_session_id: sessionId },
+      orderBy: 'inspected_at',
+      ascending: true
+    });
+    
+    return rows.reduce((map, row) => {
+      if (!map[row.plan_element_id]) map[row.plan_element_id] = [];
+      map[row.plan_element_id].push(row);
+      return map;
+    }, {});
+  }
+
+  async function recordInspection({ elementId, result, notes, photoUrl = null }) {
+    logger('Recording inspection:', elementId, result);
     const userId = await getCurrentUserId();
+    const state = getState();
+    
+    const element = state.walkElements.find(e => e.id === elementId);
+    if (!element) throw new Error('Element not found');
+    
     try {
-      const inspection = await api.create('element_inspections', {
-        session_id:     sessionId,
-        element_id:     elementId,
-        plan_id:        planId        || null,
-        result,
-        notes:          notes         || null,
-        inspector_id:   userId,
-        inspected_at:   new Date().toISOString(),
-        // Snapshot of element state at time of inspection
-        element_type:   element.element_type,
-        asset_id:       element.asset_id,
-        subtype:        element.subtype,
-        status_at_time: element.status
+      const inspection = await api.create('walk_element_inspections', {
+        walk_session_id: state.activeSession.id,
+        plan_element_id: elementId,
+        inspection_result: result,
+        inspector_notes: notes || null,
+        inspected_by: userId,
+        inspected_at: new Date().toISOString(),
+        photo_url: photoUrl || null
       });
+      
       update(s => {
-        const existing = s.inspections[elementId] || [];
+        const newInspections = {
+          ...s.inspections,
+          [elementId]: [...(s.inspections[elementId] || []), inspection]
+        };
+        
+        // Update floor progress for building-wide sessions
+        let newFloorProgress = s.floorProgress;
+        if (s.activeSession.session_scope === 'building' && s.currentFloor) {
+          const inspectedCount = s.walkElements.filter(el =>
+            newInspections[el.id]?.length > 0
+          ).length;
+          
+          newFloorProgress = {
+            ...s.floorProgress,
+            [s.currentFloor]: {
+              ...s.floorProgress[s.currentFloor],
+              inspected: inspectedCount
+            }
+          };
+        }
+        
         return {
           ...s,
-          inspections: { ...s.inspections, [elementId]: [...existing, inspection] }
+          inspections: newInspections,
+          floorProgress: newFloorProgress
         };
       });
+      
       logger('✅ Inspection recorded');
       return inspection;
     } catch (error) {
-      logger('❌ addInspection:', error.message);
+      logger('❌ recordInspection:', error.message);
       throw error;
     }
   }
@@ -331,10 +593,10 @@ function createWalkStore() {
   async function loadElementInspectionHistory(elementId) {
     logger('Loading inspection history for element:', elementId);
     try {
-      return await api.get('element_inspections', {
-        select:    '*, inspector:profiles!inspector_id(full_name), session:walk_sessions!session_id(building, floor_level, started_at)',
-        filters:   { element_id: elementId },
-        orderBy:   'inspected_at',
+      return await api.get('walk_element_inspections', {
+        select: '*, inspector:profiles!inspected_by(full_name), session:walk_sessions!walk_session_id(session_name, building_name, started_at)',
+        filters: { plan_element_id: elementId },
+        orderBy: 'inspected_at',
         ascending: false
       });
     } catch (error) {
@@ -346,9 +608,9 @@ function createWalkStore() {
   async function loadSessionInspections(sessionId) {
     logger('Loading inspections for session:', sessionId);
     try {
-      return await api.get('element_inspections', {
-        filters:   { session_id: sessionId },
-        orderBy:   'inspected_at',
+      return await api.get('walk_element_inspections', {
+        filters: { walk_session_id: sessionId },
+        orderBy: 'inspected_at',
         ascending: true
       });
     } catch (error) {
@@ -357,11 +619,58 @@ function createWalkStore() {
     }
   }
 
+  // ── Progress & Reports ───────────────────────────────────────────────────
+
+  async function getSessionProgress(sessionId) {
+    logger('Getting session progress:', sessionId);
+    try {
+      const sessions = await api.get('walk_sessions', {
+        filters: { id: sessionId }
+      });
+      
+      if (!sessions?.length) throw new Error('Session not found');
+      
+      const session = sessions[0];
+      const total = session.total_elements_count || 0;
+      const inspected = session.inspected_elements_count || 0;
+      
+      return {
+        total,
+        inspected,
+        percentage: total > 0 ? Math.round((inspected / total) * 100) : 0
+      };
+    } catch (error) {
+      logger('❌ getSessionProgress:', error.message);
+      throw error;
+    }
+  }
+
+  async function getFailedElements(buildingName = null) {
+    logger('Getting failed elements', buildingName ? `for ${buildingName}` : '');
+    try {
+      const { data, error } = await supabase
+        .from('failed_elements_view')
+        .select('*');
+      
+      if (error) throw error;
+      
+      return buildingName
+        ? data.filter(el => el.building === buildingName)
+        : data;
+    } catch (error) {
+      logger('❌ getFailedElements:', error.message);
+      return [];
+    }
+  }
+
+  // ── Cleanup ──────────────────────────────────────────────────────────────
+
   async function deleteSession(sessionId) {
     logger('Deleting session:', sessionId);
     try {
-      // Delete child inspections first (FK constraint; cascade may handle but be explicit)
-      await api.deleteMany('element_inspections', { session_id: sessionId });
+      await api.deleteMany('walk_element_inspections', {
+        walk_session_id: sessionId
+      });
       await api.delete('walk_sessions', sessionId);
       logger('✅ Session deleted');
     } catch (error) {
@@ -370,21 +679,33 @@ function createWalkStore() {
     }
   }
 
+  // ── Public API ───────────────────────────────────────────────────────────
+
   return {
     subscribe,
+    // Plans
     loadPlans,
+    // Sessions
     loadSessions,
     startSession,
+    startBuildingWideSession,
     closeSession,
     resumeSession,
+    deleteSession,
+    // Navigation
+    goToFloor,
     goToIndex,
     goNext,
     goPrev,
+    // Elements
     updateElement,
-    addInspection,
+    // Inspections
+    recordInspection,
     loadElementInspectionHistory,
     loadSessionInspections,
-    deleteSession
+    // Progress
+    getSessionProgress,
+    getFailedElements
   };
 }
 
