@@ -53,6 +53,9 @@
 
   let newMode = false;
 
+  // View mode for inventory section
+  let inventoryView = 'list'; // 'list' or 'summary'
+
   let filters = {
     types: [], statuses: [], searchText: '',
     lightFilters:     { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
@@ -88,6 +91,23 @@
     if (a.element_type !== b.element_type) return a.element_type.localeCompare(b.element_type);
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
+
+  // Calculate summary data from filtered elements
+  $: summaryData = (() => {
+    const summary = {};
+    filteredElements.forEach(el => {
+      const type = el.element_type;
+      const subtype = el.subtype || 'No subtype';
+      const status = el.status;
+      
+      if (!summary[type]) summary[type] = {};
+      if (!summary[type][subtype]) summary[type][subtype] = {};
+      if (!summary[type][subtype][status]) summary[type][subtype][status] = 0;
+      
+      summary[type][subtype][status]++;
+    });
+    return summary;
+  })();
 
   onMount(() => {
     const ro = new ResizeObserver(entries => {
@@ -417,43 +437,140 @@
 
     {#if elements.length > 0}
       <div class="bg-slate-800/50 rounded-lg p-6 mt-6">
-        <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
-          <Icon name="table" size={5} className="text-purple-400" />
-          Inventory
-        </h3>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-slate-700">
-                {#each ['Type','Name','Label','Subtype','Notes','Attributes','Status'] as col}
-                  <th class="text-left py-3 px-4 font-semibold text-sm">{col}</th>
-                {/each}
-              </tr>
-            </thead>
-            <tbody>
-              {#each sortedElementsForTable as element (element.id)}
-                {@const typeConfig   = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
-                {@const statusConfig = getElementStatusConfig(element.status)}
-                <tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
-                  on:click={() => handleElementClick(element)}>
-                  <td class="py-3 px-4">
-                    <span class="text-sm">{typeConfig?.label ?? element.element_type}</span>
-                  </td>
-                  <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, plan.floor_level)}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.label || '—'}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
-                  <td class="py-3 px-4 text-xs text-gray-400">{formatNotesForDisplay(element.notes, 40)}</td>
-                  <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
-                  <td class="py-3 px-4">
-                    <span class="text-sm font-medium" style="color: {statusConfig?.color ?? '#9ca3af'}">
-                      {statusConfig?.label ?? element.status}
-                    </span>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+        <!-- Tab Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <h3 class="text-xl font-bold flex items-center gap-2">
+              <Icon name="table" size={5} className="text-purple-400" />
+              Inventory
+            </h3>
+            <!-- Tab Switcher -->
+            <div class="flex gap-1 border border-slate-600 rounded-lg p-1">
+              <button
+                class="px-3 py-1 text-sm rounded transition-colors"
+                class:bg-purple-600={inventoryView === 'list'}
+                class:text-white={inventoryView === 'list'}
+                class:text-gray-400={inventoryView !== 'list'}
+                class:hover:text-white={inventoryView !== 'list'}
+                on:click={() => inventoryView = 'list'}
+              >
+                List
+              </button>
+              <button
+                class="px-3 py-1 text-sm rounded transition-colors"
+                class:bg-purple-600={inventoryView === 'summary'}
+                class:text-white={inventoryView === 'summary'}
+                class:text-gray-400={inventoryView !== 'summary'}
+                class:hover:text-white={inventoryView !== 'summary'}
+                on:click={() => inventoryView = 'summary'}
+              >
+                Summary
+              </button>
+            </div>
+          </div>
+          <div class="text-sm text-gray-400">
+            {filteredElements.length} element{filteredElements.length !== 1 ? 's' : ''}
+          </div>
         </div>
+
+        <!-- List View -->
+        {#if inventoryView === 'list'}
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-slate-700">
+                  {#each ['Type','Name','Label','Subtype','Notes','Attributes','Status'] as col}
+                    <th class="text-left py-3 px-4 font-semibold text-sm">{col}</th>
+                  {/each}
+                </tr>
+              </thead>
+              <tbody>
+                {#each sortedElementsForTable as element (element.id)}
+                  {@const typeConfig   = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
+                  {@const statusConfig = getElementStatusConfig(element.status)}
+                  <tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
+                    on:click={() => handleElementClick(element)}>
+                    <td class="py-3 px-4">
+                      <span class="text-sm">{typeConfig?.label ?? element.element_type}</span>
+                    </td>
+                    <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, plan.floor_level)}</td>
+                    <td class="py-3 px-4 text-sm text-gray-400">{element.label || '—'}</td>
+                    <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
+                    <td class="py-3 px-4 text-xs text-gray-400">{formatNotesForDisplay(element.notes, 40)}</td>
+                    <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
+                    <td class="py-3 px-4">
+                      <span class="text-sm font-medium" style="color: {statusConfig?.color ?? '#9ca3af'}">
+                        {statusConfig?.label ?? element.status}
+                      </span>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        
+        <!-- Summary View -->
+        {:else if inventoryView === 'summary'}
+          <div class="space-y-6">
+            {#each Object.entries(summaryData).sort(([a], [b]) => a.localeCompare(b)) as [type, subtypes]}
+              {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === type)}
+              {@const typeTotal = Object.values(subtypes).reduce((sum, statuses) => 
+                sum + Object.values(statuses).reduce((s, count) => s + count, 0), 0)}
+              
+              <div class="bg-slate-700/40 rounded-lg p-4">
+                <!-- Type Header -->
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-600">
+                  <div class="flex items-center gap-2">
+                    <span class="text-2xl">{typeConfig?.icon || '📦'}</span>
+                    <h4 class="text-lg font-semibold text-white">{typeConfig?.label ?? type}</h4>
+                  </div>
+                  <span class="text-lg font-bold text-purple-300">{typeTotal}</span>
+                </div>
+                
+                <!-- Subtypes -->
+                <div class="space-y-2">
+                  {#each Object.entries(subtypes).sort(([a], [b]) => a.localeCompare(b)) as [subtype, statuses]}
+                    {@const subtypeTotal = Object.values(statuses).reduce((sum, count) => sum + count, 0)}
+                    
+                    <div class="flex items-center justify-between py-2 px-3 rounded bg-slate-800/50 hover:bg-slate-800/70 transition-colors">
+                      <div class="flex-1">
+                        <div class="font-medium text-sm text-gray-200">{subtype}</div>
+                        <!-- Status breakdown -->
+                        <div class="flex gap-3 mt-1 text-xs">
+                          {#each Object.entries(statuses) as [status, count]}
+                            {@const statusConfig = getElementStatusConfig(status)}
+                            <span class="flex items-center gap-1">
+                              <span class="w-2 h-2 rounded-full" style="background-color: {statusConfig?.color ?? '#9ca3af'}"></span>
+                              <span class="text-gray-400">{statusConfig?.label ?? status}:</span>
+                              <span class="text-white font-medium">{count}</span>
+                            </span>
+                          {/each}
+                        </div>
+                      </div>
+                      <div class="text-right ml-4">
+                        <span class="text-lg font-semibold text-purple-300">{subtypeTotal}</span>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+
+            <!-- Grand Total -->
+            {#if Object.keys(summaryData).length > 0}
+              {@const grandTotal = Object.values(summaryData).reduce((sum, subtypes) => 
+                sum + Object.values(subtypes).reduce((s, statuses) => 
+                  s + Object.values(statuses).reduce((ss, count) => ss + count, 0), 0), 0)}
+              
+              <div class="bg-purple-600/20 border border-purple-500/50 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg font-bold text-white">Grand Total</span>
+                  <span class="text-2xl font-bold text-purple-300">{grandTotal}</span>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
   </div>

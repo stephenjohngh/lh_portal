@@ -1,5 +1,5 @@
 <!-- src/lib/apps/plans/components/reports/PlansReport.svelte -->
-<!-- FINAL FIX: Floor scope properly defaults to contextPlanId -->
+<!-- UPDATED: Added summary option, horizontal layouts, floor dropdown menu -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }      from '$lib/utils/logger';
@@ -22,7 +22,6 @@
   export let contextSource = 'building';
   export let contextPlanId = null;
 
-  // FIXED: Set initial value directly based on context
   let floorScope = contextSource === 'floor' && contextPlanId ? contextPlanId : 'all';
   
   $: activePlans  = floorScope === 'all' ? plans : plans.filter(p => p.id === floorScope);
@@ -40,7 +39,12 @@
     finally     { loading = false; }
   });
 
-  let options = { includeImage: true, includeElementList: true };
+  // UPDATED: Options now include summary
+  let options = { 
+    includeImage: true, 
+    includeElementList: true,
+    includeSummary: true  // NEW
+  };
 
   let selectedStatuses = [];
   let typeFilters      = { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
@@ -94,6 +98,8 @@
     );
     return acc;
   }, {});
+
+
 
   const MARKER_SHAPE = {
     communal_door:  'square',
@@ -212,7 +218,13 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           floors,
-          options: { ...options, groupByType: true, filterSummary: buildFilterSummary(), building }
+          options: { 
+            ...options, 
+            groupByType: true, 
+            filterSummary: buildFilterSummary(), 
+            building
+            // No summaryData needed - server calculates from floors
+          }
         })
       });
 
@@ -242,6 +254,7 @@
 
   <div class="section-spacing">
 
+    <!-- Floor scope with DROPDOWN MENU for individual floors -->
     <div>
       <h4 class="font-semibold mb-3">
         Floors
@@ -255,7 +268,8 @@
           </span>
         {/if}
       </h4>
-      <div class="flex gap-2 flex-wrap">
+      <div class="flex gap-2 items-center">
+        <!-- All floors button -->
         <button
           class="px-4 py-2 rounded-lg border text-sm transition-colors"
           class:border-purple-500={floorScope === 'all'}
@@ -267,19 +281,24 @@
         >
           All floors <span class="text-xs opacity-60 ml-1">({plans.length})</span>
         </button>
-        {#each plans as plan}
-          <button
-            class="px-4 py-2 rounded-lg border text-sm transition-colors"
-            class:border-purple-500={floorScope === plan.id}
-            class:text-purple-300={floorScope === plan.id}
-            class:border-slate-600={floorScope !== plan.id}
-            class:text-gray-400={floorScope !== plan.id}
-            style={floorScope === plan.id ? 'background:rgba(168,85,247,0.1)' : ''}
-            on:click={() => floorScope = plan.id}
+        
+        <!-- Individual floor dropdown -->
+        <div class="relative">
+          <select
+            bind:value={floorScope}
+            class="px-4 py-2 rounded-lg border text-sm transition-colors bg-slate-800 cursor-pointer"
+            class:border-purple-500={floorScope !== 'all'}
+            class:text-purple-300={floorScope !== 'all'}
+            class:border-slate-600={floorScope === 'all'}
+            class:text-gray-400={floorScope === 'all'}
+            style={floorScope !== 'all' ? 'background:rgba(168,85,247,0.1)' : ''}
           >
-            Floor {plan.floor_level}
-          </button>
-        {/each}
+            <option value="all" disabled>Select individual floor...</option>
+            {#each plans as plan}
+              <option value={plan.id}>Floor {plan.floor_level}</option>
+            {/each}
+          </select>
+        </div>
       </div>
     </div>
 
@@ -291,42 +310,54 @@
       <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-sm text-red-400">⚠ {loadError}</div>
     {/if}
 
+    <!-- UPDATED: Options now horizontal with Plan, List, Summary -->
     <div>
-      <h4 class="font-semibold mb-3">Options</h4>
-      <div class="space-y-3">
+      <h4 class="font-semibold mb-3">Include in Report</h4>
+      <div class="flex gap-4">
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" bind:checked={options.includeImage}
             class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-          <span class="text-sm">Include annotated floor plan image per floor</span>
+          <span class="text-sm font-medium">Plan</span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" bind:checked={options.includeElementList}
             class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-          <span class="text-sm">Include element list per floor</span>
+          <span class="text-sm font-medium">List</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" bind:checked={options.includeSummary}
+            class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
+          <span class="text-sm font-medium">Summary</span>
         </label>
       </div>
+      <p class="text-xs text-gray-400 mt-2">
+        Plan = Annotated floor plan image · List = Full element table · Summary = Count by type/subtype
+      </p>
     </div>
 
+    <!-- UPDATED: Status filter now horizontal -->
     <div>
       <h4 class="font-semibold mb-3">Status</h4>
-      <div class="space-y-2">
+      <div class="flex gap-4 flex-wrap">
         {#each ELEMENT_STATUS_OPTIONS as status}
-          <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 px-2 py-1 rounded">
+          <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox"
               checked={selectedStatuses.includes(status.value)}
               on:change={() => toggleStatus(status.value)}
               class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500" />
-            <span class="flex-1 text-sm">{status.label}</span>
+            <span class="text-sm">{status.label}</span>
           </label>
         {/each}
       </div>
     </div>
 
+    <!-- Element type filter -->
     <div>
       <h4 class="font-semibold mb-2">Element Types</h4>
       <ElementTypeFilter {elementCounts} on:change={handleTypeChange} />
     </div>
 
+    <!-- Preview with summary -->
     {#if !loading}
       <div>
         <h4 class="font-semibold mb-2">
@@ -339,7 +370,9 @@
             {/if}
           </span>
         </h4>
-        <div class="bg-slate-700/40 rounded-lg overflow-hidden">
+        
+        <!-- Floor breakdown table -->
+        <div class="bg-slate-700/40 rounded-lg overflow-hidden mb-4">
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-slate-600">
