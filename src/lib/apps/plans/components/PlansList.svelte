@@ -64,7 +64,8 @@
   }
 
   function handleViewBuilding() {
-    dispatch('selectPlan', { planId: 'building' });
+    //dispatch('selectPlan', { planId: 'building' });
+dispatch('selectPlan', { isBuildingOverview: true });
   }
 </script>
 

@@ -1,5 +1,5 @@
 <!-- src/lib/apps/plans/PlansApp.svelte -->
-<!-- UPDATED: Added contextSource and contextPlanId props to PlansReport -->
+<!-- UPDATED: Added Building Overview handler -->
 <script>
   import { onMount }          from 'svelte';
   import { getLogger }        from '$lib/utils/logger';
@@ -7,6 +7,7 @@
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import PlansList            from './components/PlansList.svelte';
   import PlanViewer           from './components/PlanViewer.svelte';
+  import BuildingOverview     from './components/BuildingOverview.svelte';
   import PlanUploader         from './components/PlanUploader.svelte';
   import PlansReport          from './components/reports/PlansReport.svelte';
   import WalkInspectionsTab   from './components/WalkInspectionsTab.svelte';
@@ -19,13 +20,11 @@
   $: isAdmin = $permissions.isAdmin;
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
-  // Tab state
-  let activeTab = 'plans'; // 'plans' | 'inspections'
-
-  // Plans tab state
+  let activeTab = 'plans';
   let showUploader       = false;
   let showPlanReport     = false;
   let selectedPlanId     = null;
+  let showBuildingOverview = false;  // NEW
   let loading            = true;
 
   $: plans        = $plansStore.plans;
@@ -47,27 +46,42 @@
     } finally { loading = false; }
   }
 
-  function handlePlanSelect(e)   { selectedPlanId = e.detail.planId; }
-  function handleBackToList()    { selectedPlanId = null; }
-  function handlePlanCreated(e)  { showUploader = false; selectedPlanId = e.detail.planId; loadPlans(); }
+  function handlePlanSelect(e) {
+    if (e.detail.isBuildingOverview) {
+      // NEW: Handle Building Overview selection
+      showBuildingOverview = true;
+      selectedPlanId = null;
+    } else {
+      selectedPlanId = e.detail.planId;
+      showBuildingOverview = false;
+    }
+  }
+  
+  function handleBackToList() {
+    selectedPlanId = null;
+    showBuildingOverview = false;
+  }
+  
+  function handlePlanCreated(e)  { showUploader = false; selectedPlanId = e.detail.planId; showBuildingOverview = false; loadPlans(); }
   function handlePlanUpdated()   { loadPlans(); }
-  function handlePlanDeleted()   { selectedPlanId = null; loadPlans(); }
-  function handlePlanCopied(e)   { selectedPlanId = e.detail.planId; loadPlans(); }
+  function handlePlanDeleted()   { selectedPlanId = null; showBuildingOverview = false; loadPlans(); }
+  function handlePlanCopied(e)   { selectedPlanId = e.detail.planId; showBuildingOverview = false; loadPlans(); }
 
-  // When switching tabs, clear plan selection
   function switchTab(tab) {
     activeTab = tab;
-    if (tab !== 'plans') selectedPlanId = null;
+    if (tab !== 'plans') {
+      selectedPlanId = null;
+      showBuildingOverview = false;
+    }
   }
 </script>
 
 <div class="text-white">
 
-  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
   <div class="mb-6">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
-        {#if selectedPlan}
+        {#if selectedPlan || showBuildingOverview}
           <Button variant="secondary" size="small" icon="arrow-left" on:click={handleBackToList}>
             Back
           </Button>
@@ -75,7 +89,13 @@
         <Icon name="map" size={8} className="text-blue-400" />
         <div>
           <h1 class="text-2xl font-bold">
-            {selectedPlan ? selectedPlan.name : 'Floor Plans'}
+            {#if showBuildingOverview}
+              Building Overview
+            {:else if selectedPlan}
+              {selectedPlan.name}
+            {:else}
+              Floor Plans
+            {/if}
           </h1>
           {#if selectedPlan}
             <p class="text-sm text-gray-400">
@@ -84,13 +104,14 @@
                 · Floor {selectedPlan.floor_level}
               {/if}
             </p>
+          {:else if showBuildingOverview}
+            <p class="text-sm text-gray-400">All floors combined</p>
           {:else if activeTab === 'plans' && plans.length > 0}
             <p class="text-sm text-gray-400">{plans.length} {plans.length === 1 ? 'plan' : 'plans'} available</p>
           {/if}
         </div>
       </div>
 
-      <!-- Header action buttons — Plans tab only -->
       {#if activeTab === 'plans' && plans.length > 0 && !loading}
         <div class="flex items-center gap-2">
           <Button variant="secondary" size="medium" icon="download"
@@ -98,7 +119,7 @@
                   disabled={plans.length === 0}>
             Floor Plan Report
           </Button>
-          {#if isAdmin && !selectedPlan}
+          {#if isAdmin && !selectedPlan && !showBuildingOverview}
             <Button variant="primary" size="medium" icon="plus" on:click={() => showUploader = true}>
               New Floor Plan
             </Button>
@@ -107,8 +128,7 @@
       {/if}
     </div>
 
-    <!-- ── Tab navigation (same pattern as UserListApp) ───────────────────── -->
-    {#if !selectedPlan}
+    {#if !selectedPlan && !showBuildingOverview}
       <div class="flex space-x-2 border-b border-slate-600">
         <button
           class="px-4 py-2 transition-colors {activeTab === 'plans'
@@ -138,15 +158,18 @@
     {/if}
   </div>
 
-  <!-- ── Main content ────────────────────────────────────────────────────────── -->
-
   {#if activeTab === 'plans'}
-    <!-- PLANS TAB -->
     {#if loading}
       <div class="text-center py-12">
         <Icon name="loading" size={12} className="animate-spin mx-auto mb-4 text-purple-400" />
         <p class="text-gray-400">Loading floor plans…</p>
       </div>
+
+    {:else if showBuildingOverview}
+      <BuildingOverview
+        {plans}
+        on:planUpdated={handlePlanUpdated}
+      />
 
     {:else if selectedPlan}
       <PlanViewer
@@ -161,13 +184,10 @@
     {/if}
 
   {:else if activeTab === 'inspections'}
-    <!-- INSPECTIONS TAB -->
     <WalkInspectionsTab {isAdmin} />
   {/if}
 
 </div>
-
-<!-- ── Modals ──────────────────────────────────────────────────────────────── -->
 
 {#if showUploader}
   <PlanUploader
@@ -176,7 +196,6 @@
   />
 {/if}
 
-<!-- UPDATED: Added context props for smart floor defaults -->
 {#if showPlanReport && plans.length > 0}
   <PlansReport
     {plans}

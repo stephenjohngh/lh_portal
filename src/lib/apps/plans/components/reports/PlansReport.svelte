@@ -24,7 +24,20 @@
 
   let floorScope = contextSource === 'floor' && contextPlanId ? contextPlanId : 'all';
   
-  $: activePlans  = floorScope === 'all' ? plans : plans.filter(p => p.id === floorScope);
+  // Calculate active plans based on floor scope
+  $: activePlans = (() => {
+    if (floorScope === 'all') return plans;
+    if (floorScope === 'basement') {
+      // U + L floors
+      return plans.filter(p => p.floor_level === 'U' || p.floor_level === 'L');
+    }
+    if (floorScope === 'residential') {
+      // G through 7
+      return plans.filter(p => ['G', '1', '2', '3', '4', '5', '6', '7'].includes(p.floor_level));
+    }
+    // Individual floor
+    return plans.filter(p => p.id === floorScope);
+  })();
 
   $: storeElements = $plansStore.elements;
   let loading  = false;
@@ -254,7 +267,7 @@
 
   <div class="section-spacing">
 
-    <!-- Floor scope with DROPDOWN MENU for individual floors -->
+    <!-- Floor scope with grouped options -->
     <div>
       <h4 class="font-semibold mb-3">
         Floors
@@ -268,8 +281,8 @@
           </span>
         {/if}
       </h4>
-      <div class="flex gap-2 items-center">
-        <!-- All floors button -->
+      <div class="flex gap-2 items-center flex-wrap">
+        <!-- All floors -->
         <button
           class="px-4 py-2 rounded-lg border text-sm transition-colors"
           class:border-purple-500={floorScope === 'all'}
@@ -279,21 +292,53 @@
           style={floorScope === 'all' ? 'background:rgba(168,85,247,0.1)' : ''}
           on:click={() => floorScope = 'all'}
         >
-          All floors <span class="text-xs opacity-60 ml-1">({plans.length})</span>
+          All <span class="text-xs opacity-60 ml-1">({plans.length})</span>
         </button>
+        
+        <!-- Basement (U+L) -->
+        {#if plans.filter(p => p.floor_level === 'U' || p.floor_level === 'L').length > 0}
+          {@const basementPlans = plans.filter(p => p.floor_level === 'U' || p.floor_level === 'L')}
+          <button
+            class="px-4 py-2 rounded-lg border text-sm transition-colors"
+            class:border-purple-500={floorScope === 'basement'}
+            class:text-purple-300={floorScope === 'basement'}
+            class:border-slate-600={floorScope !== 'basement'}
+            class:text-gray-400={floorScope !== 'basement'}
+            style={floorScope === 'basement' ? 'background:rgba(168,85,247,0.1)' : ''}
+            on:click={() => floorScope = 'basement'}
+          >
+            Basement <span class="text-xs opacity-60 ml-1">({basementPlans.length})</span>
+          </button>
+        {/if}
+        
+        <!-- Residential (G-7) -->
+        {#if plans.filter(p => ['G', '1', '2', '3', '4', '5', '6', '7'].includes(p.floor_level)).length > 0}
+          {@const residentialPlans = plans.filter(p => ['G', '1', '2', '3', '4', '5', '6', '7'].includes(p.floor_level))}
+          <button
+            class="px-4 py-2 rounded-lg border text-sm transition-colors"
+            class:border-purple-500={floorScope === 'residential'}
+            class:text-purple-300={floorScope === 'residential'}
+            class:border-slate-600={floorScope !== 'residential'}
+            class:text-gray-400={floorScope !== 'residential'}
+            style={floorScope === 'residential' ? 'background:rgba(168,85,247,0.1)' : ''}
+            on:click={() => floorScope = 'residential'}
+          >
+            Residential <span class="text-xs opacity-60 ml-1">({residentialPlans.length})</span>
+          </button>
+        {/if}
         
         <!-- Individual floor dropdown -->
         <div class="relative">
           <select
             bind:value={floorScope}
             class="px-4 py-2 rounded-lg border text-sm transition-colors bg-slate-800 cursor-pointer"
-            class:border-purple-500={floorScope !== 'all'}
-            class:text-purple-300={floorScope !== 'all'}
-            class:border-slate-600={floorScope === 'all'}
-            class:text-gray-400={floorScope === 'all'}
-            style={floorScope !== 'all' ? 'background:rgba(168,85,247,0.1)' : ''}
+            class:border-purple-500={floorScope !== 'all' && floorScope !== 'basement' && floorScope !== 'residential'}
+            class:text-purple-300={floorScope !== 'all' && floorScope !== 'basement' && floorScope !== 'residential'}
+            class:border-slate-600={floorScope === 'all' || floorScope === 'basement' || floorScope === 'residential'}
+            class:text-gray-400={floorScope === 'all' || floorScope === 'basement' || floorScope === 'residential'}
+            style={floorScope !== 'all' && floorScope !== 'basement' && floorScope !== 'residential' ? 'background:rgba(168,85,247,0.1)' : ''}
           >
-            <option value="all" disabled>Select individual floor...</option>
+            <option value="all" disabled>Select single floor...</option>
             {#each plans as plan}
               <option value={plan.id}>Floor {plan.floor_level}</option>
             {/each}

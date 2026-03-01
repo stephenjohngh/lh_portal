@@ -1,44 +1,48 @@
 <!-- src/lib/apps/plans/components/BuildingOverview.svelte -->
-<!-- Building-wide overview showing all elements across all floors with filters -->
+<!-- Building Overview: Combined view of all floors (no floor plan image) -->
 <script>
-  import { onMount } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import Button from '$lib/components/common/Button.svelte';
   import PlanFilters from './PlanFilters.svelte';
   import ElementModal from './ElementModal.svelte';
   import { plansStore } from '../stores/plansStore';
   import {
     ELEMENT_TYPE_OPTIONS,
-    ELEMENT_STATUS_OPTIONS,
-    FLOOR_LEVELS,
     getElementDisplayName,
     getElementStatusConfig,
     getAttributeSummary
   } from '$lib/utils/planConstants';
-  import { permissions } from '$lib/stores/permissions';
+  import { formatNotesForDisplay, parseNotesValue } from '$lib/utils/notesParser';
 
   const logger = getLogger('BuildingOverview');
+  const dispatch = createEventDispatcher();
 
-  export let plans = [];
-  export let buildingImageUrl = null;  // Optional building image
+  export let plans;
 
-  $: isAdmin = $permissions.isAdmin;
-  $: canEdit = $permissions.isAdmin || $permissions.canModify;
-
+  // Load all elements for all plans
   let allElements = [];
-  let loading = true;
   let selectedElement = null;
   let showElementModal = false;
+  let inventoryView = 'summary'; // Default to summary for building overview
 
   let filters = {
     types: [], statuses: [], searchText: '',
-    lightFilters:     { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
-    communalFilters:  { subtypes: [], security: [], retained: false },
+    lightFilters: { subtypes: [], battery: [], emergency: false, movementSensor: false, lightSensor: false },
+    communalFilters: { subtypes: [], security: [], retained: false },
     apartmentFilters: {},
-    fireFilters:      { subtypes: [] },
-    otherFilters:     { subtypes: [] }
+    fireFilters: { subtypes: [] }
   };
+
+  $: storeElements = $plansStore.elements;
+  
+  // Combine all elements from all plans
+  $: allElements = plans.flatMap(plan => (storeElements[plan.id] || []).map(el => ({
+    ...el,
+    _planId: plan.id,
+    _floorLevel: plan.floor_level,
+    _building: plan.building
+  })));
 
   $: elementCounts = allElements.reduce((acc, el) => {
     acc[el.element_type] = (acc[el.element_type] || 0) + 1;
@@ -51,67 +55,38 @@
     filters.lightFilters?.emergency || filters.lightFilters?.movementSensor || filters.lightFilters?.lightSensor ||
     (filters.communalFilters?.subtypes?.length > 0) || (filters.communalFilters?.security?.length > 0) ||
     filters.communalFilters?.retained ||
-    (filters.fireFilters?.subtypes?.length > 0) ||
-    (filters.otherFilters?.subtypes?.length > 0)
+    (filters.fireFilters?.subtypes?.length > 0)
   );
 
   $: filteredElements = hasActiveFilters ? applyFilters(allElements, filters) : allElements;
 
-  $: sortedElements = [...filteredElements].sort((a, b) => {
-    // Sort by floor level first (using standard order)
-    const floorA = a.floor_level ?? '';
-    const floorB = b.floor_level ?? '';
-    const floorOrder = getFloorOrder(floorA) - getFloorOrder(floorB);
-    if (floorOrder !== 0) return floorOrder;
-
-    // Then by element type
+  $: sortedElementsForTable = [...filteredElements].sort((a, b) => {
     if (a.element_type !== b.element_type) return a.element_type.localeCompare(b.element_type);
-
-    // Finally by asset ID
+    if (a._floorLevel !== b._floorLevel) {
+      const order = { 'U': 0, 'L': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
+      return (order[a._floorLevel] || 999) - (order[b._floorLevel] || 999);
+    }
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
 
-  onMount(async () => {
-    await loadAllElements();
-  });
-
-  async function loadAllElements() {
-    logger('Loading all elements across all floors');
-    loading = true;
-    try {
-      const elementsWithFloor = [];
+  $: summaryData = (() => {
+    const summary = {};
+    filteredElements.forEach(el => {
+      const type = el.element_type;
+      const subtype = el.subtype || 'No subtype';
+      const status = el.status;
       
-      for (const plan of plans) {
-        const elements = await plansStore.loadElements(plan.id);
-        
-        // Add floor_level and plan_name to each element for display
-        elements.forEach(el => {
-          elementsWithFloor.push({
-            ...el,
-            floor_level: plan.floor_level,
-            plan_name: plan.name,
-            building: plan.building,
-            plan_id: plan.id
-          });
-        });
-      }
+      if (!summary[type]) summary[type] = {};
+      if (!summary[type][subtype]) summary[type][subtype] = {};
+      if (!summary[type][subtype][status]) summary[type][subtype][status] = 0;
       
-      allElements = elementsWithFloor;
-      logger('✅ Loaded', allElements.length, 'elements across', plans.length, 'floors');
-    } catch (error) {
-      logger('❌ Error loading elements:', error.message);
-    } finally {
-      loading = false;
-    }
-  }
+      summary[type][subtype][status]++;
+    });
+    return summary;
+  })();
 
-  function getFloorOrder(floorLevel) {
-    const order = { 'L': 0, 'U': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
-    return order[String(floorLevel)] ?? 999;
-  }
-
-  function applyFilters(allEls, f) {
-    let result = [...allEls];
+  function applyFilters(allElements, f) {
+    let result = [...allElements];
 
     if (f.types.length > 0)
       result = result.filter(el => f.types.includes(el.element_type));
@@ -119,13 +94,16 @@
       result = result.filter(el => f.statuses.includes(el.status));
     if (f.searchText) {
       const q = f.searchText.toLowerCase();
-      result = result.filter(el =>
-        el.label?.toLowerCase().includes(q)    ||
-        el.asset_id?.toLowerCase().includes(q) ||
-        el.subtype?.toLowerCase().includes(q)  ||
-        el.notes?.toLowerCase().includes(q)    ||
-        getElementDisplayName(el, el.floor_level).toLowerCase().includes(q)
-      );
+      result = result.filter(el => {
+        const notesValue = parseNotesValue(el.notes || '').toLowerCase();
+        return (
+          el.label?.toLowerCase().includes(q) ||
+          el.asset_id?.toLowerCase().includes(q) ||
+          el.subtype?.toLowerCase().includes(q) ||
+          notesValue.includes(q) ||
+          getElementDisplayName(el, el._floorLevel).toLowerCase().includes(q)
+        );
+      });
     }
 
     const lf = f.lightFilters;
@@ -148,15 +126,7 @@
     if (ff?.subtypes?.length > 0)
       result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
 
-    const of = f.otherFilters;
-    if (of?.subtypes?.length > 0)
-      result = result.filter(el => el.element_type !== 'other' || of.subtypes.includes(el.subtype));
-
     return result;
-  }
-
-  function handleFilterChange(event) {
-    filters = event.detail;
   }
 
   function handleElementClick(element) {
@@ -169,8 +139,9 @@
     try {
       if (!isNew) {
         await plansStore.updateElement(element.id, element);
+        await plansStore.loadElements(element._planId);
+        dispatch('planUpdated');
       }
-      await loadAllElements();
       showElementModal = false;
       selectedElement = null;
     } catch (error) {
@@ -182,7 +153,8 @@
     const { elementId, planId } = event.detail;
     try {
       await plansStore.deleteElement(elementId, planId);
-      await loadAllElements();
+      await plansStore.loadElements(planId);
+      dispatch('planUpdated');
       showElementModal = false;
       selectedElement = null;
     } catch (error) {
@@ -190,29 +162,21 @@
     }
   }
 
-  function getFloorLabel(floorLevel) {
-    const level = FLOOR_LEVELS.find(f => f.value === String(floorLevel));
-    return level ? level.label : `Floor ${floorLevel}`;
-  }
+  function handleFilterChange(event) { filters = event.detail; }
 </script>
 
 <div class="grid grid-cols-12 gap-6">
-  <!-- Filters Sidebar -->
   <div class="col-span-3">
     <PlanFilters elements={allElements} {elementCounts} on:change={handleFilterChange} />
   </div>
 
-  <!-- Main Content -->
   <div class="col-span-9">
     <div class="card-info">
-      <!-- Stats Bar -->
       <div class="flex items-center justify-between mb-4">
         <div class="flex-row-md">
           <div class="text-sm">
             <span class="font-semibold">{allElements.length}</span>
-            <span class="text-gray-400"> total elements across </span>
-            <span class="font-semibold">{plans.length}</span>
-            <span class="text-gray-400"> floors</span>
+            <span class="text-gray-400"> total elements across all floors</span>
           </div>
           <div class="flex-row-sm">
             {#each ELEMENT_TYPE_OPTIONS as type}
@@ -230,107 +194,159 @@
         </div>
       </div>
 
-      <!-- Building Image Preview (if provided) -->
-      {#if buildingImageUrl}
-        <div class="mb-6 border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900">
-          <img
-            src={buildingImageUrl}
-            alt="Building"
-            class="w-full h-auto max-h-96 object-contain"
-          />
-        </div>
-      {/if}
-
-      <!-- Info Box -->
-      <div class="mb-6 bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-        <div class="flex items-start gap-3">
+      <div class="bg-slate-700/50 rounded-lg p-4 mb-4">
+        <div class="flex items-start gap-2 text-sm text-gray-300">
           <Icon name="info" size={5} className="text-blue-400 flex-shrink-0 mt-0.5" />
-          <div class="text-sm text-gray-300">
-            <p class="font-semibold mb-1">Building Overview</p>
-            <p>
-              This view shows all elements across all floors in the building. 
-              Use filters to narrow down results. Click any element to view details.
-              {#if hasActiveFilters}
-                <span class="text-amber-400 ml-1">
-                  Filters active — {allElements.length - filteredElements.length} elements hidden.
-                </span>
-              {/if}
-            </p>
-          </div>
+          <p>
+            <strong>Building Overview</strong> combines all elements from all floors in this building.
+            {#if hasActiveFilters}
+              <span class="text-amber-400 ml-1">
+                Filters active — {allElements.length - filteredElements.length} elements hidden.
+              </span>
+            {/if}
+          </p>
         </div>
       </div>
     </div>
 
-    <!-- Elements Table -->
-    {#if loading}
-      <div class="bg-slate-800/50 rounded-lg p-12 text-center">
-        <Icon name="loading" size={12} className="animate-spin mx-auto mb-4 text-purple-400" />
-        <p class="text-gray-400">Loading all elements...</p>
-      </div>
-    {:else if allElements.length === 0}
-      <div class="bg-slate-800/50 rounded-lg p-12 text-center">
-        <Icon name="map" size={12} className="text-gray-600 mx-auto mb-4" />
-        <h3 class="text-xl font-bold mb-2">No Elements Found</h3>
-        <p class="text-gray-400">No elements have been added to any floor plans yet.</p>
-      </div>
-    {:else}
-      <div class="bg-slate-800/50 rounded-lg p-6">
-        <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
-          <Icon name="table" size={5} className="text-purple-400" />
-          Building Inventory
-          <span class="text-sm font-normal text-gray-400">
-            ({filteredElements.length} {filteredElements.length === 1 ? 'element' : 'elements'})
-          </span>
-        </h3>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-slate-700">
-                {#each ['Floor','Type','Name','Label','Subtype','Attributes','Status'] as col}
-                  <th class="text-left py-3 px-4 font-semibold text-sm">{col}</th>
-                {/each}
-              </tr>
-            </thead>
-            <tbody>
-              {#each sortedElements as element (element.id)}
-                {@const typeConfig   = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
-                {@const statusConfig = getElementStatusConfig(element.status)}
-                <tr
-                  class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
-                  on:click={() => handleElementClick(element)}
-                >
-                  <td class="py-3 px-4">
-                    <div class="text-sm font-medium text-purple-400">
-                      {getFloorLabel(element.floor_level)}
-                    </div>
-                  </td>
-                  <td class="py-3 px-4 text-sm">{typeConfig?.label ?? element.element_type}</td>
-                  <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, element.floor_level)}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.label   || '—'}</td>
-                  <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
-                  <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
-                  <td class="py-3 px-4">
-                    <span class="text-sm font-medium" style="color: {statusConfig?.color ?? '#9ca3af'}">
-                      {statusConfig?.label ?? element.status}
-                    </span>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+    {#if allElements.length > 0}
+      <div class="bg-slate-800/50 rounded-lg p-6 mt-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <h3 class="text-xl font-bold flex items-center gap-2">
+              <Icon name="table" size={5} className="text-purple-400" />
+              Inventory
+            </h3>
+            <div class="flex gap-1 border border-slate-600 rounded-lg p-1">
+              <button
+                class="px-3 py-1 text-sm rounded transition-colors"
+                class:bg-purple-600={inventoryView === 'list'}
+                class:text-white={inventoryView === 'list'}
+                class:text-gray-400={inventoryView !== 'list'}
+                class:hover:text-white={inventoryView !== 'list'}
+                on:click={() => inventoryView = 'list'}
+              >
+                List
+              </button>
+              <button
+                class="px-3 py-1 text-sm rounded transition-colors"
+                class:bg-purple-600={inventoryView === 'summary'}
+                class:text-white={inventoryView === 'summary'}
+                class:text-gray-400={inventoryView !== 'summary'}
+                class:hover:text-white={inventoryView !== 'summary'}
+                on:click={() => inventoryView = 'summary'}
+              >
+                Summary
+              </button>
+            </div>
+          </div>
+          <div class="text-sm text-gray-400">
+            {filteredElements.length} element{filteredElements.length !== 1 ? 's' : ''}
+          </div>
         </div>
+
+        {#if inventoryView === 'list'}
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-slate-700">
+                  {#each ['Floor','Type','Name','Label','Subtype','Notes','Status'] as col}
+                    <th class="text-left py-3 px-4 font-semibold text-sm">{col}</th>
+                  {/each}
+                </tr>
+              </thead>
+              <tbody>
+                {#each sortedElementsForTable as element (element.id)}
+                  {@const typeConfig   = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
+                  {@const statusConfig = getElementStatusConfig(element.status)}
+                  <tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
+                    on:click={() => handleElementClick(element)}>
+                    <td class="py-3 px-4 text-sm text-gray-400">{element._floorLevel}</td>
+                    <td class="py-3 px-4">
+                      <span class="text-sm">{typeConfig?.label ?? element.element_type}</span>
+                    </td>
+                    <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, element._floorLevel)}</td>
+                    <td class="py-3 px-4 text-sm text-gray-400">{element.label || '—'}</td>
+                    <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
+                    <td class="py-3 px-4 text-xs text-gray-400">{formatNotesForDisplay(element.notes, 40)}</td>
+                    <td class="py-3 px-4">
+                      <span class="text-sm font-medium" style="color: {statusConfig?.color ?? '#9ca3af'}">
+                        {statusConfig?.label ?? element.status}
+                      </span>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        
+        {:else if inventoryView === 'summary'}
+          <div class="space-y-6">
+            {#each Object.entries(summaryData).sort(([a], [b]) => a.localeCompare(b)) as [type, subtypes]}
+              {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === type)}
+              {@const typeTotal = Object.values(subtypes).reduce((sum, statuses) => 
+                sum + Object.values(statuses).reduce((s, count) => s + count, 0), 0)}
+              
+              <div class="bg-slate-700/40 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-600">
+                  <div class="flex items-center gap-2">
+                    <span class="text-2xl">{typeConfig?.icon || '📦'}</span>
+                    <h4 class="text-lg font-semibold text-white">{typeConfig?.label ?? type}</h4>
+                  </div>
+                  <span class="text-lg font-bold text-purple-300">{typeTotal}</span>
+                </div>
+                
+                <div class="space-y-2">
+                  {#each Object.entries(subtypes).sort(([a], [b]) => a.localeCompare(b)) as [subtype, statuses]}
+                    {@const subtypeTotal = Object.values(statuses).reduce((sum, count) => sum + count, 0)}
+                    
+                    <div class="flex items-center justify-between py-2 px-3 rounded bg-slate-800/50 hover:bg-slate-800/70 transition-colors">
+                      <div class="flex-1">
+                        <div class="font-medium text-sm text-gray-200">{subtype}</div>
+                        <div class="flex gap-3 mt-1 text-xs">
+                          {#each Object.entries(statuses) as [status, count]}
+                            {@const statusConfig = getElementStatusConfig(status)}
+                            <span class="flex items-center gap-1">
+                              <span class="w-2 h-2 rounded-full" style="background-color: {statusConfig?.color ?? '#9ca3af'}"></span>
+                              <span class="text-gray-400">{statusConfig?.label ?? status}:</span>
+                              <span class="text-white font-medium">{count}</span>
+                            </span>
+                          {/each}
+                        </div>
+                      </div>
+                      <div class="text-right ml-4">
+                        <span class="text-lg font-semibold text-purple-300">{subtypeTotal}</span>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+
+            {#if Object.keys(summaryData).length > 0}
+              {@const grandTotal = Object.values(summaryData).reduce((sum, subtypes) => 
+                sum + Object.values(subtypes).reduce((s, statuses) => 
+                  s + Object.values(statuses).reduce((ss, count) => ss + count, 0), 0), 0)}
+              
+              <div class="bg-purple-600/20 border border-purple-500/50 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-lg font-bold text-white">Grand Total</span>
+                  <span class="text-2xl font-bold text-purple-300">{grandTotal}</span>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
 </div>
 
-<!-- Element Modal -->
 {#if showElementModal && selectedElement}
-  {@const plan = plans.find(p => p.id === selectedElement.plan_id)}
+  {@const sourcePlan = plans.find(p => p.id === selectedElement._planId)}
   <ElementModal
     element={selectedElement}
-    position={null}
-    {plan}
+    plan={sourcePlan}
     on:save={handleElementSave}
     on:delete={handleElementDelete}
     on:close={() => { showElementModal = false; selectedElement = null; }}
