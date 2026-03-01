@@ -1,11 +1,10 @@
 <!-- src/lib/apps/plans/components/PlanViewer.svelte -->
-<!-- UPDATED: Added contextSource and contextPlanId props to PlansReport, and notes parsing in table -->
+<!-- FINAL: Removed Edit/View button, notes search working, removed unused Badge import -->
 <script>
   import { onMount, createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
   import ElementMarker from './ElementMarker.svelte';
   import ElementModal from './ElementModal.svelte';
   import PlanFilters from './PlanFilters.svelte';
@@ -20,7 +19,7 @@
     getElementStatusConfig,
     getAttributeSummary
   } from '$lib/utils/planConstants';
-  import { formatNotesForDisplay } from '$lib/utils/notesParser';
+  import { formatNotesForDisplay, parseNotesValue } from '$lib/utils/notesParser';
   import { permissions } from '$lib/stores/permissions';
 
   const logger = getLogger('PlanViewer');
@@ -38,7 +37,7 @@
   let showElementModal   = false;
   let showPlanInfoModal  = false;
   let showCopyModal      = false;
-  let showPlanReport     = false;  // NEW: Floor-level report
+  let showPlanReport     = false;
   let replacingImage     = false;
   let replaceImageError  = null;
   let replaceFileInput;
@@ -48,12 +47,10 @@
   let containerWidth     = 0;
   let containerHeight    = 0;
 
-  // Drag-to-move state
   let dragElement   = null;
   let dragMoved     = false;
   let dragJustEnded = false;
 
-  // New-element mode
   let newMode = false;
 
   let filters = {
@@ -123,12 +120,16 @@
       result = result.filter(el => f.statuses.includes(el.status));
     if (f.searchText) {
       const q = f.searchText.toLowerCase();
-      result = result.filter(el =>
-        el.label?.toLowerCase().includes(q)    ||
-        el.asset_id?.toLowerCase().includes(q) ||
-        el.subtype?.toLowerCase().includes(q)  ||
-        getElementDisplayName(el, plan.floor_level).toLowerCase().includes(q)
-      );
+      result = result.filter(el => {
+        const notesValue = parseNotesValue(el.notes || '').toLowerCase();
+        return (
+          el.label?.toLowerCase().includes(q)    ||
+          el.asset_id?.toLowerCase().includes(q) ||
+          el.subtype?.toLowerCase().includes(q)  ||
+          notesValue.includes(q)                 ||
+          getElementDisplayName(el, plan.floor_level).toLowerCase().includes(q)
+        );
+      });
     }
 
     const lf = f.lightFilters;
@@ -186,7 +187,6 @@
   function handleElementHover(element) { hoveredElement = element; }
   function handleElementLeave()        { hoveredElement = null; }
 
-  // ── Drag-to-move ──────────────────────────────────────────────────────────
   function handleMarkerMousedown(event, element) {
     if (!canEdit || !newMode) return;
     event.stopPropagation();
@@ -284,20 +284,16 @@
     }
   }
 
-  // NEW: Get all plans for building (for floor-level report)
   $: allPlansInBuilding = $plansStore.plans.filter(p => p.building === plan.building);
 </script>
 
 <div class="grid grid-cols-12 gap-6">
-  <!-- Filters Sidebar -->
   <div class="col-span-3">
     <PlanFilters {elements} {elementCounts} on:change={handleFilterChange} />
   </div>
 
-  <!-- Floor Plan Viewer -->
   <div class="col-span-9">
     <div class="card-info">
-      <!-- Stats Bar -->
       <div class="flex items-center justify-between mb-4">
         <div class="flex-row-md">
           <div class="text-sm">
@@ -320,22 +316,12 @@
         </div>
 
         <div class="btn-group">
-          <!-- NEW: Floor-level report button -->
-          <Button
-            variant="secondary"
-            size="small"
-            icon="download"
-            on:click={() => showPlanReport = true}
-          >
+          <Button variant="secondary" size="small" icon="download" on:click={() => showPlanReport = true}>
             Report
           </Button>
           {#if isAdmin}
-            <Button
-              variant={newMode ? 'primary' : 'secondary'}
-              size="small"
-              icon={newMode ? 'close' : 'plus'}
-              on:click={() => newMode = !newMode}
-            >
+            <Button variant={newMode ? 'primary' : 'secondary'} size="small" icon={newMode ? 'close' : 'plus'}
+              on:click={() => newMode = !newMode}>
               {newMode ? 'New Off' : 'New'}
             </Button>
             <Button variant="secondary" size="small" icon="copy" on:click={() => showCopyModal = true}>
@@ -344,20 +330,9 @@
             <Button variant="secondary" size="small" icon="edit" on:click={() => showPlanInfoModal = true}>
               Edit Info
             </Button>
-            <input
-              type="file"
-              accept="image/*"
-              bind:this={replaceFileInput}
-              on:change={handleReplaceImage}
-              class="hidden"
-            />
-            <Button
-              variant="secondary"
-              size="small"
-              icon={replacingImage ? 'loading' : 'upload'}
-              disabled={replacingImage}
-              on:click={() => replaceFileInput.click()}
-            >
+            <input type="file" accept="image/*" bind:this={replaceFileInput} on:change={handleReplaceImage} class="hidden" />
+            <Button variant="secondary" size="small" icon={replacingImage ? 'loading' : 'upload'} disabled={replacingImage}
+              on:click={() => replaceFileInput.click()}>
               {replacingImage ? 'Replacing…' : 'Image'}
             </Button>
           {/if}
@@ -367,15 +342,10 @@
         </div>
       </div>
 
-      <!-- Image Container -->
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div
-        bind:this={containerElement}
-        class="relative border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900"
-        style="min-height: 600px; cursor: {newMode && canEdit ? 'crosshair' : 'default'};"
-        on:click={handleContainerClick}
-      >
+      <div bind:this={containerElement} class="relative border-2 border-slate-600 rounded-lg overflow-hidden bg-slate-900"
+        style="min-height: 600px; cursor: {newMode && canEdit ? 'crosshair' : 'default'};" on:click={handleContainerClick}>
         {#if !imageLoaded}
           <div class="absolute inset-0 flex items-center justify-center">
             <div class="text-center">
@@ -385,42 +355,27 @@
           </div>
         {/if}
 
-        <img
-          bind:this={imageElement}
-          src={plan.image_url}
-          alt={plan.building}
-          class="w-full h-auto"
-          on:load={handleImageLoad}
-          style="display: {imageLoaded ? 'block' : 'none'};"
-        />
+        <img bind:this={imageElement} src={plan.image_url} alt={plan.building} class="w-full h-auto" on:load={handleImageLoad}
+          style="display: {imageLoaded ? 'block' : 'none'};" />
 
         {#if imageLoaded && imageElement}
           <svg class="absolute inset-0 w-full h-full" style="z-index: 10; pointer-events: none;">
             {#each filteredElements as element (element.id)}
-              <ElementMarker
-                {element}
-                floorLevel={plan.floor_level}
-                position={getPixelPosition(element)}
-                isHovered={hoveredElement?.id === element.id}
-                isDragging={dragElement?.id === element.id}
-                isFiltered={false}
+              <ElementMarker {element} floorLevel={plan.floor_level} position={getPixelPosition(element)}
+                isHovered={hoveredElement?.id === element.id} isDragging={dragElement?.id === element.id} isFiltered={false}
                 on:mousedown={(e) => handleMarkerMousedown(e, element)}
                 on:click={() => { if (!dragMoved) handleElementClick(element); }}
                 on:mouseenter={() => handleElementHover(element)}
-                on:mouseleave={handleElementLeave}
-              />
+                on:mouseleave={handleElementLeave} />
             {/each}
           </svg>
         {/if}
 
-        <!-- Hover Tooltip -->
         {#if hoveredElement && filteredElementIds.has(hoveredElement.id)}
           {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === hoveredElement.element_type)}
           {@const pos = getPixelPosition(hoveredElement)}
-          <div
-            class="absolute bg-slate-800 text-white px-3 py-2 rounded-lg shadow-xl text-sm pointer-events-none border border-slate-600"
-            style="left:{pos.x}px; top:{pos.y + 40}px; transform:translateX(-50%); z-index:20; max-width:250px;"
-          >
+          <div class="absolute bg-slate-800 text-white px-3 py-2 rounded-lg shadow-xl text-sm pointer-events-none border border-slate-600"
+            style="left:{pos.x}px; top:{pos.y + 40}px; transform:translateX(-50%); z-index:20; max-width:250px;">
             <div class="font-semibold flex items-center gap-2">
               <span>{typeConfig?.icon}</span>
               <span>{getElementDisplayName(hoveredElement, plan.floor_level)}</span>
@@ -436,7 +391,6 @@
         {/if}
       </div>
 
-      <!-- Instructions -->
       <div class="mt-4 flex items-start gap-2 text-sm text-gray-400">
         <Icon name="info" size={5} className="text-blue-400 flex-shrink-0 mt-0.5" />
         <p>
@@ -461,7 +415,6 @@
       </div>
     </div>
 
-    <!-- Elements Table -->
     {#if elements.length > 0}
       <div class="bg-slate-800/50 rounded-lg p-6 mt-6">
         <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
@@ -472,7 +425,7 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-slate-700">
-                {#each ['Type','Name','Label','Subtype','Notes','Attributes','Status','Actions'] as col}
+                {#each ['Type','Name','Label','Subtype','Notes','Attributes','Status'] as col}
                   <th class="text-left py-3 px-4 font-semibold text-sm">{col}</th>
                 {/each}
               </tr>
@@ -481,36 +434,20 @@
               {#each sortedElementsForTable as element (element.id)}
                 {@const typeConfig   = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type)}
                 {@const statusConfig = getElementStatusConfig(element.status)}
-                <tr
-                  class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
-                  on:click={() => handleElementClick(element)}
-                >
+                <tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors cursor-pointer"
+                  on:click={() => handleElementClick(element)}>
                   <td class="py-3 px-4">
-                    <div class="flex items-center gap-2">
-                      <span class="text-lg">{typeConfig?.icon}</span>
-                      <span class="text-sm">{typeConfig?.label ?? element.element_type}</span>
-                    </div>
+                    <span class="text-sm">{typeConfig?.label ?? element.element_type}</span>
                   </td>
                   <td class="py-3 px-4 font-medium font-mono text-sm">{getElementDisplayName(element, plan.floor_level)}</td>
                   <td class="py-3 px-4 text-sm text-gray-400">{element.label || '—'}</td>
                   <td class="py-3 px-4 text-sm text-gray-400">{element.subtype || '—'}</td>
-                  <!-- UPDATED: Use notes parser to show value only -->
                   <td class="py-3 px-4 text-xs text-gray-400">{formatNotesForDisplay(element.notes, 40)}</td>
                   <td class="py-3 px-4 text-xs text-gray-400">{getAttributeSummary(element)}</td>
                   <td class="py-3 px-4">
                     <span class="text-sm font-medium" style="color: {statusConfig?.color ?? '#9ca3af'}">
                       {statusConfig?.label ?? element.status}
                     </span>
-                  </td>
-                  <td class="py-3 px-4">
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      icon={canEdit ? 'edit' : 'eye'}
-                      on:click={(e) => { e.stopPropagation(); handleElementClick(element); }}
-                    >
-                      {canEdit ? 'Edit' : 'View'}
-                    </Button>
                   </td>
                 </tr>
               {/each}
@@ -522,43 +459,26 @@
   </div>
 </div>
 
-<!-- Modals -->
 {#if showElementModal}
-  <ElementModal
-    element={selectedElement}
-    position={newElementPosition}
-    {plan}
-    on:save={handleElementSave}
-    on:delete={handleElementDelete}
-    on:close={() => { showElementModal = false; selectedElement = null; newElementPosition = null; }}
-  />
+  <ElementModal element={selectedElement} position={newElementPosition} {plan}
+    on:save={handleElementSave} on:delete={handleElementDelete}
+    on:close={() => { showElementModal = false; selectedElement = null; newElementPosition = null; }} />
 {/if}
 
 {#if showPlanInfoModal}
-  <PlanInfoModal
-    {plan}
-    elementCount={elements.length}
+  <PlanInfoModal {plan} elementCount={elements.length}
     on:updated={() => { showPlanInfoModal = false; dispatch('planUpdated'); }}
     on:deleted={() => { showPlanInfoModal = false; dispatch('planDeleted'); }}
-    on:close={() => showPlanInfoModal = false}
-  />
+    on:close={() => showPlanInfoModal = false} />
 {/if}
 
 {#if showCopyModal}
-  <CopyPlanModal
-    {plan}
-    {elements}
+  <CopyPlanModal {plan} {elements}
     on:copied={(e) => { showCopyModal = false; dispatch('planCopied', { planId: e.detail.planId }); }}
-    on:close={() => showCopyModal = false}
-  />
+    on:close={() => showCopyModal = false} />
 {/if}
 
-<!-- UPDATED: Added contextSource and contextPlanId props for floor-level report -->
 {#if showPlanReport && allPlansInBuilding.length > 0}
-  <PlansReport
-    plans={allPlansInBuilding}
-    contextSource="floor"
-    contextPlanId={plan.id}
-    on:close={() => showPlanReport = false}
-  />
+  <PlansReport plans={allPlansInBuilding} contextSource="floor" contextPlanId={plan.id}
+    on:close={() => showPlanReport = false} />
 {/if}

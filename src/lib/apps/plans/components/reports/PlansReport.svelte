@@ -1,5 +1,5 @@
 <!-- src/lib/apps/plans/components/reports/PlansReport.svelte -->
-<!-- UPDATED: Smart floor defaults + notes parsing -->
+<!-- FINAL FIX: Floor scope properly defaults to contextPlanId -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }      from '$lib/utils/logger';
@@ -18,21 +18,15 @@
   const logger   = getLogger('PlansReport');
   const dispatch = createEventDispatcher();
 
-  export let plans;   // Plan[] — all plans sorted by floor
-  
-  // NEW: Context for smart defaults
-  export let contextSource = 'building';  // 'building' or 'floor'
-  export let contextPlanId = null;        // If opened from specific floor
+  export let plans;
+  export let contextSource = 'building';
+  export let contextPlanId = null;
 
-  // ── Floor scope with SMART DEFAULTS ───────────────────────────────────────
-  // CHANGED: Initialize based on context
-  let floorScope = contextSource === 'floor' && contextPlanId 
-    ? contextPlanId    // Default to specific floor
-    : 'all';           // Default to all floors
+  // FIXED: Set initial value directly based on context
+  let floorScope = contextSource === 'floor' && contextPlanId ? contextPlanId : 'all';
   
   $: activePlans  = floorScope === 'all' ? plans : plans.filter(p => p.id === floorScope);
 
-  // ── Load ALL floors' elements on mount ────────────────────────────────────
   $: storeElements = $plansStore.elements;
   let loading  = false;
   let loadError = null;
@@ -46,7 +40,6 @@
     finally     { loading = false; }
   });
 
-  // ── Options ───────────────────────────────────────────────────────────────
   let options = { includeImage: true, includeElementList: true };
 
   let selectedStatuses = [];
@@ -59,7 +52,6 @@
   }
   function handleTypeChange(e) { typeFilters = e.detail; }
 
-  // ── Filter function (applied per-floor) ───────────────────────────────────
   function filterEls(els) {
     return els.filter(e => {
       if (selectedStatuses.length > 0 && !selectedStatuses.includes(e.status))       return false;
@@ -86,7 +78,6 @@
     });
   }
 
-  // ── Per-floor preview — reactive to filters + scope ─────────────────────
   $: previewRows = [selectedStatuses, typeFilters] && activePlans.map(plan => {
     const all      = storeElements[plan.id] ?? [];
     const filtered = filterEls(all);
@@ -104,7 +95,6 @@
     return acc;
   }, {});
 
-  // ── Annotated image builder ───────────────────────────────────────────────
   const MARKER_SHAPE = {
     communal_door:  'square',
     apartment_door: 'square_inner',
@@ -185,7 +175,6 @@
     return parts.length ? parts.join(' · ') : null;
   }
 
-  // ── Generation with NOTES PARSING ──────────────────────────────────────────
   let generating  = false;
   let genProgress = '';
   let genError    = null;
@@ -193,16 +182,14 @@
   async function generateReport() {
     generating = true; genError = null; genProgress = '';
     try {
-      // Build per-floor payload — skip floors with no matching elements
       const floors = [];
       for (const plan of activePlans) {
         const els = filterEls(storeElements[plan.id] ?? []);
         if (els.length === 0) continue;
 
-        // CHANGED: Parse notes for each element
         const processedElements = els.map(el => ({
           ...el,
-          notes: parseNotesValue(el.notes)  // Extract value from key:value format
+          notes: parseNotesValue(el.notes)
         }));
 
         let imageBase64 = null;
@@ -255,7 +242,6 @@
 
   <div class="section-spacing">
 
-    <!-- Floor scope with smart defaults indicator -->
     <div>
       <h4 class="font-semibold mb-3">
         Floors
@@ -270,7 +256,6 @@
         {/if}
       </h4>
       <div class="flex gap-2 flex-wrap">
-        <!-- All floors -->
         <button
           class="px-4 py-2 rounded-lg border text-sm transition-colors"
           class:border-purple-500={floorScope === 'all'}
@@ -282,7 +267,6 @@
         >
           All floors <span class="text-xs opacity-60 ml-1">({plans.length})</span>
         </button>
-        <!-- Individual floors -->
         {#each plans as plan}
           <button
             class="px-4 py-2 rounded-lg border text-sm transition-colors"
@@ -299,7 +283,6 @@
       </div>
     </div>
 
-    <!-- Loading -->
     {#if loading}
       <div class="flex items-center gap-2 text-sm text-gray-400">
         <Icon name="loading" size={4} className="animate-spin" /> Loading element data…
@@ -308,7 +291,6 @@
       <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-sm text-red-400">⚠ {loadError}</div>
     {/if}
 
-    <!-- Options -->
     <div>
       <h4 class="font-semibold mb-3">Options</h4>
       <div class="space-y-3">
@@ -325,7 +307,6 @@
       </div>
     </div>
 
-    <!-- Status filter -->
     <div>
       <h4 class="font-semibold mb-3">Status</h4>
       <div class="space-y-2">
@@ -341,13 +322,11 @@
       </div>
     </div>
 
-    <!-- Element type filter -->
     <div>
       <h4 class="font-semibold mb-2">Element Types</h4>
       <ElementTypeFilter {elementCounts} on:change={handleTypeChange} />
     </div>
 
-    <!-- Per-floor preview table -->
     {#if !loading}
       <div>
         <h4 class="font-semibold mb-2">
