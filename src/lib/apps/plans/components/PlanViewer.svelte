@@ -596,6 +596,10 @@
 {/if}
 
 {#if showPlanReport && allPlansInBuilding.length > 0}
-  <PlansReport plans={allPlansInBuilding} contextSource="floor" contextPlanId={plan.id}
+  <PlansReport 
+    plans={allPlansInBuilding} 
+    contextSource="floor" 
+    contextPlanId={plan.id}
+    initialFilters={filters}
     on:close={() => showPlanReport = false} />
 {/if}

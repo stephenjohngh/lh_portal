@@ -201,6 +201,7 @@
     {plans}
     contextSource="building"
     contextPlanId={null}
+    initialFilters={null}
     on:close={() => showPlanReport = false}
   />
 {/if}

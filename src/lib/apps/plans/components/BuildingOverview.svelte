@@ -61,11 +61,16 @@
   $: filteredElements = hasActiveFilters ? applyFilters(allElements, filters) : allElements;
 
   $: sortedElementsForTable = [...filteredElements].sort((a, b) => {
+    // Sort by FLOOR FIRST with correct order: L, U, G, 1-7
+    const floorOrder = { 'L': 0, 'U': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
+    const floorA = floorOrder[a._floorLevel] ?? 999;
+    const floorB = floorOrder[b._floorLevel] ?? 999;
+    if (floorA !== floorB) return floorA - floorB;
+    
+    // Then by element type
     if (a.element_type !== b.element_type) return a.element_type.localeCompare(b.element_type);
-    if (a._floorLevel !== b._floorLevel) {
-      const order = { 'U': 0, 'L': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
-      return (order[a._floorLevel] || 999) - (order[b._floorLevel] || 999);
-    }
+    
+    // Finally by asset ID
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
 

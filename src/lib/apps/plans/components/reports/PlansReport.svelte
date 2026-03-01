@@ -21,6 +21,7 @@
   export let plans;
   export let contextSource = 'building';
   export let contextPlanId = null;
+  export let initialFilters = null;  // NEW: Accept filters from caller
 
   let floorScope = contextSource === 'floor' && contextPlanId ? contextPlanId : 'all';
   
@@ -28,8 +29,8 @@
   $: activePlans = (() => {
     if (floorScope === 'all') return plans;
     if (floorScope === 'basement') {
-      // U + L floors
-      return plans.filter(p => p.floor_level === 'U' || p.floor_level === 'L');
+      // L + U floors (corrected order)
+      return plans.filter(p => p.floor_level === 'L' || p.floor_level === 'U');
     }
     if (floorScope === 'residential') {
       // G through 7
@@ -59,8 +60,14 @@
     includeSummary: true  // NEW
   };
 
-  let selectedStatuses = [];
-  let typeFilters      = { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
+  // NEW: Initialize filters from caller or defaults
+  let selectedStatuses = initialFilters?.statuses || [];
+  let typeFilters = initialFilters ? {
+    types: initialFilters.types || [],
+    lightFilters: initialFilters.lightFilters || {},
+    communalFilters: initialFilters.communalFilters || {},
+    fireFilters: initialFilters.fireFilters || {}
+  } : { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
 
   function toggleStatus(s) {
     selectedStatuses = selectedStatuses.includes(s)
