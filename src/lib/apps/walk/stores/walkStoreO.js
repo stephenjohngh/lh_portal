@@ -1,6 +1,6 @@
 // src/lib/apps/walk/stores/walkStore.js
 // REFACTORED: Cleaned up, DRY principles, better abstractions
-// FIX: recordInspection now UPDATES existing inspection instead of creating duplicate
+// FIX: Removed updated_at and updated_by from operations (columns don't exist)
 
 import { writable, get } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
@@ -194,12 +194,12 @@ function createWalkStore() {
     const userId = await getCurrentUserId();
     const inspectorName = await getCurrentUserName(userId);
     
+    // FIX: Removed updated_by - column doesn't exist
     return api.create('walk_sessions', {
       ...sessionData,
       inspector_name: inspectorName,
       status: 'open',
-      created_by: userId,
-      updated_by: userId
+      created_by: userId
     });
   }
 
@@ -332,14 +332,13 @@ function createWalkStore() {
 
   async function closeSession(sessionId, notes = '') {
     logger('Closing session:', sessionId);
-    const userId = await getCurrentUserId();
     
+    // FIX: Removed updated_by - column doesn't exist
     try {
       await api.update('walk_sessions', sessionId, {
         status: 'closed',
         closed_at: new Date().toISOString(),
-        notes: notes || null,
-        updated_by: userId
+        notes: notes || null
       });
       
       update(s => ({ ...s, ...RESET_SESSION_STATE }));
@@ -535,7 +534,6 @@ function createWalkStore() {
     }, {});
   }
 
-  // FIX: Check if inspection exists and UPDATE instead of INSERT
   async function recordInspection({ elementId, result, notes, photoUrl = null }) {
     logger('Recording inspection:', elementId, result);
     const userId = await getCurrentUserId();
@@ -545,50 +543,21 @@ function createWalkStore() {
     if (!element) throw new Error('Element not found');
     
     try {
-      // Check if an inspection already exists for this element in this session
-      const existingInspections = state.inspections[elementId] || [];
-      const existingInspection = existingInspections.find(
-        insp => insp.walk_session_id === state.activeSession.id
-      );
-      
-      let inspection;
-      
-      if (existingInspection) {
-        // UPDATE existing inspection
-        logger('Updating existing inspection:', existingInspection.id);
-        inspection = await api.update('walk_element_inspections', existingInspection.id, {
-          inspection_result: result,
-          inspector_notes: notes || null,
-          inspected_by: userId,
-          inspected_at: new Date().toISOString(),
-          photo_url: photoUrl || null
-        });
-      } else {
-        // CREATE new inspection
-        logger('Creating new inspection');
-        inspection = await api.create('walk_element_inspections', {
-          walk_session_id: state.activeSession.id,
-          plan_element_id: elementId,
-          inspection_result: result,
-          inspector_notes: notes || null,
-          inspected_by: userId,
-          inspected_at: new Date().toISOString(),
-          photo_url: photoUrl || null
-        });
-      }
+      const inspection = await api.create('walk_element_inspections', {
+        walk_session_id: state.activeSession.id,
+        plan_element_id: elementId,
+        inspection_result: result,
+        inspector_notes: notes || null,
+        inspected_by: userId,
+        inspected_at: new Date().toISOString(),
+        photo_url: photoUrl || null
+      });
       
       update(s => {
-        const newInspections = { ...s.inspections };
-        
-        if (existingInspection) {
-          // Replace the existing inspection in the array
-          newInspections[elementId] = newInspections[elementId].map(insp =>
-            insp.id === existingInspection.id ? inspection : insp
-          );
-        } else {
-          // Add new inspection to array
-          newInspections[elementId] = [...(newInspections[elementId] || []), inspection];
-        }
+        const newInspections = {
+          ...s.inspections,
+          [elementId]: [...(s.inspections[elementId] || []), inspection]
+        };
         
         // Update floor progress for building-wide sessions
         let newFloorProgress = s.floorProgress;
@@ -639,9 +608,7 @@ function createWalkStore() {
   async function loadSessionInspections(sessionId) {
     logger('Loading inspections for session:', sessionId);
     try {
-      // FIX: Join with plan_elements to get asset_id and subtype
       return await api.get('walk_element_inspections', {
-        select: '*, element:plan_elements!plan_element_id(asset_id, subtype)',
         filters: { walk_session_id: sessionId },
         orderBy: 'inspected_at',
         ascending: true
@@ -701,32 +668,11 @@ function createWalkStore() {
   async function deleteSession(sessionId) {
     logger('Deleting session:', sessionId);
     try {
-      // FIX: Use Supabase directly to ensure proper deletion
-      // Delete inspections first (foreign key constraint)
-      const { error: inspError } = await supabase
-        .from('walk_element_inspections')
-        .delete()
-        .eq('walk_session_id', sessionId);
-      
-      if (inspError) {
-        logger('❌ Error deleting inspections:', inspError.message);
-        throw new Error(`Failed to delete inspections: ${inspError.message}`);
-      }
-      
-      // Then delete the session
-      const { error: sessError } = await supabase
-        .from('walk_sessions')
-        .delete()
-        .eq('id', sessionId);
-      
-      if (sessError) {
-        logger('❌ Error deleting session:', sessError.message);
-        throw new Error(`Failed to delete session: ${sessError.message}`);
-      }
-      
-      // Reload sessions to update the UI
-      await loadSessions();
-      logger('✅ Session deleted successfully');
+      await api.deleteMany('walk_element_inspections', {
+        walk_session_id: sessionId
+      });
+      await api.delete('walk_sessions', sessionId);
+      logger('✅ Session deleted');
     } catch (error) {
       logger('❌ deleteSession:', error.message);
       throw error;

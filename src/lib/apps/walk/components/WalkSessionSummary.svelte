@@ -1,5 +1,6 @@
 <!-- src/lib/apps/walk/components/WalkSessionSummary.svelte -->
 <!-- Read-only summary of a completed walk session: stats + per-element results -->
+<!-- FIX: Changed all references from .result to .inspection_result and .notes to .inspector_notes -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { walkStore } from '../stores/walkStore.js';
@@ -19,16 +20,23 @@
   // so the template can iterate with #each and keep the sorted order.
   $: grouped   = groupByElement(inspections);
 
-  $: passCount      = inspections.filter(i => i.result === 'pass').length;
-  $: failCount      = inspections.filter(i => i.result === 'fail').length;
-  $: naCount        = inspections.filter(i => i.result === 'na').length;
+  // FIX: Use inspection_result instead of result
+  $: passCount      = inspections.filter(i => i.inspection_result === 'pass').length;
+  $: failCount      = inspections.filter(i => i.inspection_result === 'fail').length;
+  $: naCount        = inspections.filter(i => i.inspection_result === 'na').length;
   $: totalInspected = grouped.length;
 
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === session?.element_type);
 
   onMount(async () => {
     try {
-      inspections = await walkStore.loadSessionInspections(session.id);
+      const rawInspections = await walkStore.loadSessionInspections(session.id);
+      // FIX: Flatten the nested element data (asset_id, subtype)
+      inspections = rawInspections.map(insp => ({
+        ...insp,
+        asset_id: insp.element?.asset_id,
+        subtype: insp.element?.subtype
+      }));
     } catch (err) {
       error = err.message;
     } finally {
@@ -55,7 +63,12 @@
     {#if session.session_name}
       <div class="meta-sname">{session.session_name}</div>
     {/if}
-    <div class="meta-loc">{session.building} · Floor {session.floor_level}</div>
+    <div class="meta-loc">
+      {session.building_name || session.building}
+      {#if session.floor_level}
+        · Floor {session.floor_level}
+      {/if}
+    </div>
     {#if session.inspector_name}
       <div class="meta-inspector">Inspector: {session.inspector_name}</div>
     {/if}
@@ -83,7 +96,7 @@
   {:else if inspections.length === 0}
     <div class="state-center">
       <div class="empty-icon">◫</div>
-      <div class="empty-txt">No inspections recorded</div>
+      <div class="empty-txt">No inspections recorded in this session.</div>
       <div class="empty-sub">No elements were inspected during this session</div>
     </div>
 
@@ -130,13 +143,13 @@
               {#each el.rows as ins}
                 <div class="insp-row">
                   <span class="insp-t">{fmtTime(ins.inspected_at)}</span>
-                  <span class="insp-r r-{ins.result}">{resultLabel(ins.result)}</span>
-                  {#if ins.notes}<span class="insp-n">{ins.notes}</span>{/if}
+                  <span class="insp-r r-{ins.inspection_result}">{resultLabel(ins.inspection_result)}</span>
+                  {#if ins.inspector_notes}<span class="insp-n">{ins.inspector_notes}</span>{/if}
                 </div>
               {/each}
             </div>
-          {:else if latest?.notes}
-            <div class="el-notes">{latest.notes}</div>
+          {:else if latest?.inspector_notes}
+            <div class="el-notes">{latest.inspector_notes}</div>
           {/if}
         </div>
       {/each}

@@ -1,7 +1,6 @@
 // src/lib/apps/walk/utils/walkHelpers.js
 // Shared utility functions for Walk app components and report servers.
-// Eliminates duplication across WalkSessionSummary, WalkInspectionsTab,
-// WalkInspectionsReport, and generate-inspections-report.
+// FIX: Changed all references from .result to .inspection_result
 
 /**
  * Aggregate pass/fail/na counts and unique element count from an inspection array.
@@ -10,37 +9,38 @@
  */
 export function sessionStats(inspections) {
   return {
-    pass:     inspections.filter(r => r.result === 'pass').length,
-    fail:     inspections.filter(r => r.result === 'fail').length,
-    na:       inspections.filter(r => r.result === 'na').length,
-    elements: new Set(inspections.map(r => r.element_id)).size,
+    pass:     inspections.filter(r => r.inspection_result === 'pass').length,
+    fail:     inspections.filter(r => r.inspection_result === 'fail').length,
+    na:       inspections.filter(r => r.inspection_result === 'na').length,
+    elements: new Set(inspections.map(r => r.plan_element_id)).size,
     total:    inspections.length,
   };
 }
 
 /**
- * Group inspection rows by element_id.
+ * Group inspection rows by plan_element_id.
  * Result is sorted: failures first, then by asset_id (numeric-aware).
  *
  * @param {Array} rows — element_inspections rows
- * @returns {Array<{ asset_id, subtype, rows }>}
+ * @returns {Array<{ element_id, asset_id, subtype, rows }>}
  */
 export function groupByElement(rows) {
   const map = {};
   for (const row of rows) {
-    if (!map[row.element_id]) {
-      map[row.element_id] = {
-        element_id: row.element_id,
+    const elementId = row.plan_element_id;
+    if (!map[elementId]) {
+      map[elementId] = {
+        element_id: elementId,
         asset_id:   row.asset_id,
         subtype:    row.subtype,
         rows:       [],
       };
     }
-    map[row.element_id].rows.push(row);
+    map[elementId].rows.push(row);
   }
   return Object.values(map).sort((a, b) => {
-    const aFail = a.rows.some(r => r.result === 'fail');
-    const bFail = b.rows.some(r => r.result === 'fail');
+    const aFail = a.rows.some(r => r.inspection_result === 'fail');
+    const bFail = b.rows.some(r => r.inspection_result === 'fail');
     if (aFail !== bFail) return aFail ? -1 : 1;
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
@@ -53,8 +53,8 @@ export function groupByElement(rows) {
  * @returns {'fail'|'pass'|'na'}
  */
 export function worstResult(rows) {
-  if (rows.some(r => r.result === 'fail')) return 'fail';
-  if (rows.some(r => r.result === 'pass')) return 'pass';
+  if (rows.some(r => r.inspection_result === 'fail')) return 'fail';
+  if (rows.some(r => r.inspection_result === 'pass')) return 'pass';
   return 'na';
 }
 
