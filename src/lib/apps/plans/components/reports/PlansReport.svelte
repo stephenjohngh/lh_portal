@@ -62,12 +62,13 @@
 
   // FIX #2: Initialize filters from caller if provided
   let selectedStatuses = initialFilters?.statuses || [];
-  let typeFilters = initialFilters ? {
-    types: initialFilters.types || [],
-    lightFilters: initialFilters.lightFilters || {},
-    communalFilters: initialFilters.communalFilters || {},
-    fireFilters: initialFilters.fireFilters || {}
-  } : { types: [], lightFilters: {}, communalFilters: {}, fireFilters: {} };
+  let typeFilters = {
+    types: initialFilters?.types || [],
+    lightFilters: initialFilters?.lightFilters || {},
+    communalFilters: initialFilters?.communalFilters || {},
+    fireFilters: initialFilters?.fireFilters || {},
+    apartmentFilters: initialFilters?.apartmentFilters || {}
+  };
 
   function toggleStatus(s) {
     selectedStatuses = selectedStatuses.includes(s)
@@ -406,7 +407,7 @@
     <!-- Element type filter -->
     <div>
       <h4 class="font-semibold mb-2">Element Types</h4>
-      <ElementTypeFilter {elementCounts} on:change={handleTypeChange} />
+      <ElementTypeFilter {elementCounts} {typeFilters} on:change={handleTypeChange} />
     </div>
 
     <!-- Preview with summary -->
