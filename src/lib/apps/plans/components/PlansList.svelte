@@ -1,159 +1,163 @@
 <!-- src/lib/apps/plans/components/PlansList.svelte -->
-<!-- Plans list grid with Building Overview card -->
+<!-- Grid view of all floor plans -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
+  import { getLogger } from '$lib/utils/logger';
+  import PlanCard from './PlanCard.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
-  import { getFloorLevelLabel } from '$lib/utils/planConstants';
-
+  import { plansStore } from '../stores/plansStore';
+  import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  
+  const logger = getLogger('PlansList');
   const dispatch = createEventDispatcher();
-
-  export let plans;
-
-  // Group plans by building
-  $: buildingGroups = plans.reduce((acc, plan) => {
-    const building = plan.building || 'Unknown';
-    if (!acc[building]) acc[building] = [];
-    acc[building].push(plan);
-    return acc;
-  }, {});
-
-  // Sort plans within each building by floor level
-  $: Object.keys(buildingGroups).forEach(building => {
-    buildingGroups[building].sort((a, b) => {
-      const order = { 'U': 0, 'L': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
-      return (order[a.floor_level] || 999) - (order[b.floor_level] || 999);
-    });
+  import { permissions } from '$lib/stores/permissions';
+  
+  export let plans = [];
+  $: isAdmin = $permissions.isAdmin;
+  
+  let elementCounts = {};
+  let totalElementCounts = {};
+  let loading = true;
+  
+  onMount(async () => {
+    await loadElementCounts();
+    loading = false;
   });
+  
+  async function loadElementCounts() {
+    logger('Loading element counts for all plans');
+    
+    // Initialize total counts
+    totalElementCounts = {};
+    
+    for (const plan of plans) {
+      try {
+        const elements = await plansStore.loadElements(plan.id);
+        
+        // Count elements by type for this plan
+        const counts = elements.reduce((acc, element) => {
+          acc[element.element_type] = (acc[element.element_type] || 0) + 1;
+          return acc;
+        }, {});
+        
+        elementCounts[plan.id] = counts;
+        
+        // Add to total counts
+        Object.keys(counts).forEach(type => {
+          totalElementCounts[type] = (totalElementCounts[type] || 0) + counts[type];
+        });
+        
+      } catch (error) {
+        logger('❌ Error loading elements for plan:', plan.id, error);
+        elementCounts[plan.id] = {};
+      }
+    }
+    
+    // Trigger reactivity
+    elementCounts = { ...elementCounts };
+    totalElementCounts = { ...totalElementCounts };
+  }
+  
+  function handleViewPlan(event) {
+    dispatch('selectPlan', { planId: event.detail.planId });
+  }
 
-  function handleBuildingOverviewClick() {
+  function handleViewBuilding() {
     dispatch('selectPlan', { isBuildingOverview: true });
   }
-
-  function handlePlanClick(planId) {
-    dispatch('selectPlan', { planId });
-  }
+  
+  // FIX #3: Sort plans in standard order: Overview, L, U, G, 1-7
+  $: sortedPlans = [...plans].sort((a, b) => {
+    const order = { 'L': 0, 'U': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
+    return (order[a.floor_level] ?? 999) - (order[b.floor_level] ?? 999);
+  });
 </script>
 
-{#if plans.length === 0}
-  <div class="text-center py-12">
-    <Icon name="map" size={12} className="mx-auto mb-4 text-gray-600" />
-    <p class="text-gray-400 mb-4">No floor plans available yet</p>
-  </div>
-{:else}
-  {#each Object.entries(buildingGroups) as [building, buildingPlans]}
-    <div class="mb-8">
-      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-        <Icon name="building" size={6} className="text-blue-400" />
-        {building}
-        <span class="text-sm text-gray-400 font-normal">({buildingPlans.length} floors)</span>
-      </h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <!-- Building Overview Card -->
-        <button
-          class="card-interactive text-left h-full group"
-          on:click={handleBuildingOverviewClick}
-        >
-          <div class="flex flex-col h-full">
-            <!-- Icon Header -->
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-lg bg-purple-600/20 flex items-center justify-center">
-                  <Icon name="building" size={5} className="text-purple-400" />
-                </div>
-                <div>
-                  <h3 class="font-semibold text-sm text-white group-hover:text-purple-300 transition-colors">
-                    Building Overview
-                  </h3>
-                  <p class="text-xs text-gray-400">All Floors</p>
-                </div>
+<div>
+  {#if plans.length === 0}
+    <div class="card-info text-center py-12">
+      <Icon name="map" size={16} className="text-gray-600 mx-auto mb-4" />
+      <h3 class="text-xl font-bold mb-2">No Floor Plans Yet</h3>
+      {#if isAdmin}
+        <p class="text-gray-400 mb-2">Get started by uploading your first floor plan.</p>
+        <p class="text-sm text-gray-500">💡 Click "New Floor Plan" above to upload an image.</p>
+      {:else}
+        <p class="text-gray-400">No floor plans have been created yet.</p>
+      {/if}
+    </div>
+  {:else}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      
+      <!-- Building Overview Card (always first) - FIX #2: Added border -->
+      <button
+        class="card-info text-left hover:border-purple-500 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 cursor-pointer relative overflow-hidden group border-2 border-purple-600/50"
+        on:click={handleViewBuilding}
+      >
+        <!-- Gradient overlay for visual distinction -->
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-blue-900/20"></div>
+        
+        <div class="relative z-10">
+          <!-- Header with icon -->
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="text-4xl">🏢</div>
+              <div>
+                <h3 class="text-lg font-bold">Building Overview</h3>
+                <p class="text-sm text-gray-400">All Floors</p>
               </div>
-              <Icon name="arrow-right" size={4} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
             </div>
+            <Icon name="arrow-right" size={5} className="text-purple-400 group-hover:translate-x-1 transition-transform" />
+          </div>
 
-            <!-- Stats -->
-            <div class="mt-auto pt-2 border-t border-slate-700">
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-gray-400">Total Elements</span>
-                <span class="font-semibold text-purple-300">
-                  {buildingPlans.reduce((sum, p) => sum + (p.element_count || 0), 0)}
-                </span>
-              </div>
-              <div class="flex items-center justify-between text-xs mt-1">
-                <span class="text-gray-400">Floors</span>
-                <span class="font-semibold text-white">{buildingPlans.length}</span>
-              </div>
+          <!-- Stats -->
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-400">Total Elements</span>
+              <span class="font-bold text-lg">
+                {Object.values(totalElementCounts).reduce((sum, count) => sum + count, 0)}
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-400">Floors</span>
+              <span class="font-semibold">{plans.length}</span>
             </div>
           </div>
-        </button>
 
-        <!-- Individual Floor Cards -->
-        {#each buildingPlans as plan (plan.id)}
-          <button
-            class="card-interactive text-left h-full group"
-            on:click={() => handlePlanClick(plan.id)}
-          >
-            <div class="flex flex-col h-full">
-              <!-- Floor Preview Image -->
-              {#if plan.image_url}
-                <div class="mb-2 rounded-lg overflow-hidden bg-slate-900 border border-slate-700">
-                  <img
-                    src={plan.image_url}
-                    alt={plan.name}
-                    class="w-full h-20 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              {:else}
-                <div class="mb-2 rounded-lg bg-slate-900 border border-slate-700 h-20 flex items-center justify-center">
-                  <Icon name="map" size={6} className="text-gray-700" />
-                </div>
-              {/if}
-
-              <!-- Plan Info -->
-              <div class="flex-1">
-                <div class="flex items-center justify-between mb-1">
-                  <h3 class="font-semibold text-sm text-white group-hover:text-purple-300 transition-colors">
-                    {getFloorLevelLabel(String(plan.floor_level))}
-                  </h3>
-                  <Icon name="arrow-right" size={4} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
-                </div>
-                <p class="text-xs text-gray-400 line-clamp-1">
-                  {plan.name}
-                </p>
-                {#if plan.description}
-                  <p class="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                    {plan.description}
-                  </p>
+          <!-- Element type badges -->
+          {#if Object.keys(totalElementCounts).length > 0}
+            <div class="flex flex-wrap gap-2">
+              {#each ELEMENT_TYPE_OPTIONS as type}
+                {#if totalElementCounts[type.value] > 0}
+                  <div
+                    class="px-2 py-1 rounded text-xs flex items-center gap-1.5 font-medium"
+                    style="background-color: {type.color}20; border: 1px solid {type.color}40; color: {type.color};"
+                  >
+                    <span>{type.icon}</span>
+                    <span>{totalElementCounts[type.value]}</span>
+                  </div>
                 {/if}
-              </div>
-
-              <!-- Stats -->
-              <div class="mt-auto pt-2 border-t border-slate-700">
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-gray-400">Elements</span>
-                  <span class="font-semibold text-white">{plan.element_count || 0}</span>
-                </div>
-              </div>
+              {/each}
             </div>
-          </button>
-        {/each}
-      </div>
+          {/if}
+
+          <!-- View all elements text -->
+          <div class="mt-4 pt-4 border-t border-slate-700">
+            <p class="text-xs text-gray-400 group-hover:text-purple-400 transition-colors">
+              View all elements across all floors →
+            </p>
+          </div>
+        </div>
+      </button>
+
+      <!-- Individual Floor Plans - FIX #3: Now sorted in standard order -->
+      {#each sortedPlans as plan (plan.id)}
+        <PlanCard
+          {plan}
+          elementCounts={elementCounts[plan.id] || {}}
+          on:view={handleViewPlan}
+        />
+      {/each}
     </div>
-  {/each}
-{/if}
-
-<style>
-  .line-clamp-1 {
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-</style>
+  {/if}
+</div>

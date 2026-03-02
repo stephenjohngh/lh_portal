@@ -1,5 +1,5 @@
 <!-- src/lib/apps/plans/components/PlanCard.svelte -->
-<!-- Individual floor plan card with summary -->
+<!-- Individual floor plan card with summary - FIX #3: Made 30% smaller -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Badge from '$lib/components/common/Badge.svelte';
@@ -24,14 +24,20 @@
   on:click={handleView}
   aria-label="View plan: {plan.name}"
 >
-  <!-- Plan Image Preview -->
-  <div class="relative h-48 bg-slate-900 overflow-hidden">
+  <!-- Plan Image Preview - FIX #3: Reduced from h-48 to h-32 (33% smaller) -->
+  <div class="relative h-32 bg-slate-900 overflow-hidden">
     <img
       src={plan.image_url}
       alt={plan.name}
       class="w-full h-full object-contain"
     />
-    {#if totalElements > 0}
+    {#if plan.element_count > 0}
+      <div class="absolute top-2 right-2">
+        <Badge variant="primary">
+          {plan.element_count} {plan.element_count === 1 ? 'element' : 'elements'}
+        </Badge>
+      </div>
+    {:else if totalElements > 0}
       <div class="absolute top-2 right-2">
         <Badge variant="primary">
           {totalElements} {totalElements === 1 ? 'element' : 'elements'}
@@ -40,10 +46,10 @@
     {/if}
   </div>
   
-  <!-- Plan Info -->
-  <div class="p-4">
-    <h3 class="text-lg font-bold mb-1">{plan.name}</h3>
-    <p class="text-sm text-gray-400 mb-3">
+  <!-- Plan Info - FIX #3: Reduced padding and spacing -->
+  <div class="p-3">
+    <h3 class="text-base font-bold mb-1">{plan.name}</h3>
+    <p class="text-xs text-gray-400 mb-2">
       {plan.building}
       {#if plan.floor_level !== null && plan.floor_level !== undefined}
         · Floor {plan.floor_level}
@@ -51,14 +57,14 @@
     </p>
     
     {#if plan.description}
-      <p class="text-sm text-gray-300 mb-3 line-clamp-2">
+      <p class="text-xs text-gray-300 mb-2 line-clamp-2">
         {plan.description}
       </p>
     {/if}
     
-    <!-- Element Counts -->
-    {#if totalElements > 0}
-      <div class="flex flex-wrap gap-2">
+    <!-- Element Counts - FIX #3: Smaller text and spacing -->
+    {#if plan.element_count > 0 || totalElements > 0}
+      <div class="flex flex-wrap gap-1.5">
         {#each ELEMENT_TYPE_OPTIONS as type}
           {#if elementCounts[type.value] > 0}
             <div class="text-xs flex items-center gap-1">
@@ -69,7 +75,7 @@
         {/each}
       </div>
     {:else}
-      <p class="text-sm text-gray-500 italic">No elements yet</p>
+      <p class="text-xs text-gray-500 italic">No elements yet</p>
     {/if}
   </div>
 </button>

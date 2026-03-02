@@ -21,7 +21,7 @@
   export let plans;
   export let contextSource = 'building';
   export let contextPlanId = null;
-  export let initialFilters = null;  // NEW: Accept filters from caller
+  export let initialFilters = null;  // FIX #2: Accept filters from caller
 
   let floorScope = contextSource === 'floor' && contextPlanId ? contextPlanId : 'all';
   
@@ -29,8 +29,8 @@
   $: activePlans = (() => {
     if (floorScope === 'all') return plans;
     if (floorScope === 'basement') {
-      // L + U floors (corrected order)
-      return plans.filter(p => p.floor_level === 'L' || p.floor_level === 'U');
+      // U + L floors
+      return plans.filter(p => p.floor_level === 'U' || p.floor_level === 'L');
     }
     if (floorScope === 'residential') {
       // G through 7
@@ -60,7 +60,7 @@
     includeSummary: true  // NEW
   };
 
-  // NEW: Initialize filters from caller or defaults
+  // FIX #2: Initialize filters from caller if provided
   let selectedStatuses = initialFilters?.statuses || [];
   let typeFilters = initialFilters ? {
     types: initialFilters.types || [],
