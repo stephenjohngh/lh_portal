@@ -32,11 +32,11 @@
     if (!result) return;
     saving = true; error = null;
     try {
-      await walkStore.addInspection({
-        sessionId: session.id,
+      // FIX: Changed from addInspection to recordInspection
+      await walkStore.recordInspection({
         elementId: element.id,
-        planId:    session.planId,
-        result, notes, element
+        result,
+        notes
       });
       dispatch('saved');
     } catch (err) {
@@ -91,18 +91,18 @@
       {:else}
         <div class="hist-list">
           {#each history as rec}
-            <div class="hist-item hist-{rec.result}">
+            <div class="hist-item hist-{rec.inspection_result}">
               <div class="hist-hdr">
                 <div class="hist-result">
-                  {rec.result === 'pass' ? '✓ PASS' : rec.result === 'fail' ? '✗ FAIL' : '— N/A'}
+                  {rec.inspection_result === 'pass' ? '✓ PASS' : rec.inspection_result === 'fail' ? '✗ FAIL' : '— N/A'}
                 </div>
                 <div class="hist-date">{fmtDateTime(rec.inspected_at)}</div>
               </div>
               {#if rec.inspector?.full_name}
                 <div class="hist-who">by {rec.inspector.full_name}</div>
               {/if}
-              {#if rec.notes}
-                <div class="hist-notes">{rec.notes}</div>
+              {#if rec.inspector_notes}
+                <div class="hist-notes">{rec.inspector_notes}</div>
               {/if}
             </div>
           {/each}

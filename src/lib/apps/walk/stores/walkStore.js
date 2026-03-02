@@ -1,5 +1,6 @@
 // src/lib/apps/walk/stores/walkStore.js
 // REFACTORED: Cleaned up, DRY principles, better abstractions
+// FIX: Removed updated_at and updated_by from operations (columns don't exist)
 
 import { writable, get } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
@@ -193,12 +194,12 @@ function createWalkStore() {
     const userId = await getCurrentUserId();
     const inspectorName = await getCurrentUserName(userId);
     
+    // FIX: Removed updated_by - column doesn't exist
     return api.create('walk_sessions', {
       ...sessionData,
       inspector_name: inspectorName,
       status: 'open',
-      created_by: userId,
-      updated_by: userId
+      created_by: userId
     });
   }
 
@@ -331,14 +332,13 @@ function createWalkStore() {
 
   async function closeSession(sessionId, notes = '') {
     logger('Closing session:', sessionId);
-    const userId = await getCurrentUserId();
     
+    // FIX: Removed updated_by - column doesn't exist
     try {
       await api.update('walk_sessions', sessionId, {
         status: 'closed',
         closed_at: new Date().toISOString(),
-        notes: notes || null,
-        updated_by: userId
+        notes: notes || null
       });
       
       update(s => ({ ...s, ...RESET_SESSION_STATE }));
