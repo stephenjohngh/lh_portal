@@ -33,10 +33,11 @@
   let filterDateFrom = '';
   let filterDateTo   = '';
 
-  $: buildings = [...new Set(sessions.map(s => s.building))].sort();
+  $: buildings = [...new Set(sessions.map(s => s.building_name || s.building))].sort();
 
   $: filtered = sessions.filter(s => {
-    if (filterBuilding && s.building !== filterBuilding) return false;
+    const building = s.building_name || s.building;
+    if (filterBuilding && building !== filterBuilding) return false;
     if (filterType     && s.element_type !== filterType)  return false;
     if (filterStatus   && s.status !== filterStatus)       return false;
     if (filterDateFrom && new Date(s.started_at) < new Date(filterDateFrom)) return false;
@@ -75,12 +76,18 @@
     if (!inspections[session.id]) {
       loadingId = session.id;
       try {
-        const rows = await api.get('element_inspections', {
-          filters:   { session_id: session.id },
+        const rows = await api.get('walk_element_inspections', {
+          select: '*, element:plan_elements!plan_element_id(asset_id, subtype)',
+          filters:   { walk_session_id: session.id },
           orderBy:   'inspected_at',
           ascending: true
         });
-        inspections = { ...inspections, [session.id]: rows };
+        const processedRows = rows.map(row => ({
+          ...row,
+          asset_id: row.element?.asset_id,
+          subtype: row.element?.subtype
+        }));
+        inspections = { ...inspections, [session.id]: processedRows };
       } catch (err) {
         logger('❌ load inspections:', err.message);
         inspections = { ...inspections, [session.id]: [] };
@@ -94,10 +101,10 @@
     deletingId = session.id;
     try {
       await walkStore.deleteSession(session.id);
-      sessions = sessions.filter(s => s.id !== session.id);
+      await loadSessions();
       if (expandedId === session.id) expandedId = null;
       delete inspections[session.id];
-      logger('✅ Session deleted from UI');
+      logger('✅ Session deleted');
     } catch (err) {
       logger('❌ deleteSession:', err.message);
       error = err.message;
@@ -206,8 +213,10 @@
 
             <div class="sess-main">
               <div class="sess-hdr">
-                <span class="sess-building">{session.building}</span>
-                <span class="sess-floor">Floor {session.floor_level}</span>
+                <span class="sess-building">{session.building_name || session.building}</span>
+                {#if session.floor_level}
+                  <span class="sess-floor">Floor {session.floor_level}</span>
+                {/if}
                 <span class="sep-dot">·</span>
                 <span class="sess-type">{typeLabel(session.element_type)}</span>
                 {#if session.light_subtype_filter === 'emergency'}
@@ -300,8 +309,8 @@
                       <div class="el-info">
                         <span class="el-id">{el.asset_id || '—'}</span>
                         {#if el.subtype}<span class="el-sub">{el.subtype}</span>{/if}
-                        {#each el.rows.filter(r => r.notes) as r}
-                          <div class="el-note">{r.notes}</div>
+                        {#each el.rows.filter(r => r.inspector_notes) as r}
+                          <div class="el-note">{r.inspector_notes}</div>
                         {/each}
                       </div>
                       {#if el.rows.length > 1}

@@ -227,6 +227,7 @@ function createWalkStore() {
       
       const session = await createSession({
         session_scope: 'building',
+        building: building,          // FIX: Added - required NOT NULL field
         building_name: building,
         element_type: elementType,
         session_name: sessionName,
@@ -703,26 +704,38 @@ function createWalkStore() {
     try {
       // FIX: Use Supabase directly to ensure proper deletion
       // Delete inspections first (foreign key constraint)
-      const { error: inspError } = await supabase
+      const { data: inspData, error: inspError, count: inspCount } = await supabase
         .from('walk_element_inspections')
         .delete()
-        .eq('walk_session_id', sessionId);
+        .eq('walk_session_id', sessionId)
+        .select();
       
       if (inspError) {
         logger('❌ Error deleting inspections:', inspError.message);
         throw new Error(`Failed to delete inspections: ${inspError.message}`);
       }
       
+      logger('Deleted inspections:', inspData?.length || 0, 'records');
+      
       // Then delete the session
-      const { error: sessError } = await supabase
+      const { data: sessData, error: sessError } = await supabase
         .from('walk_sessions')
         .delete()
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .select();
       
       if (sessError) {
         logger('❌ Error deleting session:', sessError.message);
         throw new Error(`Failed to delete session: ${sessError.message}`);
       }
+      
+      if (!sessData || sessData.length === 0) {
+        logger('⚠️ WARNING: Delete executed but no rows were deleted!');
+        logger('This usually means RLS policy is blocking the delete');
+        throw new Error('Session was not deleted - check permissions');
+      }
+      
+      logger('Deleted session:', sessData.length, 'record(s)');
       
       // Reload sessions to update the UI
       await loadSessions();
