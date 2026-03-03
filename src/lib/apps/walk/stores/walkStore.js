@@ -1,18 +1,19 @@
 // src/lib/apps/walk/stores/walkStore.js
 // REFACTORED: Cleaned up, DRY principles, better abstractions
 // FIX: recordInspection now UPDATES existing inspection instead of creating duplicate
+// REFACTORED: Uses shared floor sorting utility
 
 import { writable, get } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
+import { sortByFloor } from '$lib/utils/floorSorting';
 
 const logger = getLogger('walkStore');
 
 // ============================================================================
 // Constants
 // ============================================================================
-const FLOOR_ORDER = { 'L': 0, 'U': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
 
 const INITIAL_STATE = {
   plans: [],
@@ -63,12 +64,6 @@ async function getCurrentUserName(userId) {
   } catch {
     return null;
   }
-}
-
-function sortPlansByFloor(plans) {
-  return [...plans].sort((a, b) => 
-    (FLOOR_ORDER[a.floor_level] ?? 999) - (FLOOR_ORDER[b.floor_level] ?? 999)
-  );
 }
 
 function buildWalkElements(planElements, elementType, lightSubtypeFilter) {
@@ -210,7 +205,7 @@ function createWalkStore() {
     
     try {
       const state = getState();
-      const buildingPlans = sortPlansByFloor(
+      const buildingPlans = sortByFloor(
         state.plans.filter(p => p.building === building)
       );
       
@@ -355,7 +350,7 @@ function createWalkStore() {
   // ── Resume Session ───────────────────────────────────────────────────────
 
   async function resumeBuildingSession(session, state) {
-    const buildingPlans = sortPlansByFloor(
+    const buildingPlans = sortByFloor(
       state.plans.filter(p => p.building === session.building_name)
     );
     
