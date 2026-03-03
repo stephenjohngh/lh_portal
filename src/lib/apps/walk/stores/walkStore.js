@@ -536,13 +536,75 @@ function createWalkStore() {
   }
 
   function goPrev() {
-    update(s => ({
-      ...s,
-      currentIndex: Math.max(s.currentIndex - 1, 0)
-    }));
+    update(s => {
+      const prevIndex = s.currentIndex - 1;
+      
+      // If we're trying to go before the first element
+      if (prevIndex < 0) {
+        // And this is a building-wide session
+        if (s.activeSession?.session_scope === 'building' && s.buildingPlans.length > 0) {
+          // Find current floor index
+          const currentFloorIndex = s.buildingPlans.findIndex(p => p.floor_level === s.currentFloor);
+          
+          // If there's a previous floor
+          if (currentFloorIndex > 0) {
+            const prevFloor = s.buildingPlans[currentFloorIndex - 1];
+            logger('📍 Start of floor', s.currentFloor, '→ going back to', prevFloor.floor_level);
+            
+            // Load elements for previous floor
+            const walkElements = buildWalkElements(
+              s.allElements[prevFloor.id] || [],
+              s.activeSession.element_type,
+              s.activeSession.light_subtype_filter
+            );
+            
+            return {
+              ...s,
+              activeSession: { ...s.activeSession, planId: prevFloor.id },
+              currentFloor: prevFloor.floor_level,
+              walkElements,
+              currentIndex: walkElements.length - 1 // Go to last element of previous floor
+            };
+          } else {
+            // Already on first floor, stay at first element
+            logger('📍 Start of building - no previous floors');
+            return {
+              ...s,
+              currentIndex: 0
+            };
+          }
+        }
+        
+        // Single-plan session or already at first element
+        return {
+          ...s,
+          currentIndex: 0
+        };
+      }
+      
+      // Normal prev element
+      return {
+        ...s,
+        currentIndex: prevIndex
+      };
+    });
   }
 
   // ── Navigation Helpers ───────────────────────────────────────────────────
+
+  function isAtStartOfBuilding() {
+    const state = getState();
+    if (state.activeSession?.session_scope !== 'building') return false;
+    
+    // Check if on first floor
+    const currentFloorIndex = state.buildingPlans.findIndex(p => p.floor_level === state.currentFloor);
+    const isFirstFloor = currentFloorIndex === 0;
+    
+    // And at first element
+    const isFirstElement = state.currentIndex === 0;
+    
+    return isFirstFloor && isFirstElement;
+  }
 
   function isAtEndOfBuilding() {
     const state = getState();
@@ -852,6 +914,7 @@ function createWalkStore() {
     goToIndex,
     goNext,
     goPrev,
+    isAtStartOfBuilding,
     isAtEndOfBuilding,
     getCurrentFloorProgress,
     // Elements

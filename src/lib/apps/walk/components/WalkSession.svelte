@@ -1,6 +1,7 @@
 <!-- src/lib/apps/walk/components/WalkSession.svelte -->
 <!-- Core walk screen: navigate elements, view/edit, record inspections -->
-<!-- FIX: Next button now works for building-wide sessions (auto-advances floors) -->
+<!-- FIX: Floor display updates correctly in building-wide sessions -->
+<!-- FIX: Better finish button with dedicated "Finish Walk" button -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
@@ -28,14 +29,20 @@
   $: inspections  = $walkStore.inspections;
 
   $: currentElement    = elements[currentIndex];
-  $: isFirst           = currentIndex === 0;
   
-  // FIX: For building-wide sessions, check if at end of BUILDING, not just current floor
+  // FIX: For building-wide sessions, check if at start/end of BUILDING, not just floor
+  $: isFirst = (() => {
+    if (session?.session_scope === 'building') {
+      const currentFloorIndex = $walkStore.buildingPlans.findIndex(p => p.floor_level === $walkStore.currentFloor);
+      return currentFloorIndex === 0 && currentIndex === 0;
+    }
+    return currentIndex === 0;
+  })();
+  
   $: isLast = (() => {
     if (session?.session_scope === 'building') {
       return walkStore.isAtEndOfBuilding();
     }
-    // Single-plan: at end of floor
     return currentIndex === elements.length - 1;
   })();
   
@@ -46,12 +53,33 @@
   $: hasInspection      = currentInspections.length > 0;
   $: lastInspection     = currentInspections[currentInspections.length - 1];
 
-  // FIX: Get floor progress for building-wide sessions
+  // FIX: Floor progress for building-wide sessions
   $: floorProgress = session?.session_scope === 'building' 
     ? walkStore.getCurrentFloorProgress() 
     : null;
+    
+  // FIX: Use current floor for element display name in building-wide sessions
+  $: displayFloor = $walkStore.currentFloor || session?.floor_level;
 
-  function handlePrev()            { view = 'card'; walkStore.goPrev(); }
+  function handlePrev() { 
+    view = 'card'; 
+    // For building-wide sessions at element 0, go to previous floor
+    if (session?.session_scope === 'building' && currentIndex === 0) {
+      const currentFloorIndex = $walkStore.buildingPlans.findIndex(p => p.floor_level === $walkStore.currentFloor);
+      if (currentFloorIndex > 0) {
+        const prevFloor = $walkStore.buildingPlans[currentFloorIndex - 1];
+        walkStore.goToFloor(prevFloor.floor_level);
+        // Set to last element of previous floor
+        const prevFloorElements = $walkStore.walkElements;
+        if (prevFloorElements.length > 0) {
+          walkStore.goToIndex(prevFloorElements.length - 1);
+        }
+        return;
+      }
+    }
+    walkStore.goPrev(); 
+  }
+  
   function handleNext()            { view = 'card'; walkStore.goNext(); }
   function handleJumpTo(e)         { view = 'card'; walkStore.goToIndex(e.detail.index); }
   function handleEditSaved()       { view = 'card'; }
@@ -84,7 +112,14 @@
       <span class="sbar-icon">{typeConfig?.icon}</span>
       <div class="sbar-info">
         <div class="sbar-name">
-          {session?.session_name || (session?.building + ' · F' + session?.floor_level)}
+          {#if session?.session_scope === 'building'}
+            {session.building_name || session.building}
+            {#if $walkStore.currentFloor}
+              · Floor {$walkStore.currentFloor}
+            {/if}
+          {:else}
+            {session?.session_name || (session?.building + ' · F' + session?.floor_level)}
+          {/if}
         </div>
         <div class="sbar-meta">
           {typeConfig?.label}
@@ -104,7 +139,10 @@
         <div class="sbar-floor">Floor {floorProgress.currentFloorIndex} of {floorProgress.totalFloors}</div>
       {/if}
       <div class="sbar-count">{currentIndex + 1} / {elements.length}</div>
-      <button class="close-btn" on:click={() => view = 'close'}>✕</button>
+      <!-- FIX: Better finish button instead of X -->
+      <button class="finish-btn" on:click={() => view = 'close'}>
+        FINISH
+      </button>
     </div>
   </div>
 
@@ -116,7 +154,8 @@
     <div class="ecard">
 
       <div class="eid">
-        <div class="ename">{getElementDisplayName(currentElement, session?.floor_level)}</div>
+        <!-- FIX: Use displayFloor which updates with current floor -->
+        <div class="ename">{getElementDisplayName(currentElement, displayFloor)}</div>
         {#if currentElement.label}<div class="elabel">{currentElement.label}</div>{/if}
         <div class="emeta">
           {#if currentElement.subtype}<span class="esub">{currentElement.subtype}</span>{/if}
@@ -175,7 +214,7 @@
   {/if}
 
   {#if view === 'edit' && currentElement}
-    <WalkElementEditor element={currentElement} floorLevel={session?.floor_level}
+    <WalkElementEditor element={currentElement} floorLevel={displayFloor}
       on:saved={handleEditSaved} on:cancel={() => view = 'card'} />
   {/if}
 
@@ -185,18 +224,22 @@
   {/if}
 
   {#if view === 'jump'}
-    <WalkJumpList {elements} {currentIndex} {inspections} floorLevel={session?.floor_level}
+    <WalkJumpList {elements} {currentIndex} {inspections} floorLevel={displayFloor}
       on:jump={handleJumpTo} on:close={() => view = 'card'} />
   {/if}
 
   {#if view === 'close'}
     <div class="cc">
-      <div class="cc-hdr">CLOSE SESSION</div>
+      <div class="cc-hdr">FINISH INSPECTION</div>
       <div class="cc-sum">
         <div class="cc-row"><span class="cc-k">SESSION</span><span class="cc-v">{session?.session_name || '—'}</span></div>
         <div class="cc-row"><span class="cc-k">INSPECTOR</span><span class="cc-v">{session?.inspector_name || '—'}</span></div>
         <div class="cc-row"><span class="cc-k">INSPECTED</span><span class="cc-v">{inspectedCount} / {elements.length} elements</span></div>
-        <div class="cc-row"><span class="cc-k">BUILDING</span><span class="cc-v">{session?.building} · Floor {session?.floor_level}</span></div>
+        {#if session?.session_scope === 'building'}
+          <div class="cc-row"><span class="cc-k">BUILDING</span><span class="cc-v">{session?.building_name || session?.building}</span></div>
+        {:else}
+          <div class="cc-row"><span class="cc-k">BUILDING</span><span class="cc-v">{session?.building} · Floor {session?.floor_level}</span></div>
+        {/if}
       </div>
       <div class="cc-field">
         <label class="cc-lbl" for="close-notes">Session notes (optional)</label>
@@ -206,8 +249,8 @@
       {#if closeError}<div class="cc-err">⚠ {closeError}</div>{/if}
       <div class="cc-acts">
         <button class="cc-continue" on:click={() => view = 'card'}>CONTINUE WALK</button>
-        <button class="cc-close" on:click={handleCloseSession} disabled={closing}>
-          {closing ? 'CLOSING…' : 'CLOSE SESSION'}
+        <button class="cc-finish" on:click={handleCloseSession} disabled={closing}>
+          {closing ? 'FINISHING…' : '✓ FINISH INSPECTION'}
         </button>
       </div>
     </div>
@@ -260,6 +303,17 @@
   .sbar-r { display: flex; align-items: center; gap: 0.75rem; }
   .sbar-floor { font-size: 0.75rem; color: #fb923c; font-weight: 600; }
   .sbar-count { font-size: 0.85rem; color: #ccc; font-weight: 600; }
+  
+  /* FIX: Better finish button styling */
+  .finish-btn {
+    background: #fb923c; border: none; border-radius: 6px;
+    color: #0d0d14; font-family: inherit; font-size: 0.72rem; font-weight: 800;
+    padding: 0.5rem 1rem; cursor: pointer; transition: all 0.15s;
+    letter-spacing: 0.1em;
+  }
+  .finish-btn:hover { background: #f97316; }
+
+  /* Old close button removed */
   .close-btn {
     background: none; border: 1px solid #3e3e52; border-radius: 4px;
     color: #ccc; font-family: inherit; font-size: 0.8rem;
@@ -364,7 +418,7 @@
 
   /* ── Close confirm ────────────────────────────────────────────────────────*/
   .cc { flex: 1; padding: 1.5rem 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
-  .cc-hdr { font-size: 0.65rem; letter-spacing: 0.25em; color: #f87171; font-weight: 700; }
+  .cc-hdr { font-size: 0.65rem; letter-spacing: 0.25em; color: #fb923c; font-weight: 700; }
   .cc-sum {
     background: #111122; border: 1px solid #2e2e42; border-radius: 10px;
     padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
@@ -392,11 +446,13 @@
     letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s;
   }
   .cc-continue:hover { border-color: #6e6e88; color: #f0f0f0; }
-  .cc-close {
-    padding: 1rem; background: #ef4444; border: none; border-radius: 8px;
-    color: #fff; font-family: inherit; font-size: 0.82rem; font-weight: 800;
+  
+  /* FIX: Better finish button in dialog */
+  .cc-finish {
+    padding: 1rem; background: #22c55e; border: none; border-radius: 8px;
+    color: #0d0d14; font-family: inherit; font-size: 0.82rem; font-weight: 800;
     letter-spacing: 0.15em; cursor: pointer; transition: all 0.15s;
   }
-  .cc-close:hover:not(:disabled) { background: #dc2626; }
-  .cc-close:disabled { opacity: 0.4; cursor: not-allowed; }
+  .cc-finish:hover:not(:disabled) { background: #16a34a; }
+  .cc-finish:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
