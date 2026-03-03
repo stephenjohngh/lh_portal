@@ -1,5 +1,6 @@
 <!-- src/lib/apps/walk/components/WalkSession.svelte -->
 <!-- Core walk screen: navigate elements, view/edit, record inspections -->
+<!-- FIX: Next button now works for building-wide sessions (auto-advances floors) -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
@@ -28,13 +29,27 @@
 
   $: currentElement    = elements[currentIndex];
   $: isFirst           = currentIndex === 0;
-  $: isLast            = currentIndex === elements.length - 1;
+  
+  // FIX: For building-wide sessions, check if at end of BUILDING, not just current floor
+  $: isLast = (() => {
+    if (session?.session_scope === 'building') {
+      return walkStore.isAtEndOfBuilding();
+    }
+    // Single-plan: at end of floor
+    return currentIndex === elements.length - 1;
+  })();
+  
   $: progress          = elements.length > 0 ? (currentIndex + 1) / elements.length : 0;
   $: inspectedCount    = Object.keys(inspections).length;
   $: typeConfig        = ELEMENT_TYPE_OPTIONS.find(t => t.value === session?.element_type);
   $: currentInspections = currentElement ? (inspections[currentElement.id] || []) : [];
   $: hasInspection      = currentInspections.length > 0;
   $: lastInspection     = currentInspections[currentInspections.length - 1];
+
+  // FIX: Get floor progress for building-wide sessions
+  $: floorProgress = session?.session_scope === 'building' 
+    ? walkStore.getCurrentFloorProgress() 
+    : null;
 
   function handlePrev()            { view = 'card'; walkStore.goPrev(); }
   function handleNext()            { view = 'card'; walkStore.goNext(); }
@@ -84,6 +99,10 @@
       </div>
     </div>
     <div class="sbar-r">
+      <!-- FIX: Show floor progress for building-wide sessions -->
+      {#if session?.session_scope === 'building' && floorProgress}
+        <div class="sbar-floor">Floor {floorProgress.currentFloorIndex} of {floorProgress.totalFloors}</div>
+      {/if}
       <div class="sbar-count">{currentIndex + 1} / {elements.length}</div>
       <button class="close-btn" on:click={() => view = 'close'}>✕</button>
     </div>
@@ -106,15 +125,15 @@
       </div>
 
       {#if hasInspection}
-        <div class="insp-last {resultCls(lastInspection.result)}">
+        <div class="insp-last {resultCls(lastInspection.inspection_result)}">
           <div class="insp-hdr">
             <span class="insp-lbl">LAST INSPECTION</span>
             <span class="insp-time">{fmtTime(lastInspection.inspected_at)}</span>
           </div>
           <div class="insp-result">
-            {lastInspection.result === 'pass' ? '✓ PASS' : lastInspection.result === 'fail' ? '✗ FAIL' : '— N/A'}
+            {lastInspection.inspection_result === 'pass' ? '✓ PASS' : lastInspection.inspection_result === 'fail' ? '✗ FAIL' : '— N/A'}
           </div>
-          {#if lastInspection.notes}<div class="insp-notes">{lastInspection.notes}</div>{/if}
+          {#if lastInspection.inspector_notes}<div class="insp-notes">{lastInspection.inspector_notes}</div>{/if}
         </div>
       {:else}
         <div class="not-inspected">NOT YET INSPECTED</div>
@@ -198,7 +217,15 @@
     <div class="nav">
       <button class="nb nb-prev" on:click={handlePrev} disabled={isFirst}>← PREV</button>
       <button class="nb nb-list" on:click={() => view = 'jump'}>☰ LIST</button>
-      <button class="nb nb-next" on:click={handleNext} disabled={isLast}>NEXT →</button>
+      <button class="nb nb-next" on:click={handleNext} disabled={isLast}>
+        {#if isLast}
+          COMPLETE
+        {:else if session?.session_scope === 'building' && currentIndex === elements.length - 1}
+          NEXT FLOOR →
+        {:else}
+          NEXT →
+        {/if}
+      </button>
     </div>
   {/if}
 </div>
@@ -231,6 +258,7 @@
     background: #2a1800; color: #fb923c; border-radius: 3px;
   }
   .sbar-r { display: flex; align-items: center; gap: 0.75rem; }
+  .sbar-floor { font-size: 0.75rem; color: #fb923c; font-weight: 600; }
   .sbar-count { font-size: 0.85rem; color: #ccc; font-weight: 600; }
   .close-btn {
     background: none; border: 1px solid #3e3e52; border-radius: 4px;
