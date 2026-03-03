@@ -468,10 +468,76 @@ function createWalkStore() {
   }
 
   function goNext() {
-    update(s => ({
-      ...s,
-      currentIndex: Math.min(s.currentIndex + 1, s.walkElements.length - 1)
-    }));
+    update(s => {
+      const nextIndex = s.currentIndex + 1;
+      
+      logger('goNext called:', {
+        currentIndex: s.currentIndex,
+        nextIndex,
+        walkElementsLength: s.walkElements.length,
+        sessionScope: s.activeSession?.session_scope,
+        buildingPlansLength: s.buildingPlans?.length,
+        currentFloor: s.currentFloor
+      });
+      
+      // If we're at the end of the current floor's elements
+      if (nextIndex >= s.walkElements.length) {
+        logger('At end of elements, checking for next floor...');
+        
+        // And this is a building-wide session
+        if (s.activeSession?.session_scope === 'building' && s.buildingPlans.length > 0) {
+          logger('Building-wide session confirmed');
+          
+          // Find current floor index
+          const currentFloorIndex = s.buildingPlans.findIndex(p => p.floor_level === s.currentFloor);
+          logger('Current floor index:', currentFloorIndex, 'of', s.buildingPlans.length);
+          
+          // If there's a next floor
+          if (currentFloorIndex >= 0 && currentFloorIndex < s.buildingPlans.length - 1) {
+            const nextFloor = s.buildingPlans[currentFloorIndex + 1];
+            logger('📍 End of floor', s.currentFloor, '→ advancing to', nextFloor.floor_level);
+            
+            // Load elements for next floor
+            const walkElements = buildWalkElements(
+              s.allElements[nextFloor.id] || [],
+              s.activeSession.element_type,
+              s.activeSession.light_subtype_filter
+            );
+            
+            logger('Next floor elements loaded:', walkElements.length);
+            
+            return {
+              ...s,
+              activeSession: { ...s.activeSession, planId: nextFloor.id },
+              currentFloor: nextFloor.floor_level,
+              walkElements,
+              currentIndex: 0
+            };
+          } else {
+            // Already on last floor, stay at last element
+            logger('📍 End of building - no more floors');
+            return {
+              ...s,
+              currentIndex: s.walkElements.length - 1
+            };
+          }
+        }
+        
+        logger('Not building-wide or no building plans');
+        // Single-plan session or already at last element
+        return {
+          ...s,
+          currentIndex: s.walkElements.length - 1
+        };
+      }
+      
+      // Normal next element
+      logger('Normal next: moving from', s.currentIndex, 'to', nextIndex);
+      return {
+        ...s,
+        currentIndex: nextIndex
+      };
+    });
   }
 
   function goPrev() {
@@ -479,6 +545,33 @@ function createWalkStore() {
       ...s,
       currentIndex: Math.max(s.currentIndex - 1, 0)
     }));
+  }
+
+  // ── Navigation Helpers ───────────────────────────────────────────────────
+
+  function isAtEndOfBuilding() {
+    const state = getState();
+    if (state.activeSession?.session_scope !== 'building') return false;
+    
+    // Check if on last floor
+    const currentFloorIndex = state.buildingPlans.findIndex(p => p.floor_level === state.currentFloor);
+    const isLastFloor = currentFloorIndex === state.buildingPlans.length - 1;
+    
+    // And at last element
+    const isLastElement = state.currentIndex >= state.walkElements.length - 1;
+    
+    return isLastFloor && isLastElement;
+  }
+
+  function getCurrentFloorProgress() {
+    const state = getState();
+    return {
+      currentElement: state.currentIndex + 1,
+      totalElements: state.walkElements.length,
+      currentFloor: state.currentFloor,
+      totalFloors: state.buildingPlans.length,
+      currentFloorIndex: state.buildingPlans.findIndex(p => p.floor_level === state.currentFloor) + 1
+    };
   }
 
   // ── Element Updates ──────────────────────────────────────────────────────
@@ -764,6 +857,8 @@ function createWalkStore() {
     goToIndex,
     goNext,
     goPrev,
+    isAtEndOfBuilding,
+    getCurrentFloorProgress,
     // Elements
     updateElement,
     // Inspections
