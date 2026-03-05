@@ -4,9 +4,9 @@
 export const ELEMENT_TYPE_OPTIONS = [
   { value: 'communal_door',  label: 'Communal Door',  icon: '🚪', color: '#c2410c', description: 'Entrance, fire, emergency and interior communal doors' },
   { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#a855f7', description: 'Apartment fire doors' },
-  { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants, floodlights' },
-  { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors, call points, sounders, hoppers, dry risers' },
-  { value: 'other',          label: 'Other',          icon: '⚙️', color: '#06b6d4', description: 'tanks, pumps, fans, batteries, vents' }
+  { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
+  { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors, call points, panels, sprinklers' },
+  { value: 'other',          label: 'Other',          icon: '⚙️', color: '#06b6d4', description: 'Tanks, pumps, fans, cameras, aerials' }
 ];
 
 export const ELEMENT_STATUS_OPTIONS = [
@@ -38,12 +38,13 @@ export const FLOOR_LEVELS = [
 export const DEFAULT_FLOOR_LEVEL = 'G';
 
 // Subtype options per element type
+// UPDATED: Added Panel and Sprinkler to fire_control, added Other type with subtypes, added Exit CFL to lights
 export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
-  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant', 'Floodlight'],
+  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Exit CFL', 'Downlight', 'Pendant', 'Floodlight'],
   fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Hopper', 'Dry Riser', 'Panel', 'Sprinkler'],
-  other:          ['Camera', 'Vent','Tank', 'Pump', 'Fan', 'Battery',  'Aerial', 'Misc']
+  other:          ['Tank', 'Pump', 'Fan', 'Battery', 'Vent', 'Misc', 'Camera', 'Aerial']
 };
 
 // Battery options — for Light elements

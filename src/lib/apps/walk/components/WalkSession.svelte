@@ -162,8 +162,8 @@
         <div class="sbar-floor">{floorProgress.currentFloorIndex}/{floorProgress.totalFloors}</div>
       {/if}
       <div class="sbar-count">{currentIndex + 1}/{elements.length}</div>
-      <!-- FIX: Better finish button instead of X -->
-      <button class="finish-btn" on:click={() => view = 'close'}>
+      <!-- FIX: Better finish button instead of X, disabled when on finish screen -->
+      <button class="finish-btn" on:click={() => view = 'close'} disabled={view === 'close'}>
         FINISH
       </button>
     </div>
@@ -401,7 +401,7 @@
       <div class="cc-acts">
         <button class="cc-continue" on:click={() => view = 'card'}>CONTINUE WALK</button>
         <button class="cc-finish" on:click={handleCloseSession} disabled={closing}>
-          {closing ? 'FINISHING…' : '✓ FINISH INSPECTION'}
+          {closing ? 'COMPLETING…' : '✓ COMPLETE INSPECTION SESSION'}
         </button>
       </div>
     </div>
@@ -462,7 +462,8 @@
     padding: 0.5rem 1rem; cursor: pointer; transition: all 0.15s;
     letter-spacing: 0.1em;
   }
-  .finish-btn:hover { background: #f97316; }
+  .finish-btn:hover:not(:disabled) { background: #f97316; }
+  .finish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* Old close button removed */
   .close-btn {
