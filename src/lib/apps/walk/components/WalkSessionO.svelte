@@ -11,14 +11,13 @@
   import WalkElementEditor    from './WalkElementEditor.svelte';
   import WalkInspectionPanel  from './WalkInspectionPanel.svelte';
   import WalkJumpList         from './WalkJumpList.svelte';
-  import WalkPlanViewer       from './WalkPlanViewer.svelte';
 
   const logger   = getLogger('WalkSession');
   const dispatch = createEventDispatcher();
 
   export let canEdit = false;
 
-  // 'card' | 'edit' | 'inspect' | 'jump' | 'close' | 'plan'
+  // 'card' | 'edit' | 'inspect' | 'jump' | 'close'
   let view       = 'card';
   let closeNotes = '';
   let closing    = false;
@@ -65,16 +64,6 @@
     
   // FIX: Use current floor for element display name in building-wide sessions
   $: displayFloor = $walkStore.currentFloor || session?.floor_level;
-  
-  // Get current plan for showing element location
-  $: currentPlan = (() => {
-    if (session?.session_scope === 'building') {
-      return $walkStore.buildingPlans.find(p => p.floor_level === $walkStore.currentFloor);
-    }
-    // For single-plan sessions, need to get plan from store
-    // This requires the plan to be loaded in walk store
-    return $walkStore.plans?.find(p => p.id === session?.plan_id);
-  })();
 
   function handlePrev() { 
     view = 'card'; 
@@ -220,13 +209,11 @@
 
       {#if canEdit}
         <div class="actions">
-          <button class="act act-plan" on:click={() => view = 'plan'}>📍 PLAN</button>
           <button class="act act-inspect" on:click={() => view = 'inspect'}>✓ INSPECT</button>
           <button class="act act-edit"    on:click={() => view = 'edit'}>✎ EDIT</button>
         </div>
       {:else}
         <div class="actions">
-          <button class="act act-plan" on:click={() => view = 'plan'}>📍 SHOW ON PLAN</button>
           <button class="act act-inspect" on:click={() => view = 'inspect'}>✓ RECORD INSPECTION</button>
         </div>
       {/if}
@@ -249,15 +236,6 @@
   {#if view === 'jump'}
     <WalkJumpList {elements} {currentIndex} {inspections} floorLevel={displayFloor}
       on:jump={handleJumpTo} on:close={() => view = 'card'} />
-  {/if}
-
-  {#if view === 'plan' && currentPlan && currentElement}
-    <WalkPlanViewer 
-      element={currentElement} 
-      plan={currentPlan} 
-      floorLevel={displayFloor}
-      on:close={() => view = 'card'} 
-    />
   {/if}
 
   {#if view === 'close'}
@@ -443,8 +421,6 @@
     font-family: inherit; font-size: 0.82rem; font-weight: 700;
     letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s;
   }
-  .act-plan    { background: #181828; border-color: #5b21b6; color: #a78bfa; }
-  .act-plan:hover { background: #5b21b6; color: #fff; }
   .act-inspect { background: #0a1f0a; border-color: #22c55e; color: #4ade80; }
   .act-inspect:hover { background: #22c55e; color: #0a0a0f; }
   .act-edit    { background: #181828; border-color: #3e3e58; color: #eee; }

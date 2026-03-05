@@ -1,6 +1,5 @@
 <!-- src/lib/apps/walk/components/WalkElementEditor.svelte -->
 <!-- Mobile-optimised form to edit all fields of an element during a walk -->
-<!-- FIX: Element type as dropdown, Cancel button added -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
@@ -71,14 +70,17 @@
 
   <div class="ed-body">
 
-    <!-- FIX: Element type as dropdown instead of grid -->
     <div class="sec">
       <div class="sec-lbl">ELEMENT TYPE</div>
-      <select class="fs" bind:value={form.element_type} on:change={handleTypeChange}>
+      <div class="type-grid">
         {#each ELEMENT_TYPE_OPTIONS as opt}
-          <option value={opt.value}>{opt.icon} {opt.label}</option>
+          <button class="type-btn" class:on={form.element_type === opt.value}
+                  on:click={() => { form.element_type = opt.value; handleTypeChange(); }}>
+            <span class="t-icon">{opt.icon}</span>
+            <span class="t-lbl">{opt.label}</span>
+          </button>
         {/each}
-      </select>
+      </div>
     </div>
 
     <div class="sec">
@@ -157,15 +159,9 @@
 
     {#if error}<div class="err-box">⚠ {error}</div>{/if}
 
-    <!-- FIX: Add Cancel button alongside Save -->
-    <div class="button-row">
-      <button class="cancel-btn" on:click={() => dispatch('cancel')} disabled={saving}>
-        CANCEL
-      </button>
-      <button class="save-btn" on:click={handleSave} disabled={saving}>
-        {saving ? 'SAVING…' : 'SAVE CHANGES'}
-      </button>
-    </div>
+    <button class="save-btn" on:click={handleSave} disabled={saving}>
+      {saving ? 'SAVING…' : 'SAVE CHANGES'}
+    </button>
   </div>
 </div>
 
@@ -193,6 +189,17 @@
 
   .sec     { display: flex; flex-direction: column; gap: 0.75rem; }
   .sec-lbl { font-size: 0.62rem; letter-spacing: 0.2em; color: #fb923c; font-weight: 700; }
+
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .type-btn {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 0.875rem; background: #1a1a2e; border: 2px solid #2e2e48;
+    border-radius: 8px; font-family: inherit; cursor: pointer; transition: all 0.15s;
+  }
+  .type-btn.on { border-color: #fb923c; background: #2a1800; }
+  .t-icon { font-size: 1.1rem; }
+  .t-lbl  { font-size: 0.72rem; color: #ccc; }
+  .type-btn.on .t-lbl { color: #fb923c; font-weight: 700; }
 
   .fields { display: flex; flex-direction: column; gap: 0.625rem; }
   .field  { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -233,22 +240,8 @@
     font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem;
     background: #2a0000; border: 2px solid #ef4444; border-radius: 8px;
   }
-  
-  /* FIX: Button row with Cancel and Save */
-  .button-row {
-    display: flex; gap: 0.75rem;
-  }
-  
-  .cancel-btn {
-    flex: 1; padding: 1.25rem; background: none; border: 2px solid #3e3e58; border-radius: 10px;
-    color: #ccc; font-family: inherit; font-size: 0.9rem; font-weight: 800;
-    letter-spacing: 0.2em; cursor: pointer; transition: all 0.15s;
-  }
-  .cancel-btn:hover:not(:disabled) { border-color: #6e6e88; color: #f0f0f0; }
-  .cancel-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-  
   .save-btn {
-    flex: 1; padding: 1.25rem; background: #fb923c; border: none; border-radius: 10px;
+    padding: 1.25rem; background: #fb923c; border: none; border-radius: 10px;
     color: #0a0a0f; font-family: inherit; font-size: 0.9rem; font-weight: 800;
     letter-spacing: 0.2em; cursor: pointer; transition: background 0.15s;
   }
