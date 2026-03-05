@@ -57,6 +57,16 @@
   // FIX: Check if element failed last inspection - show red background
   $: inspectionFailed = lastInspection?.inspection_result === 'fail';
   $: statusClass = inspectionFailed ? 'st-failed' : statusCls(currentElement?.status);
+  
+  // Count pass/fail from inspections
+  $: inspectionStats = (() => {
+    const allInspections = Object.values(inspections).flat();
+    return {
+      pass: allInspections.filter(i => i.inspection_result === 'pass').length,
+      fail: allInspections.filter(i => i.inspection_result === 'fail').length,
+      na: allInspections.filter(i => i.inspection_result === 'na').length
+    };
+  })();
 
   // FIX: Floor progress for building-wide sessions
   $: floorProgress = session?.session_scope === 'building' 
@@ -260,6 +270,115 @@
     />
   {/if}
 
+  {#if view === 'summary'}
+    <div class="summary">
+      <div class="summary-hdr">
+        <button class="back-btn" on:click={() => view = 'card'}>← BACK</button>
+        <div class="summary-title">SESSION SUMMARY</div>
+      </div>
+
+      <div class="summary-body">
+        <div class="summary-section">
+          <div class="summary-label">SESSION</div>
+          <div class="summary-value">{session?.session_name || (session?.building + ' · Floor ' + session?.floor_level)}</div>
+        </div>
+
+        {#if session?.inspector_name}
+          <div class="summary-section">
+            <div class="summary-label">INSPECTOR</div>
+            <div class="summary-value">{session.inspector_name}</div>
+          </div>
+        {/if}
+
+        <div class="summary-section">
+          <div class="summary-label">ELEMENT TYPE</div>
+          <div class="summary-value">{typeConfig?.label || session?.element_type}</div>
+          {#if session?.light_subtype_filter === 'emergency'}
+            <span class="badge-em-summary">Emergency Only</span>
+          {/if}
+        </div>
+
+        {#if session?.session_scope === 'building'}
+          <div class="summary-section">
+            <div class="summary-label">BUILDING</div>
+            <div class="summary-value">{session.building_name || session.building}</div>
+          </div>
+          
+          <div class="summary-section">
+            <div class="summary-label">FLOORS</div>
+            <div class="summary-value">{$walkStore.buildingPlans?.length || 0} floors</div>
+          </div>
+        {:else}
+          <div class="summary-section">
+            <div class="summary-label">FLOOR</div>
+            <div class="summary-value">{session?.floor_level}</div>
+          </div>
+        {/if}
+
+        <div class="summary-divider"></div>
+
+        <div class="summary-stats">
+          <div class="stat-card">
+            <div class="stat-number">{session?.total_elements_count || elements.length}</div>
+            <div class="stat-label">TOTAL ELEMENTS</div>
+          </div>
+
+          <div class="stat-card stat-inspected">
+            <div class="stat-number">{inspectedCount}</div>
+            <div class="stat-label">INSPECTED</div>
+          </div>
+
+          <div class="stat-card stat-remaining">
+            <div class="stat-number">{(session?.total_elements_count || elements.length) - inspectedCount}</div>
+            <div class="stat-label">REMAINING</div>
+          </div>
+        </div>
+
+        <div class="summary-results">
+          <div class="result-card result-pass">
+            <div class="result-icon">✓</div>
+            <div class="result-info">
+              <div class="result-number">{inspectionStats.pass}</div>
+              <div class="result-label">PASS</div>
+            </div>
+          </div>
+
+          <div class="result-card result-fail">
+            <div class="result-icon">✗</div>
+            <div class="result-info">
+              <div class="result-number">{inspectionStats.fail}</div>
+              <div class="result-label">FAIL</div>
+            </div>
+          </div>
+
+          <div class="result-card result-na">
+            <div class="result-icon">—</div>
+            <div class="result-info">
+              <div class="result-number">{inspectionStats.na}</div>
+              <div class="result-label">N/A</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-progress">
+          <div class="progress-label">
+            <span>PROGRESS</span>
+            <span class="progress-percent">
+              {Math.round((inspectedCount / (session?.total_elements_count || elements.length)) * 100)}%
+            </span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {(inspectedCount / (session?.total_elements_count || elements.length)) * 100}%"></div>
+          </div>
+        </div>
+
+        <button class="continue-btn" on:click={() => view = 'card'}>
+          CONTINUE INSPECTION
+        </button>
+      </div>
+    </div>
+  {/if}
+
   {#if view === 'close'}
     <div class="cc">
       <div class="cc-hdr">FINISH INSPECTION</div>
@@ -291,7 +410,7 @@
   {#if view === 'card'}
     <div class="nav">
       <button class="nb nb-prev" on:click={handlePrev} disabled={isFirst}>← PREV</button>
-      <button class="nb nb-list" on:click={() => view = 'jump'}>☰ LIST</button>
+      <button class="nb nb-summary" on:click={() => view = 'summary'}>📊 SUMMARY</button>
       <button class="nb nb-next" on:click={handleNext} disabled={isLast}>
         {#if isLast}
           COMPLETE
@@ -465,9 +584,184 @@
   .nb:hover:not(:disabled) { color: #f0f0f0; background: #1a1a2e; }
   .nb:disabled { opacity: 0.25; cursor: not-allowed; }
   .nb-prev { border-right: 1px solid #2e2e42; }
-  .nb-list { border-right: 1px solid #2e2e42; }
+  .nb-summary { border-right: 1px solid #2e2e42; }
   .nb-next { color: #fb923c; font-weight: 800; }
   .nb-next:hover:not(:disabled) { background: #2a1800; color: #fb923c; }
+
+  /* ── Summary view ─────────────────────────────────────────────────────────*/
+  .summary {
+    display: flex; flex-direction: column; flex: 1;
+    background: #0d0d14; color: #f0f0f0;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    overflow-y: auto; padding-bottom: 2rem;
+  }
+  
+  .summary-hdr {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1rem 1.25rem; border-bottom: 1px solid #2e2e42;
+    position: sticky; top: 0; background: #111122; z-index: 5;
+  }
+  
+  .summary-title {
+    font-size: 0.75rem; letter-spacing: 0.2em; color: #fb923c; font-weight: 700;
+  }
+  
+  .summary-body {
+    padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;
+  }
+  
+  .summary-section {
+    display: flex; flex-direction: column; gap: 0.375rem;
+  }
+  
+  .summary-label {
+    font-size: 0.62rem; letter-spacing: 0.15em; color: #ccc;
+  }
+  
+  .summary-value {
+    font-size: 0.95rem; color: #f0f0f0; font-weight: 600;
+  }
+  
+  .badge-em-summary {
+    font-size: 0.7rem; padding: 0.2rem 0.5rem;
+    background: #2a1800; color: #fb923c; border-radius: 4px;
+    display: inline-block; margin-top: 0.25rem; width: fit-content;
+  }
+  
+  .summary-divider {
+    height: 1px; background: #2e2e42; margin: 0.5rem 0;
+  }
+  
+  .summary-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+  }
+  
+  .stat-card {
+    background: #111122; border: 2px solid #2e2e42; border-radius: 10px;
+    padding: 1rem; display: flex; flex-direction: column; align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .stat-inspected {
+    border-color: #22c55e;
+  }
+  
+  .stat-remaining {
+    border-color: #fb923c;
+  }
+  
+  .stat-number {
+    font-size: 2rem; font-weight: 800; color: #fb923c; line-height: 1;
+  }
+  
+  .stat-inspected .stat-number {
+    color: #4ade80;
+  }
+  
+  .stat-remaining .stat-number {
+    color: #fb923c;
+  }
+  
+  .stat-label {
+    font-size: 0.6rem; letter-spacing: 0.15em; color: #ccc;
+    text-align: center;
+  }
+  
+  .summary-results {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+  }
+  
+  .result-card {
+    background: #111122; border: 2px solid; border-radius: 10px;
+    padding: 0.875rem; display: flex; align-items: center; gap: 0.625rem;
+  }
+  
+  .result-pass {
+    border-color: #22c55e; background: #0a1f0a;
+  }
+  
+  .result-fail {
+    border-color: #ef4444; background: #1f0a0a;
+  }
+  
+  .result-na {
+    border-color: #3e3e58; background: #181828;
+  }
+  
+  .result-icon {
+    font-size: 1.25rem; font-weight: 800; line-height: 1;
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+  }
+  
+  .result-pass .result-icon {
+    color: #4ade80; background: #0d2a0d;
+  }
+  
+  .result-fail .result-icon {
+    color: #f87171; background: #2a0000;
+  }
+  
+  .result-na .result-icon {
+    color: #aaa; background: #222235;
+  }
+  
+  .result-info {
+    display: flex; flex-direction: column; gap: 0.125rem;
+  }
+  
+  .result-number {
+    font-size: 1.25rem; font-weight: 800; line-height: 1;
+  }
+  
+  .result-pass .result-number {
+    color: #4ade80;
+  }
+  
+  .result-fail .result-number {
+    color: #f87171;
+  }
+  
+  .result-na .result-number {
+    color: #aaa;
+  }
+  
+  .result-label {
+    font-size: 0.55rem; letter-spacing: 0.12em; color: #ccc;
+  }
+  
+  .summary-progress {
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  
+  .progress-label {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  
+  .progress-label > span:first-child {
+    font-size: 0.62rem; letter-spacing: 0.15em; color: #ccc;
+  }
+  
+  .progress-percent {
+    font-size: 0.875rem; font-weight: 700; color: #fb923c;
+  }
+  
+  .progress-bar {
+    height: 8px; background: #2e2e42; border-radius: 4px; overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #fb923c, #f97316);
+    transition: width 0.3s ease;
+  }
+  
+  .continue-btn {
+    padding: 1.25rem; background: #fb923c; border: none; border-radius: 10px;
+    color: #0a0a0f; font-family: inherit; font-size: 0.9rem; font-weight: 800;
+    letter-spacing: 0.2em; cursor: pointer; transition: background 0.15s;
+    margin-top: 0.5rem;
+  }
+  .continue-btn:hover { background: #f97316; }
 
   /* ── Empty ────────────────────────────────────────────────────────────────*/
   .empty-walk {
