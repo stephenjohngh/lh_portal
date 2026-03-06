@@ -1,8 +1,11 @@
 // src/routes/api/plans/generate-inspections-report/+server.js
+// FIX: Changed ins.notes to ins.inspector_notes
+// FIX: Added photo support in detailed reports
+//
 // Generate Word document inspection reports.
 //
 // Summary:  Cover page + one table row per session.
-// Detailed: Cover page + one section per session, full inspection table.
+// Detailed: Cover page + one section per session, full inspection table + photos.
 //
 // Request body:
 //   { sessions: [{ session, inspections }], reportType: 'summary' | 'detailed' }
@@ -11,9 +14,9 @@ import { json } from '@sveltejs/kit';
 import {
   Document, Packer,
   Paragraph, TextRun,
-  Table, TableRow,
-  PageBreak,
-  WidthType, HeadingLevel,
+  Table, TableRow, TableCell,
+  PageBreak, ImageRun,
+  WidthType, HeadingLevel, convertInchesToTwip,
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
 import {
@@ -39,6 +42,22 @@ function resultColor(result) {
   return result === 'pass' ? COLOURS.passGreen
        : result === 'fail' ? COLOURS.failRed
        : '6B7280';
+}
+
+// ── Fetch image as buffer ──────────────────────────────────────────────────────
+async function fetchImageBuffer(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      logger('⚠️ Image fetch failed:', response.status, url);
+      return null;
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (err) {
+    logger('❌ Error fetching image:', err.message, url);
+    return null;
+  }
 }
 
 // ── Cover / title block ────────────────────────────────────────────────────────
@@ -110,11 +129,27 @@ function buildSummaryTable(sessionData) {
 }
 
 // ── Detailed report — one section per session ──────────────────────────────────
-// Inspection table columns: Asset ID | Subtype | Result | Time | Notes
-const DET_COLS = [1400, 1500, 900, 1200, 5466];
+// Inspection table columns: Element | Label | Result | Time | Notes
+const DET_COLS = [1600, 1700, 900, 1200, 5066];
 // sum = 10466 = CONTENT_W
 
-function buildDetailedSession({ session: s, inspections }, isFirst) {
+// Type initials for generating display names (Floor/Type/ID)
+const TYPE_INITIALS = {
+  communal_door:  'D',
+  apartment_door: 'A',
+  light:          'L',
+  fire_control:   'F',
+  other:          'O'
+};
+
+function getElementDisplayName(element, floorLevel) {
+  const floor = floorLevel ?? '?';
+  const type  = TYPE_INITIALS[element.element_type] ?? '?';
+  const id    = element.asset_id || 'No ID';
+  return `${floor}/${type}/${id}`;
+}
+
+async function buildDetailedSession({ session: s, inspections }, isFirst) {
   const children = [];
 
   if (!isFirst) {
@@ -181,26 +216,112 @@ function buildDetailedSession({ session: s, inspections }, isFirst) {
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Asset ID', DET_COLS[0]),
-      hCell('Subtype',  DET_COLS[1]),
-      hCell('Result',   DET_COLS[2]),
-      hCell('Time',     DET_COLS[3]),
-      hCell('Notes',    DET_COLS[4]),
+      hCell('Element', DET_COLS[0]),
+      hCell('Label',   DET_COLS[1]),
+      hCell('Result',  DET_COLS[2]),
+      hCell('Time',    DET_COLS[3]),
+      hCell('Notes',   DET_COLS[4]),
     ],
   });
 
-  const dataRows = inspections.map((ins, idx) => {
+  const dataRows = [];
+  
+  for (let idx = 0; idx < inspections.length; idx++) {
+    const ins = inspections[idx];
     const alt = idx % 2 === 1;
-    return new TableRow({
+    
+    // Generate display name: Floor/Type/ID (e.g. "G/L/007")
+    const displayName = getElementDisplayName(ins, s.floor_level);
+    
+    // Use label if available, otherwise show subtype
+    const labelText = ins.label || ins.subtype || '—';
+    
+    // FIX: Changed ins.notes to ins.inspector_notes
+    dataRows.push(new TableRow({
       children: [
-        dCell(ins.asset_id,                           DET_COLS[0], { alt, bold: true }),
-        dCell(ins.subtype,                            DET_COLS[1], { alt }),
+        dCell(displayName,                            DET_COLS[0], { alt, bold: true }),
+        dCell(labelText,                              DET_COLS[1], { alt }),
         dCell((ins.result ?? '').toUpperCase(),       DET_COLS[2], { alt, bold: true, color: resultColor(ins.result) }),
         dCell(fmtTime(ins.inspected_at),              DET_COLS[3], { alt }),
-        dCell(ins.notes,                              DET_COLS[4], { alt }),
+        dCell(ins.inspector_notes,                    DET_COLS[4], { alt }),  // FIX: was ins.notes
       ],
-    });
-  });
+    }));
+    
+    // NEW: Add photo if exists
+    if (ins.photo_url) {
+      try {
+        const imageBuffer = await fetchImageBuffer(ins.photo_url);
+        
+        if (imageBuffer) {
+          // Add a row with the photo spanning all columns
+          const photoCell = new TableCell({
+            width: { size: CONTENT_W, type: WidthType.DXA },
+            columnSpan: 5,
+            margins: {
+              top: convertInchesToTwip(0.1),
+              bottom: convertInchesToTwip(0.1),
+              left: convertInchesToTwip(0.1),
+              right: convertInchesToTwip(0.1),
+            },
+            shading: { fill: alt ? 'F8FAFC' : 'FFFFFF' },
+            children: [
+              new Paragraph({
+                children: [
+                  new ImageRun({
+                    data: imageBuffer,
+                    transformation: {
+                      width: 400,   // 400 pixels wide
+                      height: 300,  // 300 pixels tall
+                    },
+                  }),
+                ],
+              }),
+            ],
+          });
+          
+          dataRows.push(new TableRow({
+            children: [photoCell],
+          }));
+          
+          logger('✅ Added photo to report:', ins.asset_id);
+        } else {
+          // Photo failed to load - add placeholder
+          const placeholderCell = new TableCell({
+            width: { size: CONTENT_W, type: WidthType.DXA },
+            columnSpan: 5,
+            margins: {
+              top: convertInchesToTwip(0.05),
+              bottom: convertInchesToTwip(0.05),
+              left: convertInchesToTwip(0.1),
+              right: convertInchesToTwip(0.1),
+            },
+            shading: { fill: alt ? 'F8FAFC' : 'FFFFFF' },
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: '[Photo unavailable]',
+                    italics: true,
+                    color: '9CA3AF',
+                    font: 'Arial',
+                    size: 18,
+                  }),
+                ],
+              }),
+            ],
+          });
+          
+          dataRows.push(new TableRow({
+            children: [placeholderCell],
+          }));
+          
+          logger('⚠️ Photo unavailable:', ins.asset_id, ins.photo_url);
+        }
+      } catch (err) {
+        logger('❌ Error adding photo:', err.message, ins.photo_url);
+      }
+    }
+  }
 
   children.push(new Table({
     width:        { size: CONTENT_W, type: WidthType.DXA },
@@ -231,8 +352,10 @@ export async function POST({ request }) {
     if (reportType === 'summary') {
       children.push(buildSummaryTable(sessions));
     } else {
+      // FIX: Changed to async/await to support photo fetching
       for (let i = 0; i < sessions.length; i++) {
-        children.push(...buildDetailedSession(sessions[i], i === 0));
+        const sessionChildren = await buildDetailedSession(sessions[i], i === 0);
+        children.push(...sessionChildren);
       }
     }
 

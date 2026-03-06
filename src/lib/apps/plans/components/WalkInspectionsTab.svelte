@@ -326,7 +326,7 @@
                           }}
                         >
                           <td class="font-medium font-mono">{displayName}</td>
-                          <td class="text-gray-400">{firstRow.label || firstRow.subtype || '—'}</td>
+                          <td class="text-gray-400">{firstRow.label || '—'}</td>
                           <td>
                             <span class="result-badge result-{worst}">
                               {worst === 'pass' ? '✓ PASS' : worst === 'fail' ? '✗ FAIL' : '— N/A'}

@@ -233,8 +233,8 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
     // Generate display name: Floor/Type/ID (e.g. "G/L/007")
     const displayName = getElementDisplayName(ins, s.floor_level);
     
-    // Use label if available, otherwise show subtype
-    const labelText = ins.label || ins.subtype || '—';
+    // Use label field only - don't fall back to subtype
+    const labelText = ins.label || '—';
     
     // FIX: Changed ins.notes to ins.inspector_notes
     dataRows.push(new TableRow({

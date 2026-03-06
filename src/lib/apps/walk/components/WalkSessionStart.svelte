@@ -58,16 +58,19 @@
   // Auto-generate session name
   $: if (sessionMode === 'single_plan' && selectedPlanId && selectedPlan) {
     const mon = new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    const mon2 = mon.replace(/\s+/g, '_');
+
     const typ = typeLabel(selectedType).replace(/\s+/g, '_');
     const sub = selectedType === 'light' && lightFilter === 'emergency' ? '_Emergency' : '';
     const bld = buildingInitials(selectedPlan.building);
-    sessionName = `${typ}${sub}_${bld}_F${selectedPlan.floor_level}_${mon}`;
+    sessionName = `${typ}${sub}_${bld}_F${selectedPlan.floor_level}_${mon2}`;
   } else if (sessionMode === 'building' && selectedBuilding) {
     const mon = new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+    const mon2 = mon.replace(/\s+/g, '_');
     const typ = typeLabel(selectedType).replace(/\s+/g, '_');
     const sub = selectedType === 'light' && lightFilter === 'emergency' ? '_Emergency' : '';
     const bld = buildingInitials(selectedBuilding);
-    sessionName = `${typ}${sub}_${bld}_Building_${mon}`;
+    sessionName = `${typ}${sub}_${bld}_Building_${mon2}`;
   }
 
   $: if (selectedPlanId) startAssetId = '';

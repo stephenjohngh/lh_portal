@@ -58,9 +58,19 @@
       <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Element Details</h4>
       <div class="grid grid-cols-2 gap-4">
         <div>
+          <div class="text-xs text-gray-400 mb-1">Element ID</div>
+          <div class="text-sm font-mono font-semibold">{displayName}</div>
+        </div>
+        <div>
           <div class="text-xs text-gray-400 mb-1">Type</div>
           <div class="text-sm">{typeConfig?.label || inspection.element_type}</div>
         </div>
+        {#if inspection.label}
+          <div>
+            <div class="text-xs text-gray-400 mb-1">Label</div>
+            <div class="text-sm">{inspection.label}</div>
+          </div>
+        {/if}
         {#if inspection.subtype}
           <div>
             <div class="text-xs text-gray-400 mb-1">Subtype</div>
@@ -76,11 +86,11 @@
       </div>
     </div>
 
-    <!-- Notes -->
+    <!-- Inspector Notes - Always show if present -->
     {#if inspection.inspector_notes || inspection.notes}
       <div>
         <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Inspector Notes</h4>
-        <div class="bg-slate-700/40 rounded-lg p-4 text-sm">
+        <div class="bg-slate-700/40 rounded-lg p-4 text-sm whitespace-pre-wrap">
           {inspection.inspector_notes || inspection.notes}
         </div>
       </div>
