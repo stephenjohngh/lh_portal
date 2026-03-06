@@ -12,6 +12,7 @@
   import WalkInspectionPanel  from './WalkInspectionPanel.svelte';
   import WalkJumpList         from './WalkJumpList.svelte';
   import WalkPlanViewer       from './WalkPlanViewer.svelte';
+import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
 
   const logger   = getLogger('WalkSession');
   const dispatch = createEventDispatcher();
@@ -251,10 +252,24 @@
       on:saved={handleEditSaved} on:cancel={() => view = 'card'} />
   {/if}
 
-  {#if view === 'inspect' && currentElement}
-    <WalkInspectionPanel element={currentElement} session={session}
-      on:saved={handleInspectionSaved} on:cancel={() => view = 'card'} />
+{#if view === 'inspect' && currentElement}
+  {#if currentElement.element_type === 'communal_door' || currentElement.element_type === 'apartment_door'}
+    <WalkDoorInspectionPanel 
+      element={currentElement} 
+      session={session}
+      on:saved={handleInspectionSaved} 
+      on:cancel={() => view = 'card'} 
+    />
+  {:else}
+    <WalkInspectionPanel 
+      element={currentElement} 
+      session={session}
+      on:saved={handleInspectionSaved} 
+      on:cancel={() => view = 'card'} 
+    />
   {/if}
+{/if}
+
 
   {#if view === 'jump'}
     <WalkJumpList {elements} {currentIndex} {inspections} floorLevel={displayFloor}

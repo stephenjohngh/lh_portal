@@ -1,6 +1,5 @@
 <!-- src/lib/apps/plans/components/WalkInspectionsReport.svelte -->
-<!-- Report modal for walk inspection sessions.                              -->
-<!-- Two modes: Summary (one row per session) or Detailed (one page/session) -->
+<!-- FIX: Added initialSelectedIds prop to pre-select specific sessions -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Modal    from '$lib/components/common/Modal.svelte';
@@ -18,11 +17,19 @@
   // sessions already filtered by the parent's toolbar filters
   export let sessions = [];
 
+  // FIX: New prop for initial selection (e.g., latest session or expanded session)
+  export let initialSelectedIds = [];
+
   // ── Report type ───────────────────────────────────────────────────────────
   let reportType = 'summary';  // 'summary' | 'detailed'
 
   // ── Session selection ─────────────────────────────────────────────────────
-  let selectedIds = new Set(sessions.map(s => s.id));
+  // FIX: Initialize with initialSelectedIds if provided, otherwise default to all
+  let selectedIds = new Set(
+    initialSelectedIds.length > 0 
+      ? initialSelectedIds 
+      : sessions.map(s => s.id)
+  );
 
   $: selectedSessions = sessions.filter(s => selectedIds.has(s.id));
   $: allSelected      = selectedIds.size === sessions.length;
@@ -59,11 +66,22 @@
 
         let inspections = inspectionsCache[session.id];
         if (!inspections) {
-          inspections = await api.get('element_inspections', {
-            filters:   { session_id: session.id },
-            orderBy:   'inspected_at',
+          inspections = await api.get('walk_element_inspections', {
+            select: '*, element:plan_elements!plan_element_id(asset_id, subtype, label, element_type)',
+            filters: { walk_session_id: session.id },
+            orderBy: 'inspected_at',
             ascending: true
           });
+          // Process and normalize field names
+          inspections = inspections.map(row => ({
+            ...row,
+            asset_id: row.element?.asset_id,
+            subtype: row.element?.subtype,
+            label: row.element?.label,
+            element_type: row.element?.element_type,
+            result: row.inspection_result,
+            notes: row.inspector_notes
+          }));
         }
         sessionsWithInspections.push({ session, inspections });
       }
