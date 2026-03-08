@@ -38,6 +38,8 @@
       }
     } catch (error) {
       logger('❌ Init error:', error.message);
+console.error('WALK INIT ERROR:', error);  // add this
+  alert('Init error: ' + error.message);  
       initError = error.message;
     } finally {
       loading = false;

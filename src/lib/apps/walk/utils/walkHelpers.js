@@ -1,20 +1,24 @@
 // src/lib/apps/walk/utils/walkHelpers.js
 // Shared utility functions for Walk app components and report servers.
-// FIX: Uses inspection field constants to prevent field name bugs
-
-import { INSPECTION_FIELDS, INSPECTION_RESULTS, getResultLabel } from './inspectionFields.js';
+// Eliminates duplication across WalkSessionSummary, WalkInspectionsTab,
+// WalkInspectionsReport, and generate-inspections-report.
 
 /**
- * Aggregate pass/fail/na counts and unique element count from an inspection array.
- * @param {Array} inspections — element_inspections rows
+ * Aggregate pass/fail/na counts and unique element count from a
+ * walk_element_inspections array.
+ *
+ * NOTE: The DB column is `inspection_result`, not `result`.
+ * We normalise here so callers can use `.result` throughout.
+ *
+ * @param {Array} inspections — walk_element_inspections rows
  * @returns {{ pass, fail, na, elements, total }}
  */
 export function sessionStats(inspections) {
   return {
-    pass:     inspections.filter(r => r[INSPECTION_FIELDS.RESULT] === INSPECTION_RESULTS.PASS).length,
-    fail:     inspections.filter(r => r[INSPECTION_FIELDS.RESULT] === INSPECTION_RESULTS.FAIL).length,
-    na:       inspections.filter(r => r[INSPECTION_FIELDS.RESULT] === INSPECTION_RESULTS.NA).length,
-    elements: new Set(inspections.map(r => r[INSPECTION_FIELDS.ELEMENT_ID])).size,
+    pass:     inspections.filter(r => r.inspection_result === 'pass').length,
+    fail:     inspections.filter(r => r.inspection_result === 'fail').length,
+    na:       inspections.filter(r => r.inspection_result === 'na').length,
+    elements: new Set(inspections.map(r => r.plan_element_id)).size,
     total:    inspections.length,
   };
 }
@@ -23,26 +27,34 @@ export function sessionStats(inspections) {
  * Group inspection rows by plan_element_id.
  * Result is sorted: failures first, then by asset_id (numeric-aware).
  *
- * @param {Array} rows — element_inspections rows
- * @returns {Array<{ element_id, asset_id, subtype, rows }>}
+ * Normalises `plan_element_id` → `element_id` and
+ * `inspection_result` → `result` on each row for convenience in templates.
+ *
+ * @param {Array} rows — walk_element_inspections rows
+ * @returns {Array<{ element_id, asset_id, subtype, label, rows }>}
  */
 export function groupByElement(rows) {
   const map = {};
   for (const row of rows) {
-    const elementId = row[INSPECTION_FIELDS.ELEMENT_ID];
-    if (!map[elementId]) {
-      map[elementId] = {
-        element_id: elementId,
-        asset_id:   row.asset_id,
-        subtype:    row.subtype,
+    const key = row.plan_element_id;
+    if (!map[key]) {
+      map[key] = {
+        element_id: key,
+        asset_id:   row.asset_id   ?? null,
+        subtype:    row.subtype    ?? null,
+        label:      row.label      ?? null,
         rows:       [],
       };
     }
-    map[elementId].rows.push(row);
+    // Normalise result field so templates can use row.result uniformly
+    map[key].rows.push({
+      ...row,
+      result: row.inspection_result ?? row.result,
+    });
   }
   return Object.values(map).sort((a, b) => {
-    const aFail = a.rows.some(r => r[INSPECTION_FIELDS.RESULT] === INSPECTION_RESULTS.FAIL);
-    const bFail = b.rows.some(r => r[INSPECTION_FIELDS.RESULT] === INSPECTION_RESULTS.FAIL);
+    const aFail = a.rows.some(r => r.result === 'fail');
+    const bFail = b.rows.some(r => r.result === 'fail');
     if (aFail !== bFail) return aFail ? -1 : 1;
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
@@ -51,13 +63,13 @@ export function groupByElement(rows) {
 /**
  * Return the worst result across a set of inspection rows for one element.
  * Priority: fail > pass > na
- * @param {Array} rows — inspection rows for a single element
+ * @param {Array} rows — inspection rows for a single element (with .result normalised)
  * @returns {'fail'|'pass'|'na'}
  */
 export function worstResult(rows) {
-  if (rows.some(r => r[INSPECTION_FIELDS.RESULT] === INSPECTION_RESULTS.FAIL)) return INSPECTION_RESULTS.FAIL;
-  if (rows.some(r => r[INSPECTION_FIELDS.RESULT] === INSPECTION_RESULTS.PASS)) return INSPECTION_RESULTS.PASS;
-  return INSPECTION_RESULTS.NA;
+  if (rows.some(r => r.result === 'fail')) return 'fail';
+  if (rows.some(r => r.result === 'pass')) return 'pass';
+  return 'na';
 }
 
 /**
@@ -65,7 +77,7 @@ export function worstResult(rows) {
  * @param {'pass'|'fail'|'na'} result
  */
 export function resultLabel(result) {
-  return getResultLabel(result);
+  return { pass: '✓ PASS', fail: '✗ FAIL', na: '— N/A' }[result] ?? result;
 }
 
 /**
@@ -73,10 +85,5 @@ export function resultLabel(result) {
  * fail = 0 (highest priority), pass = 1, na = 2
  */
 export function resultRank(result) {
-  const ranks = {
-    [INSPECTION_RESULTS.FAIL]: 0,
-    [INSPECTION_RESULTS.PASS]: 1,
-    [INSPECTION_RESULTS.NA]: 2
-  };
-  return ranks[result] ?? 3;
+  return { fail: 0, pass: 1, na: 2 }[result] ?? 3;
 }
