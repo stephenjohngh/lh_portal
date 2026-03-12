@@ -23,15 +23,19 @@ export function sessionStats(inspections) {
   };
 }
 
+// Floor sort order for building-wide session element grouping
+const FLOOR_ORDER = { L: 0, U: 1, G: 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
+
 /**
  * Group inspection rows by plan_element_id.
- * Result is sorted: failures first, then by asset_id (numeric-aware).
+ * Result is sorted: failures first, then by floor_level, then by asset_id (numeric-aware).
+ * For single-plan sessions all rows share the same floor so sort degrades to asset_id only.
  *
  * Normalises `plan_element_id` → `element_id` and
  * `inspection_result` → `result` on each row for convenience in templates.
  *
- * @param {Array} rows — walk_element_inspections rows
- * @returns {Array<{ element_id, asset_id, subtype, label, rows }>}
+ * @param {Array} rows — walk_element_inspections rows (floor_level must be flattened onto each row)
+ * @returns {Array<{ element_id, asset_id, subtype, label, floor_level, rows }>}
  */
 export function groupByElement(rows) {
   const map = {};
@@ -39,11 +43,12 @@ export function groupByElement(rows) {
     const key = row.plan_element_id;
     if (!map[key]) {
       map[key] = {
-        element_id: key,
-        asset_id:   row.asset_id   ?? null,
-        subtype:    row.subtype    ?? null,
-        label:      row.label      ?? null,
-        rows:       [],
+        element_id:  key,
+        asset_id:    row.asset_id    ?? null,
+        subtype:     row.subtype     ?? null,
+        label:       row.label       ?? null,
+        floor_level: row.floor_level ?? null,
+        rows:        [],
       };
     }
     // Normalise result field so templates can use row.result uniformly
@@ -56,6 +61,9 @@ export function groupByElement(rows) {
     const aFail = a.rows.some(r => r.result === 'fail');
     const bFail = b.rows.some(r => r.result === 'fail');
     if (aFail !== bFail) return aFail ? -1 : 1;
+    const aFloor = FLOOR_ORDER[a.floor_level] ?? 99;
+    const bFloor = FLOOR_ORDER[b.floor_level] ?? 99;
+    if (aFloor !== bFloor) return aFloor - bFloor;
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
 }

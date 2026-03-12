@@ -2,6 +2,7 @@
 // REFACTORED: Cleaned up, DRY principles, better abstractions
 // FIX: recordInspection now UPDATES existing inspection instead of creating duplicate
 // REFACTORED: Uses shared floor sorting utility
+// FIX: loadSessionInspections join includes floor_level for building-wide display names
 
 import { writable, get } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
@@ -595,29 +596,16 @@ function createWalkStore() {
   function isAtStartOfBuilding() {
     const state = getState();
     if (state.activeSession?.session_scope !== 'building') return false;
-    
-    // Check if on first floor
     const currentFloorIndex = state.buildingPlans.findIndex(p => p.floor_level === state.currentFloor);
-    const isFirstFloor = currentFloorIndex === 0;
-    
-    // And at first element
-    const isFirstElement = state.currentIndex === 0;
-    
-    return isFirstFloor && isFirstElement;
+    return currentFloorIndex === 0 && state.currentIndex === 0;
   }
 
   function isAtEndOfBuilding() {
     const state = getState();
     if (state.activeSession?.session_scope !== 'building') return false;
-    
-    // Check if on last floor
     const currentFloorIndex = state.buildingPlans.findIndex(p => p.floor_level === state.currentFloor);
     const isLastFloor = currentFloorIndex === state.buildingPlans.length - 1;
-    
-    // And at last element
-    const isLastElement = state.currentIndex >= state.walkElements.length - 1;
-    
-    return isLastFloor && isLastElement;
+    return isLastFloor && state.currentIndex >= state.walkElements.length - 1;
   }
 
   function getCurrentFloorProgress() {
@@ -645,14 +633,11 @@ function createWalkStore() {
       
       update(s => {
         const newAllElements = { ...s.allElements };
-        
-        // Update in all plan element lists
         for (const pid of Object.keys(newAllElements)) {
           newAllElements[pid] = newAllElements[pid].map(el =>
             el.id === elementId ? { ...el, ...updated } : el
           );
         }
-        
         return {
           ...s,
           allElements: newAllElements,
@@ -732,12 +717,10 @@ function createWalkStore() {
         const newInspections = { ...s.inspections };
         
         if (existingInspection) {
-          // Replace the existing inspection in the array
           newInspections[elementId] = newInspections[elementId].map(insp =>
             insp.id === existingInspection.id ? inspection : insp
           );
         } else {
-          // Add new inspection to array
           newInspections[elementId] = [...(newInspections[elementId] || []), inspection];
         }
         
@@ -790,9 +773,10 @@ function createWalkStore() {
   async function loadSessionInspections(sessionId) {
     logger('Loading inspections for session:', sessionId);
     try {
-      // FIX: Join with plan_elements to get asset_id and subtype
+      // FIX: Join includes plan:plans!plan_id(floor_level) so WalkSessionSummary
+      // gets the correct floor per element for building-wide sessions.
       return await api.get('walk_element_inspections', {
-        select: '*, element:plan_elements!plan_element_id(asset_id, subtype)',
+        select: '*, element:plan_elements!plan_element_id(asset_id, subtype, plan:plans!plan_id(floor_level))',
         filters: { walk_session_id: sessionId },
         orderBy: 'inspected_at',
         ascending: true
@@ -852,9 +836,8 @@ function createWalkStore() {
   async function deleteSession(sessionId) {
     logger('Deleting session:', sessionId);
     try {
-      // FIX: Use Supabase directly to ensure proper deletion
       // Delete inspections first (foreign key constraint)
-      const { data: inspData, error: inspError, count: inspCount } = await supabase
+      const { data: inspData, error: inspError } = await supabase
         .from('walk_element_inspections')
         .delete()
         .eq('walk_session_id', sessionId)
@@ -881,13 +864,10 @@ function createWalkStore() {
       
       if (!sessData || sessData.length === 0) {
         logger('⚠️ WARNING: Delete executed but no rows were deleted!');
-        logger('This usually means RLS policy is blocking the delete');
         throw new Error('Session was not deleted - check permissions');
       }
       
       logger('Deleted session:', sessData.length, 'record(s)');
-      
-      // Reload sessions to update the UI
       await loadSessions();
       logger('✅ Session deleted successfully');
     } catch (error) {

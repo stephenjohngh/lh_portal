@@ -1,6 +1,8 @@
 // src/routes/api/plans/generate-inspections-report/+server.js
 // FIX: Changed ins.notes to ins.inspector_notes
 // FIX: Added photo support in detailed reports
+// FIX: Use ins.floor_level (joined from plans) for display name — s.floor_level
+//      is NULL for building-wide sessions so per-element floor must be used.
 //
 // Generate Word document inspection reports.
 //
@@ -104,19 +106,21 @@ function buildSummaryTable(sessionData) {
     const alt = idx % 2 === 1;
     const dur = fmtDuration(s.started_at, s.closed_at);
     const tp  = typeLabel(s.element_type) + (s.light_subtype_filter === 'emergency' ? ' (Emerg.)' : '');
+    // FIX: Show 'All' for building-wide sessions where floor_level is NULL
+    const floorDisplay = s.floor_level ? floorLabel(s.floor_level) : 'All';
     return new TableRow({
       children: [
-        dCell(fmtDate(s.started_at),      SUM_COLS[0],  { alt }),
-        dCell(s.building,                 SUM_COLS[1],  { alt }),
-        dCell(floorLabel(s.floor_level),  SUM_COLS[2],  { alt }),
-        dCell(tp,                         SUM_COLS[3],  { alt }),
-        dCell(s.inspector_name,           SUM_COLS[4],  { alt }),
-        dCell(dur,                        SUM_COLS[5],  { alt }),
-        dCell(st.elements,                SUM_COLS[6],  { alt, bold: true }),
-        dCell(st.pass || '—',             SUM_COLS[7],  { alt, color: st.pass ? COLOURS.passGreen : '9CA3AF' }),
-        dCell(st.fail || '—',             SUM_COLS[8],  { alt, color: st.fail ? COLOURS.failRed   : '9CA3AF' }),
-        dCell(st.na   || '—',             SUM_COLS[9],  { alt, color: st.na   ? '6B7280'          : '9CA3AF' }),
-        dCell(s.notes,                    SUM_COLS[10], { alt }),
+        dCell(fmtDate(s.started_at),  SUM_COLS[0],  { alt }),
+        dCell(s.building,             SUM_COLS[1],  { alt }),
+        dCell(floorDisplay,           SUM_COLS[2],  { alt }),
+        dCell(tp,                     SUM_COLS[3],  { alt }),
+        dCell(s.inspector_name,       SUM_COLS[4],  { alt }),
+        dCell(dur,                    SUM_COLS[5],  { alt }),
+        dCell(st.elements,            SUM_COLS[6],  { alt, bold: true }),
+        dCell(st.pass || '—',         SUM_COLS[7],  { alt, color: st.pass ? COLOURS.passGreen : '9CA3AF' }),
+        dCell(st.fail || '—',         SUM_COLS[8],  { alt, color: st.fail ? COLOURS.failRed   : '9CA3AF' }),
+        dCell(st.na   || '—',         SUM_COLS[9],  { alt, color: st.na   ? '6B7280'          : '9CA3AF' }),
+        dCell(s.notes,                SUM_COLS[10], { alt }),
       ],
     });
   });
@@ -142,10 +146,12 @@ const TYPE_INITIALS = {
   other:          'O'
 };
 
-function getElementDisplayName(element, floorLevel) {
-  const floor = floorLevel ?? '?';
-  const type  = TYPE_INITIALS[element.element_type] ?? '?';
-  const id    = element.asset_id || 'No ID';
+// FIX: Use ins.floor_level (joined from plan_elements → plans) rather than
+// s.floor_level which is NULL for building-wide sessions.
+function getElementDisplayName(ins, sessionFloorLevel) {
+  const floor = ins.floor_level ?? sessionFloorLevel ?? '?';
+  const type  = TYPE_INITIALS[ins.element_type] ?? '?';
+  const id    = ins.asset_id || 'No ID';
   return `${floor}/${type}/${id}`;
 }
 
@@ -157,13 +163,15 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
   }
 
   const st = sessionStats(inspections);
+  // For building-wide sessions, floor_level is null — show 'All Floors'
+  const floorDisplay = s.floor_level ? floorLabel(s.floor_level) : 'All Floors';
 
   // Session heading
   children.push(new Paragraph({
     heading:  HeadingLevel.HEADING_1,
     spacing:  { before: 0, after: 160 },
     children: [new TextRun({
-      text: `${s.building} — ${floorLabel(s.floor_level)} — ${typeLabel(s.element_type)}`,
+      text: `${s.building} — ${floorDisplay} — ${typeLabel(s.element_type)}`,
       font: 'Arial', size: 32, bold: true,
     })],
   }));
@@ -230,20 +238,20 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
     const ins = inspections[idx];
     const alt = idx % 2 === 1;
     
-    // Generate display name: Floor/Type/ID (e.g. "G/L/007")
+    // FIX: Pass both ins and s.floor_level — ins.floor_level (joined from plans)
+    // takes priority; s.floor_level is the fallback for single-plan sessions
+    // where the join may not have been included.
     const displayName = getElementDisplayName(ins, s.floor_level);
     
-    // Use label field only - don't fall back to subtype
     const labelText = ins.label || '—';
     
-    // FIX: Changed ins.notes to ins.inspector_notes
     dataRows.push(new TableRow({
       children: [
-        dCell(displayName,                            DET_COLS[0], { alt, bold: true }),
-        dCell(labelText,                              DET_COLS[1], { alt }),
-        dCell((ins.result ?? '').toUpperCase(),       DET_COLS[2], { alt, bold: true, color: resultColor(ins.result) }),
-        dCell(fmtTime(ins.inspected_at),              DET_COLS[3], { alt }),
-        dCell(ins.inspector_notes,                    DET_COLS[4], { alt }),  // FIX: was ins.notes
+        dCell(displayName,                      DET_COLS[0], { alt, bold: true }),
+        dCell(labelText,                        DET_COLS[1], { alt }),
+        dCell((ins.result ?? '').toUpperCase(), DET_COLS[2], { alt, bold: true, color: resultColor(ins.result) }),
+        dCell(fmtTime(ins.inspected_at),        DET_COLS[3], { alt }),
+        dCell(ins.inspector_notes,              DET_COLS[4], { alt }),
       ],
     }));
     
@@ -253,15 +261,14 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
         const imageBuffer = await fetchImageBuffer(ins.photo_url);
         
         if (imageBuffer) {
-          // Add a row with the photo spanning all columns
           const photoCell = new TableCell({
             width: { size: CONTENT_W, type: WidthType.DXA },
             columnSpan: 5,
             margins: {
-              top: convertInchesToTwip(0.1),
+              top:    convertInchesToTwip(0.1),
               bottom: convertInchesToTwip(0.1),
-              left: convertInchesToTwip(0.1),
-              right: convertInchesToTwip(0.1),
+              left:   convertInchesToTwip(0.1),
+              right:  convertInchesToTwip(0.1),
             },
             shading: { fill: alt ? 'F8FAFC' : 'FFFFFF' },
             children: [
@@ -269,31 +276,24 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
                 children: [
                   new ImageRun({
                     data: imageBuffer,
-                    transformation: {
-                      width: 400,   // 400 pixels wide
-                      height: 300,  // 300 pixels tall
-                    },
+                    transformation: { width: 400, height: 300 },
                   }),
                 ],
               }),
             ],
           });
           
-          dataRows.push(new TableRow({
-            children: [photoCell],
-          }));
-          
+          dataRows.push(new TableRow({ children: [photoCell] }));
           logger('✅ Added photo to report:', ins.asset_id);
         } else {
-          // Photo failed to load - add placeholder
           const placeholderCell = new TableCell({
             width: { size: CONTENT_W, type: WidthType.DXA },
             columnSpan: 5,
             margins: {
-              top: convertInchesToTwip(0.05),
+              top:    convertInchesToTwip(0.05),
               bottom: convertInchesToTwip(0.05),
-              left: convertInchesToTwip(0.1),
-              right: convertInchesToTwip(0.1),
+              left:   convertInchesToTwip(0.1),
+              right:  convertInchesToTwip(0.1),
             },
             shading: { fill: alt ? 'F8FAFC' : 'FFFFFF' },
             children: [
@@ -301,20 +301,14 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
                 children: [
                   new TextRun({
                     text: '[Photo unavailable]',
-                    italics: true,
-                    color: '9CA3AF',
-                    font: 'Arial',
-                    size: 18,
+                    italics: true, color: '9CA3AF', font: 'Arial', size: 18,
                   }),
                 ],
               }),
             ],
           });
           
-          dataRows.push(new TableRow({
-            children: [placeholderCell],
-          }));
-          
+          dataRows.push(new TableRow({ children: [placeholderCell] }));
           logger('⚠️ Photo unavailable:', ins.asset_id, ins.photo_url);
         }
       } catch (err) {
@@ -352,7 +346,7 @@ export async function POST({ request }) {
     if (reportType === 'summary') {
       children.push(buildSummaryTable(sessions));
     } else {
-      // FIX: Changed to async/await to support photo fetching
+      // async to support photo fetching
       for (let i = 0; i < sessions.length; i++) {
         const sessionChildren = await buildDetailedSession(sessions[i], i === 0);
         children.push(...sessionChildren);

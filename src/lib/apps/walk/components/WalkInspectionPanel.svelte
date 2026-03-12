@@ -32,7 +32,6 @@
     if (!result) return;
     saving = true; error = null;
     try {
-      // FIX: Changed from addInspection to recordInspection
       await walkStore.recordInspection({
         elementId: element.id,
         result,

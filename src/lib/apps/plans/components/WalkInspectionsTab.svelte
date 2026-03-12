@@ -1,5 +1,6 @@
 <!-- src/lib/apps/plans/components/WalkInspectionsTab.svelte -->
 <!-- FIX: Report modal now defaults to latest session or expanded session -->
+<!-- FIX: Join includes floor_level from plans for correct building-wide display names -->
 <script>
   import { onMount }   from 'svelte';
   import Icon          from '$lib/components/icons/Icon.svelte';
@@ -83,21 +84,25 @@
     if (!inspections[session.id]) {
       loadingId = session.id;
       try {
+        // FIX: Join includes plan:plans!plan_id(floor_level) so building-wide
+        // sessions get the correct floor per element (session.floor_level is NULL
+        // for building-wide sessions and cannot be used for display names).
         const rows = await api.get('walk_element_inspections', {
-          select: '*, element:plan_elements!plan_element_id(asset_id, subtype, label, element_type)',
+          select: '*, element:plan_elements!plan_element_id(asset_id, subtype, label, element_type, plan:plans!plan_id(floor_level))',
           filters: { walk_session_id: session.id },
           orderBy: 'inspected_at',
           ascending: true
         });
         const processedRows = rows.map(row => ({
           ...row,
-          asset_id: row.element?.asset_id,
-          subtype: row.element?.subtype,
-          label: row.element?.label,
+          asset_id:     row.element?.asset_id,
+          subtype:      row.element?.subtype,
+          label:        row.element?.label,
           element_type: row.element?.element_type,
-          // Normalize field names for compatibility
+          floor_level:  row.element?.plan?.floor_level ?? null,
+          // Normalize field names for compatibility with walkHelpers and display
           result: row.inspection_result,
-          notes: row.inspector_notes
+          notes:  row.inspector_notes
         }));
         inspections = { ...inspections, [session.id]: processedRows };
       } catch (err) {
@@ -317,7 +322,9 @@
                       {#each els as el (el.element_id)}
                         {@const worst = worstResult(el.rows)}
                         {@const firstRow = el.rows[0]}
-                        {@const displayName = getElementDisplayName(firstRow, session.floor_level)}
+                        <!-- FIX: Use firstRow.floor_level (joined from plans) not
+                             session.floor_level which is NULL for building-wide sessions -->
+                        {@const displayName = getElementDisplayName(firstRow, firstRow.floor_level)}
                         <tr 
                           class="inspection-row inspection-row-{worst}"
                           on:click={() => {
@@ -376,7 +383,7 @@
 {#if showInspectionDetail && selectedInspection}
   <WalkInspectionDetailModal
     inspection={selectedInspection}
-    floorLevel={sessions.find(s => s.id === selectedInspection.walk_session_id)?.floor_level}
+    floorLevel={selectedInspection.floor_level}
     on:close={() => {
       showInspectionDetail = false;
       selectedInspection = null;

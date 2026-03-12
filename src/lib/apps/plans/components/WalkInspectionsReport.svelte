@@ -1,5 +1,6 @@
 <!-- src/lib/apps/plans/components/WalkInspectionsReport.svelte -->
 <!-- FIX: Added initialSelectedIds prop to pre-select specific sessions -->
+<!-- FIX: Join includes floor_level from plans for correct building-wide display names -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Modal    from '$lib/components/common/Modal.svelte';
@@ -50,7 +51,9 @@
   let genProgress = '';
   let genError    = null;
 
-  // Pre-loaded inspections cache passed in from parent (may be partial)
+  // Pre-loaded inspections cache passed in from parent (may be partial).
+  // Rows in the cache are already flattened (have asset_id, floor_level etc.)
+  // because WalkInspectionsTab fetches with the join.
   export let inspectionsCache = {};   // { [sessionId]: inspection[] }
 
   async function generateReport() {
@@ -66,21 +69,23 @@
 
         let inspections = inspectionsCache[session.id];
         if (!inspections) {
-          inspections = await api.get('walk_element_inspections', {
-            select: '*, element:plan_elements!plan_element_id(asset_id, subtype, label, element_type)',
+          // FIX: Join includes plan:plans!plan_id(floor_level) so building-wide
+          // sessions get the correct floor per element for display names in the report.
+          const rows = await api.get('walk_element_inspections', {
+            select: '*, element:plan_elements!plan_element_id(asset_id, subtype, label, element_type, plan:plans!plan_id(floor_level))',
             filters: { walk_session_id: session.id },
             orderBy: 'inspected_at',
             ascending: true
           });
-          // Process and normalize field names
-          inspections = inspections.map(row => ({
+          inspections = rows.map(row => ({
             ...row,
-            asset_id: row.element?.asset_id,
-            subtype: row.element?.subtype,
-            label: row.element?.label,
+            asset_id:     row.element?.asset_id,
+            subtype:      row.element?.subtype,
+            label:        row.element?.label,
             element_type: row.element?.element_type,
-            result: row.inspection_result,
-            notes: row.inspector_notes
+            floor_level:  row.element?.plan?.floor_level ?? null,
+            result:       row.inspection_result,
+            notes:        row.inspector_notes
           }));
         }
         sessionsWithInspections.push({ session, inspections });
