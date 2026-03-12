@@ -49,7 +49,10 @@
 
   <div class="ip-hdr">
     <button class="back-btn" on:click={() => dispatch('cancel')}>← Back</button>
-    <div class="ip-name">{displayName}</div>
+    <div class="ip-name-block">
+      <div class="ip-name">{displayName}</div>
+      {#if element.label}<div class="ip-label">{element.label}</div>{/if}
+    </div>
   </div>
 
   <div class="ip-body">
@@ -131,7 +134,9 @@
     cursor: pointer; padding: 0; white-space: nowrap;
   }
   .back-btn:hover { color: #fdba74; }
-  .ip-name { font-size: 0.95rem; color: #f0f0f0; font-weight: 700; letter-spacing: 0.04em; }
+  .ip-name-block { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .ip-name  { font-size: 0.95rem; color: #f0f0f0; font-weight: 700; letter-spacing: 0.04em; }
+  .ip-label { font-size: 0.75rem; color: #fb923c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .ip-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1.5rem; }
 

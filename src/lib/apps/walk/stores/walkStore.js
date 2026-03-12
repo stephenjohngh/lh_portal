@@ -773,10 +773,10 @@ function createWalkStore() {
   async function loadSessionInspections(sessionId) {
     logger('Loading inspections for session:', sessionId);
     try {
-      // FIX: Join includes plan:plans!plan_id(floor_level) so WalkSessionSummary
-      // gets the correct floor per element for building-wide sessions.
+      // Join includes asset_id, subtype, label, element_type, and floor_level (via plans)
+      // so WalkSessionSummary can flatten and display correct names for building-wide sessions.
       return await api.get('walk_element_inspections', {
-        select: '*, element:plan_elements!plan_element_id(asset_id, subtype, plan:plans!plan_id(floor_level))',
+        select: '*, element:plan_elements!plan_element_id(asset_id, subtype, label, element_type, plan:plans!plan_id(floor_level))',
         filters: { walk_session_id: sessionId },
         orderBy: 'inspected_at',
         ascending: true

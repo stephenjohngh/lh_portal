@@ -1,10 +1,10 @@
 <!-- src/lib/apps/walk/components/WalkSessionSummary.svelte -->
 <!-- Read-only summary of a completed walk session: stats + per-element results -->
-<!-- FIX: Changed all references from .result to .inspection_result and .notes to .inspector_notes -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { getElementDisplayName } from '$lib/utils/planConstants';
   import { groupByElement, worstResult, resultLabel, resultRank } from '../utils/walkHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
 
@@ -16,26 +16,28 @@
   let loading     = true;
   let error       = null;
 
-  // groupByElement returns an array sorted fail-first; convert to object keyed by element_id
-  // so the template can iterate with #each and keep the sorted order.
+  // groupByElement returns an array sorted fail-first, then floor, then asset_id
   $: grouped   = groupByElement(inspections);
 
-  // FIX: Use inspection_result instead of result
-  $: passCount      = inspections.filter(i => i.inspection_result === 'pass').length;
-  $: failCount      = inspections.filter(i => i.inspection_result === 'fail').length;
-  $: naCount        = inspections.filter(i => i.inspection_result === 'na').length;
+  $: passCount      = inspections.filter(i => i.result === 'pass').length;
+  $: failCount      = inspections.filter(i => i.result === 'fail').length;
+  $: naCount        = inspections.filter(i => i.result === 'na').length;
   $: totalInspected = grouped.length;
 
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === session?.element_type);
 
   onMount(async () => {
     try {
-      const rawInspections = await walkStore.loadSessionInspections(session.id);
-      // FIX: Flatten the nested element data (asset_id, subtype)
-      inspections = rawInspections.map(insp => ({
-        ...insp,
-        asset_id: insp.element?.asset_id,
-        subtype: insp.element?.subtype
+      const rows = await walkStore.loadSessionInspections(session.id);
+      // Flatten joined element fields onto each row so groupByElement can read them directly
+      inspections = rows.map(r => ({
+        ...r,
+        asset_id:     r.element?.asset_id          ?? r.asset_id     ?? null,
+        subtype:      r.element?.subtype            ?? r.subtype      ?? null,
+        label:        r.element?.label              ?? r.label        ?? null,
+        element_type: r.element?.element_type       ?? r.element_type ?? null,
+        floor_level:  r.element?.plan?.floor_level  ?? r.floor_level  ?? null,
+        result:       r.inspection_result           ?? r.result       ?? null,
       }));
     } catch (err) {
       error = err.message;
@@ -64,10 +66,7 @@
       <div class="meta-sname">{session.session_name}</div>
     {/if}
     <div class="meta-loc">
-      {session.building_name || session.building}
-      {#if session.floor_level}
-        · Floor {session.floor_level}
-      {/if}
+      {session.building} · {session.floor_level ? `Floor ${session.floor_level}` : 'All Floors'}
     </div>
     {#if session.inspector_name}
       <div class="meta-inspector">Inspector: {session.inspector_name}</div>
@@ -96,7 +95,7 @@
   {:else if inspections.length === 0}
     <div class="state-center">
       <div class="empty-icon">◫</div>
-      <div class="empty-txt">No inspections recorded in this session.</div>
+      <div class="empty-txt">No inspections recorded</div>
       <div class="empty-sub">No elements were inspected during this session</div>
     </div>
 
@@ -131,9 +130,16 @@
       {#each grouped as el (el.element_id)}
         {@const worst  = worstResult(el.rows)}
         {@const latest = el.rows[el.rows.length - 1]}
+        {@const dispName = getElementDisplayName(
+          { asset_id: el.asset_id, element_type: latest?.element_type },
+          el.floor_level
+        )}
         <div class="el-row res-{worst}">
           <div class="el-top">
-            <div class="el-id">{el.asset_id || '—'}</div>
+            <div class="el-name-block">
+              <div class="el-id">{dispName}</div>
+              {#if el.label}<div class="el-label">{el.label}</div>{/if}
+            </div>
             {#if el.subtype}<div class="el-sub">{el.subtype}</div>{/if}
             <div class="el-res el-res-{worst}">{resultLabel(worst)}</div>
           </div>
@@ -143,7 +149,7 @@
               {#each el.rows as ins}
                 <div class="insp-row">
                   <span class="insp-t">{fmtTime(ins.inspected_at)}</span>
-                  <span class="insp-r r-{ins.inspection_result}">{resultLabel(ins.inspection_result)}</span>
+                  <span class="insp-r r-{ins.result}">{resultLabel(ins.result)}</span>
                   {#if ins.inspector_notes}<span class="insp-n">{ins.inspector_notes}</span>{/if}
                 </div>
               {/each}
@@ -221,9 +227,11 @@
   .res-fail { border-color: #7f1d1d; }
   .res-pass { border-color: #166534; }
   .el-top { display: flex; align-items: center; gap: 0.5rem; }
-  .el-id  { font-size: 0.95rem; font-weight: 700; color: #f0f0f0; flex: 1; font-variant-numeric: tabular-nums; }
-  .el-sub { font-size: 0.65rem; color: #ccc; background: #222235; padding: 0.15rem 0.4rem; border-radius: 3px; }
-  .el-res { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; flex-shrink: 0; }
+  .el-name-block { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+  .el-id    { font-size: 0.95rem; font-weight: 700; color: #f0f0f0; font-variant-numeric: tabular-nums; }
+  .el-label { font-size: 0.72rem; color: #fb923c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .el-sub   { font-size: 0.65rem; color: #ccc; background: #222235; padding: 0.15rem 0.4rem; border-radius: 3px; flex-shrink: 0; }
+  .el-res   { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; flex-shrink: 0; }
   .el-res-pass { color: #4ade80; }
   .el-res-fail { color: #f87171; }
   .el-res-na   { color: #aaa; }
