@@ -9,6 +9,8 @@
   const logger = getLogger('WalkSessionStart');
   const dispatch = createEventDispatcher();
 
+  export let sessionType = 'test'; // 'test' | 'inspection' — passed in from WalkApp
+
   $: plans = $walkStore.plans;
   $: allElements = $walkStore.allElements;
 
@@ -103,7 +105,8 @@
           building: selectedBuilding,
           elementType: selectedType,
           sessionName: sessionName.trim() || null,
-          lightSubtypeFilter: selectedType === 'light' ? lightFilter : null
+          lightSubtypeFilter: selectedType === 'light' ? lightFilter : null,
+          sessionType
         });
       } else {
         await walkStore.startSession({
@@ -113,7 +116,8 @@
           startAssetId: startAssetId || null,
           planId: selectedPlanId,
           sessionName: sessionName.trim() || null,
-          lightSubtypeFilter: selectedType === 'light' ? lightFilter : null
+          lightSubtypeFilter: selectedType === 'light' ? lightFilter : null,
+          sessionType
         });
       }
       dispatch('started');

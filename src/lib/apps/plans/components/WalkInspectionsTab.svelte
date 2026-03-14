@@ -8,7 +8,7 @@
   import { getLogger } from '$lib/utils/logger';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
   import { walkStore }           from '$lib/apps/walk/stores/walkStore.js';
-  import { sessionStats, groupByElement, worstResult } from '$lib/apps/walk/utils/walkHelpers.js';
+  import { sessionStats, groupByElement, worstResult, flattenInspectionRows, getTypeLabel, getTypeIcon, sessionFloorLabel } from '$lib/apps/walk/utils/walkHelpers.js';
   import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
   import WalkInspectionsReport   from './WalkInspectionsReport.svelte';
   import WalkInspectionDetailModal from './WalkInspectionDetailModal.svelte';
@@ -36,18 +36,20 @@
   let showInspectionDetail = false;
 
   // ── Filters ──────────────────────────────────────────────────────────────
-  let filterBuilding = '';
-  let filterType     = '';
-  let filterStatus   = '';
-  let filterDateFrom = '';
-  let filterDateTo   = '';
+  let filterBuilding     = '';
+  let filterType         = '';
+  let filterSessionType  = 'test';
+  let filterStatus       = '';
+  let filterDateFrom     = '';
+  let filterDateTo       = '';
 
   $: buildings = [...new Set(sessions.map(s => s.building))].sort();
 
   $: filtered = sessions.filter(s => {
-    if (filterBuilding && s.building !== filterBuilding) return false;
-    if (filterType     && s.element_type !== filterType)  return false;
-    if (filterStatus   && s.status !== filterStatus)       return false;
+    if (filterBuilding    && s.building !== filterBuilding)       return false;
+    if (filterType        && s.element_type !== filterType)       return false;
+    if (filterSessionType && s.session_type !== filterSessionType) return false;
+    if (filterStatus      && s.status !== filterStatus)           return false;
     if (filterDateFrom && new Date(s.started_at) < new Date(filterDateFrom)) return false;
     if (filterDateTo) {
       const to = new Date(filterDateTo); to.setHours(23, 59, 59, 999);
@@ -59,7 +61,7 @@
   $: totalSessions  = filtered.length;
   $: openSessions   = filtered.filter(s => s.status === 'open').length;
   $: closedSessions = filtered.filter(s => s.status === 'closed').length;
-  $: hasFilters = filterBuilding || filterType || filterStatus || filterDateFrom || filterDateTo;
+  $: hasFilters = filterBuilding || filterType || filterSessionType !== 'test' || filterStatus || filterDateFrom || filterDateTo;
 
   onMount(loadSessions);
 
@@ -93,17 +95,7 @@
           orderBy: 'inspected_at',
           ascending: true
         });
-        const processedRows = rows.map(row => ({
-          ...row,
-          asset_id:     row.element?.asset_id,
-          subtype:      row.element?.subtype,
-          label:        row.element?.label,
-          element_type: row.element?.element_type,
-          floor_level:  row.element?.plan?.floor_level ?? null,
-          // Normalize field names for compatibility with walkHelpers and display
-          result: row.inspection_result,
-          notes:  row.inspector_notes
-        }));
+        const processedRows = flattenInspectionRows(rows);
         inspections = { ...inspections, [session.id]: processedRows };
       } catch (err) {
         logger('❌ load inspections:', err.message);
@@ -146,11 +138,11 @@
 
   function clearFilters() {
     filterBuilding = filterType = filterStatus = filterDateFrom = filterDateTo = '';
+    filterSessionType = 'test';
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  function typeLabel(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t; }
-  function typeIcon(t)  { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon  ?? '■'; }
+  // typeLabel, typeIcon, sessionFloorLabel — imported from walkHelpers
 </script>
 
 <div class="wi-tab">
@@ -176,6 +168,14 @@
           <option value="">All</option>
           <option value="open">Open</option>
           <option value="closed">Closed</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label for="wi-session-type" class="flbl">Session type</label>
+        <select id="wi-session-type" class="select text-sm" bind:value={filterSessionType}>
+          <option value="">All</option>
+          <option value="test">Test</option>
+          <option value="inspection">Inspection</option>
         </select>
       </div>
       <div class="fld">
@@ -223,19 +223,27 @@
       {#each filtered as session (session.id)}
         {@const isExpanded    = expandedId === session.id}
         {@const isLoadingThis = loadingId === session.id}
+        {@const st = inspections[session.id] ? sessionStats(inspections[session.id]) : null}
         <div class="sess-card">
           <div class="sess-row-wrap">
           <button class="sess-row" on:click={() => toggleExpand(session)}>
             <span class="chev">{isExpanded ? '▾' : '▸'}</span>
-            <span class="type-ico">{typeIcon(session.element_type)}</span>
+            <span class="type-ico">{getTypeIcon(session.element_type)}</span>
             <div class="sess-main">
               <div class="sess-hdr">
                 <span class="sess-building">{session.building}</span>
-                <span class="sess-floor">Floor {session.floor_level}</span>
+                {#if session.session_scope !== 'building'}
+                  <span class="sess-floor">{sessionFloorLabel(session)}</span>
+                {/if}
                 <span class="sep-dot">·</span>
-                <span class="sess-type">{typeLabel(session.element_type)}</span>
+                <span class="sess-type">{getTypeLabel(session.element_type)}</span>
                 {#if session.light_subtype_filter === 'emergency'}
                   <span class="em-badge">⚠ Emergency</span>
+                {/if}
+                {#if session.session_type === 'inspection'}
+                  <span class="stype-badge stype-insp">INSPECTION</span>
+                {:else if session.session_type === 'test'}
+                  <span class="stype-badge stype-test">TEST</span>
                 {/if}
                 {#if session.session_name}
                   <span class="sess-name">{session.session_name}</span>
@@ -257,8 +265,7 @@
                 {/if}
               </div>
             </div>
-            {#if inspections[session.id]}
-              {@const st = sessionStats(inspections[session.id])}
+            {#if st}
               <div class="quick-stats">
                 {#if st.fail > 0}<span class="qs-fail">✗ {st.fail}</span>{/if}
                 {#if st.pass > 0}<span class="qs-pass">✓ {st.pass}</span>{/if}
@@ -292,7 +299,6 @@
                 <p class="detail-msg italic">No inspections recorded in this session.</p>
               {:else}
                 {@const els = groupByElement(inspections[session.id])}
-                {@const st  = sessionStats(inspections[session.id])}
                 <div class="detail-stats">
                   <span>{st.elements} elements inspected</span>
                   {#if st.pass > 0} <span class="ds-pass">✓ {st.pass} pass</span> {/if}
@@ -427,10 +433,13 @@
   .sess-meta { font-size: 0.72rem; color: rgb(107 114 128); margin-top: 0.125rem; display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
   .dur { color: rgb(75 85 99); }
   .sess-inspector { color: rgb(167 139 250); }
-  .quick-stats { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; flex-shrink: 0; }
-  .qs-fail { color: rgb(248 113 113); font-weight: 600; }
-  .qs-pass { color: rgb(74 222 128); }
+  .quick-stats { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; flex-shrink: 0; }
+  .qs-fail { color: rgb(248 113 113); font-weight: 700; }
+  .qs-pass { color: rgb(74 222 128); font-weight: 600; }
   .qs-el { color: rgb(107 114 128); }
+  .stype-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.1rem 0.4rem; border-radius: 3px; flex-shrink: 0; }
+  .stype-test { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60); border: 1px solid rgb(251 146 60 / 0.3); }
+  .stype-insp { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250); border: 1px solid rgb(96 165 250 / 0.3); }
   .status-badge { flex-shrink: 0; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid transparent; }
   .status-open { background: rgb(217 119 6 / 0.2); color: rgb(251 191 36); border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.5); color: rgb(156 163 175); border-color: rgb(71 85 105); }

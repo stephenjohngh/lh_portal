@@ -8,6 +8,7 @@
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
   import { fmtTime } from '$lib/utils/dates';
+  import { groupByElement, worstResult, resultLabel } from '../utils/walkHelpers.js';
   import WalkElementEditor    from './WalkElementEditor.svelte';
   import WalkInspectionPanel  from './WalkInspectionPanel.svelte';
   import WalkJumpList         from './WalkJumpList.svelte';
@@ -69,6 +70,45 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     };
   })();
 
+  // Element list for the live summary view.
+  // Iterates in-memory inspections, looks up element metadata by id, and groups
+  // by element sorted fail-first → floor → asset_id (same as closed session summary).
+  $: summaryGrouped = (() => {
+    // Build elementId → { el, floor_level } index
+    const elById = {};
+    if (session?.session_scope === 'building') {
+      for (const p of ($walkStore.buildingPlans || [])) {
+        for (const el of ($walkStore.allElements[p.id] || [])) {
+          elById[el.id] = { el, floor_level: p.floor_level };
+        }
+      }
+    } else {
+      for (const el of ($walkStore.walkElements || [])) {
+        elById[el.id] = { el, floor_level: session?.floor_level ?? null };
+      }
+    }
+
+    const rows = [];
+    for (const [elementId, elInspections] of Object.entries(inspections)) {
+      const meta = elById[elementId];
+      if (!meta) continue;
+      const { el, floor_level } = meta;
+      for (const ins of elInspections) {
+        rows.push({
+          ...ins,
+          plan_element_id: elementId,
+          asset_id:     el.asset_id     ?? null,
+          subtype:      el.subtype      ?? null,
+          label:        el.label        ?? null,
+          element_type: el.element_type ?? null,
+          floor_level,
+          result:       ins.inspection_result ?? ins.result ?? null,
+        });
+      }
+    }
+    return groupByElement(rows);
+  })();
+
   // FIX: Floor progress for building-wide sessions
   $: floorProgress = session?.session_scope === 'building' 
     ? walkStore.getCurrentFloorProgress() 
@@ -110,6 +150,15 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   function handleJumpTo(e)         { view = 'card'; walkStore.goToIndex(e.detail.index); }
   function handleEditSaved()       { view = 'card'; }
   function handleInspectionSaved() { view = 'card'; }
+
+  // True when every element in scope has been inspected at least once
+  $: totalElements = session?.session_scope === 'building'
+    ? ($walkStore.buildingPlans || []).reduce((n, p) =>
+        n + (($walkStore.allElements[p.id] || []).filter(e => e.element_type === session.element_type).length), 0)
+    : elements.length;
+  $: allInspected = totalElements > 0 && inspectedCount >= totalElements;
+
+  function handlePause() { dispatch('paused'); }
 
   async function handleCloseSession() {
     closing = true; closeError = null;
@@ -163,10 +212,16 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
         <div class="sbar-floor">{floorProgress.currentFloorIndex}/{floorProgress.totalFloors}</div>
       {/if}
       <div class="sbar-count">{currentIndex + 1}/{elements.length}</div>
-      <!-- FIX: Better finish button instead of X, disabled when on finish screen -->
-      <button class="finish-btn" on:click={() => view = 'close'} disabled={view === 'close'}>
-        FINISH
-      </button>
+      <!-- Inspection sessions always show both PAUSE and FINISH.
+           Test sessions show PAUSE until all inspected, then FINISH only. -->
+      {#if session?.session_type === 'inspection'}
+        <button class="pause-btn" on:click={handlePause}>PAUSE</button>
+        <button class="finish-btn" on:click={() => view = 'close'} disabled={view === 'close'}>FINISH</button>
+      {:else if allInspected}
+        <button class="finish-btn" on:click={() => view = 'close'} disabled={view === 'close'}>FINISH</button>
+      {:else}
+        <button class="pause-btn" on:click={handlePause}>PAUSE</button>
+      {/if}
     </div>
   </div>
 
@@ -264,6 +319,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     <WalkInspectionPanel 
       element={currentElement} 
       session={session}
+      floorLevel={displayFloor}
       on:saved={handleInspectionSaved} 
       on:cancel={() => view = 'card'} 
     />
@@ -390,9 +446,33 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
         <button class="continue-btn" on:click={() => view = 'card'}>
           CONTINUE INSPECTION
         </button>
-      </div>
-    </div>
-  {/if}
+
+        {#if summaryGrouped.length > 0}
+          <div class="sum-el-title">INSPECTED ELEMENTS</div>
+          <div class="sum-el-list">
+            {#each summaryGrouped as el (el.element_id)}
+              {@const worst = worstResult(el.rows)}
+              {@const latest = el.rows[el.rows.length - 1]}
+              <div class="sum-el-row res-{worst}">
+                <div class="sum-el-top">
+                  <div class="sum-el-name-block">
+                    <div class="sum-el-id">{getElementDisplayName({ asset_id: el.asset_id, element_type: el.element_type }, el.floor_level)}</div>
+                    {#if el.label}<div class="sum-el-label">{el.label}</div>{/if}
+                  </div>
+                  {#if el.subtype}<div class="sum-el-sub">{el.subtype}</div>{/if}
+                  <div class="sum-el-res sum-el-res-{worst}">{resultLabel(worst)}</div>
+                </div>
+                {#if latest?.inspector_notes}
+                  <div class="sum-el-notes">{latest.inspector_notes}</div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+      </div><!-- end summary-body -->
+    </div><!-- end summary -->
+  {/if}<!-- end view === 'summary' -->
 
   {#if view === 'close'}
     <div class="cc">
@@ -479,6 +559,14 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   }
   .finish-btn:hover:not(:disabled) { background: #f97316; }
   .finish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .pause-btn {
+    background: none; border: 1px solid #3e3e58; border-radius: 6px;
+    color: #ccc; font-family: inherit; font-size: 0.72rem; font-weight: 700;
+    padding: 0.5rem 1rem; cursor: pointer; transition: all 0.15s;
+    letter-spacing: 0.1em;
+  }
+  .pause-btn:hover { border-color: #fb923c; color: #fb923c; }
 
   /* Old close button removed */
   .close-btn {
@@ -824,4 +912,29 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   }
   .cc-finish:hover:not(:disabled) { background: #16a34a; }
   .cc-finish:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Summary element list ─────────────────────────────────────────────────*/
+  .sum-el-title {
+    font-size: 0.62rem; letter-spacing: 0.2em; color: #ccc; padding-top: 0.5rem;
+  }
+  .sum-el-list  { display: flex; flex-direction: column; gap: 0.5rem; }
+  .sum-el-row   {
+    background: #111122; border: 2px solid #2e2e42; border-radius: 8px;
+    padding: 0.75rem 1rem;
+  }
+  .res-fail { border-color: #7f1d1d; }
+  .res-pass { border-color: #166534; }
+  .sum-el-top         { display: flex; align-items: center; gap: 0.5rem; }
+  .sum-el-name-block  { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+  .sum-el-id          { font-size: 0.9rem; font-weight: 700; color: #f0f0f0; font-variant-numeric: tabular-nums; }
+  .sum-el-label       { font-size: 0.7rem; color: #fb923c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sum-el-sub         { font-size: 0.62rem; color: #ccc; background: #222235; padding: 0.15rem 0.4rem; border-radius: 3px; flex-shrink: 0; }
+  .sum-el-res         { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; flex-shrink: 0; }
+  .sum-el-res-pass    { color: #4ade80; }
+  .sum-el-res-fail    { color: #f87171; }
+  .sum-el-res-na      { color: #aaa; }
+  .sum-el-notes       {
+    font-size: 0.75rem; color: #ddd; margin-top: 0.4rem;
+    padding-top: 0.4rem; border-top: 1px solid #2e2e42; font-style: italic;
+  }
 </style>

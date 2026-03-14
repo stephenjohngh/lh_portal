@@ -3,21 +3,72 @@
 // Eliminates duplication across WalkSessionSummary, WalkInspectionsTab,
 // WalkInspectionsReport, and generate-inspections-report.
 
+import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+
+/**
+ * Flatten the nested element join onto each walk_element_inspections row.
+ * Called after any api.get() that uses the standard join:
+ *   element:plan_elements!plan_element_id(asset_id, subtype, label, element_type, plan:plans!plan_id(floor_level))
+ *
+ * Safe to call on already-flattened rows — ?? fallbacks preserve existing values.
+ *
+ * @param {Array} rows — raw rows from walk_element_inspections with element join
+ * @returns {Array} rows with asset_id, subtype, label, element_type, floor_level,
+ *                  and result all available as top-level fields
+ */
+export function flattenInspectionRows(rows) {
+  return rows.map(r => ({
+    ...r,
+    asset_id:     r.element?.asset_id         ?? r.asset_id     ?? null,
+    subtype:      r.element?.subtype          ?? r.subtype      ?? null,
+    label:        r.element?.label            ?? r.label        ?? null,
+    element_type: r.element?.element_type     ?? r.element_type ?? null,
+    floor_level:  r.element?.plan?.floor_level ?? r.floor_level ?? null,
+    result:       r.inspection_result         ?? r.result       ?? null,
+  }));
+}
+
+/**
+ * Human-readable label for an element type value.
+ * @param {string} type — e.g. 'communal_door'
+ * @returns {string} e.g. 'Communal Door'
+ */
+export function getTypeLabel(type) {
+  return ELEMENT_TYPE_OPTIONS.find(o => o.value === type)?.label ?? type;
+}
+
+/**
+ * Emoji icon for an element type value.
+ * @param {string} type — e.g. 'light'
+ * @returns {string} e.g. '💡'
+ */
+export function getTypeIcon(type) {
+  return ELEMENT_TYPE_OPTIONS.find(o => o.value === type)?.icon ?? '■';
+}
+
+/**
+ * Human-readable session location string.
+ * Returns 'All Floors' for building-wide sessions (floor_level is NULL).
+ * @param {object} session — walk_sessions row
+ * @returns {string} e.g. 'Floor G' or 'All Floors'
+ */
+export function sessionFloorLabel(session) {
+  return session.floor_level ? `Floor ${session.floor_level}` : 'All Floors';
+}
+
 /**
  * Aggregate pass/fail/na counts and unique element count from a
  * walk_element_inspections array.
+ * Reads `result` if present (flattened rows), falls back to `inspection_result` (raw rows).
  *
- * NOTE: The DB column is `inspection_result`, not `result`.
- * We normalise here so callers can use `.result` throughout.
- *
- * @param {Array} inspections — walk_element_inspections rows
+ * @param {Array} inspections — walk_element_inspections rows (raw or flattened)
  * @returns {{ pass, fail, na, elements, total }}
  */
 export function sessionStats(inspections) {
   return {
-    pass:     inspections.filter(r => r.inspection_result === 'pass').length,
-    fail:     inspections.filter(r => r.inspection_result === 'fail').length,
-    na:       inspections.filter(r => r.inspection_result === 'na').length,
+    pass:     inspections.filter(r => (r.result ?? r.inspection_result) === 'pass').length,
+    fail:     inspections.filter(r => (r.result ?? r.inspection_result) === 'fail').length,
+    na:       inspections.filter(r => (r.result ?? r.inspection_result) === 'na').length,
     elements: new Set(inspections.map(r => r.plan_element_id)).size,
     total:    inspections.length,
   };
@@ -35,7 +86,7 @@ const FLOOR_ORDER = { L: 0, U: 1, G: 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, 
  * `inspection_result` → `result` on each row for convenience in templates.
  *
  * @param {Array} rows — walk_element_inspections rows (floor_level must be flattened onto each row)
- * @returns {Array<{ element_id, asset_id, subtype, label, floor_level, rows }>}
+ * @returns {Array<{ element_id, asset_id, subtype, label, element_type, floor_level, rows }>}
  */
 export function groupByElement(rows) {
   const map = {};
@@ -44,10 +95,11 @@ export function groupByElement(rows) {
     if (!map[key]) {
       map[key] = {
         element_id:  key,
-        asset_id:    row.asset_id    ?? null,
-        subtype:     row.subtype     ?? null,
-        label:       row.label       ?? null,
-        floor_level: row.floor_level ?? null,
+        asset_id:     row.asset_id     ?? null,
+        subtype:      row.subtype      ?? null,
+        label:        row.label        ?? null,
+        element_type: row.element_type ?? null,
+        floor_level:  row.floor_level  ?? null,
         rows:        [],
       };
     }

@@ -6,20 +6,21 @@
   import { permissions } from '$lib/stores/permissions';
   import { auth } from '$lib/stores/auth';
   import { walkStore } from './stores/walkStore.js';
-  import WalkHome           from './components/WalkHome.svelte';
-  import WalkSessionSummary from './components/WalkSessionSummary.svelte';
-  import WalkSessionStart   from './components/WalkSessionStart.svelte';
-  import WalkSession        from './components/WalkSession.svelte';
+  import WalkHome             from './components/WalkHome.svelte';
+  import WalkSessionSummary   from './components/WalkSessionSummary.svelte';
+  import WalkSessionStart     from './components/WalkSessionStart.svelte';
+  import WalkInspectionStart  from './components/WalkInspectionStart.svelte';
+  import WalkSession          from './components/WalkSession.svelte';
 
   const logger = getLogger('WalkApp');
 
-  // Screen: 'home' | 'start' | 'walk' | 'summary'
+  // Screens: 'home' | 'start_test' | 'start_inspection' | 'walk' | 'summary'
   let screen         = 'home';
   let summarySession = null;
   let loading        = true;
   let initError      = null;
 
-  $: canEdit    = $permissions.isAdmin || $permissions.canModify;
+  $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
   onMount(async () => {
     logger('Walk app mounting');
@@ -29,26 +30,14 @@
       }
       await walkStore.loadPlans();
       await walkStore.loadSessions();
-
-      const state = getState();
-      const openSession = state.sessions.find(s => s.status === 'open');
-      if (openSession) {
-        await walkStore.resumeSession(openSession);
-        screen = 'walk';
-      }
+      // Do NOT auto-resume — show home so user can choose to resume
     } catch (error) {
       logger('❌ Init error:', error.message);
-console.error('WALK INIT ERROR:', error);  // add this
-  alert('Init error: ' + error.message);  
       initError = error.message;
     } finally {
       loading = false;
     }
   });
-
-  function getState() {
-    let s; walkStore.subscribe(v => { s = v; })(); return s;
-  }
 
   async function handleResume(event) {
     try {
@@ -65,6 +54,11 @@ console.error('WALK INIT ERROR:', error);  // add this
   }
 
   async function handleSessionClosed() {
+    await walkStore.loadSessions();
+    screen = 'home';
+  }
+
+  async function handleSessionPaused() {
     await walkStore.loadSessions();
     screen = 'home';
   }
@@ -86,20 +80,29 @@ console.error('WALK INIT ERROR:', error);  // add this
   {:else if screen === 'home'}
     <WalkHome
       {canEdit}
-      on:startNew={() => screen = 'start'}
+      on:startTest={() => screen = 'start_test'}
+      on:startInspection={() => screen = 'start_inspection'}
       on:resume={handleResume}
       on:viewSummary={handleViewSummary}
     />
 
-  {:else if screen === 'start'}
+  {:else if screen === 'start_test'}
     <WalkSessionStart
+      sessionType="test"
       on:started={() => screen = 'walk'}
       on:cancel={() => screen = 'home'}
+    />
+
+  {:else if screen === 'start_inspection'}
+    <WalkInspectionStart
+      on:started={() => { logger('✅ WalkInspectionStart started — setting screen to walk'); screen = 'walk'; }}
+      on:back={() => screen = 'home'}
     />
 
   {:else if screen === 'walk'}
     <WalkSession
       {canEdit}
+      on:paused={handleSessionPaused}
       on:closed={handleSessionClosed}
     />
 

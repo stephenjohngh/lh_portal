@@ -3,9 +3,8 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { walkStore } from '../stores/walkStore.js';
-  import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
-  import { getElementDisplayName } from '$lib/utils/planConstants';
-  import { groupByElement, worstResult, resultLabel, resultRank } from '../utils/walkHelpers.js';
+  import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
+  import { groupByElement, worstResult, resultLabel, flattenInspectionRows } from '../utils/walkHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
 
   const dispatch = createEventDispatcher();
@@ -28,17 +27,7 @@
 
   onMount(async () => {
     try {
-      const rows = await walkStore.loadSessionInspections(session.id);
-      // Flatten joined element fields onto each row so groupByElement can read them directly
-      inspections = rows.map(r => ({
-        ...r,
-        asset_id:     r.element?.asset_id          ?? r.asset_id     ?? null,
-        subtype:      r.element?.subtype            ?? r.subtype      ?? null,
-        label:        r.element?.label              ?? r.label        ?? null,
-        element_type: r.element?.element_type       ?? r.element_type ?? null,
-        floor_level:  r.element?.plan?.floor_level  ?? r.floor_level  ?? null,
-        result:       r.inspection_result           ?? r.result       ?? null,
-      }));
+      inspections = flattenInspectionRows(await walkStore.loadSessionInspections(session.id));
     } catch (err) {
       error = err.message;
     } finally {
@@ -131,7 +120,7 @@
         {@const worst  = worstResult(el.rows)}
         {@const latest = el.rows[el.rows.length - 1]}
         {@const dispName = getElementDisplayName(
-          { asset_id: el.asset_id, element_type: latest?.element_type },
+          { asset_id: el.asset_id, element_type: el.element_type },
           el.floor_level
         )}
         <div class="el-row res-{worst}">

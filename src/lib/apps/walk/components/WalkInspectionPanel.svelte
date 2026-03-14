@@ -12,6 +12,9 @@
 
   export let element;
   export let session;
+  // For building-wide sessions session.floor_level is NULL — the parent (WalkSession)
+  // should pass $walkStore.currentFloor here so the header shows the correct floor.
+  export let floorLevel = session?.floor_level ?? null;
 
   let result         = '';
   let notes          = '';
@@ -25,7 +28,7 @@
     loadingHistory = false;
   });
 
-  $: displayName = getElementDisplayName(element, session?.floor_level);
+  $: displayName = getElementDisplayName(element, floorLevel);
   $: canSave     = !!result;
 
   async function handleSave() {

@@ -8,7 +8,7 @@
   import Icon     from '$lib/components/icons/Icon.svelte';
   import { api }  from '$lib/utils/api';
   import { getLogger } from '$lib/utils/logger';
-  import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import { flattenInspectionRows, getTypeLabel, getTypeIcon, sessionFloorLabel } from '$lib/apps/walk/utils/walkHelpers.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
 
@@ -77,16 +77,7 @@
             orderBy: 'inspected_at',
             ascending: true
           });
-          inspections = rows.map(row => ({
-            ...row,
-            asset_id:     row.element?.asset_id,
-            subtype:      row.element?.subtype,
-            label:        row.element?.label,
-            element_type: row.element?.element_type,
-            floor_level:  row.element?.plan?.floor_level ?? null,
-            result:       row.inspection_result,
-            notes:        row.inspector_notes
-          }));
+          inspections = flattenInspectionRows(rows);
         }
         sessionsWithInspections.push({ session, inspections });
       }
@@ -115,8 +106,7 @@
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  function typeLabel(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.label ?? t; }
-  function typeIcon(t)  { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon  ?? '■'; }
+  // getTypeLabel, getTypeIcon, sessionFloorLabel — imported from walkHelpers
 </script>
 
 <Modal show={true} size="medium" on:close={() => dispatch('close')}>
@@ -175,10 +165,15 @@
               on:change={() => toggleSession(session.id)}
               class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500 flex-shrink-0"
             />
-            <span class="sess-icon">{typeIcon(session.element_type)}</span>
+            <span class="sess-icon">{getTypeIcon(session.element_type)}</span>
             <div class="sess-info">
               <span class="sess-name-text">
-                {session.building} · Floor {session.floor_level} · {typeLabel(session.element_type)}
+                {session.building}{session.session_scope !== 'building' ? ' · ' + sessionFloorLabel(session) : ''} · {getTypeLabel(session.element_type)}
+                {#if session.session_type === 'inspection'}
+                  <span class="stype-badge stype-insp">INSPECTION</span>
+                {:else if session.session_type === 'test'}
+                  <span class="stype-badge stype-test">TEST</span>
+                {/if}
                 {#if session.light_subtype_filter === 'emergency'}
                   <span class="em-tag">⚠ Emergency</span>
                 {/if}
@@ -259,4 +254,7 @@
   }
   .status-open   { background: rgb(217 119 6 / 0.2); color: rgb(251 191 36); border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.4); color: rgb(156 163 175); border-color: rgb(71 85 105); }
+  .stype-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.1rem 0.35rem; border-radius: 3px; margin-left: 0.2rem; }
+  .stype-test  { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60); border: 1px solid rgb(251 146 60 / 0.3); }
+  .stype-insp  { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250); border: 1px solid rgb(96 165 250 / 0.3); }
 </style>

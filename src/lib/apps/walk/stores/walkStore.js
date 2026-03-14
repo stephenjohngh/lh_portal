@@ -6,11 +6,28 @@
 
 import { writable, get } from 'svelte/store';
 import { getLogger } from '$lib/utils/logger';
+import { logAudit } from '$lib/utils/auditLogger';
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
 import { sortByFloor } from '$lib/utils/floorSorting';
 
 const logger = getLogger('walkStore');
+
+// Thin audit wrapper — matches plansStore pattern, fire-and-forget.
+function audit(eventType, targetType, targetId, targetName, data = {}) {
+  logAudit(eventType, targetType, targetId, targetName, {
+    appId:         'walk',
+    eventCategory: 'walk',
+    severity:      eventType === 'delete' ? 'warning' : 'info',
+    ...data
+  });
+}
+
+// Return a subset of an object by key list (for before/after diffs)
+function pick(obj, keys) {
+  if (!obj) return {};
+  return Object.fromEntries(keys.filter(k => k in obj).map(k => [k, obj[k]]));
+}
 
 // ============================================================================
 // Constants
@@ -201,7 +218,7 @@ function createWalkStore() {
 
   // ── Start Building-Wide Session ──────────────────────────────────────────
 
-  async function startBuildingWideSession({ building, elementType, sessionName = null, lightSubtypeFilter = null }) {
+  async function startBuildingWideSession({ building, elementType, sessionName = null, lightSubtypeFilter = null, sessionType = 'test' }) {
     logger('Starting building-wide session:', { building, elementType });
     
     try {
@@ -223,6 +240,7 @@ function createWalkStore() {
       
       const session = await createSession({
         session_scope: 'building',
+        session_type:  sessionType,
         building: building,          // FIX: Added - required NOT NULL field
         building_name: building,
         element_type: elementType,
@@ -275,7 +293,8 @@ function createWalkStore() {
     startAssetId, 
     planId, 
     sessionName = null, 
-    lightSubtypeFilter = null 
+    lightSubtypeFilter = null,
+    sessionType = 'test'
   }) {
     logger('Starting session:', { building, floorLevel, elementType });
     
@@ -290,6 +309,7 @@ function createWalkStore() {
       const session = await createSession({
         plan_id: planId,
         session_scope: 'single_plan',
+        session_type:  sessionType,
         building: building,
         building_name: building,
         floor_level: floorLevel,
@@ -626,6 +646,16 @@ function createWalkStore() {
     const userId = await getCurrentUserId();
     
     try {
+      // Capture current state for audit before/after diff
+      let oldElement = null;
+      update(s => {
+        for (const elList of Object.values(s.allElements)) {
+          const found = elList.find(e => e.id === elementId);
+          if (found) { oldElement = found; break; }
+        }
+        return s;
+      });
+
       const updated = await api.update('plan_elements', elementId, {
         ...updates,
         updated_by: userId
@@ -646,7 +676,15 @@ function createWalkStore() {
           )
         };
       });
-      
+
+      const elementName = updated.asset_id || updated.label || updated.element_type;
+      const fields = Object.keys(updates).filter(k => k !== 'updated_by');
+      audit('update', 'plan_element', elementId, elementName, {
+        eventAction: 'walk_edit_element',
+        beforeData:  pick(oldElement, fields),
+        afterData:   pick(updates, fields)
+      });
+
       logger('✅ Element updated');
       return updated;
     } catch (error) {
@@ -748,6 +786,23 @@ function createWalkStore() {
       });
       
       logger('✅ Inspection recorded');
+
+      const elementName = element.asset_id || element.label || element.element_type;
+      const isUpdate = !!existingInspection;
+      audit(isUpdate ? 'update' : 'create', 'walk_inspection', inspection.id, elementName, {
+        eventAction:  isUpdate ? 'walk_update_inspection' : 'walk_record_inspection',
+        afterData: {
+          element_id:        elementId,
+          asset_id:          element.asset_id,
+          element_type:      element.element_type,
+          inspection_result: result,
+          inspector_notes:   notes || null,
+          session_id:        state.activeSession.id,
+          session_name:      state.activeSession.session_name,
+          ...(isUpdate ? { previous_result: existingInspection.inspection_result } : {})
+        }
+      });
+
       return inspection;
     } catch (error) {
       logger('❌ recordInspection:', error.message);
