@@ -69,7 +69,7 @@
     loading = true; error = null;
     try {
       sessions = await api.get('walk_sessions', {
-        select:    '*, inspector:profiles!created_by(full_name)',
+        select:    '*, inspector:profiles!created_by(full_name), walk_element_inspections(inspection_result)',
         orderBy:   'started_at',
         ascending: false
       });
@@ -223,7 +223,20 @@
       {#each filtered as session (session.id)}
         {@const isExpanded    = expandedId === session.id}
         {@const isLoadingThis = loadingId === session.id}
-        {@const st = inspections[session.id] ? sessionStats(inspections[session.id]) : null}
+        {@const st = (() => {
+          // Full cache available post-expand — use sessionStats (has plan_element_id)
+          if (inspections[session.id]?.length) return sessionStats(inspections[session.id]);
+          // Lightweight rows from loadSessions embed: { inspection_result } only
+          const lite = session.walk_element_inspections;
+          if (!lite?.length) return null;
+          return {
+            pass:     lite.filter(r => r.inspection_result === 'pass').length,
+            fail:     lite.filter(r => r.inspection_result === 'fail').length,
+            na:       lite.filter(r => r.inspection_result === 'na').length,
+            elements: lite.length,   // approximate — unique per inspection row
+            total:    lite.length
+          };
+        })()}
         <div class="sess-card">
           <div class="sess-row-wrap">
           <button class="sess-row" on:click={() => toggleExpand(session)}>
