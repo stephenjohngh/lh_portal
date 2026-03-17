@@ -127,6 +127,8 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     return $walkStore.plans?.find(p => p.id === session?.plan_id);
   })();
 
+  $: isRepair = session?.session_type === 'repair';
+
   function handlePrev() { 
     view = 'card'; 
     // For building-wide sessions at element 0, go to previous floor
@@ -146,10 +148,19 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     walkStore.goPrev(); 
   }
   
-  function handleNext()            { view = 'card'; walkStore.goNext(); }
-  function handleJumpTo(e)         { view = 'card'; walkStore.goToIndex(e.detail.index); }
-  function handleEditSaved()       { view = 'card'; }
-  function handleInspectionSaved() { view = 'card'; }
+  function handleNext()      { view = 'card'; walkStore.goNext(); }
+  function handleJumpTo(e)   { view = 'card'; walkStore.goToIndex(e.detail.index); }
+  function handleEditSaved() { view = 'card'; }
+
+  // After recording an inspection in repair mode, go straight back to the repair list.
+  // In normal sessions, return to the element card.
+  function handleInspectionSaved() {
+    if (isRepair) {
+      dispatch('backtorepair');
+    } else {
+      view = 'card';
+    }
+  }
 
   // True when every element in scope has been inspected at least once
   $: totalElements = session?.session_scope === 'building'
@@ -212,9 +223,10 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
         <div class="sbar-floor">{floorProgress.currentFloorIndex}/{floorProgress.totalFloors}</div>
       {/if}
       <div class="sbar-count">{currentIndex + 1}/{elements.length}</div>
-      <!-- Inspection sessions always show both PAUSE and FINISH.
-           Test sessions show PAUSE until all inspected, then FINISH only. -->
-      {#if session?.session_type === 'inspection'}
+      <!-- Repair sessions: back to list only. Others: PAUSE/FINISH. -->
+      {#if isRepair}
+        <button class="back-list-btn" on:click={() => dispatch('backtorepair')}>← LIST</button>
+      {:else if session?.session_type === 'inspection'}
         <button class="pause-btn" on:click={handlePause}>PAUSE</button>
         <button class="finish-btn" on:click={() => view = 'close'} disabled={view === 'close'}>FINISH</button>
       {:else if allInspected}
@@ -225,12 +237,14 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     </div>
   </div>
 
-  <!-- Progress -->
-  <div class="prog-track"><div class="prog-fill" style="width:{progress*100}%"></div></div>
+  <!-- Progress (hidden for repair sessions) -->
+  {#if !isRepair}
+    <div class="prog-track"><div class="prog-fill" style="width:{progress*100}%"></div></div>
+  {/if}
 
   <!-- ── Element card ─────────────────────────────────────────────────────── -->
   {#if view === 'card' && currentElement}
-    <div class="ecard">
+    <div class="ecard" class:ecard-repair={isRepair}>
 
       <div class="eid">
         <!-- FIX: Name, subtype, status all on one line -->
@@ -341,7 +355,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     />
   {/if}
 
-  {#if view === 'summary'}
+  {#if view === 'summary' && !isRepair}
     <div class="summary">
       <div class="summary-hdr">
         <button class="back-btn" on:click={() => view = 'card'}>← BACK</button>
@@ -474,7 +488,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     </div><!-- end summary -->
   {/if}<!-- end view === 'summary' -->
 
-  {#if view === 'close'}
+  {#if view === 'close' && !isRepair}
     <div class="cc">
       <div class="cc-hdr">FINISH INSPECTION</div>
       <div class="cc-sum">
@@ -502,7 +516,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     </div>
   {/if}
 
-  {#if view === 'card'}
+  {#if view === 'card' && !isRepair}
     <div class="nav">
       <button class="nb nb-prev" on:click={handlePrev} disabled={isFirst}>← PREV</button>
       <button class="nb nb-summary" on:click={() => view = 'summary'}>📊 SUMMARY</button>
@@ -560,6 +574,14 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   .finish-btn:hover:not(:disabled) { background: #f97316; }
   .finish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+  .back-list-btn {
+    background: none; border: 1px solid #3e3e58; border-radius: 6px;
+    color: #fb923c; font-family: inherit; font-size: 0.72rem; font-weight: 800;
+    padding: 0.5rem 0.875rem; cursor: pointer; transition: all 0.15s;
+    letter-spacing: 0.08em; white-space: nowrap;
+  }
+  .back-list-btn:hover { border-color: #fb923c; background: #2a1800; }
+
   .pause-btn {
     background: none; border: 1px solid #3e3e58; border-radius: 6px;
     color: #ccc; font-family: inherit; font-size: 0.72rem; font-weight: 700;
@@ -585,6 +607,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     flex: 1; display: flex; flex-direction: column;
     padding: 1.5rem 1.25rem 6.5rem; gap: 1.25rem; overflow-y: auto;
   }
+  .ecard-repair { padding-bottom: 2rem; }
 
   /* FIX: Inline header with name, subtype, status */
   .eid-header {

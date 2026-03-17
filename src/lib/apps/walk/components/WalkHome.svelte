@@ -39,6 +39,13 @@
           <div class="start-sub">Official inspection — results are recorded</div>
         </div>
       </button>
+      <button class="start-btn start-repair" on:click={() => dispatch('startRepair')}>
+        <span class="start-plus">⚙</span>
+        <div class="start-text">
+          <div class="start-label">START REPAIR</div>
+          <div class="start-sub">Work through failed and replace elements</div>
+        </div>
+      </button>
     </div>
   {/if}
 
@@ -58,6 +65,8 @@
                   <span class="scard-type-badge badge-test">TEST</span>
                 {:else if s.session_type === 'inspection'}
                   <span class="scard-type-badge badge-insp">INSPECTION</span>
+                {:else if s.session_type === 'repair'}
+                  <span class="scard-type-badge badge-repair">REPAIR</span>
                 {/if}
               </div>
               <div class="scard-loc">{s.building} · {sessionFloorLabel(s)}</div>
@@ -88,6 +97,8 @@
                   <span class="scard-type-badge badge-test">TEST</span>
                 {:else if s.session_type === 'inspection'}
                   <span class="scard-type-badge badge-insp">INSP</span>
+                {:else if s.session_type === 'repair'}
+                  <span class="scard-type-badge badge-repair">REPAIR</span>
                 {/if}
               </div>
               <div class="scard-loc">{s.building} · {sessionFloorLabel(s)}</div>
@@ -146,6 +157,10 @@
   .start-inspection       { background: #0a1420; border-color: #1e3a5f; color: #f0f0f0; }
   .start-inspection:hover { background: #0f1f35; border-color: #3b82f6; }
 
+  .start-repair       { background: #1a0a00; border-color: #7c2d12; color: #f0f0f0; }
+  .start-repair:hover { background: #250f00; border-color: #ea580c; }
+  .start-repair .start-plus { color: #fb923c; }
+
   .start-plus { font-size: 1.5rem; font-weight: 300; color: #fb923c; flex-shrink: 0; line-height: 1; }
   .start-inspection .start-plus { color: #60a5fa; }
 
@@ -176,8 +191,9 @@
     font-size: 0.55rem; font-weight: 700; letter-spacing: 0.1em;
     padding: 0.1rem 0.35rem; border-radius: 3px; flex-shrink: 0;
   }
-  .badge-test { background: #2a1800; color: #fb923c; }
-  .badge-insp { background: #0a1f35; color: #60a5fa; }
+  .badge-test   { background: #2a1800; color: #fb923c; }
+  .badge-insp   { background: #0a1f35; color: #60a5fa; }
+  .badge-repair { background: #1a0a00; color: #fb923c; border: 1px solid #7c2d12; }
 
   /* ── Session cards (shared) ───────────────────────────────────────────────*/
   .session-list { display: flex; flex-direction: column; gap: 0.625rem; }

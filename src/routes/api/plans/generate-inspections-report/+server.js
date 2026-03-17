@@ -41,8 +41,9 @@ function typeLabel(t) {
 }
 
 function resultColor(result) {
-  return result === 'pass' ? COLOURS.passGreen
-       : result === 'fail' ? COLOURS.failRed
+  return result === 'pass'   ? COLOURS.passGreen
+       : result === 'fail'   ? COLOURS.failRed
+       : result === 'repair' ? 'EA580C'
        : '6B7280';
 }
 
@@ -88,13 +89,13 @@ function buildCover(sessions, reportType, generatedAt) {
 }
 
 // ── Summary report ─────────────────────────────────────────────────────────────
-// Columns: Date | Building | Floor | Type | Inspector | Duration | Elements | Pass | Fail | N/A | Notes
-const SUM_COLS = [1200, 1400, 900, 1300, 1300, 800, 700, 600, 600, 600, 1066];
+// Columns: Date | Building | Floor | Type | Inspector | Duration | Elements | Pass | Fail | Repair | N/A | Notes
+const SUM_COLS = [1100, 1300, 800, 1200, 1200, 700, 700, 550, 550, 650, 550, 1166];
 // sum = 10466 = CONTENT_W
 
 function buildSummaryTable(sessionData) {
   const headers = ['Date', 'Building', 'Floor', 'Type', 'Inspector', 'Duration',
-                   'Elements', 'Pass', 'Fail', 'N/A', 'Notes'];
+                   'Elements', 'Pass', 'Fail', 'Repair', 'N/A', 'Notes'];
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -117,10 +118,11 @@ function buildSummaryTable(sessionData) {
         dCell(s.inspector_name,       SUM_COLS[4],  { alt }),
         dCell(dur,                    SUM_COLS[5],  { alt }),
         dCell(st.elements,            SUM_COLS[6],  { alt, bold: true }),
-        dCell(st.pass || '—',         SUM_COLS[7],  { alt, color: st.pass ? COLOURS.passGreen : '9CA3AF' }),
-        dCell(st.fail || '—',         SUM_COLS[8],  { alt, color: st.fail ? COLOURS.failRed   : '9CA3AF' }),
-        dCell(st.na   || '—',         SUM_COLS[9],  { alt, color: st.na   ? '6B7280'          : '9CA3AF' }),
-        dCell(s.notes,                SUM_COLS[10], { alt }),
+        dCell(st.pass   || '—',       SUM_COLS[7],  { alt, color: st.pass   ? COLOURS.passGreen : '9CA3AF' }),
+        dCell(st.fail   || '—',       SUM_COLS[8],  { alt, color: st.fail   ? COLOURS.failRed   : '9CA3AF' }),
+        dCell(st.repair || '—',       SUM_COLS[9],  { alt, color: st.repair ? 'EA580C'           : '9CA3AF' }),
+        dCell(st.na     || '—',       SUM_COLS[10], { alt, color: st.na     ? '6B7280'           : '9CA3AF' }),
+        dCell(s.notes,                SUM_COLS[11], { alt }),
       ],
     });
   });
@@ -197,7 +199,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
     mkMetaRow('Status',       s.status === 'open' ? 'Open' : 'Closed',
                               s.status === 'open' ? COLOURS.warnAmber : '6B7280'),
     mkMetaRow('Elements',     `${st.elements} inspected (${st.total} records)`),
-    mkMetaRow('Results',      `Pass: ${st.pass}   Fail: ${st.fail}   N/A: ${st.na}`),
+    mkMetaRow('Results',      `Pass: ${st.pass}   Fail: ${st.fail}   Repair: ${st.repair}   N/A: ${st.na}`),
   ];
   if (s.notes) metaRows.push(mkMetaRow('Closing Notes', s.notes));
   if (s.light_subtype_filter === 'emergency') {

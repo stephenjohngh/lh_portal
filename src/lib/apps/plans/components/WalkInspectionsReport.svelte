@@ -173,6 +173,8 @@
                   <span class="stype-badge stype-insp">INSPECTION</span>
                 {:else if session.session_type === 'test'}
                   <span class="stype-badge stype-test">TEST</span>
+                {:else if session.session_type === 'repair'}
+                  <span class="stype-badge stype-repair">REPAIR</span>
                 {/if}
                 {#if session.light_subtype_filter === 'emergency'}
                   <span class="em-tag">⚠ Emergency</span>
@@ -254,7 +256,8 @@
   }
   .status-open   { background: rgb(217 119 6 / 0.2); color: rgb(251 191 36); border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.4); color: rgb(156 163 175); border-color: rgb(71 85 105); }
-  .stype-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.1rem 0.35rem; border-radius: 3px; margin-left: 0.2rem; }
-  .stype-test  { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60); border: 1px solid rgb(251 146 60 / 0.3); }
-  .stype-insp  { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250); border: 1px solid rgb(96 165 250 / 0.3); }
+  .stype-badge  { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.1rem 0.35rem; border-radius: 3px; margin-left: 0.2rem; }
+  .stype-test   { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60); border: 1px solid rgb(251 146 60 / 0.3); }
+  .stype-insp   { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250); border: 1px solid rgb(96 165 250 / 0.3); }
+  .stype-repair { background: rgb(234 88 12 / 0.15);  color: rgb(251 146 60); border: 1px solid rgb(234 88 12 / 0.3); }
 </style>

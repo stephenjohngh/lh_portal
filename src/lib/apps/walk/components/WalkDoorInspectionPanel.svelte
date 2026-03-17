@@ -269,6 +269,12 @@
           ✗ FAIL
         </button>
         <button 
+          class="result-btn result-btn-repair"
+          class:selected={result === 'repair'} 
+          on:click={() => result = 'repair'}>
+          ⚙ REPAIR
+        </button>
+        <button 
           class="result-btn" 
           class:selected={result === 'na'} 
           on:click={() => result = 'na'}>
@@ -445,7 +451,7 @@
   
   /* Result buttons */
   .result-btns {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;
   }
   
   .result-btn {
@@ -457,6 +463,10 @@
   
   .result-btn.selected {
     border-color: #fb923c; color: #fb923c; background: #2a1800;
+  }
+
+  .result-btn-repair.selected {
+    border-color: #ea580c; color: #fb923c; background: #2a1000;
   }
   
   /* Notes */

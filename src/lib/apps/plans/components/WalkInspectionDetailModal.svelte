@@ -14,8 +14,9 @@
   
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === inspection.element_type);
   $: displayName = getElementDisplayName(inspection, floorLevel);
-  $: resultClass = inspection.result === 'pass' ? 'text-green-400' 
-                 : inspection.result === 'fail' ? 'text-red-400' 
+  $: resultClass = inspection.result === 'pass'   ? 'text-green-400' 
+                 : inspection.result === 'fail'   ? 'text-red-400' 
+                 : inspection.result === 'repair' ? 'text-orange-400'
                  : 'text-gray-400';
 </script>
 
@@ -41,6 +42,8 @@
               ✓ PASS
             {:else if inspection.result === 'fail'}
               ✗ FAIL
+            {:else if inspection.result === 'repair'}
+              ⚙ REPAIR
             {:else}
               — N/A
             {/if}

@@ -12,8 +12,9 @@
   export let floorLevel;
 
   $: inspectedIds = new Set(Object.keys(inspections));
-  $: passCount = Object.values(inspections).flat().filter(i => i.result === 'pass').length;
-  $: failCount = Object.values(inspections).flat().filter(i => i.result === 'fail').length;
+  $: passCount   = Object.values(inspections).flat().filter(i => i.result === 'pass').length;
+  $: failCount   = Object.values(inspections).flat().filter(i => i.result === 'fail').length;
+  $: repairCount = Object.values(inspections).flat().filter(i => i.result === 'repair').length;
 
   function lastResultFor(el) {
     const list = inspections[el.id];
@@ -23,9 +24,10 @@
 
   function dotCls(el) {
     const r = lastResultFor(el);
-    if (r === 'pass') return 'dot-pass';
-    if (r === 'fail') return 'dot-fail';
-    if (r === 'na')   return 'dot-na';
+    if (r === 'pass')   return 'dot-pass';
+    if (r === 'fail')   return 'dot-fail';
+    if (r === 'repair') return 'dot-repair';
+    if (r === 'na')     return 'dot-na';
     return 'dot-none';
   }
 </script>
@@ -38,6 +40,7 @@
     <div class="jl-stats">
       <span class="stat-pass">✓ {passCount}</span>
       <span class="stat-fail">✗ {failCount}</span>
+      {#if repairCount > 0}<span class="stat-repair">⚙ {repairCount}</span>{/if}
       <span class="stat-total">{inspectedIds.size}/{elements.length}</span>
     </div>
   </div>
@@ -51,6 +54,7 @@
         class:is-current={isCurrent}
         class:is-pass={result === 'pass'}
         class:is-fail={result === 'fail'}
+        class:is-repair={result === 'repair'}
         on:click={() => dispatch('jump', { index: idx })}
       >
         <div class="dot {dotCls(el)}"></div>
@@ -70,6 +74,8 @@
             <span class="item-res res-pass">✓</span>
           {:else if result === 'fail'}
             <span class="item-res res-fail">✗</span>
+          {:else if result === 'repair'}
+            <span class="item-res res-repair">⚙</span>
           {:else if result === 'na'}
             <span class="item-res res-na">—</span>
           {/if}
@@ -102,9 +108,10 @@
   .close-btn:hover { color: #fdba74; }
   .jl-title { font-size: 0.65rem; letter-spacing: 0.2em; color: #ccc; }
   .jl-stats { display: flex; gap: 0.625rem; font-size: 0.75rem; letter-spacing: 0.05em; }
-  .stat-pass  { color: #4ade80; }
-  .stat-fail  { color: #f87171; }
-  .stat-total { color: #ccc; }
+  .stat-pass   { color: #4ade80; }
+  .stat-fail   { color: #f87171; }
+  .stat-repair { color: #fb923c; }
+  .stat-total  { color: #ccc; }
 
   /* ── List ─────────────────────────────────────────────────────────────────*/
   .jl-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -120,13 +127,16 @@
   .jl-item.is-pass    { border-left: 3px solid #22c55e; padding-left: calc(1.25rem - 3px); }
   .jl-item.is-fail    { border-left: 3px solid #ef4444; padding-left: calc(1.25rem - 3px); }
 
+  .jl-item.is-repair  { border-left: 3px solid #ea580c; padding-left: calc(1.25rem - 3px); }
+
   .dot {
     width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
   }
-  .dot-none { background: #3e3e58; }
-  .dot-pass { background: #22c55e; }
-  .dot-fail { background: #ef4444; }
-  .dot-na   { background: #888; }
+  .dot-none   { background: #3e3e58; }
+  .dot-pass   { background: #22c55e; }
+  .dot-fail   { background: #ef4444; }
+  .dot-repair { background: #ea580c; }
+  .dot-na     { background: #888; }
 
   .item-body { flex: 1; min-width: 0; }
   .item-name  { font-size: 0.9rem; color: #f0f0f0; font-weight: 600; letter-spacing: 0.02em; }
@@ -144,5 +154,6 @@
   .item-res   { font-size: 1.1rem; font-weight: 800; }
   .res-pass   { color: #4ade80; }
   .res-fail   { color: #f87171; }
+  .res-repair { color: #fb923c; }
   .res-na     { color: #ccc; }
 </style>

@@ -10,11 +10,12 @@
   import WalkSessionSummary   from './components/WalkSessionSummary.svelte';
   import WalkSessionStart     from './components/WalkSessionStart.svelte';
   import WalkInspectionStart  from './components/WalkInspectionStart.svelte';
+  import WalkRepairStart      from './components/WalkRepairStart.svelte';
   import WalkSession          from './components/WalkSession.svelte';
 
   const logger = getLogger('WalkApp');
 
-  // Screens: 'home' | 'start_test' | 'start_inspection' | 'walk' | 'summary'
+  // Screens: 'home' | 'start_test' | 'start_inspection' | 'start_repair' | 'walk' | 'summary'
   let screen         = 'home';
   let summarySession = null;
   let loading        = true;
@@ -62,6 +63,12 @@
     await walkStore.loadSessions();
     screen = 'home';
   }
+
+  async function handleBackToRepair() {
+    // Reload plans+elements so the repair list reflects any status changes
+    await walkStore.loadPlans();
+    screen = 'start_repair';
+  }
 </script>
 
 <div class="walk-app">
@@ -82,6 +89,7 @@
       {canEdit}
       on:startTest={() => screen = 'start_test'}
       on:startInspection={() => screen = 'start_inspection'}
+      on:startRepair={() => screen = 'start_repair'}
       on:resume={handleResume}
       on:viewSummary={handleViewSummary}
     />
@@ -99,11 +107,18 @@
       on:back={() => screen = 'home'}
     />
 
+  {:else if screen === 'start_repair'}
+    <WalkRepairStart
+      on:started={() => screen = 'walk'}
+      on:back={() => screen = 'home'}
+    />
+
   {:else if screen === 'walk'}
     <WalkSession
       {canEdit}
       on:paused={handleSessionPaused}
       on:closed={handleSessionClosed}
+      on:backtorepair={handleBackToRepair}
     />
 
   {:else if screen === 'summary' && summarySession}

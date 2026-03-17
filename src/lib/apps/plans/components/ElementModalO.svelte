@@ -1,7 +1,7 @@
 <!-- src/lib/apps/plans/components/ElementModal.svelte -->
 <!-- Modal for adding or editing floor plan elements -->
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { getLogger } from '$lib/utils/logger';
   import Modal from '$lib/components/common/Modal.svelte';
   import Button from '$lib/components/common/Button.svelte';
@@ -21,8 +21,6 @@
     loadPersistedTemplate,
     saveTemplate
   } from '../utils/elementTemplatePersistence';
-  import { walkStore } from '$lib/apps/walk/stores/walkStore.js';
-  import { resultLabel } from '$lib/apps/walk/utils/walkHelpers.js';
 
   const logger = getLogger('ElementModal');
   const dispatch = createEventDispatcher();
@@ -84,18 +82,6 @@
   let showDeleteConfirm = false;
   let errors  = {};
   let saving  = false;
-
-  // Inspection history — only loaded for existing elements
-  let history        = [];
-  let historyLoading = false;
-
-  onMount(async () => {
-    if (!isNew && element?.id) {
-      historyLoading = true;
-      history = await walkStore.loadElementInspectionHistory(element.id);
-      historyLoading = false;
-    }
-  });
 
   $: isNew             = !element;
   $: editable          = isNew ? true : ($permissions.isAdmin || $permissions.canModify);
@@ -368,41 +354,6 @@
     </div>
 
     {#if !isNew && element}
-      <!-- Inspection History -->
-      <div>
-        <div class="hist-header">
-          <span class="text-sm font-medium">Inspection History</span>
-          {#if history.length > 0}
-            <span class="hist-count">{history.length} record{history.length !== 1 ? 's' : ''}</span>
-          {/if}
-        </div>
-
-        {#if historyLoading}
-          <div class="hist-loading">Loading…</div>
-        {:else if history.length === 0}
-          <div class="hist-empty">No inspections recorded for this element.</div>
-        {:else}
-          <div class="hist-list">
-            {#each history.slice(0, 3) as rec}
-              {@const res = rec.inspection_result}
-              <div class="hist-row hist-{res}">
-                <span class="hist-result hist-result-{res}">{resultLabel(res)}</span>
-                <span class="hist-date">{formatDateTime(rec.inspected_at)}</span>
-                {#if rec.inspector?.full_name}
-                  <span class="hist-who">{rec.inspector.full_name}</span>
-                {/if}
-                {#if rec.inspector_notes}
-                  <div class="hist-notes">{rec.inspector_notes}</div>
-                {/if}
-              </div>
-            {/each}
-            {#if history.length > 3}
-              <div class="hist-more">+ {history.length - 3} older record{history.length - 3 !== 1 ? 's' : ''}</div>
-            {/if}
-          </div>
-        {/if}
-      </div>
-
       <div class="meta-row">
         <span><span class="font-medium">Created:</span> {formatDateTime(element.created_at)}</span>
         {#if element.updated_at && element.updated_at !== element.created_at}
@@ -441,49 +392,3 @@
   on:confirm={confirmDelete}
   on:cancel={() => showDeleteConfirm = false}
 />
-
-<style>
-  /* ── Inspection History ───────────────────────────────────────────────────*/
-  .hist-header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 0.5rem;
-  }
-  .hist-count  { font-size: 0.72rem; color: rgb(107 114 128); }
-  .hist-loading { font-size: 0.8rem; color: rgb(107 114 128); padding: 0.5rem 0; }
-  .hist-empty  { font-size: 0.8rem; color: rgb(107 114 128); font-style: italic; padding: 0.5rem 0; }
-
-  .hist-list {
-    display: flex; flex-direction: column; gap: 0.375rem;
-    max-height: 11rem; overflow-y: auto;
-    border: 1px solid rgb(71 85 105); border-radius: 6px; padding: 0.375rem;
-  }
-
-  .hist-row {
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.375rem;
-    padding: 0.5rem 0.625rem; border-radius: 4px; border-left: 3px solid transparent;
-    background: rgb(51 65 85 / 0.3);
-  }
-  .hist-pass   { border-left-color: rgb(22 163 74); }
-  .hist-fail   { border-left-color: rgb(220 38 38); }
-  .hist-repair { border-left-color: rgb(234 88 12); }
-  .hist-na     { border-left-color: rgb(71 85 105); }
-
-  .hist-result      { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; flex-shrink: 0; }
-  .hist-result-pass   { color: rgb(74 222 128); }
-  .hist-result-fail   { color: rgb(248 113 113); }
-  .hist-result-repair { color: rgb(251 146 60); }
-  .hist-result-na     { color: rgb(156 163 175); }
-
-  .hist-date { font-size: 0.72rem; color: rgb(107 114 128); flex-shrink: 0; }
-  .hist-who  { font-size: 0.72rem; color: rgb(167 139 250); margin-left: auto; }
-  .hist-notes {
-    width: 100%; font-size: 0.72rem; color: rgb(209 213 219);
-    font-style: italic; padding-top: 0.2rem; margin-top: 0.1rem;
-    border-top: 1px solid rgb(51 65 85);
-  }
-
-  .hist-more {
-    font-size: 0.7rem; color: rgb(107 114 128); text-align: center;
-    padding: 0.3rem 0; font-style: italic;
-  }
-</style>

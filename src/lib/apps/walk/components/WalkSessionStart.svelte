@@ -18,11 +18,13 @@
   let selectedType = 'communal_door';
   let lightFilter = 'all';
   let selectedPlanId = '';
-  let selectedBuilding = '';
   let sessionName = '';
   let startAssetId = '';
   let saving = false;
   let error = null;
+
+  // Always use the first building alphabetically — no manual selection
+  $: selectedBuilding = buildings[0] ?? '';
 
   $: selectedPlan = plans.find(p => p.id === selectedPlanId);
   $: availablePlans = plans.slice().sort((a, b) =>
@@ -88,7 +90,6 @@
         return;
       }
     } else {
-      if (!selectedBuilding) { error = 'Please select a building.'; return; }
       if (elementCount === 0) {
         const suffix = selectedType === 'light' && lightFilter === 'emergency' ? ' (emergency)' : '';
         error = `No ${typeLabel(selectedType)}${suffix} elements found in this building.`;
@@ -201,21 +202,13 @@
     <!-- Building or Floor Selection -->
     {#if sessionMode === 'building'}
       <section class="grp">
-        <div class="grp-lbl">02 — WHICH BUILDING?</div>
-        {#if buildings.length === 0}
+        <div class="grp-lbl">02 — BUILDING WALK</div>
+        {#if !selectedBuilding}
           <p class="hint">No buildings available — add plans first.</p>
         {:else}
-          <div class="building-list">
-            {#each buildings as building}
-              {@const planCount = plans.filter(p => p.building === building).length}
-              <button class="building-btn" class:on={selectedBuilding === building}
-                      on:click={() => selectedBuilding = building}>
-                <div class="building-info">
-                  <span class="building-name">{building}</span>
-                  <span class="building-meta">{planCount} floors</span>
-                </div>
-              </button>
-            {/each}
+          <div class="building-summary">
+            <span class="building-name">{selectedBuilding}</span>
+            <span class="building-meta">{buildingPlanCount} floor{buildingPlanCount !== 1 ? 's' : ''} · {buildingElementCount} elements</span>
           </div>
         {/if}
       </section>
@@ -291,7 +284,7 @@
     {#if error}<div class="err-box">⚠ {error}</div>{/if}
 
     <button class="go-btn" on:click={handleStart} 
-            disabled={saving || elementCount === 0 || (!selectedPlanId && !selectedBuilding)}>
+            disabled={saving || elementCount === 0 || (!selectedPlanId && sessionMode === 'single_plan')}>
       {saving ? 'STARTING…' : 'BEGIN WALK →'}
     </button>
   </div>
@@ -332,11 +325,7 @@
   .lt-btn:hover { border-color: #5e5e88; color: #eee; }
   .lt-btn.on { border-color: #fb923c; background: #2a1800; color: #fb923c; font-weight: 700; }
   
-  .building-list { display: flex; flex-direction: column; gap: 0.5rem; }
-  .building-btn { display: flex; align-items: center; padding: 0.875rem 1rem; background: #1a1a2e; border: 2px solid #2e2e48; border-radius: 10px; cursor: pointer; font-family: inherit; text-align: left; transition: all 0.15s; }
-  .building-btn:hover { border-color: #4e4e78; background: #1e1e38; }
-  .building-btn.on { border-color: #fb923c; background: #2a1800; }
-  .building-info { display: flex; flex-direction: column; gap: 0.15rem; }
+  .building-summary { display: flex; align-items: baseline; gap: 0.75rem; padding: 0.875rem 1rem; background: #1a1a2e; border: 2px solid #fb923c; border-radius: 10px; }
   .building-name { font-size: 0.9rem; color: #f0f0f0; font-weight: 600; }
   .building-meta { font-size: 0.75rem; color: #ccc; }
   

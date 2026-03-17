@@ -36,17 +36,14 @@
   let showInspectionDetail = false;
 
   // ── Filters ──────────────────────────────────────────────────────────────
-  let filterBuilding     = '';
   let filterType         = '';
   let filterSessionType  = 'test';
   let filterStatus       = '';
   let filterDateFrom     = '';
   let filterDateTo       = '';
 
-  $: buildings = [...new Set(sessions.map(s => s.building))].sort();
 
   $: filtered = sessions.filter(s => {
-    if (filterBuilding    && s.building !== filterBuilding)       return false;
     if (filterType        && s.element_type !== filterType)       return false;
     if (filterSessionType && s.session_type !== filterSessionType) return false;
     if (filterStatus      && s.status !== filterStatus)           return false;
@@ -61,7 +58,7 @@
   $: totalSessions  = filtered.length;
   $: openSessions   = filtered.filter(s => s.status === 'open').length;
   $: closedSessions = filtered.filter(s => s.status === 'closed').length;
-  $: hasFilters = filterBuilding || filterType || filterSessionType !== 'test' || filterStatus || filterDateFrom || filterDateTo;
+  $: hasFilters = filterType || filterSessionType !== 'test' || filterStatus || filterDateFrom || filterDateTo;
 
   onMount(loadSessions);
 
@@ -137,7 +134,7 @@
   }
 
   function clearFilters() {
-    filterBuilding = filterType = filterStatus = filterDateFrom = filterDateTo = '';
+    filterType = filterStatus = filterDateFrom = filterDateTo = '';
     filterSessionType = 'test';
   }
 
@@ -148,13 +145,6 @@
 <div class="wi-tab">
   <div class="toolbar">
     <div class="filters">
-      <div class="fld">
-        <label for="wi-building" class="flbl">Building</label>
-        <select id="wi-building" class="select text-sm" bind:value={filterBuilding}>
-          <option value="">All buildings</option>
-          {#each buildings as b}<option value={b}>{b}</option>{/each}
-        </select>
-      </div>
       <div class="fld">
         <label for="wi-type" class="flbl">Type</label>
         <select id="wi-type" class="select text-sm" bind:value={filterType}>
@@ -176,6 +166,7 @@
           <option value="">All</option>
           <option value="test">Test</option>
           <option value="inspection">Inspection</option>
+          <option value="repair">Repair</option>
         </select>
       </div>
       <div class="fld">
@@ -232,8 +223,9 @@
           return {
             pass:     lite.filter(r => r.inspection_result === 'pass').length,
             fail:     lite.filter(r => r.inspection_result === 'fail').length,
+            repair:   lite.filter(r => r.inspection_result === 'repair').length,
             na:       lite.filter(r => r.inspection_result === 'na').length,
-            elements: lite.length,   // approximate — unique per inspection row
+            elements: lite.length,
             total:    lite.length
           };
         })()}
@@ -257,6 +249,8 @@
                   <span class="stype-badge stype-insp">INSPECTION</span>
                 {:else if session.session_type === 'test'}
                   <span class="stype-badge stype-test">TEST</span>
+                {:else if session.session_type === 'repair'}
+                  <span class="stype-badge stype-repair">REPAIR</span>
                 {/if}
                 {#if session.session_name}
                   <span class="sess-name">{session.session_name}</span>
@@ -281,6 +275,7 @@
             {#if st}
               <div class="quick-stats">
                 {#if st.fail > 0}<span class="qs-fail">✗ {st.fail}</span>{/if}
+                {#if st.repair > 0}<span class="qs-repair">⚙ {st.repair}</span>{/if}
                 {#if st.pass > 0}<span class="qs-pass">✓ {st.pass}</span>{/if}
                 <span class="qs-el">{st.elements} el.</span>
               </div>
@@ -314,9 +309,10 @@
                 {@const els = groupByElement(inspections[session.id])}
                 <div class="detail-stats">
                   <span>{st.elements} elements inspected</span>
-                  {#if st.pass > 0} <span class="ds-pass">✓ {st.pass} pass</span> {/if}
-                  {#if st.fail > 0} <span class="ds-fail">✗ {st.fail} fail</span> {/if}
-                  {#if st.na   > 0} <span class="ds-na">— {st.na} n/a</span>      {/if}
+                  {#if st.pass > 0}   <span class="ds-pass">✓ {st.pass} pass</span>     {/if}
+                  {#if st.fail > 0}   <span class="ds-fail">✗ {st.fail} fail</span>     {/if}
+                  {#if st.repair > 0} <span class="ds-repair">⚙ {st.repair} repair</span> {/if}
+                  {#if st.na > 0}     <span class="ds-na">— {st.na} n/a</span>          {/if}
                 </div>
                 {#if session.notes}
                   <div class="sess-notes">"{session.notes}"</div>
@@ -355,7 +351,7 @@
                           <td class="text-gray-400">{firstRow.label || '—'}</td>
                           <td>
                             <span class="result-badge result-{worst}">
-                              {worst === 'pass' ? '✓ PASS' : worst === 'fail' ? '✗ FAIL' : '— N/A'}
+                              {worst === 'pass' ? '✓ PASS' : worst === 'fail' ? '✗ FAIL' : worst === 'repair' ? '⚙ REPAIR' : '— N/A'}
                             </span>
                           </td>
                           <td class="text-sm text-gray-400">{fmtTime(firstRow.inspected_at)}</td>
@@ -447,12 +443,14 @@
   .dur { color: rgb(75 85 99); }
   .sess-inspector { color: rgb(167 139 250); }
   .quick-stats { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; flex-shrink: 0; }
-  .qs-fail { color: rgb(248 113 113); font-weight: 700; }
-  .qs-pass { color: rgb(74 222 128); font-weight: 600; }
-  .qs-el { color: rgb(107 114 128); }
+  .qs-fail   { color: rgb(248 113 113); font-weight: 700; }
+  .qs-repair { color: rgb(251 146 60);  font-weight: 600; }
+  .qs-pass   { color: rgb(74 222 128);  font-weight: 600; }
+  .qs-el     { color: rgb(107 114 128); }
   .stype-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.1rem 0.4rem; border-radius: 3px; flex-shrink: 0; }
-  .stype-test { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60); border: 1px solid rgb(251 146 60 / 0.3); }
-  .stype-insp { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250); border: 1px solid rgb(96 165 250 / 0.3); }
+  .stype-test  { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60);  border: 1px solid rgb(251 146 60 / 0.3); }
+  .stype-insp  { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250);  border: 1px solid rgb(96 165 250 / 0.3); }
+  .stype-repair{ background: rgb(234 88 12 / 0.15);  color: rgb(251 146 60);  border: 1px solid rgb(234 88 12 / 0.3); }
   .status-badge { flex-shrink: 0; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid transparent; }
   .status-open { background: rgb(217 119 6 / 0.2); color: rgb(251 191 36); border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.5); color: rgb(156 163 175); border-color: rgb(71 85 105); }
@@ -460,9 +458,10 @@
   .detail-msg { color: rgb(107 114 128); font-size: 0.875rem; padding: 0.5rem 0; }
   .italic { font-style: italic; }
   .detail-stats { display: flex; align-items: center; gap: 1.5rem; font-size: 0.875rem; margin-bottom: 0.75rem; color: rgb(156 163 175); flex-wrap: wrap; }
-  .ds-pass { color: rgb(74 222 128); }
-  .ds-fail { color: rgb(248 113 113); font-weight: 600; }
-  .ds-na { color: rgb(107 114 128); }
+  .ds-pass   { color: rgb(74 222 128); }
+  .ds-fail   { color: rgb(248 113 113); font-weight: 600; }
+  .ds-repair { color: rgb(251 146 60); }
+  .ds-na     { color: rgb(107 114 128); }
   .sess-notes { font-size: 0.875rem; color: rgb(156 163 175); font-style: italic; margin-bottom: 0.75rem; padding-left: 0.75rem; border-left: 2px solid rgb(71 85 105); }
   
   /* NEW: Inspection table styles */
@@ -474,9 +473,10 @@
   .inspection-row:hover { background: rgb(71 85 105 / 0.4); }
   .inspection-row td { padding: 0.75rem; }
   .result-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; }
-  .result-pass { background: rgb(22 101 52 / 0.3); color: rgb(74 222 128); border: 1px solid rgb(22 101 52); }
-  .result-fail { background: rgb(127 29 29 / 0.3); color: rgb(248 113 113); border: 1px solid rgb(127 29 29); }
-  .result-na { background: rgb(71 85 105 / 0.3); color: rgb(156 163 175); border: 1px solid rgb(71 85 105); }
+  .result-pass   { background: rgb(22 101 52 / 0.3); color: rgb(74 222 128); border: 1px solid rgb(22 101 52); }
+  .result-fail   { background: rgb(127 29 29 / 0.3); color: rgb(248 113 113); border: 1px solid rgb(127 29 29); }
+  .result-repair { background: rgb(124 45 18 / 0.3); color: rgb(251 146 60);  border: 1px solid rgb(154 52 18); }
+  .result-na     { background: rgb(71 85 105 / 0.3); color: rgb(156 163 175); border: 1px solid rgb(71 85 105); }
   .notes-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .photo-indicator { font-size: 1.25rem; }
   

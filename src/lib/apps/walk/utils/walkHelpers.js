@@ -68,6 +68,7 @@ export function sessionStats(inspections) {
   return {
     pass:     inspections.filter(r => (r.result ?? r.inspection_result) === 'pass').length,
     fail:     inspections.filter(r => (r.result ?? r.inspection_result) === 'fail').length,
+    repair:   inspections.filter(r => (r.result ?? r.inspection_result) === 'repair').length,
     na:       inspections.filter(r => (r.result ?? r.inspection_result) === 'na').length,
     elements: new Set(inspections.map(r => r.plan_element_id)).size,
     total:    inspections.length,
@@ -110,9 +111,12 @@ export function groupByElement(rows) {
     });
   }
   return Object.values(map).sort((a, b) => {
-    const aFail = a.rows.some(r => r.result === 'fail');
-    const bFail = b.rows.some(r => r.result === 'fail');
+    const aFail   = a.rows.some(r => r.result === 'fail');
+    const bFail   = b.rows.some(r => r.result === 'fail');
     if (aFail !== bFail) return aFail ? -1 : 1;
+    const aRepair = a.rows.some(r => r.result === 'repair');
+    const bRepair = b.rows.some(r => r.result === 'repair');
+    if (aRepair !== bRepair) return aRepair ? -1 : 1;
     const aFloor = FLOOR_ORDER[a.floor_level] ?? 99;
     const bFloor = FLOOR_ORDER[b.floor_level] ?? 99;
     if (aFloor !== bFloor) return aFloor - bFloor;
@@ -127,23 +131,24 @@ export function groupByElement(rows) {
  * @returns {'fail'|'pass'|'na'}
  */
 export function worstResult(rows) {
-  if (rows.some(r => r.result === 'fail')) return 'fail';
-  if (rows.some(r => r.result === 'pass')) return 'pass';
+  if (rows.some(r => r.result === 'fail'))   return 'fail';
+  if (rows.some(r => r.result === 'repair')) return 'repair';
+  if (rows.some(r => r.result === 'pass'))   return 'pass';
   return 'na';
 }
 
 /**
  * Human-readable result label.
- * @param {'pass'|'fail'|'na'} result
+ * @param {'pass'|'fail'|'repair'|'na'} result
  */
 export function resultLabel(result) {
-  return { pass: '✓ PASS', fail: '✗ FAIL', na: '— N/A' }[result] ?? result;
+  return { pass: '✓ PASS', fail: '✗ FAIL', repair: '⚙ REPAIR', na: '— N/A' }[result] ?? result;
 }
 
 /**
  * Numeric sort rank for result priority (used for sorting lists).
- * fail = 0 (highest priority), pass = 1, na = 2
+ * fail = 0, repair = 1, pass = 2, na = 3
  */
 export function resultRank(result) {
-  return { fail: 0, pass: 1, na: 2 }[result] ?? 3;
+  return { fail: 0, repair: 1, pass: 2, na: 3 }[result] ?? 4;
 }

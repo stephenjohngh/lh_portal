@@ -20,6 +20,7 @@
 
   $: passCount      = inspections.filter(i => i.result === 'pass').length;
   $: failCount      = inspections.filter(i => i.result === 'fail').length;
+  $: repairCount    = inspections.filter(i => i.result === 'repair').length;
   $: naCount        = inspections.filter(i => i.result === 'na').length;
   $: totalInspected = grouped.length;
 
@@ -104,6 +105,13 @@
         <div class="stat-v">{failCount}</div>
         <div class="stat-k">FAIL</div>
       </div>
+      {#if repairCount > 0}
+        <div class="stat-div"></div>
+        <div class="stat stat-repair">
+          <div class="stat-v">{repairCount}</div>
+          <div class="stat-k">REPAIR</div>
+        </div>
+      {/if}
       {#if naCount > 0}
         <div class="stat-div"></div>
         <div class="stat stat-na">
@@ -200,9 +208,10 @@
   .stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
   .stat-v { font-size: 1.85rem; font-weight: 800; line-height: 1; color: #f0f0f0; }
   .stat-k { font-size: 0.55rem; letter-spacing: 0.15em; color: #ccc; }
-  .stat-pass .stat-v { color: #4ade80; }
-  .stat-fail .stat-v { color: #f87171; }
-  .stat-na   .stat-v { color: #aaa; }
+  .stat-pass .stat-v   { color: #4ade80; }
+  .stat-fail .stat-v   { color: #f87171; }
+  .stat-repair .stat-v { color: #fb923c; }
+  .stat-na   .stat-v   { color: #aaa; }
   .stat-div  { width: 1px; height: 2.5rem; background: #2e2e42; flex-shrink: 0; }
 
   /* ── Section title ────────────────────────────────────────────────────────*/
@@ -213,17 +222,19 @@
   .el-row {
     background: #111122; border: 2px solid #2e2e42; border-radius: 8px; padding: 0.875rem 1rem;
   }
-  .res-fail { border-color: #7f1d1d; }
-  .res-pass { border-color: #166534; }
+  .res-fail   { border-color: #7f1d1d; }
+  .res-repair { border-color: #7c2d12; }
+  .res-pass   { border-color: #166534; }
   .el-top { display: flex; align-items: center; gap: 0.5rem; }
   .el-name-block { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
   .el-id    { font-size: 0.95rem; font-weight: 700; color: #f0f0f0; font-variant-numeric: tabular-nums; }
   .el-label { font-size: 0.72rem; color: #fb923c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .el-sub   { font-size: 0.65rem; color: #ccc; background: #222235; padding: 0.15rem 0.4rem; border-radius: 3px; flex-shrink: 0; }
   .el-res   { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; flex-shrink: 0; }
-  .el-res-pass { color: #4ade80; }
-  .el-res-fail { color: #f87171; }
-  .el-res-na   { color: #aaa; }
+  .el-res-pass   { color: #4ade80; }
+  .el-res-fail   { color: #f87171; }
+  .el-res-repair { color: #fb923c; }
+  .el-res-na     { color: #aaa; }
 
   .el-notes {
     font-size: 0.78rem; color: #ddd; margin-top: 0.5rem;
@@ -234,9 +245,10 @@
   .insp-row  { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.73rem; }
   .insp-t    { color: #ccc; flex-shrink: 0; }
   .insp-n    { color: #ddd; font-style: italic; flex: 1; }
-  .r-pass    { color: #4ade80; font-weight: 700; }
-  .r-fail    { color: #f87171; font-weight: 700; }
-  .r-na      { color: #aaa; }
+  .r-pass   { color: #4ade80; font-weight: 700; }
+  .r-fail   { color: #f87171; font-weight: 700; }
+  .r-repair { color: #fb923c; font-weight: 700; }
+  .r-na     { color: #aaa; }
 
   /* ── States ───────────────────────────────────────────────────────────────*/
   .state-center {
