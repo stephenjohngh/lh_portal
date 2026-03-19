@@ -18,7 +18,7 @@
 <div class="home">
 
   <div class="home-hdr">
-    <div class="home-logo">◈ WALK</div>
+    <div class="home-logo">◈ INSPECTION WALK</div>
     <div class="home-tagline">Building Inspection</div>
   </div>
 
@@ -28,22 +28,22 @@
       <button class="start-btn start-test" on:click={() => dispatch('startTest')}>
         <span class="start-plus">+</span>
         <div class="start-text">
-          <div class="start-label">START TEST SESSION</div>
-          <div class="start-sub">Practise routes and record trial results</div>
+          <div class="start-label">START PERIODIC TEST SESSION</div>
+          <div class="start-sub">Mandatory Testing of Safety Systems</div>
         </div>
       </button>
       <button class="start-btn start-inspection" on:click={() => dispatch('startInspection')}>
         <span class="start-plus">+</span>
         <div class="start-text">
-          <div class="start-label">START INSPECTION</div>
-          <div class="start-sub">Official inspection — results are recorded</div>
+          <div class="start-label">START GENERAL INSPECTION</div>
+          <div class="start-sub">Additional Checks on Building Inventory</div>
         </div>
       </button>
       <button class="start-btn start-repair" on:click={() => dispatch('startRepair')}>
         <span class="start-plus">⚙</span>
         <div class="start-text">
-          <div class="start-label">START REPAIR</div>
-          <div class="start-sub">Work through failed and replace elements</div>
+          <div class="start-label">START REPAIR CHECK</div>
+          <div class="start-sub">Inspect Repairs to Failed Items</div>
         </div>
       </button>
     </div>
@@ -96,7 +96,7 @@
                 {#if s.session_type === 'test'}
                   <span class="scard-type-badge badge-test">TEST</span>
                 {:else if s.session_type === 'inspection'}
-                  <span class="scard-type-badge badge-insp">INSP</span>
+                  <span class="scard-type-badge badge-insp">INSPECTION</span>
                 {:else if s.session_type === 'repair'}
                   <span class="scard-type-badge badge-repair">REPAIR</span>
                 {/if}
@@ -121,7 +121,7 @@
     <div class="empty">
       <div class="empty-icon">◫</div>
       <div class="empty-txt">No sessions yet</div>
-      <div class="empty-sub">Start a test or inspection session to begin</div>
+      <div class="empty-sub">Start a session to begin</div>
     </div>
   {/if}
 

@@ -73,6 +73,7 @@
   <div class="rs-hdr">
     <button class="back-btn" on:click={() => dispatch('back')}>← Back</button>
     <span class="rs-title">START REPAIR</span>
+    <button class="finish-btn" on:click={() => dispatch('finish')}>FINISH ✓</button>
   </div>
 
   <div class="rs-body">
@@ -121,7 +122,14 @@
   .rs-hdr { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid #2e2e42; background: #111122; }
   .back-btn { background: none; border: none; color: #fb923c; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; padding: 0; }
   .back-btn:hover { color: #fdba74; }
-  .rs-title { font-size: 0.7rem; letter-spacing: 0.25em; color: #fb923c; }
+  .rs-title { font-size: 0.7rem; letter-spacing: 0.25em; color: #fb923c; flex: 1; text-align: center; }
+  .finish-btn {
+    background: #22c55e; border: none; border-radius: 6px;
+    color: #0d0d14; font-family: inherit; font-size: 0.72rem; font-weight: 800;
+    padding: 0.5rem 0.875rem; cursor: pointer; transition: background 0.15s;
+    letter-spacing: 0.08em; white-space: nowrap; flex-shrink: 0;
+  }
+  .finish-btn:hover { background: #16a34a; }
 
   .rs-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; flex: 1; }
   .grp { display: flex; flex-direction: column; gap: 0.75rem; }

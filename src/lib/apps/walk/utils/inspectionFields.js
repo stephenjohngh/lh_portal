@@ -22,6 +22,7 @@ export const INSPECTION_FIELDS = {
  */
 export const INSPECTION_RESULTS = {
   PASS: 'pass',
+  PROBLEM: 'problem',
   FAIL: 'fail',
   NA: 'na'
 };
@@ -31,6 +32,7 @@ export const INSPECTION_RESULTS = {
  */
 export const RESULT_LABELS = {
   [INSPECTION_RESULTS.PASS]: '✓ PASS',
+  [INSPECTION_RESULTS.PROBLEM]: '✗ PROBLEM',
   [INSPECTION_RESULTS.FAIL]: '✗ FAIL',
   [INSPECTION_RESULTS.NA]: '— N/A'
 };

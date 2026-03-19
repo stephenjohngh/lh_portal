@@ -114,21 +114,5 @@
     </div>
   </div>
 
-  <!-- Legend -->
-  <div class="border-t border-slate-700 pt-4">
-    <h4 class="text-sm font-semibold mb-2">Legend</h4>
-    <div class="space-y-1 text-xs text-gray-400">
-      {#each [
-        { color: 'bg-orange-800',  shape: 'rounded-sm',   label: 'Brown — Communal Doors' },
-        { color: 'bg-purple-500',  shape: 'rounded-sm',   label: 'Purple — Apartment Doors' },
-        { color: 'bg-yellow-500',  shape: 'rounded-full', label: 'Yellow — Lights' },
-        { color: 'bg-red-500',     shape: 'rounded-sm',   label: 'Red — Fire Control' }
-      ] as item}
-        <div class="flex items-center gap-2">
-          <div class="w-3 h-3 {item.color} {item.shape}"></div>
-          <span>{item.label}</span>
-        </div>
-      {/each}
-    </div>
-  </div>
+
 </div>

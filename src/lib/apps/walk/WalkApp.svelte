@@ -64,6 +64,20 @@
     screen = 'home';
   }
 
+  async function handleFinishRepair() {
+    // Close the active repair session if one is open, then return home
+    try {
+      const state = (() => { let s; walkStore.subscribe(v => { s = v; })(); return s; })();
+      if (state.activeSession?.status === 'open') {
+        await walkStore.closeSession(state.activeSession.id);
+      }
+    } catch (err) {
+      logger('❌ Close repair session failed (non-fatal):', err.message);
+    }
+    await walkStore.loadSessions();
+    screen = 'home';
+  }
+
   async function handleBackToRepair() {
     // Reload plans+elements so the repair list reflects any status changes
     await walkStore.loadPlans();
@@ -110,6 +124,7 @@
   {:else if screen === 'start_repair'}
     <WalkRepairStart
       on:started={() => screen = 'walk'}
+      on:finish={handleFinishRepair}
       on:back={() => screen = 'home'}
     />
 

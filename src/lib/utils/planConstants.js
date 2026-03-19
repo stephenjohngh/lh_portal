@@ -11,6 +11,7 @@ export const ELEMENT_TYPE_OPTIONS = [
 
 export const ELEMENT_STATUS_OPTIONS = [
   { value: 'active',   label: 'OK',       color: '#22c55e' },
+  { value: 'problem',  label: 'Problem',  color: '#eb960e' },
   { value: 'failed',   label: 'Failed',   color: '#ef4444' },
   { value: 'inactive', label: 'Inactive', color: '#64748b' }
 ];
@@ -124,9 +125,9 @@ export function getAttributeSummary(element) {
     if (element.battery === 'local')   parts.push('Local Batt.');
     if (element.battery === 'none')    parts.push('No Battery');
     if (element.wattage)               parts.push(`${element.wattage}W`);
-    if (element.emergency)             parts.push('⚠ Emerg');
-    if (element.movement_sensor)       parts.push('👁 Motion');
-    if (element.light_sensor)          parts.push('☀ Light Snsr');
+    if (element.emergency)             parts.push('Emergency');
+    if (element.movement_sensor)       parts.push('Motion Sensor');
+    if (element.light_sensor)          parts.push('Light Sensor');
     return parts.length ? parts.join(' · ') : '—';
   }
   if (element.element_type === 'communal_door' || element.element_type === 'apartment_door') {
