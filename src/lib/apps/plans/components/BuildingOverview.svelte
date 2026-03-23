@@ -7,6 +7,7 @@
   import PlanFilters from './PlanFilters.svelte';
   import ElementModal from './ElementModal.svelte';
   import { plansStore } from '../stores/plansStore';
+  import { getFloorOrder } from '$lib/utils/floorSorting';
   import {
     ELEMENT_TYPE_OPTIONS,
     getElementDisplayName,
@@ -62,9 +63,8 @@
 
   $: sortedElementsForTable = [...filteredElements].sort((a, b) => {
     // Sort by FLOOR FIRST with correct order: L, U, G, 1-7
-    const floorOrder = { 'L': 0, 'U': 1, 'G': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
-    const floorA = floorOrder[a._floorLevel] ?? 999;
-    const floorB = floorOrder[b._floorLevel] ?? 999;
+    const floorA = getFloorOrder(a._floorLevel);
+    const floorB = getFloorOrder(b._floorLevel);
     if (floorA !== floorB) return floorA - floorB;
     
     // Then by element type

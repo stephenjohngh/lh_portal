@@ -41,9 +41,9 @@ function typeLabel(t) {
 }
 
 function resultColor(result) {
-  return result === 'pass'   ? COLOURS.passGreen
-       : result === 'fail'   ? COLOURS.failRed
-       : result === 'repair' ? 'EA580C'
+  return result === 'OK'      ? COLOURS.passGreen
+       : result === 'failed'  ? COLOURS.failRed
+       : result === 'problem' ? 'EA580C'
        : '6B7280';
 }
 
@@ -118,10 +118,10 @@ function buildSummaryTable(sessionData) {
         dCell(s.inspector_name,       SUM_COLS[4],  { alt }),
         dCell(dur,                    SUM_COLS[5],  { alt }),
         dCell(st.elements,            SUM_COLS[6],  { alt, bold: true }),
-        dCell(st.pass   || '—',       SUM_COLS[7],  { alt, color: st.pass   ? COLOURS.passGreen : '9CA3AF' }),
-        dCell(st.fail   || '—',       SUM_COLS[8],  { alt, color: st.fail   ? COLOURS.failRed   : '9CA3AF' }),
-        dCell(st.repair || '—',       SUM_COLS[9],  { alt, color: st.repair ? 'EA580C'           : '9CA3AF' }),
-        dCell(st.na     || '—',       SUM_COLS[10], { alt, color: st.na     ? '6B7280'           : '9CA3AF' }),
+        dCell(st.OK       || '—',  SUM_COLS[7],  { alt, color: st.OK       ? COLOURS.passGreen : '9CA3AF' }),
+        dCell(st.failed   || '—',  SUM_COLS[8],  { alt, color: st.failed   ? COLOURS.failRed   : '9CA3AF' }),
+        dCell(st.problem  || '—',  SUM_COLS[9],  { alt, color: st.problem  ? 'EA580C'           : '9CA3AF' }),
+        dCell(st.inactive || '—',  SUM_COLS[10], { alt, color: st.inactive ? '6B7280'           : '9CA3AF' }),
         dCell(s.notes,                SUM_COLS[11], { alt }),
       ],
     });
@@ -199,7 +199,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
     mkMetaRow('Status',       s.status === 'open' ? 'Open' : 'Closed',
                               s.status === 'open' ? COLOURS.warnAmber : '6B7280'),
     mkMetaRow('Elements',     `${st.elements} inspected (${st.total} records)`),
-    mkMetaRow('Results',      `Pass: ${st.pass}   Fail: ${st.fail}   Repair: ${st.repair}   N/A: ${st.na}`),
+    mkMetaRow('Results',      `Pass: ${st.OK}   Fail: ${st.failed}   Problem: ${st.problem}   Inactive: ${st.inactive}`),
   ];
   if (s.notes) metaRows.push(mkMetaRow('Closing Notes', s.notes));
   if (s.light_subtype_filter === 'emergency') {

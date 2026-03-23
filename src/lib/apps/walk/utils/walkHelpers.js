@@ -4,6 +4,7 @@
 // WalkInspectionsReport, and generate-inspections-report.
 
 import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+import { getFloorOrder } from '$lib/utils/floorSorting';
 
 /**
  * Flatten the nested element join onto each walk_element_inspections row.
@@ -57,33 +58,28 @@ export function sessionFloorLabel(session) {
 }
 
 /**
+ * Aggregate pass/fail/etc counts and unique element count from a
  * walk_element_inspections array.
  * Reads `result` if present (flattened rows), falls back to `inspection_result` (raw rows).
  *
  * @param {Array} inspections — walk_element_inspections rows (raw or flattened)
- * @returns {{ pass, fail, na, elements, total }}
+ * @returns {{ ..., elements, total }}
  */
 export function sessionStats(inspections) {
   return {
     OK:     inspections.filter(r => (r.result ?? r.inspection_result) === 'OK').length,
-    failed:     inspections.filter(r => (r.result ?? r.inspection_result) === 'failed').length,
-    problem:   inspections.filter(r => (r.result ?? r.inspection_result) === 'problem').length,
-    inactive:       inspections.filter(r => (r.result ?? r.inspection_result) === 'inactive').length,
+    failed:     inspections.filter(r => (r.result ?? r.inspection_result) === 'Failed').length,
+    problem:   inspections.filter(r => (r.result ?? r.inspection_result) === 'Problem').length,
+    inactive:       inspections.filter(r => (r.result ?? r.inspection_result) === 'Inactive').length,
     elements: new Set(inspections.map(r => r.plan_element_id)).size,
     total:    inspections.length,
   };
 }
 
-// Floor sort order for building-wide session element grouping
-const FLOOR_ORDER = { L: 0, U: 1, G: 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9 };
-
 /**
  * Group inspection rows by plan_element_id.
  * Result is sorted: failures first, then by floor_level, then by asset_id (numeric-aware).
  * For single-plan sessions all rows share the same floor so sort degrades to asset_id only.
- *
- * Normalises `plan_element_id` → `element_id` and
- * `inspection_result` → `result` on each row for convenience in templates.
  *
  * @param {Array} rows — walk_element_inspections rows (floor_level must be flattened onto each row)
  * @returns {Array<{ element_id, asset_id, subtype, label, element_type, floor_level, rows }>}
@@ -116,8 +112,8 @@ export function groupByElement(rows) {
     const aRepair = a.rows.some(r => r.result === 'problem');
     const bRepair = b.rows.some(r => r.result === 'problem');
     if (aRepair !== bRepair) return aRepair ? -1 : 1;
-    const aFloor = FLOOR_ORDER[a.floor_level] ?? 99;
-    const bFloor = FLOOR_ORDER[b.floor_level] ?? 99;
+    const aFloor = getFloorOrder(a.floor_level);
+    const bFloor = getFloorOrder(b.floor_level);
     if (aFloor !== bFloor) return aFloor - bFloor;
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
@@ -127,7 +123,7 @@ export function groupByElement(rows) {
  * Return the worst result across a set of inspection rows for one element.
  * Priority: fail > pass > na
  * @param {Array} rows — inspection rows for a single element (with .result normalised)
- * @returns {'fail'|'pass'|'na'}
+ * @returns
  */
 export function worstResult(rows) {
   if (rows.some(r => r.result === 'failed'))   return 'failed';
@@ -137,8 +133,7 @@ export function worstResult(rows) {
 }
 
 /**
- * Human-readable result label.
- * @param {'pass'|'fail'|'repair'|'na'} result
+ * Human-readable result label. result
  */
 export function resultLabel(result) {
   return { OK: '✓ PASS', failed: '✗ FAIL', problem: '⚙ PROBLEM', inactive: '— INACTIVE' }[result] ?? result;
@@ -146,7 +141,6 @@ export function resultLabel(result) {
 
 /**
  * Numeric sort rank for result priority (used for sorting lists).
- * fail = 0, repair = 1, pass = 2, na = 3
  */
 export function resultRank(result) {
   return { failed: 0, problem: 1, OK: 2, inactive: 3 }[result] ?? 4;

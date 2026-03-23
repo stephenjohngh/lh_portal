@@ -12,9 +12,9 @@
   export let floorLevel;
 
   $: inspectedIds = new Set(Object.keys(inspections));
-  $: passCount   = Object.values(inspections).flat().filter(i => i.result === 'pass').length;
-  $: failCount   = Object.values(inspections).flat().filter(i => i.result === 'fail').length;
-  $: repairCount = Object.values(inspections).flat().filter(i => i.result === 'repair').length;
+  $: passCount    = Object.values(inspections).flat().filter(i => i.result === 'OK').length;
+  $: failCount    = Object.values(inspections).flat().filter(i => i.result === 'failed').length;
+  $: problemCount = Object.values(inspections).flat().filter(i => i.result === 'problem').length;
 
   function lastResultFor(el) {
     const list = inspections[el.id];
@@ -24,10 +24,10 @@
 
   function dotCls(el) {
     const r = lastResultFor(el);
-    if (r === 'pass')   return 'dot-pass';
-    if (r === 'fail')   return 'dot-fail';
-    if (r === 'repair') return 'dot-repair';
-    if (r === 'na')     return 'dot-na';
+    if (r === 'OK')       return 'dot-pass';
+    if (r === 'failed')   return 'dot-fail';
+    if (r === 'problem')  return 'dot-repair';
+    if (r === 'inactive') return 'dot-na';
     return 'dot-none';
   }
 </script>
@@ -40,7 +40,7 @@
     <div class="jl-stats">
       <span class="stat-pass">✓ {passCount}</span>
       <span class="stat-fail">✗ {failCount}</span>
-      {#if repairCount > 0}<span class="stat-repair">⚙ {repairCount}</span>{/if}
+      {#if problemCount > 0}<span class="stat-repair">⚙ {problemCount}</span>{/if}
       <span class="stat-total">{inspectedIds.size}/{elements.length}</span>
     </div>
   </div>
@@ -52,9 +52,9 @@
       <button
         class="jl-item"
         class:is-current={isCurrent}
-        class:is-pass={result === 'pass'}
-        class:is-fail={result === 'fail'}
-        class:is-repair={result === 'repair'}
+        class:is-pass={result === 'OK'}
+        class:is-fail={result === 'failed'}
+        class:is-repair={result === 'problem'}
         on:click={() => dispatch('jump', { index: idx })}
       >
         <div class="dot {dotCls(el)}"></div>
@@ -70,13 +70,13 @@
             <span class="item-status st-{el.status}">{el.status}</span>
           {/if}
           {#if isCurrent}<span class="item-here">HERE</span>{/if}
-          {#if result === 'pass'}
+          {#if result === 'OK'}
             <span class="item-res res-pass">✓</span>
-          {:else if result === 'fail'}
+          {:else if result === 'failed'}
             <span class="item-res res-fail">✗</span>
-          {:else if result === 'repair'}
+          {:else if result === 'problem'}
             <span class="item-res res-repair">⚙</span>
-          {:else if result === 'na'}
+          {:else if result === 'inactive'}
             <span class="item-res res-na">—</span>
           {/if}
         </div>

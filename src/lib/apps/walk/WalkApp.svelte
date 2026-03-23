@@ -64,17 +64,6 @@
     screen = 'home';
   }
 
-  async function handleCloseSessionFromHome(event) {
-    // User tapped CLOSE on an open session card in the home screen —
-    // pause it (sets status to 'closed') without resuming it first.
-    try {
-      await walkStore.pauseSession(event.detail.session.id);
-    } catch (err) {
-      logger('❌ Close from home failed:', err.message);
-    }
-    await walkStore.loadSessions();
-  }
-
   async function handleFinishRepair() {
     // Close the active repair session if one is open, then return home
     try {
@@ -116,7 +105,6 @@
       on:startInspection={() => screen = 'start_inspection'}
       on:startRepair={() => screen = 'start_repair'}
       on:resume={handleResume}
-      on:closeSession={handleCloseSessionFromHome}
       on:viewSummary={handleViewSummary}
     />
 

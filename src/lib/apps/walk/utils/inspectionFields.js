@@ -39,8 +39,8 @@ export const RESULT_LABELS = {
 
 /**
  * Get human-readable label for inspection result
- * @param {string} result - Inspection result ('pass', 'fail', 'na')
- * @returns {string} Formatted label
+ * @param {string} result - Inspection result 
+ * * @returns {string} Formatted label
  */
 export function getResultLabel(result) {
   return RESULT_LABELS[result] || result;
@@ -121,11 +121,3 @@ export function isFailed(inspection) {
   return getInspectionResult(inspection) === INSPECTION_RESULTS.FAIL;
 }
 
-/**
- * Check if inspection was N/A
- * @param {Object} inspection - Inspection object
- * @returns {boolean} True if N/A
- */
-export function isNA(inspection) {
-  return getInspectionResult(inspection) === INSPECTION_RESULTS.NA;
-}

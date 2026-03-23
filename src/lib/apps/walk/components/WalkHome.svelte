@@ -12,7 +12,7 @@
 
   $: sessions       = $walkStore.sessions;
   $: openSessions   = sessions.filter(s => s.status === 'open');
-  $: closedSessions = sessions.filter(s => s.status === 'closed' || s.status === 'completed').slice(0, 6);
+  $: closedSessions = sessions.filter(s => s.status === 'closed').slice(0, 6);
 </script>
 
 <div class="home">
@@ -55,7 +55,7 @@
       <div class="sect-title">OPEN SESSIONS</div>
       <div class="session-list">
         {#each openSessions as s (s.id)}
-          <div class="scard scard-open">
+          <button class="scard scard-open" on:click={() => dispatch('resume', { session: s })}>
             <div class="pulse"></div>
             <div class="scard-body">
               <div class="scard-name-row">
@@ -75,15 +75,8 @@
                 {#if s.inspector_name}<span class="scard-who">· {s.inspector_name}</span>{/if}
               </div>
             </div>
-            <div class="open-actions">
-              <button class="open-btn open-resume" on:click={() => dispatch('resume', { session: s })}>
-                RESUME →
-              </button>
-              <button class="open-btn open-close" on:click={() => dispatch('closeSession', { session: s })}>
-                CLOSE
-              </button>
-            </div>
-          </div>
+            <span class="resume-label">RESUME →</span>
+          </button>
         {/each}
       </div>
     </div>
@@ -108,9 +101,7 @@
                   <span class="scard-type-badge badge-repair">REPAIR</span>
                 {/if}
                 {#if s.status === 'closed'}
-                  <span class="scard-type-badge badge-completed">CLOSED</span>
-                {:else if s.status === 'open'}
-                  <span class="scard-type-badge badge-paused">PAUSED</span>
+                  <span class="scard-type-badge badge-closed">✓ CLOSED</span>
                 {/if}
               </div>
               <div class="scard-loc">{s.building} · {sessionFloorLabel(s)}</div>
@@ -191,19 +182,12 @@
   }
 
   /* ── Open session cards ───────────────────────────────────────────────────*/
-  .scard-open         { background: #0a1f0a; border-color: #22c55e !important; cursor: default; }
-  .scard-open:hover   { border-color: #4ade80 !important; }
-
-  .open-actions { display: flex; flex-direction: column; gap: 0.375rem; flex-shrink: 0; }
-  .open-btn {
-    padding: 0.45rem 0.75rem; border-radius: 6px; font-family: inherit;
-    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em;
-    cursor: pointer; transition: all 0.15s; white-space: nowrap; border: 2px solid transparent;
+  .scard-open         { background: #0a1f0a; border-color: #22c55e !important; }
+  .scard-open:hover   { background: #0d2a0d; border-color: #4ade80 !important; }
+  .resume-label {
+    font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em;
+    color: #4ade80; flex-shrink: 0; white-space: nowrap;
   }
-  .open-resume { background: #22c55e; color: #0d0d14; border-color: #22c55e; }
-  .open-resume:hover { background: #16a34a; border-color: #16a34a; }
-  .open-close  { background: none; color: #ccc; border-color: #3e3e58; }
-  .open-close:hover  { border-color: #f87171; color: #f87171; }
 
   /* ── Session type badges ──────────────────────────────────────────────────*/
   .scard-type-badge {
@@ -213,19 +197,17 @@
   .badge-test      { background: #2a1800; color: #fb923c; }
   .badge-insp      { background: #0a1f35; color: #60a5fa; }
   .badge-repair    { background: #1a0a00; color: #fb923c; border: 1px solid #7c2d12; }
-  .badge-completed { background: #0a1f0a; color: #4ade80; border: 1px solid #166534; }
-  .badge-paused    { background: #1a1800; color: #fbbf24; border: 1px solid #713f12; }
+  .badge-closed    { background: #0a1f0a; color: #4ade80; border: 1px solid #166534; }
 
   /* ── Session cards (shared) ───────────────────────────────────────────────*/
-   .session-list { display: flex; flex-direction: column; gap: 0.625rem; }
-  .session-list-scroll { max-height: 15rem; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 0.125rem; }
+  .session-list { display: flex; flex-direction: column; gap: 0.625rem; }
+  .session-list-scroll { max-height: 10.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 0.125rem; }
   .scard {
     width: 100%; display: flex; align-items: center; gap: 0.875rem;
     padding: 0.875rem 1rem; text-align: left;
     background: #111122; border: 2px solid #2e2e42; border-radius: 10px;
     cursor: pointer; font-family: inherit; transition: border-color 0.15s;
   }
-
   .scard:hover { border-color: #fb923c; }
   .scard-icon      { font-size: 1.35rem; flex-shrink: 0; }
   .scard-body      { flex: 1; min-width: 0; }

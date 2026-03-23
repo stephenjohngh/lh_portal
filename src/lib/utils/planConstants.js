@@ -10,7 +10,7 @@ export const ELEMENT_TYPE_OPTIONS = [
 ];
 
 export const ELEMENT_STATUS_OPTIONS = [
-  { value: 'OK',   label: 'OK',       color: '#22c55e' },
+  { value: 'OK',       label: 'OK',       color: '#22c55e' },
   { value: 'problem',  label: 'Problem',  color: '#eb960e' },
   { value: 'failed',   label: 'Failed',   color: '#ef4444' },
   { value: 'inactive', label: 'Inactive', color: '#64748b' }
@@ -19,10 +19,14 @@ export const ELEMENT_STATUS_OPTIONS = [
 // ============================================
 // FLOOR LEVELS
 // ============================================
-// Ordered: L (Lower), U (Upper), G (Ground), 1–7
+// Sort order: X (L80 Lower), L (Lower), U (Upper), G (Ground), 1–7, R (Roof), E (External)
 // Stored as text in the database (floor_level text column)
+// THIS IS THE SINGLE SOURCE OF TRUTH for floor order across the entire codebase.
+// floorSorting.js derives FLOOR_ORDER from this array.
+// Add new floors here only — all sort functions update automatically.
 
 export const FLOOR_LEVELS = [
+  { value: 'X', label: 'X — L80 Lower' },
   { value: 'L', label: 'L — Lower' },
   { value: 'U', label: 'U — Upper' },
   { value: 'G', label: 'G — Ground' },
@@ -32,14 +36,15 @@ export const FLOOR_LEVELS = [
   { value: '4', label: '4 — Fourth' },
   { value: '5', label: '5 — Fifth' },
   { value: '6', label: '6 — Sixth' },
-  { value: '7', label: '7 — Seventh' }
+  { value: '7', label: '7 — Seventh' },
+  { value: 'R', label: 'R — Roof' },
+  { value: 'E', label: 'E — External' }
 ];
 
 // Default floor level for new plans
 export const DEFAULT_FLOOR_LEVEL = 'G';
 
 // Subtype options per element type
-// UPDATED: Added Panel and Sprinkler to fire_control, added Other type with subtypes, added Exit CFL to lights
 export const ELEMENT_SUBTYPES = {
   communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
   apartment_door: ['Fire Door'],
@@ -84,10 +89,9 @@ export function getSubtypesForType(type) {
   return ELEMENT_SUBTYPES[type] || [];
 }
 
-
 /**
  * Get the display label for a floor level value.
- * e.g. 'G' → 'G — Ground',  '1' → '1 — First'
+ * e.g. 'G' → 'G — Ground',  '1' → '1 — First', 'R' → 'R — Roof'
  */
 export function getFloorLevelLabel(value) {
   return FLOOR_LEVELS.find(f => f.value === value)?.label ?? value ?? '?';
@@ -97,11 +101,6 @@ export function getFloorLevelLabel(value) {
 // ATTRIBUTE HELPERS
 // ============================================
 
-/**
- * Returns zeroed-out values for all type-specific attribute fields.
- * Call this in handleTypeChange() to prevent stale data persisting
- * when the user switches element type in the modal.
- */
 export function blankAttributes() {
   return {
     emergency:       false,
@@ -114,10 +113,6 @@ export function blankAttributes() {
   };
 }
 
-/**
- * Returns a compact human-readable summary of an element's type-specific attributes.
- * Used in the PlanViewer element table Attributes column.
- */
 export function getAttributeSummary(element) {
   if (element.element_type === 'light') {
     const parts = [];
@@ -137,7 +132,6 @@ export function getAttributeSummary(element) {
     if (element.retained)                  parts.push('Retained');
     return parts.length ? parts.join(' · ') : '—';
   }
-  // fire_control and other have no structured attributes
   return '—';
 }
 
@@ -145,7 +139,6 @@ export function getAttributeSummary(element) {
 // DERIVED NAME HELPERS
 // ============================================
 
-// Initial letter per element type used in derived name
 const TYPE_INITIALS = {
   communal_door:  'D',
   apartment_door: 'A',
@@ -154,11 +147,6 @@ const TYPE_INITIALS = {
   other:          'O'
 };
 
-/**
- * Derive the display name for an element.
- * Format: FloorCode/TypeInitial/AssetID
- * e.g. "G/L/001"  "3/D/042"  "G/F/007"  "G/O/015"
- */
 export function getElementDisplayName(element, floorLevel) {
   const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
   const type  = TYPE_INITIALS[element.element_type] ?? '?';
@@ -166,9 +154,6 @@ export function getElementDisplayName(element, floorLevel) {
   return `${floor}/${type}/${id}`;
 }
 
-/**
- * Get a short description for tooltips and table display.
- */
 export function getElementDescription(element) {
   return element.label || element.subtype || element.element_type;
 }

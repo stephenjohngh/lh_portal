@@ -1,74 +1,57 @@
 // src/lib/utils/floorSorting.js
-// Shared floor sorting utilities for Plans and Walk apps
+// Shared floor sorting utilities for Plans and Walk apps.
+//
+// FLOOR_ORDER is derived from FLOOR_LEVELS in planConstants.js — that array
+// is the single source of truth for floor order. Adding a floor there
+// automatically updates all sort functions here.
 
-export const FLOOR_ORDER = {
-  'L': 0, 
-  'U': 1, 
-  'G': 2,
-  '1': 3, 
-  '2': 4, 
-  '3': 5, 
-  '4': 6, 
-  '5': 7, 
-  '6': 8, 
-  '7': 9
-};
+import { FLOOR_LEVELS } from '$lib/utils/planConstants';
 
 /**
- * Get numeric sort order for a floor level
- * @param {string} floorLevel - Floor level (L, U, G, 1-9)
- * @returns {number} Sort order (0-9, or 999 for unknown)
+ * Numeric sort rank for each floor value, derived from the FLOOR_LEVELS array order.
+ * X=0, L=1, U=2, G=3, 1=4 … 7=10, R=11, E=12
+ */
+export const FLOOR_ORDER = Object.fromEntries(
+  FLOOR_LEVELS.map((f, i) => [f.value, i])
+);
+
+/**
+ * Get numeric sort order for a floor level.
+ * @param {string} floorLevel
+ * @returns {number} Sort index, or 999 for unknown values.
  */
 export function getFloorOrder(floorLevel) {
   return FLOOR_ORDER[String(floorLevel)] ?? 999;
 }
 
 /**
- * Sort plans by floor level only
- * @param {Array} plans - Array of plan objects with floor_level property
- * @returns {Array} Sorted copy of plans
+ * Sort plans by floor level only.
  */
 export function sortByFloor(plans) {
-  return [...plans].sort((a, b) => 
+  return [...plans].sort((a, b) =>
     getFloorOrder(a.floor_level) - getFloorOrder(b.floor_level)
   );
 }
 
 /**
- * Sort plans by building name, then floor level
- * @param {Array} plans - Array of plan objects
- * @returns {Array} Sorted copy of plans
+ * Sort plans by building name, then floor level.
  */
 export function sortByBuildingAndFloor(plans) {
   return [...plans].sort((a, b) => {
-    // Primary: building name alphabetically
     const buildingCmp = (a.building ?? '').localeCompare(b.building ?? '');
     if (buildingCmp !== 0) return buildingCmp;
-    
-    // Secondary: floor level
     return getFloorOrder(a.floor_level) - getFloorOrder(b.floor_level);
   });
 }
 
 /**
- * Sort elements by floor, then type, then asset_id
- * Used in Building Overview and element lists
- * @param {Array} elements - Array of elements with floor_level, element_type, asset_id
- * @returns {Array} Sorted copy of elements
+ * Sort elements by floor, then type, then asset_id.
  */
 export function sortElementsByFloorTypeAsset(elements) {
   return [...elements].sort((a, b) => {
-    // Floor first
-    const floorA = getFloorOrder(a.floor_level);
-    const floorB = getFloorOrder(b.floor_level);
-    if (floorA !== floorB) return floorA - floorB;
-    
-    // Then type
-    if (a.element_type !== b.element_type) {
-      return a.element_type.localeCompare(b.element_type);
-    }
-    
-    // Then asset_id (numeric-aware)
+    const floorDiff = getFloorOrder(a.floor_level) - getFloorOrder(b.floor_level);
+    if (floorDiff !== 0) return floorDiff;
+    if (a.element_type !== b.element_type) return a.element_type.localeCompare(b.element_type);
     return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
   });
 }

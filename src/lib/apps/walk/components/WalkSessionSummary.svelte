@@ -5,7 +5,9 @@
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
   import { groupByElement, worstResult, resultLabel, flattenInspectionRows } from '../utils/walkHelpers.js';
+  import { getFloorOrder } from '$lib/utils/floorSorting';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
+  import WalkStatsBars from './WalkStatsBars.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -15,14 +17,28 @@
   let loading     = true;
   let error       = null;
 
-  // groupByElement returns an array sorted fail-first, then floor, then asset_id
-  $: grouped   = groupByElement(inspections);
+  // groupByElement returns an array sorted fail-first, then floor, then asset_id.
+  const RESULT_RANK = { failed: 0, problem: 1, OK: 2, inactive: 3 };
+
+  function worstRank(el) {
+    const results = el.rows.map(r => r.result ?? r.inspection_result ?? 'inactive');
+    return Math.min(...results.map(r => RESULT_RANK[r] ?? 3));
+  }
+
+  $: grouped = groupByElement(inspections).sort((a, b) => {
+    const rankDiff = worstRank(a) - worstRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    const floorDiff = getFloorOrder(a.floor_level) - getFloorOrder(b.floor_level);
+    if (floorDiff !== 0) return floorDiff;
+    return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
+  });
 
   $: passCount      = inspections.filter(i => i.result === 'OK').length;
   $: failCount      = inspections.filter(i => i.result === 'failed').length;
   $: repairCount    = inspections.filter(i => i.result === 'problem').length;
   $: naCount        = inspections.filter(i => i.result === 'inactive').length;
   $: totalInspected = grouped.length;
+  $: totalElements  = session?.total_elements_count || totalInspected;
 
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === session?.element_type);
 
@@ -90,36 +106,14 @@
     </div>
 
   {:else}
-    <div class="stats-bar">
-      <div class="stat">
-        <div class="stat-v">{totalInspected}</div>
-        <div class="stat-k">INSPECTED</div>
-      </div>
-      <div class="stat-div"></div>
-      <div class="stat stat-pass">
-        <div class="stat-v">{passCount}</div>
-        <div class="stat-k">PASS</div>
-      </div>
-      <div class="stat-div"></div>
-      <div class="stat stat-fail">
-        <div class="stat-v">{failCount}</div>
-        <div class="stat-k">FAIL</div>
-      </div>
-      {#if repairCount > 0}
-        <div class="stat-div"></div>
-        <div class="stat stat-repair">
-          <div class="stat-v">{repairCount}</div>
-          <div class="stat-k">PROBLEM</div>
-        </div>
-      {/if}
-      {#if naCount > 0}
-        <div class="stat-div"></div>
-        <div class="stat stat-na">
-          <div class="stat-v">{naCount}</div>
-          <div class="stat-k">INACTIVE</div>
-        </div>
-      {/if}
-    </div>
+    <WalkStatsBars
+      total={totalElements}
+      inspected={totalInspected}
+      passCount={passCount}
+      failCount={failCount}
+      problemCount={repairCount}
+      inactiveCount={naCount}
+    />
 
     <div class="sec-title">ELEMENTS</div>
 
@@ -200,20 +194,6 @@
   .arr           { color: #888; }
   .meta-notes    { font-size: 0.75rem; color: #ddd; font-style: italic; margin-top: 0.4rem; padding-top: 0.5rem; border-top: 1px solid #2e2e42; }
 
-  /* ── Stats bar ────────────────────────────────────────────────────────────*/
-  .stats-bar {
-    display: flex; align-items: center;
-    padding: 1rem 1.25rem; background: #111122; border-bottom: 1px solid #2e2e42;
-  }
-  .stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
-  .stat-v { font-size: 1.85rem; font-weight: 800; line-height: 1; color: #f0f0f0; }
-  .stat-k { font-size: 0.55rem; letter-spacing: 0.15em; color: #ccc; }
-  .stat-pass .stat-v   { color: #4ade80; }
-  .stat-fail .stat-v   { color: #f87171; }
-  .stat-repair .stat-v { color: #fb923c; }
-  .stat-na   .stat-v   { color: #aaa; }
-  .stat-div  { width: 1px; height: 2.5rem; background: #2e2e42; flex-shrink: 0; }
-
   /* ── Section title ────────────────────────────────────────────────────────*/
   .sec-title { font-size: 0.62rem; letter-spacing: 0.2em; color: #ccc; padding: 1rem 1.25rem 0.5rem; }
 
@@ -222,19 +202,20 @@
   .el-row {
     background: #111122; border: 2px solid #2e2e42; border-radius: 8px; padding: 0.875rem 1rem;
   }
-  .res-fail   { border-color: #7f1d1d; }
-  .res-repair { border-color: #7c2d12; }
-  .res-pass   { border-color: #166534; }
+  .res-failed   { border-color: #7f1d1d; }
+  .res-problem  { border-color: #7c2d12; }
+  .res-OK       { border-color: #166534; }
+  .res-inactive { border-color: #2e2e42; }
   .el-top { display: flex; align-items: center; gap: 0.5rem; }
   .el-name-block { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
   .el-id    { font-size: 0.95rem; font-weight: 700; color: #f0f0f0; font-variant-numeric: tabular-nums; }
   .el-label { font-size: 0.72rem; color: #fb923c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .el-sub   { font-size: 0.65rem; color: #ccc; background: #222235; padding: 0.15rem 0.4rem; border-radius: 3px; flex-shrink: 0; }
   .el-res   { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; flex-shrink: 0; }
-  .el-res-pass   { color: #4ade80; }
-  .el-res-fail   { color: #f87171; }
-  .el-res-repair { color: #fb923c; }
-  .el-res-na     { color: #aaa; }
+  .el-res-OK       { color: #4ade80; }
+  .el-res-failed   { color: #f87171; }
+  .el-res-problem  { color: #fb923c; }
+  .el-res-inactive { color: #aaa; }
 
   .el-notes {
     font-size: 0.78rem; color: #ddd; margin-top: 0.5rem;
@@ -245,10 +226,10 @@
   .insp-row  { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.73rem; }
   .insp-t    { color: #ccc; flex-shrink: 0; }
   .insp-n    { color: #ddd; font-style: italic; flex: 1; }
-  .r-pass   { color: #4ade80; font-weight: 700; }
-  .r-fail   { color: #f87171; font-weight: 700; }
-  .r-repair { color: #fb923c; font-weight: 700; }
-  .r-na     { color: #aaa; }
+  .r-OK       { color: #4ade80; font-weight: 700; }
+  .r-failed   { color: #f87171; font-weight: 700; }
+  .r-problem  { color: #fb923c; font-weight: 700; }
+  .r-inactive { color: #aaa; }
 
   /* ── States ───────────────────────────────────────────────────────────────*/
   .state-center {

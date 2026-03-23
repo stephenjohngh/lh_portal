@@ -14,6 +14,7 @@
   import WalkJumpList         from './WalkJumpList.svelte';
   import WalkPlanViewer       from './WalkPlanViewer.svelte';
 import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
+  import WalkStatsBars        from './WalkStatsBars.svelte';
 
   const logger   = getLogger('WalkSession');
   const dispatch = createEventDispatcher();
@@ -39,7 +40,6 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
       const currentFloorIndex = $walkStore.buildingPlans.findIndex(p => p.floor_level === $walkStore.currentFloor);
       return currentFloorIndex === 0 && currentIndex === 0;
     }
-
     return currentIndex === 0;
   })();
   
@@ -65,9 +65,9 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   $: inspectionStats = (() => {
     const allInspections = Object.values(inspections).flat();
     return {
-      pass: allInspections.filter(i => i.inspection_result === 'OK').length,
-      fail: allInspections.filter(i => i.inspection_result === 'failed').length,
-      problem: allInspections.filter(i => i.inspection_result === 'problem').length,
+      OK:       allInspections.filter(i => i.inspection_result === 'OK').length,
+      failed:   allInspections.filter(i => i.inspection_result === 'failed').length,
+      problem:  allInspections.filter(i => i.inspection_result === 'problem').length,
       inactive: allInspections.filter(i => i.inspection_result === 'inactive').length
     };
   })();
@@ -281,7 +281,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
             <span class="insp-time">{fmtTime(lastInspection.inspected_at)}</span>
           </div>
           <div class="insp-result">
-            {lastInspection.inspection_result === 'OK' ? '✓ PASS' : lastInspection.inspection_result === 'failed' ? '✗ FAIL': lastInspection.inspection_result === 'problem' ? 'PROBLEM' : 'INACTIVE'}
+            {lastInspection.inspection_result === 'OK' ? '✓ PASS' : lastInspection.inspection_result === 'failed' ? '✗ FAIL' : lastInspection.inspection_result === 'problem' ? '⚙ PROBLEM' : '— INACTIVE'}
           </div>
           {#if lastInspection.inspector_notes}<div class="insp-notes">{lastInspection.inspector_notes}</div>{/if}
         </div>
@@ -411,57 +411,14 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
 
         <div class="summary-divider"></div>
 
-        <div class="summary-stats">
-          <div class="stat-card">
-            <div class="stat-number">{session?.total_elements_count || elements.length}</div>
-            <div class="stat-label">TOTAL ELEMENTS</div>
-          </div>
-
-          <div class="stat-card stat-inspected">
-            <div class="stat-number">{inspectedCount}</div>
-            <div class="stat-label">INSPECTED</div>
-          </div>
-
-          <div class="stat-card stat-remaining">
-            <div class="stat-number">{(session?.total_elements_count || elements.length) - inspectedCount}</div>
-            <div class="stat-label">REMAINING</div>
-          </div>
-        </div>
-
-        <div class="summary-results">
-          <div class="result-card result-pass">
-            <div class="result-icon">✓</div>
-            <div class="result-info">
-              <div class="result-number">{inspectionStats.OK}</div>
-              <div class="result-label">PASS</div>
-            </div>
-          </div>
-
-          <div class="result-card result-fail">
-            <div class="result-icon">✗</div>
-            <div class="result-info">
-              <div class="result-number">{inspectionStats.failed}</div>
-              <div class="result-label">FAIL</div>
-            </div>
-          </div>
-          
-          <div class="result-card result-fail">
-            <div class="result-icon">✗</div>
-            <div class="result-info">
-              <div class="result-number">{inspectionStats.problem}</div>
-              <div class="result-label">PROBLEM</div>
-            </div>
-          </div>
-
-
-          <div class="result-card result-na">
-            <div class="result-icon">—</div>
-            <div class="result-info">
-              <div class="result-number">{inspectionStats.inactive}</div>
-              <div class="result-label">INACTIVE</div>
-            </div>
-          </div>
-        </div>
+        <WalkStatsBars
+          total={session?.total_elements_count || elements.length}
+          inspected={inspectedCount}
+          passCount={inspectionStats.OK}
+          failCount={inspectionStats.failed}
+          problemCount={inspectionStats.problem}
+          inactiveCount={inspectionStats.inactive}
+        />
 
         <div class="summary-progress">
           <div class="progress-label">
@@ -528,7 +485,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
       <div class="cc-acts">
         <button class="cc-continue" on:click={() => view = 'card'}>CONTINUE WALK</button>
         <button class="cc-finish" on:click={handleCloseSession} disabled={closing}>
-          {closing ? 'COMPLETING…' : '✓ COMPLETE INSPECTION SESSION'}
+          {closing ? 'SAVING…' : '✓ FINISH SESSION'}
         </button>
       </div>
     </div>
@@ -777,103 +734,6 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     height: 1px; background: #2e2e42; margin: 0.5rem 0;
   }
   
-  .summary-stats {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
-  }
-  
-  .stat-card {
-    background: #111122; border: 2px solid #2e2e42; border-radius: 10px;
-    padding: 1rem; display: flex; flex-direction: column; align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .stat-inspected {
-    border-color: #22c55e;
-  }
-  
-  .stat-remaining {
-    border-color: #fb923c;
-  }
-  
-  .stat-number {
-    font-size: 2rem; font-weight: 800; color: #fb923c; line-height: 1;
-  }
-  
-  .stat-inspected .stat-number {
-    color: #4ade80;
-  }
-  
-  .stat-remaining .stat-number {
-    color: #fb923c;
-  }
-  
-  .stat-label {
-    font-size: 0.6rem; letter-spacing: 0.15em; color: #ccc;
-    text-align: center;
-  }
-  
-  .summary-results {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
-  }
-  
-  .result-card {
-    background: #111122; border: 2px solid; border-radius: 10px;
-    padding: 0.875rem; display: flex; align-items: center; gap: 0.625rem;
-  }
-  
-  .result-pass {
-    border-color: #22c55e; background: #0a1f0a;
-  }
-  
-  .result-fail {
-    border-color: #ef4444; background: #1f0a0a;
-  }
-  
-  .result-na {
-    border-color: #3e3e58; background: #181828;
-  }
-  
-  .result-icon {
-    font-size: 1.25rem; font-weight: 800; line-height: 1;
-    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-    border-radius: 50%;
-  }
-  
-  .result-pass .result-icon {
-    color: #4ade80; background: #0d2a0d;
-  }
-  
-  .result-fail .result-icon {
-    color: #f87171; background: #2a0000;
-  }
-  
-  .result-na .result-icon {
-    color: #aaa; background: #222235;
-  }
-  
-  .result-info {
-    display: flex; flex-direction: column; gap: 0.125rem;
-  }
-  
-  .result-number {
-    font-size: 1.25rem; font-weight: 800; line-height: 1;
-  }
-  
-  .result-pass .result-number {
-    color: #4ade80;
-  }
-  
-  .result-fail .result-number {
-    color: #f87171;
-  }
-  
-  .result-na .result-number {
-    color: #aaa;
-  }
-  
-  .result-label {
-    font-size: 0.55rem; letter-spacing: 0.12em; color: #ccc;
-  }
   
   .summary-progress {
     display: flex; flex-direction: column; gap: 0.5rem;

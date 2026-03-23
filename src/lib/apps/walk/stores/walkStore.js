@@ -345,51 +345,38 @@ function createWalkStore() {
     }
   }
 
-  // ── Close Session ────────────────────────────────────────────────────────
-
   // ── Close / Pause / Complete Session ────────────────────────────────────
 
-  // pauseSession — marks session as 'closed' (paused/set aside).
-  // The session remains resumable. No closed_at timestamp is set.
+  // pauseSession — user navigates away from walk. Session stays 'open' in DB (resumable).
+  // Only resets local store state so the home screen shows the session as resumable.
   async function pauseSession(sessionId) {
-    logger('Pausing session:', sessionId);
-    const userId = await getCurrentUserId();
-    try {
-      await api.update('walk_sessions', sessionId, {
-        status:     'closed',
-        updated_by: userId
-      });
-      update(s => ({ ...s, ...RESET_SESSION_STATE }));
-      await loadSessions();
-      logger('✅ Session paused');
-    } catch (error) {
-      logger('❌ pauseSession:', error.message);
-      throw error;
-    }
+    logger('Pausing session (staying open):', sessionId);
+    update(s => ({ ...s, ...RESET_SESSION_STATE }));
+    await loadSessions();
+    logger('✅ Session paused (still open)');
   }
 
-  // completeSession — formally finishes a session, setting status to 'completed'.
-  // Records closing notes and closed_at timestamp.
+  // completeSession — formally finishes a session via the FINISH flow. Sets status 'closed'.
   async function completeSession(sessionId, notes = '') {
     logger('Completing session:', sessionId);
     const userId = await getCurrentUserId();
     try {
       await api.update('walk_sessions', sessionId, {
-        status:     'completed',
+        status:     'closed',
         closed_at:  new Date().toISOString(),
         notes:      notes || null,
         updated_by: userId
       });
       update(s => ({ ...s, ...RESET_SESSION_STATE }));
       await loadSessions();
-      logger('✅ Session completed');
+      logger('✅ Session completed (closed)');
     } catch (error) {
       logger('❌ completeSession:', error.message);
       throw error;
     }
   }
 
-  // closeSession — legacy / repair-finish use. Sets status to 'closed' with a timestamp.
+  // closeSession — legacy / repair-finish use. Also sets 'closed'.
   async function closeSession(sessionId, notes = '') {
     logger('Closing session:', sessionId);
     const userId = await getCurrentUserId();

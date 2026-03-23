@@ -58,7 +58,7 @@
   $: totalSessions  = filtered.length;
   $: openSessions   = filtered.filter(s => s.status === 'open').length;
   $: closedSessions = filtered.filter(s => s.status === 'closed').length;
-  $: hasFilters = filterType || filterSessionType !== 'test' || filterStatus || filterDateFrom || filterDateTo;
+  $: hasFilters = filterType || filterSessionType || filterStatus || filterDateFrom || filterDateTo;
 
   onMount(loadSessions);
 
@@ -135,7 +135,7 @@
 
   function clearFilters() {
     filterType = filterStatus = filterDateFrom = filterDateTo = '';
-    filterSessionType = 'test';
+    filterSessionType = '';
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -221,10 +221,10 @@
           const lite = session.walk_element_inspections;
           if (!lite?.length) return null;
           return {
-            pass:     lite.filter(r => r.inspection_result === 'pass').length,
-            fail:     lite.filter(r => r.inspection_result === 'fail').length,
-            repair:   lite.filter(r => r.inspection_result === 'repair').length,
-            na:       lite.filter(r => r.inspection_result === 'na').length,
+            OK:       lite.filter(r => r.inspection_result === 'OK').length,
+            failed:   lite.filter(r => r.inspection_result === 'failed').length,
+            problem:  lite.filter(r => r.inspection_result === 'problem').length,
+            inactive: lite.filter(r => r.inspection_result === 'inactive').length,
             elements: lite.length,
             total:    lite.length
           };
@@ -274,9 +274,9 @@
             </div>
             {#if st}
               <div class="quick-stats">
-                {#if st.fail > 0}<span class="qs-fail">✗ {st.fail}</span>{/if}
-                {#if st.repair > 0}<span class="qs-repair">⚙ {st.repair}</span>{/if}
-                {#if st.pass > 0}<span class="qs-pass">✓ {st.pass}</span>{/if}
+                {#if st.failed > 0}<span class="qs-fail">✗ {st.failed}</span>{/if}
+                {#if st.problem > 0}<span class="qs-repair">⚙ {st.problem}</span>{/if}
+                {#if st.OK > 0}<span class="qs-pass">✓ {st.OK}</span>{/if}
                 <span class="qs-el">{st.elements} el.</span>
               </div>
             {/if}
@@ -309,10 +309,10 @@
                 {@const els = groupByElement(inspections[session.id])}
                 <div class="detail-stats">
                   <span>{st.elements} elements inspected</span>
-                  {#if st.pass > 0}   <span class="ds-pass">✓ {st.pass} pass</span>     {/if}
-                  {#if st.fail > 0}   <span class="ds-fail">✗ {st.fail} fail</span>     {/if}
-                  {#if st.repair > 0} <span class="ds-repair">⚙ {st.repair} repair</span> {/if}
-                  {#if st.na > 0}     <span class="ds-na">— {st.na} n/a</span>          {/if}
+                  {#if st.OK > 0}      <span class="ds-pass">✓ {st.OK} pass</span>           {/if}
+                  {#if st.failed > 0}  <span class="ds-fail">✗ {st.failed} fail</span>       {/if}
+                  {#if st.problem > 0} <span class="ds-repair">⚙ {st.problem} problem</span>   {/if}
+                  {#if st.inactive > 0}<span class="ds-na">— {st.inactive} inactive</span>  {/if}
                 </div>
                 {#if session.notes}
                   <div class="sess-notes">"{session.notes}"</div>
@@ -351,7 +351,7 @@
                           <td class="text-gray-400">{firstRow.label || '—'}</td>
                           <td>
                             <span class="result-badge result-{worst}">
-                              {worst === 'OK' ? '✓ PASS' : worst === 'failed' ? '✗ FAIL' : worst === 'problem' ? '⚙ PROBLEM' : 'INACTIVE'}
+                              {worst === 'OK' ? '✓ PASS' : worst === 'failed' ? '✗ FAIL' : worst === 'problem' ? '⚙ PROBLEM' : '— INACTIVE'}
                             </span>
                           </td>
                           <td class="text-sm text-gray-400">{fmtTime(firstRow.inspected_at)}</td>
@@ -473,10 +473,10 @@
   .inspection-row:hover { background: rgb(71 85 105 / 0.4); }
   .inspection-row td { padding: 0.75rem; }
   .result-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; }
-  .result-pass   { background: rgb(22 101 52 / 0.3); color: rgb(74 222 128); border: 1px solid rgb(22 101 52); }
-  .result-fail   { background: rgb(127 29 29 / 0.3); color: rgb(248 113 113); border: 1px solid rgb(127 29 29); }
-  .result-repair { background: rgb(124 45 18 / 0.3); color: rgb(251 146 60);  border: 1px solid rgb(154 52 18); }
-  .result-na     { background: rgb(71 85 105 / 0.3); color: rgb(156 163 175); border: 1px solid rgb(71 85 105); }
+  .result-OK       { background: rgb(22 101 52 / 0.3); color: rgb(74 222 128); border: 1px solid rgb(22 101 52); }
+  .result-failed   { background: rgb(127 29 29 / 0.3); color: rgb(248 113 113); border: 1px solid rgb(127 29 29); }
+  .result-problem  { background: rgb(124 45 18 / 0.3); color: rgb(251 146 60);  border: 1px solid rgb(154 52 18); }
+  .result-inactive { background: rgb(71 85 105 / 0.3); color: rgb(156 163 175); border: 1px solid rgb(71 85 105); }
   .notes-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .photo-indicator { font-size: 1.25rem; }
   
