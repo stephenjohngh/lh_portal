@@ -10,7 +10,7 @@ export const ELEMENT_TYPE_OPTIONS = [
 ];
 
 export const ELEMENT_STATUS_OPTIONS = [
-  { value: 'active',   label: 'OK',       color: '#22c55e' },
+  { value: 'OK',   label: 'OK',       color: '#22c55e' },
   { value: 'problem',  label: 'Problem',  color: '#eb960e' },
   { value: 'failed',   label: 'Failed',   color: '#ef4444' },
   { value: 'inactive', label: 'Inactive', color: '#64748b' }

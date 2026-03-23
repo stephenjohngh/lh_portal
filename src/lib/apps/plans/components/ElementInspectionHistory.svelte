@@ -22,11 +22,11 @@
   });
   
   function getResultClass(result) {
-    return result === 'pass' ? 'pass' : result === 'fail' ? 'fail' : 'na';
+    return result === 'OK' ? 'pass' : result === 'failed' ? 'fail' : result === 'problem' ? 'problem' : 'na';
   }
   
   function getResultLabel(result) {
-    return result === 'pass' ? '✓ PASS' : result === 'fail' ? '✗ FAIL' : '— N/A';
+    return result === 'OK' ? '✓ PASS' : result === 'failed' ? '✗ FAIL' : result === 'problem' ? 'PROBLEM': 'INACTIVE';
   }
 </script>
 

@@ -39,6 +39,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
       const currentFloorIndex = $walkStore.buildingPlans.findIndex(p => p.floor_level === $walkStore.currentFloor);
       return currentFloorIndex === 0 && currentIndex === 0;
     }
+
     return currentIndex === 0;
   })();
   
@@ -57,16 +58,17 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   $: lastInspection     = currentInspections[currentInspections.length - 1];
   
   // FIX: Check if element failed last inspection - show red background
-  $: inspectionFailed = lastInspection?.inspection_result === 'fail';
+  $: inspectionFailed = lastInspection?.inspection_result === 'failed';
   $: statusClass = inspectionFailed ? 'st-failed' : statusCls(currentElement?.status);
   
   // Count pass/fail from inspections
   $: inspectionStats = (() => {
     const allInspections = Object.values(inspections).flat();
     return {
-      pass: allInspections.filter(i => i.inspection_result === 'pass').length,
-      fail: allInspections.filter(i => i.inspection_result === 'fail').length,
-      na: allInspections.filter(i => i.inspection_result === 'na').length
+      pass: allInspections.filter(i => i.inspection_result === 'OK').length,
+      fail: allInspections.filter(i => i.inspection_result === 'failed').length,
+      problem: allInspections.filter(i => i.inspection_result === 'problem').length,
+      inactive: allInspections.filter(i => i.inspection_result === 'inactive').length
     };
   })();
 
@@ -169,15 +171,22 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     : elements.length;
   $: allInspected = totalElements > 0 && inspectedCount >= totalElements;
 
-  function handlePause() { dispatch('paused'); }
+  async function handlePause() {
+    try {
+      await walkStore.pauseSession(session.id);
+    } catch (err) {
+      logger('Pause failed:', err.message);
+    }
+    dispatch('paused');
+  }
 
   async function handleCloseSession() {
     closing = true; closeError = null;
     try {
-      await walkStore.closeSession(session.id, closeNotes);
+      await walkStore.completeSession(session.id, closeNotes);
       dispatch('closed');
     } catch (err) {
-      logger('Close failed:', err.message);
+      logger('Complete failed:', err.message);
       closeError = err.message;
     } finally { closing = false; }
   }
@@ -186,7 +195,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     return { active: 'st-active', inactive: 'st-inactive', maintenance: 'st-maint', removed: 'st-removed' }[s] || 'st-inactive';
   }
   function resultCls(r) {
-    return { pass: 'r-pass', fail: 'r-fail', na: 'r-na' }[r] || '';
+    return { OK: 'r-pass', failed: 'r-fail', problem: 'r-fail', inactive: 'r-na' }[r] || '';
   }
 </script>
 
@@ -272,7 +281,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
             <span class="insp-time">{fmtTime(lastInspection.inspected_at)}</span>
           </div>
           <div class="insp-result">
-            {lastInspection.inspection_result === 'pass' ? '✓ PASS' : lastInspection.inspection_result === 'fail' ? '✗ FAIL' : '— N/A'}
+            {lastInspection.inspection_result === 'OK' ? '✓ PASS' : lastInspection.inspection_result === 'failed' ? '✗ FAIL': lastInspection.inspection_result === 'problem' ? 'PROBLEM' : 'INACTIVE'}
           </div>
           {#if lastInspection.inspector_notes}<div class="insp-notes">{lastInspection.inspector_notes}</div>{/if}
         </div>
@@ -423,7 +432,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
           <div class="result-card result-pass">
             <div class="result-icon">✓</div>
             <div class="result-info">
-              <div class="result-number">{inspectionStats.pass}</div>
+              <div class="result-number">{inspectionStats.OK}</div>
               <div class="result-label">PASS</div>
             </div>
           </div>
@@ -431,16 +440,25 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
           <div class="result-card result-fail">
             <div class="result-icon">✗</div>
             <div class="result-info">
-              <div class="result-number">{inspectionStats.fail}</div>
+              <div class="result-number">{inspectionStats.failed}</div>
               <div class="result-label">FAIL</div>
             </div>
           </div>
+          
+          <div class="result-card result-fail">
+            <div class="result-icon">✗</div>
+            <div class="result-info">
+              <div class="result-number">{inspectionStats.problem}</div>
+              <div class="result-label">PROBLEM</div>
+            </div>
+          </div>
+
 
           <div class="result-card result-na">
             <div class="result-icon">—</div>
             <div class="result-info">
-              <div class="result-number">{inspectionStats.na}</div>
-              <div class="result-label">N/A</div>
+              <div class="result-number">{inspectionStats.inactive}</div>
+              <div class="result-label">INACTIVE</div>
             </div>
           </div>
         </div>

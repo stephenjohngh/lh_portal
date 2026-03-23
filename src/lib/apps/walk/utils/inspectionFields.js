@@ -21,20 +21,20 @@ export const INSPECTION_FIELDS = {
  * Valid inspection result values
  */
 export const INSPECTION_RESULTS = {
-  PASS: 'pass',
+  OK: 'pass',
   PROBLEM: 'problem',
-  FAIL: 'fail',
-  NA: 'na'
+  FAIL: 'failed',
+  INACTIVE: 'inactive'
 };
 
 /**
  * Human-readable labels for inspection results
  */
 export const RESULT_LABELS = {
-  [INSPECTION_RESULTS.PASS]: '✓ PASS',
+  [INSPECTION_RESULTS.OK]: '✓ PASS',
   [INSPECTION_RESULTS.PROBLEM]: '✗ PROBLEM',
   [INSPECTION_RESULTS.FAIL]: '✗ FAIL',
-  [INSPECTION_RESULTS.NA]: '— N/A'
+  [INSPECTION_RESULTS.INACTIVE]: 'INACTIVE'
 };
 
 /**
@@ -71,7 +71,7 @@ export function normalizeInspection(inspection) {
  * Create inspection payload for API with correct field names
  * @param {Object} params - Inspection parameters
  * @param {string} params.elementId - Element ID
- * @param {string} params.result - Result ('pass', 'fail', 'na')
+ * @param {string} params.result - Result (ok,failed,problem,inactive)
  * @param {string} params.notes - Optional notes
  * @param {string} params.photoUrl - Optional photo URL
  * @returns {Object} API-ready payload

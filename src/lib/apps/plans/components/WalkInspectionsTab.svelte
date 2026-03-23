@@ -37,7 +37,7 @@
 
   // ── Filters ──────────────────────────────────────────────────────────────
   let filterType         = '';
-  let filterSessionType  = 'test';
+  let filterSessionType  = '';
   let filterStatus       = '';
   let filterDateFrom     = '';
   let filterDateTo       = '';
@@ -351,7 +351,7 @@
                           <td class="text-gray-400">{firstRow.label || '—'}</td>
                           <td>
                             <span class="result-badge result-{worst}">
-                              {worst === 'pass' ? '✓ PASS' : worst === 'fail' ? '✗ FAIL' : worst === 'repair' ? '⚙ REPAIR' : '— N/A'}
+                              {worst === 'OK' ? '✓ PASS' : worst === 'failed' ? '✗ FAIL' : worst === 'problem' ? '⚙ PROBLEM' : 'INACTIVE'}
                             </span>
                           </td>
                           <td class="text-sm text-gray-400">{fmtTime(firstRow.inspected_at)}</td>

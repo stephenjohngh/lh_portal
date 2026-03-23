@@ -347,6 +347,49 @@ function createWalkStore() {
 
   // ── Close Session ────────────────────────────────────────────────────────
 
+  // ── Close / Pause / Complete Session ────────────────────────────────────
+
+  // pauseSession — marks session as 'closed' (paused/set aside).
+  // The session remains resumable. No closed_at timestamp is set.
+  async function pauseSession(sessionId) {
+    logger('Pausing session:', sessionId);
+    const userId = await getCurrentUserId();
+    try {
+      await api.update('walk_sessions', sessionId, {
+        status:     'closed',
+        updated_by: userId
+      });
+      update(s => ({ ...s, ...RESET_SESSION_STATE }));
+      await loadSessions();
+      logger('✅ Session paused');
+    } catch (error) {
+      logger('❌ pauseSession:', error.message);
+      throw error;
+    }
+  }
+
+  // completeSession — formally finishes a session, setting status to 'completed'.
+  // Records closing notes and closed_at timestamp.
+  async function completeSession(sessionId, notes = '') {
+    logger('Completing session:', sessionId);
+    const userId = await getCurrentUserId();
+    try {
+      await api.update('walk_sessions', sessionId, {
+        status:     'completed',
+        closed_at:  new Date().toISOString(),
+        notes:      notes || null,
+        updated_by: userId
+      });
+      update(s => ({ ...s, ...RESET_SESSION_STATE }));
+      await loadSessions();
+      logger('✅ Session completed');
+    } catch (error) {
+      logger('❌ completeSession:', error.message);
+      throw error;
+    }
+  }
+
+  // closeSession — legacy / repair-finish use. Sets status to 'closed' with a timestamp.
   async function closeSession(sessionId, notes = '') {
     logger('Closing session:', sessionId);
     const userId = await getCurrentUserId();
@@ -942,6 +985,8 @@ function createWalkStore() {
     startSession,
     startBuildingWideSession,
     closeSession,
+    pauseSession,
+    completeSession,
     resumeSession,
     deleteSession,
     // Navigation

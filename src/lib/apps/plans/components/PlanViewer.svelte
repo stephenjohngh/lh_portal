@@ -395,7 +395,7 @@
           {@const typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === hoveredElement.element_type)}
           {@const pos = getPixelPosition(hoveredElement)}
           <div class="absolute bg-slate-800 text-white px-3 py-2 rounded-lg shadow-xl text-sm pointer-events-none border border-slate-600"
-            style="left:{pos.x}px; top:{pos.y + 40}px; transform:translateX(-50%); z-index:20; max-width:250px;">
+            style="left:{pos.x}px; top:{pos.y + 22}px; transform:translateX(-50%); z-index:20; max-width:250px;">
             <div class="font-semibold flex items-center gap-2">
               <span>{typeConfig?.icon}</span>
               <span>{getElementDisplayName(hoveredElement, plan.floor_level)}</span>

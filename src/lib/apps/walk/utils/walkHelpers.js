@@ -57,7 +57,6 @@ export function sessionFloorLabel(session) {
 }
 
 /**
- * Aggregate pass/fail/na counts and unique element count from a
  * walk_element_inspections array.
  * Reads `result` if present (flattened rows), falls back to `inspection_result` (raw rows).
  *
@@ -66,10 +65,10 @@ export function sessionFloorLabel(session) {
  */
 export function sessionStats(inspections) {
   return {
-    pass:     inspections.filter(r => (r.result ?? r.inspection_result) === 'pass').length,
-    fail:     inspections.filter(r => (r.result ?? r.inspection_result) === 'fail').length,
-    repair:   inspections.filter(r => (r.result ?? r.inspection_result) === 'repair').length,
-    na:       inspections.filter(r => (r.result ?? r.inspection_result) === 'na').length,
+    OK:     inspections.filter(r => (r.result ?? r.inspection_result) === 'OK').length,
+    failed:     inspections.filter(r => (r.result ?? r.inspection_result) === 'failed').length,
+    problem:   inspections.filter(r => (r.result ?? r.inspection_result) === 'problem').length,
+    inactive:       inspections.filter(r => (r.result ?? r.inspection_result) === 'inactive').length,
     elements: new Set(inspections.map(r => r.plan_element_id)).size,
     total:    inspections.length,
   };
@@ -111,11 +110,11 @@ export function groupByElement(rows) {
     });
   }
   return Object.values(map).sort((a, b) => {
-    const aFail   = a.rows.some(r => r.result === 'fail');
-    const bFail   = b.rows.some(r => r.result === 'fail');
+    const aFail   = a.rows.some(r => r.result === 'failed');
+    const bFail   = b.rows.some(r => r.result === 'failed');
     if (aFail !== bFail) return aFail ? -1 : 1;
-    const aRepair = a.rows.some(r => r.result === 'repair');
-    const bRepair = b.rows.some(r => r.result === 'repair');
+    const aRepair = a.rows.some(r => r.result === 'problem');
+    const bRepair = b.rows.some(r => r.result === 'problem');
     if (aRepair !== bRepair) return aRepair ? -1 : 1;
     const aFloor = FLOOR_ORDER[a.floor_level] ?? 99;
     const bFloor = FLOOR_ORDER[b.floor_level] ?? 99;
@@ -131,10 +130,10 @@ export function groupByElement(rows) {
  * @returns {'fail'|'pass'|'na'}
  */
 export function worstResult(rows) {
-  if (rows.some(r => r.result === 'fail'))   return 'fail';
-  if (rows.some(r => r.result === 'repair')) return 'repair';
-  if (rows.some(r => r.result === 'pass'))   return 'pass';
-  return 'na';
+  if (rows.some(r => r.result === 'failed'))   return 'failed';
+  if (rows.some(r => r.result === 'problem')) return 'problem';
+  if (rows.some(r => r.result === 'OK'))   return 'OK';
+  return 'inactive';
 }
 
 /**
@@ -142,7 +141,7 @@ export function worstResult(rows) {
  * @param {'pass'|'fail'|'repair'|'na'} result
  */
 export function resultLabel(result) {
-  return { pass: '✓ PASS', fail: '✗ FAIL', repair: '⚙ REPAIR', na: '— N/A' }[result] ?? result;
+  return { OK: '✓ PASS', failed: '✗ FAIL', problem: '⚙ PROBLEM', inactive: '— INACTIVE' }[result] ?? result;
 }
 
 /**
@@ -150,5 +149,5 @@ export function resultLabel(result) {
  * fail = 0, repair = 1, pass = 2, na = 3
  */
 export function resultRank(result) {
-  return { fail: 0, repair: 1, pass: 2, na: 3 }[result] ?? 4;
+  return { failed: 0, problem: 1, OK: 2, inactive: 3 }[result] ?? 4;
 }

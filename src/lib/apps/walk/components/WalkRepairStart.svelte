@@ -28,7 +28,7 @@
   // All elements needing repair in the selected building, with floor_level injected
   $: repairElements = buildingPlans.flatMap(plan =>
     (allElements[plan.id] || [])
-      .filter(el => el.status === 'failed' || el.status === 'replace')
+      .filter(el => el.status === 'failed' || el.status === 'problem')
       .map(el => ({ ...el, _floor: plan.floor_level, _planId: plan.id }))
   ).sort((a, b) => {
     // failed before replace, then by floor, then asset_id
@@ -42,7 +42,7 @@
   function typeIcon(t) { return ELEMENT_TYPE_OPTIONS.find(o => o.value === t)?.icon ?? '■'; }
 
   function statusLabel(s) {
-    return s === 'failed' ? 'FAILED' : s === 'replace' ? 'REPLACE' : s;
+    return s === 'failed' ? 'FAILED' : s === 'problem' ? 'PROBLEM' : s;
   }
 
   async function handleSelectElement(el) {
@@ -71,8 +71,8 @@
 
 <div class="rs">
   <div class="rs-hdr">
-    <button class="back-btn" on:click={() => dispatch('back')}>← Back</button>
-    <span class="rs-title">START REPAIR</span>
+    <button class="back-btn" on:click={() => dispatch('back')}>← BACK</button>
+    <span class="rs-title">START REPAIR CHECK</span>
     <button class="finish-btn" on:click={() => dispatch('finish')}>FINISH ✓</button>
   </div>
 
@@ -80,19 +80,19 @@
 
     <!-- Elements needing repair -->
     <section class="grp">
-      <div class="grp-lbl">SELECT ELEMENT TO REPAIR</div>
+      <div class="grp-lbl">SELECT ELEMENT TO CHECK</div>
       {#if !selectedBuilding}
         <p class="hint">No buildings available — add plans first.</p>
       {:else if repairElements.length === 0}
         <div class="empty-repair">
           <div class="empty-icon">✓</div>
-          <div class="empty-txt">No failed or replace elements in {selectedBuilding}</div>
+          <div class="empty-txt">No elements with status failed or problem in {selectedBuilding}</div>
         </div>
       {:else}
-        <p class="hint">{repairElements.length} element{repairElements.length !== 1 ? 's' : ''} need attention — tap to start repair session</p>
+        <p class="hint">{repairElements.length} element{repairElements.length !== 1 ? 's' : ''} need attention — tap to start repair check session</p>
         <div class="el-list">
           {#each repairElements as el (el.id)}
-            <button class="el-btn" class:is-replace={el.status === 'replace'}
+            <button class="el-btn" class:is-replace={el.status === 'problem'}
                     on:click={() => handleSelectElement(el)}
                     disabled={saving}>
               <span class="el-icon">{typeIcon(el.element_type)}</span>
@@ -160,7 +160,7 @@
 
   .el-status { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; padding: 0.2rem 0.5rem; border-radius: 4px; flex-shrink: 0; }
   .st-failed  { background: #2a0000; color: #f87171; border: 1px solid #7f1d1d; }
-  .st-replace { background: #1a1200; color: #fbbf24; border: 1px solid #713f12; }
+  .st-problem { background: #1a1200; color: #fbbf24; border: 1px solid #713f12; }
 
   .err-box { font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem; background: #2a0000; border: 2px solid #ef4444; border-radius: 8px; }
 </style>

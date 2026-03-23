@@ -16,7 +16,7 @@
   
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === element.element_type) || ELEMENT_TYPE_OPTIONS[0];
   $: radius = (isHovered || isDragging) ? MARKER_HOVER_RADIUS : MARKER_RADIUS;
-  $: opacity = element.status === 'active' ? 1 : 0.5;
+  $: opacity = element.status === 'inactive' ? 0.4 : 1;
   $: strokeWidth = (isHovered || isDragging) ? 3 : 2;
   
   // Dim non-filtered elements when filtering is active
@@ -126,17 +126,17 @@
       r="8"
       fill="#ef4444"
       stroke="white"
-      stroke-width="2"
+      stroke-width="3"
       pointer-events="none"
     />
-  {:else if element.status === 'inactive'}
+  {:else if element.status === 'problem'}
     <circle
       cx={position.x + radius - 3}
       cy={position.y - radius + 3}
-      r="4"
-      fill="#64748b"
+      r="6"
+      fill="#fb923c"
       stroke="white"
-      stroke-width="1.5"
+      stroke-width="2"
       pointer-events="none"
     />
   {/if}

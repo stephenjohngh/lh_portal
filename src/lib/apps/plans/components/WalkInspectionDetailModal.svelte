@@ -14,9 +14,9 @@
   
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === inspection.element_type);
   $: displayName = getElementDisplayName(inspection, floorLevel);
-  $: resultClass = inspection.result === 'pass'   ? 'text-green-400' 
-                 : inspection.result === 'fail'   ? 'text-red-400' 
-                 : inspection.result === 'repair' ? 'text-orange-400'
+  $: resultClass = inspection.result === 'OK'   ? 'text-green-400' 
+                 : inspection.result === 'failed'   ? 'text-red-400' 
+                 : inspection.result === 'problem' ? 'text-orange-400'
                  : 'text-gray-400';
 </script>
 
@@ -38,14 +38,14 @@
         <div>
           <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Result</div>
           <div class="text-2xl font-bold {resultClass}">
-            {#if inspection.result === 'pass'}
-              ✓ PASS
-            {:else if inspection.result === 'fail'}
-              ✗ FAIL
-            {:else if inspection.result === 'repair'}
-              ⚙ REPAIR
+            {#if inspection.result === 'OK'}
+              PASS
+            {:else if inspection.result === 'failed'}
+              FAIL
+            {:else if inspection.result === 'problem'}
+              PROBLEM
             {:else}
-              — N/A
+              INACTIVE
             {/if}
           </div>
         </div>

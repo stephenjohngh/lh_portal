@@ -143,8 +143,12 @@
     const { element, isNew } = event.detail;
     try {
       if (!isNew) {
-        await plansStore.updateElement(element.id, element);
-        await plansStore.loadElements(element._planId);
+        // Strip client-side _* fields added by allElements reactive (e.g. _planId, _floorLevel, _building)
+        // before sending to the DB — Supabase will reject unknown columns.
+        const planId = element._planId;
+        const { _planId, _floorLevel, _building, ...elementData } = element;
+        await plansStore.updateElement(elementData.id, elementData);
+        await plansStore.loadElements(planId);
         dispatch('planUpdated');
       }
       showElementModal = false;

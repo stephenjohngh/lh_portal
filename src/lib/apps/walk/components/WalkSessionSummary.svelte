@@ -18,10 +18,10 @@
   // groupByElement returns an array sorted fail-first, then floor, then asset_id
   $: grouped   = groupByElement(inspections);
 
-  $: passCount      = inspections.filter(i => i.result === 'pass').length;
-  $: failCount      = inspections.filter(i => i.result === 'fail').length;
-  $: repairCount    = inspections.filter(i => i.result === 'repair').length;
-  $: naCount        = inspections.filter(i => i.result === 'na').length;
+  $: passCount      = inspections.filter(i => i.result === 'OK').length;
+  $: failCount      = inspections.filter(i => i.result === 'failed').length;
+  $: repairCount    = inspections.filter(i => i.result === 'problem').length;
+  $: naCount        = inspections.filter(i => i.result === 'inactive').length;
   $: totalInspected = grouped.length;
 
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === session?.element_type);
@@ -109,14 +109,14 @@
         <div class="stat-div"></div>
         <div class="stat stat-repair">
           <div class="stat-v">{repairCount}</div>
-          <div class="stat-k">REPAIR</div>
+          <div class="stat-k">PROBLEM</div>
         </div>
       {/if}
       {#if naCount > 0}
         <div class="stat-div"></div>
         <div class="stat stat-na">
           <div class="stat-v">{naCount}</div>
-          <div class="stat-k">N/A</div>
+          <div class="stat-k">INACTIVE</div>
         </div>
       {/if}
     </div>
