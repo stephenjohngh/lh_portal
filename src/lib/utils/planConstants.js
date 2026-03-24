@@ -89,17 +89,9 @@ export function getSubtypesForType(type) {
   return ELEMENT_SUBTYPES[type] || [];
 }
 
-/**
- * Get the display label for a floor level value.
- * e.g. 'G' → 'G — Ground',  '1' → '1 — First', 'R' → 'R — Roof'
- */
 export function getFloorLevelLabel(value) {
   return FLOOR_LEVELS.find(f => f.value === value)?.label ?? value ?? '?';
 }
-
-// ============================================
-// ATTRIBUTE HELPERS
-// ============================================
 
 export function blankAttributes() {
   return {
@@ -134,10 +126,6 @@ export function getAttributeSummary(element) {
   }
   return '—';
 }
-
-// ============================================
-// DERIVED NAME HELPERS
-// ============================================
 
 const TYPE_INITIALS = {
   communal_door:  'D',

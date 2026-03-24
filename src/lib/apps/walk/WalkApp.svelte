@@ -12,6 +12,7 @@
   import WalkInspectionStart  from './components/WalkInspectionStart.svelte';
   import WalkRepairStart      from './components/WalkRepairStart.svelte';
   import WalkSession          from './components/WalkSession.svelte';
+  import WalkError           from './components/common/WalkError.svelte';
 
   const logger = getLogger('WalkApp');
 
@@ -93,10 +94,7 @@
     </div>
 
   {:else if initError}
-    <div class="walk-error">
-      <div class="walk-error-icon">⚠</div>
-      <p>{initError}</p>
-    </div>
+    <WalkError message={initError} />
 
   {:else if screen === 'home'}
     <WalkHome
@@ -156,8 +154,8 @@
     margin: 0 auto;
   }
 
-  .walk-loading,
-  .walk-error {
+  .walk-loading
+   {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -177,7 +175,6 @@
     animation: spin 0.8s linear infinite;
   }
 
-  .walk-error-icon { font-size: 2rem; color: #f87171; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>

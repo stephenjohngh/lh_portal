@@ -8,6 +8,8 @@
   import { getElementDisplayName } from '$lib/utils/planConstants';
   import { fmtDateTime } from '$lib/utils/dates';
   import WalkResultSection from './WalkResultSection.svelte';
+  import WalkSpinner      from './common/WalkSpinner.svelte';
+  import WalkError from './common/WalkError.svelte';
 
   const logger   = getLogger('WalkInspectionPanel');
   const dispatch = createEventDispatcher();
@@ -73,7 +75,7 @@
     <div class="sec">
       <div class="sec-lbl">INSPECTION HISTORY</div>
       {#if loadingHistory}
-        <div class="hist-msg">Loading…</div>
+        <WalkSpinner size="sm" text="Loading…" />
       {:else if history.length === 0}
         <div class="hist-msg">No previous inspections recorded for this element.</div>
       {:else}
@@ -82,9 +84,9 @@
             <div class="hist-item hist-{rec.inspection_result}">
               <div class="hist-hdr">
                 <div class="hist-result">
-                  {rec.inspection_result === 'OK'   ? '✓ PASS'   :
-                   rec.inspection_result === 'failed'   ? '✗ FAIL'   :
-                   rec.inspection_result === 'problem' ? '⚙ PROBLEM' : 'INACTIVE'}
+                  {rec.inspection_result === 'OK'     ? '✓ PASS'   :
+                   rec.inspection_result === 'failed' ? '✗ FAIL'   :
+                   rec.inspection_result === 'problem'? '⚙ PROBLEM' : '— INACTIVE'}
                 </div>
                 <div class="hist-date">{fmtDateTime(rec.inspected_at)}</div>
               </div>

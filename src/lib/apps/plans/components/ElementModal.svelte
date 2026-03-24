@@ -5,7 +5,12 @@
   import { getLogger } from '$lib/utils/logger';
   import Modal from '$lib/components/common/Modal.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import ConfirmDialog  from '$lib/components/common/ConfirmDialog.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import FormInput      from '$lib/components/common/FormInput.svelte';
+  import FormSelect     from '$lib/components/common/FormSelect.svelte';
+  import FormTextarea   from '$lib/components/common/FormTextarea.svelte';
+  import Checkbox       from '$lib/components/common/Checkbox.svelte';
   import { formatDateTime } from '$lib/utils/dates';
   import { permissions } from '$lib/stores/permissions';
   import {
@@ -215,66 +220,42 @@
     <!-- Type | Subtype -->
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label for="element-type" class="block text-sm font-medium mb-2">
-          Element Type <span class="text-red-400">*</span>
-        </label>
-        <select
-          id="element-type"
+        <FormSelect
+          label="Element Type *"
           bind:value={formData.element_type}
-          on:change={handleTypeChange}
+          options={ELEMENT_TYPE_OPTIONS.map(o => ({ value: o.value, label: o.icon + ' ' + o.label }))}
           disabled={!editable}
-          class="select w-full"
-          class:error={errors.element_type}
-        >
-          {#each ELEMENT_TYPE_OPTIONS as opt}
-            <option value={opt.value}>{opt.icon} {opt.label}</option>
-          {/each}
-        </select>
-        {#if errors.element_type}
-          <p class="field-error">{errors.element_type}</p>
-        {/if}
+          error={errors.element_type || ''}
+          on:change={handleTypeChange}
+        />
       </div>
       <div>
-        <label for="element-subtype" class="block text-sm font-medium mb-2">Subtype</label>
-        <select
-          id="element-subtype"
+        <FormSelect
+          label="Subtype"
           bind:value={formData.subtype}
+          options={subtypeOptions}
           disabled={!editable}
-          class="select w-full"
-        >
-          {#each subtypeOptions as subtype}
-            <option value={subtype}>{subtype}</option>
-          {/each}
-        </select>
+        />
       </div>
     </div>
 
     <!-- Asset ID | Label -->
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label for="asset-id" class="block text-sm font-medium mb-2">
-          Asset ID <span class="text-gray-500 text-xs font-normal ml-1">— used in name</span>
-        </label>
-        <input
-          id="asset-id"
-          type="text"
+        <FormInput
+          label="Asset ID"
           bind:value={formData.asset_id}
           placeholder="e.g., 001"
+          helpText="Used in the Floor/Type/ID display name"
           disabled={!editable}
-          class="input"
         />
       </div>
       <div>
-        <label for="element-label" class="block text-sm font-medium mb-2">
-          Label <span class="text-gray-500 text-xs font-normal">(optional)</span>
-        </label>
-        <input
-          id="element-label"
-          type="text"
+        <FormInput
+          label="Label (optional)"
           bind:value={formData.label}
           placeholder="e.g., Attached Number"
           disabled={!editable}
-          class="input"
         />
       </div>
     </div>
@@ -285,36 +266,34 @@
         <h4 class="attr-panel-title text-yellow-400">💡 Light Attributes</h4>
         <div class="grid grid-cols-2 gap-4 mb-3">
           <div>
-            <label for="light-battery" class="block text-sm font-medium mb-2">Battery</label>
-            <select id="light-battery" bind:value={formData.battery} disabled={!editable} class="select w-full">
-              {#each BATTERY_OPTIONS as opt}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
+            <FormSelect
+              label="Battery"
+              bind:value={formData.battery}
+              options={BATTERY_OPTIONS}
+              disabled={!editable}
+            />
           </div>
           <div>
-            <label for="light-wattage" class="block text-sm font-medium mb-2">Wattage (W)</label>
-            <input
-              id="light-wattage"
+            <FormInput
+              label="Wattage (W)"
               type="number"
-              min="1"
               bind:value={formData.wattage}
               placeholder="e.g., 18"
               disabled={!editable}
-              class="input"
             />
           </div>
         </div>
-        <div class="flex flex-wrap gap-6">
+        <div class="flex flex-wrap gap-4">
           {#each [
             { key: 'emergency',       label: 'Emergency' },
             { key: 'movement_sensor', label: 'Movement Sensor' },
             { key: 'light_sensor',    label: 'Light Sensor' }
           ] as flag}
-            <label class="flex items-center gap-2 cursor-pointer" class:opacity-50={!editable} class:cursor-not-allowed={!editable}>
-              <input type="checkbox" bind:checked={formData[flag.key]} disabled={!editable} class="checkbox" />
-              <span class="text-sm">{flag.label}</span>
-            </label>
+            <Checkbox
+              bind:checked={formData[flag.key]}
+              label={flag.label}
+              disabled={!editable}
+            />
           {/each}
         </div>
       </div>
@@ -325,46 +304,40 @@
       <div class="attr-panel">
         <h4 class="attr-panel-title text-orange-700">Door Attributes</h4>
         <div class="mb-3">
-          <label for="door-security" class="block text-sm font-medium mb-2">Security</label>
-          <select id="door-security" bind:value={formData.security} disabled={!editable} class="select w-full">
-            {#each SECURITY_OPTIONS as opt}
-              <option value={opt.value}>{opt.label}</option>
-            {/each}
-          </select>
+          <FormSelect
+            label="Security"
+            bind:value={formData.security}
+            options={SECURITY_OPTIONS}
+            disabled={!editable}
+          />
         </div>
-        <label class="flex items-center gap-2 cursor-pointer" class:opacity-50={!editable} class:cursor-not-allowed={!editable}>
-          <input type="checkbox" bind:checked={formData.retained} disabled={!editable} class="checkbox" />
-          <span class="text-sm">Retained</span>
-        </label>
+        <Checkbox
+          bind:checked={formData.retained}
+          label="Retained"
+          disabled={!editable}
+        />
       </div>
     {/if}
 
     <!-- Status -->
     <div>
-      <label for="element-status" class="block text-sm font-medium mb-2">Status</label>
-      <select id="element-status" bind:value={formData.status} disabled={!editable} class="select w-full">
-        {#each ELEMENT_STATUS_OPTIONS as status}
-          <option value={status.value}>{status.label}</option>
-        {/each}
-      </select>
+      <FormSelect
+        label="Status"
+        bind:value={formData.status}
+        options={ELEMENT_STATUS_OPTIONS.map(s => ({ value: s.value, label: s.label }))}
+        disabled={!editable}
+      />
     </div>
 
     <!-- Notes -->
     <div>
-      <label for="notes" class="block text-sm font-medium mb-2">
-        Notes
-        {#if isLight && formData.subtype === 'Exit'}
-          <span class="text-gray-500 text-xs font-normal ml-1">— include exit direction (Left / Right / No Direction)</span>
-        {/if}
-      </label>
-      <textarea
-        id="notes"
+      <FormTextarea
+        label="Notes{isLight && formData.subtype === 'Exit' ? ' — include exit direction (Left / Right / No Direction)' : ''}"
         bind:value={formData.notes}
-        placeholder="Additional information..."
-        rows="2"
+        placeholder="Additional information…"
+        rows={2}
         disabled={!editable}
-        class="textarea"
-      ></textarea>
+      />
     </div>
 
     {#if !isNew && element}
@@ -378,7 +351,7 @@
         </div>
 
         {#if historyLoading}
-          <div class="hist-loading">Loading…</div>
+          <LoadingSpinner size="small" centered={false} />
         {:else if history.length === 0}
           <div class="hist-empty">No inspections recorded for this element.</div>
         {:else}
@@ -449,7 +422,6 @@
     margin-bottom: 0.5rem;
   }
   .hist-count  { font-size: 0.72rem; color: rgb(107 114 128); }
-  .hist-loading { font-size: 0.8rem; color: rgb(107 114 128); padding: 0.5rem 0; }
   .hist-empty  { font-size: 0.8rem; color: rgb(107 114 128); font-style: italic; padding: 0.5rem 0; }
 
   .hist-list {

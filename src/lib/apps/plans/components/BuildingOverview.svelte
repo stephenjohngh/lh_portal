@@ -6,7 +6,9 @@
   import Icon from '$lib/components/icons/Icon.svelte';
   import PlanFilters from './PlanFilters.svelte';
   import ElementModal from './ElementModal.svelte';
-  import { plansStore } from '../stores/plansStore';
+  import { plansStore }       from '../stores/plansStore';
+  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import { getFloorOrder } from '$lib/utils/floorSorting';
   import {
     ELEMENT_TYPE_OPTIONS,
@@ -25,6 +27,7 @@
   let allElements = [];
   let selectedElement = null;
   let showElementModal = false;
+  let saveError        = '';
   let inventoryView = 'summary'; // Default to summary for building overview
 
   let filters = {
@@ -154,7 +157,7 @@
       showElementModal = false;
       selectedElement = null;
     } catch (error) {
-      alert('Failed to save element: ' + error.message);
+      saveError = 'Failed to save element: ' + error.message;
     }
   }
 
@@ -167,7 +170,7 @@
       showElementModal = false;
       selectedElement = null;
     } catch (error) {
-      alert('Failed to delete element: ' + error.message);
+      saveError = 'Failed to delete element: ' + error.message;
     }
   }
 
@@ -349,6 +352,10 @@
       </div>
     {/if}
   </div>
+
+  {#if saveError}
+    <ErrorDisplay message={saveError} onDismiss={() => saveError = ''} />
+  {/if}
 </div>
 
 {#if showElementModal && selectedElement}

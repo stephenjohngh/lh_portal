@@ -14,9 +14,9 @@
   
   $: typeConfig = ELEMENT_TYPE_OPTIONS.find(t => t.value === inspection.element_type);
   $: displayName = getElementDisplayName(inspection, floorLevel);
-  $: resultClass = inspection.result === 'OK'   ? 'text-green-400' 
-                 : inspection.result === 'failed'   ? 'text-red-400' 
-                 : inspection.result === 'problem' ? 'text-orange-400'
+  $: resultClass = inspection.result === 'OK'     ? 'text-green-400' 
+                 : inspection.result === 'failed' ? 'text-red-400' 
+                 : inspection.result === 'problem'? 'text-orange-400'
                  : 'text-gray-400';
 </script>
 
@@ -39,13 +39,13 @@
           <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Result</div>
           <div class="text-2xl font-bold {resultClass}">
             {#if inspection.result === 'OK'}
-              PASS
+              ✓ PASS
             {:else if inspection.result === 'failed'}
-              FAIL
+              ✗ FAIL
             {:else if inspection.result === 'problem'}
-              PROBLEM
+              ⚙ REPAIR
             {:else}
-              INACTIVE
+              — N/A
             {/if}
           </div>
         </div>
@@ -106,7 +106,7 @@
         <div class="bg-slate-700/40 rounded-lg p-2">
           <img 
             src={inspection.photo_url} 
-            alt="Inspection photo" 
+            alt="Inspection" 
             class="w-full h-auto rounded"
             on:error={(e) => {
               e.target.style.display = 'none';

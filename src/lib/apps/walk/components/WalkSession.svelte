@@ -14,7 +14,10 @@
   import WalkJumpList         from './WalkJumpList.svelte';
   import WalkPlanViewer       from './WalkPlanViewer.svelte';
 import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
-  import WalkStatsBars        from './WalkStatsBars.svelte';
+  import WalkStatsBars from './WalkStatsBars.svelte';
+  import WalkBadge    from './common/WalkBadge.svelte';
+  import WalkTextarea from './common/WalkTextarea.svelte';
+  import WalkButton   from './common/WalkButton.svelte';
 
   const logger   = getLogger('WalkSession');
   const dispatch = createEventDispatcher();
@@ -221,7 +224,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
         <div class="sbar-meta">
           {typeConfig?.label}
           {#if session?.light_subtype_filter === 'emergency'}
-            <span class="badge-em">Emergency</span>
+            <WalkBadge color="orange">Emergency</WalkBadge>
           {/if}
         </div>
       </div>
@@ -388,7 +391,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
           <div class="summary-label">ELEMENT TYPE</div>
           <div class="summary-value">{typeConfig?.label || session?.element_type}</div>
           {#if session?.light_subtype_filter === 'emergency'}
-            <span class="badge-em-summary">Emergency Only</span>
+            <WalkBadge color="orange">Emergency Only</WalkBadge>
           {/if}
         </div>
 
@@ -432,9 +435,7 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
           </div>
         </div>
 
-        <button class="continue-btn" on:click={() => view = 'card'}>
-          CONTINUE INSPECTION
-        </button>
+        <WalkButton variant='primary' size='full' on:click={() => view = 'card'}>CONTINUE INSPECTION</WalkButton>
 
         {#if summaryGrouped.length > 0}
           <div class="sum-el-title">INSPECTED ELEMENTS</div>
@@ -478,15 +479,18 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
       </div>
       <div class="cc-field">
         <label class="cc-lbl" for="close-notes">Session notes (optional)</label>
-        <textarea id="close-notes" class="cc-ta" bind:value={closeNotes}
-          placeholder="Any overall observations…" rows="3"></textarea>
+        <WalkTextarea
+          bind:value={closeNotes}
+          placeholder="Any overall observations…"
+          rows={3}
+        />
       </div>
       {#if closeError}<div class="cc-err">⚠ {closeError}</div>{/if}
       <div class="cc-acts">
-        <button class="cc-continue" on:click={() => view = 'card'}>CONTINUE WALK</button>
-        <button class="cc-finish" on:click={handleCloseSession} disabled={closing}>
+        <WalkButton variant='secondary' size='full' on:click={() => view = 'card'}>CONTINUE WALK</WalkButton>
+        <WalkButton variant='success' size='full' loading={closing} on:click={handleCloseSession}>
           {closing ? 'SAVING…' : '✓ FINISH SESSION'}
-        </button>
+        </WalkButton>
       </div>
     </div>
   {/if}
@@ -531,10 +535,6 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   .sbar-meta { font-size: 0.7rem; letter-spacing: 0.06em; color: #ccc; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
   .sbar-sep  { color: #888; }
   .sbar-inspector { color: #fb923c; }
-  .badge-em  {
-    font-size: 0.58rem; padding: 0.1rem 0.35rem;
-    background: #2a1800; color: #fb923c; border-radius: 3px;
-  }
   .sbar-r { display: flex; align-items: center; gap: 0.75rem; }
   .sbar-floor { font-size: 0.75rem; color: #fb923c; font-weight: 600; }
   .sbar-count { font-size: 0.85rem; color: #ccc; font-weight: 600; }
@@ -724,11 +724,6 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     font-size: 0.95rem; color: #f0f0f0; font-weight: 600;
   }
   
-  .badge-em-summary {
-    font-size: 0.7rem; padding: 0.2rem 0.5rem;
-    background: #2a1800; color: #fb923c; border-radius: 4px;
-    display: inline-block; margin-top: 0.25rem; width: fit-content;
-  }
   
   .summary-divider {
     height: 1px; background: #2e2e42; margin: 0.5rem 0;
@@ -760,13 +755,6 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
     transition: width 0.3s ease;
   }
   
-  .continue-btn {
-    padding: 1.25rem; background: #fb923c; border: none; border-radius: 10px;
-    color: #0a0a0f; font-family: inherit; font-size: 0.9rem; font-weight: 800;
-    letter-spacing: 0.2em; cursor: pointer; transition: background 0.15s;
-    margin-top: 0.5rem;
-  }
-  .continue-btn:hover { background: #f97316; }
 
   /* ── Empty ────────────────────────────────────────────────────────────────*/
   .empty-walk {
@@ -786,33 +774,12 @@ import WalkDoorInspectionPanel from './WalkDoorInspectionPanel.svelte';
   .cc-v   { font-size: 0.88rem; color: #f0f0f0; text-align: right; }
   .cc-field { display: flex; flex-direction: column; gap: 0.5rem; }
   .cc-lbl   { font-size: 0.65rem; letter-spacing: 0.1em; color: #ccc; }
-  .cc-ta {
-    background: #111122; border: 2px solid #2e2e42; border-radius: 8px;
-    color: #f0f0f0; font-family: inherit; font-size: 0.875rem;
-    padding: 0.875rem 1rem; resize: none; width: 100%; box-sizing: border-box;
-  }
-  .cc-ta:focus { outline: none; border-color: #fb923c; }
-  .cc-ta::placeholder { color: #777; }
   .cc-err {
     font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem;
     background: #2a0000; border: 2px solid #ef4444; border-radius: 8px;
   }
   .cc-acts { display: flex; flex-direction: column; gap: 0.625rem; margin-top: auto; }
-  .cc-continue {
-    padding: 1rem; background: none; border: 2px solid #3e3e58; border-radius: 8px;
-    color: #eee; font-family: inherit; font-size: 0.82rem; font-weight: 700;
-    letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s;
-  }
-  .cc-continue:hover { border-color: #6e6e88; color: #f0f0f0; }
   
-  /* FIX: Better finish button in dialog */
-  .cc-finish {
-    padding: 1rem; background: #22c55e; border: none; border-radius: 8px;
-    color: #0d0d14; font-family: inherit; font-size: 0.82rem; font-weight: 800;
-    letter-spacing: 0.15em; cursor: pointer; transition: all 0.15s;
-  }
-  .cc-finish:hover:not(:disabled) { background: #16a34a; }
-  .cc-finish:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* ── Summary element list ─────────────────────────────────────────────────*/
   .sum-el-title {

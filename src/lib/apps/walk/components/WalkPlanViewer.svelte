@@ -124,7 +124,7 @@
      on:click={() => dispatch('close')} 
      on:keydown={(e) => e.key === 'Escape' && dispatch('close')}
      role="button"
-     tabindex="0"
+     tabindex="-1"
      aria-label="Close modal">
   <div class="modal-content" 
        on:click|stopPropagation

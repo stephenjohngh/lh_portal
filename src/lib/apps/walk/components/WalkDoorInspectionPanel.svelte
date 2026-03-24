@@ -6,6 +6,7 @@
   import { getLogger } from '$lib/utils/logger';
   import { walkStore } from '../stores/walkStore.js';
   import WalkResultSection from './WalkResultSection.svelte';
+  import WalkCheckbox     from './common/WalkCheckbox.svelte';
 
   const logger = getLogger('WalkDoorInspectionPanel');
   const dispatch = createEventDispatcher();
@@ -72,13 +73,9 @@
     <div class="section">
       <div class="section-label">INSPECTION CHECKLIST</div>
       <div class="checklist">
-        {#each [['frame','Frame'],['seals','Seals'],['glass','Glass']] as [key, label]}
-          <label class="check-item">
-            <input type="checkbox" bind:checked={checklist[key]} />
-            <span class="check-box"></span>
-            <span class="check-label">{label}</span>
-          </label>
-        {/each}
+        <WalkCheckbox bind:checked={checklist.frame} label="Frame" />
+        <WalkCheckbox bind:checked={checklist.seals} label="Seals" />
+        <WalkCheckbox bind:checked={checklist.glass} label="Glass" />
       </div>
     </div>
 
@@ -136,22 +133,5 @@
   .section-label { font-size: 0.62rem; letter-spacing: 0.2em; color: #ccc; }
 
   /* Checklist */
-  .checklist  { display: flex; flex-direction: column; gap: 0.75rem; }
-  .check-item {
-    display: flex; align-items: center; gap: 0.75rem;
-    padding: 0.875rem 1rem; background: #111122;
-    border: 2px solid #2e2e42; border-radius: 8px;
-    cursor: pointer; transition: border-color 0.15s;
-  }
-  .check-item:has(input:checked)           { border-color: #22c55e; }
-  .check-item input                        { display: none; }
-  .check-box {
-    width: 24px; height: 24px; border: 2px solid #3e3e58;
-    border-radius: 4px; background: #1a1a2e;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all 0.15s;
-  }
-  .check-item:has(input:checked) .check-box        { background: #22c55e; border-color: #22c55e; }
-  .check-item:has(input:checked) .check-box::after { content: '✓'; color: #0d0d14; font-size: 1rem; font-weight: 800; }
-  .check-label { font-size: 0.95rem; color: #f0f0f0; font-weight: 600; }
+  .checklist { display: flex; flex-direction: column; gap: 0.5rem; }
 </style>

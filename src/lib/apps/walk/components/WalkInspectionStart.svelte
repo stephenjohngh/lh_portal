@@ -7,6 +7,10 @@
   import { getLogger } from '$lib/utils/logger';
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS, FLOOR_LEVELS } from '$lib/utils/planConstants';
+  import WalkInput  from './common/WalkInput.svelte';
+  import WalkButton from './common/WalkButton.svelte';
+  import WalkSelect from './common/WalkSelect.svelte';
+  import WalkError from './common/WalkError.svelte';
 
   const logger = getLogger('WalkInspectionStart');
   const dispatch = createEventDispatcher();
@@ -49,9 +53,9 @@
     const mon = new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
     const mon2 = mon.replace(/\s+/g, '_');
     const typ  = typeLabel(selectedType).replace(/\s+/g, '_');
-    const sub  = selectedType === 'light' && lightFilter === 'emergency' ? '_Emergency' : '';
+    const sub  = selectedType === 'light' && lightFilter === 'emergency' ? '_Emer' : '';
     const bld  = buildingInitials(selectedPlan.building);
-    sessionName = `Inspection_${typ}${sub}_${bld}_F${selectedPlan.floor_level}_${mon2}`;
+    sessionName = `Insp_${typ}${sub}_${bld}_${selectedPlan.floor_level}_${mon2}`;
   }
 
   $: if (selectedPlanId) startAssetId = '';
@@ -121,6 +125,7 @@
       {#if availablePlans.length === 0}
         <p class="hint">No floor plans available — add plans first.</p>
       {:else}
+        <!-- floor select: native <select> retained for option content complexity -->
         <select class="sel-input" bind:value={selectedPlanId}>
           <option value="">— Select a floor —</option>
           {#each availablePlans as plan}
@@ -170,8 +175,11 @@
       <section class="grp">
         <div class="grp-lbl">03 — SESSION NAME</div>
         <p class="hint">Auto-generated — edit if needed</p>
-        <input class="txt-input" type="text" bind:value={sessionName}
-               placeholder="Session name…" maxlength="80" />
+        <WalkInput
+          bind:value={sessionName}
+          placeholder="Session name…"
+          maxlength={80}
+        />
       </section>
     {/if}
 
@@ -180,12 +188,17 @@
       <section class="grp">
         <div class="grp-lbl">04 — START FROM (OPTIONAL)</div>
         <p class="hint">Leave blank to start from the first element.</p>
-        <select class="sel-input" bind:value={startAssetId}>
-          <option value="">— First element ({elementsForPlan[0]?.asset_id ?? 'unknown'}) —</option>
-          {#each elementsForPlan as el}
-            <option value={el.asset_id ?? ''}>{el.asset_id ?? 'No ID'}{el.label ? ` — ${el.label}` : ''}</option>
-          {/each}
-        </select>
+        <WalkSelect
+          bind:value={startAssetId}
+          options={[
+            { value: '', label: '— First element (' + (elementsForPlan[0]?.asset_id ?? 'unknown') + ') —' },
+            ...elementsForPlan.map(el => ({
+              value: el.asset_id ?? '',
+              label: (el.asset_id ?? 'No ID') + (el.label ? ' — ' + el.label : '')
+            }))
+          ]}
+          placeholder={null}
+        />
       </section>
     {/if}
 
@@ -205,12 +218,14 @@
       </div>
     {/if}
 
-    {#if error}<div class="err-box">⚠ {error}</div>{/if}
+    <WalkError message={error || ''} />
 
-    <button class="go-btn" on:click={handleStart}
-            disabled={saving || elementCount === 0 || !selectedPlanId}>
+    <WalkButton variant="primary" size="full"
+      loading={saving}
+      disabled={elementCount === 0 || !selectedPlanId}
+      on:click={handleStart}>
       {saving ? 'STARTING…' : 'BEGIN INSPECTION →'}
-    </button>
+    </WalkButton>
 
   </div>
 </div>
@@ -218,8 +233,6 @@
 <style>
   .ss { display: flex; flex-direction: column; min-height: calc(100vh - 64px); background: #0d0d14; color: #f0f0f0; font-family: 'DM Mono', 'Courier New', monospace; }
   .ss-hdr { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid #2e2e42; background: #111122; }
-  .back-btn { background: none; border: none; color: #60a5fa; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; padding: 0; }
-  .back-btn:hover { color: #93c5fd; }
   .ss-title { font-size: 0.7rem; letter-spacing: 0.25em; color: #60a5fa; }
   .ss-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; flex: 1; }
   .grp { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -241,10 +254,6 @@
   .lt-btn:hover { border-color: #3b82f6; color: #eee; }
   .lt-btn.on { border-color: #60a5fa; background: #0a1f35; color: #60a5fa; font-weight: 700; }
 
-  .txt-input, .sel-input { background: #0f1a2e; border: 2px solid #1e3a5f; border-radius: 8px; color: #f0f0f0; font-family: inherit; font-size: 0.875rem; padding: 0.875rem 1rem; width: 100%; box-sizing: border-box; transition: border-color 0.15s; }
-  .txt-input:focus, .sel-input:focus { outline: none; border-color: #60a5fa; }
-  .txt-input::placeholder { color: #666; }
-  .sel-input { appearance: none; cursor: pointer; }
 
   .summary { background: #050f1f; border: 2px solid #1e3a5f; border-radius: 10px; padding: 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.625rem; }
   .s-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
@@ -254,9 +263,5 @@
   .s-insp { color: #60a5fa; font-weight: 700; letter-spacing: 0.1em; font-size: 0.75rem; }
   .s-pill { display: inline-block; font-size: 0.58rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: #0a1f35; color: #60a5fa; margin-left: 0.4rem; vertical-align: middle; }
 
-  .err-box { font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem; background: #2a0000; border: 2px solid #ef4444; border-radius: 8px; }
 
-  .go-btn { padding: 1.125rem; background: #3b82f6; border: none; border-radius: 10px; color: #f0f0f0; font-family: inherit; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.2em; cursor: pointer; transition: all 0.15s; margin-top: auto; }
-  .go-btn:hover:not(:disabled) { background: #2563eb; }
-  .go-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 </style>

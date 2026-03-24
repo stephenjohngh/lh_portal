@@ -8,14 +8,16 @@
   import { getLogger } from '$lib/utils/logger';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName } from '$lib/utils/planConstants';
   import { walkStore }           from '$lib/apps/walk/stores/walkStore.js';
-  import { sessionStats, groupByElement, worstResult, flattenInspectionRows, getTypeLabel, getTypeIcon, sessionFloorLabel } from '$lib/apps/walk/utils/walkHelpers.js';
+  import { sessionStats, groupByElement, worstResult, flattenInspectionRows, getTypeLabel, getTypeIcon, sessionFloorLabel,resultLabel } from '$lib/apps/walk/utils/walkHelpers.js';
   import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
   import WalkInspectionsReport   from './WalkInspectionsReport.svelte';
   import WalkInspectionDetailModal from './WalkInspectionDetailModal.svelte';
+  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
+  import Badge           from '$lib/components/common/Badge.svelte';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
 
   const logger = getLogger('WalkInspectionsTab');
-
-  export let isAdmin = false;
 
   // ── Data ────────────────────────────────────────────────────────────────
   let sessions     = [];
@@ -133,6 +135,10 @@
     } finally { deletingId = null; }
   }
 
+  function resultBadgeColor(w) {
+    return { OK: 'bg-green-600', failed: 'bg-red-600', problem: 'bg-orange-600', inactive: 'bg-slate-600' }[w] ?? 'bg-slate-600';
+  }
+
   function clearFilters() {
     filterType = filterStatus = filterDateFrom = filterDateTo = '';
     filterSessionType = '';
@@ -197,11 +203,10 @@
 
   {#if loading}
     <div class="state-msg">
-      <Icon name="loading" size={6} className="animate-spin text-purple-400" />
-      <span>Loading sessions…</span>
+      <LoadingSpinner size="medium" text="Loading sessions…" />
     </div>
   {:else if error}
-    <div class="alert-error">{error}</div>
+    <ErrorDisplay message={error} />
   {:else if filtered.length === 0}
     <div class="empty-state py-16 text-center">
       <Icon name="clipboard" size={12} className="text-gray-600 mx-auto mb-3" />
@@ -246,11 +251,11 @@
                   <span class="em-badge">⚠ Emergency</span>
                 {/if}
                 {#if session.session_type === 'inspection'}
-                  <span class="stype-badge stype-insp">INSPECTION</span>
+                  <Badge color="bg-blue-600" size="small">INSPECTION</Badge>
                 {:else if session.session_type === 'test'}
-                  <span class="stype-badge stype-test">TEST</span>
+                  <Badge color="bg-amber-600" size="small">TEST</Badge>
                 {:else if session.session_type === 'repair'}
-                  <span class="stype-badge stype-repair">REPAIR</span>
+                  <Badge color="bg-orange-700" size="small">REPAIR</Badge>
                 {/if}
                 {#if session.session_name}
                   <span class="sess-name">{session.session_name}</span>
@@ -285,24 +290,23 @@
               {session.status}
             </span>
           </button>
-          {#if isAdmin}
-            <button
-              class="del-btn"
-              class:del-confirm={confirmId === session.id}
-              class:del-busy={deletingId === session.id}
-              disabled={deletingId === session.id}
-              title={confirmId === session.id ? 'Click again to confirm delete' : 'Delete session'}
-              on:click={() => handleDelete(session)}
-              on:blur={() => { if (confirmId === session.id) confirmId = null; }}
-            >
-              {#if deletingId === session.id}…{:else if confirmId === session.id}Sure?{:else}🗑{/if}
-            </button>
-          {/if}
+          <ProtectedButton
+            requireAdmin={true}
+            variant="danger"
+            size="small"
+            className="del-btn {confirmId === session.id ? 'del-confirm' : ''} {deletingId === session.id ? 'del-busy' : ''}"
+            disabled={deletingId === session.id}
+            title={confirmId === session.id ? 'Click again to confirm delete' : 'Delete session'}
+            on:click={() => handleDelete(session)}
+            on:blur={() => { if (confirmId === session.id) confirmId = null; }}
+          >
+            {#if deletingId === session.id}…{:else if confirmId === session.id}Sure?{:else}🗑{/if}
+          </ProtectedButton>
           </div>
           {#if isExpanded}
             <div class="sess-detail">
               {#if isLoadingThis}
-                <p class="detail-msg">Loading inspections…</p>
+                <LoadingSpinner size="small" text="Loading inspections…" />
               {:else if !inspections[session.id] || inspections[session.id].length === 0}
                 <p class="detail-msg italic">No inspections recorded in this session.</p>
               {:else}
@@ -350,9 +354,9 @@
                           <td class="font-medium font-mono">{displayName}</td>
                           <td class="text-gray-400">{firstRow.label || '—'}</td>
                           <td>
-                            <span class="result-badge result-{worst}">
-                              {worst === 'OK' ? '✓ PASS' : worst === 'failed' ? '✗ FAIL' : worst === 'problem' ? '⚙ PROBLEM' : '— INACTIVE'}
-                            </span>
+                            <Badge color={resultBadgeColor(worst)} size="small">
+                              {resultLabel(worst)}
+                            </Badge>
                           </td>
                           <td class="text-sm text-gray-400">{fmtTime(firstRow.inspected_at)}</td>
                           <td class="text-sm text-gray-400 notes-cell">
@@ -447,10 +451,6 @@
   .qs-repair { color: rgb(251 146 60);  font-weight: 600; }
   .qs-pass   { color: rgb(74 222 128);  font-weight: 600; }
   .qs-el     { color: rgb(107 114 128); }
-  .stype-badge { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.1rem 0.4rem; border-radius: 3px; flex-shrink: 0; }
-  .stype-test  { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60);  border: 1px solid rgb(251 146 60 / 0.3); }
-  .stype-insp  { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250);  border: 1px solid rgb(96 165 250 / 0.3); }
-  .stype-repair{ background: rgb(234 88 12 / 0.15);  color: rgb(251 146 60);  border: 1px solid rgb(234 88 12 / 0.3); }
   .status-badge { flex-shrink: 0; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid transparent; }
   .status-open { background: rgb(217 119 6 / 0.2); color: rgb(251 191 36); border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.5); color: rgb(156 163 175); border-color: rgb(71 85 105); }
@@ -472,15 +472,9 @@
   .inspection-row { border-bottom: 1px solid rgb(71 85 105 / 0.5); cursor: pointer; transition: background 0.15s; }
   .inspection-row:hover { background: rgb(71 85 105 / 0.4); }
   .inspection-row td { padding: 0.75rem; }
-  .result-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; }
-  .result-OK       { background: rgb(22 101 52 / 0.3); color: rgb(74 222 128); border: 1px solid rgb(22 101 52); }
-  .result-failed   { background: rgb(127 29 29 / 0.3); color: rgb(248 113 113); border: 1px solid rgb(127 29 29); }
-  .result-problem  { background: rgb(124 45 18 / 0.3); color: rgb(251 146 60);  border: 1px solid rgb(154 52 18); }
-  .result-inactive { background: rgb(71 85 105 / 0.3); color: rgb(156 163 175); border: 1px solid rgb(71 85 105); }
   .notes-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .photo-indicator { font-size: 1.25rem; }
   
   .state-msg { display: flex; align-items: center; gap: 0.75rem; padding: 3rem; color: rgb(156 163 175); font-size: 0.875rem; }
-  .alert-error { background: rgb(127 29 29 / 0.3); border: 1px solid rgb(239 68 68 / 0.5); border-radius: 6px; padding: 0.75rem 1rem; color: rgb(248 113 113); font-size: 0.875rem; }
   .empty-state { padding: 4rem 0; text-align: center; }
 </style>

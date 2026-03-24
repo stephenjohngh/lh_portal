@@ -1,12 +1,11 @@
 <!-- src/lib/apps/walk/components/WalkStatsBars.svelte -->
-<!-- Shared two-row stats display used by WalkSession (live) and WalkSessionSummary (closed). -->
-<!-- Row 1: TOTAL / INSPECTED / REMAINING in light blue.                                     -->
-<!-- Row 2: PASS / FAIL / PROBLEM (orange box) / INACTIVE always all four.                   -->
+<!-- Row 1: TOTAL / INSPECTED / REMAINING in light blue. -->
+<!-- Row 2: PASS / FAIL / PROBLEM / INACTIVE always all four on one line. -->
 <script>
-  export let total      = 0;
-  export let inspected  = 0;
-  export let passCount  = 0;
-  export let failCount  = 0;
+  export let total        = 0;
+  export let inspected    = 0;
+  export let passCount    = 0;
+  export let failCount    = 0;
   export let problemCount = 0;
   export let inactiveCount = 0;
 
@@ -66,20 +65,17 @@
   .stat-v { font-size: 1.85rem; font-weight: 800; line-height: 1; }
   .stat-k { font-size: 0.55rem; letter-spacing: 0.15em; }
 
-  /* Blue row */
   .stat-blue .stat-v { color: #93c5fd; }
   .stat-blue .stat-k { color: #60a5fa; }
 
-  /* Result row */
-  .stat-pass .stat-v { color: #4ade80; }
-  .stat-pass .stat-k { color: #86efac; }
-  .stat-fail .stat-v { color: #fb7171; }
-  .stat-fail .stat-k { color: #fda5a5; }
-  .stat-na   .stat-v { color: #aaa; }
-  .stat-na   .stat-k { color: #888; }
-
+  .stat-pass   .stat-v { color: #4ade80; }
+  .stat-pass   .stat-k { color: #86efac; }
+  .stat-fail   .stat-v { color: #f87171; }
+  .stat-fail   .stat-k { color: #fca5a5; }
   .stat-repair .stat-v { color: #fb923c; }
   .stat-repair .stat-k { color: #fdba74; }
+  .stat-na     .stat-v { color: #aaa; }
+  .stat-na     .stat-k { color: #888; }
 
   .stat-div { width: 1px; height: 2.5rem; background: #2e2e42; flex-shrink: 0; }
 </style>

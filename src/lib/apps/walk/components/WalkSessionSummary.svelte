@@ -8,6 +8,7 @@
   import { getFloorOrder } from '$lib/utils/floorSorting';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import WalkStatsBars from './WalkStatsBars.svelte';
+  import WalkError     from './common/WalkError.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -96,7 +97,7 @@
     </div>
 
   {:else if error}
-    <div class="err-box">⚠ {error}</div>
+    <WalkError message={error} />
 
   {:else if inspections.length === 0}
     <div class="state-center">
@@ -243,7 +244,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .err-box { margin: 1.25rem; font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem; background: #2a0000; border: 2px solid #ef4444; border-radius: 8px; }
   .empty-icon { font-size: 3rem; color: #3e3e58; }
   .empty-txt  { font-size: 0.875rem; color: #ccc; }
   .empty-sub  { font-size: 0.75rem; color: #bbb; text-align: center; }

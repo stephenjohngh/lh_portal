@@ -4,7 +4,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import Modal    from '$lib/components/common/Modal.svelte';
-  import Button   from '$lib/components/common/Button.svelte';
+  import Button    from '$lib/components/common/Button.svelte';
+  import Checkbox  from '$lib/components/common/Checkbox.svelte';
+  import Badge     from '$lib/components/common/Badge.svelte';
   import Icon     from '$lib/components/icons/Icon.svelte';
   import { api }  from '$lib/utils/api';
   import { getLogger } from '$lib/utils/logger';
@@ -159,22 +161,20 @@
         {#each sessions as session}
           {@const selected = selectedIds.has(session.id)}
           <label class="sess-row" class:sess-selected={selected}>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={selected}
               on:change={() => toggleSession(session.id)}
-              class="w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-600 focus:ring-purple-500 flex-shrink-0"
             />
             <span class="sess-icon">{getTypeIcon(session.element_type)}</span>
             <div class="sess-info">
               <span class="sess-name-text">
                 {session.building}{session.session_scope !== 'building' ? ' · ' + sessionFloorLabel(session) : ''} · {getTypeLabel(session.element_type)}
                 {#if session.session_type === 'inspection'}
-                  <span class="stype-badge stype-insp">INSPECTION</span>
+                  <Badge color="bg-blue-600" size="small">INSPECTION</Badge>
                 {:else if session.session_type === 'test'}
-                  <span class="stype-badge stype-test">TEST</span>
+                  <Badge color="bg-amber-600" size="small">TEST</Badge>
                 {:else if session.session_type === 'repair'}
-                  <span class="stype-badge stype-repair">REPAIR</span>
+                  <Badge color="bg-orange-700" size="small">REPAIR</Badge>
                 {/if}
                 {#if session.light_subtype_filter === 'emergency'}
                   <span class="em-tag">⚠ Emergency</span>
@@ -256,7 +256,6 @@
   }
   .status-open   { background: rgb(217 119 6 / 0.2); color: rgb(251 191 36); border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.4); color: rgb(156 163 175); border-color: rgb(71 85 105); }
-  .stype-badge  { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.1rem 0.35rem; border-radius: 3px; margin-left: 0.2rem; }
   .stype-test   { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60); border: 1px solid rgb(251 146 60 / 0.3); }
   .stype-insp   { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250); border: 1px solid rgb(96 165 250 / 0.3); }
   .stype-repair { background: rgb(234 88 12 / 0.15);  color: rgb(251 146 60); border: 1px solid rgb(234 88 12 / 0.3); }

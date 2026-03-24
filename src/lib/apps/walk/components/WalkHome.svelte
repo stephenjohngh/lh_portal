@@ -5,6 +5,7 @@
   import { walkStore } from '../stores/walkStore.js';
   import { fmtDate, fmtTime, fmtDuration } from '$lib/utils/dates';
   import { getTypeLabel, getTypeIcon, sessionFloorLabel } from '../utils/walkHelpers.js';
+  import WalkBadge from './common/WalkBadge.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -62,11 +63,11 @@
                 <span class="scard-type-icon">{getTypeIcon(s.element_type)}</span>
                 <span class="scard-name">{s.session_name || (getTypeLabel(s.element_type) + ' · ' + s.building)}</span>
                 {#if s.session_type === 'test'}
-                  <span class="scard-type-badge badge-test">TEST</span>
+                  <WalkBadge color="orange">TEST</WalkBadge>
                 {:else if s.session_type === 'inspection'}
-                  <span class="scard-type-badge badge-insp">INSPECTION</span>
+                  <WalkBadge color="blue">INSPECTION</WalkBadge>
                 {:else if s.session_type === 'repair'}
-                  <span class="scard-type-badge badge-repair">REPAIR</span>
+                  <WalkBadge color="red">REPAIR</WalkBadge>
                 {/if}
               </div>
               <div class="scard-loc">{s.building} · {sessionFloorLabel(s)}</div>
@@ -94,14 +95,14 @@
               <div class="scard-name-row">
                 <span class="scard-name">{s.session_name || (getTypeLabel(s.element_type) + ' · ' + s.building)}</span>
                 {#if s.session_type === 'test'}
-                  <span class="scard-type-badge badge-test">TEST</span>
+                  <WalkBadge color="orange">TEST</WalkBadge>
                 {:else if s.session_type === 'inspection'}
-                  <span class="scard-type-badge badge-insp">INSPECTION</span>
+                  <WalkBadge color="blue">INSPECTION</WalkBadge>
                 {:else if s.session_type === 'repair'}
-                  <span class="scard-type-badge badge-repair">REPAIR</span>
+                  <WalkBadge color="red">REPAIR</WalkBadge>
                 {/if}
                 {#if s.status === 'closed'}
-                  <span class="scard-type-badge badge-closed">✓ CLOSED</span>
+                  <WalkBadge color="green">✓ CLOSED</WalkBadge>
                 {/if}
               </div>
               <div class="scard-loc">{s.building} · {sessionFloorLabel(s)}</div>
@@ -189,15 +190,6 @@
     color: #4ade80; flex-shrink: 0; white-space: nowrap;
   }
 
-  /* ── Session type badges ──────────────────────────────────────────────────*/
-  .scard-type-badge {
-    font-size: 0.55rem; font-weight: 700; letter-spacing: 0.1em;
-    padding: 0.1rem 0.35rem; border-radius: 3px; flex-shrink: 0;
-  }
-  .badge-test      { background: #2a1800; color: #fb923c; }
-  .badge-insp      { background: #0a1f35; color: #60a5fa; }
-  .badge-repair    { background: #1a0a00; color: #fb923c; border: 1px solid #7c2d12; }
-  .badge-closed    { background: #0a1f0a; color: #4ade80; border: 1px solid #166534; }
 
   /* ── Session cards (shared) ───────────────────────────────────────────────*/
   .session-list { display: flex; flex-direction: column; gap: 0.625rem; }

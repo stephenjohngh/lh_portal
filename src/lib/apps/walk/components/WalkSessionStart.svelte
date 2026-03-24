@@ -5,6 +5,10 @@
   import { getLogger } from '$lib/utils/logger';
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS } from '$lib/utils/planConstants';
+  import WalkInput  from './common/WalkInput.svelte';
+  import WalkButton from './common/WalkButton.svelte';
+  import WalkError  from './common/WalkError.svelte';
+  import WalkSelect from './common/WalkSelect.svelte';
 
   const logger = getLogger('WalkSessionStart');
   const dispatch = createEventDispatcher();
@@ -65,16 +69,16 @@
     const mon2 = mon.replace(/\s+/g, '_');
 
     const typ = typeLabel(selectedType).replace(/\s+/g, '_');
-    const sub = selectedType === 'light' && lightFilter === 'emergency' ? '_Emergency' : '';
+    const sub = selectedType === 'light' && lightFilter === 'emergency' ? '_Emer' : '';
     const bld = buildingInitials(selectedPlan.building);
-    sessionName = `${typ}${sub}_${bld}_F${selectedPlan.floor_level}_${mon2}`;
+    sessionName = `${typ}${sub}_${bld}_${selectedPlan.floor_level}_${mon2}`;
   } else if (sessionMode === 'building' && selectedBuilding) {
     const mon = new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
     const mon2 = mon.replace(/\s+/g, '_');
     const typ = typeLabel(selectedType).replace(/\s+/g, '_');
-    const sub = selectedType === 'light' && lightFilter === 'emergency' ? '_Emergency' : '';
+    const sub = selectedType === 'light' && lightFilter === 'emergency' ? '_Emer' : '';
     const bld = buildingInitials(selectedBuilding);
-    sessionName = `${typ}${sub}_${bld}_Building_${mon2}`;
+    sessionName = `${typ}${sub}_${bld}_Full_${mon2}`;
   }
 
   $: if (selectedPlanId) startAssetId = '';
@@ -149,7 +153,7 @@
 
 <div class="ss">
   <div class="ss-hdr">
-    <button class="back-btn" on:click={() => dispatch('cancel')}>← Back</button>
+    <WalkButton variant='ghost' size='sm' on:click={() => dispatch('cancel')}>← Back</WalkButton>
     <span class="ss-title">NEW SESSION</span>
   </div>
 
@@ -240,7 +244,7 @@
       <section class="grp">
         <div class="grp-lbl">03 — SESSION NAME</div>
         <p class="hint">Auto-generated — edit if needed</p>
-        <input class="txt-input" type="text" bind:value={sessionName}
+        <WalkInput bind:value={sessionName}
                placeholder="Session name…" maxlength="80" />
       </section>
     {/if}
@@ -250,12 +254,17 @@
       <section class="grp">
         <div class="grp-lbl">04 — START FROM (OPTIONAL)</div>
         <p class="hint">Leave blank to start from the first element.</p>
-        <select class="sel-input" bind:value={startAssetId}>
-          <option value="">— First element ({elementsForPlan[0]?.asset_id ?? 'unknown'}) —</option>
-          {#each elementsForPlan as el}
-            <option value={el.asset_id ?? ''}>{el.asset_id ?? 'No ID'}{el.label ? ` — ${el.label}` : ''}</option>
-          {/each}
-        </select>
+        <WalkSelect
+          bind:value={startAssetId}
+          options={[
+            { value: '', label: '— From first element —' },
+            ...elementsForPlan.map(el => ({
+              value: el.asset_id ?? '',
+              label: `${el.asset_id ?? 'No ID'}${el.label ? ' — ' + el.label : ''}`
+            }))
+          ]}
+          placeholder={null}
+        />
       </section>
     {/if}
 
@@ -281,20 +290,20 @@
       </div>
     {/if}
 
-    {#if error}<div class="err-box">⚠ {error}</div>{/if}
+    <WalkError message={error || ''} />
 
-    <button class="go-btn" on:click={handleStart} 
-            disabled={saving || elementCount === 0 || (!selectedPlanId && sessionMode === 'single_plan')}>
+    <WalkButton variant="primary" size="full"
+      loading={saving}
+      disabled={elementCount === 0 || (!selectedPlanId && sessionMode === 'single_plan')}
+      on:click={handleStart}>
       {saving ? 'STARTING…' : 'BEGIN WALK →'}
-    </button>
+    </WalkButton>
   </div>
 </div>
 
 <style>
   .ss { display: flex; flex-direction: column; min-height: calc(100vh - 64px); background: #0d0d14; color: #f0f0f0; font-family: 'DM Mono', 'Courier New', monospace; }
   .ss-hdr { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid #2e2e42; background: #111122; }
-  .back-btn { background: none; border: none; color: #fb923c; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; padding: 0; }
-  .back-btn:hover { color: #fdba74; }
   .ss-title { font-size: 0.7rem; letter-spacing: 0.25em; color: #aaa; }
   .ss-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; flex: 1; }
   .grp { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -340,10 +349,6 @@
   .plan-cnt { font-size: 0.78rem; color: #ccc; }
   .plan-cnt.zero { color: #666; }
   
-  .txt-input, .sel-input { background: #1a1a2e; border: 2px solid #2e2e48; border-radius: 8px; color: #f0f0f0; font-family: inherit; font-size: 0.875rem; padding: 0.875rem 1rem; width: 100%; box-sizing: border-box; transition: border-color 0.15s; }
-  .txt-input:focus, .sel-input:focus { outline: none; border-color: #fb923c; }
-  .txt-input::placeholder { color: #666; }
-  .sel-input { appearance: none; cursor: pointer; }
   
   .summary { background: #0f1f14; border: 2px solid #1a3d24; border-radius: 10px; padding: 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.625rem; }
   .s-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
@@ -352,9 +357,5 @@
   .s-name { color: #fb923c; font-size: 0.78rem; }
   .s-pill { display: inline-block; font-size: 0.58rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: #2a1800; color: #fb923c; margin-left: 0.4rem; vertical-align: middle; }
   
-  .err-box { font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem; background: #2a0000; border: 2px solid #ef4444; border-radius: 8px; }
   
-  .go-btn { padding: 1.125rem; background: #fb923c; border: none; border-radius: 10px; color: #0a0a0a; font-family: inherit; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.2em; cursor: pointer; transition: all 0.15s; margin-top: auto; }
-  .go-btn:hover:not(:disabled) { background: #f97316; }
-  .go-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 </style>

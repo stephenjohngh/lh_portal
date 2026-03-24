@@ -10,6 +10,10 @@
   import { uploadToSupabase } from '../utils/supabaseUpload';
   import { uploadToGoogleDrive } from '../utils/googleDriveUpload';
 
+  import WalkTextarea from './common/WalkTextarea.svelte';
+  import WalkError from './common/WalkError.svelte';
+  import WalkButton from './common/WalkButton.svelte';
+
   const logger   = getLogger('WalkResultSection');
   const dispatch = createEventDispatcher();
 
@@ -128,16 +132,16 @@
 <div class="sec">
   <div class="sec-lbl">INSPECTION RESULT</div>
   <div class="result-grid">
-    <button class="rb r-pass"   class:sel={result === 'OK'}   on:click={() => result = 'OK'}>
+    <button class="rb r-pass"   class:sel={result === 'OK'}     on:click={() => result = 'OK'}>
       <span class="ri">✓</span><span class="rl">PASS</span>
     </button>
-    <button class="rb r-fail"   class:sel={result === 'failed'}   on:click={() => result = 'failed'}>
+    <button class="rb r-fail"   class:sel={result === 'failed'} on:click={() => result = 'failed'}>
       <span class="ri">✗</span><span class="rl">FAIL</span>
     </button>
-    <button class="rb r-problem" class:sel={result === 'problem'} on:click={() => result = 'problem'}>
+    <button class="rb r-repair" class:sel={result === 'problem'} on:click={() => result = 'problem'}>
       <span class="ri">⚙</span><span class="rl">PROBLEM</span>
     </button>
-    <button class="rb r-na"     class:sel={result === 'inactive'}     on:click={() => result = 'inactive'}>
+    <button class="rb r-na"     class:sel={result === 'inactive'} on:click={() => result = 'inactive'}>
       <span class="ri">—</span><span class="rl">INACTIVE</span>
     </button>
   </div>
@@ -164,7 +168,7 @@
 
   {#if hasPhoto}
     <div class="photo-preview">
-      <img src={photoPreview} alt="Inspection photo" />
+      <img src={photoPreview} alt="Inspection" />
       <button class="remove-photo-btn" on:click={removePhoto}>✕ REMOVE</button>
     </div>
     {#if uploading}<div class="photo-status">Uploading…</div>{/if}
@@ -175,20 +179,23 @@
 <!-- Notes -->
 <div class="sec">
   <div class="sec-lbl">{notesLabel}</div>
-  <textarea class="notes-ta" bind:value={notes}
-    {placeholder} rows={notesRows}></textarea>
+  <WalkTextarea
+  bind:value={notes}
+  {placeholder}
+  rows={notesRows}
+/>
 </div>
 
 <!-- Error from parent -->
-{#if error}
-  <div class="err-box">⚠ {error}</div>
-{/if}
+<WalkError message={error || ''} />
 
 <!-- Save -->
-<button class="save-btn" on:click={handleSaveClick}
-        disabled={saving || uploading || !canSave}>
+<WalkButton variant="primary" size="full"
+  disabled={!canSave}
+  loading={saving || uploading}
+  on:click={handleSaveClick}>
   {saving || uploading ? 'SAVING…' : saveLabel}
-</button>
+</WalkButton>
 
 <style>
   .sec     { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -211,9 +218,9 @@
   .r-fail        { color: #f87171; }
   .r-fail:hover  { border-color: #ef4444; }
   .r-fail.sel    { border-color: #ef4444; background: #1f0a0a; }
-  .r-problem        { color: #fb923c; }
-  .r-problem:hover  { border-color: #ea580c; }
-  .r-problem.sel    { border-color: #ea580c; background: #2a1000; }
+  .r-repair        { color: #fb923c; }
+  .r-repair:hover  { border-color: #ea580c; }
+  .r-repair.sel    { border-color: #ea580c; background: #2a1000; }
   .r-na          { color: #ccc; }
   .r-na:hover    { border-color: #5e5e78; }
   .r-na.sel      { border-color: #5e5e78; background: #181828; }
@@ -258,28 +265,8 @@
   .photo-err    { color: #fca5a5; }
 
   /* ── Notes ────────────────────────────────────────────────────────────────*/
-  .notes-ta {
-    background: #1a1a2e; border: 2px solid #2e2e48; border-radius: 8px;
-    color: #f0f0f0; font-family: 'DM Mono', 'Courier New', monospace;
-    font-size: 0.875rem; padding: 0.875rem 1rem;
-    width: 100%; box-sizing: border-box; resize: none;
-  }
-  .notes-ta:focus        { outline: none; border-color: #fb923c; }
-  .notes-ta::placeholder { color: #777; }
 
   /* ── Error ────────────────────────────────────────────────────────────────*/
-  .err-box {
-    font-size: 0.825rem; color: #fca5a5; padding: 0.875rem 1rem;
-    background: #2a0000; border: 2px solid #ef4444; border-radius: 8px;
-  }
 
   /* ── Save ─────────────────────────────────────────────────────────────────*/
-  .save-btn {
-    padding: 1.25rem; background: #22c55e; border: none; border-radius: 10px;
-    color: #0a0a0f; font-family: 'DM Mono', 'Courier New', monospace;
-    font-size: 0.9rem; font-weight: 800; letter-spacing: 0.2em;
-    cursor: pointer; transition: background 0.15s;
-  }
-  .save-btn:hover:not(:disabled) { background: #16a34a; }
-  .save-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 </style>
