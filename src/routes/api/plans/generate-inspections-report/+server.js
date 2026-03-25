@@ -27,18 +27,9 @@ import {
 } from '$lib/server/docxHelpers';
 import { sessionStats } from '$lib/apps/walk/utils/walkHelpers';
 import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration } from '$lib/utils/dates';
+import { typeLabel, TYPE_INITIALS } from '$lib/apps/plans/utils/reportHelpers';
 
 const logger = getLogger('generateInspectionsReport');
-
-// ── Type label ─────────────────────────────────────────────────────────────────
-function typeLabel(t) {
-  return {
-    communal_door:  'Communal Door',
-    apartment_door: 'Apartment Door',
-    light:          'Light',
-    fire_control:   'Fire Control',
-  }[t] ?? t;
-}
 
 function resultColor(result) {
   return result === 'OK'      ? COLOURS.passGreen
@@ -138,15 +129,6 @@ function buildSummaryTable(sessionData) {
 // Inspection table columns: Element | Label | Result | Time | Notes
 const DET_COLS = [1600, 1700, 900, 1200, 5066];
 // sum = 10466 = CONTENT_W
-
-// Type initials for generating display names (Floor/Type/ID)
-const TYPE_INITIALS = {
-  communal_door:  'D',
-  apartment_door: 'A',
-  light:          'L',
-  fire_control:   'F',
-  other:          'O'
-};
 
 // FIX: Use ins.floor_level (joined from plan_elements → plans) rather than
 // s.floor_level which is NULL for building-wide sessions.

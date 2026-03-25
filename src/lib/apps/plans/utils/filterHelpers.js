@@ -1,8 +1,9 @@
 // src/lib/apps/plans/utils/filterHelpers.js
-// Shared element filter logic for PlanViewer and PlansReport.
+// Shared element filter logic for BuildingOverview, PlanViewer, and PlansReport.
 // Single source of truth — eliminates the diverged applyFilters / filterEls copies.
 
 import { getElementDisplayName } from '$lib/utils/planConstants';
+import { parseNotesValue } from '$lib/utils/notesParser';
 
 /**
  * Apply a filter object to an array of plan elements.
@@ -11,10 +12,11 @@ import { getElementDisplayName } from '$lib/utils/planConstants';
  * {
  *   types:    string[]   — element_type values to include (empty = all)
  *   statuses: string[]   — status values to include (empty = all)
- *   searchText: string   — substring match against label, asset_id, subtype,
- *                          and getElementDisplayName (when plan is supplied)
- *   plan:     object     — optional; when supplied, searchText also matches the
- *                          element's display name (e.g. "G/O/001")
+ *   searchText: string   — substring match against label, asset_id, subtype, notes,
+ *                          and getElementDisplayName
+ *   plan:     object     — optional; provides floor_level for display name search.
+ *                          Elements with _floorLevel set (BuildingOverview) use that
+ *                          directly; plan.floor_level is the fallback.
  *   lightFilters:    { subtypes[], battery[], emergency, movementSensor, lightSensor }
  *   communalFilters: { subtypes[], security[], retained }
  *   apartmentFilters: {}  (reserved)
@@ -44,17 +46,23 @@ export function applyElementFilters(elements, filters) {
   }
 
   // ── Text search ──────────────────────────────────────────────────────────
-  // Matches label, asset_id, subtype, and (when plan is provided) display name.
+  // Matches label, asset_id, subtype, notes, and display name.
+  // Uses el._floorLevel when present (BuildingOverview injects it per-element),
+  // falls back to f.plan?.floor_level (PlanViewer has a single plan).
   if (f.searchText) {
-    const q          = f.searchText.toLowerCase();
-    const floorLevel = f.plan?.floor_level;
-    result = result.filter(el =>
-      el.label?.toLowerCase().includes(q)    ||
-      el.asset_id?.toLowerCase().includes(q) ||
-      el.subtype?.toLowerCase().includes(q)  ||
-      (floorLevel !== undefined &&
-        getElementDisplayName(el, floorLevel).toLowerCase().includes(q))
-    );
+    const q = f.searchText.toLowerCase();
+    result = result.filter(el => {
+      const floorLevel = el._floorLevel ?? f.plan?.floor_level;
+      const notesText  = parseNotesValue(el.notes || '').toLowerCase();
+      return (
+        el.label?.toLowerCase().includes(q)    ||
+        el.asset_id?.toLowerCase().includes(q) ||
+        el.subtype?.toLowerCase().includes(q)  ||
+        notesText.includes(q)                  ||
+        (floorLevel !== undefined &&
+          getElementDisplayName(el, floorLevel).toLowerCase().includes(q))
+      );
+    });
   }
 
   // ── Light-specific sub-filters ───────────────────────────────────────────

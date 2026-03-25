@@ -127,7 +127,7 @@ export function getAttributeSummary(element) {
   return '—';
 }
 
-const TYPE_INITIALS = {
+export const TYPE_INITIALS = {
   communal_door:  'D',
   apartment_door: 'A',
   light:          'L',

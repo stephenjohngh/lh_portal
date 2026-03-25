@@ -2,41 +2,26 @@
 // Shared helpers used by both server-side report generators.
 // Kept in lib (not routes) so both +server.js files can import it.
 
-// ── Type initials — must stay in sync with planConstants.js ───────────────
-// These match the TYPE_INITIALS used in getElementDisplayName()
-export const TYPE_INITIALS = {
-  communal_door:  'D',
-  apartment_door: 'A',
-  light:          'L',
-  fire_control:   'F',
-  other:          'O'
-};
+import { TYPE_INITIALS, ELEMENT_SUBTYPES, getElementDisplayName } from '$lib/utils/planConstants';
 
-// ── Valid subtypes per element type (from planConstants.js) ───────────────
-export const ELEMENT_SUBTYPES = {
-  communal_door:  ['Entrance', 'Fire Door', 'Emergency Exit', 'Gate', 'Interior'],
-  apartment_door: ['Fire Door'],
-  light:          ['Bulkhead', 'Bulkhead CFL', 'Batten', 'Batten CFL', 'Exit', 'Downlight', 'Pendant', 'Floodlight'],
-  fire_control:   ['Sensor', 'Call Point', 'AC Call Point', 'Sounder', 'Hopper', 'Dry Riser'],
-  other:          ['Sprinkler', 'Tank', 'Pump', 'Fan', 'Battery', 'Vent']
-};
+// Re-export so server routes import from one place instead of maintaining their own copies
+export { TYPE_INITIALS, ELEMENT_SUBTYPES };
 
 // ── Derived element ID: FloorCode/TypeInitial/AssetID e.g. "G/D/001" ──────
+// Thin wrapper over planConstants.getElementDisplayName — kept for back-compat
+// with generate-report/+server.js which imports this name.
 export function elementDisplayId(element, floorLevel) {
-  const floor = floorLevel !== null && floorLevel !== undefined ? String(floorLevel) : '?';
-  const type  = TYPE_INITIALS[element.element_type] ?? 'O';  // Default to 'O' for unknown
-  const id    = element.asset_id || 'No ID';
-  return `${floor}/${type}/${id}`;
+  return getElementDisplayName(element, floorLevel);
 }
 
 // ── Status display label ───────────────────────────────────────────────────
 export function statusLabel(s) {
-  return { 
-    active:      'OK', 
-    failed:      'Failed', 
+  return {
+    active:      'OK',
+    failed:      'Failed',
     inactive:    'Inactive',
-    maintenance: 'Maintenance', 
-    removed:     'Removed' 
+    maintenance: 'Maintenance',
+    removed:     'Removed'
   }[s] ?? s ?? '—';
 }
 
@@ -53,20 +38,10 @@ export function sortByAssetId(a, b) {
 }
 
 // ── Validate and normalize subtype ────────────────────────────────────────
-// Returns the subtype if valid for the element type, otherwise 'Unspecified'
+// Returns the subtype name as-is (kept for display); data may predate current subtype lists.
 export function normalizeSubtype(element) {
   if (!element.subtype) return 'Unspecified';
-  
-  const validSubtypes = ELEMENT_SUBTYPES[element.element_type];
-  if (!validSubtypes) return element.subtype;  // Unknown type, keep as-is
-  
-  // Check if the subtype is valid for this element type
-  if (validSubtypes.includes(element.subtype)) {
-    return element.subtype;
-  }
-  
-  // Subtype exists but is not in the valid list for this type
-  return element.subtype;  // Keep it but note it's potentially invalid
+  return element.subtype;
 }
 
 // ── Subtype count summary e.g. "Fire Door: 4  ·  Entrance: 2" ─────────────
@@ -83,6 +58,8 @@ export function subtypeSummary(elements) {
 }
 
 // ── Get human-readable type label ──────────────────────────────────────────
+// Single source of truth for type → label used by server report routes.
+// Fallback converts snake_case to Title Case for unknown future types.
 export function typeLabel(elementType) {
   const labels = {
     communal_door:  'Communal Door',

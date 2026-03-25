@@ -111,8 +111,8 @@
     { asset_id: formData.asset_id, element_type: formData.element_type },
     plan?.floor_level
   );
-  $: isLight          = formData.element_type === 'light';
-  $: isCommunalDoor   = formData.element_type === 'communal_door';
+  $: isLight  = formData.element_type === 'light';
+  $: isDoor   = formData.element_type === 'communal_door' || formData.element_type === 'apartment_door';
 
   function validate() {
     errors = {};
@@ -299,8 +299,8 @@
       </div>
     {/if}
 
-    <!-- Communal Door Attributes -->
-    {#if isCommunalDoor}
+    <!-- Door Attributes (communal_door + apartment_door) -->
+    {#if isDoor}
       <div class="attr-panel">
         <h4 class="attr-panel-title text-orange-700">Door Attributes</h4>
         <div class="mb-3">

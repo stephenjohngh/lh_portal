@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { walkStore } from '$lib/apps/walk/stores/walkStore';
   import { formatRelativeTime } from '$lib/utils/dates';
-  import { getElementTypeIcon } from '$lib/utils/planConstants';
+  import { getElementTypeConfig } from '$lib/utils/planConstants';
   
   export let building = null; // Optional: filter by building
   
@@ -63,7 +63,7 @@
           <div class="element-list">
             {#each highPriority.slice(0, 3) as el}
               <button class="failed-item high" on:click={() => viewElement(el.id)}>
-                <div class="element-icon">{getElementTypeIcon(el.element_type)}</div>
+                <div class="element-icon">{getElementTypeConfig(el.element_type)?.icon ?? '■'}</div>
                 <div class="element-info">
                   <div class="element-name">{el.floor_level}/{el.asset_id}</div>
                   <div class="element-issue">{el.inspector_notes || 'No details provided'}</div>
@@ -91,7 +91,7 @@
           <div class="element-list">
             {#each mediumPriority.slice(0, 3) as el}
               <button class="failed-item medium" on:click={() => viewElement(el.id)}>
-                <div class="element-icon">{getElementTypeIcon(el.element_type)}</div>
+                <div class="element-icon">{getElementTypeConfig(el.element_type)?.icon ?? '■'}</div>
                 <div class="element-info">
                   <div class="element-name">{el.floor_level}/{el.asset_id}</div>
                   <div class="element-issue">{el.inspector_notes || 'Requires attention'}</div>

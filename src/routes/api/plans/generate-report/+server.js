@@ -18,7 +18,7 @@ import {
   Header, Footer, PageNumber, AlignmentType
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
-import { elementDisplayId, statusLabel, sortByAssetId } from '$lib/apps/plans/utils/reportHelpers';
+import { elementDisplayId, statusLabel, sortByAssetId, typeLabel } from '$lib/apps/plans/utils/reportHelpers';
 
 const logger = getLogger('generatePlanReport');
 
@@ -200,12 +200,12 @@ function buildFloorContent(plan, elements, options) {
 
     for (const type of Object.keys(byType).sort()) {
       const sorted    = [...byType[type]].sort(sortByAssetId);
-      const typeLabel = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const typeLabelText = typeLabel(type);
 
       children.push(new Paragraph({
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 400, after: 200 },
-        children: [new TextRun({ text: `${typeLabel}s (${sorted.length})`, font: 'Arial', size: 26, bold: true })]
+        children: [new TextRun({ text: `${typeLabelText}s (${sorted.length})`, font: 'Arial', size: 26, bold: true })]
       }));
 
       // Optimized column widths:
@@ -357,13 +357,6 @@ function buildSummarySection(floors) {
   }));
   
   // Summary table: Type(25%) | Subtype(25%) | Status(15%) | Total(35%)
-  const typeLabels = {
-    'communal_door': 'Communal Door',
-    'apartment_door': 'Apartment Door',
-    'light': 'Light',
-    'fire_control': 'Fire Control'
-  };
-  
   children.push(new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: BORDERS,
@@ -379,7 +372,7 @@ function buildSummarySection(floors) {
       }),
       ...summaryRows.map(row => new TableRow({
         children: [
-          dataCell(typeLabels[row.type] || row.type),
+          dataCell(typeLabel(row.type)),
           dataCell(row.subtype),
           dataCell(statusLabel(row.status)),
           dataCell(String(row.count)),

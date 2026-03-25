@@ -14,6 +14,7 @@
     getFloorLevelLabel
   } from '$lib/utils/planConstants';
   import { parseNotesValue } from '$lib/utils/notesParser';
+  import { applyElementFilters } from '../../utils/filterHelpers';
 
   const logger   = getLogger('PlansReport');
   const dispatch = createEventDispatcher();
@@ -78,29 +79,7 @@
   function handleTypeChange(e) { typeFilters = e.detail; }
 
   function filterEls(els) {
-    return els.filter(e => {
-      if (selectedStatuses.length > 0 && !selectedStatuses.includes(e.status))       return false;
-      if (typeFilters.types?.length > 0 && !typeFilters.types.includes(e.element_type)) return false;
-      if (e.element_type === 'light') {
-        const lf = typeFilters.lightFilters ?? {};
-        if (lf.subtypes?.length > 0 && !lf.subtypes.includes(e.subtype))  return false;
-        if (lf.battery?.length  > 0 && !lf.battery.includes(e.battery))   return false;
-        if (lf.emergency        && !e.emergency)                           return false;
-        if (lf.movementSensor   && !e.movement_sensor)                     return false;
-        if (lf.lightSensor      && !e.light_sensor)                        return false;
-      }
-      if (e.element_type === 'communal_door') {
-        const cf = typeFilters.communalFilters ?? {};
-        if (cf.subtypes?.length > 0 && !cf.subtypes.includes(e.subtype))  return false;
-        if (cf.security?.length > 0 && !cf.security.includes(e.security)) return false;
-        if (cf.retained         && !e.retained)                            return false;
-      }
-      if (e.element_type === 'fire_control') {
-        const ff = typeFilters.fireFilters ?? {};
-        if (ff.subtypes?.length > 0 && !ff.subtypes.includes(e.subtype))  return false;
-      }
-      return true;
-    });
+    return applyElementFilters(els, { ...typeFilters, statuses: selectedStatuses });
   }
 
   $: previewRows = [selectedStatuses, typeFilters] && activePlans.map(plan => {

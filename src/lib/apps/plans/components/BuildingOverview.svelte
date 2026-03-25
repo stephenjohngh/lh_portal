@@ -16,7 +16,8 @@
     getElementStatusConfig,
     getAttributeSummary
   } from '$lib/utils/planConstants';
-  import { formatNotesForDisplay, parseNotesValue } from '$lib/utils/notesParser';
+  import { formatNotesForDisplay } from '$lib/utils/notesParser';
+  import { applyElementFilters } from '../utils/filterHelpers';
 
   const logger = getLogger('BuildingOverview');
   const dispatch = createEventDispatcher();
@@ -62,7 +63,7 @@
     (filters.fireFilters?.subtypes?.length > 0)
   );
 
-  $: filteredElements = hasActiveFilters ? applyFilters(allElements, filters) : allElements;
+  $: filteredElements = hasActiveFilters ? applyElementFilters(allElements, filters) : allElements;
 
   $: sortedElementsForTable = [...filteredElements].sort((a, b) => {
     // Sort by FLOOR FIRST with correct order: L, U, G, 1-7
@@ -92,50 +93,6 @@
     });
     return summary;
   })();
-
-  function applyFilters(allElements, f) {
-    let result = [...allElements];
-
-    if (f.types.length > 0)
-      result = result.filter(el => f.types.includes(el.element_type));
-    if (f.statuses.length > 0)
-      result = result.filter(el => f.statuses.includes(el.status));
-    if (f.searchText) {
-      const q = f.searchText.toLowerCase();
-      result = result.filter(el => {
-        const notesValue = parseNotesValue(el.notes || '').toLowerCase();
-        return (
-          el.label?.toLowerCase().includes(q) ||
-          el.asset_id?.toLowerCase().includes(q) ||
-          el.subtype?.toLowerCase().includes(q) ||
-          notesValue.includes(q) ||
-          getElementDisplayName(el, el._floorLevel).toLowerCase().includes(q)
-        );
-      });
-    }
-
-    const lf = f.lightFilters;
-    if (lf) {
-      if (lf.subtypes?.length > 0) result = result.filter(el => el.element_type !== 'light' || lf.subtypes.includes(el.subtype));
-      if (lf.battery?.length  > 0) result = result.filter(el => el.element_type !== 'light' || lf.battery.includes(el.battery));
-      if (lf.emergency)             result = result.filter(el => el.element_type !== 'light' || el.emergency === true);
-      if (lf.movementSensor)        result = result.filter(el => el.element_type !== 'light' || el.movement_sensor === true);
-      if (lf.lightSensor)           result = result.filter(el => el.element_type !== 'light' || el.light_sensor === true);
-    }
-
-    const cf = f.communalFilters;
-    if (cf) {
-      if (cf.subtypes?.length > 0) result = result.filter(el => el.element_type !== 'communal_door' || cf.subtypes.includes(el.subtype));
-      if (cf.security?.length > 0) result = result.filter(el => el.element_type !== 'communal_door' || cf.security.includes(el.security));
-      if (cf.retained)              result = result.filter(el => el.element_type !== 'communal_door' || el.retained === true);
-    }
-
-    const ff = f.fireFilters;
-    if (ff?.subtypes?.length > 0)
-      result = result.filter(el => el.element_type !== 'fire_control' || ff.subtypes.includes(el.subtype));
-
-    return result;
-  }
 
   function handleElementClick(element) {
     selectedElement = element;
