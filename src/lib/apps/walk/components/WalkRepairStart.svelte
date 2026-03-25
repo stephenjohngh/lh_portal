@@ -5,6 +5,7 @@
   import { walkStore } from '../stores/walkStore.js';
   import { ELEMENT_TYPE_OPTIONS, getElementDisplayName, ELEMENT_STATUS_OPTIONS } from '$lib/utils/planConstants';
   import { getFloorOrder } from '$lib/utils/floorSorting';
+  import { buildingInitials } from '../utils/sessionNaming.js';
   import WalkError  from './common/WalkError.svelte';
   import WalkButton from './common/WalkButton.svelte';
 
@@ -45,7 +46,7 @@
         elementType:  el.element_type,
         startAssetId: el.asset_id || null,
         planId:       el._planId,
-        sessionName:  `Repair_${el.asset_id ?? 'element'}_${selectedBuilding}_F${el._floor}_${new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }).replace(/\s+/g, '_')}`,
+        sessionName:  `Repair_${buildingInitials(selectedBuilding)}_${el._floor}_${new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }).replace(/\s+/g, '_')}`,
         lightSubtypeFilter: null,
         sessionType:  'repair'
       });

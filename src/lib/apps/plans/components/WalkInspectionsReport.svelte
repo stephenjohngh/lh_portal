@@ -256,7 +256,4 @@
   }
   .status-open   { background: rgb(217 119 6 / 0.2); color: rgb(251 191 36); border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.4); color: rgb(156 163 175); border-color: rgb(71 85 105); }
-  .stype-test   { background: rgb(251 146 60 / 0.15); color: rgb(251 146 60); border: 1px solid rgb(251 146 60 / 0.3); }
-  .stype-insp   { background: rgb(96 165 250 / 0.15); color: rgb(96 165 250); border: 1px solid rgb(96 165 250 / 0.3); }
-  .stype-repair { background: rgb(234 88 12 / 0.15);  color: rgb(251 146 60); border: 1px solid rgb(234 88 12 / 0.3); }
 </style>

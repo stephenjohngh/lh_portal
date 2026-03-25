@@ -126,10 +126,11 @@
      role="button"
      tabindex="-1"
      aria-label="Close modal">
-  <div class="modal-content" 
+  <div class="modal-content"
        on:click|stopPropagation
        on:keydown|stopPropagation
        role="dialog"
+       tabindex="0"
        aria-labelledby="modal-title"
        aria-modal="true">
     
