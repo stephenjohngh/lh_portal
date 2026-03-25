@@ -358,15 +358,18 @@ function createWalkStore() {
 
   // completeSession — formally finishes a session via the FINISH flow. Sets status 'closed'.
   async function completeSession(sessionId, notes = '') {
+    if (!sessionId) throw new Error('completeSession: sessionId is required');
     logger('Completing session:', sessionId);
     const userId = await getCurrentUserId();
     try {
+      // returnRecord = false — avoids .single() which throws PGRST116 when RLS
+      // prevents reading the row back after a successful UPDATE.
       await api.update('walk_sessions', sessionId, {
         status:     'closed',
         closed_at:  new Date().toISOString(),
         notes:      notes || null,
         updated_by: userId
-      });
+      }, false);
       update(s => ({ ...s, ...RESET_SESSION_STATE }));
       await loadSessions();
       logger('✅ Session completed (closed)');
@@ -376,19 +379,21 @@ function createWalkStore() {
     }
   }
 
-  // closeSession — legacy / repair-finish use. Also sets 'closed'.
+  // closeSession — repair-finish use. Also sets 'closed'.
   async function closeSession(sessionId, notes = '') {
+    if (!sessionId) { logger('closeSession: no sessionId — skipping'); return; }
     logger('Closing session:', sessionId);
     const userId = await getCurrentUserId();
-    
+
     try {
+      // returnRecord = false — avoids .single() / PGRST116 (return value not used)
       await api.update('walk_sessions', sessionId, {
-        status: 'closed',
+        status:    'closed',
         closed_at: new Date().toISOString(),
-        notes: notes || null,
+        notes:     notes || null,
         updated_by: userId
-      });
-      
+      }, false);
+
       update(s => ({ ...s, ...RESET_SESSION_STATE }));
       await loadSessions();
       logger('✅ Session closed');
