@@ -167,8 +167,9 @@
 
         {:else}
           <!-- ── Normal row ─────────────────────────────────────── -->
-          <button
-            class="w-full text-left px-3 py-2.5 border-b border-slate-700/50 transition-colors group
+          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+          <div
+            class="w-full text-left px-3 py-2.5 border-b border-slate-700/50 transition-colors group cursor-pointer
                    {selectedAttrDefId === def.id
                      ? 'bg-purple-600/15 border-l-2 border-l-purple-500'
                      : 'hover:bg-slate-700/40'}"
@@ -204,7 +205,7 @@
                 on:click|stopPropagation={() => startEdit(def)}
               >Edit</button>
             </div>
-          </button>
+          </div>
         {/if}
 
       {/each}
