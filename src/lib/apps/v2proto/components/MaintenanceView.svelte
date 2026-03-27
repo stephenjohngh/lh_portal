@@ -38,7 +38,7 @@
 
   <!-- System filter -->
   <div class="flex items-center gap-3">
-    <label class="text-sm text-slate-400">Filter by system:</label>
+    <span class="text-sm text-slate-400">Filter by system:</span>
     <select
       bind:value={selectedSystemId}
       class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white

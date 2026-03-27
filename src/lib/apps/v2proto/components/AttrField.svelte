@@ -18,7 +18,7 @@
 </script>
 
 <div class="flex flex-col gap-1">
-  <label class="text-xs text-slate-400 flex items-center gap-1">
+  <p class="text-xs text-slate-400 flex items-center gap-1">
     {def.name}
     {#if def.is_primary}
       <span class="text-yellow-400 text-xs" title="Primary attribute">★</span>
@@ -27,7 +27,7 @@
       <span class="text-red-400">*</span>
     {/if}
     <span class="ml-1 text-slate-600 font-mono text-xs">[{def.display_type}]</span>
-  </label>
+  </p>
 
   {#if def.display_type === 'checkbox'}
     <label class="flex items-center gap-2 cursor-pointer">

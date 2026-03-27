@@ -129,24 +129,24 @@
       <p class="text-xs font-semibold text-green-400 mb-3">New Maintenance Task</p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div class="sm:col-span-2">
-          <label class="text-xs text-slate-400 block mb-1">Task name *</label>
+          <p class="text-xs text-slate-400 block mb-1">Task name *</p>
           <input bind:value={form.task_name} class={inp} placeholder="e.g. Monthly emergency lighting functional test" />
         </div>
         <div>
-          <label class="text-xs text-slate-400 block mb-1">
+          <p class="text-xs text-slate-400 block mb-1">
             Frequency (days) *
             {#if form.frequency_days}
               <span class="text-slate-500 font-normal">≈ {frequencyLabel(form.frequency_days)}</span>
             {/if}
-          </label>
+          </p>
           <input type="number" min="1" bind:value={form.frequency_days} class={inp} placeholder="365" />
         </div>
         {#if primaryOptions.length > 0}
           <div class="sm:col-span-3">
-            <label class="text-xs text-slate-400 block mb-1">
+            <p class="text-xs text-slate-400 block mb-1">
               Attribute filter
               <span class="text-slate-600 font-normal">(leave blank = applies to all components of this type)</span>
-            </label>
+            </p>
             <select bind:value={form.attribute_filter} class="{sel} max-w-xs">
               <option value="">All components</option>
               {#each primaryOptions as opt}
@@ -156,7 +156,7 @@
           </div>
         {:else}
           <div class="sm:col-span-3">
-            <label class="text-xs text-slate-400 block mb-1">Attribute filter</label>
+            <p class="text-xs text-slate-400 block mb-1">Attribute filter</p>
             <input
               bind:value={form.attribute_filter}
               class="{inp} max-w-xs"
@@ -197,7 +197,7 @@
             <p class="text-xs font-semibold text-purple-400 mb-3">Edit Task</p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div class="sm:col-span-2">
-                <label class="text-xs text-slate-400 block mb-1">Task name *</label>
+                <p class="text-xs text-slate-400 block mb-1">Task name *</p>
                 <input bind:value={form.task_name} class={inp} />
               </div>
               <div>
@@ -211,7 +211,7 @@
               </div>
               {#if primaryOptions.length > 0}
                 <div class="sm:col-span-3">
-                  <label class="text-xs text-slate-400 block mb-1">Attribute filter</label>
+                  <p class="text-xs text-slate-400 block mb-1">Attribute filter</p>
                   <select bind:value={form.attribute_filter} class="{sel} max-w-xs">
                     <option value="">All components</option>
                     {#each primaryOptions as opt}
@@ -221,7 +221,7 @@
                 </div>
               {:else}
                 <div class="sm:col-span-3">
-                  <label class="text-xs text-slate-400 block mb-1">Attribute filter</label>
+                  <p class="text-xs text-slate-400 block mb-1">Attribute filter</p>
                   <input bind:value={form.attribute_filter} class="{inp} max-w-xs"
                          placeholder="leave blank for all" />
                 </div>

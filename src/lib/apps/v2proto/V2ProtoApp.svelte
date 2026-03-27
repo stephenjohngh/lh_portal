@@ -162,7 +162,7 @@
       <!-- Toolbar -->
       <div class="flex items-center gap-4 mb-4">
         <div class="flex items-center gap-2">
-          <label class="text-sm text-slate-400">Plan:</label>
+          <span class="text-sm text-slate-400">Plan:</span>
           <select
             bind:value={filterPlanId}
             on:change={onPlanFilterChange}

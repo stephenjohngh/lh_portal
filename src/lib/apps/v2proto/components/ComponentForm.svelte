@@ -79,7 +79,7 @@
   <!-- Plan + Type -->
   <div class="grid grid-cols-2 gap-4">
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400">Floor Plan <span class="text-red-400">*</span></label>
+      <p class="text-xs text-slate-400">Floor Plan <span class="text-red-400">*</span></p>
       <select
         bind:value={planId}
         class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
@@ -93,7 +93,7 @@
     </div>
 
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400">Component Type <span class="text-red-400">*</span></label>
+      <p class="text-xs text-slate-400">Component Type <span class="text-red-400">*</span></p>
       <select
         bind:value={selectedTypeId}
         on:change={onTypeChange}
@@ -115,7 +115,7 @@
   <!-- Label + Asset ID -->
   <div class="grid grid-cols-2 gap-4">
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400">Label</label>
+      <p class="text-xs text-slate-400">Label</p>
       <input
         type="text"
         bind:value={label}
@@ -125,7 +125,7 @@
       />
     </div>
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400">Asset ID</label>
+      <p class="text-xs text-slate-400">Asset ID</p>
       <input
         type="text"
         bind:value={assetId}
@@ -139,7 +139,7 @@
   <!-- Position (simple numbers for the proto) -->
   <div class="grid grid-cols-2 gap-4">
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400">X Position (0–1)</label>
+      <p class="text-xs text-slate-400">X Position (0–1)</p>
       <input
         type="number" min="0" max="1" step="0.01"
         bind:value={xPosition}
@@ -148,7 +148,7 @@
       />
     </div>
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400">Y Position (0–1)</label>
+      <p class="text-xs text-slate-400">Y Position (0–1)</p>
       <input
         type="number" min="0" max="1" step="0.01"
         bind:value={yPosition}
