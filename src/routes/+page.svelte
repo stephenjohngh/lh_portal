@@ -14,12 +14,13 @@
   const logger = getLogger('MainApp');
 
   import UserListApp from '$lib/apps/users/UserListApp.svelte';
-  import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte'; 
+  import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte';
   import DemoApp from '$lib/apps/demo/DemoApp.svelte';
   import Demo from '$lib/apps/demo/Demo.svelte';
   import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
   import PlansApp from '$lib/apps/plans/PlansApp.svelte';
   import WalkApp from '$lib/apps/walk/WalkApp.svelte';
+  import V2ProtoApp from '$lib/apps/v2proto/V2ProtoApp.svelte';
 
   let activeApp = 'home';
   let menuOpen = false;

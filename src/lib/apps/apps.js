@@ -67,6 +67,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'v2proto',
+    name: 'V2 Proto',
+    icon: 'beaker',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Prototype demonstrating the v2 component data model'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -81,14 +90,15 @@ export const AVAILABLE_APPS = [
  * Use these instead of magic strings
  */
 export const APP_IDS = {
-  HOME: 'home',
-  USERS: 'users',
-  ISSUES: 'issues',
-  PLANS: 'plans',
-  WALK: 'walk',	
-  DEMO: 'demo',
-  DEMO2: 'demo2',
-  SETTINGS: 'settings'
+  HOME:    'home',
+  USERS:   'users',
+  ISSUES:  'issues',
+  PLANS:   'plans',
+  WALK:    'walk',
+  DEMO:    'demo',
+  DEMO2:   'demo2',
+  V2PROTO: 'v2proto',
+  SETTINGS:'settings'
 };
 
 /**
