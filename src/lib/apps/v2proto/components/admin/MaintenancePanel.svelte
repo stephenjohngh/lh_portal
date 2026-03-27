@@ -201,12 +201,12 @@
                 <input bind:value={form.task_name} class={inp} />
               </div>
               <div>
-                <label class="text-xs text-slate-400 block mb-1">
+                <p class="text-xs text-slate-400 block mb-1">
                   Frequency (days) *
                   {#if form.frequency_days}
                     <span class="text-slate-500 font-normal">≈ {frequencyLabel(form.frequency_days)}</span>
                   {/if}
-                </label>
+                </p>
                 <input type="number" min="1" bind:value={form.frequency_days} class={inp} />
               </div>
               {#if primaryOptions.length > 0}
