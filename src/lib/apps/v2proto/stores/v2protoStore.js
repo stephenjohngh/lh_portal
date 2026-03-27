@@ -99,7 +99,7 @@ function createV2ProtoStore() {
 
       const component = await api.create('components', {
         ...fields,
-        status: 'active',
+        status: 'OK',
         created_by: userId,
         updated_by: userId
       });
@@ -130,6 +130,204 @@ function createV2ProtoStore() {
           Object.entries(s.componentAttrs).filter(([k]) => k !== id)
         )
       }));
+    },
+
+    // ── Reload all type hierarchy data ──────────────────────────────────
+    async reload() {
+      update(s => ({ ...s, loading: true, error: null }));
+      try {
+        const [systems, types, defs, options, regime] = await Promise.all([
+          api.get('building_systems',       { orderBy: 'presentation_order' }),
+          api.get('component_types',        { orderBy: 'presentation_order' }),
+          api.get('type_attributes',        { orderBy: 'presentation_order' }),
+          api.get('type_attribute_options', { orderBy: 'presentation_order' }),
+          api.get('maintenance_regime')
+        ]);
+
+        const attrDefs   = {};
+        const attrOptions = {};
+        const regimeMap  = {};
+
+        for (const t of types) {
+          attrDefs[t.id]  = defs.filter(d => d.component_type_id === t.id);
+          regimeMap[t.id] = regime.filter(r => r.type_id === t.id);
+        }
+        for (const d of defs) {
+          attrOptions[d.id] = options.filter(o => o.type_attribute_id === d.id);
+        }
+
+        update(s => ({
+          ...s,
+          systems, types, attrDefs, attrOptions,
+          regime: regimeMap,
+          loading: false
+        }));
+        logger('Reloaded type hierarchy');
+      } catch (err) {
+        logger('Reload error:', err.message);
+        update(s => ({ ...s, loading: false, error: err.message }));
+      }
+    },
+
+    // ── Systems CRUD ────────────────────────────────────────────────────
+    async createSystem(data) {
+      const userId = get(auth).user?.id;
+      const row = await api.create('building_systems', {
+        name:               data.name?.trim(),
+        uniclass_code:      data.uniclass_code?.trim() || null,
+        description:        data.description?.trim() || null,
+        notes:              data.notes?.trim() || null,
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible ?? true,
+        created_by:         userId,
+        updated_by:         userId
+      });
+      logger('Created system:', row.id);
+      return row;
+    },
+
+    async updateSystem(id, data) {
+      const userId = get(auth).user?.id;
+      return await api.update('building_systems', id, {
+        name:               data.name?.trim(),
+        uniclass_code:      data.uniclass_code?.trim() || null,
+        description:        data.description?.trim() || null,
+        notes:              data.notes?.trim() || null,
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible,
+        updated_by:         userId
+      });
+    },
+
+    // ── Component Types CRUD ────────────────────────────────────────────
+    async createType(data) {
+      const userId = get(auth).user?.id;
+      return await api.create('component_types', {
+        building_system_id: data.building_system_id,
+        code:               data.code?.trim().toLowerCase().replace(/\s+/g, '_'),
+        name:               data.name?.trim(),
+        description:        data.description?.trim() || null,
+        initial:            data.initial?.trim().charAt(0).toUpperCase() || '?',
+        colour:             data.colour?.replace('#', '') || '888888',
+        icon_params:        data.icon_params || null,
+        marker_shape:       data.marker_shape || 'circle',
+        attribute_group:    data.attribute_group?.trim() || null,
+        inspection_panel:   data.inspection_panel?.trim() || 'standard',
+        default_attribute:  data.default_attribute?.trim() || null,
+        priority_base:      data.priority_base || 'medium',
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible ?? true,
+        notes:              data.notes?.trim() || null,
+        created_by:         userId,
+        updated_by:         userId
+      });
+    },
+
+    async updateType(id, data) {
+      const userId = get(auth).user?.id;
+      return await api.update('component_types', id, {
+        name:               data.name?.trim(),
+        description:        data.description?.trim() || null,
+        initial:            data.initial?.trim().charAt(0).toUpperCase() || '?',
+        colour:             data.colour?.replace('#', '') || '888888',
+        marker_shape:       data.marker_shape,
+        attribute_group:    data.attribute_group?.trim() || null,
+        inspection_panel:   data.inspection_panel?.trim() || 'standard',
+        default_attribute:  data.default_attribute?.trim() || null,
+        priority_base:      data.priority_base,
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible,
+        notes:              data.notes?.trim() || null,
+        updated_by:         userId
+      });
+    },
+
+    // ── Attribute Definitions CRUD ──────────────────────────────────────
+    // Note: type_attributes has no created_by / updated_by columns
+    async createAttrDef(data) {
+      return await api.create('type_attributes', {
+        component_type_id:  data.component_type_id,
+        name:               data.name?.trim(),
+        display_type:       data.display_type || 'text',
+        required:           data.required ?? false,
+        default_value:      data.default_value?.trim() || null,
+        is_primary:         data.is_primary ?? false,
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible ?? true
+      });
+    },
+
+    async updateAttrDef(id, data) {
+      return await api.update('type_attributes', id, {
+        name:               data.name?.trim(),
+        display_type:       data.display_type,
+        required:           data.required,
+        default_value:      data.default_value?.trim() || null,
+        is_primary:         data.is_primary,
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible
+      });
+    },
+
+    // Clear is_primary on all sibling attr defs before setting a new primary.
+    // Call this before updateAttrDef(..., { is_primary: true, ... }).
+    async clearPrimaryForType(typeId) {
+      let siblings = [];
+      update(s => {
+        siblings = (s.attrDefs[typeId] ?? []).filter(d => d.is_primary);
+        return s;
+      });
+      for (const d of siblings) {
+        await api.update('type_attributes', d.id, { is_primary: false });
+      }
+    },
+
+    // ── Options CRUD ────────────────────────────────────────────────────
+    // Note: type_attribute_options has no created_by / updated_by columns
+    async createOption(data) {
+      return await api.create('type_attribute_options', {
+        type_attribute_id:  data.type_attribute_id,
+        value:              data.value?.trim(),
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible ?? true,
+        priority_override:  data.priority_override || null
+      });
+    },
+
+    async updateOption(id, data) {
+      return await api.update('type_attribute_options', id, {
+        value:              data.value?.trim(),
+        presentation_order: Number(data.presentation_order) || 0,
+        visible:            data.visible,
+        priority_override:  data.priority_override || null
+      });
+    },
+
+    // ── Maintenance Regime CRUD ─────────────────────────────────────────
+    // Note: maintenance_regime has created_by but no updated_by, no updated_at trigger
+    async createRegime(data) {
+      const userId = get(auth).user?.id;
+      return await api.create('maintenance_regime', {
+        type_id:          data.type_id,
+        attribute_filter: data.attribute_filter?.trim() || null,
+        task_name:        data.task_name?.trim(),
+        frequency_days:   parseInt(data.frequency_days),
+        created_by:       userId
+      });
+    },
+
+    async updateRegime(id, data) {
+      // No updated_by column on maintenance_regime
+      return await api.update('maintenance_regime', id, {
+        attribute_filter: data.attribute_filter?.trim() || null,
+        task_name:        data.task_name?.trim(),
+        frequency_days:   parseInt(data.frequency_days)
+      });
+    },
+
+    async deleteRegime(id) {
+      await api.delete('maintenance_regime', id);
+      logger('Deleted regime:', id);
     }
   };
 }

@@ -29,7 +29,6 @@
   };
 
   const STATUS_COLOURS = {
-    active:   'bg-slate-600 text-slate-300',
     OK:       'bg-green-600/30 text-green-400',
     problem:  'bg-orange-600/30 text-orange-400',
     failed:   'bg-red-600/30 text-red-400',
@@ -61,7 +60,7 @@
       {#if component.asset_id && component.label}
         <span class="text-slate-500 text-sm font-mono">{component.asset_id}</span>
       {/if}
-      <span class="text-xs px-1.5 py-0.5 rounded {STATUS_COLOURS[component.status] ?? STATUS_COLOURS.active}">
+      <span class="text-xs px-1.5 py-0.5 rounded {STATUS_COLOURS[component.status] ?? STATUS_COLOURS.inactive}">
         {component.status}
       </span>
     </div>

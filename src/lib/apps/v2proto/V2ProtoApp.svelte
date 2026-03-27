@@ -9,6 +9,7 @@
   import ComponentForm    from './components/ComponentForm.svelte';
   import ComponentCard    from './components/ComponentCard.svelte';
   import MaintenanceView  from './components/MaintenanceView.svelte';
+  import AdminTab         from './components/admin/AdminTab.svelte';
 
   let activeTab      = 'types';
   let showForm       = false;
@@ -65,7 +66,8 @@
   const TABS = [
     { id: 'types',       label: 'Type Browser',  icon: '🗂' },
     { id: 'components',  label: 'Components',     icon: '🧩' },
-    { id: 'maintenance', label: 'Maintenance',    icon: '🔧' }
+    { id: 'maintenance', label: 'Maintenance',    icon: '🔧' },
+    { id: 'admin',       label: 'Admin',          icon: '⚙' }
   ];
 </script>
 
@@ -220,6 +222,10 @@
       {types}
       {regime}
     />
+
+  <!-- ── Tab: Admin ────────────────────────────────────────────────── -->
+  {:else if activeTab === 'admin'}
+    <AdminTab />
   {/if}
 
 </div>
