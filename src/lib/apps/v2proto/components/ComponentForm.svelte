@@ -222,7 +222,7 @@
     />
     <datalist id="component-refs">
       {#each refOptions as ref}
-        <option value={ref} />
+        <option value={ref}></option>
       {/each}
     </datalist>
     {#if linkedComponentRef.trim()}
