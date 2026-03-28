@@ -13,10 +13,24 @@
   const MARKER_SHAPES  = ['circle', 'square', 'square_inner', 'diamond'];
   const PRIORITY_BASES = ['critical', 'high', 'medium', 'low'];
 
-  let editingId = null;
-  let form      = {};
-  let saving    = false;
-  let error     = '';
+  let editingId  = null;
+  let form       = {};
+  let saving     = false;
+  let deletingId = null;
+  let error      = '';
+
+  async function deleteRow(id) {
+    if (!confirm('Delete this type? This will also delete its attribute definitions and options.')) return;
+    deletingId = id;
+    try {
+      await v2protoStore.deleteType(id);
+      dispatch('saved');
+    } catch (err) {
+      error = err.message;
+    } finally {
+      deletingId = null;
+    }
+  }
 
   // Attr def counts per type (from live store)
   $: attrCounts = Object.entries($v2protoStore.attrDefs).reduce((acc, [typeId, defs]) => {
@@ -226,12 +240,20 @@
                   </span>
                 </div>
               </div>
-              <button
-                class="shrink-0 text-xs px-1.5 py-0.5 rounded text-slate-500
-                       hover:text-white hover:bg-slate-600 transition-colors opacity-0
-                       group-hover:opacity-100 mt-0.5"
-                on:click|stopPropagation={() => startEdit(t)}
-              >Edit</button>
+              <div class="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5">
+                <button
+                  class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                         hover:text-white hover:bg-slate-600 transition-colors"
+                  on:click|stopPropagation={() => startEdit(t)}
+                >Edit</button>
+                <button
+                  class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                         hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  disabled={deletingId === t.id}
+                  on:click|stopPropagation={() => deleteRow(t.id)}
+                  title="Delete type"
+                >{deletingId === t.id ? '…' : '✕'}</button>
+              </div>
             </div>
           </div>
         {/if}

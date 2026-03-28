@@ -6,23 +6,89 @@ import { auth } from '$lib/stores/auth';
 
 const logger = getLogger('v2proto');
 
+// ── Component reference helper ─────────────────────────────────────────────
+// Builds the canonical human-readable reference string for a component.
+// Format: "{plan name} / {type name} / {asset_id or label}"
+// Used for linked_component_ref values and for the datalist in the form.
+export function buildRef(component, plans, types) {
+  if (!component) return '';
+  const plan     = plans.find(p => p.id === component.plan_id);
+  const type     = types.find(t => t.code === component.type_code);
+  const planName = plan?.name ?? plan?.building ?? '?';
+  const typeName = type?.name ?? component.type_code ?? '?';
+  const id       = component.asset_id || component.label || component.id?.slice(0, 8) || '?';
+  return `${planName} / ${typeName} / ${id}`;
+}
+
+// ── Inheritance resolution ─────────────────────────────────────────────────
+// Called once at load/reload. Separates raw defs into:
+//   systemAttrDefs — indexed by systemId  (system-scoped rows only)
+//   attrDefs       — indexed by typeId    (effective = system-inherited + type-own)
+//                    each row carries _scope: 'system' | 'type' for the admin UI
+//   attrOptions    — indexed by attrDefId (unchanged — all options regardless of scope)
+//   regimeMap      — indexed by typeId
+//
+// DATA LOADING STRATEGY:
+//   All type_attributes rows (both scopes) are fetched in a single query.
+//   JS separates them by scope, then builds the effective attribute list per type
+//   by merging system-inherited attrs (first) + type-own attrs, ordered by
+//   presentation_order. After init, every render simply looks up attrDefs[typeId]
+//   with no further DB calls. At ~700 components per building this is well under
+//   100ms total load time.
+function resolveHierarchy(systems, types, defs, options, regime) {
+  const systemAttrDefs = {};
+  const attrDefs       = {};
+  const attrOptions    = {};
+  const regimeMap      = {};
+
+  // Partition raw defs by scope
+  const systemDefs = defs.filter(d => d.building_system_id != null);
+  const typeDefs   = defs.filter(d => d.component_type_id  != null);
+
+  // Index system-level attrs for admin management
+  for (const sys of systems) {
+    systemAttrDefs[sys.id] = systemDefs.filter(d => d.building_system_id === sys.id);
+  }
+
+  // Build effective attribute set per type (inherited + own), mark scope
+  for (const t of types) {
+    const inherited  = (systemAttrDefs[t.building_system_id] ?? [])
+      .map(a => ({ ...a, _scope: 'system' }));
+    const own        = typeDefs
+      .filter(d => d.component_type_id === t.id)
+      .map(a => ({ ...a, _scope: 'type' }));
+    attrDefs[t.id]   = [...inherited, ...own]
+      .sort((a, b) => a.presentation_order - b.presentation_order);
+    regimeMap[t.id]  = regime.filter(r => r.type_id === t.id);
+  }
+
+  // Index options by attr def id (works for both system and type attrs)
+  for (const d of defs) {
+    attrOptions[d.id] = options.filter(o => o.type_attribute_id === d.id);
+  }
+
+  return { systemAttrDefs, attrDefs, attrOptions, regimeMap };
+}
+
 function createV2ProtoStore() {
   const { subscribe, update } = writable({
     // Type hierarchy
-    systems:       [],   // building_systems[]
-    types:         [],   // component_types[]
-    attrDefs:      {},   // { [typeId]: type_attributes[] }
-    attrOptions:   {},   // { [attrDefId]: type_attribute_options[] }
-    regime:        {},   // { [typeId]: maintenance_regime[] }
+    systems:          [],   // building_systems[]
+    types:            [],   // component_types[]
+    attrDefs:         {},   // { [typeId]: effective attrs (system-inherited + type-own), each with _scope: 'system'|'type' }
+    systemAttrDefs:   {},   // { [systemId]: system-level type_attributes[] } — for admin management of system attrs
+    attrOptions:      {},   // { [attrDefId]: type_attribute_options[] }
+    regime:           {},   // { [typeId]: maintenance_regime[] }
     // Component data
-    components:    [],   // components[]
-    componentAttrs:{},   // { [componentId]: component_attributes[] }
+    components:       [],   // components[]
+    componentAttrs:   {},   // { [componentId]: component_attributes[] }
+    inspections:      {},   // { [componentId]: latest component_inspections row }
     // Supporting data
-    plans:         [],   // existing plans[] (for plan picker)
+    plans:            [],   // existing plans[] (for plan picker)
     // UI state
-    loading:       false,
+    loading:          false,
     loadingComponents: false,
-    error:         null
+    error:            null
   });
 
   return {
@@ -41,21 +107,12 @@ function createV2ProtoStore() {
           api.get('plans', { orderBy: 'building', ascending: true })
         ]);
 
-        const attrDefs   = {};
-        const attrOptions = {};
-        const regimeMap  = {};
-
-        for (const t of types) {
-          attrDefs[t.id]  = defs.filter(d => d.component_type_id === t.id);
-          regimeMap[t.id] = regime.filter(r => r.type_id === t.id);
-        }
-        for (const d of defs) {
-          attrOptions[d.id] = options.filter(o => o.type_attribute_id === d.id);
-        }
+        const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
+          resolveHierarchy(systems, types, defs, options, regime);
 
         update(s => ({
           ...s,
-          systems, types, attrDefs, attrOptions,
+          systems, types, attrDefs, systemAttrDefs, attrOptions,
           regime: regimeMap,
           plans,
           loading: false
@@ -83,7 +140,18 @@ function createV2ProtoStore() {
           componentAttrs[c.id] = allAttrs.filter(a => a.component_id === c.id);
         }
 
-        update(s => ({ ...s, components, componentAttrs, loadingComponents: false }));
+        // Load latest inspection per component
+        const allInspections = await api.get('component_inspections',
+          { orderBy: 'inspected_at', ascending: false });
+        const inspections = {};
+        for (const insp of allInspections) {
+          // Keep only the most recent per component (array is desc by inspected_at)
+          if (!inspections[insp.component_id]) {
+            inspections[insp.component_id] = insp;
+          }
+        }
+
+        update(s => ({ ...s, components, componentAttrs, inspections, loadingComponents: false }));
         logger(`Loaded ${components.length} components`);
       } catch (err) {
         logger('Load components error:', err.message);
@@ -93,7 +161,8 @@ function createV2ProtoStore() {
 
     // ── Create a component with its attribute values ───────────────────
     async createComponent(fields, attrValues) {
-      // fields:     { plan_id, type_code, primary_attribute, label, asset_id, x_position, y_position }
+      // fields:     { plan_id, type_code, primary_attribute, label, asset_id,
+      //               x_position, y_position, linked_component_ref? }
       // attrValues: [{ type_attribute_id, value }]
       const userId = get(auth).user?.id;
 
@@ -120,6 +189,66 @@ function createV2ProtoStore() {
       return component;
     },
 
+    // ── Update a component ─────────────────────────────────────────────
+    // When identity fields (label, asset_id, type_code, plan_id) change,
+    // computes the old ref string and clears it from any other components
+    // that reference it before saving, so stale links don't accumulate.
+    async updateComponent(id, fields) {
+      const userId = get(auth).user?.id;
+      let oldRef = null;
+
+      update(s => {
+        const existing = s.components.find(c => c.id === id);
+        if (existing) {
+          const identityChanged =
+            fields.label    !== existing.label    ||
+            fields.asset_id !== existing.asset_id ||
+            fields.type_code !== existing.type_code ||
+            fields.plan_id   !== existing.plan_id;
+          if (identityChanged) {
+            oldRef = buildRef(existing, s.plans, s.types);
+          }
+        }
+        return s;
+      });
+
+      // Clear any other components that reference the old string
+      if (oldRef) await this.clearStaleRefs(oldRef);
+
+      const updated = await api.update('components', id, {
+        ...fields,
+        updated_by: userId
+      });
+
+      update(s => ({
+        ...s,
+        components: s.components.map(c => c.id === id ? { ...c, ...updated } : c)
+      }));
+
+      return updated;
+    },
+
+    // Nulls linked_component_ref on every component that references oldRef.
+    // Called automatically by updateComponent when identity fields change.
+    async clearStaleRefs(oldRef) {
+      if (!oldRef) return;
+      // Update in DB — filter to rows that match oldRef, set to null
+      await api.updateMany('components',
+        { linked_component_ref: oldRef },
+        { linked_component_ref: null }
+      );
+      // Patch local state immediately
+      update(s => ({
+        ...s,
+        components: s.components.map(c =>
+          c.linked_component_ref === oldRef
+            ? { ...c, linked_component_ref: null }
+            : c
+        )
+      }));
+      logger('Cleared stale refs to:', oldRef);
+    },
+
     // ── Delete a component (cascades component_attributes) ─────────────
     async deleteComponent(id) {
       await api.delete('components', id);
@@ -144,21 +273,12 @@ function createV2ProtoStore() {
           api.get('maintenance_regime')
         ]);
 
-        const attrDefs   = {};
-        const attrOptions = {};
-        const regimeMap  = {};
-
-        for (const t of types) {
-          attrDefs[t.id]  = defs.filter(d => d.component_type_id === t.id);
-          regimeMap[t.id] = regime.filter(r => r.type_id === t.id);
-        }
-        for (const d of defs) {
-          attrOptions[d.id] = options.filter(o => o.type_attribute_id === d.id);
-        }
+        const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
+          resolveHierarchy(systems, types, defs, options, regime);
 
         update(s => ({
           ...s,
-          systems, types, attrDefs, attrOptions,
+          systems, types, attrDefs, systemAttrDefs, attrOptions,
           regime: regimeMap,
           loading: false
         }));
@@ -184,6 +304,11 @@ function createV2ProtoStore() {
       });
       logger('Created system:', row.id);
       return row;
+    },
+
+    async deleteSystem(id) {
+      await api.delete('building_systems', id);
+      logger('Deleted system:', id);
     },
 
     async updateSystem(id, data) {
@@ -242,19 +367,34 @@ function createV2ProtoStore() {
       });
     },
 
+    async deleteType(id) {
+      await api.delete('component_types', id);
+      logger('Deleted type:', id);
+    },
+
     // ── Attribute Definitions CRUD ──────────────────────────────────────
     // Note: type_attributes has no created_by / updated_by columns
+    //
+    // Scope is determined by which FK is provided:
+    //   data.component_type_id  set → type-level attribute
+    //   data.building_system_id set → system-level attribute (inherited by all types in system)
     async createAttrDef(data) {
-      return await api.create('type_attributes', {
-        component_type_id:  data.component_type_id,
+      const payload = {
         name:               data.name?.trim(),
         display_type:       data.display_type || 'text',
         required:           data.required ?? false,
         default_value:      data.default_value?.trim() || null,
         is_primary:         data.is_primary ?? false,
+        checkable:          data.checkable ?? false,
         presentation_order: Number(data.presentation_order) || 0,
         visible:            data.visible ?? true
-      });
+      };
+      if (data.building_system_id) {
+        payload.building_system_id = data.building_system_id;
+      } else {
+        payload.component_type_id = data.component_type_id;
+      }
+      return await api.create('type_attributes', payload);
     },
 
     async updateAttrDef(id, data) {
@@ -264,22 +404,30 @@ function createV2ProtoStore() {
         required:           data.required,
         default_value:      data.default_value?.trim() || null,
         is_primary:         data.is_primary,
+        checkable:          data.checkable ?? false,
         presentation_order: Number(data.presentation_order) || 0,
         visible:            data.visible
       });
     },
 
-    // Clear is_primary on all sibling attr defs before setting a new primary.
+    // Clear is_primary on all attr defs in the effective set for a type.
+    // Covers both system-inherited and type-own primaries.
     // Call this before updateAttrDef(..., { is_primary: true, ... }).
     async clearPrimaryForType(typeId) {
-      let siblings = [];
+      let primaries = [];
       update(s => {
-        siblings = (s.attrDefs[typeId] ?? []).filter(d => d.is_primary);
+        // attrDefs[typeId] is the full effective set (system + type, all with _scope)
+        primaries = (s.attrDefs[typeId] ?? []).filter(d => d.is_primary);
         return s;
       });
-      for (const d of siblings) {
+      for (const d of primaries) {
         await api.update('type_attributes', d.id, { is_primary: false });
       }
+    },
+
+    async deleteAttrDef(id) {
+      await api.delete('type_attributes', id);
+      logger('Deleted attr def:', id);
     },
 
     // ── Options CRUD ────────────────────────────────────────────────────
@@ -292,6 +440,11 @@ function createV2ProtoStore() {
         visible:            data.visible ?? true,
         priority_override:  data.priority_override || null
       });
+    },
+
+    async deleteOption(id) {
+      await api.delete('type_attribute_options', id);
+      logger('Deleted option:', id);
     },
 
     async updateOption(id, data) {
@@ -328,6 +481,48 @@ function createV2ProtoStore() {
     async deleteRegime(id) {
       await api.delete('maintenance_regime', id);
       logger('Deleted regime:', id);
+    },
+
+    // ── Inspection CRUD ─────────────────────────────────────────────────
+    // Saves a walk inspection result for a component.
+    // checklistResults: { [type_attribute_id]: boolean } — only checkable attrs.
+    // walk_session_id is nullable for prototype/ad-hoc use; in the production
+    // walk app it will always be set from the active walk session.
+    async saveInspection(componentId, { result, notes, checklistResults }) {
+      const userId = get(auth).user?.id;
+
+      const inspection = await api.create('component_inspections', {
+        component_id:      componentId,
+        inspection_result: result,
+        inspector_notes:   notes?.trim() || null,
+        checklist_results: Object.keys(checklistResults).length > 0
+          ? checklistResults
+          : null,
+        inspected_by:      userId,
+        inspected_at:      new Date().toISOString()
+        // walk_session_id intentionally omitted (null) in prototype context
+      });
+
+      // Update the component status and last_inspection_id to match
+      await api.update('components', componentId, {
+        status:             result,
+        last_inspection_id: inspection.id,
+        status_set_by:      userId,
+        status_set_at:      new Date().toISOString(),
+        updated_by:         userId
+      });
+
+      // Update local store state immediately (no reload needed)
+      update(s => ({
+        ...s,
+        inspections: { ...s.inspections, [componentId]: inspection },
+        components:  s.components.map(c =>
+          c.id === componentId ? { ...c, status: result, last_inspection_id: inspection.id } : c
+        )
+      }));
+
+      logger('Saved inspection for component:', componentId, result);
+      return inspection;
     }
   };
 }

@@ -8,24 +8,38 @@
   import TypeBrowser      from './components/TypeBrowser.svelte';
   import ComponentForm    from './components/ComponentForm.svelte';
   import ComponentCard    from './components/ComponentCard.svelte';
+  import InspectionPanel  from './components/InspectionPanel.svelte';
   import MaintenanceView  from './components/MaintenanceView.svelte';
   import AdminTab         from './components/admin/AdminTab.svelte';
 
-  let activeTab      = 'types';
-  let showForm       = false;
-  let saving         = false;
-  let filterPlanId   = '';
-  let errorMsg       = '';
+  let activeTab          = 'types';
+  let showForm           = false;
+  let saving             = false;
+  let filterPlanId       = '';
+  let errorMsg           = '';
+  let inspectingComponent = null;   // components row being inspected, or null
 
-  $: store         = $v2protoStore;
-  $: systems       = store.systems;
-  $: types         = store.types;
-  $: attrDefs      = store.attrDefs;
-  $: attrOptions   = store.attrOptions;
-  $: regime        = store.regime;
-  $: plans         = store.plans;
-  $: components    = store.components;
+  $: store          = $v2protoStore;
+  $: systems        = store.systems;
+  $: types          = store.types;
+  $: attrDefs       = store.attrDefs;
+  $: attrOptions    = store.attrOptions;
+  $: regime         = store.regime;
+  $: plans          = store.plans;
+  $: components     = store.components;
   $: componentAttrs = store.componentAttrs;
+  $: inspections    = store.inspections;
+
+  // Derived: for the inspecting component, get its type config and checkable attrs
+  $: inspectingType = inspectingComponent
+    ? (types.find(t => t.code === inspectingComponent.type_code) ?? null)
+    : null;
+  $: inspectingCheckable = inspectingType
+    ? (attrDefs[inspectingType.id] ?? []).filter(d => d.checkable && d.visible)
+    : [];
+  $: inspectingLastInspection = inspectingComponent
+    ? (inspections[inspectingComponent.id] ?? null)
+    : null;
 
   onMount(async () => {
     await v2protoStore.load();
@@ -61,6 +75,15 @@
     } catch (err) {
       errorMsg = err.message;
     }
+  }
+
+  function handleInspect(e) {
+    inspectingComponent = e.detail.component;
+    errorMsg = '';
+  }
+
+  async function handleInspectionSaved() {
+    inspectingComponent = null;
   }
 
   const TABS = [
@@ -143,7 +166,20 @@
   <!-- ── Tab: Components ──────────────────────────────────────────── -->
   {:else if activeTab === 'components'}
 
-    {#if showForm}
+    {#if inspectingComponent}
+      <!-- Inspection panel -->
+      <div class="max-w-xl">
+        <InspectionPanel
+          component={inspectingComponent}
+          typeConfig={inspectingType}
+          checkableAttrs={inspectingCheckable}
+          lastInspection={inspectingLastInspection}
+          on:saved={handleInspectionSaved}
+          on:close={() => inspectingComponent = null}
+        />
+      </div>
+
+    {:else if showForm}
       <!-- Component creation form -->
       <div class="max-w-2xl bg-slate-800 rounded-xl border border-slate-700 p-6">
         <ComponentForm
@@ -152,6 +188,7 @@
           {attrDefs}
           {attrOptions}
           {plans}
+          {components}
           {saving}
           on:submit={handleSubmit}
           on:cancel={() => { showForm = false; errorMsg = ''; }}
@@ -208,6 +245,8 @@
               {types}
               {attrDefs}
               attrs={componentAttrs[c.id] ?? []}
+              inspection={inspections[c.id] ?? null}
+              on:inspect={handleInspect}
               on:delete={handleDelete}
             />
           {/each}

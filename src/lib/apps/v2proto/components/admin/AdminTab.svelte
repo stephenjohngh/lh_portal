@@ -17,22 +17,30 @@
   let selectedAttrDefId = null;
 
   // ── Derived from store ─────────────────────────────────────────────
-  $: store       = $v2protoStore;
-  $: systems     = store.systems;
-  $: types       = store.types;
-  $: attrDefs    = store.attrDefs;    // { [typeId]: type_attributes[] }
-  $: attrOptions = store.attrOptions; // { [attrDefId]: type_attribute_options[] }
-  $: regime      = store.regime;      // { [typeId]: maintenance_regime[] }
+  $: store            = $v2protoStore;
+  $: systems          = store.systems;
+  $: types            = store.types;
+  $: attrDefs         = store.attrDefs;          // { [typeId]: effective attrs with _scope }
+  $: systemAttrDefs   = store.systemAttrDefs;    // { [systemId]: system-level attrs only }
+  $: attrOptions      = store.attrOptions;       // { [attrDefId]: type_attribute_options[] }
+  $: regime           = store.regime;            // { [typeId]: maintenance_regime[] }
 
   $: typesForSystem = selectedSystemId
     ? types.filter(t => t.building_system_id === selectedSystemId)
     : [];
 
-  $: attrDefsForType = selectedTypeId
+  // When a type is selected: show its effective attrs (inherited + own).
+  // When only a system is selected: show system-level attrs for direct management.
+  $: attrDefsForPanel = selectedTypeId
     ? (attrDefs[selectedTypeId] ?? [])
-    : [];
+    : selectedSystemId
+      ? (systemAttrDefs[selectedSystemId] ?? []).map(a => ({ ...a, _scope: 'system' }))
+      : [];
 
-  $: selectedAttrDef = attrDefsForType.find(d => d.id === selectedAttrDefId) ?? null;
+  // Panel mode tells AttrDefPanel whether it's managing system or type attrs
+  $: attrPanelMode = selectedTypeId ? 'type' : selectedSystemId ? 'system' : null;
+
+  $: selectedAttrDef = attrDefsForPanel.find(d => d.id === selectedAttrDefId) ?? null;
 
   $: optionsForAttrDef = selectedAttrDefId
     ? (attrOptions[selectedAttrDefId] ?? [])
@@ -42,7 +50,7 @@
     (selectedAttrDef.display_type === 'dropdown' || selectedAttrDef.display_type === 'radio');
 
   $: regimeForType   = selectedTypeId ? (regime[selectedTypeId] ?? []) : [];
-  $: primaryAttrDef  = attrDefsForType.find(d => d.is_primary) ?? null;
+  $: primaryAttrDef  = attrDefsForPanel.find(d => d.is_primary) ?? null;
   $: primaryOptions  = primaryAttrDef ? (attrOptions[primaryAttrDef.id] ?? []) : [];
 
   // ── Selection handlers ─────────────────────────────────────────────
@@ -92,8 +100,10 @@
     />
 
     <AttrDefPanel
-      attrDefs={attrDefsForType}
+      attrDefs={attrDefsForPanel}
+      mode={attrPanelMode}
       {selectedTypeId}
+      {selectedSystemId}
       {selectedAttrDefId}
       on:select={e => selectAttrDef(e.detail)}
       on:saved={onSaved}

@@ -86,10 +86,11 @@
       'users': UserListApp,
       'issues': IssuesTrackerApp,
       'plans': PlansApp,
-      'walk':  WalkApp, 
+      'walk':  WalkApp,
       'demo': DemoApp,
       'demo2': Demo,
-      'settings': SettingsApp
+      'settings': SettingsApp,
+      'v2proto': V2ProtoApp
     };
     return components[appId];
   }

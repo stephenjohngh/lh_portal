@@ -3,15 +3,17 @@
 <script>
   import { createEventDispatcher } from 'svelte';
 
-  export let component;      // components row
-  export let types    = [];  // component_types[] — for lookup
-  export let attrDefs = {};  // { typeId: type_attributes[] }
-  export let attrs    = [];  // component_attributes[] for this component
+  export let component;         // components row
+  export let types    = [];     // component_types[] — for lookup
+  export let attrDefs = {};     // { typeId: type_attributes[] }
+  export let attrs    = [];     // component_attributes[] for this component
+  export let inspection = null; // latest component_inspections row or null
 
   const dispatch = createEventDispatcher();
 
-  $: type   = types.find(t => t.code === component.type_code) ?? null;
-  $: defs   = type ? (attrDefs[type.id] ?? []) : [];
+  $: type           = types.find(t => t.code === component.type_code) ?? null;
+  $: defs           = type ? (attrDefs[type.id] ?? []) : [];
+  $: checkableCount = defs.filter(d => d.checkable).length;
 
   // Build display list of attribute values with their definition names
   $: attrDisplay = attrs
@@ -20,6 +22,10 @@
       return def ? { name: def.name, value: a.value, isPrimary: def.is_primary } : null;
     })
     .filter(Boolean);
+
+  $: checkedCount = inspection?.checklist_results
+    ? Object.values(inspection.checklist_results).filter(Boolean).length
+    : null;
 
   const PRIORITY_COLOURS = {
     critical: 'text-red-400',
@@ -92,18 +98,47 @@
       </div>
     {/if}
 
+    <!-- Last inspection & checklist summary -->
+    {#if inspection}
+      <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+        <span class="text-xs text-slate-500">
+          Inspected {new Date(inspection.inspected_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
+        </span>
+        {#if checkableCount > 0 && checkedCount !== null}
+          <span class="text-xs {checkedCount === checkableCount ? 'text-green-400' : 'text-yellow-400'}">
+            ✓ {checkedCount}/{checkableCount} checks
+          </span>
+        {/if}
+      </div>
+    {/if}
+
+    <!-- Linked component ref -->
+    {#if component.linked_component_ref}
+      <p class="text-xs text-purple-400/80 mt-1.5 font-mono truncate"
+         title="Linked component: {component.linked_component_ref}">
+        🔗 {component.linked_component_ref}
+      </p>
+    {/if}
+
     <!-- Position -->
     <p class="text-xs text-slate-600 mt-1 font-mono">
       x={component.x_position.toFixed(2)} y={component.y_position.toFixed(2)}
     </p>
   </div>
 
-  <!-- Delete button -->
-  <button
-    on:click={() => dispatch('delete', { id: component.id })}
-    class="text-slate-600 hover:text-red-400 transition-colors shrink-0 mt-0.5"
-    title="Delete component"
-  >
-    ✕
-  </button>
+  <!-- Actions -->
+  <div class="flex flex-col gap-1.5 shrink-0">
+    <button
+      on:click={() => dispatch('inspect', { component })}
+      class="text-xs px-2 py-1 rounded bg-slate-600 hover:bg-purple-600 text-slate-300
+             hover:text-white transition-colors"
+      title="Record inspection"
+    >Inspect</button>
+    <button
+      on:click={() => dispatch('delete', { id: component.id })}
+      class="text-slate-600 hover:text-red-400 transition-colors text-sm"
+      title="Delete component"
+    >✕</button>
+  </div>
+
 </div>

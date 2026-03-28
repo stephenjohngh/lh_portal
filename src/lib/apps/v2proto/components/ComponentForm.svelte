@@ -3,24 +3,30 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import AttrField from './AttrField.svelte';
+  import { buildRef } from '../stores/v2protoStore.js';
 
-  export let types      = [];    // component_types[]
-  export let systems    = [];    // building_systems[]
-  export let attrDefs   = {};    // { typeId: type_attributes[] }
-  export let attrOptions = {};   // { attrDefId: type_attribute_options[] }
-  export let plans      = [];    // plans[]
-  export let saving     = false;
+  export let types       = [];    // component_types[]
+  export let systems     = [];    // building_systems[]
+  export let attrDefs    = {};    // { typeId: type_attributes[] }
+  export let attrOptions = {};    // { attrDefId: type_attribute_options[] }
+  export let plans       = [];    // plans[]
+  export let components  = [];    // all components[] — for linked_component_ref datalist
+  export let saving      = false;
 
   const dispatch = createEventDispatcher();
 
   // Form state
-  let planId           = plans[0]?.id ?? '';
-  let selectedTypeId   = '';
-  let label            = '';
-  let assetId          = '';
-  let xPosition        = 0.5;
-  let yPosition        = 0.5;
-  let attrValues       = {}; // { attrDefId: string }
+  let planId              = plans[0]?.id ?? '';
+  let selectedTypeId      = '';
+  let label               = '';
+  let assetId             = '';
+  let xPosition           = 0.5;
+  let yPosition           = 0.5;
+  let linkedComponentRef  = '';  // free-text ref e.g. "Ground Floor / Fire Door / FD-042"
+  let attrValues          = {}; // { attrDefId: string }
+
+  // Build datalist options from all components — one canonical ref string per component
+  $: refOptions = components.map(c => buildRef(c, plans, types)).filter(Boolean);
 
   $: selectedType = types.find(t => t.id === selectedTypeId) ?? null;
   $: defs         = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
@@ -47,13 +53,14 @@
     if (!planId || !selectedTypeId) return;
 
     const fields = {
-      plan_id:          planId,
-      type_code:        selectedType.code,
-      primary_attribute: primaryAttribute || null,
-      label:            label || null,
-      asset_id:         assetId || null,
-      x_position:       parseFloat(xPosition) || 0.5,
-      y_position:       parseFloat(yPosition) || 0.5
+      plan_id:               planId,
+      type_code:             selectedType.code,
+      primary_attribute:     primaryAttribute || null,
+      label:                 label || null,
+      asset_id:              assetId || null,
+      x_position:            parseFloat(xPosition) || 0.5,
+      y_position:            parseFloat(yPosition) || 0.5,
+      linked_component_ref:  linkedComponentRef.trim() || null
     };
 
     const attrValueRows = Object.entries(attrValues)
@@ -134,6 +141,33 @@
                focus:outline-none focus:border-purple-500"
       />
     </div>
+  </div>
+
+  <!-- Linked component reference -->
+  <div class="flex flex-col gap-1">
+    <p class="text-xs text-slate-400">
+      Linked Component
+      <span class="text-slate-600 ml-1 font-normal">— cross-reference to a related component</span>
+    </p>
+    <input
+      type="text"
+      bind:value={linkedComponentRef}
+      list="component-refs"
+      placeholder="e.g. Ground Floor / Fire Door / FD-042"
+      class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
+             focus:outline-none focus:border-purple-500 placeholder-slate-600 font-mono"
+    />
+    <datalist id="component-refs">
+      {#each refOptions as ref}
+        <option value={ref} />
+      {/each}
+    </datalist>
+    {#if linkedComponentRef.trim()}
+      <p class="text-xs text-slate-500">
+        This component will reference
+        <span class="text-purple-400 font-mono">"{linkedComponentRef.trim()}"</span>
+      </p>
+    {/if}
   </div>
 
   <!-- Position (simple numbers for the proto) -->

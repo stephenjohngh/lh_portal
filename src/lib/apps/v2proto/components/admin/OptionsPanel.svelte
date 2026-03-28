@@ -13,10 +13,24 @@
 
   const PRIORITY_OVERRIDES = ['', 'critical', 'high', 'medium', 'low'];
 
-  let editingId = null;
-  let form      = {};
-  let saving    = false;
-  let error     = '';
+  let editingId  = null;
+  let form       = {};
+  let saving     = false;
+  let deletingId = null;
+  let error      = '';
+
+  async function deleteRow(id) {
+    if (!confirm('Delete this option?')) return;
+    deletingId = id;
+    try {
+      await v2protoStore.deleteOption(id);
+      dispatch('saved');
+    } catch (err) {
+      error = err.message;
+    } finally {
+      deletingId = null;
+    }
+  }
 
   $: isActive = attrDef &&
     (attrDef.display_type === 'dropdown' || attrDef.display_type === 'radio');
@@ -180,11 +194,20 @@
             {#if !opt.visible}
               <span class="text-xs text-slate-600 italic">hidden</span>
             {/if}
-            <button
-              class="text-xs px-1.5 py-0.5 rounded text-slate-500 hover:text-white hover:bg-slate-600
-                     transition-colors opacity-0 group-hover:opacity-100 shrink-0"
-              on:click={() => startEdit(opt)}
-            >Edit</button>
+            <div class="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0">
+              <button
+                class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                       hover:text-white hover:bg-slate-600 transition-colors"
+                on:click={() => startEdit(opt)}
+              >Edit</button>
+              <button
+                class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                       hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                disabled={deletingId === opt.id}
+                on:click|stopPropagation={() => deleteRow(opt.id)}
+                title="Delete option"
+              >{deletingId === opt.id ? '…' : '✕'}</button>
+            </div>
           </div>
         {/if}
 

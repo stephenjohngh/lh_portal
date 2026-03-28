@@ -4,20 +4,39 @@
   import { createEventDispatcher } from 'svelte';
   import { v2protoStore } from '../../stores/v2protoStore.js';
 
-  export let attrDefs          = [];   // type_attributes[] for selected type
+  export let attrDefs          = [];   // effective type_attributes[], each with _scope: 'system'|'type'
+  export let mode              = null; // 'type' | 'system' | null
   export let selectedTypeId    = null;
+  export let selectedSystemId  = null;
   export let selectedAttrDefId = null;
 
   const dispatch = createEventDispatcher();
 
   const DISPLAY_TYPES = ['text', 'number', 'checkbox', 'dropdown', 'radio', 'textarea'];
 
-  let editingId = null;
-  let form      = {};
-  let saving    = false;
-  let error     = '';
+  let editingId  = null;
+  let form       = {};
+  let saving     = false;
+  let deletingId = null;
+  let error      = '';
+
+  async function deleteRow(id) {
+    if (!confirm('Delete this attribute definition? This will also delete its options and any component values using it.')) return;
+    deletingId = id;
+    try {
+      await v2protoStore.deleteAttrDef(id);
+      dispatch('saved');
+    } catch (err) {
+      error = err.message;
+    } finally {
+      deletingId = null;
+    }
+  }
 
   $: existingPrimary = attrDefs.find(d => d.is_primary && d.id !== editingId);
+
+  // In type mode an inherited (system-level) attr is read-only in this context
+  function isInherited(def) { return def._scope === 'system' && mode === 'type'; }
 
   function startEdit(def) {
     editingId = def.id;
@@ -27,6 +46,7 @@
       required:           def.required,
       default_value:      def.default_value ?? '',
       is_primary:         def.is_primary,
+      checkable:          def.checkable ?? false,
       presentation_order: def.presentation_order,
       visible:            def.visible
     };
@@ -41,11 +61,15 @@
       required:           false,
       default_value:      '',
       is_primary:         false,
+      checkable:          false,
       presentation_order: (attrDefs.length + 1) * 10,
       visible:            true
     };
     error = '';
   }
+
+  // Label for the Add button changes based on mode
+  $: addLabel = mode === 'system' ? '+ Add System Attribute' : '+ Add Type Attribute';
 
   function cancel() {
     editingId = null;
@@ -64,10 +88,10 @@
       }
 
       if (editingId === 'new') {
-        const row = await v2protoStore.createAttrDef({
-          ...form,
-          component_type_id: selectedTypeId
-        });
+        const scopeKey = mode === 'system'
+          ? { building_system_id: selectedSystemId }
+          : { component_type_id:  selectedTypeId };
+        const row = await v2protoStore.createAttrDef({ ...form, ...scopeKey });
         dispatch('saved');
         editingId = null;
         dispatch('select', row.id);
@@ -102,16 +126,23 @@
   <!-- Header -->
   <div class="px-3 py-2.5 border-b border-slate-700 bg-slate-800/60">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-      Attribute Defs
+      {mode === 'system' ? 'System Attributes' : 'Attribute Defs'}
       <span class="font-normal normal-case text-slate-600">({attrDefs.length})</span>
     </p>
+    {#if mode === 'system'}
+      <p class="text-xs text-blue-400/70 mt-0.5">Inherited by all types in this system</p>
+    {:else if mode === 'type'}
+      <p class="text-xs text-slate-600 mt-0.5">
+        <span class="text-blue-400/70">↑ inherited</span> · own
+      </p>
+    {/if}
   </div>
 
   <!-- List -->
   <div class="flex-1 overflow-y-auto">
 
-    {#if !selectedTypeId}
-      <p class="px-3 py-4 text-xs text-slate-600 italic">Select a type</p>
+    {#if !mode}
+      <p class="px-3 py-4 text-xs text-slate-600 italic">Select a system or type</p>
 
     {:else}
       {#each attrDefs as def (def.id)}
@@ -146,6 +177,10 @@
                     <span class="text-orange-400">(will unset "{existingPrimary.name}")</span>
                   {/if}
                 </label>
+                <label class="flex items-center gap-2 text-xs text-green-300 cursor-pointer select-none">
+                  <input type="checkbox" bind:checked={form.checkable} class="rounded accent-green-500" />
+                  ✓ Shows in walk checklist
+                </label>
                 <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                   <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />
                   Visible
@@ -170,6 +205,7 @@
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
           <div
             class="w-full text-left px-3 py-2.5 border-b border-slate-700/50 transition-colors group cursor-pointer
+                   {isInherited(def) ? 'bg-blue-900/10' : ''}
                    {selectedAttrDefId === def.id
                      ? 'bg-purple-600/15 border-l-2 border-l-purple-500'
                      : 'hover:bg-slate-700/40'}"
@@ -178,8 +214,12 @@
             <div class="flex items-start justify-between gap-1 min-w-0">
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-1.5 flex-wrap">
+                  {#if isInherited(def)}
+                    <span class="text-xs px-1 py-px rounded bg-blue-800/40 text-blue-400/80 font-mono"
+                          title="Inherited from system — edit at system level">↑</span>
+                  {/if}
                   <p class="text-sm font-medium leading-tight
-                             {def.visible ? 'text-white' : 'text-slate-500 line-through'}">
+                             {def.visible ? (isInherited(def) ? 'text-slate-400' : 'text-white') : 'text-slate-500 line-through'}">
                     {def.name}
                   </p>
                   {#if def.is_primary}
@@ -187,6 +227,9 @@
                   {/if}
                   {#if def.required}
                     <span class="text-red-400 text-xs">*</span>
+                  {/if}
+                  {#if def.checkable}
+                    <span class="text-green-400 text-xs" title="Shows in walk inspection checklist">✓list</span>
                   {/if}
                 </div>
                 <div class="flex items-center gap-1.5 mt-0.5">
@@ -198,12 +241,25 @@
                   {/if}
                 </div>
               </div>
-              <button
-                class="shrink-0 text-xs px-1.5 py-0.5 rounded text-slate-500
-                       hover:text-white hover:bg-slate-600 transition-colors opacity-0
-                       group-hover:opacity-100 mt-0.5"
-                on:click|stopPropagation={() => startEdit(def)}
-              >Edit</button>
+              {#if !isInherited(def)}
+                <div class="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5">
+                  <button
+                    class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                           hover:text-white hover:bg-slate-600 transition-colors"
+                    on:click|stopPropagation={() => startEdit(def)}
+                  >Edit</button>
+                  <button
+                    class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                           hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    disabled={deletingId === def.id}
+                    on:click|stopPropagation={() => deleteRow(def.id)}
+                    title="Delete attribute"
+                  >{deletingId === def.id ? '…' : '✕'}</button>
+                </div>
+              {:else}
+                <span class="shrink-0 text-xs text-blue-400/50 opacity-0 group-hover:opacity-100 mt-0.5"
+                      title="Select the system to edit inherited attributes">↑ sys</span>
+              {/if}
             </div>
           </div>
         {/if}
@@ -211,7 +267,9 @@
       {/each}
 
       {#if attrDefs.length === 0 && editingId !== 'new'}
-        <p class="px-3 py-4 text-xs text-slate-600 italic">No attribute definitions</p>
+        <p class="px-3 py-4 text-xs text-slate-600 italic">
+          {mode === 'system' ? 'No system attributes' : 'No attribute definitions'}
+        </p>
       {/if}
 
       <!-- ── New attr def form ──────────────────────────────────── -->
@@ -244,6 +302,10 @@
                   <span class="text-orange-400">(will unset "{existingPrimary.name}")</span>
                 {/if}
               </label>
+              <label class="flex items-center gap-2 text-xs text-green-300 cursor-pointer select-none">
+                <input type="checkbox" bind:checked={form.checkable} class="rounded accent-green-500" />
+                ✓ Shows in walk checklist
+              </label>
               <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                 <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />
                 Visible
@@ -268,13 +330,16 @@
   </div>
 
   <!-- Footer: Add button -->
-  {#if selectedTypeId && editingId !== 'new'}
+  {#if mode && editingId !== 'new'}
     <div class="px-3 py-2.5 border-t border-slate-700">
       <button
         on:click={startNew}
-        class="w-full py-1.5 text-xs rounded border border-dashed border-slate-600
-               text-slate-400 hover:text-white hover:border-purple-500 transition-colors"
-      >+ Add Attribute</button>
+        class="w-full py-1.5 text-xs rounded border border-dashed
+               {mode === 'system'
+                 ? 'border-blue-700 text-blue-400/70 hover:text-blue-300 hover:border-blue-500'
+                 : 'border-slate-600 text-slate-400 hover:text-white hover:border-purple-500'}
+               transition-colors"
+      >{addLabel}</button>
     </div>
   {/if}
 

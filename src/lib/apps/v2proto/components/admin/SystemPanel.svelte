@@ -9,10 +9,24 @@
 
   const dispatch = createEventDispatcher();
 
-  let editingId = null;   // uuid | 'new' | null
-  let form      = {};
-  let saving    = false;
-  let error     = '';
+  let editingId  = null;   // uuid | 'new' | null
+  let form       = {};
+  let saving     = false;
+  let deletingId = null;
+  let error      = '';
+
+  async function deleteRow(id) {
+    if (!confirm('Delete this system? This will also delete all its types and attributes.')) return;
+    deletingId = id;
+    try {
+      await v2protoStore.deleteSystem(id);
+      dispatch('saved');
+    } catch (err) {
+      error = err.message;
+    } finally {
+      deletingId = null;
+    }
+  }
 
   // Type counts per system (derived from live store)
   $: typeCounts = $v2protoStore.types.reduce((acc, t) => {
@@ -152,12 +166,20 @@
                 {typeCounts[sys.id] ?? 0} type{(typeCounts[sys.id] ?? 0) === 1 ? '' : 's'}
               </p>
             </div>
-            <button
-              class="shrink-0 text-xs px-1.5 py-0.5 rounded text-slate-500
-                     hover:text-white hover:bg-slate-600 transition-colors opacity-0
-                     group-hover:opacity-100 mt-0.5"
-              on:click|stopPropagation={() => startEdit(sys)}
-            >Edit</button>
+            <div class="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5">
+              <button
+                class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                       hover:text-white hover:bg-slate-600 transition-colors"
+                on:click|stopPropagation={() => startEdit(sys)}
+              >Edit</button>
+              <button
+                class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                       hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                disabled={deletingId === sys.id}
+                on:click|stopPropagation={() => deleteRow(sys.id)}
+                title="Delete system"
+              >{deletingId === sys.id ? '…' : '✕'}</button>
+            </div>
           </div>
         </div>
       {/if}
