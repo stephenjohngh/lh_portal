@@ -287,6 +287,26 @@ function createV2ProtoStore() {
       logger('Updated component attrs:', componentId, rows.length, 'values');
     },
 
+    // ── Move a component (plan placement / drag-to-reposition) ────────
+    // Lightweight position update — skips identity change / stale-ref logic
+    // because x_position, y_position and plan_id don't affect buildRef.
+    async moveComponent(id, planId, x, y) {
+      const userId = get(auth).user?.id;
+      await api.update('components', id, {
+        plan_id:    planId,
+        x_position: x,
+        y_position: y,
+        updated_by: userId
+      });
+      update(s => ({
+        ...s,
+        components: s.components.map(c =>
+          c.id === id ? { ...c, plan_id: planId, x_position: x, y_position: y } : c
+        )
+      }));
+      logger('Moved component:', id, `→ plan:${planId} (${x.toFixed(3)}, ${y.toFixed(3)})`);
+    },
+
     // ── Delete a component (cascades component_attributes) ─────────────
     async deleteComponent(id) {
       await api.delete('components', id);

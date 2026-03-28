@@ -10,6 +10,7 @@
   import ComponentCard         from './components/ComponentCard.svelte';
   import ComponentDetailPanel  from './components/ComponentDetailPanel.svelte';
   import InspectionPanel       from './components/InspectionPanel.svelte';
+  import PlanViewTab           from './components/PlanViewTab.svelte';
   import MaintenanceView       from './components/MaintenanceView.svelte';
   import AdminTab              from './components/admin/AdminTab.svelte';
 
@@ -120,6 +121,7 @@
   const TABS = [
     { id: 'types',       label: 'Type Browser',  icon: '🗂' },
     { id: 'components',  label: 'Components',     icon: '🧩' },
+    { id: 'plans',       label: 'Plan View',      icon: '🗺' },
     { id: 'maintenance', label: 'Maintenance',    icon: '🔧' },
     { id: 'admin',       label: 'Admin',          icon: '⚙' }
   ];
@@ -311,6 +313,10 @@
         </div>
       {/if}
     {/if}
+
+  <!-- ── Tab: Plan View ───────────────────────────────────────────── -->
+  {:else if activeTab === 'plans'}
+    <PlanViewTab />
 
   <!-- ── Tab: Maintenance ──────────────────────────────────────────── -->
   {:else if activeTab === 'maintenance'}
