@@ -12,14 +12,16 @@
   import MaintenanceView  from './components/MaintenanceView.svelte';
   import AdminTab         from './components/admin/AdminTab.svelte';
 
-  let activeTab          = 'types';
-  let showForm           = false;
-  let saving             = false;
-  let filterPlanId       = '';
-  let errorMsg           = '';
+  let activeTab           = 'types';
+  let showForm            = false;
+  let saving              = false;
+  let filterFloorId       = '';
+  let errorMsg            = '';
   let inspectingComponent = null;   // components row being inspected, or null
 
   $: store          = $v2protoStore;
+  $: facilities     = store.facilities;
+  $: floors         = store.floors;
   $: systems        = store.systems;
   $: types          = store.types;
   $: attrDefs       = store.attrDefs;
@@ -47,10 +49,10 @@
     await v2protoStore.loadComponents();
   });
 
-  // Reload components when plan filter changes
-  async function onPlanFilterChange() {
-    await v2protoStore.loadComponents(filterPlanId || null);
-  }
+  // Filter components client-side by floor (all components are already loaded)
+  $: filteredComponents = filterFloorId
+    ? components.filter(c => c.floor_id === filterFloorId)
+    : components;
 
   async function handleSubmit(e) {
     const { fields, attrValues } = e.detail;
@@ -59,8 +61,7 @@
     try {
       await v2protoStore.createComponent(fields, attrValues);
       showForm = false;
-      // Refresh component list
-      await v2protoStore.loadComponents(filterPlanId || null);
+      await v2protoStore.loadComponents();
     } catch (err) {
       errorMsg = err.message;
     } finally {
@@ -188,6 +189,8 @@
           {attrDefs}
           {attrOptions}
           {plans}
+          {floors}
+          {facilities}
           {components}
           {saving}
           on:submit={handleSubmit}
@@ -199,23 +202,22 @@
       <!-- Toolbar -->
       <div class="flex items-center gap-4 mb-4">
         <div class="flex items-center gap-2">
-          <span class="text-sm text-slate-400">Plan:</span>
+          <span class="text-sm text-slate-400">Floor:</span>
           <select
-            bind:value={filterPlanId}
-            on:change={onPlanFilterChange}
+            bind:value={filterFloorId}
             class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
                    focus:outline-none focus:border-purple-500"
           >
-            <option value="">All plans</option>
-            {#each plans as p}
-              <option value={p.id}>{p.building} — {p.name}</option>
+            <option value="">All floors</option>
+            {#each floors as f}
+              <option value={f.id}>{f.name} ({f.short_name})</option>
             {/each}
           </select>
         </div>
 
         <button
           on:click={() => { showForm = true; errorMsg = ''; }}
-          disabled={plans.length === 0 || types.length === 0}
+          disabled={floors.length === 0 || types.length === 0}
           class="ml-auto px-4 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
                  disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors
                  flex items-center gap-2"
@@ -227,22 +229,25 @@
       <!-- Component list -->
       {#if store.loadingComponents}
         <p class="text-slate-500 text-sm">Loading components…</p>
-      {:else if components.length === 0}
+      {:else if filteredComponents.length === 0}
         <div class="text-center py-16 text-slate-500">
           <p class="text-4xl mb-3">🧩</p>
-          <p class="text-lg mb-1">No components yet</p>
+          <p class="text-lg mb-1">
+            {filterFloorId ? 'No components on this floor' : 'No components yet'}
+          </p>
           <p class="text-sm">
-            {plans.length === 0
-              ? 'Create a floor plan in the Plans app first, then come back here.'
+            {floors.length === 0
+              ? 'Run migrations 014–016 to set up the location hierarchy.'
               : 'Click "New Component" to create one using the new data model.'}
           </p>
         </div>
       {:else}
         <div class="flex flex-col gap-3">
-          {#each components as c (c.id)}
+          {#each filteredComponents as c (c.id)}
             <ComponentCard
               component={c}
               {types}
+              {floors}
               {attrDefs}
               attrs={componentAttrs[c.id] ?? []}
               inspection={inspections[c.id] ?? null}

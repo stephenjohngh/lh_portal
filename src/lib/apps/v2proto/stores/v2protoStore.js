@@ -8,16 +8,19 @@ const logger = getLogger('v2proto');
 
 // ── Component reference helper ─────────────────────────────────────────────
 // Builds the canonical human-readable reference string for a component.
-// Format: "{plan name} / {type name} / {asset_id or label}"
+// Format: "{facility short_name} / {floor short_name} / {type name} / {asset_id or label}"
+// e.g.   "BH / G / Fire Door / FD-042"
 // Used for linked_component_ref values and for the datalist in the form.
-export function buildRef(component, plans, types) {
+export function buildRef(component, floors, facilities, types) {
   if (!component) return '';
-  const plan     = plans.find(p => p.id === component.plan_id);
+  const floor    = floors.find(f => f.id === component.floor_id);
+  const facility = floor ? facilities.find(f => f.id === floor.facility_id) : null;
   const type     = types.find(t => t.code === component.type_code);
-  const planName = plan?.name ?? plan?.building ?? '?';
+  const facName  = facility?.short_name ?? '?';
+  const flrName  = floor?.short_name    ?? '?';
   const typeName = type?.name ?? component.type_code ?? '?';
   const id       = component.asset_id || component.label || component.id?.slice(0, 8) || '?';
-  return `${planName} / ${typeName} / ${id}`;
+  return `${facName} / ${flrName} / ${typeName} / ${id}`;
 }
 
 // ── Inheritance resolution ─────────────────────────────────────────────────
@@ -72,6 +75,9 @@ function resolveHierarchy(systems, types, defs, options, regime) {
 
 function createV2ProtoStore() {
   const { subscribe, update } = writable({
+    // Location hierarchy
+    facilities:       [],   // facilities[]  — usually one row (the default building)
+    floors:           [],   // floors[] ordered by level_order
     // Type hierarchy
     systems:          [],   // building_systems[]
     types:            [],   // component_types[]
@@ -84,7 +90,7 @@ function createV2ProtoStore() {
     componentAttrs:   {},   // { [componentId]: component_attributes[] }
     inspections:      {},   // { [componentId]: latest component_inspections row }
     // Supporting data
-    plans:            [],   // existing plans[] (for plan picker)
+    plans:            [],   // existing plans[] (for plan picker, filtered by floor)
     // UI state
     loading:          false,
     loadingComponents: false,
@@ -98,7 +104,9 @@ function createV2ProtoStore() {
     async load() {
       update(s => ({ ...s, loading: true, error: null }));
       try {
-        const [systems, types, defs, options, regime, plans] = await Promise.all([
+        const [facilities, floors, systems, types, defs, options, regime, plans] = await Promise.all([
+          api.get('facilities'),
+          api.get('floors', { orderBy: 'level_order', ascending: true }),
           api.get('building_systems',       { orderBy: 'presentation_order' }),
           api.get('component_types',        { orderBy: 'presentation_order' }),
           api.get('type_attributes',        { orderBy: 'presentation_order' }),
@@ -112,12 +120,13 @@ function createV2ProtoStore() {
 
         update(s => ({
           ...s,
+          facilities, floors,
           systems, types, attrDefs, systemAttrDefs, attrOptions,
           regime: regimeMap,
           plans,
           loading: false
         }));
-        logger('Loaded type hierarchy and plans');
+        logger('Loaded location hierarchy, type hierarchy and plans');
       } catch (err) {
         logger('Load error:', err.message);
         update(s => ({ ...s, loading: false, error: err.message }));
@@ -201,12 +210,13 @@ function createV2ProtoStore() {
         const existing = s.components.find(c => c.id === id);
         if (existing) {
           const identityChanged =
-            fields.label    !== existing.label    ||
-            fields.asset_id !== existing.asset_id ||
-            fields.type_code !== existing.type_code ||
+            fields.floor_id  !== existing.floor_id  ||
+            fields.label     !== existing.label      ||
+            fields.asset_id  !== existing.asset_id   ||
+            fields.type_code !== existing.type_code  ||
             fields.plan_id   !== existing.plan_id;
           if (identityChanged) {
-            oldRef = buildRef(existing, s.plans, s.types);
+            oldRef = buildRef(existing, s.floors, s.facilities, s.types);
           }
         }
         return s;

@@ -5,6 +5,7 @@
 
   export let component;         // components row
   export let types    = [];     // component_types[] — for lookup
+  export let floors   = [];     // floors[] — for location display
   export let attrDefs = {};     // { typeId: type_attributes[] }
   export let attrs    = [];     // component_attributes[] for this component
   export let inspection = null; // latest component_inspections row or null
@@ -12,6 +13,7 @@
   const dispatch = createEventDispatcher();
 
   $: type           = types.find(t => t.code === component.type_code) ?? null;
+  $: floor          = floors.find(f => f.id === component.floor_id) ?? null;
   $: defs           = type ? (attrDefs[type.id] ?? []) : [];
   $: checkableCount = defs.filter(d => d.checkable).length;
 
@@ -71,8 +73,14 @@
       </span>
     </div>
 
-    <!-- Type + primary attribute -->
+    <!-- Type + floor + primary attribute -->
     <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+      {#if floor}
+        <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-700 text-slate-400
+                     border border-slate-600" title={floor.name}>
+          {floor.short_name}
+        </span>
+      {/if}
       <span class="text-sm text-slate-400">{type?.name ?? component.type_code}</span>
       {#if component.primary_attribute}
         <span class="text-sm font-medium text-yellow-300">
