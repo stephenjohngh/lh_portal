@@ -5,18 +5,20 @@
   import { onMount } from 'svelte';
   import { v2protoStore } from './stores/v2protoStore.js';
 
-  import TypeBrowser      from './components/TypeBrowser.svelte';
-  import ComponentForm    from './components/ComponentForm.svelte';
-  import ComponentCard    from './components/ComponentCard.svelte';
-  import InspectionPanel  from './components/InspectionPanel.svelte';
-  import MaintenanceView  from './components/MaintenanceView.svelte';
-  import AdminTab         from './components/admin/AdminTab.svelte';
+  import TypeBrowser           from './components/TypeBrowser.svelte';
+  import ComponentForm         from './components/ComponentForm.svelte';
+  import ComponentCard         from './components/ComponentCard.svelte';
+  import ComponentDetailPanel  from './components/ComponentDetailPanel.svelte';
+  import InspectionPanel       from './components/InspectionPanel.svelte';
+  import MaintenanceView       from './components/MaintenanceView.svelte';
+  import AdminTab              from './components/admin/AdminTab.svelte';
 
   let activeTab           = 'types';
   let showForm            = false;
   let saving              = false;
   let filterFloorId       = '';
   let errorMsg            = '';
+  let editingComponent    = null;   // components row open in detail panel, or null
   let inspectingComponent = null;   // components row being inspected, or null
 
   $: store          = $v2protoStore;
@@ -78,9 +80,37 @@
     }
   }
 
+  function handleEdit(e) {
+    editingComponent    = e.detail.component;
+    inspectingComponent = null;
+    showForm            = false;
+    errorMsg            = '';
+  }
+
+  function handleDetailSaved() {
+    // Refresh local component in editingComponent from store so header reflects changes
+    editingComponent = $v2protoStore.components.find(c => c.id === editingComponent?.id) ?? null;
+    errorMsg = '';
+  }
+
+  function handleDetailClosed() {
+    editingComponent = null;
+  }
+
+  function handleDetailInspect(e) {
+    inspectingComponent = e.detail.component;
+    editingComponent    = null;
+    errorMsg            = '';
+  }
+
+  function handleDetailDeleted() {
+    editingComponent = null;
+  }
+
   function handleInspect(e) {
     inspectingComponent = e.detail.component;
-    errorMsg = '';
+    editingComponent    = null;
+    errorMsg            = '';
   }
 
   async function handleInspectionSaved() {
@@ -180,6 +210,28 @@
         />
       </div>
 
+    {:else if editingComponent}
+      <!-- Full detail / edit panel -->
+      <div class="max-w-2xl">
+        <ComponentDetailPanel
+          component={editingComponent}
+          {types}
+          {systems}
+          {floors}
+          {facilities}
+          {plans}
+          {attrDefs}
+          {attrOptions}
+          {components}
+          attrs={componentAttrs[editingComponent.id] ?? []}
+          inspection={inspections[editingComponent.id] ?? null}
+          on:saved={handleDetailSaved}
+          on:close={handleDetailClosed}
+          on:inspect={handleDetailInspect}
+          on:deleted={handleDetailDeleted}
+        />
+      </div>
+
     {:else if showForm}
       <!-- Component creation form -->
       <div class="max-w-2xl bg-slate-800 rounded-xl border border-slate-700 p-6">
@@ -251,6 +303,7 @@
               {attrDefs}
               attrs={componentAttrs[c.id] ?? []}
               inspection={inspections[c.id] ?? null}
+              on:edit={handleEdit}
               on:inspect={handleInspect}
               on:delete={handleDelete}
             />

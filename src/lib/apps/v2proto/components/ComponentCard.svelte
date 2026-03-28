@@ -44,7 +44,13 @@
   };
 </script>
 
-<div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600 flex gap-3">
+<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+<div
+  class="bg-slate-700/50 rounded-lg p-4 border border-slate-600 flex gap-3
+         hover:border-slate-500 hover:bg-slate-700/70 cursor-pointer transition-colors"
+  on:click={() => dispatch('edit', { component })}
+  title="Click to view / edit"
+>
 
   <!-- Type colour badge -->
   {#if type}
@@ -134,16 +140,16 @@
     </p>
   </div>
 
-  <!-- Actions -->
+  <!-- Actions — stop propagation so card click doesn't also fire these -->
   <div class="flex flex-col gap-1.5 shrink-0">
     <button
-      on:click={() => dispatch('inspect', { component })}
+      on:click|stopPropagation={() => dispatch('inspect', { component })}
       class="text-xs px-2 py-1 rounded bg-slate-600 hover:bg-purple-600 text-slate-300
              hover:text-white transition-colors"
       title="Record inspection"
     >Inspect</button>
     <button
-      on:click={() => dispatch('delete', { id: component.id })}
+      on:click|stopPropagation={() => dispatch('delete', { id: component.id })}
       class="text-slate-600 hover:text-red-400 transition-colors text-sm"
       title="Delete component"
     >✕</button>

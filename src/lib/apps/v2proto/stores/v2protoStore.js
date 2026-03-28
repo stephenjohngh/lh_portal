@@ -259,6 +259,34 @@ function createV2ProtoStore() {
       logger('Cleared stale refs to:', oldRef);
     },
 
+    // ── Update attribute values for a component ────────────────────────
+    // Replaces the full set: deletes all existing rows then inserts the new set.
+    // attrValues: { [type_attribute_id]: string }
+    async updateComponentAttrs(componentId, attrValues) {
+      // Delete all current attrs for this component
+      await api.deleteMany('component_attributes', { component_id: componentId });
+
+      // Insert non-empty attrs
+      const rows = Object.entries(attrValues)
+        .filter(([, v]) => v !== '' && v !== null && v !== undefined)
+        .map(([type_attribute_id, value]) => ({
+          component_id:      componentId,
+          type_attribute_id,
+          value:             String(value)
+        }));
+
+      if (rows.length > 0) {
+        await api.createMany('component_attributes', rows, false);
+      }
+
+      // Patch local state
+      update(s => ({
+        ...s,
+        componentAttrs: { ...s.componentAttrs, [componentId]: rows }
+      }));
+      logger('Updated component attrs:', componentId, rows.length, 'values');
+    },
+
     // ── Delete a component (cascades component_attributes) ─────────────
     async deleteComponent(id) {
       await api.delete('components', id);
