@@ -2,6 +2,7 @@
 <!-- Displays one component with its resolved type and attribute values -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { typeByCode, defsForType, floorById } from '../lookups.js';
 
   export let component;         // components row
   export let types    = [];     // component_types[] — for lookup
@@ -12,9 +13,9 @@
 
   const dispatch = createEventDispatcher();
 
-  $: type           = types.find(t => t.code === component.type_code) ?? null;
-  $: floor          = floors.find(f => f.id === component.floor_id) ?? null;
-  $: defs           = type ? (attrDefs[type.id] ?? []) : [];
+  $: type           = typeByCode(types, component.type_code);
+  $: floor          = floorById(floors, component.floor_id);
+  $: defs           = defsForType(attrDefs, types, component.type_code);
   $: checkableCount = defs.filter(d => d.checkable).length;
 
   // Build display list of attribute values with their definition names

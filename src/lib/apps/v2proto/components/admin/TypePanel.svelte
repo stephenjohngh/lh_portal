@@ -3,6 +3,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { v2protoStore } from '../../stores/v2protoStore.js';
+  import { inp } from '../../ui.js';
 
   export let types           = [];
   export let selectedSystemId = null;
@@ -11,6 +12,7 @@
   const dispatch = createEventDispatcher();
 
   const MARKER_SHAPES  = ['circle', 'square', 'square_inner', 'diamond'];
+  const MARKER_SIZES   = ['sm', 'md', 'lg', 'xl'];
   const PRIORITY_BASES = ['critical', 'high', 'medium', 'low'];
 
   let editingId  = null;
@@ -47,6 +49,7 @@
       initial:            t.initial,
       colour:             '#' + t.colour,
       marker_shape:       t.marker_shape,
+      marker_size:        t.marker_size ?? 'md',
       attribute_group:    t.attribute_group ?? '',
       inspection_panel:   t.inspection_panel,
       default_attribute:  t.default_attribute ?? '',
@@ -67,6 +70,7 @@
       initial:            '',
       colour:             '#888888',
       marker_shape:       'circle',
+      marker_size:        'md',
       attribute_group:    '',
       inspection_panel:   'standard',
       default_attribute:  '',
@@ -112,8 +116,6 @@
     }
   }
 
-  const inp  = 'w-full px-2 py-1.5 text-xs rounded bg-slate-900 border border-slate-600 ' +
-               'focus:outline-none focus:border-purple-500 text-white placeholder-slate-500';
   const sel  = inp + ' cursor-pointer';
 
   const PRIORITY_COLOURS = {
@@ -177,6 +179,15 @@
                 {/each}
               </select>
 
+              <div>
+                <label class="text-xs text-slate-400 mb-1 block">Marker Size</label>
+                <select bind:value={form.marker_size} class={inp}>
+                  {#each MARKER_SIZES as sz}
+                    <option value={sz}>{sz === 'sm' ? 'Small' : sz === 'md' ? 'Medium' : sz === 'lg' ? 'Large' : 'X-Large'}</option>
+                  {/each}
+                </select>
+              </div>
+
               <select bind:value={form.priority_base} class={sel}>
                 {#each PRIORITY_BASES as p}
                   <option value={p}>{p}</option>
@@ -235,6 +246,11 @@
                   <span class="text-xs px-1 py-0.5 rounded {PRIORITY_COLOURS[t.priority_base] ?? ''}">
                     {t.priority_base}
                   </span>
+                  {#if t.marker_size && t.marker_size !== 'md'}
+                    <span class="text-xs px-1 py-0.5 rounded bg-slate-600/40 text-slate-400">
+                      {t.marker_size}
+                    </span>
+                  {/if}
                   <span class="text-xs text-slate-600">
                     {attrCounts[t.id] ?? 0} attr{(attrCounts[t.id] ?? 0) === 1 ? '' : 's'}
                   </span>
@@ -288,6 +304,15 @@
                 <option value={s}>{s}</option>
               {/each}
             </select>
+
+            <div>
+              <label class="text-xs text-slate-400 mb-1 block">Marker Size</label>
+              <select bind:value={form.marker_size} class={inp}>
+                {#each MARKER_SIZES as sz}
+                  <option value={sz}>{sz === 'sm' ? 'Small' : sz === 'md' ? 'Medium' : sz === 'lg' ? 'Large' : 'X-Large'}</option>
+                {/each}
+              </select>
+            </div>
 
             <select bind:value={form.priority_base} class={sel}>
               {#each PRIORITY_BASES as p}

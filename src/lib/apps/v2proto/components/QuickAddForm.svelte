@@ -4,6 +4,7 @@
      floor_id / plan_id / x_position / y_position are injected by PlanViewTab. -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { inp } from '../ui.js';
 
   export let types       = [];
   export let systems     = [];
@@ -51,8 +52,6 @@
     types:  types.filter(t => t.building_system_id === sys.id && t.visible)
   })).filter(g => g.types.length > 0);
 
-  const inp = 'bg-slate-700 border border-slate-600 rounded px-2.5 py-1.5 text-sm text-white ' +
-              'focus:outline-none focus:border-purple-500 w-full';
 </script>
 
 <div class="flex flex-col gap-3">

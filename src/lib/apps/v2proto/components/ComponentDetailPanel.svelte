@@ -5,7 +5,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { v2protoStore, buildRef } from '../stores/v2protoStore.js';
+  import { typeByCode, floorById } from '../lookups.js';
   import AttrField from './AttrField.svelte';
+  import { inp, sec, STATUSES } from '../ui.js';
 
   export let component;          // components row
   export let types       = [];
@@ -25,7 +27,7 @@
   let selectedFloorId    = component.floor_id      ?? '';
   let planId             = component.plan_id        ?? '';
   let selectedTypeId     = (() => {
-    const t = types.find(tt => tt.code === component.type_code);
+    const t = typeByCode(types, component.type_code);
     return t?.id ?? '';
   })();
   let label              = component.label          ?? '';
@@ -48,7 +50,7 @@
 
   // ── Derived ──────────────────────────────────────────────────────────
   $: selectedType   = types.find(t => t.id === selectedTypeId) ?? null;
-  $: floor          = floors.find(f => f.id === selectedFloorId) ?? null;
+  $: floor          = floorById(floors, selectedFloorId);
   $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
   $: primaryDef     = defs.find(d => d.is_primary) ?? null;
   $: primaryAttr    = primaryDef ? (attrValues[primaryDef.id] ?? '') : '';
@@ -61,14 +63,10 @@
     .filter(Boolean);
 
   // Type badge for the original (unedited) type
-  $: origType = types.find(t => t.code === component.type_code) ?? null;
+  $: origType = typeByCode(types, component.type_code);
 
-  const STATUS_OPTS = [
-    { value: 'OK',       label: 'OK',       ring: 'ring-green-500',  bg: 'bg-green-600',  dim: 'bg-green-900/30 text-green-700'  },
-    { value: 'problem',  label: 'Problem',  ring: 'ring-yellow-500', bg: 'bg-yellow-600', dim: 'bg-yellow-900/20 text-yellow-700' },
-    { value: 'failed',   label: 'Failed',   ring: 'ring-red-500',    bg: 'bg-red-600',    dim: 'bg-red-900/20 text-red-700'     },
-    { value: 'inactive', label: 'Inactive', ring: 'ring-slate-500',  bg: 'bg-slate-600',  dim: 'bg-slate-700 text-slate-500'    }
-  ];
+  // Map shared STATUSES to local STATUS_OPTS with 'OK' value casing
+  const STATUS_OPTS = STATUSES.map(s => s.value === 'ok' ? { ...s, value: 'OK' } : s);
 
   function markDirty() { dirty = true; }
 
@@ -143,9 +141,6 @@
     dispatch('inspect', { component });
   }
 
-  const inp = 'bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white ' +
-              'focus:outline-none focus:border-purple-500 transition-colors w-full';
-  const sec = 'text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2';
 
   // Group types by system for the type picker
   $: typesBySystem = systems.map(sys => ({

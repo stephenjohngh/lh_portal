@@ -91,6 +91,8 @@ function createV2ProtoStore() {
     inspections:      {},   // { [componentId]: latest component_inspections row }
     // Supporting data
     plans:            [],   // existing plans[] (for plan picker, filtered by floor)
+    spaces:           [],   // spaces[] — named polygon areas on floor plans
+    annotations:      [],   // plan_annotations[] — free-form text labels on floor plans
     // UI state
     loading:          false,
     loadingComponents: false,
@@ -118,15 +120,33 @@ function createV2ProtoStore() {
         const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
           resolveHierarchy(systems, types, defs, options, regime);
 
+        // Load spaces with graceful degradation (migration 018 may not be applied yet)
+        let spaces = [];
+        try {
+          spaces = await api.get('spaces', { orderBy: 'created_at', ascending: false });
+        } catch (_err) {
+          logger('Spaces table not available — run migration 018 to enable');
+        }
+
+        // Load annotations with graceful degradation (migration 021 may not be applied yet)
+        let annotations = [];
+        try {
+          annotations = await api.get('plan_annotations', { orderBy: 'created_at', ascending: false });
+        } catch (_err) {
+          logger('plan_annotations table not available — run migration 021 to enable');
+        }
+
         update(s => ({
           ...s,
           facilities, floors,
           systems, types, attrDefs, systemAttrDefs, attrOptions,
           regime: regimeMap,
           plans,
+          spaces,
+          annotations,
           loading: false
         }));
-        logger('Loaded location hierarchy, type hierarchy and plans');
+        logger('Loaded location hierarchy, type hierarchy, plans, spaces and annotations');
       } catch (err) {
         logger('Load error:', err.message);
         update(s => ({ ...s, loading: false, error: err.message }));
@@ -539,6 +559,113 @@ function createV2ProtoStore() {
     async deleteRegime(id) {
       await api.delete('maintenance_regime', id);
       logger('Deleted regime:', id);
+    },
+
+    // ── Spaces CRUD ─────────────────────────────────────────────────────
+    // Spaces are named polygon areas drawn on a floor plan.
+    // polygon: [{x: float, y: float}] — fractional coordinates 0–1
+    // colour:  hex string WITHOUT leading '#', e.g. 'a855f7'
+
+    async createSpace(data) {
+      const userId = get(auth).user?.id;
+      const space = await api.create('spaces', {
+        plan_id:    data.plan_id,
+        floor_id:   data.floor_id  || null,
+        name:       data.name.trim(),
+        space_type: data.space_type?.trim() || null,
+        polygon:    data.polygon,          // [{x, y}]
+        colour:     data.colour || 'a855f7',
+        height_m:   data.height_m          ?? null,
+        notes:      data.notes?.trim()     || null,
+        created_by: userId,
+        updated_by: userId
+      });
+      update(s => ({ ...s, spaces: [...s.spaces, space] }));
+      logger('Created space:', space.id, space.name);
+      return space;
+    },
+
+    // Updates editable fields on a space (name, space_type, colour, height_m, notes).
+    // Polygon is intentionally excluded — use updateSpacePolygon for that.
+    async updateSpace(id, data) {
+      const userId = get(auth).user?.id;
+      const updated = await api.update('spaces', id, {
+        name:       data.name.trim(),
+        space_type: data.space_type?.trim() || null,
+        colour:     data.colour || 'a855f7',
+        height_m:   data.height_m           ?? null,
+        notes:      data.notes?.trim()      || null,
+        updated_by: userId
+      });
+      update(s => ({
+        ...s,
+        spaces: s.spaces.map(sp => sp.id === id ? { ...sp, ...updated } : sp)
+      }));
+      logger('Updated space:', id, updated.name);
+      return updated;
+    },
+
+    async updateSpacePolygon(id, polygon) {
+      const userId = get(auth).user?.id;
+      const updated = await api.update('spaces', id, { polygon, updated_by: userId });
+      update(s => ({
+        ...s,
+        spaces: s.spaces.map(sp => sp.id === id ? { ...sp, ...updated } : sp)
+      }));
+      logger('Updated space polygon:', id, polygon.length, 'vertices');
+    },
+
+    async deleteSpace(id) {
+      await api.delete('spaces', id);
+      update(s => ({ ...s, spaces: s.spaces.filter(sp => sp.id !== id) }));
+      logger('Deleted space:', id);
+    },
+
+    // ── Annotations CRUD ─────────────────────────────────────────────
+    // Free-form text labels placed on a floor plan image.
+    // x_position and y_position are 0–1 fractions of the plan image dimensions.
+
+    async createAnnotation(fields) {
+      // fields: { plan_id, floor_id, text, x_position, y_position, font_size, colour, bold }
+      const userId = get(auth).user?.id;
+      const row = await api.create('plan_annotations', { ...fields, created_by: userId });
+      update(s => ({ ...s, annotations: [...s.annotations, row] }));
+      return row;
+    },
+
+    async updateAnnotation(id, fields) {
+      const userId = get(auth).user?.id;
+      const row = await api.update('plan_annotations', id, { ...fields, updated_by: userId });
+      update(s => ({ ...s, annotations: s.annotations.map(a => a.id === id ? { ...a, ...row } : a) }));
+      return row;
+    },
+
+    async moveAnnotation(id, x, y) {
+      const userId = get(auth).user?.id;
+      await api.update('plan_annotations', id, { x_position: x, y_position: y, updated_by: userId });
+      update(s => ({ ...s, annotations: s.annotations.map(a => a.id === id ? { ...a, x_position: x, y_position: y } : a) }));
+    },
+
+    async deleteAnnotation(id) {
+      await api.delete('plan_annotations', id);
+      update(s => ({ ...s, annotations: s.annotations.filter(a => a.id !== id) }));
+    },
+
+    // ── Plan scale calibration ──────────────────────────────────────
+    // Saves a scale reference line and the image aspect ratio on a plan.
+    // scaleRef:  { x1, y1, x2, y2, metres }
+    // aspectRatio: number — native image W / H
+    async updatePlanScale(planId, scaleRef, aspectRatio) {
+      const updated = await api.update('plans', planId, {
+        scale_ref:          scaleRef,
+        image_aspect_ratio: aspectRatio
+      });
+      update(s => ({
+        ...s,
+        plans: s.plans.map(p => p.id === planId ? { ...p, ...updated } : p)
+      }));
+      logger('Updated plan scale:', planId, `ref=${scaleRef.metres}m AR=${aspectRatio}`);
+      return updated;
     },
 
     // ── Inspection CRUD ─────────────────────────────────────────────────

@@ -4,6 +4,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { v2protoStore } from '../../stores/v2protoStore.js';
+  import { inp } from '../../ui.js';
 
   export let regimeRows    = [];   // maintenance_regime[] for selected type
   export let typeId        = null;
@@ -88,8 +89,6 @@
     }
   }
 
-  const inp = 'w-full px-2 py-1.5 text-xs rounded bg-slate-900 border border-slate-600 ' +
-              'focus:outline-none focus:border-purple-500 text-white placeholder-slate-500';
   const sel = inp + ' cursor-pointer';
 </script>
 

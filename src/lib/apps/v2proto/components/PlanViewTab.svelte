@@ -1,205 +1,379 @@
 <!-- src/lib/apps/v2proto/components/PlanViewTab.svelte -->
-<!-- Plan view tab for the v2proto app.
-     Shows a floor plan image with component markers read from the components table
-     (not the legacy plan_elements table). Supports:
-       • Floor / plan selection
-       • Click-to-select → component detail in sidebar
-       • Edit mode: click blank area → quick-add form; drag marker → reposition
-       • Type visibility toggles
-       • Unplaced components list (floor_id set, plan_id null) in sidebar -->
+<!-- Plan view orchestrator.
+     Owns all shared state (selection, drawing modes, sidebar, drag) and wires
+     together the four sub-components:
+       PlanToolbar        — floor/plan pickers, mode toggle, type legend, stats
+       PlanCanvas         — image, SVG overlay, component markers
+       sidebar panels     — QuickAddForm / ComponentDetailPanel / InspectionPanel /
+                            SpaceDrawingSidebar / SpaceDetailSidebar /
+                            SpaceDrawingSidebar / SpaceDetailSidebar /
+                            ScaleInputSidebar / FilterSidebar                     -->
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../stores/v2protoStore.js';
-  import ComponentMarker      from './ComponentMarker.svelte';
-  import ComponentDetailPanel from './ComponentDetailPanel.svelte';
-  import InspectionPanel      from './InspectionPanel.svelte';
-  import QuickAddForm         from './QuickAddForm.svelte';
-
-  const dispatch = createEventDispatcher();
+  import { v2protoStore }        from '../stores/v2protoStore.js';
+  import { typeByCode, checkableDefs } from '../lookups.js';
+  import { computeMetresPerUnit } from './plan/planMeasure.js';
+  import PlanToolbar              from './plan/PlanToolbar.svelte';
+  import PlanCanvas               from './plan/PlanCanvas.svelte';
+  import SpaceDrawingSidebar      from './plan/SpaceDrawingSidebar.svelte';
+  import SpaceDetailSidebar       from './plan/SpaceDetailSidebar.svelte';
+  import ScaleInputSidebar        from './plan/ScaleInputSidebar.svelte';
+  import FilterSidebar            from './plan/FilterSidebar.svelte';
+  import ComponentInventory       from './plan/ComponentInventory.svelte';
+  import ComponentDetailPanel     from './ComponentDetailPanel.svelte';
+  import InspectionPanel          from './InspectionPanel.svelte';
+  import QuickAddForm             from './QuickAddForm.svelte';
+  import AnnotationSidebar        from './plan/AnnotationSidebar.svelte';
 
   // ── Store bindings ────────────────────────────────────────────────
-  $: store         = $v2protoStore;
-  $: facilities    = store.facilities;
-  $: floors        = store.floors;
-  $: plans         = store.plans;
-  $: components    = store.components;
-  $: componentAttrs= store.componentAttrs;
-  $: types         = store.types;
-  $: systems       = store.systems;
-  $: attrDefs      = store.attrDefs;
-  $: attrOptions   = store.attrOptions;
-  $: inspections   = store.inspections;
+  $: store          = $v2protoStore;
+  $: facilities     = store.facilities;
+  $: floors         = store.floors;
+  $: plans          = store.plans;
+  $: components     = store.components;
+  $: componentAttrs = store.componentAttrs;
+  $: types          = store.types;
+  $: systems        = store.systems;
+  $: attrDefs       = store.attrDefs;
+  $: attrOptions    = store.attrOptions;
+  $: inspections    = store.inspections;
+  $: spaces         = store.spaces;
+  $: annotations    = store.annotations ?? [];
 
-  // ── Local state ───────────────────────────────────────────────────
-  let selectedFloorId    = '';
-  let selectedPlanId     = '';
-  let editMode           = false;
+  // ── Navigation state ─────────────────────────────────────────────
+  let selectedFloorId = '';
+  let selectedPlanId  = '';
 
-  // sidebar: 'none' | 'form' | 'detail' | 'inspect'
-  let sidebarMode        = 'none';
-  let selectedComponent  = null;
-  let newPos             = null;   // { x, y } from plan click
-  let saving             = false;
-  let errorMsg           = '';
+  // ── Mode / sidebar state ──────────────────────────────────────────
+  // drawingMode: 'off' | 'component' | 'space' | 'scale' | 'annotation'
+  let drawingMode       = 'off';
+  // sidebarMode: 'none' | 'form' | 'detail' | 'inspect' |
+  //              'space-drawing' | 'space-detail' | 'scale-input' | 'annotation-detail'
+  let sidebarMode       = 'none';
+  let selectedComponent = null;
+  let selectedSpace     = null;
+  let newPos            = null;   // { x, y } pending component position
+  let saving            = false;
+  let errorMsg          = '';
 
-  // Drag state — positions override the store during drag, committed on mouseup
-  let draggingId         = null;
-  let dragPos            = {};     // { [id]: { x, y } }
-  let containerEl        = null;   // the plan image wrapper div
+  // ── Filter state ─────────────────────────────────────────────────
+  let hiddenTypes       = new Set();  // type codes to hide (exclusive)
+  // inclusive: empty = show all; non-empty = show only these statuses
+  let selectedStatuses  = new Set();
+  let searchQuery       = '';         // free-text match on label / asset_id / notes
 
-  // Type visibility filter (codes in the set are hidden)
-  let hiddenTypes = new Set();
+  // ── Drag state ────────────────────────────────────────────────────
+  let draggingId  = null;
+  let dragPos     = {};   // { [componentId]: { x, y } }
+  let canvasEl    = null; // bound from PlanCanvas; used for drag rect calculation
 
-  // ── Derived ───────────────────────────────────────────────────────
-  $: plansForFloor = selectedFloorId
-    ? plans.filter(p => p.floor_id === selectedFloorId)
+  // ── Space drawing state ───────────────────────────────────────────
+  // name/type/colour are two-way bound to SpaceDrawingSidebar so that the
+  // parent can call handleFinishDrawing when the user closes the polygon
+  // by clicking the first vertex on the canvas.
+  let drawingVertices  = [];
+  let drawingSpaceName = '';
+  let drawingSpaceType = '';
+  let drawingColourHex = '#a855f7';
+
+  // ── Annotation state ──────────────────────────────────────────────
+  let selectedAnnotation   = null;   // the annotation being edited
+  let annotationDraggingId = null;
+  let annotationDragPos    = {};     // { [annotationId]: { x, y } }
+
+  // ── Scale calibration state ───────────────────────────────────────
+  let scalePoint1      = null;   // { x, y } first reference click
+  let scalePoint2      = null;   // { x, y } second reference click
+  let scaleSaving      = false;
+  let imageAspectRatio = null;   // captured from <img> naturalWidth/naturalHeight
+
+  // ── Derived: floor / plan views ───────────────────────────────────
+  $: plansForFloor      = selectedFloorId
+    ? plans.filter(p => p.floor_id === selectedFloorId) : [];
+  $: selectedPlan       = plans.find(p => p.id === selectedPlanId) ?? null;
+  $: selectedFloor      = floors.find(f => f.id === selectedFloorId) ?? null;
+  $: planComponents     = selectedPlanId
+    ? components.filter(c => c.plan_id === selectedPlanId) : [];
+  $: planSpaces         = selectedPlanId
+    ? spaces.filter(s => s.plan_id === selectedPlanId) : [];
+  $: planAnnotations    = selectedPlanId
+    ? annotations.filter(a => a.plan_id === selectedPlanId).map(a => {
+        const ov = annotationDragPos[a.id];
+        return ov ? { ...a, x_position: ov.x, y_position: ov.y } : a;
+      })
     : [];
-
-  $: selectedPlan  = plans.find(p => p.id === selectedPlanId) ?? null;
-  $: selectedFloor = floors.find(f => f.id === selectedFloorId) ?? null;
-
-  // All components pinned to the selected plan
-  $: planComponents = selectedPlanId
-    ? components.filter(c => c.plan_id === selectedPlanId)
-    : [];
-
-  // Components that belong to this floor but have no plan placement yet
   $: unplacedComponents = selectedFloorId
-    ? components.filter(c => c.floor_id === selectedFloorId && !c.plan_id)
-    : [];
+    ? components.filter(c => c.floor_id === selectedFloorId && !c.plan_id) : [];
 
-  // Unique types represented on the plan (for filter legend)
-  $: planTypeCodes = [...new Set(planComponents.map(c => c.type_code))];
-  $: planTypeObjs  = planTypeCodes
-    .map(code => types.find(t => t.code === code))
-    .filter(Boolean);
+  // ── Derived: filters ──────────────────────────────────────────────
+  $: visibleComponents = planComponents.filter(c => {
+    // Type filter — exclusive: hidden types are excluded
+    if (hiddenTypes.has(c.type_code)) return false;
+    // Status filter — inclusive: empty set = show all; non-empty = show only selected
+    const status = c.status || 'ok';
+    if (selectedStatuses.size > 0 && !selectedStatuses.has(status)) return false;
+    // Text search across label, asset_id, notes
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      if (!(c.label    ?? '').toLowerCase().includes(q) &&
+          !(c.asset_id ?? '').toLowerCase().includes(q) &&
+          !(c.notes    ?? '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
-  // Components visible after type filter applied
-  $: visibleComponents = planComponents.filter(c => !hiddenTypes.has(c.type_code));
+  // Apply drag overrides — this reactive statement is what makes the marker move
+  // during drag (a plain function call would not re-evaluate when dragPos changes).
+  $: positionedComponents = visibleComponents.map(c => {
+    const ov = dragPos[c.id];
+    return ov ? { ...c, x_position: ov.x, y_position: ov.y } : c;
+  });
 
-  // Inspection panel data for selected component
-  $: selType         = selectedComponent
-    ? (types.find(t => t.code === selectedComponent.type_code) ?? null) : null;
-  $: selCheckable    = selType
-    ? (attrDefs[selType.id] ?? []).filter(d => d.checkable && d.visible) : [];
+  // ── Derived: inspection panel context ────────────────────────────
+  $: selType           = selectedComponent
+    ? typeByCode(types, selectedComponent.type_code) : null;
+  $: selCheckable      = selectedComponent
+    ? checkableDefs(attrDefs, types, selectedComponent.type_code) : [];
   $: selLastInspection = selectedComponent
     ? (inspections[selectedComponent.id] ?? null) : null;
 
-  // ── Auto-select: pick first floor that has plans on load ──────────
+  // ── Derived: scale ────────────────────────────────────────────────
+  $: planAR        = selectedPlan?.image_aspect_ratio ?? imageAspectRatio;
+  $: metresPerUnit = computeMetresPerUnit(selectedPlan?.scale_ref, planAR);
+
+  // ── Auto-select: first floor that has plans ───────────────────────
   let autoSelected = false;
   $: if (!autoSelected && floors.length > 0 && plans.length > 0) {
     const f = floors.find(fl => plans.some(p => p.floor_id === fl.id));
     if (f) {
       selectedFloorId = f.id;
-      const p = plans.filter(pl => pl.floor_id === f.id)[0];
+      const p = plans.find(pl => pl.floor_id === f.id);
       if (p) selectedPlanId = p.id;
       autoSelected = true;
     }
   }
 
-  // ── Event handlers ────────────────────────────────────────────────
-  function onFloorChange() {
-    selectedPlanId    = '';
-    selectedComponent = null;
-    sidebarMode       = 'none';
-    newPos            = null;
-    // Auto-select first plan for this floor
-    const fp = plans.filter(p => p.floor_id === selectedFloorId);
-    if (fp.length > 0) selectedPlanId = fp[0].id;
+  // ── Helpers ───────────────────────────────────────────────────────
+  function resetSelection() {
+    selectedComponent  = null;
+    selectedSpace      = null;
+    selectedAnnotation = null;
+    sidebarMode        = 'none';
+    newPos             = null;
   }
 
-  function onPlanChange() {
-    selectedComponent = null;
-    sidebarMode       = 'none';
-    newPos            = null;
+  function cancelSpaceDrawing() {
+    drawingVertices  = [];
+    drawingSpaceName = '';
+    drawingSpaceType = '';
+    drawingColourHex = '#a855f7';
+    if (sidebarMode === 'space-drawing') sidebarMode = 'none';
   }
 
-  function toggleTypeFilter(code) {
-    if (hiddenTypes.has(code)) hiddenTypes.delete(code);
-    else hiddenTypes.add(code);
-    hiddenTypes = hiddenTypes; // trigger reactivity
+  function clearScaleDrawing() {
+    scalePoint1 = null;
+    scalePoint2 = null;
+    if (sidebarMode === 'scale-input') sidebarMode = 'none';
   }
 
-  // Click on the plan background (only fires when NOT clicking a marker)
-  function handlePlanClick(e) {
-    if (!editMode) {
-      // deselect when clicking blank area
-      selectedComponent = null;
-      sidebarMode       = 'none';
+  // ── Navigation handlers ───────────────────────────────────────────
+  function onFloorChange({ detail: { floorId } }) {
+    selectedFloorId = floorId;
+    selectedPlanId  = '';
+    resetSelection();
+    cancelSpaceDrawing();
+    clearScaleDrawing();
+    const p = plans.find(pl => pl.floor_id === floorId);
+    if (p) selectedPlanId = p.id;
+  }
+
+  function onPlanChange({ detail: { planId } }) {
+    selectedPlanId = planId;
+    resetSelection();
+    cancelSpaceDrawing();
+    clearScaleDrawing();
+  }
+
+  // ── Mode toggle ───────────────────────────────────────────────────
+  function onModeChange({ detail: { mode } }) {
+    drawingMode = (drawingMode === mode) ? 'off' : mode;
+    if (drawingMode !== 'space')      cancelSpaceDrawing();
+    if (drawingMode !== 'component')  { draggingId = null; dragPos = {}; newPos = null; }
+    if (drawingMode !== 'scale')      clearScaleDrawing();
+    if (drawingMode !== 'annotation') { annotationDraggingId = null; annotationDragPos = {}; }
+    if (sidebarMode === 'form'              && drawingMode !== 'component')  sidebarMode = 'none';
+    if (sidebarMode === 'space-drawing'     && drawingMode !== 'space')      sidebarMode = 'none';
+    if (sidebarMode === 'scale-input'       && drawingMode !== 'scale')      sidebarMode = 'none';
+    if (sidebarMode === 'annotation-detail' && drawingMode !== 'annotation') sidebarMode = 'none';
+  }
+
+  // FilterSidebar dispatches replacement Sets so we can trigger Svelte reactivity
+  // with a simple assignment rather than mutate-then-reassign.
+  function onChangeTypes({ detail: { hidden } })      { hiddenTypes      = hidden; }
+  function onChangeStatuses({ detail: { selected } }) { selectedStatuses = selected; }
+
+  function onSearchChange({ detail: { query } }) { searchQuery = query; }
+
+  function onClearFilters() {
+    hiddenTypes      = new Set();
+    selectedStatuses = new Set();
+    searchQuery      = '';
+  }
+
+  // ── Canvas event handlers ─────────────────────────────────────────
+  function onPlanClick({ detail: pos }) {
+    const { x, y } = pos;
+
+    if (drawingMode === 'scale') {
+      if      (!scalePoint1) { scalePoint1 = { x, y }; }
+      else if (!scalePoint2) { scalePoint2 = { x, y }; sidebarMode = 'scale-input'; }
       return;
     }
-    if (!containerEl) return;
-    const rect = containerEl.getBoundingClientRect();
-    newPos = {
-      x: Math.max(0, Math.min(1, (e.clientX - rect.left)  / rect.width)),
-      y: Math.max(0, Math.min(1, (e.clientY - rect.top)   / rect.height))
-    };
-    selectedComponent = null;
-    sidebarMode       = 'form';
+
+    if (drawingMode === 'space') {
+      // Click near first vertex (< 3% of image width) → close polygon
+      if (drawingVertices.length >= 3) {
+        const first = drawingVertices[0];
+        if (Math.hypot(first.x - x, first.y - y) < 0.03) {
+          handleFinishDrawing();
+          return;
+        }
+      }
+      drawingVertices = [...drawingVertices, { x, y }];
+      sidebarMode = 'space-drawing';
+      return;
+    }
+
+    if (drawingMode === 'annotation') {
+      // Place a new annotation at click position
+      handleCreateAnnotation(x, y);
+      return;
+    }
+
+    if (drawingMode === 'component') {
+      newPos            = { x, y };
+      selectedComponent = null;
+      selectedSpace     = null;
+      sidebarMode       = 'form';
+      return;
+    }
+
+    resetSelection();
   }
 
-  function handleMarkerClick(e) {
-    selectedComponent = e.detail.component;
+  function onMarkerClick({ detail }) {
+    selectedComponent = detail.component;
+    selectedSpace     = null;
     sidebarMode       = 'detail';
     newPos            = null;
   }
 
+  function onSpaceClick({ detail: { space } }) {
+    if (drawingMode === 'space') return; // shouldn't reach here (pointer-events:none)
+    selectedSpace     = space;
+    selectedComponent = null;
+    sidebarMode       = 'space-detail';
+  }
+
+  function onClosePoly() {
+    // User clicked the first vertex circle on the canvas — same as pressing Finish
+    handleFinishDrawing();
+  }
+
+  function onImgLoad({ detail: { aspectRatio } }) {
+    imageAspectRatio = aspectRatio;
+  }
+
   // ── Drag to reposition ────────────────────────────────────────────
-  function handleMarkerDragstart({ detail: { e, component } }) {
-    if (!editMode) return;
+  function onMarkerDragstart({ detail }) {
+    if (drawingMode !== 'component') return;
+    const { component } = detail;
     draggingId = component.id;
-    dragPos = { [component.id]: { x: component.x_position, y: component.y_position } };
+    dragPos    = { [component.id]: { x: component.x_position, y: component.y_position } };
   }
 
   function handleMousemove(e) {
-    if (!draggingId || !containerEl) return;
-    const rect = containerEl.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height));
-    dragPos = { [draggingId]: { x, y } };
+    if (!draggingId || !canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    dragPos = { [draggingId]: {
+      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height)),
+    }};
   }
 
   async function handleMouseup() {
     if (!draggingId) return;
     const pos = dragPos[draggingId];
     if (pos) {
-      try {
-        await v2protoStore.moveComponent(draggingId, selectedPlanId, pos.x, pos.y);
-      } catch (err) {
-        errorMsg = err.message;
-      }
+      try { await v2protoStore.moveComponent(draggingId, selectedPlanId, pos.x, pos.y); }
+      catch (err) { errorMsg = err.message; }
     }
     draggingId = null;
     dragPos    = {};
   }
 
-  // ── Quick-add from plan click ─────────────────────────────────────
+  // ── Component quick-add ───────────────────────────────────────────
   async function handleQuickAdd(e) {
     const { fields, attrValues } = e.detail;
-    saving   = true;
-    errorMsg = '';
+    saving = true; errorMsg = '';
     try {
-      await v2protoStore.createComponent(
-        {
-          ...fields,
-          floor_id:   selectedFloorId,
-          plan_id:    selectedPlanId,
-          x_position: newPos?.x ?? 0.5,
-          y_position: newPos?.y ?? 0.5
-        },
-        attrValues
-      );
+      await v2protoStore.createComponent({
+        ...fields,
+        floor_id:   selectedFloorId,
+        plan_id:    selectedPlanId,
+        x_position: newPos?.x ?? 0.5,
+        y_position: newPos?.y ?? 0.5,
+      }, attrValues);
       await v2protoStore.loadComponents();
       sidebarMode = 'none';
       newPos      = null;
-    } catch (err) {
-      errorMsg = err.message;
-    } finally {
-      saving = false;
-    }
+    } catch (err) { errorMsg = err.message; }
+    finally       { saving = false; }
   }
 
-  // ── Detail panel events ───────────────────────────────────────────
+  // ── Space drawing ─────────────────────────────────────────────────
+  // Called by: Finish button in SpaceDrawingSidebar, or canvas closepoly event.
+  // name / type / colour come from the two-way bound state vars.
+  async function handleFinishDrawing() {
+    if (drawingVertices.length < 3 || !drawingSpaceName.trim()) return;
+    saving = true; errorMsg = '';
+    try {
+      await v2protoStore.createSpace({
+        plan_id:    selectedPlanId,
+        floor_id:   selectedFloorId || null,
+        name:       drawingSpaceName.trim(),
+        space_type: drawingSpaceType || null,
+        colour:     drawingColourHex.replace('#', ''),
+        polygon:    drawingVertices,
+      });
+      cancelSpaceDrawing();
+    } catch (err) { errorMsg = err.message; }
+    finally       { saving = false; }
+  }
+
+  // ── Scale calibration ─────────────────────────────────────────────
+  async function handleApplyScale({ detail: { metres } }) {
+    if (!scalePoint1 || !scalePoint2 || !metres) return;
+    scaleSaving = true; errorMsg = '';
+    try {
+      const ar = imageAspectRatio ?? selectedPlan?.image_aspect_ratio ?? 1;
+      await v2protoStore.updatePlanScale(selectedPlanId, {
+        x1: scalePoint1.x, y1: scalePoint1.y,
+        x2: scalePoint2.x, y2: scalePoint2.y,
+        metres,
+      }, ar);
+      clearScaleDrawing();
+      drawingMode = 'off';
+    } catch (err) { errorMsg = err.message; }
+    finally       { scaleSaving = false; }
+  }
+
+  async function handleClearScale() {
+    if (!confirm('Remove the scale from this plan? Measurements will no longer be shown.')) return;
+    try { await v2protoStore.updatePlanScale(selectedPlanId, null, null); }
+    catch (err) { errorMsg = err.message; }
+  }
+
+  // ── Component detail panel callbacks ─────────────────────────────
   function handleDetailSaved() {
     if (selectedComponent) {
       selectedComponent = $v2protoStore.components
@@ -212,121 +386,132 @@
     sidebarMode       = 'inspect';
   }
 
-  function handleDetailDeleted() {
-    selectedComponent = null;
-    sidebarMode       = 'none';
+  // ── Annotation handlers ───────────────────────────────────────────
+  async function handleCreateAnnotation(x, y) {
+    try {
+      const ann = await v2protoStore.createAnnotation({
+        plan_id:    selectedPlanId,
+        floor_id:   selectedFloorId || null,
+        text:       'New note',
+        x_position: x,
+        y_position: y,
+        font_size:  'sm',
+        colour:     'fbbf24',
+        bold:       false,
+      });
+      selectedAnnotation = ann;
+      sidebarMode        = 'annotation-detail';
+    } catch (err) { errorMsg = err.message; }
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────
-  // Marker position: uses drag override if this marker is being dragged
-  function markerPos(c) {
-    const override = dragPos[c.id];
-    return override
-      ? { ...c, x_position: override.x, y_position: override.y }
-      : c;
+  function onAnnotationClick({ detail: { annotation } }) {
+    selectedAnnotation = annotation;
+    sidebarMode        = 'annotation-detail';
+  }
+
+  function onAnnotationDragstart({ detail: { annotation } }) {
+    if (drawingMode !== 'annotation') return;
+    annotationDraggingId = annotation.id;
+    annotationDragPos    = {
+      [annotation.id]: { x: annotation.x_position, y: annotation.y_position }
+    };
+  }
+
+  function handleMousemoveAnnotation(e) {
+    if (!annotationDraggingId || !canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    annotationDragPos = { [annotationDraggingId]: {
+      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height)),
+    }};
+  }
+
+  async function handleMouseupAnnotation() {
+    if (!annotationDraggingId) return;
+    const pos = annotationDragPos[annotationDraggingId];
+    if (pos) {
+      try { await v2protoStore.moveAnnotation(annotationDraggingId, pos.x, pos.y); }
+      catch (err) { errorMsg = err.message; }
+    }
+    annotationDraggingId = null;
+    annotationDragPos    = {};
   }
 </script>
 
-<svelte:window on:mousemove={handleMousemove} on:mouseup={handleMouseup} />
+<svelte:window
+  on:mousemove={e => { handleMousemove(e); handleMousemoveAnnotation(e); }}
+  on:mouseup={async () => { await handleMouseup(); await handleMouseupAnnotation(); }}
+/>
 
 <div class="flex flex-col gap-3">
 
-  <!-- ── Toolbar ───────────────────────────────────────────────── -->
-  <div class="flex items-center gap-3 flex-wrap">
+  <!-- ── Toolbar ───────────────────────────────────────────────────── -->
+  <PlanToolbar
+    {floors}
+    {plansForFloor}
+    {selectedFloorId}
+    {selectedPlanId}
+    {drawingMode}
+    {planComponents}
+    {visibleComponents}
+    {planSpaces}
+    {unplacedComponents}
+    hasScale={!!selectedPlan?.scale_ref}
+    {metresPerUnit}
+    on:floorchange={onFloorChange}
+    on:planchange={onPlanChange}
+    on:modechange={onModeChange}
+    on:clearscale={handleClearScale}
+  />
 
-    <!-- Floor picker -->
-    <div class="flex items-center gap-2">
-      <span class="text-sm text-slate-400">Floor:</span>
-      <select bind:value={selectedFloorId} on:change={onFloorChange}
-        class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-               focus:outline-none focus:border-purple-500 min-w-[9rem]">
-        <option value="">Select floor…</option>
-        {#each floors as f}
-          <option value={f.id}>{f.name} ({f.short_name})</option>
-        {/each}
-      </select>
-    </div>
-
-    <!-- Plan picker (only shown when multiple plans on this floor) -->
-    {#if plansForFloor.length > 1}
-      <div class="flex items-center gap-2">
-        <span class="text-sm text-slate-400">Plan:</span>
-        <select bind:value={selectedPlanId} on:change={onPlanChange}
-          class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                 focus:outline-none focus:border-purple-500">
-          {#each plansForFloor as p}
-            <option value={p.id}>{p.name ?? p.building}</option>
-          {/each}
-        </select>
-      </div>
-    {/if}
-
-    <!-- Edit mode toggle -->
-    <button
-      on:click={() => { editMode = !editMode; if (!editMode) { draggingId = null; dragPos = {}; } }}
-      class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors border
-             {editMode
-               ? 'bg-amber-600 border-amber-500 text-white ring-1 ring-amber-400'
-               : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'}"
-      title="Toggle edit mode — allows placing and repositioning components"
-    >
-      <span class="text-base leading-none">{editMode ? '✏️' : '✏️'}</span>
-      {editMode ? 'Editing' : 'Edit Mode'}
-    </button>
-
-    <!-- Type filter legend (click to hide/show) -->
-    {#if planTypeObjs.length > 0}
-      <div class="flex items-center gap-1 border-l border-slate-700 pl-3">
-        {#each planTypeObjs as t (t.id)}
-          <button
-            on:click={() => toggleTypeFilter(t.code)}
-            title="{t.name} — click to {hiddenTypes.has(t.code) ? 'show' : 'hide'}"
-            class="w-6 h-6 flex items-center justify-center text-white text-xs font-bold rounded
-                   transition-opacity {hiddenTypes.has(t.code) ? 'opacity-20' : 'opacity-90'}
-                   {t.marker_shape === 'circle' ? 'rounded-full' : 'rounded'}"
-            style:background-color="#{t.colour}"
-          >{t.initial}</button>
-        {/each}
-        {#if hiddenTypes.size > 0}
-          <button
-            on:click={() => { hiddenTypes.clear(); hiddenTypes = hiddenTypes; }}
-            class="text-xs text-slate-500 hover:text-slate-300 ml-1 transition-colors"
-          >show all</button>
-        {/if}
-      </div>
-    {/if}
-
-    <!-- Stats -->
-    <div class="ml-auto flex items-center gap-3 text-xs text-slate-500">
-      {#if planComponents.length > 0}
-        <span>{visibleComponents.length}
-          {#if visibleComponents.length !== planComponents.length}
-            / {planComponents.length}
-          {/if}
-          on plan
-        </span>
-      {/if}
-      {#if unplacedComponents.length > 0}
-        <span class="text-amber-400 font-medium">
-          {unplacedComponents.length} unplaced
-        </span>
-      {/if}
-    </div>
-  </div>
-
-  <!-- Edit mode hint bar -->
-  {#if editMode}
+  <!-- ── Mode hint bar ─────────────────────────────────────────────── -->
+  {#if drawingMode === 'component'}
     <div class="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20
                 text-xs text-amber-300/80 flex items-center gap-2">
       <span>✏</span>
+      <span>Click a blank area to place a component. Drag existing markers to reposition.</span>
+    </div>
+
+  {:else if drawingMode === 'space'}
+    <div class="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20
+                text-xs text-purple-300/80 flex items-center gap-2">
+      <span>⬡</span>
       <span>
-        Click a blank area to place a new component at that position.
-        Drag existing markers to reposition them.
+        Click on the plan to add polygon vertices.
+        {#if drawingVertices.length >= 3}
+          Click the first vertex <strong>●</strong> to close, or press <strong>Finish</strong>.
+        {:else if drawingVertices.length > 0}
+          {3 - drawingVertices.length} more {3 - drawingVertices.length === 1 ? 'vertex' : 'vertices'} needed.
+        {:else}
+          Click anywhere to start drawing.
+        {/if}
       </span>
+    </div>
+
+  {:else if drawingMode === 'scale'}
+    <div class="px-3 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20
+                text-xs text-teal-300/80 flex items-center gap-2">
+      <span>📏</span>
+      <span>
+        {#if !scalePoint1}
+          Click the <strong>first point</strong> of a known distance on the plan.
+        {:else if !scalePoint2}
+          Click the <strong>second point</strong> of the same known distance.
+        {:else}
+          Enter the real-world distance in the panel and press <strong>Apply</strong>.
+        {/if}
+      </span>
+    </div>
+
+  {:else if drawingMode === 'annotation'}
+    <div class="px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20
+                text-xs text-sky-300/80 flex items-center gap-2">
+      <span>🏷</span>
+      <span>Click anywhere on the plan to drop a text note. Drag existing notes to reposition.</span>
     </div>
   {/if}
 
-  <!-- Error -->
+  <!-- ── Error bar ─────────────────────────────────────────────────── -->
   {#if errorMsg}
     <div class="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-400
                 flex justify-between items-center">
@@ -335,10 +520,10 @@
     </div>
   {/if}
 
-  <!-- ── Main area (plan + sidebar) ────────────────────────────── -->
+  <!-- ── Main area: canvas + sidebar ───────────────────────────────── -->
   <div class="flex gap-4 items-start">
 
-    <!-- ── Plan image ───────────────────────────────────────────── -->
+    <!-- Canvas column -->
     <div class="flex-1 min-w-0">
       {#if !selectedFloorId}
         <div class="h-64 rounded-xl bg-slate-800 border border-slate-700
@@ -361,67 +546,47 @@
         </div>
 
       {:else}
-        <!-- Image + marker overlay -->
-        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-        <div
-          class="relative rounded-xl overflow-hidden border
-                 border-slate-700 bg-slate-900 shadow-lg
-                 {editMode ? 'cursor-crosshair' : 'cursor-default'}"
-          bind:this={containerEl}
-          on:click={handlePlanClick}
-        >
-          <!-- Floor plan image -->
-          <img
-            src={selectedPlan.image_url}
-            alt="{selectedPlan.name ?? selectedPlan.building} floor plan"
-            class="w-full h-auto block select-none"
-            draggable="false"
-          />
-
-          <!-- Component markers -->
-          {#each visibleComponents as c (c.id)}
-            <ComponentMarker
-              component={markerPos(c)}
-              type={types.find(t => t.code === c.type_code)}
-              selected={selectedComponent?.id === c.id}
-              {editMode}
-              on:click={handleMarkerClick}
-              on:dragstart={handleMarkerDragstart}
-            />
-          {/each}
-
-          <!-- Pulsing dot at new-placement position while form is open -->
-          {#if newPos && sidebarMode === 'form'}
-            <div
-              class="absolute w-4 h-4 rounded-full bg-purple-500 ring-2 ring-white/40
-                     pointer-events-none animate-pulse"
-              style="left:{newPos.x * 100}%; top:{newPos.y * 100}%;
-                     transform:translate(-50%,-50%); z-index:25"
-            ></div>
-          {/if}
-
-          <!-- Plan label (bottom-left overlay) -->
-          <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60
-                      text-xs text-white/70 pointer-events-none">
-            {selectedFloor?.short_name} · {selectedPlan.name ?? selectedPlan.building}
-          </div>
-        </div>
+        <PlanCanvas
+          plan={selectedPlan}
+          floor={selectedFloor}
+          {planSpaces}
+          {positionedComponents}
+          {planAnnotations}
+          {types}
+          {selectedComponent}
+          {selectedSpace}
+          {selectedAnnotation}
+          {drawingMode}
+          {drawingVertices}
+          {scalePoint1}
+          {scalePoint2}
+          showNewPosDot={sidebarMode === 'form'}
+          {newPos}
+          bind:containerEl={canvasEl}
+          on:planclick={onPlanClick}
+          on:markerclick={onMarkerClick}
+          on:markerdragstart={onMarkerDragstart}
+          on:spaceclick={onSpaceClick}
+          on:annotationclick={onAnnotationClick}
+          on:annotationdragstart={onAnnotationDragstart}
+          on:closepoly={onClosePoly}
+          on:imgload={onImgLoad}
+        />
       {/if}
     </div>
 
-    <!-- ── Sidebar ───────────────────────────────────────────────── -->
+    <!-- Sidebar column -->
     <div class="w-80 shrink-0 max-h-[80vh] overflow-y-auto">
 
-      <!-- FORM: quick-add from plan click -->
       {#if sidebarMode === 'form'}
+        <!-- Quick-add form: place new component at newPos -->
         <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
           <div class="flex items-center justify-between mb-3">
             <div>
               <p class="font-semibold text-white text-sm">Place Component</p>
               {#if newPos}
                 <p class="text-xs text-slate-500 font-mono mt-0.5">
-                  {selectedFloor?.short_name} · {(newPos.x * 100).toFixed(1)}% ×
-                  {(newPos.y * 100).toFixed(1)}%
+                  {selectedFloor?.short_name} · {(newPos.x * 100).toFixed(1)}% × {(newPos.y * 100).toFixed(1)}%
                 </p>
               {/if}
             </div>
@@ -431,17 +596,12 @@
             >✕</button>
           </div>
           <QuickAddForm
-            {types}
-            {systems}
-            {attrDefs}
-            {attrOptions}
-            {saving}
+            {types} {systems} {attrDefs} {attrOptions} {saving}
             on:submit={handleQuickAdd}
             on:cancel={() => { sidebarMode = 'none'; newPos = null; }}
           />
         </div>
 
-      <!-- INSPECT: inspection panel -->
       {:else if sidebarMode === 'inspect' && selectedComponent}
         <InspectionPanel
           component={selectedComponent}
@@ -452,95 +612,102 @@
           on:close={() => sidebarMode = 'detail'}
         />
 
-      <!-- DETAIL: component detail / edit panel -->
       {:else if sidebarMode === 'detail' && selectedComponent}
         <ComponentDetailPanel
           component={selectedComponent}
-          {types}
-          {systems}
-          {floors}
-          {facilities}
-          {plans}
-          {attrDefs}
-          {attrOptions}
+          {types} {systems} {floors} {facilities} {plans}
+          {attrDefs} {attrOptions}
           components={$v2protoStore.components}
           attrs={componentAttrs[selectedComponent.id] ?? []}
           inspection={inspections[selectedComponent.id] ?? null}
           on:saved={handleDetailSaved}
           on:close={() => { selectedComponent = null; sidebarMode = 'none'; }}
           on:inspect={handleDetailInspect}
-          on:deleted={handleDetailDeleted}
+          on:deleted={() => { selectedComponent = null; sidebarMode = 'none'; }}
         />
 
-      <!-- DEFAULT: unplaced components list -->
+      {:else if sidebarMode === 'space-drawing'}
+        <SpaceDrawingSidebar
+          vertices={drawingVertices}
+          {saving}
+          bind:spaceName={drawingSpaceName}
+          bind:spaceType={drawingSpaceType}
+          bind:colourHex={drawingColourHex}
+          on:finish={handleFinishDrawing}
+          on:undo={() => {
+            drawingVertices = drawingVertices.slice(0, -1);
+            if (drawingVertices.length === 0) sidebarMode = 'none';
+          }}
+          on:cancel={() => { cancelSpaceDrawing(); drawingMode = 'off'; }}
+        />
+
+      {:else if sidebarMode === 'space-detail' && selectedSpace}
+        <SpaceDetailSidebar
+          space={selectedSpace}
+          {floors}
+          {metresPerUnit}
+          {planAR}
+          on:saved={({ detail }) => { selectedSpace = detail.space; }}
+          on:close={() => { selectedSpace = null; sidebarMode = 'none'; }}
+          on:deleted={() => { selectedSpace = null; sidebarMode = 'none'; }}
+        />
+
+      {:else if sidebarMode === 'scale-input'}
+        <ScaleInputSidebar
+          point1={scalePoint1}
+          point2={scalePoint2}
+          saving={scaleSaving}
+          on:apply={handleApplyScale}
+          on:repick={() => { scalePoint2 = null; sidebarMode = 'none'; }}
+          on:cancel={() => { clearScaleDrawing(); drawingMode = 'off'; }}
+        />
+
+      {:else if sidebarMode === 'annotation-detail' && selectedAnnotation}
+        <AnnotationSidebar
+          annotation={selectedAnnotation}
+          on:saved={({ detail }) => { selectedAnnotation = detail.annotation; }}
+          on:deleted={() => { selectedAnnotation = null; sidebarMode = 'none'; }}
+          on:close={() => { selectedAnnotation = null; sidebarMode = 'none'; }}
+        />
+
       {:else}
-        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            Unplaced on this floor
-          </p>
-
-          {#if !selectedFloorId}
-            <p class="text-xs text-slate-600 italic">Select a floor first.</p>
-
-          {:else if unplacedComponents.length === 0}
-            <p class="text-xs text-slate-600 italic">
-              All components on {selectedFloor?.name ?? 'this floor'} are placed on a plan. ✓
-            </p>
-
-          {:else}
-            <p class="text-xs text-slate-500 mb-3">
-              These components have a floor but no plan position.
-              {#if editMode}
-                Click a component to open its detail and set the plan manually.
-              {:else}
-                Enable <strong>Edit Mode</strong> and click the plan to place new ones.
-              {/if}
-            </p>
-            <div class="flex flex-col gap-2">
-              {#each unplacedComponents as c (c.id)}
-                {@const t = types.find(tt => tt.code === c.type_code)}
-                <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-                <div
-                  class="flex items-center gap-2 p-2 rounded-lg bg-slate-700/50 border
-                         border-slate-600 hover:border-slate-500 cursor-pointer transition-colors"
-                  on:click={() => { selectedComponent = c; sidebarMode = 'detail'; }}
-                  title="Click to view / edit"
-                >
-                  {#if t}
-                    <div
-                      class="w-6 h-6 flex items-center justify-center text-white text-xs
-                             font-bold shrink-0
-                             {t.marker_shape === 'circle' ? 'rounded-full' : 'rounded'}"
-                      style:background-color="#{t.colour}"
-                    >{t.initial}</div>
-                  {:else}
-                    <div class="w-6 h-6 rounded bg-slate-600 shrink-0"></div>
-                  {/if}
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm text-white truncate">
-                      {c.label || c.asset_id || t?.name || c.type_code}
-                    </p>
-                    <p class="text-xs text-slate-500 truncate">{t?.name ?? c.type_code}</p>
-                  </div>
-                  <span class="text-slate-600 text-xs shrink-0">→</span>
-                </div>
-              {/each}
-            </div>
-          {/if}
-
-          <!-- Divider + on-plan summary -->
-          {#if planComponents.length > 0}
-            <div class="mt-4 pt-3 border-t border-slate-700">
-              <p class="text-xs text-slate-500">
-                <span class="text-white font-medium">{planComponents.length}</span>
-                component{planComponents.length !== 1 ? 's' : ''} on this plan.
-                Click any marker to inspect or edit.
-              </p>
-            </div>
-          {/if}
-        </div>
+        <!-- Default: search + type/system filter tree + status + unplaced -->
+        <FilterSidebar
+          {planComponents}
+          {unplacedComponents}
+          {types}
+          {systems}
+          {hiddenTypes}
+          {selectedStatuses}
+          {searchQuery}
+          {selectedFloor}
+          {drawingMode}
+          on:changetypes={onChangeTypes}
+          on:changestatuses={onChangeStatuses}
+          on:searchchange={onSearchChange}
+          on:selectcomponent={({ detail: { component } }) => {
+            selectedComponent = component;
+            sidebarMode = 'detail';
+          }}
+        />
       {/if}
 
-    </div><!-- sidebar -->
-  </div><!-- main area -->
+    </div><!-- /.sidebar -->
+  </div><!-- /.main area -->
+
+  <!-- ── Inventory table (full width, below plan) ──────────────── -->
+  {#if selectedPlanId && (planComponents.length > 0 || visibleComponents.length > 0)}
+    <ComponentInventory
+      components={visibleComponents}
+      {componentAttrs}
+      {types}
+      {systems}
+      {attrDefs}
+      on:selectcomponent={({ detail: { component } }) => {
+        selectedComponent = component;
+        sidebarMode       = 'detail';
+      }}
+    />
+  {/if}
+
 </div>

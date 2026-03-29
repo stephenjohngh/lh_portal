@@ -20,6 +20,13 @@
   $: isInactive = component.status === 'inactive';
   $: label = component.asset_id || component.label || '';
 
+  $: sizeClass = {
+    sm: 'w-5  h-5  text-[9px]',
+    md: 'w-7  h-7  text-xs',
+    lg: 'w-9  h-9  text-sm',
+    xl: 'w-11 h-11 text-base',
+  }[type?.marker_size ?? 'md'] ?? 'w-7 h-7 text-xs';
+
   // Tooltip text
   $: tipText = [
     type?.name ?? component.type_code,
@@ -43,7 +50,7 @@
     role="button"
     tabindex="0"
     title={tipText}
-    class="relative w-7 h-7 flex items-center justify-center text-white font-bold text-xs
+    class="relative {sizeClass} flex items-center justify-center text-white font-bold
            shadow-lg transition-transform duration-75
            {isCircle ? 'rounded-full' : 'rounded'}
            {isInactive ? 'opacity-40' : ''}

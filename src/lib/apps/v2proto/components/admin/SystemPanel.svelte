@@ -3,6 +3,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { v2protoStore } from '../../stores/v2protoStore.js';
+  import { inp } from '../../ui.js';
 
   export let systems         = [];
   export let selectedSystemId = null;
@@ -88,9 +89,6 @@
     }
   }
 
-  // Shared input classes
-  const inp = 'w-full px-2 py-1.5 text-xs rounded bg-slate-900 border border-slate-600 ' +
-              'focus:outline-none focus:border-purple-500 text-white placeholder-slate-500';
 </script>
 
 <div class="w-48 shrink-0 flex flex-col bg-slate-800/30">

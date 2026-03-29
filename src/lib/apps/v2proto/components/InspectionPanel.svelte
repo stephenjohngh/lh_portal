@@ -6,6 +6,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { v2protoStore } from '../stores/v2protoStore.js';
+  import { STATUSES } from '../ui.js';
 
   export let component      = null;  // components row
   export let typeConfig     = null;  // component_types row
@@ -14,12 +15,13 @@
 
   const dispatch = createEventDispatcher();
 
-  const RESULTS = [
-    { value: 'OK',       label: 'OK',       cls: 'bg-green-600 hover:bg-green-500',   selCls: 'ring-2 ring-green-400' },
-    { value: 'problem',  label: 'Problem',  cls: 'bg-yellow-600 hover:bg-yellow-500', selCls: 'ring-2 ring-yellow-400' },
-    { value: 'failed',   label: 'Failed',   cls: 'bg-red-600 hover:bg-red-500',       selCls: 'ring-2 ring-red-400' },
-    { value: 'inactive', label: 'Inactive', cls: 'bg-slate-600 hover:bg-slate-500',   selCls: 'ring-2 ring-slate-400' }
-  ];
+  // Derive RESULTS from shared STATUSES (with 'OK' value casing for this panel)
+  const RESULTS = STATUSES.map(s => ({
+    value:  s.value === 'ok' ? 'OK' : s.value,
+    label:  s.label,
+    cls:    s.bg + ' hover:opacity-80',
+    selCls: 'ring-2 ' + s.ring
+  }));
 
   // Initialise form from last inspection or defaults
   let result    = lastInspection?.inspection_result ?? 'OK';

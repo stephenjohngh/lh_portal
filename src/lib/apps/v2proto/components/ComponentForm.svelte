@@ -6,6 +6,7 @@
   import { createEventDispatcher } from 'svelte';
   import AttrField from './AttrField.svelte';
   import { buildRef } from '../stores/v2protoStore.js';
+  import { inp } from '../ui.js';
 
   export let types       = [];    // component_types[]
   export let systems     = [];    // building_systems[]
@@ -102,8 +103,6 @@
     types:  types.filter(t => t.building_system_id === sys.id && t.visible)
   })).filter(g => g.types.length > 0);
 
-  const cls = 'bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white ' +
-              'focus:outline-none focus:border-purple-500';
 </script>
 
 <div class="flex flex-col gap-5">
@@ -125,7 +124,7 @@
       <select
         bind:value={selectedFloorId}
         on:change={onFloorChange}
-        class="{cls}"
+        class="{inp}"
       >
         <option value="">Select floor…</option>
         {#each floors as f}
@@ -141,7 +140,7 @@
       <select
         bind:value={selectedTypeId}
         on:change={onTypeChange}
-        class="{cls}"
+        class="{inp}"
       >
         <option value="">Select type…</option>
         {#each typesBySystem as group}
@@ -159,11 +158,11 @@
   <div class="grid grid-cols-2 gap-4">
     <div class="flex flex-col gap-1">
       <p class="text-xs text-slate-400">Label</p>
-      <input type="text" bind:value={label} placeholder="Optional label" class="{cls}" />
+      <input type="text" bind:value={label} placeholder="Optional label" class="{inp}" />
     </div>
     <div class="flex flex-col gap-1">
       <p class="text-xs text-slate-400">Asset ID</p>
-      <input type="text" bind:value={assetId} placeholder="e.g. FD-042" class="{cls}" />
+      <input type="text" bind:value={assetId} placeholder="e.g. FD-042" class="{inp}" />
     </div>
   </div>
 
@@ -177,7 +176,7 @@
     <div class="flex flex-col gap-3">
       <div class="flex flex-col gap-1">
         <p class="text-xs text-slate-500">Floor Plan</p>
-        <select bind:value={planId} class="{cls}" disabled={!selectedFloorId}>
+        <select bind:value={planId} class="{inp}" disabled={!selectedFloorId}>
           <option value="">Not yet placed on a plan</option>
           {#each plansForFloor as p}
             <option value={p.id}>{p.name ?? p.building}</option>
