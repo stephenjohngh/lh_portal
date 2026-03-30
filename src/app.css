@@ -1,8 +1,26 @@
 /* src/app.css */
 /* Tailwind v4 compatible utilities */
 /* UPDATED: Added checkbox, checkbox-sm, field-error, meta-row, attr-panel, filter-subpanel classes */
-
+/* 
 @import "tailwindcss";
+*/
+@import "tailwindcss" source("../src");
+
+
+/* app.css
+ * specify exactly which folders to look in
+@import "tailwindcss" source(none);
+
+@source "./src/components";
+@source "./src/pages";
+
+
+If you want to see exactly which file is triggering the update, you can run the Tailwind CLI with a diagnostic flag to get a report of rebuild times per file: 
+bash
+
+npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
+ */
+
 
 @layer components {
   /* ========== CONTAINERS ========== */
