@@ -6,17 +6,19 @@
   import { centroid } from './planMeasure.js';
   import ComponentMarker from '../ComponentMarker.svelte';
 
-  export let plan;                      // selected plan object
-  export let floor;                     // selected floor object
-  export let planSpaces          = [];  // spaces for this plan
-  export let planAnnotations     = [];  // text annotations for this plan
-  export let positionedComponents = []; // components with drag overrides applied
-  export let types               = [];
-  export let selectedComponent   = null;
-  export let selectedSpace       = null;
-  export let selectedAnnotation  = null;
+  export let plan;                       // selected plan object
+  export let floor;                      // selected floor object
+  export let planSpaces           = [];  // spaces for this plan (may have polygon swapped for editing)
+  export let planAnnotations      = [];  // text annotations for this plan
+  export let positionedComponents = [];  // components with drag overrides applied
+  export let types                = [];
+  export let selectedComponent    = null;
+  export let selectedSpace        = null;
+  export let selectedAnnotation   = null;
+  export let showSpaces           = true;   // filter toggle
+  export let vertexEditingActive  = false;  // true while editing a space's polygon vertices
   // drawingMode: 'off' | 'component' | 'space' | 'scale' | 'annotation'
-  export let drawingMode         = 'off';
+  export let drawingMode          = 'off';
   export let drawingVertices    = [];
   export let scalePoint1        = null;  // { x, y }
   export let scalePoint2        = null;  // { x, y }
@@ -88,21 +90,41 @@
   >
 
     <!-- Saved space polygons -->
-    {#each planSpaces as space (space.id)}
-      {#if space.polygon?.length >= 3}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <polygon
-          points={space.polygon.map(v => `${v.x},${v.y}`).join(' ')}
-          fill="#{space.colour}"
-          fill-opacity={selectedSpace?.id === space.id ? 0.4 : 0.2}
-          stroke="#{space.colour}"
-          stroke-width="0.003"
-          stroke-opacity="0.8"
-          style="pointer-events:{drawingMode === 'space' ? 'none' : 'auto'}; cursor:pointer"
-          on:click|stopPropagation={() => dispatch('spaceclick', { space })}
-        />
+    {#if showSpaces}
+      {#each planSpaces as space (space.id)}
+        {#if space.polygon?.length >= 3}
+          {@const isNone = space.colour === 'none'}
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <polygon
+            points={space.polygon.map(v => `${v.x},${v.y}`).join(' ')}
+            fill={isNone ? 'none' : `#${space.colour}`}
+            fill-opacity={isNone ? 0 : (selectedSpace?.id === space.id ? 0.4 : 0.2)}
+            stroke={isNone ? '#94a3b8' : `#${space.colour}`}
+            stroke-width="0.003"
+            stroke-opacity={isNone ? 0.5 : 0.8}
+            stroke-dasharray={isNone ? '0.015,0.008' : null}
+            style="pointer-events:{drawingMode === 'space' ? 'none' : 'auto'}; cursor:pointer"
+            on:click|stopPropagation={() => dispatch('spaceclick', { space })}
+          />
+        {/if}
+      {/each}
+
+      <!-- Vertex handles when editing a space's polygon corners -->
+      {#if vertexEditingActive && selectedSpace}
+        {@const editSp = planSpaces.find(s => s.id === selectedSpace.id)}
+        {#if editSp}
+          {#each editSp.polygon as v, i (i)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <circle
+              cx={v.x} cy={v.y} r="0.016"
+              fill="#a855f7" stroke="white" stroke-width="0.003"
+              style="pointer-events:auto; cursor:grab"
+              on:mousedown|stopPropagation={() => dispatch('spacevertexdragstart', { index: i })}
+            />
+          {/each}
+        {/if}
       {/if}
-    {/each}
+    {/if}
 
     <!-- Saved scale reference line (hidden while re-calibrating) -->
     {#if plan.scale_ref && drawingMode !== 'scale'}
@@ -175,21 +197,25 @@
   </svg>
 
   <!-- ── Space labels (above SVG) ──────────────────────────────── -->
-  {#each planSpaces as space (space.id)}
-    {#if space.polygon?.length >= 3}
-      {@const c = centroid(space.polygon)}
-      <div
-        class="absolute pointer-events-none select-none"
-        style="left:{c.x * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8"
-      >
+  {#if showSpaces}
+    {#each planSpaces as space (space.id)}
+      {#if space.polygon?.length >= 3 && space.show_label !== false}
+        {@const c = centroid(space.polygon)}
+        {@const isNone = space.colour === 'none'}
         <div
-          class="px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shadow-sm"
-          style="background-color:#{space.colour}33; color:#{space.colour};
-                 border:1px solid #{space.colour}88"
-        >{space.name}</div>
-      </div>
-    {/if}
-  {/each}
+          class="absolute pointer-events-none select-none"
+          style="left:{c.x * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8"
+        >
+          <div
+            class="px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shadow-sm"
+            style="background-color:{isNone ? '#1e293b' : `#${space.colour}33`};
+                   color:{isNone ? '#94a3b8' : `#${space.colour}`};
+                   border:1px solid {isNone ? '#475569' : `#${space.colour}88`}"
+          >{space.name}</div>
+        </div>
+      {/if}
+    {/each}
+  {/if}
 
   <!-- ── Component markers ─────────────────────────────────────── -->
   {#each positionedComponents as c (c.id)}

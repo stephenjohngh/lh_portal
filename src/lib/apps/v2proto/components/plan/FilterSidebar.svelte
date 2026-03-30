@@ -16,12 +16,14 @@
 
   export let planComponents     = [];
   export let unplacedComponents = [];
+  export let planSpaces         = [];
   export let types              = [];
   export let systems            = [];
   export let hiddenTypes        = new Set();
   // inclusive: empty = show all; non-empty = show only these statuses
   export let selectedStatuses   = new Set();
   export let searchQuery        = '';
+  export let showSpaces         = true;
   export let selectedFloor      = null;
   export let drawingMode        = 'off';
 
@@ -56,8 +58,9 @@
   }
 
   // Count per status (of ALL on-plan components, ignoring current filters)
+  // Normalise to lowercase so legacy 'OK' rows count correctly under the 'ok' bucket
   $: statusCounts = STATUSES.reduce((acc, s) => {
-    acc[s.value] = planComponents.filter(c => (c.status || 'ok') === s.value).length;
+    acc[s.value] = planComponents.filter(c => (c.status || 'ok').toLowerCase() === s.value).length;
     return acc;
   }, {});
 
@@ -97,14 +100,16 @@
   }
 
   function clearAll() {
-    dispatch('changetypes',    { hidden: new Set() });
-    dispatch('changestatuses', { selected: new Set() });
-    dispatch('searchchange',   { query: '' });
+    dispatch('changetypes',      { hidden: new Set() });
+    dispatch('changestatuses',   { selected: new Set() });
+    dispatch('searchchange',     { query: '' });
+    dispatch('changeshowspaces', { show: true });
   }
 
   $: activeTypeCount   = hiddenTypes.size;
   $: activeStatusCount = selectedStatuses.size;
-  $: anyFiltered       = activeTypeCount > 0 || activeStatusCount > 0 || searchQuery.trim() !== '';
+  $: anyFiltered       = activeTypeCount > 0 || activeStatusCount > 0 ||
+                         searchQuery.trim() !== '' || !showSpaces;
 </script>
 
 <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
@@ -280,6 +285,36 @@
             All statuses shown — tick one or more to filter
           </p>
         {/if}
+      </div>
+    {/if}
+
+    <!-- ── Spaces visibility ──────────────────────────────────────── -->
+    {#if planSpaces.length > 0}
+      <div>
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Spaces</p>
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+        <div
+          class="flex items-center gap-2 cursor-pointer group/spaces select-none"
+          on:click={() => dispatch('changeshowspaces', { show: !showSpaces })}
+        >
+          <div class="w-3.5 h-3.5 rounded border flex items-center justify-center
+                      shrink-0 transition-colors
+                      {showSpaces ? 'bg-purple-600 border-purple-500' : 'bg-slate-700 border-slate-500'}">
+            {#if showSpaces}
+              <svg class="w-2 h-2 text-white" viewBox="0 0 10 8" fill="none">
+                <path d="M1 4l3 3 5-6" stroke="currentColor" stroke-width="1.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            {/if}
+          </div>
+          <span class="text-xs flex-1 transition-colors
+                       {showSpaces ? 'text-slate-300 group-hover/spaces:text-white' : 'text-slate-600'}">
+            Show space overlays
+          </span>
+          <span class="text-xs shrink-0 {showSpaces ? 'text-slate-500' : 'text-slate-700'}">
+            {planSpaces.length}
+          </span>
+        </div>
       </div>
     {/if}
 

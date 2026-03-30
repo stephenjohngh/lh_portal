@@ -73,13 +73,78 @@
   async function onSaved() {
     await v2protoStore.reload();
   }
+
+  // ── CSV export: system, type, attribute, option ────────────────────
+  // Each row represents one leaf node in the hierarchy. Parent rows are
+  // repeated on every child so the file reads top-to-bottom without
+  // headers. Rows are emitted even when a level has no children so
+  // every system/type/attribute always appears at least once.
+  function exportCsv() {
+    const s    = $v2protoStore;
+    const rows = [['system', 'type', 'attribute', 'option']];
+
+    for (const sys of s.systems) {
+      const sysTypes = s.types.filter(t => t.building_system_id === sys.id);
+      if (!sysTypes.length) { rows.push([sys.name, '', '', '']); continue; }
+
+      for (const type of sysTypes) {
+        const attrs = s.attrDefs[type.id] ?? [];
+        if (!attrs.length) { rows.push([sys.name, type.name, '', '']); continue; }
+
+        for (const attr of attrs) {
+          const options = s.attrOptions[attr.id] ?? [];
+          if (!options.length) {
+            rows.push([sys.name, type.name, attr.name, '']);
+          } else {
+            for (const opt of options) {
+              rows.push([sys.name, type.name, attr.name, opt.value]);
+            }
+          }
+        }
+      }
+    }
+
+    const csv  = rows
+      .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `component-types-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
 </script>
 
 <div class="space-y-4">
 
-  {#if store.loading}
-    <p class="text-slate-400 text-sm">Reloading…</p>
-  {/if}
+  <!-- ── Toolbar ───────────────────────────────────────────────────── -->
+  <div class="flex items-center justify-between">
+    {#if store.loading}
+      <p class="text-slate-400 text-sm">Reloading…</p>
+    {:else}
+      <span></span>
+    {/if}
+
+    <button
+      on:click={exportCsv}
+      title="Download types, attributes and options as CSV"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+             bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-slate-100
+             border border-slate-600 transition-colors"
+    >
+      <!-- download icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd"
+          d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+          clip-rule="evenodd"/>
+      </svg>
+      Export CSV
+    </button>
+  </div>
 
   <!-- ── Four-panel layout ─────────────────────────────────────────── -->
   <div class="flex min-h-[520px] rounded-xl border border-slate-700 overflow-hidden divide-x divide-slate-700">

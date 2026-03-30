@@ -11,9 +11,10 @@
     from './planMeasure.js';
 
   export let space;
-  export let floors        = [];
-  export let metresPerUnit = null;   // null if no scale set
-  export let planAR        = null;   // image aspect ratio
+  export let floors               = [];
+  export let metresPerUnit        = null;   // null if no scale set
+  export let planAR               = null;   // image aspect ratio
+  export let vertexEditingActive  = false;  // true while editing polygon corners
 
   const dispatch = createEventDispatcher();
 
@@ -23,6 +24,7 @@
   let editColourHex = '';
   let editHeightM   = '';   // string for input; converted to float on save
   let editNotes     = '';
+  let editShowLabel = true;
 
   let saving     = false;
   let errorMsg   = '';
@@ -34,11 +36,14 @@
 
   $: if (space?.id !== loadedId) {
     loadedId      = space?.id ?? null;
-    editName      = space?.name       ?? '';
+    editName      = space?.name        ?? '';
     editType      = space?.space_type  ?? '';
-    editColourHex = space ? `#${space.colour}` : '#a855f7';
+    editColourHex = space
+      ? (space.colour === 'none' ? 'none' : `#${space.colour}`)
+      : '#a855f7';
     editHeightM   = space?.height_m != null ? String(space.height_m) : '';
     editNotes     = space?.notes      ?? '';
+    editShowLabel = space?.show_label ?? true;
     saving        = false;
     errorMsg      = '';
     confirming    = false;
@@ -51,11 +56,13 @@
   // Compare edits against the current space prop values.
   // Uses parsedHeight (float|null) vs space.height_m (float|null) so that
   // "2.8" in the input correctly matches a stored 2.8.
+  // Colour comparison handles 'none' (transparent) correctly.
   $: dirty = !!space && (
     editName      !== (space.name       ?? '')  ||
     editType      !== (space.space_type  ?? '')  ||
-    editColourHex !== `#${space.colour}`          ||
+    editColourHex !== (space.colour === 'none' ? 'none' : `#${space.colour}`) ||
     editNotes     !== (space.notes       ?? '')  ||
+    editShowLabel !== (space.show_label  ?? true) ||
     parsedHeight  !== (space.height_m    ?? null)
   );
 
@@ -79,9 +86,10 @@
       const updated = await v2protoStore.updateSpace(space.id, {
         name:       editName,
         space_type: editType,
-        colour:     editColourHex.replace('#', ''),
+        colour:     editColourHex === 'none' ? 'none' : editColourHex.replace('#', ''),
         height_m:   parsedHeight,
-        notes:      editNotes
+        notes:      editNotes,
+        show_label: editShowLabel,
       });
       // Dispatch the updated object so PlanViewTab can refresh selectedSpace.
       // Without this, the space prop stays as the pre-save object and dirty
@@ -111,7 +119,10 @@
   <!-- ── Sticky header ─────────────────────────────────────────────── -->
   <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-700">
     <div class="flex items-center gap-2 min-w-0">
-      <div class="w-4 h-4 rounded-sm shrink-0" style:background-color={editColourHex}></div>
+      <div
+        class="w-4 h-4 rounded-sm shrink-0 {editColourHex === 'none' ? 'border border-slate-500' : ''}"
+        style={editColourHex !== 'none' ? `background-color:${editColourHex}` : ''}
+      ></div>
       <p class="font-semibold text-white text-sm truncate">{space.name}</p>
       {#if dirty}
         <span class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
@@ -200,15 +211,17 @@
       <p class="text-xs text-slate-400 mb-1.5">Colour</p>
       <div class="flex gap-1.5 flex-wrap">
         {#each SPACE_COLOURS as sc (sc.hex)}
+          {@const isNone = sc.hex === 'none'}
           <button
             on:click={() => editColourHex = sc.hex}
             title={sc.label}
-            class="w-6 h-6 rounded-full border-2 transition-all
+            class="w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center
                    {editColourHex === sc.hex
                      ? 'border-white scale-110'
-                     : 'border-transparent hover:border-slate-400'}"
-            style:background-color={sc.hex}
-          ></button>
+                     : 'border-transparent hover:border-slate-400'}
+                   {isNone ? 'bg-slate-700' : ''}"
+            style={!isNone ? `background-color:${sc.hex}` : ''}
+          >{#if isNone}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</button>
         {/each}
       </div>
     </div>
@@ -242,9 +255,24 @@
       ></textarea>
     </div>
 
+    <!-- ── Show label ─────────────────────────────────────────────── -->
+    <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+      <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
+      Show name label on plan
+    </label>
+
     <!-- ── Metadata ───────────────────────────────────────────────── -->
     <div class="flex flex-col gap-0.5 pt-1 border-t border-slate-700/60">
-      <p class="text-xs text-slate-600">{poly.length} polygon vertices</p>
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-slate-600">{poly.length} polygon vertices</p>
+        <button
+          on:click={() => dispatch(vertexEditingActive ? 'doneeditshape' : 'editshape')}
+          class="text-xs px-2 py-0.5 rounded transition-colors
+                 {vertexEditingActive
+                   ? 'bg-purple-600 text-white hover:bg-purple-500'
+                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
+        >{vertexEditingActive ? 'Done editing' : 'Edit shape ✦'}</button>
+      </div>
       {#if floor}
         <p class="text-xs text-slate-600">Floor: {floor.name}</p>
       {/if}

@@ -14,10 +14,14 @@
 
   let hovered = false;
 
-  $: colour   = type?.colour   ?? '888888';
-  $: initial  = type?.initial  ?? '?';
-  $: isCircle = !type || type.marker_shape === 'circle';
-  $: isInactive = component.status === 'inactive';
+  $: colour        = type?.colour   ?? '888888';
+  $: initial       = type?.initial  ?? '?';
+  $: shape         = type?.marker_shape ?? 'circle';
+  $: isCircle      = shape === 'circle' || shape === 'circle_inner' || !type;
+  $: isDiamond     = shape === 'diamond';
+  $: isSquareInner = shape === 'square_inner';
+  $: isCircleInner = shape === 'circle_inner';
+  $: isInactive    = component.status === 'inactive';
   $: label = component.asset_id || component.label || '';
 
   $: sizeClass = {
@@ -32,7 +36,7 @@
     type?.name ?? component.type_code,
     component.asset_id,
     component.label,
-    component.status !== 'OK' ? component.status.toUpperCase() : null
+    component.status && component.status !== 'ok' ? component.status.toUpperCase() : null
   ].filter(Boolean).join(' · ');
 </script>
 
@@ -53,6 +57,7 @@
     class="relative {sizeClass} flex items-center justify-center text-white font-bold
            shadow-lg transition-transform duration-75
            {isCircle ? 'rounded-full' : 'rounded'}
+           {isDiamond ? 'rotate-45' : ''}
            {isInactive ? 'opacity-40' : ''}
            {selected    ? 'scale-125 ring-2 ring-white ring-offset-1 ring-offset-transparent'
                         : hovered ? 'scale-110' : ''}
@@ -62,11 +67,17 @@
     on:mousedown|stopPropagation={e => { if (editMode) dispatch('dragstart', { e, component }); }}
     on:keydown={e => e.key === 'Enter' && dispatch('click', { component })}
   >
-    {initial}
+    <!-- Counter-rotate the initial letter on diamonds so it reads upright -->
+    <span class={isDiamond ? '-rotate-45 inline-flex items-center justify-center' : ''}>{initial}</span>
 
-    <!-- Inner-square overlay (for marker_shape = 'square_inner') -->
-    {#if type?.marker_shape === 'square_inner'}
+    <!-- Inner square ring (square / diamond shapes) -->
+    {#if isSquareInner}
       <span class="absolute inset-[5px] border-2 border-white/60 rounded-sm pointer-events-none"></span>
+    {/if}
+
+    <!-- Inner circle ring (circle_inner shape) -->
+    {#if isCircleInner}
+      <span class="absolute inset-[5px] border-2 border-white/60 rounded-full pointer-events-none"></span>
     {/if}
   </div>
 

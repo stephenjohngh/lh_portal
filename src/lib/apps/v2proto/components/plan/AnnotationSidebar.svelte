@@ -98,8 +98,9 @@
 
     <!-- Text content -->
     <div>
-      <label class="text-xs text-slate-400 mb-1 block">Text</label>
+      <label for="ann-text" class="text-xs text-slate-400 mb-1 block">Text</label>
       <textarea
+        id="ann-text"
         bind:value={text}
         rows="3"
         class="{inp} resize-none"
@@ -109,8 +110,8 @@
 
     <!-- Font size -->
     <div>
-      <label class="text-xs text-slate-400 mb-1 block">Size</label>
-      <select bind:value={font_size} class="{inp} cursor-pointer">
+      <label for="ann-size" class="text-xs text-slate-400 mb-1 block">Size</label>
+      <select id="ann-size" bind:value={font_size} class="{inp} cursor-pointer">
         {#each FONT_SIZES as fs (fs.value)}
           <option value={fs.value}>{fs.label}</option>
         {/each}
@@ -119,9 +120,9 @@
 
     <!-- Colour -->
     <div>
-      <label class="text-xs text-slate-400 mb-1 block">Colour</label>
+      <label for="ann-colour" class="text-xs text-slate-400 mb-1 block">Colour</label>
       <div class="flex gap-2 items-center">
-        <input type="color" bind:value={colour}
+        <input id="ann-colour" type="color" bind:value={colour}
                class="h-[30px] w-10 rounded border border-slate-600 cursor-pointer bg-slate-900 p-0.5 shrink-0" />
         <input bind:value={colour} class="{inp} font-mono" placeholder="#fbbf24" maxlength="7" />
       </div>
@@ -135,8 +136,8 @@
 
     <!-- Notes (internal) -->
     <div>
-      <label class="text-xs text-slate-400 mb-1 block">Notes (internal)</label>
-      <input bind:value={notes} class={inp} placeholder="Optional internal notes…" />
+      <label for="ann-notes" class="text-xs text-slate-400 mb-1 block">Notes (internal)</label>
+      <input id="ann-notes" bind:value={notes} class={inp} placeholder="Optional internal notes…" />
     </div>
 
     <!-- Preview -->

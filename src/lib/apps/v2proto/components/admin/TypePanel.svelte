@@ -11,7 +11,7 @@
 
   const dispatch = createEventDispatcher();
 
-  const MARKER_SHAPES  = ['circle', 'square', 'square_inner', 'diamond'];
+  const MARKER_SHAPES  = ['circle', 'circle_inner', 'square', 'square_inner', 'diamond'];
   const MARKER_SIZES   = ['sm', 'md', 'lg', 'xl'];
   const PRIORITY_BASES = ['critical', 'high', 'medium', 'low'];
 
@@ -180,8 +180,8 @@
               </select>
 
               <div>
-                <label class="text-xs text-slate-400 mb-1 block">Marker Size</label>
-                <select bind:value={form.marker_size} class={inp}>
+                <label for="type-marker-size" class="text-xs text-slate-400 mb-1 block">Marker Size</label>
+                <select id="type-marker-size" bind:value={form.marker_size} class={inp}>
                   {#each MARKER_SIZES as sz}
                     <option value={sz}>{sz === 'sm' ? 'Small' : sz === 'md' ? 'Medium' : sz === 'lg' ? 'Large' : 'X-Large'}</option>
                   {/each}
@@ -306,8 +306,8 @@
             </select>
 
             <div>
-              <label class="text-xs text-slate-400 mb-1 block">Marker Size</label>
-              <select bind:value={form.marker_size} class={inp}>
+              <label for="new-type-marker-size" class="text-xs text-slate-400 mb-1 block">Marker Size</label>
+              <select id="new-type-marker-size" bind:value={form.marker_size} class={inp}>
                 {#each MARKER_SIZES as sz}
                   <option value={sz}>{sz === 'sm' ? 'Small' : sz === 'md' ? 'Medium' : sz === 'lg' ? 'Large' : 'X-Large'}</option>
                 {/each}

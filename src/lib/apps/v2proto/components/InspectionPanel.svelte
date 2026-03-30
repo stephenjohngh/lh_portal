@@ -15,16 +15,17 @@
 
   const dispatch = createEventDispatcher();
 
-  // Derive RESULTS from shared STATUSES (with 'OK' value casing for this panel)
+  // Derive RESULTS from shared STATUSES — values match DB (all lowercase since migration 022)
   const RESULTS = STATUSES.map(s => ({
-    value:  s.value === 'ok' ? 'OK' : s.value,
+    value:  s.value,
     label:  s.label,
     cls:    s.bg + ' hover:opacity-80',
     selCls: 'ring-2 ' + s.ring
   }));
 
   // Initialise form from last inspection or defaults
-  let result    = lastInspection?.inspection_result ?? 'OK';
+  // Normalise legacy 'OK' uppercase to 'ok' in case migration 022 hasn't run yet
+  let result = (lastInspection?.inspection_result ?? 'ok').toLowerCase();
   let notes     = lastInspection?.inspector_notes   ?? '';
 
   // Build checklist: one entry per checkable attr, defaulting to false

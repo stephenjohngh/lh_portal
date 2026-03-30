@@ -13,6 +13,7 @@
   export let spaceName   = '';
   export let spaceType   = '';
   export let colourHex   = '#a855f7';
+  export let showLabel   = true;
 
   const dispatch = createEventDispatcher();
 
@@ -69,12 +70,19 @@
           class="w-6 h-6 rounded-full border-2 transition-all
                  {colourHex === sc.hex
                    ? 'border-white scale-110'
-                   : 'border-transparent hover:border-slate-400'}"
-          style:background-color={sc.hex}
-        ></button>
+                   : 'border-transparent hover:border-slate-400'}
+                 {sc.hex === 'none' ? 'bg-slate-700' : ''}"
+          style={sc.hex !== 'none' ? `background-color:${sc.hex}` : ''}
+        >{#if sc.hex === 'none'}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</button>
       {/each}
     </div>
   </div>
+
+  <!-- Show label -->
+  <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none mb-3">
+    <input type="checkbox" bind:checked={showLabel} class="rounded accent-purple-500" />
+    Show name label on plan
+  </label>
 
   <!-- Hint -->
   <p class="text-xs text-slate-500 mb-3">

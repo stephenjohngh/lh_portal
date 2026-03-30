@@ -74,6 +74,18 @@
   let drawingSpaceName = '';
   let drawingSpaceType = '';
   let drawingColourHex = '#a855f7';
+  let drawingShowLabel = true;
+
+  // ── Space display / filter state ─────────────────────────────────
+  let showSpaces          = true;
+
+  // ── Vertex editing state ──────────────────────────────────────────
+  // Enabled via "Edit shape" button in SpaceDetailSidebar.
+  // editingPolygon holds a live copy of the polygon being dragged so
+  // PlanCanvas can render it without waiting for a DB round-trip.
+  let vertexEditingActive = false;
+  let editingPolygon      = null;   // { spaceId, vertices: [{x,y}] }
+  let vertexDragIndex     = null;   // index of vertex being dragged
 
   // ── Annotation state ──────────────────────────────────────────────
   let selectedAnnotation   = null;   // the annotation being edited
@@ -95,6 +107,18 @@
     ? components.filter(c => c.plan_id === selectedPlanId) : [];
   $: planSpaces         = selectedPlanId
     ? spaces.filter(s => s.plan_id === selectedPlanId) : [];
+  // Substitute the live editingPolygon for the selected space so vertex drags
+  // are rendered immediately without waiting for the DB round-trip.
+  // Capture ep once so the truthy check and the inner property accesses
+  // always refer to the same value (guards against Svelte reading the reactive
+  // source twice and getting null on the second read if it changed in between).
+  $: displaySpaces = (() => {
+    const ep = editingPolygon;
+    if (!ep) return planSpaces;
+    return planSpaces.map(s => s.id === ep.spaceId
+      ? { ...s, polygon: ep.vertices }
+      : s);
+  })();
   $: planAnnotations    = selectedPlanId
     ? annotations.filter(a => a.plan_id === selectedPlanId).map(a => {
         const ov = annotationDragPos[a.id];
@@ -109,7 +133,8 @@
     // Type filter — exclusive: hidden types are excluded
     if (hiddenTypes.has(c.type_code)) return false;
     // Status filter — inclusive: empty set = show all; non-empty = show only selected
-    const status = c.status || 'ok';
+    // Normalise to lowercase so legacy 'OK' rows match the 'ok' STATUSES value
+    const status = (c.status || 'ok').toLowerCase();
     if (selectedStatuses.size > 0 && !selectedStatuses.has(status)) return false;
     // Text search across label, asset_id, notes
     if (searchQuery.trim()) {
@@ -154,11 +179,14 @@
 
   // ── Helpers ───────────────────────────────────────────────────────
   function resetSelection() {
-    selectedComponent  = null;
-    selectedSpace      = null;
-    selectedAnnotation = null;
-    sidebarMode        = 'none';
-    newPos             = null;
+    selectedComponent   = null;
+    selectedSpace       = null;
+    selectedAnnotation  = null;
+    sidebarMode         = 'none';
+    newPos              = null;
+    vertexEditingActive = false;
+    editingPolygon      = null;
+    vertexDragIndex     = null;
   }
 
   function cancelSpaceDrawing() {
@@ -166,6 +194,7 @@
     drawingSpaceName = '';
     drawingSpaceType = '';
     drawingColourHex = '#a855f7';
+    drawingShowLabel = true;
     if (sidebarMode === 'space-drawing') sidebarMode = 'none';
   }
 
@@ -200,6 +229,8 @@
     if (drawingMode !== 'component')  { draggingId = null; dragPos = {}; newPos = null; }
     if (drawingMode !== 'scale')      clearScaleDrawing();
     if (drawingMode !== 'annotation') { annotationDraggingId = null; annotationDragPos = {}; }
+    // Stop vertex editing on any mode switch
+    vertexEditingActive = false; editingPolygon = null; vertexDragIndex = null;
     if (sidebarMode === 'form'              && drawingMode !== 'component')  sidebarMode = 'none';
     if (sidebarMode === 'space-drawing'     && drawingMode !== 'space')      sidebarMode = 'none';
     if (sidebarMode === 'scale-input'       && drawingMode !== 'scale')      sidebarMode = 'none';
@@ -212,6 +243,7 @@
   function onChangeStatuses({ detail: { selected } }) { selectedStatuses = selected; }
 
   function onSearchChange({ detail: { query } }) { searchQuery = query; }
+  function onChangeShowSpaces({ detail: { show } }) { showSpaces = show; }
 
   function onClearFilters() {
     hiddenTypes      = new Set();
@@ -342,8 +374,9 @@
         floor_id:   selectedFloorId || null,
         name:       drawingSpaceName.trim(),
         space_type: drawingSpaceType || null,
-        colour:     drawingColourHex.replace('#', ''),
+        colour:     drawingColourHex === 'none' ? 'none' : drawingColourHex.replace('#', ''),
         polygon:    drawingVertices,
+        show_label: drawingShowLabel,
       });
       cancelSpaceDrawing();
     } catch (err) { errorMsg = err.message; }
@@ -436,11 +469,65 @@
     annotationDraggingId = null;
     annotationDragPos    = {};
   }
+
+  // ── Space vertex drag ─────────────────────────────────────────────
+  function onVertexDragstart({ detail: { index } }) {
+    if (!selectedSpace || !vertexEditingActive) return;
+    // Snapshot current polygon if not already done (before setting vertexDragIndex
+    // so we never have a non-null dragIndex with a null editingPolygon).
+    if (!editingPolygon) {
+      const sp = displaySpaces.find(s => s.id === selectedSpace.id);
+      if (!sp) return;
+      editingPolygon = { spaceId: selectedSpace.id, vertices: sp.polygon.map(v => ({ ...v })) };
+    }
+    vertexDragIndex = index;
+  }
+
+  function handleMousemoveVertex(e) {
+    if (vertexDragIndex === null || !editingPolygon || !canvasEl) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height));
+    editingPolygon = {
+      ...editingPolygon,
+      vertices: editingPolygon.vertices.map((v, i) => i === vertexDragIndex ? { x, y } : v),
+    };
+  }
+
+  async function handleMouseupVertex() {
+    if (vertexDragIndex === null || !editingPolygon) return;
+    vertexDragIndex = null;
+    // Capture before the await — editingPolygon could be cleared (e.g. user
+    // presses "Done editing") while the store round-trip is in flight.
+    const poly = editingPolygon;
+    try {
+      await v2protoStore.updateSpacePolygon(poly.spaceId, poly.vertices);
+      // Sync selectedSpace so SpaceDetailSidebar shows the updated vertex count
+      const updated = $v2protoStore.spaces.find(s => s.id === poly.spaceId);
+      if (updated && selectedSpace?.id === updated.id) selectedSpace = updated;
+    } catch (err) {
+      errorMsg = err.message;
+    }
+  }
+
+  function onEditShape() {
+    vertexEditingActive = true;
+    const sp = planSpaces.find(s => s.id === selectedSpace?.id);
+    if (sp) {
+      editingPolygon = { spaceId: sp.id, vertices: sp.polygon.map(v => ({ ...v })) };
+    }
+  }
+
+  function onDoneEditShape() {
+    vertexEditingActive = false;
+    editingPolygon      = null;
+    vertexDragIndex     = null;
+  }
 </script>
 
 <svelte:window
-  on:mousemove={e => { handleMousemove(e); handleMousemoveAnnotation(e); }}
-  on:mouseup={async () => { await handleMouseup(); await handleMouseupAnnotation(); }}
+  on:mousemove={e => { handleMousemove(e); handleMousemoveAnnotation(e); handleMousemoveVertex(e); }}
+  on:mouseup={async () => { await handleMouseup(); await handleMouseupAnnotation(); await handleMouseupVertex(); }}
 />
 
 <div class="flex flex-col gap-3">
@@ -511,6 +598,15 @@
     </div>
   {/if}
 
+  {#if vertexEditingActive}
+    <div class="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20
+                text-xs text-purple-300/80 flex items-center gap-2">
+      <span>✦</span>
+      <span>Drag the <strong class="text-purple-400">●</strong> vertex handles to reshape
+        the space. Press <strong>Done editing</strong> in the panel when finished.</span>
+    </div>
+  {/if}
+
   <!-- ── Error bar ─────────────────────────────────────────────────── -->
   {#if errorMsg}
     <div class="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-400
@@ -549,13 +645,15 @@
         <PlanCanvas
           plan={selectedPlan}
           floor={selectedFloor}
-          {planSpaces}
+          planSpaces={displaySpaces}
           {positionedComponents}
           {planAnnotations}
           {types}
           {selectedComponent}
           {selectedSpace}
           {selectedAnnotation}
+          {showSpaces}
+          {vertexEditingActive}
           {drawingMode}
           {drawingVertices}
           {scalePoint1}
@@ -567,6 +665,7 @@
           on:markerclick={onMarkerClick}
           on:markerdragstart={onMarkerDragstart}
           on:spaceclick={onSpaceClick}
+          on:spacevertexdragstart={onVertexDragstart}
           on:annotationclick={onAnnotationClick}
           on:annotationdragstart={onAnnotationDragstart}
           on:closepoly={onClosePoly}
@@ -633,6 +732,7 @@
           bind:spaceName={drawingSpaceName}
           bind:spaceType={drawingSpaceType}
           bind:colourHex={drawingColourHex}
+          bind:showLabel={drawingShowLabel}
           on:finish={handleFinishDrawing}
           on:undo={() => {
             drawingVertices = drawingVertices.slice(0, -1);
@@ -647,9 +747,12 @@
           {floors}
           {metresPerUnit}
           {planAR}
+          {vertexEditingActive}
           on:saved={({ detail }) => { selectedSpace = detail.space; }}
-          on:close={() => { selectedSpace = null; sidebarMode = 'none'; }}
-          on:deleted={() => { selectedSpace = null; sidebarMode = 'none'; }}
+          on:close={() => { selectedSpace = null; sidebarMode = 'none'; resetSelection(); }}
+          on:deleted={() => { resetSelection(); }}
+          on:editshape={onEditShape}
+          on:doneeditshape={onDoneEditShape}
         />
 
       {:else if sidebarMode === 'scale-input'}
@@ -675,16 +778,19 @@
         <FilterSidebar
           {planComponents}
           {unplacedComponents}
+          planSpaces={planSpaces}
           {types}
           {systems}
           {hiddenTypes}
           {selectedStatuses}
           {searchQuery}
+          {showSpaces}
           {selectedFloor}
           {drawingMode}
           on:changetypes={onChangeTypes}
           on:changestatuses={onChangeStatuses}
           on:searchchange={onSearchChange}
+          on:changeshowspaces={onChangeShowSpaces}
           on:selectcomponent={({ detail: { component } }) => {
             selectedComponent = component;
             sidebarMode = 'detail';
@@ -703,9 +809,23 @@
       {types}
       {systems}
       {attrDefs}
+      {floors}
       on:selectcomponent={({ detail: { component } }) => {
         selectedComponent = component;
         sidebarMode       = 'detail';
+      }}
+      on:inspect={({ detail: { component } }) => {
+        selectedComponent = component;
+        sidebarMode       = 'inspect';
+      }}
+      on:deletecomponent={async ({ detail: { component } }) => {
+        try {
+          await v2protoStore.deleteComponent(component.id);
+          if (selectedComponent?.id === component.id) {
+            selectedComponent = null;
+            sidebarMode       = 'none';
+          }
+        } catch (err) { errorMsg = err.message; }
       }}
     />
   {/if}

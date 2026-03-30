@@ -23,6 +23,8 @@ export const SPACE_COLOURS = [
   { hex: '#06b6d4', label: 'Cyan'   },
   { hex: '#f97316', label: 'Orange' },
   { hex: '#ec4899', label: 'Pink'   },
+  // Special: transparent / no fill — stored as 'none' in DB
+  { hex: 'none',    label: 'No fill' },
 ];
 
 /**

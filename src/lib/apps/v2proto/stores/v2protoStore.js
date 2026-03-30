@@ -197,7 +197,7 @@ function createV2ProtoStore() {
 
       const component = await api.create('components', {
         ...fields,
-        status: 'OK',
+        status: 'ok',
         created_by: userId,
         updated_by: userId
       });
@@ -414,6 +414,7 @@ function createV2ProtoStore() {
         colour:             data.colour?.replace('#', '') || '888888',
         icon_params:        data.icon_params || null,
         marker_shape:       data.marker_shape || 'circle',
+        marker_size:        data.marker_size  || 'md',
         attribute_group:    data.attribute_group?.trim() || null,
         inspection_panel:   data.inspection_panel?.trim() || 'standard',
         default_attribute:  data.default_attribute?.trim() || null,
@@ -434,6 +435,7 @@ function createV2ProtoStore() {
         initial:            data.initial?.trim().charAt(0).toUpperCase() || '?',
         colour:             data.colour?.replace('#', '') || '888888',
         marker_shape:       data.marker_shape,
+        marker_size:        data.marker_size || 'md',
         attribute_group:    data.attribute_group?.trim() || null,
         inspection_panel:   data.inspection_panel?.trim() || 'standard',
         default_attribute:  data.default_attribute?.trim() || null,
@@ -574,8 +576,9 @@ function createV2ProtoStore() {
         name:       data.name.trim(),
         space_type: data.space_type?.trim() || null,
         polygon:    data.polygon,          // [{x, y}]
-        colour:     data.colour || 'a855f7',
+        colour:     data.colour === 'none' ? 'none' : (data.colour?.replace('#', '') || 'a855f7'),
         height_m:   data.height_m          ?? null,
+        show_label: data.show_label ?? true,
         notes:      data.notes?.trim()     || null,
         created_by: userId,
         updated_by: userId
@@ -592,8 +595,9 @@ function createV2ProtoStore() {
       const updated = await api.update('spaces', id, {
         name:       data.name.trim(),
         space_type: data.space_type?.trim() || null,
-        colour:     data.colour || 'a855f7',
+        colour:     data.colour === 'none' ? 'none' : (data.colour?.replace('#', '') || 'a855f7'),
         height_m:   data.height_m           ?? null,
+        show_label: data.show_label ?? true,
         notes:      data.notes?.trim()      || null,
         updated_by: userId
       });
