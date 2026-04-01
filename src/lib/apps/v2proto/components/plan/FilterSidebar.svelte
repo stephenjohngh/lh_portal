@@ -64,17 +64,18 @@
     return acc;
   }, {});
 
-  // System is 'checked' only when ALL its types are visible.
-  // 'partial' = some visible, some hidden.
-  // 'unchecked' = all types hidden.
-  function systemChecked(group) {
-    return group.types.every(t => !hiddenTypes.has(t.code));
-  }
-  function systemPartial(group) {
-    const codes = group.types.map(t => t.code);
-    const hiddenCount = codes.filter(c => hiddenTypes.has(c)).length;
-    return hiddenCount > 0 && hiddenCount < codes.length;
-  }
+  // Recompute system checked/partial state whenever hiddenTypes changes.
+  // Keyed by system id (or '__none__').
+  $: systemStates = new Map(
+    systemGroups.map(g => {
+      const id          = g.system?.id ?? '__none__';
+      const hiddenCount = g.types.filter(t => hiddenTypes.has(t.code)).length;
+      return [id, {
+        isChecked: hiddenCount === 0,
+        isPartial: hiddenCount > 0 && hiddenCount < g.types.length,
+      }];
+    })
+  );
 
   // ── Toggle helpers ────────────────────────────────────────────────
   // System: if all children visible → hide all; otherwise → show all.
@@ -149,8 +150,7 @@
     {:else}
       <div class="flex flex-col gap-2">
         {#each systemGroups as group (group.system?.id ?? '__none__')}
-          {@const isChecked = systemChecked(group)}
-          {@const isPartial = systemPartial(group)}
+          {@const { isChecked, isPartial } = systemStates.get(group.system?.id ?? '__none__') ?? { isChecked: true, isPartial: false }}
           {@const sysCount  = group.types.reduce((n, t) => n + countForType(t.code), 0)}
 
           <!-- System row -->
