@@ -22,14 +22,26 @@
   $: isSquareInner = shape === 'square_inner';
   $: isCircleInner = shape === 'circle_inner';
   $: isInactive    = component.status === 'inactive';
+
+  // Return true when the hex colour (without #) is light enough to need black text
+  function isLightColour(hex) {
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    const lin = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return L > 0.179; // WCAG relative luminance threshold
+  }
+
+  $: lightBg = isLightColour(colour);
   $: label = component.asset_id || component.label || '';
 
   $: sizeClass = {
-    sm: 'w-5  h-5  text-[9px]',
-    md: 'w-7  h-7  text-xs',
-    lg: 'w-9  h-9  text-sm',
+    sm: 'w-4  h-4  text-[9px]',
+    md: 'w-6  h-6  text-xs',
+    lg: 'w-8  h-8  text-sm',
     xl: 'w-11 h-11 text-base',
-  }[type?.marker_size ?? 'md'] ?? 'w-7 h-7 text-xs';
+  }[type?.marker_size ?? 'md'] ?? 'w-6 h-6 text-xs';
 
   // Tooltip text
   $: tipText = [
@@ -54,7 +66,7 @@
     role="button"
     tabindex="0"
     title={tipText}
-    class="relative {sizeClass} flex items-center justify-center text-white font-bold
+    class="relative {sizeClass} flex items-center justify-center {lightBg ? 'text-black' : 'text-white'} font-bold
            shadow-lg transition-transform duration-75
            {isCircle ? 'rounded-full' : 'rounded'}
            {isDiamond ? 'rotate-45' : ''}
@@ -72,12 +84,12 @@
 
     <!-- Inner square ring (square / diamond shapes) -->
     {#if isSquareInner}
-      <span class="absolute inset-[5px] border-2 border-white/60 rounded-sm pointer-events-none"></span>
+      <span class="absolute inset-[5px] border-2 {lightBg ? 'border-black/40' : 'border-white/60'} rounded-sm pointer-events-none"></span>
     {/if}
 
     <!-- Inner circle ring (circle_inner shape) -->
     {#if isCircleInner}
-      <span class="absolute inset-[5px] border-2 border-white/60 rounded-full pointer-events-none"></span>
+      <span class="absolute inset-[5px] border-2 {lightBg ? 'border-black/40' : 'border-white/60'} rounded-full pointer-events-none"></span>
     {/if}
   </div>
 
