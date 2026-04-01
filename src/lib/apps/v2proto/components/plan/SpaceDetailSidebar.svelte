@@ -51,7 +51,9 @@
 
   // parsedHeight must be declared BEFORE dirty so Svelte's reactive graph
   // evaluates it first — otherwise dirty checks stale parsedHeight on first edit.
-  $: parsedHeight = editHeightM.trim() !== '' ? parseFloat(editHeightM) : null;
+  // editHeightM may be a number (Svelte coerces type="number" inputs) or '' when empty,
+  // so we must not call .trim() on it — use != null / !== '' checks instead.
+  $: parsedHeight = (editHeightM !== '' && editHeightM != null) ? parseFloat(editHeightM) : null;
 
   // Compare edits against the current space prop values.
   // Uses parsedHeight (float|null) vs space.height_m (float|null) so that
