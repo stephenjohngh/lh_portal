@@ -64,11 +64,13 @@
     return acc;
   }, {});
 
+  // 'visible' = all shown, 'partial' = some hidden, 'all_hidden' = all children hidden.
+  // System row itself is never treated as hidden — it stays checked regardless.
   function systemState(group) {
     const n      = group.types.length;
     const hidden = group.types.filter(t => hiddenTypes.has(t.code)).length;
-    if (hidden === 0) return 'visible';
-    if (hidden === n) return 'hidden';
+    if (hidden === 0)   return 'visible';
+    if (hidden === n)   return 'all_hidden';
     return 'partial';
   }
 
@@ -77,8 +79,8 @@
     const state     = systemState(group);
     const newHidden = new Set(hiddenTypes);
     for (const t of group.types) {
-      if (state === 'hidden') newHidden.delete(t.code);
-      else                    newHidden.add(t.code);
+      if (state === 'all_hidden') newHidden.delete(t.code);  // all hidden → show all
+      else                        newHidden.add(t.code);     // visible/partial → hide all
     }
     dispatch('changetypes', { hidden: newHidden });
   }
@@ -100,16 +102,13 @@
   }
 
   function clearAll() {
-    dispatch('changetypes',      { hidden: new Set() });
+    // Hide every type on the plan (all checkboxes off → nothing showing)
+    const allCodes = systemGroups.flatMap(g => g.types.map(t => t.code));
+    dispatch('changetypes',      { hidden: new Set(allCodes) });
     dispatch('changestatuses',   { selected: new Set() });
     dispatch('searchchange',     { query: '' });
     dispatch('changeshowspaces', { show: true });
   }
-
-  $: activeTypeCount   = hiddenTypes.size;
-  $: activeStatusCount = selectedStatuses.size;
-  $: anyFiltered       = activeTypeCount > 0 || activeStatusCount > 0 ||
-                         searchQuery.trim() !== '' || !showSpaces;
 </script>
 
 <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
@@ -117,12 +116,10 @@
   <!-- Header -->
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filters</p>
-    {#if anyFiltered}
-      <button
-        on:click={clearAll}
-        class="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-      >Clear all</button>
-    {/if}
+    <button
+      on:click={clearAll}
+      class="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+    >Clear all</button>
   </div>
 
   <div class="p-3 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
@@ -157,18 +154,19 @@
             class="flex items-center gap-2 cursor-pointer group/sys select-none"
             on:click={() => toggleSystem(group)}
           >
-            <!-- 3-state checkbox -->
+            <!-- System checkbox: always filled — never goes to hidden/unchecked state.
+                 visible = checkmark; partial/all_hidden = dash -->
             <div class="w-4 h-4 rounded border flex items-center justify-center shrink-0
                         transition-colors
-                        {state === 'hidden'  ? 'bg-slate-700 border-slate-500' :
-                         state === 'partial' ? 'bg-purple-700 border-purple-500' :
-                                               'bg-purple-600 border-purple-500'}">
+                        {state === 'partial' || state === 'all_hidden'
+                          ? 'bg-purple-700 border-purple-500'
+                          : 'bg-purple-600 border-purple-500'}">
               {#if state === 'visible'}
                 <svg class="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
                   <path d="M1 4l3 3 5-6" stroke="currentColor" stroke-width="1.5"
                         stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-              {:else if state === 'partial'}
+              {:else}
                 <div class="w-2 h-0.5 bg-white rounded"></div>
               {/if}
             </div>
@@ -178,12 +176,10 @@
                    style:background-color="#{group.system.colour}"></div>
             {/if}
             <span class="text-sm font-medium flex-1 truncate transition-colors
-                         {state === 'hidden' ? 'text-slate-600 line-through' : 'text-slate-200'}
-                         group-hover/sys:text-white">
+                         text-slate-200 group-hover/sys:text-white">
               {group.system?.name ?? 'Other'}
             </span>
-            <span class="text-xs shrink-0
-                         {state === 'hidden' ? 'text-slate-700' : 'text-slate-500'}">{sysCount}</span>
+            <span class="text-xs shrink-0 text-slate-500">{sysCount}</span>
           </div>
 
           <!-- Type rows (indented) -->
