@@ -26,10 +26,7 @@
   // ── Edit state (initialised from props) ─────────────────────────────
   let selectedFloorId    = component.floor_id      ?? '';
   let planId             = component.plan_id        ?? '';
-  let selectedTypeId     = (() => {
-    const t = typeByCode(types, component.type_code);
-    return t?.id ?? '';
-  })();
+  let selectedTypeId     = typeByCode(types, component.type_code)?.id ?? '';
   let label              = component.label          ?? '';
   let assetId            = component.asset_id       ?? '';
   let status             = component.status         ?? 'OK';
@@ -47,6 +44,27 @@
   let errorMsg     = '';
   let typeWarning  = false;   // shown when user changes type (attrs will reset)
   let dirty        = false;   // any change made?
+
+  // ── loadedId pattern: re-initialise form whenever the selected component changes ──
+  let loadedId = component.id;
+  $: if (component.id !== loadedId) {
+    loadedId           = component.id;
+    selectedFloorId    = component.floor_id             ?? '';
+    planId             = component.plan_id              ?? '';
+    selectedTypeId     = typeByCode(types, component.type_code)?.id ?? '';
+    label              = component.label                ?? '';
+    assetId            = component.asset_id             ?? '';
+    status             = component.status               ?? 'OK';
+    notes              = component.notes                ?? '';
+    linkedComponentRef = component.linked_component_ref ?? '';
+    xPosition          = component.x_position           ?? 0.5;
+    yPosition          = component.y_position           ?? 0.5;
+    attrValues         = Object.fromEntries(attrs.map(a => [a.type_attribute_id, a.value]));
+    dirty              = false;
+    confirmDel         = false;
+    errorMsg           = '';
+    typeWarning        = false;
+  }
 
   // ── Derived ──────────────────────────────────────────────────────────
   $: selectedType   = types.find(t => t.id === selectedTypeId) ?? null;
