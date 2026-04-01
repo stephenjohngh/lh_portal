@@ -7,6 +7,7 @@
 
   export let component;           // components row (x_position, y_position, status)
   export let type     = null;     // component_types row (colour, initial, marker_shape)
+  export let floor    = null;     // floors row (short_name) — for the hover popup reference
   export let selected = false;    // shows ring + scale-up
   export let editMode = false;    // enables drag cursor + fires dragstart
 
@@ -34,7 +35,21 @@
   }
 
   $: lightBg = isLightColour(colour);
-  $: label = component.asset_id || component.label || '';
+  $: label = component.label || '';
+
+  // Hover popup content
+  $: refStr     = `${floor?.short_name ?? '?'}/${type?.initial ?? '?'}/${component.asset_id ?? '—'}`;
+  $: typeName   = type?.name ?? component.type_code;
+  $: statusText = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' }[component.status] ?? component.status;
+  $: statusClass = {
+    ok:       'text-green-400',
+    problem:  'text-amber-400',
+    failed:   'text-red-400',
+    inactive: 'text-slate-500',
+  }[component.status] ?? 'text-slate-400';
+
+  // Show popup above the marker when it is in the lower quarter of the plan
+  $: popupAbove = component.y_position > 0.75;
 
   $: sizeClass = {
     sm: 'w-4  h-4  text-[9px]',
@@ -42,14 +57,6 @@
     lg: 'w-8  h-8  text-sm',
     xl: 'w-11 h-11 text-base',
   }[type?.marker_size ?? 'md'] ?? 'w-6 h-6 text-xs';
-
-  // Tooltip text
-  $: tipText = [
-    type?.name ?? component.type_code,
-    component.asset_id,
-    component.label,
-    component.status && component.status !== 'ok' ? component.status.toUpperCase() : null
-  ].filter(Boolean).join(' · ');
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -65,7 +72,6 @@
   <div
     role="button"
     tabindex="0"
-    title={tipText}
     class="relative {sizeClass} flex items-center justify-center {lightBg ? 'text-black' : 'text-white'} font-bold
            shadow-lg transition-transform duration-75
            {isCircle ? 'rounded-full' : 'rounded'}
@@ -102,13 +108,20 @@
                  ring-1 ring-white pointer-events-none"></span>
   {/if}
 
-  <!-- Hover / selected label -->
-  {#if (hovered || selected) && label}
-    <div class="absolute top-full left-1/2 -translate-x-1/2 mt-1
-                px-1.5 py-0.5 rounded text-xs font-mono whitespace-nowrap
-                bg-black/80 text-white shadow pointer-events-none"
-         style="z-index:30">
-      {label}
+  <!-- Hover popup -->
+  {#if hovered}
+    <div
+      class="absolute left-1/2 -translate-x-1/2 w-max max-w-[180px]
+             px-2 py-1.5 rounded-lg bg-black/90 text-white shadow-xl pointer-events-none
+             flex flex-col gap-0.5"
+      style="{popupAbove ? 'bottom:calc(100% + 6px)' : 'top:calc(100% + 6px)'}; z-index:30"
+    >
+      <p class="text-xs font-semibold leading-tight truncate">{typeName}</p>
+      <p class="text-[10px] font-mono text-slate-300 leading-tight">{refStr}</p>
+      {#if label}
+        <p class="text-[10px] text-slate-300 leading-tight truncate">{label}</p>
+      {/if}
+      <p class="text-[10px] font-medium leading-tight {statusClass}">{statusText}</p>
     </div>
   {/if}
 </div>
