@@ -3,9 +3,9 @@
      Contains the search bar, system → type filter tree, status filter, and unplaced list.
 
      Filter model:
-       hiddenTypes      — Set of type_codes to hide (exclusive)
-       selectedStatuses — Set of statuses to SHOW (inclusive: empty = show all)
-       searchQuery      — free-text match on label / asset_id / notes
+       hiddenTypes    — Set of type_codes to hide (exclusive; empty = show all)
+       hiddenStatuses — Set of statuses to hide (exclusive; empty = show all)
+       searchQuery    — free-text match on label / asset_id / notes
 
      All state is owned by PlanViewTab; this component dispatches replacement
      values so PlanViewTab can assign them and trigger Svelte reactivity.       -->
@@ -20,8 +20,7 @@
   export let types              = [];
   export let systems            = [];
   export let hiddenTypes        = new Set();
-  // inclusive: empty = show all; non-empty = show only these statuses
-  export let selectedStatuses   = new Set();
+  export let hiddenStatuses     = new Set();
   export let searchQuery        = '';
   export let showSpaces         = true;
   export let selectedFloor      = null;
@@ -97,20 +96,20 @@
     dispatch('changetypes', { hidden: newHidden });
   }
 
-  // Status: inclusive toggle — clicking a status adds/removes from the
-  // "show only these" set. All empty = show everything.
+  // Status: exclusive toggle — matches type toggle behaviour.
   function toggleStatus(value) {
-    const next = new Set(selectedStatuses);
+    const next = new Set(hiddenStatuses);
     if (next.has(value)) next.delete(value);
     else                 next.add(value);
-    dispatch('changestatuses', { selected: next });
+    dispatch('changestatuses', { hidden: next });
   }
 
   function clearAll() {
-    // Hide every type on the plan (all checkboxes off → nothing showing)
-    const allCodes = systemGroups.flatMap(g => g.types.map(t => t.code));
+    // Hide every type and every status (all checkboxes off → nothing showing)
+    const allCodes    = systemGroups.flatMap(g => g.types.map(t => t.code));
+    const allStatuses = STATUSES.map(s => s.value);
     dispatch('changetypes',      { hidden: new Set(allCodes) });
-    dispatch('changestatuses',   { selected: new Set() });
+    dispatch('changestatuses',   { hidden: new Set(allStatuses) });
     dispatch('searchchange',     { query: '' });
     dispatch('changeshowspaces', { show: true });
   }
@@ -232,34 +231,24 @@
     {/if}
 
     <!-- ── Status filter ──────────────────────────────────────────── -->
-    <!-- Always shows all 4 statuses. Inclusive model:
-         empty selectedStatuses = show all; non-empty = show only those checked. -->
+    <!-- Exclusive model: all checked = show all; uncheck to hide that status. -->
     {#if planComponents.length > 0}
       <div>
-        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Status
-          {#if selectedStatuses.size > 0}
-            <span class="text-purple-400 normal-case font-normal ml-1">
-              (showing {selectedStatuses.size} of 4)
-            </span>
-          {/if}
-        </p>
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Status</p>
         <div class="flex flex-col gap-1">
           {#each STATUSES as s (s.value)}
-            {@const isSelected = selectedStatuses.has(s.value)}
-            {@const count      = statusCounts[s.value] ?? 0}
+            {@const isVisible = !hiddenStatuses.has(s.value)}
+            {@const count     = statusCounts[s.value] ?? 0}
             <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
             <div
               class="flex items-center gap-2 cursor-pointer group/status select-none"
               on:click={() => toggleStatus(s.value)}
             >
-              <!-- Checkbox: filled = actively selected; empty = not filtered -->
               <div class="w-3.5 h-3.5 rounded border flex items-center justify-center
                           shrink-0 transition-colors
-                          {isSelected
-                            ? 'bg-purple-600 border-purple-500'
-                            : 'bg-slate-700 border-slate-500'}">
-                {#if isSelected}
+                          {isVisible ? 'bg-purple-600 border-purple-500'
+                                     : 'bg-slate-700 border-slate-500'}">
+                {#if isVisible}
                   <svg class="w-2 h-2 text-white" viewBox="0 0 10 8" fill="none">
                     <path d="M1 4l3 3 5-6" stroke="currentColor" stroke-width="1.5"
                           stroke-linecap="round" stroke-linejoin="round"/>
@@ -268,25 +257,18 @@
               </div>
 
               <div class="w-2.5 h-2.5 rounded-full shrink-0 {s.dot}
-                          {selectedStatuses.size > 0 && !isSelected ? 'opacity-30' : ''}"></div>
+                          {!isVisible ? 'opacity-30' : ''}"></div>
 
               <span class="text-xs flex-1 transition-colors
-                           {selectedStatuses.size > 0 && !isSelected
-                             ? 'text-slate-600'
-                             : 'text-slate-300 group-hover/status:text-white'}"
+                           {!isVisible ? 'text-slate-600 line-through'
+                                       : 'text-slate-300 group-hover/status:text-white'}"
               >{s.label}</span>
 
               <span class="text-xs shrink-0
-                           {selectedStatuses.size > 0 && !isSelected
-                             ? 'text-slate-700' : 'text-slate-500'}">{count}</span>
+                           {!isVisible ? 'text-slate-700' : 'text-slate-500'}">{count}</span>
             </div>
           {/each}
         </div>
-        {#if selectedStatuses.size === 0}
-          <p class="text-[10px] text-slate-600 mt-1.5 italic">
-            All statuses shown — tick one or more to filter
-          </p>
-        {/if}
       </div>
     {/if}
 

@@ -57,8 +57,7 @@
 
   // ── Filter state ─────────────────────────────────────────────────
   let hiddenTypes       = new Set();  // type codes to hide (exclusive)
-  // inclusive: empty = show all; non-empty = show only these statuses
-  let selectedStatuses  = new Set();
+  let hiddenStatuses    = new Set();  // statuses to hide (exclusive; empty = show all)
   let searchQuery       = '';         // free-text match on label / asset_id / notes
 
   // ── Drag state ────────────────────────────────────────────────────
@@ -132,10 +131,10 @@
   $: visibleComponents = planComponents.filter(c => {
     // Type filter — exclusive: hidden types are excluded
     if (hiddenTypes.has(c.type_code)) return false;
-    // Status filter — inclusive: empty set = show all; non-empty = show only selected
+    // Status filter — exclusive: hidden statuses are excluded
     // Normalise to lowercase so legacy 'OK' rows match the 'ok' STATUSES value
     const status = (c.status || 'ok').toLowerCase();
-    if (selectedStatuses.size > 0 && !selectedStatuses.has(status)) return false;
+    if (hiddenStatuses.has(status)) return false;
     // Text search across label, asset_id, notes
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -239,16 +238,16 @@
 
   // FilterSidebar dispatches replacement Sets so we can trigger Svelte reactivity
   // with a simple assignment rather than mutate-then-reassign.
-  function onChangeTypes({ detail: { hidden } })      { hiddenTypes      = hidden; }
-  function onChangeStatuses({ detail: { selected } }) { selectedStatuses = selected; }
+  function onChangeTypes({ detail: { hidden } })    { hiddenTypes    = hidden; }
+  function onChangeStatuses({ detail: { hidden } }) { hiddenStatuses = hidden; }
 
   function onSearchChange({ detail: { query } }) { searchQuery = query; }
   function onChangeShowSpaces({ detail: { show } }) { showSpaces = show; }
 
   function onClearFilters() {
-    hiddenTypes      = new Set();
-    selectedStatuses = new Set();
-    searchQuery      = '';
+    hiddenTypes    = new Set();
+    hiddenStatuses = new Set();
+    searchQuery    = '';
   }
 
   // ── Canvas event handlers ─────────────────────────────────────────
@@ -782,7 +781,7 @@
           {types}
           {systems}
           {hiddenTypes}
-          {selectedStatuses}
+          {hiddenStatuses}
           {searchQuery}
           {showSpaces}
           {selectedFloor}
