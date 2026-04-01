@@ -577,7 +577,7 @@ function createV2ProtoStore() {
         floor_id:   data.floor_id  || null,
         name:       data.name.trim(),
         space_type: data.space_type?.trim() || null,
-        polygon:    data.polygon,          // [{x, y}]
+        polygon:    data.polygon.map(v => ({ x: Math.round(v.x * 1000) / 1000, y: Math.round(v.y * 1000) / 1000 })),
         colour:     data.colour === 'none' ? 'none' : (data.colour?.replace('#', '') || 'a855f7'),
         height_m:   data.height_m          ?? null,
         show_label: data.show_label ?? true,
@@ -613,7 +613,8 @@ function createV2ProtoStore() {
 
     async updateSpacePolygon(id, polygon) {
       const userId = get(auth).user?.id;
-      const updated = await api.update('spaces', id, { polygon, updated_by: userId });
+      const rounded = polygon.map(v => ({ x: Math.round(v.x * 1000) / 1000, y: Math.round(v.y * 1000) / 1000 }));
+      const updated = await api.update('spaces', id, { polygon: rounded, updated_by: userId });
       update(s => ({
         ...s,
         spaces: s.spaces.map(sp => sp.id === id ? { ...sp, ...updated } : sp)
