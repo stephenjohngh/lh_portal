@@ -352,8 +352,8 @@
         ...fields,
         floor_id:   selectedFloorId,
         plan_id:    selectedPlanId,
-        x_position: newPos?.x ?? 0.5,
-        y_position: newPos?.y ?? 0.5,
+        x_position: Math.round((newPos?.x ?? 0.5) * 1000) / 1000,
+        y_position: Math.round((newPos?.y ?? 0.5) * 1000) / 1000,
       }, attrValues);
       await v2protoStore.loadComponents();
       sidebarMode = 'none';

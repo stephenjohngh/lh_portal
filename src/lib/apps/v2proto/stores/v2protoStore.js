@@ -312,16 +312,18 @@ function createV2ProtoStore() {
     // because x_position, y_position and plan_id don't affect buildRef.
     async moveComponent(id, planId, x, y) {
       const userId = get(auth).user?.id;
+      const rx = Math.round(x * 1000) / 1000;
+      const ry = Math.round(y * 1000) / 1000;
       await api.update('components', id, {
         plan_id:    planId,
-        x_position: x,
-        y_position: y,
+        x_position: rx,
+        y_position: ry,
         updated_by: userId
       });
       update(s => ({
         ...s,
         components: s.components.map(c =>
-          c.id === id ? { ...c, plan_id: planId, x_position: x, y_position: y } : c
+          c.id === id ? { ...c, plan_id: planId, x_position: rx, y_position: ry } : c
         )
       }));
       logger('Moved component:', id, `→ plan:${planId} (${x.toFixed(3)}, ${y.toFixed(3)})`);

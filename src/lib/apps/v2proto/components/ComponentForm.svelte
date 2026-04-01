@@ -82,8 +82,8 @@
       primary_attribute:    primaryAttribute   || null,
       label:                label              || null,
       asset_id:             assetId            || null,
-      x_position:           planId ? (parseFloat(xPosition) || 0.5) : 0.5,
-      y_position:           planId ? (parseFloat(yPosition) || 0.5) : 0.5,
+      x_position:           planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : 0.5,
+      y_position:           planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : 0.5,
       linked_component_ref: linkedComponentRef.trim() || null
     };
 

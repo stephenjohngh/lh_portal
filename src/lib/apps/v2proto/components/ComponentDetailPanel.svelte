@@ -128,8 +128,8 @@
         status,
         notes:                notes.trim()    || null,
         linked_component_ref: linkedComponentRef.trim() || null,
-        x_position:           planId ? (parseFloat(xPosition) || 0.5) : component.x_position,
-        y_position:           planId ? (parseFloat(yPosition) || 0.5) : component.y_position
+        x_position:           planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : component.x_position,
+        y_position:           planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : component.y_position
       };
       await v2protoStore.updateComponent(component.id, fields);
       await v2protoStore.updateComponentAttrs(component.id, attrValues);
@@ -262,12 +262,12 @@
         <div class="grid grid-cols-2 gap-4 mt-3">
           <div class="flex flex-col gap-1">
             <p class="text-xs text-slate-500">X Position</p>
-            <input type="number" min="0" max="1" step="0.01"
+            <input type="number" min="0" max="1" step="0.001"
               bind:value={xPosition} on:input={markDirty} class="{inp} w-32" />
           </div>
           <div class="flex flex-col gap-1">
             <p class="text-xs text-slate-500">Y Position</p>
-            <input type="number" min="0" max="1" step="0.01"
+            <input type="number" min="0" max="1" step="0.001"
               bind:value={yPosition} on:input={markDirty} class="{inp} w-32" />
           </div>
         </div>
