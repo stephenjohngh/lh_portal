@@ -64,25 +64,31 @@
     return acc;
   }, {});
 
-  function systemState(group) {
-    const n      = group.types.length;
-    const hidden = group.types.filter(t => hiddenTypes.has(t.code)).length;
-    if (hidden === 0) return 'visible';
-    if (hidden === n) return 'hidden';
-    return 'partial';
+  // System is 'checked' only when ALL its types are visible.
+  // 'partial' = some visible, some hidden.
+  // 'unchecked' = all types hidden.
+  function systemChecked(group) {
+    return group.types.every(t => !hiddenTypes.has(t.code));
+  }
+  function systemPartial(group) {
+    const codes = group.types.map(t => t.code);
+    const hiddenCount = codes.filter(c => hiddenTypes.has(c)).length;
+    return hiddenCount > 0 && hiddenCount < codes.length;
   }
 
-  // ── Toggle helpers (dispatch replacement Sets to parent) ──────────
+  // ── Toggle helpers ────────────────────────────────────────────────
+  // System: if all children visible → hide all; otherwise → show all.
   function toggleSystem(group) {
-    const state     = systemState(group);
-    const newHidden = new Set(hiddenTypes);
+    const allVisible = group.types.every(t => !hiddenTypes.has(t.code));
+    const newHidden  = new Set(hiddenTypes);
     for (const t of group.types) {
-      if (state === 'hidden') newHidden.delete(t.code);
-      else                    newHidden.add(t.code);
+      if (allVisible) newHidden.add(t.code);
+      else            newHidden.delete(t.code);
     }
     dispatch('changetypes', { hidden: newHidden });
   }
 
+  // Type: toggle this type; system checkbox derives automatically from children.
   function toggleType(code) {
     const newHidden = new Set(hiddenTypes);
     if (newHidden.has(code)) newHidden.delete(code);
@@ -143,8 +149,9 @@
     {:else}
       <div class="flex flex-col gap-2">
         {#each systemGroups as group (group.system?.id ?? '__none__')}
-          {@const state    = systemState(group)}
-          {@const sysCount = group.types.reduce((n, t) => n + countForType(t.code), 0)}
+          {@const isChecked = systemChecked(group)}
+          {@const isPartial = systemPartial(group)}
+          {@const sysCount  = group.types.reduce((n, t) => n + countForType(t.code), 0)}
 
           <!-- System row -->
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -152,18 +159,18 @@
             class="flex items-center gap-2 cursor-pointer group/sys select-none"
             on:click={() => toggleSystem(group)}
           >
-            <!-- 3-state checkbox -->
+            <!-- Checkbox: checked=all visible, dash=partial, empty=all hidden -->
             <div class="w-4 h-4 rounded border flex items-center justify-center shrink-0
                         transition-colors
-                        {state === 'hidden'  ? 'bg-slate-700 border-slate-500' :
-                         state === 'partial' ? 'bg-purple-700 border-purple-500' :
-                                               'bg-purple-600 border-purple-500'}">
-              {#if state === 'visible'}
+                        {isChecked  ? 'bg-purple-600 border-purple-500' :
+                         isPartial  ? 'bg-purple-700 border-purple-500' :
+                                      'bg-slate-700 border-slate-500'}">
+              {#if isChecked}
                 <svg class="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
                   <path d="M1 4l3 3 5-6" stroke="currentColor" stroke-width="1.5"
                         stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-              {:else if state === 'partial'}
+              {:else if isPartial}
                 <div class="w-2 h-0.5 bg-white rounded"></div>
               {/if}
             </div>
@@ -173,12 +180,12 @@
                    style:background-color="#{group.system.colour}"></div>
             {/if}
             <span class="text-sm font-medium flex-1 truncate transition-colors
-                         {state === 'hidden' ? 'text-slate-600 line-through' : 'text-slate-200'}
+                         {!isChecked && !isPartial ? 'text-slate-600 line-through' : 'text-slate-200'}
                          group-hover/sys:text-white">
               {group.system?.name ?? 'Other'}
             </span>
             <span class="text-xs shrink-0
-                         {state === 'hidden' ? 'text-slate-700' : 'text-slate-500'}">{sysCount}</span>
+                         {!isChecked && !isPartial ? 'text-slate-700' : 'text-slate-500'}">{sysCount}</span>
           </div>
 
           <!-- Type rows (indented) -->
