@@ -44,6 +44,7 @@
   let errorMsg     = '';
   let typeWarning  = false;   // shown when user changes type (attrs will reset)
   let dirty        = false;   // any change made?
+  let showWalkAttrs = false;  // toggle for checkable (walk checklist) attributes
 
   // ── loadedId pattern: re-initialise form whenever the selected component changes ──
   let loadedId = component.id;
@@ -64,6 +65,7 @@
     confirmDel         = false;
     errorMsg           = '';
     typeWarning        = false;
+    showWalkAttrs      = false;
   }
 
   // ── Derived ──────────────────────────────────────────────────────────
@@ -71,6 +73,8 @@
   $: floor          = floorById(floors, selectedFloorId);
   $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
   $: primaryDef     = defs.find(d => d.is_primary) ?? null;
+  $: standardDefs   = defs.filter(d => !d.checkable);
+  $: walkDefs       = defs.filter(d =>  d.checkable);
   $: primaryAttr    = primaryDef ? (attrValues[primaryDef.id] ?? '') : '';
   $: plansForFloor  = selectedFloorId ? plans.filter(p => p.floor_id === selectedFloorId) : [];
 
@@ -90,7 +94,8 @@
 
   function onTypeChange() {
     // Warn if the user is changing from the original type
-    typeWarning = selectedTypeId !== (origType?.id ?? '');
+    typeWarning   = selectedTypeId !== (origType?.id ?? '');
+    showWalkAttrs = false;
     if (typeWarning) {
       attrValues = {};
       // Populate defaults for the new type
@@ -328,14 +333,27 @@
     <!-- ── Attribute values ───────────────────────────────────────── -->
     {#if defs.length > 0}
       <section>
-        <p class={sec}>
-          {selectedType?.name ?? 'Type'} Attributes
-          {#if primaryDef && primaryAttr}
-            <span class="font-normal normal-case text-yellow-400 ml-2">★ {primaryAttr}</span>
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <p class="{sec} mb-0">
+            {selectedType?.name ?? 'Type'} Attributes
+            {#if primaryDef && primaryAttr}
+              <span class="font-normal normal-case text-yellow-400 ml-2">★ {primaryAttr}</span>
+            {/if}
+          </p>
+          {#if walkDefs.length > 0}
+            <button
+              on:click={() => showWalkAttrs = !showWalkAttrs}
+              class="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
+                     {showWalkAttrs
+                       ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
+                       : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}"
+            >Walk checklist ({walkDefs.length})</button>
           {/if}
-        </p>
+        </div>
+
+        <!-- Standard (non-checklist) attributes — always shown -->
         <div class="flex flex-col gap-4">
-          {#each defs as def (def.id)}
+          {#each standardDefs as def (def.id)}
             <div class="flex items-start gap-2">
               <div class="flex-1">
                 <AttrField
@@ -351,6 +369,30 @@
             </div>
           {/each}
         </div>
+
+        <!-- Walk checklist attributes — shown only when toggled -->
+        {#if showWalkAttrs && walkDefs.length > 0}
+          <div class="mt-4 pt-3 border-t border-slate-700/60">
+            <p class="text-xs text-purple-400/60 mb-3">Walk checklist attributes</p>
+            <div class="flex flex-col gap-4">
+              {#each walkDefs as def (def.id)}
+                <div class="flex items-start gap-2">
+                  <div class="flex-1">
+                    <AttrField
+                      {def}
+                      options={attrOptions[def.id] ?? []}
+                      value={attrValues[def.id] ?? def.default_value ?? ''}
+                      on:change={onAttrChange}
+                    />
+                  </div>
+                  {#if def._scope === 'system'}
+                    <span class="text-xs text-blue-400/60 mt-5 shrink-0" title="Inherited from system">↑sys</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </section>
     {:else if selectedTypeId}
       <p class="text-xs text-slate-600 italic">No attribute definitions for this type.</p>
