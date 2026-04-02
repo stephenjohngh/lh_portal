@@ -102,11 +102,22 @@ function createPlansStore() {
       }
     },
 
+    async resolveFloorId(floorLevel) {
+      if (!floorLevel) return null;
+      try {
+        const rows = await api.get('floors', { filters: { short_name: floorLevel }, limit: 1 });
+        return rows[0]?.id ?? null;
+      } catch {
+        return null;
+      }
+    },
+
     async createPlan(planData) {
       logger('Creating plan:', planData.name);
       try {
-        const userId = await getCurrentUserId();
-        const plan   = await api.create('plans', { ...planData, created_by: userId, updated_by: userId });
+        const userId  = await getCurrentUserId();
+        const floorId = await this.resolveFloorId(planData.floor_level);
+        const plan    = await api.create('plans', { ...planData, floor_id: floorId, created_by: userId, updated_by: userId });
         logger('✅ Created plan:', plan.id);
         update(s => ({ ...s, plans: [plan, ...s.plans] }));
         audit('create', 'plan', plan.id, plan.name, {
@@ -126,6 +137,10 @@ function createPlansStore() {
         const userId = await getCurrentUserId();
         let oldPlan  = null;
         update(s => { oldPlan = s.plans.find(p => p.id === planId); return s; });
+
+        if ('floor_level' in updates) {
+          updates = { ...updates, floor_id: await this.resolveFloorId(updates.floor_level) };
+        }
 
         const plan = await api.update('plans', planId, { ...updates, updated_by: userId });
         logger('✅ Updated plan:', plan.id);
