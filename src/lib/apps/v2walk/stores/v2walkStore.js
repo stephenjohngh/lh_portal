@@ -96,6 +96,21 @@ function buildWalkComponents(floorComponents, typeFilter, emergencyOnly, allComp
   );
 }
 
+// ── First non-empty floor helper ──────────────────────────────────────────────
+// Scans buildingFloors from startIndex in direction (+1 or -1) and returns the
+// first floor that has at least one matching component, plus its component list.
+// Returns null if no such floor exists.
+
+function firstNonEmptyFloor(buildingFloors, allComponents, typeFilter, emergencyOnly, allComponentAttrs, startIndex, direction = 1) {
+  for (let i = startIndex; i >= 0 && i < buildingFloors.length; i += direction) {
+    const comps = buildWalkComponents(
+      allComponents[buildingFloors[i].id] ?? [], typeFilter, emergencyOnly, allComponentAttrs
+    );
+    if (comps.length > 0) return { floor: buildingFloors[i], components: comps, index: i };
+  }
+  return null;
+}
+
 // ── Floor progress helpers ────────────────────────────────────────────────────
 
 function initFloorProgress(buildingFloors, allComponents, typeFilter, emergencyOnly, allComponentAttrs) {
@@ -316,13 +331,14 @@ function createV2WalkStore() {
       inspected_components_count: 0,
     });
 
-    const firstFloor     = buildingFloors[0];
-    const walkComponents = buildWalkComponents(
-      state.allComponents[firstFloor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
-    );
+    const attrs         = state.allComponentAttrs ?? {};
     const floorProgress = initFloorProgress(
-      buildingFloors, state.allComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
+      buildingFloors, state.allComponents, typeFilter, emergencyOnly, attrs
     );
+    // Start on the first floor that actually has matching components
+    const firstResult   = firstNonEmptyFloor(buildingFloors, state.allComponents, typeFilter, emergencyOnly, attrs, 0, 1);
+    const firstFloor    = firstResult?.floor    ?? buildingFloors[0];
+    const walkComponents = firstResult?.components ?? [];
 
     update(s => ({
       ...s,
@@ -443,17 +459,16 @@ function createV2WalkStore() {
     update(s => {
       const next = s.currentIndex + 1;
       if (next >= s.walkComponents.length) {
-        // End of floor — advance to next floor for building-wide
+        // End of floor — advance to next non-empty floor for building-wide
         if (s.activeSession?.session_scope === 'building' && s.buildingFloors.length > 0) {
-          const ci = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-          if (ci >= 0 && ci < s.buildingFloors.length - 1) {
-            const nextFloor     = s.buildingFloors[ci + 1];
-            const typeFilter    = s.activeSession._typeFilter ?? [];
-            const emergencyOnly = s.activeSession._emergencyOnly ?? false;
-            const walkComponents = buildWalkComponents(
-              s.allComponents[nextFloor.id] ?? [], typeFilter, emergencyOnly, s.allComponentAttrs ?? {}
-            );
-            return { ...s, currentFloor: nextFloor, walkComponents, currentIndex: 0 };
+          const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+          const typeFilter    = s.activeSession._typeFilter ?? [];
+          const emergencyOnly = s.activeSession._emergencyOnly ?? false;
+          const result        = firstNonEmptyFloor(
+            s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci + 1, 1
+          );
+          if (result) {
+            return { ...s, currentFloor: result.floor, walkComponents: result.components, currentIndex: 0 };
           }
         }
         return { ...s, currentIndex: s.walkComponents.length - 1 };
@@ -466,16 +481,16 @@ function createV2WalkStore() {
     update(s => {
       const prev = s.currentIndex - 1;
       if (prev < 0) {
+        // Start of floor — go back to previous non-empty floor for building-wide
         if (s.activeSession?.session_scope === 'building' && s.buildingFloors.length > 0) {
-          const ci = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-          if (ci > 0) {
-            const prevFloor     = s.buildingFloors[ci - 1];
-            const typeFilter    = s.activeSession._typeFilter ?? [];
-            const emergencyOnly = s.activeSession._emergencyOnly ?? false;
-            const walkComponents = buildWalkComponents(
-              s.allComponents[prevFloor.id] ?? [], typeFilter, emergencyOnly, s.allComponentAttrs ?? {}
-            );
-            return { ...s, currentFloor: prevFloor, walkComponents, currentIndex: walkComponents.length - 1 };
+          const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+          const typeFilter    = s.activeSession._typeFilter ?? [];
+          const emergencyOnly = s.activeSession._emergencyOnly ?? false;
+          const result        = firstNonEmptyFloor(
+            s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci - 1, -1
+          );
+          if (result) {
+            return { ...s, currentFloor: result.floor, walkComponents: result.components, currentIndex: result.components.length - 1 };
           }
         }
         return { ...s, currentIndex: 0 };
@@ -487,15 +502,27 @@ function createV2WalkStore() {
   function isAtEndOfBuilding() {
     const s = getState();
     if (s.activeSession?.session_scope !== 'building') return false;
-    const ci = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-    return ci === s.buildingFloors.length - 1 && s.currentIndex >= s.walkComponents.length - 1;
+    if (s.currentIndex < s.walkComponents.length - 1) return false;
+    // True only if there is no non-empty floor after the current one
+    const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+    const typeFilter    = s.activeSession?._typeFilter    ?? [];
+    const emergencyOnly = s.activeSession?._emergencyOnly ?? false;
+    return !firstNonEmptyFloor(
+      s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci + 1, 1
+    );
   }
 
   function isAtStartOfBuilding() {
     const s = getState();
     if (s.activeSession?.session_scope !== 'building') return false;
-    const ci = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-    return ci === 0 && s.currentIndex === 0;
+    if (s.currentIndex > 0) return false;
+    // True only if there is no non-empty floor before the current one
+    const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+    const typeFilter    = s.activeSession?._typeFilter    ?? [];
+    const emergencyOnly = s.activeSession?._emergencyOnly ?? false;
+    return !firstNonEmptyFloor(
+      s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci - 1, -1
+    );
   }
 
   function getCurrentFloorProgress() {
