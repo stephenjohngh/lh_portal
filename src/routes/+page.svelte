@@ -21,6 +21,7 @@
   import PlansApp from '$lib/apps/plans/PlansApp.svelte';
   import WalkApp from '$lib/apps/walk/WalkApp.svelte';
   import V2ProtoApp from '$lib/apps/v2proto/V2ProtoApp.svelte';
+  import V2WalkApp  from '$lib/apps/v2walk/V2WalkApp.svelte';
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -90,7 +91,8 @@
       'demo': DemoApp,
       'demo2': Demo,
       'settings': SettingsApp,
-      'v2proto': V2ProtoApp
+      'v2proto': V2ProtoApp,
+      'v2walk':  V2WalkApp
     };
     return components[appId];
   }

@@ -76,6 +76,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'v2walk',
+    name: 'V2 Walk',
+    icon: 'walk',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Mobile inspection walk using the v2 component data model'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -98,6 +107,7 @@ export const APP_IDS = {
   DEMO:    'demo',
   DEMO2:   'demo2',
   V2PROTO: 'v2proto',
+  V2WALK:  'v2walk',
   SETTINGS:'settings'
 };
 
