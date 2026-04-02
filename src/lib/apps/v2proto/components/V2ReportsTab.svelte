@@ -1,7 +1,8 @@
 <!-- src/lib/apps/v2proto/components/V2ReportsTab.svelte -->
 <!-- Report builder for V2 components. Lets the user configure scope + filters,
      then generates a .docx for download.
-     Three optional sections: Full List (table) | Plan (annotated image) | Summary (counts). -->
+     Per-floor content (in order): Plan graphic | Full component table | Floor summary table
+     Optional separate section: Full summary across all selected floors. -->
 <script>
   import { v2protoStore } from '../stores/v2protoStore.js';
   import Button        from '$lib/components/common/Button.svelte';
@@ -30,9 +31,14 @@
   })();
 
   // ── Report section toggles ────────────────────────────────────────────────────
-  let includeList    = true;
-  let includePlan    = false;
-  let includeSummary = true;
+  // Per-floor sections (all appear together for each floor in this order):
+  let includePlan         = false;   // plan graphic
+  let includeList         = true;    // full component table
+  let includeFloorSummary = true;    // type/status count table for that floor
+  // Separate final section:
+  let includeFullSummary  = false;   // aggregate pivot across all floors
+
+  $: noneSelected = !includePlan && !includeList && !includeFloorSummary && !includeFullSummary;
 
   // ── Scope: floors ─────────────────────────────────────────────────────────────
   // empty set = all floors
@@ -70,21 +76,6 @@
     return floors
       .filter(f => map[f.id]?.length > 0)
       .map(f => ({ floor: f, components: map[f.id] }));
-  })();
-
-  // Summary aggregation: { system_name, type_name, status, count }[]
-  $: summaryRows = (() => {
-    const map = {};
-    for (const c of filteredComponents) {
-      const t   = typeOf(c);
-      const sys = systemOf(t);
-      const k   = `${sys?.name ?? 'Other'}|${t?.name ?? c.type_code}|${c.status}`;
-      if (!map[k]) map[k] = { system_name: sys?.name ?? 'Other', type_name: t?.name ?? c.type_code, status: c.status, count: 0 };
-      map[k].count++;
-    }
-    return Object.values(map).sort((a, b) =>
-      a.system_name.localeCompare(b.system_name) || a.type_name.localeCompare(b.type_name)
-    );
   })();
 
   // Human-readable filter description for the document header
@@ -202,7 +193,7 @@
   let error      = '';
 
   async function generateReport() {
-    if (!includeList && !includePlan && !includeSummary) {
+    if (noneSelected) {
       error = 'Select at least one report section.';
       return;
     }
@@ -219,9 +210,10 @@
       const now         = new Date();
       const generatedAt = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       const reportTypes = [
-        ...(includeList    ? ['full_list'] : []),
-        ...(includePlan    ? ['plan']      : []),
-        ...(includeSummary ? ['summary']   : []),
+        ...(includePlan         ? ['plan']          : []),
+        ...(includeList         ? ['full_list']      : []),
+        ...(includeFloorSummary ? ['floor_summary']  : []),
+        ...(includeFullSummary  ? ['full_summary']   : []),
       ];
 
       // Build per-floor payload (including optional annotated plan images)
@@ -281,7 +273,6 @@
         body:    JSON.stringify({
           options: { reportTypes, building, filterSummary, generatedAt },
           floors:  floorsPayload,
-          summary: summaryRows,
         }),
       });
 
@@ -323,18 +314,28 @@
 
       <!-- Report sections -->
       <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
-        <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Include in Report</h3>
-        <div class="flex flex-wrap gap-6">
-          <Checkbox bind:checked={includeList}    label="📋 Full Component List" />
-          <Checkbox bind:checked={includePlan}    label="🗺 Plan Images" />
-          <Checkbox bind:checked={includeSummary} label="📊 Summary Table" />
+        <h3 class="text-sm font-semibold text-slate-300 mb-1 uppercase tracking-wide">Include in Report</h3>
+        <p class="text-xs text-slate-500 mb-3">Per-floor sections appear together for each floor, in the order shown.</p>
+
+        <p class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Per Floor</p>
+        <div class="flex flex-wrap gap-6 mb-4 pl-1">
+          <Checkbox bind:checked={includePlan}         label="🗺 Plan Graphic" />
+          <Checkbox bind:checked={includeList}         label="📋 Full Component Table" />
+          <Checkbox bind:checked={includeFloorSummary} label="📊 Floor Summary" />
         </div>
+
         {#if includePlan}
-          <p class="mt-2 text-xs text-amber-400">
+          <p class="mb-3 text-xs text-amber-400 pl-1">
             ⚠ Plan images are only included for floors where a plan has been set up in the Plan View tab.
-            Components without a position on a plan will appear in the list but not on the image.
           </p>
         {/if}
+
+        <div class="border-t border-slate-700 pt-3">
+          <p class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Separate Final Section</p>
+          <div class="pl-1">
+            <Checkbox bind:checked={includeFullSummary} label="📈 Full Summary (all selected floors combined)" />
+          </div>
+        </div>
       </div>
 
       <!-- Floor scope -->
@@ -474,10 +475,19 @@
       <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
         <h3 class="text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wide">Report will include</h3>
         <ul class="space-y-1 text-xs text-slate-400">
-          {#if includeList}<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Full component list</li>{/if}
-          {#if includePlan}<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Annotated plan images</li>{/if}
-          {#if includeSummary}<li class="flex items-center gap-2"><span class="text-green-400">✓</span> Summary by type & status</li>{/if}
-          {#if !includeList && !includePlan && !includeSummary}
+          {#if includePlan}
+            <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Plan graphic (per floor)</li>
+          {/if}
+          {#if includeList}
+            <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Full component table (per floor)</li>
+          {/if}
+          {#if includeFloorSummary}
+            <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Floor summary by type (per floor)</li>
+          {/if}
+          {#if includeFullSummary}
+            <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Full summary — all floors combined</li>
+          {/if}
+          {#if noneSelected}
             <li class="text-amber-400">⚠ Nothing selected</li>
           {/if}
         </ul>
@@ -492,7 +502,7 @@
       <Button
         variant="primary"
         on:click={generateReport}
-        disabled={generating || filteredComponents.length === 0 || (!includeList && !includePlan && !includeSummary)}
+        disabled={generating || filteredComponents.length === 0 || noneSelected}
       >
         {#if generating}
           <LoadingSpinner size="sm" /> Generating…

@@ -1,12 +1,18 @@
 // src/routes/api/v2/generate-report/+server.js
 // Generate a Word document report for V2 components.
 //
-// Accepts: { options, floors, summary }
-//   options:  { reportTypes, building, filterSummary, generatedAt }
-//   floors:   [{ floor, components, imageBase64, imageWidth, imageHeight }]
-//   summary:  [{ system_name, type_name, status, count }]
+// Accepts: { options, floors }
+//   options: { reportTypes, building, filterSummary, generatedAt }
+//   floors:  [{ floor, components, imageBase64, imageWidth, imageHeight }]
 //
-// reportTypes: array of 'full_list' | 'plan' | 'summary'
+// reportTypes: array of one or more:
+//   'plan'          — plan graphic per floor
+//   'full_list'     — full component table per floor
+//   'floor_summary' — type/status count table per floor
+//   'full_summary'  — aggregate summary across all floors (appended at end)
+//
+// Each floor's content is grouped together. Page break between floors.
+// Full summary (if requested) follows on a new page after all floors.
 
 import { json } from '@sveltejs/kit';
 import {
@@ -14,7 +20,7 @@ import {
   Paragraph, TextRun,
   Table, TableRow, TableCell,
   ImageRun, PageBreak,
-  WidthType, HeadingLevel, BorderStyle, ShadingType,
+  WidthType, HeadingLevel, ShadingType,
   AlignmentType, VerticalAlign
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
@@ -27,7 +33,7 @@ import {
 
 const logger = getLogger('v2GenerateReport');
 
-// ── Status display ────────────────────────────────────────────────────────────
+// ── Status helpers ────────────────────────────────────────────────────────────
 const STATUS_LABEL = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' };
 const STATUS_COLOUR = {
   ok:       COLOURS.passGreen,
@@ -52,8 +58,7 @@ function statusCell(status, widthDxa, alt) {
   });
 }
 
-// Numeric cell — right-aligned, bold count
-function numCell(value, widthDxa, colour) {
+function numCell(value, widthDxa, positiveColour) {
   return new TableCell({
     width:         { size: widthDxa, type: WidthType.DXA },
     margins:       CELL_PAD,
@@ -63,7 +68,27 @@ function numCell(value, widthDxa, colour) {
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing:   { before: 0, after: 0 },
-      children:  [run(String(value ?? 0), { size: 18, bold: value > 0, color: value > 0 ? colour : COLOURS.textMuted })],
+      children:  [run(String(value ?? 0), {
+        size:  18,
+        bold:  value > 0,
+        color: value > 0 ? positiveColour : COLOURS.textMuted,
+      })],
+    })],
+  });
+}
+
+// navy-fill header numCell (used in grand-total row)
+function numCellHeader(value, widthDxa) {
+  return new TableCell({
+    width:         { size: widthDxa, type: WidthType.DXA },
+    margins:       CELL_PAD,
+    borders:       BORDERS,
+    shading:       { fill: COLOURS.headerFill, type: ShadingType.CLEAR },
+    verticalAlign: VerticalAlign.CENTER,
+    children: [new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing:   { before: 0, after: 0 },
+      children:  [run(String(value ?? 0), { size: 18, bold: true, color: COLOURS.textWhite })],
     })],
   });
 }
@@ -77,205 +102,122 @@ function sortComponents(comps) {
   );
 }
 
-// ── Full List section ─────────────────────────────────────────────────────────
+// ── Full component table (per floor) ─────────────────────────────────────────
 // Columns: System | Type | Asset ID | Label | Attributes | Notes | Status
-// Width split (DXA): 1400 | 1600 | 225 | 1800 | 2200 | 2791 | 450 = 10466
-// Asset ID = 25% of old 900; Status = 50% of old 900; Notes = blank print column
+// DXA:     1400  | 1600 |   225    | 1800  |    2200    | 2791  |  450  = 10466
 const FL_COLS = [1400, 1600, 225, 1800, 2200, 2791, 450];
 
-function buildFullListSection(floors, building, filterSummary) {
-  const children = [];
+function buildComponentTable(components) {
+  const sorted = sortComponents(components);
 
-  // Cover for this section
-  children.push(new Paragraph({
-    heading:  HeadingLevel.HEADING_1,
-    spacing:  { before: 0, after: 200 },
-    children: [run(`${building} — Component List`, { size: 36, bold: true, color: COLOURS.textDark })],
-  }));
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: [
+      hCell('System',     FL_COLS[0]),
+      hCell('Type',       FL_COLS[1]),
+      hCell('Asset ID',   FL_COLS[2]),
+      hCell('Label',      FL_COLS[3]),
+      hCell('Attributes', FL_COLS[4]),
+      hCell('Notes',      FL_COLS[5]),
+      hCell('Status',     FL_COLS[6]),
+    ],
+  });
 
-  if (filterSummary && filterSummary !== 'All components') {
-    children.push(para([
-      run('Filters: ', { bold: true, size: 18 }),
-      run(filterSummary, { italics: true, size: 18, color: COLOURS.textMuted }),
-    ], { after: 200 }));
-  }
-
-  for (let fi = 0; fi < floors.length; fi++) {
-    const { floor, components } = floors[fi];
-
-    if (fi > 0) {
-      children.push(new Paragraph({ children: [new PageBreak()] }));
-    }
-
-    // Floor heading
-    children.push(new Paragraph({
-      heading:  HeadingLevel.HEADING_2,
-      spacing:  { before: 0, after: 160 },
-      children: [run(`${floor.short_name} — ${floor.name}  (${components.length})`, { size: 26, bold: true, color: COLOURS.subheading })],
-    }));
-
-    if (components.length === 0) {
-      children.push(para('No components on this floor.', { after: 160, size: 18 }));
-      continue;
-    }
-
-    // Table — sorted System → Type → Asset ID
-    const sorted = sortComponents(components);
-
-    const headerRow = new TableRow({
-      tableHeader: true,
+  const dataRows = sorted.map((c, idx) => {
+    const alt   = idx % 2 === 1;
+    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('  ·  ');
+    return new TableRow({
       children: [
-        hCell('System',     FL_COLS[0]),
-        hCell('Type',       FL_COLS[1]),
-        hCell('Asset ID',   FL_COLS[2]),
-        hCell('Label',      FL_COLS[3]),
-        hCell('Attributes', FL_COLS[4]),
-        hCell('Notes',      FL_COLS[5]),
-        hCell('Status',     FL_COLS[6]),
+        dCell(c.system_name ?? '—', FL_COLS[0], { alt }),
+        dCell(c.type_name   ?? '—', FL_COLS[1], { alt }),
+        dCell(c.asset_id    ?? '—', FL_COLS[2], { alt }),
+        dCell(c.label       ?? '—', FL_COLS[3], { alt }),
+        dCell(attrs || '—',         FL_COLS[4], { alt }),
+        dCell('',                   FL_COLS[5], { alt }),
+        statusCell(c.status, FL_COLS[6], alt),
       ],
     });
+  });
 
-    const dataRows = sorted.map((c, idx) => {
-      const alt   = idx % 2 === 1;
-      const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('  ·  ');
-      return new TableRow({
-        children: [
-          dCell(c.system_name ?? '—', FL_COLS[0], { alt }),
-          dCell(c.type_name   ?? '—', FL_COLS[1], { alt }),
-          dCell(c.asset_id    ?? '—', FL_COLS[2], { alt }),
-          dCell(c.label       ?? '—', FL_COLS[3], { alt }),
-          dCell(attrs || '—',         FL_COLS[4], { alt }),
-          dCell('',                   FL_COLS[5], { alt }),
-          statusCell(c.status, FL_COLS[6], alt),
-        ],
-      });
-    });
-
-    children.push(new Table({
-      width:   { size: CONTENT_W, type: WidthType.DXA },
-      borders: BORDERS,
-      rows:    [headerRow, ...dataRows],
-    }));
-
-    children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
-  }
-
-  return children;
+  return new Table({
+    width:   { size: CONTENT_W, type: WidthType.DXA },
+    borders: BORDERS,
+    rows:    [headerRow, ...dataRows],
+  });
 }
 
-// ── Plan Images section ───────────────────────────────────────────────────────
-// Each floor: heading + annotated plan image (if available) + placed-component table
-// Columns: System | Type | Asset ID | Label | Status
-// Width split: 1500 | 2100 | 275 | 5341 | 1250 = 10466
-// Asset ID = 25% of old 1100; Status = 50% of old 2500
-const PL_COLS = [1500, 2100, 275, 5341, 1250];
+// ── Per-floor summary pivot table ─────────────────────────────────────────────
+// Columns: Type | OK | Problem | Failed | Inactive | Total
+// DXA:    3266 | 1440 | 1440  |  1440  |   1440   | 1440  = 10466
+const FS_COLS = [3266, 1440, 1440, 1440, 1440, 1440];
 
-function buildPlanSection(floors, building) {
-  const children = [];
-
-  children.push(new Paragraph({
-    heading:  HeadingLevel.HEADING_1,
-    spacing:  { before: 0, after: 200 },
-    children: [run(`${building} — Floor Plans`, { size: 36, bold: true, color: COLOURS.textDark })],
-  }));
-
-  for (let fi = 0; fi < floors.length; fi++) {
-    const { floor, components, imageBase64, imageWidth, imageHeight } = floors[fi];
-
-    if (fi > 0) {
-      children.push(new Paragraph({ children: [new PageBreak()] }));
+function buildFloorSummaryTable(components) {
+  const pivotMap = {};
+  for (const c of components) {
+    const key = `${c.system_name ?? ''}|${c.type_name ?? c.type_code ?? ''}`;
+    if (!pivotMap[key]) {
+      pivotMap[key] = {
+        system_name: c.system_name ?? 'Other',
+        type_name:   c.type_name ?? c.type_code ?? '?',
+        ok: 0, problem: 0, failed: 0, inactive: 0,
+      };
     }
+    const s = (c.status ?? '').toLowerCase();
+    if (s in pivotMap[key]) pivotMap[key][s]++;
+  }
 
-    children.push(new Paragraph({
-      heading:  HeadingLevel.HEADING_2,
-      spacing:  { before: 0, after: 160 },
-      children: [run(`${floor.short_name} — ${floor.name}`, { size: 26, bold: true, color: COLOURS.subheading })],
-    }));
+  const pivot = Object.values(pivotMap).sort((a, b) =>
+    a.system_name.localeCompare(b.system_name) ||
+    a.type_name.localeCompare(b.type_name)
+  );
 
-    // Plan image
-    if (imageBase64 && imageWidth && imageHeight) {
-      const maxPts = 520;   // max width in points (fits A4 with margins)
-      const scale  = Math.min(1, maxPts / imageWidth);
-      const dW     = Math.round(imageWidth  * scale);
-      const dH     = Math.round(imageHeight * scale);
+  if (pivot.length === 0) return null;
 
-      children.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing:   { before: 160, after: 200 },
-        children:  [
-          new ImageRun({
-            data:           Buffer.from(imageBase64, 'base64'),
-            type:           'png',
-            transformation: { width: dW, height: dH },
-          }),
-        ],
-      }));
-    } else {
-      children.push(para(
-        'No plan image available for this floor. Set up a plan in the Plan View tab.',
-        { italics: true, size: 16, color: COLOURS.textMuted, after: 200 }
-      ));
-    }
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: [
+      hCell('Type',     FS_COLS[0]),
+      hCell('OK',       FS_COLS[1], { fill: '1a4a2a' }),
+      hCell('Problem',  FS_COLS[2], { fill: '5c3a0a' }),
+      hCell('Failed',   FS_COLS[3], { fill: '5c1a1a' }),
+      hCell('Inactive', FS_COLS[4], { fill: '374151' }),
+      hCell('Total',    FS_COLS[5]),
+    ],
+  });
 
-    // Placed components table (only those with a position)
-    const placed = components.filter(c => c.x_position != null || imageBase64);  // show all components for the floor list
-    if (placed.length === 0) {
-      children.push(para('No components on this floor.', { after: 160, size: 18 }));
-      continue;
-    }
-
-    // Sorted System → Type → Asset ID
-    const sorted = sortComponents(placed);
-
-    const headerRow = new TableRow({
-      tableHeader: true,
+  const dataRows = pivot.map(row => {
+    const total    = row.ok + row.problem + row.failed + row.inactive;
+    const typeText = `${row.system_name} — ${row.type_name}`;
+    return new TableRow({
       children: [
-        hCell('System',   PL_COLS[0]),
-        hCell('Type',     PL_COLS[1]),
-        hCell('Asset ID', PL_COLS[2]),
-        hCell('Label',    PL_COLS[3]),
-        hCell('Status',   PL_COLS[4]),
+        dCell(typeText,       FS_COLS[0]),
+        numCell(row.ok,       FS_COLS[1], COLOURS.passGreen),
+        numCell(row.problem,  FS_COLS[2], COLOURS.warnAmber),
+        numCell(row.failed,   FS_COLS[3], COLOURS.failRed),
+        numCell(row.inactive, FS_COLS[4], '9CA3AF'),
+        dCell(String(total),  FS_COLS[5], { bold: true }),
       ],
     });
+  });
 
-    const dataRows = sorted.map((c, idx) => {
-      const alt = idx % 2 === 1;
-      return new TableRow({
-        children: [
-          dCell(c.system_name ?? '—', PL_COLS[0], { alt }),
-          dCell(c.type_name   ?? '—', PL_COLS[1], { alt }),
-          dCell(c.asset_id    ?? '—', PL_COLS[2], { alt }),
-          dCell(c.label       ?? '—', PL_COLS[3], { alt }),
-          statusCell(c.status, PL_COLS[4], alt),
-        ],
-      });
-    });
-
-    children.push(new Table({
-      width:   { size: CONTENT_W, type: WidthType.DXA },
-      borders: BORDERS,
-      rows:    [headerRow, ...dataRows],
-    }));
-
-    children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
-  }
-
-  return children;
+  return new Table({
+    width:   { size: CONTENT_W, type: WidthType.DXA },
+    borders: BORDERS,
+    rows:    [headerRow, ...dataRows],
+  });
 }
 
-// ── Summary section ───────────────────────────────────────────────────────────
-// Pivot: System | Type | OK | Problem | Failed | Inactive | Total
-// Width: 2200 | 2200 | 1000 | 1200 | 1000 | 1200 | 866 (but recalc to = 10466 exactly? let's do even)
-// Actually: 2000 | 2000 | 1100 | 1200 | 1100 | 1200 | 1866 = 10466
+// ── Full summary pivot table (System | Type | OK | Problem | Failed | Inactive | Total) ──
+// DXA: 2000 | 2200 | 1050 | 1200 | 1050 | 1200 | 1766 = 10466
 const SM_COLS = [2000, 2200, 1050, 1200, 1050, 1200, 1766];
 
-function buildSummarySection(summaryRows, building, filterSummary) {
+function buildFullSummarySection(allFloors, building, filterSummary) {
   const children = [];
 
   children.push(new Paragraph({
     heading:  HeadingLevel.HEADING_1,
     spacing:  { before: 0, after: 200 },
-    children: [run(`${building} — Summary`, { size: 36, bold: true, color: COLOURS.textDark })],
+    children: [run(`${building} — Full Summary`, { size: 36, bold: true, color: COLOURS.textDark })],
   }));
 
   if (filterSummary && filterSummary !== 'All components') {
@@ -285,31 +227,32 @@ function buildSummarySection(summaryRows, building, filterSummary) {
     ], { after: 200 }));
   }
 
-  if (summaryRows.length === 0) {
+  // Aggregate all components across all floors
+  const allComponents = allFloors.flatMap(f => f.components ?? []);
+
+  if (allComponents.length === 0) {
     children.push(para('No components match the current filters.', { after: 160 }));
     return children;
   }
 
-  // Pivot: group by system+type, aggregate by status
+  // Pivot by system + type
   const pivotMap = {};
-  for (const row of summaryRows) {
-    const key = `${row.system_name}|${row.type_name}`;
+  for (const c of allComponents) {
+    const key = `${c.system_name ?? ''}|${c.type_name ?? c.type_code ?? ''}`;
     if (!pivotMap[key]) {
       pivotMap[key] = {
-        system_name: row.system_name,
-        type_name:   row.type_name,
-        ok:          0,
-        problem:     0,
-        failed:      0,
-        inactive:    0,
+        system_name: c.system_name ?? 'Other',
+        type_name:   c.type_name ?? c.type_code ?? '?',
+        ok: 0, problem: 0, failed: 0, inactive: 0,
       };
     }
-    const status = row.status?.toLowerCase?.() ?? '';
-    if (status in pivotMap[key]) pivotMap[key][status] += row.count;
+    const s = (c.status ?? '').toLowerCase();
+    if (s in pivotMap[key]) pivotMap[key][s]++;
   }
 
   const pivot = Object.values(pivotMap).sort((a, b) =>
-    a.system_name.localeCompare(b.system_name) || a.type_name.localeCompare(b.type_name)
+    a.system_name.localeCompare(b.system_name) ||
+    a.type_name.localeCompare(b.type_name)
   );
 
   const headerRow = new TableRow({
@@ -325,7 +268,7 @@ function buildSummarySection(summaryRows, building, filterSummary) {
     ],
   });
 
-  const dataRows = pivot.map((row) => {
+  const dataRows = pivot.map(row => {
     const total = row.ok + row.problem + row.failed + row.inactive;
     return new TableRow({
       children: [
@@ -340,7 +283,7 @@ function buildSummarySection(summaryRows, building, filterSummary) {
     });
   });
 
-  // Grand total row
+  // Grand total footer row
   const grandOk       = pivot.reduce((s, r) => s + r.ok,       0);
   const grandProblem  = pivot.reduce((s, r) => s + r.problem,   0);
   const grandFailed   = pivot.reduce((s, r) => s + r.failed,    0);
@@ -350,22 +293,11 @@ function buildSummarySection(summaryRows, building, filterSummary) {
   const totalRow = new TableRow({
     children: [
       hCell('TOTAL', SM_COLS[0] + SM_COLS[1], { fill: COLOURS.headerFill }),
-      numCell(grandOk,       SM_COLS[2], COLOURS.textWhite),
-      numCell(grandProblem,  SM_COLS[3], COLOURS.textWhite),
-      numCell(grandFailed,   SM_COLS[4], COLOURS.textWhite),
-      numCell(grandInactive, SM_COLS[5], COLOURS.textWhite),
-      new TableCell({
-        width:         { size: SM_COLS[6], type: WidthType.DXA },
-        margins:       CELL_PAD,
-        borders:       BORDERS,
-        shading:       { fill: COLOURS.headerFill, type: ShadingType.CLEAR },
-        verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing:   { before: 0, after: 0 },
-          children:  [run(String(grandTotal), { size: 18, bold: true, color: COLOURS.textWhite })],
-        })],
-      }),
+      numCellHeader(grandOk,       SM_COLS[2]),
+      numCellHeader(grandProblem,  SM_COLS[3]),
+      numCellHeader(grandFailed,   SM_COLS[4]),
+      numCellHeader(grandInactive, SM_COLS[5]),
+      numCellHeader(grandTotal,    SM_COLS[6]),
     ],
   });
 
@@ -384,9 +316,14 @@ export async function POST({ request }) {
 
   try {
     const body = await request.json();
-    const { options = {}, floors = [], summary = [] } = body;
+    const { options = {}, floors = [] } = body;
 
-    const { reportTypes = [], building = 'Lancaster House', filterSummary = '', generatedAt = '' } = options;
+    const {
+      reportTypes  = [],
+      building     = 'Lancaster House',
+      filterSummary = '',
+      generatedAt  = '',
+    } = options;
 
     if (!reportTypes.length) {
       return json({ error: 'No report sections requested.' }, { status: 400 });
@@ -395,6 +332,11 @@ export async function POST({ request }) {
       return json({ error: 'No floor data supplied.' }, { status: 400 });
     }
 
+    const wantPlan         = reportTypes.includes('plan');
+    const wantList         = reportTypes.includes('full_list');
+    const wantFloorSummary = reportTypes.includes('floor_summary');
+    const wantFullSummary  = reportTypes.includes('full_summary');
+
     logger('Report types:', reportTypes.join(', '), '| Floors:', floors.length, '| Building:', building);
 
     const docTitle = `${building} — Component Report`;
@@ -402,33 +344,95 @@ export async function POST({ request }) {
       day: '2-digit', month: 'short', year: 'numeric',
     });
 
-    // ── Assemble document content ─────────────────────────────────────────────
-    const sections = [];
-    const wantList    = reportTypes.includes('full_list');
-    const wantPlan    = reportTypes.includes('plan');
-    const wantSummary = reportTypes.includes('summary');
-
-    // Each requested section becomes its own document section (independent page numbering
-    // not needed, but clean breaks between logical sections).
-    // We use a single section with page breaks between logical blocks.
+    // ── Assemble document ─────────────────────────────────────────────────────
     const children = [];
-    let firstSection = true;
 
-    if (wantList) {
-      if (!firstSection) children.push(new Paragraph({ children: [new PageBreak()] }));
-      children.push(...buildFullListSection(floors, building, filterSummary));
-      firstSection = false;
+    // Document title + filter summary
+    children.push(new Paragraph({
+      heading:  HeadingLevel.HEADING_1,
+      spacing:  { before: 0, after: 200 },
+      children: [run(docTitle, { size: 36, bold: true, color: COLOURS.textDark })],
+    }));
+
+    if (filterSummary && filterSummary !== 'All components') {
+      children.push(para([
+        run('Filters: ', { bold: true, size: 18 }),
+        run(filterSummary, { italics: true, size: 18, color: COLOURS.textMuted }),
+      ], { after: 240 }));
     }
 
-    if (wantPlan) {
-      if (!firstSection) children.push(new Paragraph({ children: [new PageBreak()] }));
-      children.push(...buildPlanSection(floors, building));
-      firstSection = false;
+    // ── Per-floor content ─────────────────────────────────────────────────────
+    for (let fi = 0; fi < floors.length; fi++) {
+      const { floor, components = [], imageBase64, imageWidth, imageHeight } = floors[fi];
+
+      // Page break between floors (not before the first floor)
+      if (fi > 0) {
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+      }
+
+      // Floor heading
+      children.push(new Paragraph({
+        heading:  HeadingLevel.HEADING_2,
+        spacing:  { before: 0, after: 160 },
+        children: [run(
+          `${floor.short_name} — ${floor.name}  (${components.length})`,
+          { size: 26, bold: true, color: COLOURS.subheading }
+        )],
+      }));
+
+      // ── Plan graphic ──────────────────────────────────────────────────────
+      if (wantPlan) {
+        if (imageBase64 && imageWidth && imageHeight) {
+          const maxPts = 520;
+          const scale  = Math.min(1, maxPts / imageWidth);
+          const dW     = Math.round(imageWidth  * scale);
+          const dH     = Math.round(imageHeight * scale);
+
+          children.push(new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing:   { before: 80, after: 240 },
+            children:  [
+              new ImageRun({
+                data:           Buffer.from(imageBase64, 'base64'),
+                type:           'png',
+                transformation: { width: dW, height: dH },
+              }),
+            ],
+          }));
+        } else {
+          children.push(para(
+            'No plan image available for this floor.',
+            { italics: true, size: 16, color: COLOURS.textMuted, after: 200 }
+          ));
+        }
+      }
+
+      if (components.length === 0) {
+        children.push(para('No components on this floor.', { after: 160, size: 18 }));
+        continue;
+      }
+
+      // ── Full component table ──────────────────────────────────────────────
+      if (wantList) {
+        children.push(buildComponentTable(components));
+        children.push(new Paragraph({ spacing: { after: 240 }, children: [] }));
+      }
+
+      // ── Floor summary table ───────────────────────────────────────────────
+      if (wantFloorSummary) {
+        children.push(para('Floor Summary', { bold: true, size: 20, before: 120, after: 100 }));
+        const fsTable = buildFloorSummaryTable(components);
+        if (fsTable) {
+          children.push(fsTable);
+          children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
+        }
+      }
     }
 
-    if (wantSummary) {
-      if (!firstSection) children.push(new Paragraph({ children: [new PageBreak()] }));
-      children.push(...buildSummarySection(summary, building, filterSummary));
+    // ── Full summary section (all floors combined) ────────────────────────────
+    if (wantFullSummary) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+      children.push(...buildFullSummarySection(floors, building, filterSummary));
     }
 
     // ── Build document ────────────────────────────────────────────────────────
