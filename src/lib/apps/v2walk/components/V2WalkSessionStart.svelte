@@ -51,19 +51,22 @@
   // Derive type_filter + emergencyOnly from preset (or custom selection).
   // Emergency lighting: include ALL types — the emergencyOnly flag filters at component
   // attribute level (attr_name='emergency', value='true'), not by type code.
+  // Fire doors / Apartment doors: filter by specific stable type codes.
   $: allTypeCodes = types.map(t => t.code);
 
   $: presetTypeFilter = (() => {
     if (preset === 'emergency_lighting') return allTypeCodes;
-    if (preset === 'fire_doors')         return types.filter(t => t.code === 'communal_door').map(t => t.code);
-    if (preset === 'apartment_doors')    return types.filter(t => t.code === 'apartment_door').map(t => t.code);
+    if (preset === 'fire_doors')         return types.filter(t => t.code === 'door_fire_door').map(t => t.code);
+    if (preset === 'apartment_doors')    return types.filter(t => t.code === 'door_apartment_door').map(t => t.code);
     // custom: exclude hidden types
     return types.filter(t => !hiddenTypeCodes.has(t.code)).map(t => t.code);
   })();
 
   $: emergencyOnly = preset === 'emergency_lighting';
 
-  // Component count preview
+  // Component count preview.
+  // Emergency: check component_attributes for attr_name='emergency', value='true'
+  // (attr_name is enriched into allComponentAttrs during store load()).
   $: componentCount = (() => {
     const tf = presetTypeFilter;
     if (scope === 'single_floor') {
@@ -188,22 +191,21 @@
     {#if facilities.length > 1}
       <section class="grp">
         <div class="grp-lbl">BUILDING</div>
-        <WalkSelect bind:value={selectedFacilityId}>
-          {#each facilities as f (f.id)}
-            <option value={f.id}>{f.name}</option>
-          {/each}
-        </WalkSelect>
+        <WalkSelect
+          bind:value={selectedFacilityId}
+          options={facilities.map(f => ({ value: f.id, label: f.name }))}
+        />
       </section>
     {/if}
 
     {#if scope === 'single_floor'}
       <section class="grp">
         <div class="grp-lbl">FLOOR</div>
-        <WalkSelect bind:value={selectedFloorId}>
-          {#each buildingFloors as f (f.id)}
-            <option value={f.id}>{f.name}</option>
-          {/each}
-        </WalkSelect>
+        <WalkSelect
+          bind:value={selectedFloorId}
+          options={buildingFloors.map(f => ({ value: f.id, label: f.name }))}
+          placeholder=""
+        />
       </section>
     {/if}
 
@@ -269,6 +271,7 @@
         <span class="sum-v">{scope === 'building' ? `${building} — all floors` : `${building} · ${selectedFloor?.name ?? '?'}`}</span>
       </div>
     </div>
+
 
     <!-- ── Diagnostic strip (temporary) ─────────────────────────────────────── -->
     <div class="diag">

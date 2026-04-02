@@ -78,15 +78,15 @@ async function getCurrentUserName(userId) {
 // Given the full components list for a floor and the session's type_filter + emergency_only,
 // returns the filtered and sorted component list for walking.
 
-function buildWalkComponents(floorComponents, typeFilter, emergencyOnly, attrDefs, allComponentAttrs) {
+function buildWalkComponents(floorComponents, typeFilter, emergencyOnly, allComponentAttrs = {}) {
   let list = floorComponents.filter(c => {
     // Type filter: must be in the selected type_codes array
     if (!typeFilter.includes(c.type_code)) return false;
-    // Emergency-only: check component_attributes for an attribute named 'emergency' = 'true'
+    // Emergency-only: check component_attributes for attr_name='emergency', value='true'
+    // (attr_name is enriched into allComponentAttrs rows during load()).
     if (emergencyOnly) {
-      const type       = null; // not needed — we check attribute values
-      const compAttrs  = allComponentAttrs[c.id] ?? [];
-      const isEmergency = compAttrs.some(a => a.attr_name === 'emergency' && a.value === 'true');
+      const isEmergency = (allComponentAttrs[c.id] ?? [])
+        .some(a => a.attr_name === 'emergency' && a.value === 'true');
       if (!isEmergency) return false;
     }
     return true;
@@ -102,7 +102,7 @@ function initFloorProgress(buildingFloors, allComponents, typeFilter, emergencyO
   const progress = {};
   for (const floor of buildingFloors) {
     const comps = buildWalkComponents(
-      allComponents[floor.id] ?? [], typeFilter, emergencyOnly, null, allComponentAttrs
+      allComponents[floor.id] ?? [], typeFilter, emergencyOnly, allComponentAttrs
     );
     progress[floor.id] = { inspected: 0, total: comps.length };
   }
@@ -113,7 +113,7 @@ function calcFloorProgress(buildingFloors, allComponents, typeFilter, emergencyO
   const progress = {};
   for (const floor of buildingFloors) {
     const comps = buildWalkComponents(
-      allComponents[floor.id] ?? [], typeFilter, emergencyOnly, null, allComponentAttrs
+      allComponents[floor.id] ?? [], typeFilter, emergencyOnly, allComponentAttrs
     );
     progress[floor.id] = {
       total:     comps.length,
@@ -250,7 +250,7 @@ function createV2WalkStore() {
     const state = getState();
     const floorComponents = state.allComponents[floor.id] ?? [];
     const walkComponents  = buildWalkComponents(
-      floorComponents, typeFilter, emergencyOnly, null, state.allComponentAttrs ?? {}
+      floorComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
     );
 
     const session = await createSession({
@@ -299,7 +299,7 @@ function createV2WalkStore() {
 
     const total = buildingFloors.reduce((n, floor) =>
       n + buildWalkComponents(
-        state.allComponents[floor.id] ?? [], typeFilter, emergencyOnly, null, state.allComponentAttrs ?? {}
+        state.allComponents[floor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
       ).length, 0
     );
 
@@ -318,7 +318,7 @@ function createV2WalkStore() {
 
     const firstFloor     = buildingFloors[0];
     const walkComponents = buildWalkComponents(
-      state.allComponents[firstFloor.id] ?? [], typeFilter, emergencyOnly, null, state.allComponentAttrs ?? {}
+      state.allComponents[firstFloor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
     );
     const floorProgress = initFloorProgress(
       buildingFloors, state.allComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
@@ -366,8 +366,7 @@ function createV2WalkStore() {
       const buildingFloors = state.floors.filter(f => f.facility_id === (facility?.id ?? null));
 
       const floorProgress = calcFloorProgress(
-        buildingFloors, state.allComponents, typeFilter, emergencyOnly,
-        state.allComponentAttrs ?? {}, inspections
+        buildingFloors, state.allComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}, inspections
       );
 
       const currentFloor = buildingFloors.find(f =>
@@ -375,7 +374,7 @@ function createV2WalkStore() {
       ) ?? buildingFloors[0];
 
       const walkComponents = buildWalkComponents(
-        state.allComponents[currentFloor.id] ?? [], typeFilter, emergencyOnly, null, state.allComponentAttrs ?? {}
+        state.allComponents[currentFloor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
       );
 
       update(s => ({
@@ -392,7 +391,7 @@ function createV2WalkStore() {
       const floor = state.floors.find(f => f.id === session.floor_id);
       if (!floor) throw new Error('Floor not found for session');
       const walkComponents = buildWalkComponents(
-        state.allComponents[floor.id] ?? [], typeFilter, emergencyOnly, null, state.allComponentAttrs ?? {}
+        state.allComponents[floor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
       );
       update(s => ({
         ...s,
@@ -452,7 +451,7 @@ function createV2WalkStore() {
             const typeFilter    = s.activeSession._typeFilter ?? [];
             const emergencyOnly = s.activeSession._emergencyOnly ?? false;
             const walkComponents = buildWalkComponents(
-              s.allComponents[nextFloor.id] ?? [], typeFilter, emergencyOnly, null, s.allComponentAttrs ?? {}
+              s.allComponents[nextFloor.id] ?? [], typeFilter, emergencyOnly, s.allComponentAttrs ?? {}
             );
             return { ...s, currentFloor: nextFloor, walkComponents, currentIndex: 0 };
           }
@@ -474,7 +473,7 @@ function createV2WalkStore() {
             const typeFilter    = s.activeSession._typeFilter ?? [];
             const emergencyOnly = s.activeSession._emergencyOnly ?? false;
             const walkComponents = buildWalkComponents(
-              s.allComponents[prevFloor.id] ?? [], typeFilter, emergencyOnly, null, s.allComponentAttrs ?? {}
+              s.allComponents[prevFloor.id] ?? [], typeFilter, emergencyOnly, s.allComponentAttrs ?? {}
             );
             return { ...s, currentFloor: prevFloor, walkComponents, currentIndex: walkComponents.length - 1 };
           }
