@@ -193,7 +193,18 @@ function createV2WalkStore() {
         loading: false,
       }));
 
-      logger('✅ v2walk data loaded:', components.length, 'components');
+      logger('✅ v2walk data loaded:',
+        'facilities:', facilities.length,
+        '| floors:', floors.length,
+        '| types:', types.length,
+        '| components:', components.length,
+        '| componentAttrs:', componentAttrs.length,
+      );
+      logger('🗺 allComponents keys (floorIds):', Object.keys(allComponents));
+      logger('🏢 facilities:', facilities.map(f => `${f.name} (${f.id})`));
+      logger('🪜 floors sample:', floors.slice(0,3).map(f => `${f.short_name} facility_id=${f.facility_id}`));
+      const nullFloorComponents = components.filter(c => !c.floor_id).length;
+      if (nullFloorComponents > 0) logger('⚠️ components with no floor_id:', nullFloorComponents);
     } catch (err) {
       logger('❌ load:', err.message);
       update(s => ({ ...s, loading: false, error: err.message }));
