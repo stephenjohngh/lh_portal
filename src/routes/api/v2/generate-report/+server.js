@@ -104,8 +104,9 @@ function sortComponents(comps) {
 
 // ── Full component table (per floor) ─────────────────────────────────────────
 // Columns: System | Type | Asset ID | Label | Attributes | Notes | Status
-// DXA:     1400  | 1600 |   225    | 1800  |    2200    | 2791  |  450  = 10466
-const FL_COLS = [1400, 1600, 225, 1800, 2200, 2791, 450];
+// DXA:     1400  | 1600 |   68     | 1957  |    2200    | 2791  |  450  = 10466
+// Asset ID = 30% of previous 225 (→ 68); freed 157 added to Label (1800 → 1957)
+const FL_COLS = [1400, 1600, 68, 1957, 2200, 2791, 450];
 
 function buildComponentTable(components) {
   const sorted = sortComponents(components);
@@ -147,9 +148,9 @@ function buildComponentTable(components) {
 }
 
 // ── Per-floor summary pivot table ─────────────────────────────────────────────
-// Columns: Type | OK | Problem | Failed | Inactive | Total
-// DXA:    3266 | 1440 | 1440  |  1440  |   1440   | 1440  = 10466
-const FS_COLS = [3266, 1440, 1440, 1440, 1440, 1440];
+// Columns: System | Type | OK | Problem | Failed | Inactive | Total  (matches Full Summary)
+// DXA:     2000  | 2200 | 1050 | 1200  |  1050  |   1200  | 1766  = 10466
+const FS_COLS = [2000, 2200, 1050, 1200, 1050, 1200, 1766];
 
 function buildFloorSummaryTable(components) {
   const pivotMap = {};
@@ -176,26 +177,27 @@ function buildFloorSummaryTable(components) {
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Type',     FS_COLS[0]),
-      hCell('OK',       FS_COLS[1], { fill: '1a4a2a' }),
-      hCell('Problem',  FS_COLS[2], { fill: '5c3a0a' }),
-      hCell('Failed',   FS_COLS[3], { fill: '5c1a1a' }),
-      hCell('Inactive', FS_COLS[4], { fill: '374151' }),
-      hCell('Total',    FS_COLS[5]),
+      hCell('System',   FS_COLS[0]),
+      hCell('Type',     FS_COLS[1]),
+      hCell('OK',       FS_COLS[2], { fill: '1a4a2a' }),
+      hCell('Problem',  FS_COLS[3], { fill: '5c3a0a' }),
+      hCell('Failed',   FS_COLS[4], { fill: '5c1a1a' }),
+      hCell('Inactive', FS_COLS[5], { fill: '374151' }),
+      hCell('Total',    FS_COLS[6]),
     ],
   });
 
   const dataRows = pivot.map(row => {
-    const total    = row.ok + row.problem + row.failed + row.inactive;
-    const typeText = `${row.system_name} — ${row.type_name}`;
+    const total = row.ok + row.problem + row.failed + row.inactive;
     return new TableRow({
       children: [
-        dCell(typeText,       FS_COLS[0]),
-        numCell(row.ok,       FS_COLS[1], COLOURS.passGreen),
-        numCell(row.problem,  FS_COLS[2], COLOURS.warnAmber),
-        numCell(row.failed,   FS_COLS[3], COLOURS.failRed),
-        numCell(row.inactive, FS_COLS[4], '9CA3AF'),
-        dCell(String(total),  FS_COLS[5], { bold: true }),
+        dCell(row.system_name, FS_COLS[0]),
+        dCell(row.type_name,   FS_COLS[1]),
+        numCell(row.ok,        FS_COLS[2], COLOURS.passGreen),
+        numCell(row.problem,   FS_COLS[3], COLOURS.warnAmber),
+        numCell(row.failed,    FS_COLS[4], COLOURS.failRed),
+        numCell(row.inactive,  FS_COLS[5], '9CA3AF'),
+        dCell(String(total),   FS_COLS[6], { bold: true }),
       ],
     });
   });

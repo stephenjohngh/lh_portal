@@ -165,7 +165,7 @@
           // Asset ID below circle — white text with black outline for contrast
           const assetId = c.asset_id ?? '';
           if (assetId) {
-            ctx.font          = 'bold 11px Arial';
+            ctx.font          = 'bold 13px Arial';
             ctx.textAlign     = 'center';
             ctx.textBaseline  = 'top';
             ctx.lineWidth     = 2.5;
