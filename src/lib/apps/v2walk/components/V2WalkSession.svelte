@@ -5,10 +5,11 @@
   import { getLogger }    from '$lib/utils/logger';
   import { v2walkStore }  from '../stores/v2walkStore.js';
   import { resultLabel, presetLabel, sessionFloorLabel } from '../utils/v2walkHelpers.js';
-  import V2WalkInspectionPanel  from './V2WalkInspectionPanel.svelte';
-  import V2WalkComponentEditor  from './V2WalkComponentEditor.svelte';
-  import V2WalkJumpList         from './V2WalkJumpList.svelte';
-  import V2WalkPlanViewer       from './V2WalkPlanViewer.svelte';
+  import V2WalkInspectionPanel       from './V2WalkInspectionPanel.svelte';
+  import V2WalkComponentEditor       from './V2WalkComponentEditor.svelte';
+  import V2WalkJumpList              from './V2WalkJumpList.svelte';
+  import V2WalkPlanViewer            from './V2WalkPlanViewer.svelte';
+  import V2WalkComponentPlanViewer   from './V2WalkComponentPlanViewer.svelte';
   import WalkStatsBars from '$lib/apps/walk/components/WalkStatsBars.svelte';
   import WalkBadge     from '$lib/apps/walk/components/common/WalkBadge.svelte';
   import WalkTextarea  from '$lib/apps/walk/components/common/WalkTextarea.svelte';
@@ -20,7 +21,7 @@
 
   export let canEdit = false;
 
-  // View states: 'card' | 'inspect' | 'edit' | 'jump' | 'close' | 'plan'
+  // View states: 'card' | 'inspect' | 'edit' | 'jump' | 'close' | 'plan' | 'component-plan'
   let view       = 'card';
   let closeNotes = '';
   let closing    = false;
@@ -35,10 +36,15 @@
   $: buildingFloors = $v2walkStore.buildingFloors;
   $: types        = $v2walkStore.types;
   $: floors       = $v2walkStore.floors;
+  $: plans        = $v2walkStore.plans;
 
-  $: currentComponent = components[currentIndex];
-  $: currentType      = currentComponent ? types.find(t => t.code === currentComponent.type_code) : null;
+  $: currentComponent  = components[currentIndex];
+  $: currentType       = currentComponent ? types.find(t => t.code === currentComponent.type_code) : null;
   $: currentInspection = currentComponent ? (inspections[currentComponent.id] ?? null) : null;
+  // Plan for the component-plan view — only set when component is placed on a plan
+  $: currentPlan = currentComponent?.plan_id
+    ? (plans.find(p => p.id === currentComponent.plan_id) ?? null)
+    : null;
 
   $: isFirst    = v2walkStore.isAtStartOfBuilding()
     ? true
@@ -208,6 +214,14 @@
       on:close={() => view = 'card'}
     />
 
+  {:else if view === 'component-plan' && currentComponent && currentPlan}
+    <V2WalkComponentPlanViewer
+      component={currentComponent}
+      plan={currentPlan}
+      floor={currentFloor}
+      on:close={() => view = 'card'}
+    />
+
   {:else if view === 'close'}
     <div class="close-sheet">
       <div class="close-hdr">
@@ -282,6 +296,11 @@
           <div class="nav-ctr">
             <button class="jump-btn" on:click={() => view = 'jump'}>☰ LIST</button>
             <button class="map-btn"  on:click={() => view = 'plan'}>⊞ MAP</button>
+            <button class="plan-btn" on:click={() => view = 'component-plan'}
+              disabled={!currentPlan}
+              title={currentPlan ? 'Show on floor plan' : 'Component not placed on a plan'}>
+              📍
+            </button>
           </div>
           <button class="nav-btn" on:click={handleNext}
             disabled={v2walkStore.isAtEndOfBuilding() || (!isBuilding && currentIndex >= components.length - 1)}>
@@ -382,8 +401,9 @@
   .nav-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
   .nav-btn:disabled { opacity:0.3; cursor:not-allowed; }
   .nav-ctr { display:flex; gap:0.4rem; flex-shrink:0; }
-  .jump-btn, .map-btn { padding:0.875rem 0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.15s; }
-  .jump-btn:hover, .map-btn:hover { border-color:#fb923c; color:#fb923c; }
+  .jump-btn, .map-btn, .plan-btn { padding:0.875rem 0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.15s; }
+  .jump-btn:hover, .map-btn:hover, .plan-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
+  .plan-btn:disabled { opacity:0.3; cursor:not-allowed; }
 
   /* ── Action buttons ──────────────────────────────────────────────────────── */
   .act-row { display:flex; gap:0.75rem; padding:1rem; }
