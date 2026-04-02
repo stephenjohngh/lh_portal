@@ -20,14 +20,16 @@ import { getFloorOrder } from '$lib/utils/floorSorting';
 export function flattenInspectionRows(rows) {
   return rows.map(r => ({
     ...r,
-    asset_id:    r.component?.asset_id    ?? r.asset_id   ?? null,
-    label:       r.component?.label       ?? r.label      ?? null,
-    type_code:   r.component?.type_code   ?? r.type_code  ?? null,
-    type_name:   r.component?.type?.name  ?? r.type_name  ?? null,
+    asset_id:    r.component?.asset_id         ?? r.asset_id    ?? null,
+    label:       r.component?.label            ?? r.label       ?? null,
+    type_code:   r.component?.type_code        ?? r.type_code   ?? null,
+    // type_name is not available from DB join (type_code is not a FK).
+    // Components that need type display resolve it client-side from the types array.
+    type_name:   r.type_name                   ?? null,
     floor_name:  r.component?.floor?.short_name ?? r.floor_name ?? null,
     floor_order: r.component?.floor?.level_order ?? 999,
-    result:      r.inspection_result      ?? r.result     ?? null,
-    photo_urls:  r.photo_urls             ?? [],
+    result:      r.inspection_result           ?? r.result      ?? null,
+    photo_urls:  r.photo_urls                  ?? [],
   }));
 }
 

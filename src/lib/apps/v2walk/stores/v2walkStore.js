@@ -164,11 +164,19 @@ function createV2WalkStore() {
           .sort((a, b) => a.presentation_order - b.presentation_order);
       }
 
-      // Index component_attributes by componentId (for emergency check)
+      // Build a map from type_attribute_id → name so we can enrich component_attributes
+      // rows with attr_name (component_attributes has no name column — it's in type_attributes).
+      const attrIdToName = {};
+      for (const d of defs) attrIdToName[d.id] = d.name;
+
+      // Index component_attributes by componentId, enriched with attr_name
       const allComponentAttrs = {};
       for (const a of componentAttrs) {
         if (!allComponentAttrs[a.component_id]) allComponentAttrs[a.component_id] = [];
-        allComponentAttrs[a.component_id].push(a);
+        allComponentAttrs[a.component_id].push({
+          ...a,
+          attr_name: attrIdToName[a.type_attribute_id] ?? null,
+        });
       }
 
       // Index components by floorId
@@ -331,7 +339,7 @@ function createV2WalkStore() {
 
     // Load existing inspections map
     const inspRows = await api.get('component_inspections', {
-      filters:   { walk_session_id: session.id },
+      filters:   { v2_walk_session_id: session.id },
       orderBy:   'inspected_at',
       ascending: true,
     });
@@ -514,8 +522,8 @@ function createV2WalkStore() {
       });
     } else {
       inspection = await api.create('component_inspections', {
-        walk_session_id:   state.activeSession.id,
-        component_id:      componentId,
+        v2_walk_session_id: state.activeSession.id,
+        component_id:       componentId,
         inspection_result: result,
         inspector_notes:   notes || null,
         photo_urls:        photoUrls,
@@ -582,7 +590,7 @@ function createV2WalkStore() {
   async function loadComponentInspectionHistory(componentId) {
     try {
       return await api.get('component_inspections', {
-        select:    '*, inspector:profiles!inspected_by(full_name), session:v2_walk_sessions!walk_session_id(session_name, building, started_at)',
+        select:    '*, inspector:profiles!inspected_by(full_name), session:v2_walk_sessions!v2_walk_session_id(session_name, building, started_at)',
         filters:   { component_id: componentId },
         orderBy:   'inspected_at',
         ascending: false,
@@ -591,9 +599,11 @@ function createV2WalkStore() {
   }
 
   async function loadSessionInspections(sessionId) {
+    // Note: type_code on components is NOT a FK so we cannot join to component_types here.
+    // Type name/colour/initial are resolved client-side from $v2walkStore.types.
     return api.get('component_inspections', {
-      select:    '*, component:components!component_id(asset_id, label, type_code, status, floor:floors!floor_id(short_name, level_order), type:component_types!type_code(name, initial, colour))',
-      filters:   { walk_session_id: sessionId },
+      select:    '*, component:components!component_id(asset_id, label, type_code, status, floor:floors!floor_id(short_name, level_order))',
+      filters:   { v2_walk_session_id: sessionId },
       orderBy:   'inspected_at',
       ascending: true,
     });
@@ -689,7 +699,7 @@ function createV2WalkStore() {
     const { error: inspErr } = await supabase
       .from('component_inspections')
       .delete()
-      .eq('walk_session_id', sessionId);
+      .eq('v2_walk_session_id', sessionId);
     if (inspErr) throw new Error('Failed to delete inspections: ' + inspErr.message);
 
     const { data, error: sessErr } = await supabase
