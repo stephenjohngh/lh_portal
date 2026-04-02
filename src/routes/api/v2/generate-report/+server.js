@@ -68,10 +68,20 @@ function numCell(value, widthDxa, colour) {
   });
 }
 
+// ── Sort helper ───────────────────────────────────────────────────────────────
+function sortComponents(comps) {
+  return [...comps].sort((a, b) =>
+    (a.system_name ?? '').localeCompare(b.system_name ?? '') ||
+    (a.type_name   ?? '').localeCompare(b.type_name   ?? '') ||
+    (a.asset_id    ?? '').localeCompare(b.asset_id    ?? '', undefined, { numeric: true, sensitivity: 'base' })
+  );
+}
+
 // ── Full List section ─────────────────────────────────────────────────────────
-// Columns: Asset ID | Type | System | Label | Status | Attributes
-// Width split (DXA): 900 | 1600 | 1400 | 1800 | 900 | 3866 = 10466
-const FL_COLS = [900, 1600, 1400, 1800, 900, 3866];
+// Columns: System | Type | Asset ID | Label | Attributes | Notes | Status
+// Width split (DXA): 1400 | 1600 | 225 | 1800 | 2200 | 2791 | 450 = 10466
+// Asset ID = 25% of old 900; Status = 50% of old 900; Notes = blank print column
+const FL_COLS = [1400, 1600, 225, 1800, 2200, 2791, 450];
 
 function buildFullListSection(floors, building, filterSummary) {
   const children = [];
@@ -109,30 +119,34 @@ function buildFullListSection(floors, building, filterSummary) {
       continue;
     }
 
-    // Table
+    // Table — sorted System → Type → Asset ID
+    const sorted = sortComponents(components);
+
     const headerRow = new TableRow({
       tableHeader: true,
       children: [
-        hCell('Asset ID', FL_COLS[0]),
-        hCell('Type',     FL_COLS[1]),
-        hCell('System',   FL_COLS[2]),
-        hCell('Label',    FL_COLS[3]),
-        hCell('Status',   FL_COLS[4]),
-        hCell('Attributes / Notes', FL_COLS[5]),
+        hCell('System',     FL_COLS[0]),
+        hCell('Type',       FL_COLS[1]),
+        hCell('Asset ID',   FL_COLS[2]),
+        hCell('Label',      FL_COLS[3]),
+        hCell('Attributes', FL_COLS[4]),
+        hCell('Notes',      FL_COLS[5]),
+        hCell('Status',     FL_COLS[6]),
       ],
     });
 
-    const dataRows = components.map((c, idx) => {
+    const dataRows = sorted.map((c, idx) => {
       const alt   = idx % 2 === 1;
       const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('  ·  ');
       return new TableRow({
         children: [
-          dCell(c.asset_id   ?? '—', FL_COLS[0], { alt }),
-          dCell(c.type_name  ?? '—', FL_COLS[1], { alt }),
-          dCell(c.system_name ?? '—', FL_COLS[2], { alt }),
-          dCell(c.label      ?? '—', FL_COLS[3], { alt }),
-          statusCell(c.status, FL_COLS[4], alt),
-          dCell(attrs || '—',        FL_COLS[5], { alt }),
+          dCell(c.system_name ?? '—', FL_COLS[0], { alt }),
+          dCell(c.type_name   ?? '—', FL_COLS[1], { alt }),
+          dCell(c.asset_id    ?? '—', FL_COLS[2], { alt }),
+          dCell(c.label       ?? '—', FL_COLS[3], { alt }),
+          dCell(attrs || '—',         FL_COLS[4], { alt }),
+          dCell('',                   FL_COLS[5], { alt }),
+          statusCell(c.status, FL_COLS[6], alt),
         ],
       });
     });
@@ -151,9 +165,10 @@ function buildFullListSection(floors, building, filterSummary) {
 
 // ── Plan Images section ───────────────────────────────────────────────────────
 // Each floor: heading + annotated plan image (if available) + placed-component table
-// Columns for placed-component table: Asset ID | Type | Label | Status
-// Width split: 1100 | 2100 | 4766 | 2500 = 10466
-const PL_COLS = [1100, 2100, 4766, 2500];
+// Columns: System | Type | Asset ID | Label | Status
+// Width split: 1500 | 2100 | 275 | 5341 | 1250 = 10466
+// Asset ID = 25% of old 1100; Status = 50% of old 2500
+const PL_COLS = [1500, 2100, 275, 5341, 1250];
 
 function buildPlanSection(floors, building) {
   const children = [];
@@ -209,24 +224,29 @@ function buildPlanSection(floors, building) {
       continue;
     }
 
+    // Sorted System → Type → Asset ID
+    const sorted = sortComponents(placed);
+
     const headerRow = new TableRow({
       tableHeader: true,
       children: [
-        hCell('Asset ID', PL_COLS[0]),
+        hCell('System',   PL_COLS[0]),
         hCell('Type',     PL_COLS[1]),
-        hCell('Label',    PL_COLS[2]),
-        hCell('Status',   PL_COLS[3]),
+        hCell('Asset ID', PL_COLS[2]),
+        hCell('Label',    PL_COLS[3]),
+        hCell('Status',   PL_COLS[4]),
       ],
     });
 
-    const dataRows = placed.map((c, idx) => {
+    const dataRows = sorted.map((c, idx) => {
       const alt = idx % 2 === 1;
       return new TableRow({
         children: [
-          dCell(c.asset_id  ?? '—', PL_COLS[0], { alt }),
-          dCell(c.type_name ?? '—', PL_COLS[1], { alt }),
-          dCell(c.label     ?? '—', PL_COLS[2], { alt }),
-          statusCell(c.status, PL_COLS[3], alt),
+          dCell(c.system_name ?? '—', PL_COLS[0], { alt }),
+          dCell(c.type_name   ?? '—', PL_COLS[1], { alt }),
+          dCell(c.asset_id    ?? '—', PL_COLS[2], { alt }),
+          dCell(c.label       ?? '—', PL_COLS[3], { alt }),
+          statusCell(c.status, PL_COLS[4], alt),
         ],
       });
     });

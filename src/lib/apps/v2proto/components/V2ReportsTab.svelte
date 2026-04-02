@@ -164,12 +164,25 @@
           ctx.lineWidth   = 1.5;
           ctx.stroke();
 
-          // Asset ID label inside circle
+          // Type initial inside circle
           ctx.fillStyle    = '#ffffff';
           ctx.font         = 'bold 8px Arial';
           ctx.textAlign    = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(t?.initial ?? '?', x, y);
+
+          // Asset ID below circle — white text with black outline for contrast
+          const assetId = c.asset_id ?? '';
+          if (assetId) {
+            ctx.font          = 'bold 9px Arial';
+            ctx.textAlign     = 'center';
+            ctx.textBaseline  = 'top';
+            ctx.lineWidth     = 2.5;
+            ctx.strokeStyle   = 'rgba(0,0,0,0.85)';
+            ctx.strokeText(assetId, x, y + 13);
+            ctx.fillStyle     = '#ffffff';
+            ctx.fillText(assetId, x, y + 13);
+          }
         }
 
         resolve({
@@ -216,7 +229,17 @@
         filteredByFloor.map(async ({ floor, components: comps }) => {
           const imageData = includePlan ? await drawFloorPlan(floor, comps) : null;
 
-          const resolvedComponents = comps.map(c => {
+          // Sort System → Type → Asset ID before sending to server
+          const sortedComps = [...comps].sort((a, b) => {
+            const ta = typeOf(a), tb = typeOf(b);
+            const sa = systemOf(ta)?.name ?? '';
+            const sb = systemOf(tb)?.name ?? '';
+            return sa.localeCompare(sb) ||
+                   (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
+                   (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
+          });
+
+          const resolvedComponents = sortedComps.map(c => {
             const t   = typeOf(c);
             const sys = systemOf(t);
             const attrs = (componentAttrs[c.id] ?? [])
