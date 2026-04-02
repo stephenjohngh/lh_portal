@@ -21,7 +21,7 @@ import {
   Table, TableRow, TableCell,
   ImageRun, PageBreak,
   WidthType, HeadingLevel, ShadingType,
-  AlignmentType, VerticalAlign
+  AlignmentType, VerticalAlign, TableLayoutType
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
 import {
@@ -142,6 +142,7 @@ function buildComponentTable(components) {
 
   return new Table({
     width:   { size: CONTENT_W, type: WidthType.DXA },
+    layout:  TableLayoutType.FIXED,
     borders: BORDERS,
     rows:    [headerRow, ...dataRows],
   });
@@ -204,6 +205,7 @@ function buildFloorSummaryTable(components) {
 
   return new Table({
     width:   { size: CONTENT_W, type: WidthType.DXA },
+    layout:  TableLayoutType.FIXED,
     borders: BORDERS,
     rows:    [headerRow, ...dataRows],
   });
@@ -305,6 +307,7 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
 
   children.push(new Table({
     width:   { size: CONTENT_W, type: WidthType.DXA },
+    layout:  TableLayoutType.FIXED,
     borders: BORDERS,
     rows:    [headerRow, ...dataRows, totalRow],
   }));
