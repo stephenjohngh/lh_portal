@@ -222,6 +222,7 @@
     <ComponentMarker
       component={c}
       type={types.find(t => t.code === c.type_code)}
+      {floor}
       selected={selectedComponent?.id === c.id}
       editMode={drawingMode === 'component'}
       on:click={e => dispatch('markerclick', e.detail)}
