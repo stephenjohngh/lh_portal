@@ -295,7 +295,7 @@
           </button>
           <div class="nav-ctr">
             <button class="jump-btn" on:click={() => view = 'jump'}>☰ LIST</button>
-            <button class="map-btn"  on:click={() => view = 'plan'}>⊞ MAP</button>
+            <button class="map-btn"  on:click={() => view = 'plan'}>⊞ STATUS</button>
             <button class="plan-btn" on:click={() => view = 'component-plan'}
               disabled={!currentPlan}
               title={currentPlan ? 'Show on floor plan' : 'Component not placed on a plan'}>

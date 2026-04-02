@@ -47,7 +47,7 @@
 <div class="pv">
   <div class="pv-hdr">
     <WalkButton variant="ghost" size="sm" on:click={() => dispatch('close')}>✕ CLOSE</WalkButton>
-    <div class="pv-title">{floor?.short_name ?? '?'} — FLOOR MAP</div>
+    <div class="pv-title">{floor?.short_name ?? '?'} — FLOOR STATUS</div>
     <div class="pv-stats">
       <span class="s-pass">✓ {passCount}</span>
       <span class="s-fail">✗ {failCount}</span>
