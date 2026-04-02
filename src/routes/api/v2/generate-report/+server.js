@@ -106,7 +106,7 @@ function sortComponents(comps) {
 // Columns: System | Type | Asset ID | Label | Attributes | Notes | Status
 // DXA:     1400  | 1600 |   68     | 1957  |    2200    | 2791  |  450  = 10466
 // Asset ID = 30% of previous 225 (→ 68); freed 157 added to Label (1800 → 1957)
-const FL_COLS = [1400, 1600, 68, 1957, 2200, 2791, 450];
+const FL_COLS = [1400, 1600, 136, 1957, 2200, 2273, 900];
 
 function buildComponentTable(components) {
   const sorted = sortComponents(components);
@@ -141,10 +141,11 @@ function buildComponentTable(components) {
   });
 
   return new Table({
-    width:   { size: CONTENT_W, type: WidthType.DXA },
-    layout:  TableLayoutType.FIXED,
-    borders: BORDERS,
-    rows:    [headerRow, ...dataRows],
+    width:        { size: CONTENT_W, type: WidthType.DXA },
+    layout:       TableLayoutType.FIXED,
+    columnWidths: FL_COLS,
+    borders:      BORDERS,
+    rows:         [headerRow, ...dataRows],
   });
 }
 
@@ -204,10 +205,11 @@ function buildFloorSummaryTable(components) {
   });
 
   return new Table({
-    width:   { size: CONTENT_W, type: WidthType.DXA },
-    layout:  TableLayoutType.FIXED,
-    borders: BORDERS,
-    rows:    [headerRow, ...dataRows],
+    width:        { size: CONTENT_W, type: WidthType.DXA },
+    layout:       TableLayoutType.FIXED,
+    columnWidths: FS_COLS,
+    borders:      BORDERS,
+    rows:         [headerRow, ...dataRows],
   });
 }
 
@@ -306,10 +308,11 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
   });
 
   children.push(new Table({
-    width:   { size: CONTENT_W, type: WidthType.DXA },
-    layout:  TableLayoutType.FIXED,
-    borders: BORDERS,
-    rows:    [headerRow, ...dataRows, totalRow],
+    width:        { size: CONTENT_W, type: WidthType.DXA },
+    layout:       TableLayoutType.FIXED,
+    columnWidths: SM_COLS,
+    borders:      BORDERS,
+    rows:         [headerRow, ...dataRows, totalRow],
   }));
 
   return children;
