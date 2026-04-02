@@ -80,7 +80,7 @@
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="backdrop" on:click={() => dispatch('close')}>
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="modal" on:click|stopPropagation role="dialog" aria-modal="true">
+  <div class="modal" on:click|stopPropagation role="dialog" aria-modal="true" tabindex="-1">
 
     <div class="mhdr">
       <div class="mhdr-info">
