@@ -34,6 +34,7 @@ const INITIAL_STATE = {
 
   // All components, indexed by floorId for fast access
   allComponents:    {},      // { floorId: components[] }
+  allComponentAttrs: {},     // { componentId: component_attributes[] }
 
   // Session state
   sessions:         [],

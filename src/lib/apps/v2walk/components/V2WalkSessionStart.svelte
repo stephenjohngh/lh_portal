@@ -17,11 +17,11 @@
 
   export let sessionType = 'test';   // 'test' | 'inspection'
 
-  $: facilities    = $v2walkStore.facilities;
-  $: floors        = $v2walkStore.floors;
-  $: systems       = $v2walkStore.systems;
-  $: types         = $v2walkStore.types;
-  $: allComponents = $v2walkStore.allComponents;
+  $: facilities        = $v2walkStore.facilities;
+  $: floors            = $v2walkStore.floors;
+  $: systems           = $v2walkStore.systems;   // used for custom type tree grouping
+  $: types             = $v2walkStore.types;
+  $: allComponents     = $v2walkStore.allComponents;
   $: allComponentAttrs = $v2walkStore.allComponentAttrs ?? {};
 
   // ── Form state ────────────────────────────────────────────────────────────────
@@ -45,20 +45,19 @@
   // Building name = facility short_name or name
   $: building = selectedFacility?.short_name ?? selectedFacility?.name ?? '';
 
-  // Derive type_filter + emergencyOnly from preset (or custom selection)
-  $: lightingTypeCodes = types.filter(t => {
-    const sys = systems.find(s => s.id === t.building_system_id);
-    return sys?.name?.toLowerCase().includes('light');
-  }).map(t => t.code);
-
   $: { if (facilities.length > 0 && !selectedFacilityId) selectedFacilityId = facilities[0]?.id ?? ''; }
   $: { if (buildingFloors.length > 0 && !selectedFloorId) selectedFloorId = buildingFloors[0]?.id ?? ''; }
 
+  // Derive type_filter + emergencyOnly from preset (or custom selection).
+  // Emergency lighting: include ALL types — the emergencyOnly flag filters at component
+  // attribute level (attr_name='emergency', value='true'), not by type code.
+  $: allTypeCodes = types.map(t => t.code);
+
   $: presetTypeFilter = (() => {
-    if (preset === 'emergency_lighting') return lightingTypeCodes;
+    if (preset === 'emergency_lighting') return allTypeCodes;
     if (preset === 'fire_doors')         return types.filter(t => t.code === 'communal_door').map(t => t.code);
     if (preset === 'apartment_doors')    return types.filter(t => t.code === 'apartment_door').map(t => t.code);
-    // custom
+    // custom: exclude hidden types
     return types.filter(t => !hiddenTypeCodes.has(t.code)).map(t => t.code);
   })();
 
