@@ -10,6 +10,7 @@
   import PlanViewTab     from './components/PlanViewTab.svelte';
   import MaintenanceView from './components/MaintenanceView.svelte';
   import AdminTab        from './components/admin/AdminTab.svelte';
+  import V2ReportsTab    from './components/V2ReportsTab.svelte';
 
   let activeTab = 'types';
 
@@ -31,6 +32,7 @@
     { id: 'components',  label: 'Components',     icon: '🧩' },
     { id: 'plans',       label: 'Plan View',      icon: '🗺' },
     { id: 'maintenance', label: 'Maintenance',    icon: '🔧' },
+    { id: 'reports',     label: 'Reports',        icon: '📄' },
     { id: 'admin',       label: 'Admin',          icon: '⚙' }
   ];
 </script>
@@ -98,6 +100,8 @@
     <PlanViewTab />
   {:else if activeTab === 'maintenance'}
     <MaintenanceView {systems} {types} {regime} />
+  {:else if activeTab === 'reports'}
+    <V2ReportsTab />
   {:else if activeTab === 'admin'}
     <AdminTab />
   {/if}
