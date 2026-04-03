@@ -30,6 +30,8 @@
   $: plans        = $plansStore.plans;
   $: selectedPlan = plans.find(p => p.id === selectedPlanId);
 
+  const PREF_KEY = 'lh_plans_selectedPlanId';
+
   onMount(async () => {
     logger('Plans app mounted');
     if ($auth.user) await permissions.init($auth.user.id, 'plans');
@@ -41,6 +43,12 @@
     try {
       await plansStore.loadPlans();
       logger('✅ Plans loaded');
+      // Restore last viewed floor plan (only if the plan still exists)
+      const saved = localStorage.getItem(PREF_KEY);
+      if (saved && $plansStore.plans.some(p => p.id === saved)) {
+        selectedPlanId = saved;
+        showBuildingOverview = false;
+      }
     } catch (err) {
       logger('❌ Error loading plans:', err.message);
     } finally { loading = false; }
@@ -48,24 +56,26 @@
 
   function handlePlanSelect(e) {
     if (e.detail.isBuildingOverview) {
-      // NEW: Handle Building Overview selection
       showBuildingOverview = true;
       selectedPlanId = null;
+      localStorage.removeItem(PREF_KEY);
     } else {
       selectedPlanId = e.detail.planId;
       showBuildingOverview = false;
+      localStorage.setItem(PREF_KEY, selectedPlanId);
     }
   }
-  
+
   function handleBackToList() {
     selectedPlanId = null;
     showBuildingOverview = false;
+    localStorage.removeItem(PREF_KEY);
   }
-  
-  function handlePlanCreated(e)  { showUploader = false; selectedPlanId = e.detail.planId; showBuildingOverview = false; loadPlans(); }
+
+  function handlePlanCreated(e)  { showUploader = false; selectedPlanId = e.detail.planId; showBuildingOverview = false; localStorage.setItem(PREF_KEY, e.detail.planId); loadPlans(); }
   function handlePlanUpdated()   { loadPlans(); }
-  function handlePlanDeleted()   { selectedPlanId = null; showBuildingOverview = false; loadPlans(); }
-  function handlePlanCopied(e)   { selectedPlanId = e.detail.planId; showBuildingOverview = false; loadPlans(); }
+  function handlePlanDeleted()   { selectedPlanId = null; showBuildingOverview = false; localStorage.removeItem(PREF_KEY); loadPlans(); }
+  function handlePlanCopied(e)   { selectedPlanId = e.detail.planId; showBuildingOverview = false; localStorage.setItem(PREF_KEY, e.detail.planId); loadPlans(); }
 
   function switchTab(tab) {
     activeTab = tab;
