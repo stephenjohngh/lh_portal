@@ -106,7 +106,7 @@ function sortComponents(comps) {
 // Columns: System | Type | Asset ID | Label | Attributes | Notes | Status
 // DXA:     1400  | 1600 |   68     | 1957  |    2200    | 2791  |  450  = 10466
 // Asset ID = 30% of previous 225 (→ 68); freed 157 added to Label (1800 → 1957)
-const FL_COLS = [1400, 1600, 136, 1957, 2200, 2273, 900];
+const FL_COLS = [1400, 1600, 560, 1957, 2200, 1759, 990];
 
 function buildComponentTable(components) {
   const sorted = sortComponents(components);
@@ -116,7 +116,7 @@ function buildComponentTable(components) {
     children: [
       hCell('System',     FL_COLS[0]),
       hCell('Type',       FL_COLS[1]),
-      hCell('Asset ID',   FL_COLS[2]),
+      hCell('Id',         FL_COLS[2]),
       hCell('Label',      FL_COLS[3]),
       hCell('Attributes', FL_COLS[4]),
       hCell('Notes',      FL_COLS[5]),
