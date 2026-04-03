@@ -40,6 +40,8 @@
   $: annotations    = store.annotations ?? [];
 
   // ── Navigation state ─────────────────────────────────────────────
+  const PREF_FLOOR = 'lh_v2plan_selectedFloorId';
+  const PREF_PLAN  = 'lh_v2plan_selectedPlanId';
   let selectedFloorId = '';
   let selectedPlanId  = '';
 
@@ -164,16 +166,24 @@
   $: planAR        = selectedPlan?.image_aspect_ratio ?? imageAspectRatio;
   $: metresPerUnit = computeMetresPerUnit(selectedPlan?.scale_ref, planAR);
 
-  // ── Auto-select: first floor that has plans ───────────────────────
+  // ── Auto-select: restore saved floor/plan, else first floor with plans ──
   let autoSelected = false;
   $: if (!autoSelected && floors.length > 0 && plans.length > 0) {
-    const f = floors.find(fl => plans.some(p => p.floor_id === fl.id));
-    if (f) {
-      selectedFloorId = f.id;
-      const p = plans.find(pl => pl.floor_id === f.id);
-      if (p) selectedPlanId = p.id;
-      autoSelected = true;
+    const savedFloor = localStorage.getItem(PREF_FLOOR);
+    const savedPlan  = localStorage.getItem(PREF_PLAN);
+    const floorOk    = savedFloor && floors.some(f => f.id === savedFloor) && plans.some(p => p.floor_id === savedFloor);
+    if (floorOk) {
+      selectedFloorId = savedFloor;
+      const planOk = savedPlan && plans.some(p => p.id === savedPlan && p.floor_id === savedFloor);
+      selectedPlanId = planOk ? savedPlan : (plans.find(p => p.floor_id === savedFloor)?.id ?? '');
+    } else {
+      const f = floors.find(fl => plans.some(p => p.floor_id === fl.id));
+      if (f) {
+        selectedFloorId = f.id;
+        selectedPlanId  = plans.find(p => p.floor_id === f.id)?.id ?? '';
+      }
     }
+    autoSelected = true;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
@@ -212,6 +222,8 @@
     clearScaleDrawing();
     const p = plans.find(pl => pl.floor_id === floorId);
     if (p) selectedPlanId = p.id;
+    localStorage.setItem(PREF_FLOOR, floorId);
+    if (selectedPlanId) localStorage.setItem(PREF_PLAN, selectedPlanId);
   }
 
   function onPlanChange({ detail: { planId } }) {
@@ -219,6 +231,7 @@
     resetSelection();
     cancelSpaceDrawing();
     clearScaleDrawing();
+    localStorage.setItem(PREF_PLAN, planId);
   }
 
   // ── Mode toggle ───────────────────────────────────────────────────
