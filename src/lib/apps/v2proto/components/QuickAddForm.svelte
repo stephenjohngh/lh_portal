@@ -14,6 +14,8 @@
 
   const dispatch = createEventDispatcher();
 
+  const TYPE_PREF_KEY = 'lh_v2plan_lastTypeId';
+
   let selectedTypeId = '';
   let label          = '';
   let assetId        = '';
@@ -24,9 +26,21 @@
   $: primaryDef   = defs.find(d => d.is_primary) ?? null;
   $: primaryOpts  = primaryDef ? (attrOptions[primaryDef.id] ?? []).filter(o => o.visible) : [];
 
+  // Restore last used type once type list is available
+  let typeRestored = false;
+  $: if (!typeRestored && types.length > 0) {
+    const saved = localStorage.getItem(TYPE_PREF_KEY);
+    if (saved && types.some(t => t.id === saved)) {
+      selectedTypeId = saved;
+      onTypeChange();
+    }
+    typeRestored = true;
+  }
+
   function onTypeChange() {
     primaryValue = '';
     if (primaryDef?.default_value) primaryValue = primaryDef.default_value;
+    if (selectedTypeId) localStorage.setItem(TYPE_PREF_KEY, selectedTypeId);
   }
 
   function handleSubmit() {

@@ -53,6 +53,45 @@
   const ALL_STATUSES = ['ok', 'problem', 'failed', 'inactive'];
   let selectedStatuses  = new Set(ALL_STATUSES);
 
+  // ── Preferences: persist report settings across sessions ─────────────────────
+  const REPORT_PREF_KEY = 'lh_v2report_prefs';
+
+  // Restore once, after floor + system data has loaded (to validate stored IDs)
+  let prefsRestored = false;
+  $: if (!prefsRestored && floors.length > 0 && systems.length > 0) {
+    try {
+      const saved = localStorage.getItem(REPORT_PREF_KEY);
+      if (saved) {
+        const p = JSON.parse(saved);
+        includePlan         = p.includePlan         ?? false;
+        includeList         = p.includeList         ?? true;
+        includeFloorSummary = p.includeFloorSummary ?? true;
+        includeFullSummary  = p.includeFullSummary  ?? false;
+        floorsCleared       = p.floorsCleared       ?? false;
+        systemsCleared      = p.systemsCleared      ?? false;
+        const validFloors   = new Set(floors.map(f => f.id));
+        const validSystems  = new Set(systems.map(s => s.id));
+        selectedFloorIds    = new Set((p.selectedFloorIds  ?? []).filter(id => validFloors.has(id)));
+        selectedSystemIds   = new Set((p.selectedSystemIds ?? []).filter(id => validSystems.has(id)));
+        const restoredSt    = new Set((p.selectedStatuses  ?? []).filter(s => ALL_STATUSES.includes(s)));
+        selectedStatuses    = restoredSt.size > 0 ? restoredSt : new Set(ALL_STATUSES);
+      }
+    } catch { /* ignore corrupt data */ }
+    prefsRestored = true;
+  }
+
+  // Auto-save whenever any setting changes (all Set changes use reassignment so Svelte tracks them)
+  $: if (prefsRestored) {
+    localStorage.setItem(REPORT_PREF_KEY, JSON.stringify({
+      includePlan, includeList, includeFloorSummary, includeFullSummary,
+      selectedFloorIds:  [...selectedFloorIds],
+      floorsCleared,
+      selectedSystemIds: [...selectedSystemIds],
+      systemsCleared,
+      selectedStatuses:  [...selectedStatuses],
+    }));
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────────
   function typeOf(c)  { return types.find(t => t.code === c.type_code); }
   function systemOf(t){ return t ? systems.find(s => s.id === t.building_system_id) : null; }
