@@ -358,9 +358,8 @@
             {!floorsCleared && selectedFloorIds.size === 0 ? 'Clear All' : 'Choose All'}
           </button>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto">
+        <div class="grid grid-cols-4 gap-1.5 max-h-48 overflow-y-auto">
           {#each floors as f (f.id)}
-            {@const count = filteredComponents.filter(c => c.floor_id === f.id).length}
             <label class="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-slate-700
               {selectedFloorIds.has(f.id) ? 'bg-slate-700' : ''}">
               <input type="checkbox"
@@ -380,8 +379,7 @@
                 }}
                 class="accent-purple-500"
               />
-              <span class="text-sm text-slate-300 flex-1 truncate">{f.short_name} — {f.name}</span>
-              <span class="text-xs text-slate-500 tabular-nums">{count}</span>
+              <span class="text-sm text-slate-300 truncate">{f.name}</span>
             </label>
           {/each}
         </div>
