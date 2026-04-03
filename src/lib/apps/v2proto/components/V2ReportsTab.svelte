@@ -41,8 +41,9 @@
   $: noneSelected = !includePlan && !includeList && !includeFloorSummary && !includeFullSummary;
 
   // ── Scope: floors ─────────────────────────────────────────────────────────────
-  // empty set = all floors
+  // empty set = all floors; floorsCleared = true means user explicitly unchecked all
   let selectedFloorIds  = new Set();
+  let floorsCleared     = false;
 
   // ── Filters ───────────────────────────────────────────────────────────────────
   // empty set = all systems
@@ -57,6 +58,7 @@
 
   // ── Filtered component set ────────────────────────────────────────────────────
   $: filteredComponents = components.filter(c => {
+    if (floorsCleared) return false;
     if (selectedFloorIds.size  > 0 && !selectedFloorIds.has(c.floor_id))  return false;
     if (selectedSystemIds.size > 0) {
       const t = typeOf(c);
@@ -81,7 +83,9 @@
   // Human-readable filter description for the document header
   $: filterSummary = (() => {
     const parts = [];
-    if (selectedFloorIds.size > 0) {
+    if (floorsCleared) {
+      parts.push('Floors: none');
+    } else if (selectedFloorIds.size > 0) {
       const names = floors.filter(f => selectedFloorIds.has(f.id)).map(f => f.short_name).join(', ');
       parts.push(`Floors: ${names}`);
     }
@@ -342,12 +346,17 @@
       <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wide">Floor Scope</h3>
-          {#if selectedFloorIds.size > 0}
-            <button class="text-xs text-purple-400 hover:text-purple-300"
-              on:click={() => selectedFloorIds = new Set()}>
-              Clear (all floors)
-            </button>
-          {/if}
+          <button class="text-xs text-purple-400 hover:text-purple-300"
+            on:click={() => {
+              if (!floorsCleared && selectedFloorIds.size === 0) {
+                floorsCleared = true;
+              } else {
+                floorsCleared = false;
+                selectedFloorIds = new Set();
+              }
+            }}>
+            {!floorsCleared && selectedFloorIds.size === 0 ? 'Clear All' : 'Choose All'}
+          </button>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto">
           {#each floors as f (f.id)}
@@ -355,9 +364,13 @@
             <label class="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-slate-700
               {selectedFloorIds.has(f.id) ? 'bg-slate-700' : ''}">
               <input type="checkbox"
-                checked={selectedFloorIds.size === 0 || selectedFloorIds.has(f.id)}
+                checked={!floorsCleared && (selectedFloorIds.size === 0 || selectedFloorIds.has(f.id))}
                 on:change={() => {
-                  if (selectedFloorIds.size === 0) {
+                  if (floorsCleared) {
+                    // Exit cleared mode: select just this floor
+                    floorsCleared = false;
+                    selectedFloorIds = new Set([f.id]);
+                  } else if (selectedFloorIds.size === 0) {
                     // Switch to explicit mode: select all except this
                     selectedFloorIds = new Set(floors.filter(x => x.id !== f.id).map(x => x.id));
                   } else {
