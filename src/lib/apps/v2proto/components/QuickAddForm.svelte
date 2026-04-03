@@ -5,6 +5,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { inp } from '../ui.js';
+  import AttrField from './AttrField.svelte';
 
   export let types       = [];
   export let systems     = [];
@@ -16,17 +17,19 @@
 
   const QUICKADD_PREF_KEY = 'lh_v2plan_quickadd';
 
-  let selectedTypeId = '';
-  let label          = '';
-  let assetId        = '';
-  let primaryValue   = '';
+  let selectedTypeId      = '';
+  let label               = '';
+  let assetId             = '';
+  let primaryValue        = '';
+  let secondaryAttrValues = {};   // { [attrDefId]: value }
 
-  $: selectedType = types.find(t => t.id === selectedTypeId) ?? null;
-  $: defs         = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
-  $: primaryDef   = defs.find(d => d.is_primary) ?? null;
-  $: primaryOpts  = primaryDef ? (attrOptions[primaryDef.id] ?? []).filter(o => o.visible) : [];
+  $: selectedType   = types.find(t => t.id === selectedTypeId) ?? null;
+  $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
+  $: primaryDef     = defs.find(d => d.is_primary) ?? null;
+  $: primaryOpts    = primaryDef ? (attrOptions[primaryDef.id] ?? []).filter(o => o.visible) : [];
+  $: secondaryDefs  = defs.filter(d => !d.is_primary && !d.checkable);
 
-  // Restore last used type + primary value once type list is available
+  // Restore last used type + all attribute values once type list is available
   let formRestored = false;
   $: if (!formRestored && types.length > 0) {
     try {
@@ -35,31 +38,52 @@
         const saved = JSON.parse(raw);
         if (saved.typeId && types.some(t => t.id === saved.typeId)) {
           selectedTypeId = saved.typeId;
-          // Set primaryValue directly — primaryDef reactive hasn't updated yet so
-          // we skip onTypeChange() and restore the saved value; the select/input
-          // will bind correctly once Svelte re-renders with the new type.
+          // Restore values directly (primaryDef/secondaryDefs haven't updated yet — Svelte
+          // will render correctly once reactives run after this block)
           primaryValue = saved.primaryValue ?? '';
+          // Validate restored attrValues against known defs for this type
+          const validDefIds = new Set((attrDefs[saved.typeId] ?? []).map(d => d.id));
+          const restored = {};
+          for (const [id, val] of Object.entries(saved.attrValues ?? {})) {
+            if (validDefIds.has(id)) restored[id] = val;
+          }
+          secondaryAttrValues = restored;
         }
       }
     } catch { /* ignore corrupt data */ }
     formRestored = true;
   }
 
-  // Auto-save type + primary value whenever either changes (after initial restore)
+  // Auto-save whenever type or any attribute value changes (after initial restore)
   $: if (formRestored && selectedTypeId) {
-    localStorage.setItem(QUICKADD_PREF_KEY, JSON.stringify({ typeId: selectedTypeId, primaryValue }));
+    localStorage.setItem(QUICKADD_PREF_KEY, JSON.stringify({
+      typeId:       selectedTypeId,
+      primaryValue,
+      attrValues:   secondaryAttrValues,
+    }));
   }
 
   function onTypeChange() {
-    primaryValue = '';
+    primaryValue        = '';
+    secondaryAttrValues = {};
     if (primaryDef?.default_value) primaryValue = primaryDef.default_value;
+  }
+
+  function handleAttrChange({ detail }) {
+    secondaryAttrValues = { ...secondaryAttrValues, [detail.attrDefId]: detail.value };
   }
 
   function handleSubmit() {
     if (!selectedTypeId) return;
-    const attrValues = primaryDef && primaryValue
-      ? [{ type_attribute_id: primaryDef.id, value: primaryValue }]
-      : [];
+    const allAttrValues = [];
+    if (primaryDef && primaryValue) {
+      allAttrValues.push({ type_attribute_id: primaryDef.id, value: primaryValue });
+    }
+    for (const [defId, val] of Object.entries(secondaryAttrValues)) {
+      if (val !== '' && val !== null && val !== undefined) {
+        allAttrValues.push({ type_attribute_id: defId, value: String(val) });
+      }
+    }
     dispatch('submit', {
       fields: {
         type_code:         selectedType.code,
@@ -68,7 +92,7 @@
         asset_id:          assetId.trim() || null,
         status:            'OK'
       },
-      attrValues
+      attrValues: allAttrValues
     });
   }
 
@@ -116,6 +140,16 @@
       {/if}
     </div>
   {/if}
+
+  <!-- Secondary attributes (non-primary, non-walk-checklist) -->
+  {#each secondaryDefs as def (def.id)}
+    <AttrField
+      {def}
+      options={attrOptions[def.id] ?? []}
+      value={secondaryAttrValues[def.id] ?? ''}
+      on:change={handleAttrChange}
+    />
+  {/each}
 
   <!-- Label + Asset ID -->
   <div class="grid grid-cols-2 gap-2">
