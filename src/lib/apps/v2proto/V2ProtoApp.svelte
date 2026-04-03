@@ -39,21 +39,6 @@
 
 <div class="text-white">
 
-  <!-- Header -->
-  <div class="mb-6">
-    <div class="flex items-center gap-3 mb-1">
-      <span class="text-2xl">🧪</span>
-      <h1 class="text-2xl font-bold">V2 Prototype</h1>
-      <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 font-medium">
-        PROTOTYPE
-      </span>
-    </div>
-    <p class="text-slate-400 text-sm ml-10">
-      Demonstrating the new data model: System → Type → Attribute Definitions → Options,
-      with dynamic component attribute forms and maintenance regime filtering.
-    </p>
-  </div>
-
   <!-- Status -->
   {#if store.loading}
     <div class="text-slate-400 text-sm mb-4">Loading type hierarchy…</div>
