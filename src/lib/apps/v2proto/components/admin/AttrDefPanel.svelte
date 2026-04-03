@@ -241,7 +241,7 @@
                 </div>
               </div>
               {#if !isInherited(def)}
-                <div class="flex gap-1 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5">
+                <div class="flex gap-1 shrink-0 mt-0.5">
                   <button
                     class="text-xs px-1.5 py-0.5 rounded text-slate-500
                            hover:text-white hover:bg-slate-600 transition-colors"
