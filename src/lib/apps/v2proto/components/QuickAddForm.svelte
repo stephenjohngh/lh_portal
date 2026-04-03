@@ -14,7 +14,7 @@
 
   const dispatch = createEventDispatcher();
 
-  const TYPE_PREF_KEY = 'lh_v2plan_lastTypeId';
+  const QUICKADD_PREF_KEY = 'lh_v2plan_quickadd';
 
   let selectedTypeId = '';
   let label          = '';
@@ -26,21 +26,33 @@
   $: primaryDef   = defs.find(d => d.is_primary) ?? null;
   $: primaryOpts  = primaryDef ? (attrOptions[primaryDef.id] ?? []).filter(o => o.visible) : [];
 
-  // Restore last used type once type list is available
-  let typeRestored = false;
-  $: if (!typeRestored && types.length > 0) {
-    const saved = localStorage.getItem(TYPE_PREF_KEY);
-    if (saved && types.some(t => t.id === saved)) {
-      selectedTypeId = saved;
-      onTypeChange();
-    }
-    typeRestored = true;
+  // Restore last used type + primary value once type list is available
+  let formRestored = false;
+  $: if (!formRestored && types.length > 0) {
+    try {
+      const raw = localStorage.getItem(QUICKADD_PREF_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.typeId && types.some(t => t.id === saved.typeId)) {
+          selectedTypeId = saved.typeId;
+          // Set primaryValue directly — primaryDef reactive hasn't updated yet so
+          // we skip onTypeChange() and restore the saved value; the select/input
+          // will bind correctly once Svelte re-renders with the new type.
+          primaryValue = saved.primaryValue ?? '';
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+    formRestored = true;
+  }
+
+  // Auto-save type + primary value whenever either changes (after initial restore)
+  $: if (formRestored && selectedTypeId) {
+    localStorage.setItem(QUICKADD_PREF_KEY, JSON.stringify({ typeId: selectedTypeId, primaryValue }));
   }
 
   function onTypeChange() {
     primaryValue = '';
     if (primaryDef?.default_value) primaryValue = primaryDef.default_value;
-    if (selectedTypeId) localStorage.setItem(TYPE_PREF_KEY, selectedTypeId);
   }
 
   function handleSubmit() {
