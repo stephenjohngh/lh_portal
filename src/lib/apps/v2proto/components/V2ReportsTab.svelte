@@ -46,8 +46,9 @@
   let floorsCleared     = false;
 
   // ── Filters ───────────────────────────────────────────────────────────────────
-  // empty set = all systems
+  // empty set = all systems; systemsCleared = true means user explicitly unchecked all
   let selectedSystemIds = new Set();
+  let systemsCleared    = false;
 
   const ALL_STATUSES = ['ok', 'problem', 'failed', 'inactive'];
   let selectedStatuses  = new Set(ALL_STATUSES);
@@ -60,6 +61,7 @@
   $: filteredComponents = components.filter(c => {
     if (floorsCleared) return false;
     if (selectedFloorIds.size  > 0 && !selectedFloorIds.has(c.floor_id))  return false;
+    if (systemsCleared) return false;
     if (selectedSystemIds.size > 0) {
       const t = typeOf(c);
       if (!t || !selectedSystemIds.has(t.building_system_id)) return false;
@@ -390,24 +392,32 @@
         <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wide">Systems</h3>
-            {#if selectedSystemIds.size > 0}
-              <button class="text-xs text-purple-400 hover:text-purple-300"
-                on:click={() => selectedSystemIds = new Set()}>
-                Clear (all systems)
-              </button>
-            {/if}
+            <button class="text-xs text-purple-400 hover:text-purple-300"
+              on:click={() => {
+                if (!systemsCleared && selectedSystemIds.size === 0) {
+                  systemsCleared = true;
+                } else {
+                  systemsCleared = false;
+                  selectedSystemIds = new Set();
+                }
+              }}>
+              {!systemsCleared && selectedSystemIds.size === 0 ? 'Clear All' : 'Choose All'}
+            </button>
           </div>
           <div class="flex flex-wrap gap-2">
             {#each systems as sys (sys.id)}
               {@const count = filteredComponents.filter(c => typeOf(c)?.building_system_id === sys.id).length}
               <label class="flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-colors
-                {selectedSystemIds.size === 0 || selectedSystemIds.has(sys.id)
+                {!systemsCleared && (selectedSystemIds.size === 0 || selectedSystemIds.has(sys.id))
                   ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                   : 'border-slate-600 text-slate-500 hover:border-slate-500'}">
                 <input type="checkbox"
-                  checked={selectedSystemIds.size === 0 || selectedSystemIds.has(sys.id)}
+                  checked={!systemsCleared && (selectedSystemIds.size === 0 || selectedSystemIds.has(sys.id))}
                   on:change={() => {
-                    if (selectedSystemIds.size === 0) {
+                    if (systemsCleared) {
+                      systemsCleared = false;
+                      selectedSystemIds = new Set([sys.id]);
+                    } else if (selectedSystemIds.size === 0) {
                       selectedSystemIds = new Set(systems.filter(x => x.id !== sys.id).map(x => x.id));
                     } else {
                       toggleSystem(sys.id);
