@@ -41,11 +41,17 @@
           // Restore values directly (primaryDef/secondaryDefs haven't updated yet — Svelte
           // will render correctly once reactives run after this block)
           primaryValue = saved.primaryValue ?? '';
-          // Validate restored attrValues against known defs for this type
-          const validDefIds = new Set((attrDefs[saved.typeId] ?? []).map(d => d.id));
+          // Validate restored attrValues against known defs; fill in defaults for any new attrs
+          const currentDefs = attrDefs[saved.typeId] ?? [];
+          const validDefIds = new Set(currentDefs.map(d => d.id));
           const restored = {};
           for (const [id, val] of Object.entries(saved.attrValues ?? {})) {
             if (validDefIds.has(id)) restored[id] = val;
+          }
+          for (const d of currentDefs.filter(d => !d.is_primary && !d.checkable)) {
+            if (!(d.id in restored) && d.default_value != null && d.default_value !== '') {
+              restored[d.id] = d.default_value;
+            }
           }
           secondaryAttrValues = restored;
         }
@@ -66,7 +72,15 @@
   function onTypeChange() {
     primaryValue        = '';
     secondaryAttrValues = {};
-    if (primaryDef?.default_value) primaryValue = primaryDef.default_value;
+    // Read directly from attrDefs prop to avoid reactive-timing issues
+    const currentDefs = attrDefs[selectedTypeId] ?? [];
+    const pDef = currentDefs.find(d => d.is_primary);
+    if (pDef?.default_value) primaryValue = pDef.default_value;
+    const defaults = {};
+    for (const d of currentDefs.filter(d => !d.is_primary && !d.checkable)) {
+      if (d.default_value != null && d.default_value !== '') defaults[d.id] = d.default_value;
+    }
+    secondaryAttrValues = defaults;
   }
 
   function handleAttrChange({ detail }) {
