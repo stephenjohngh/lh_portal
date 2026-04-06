@@ -8,7 +8,8 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync",
-		"start": "node build"
+		"start": "node build",
+		"check": "svelte-check --tsconfig ./jsconfig.json"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
@@ -19,6 +20,7 @@
 		"autoprefixer": "^10.4.23",
 		"postcss": "^8.5.6",
 		"svelte": "^5.45.6",
+		"svelte-check": "^4.4.6",
 		"tailwindcss": "^4.1.18",
 		"vite": "^7.2.6"
 	},

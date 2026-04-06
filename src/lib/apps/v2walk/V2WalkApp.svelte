@@ -13,6 +13,7 @@
   import V2WalkSessionSummary from './components/V2WalkSessionSummary.svelte';
   import WalkError            from '$lib/apps/walk/components/common/WalkError.svelte';
 
+
   const logger = getLogger('V2WalkApp');
 
   // Screens: 'home' | 'start_session' | 'start_repair' | 'walk' | 'summary'
