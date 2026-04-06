@@ -398,9 +398,7 @@
                           <td class="text-sm text-slate-400">{fmtTime(firstRow.inspected_at)}</td>
                           <td class="text-sm text-slate-400 notes-cell">
                             {#if firstRow.inspector_notes}
-                              {firstRow.inspector_notes.length > 60
-                                ? firstRow.inspector_notes.substring(0, 60) + '…'
-                                : firstRow.inspector_notes}
+                              <span class="notes-lines">{firstRow.inspector_notes}</span>
                             {:else}
                               —
                             {/if}
@@ -494,7 +492,7 @@
   .ds-fail   { color: rgb(248 113 113); font-weight: 600; }
   .ds-repair { color: rgb(251 146 60); }
   .ds-na     { color: rgb(107 114 128); }
-  .sess-notes { font-size: 0.875rem; color: rgb(156 163 175); font-style: italic; margin-bottom: 0.75rem; padding-left: 0.75rem; border-left: 2px solid rgb(71 85 105); }
+  .sess-notes { font-size: 0.875rem; color: rgb(156 163 175); font-style: italic; margin-bottom: 0.75rem; padding-left: 0.75rem; border-left: 2px solid rgb(71 85 105); white-space: pre-line; }
 
   /* Inspection table */
   .insp-table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid rgb(71 85 105); }
@@ -508,7 +506,8 @@
   .insp-row-problem { border-left: 3px solid rgb(251 146 60 / 0.5); }
   .insp-row-ok      { border-left: 3px solid rgb(74 222 128 / 0.3); }
   .insp-row-inactive{ border-left: 3px solid rgb(71 85 105 / 0.5); }
-  .notes-cell       { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .notes-cell       { max-width: 260px; vertical-align: top; }
+  .notes-lines      { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; line-height: 1.4; }
   .photo-indicator  { font-size: 0.85rem; }
 
   /* Type chip */
