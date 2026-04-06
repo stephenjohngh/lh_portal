@@ -340,7 +340,9 @@
                 <p class="detail-msg">No inspections recorded in this session.</p>
 
               {:else}
-                {@const groups = groupByComponent(rowInspections)}
+                {@const groups = groupByComponent(rowInspections).sort((a, b) =>
+                  new Date(a.rows[0].inspected_at) - new Date(b.rows[0].inspected_at)
+                )}
 
                 <!-- Stats summary -->
                 <div class="detail-stats">
