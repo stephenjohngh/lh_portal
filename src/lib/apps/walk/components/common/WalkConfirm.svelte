@@ -25,6 +25,7 @@
       class="wc-sheet"
       role="dialog"
       aria-modal="true"
+      tabindex="-1"
       on:click|stopPropagation
       on:keydown={handleKeydown}
     >

@@ -113,7 +113,6 @@
 
   .pv-body { overflow-y:auto; flex:1; padding:1rem; display:flex; flex-direction:column; gap:1.25rem; }
 
-  .type-group {}
   .type-hdr { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; }
   .type-dot  { width:1.5rem; height:1.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:700; color:#fff; flex-shrink:0; background:#444; }
   .type-name { font-size:0.72rem; font-weight:700; color:#ddd; flex:1; }

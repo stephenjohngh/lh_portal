@@ -86,7 +86,7 @@
             
             {#if insp.photo_url}
               <div class="insp-photo">
-                <img src={insp.photo_url} alt="Inspection photo" />
+                <img src={insp.photo_url} alt="Inspection" />
               </div>
             {/if}
           </div>
