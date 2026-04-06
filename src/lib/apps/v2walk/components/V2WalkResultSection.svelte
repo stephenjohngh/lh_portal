@@ -45,10 +45,11 @@
   $: checklistDefs, inputValues = {};
 
   // ── Checklist reactive logic ─────────────────────────────────────────────────
-  // Only pass/fail attrs drive the result and auto-notes.
-  // When any pass/fail attr is FAIL → drive result to 'failed' + auto-fill notes.
-  // When all pass/fail attrs are PASS → drive result to 'ok' + clear auto-generated notes.
-  // If nothing is selected yet, leave result alone.
+  // Only pass/fail attrs drive the result. The "Failed: X, Y" line is kept
+  // in autoFailNote (never written into the notes textarea) so that user-typed
+  // notes and text/number readings are never overwritten by reactive changes.
+  // All parts are assembled into the final notes only inside handleSaveClick.
+  let autoFailNote = '';
   $: if (passFailDefs.length > 0) {
     const anyFail = passFailDefs.some(d => checklistResults[d.id] === false);
     const allPass = passFailDefs.every(d => checklistResults[d.id] === true);
@@ -57,10 +58,12 @@
       const failedNames = passFailDefs
         .filter(d => checklistResults[d.id] === false)
         .map(d => d.name);
-      notes = 'Failed: ' + failedNames.join(', ');
+      autoFailNote = 'Failed: ' + failedNames.join(', ');
     } else if (allPass) {
       result = 'ok';
-      if (notes.startsWith('Failed:')) notes = '';
+      autoFailNote = '';
+    } else {
+      autoFailNote = '';
     }
   }
 
@@ -152,13 +155,20 @@
   }
 
   async function handleSaveClick() {
-    // Append any text/number attr values to notes before saving
+    // Build final notes from three independent parts — none clobbers the others:
+    //   1. autoFailNote  — "Failed: AttrA, AttrB" (from pass/fail checklist reactive)
+    //   2. inputLines    — "AttrName: value" per text/number reading
+    //   3. notes         — whatever the user typed in the Notes textarea
     const inputLines = inputDefs
       .filter(d => inputValues[d.id] !== undefined && String(inputValues[d.id]).trim() !== '')
       .map(d => `${d.name}: ${String(inputValues[d.id]).trim()}`);
-    if (inputLines.length > 0) {
-      notes = notes ? notes + '\n' + inputLines.join('\n') : inputLines.join('\n');
-    }
+
+    const parts = [
+      autoFailNote,
+      inputLines.join('\n'),
+      notes.trim(),
+    ].filter(Boolean);
+    notes = parts.join('\n');
 
     const newUrls = await uploadAllPending();
     photoUrls     = [...photoUrls, ...newUrls];
@@ -309,6 +319,9 @@
 <!-- ── Notes ──────────────────────────────────────────────────────────────────── -->
 <div class="sec">
   <div class="sec-lbl">NOTES</div>
+  {#if autoFailNote}
+    <div class="auto-note">{autoFailNote}</div>
+  {/if}
   <WalkTextarea bind:value={notes} placeholder="Observations, issues, actions required…" rows={4} />
 </div>
 
@@ -341,6 +354,9 @@
   .cl-help-btn    { background:none; border:none; color:#7dd3fc; font-size:0.85rem; cursor:pointer; padding:0; line-height:1; flex-shrink:0; opacity:0.7; transition:opacity 0.15s; }
   .cl-help-btn:hover, .cl-help-active { opacity:1; color:#38bdf8; }
   .cl-help-popup  { font-size:0.76rem; color:#bae6fd; background:#0c1a2e; border:1px solid #1e3a5f; border-radius:6px; padding:0.5rem 0.65rem; line-height:1.5; }
+  /* Auto-generated fail note — read-only, shown above the notes textarea */
+  .auto-note { font-size:0.76rem; color:#f87171; background:#1f0a0a; border:1px solid #7f1d1d; border-radius:6px; padding:0.45rem 0.65rem; line-height:1.5; }
+
   /* Text / number reading inputs */
   .cl-row-input   { align-items:center; }
   .cl-input       { width:7rem; padding:0.4rem 0.6rem; background:#111122; border:2px solid #2e2e42; border-radius:6px; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; font-size:0.82rem; text-align:right; transition:border-color 0.15s; flex-shrink:0; }
