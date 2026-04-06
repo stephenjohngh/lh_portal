@@ -32,6 +32,25 @@
 
   $: canSave = !!result;
 
+  // ── Checklist reactive logic ─────────────────────────────────────────────────
+  // When any attr is FAIL → drive result to 'failed' + auto-fill notes.
+  // When all attrs are PASS → drive result to 'ok' + clear auto-generated notes.
+  // If nothing is selected yet, leave result alone.
+  $: if (checklistDefs.length > 0) {
+    const anyFail = checklistDefs.some(d => checklistResults[d.id] === false);
+    const allPass = checklistDefs.every(d => checklistResults[d.id] === true);
+    if (anyFail) {
+      result = 'failed';
+      const failedNames = checklistDefs
+        .filter(d => checklistResults[d.id] === false)
+        .map(d => d.name);
+      notes = 'Failed: ' + failedNames.join(', ');
+    } else if (allPass) {
+      result = 'ok';
+      if (notes.startsWith('Failed:')) notes = '';
+    }
+  }
+
   // ── Photo state ──────────────────────────────────────────────────────────────
   // Each pending photo: { blob, preview, uploading, error }
   let pendingPhotos = [];
@@ -130,20 +149,27 @@
   $: uploading = pendingPhotos.some(p => p.uploading);
 </script>
 
-<!-- ── Dynamic checklist ──────────────────────────────────────────────────────── -->
+<!-- ── Dynamic checklist — PASS / FAIL per attribute ─────────────────────────── -->
 {#if checklistDefs.length > 0}
   <div class="sec">
     <div class="sec-lbl">CHECKLIST</div>
     <div class="checklist">
       {#each checklistDefs as def (def.id)}
-        <label class="cl-row">
-          <input
-            type="checkbox"
-            checked={checklistResults[def.id] ?? false}
-            on:change={e => checklistResults = { ...checklistResults, [def.id]: e.target.checked }}
-          />
+        <div class="cl-row">
           <span class="cl-label">{def.name}</span>
-        </label>
+          <div class="cl-btns">
+            <button
+              class="cl-btn cl-pass"
+              class:cl-sel-pass={checklistResults[def.id] === true}
+              on:click={() => checklistResults = { ...checklistResults, [def.id]: true }}
+            >✓ PASS</button>
+            <button
+              class="cl-btn cl-fail"
+              class:cl-sel-fail={checklistResults[def.id] === false}
+              on:click={() => checklistResults = { ...checklistResults, [def.id]: false }}
+            >✗ FAIL</button>
+          </div>
+        </div>
       {/each}
     </div>
   </div>
@@ -236,11 +262,18 @@
   .sec     { display:flex; flex-direction:column; gap:0.75rem; }
   .sec-lbl { font-size:0.62rem; letter-spacing:0.2em; color:#fb923c; font-weight:700; }
 
-  /* Checklist */
-  .checklist { display:flex; flex-direction:column; gap:0.5rem; }
-  .cl-row    { display:flex; align-items:center; gap:0.625rem; cursor:pointer; }
-  .cl-row input { width:1.1rem; height:1.1rem; accent-color:#fb923c; }
-  .cl-label  { font-size:0.82rem; color:#f0f0f0; }
+  /* Checklist — pass/fail per attribute */
+  .checklist  { display:flex; flex-direction:column; gap:0.5rem; }
+  .cl-row     { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; }
+  .cl-label   { font-size:0.82rem; color:#f0f0f0; flex:1; min-width:0; }
+  .cl-btns    { display:flex; gap:0.35rem; flex-shrink:0; }
+  .cl-btn     { padding:0.4rem 0.75rem; border-radius:6px; border:2px solid transparent; font-family:'DM Mono','Courier New',monospace; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; cursor:pointer; background:#1a1a2e; transition:all 0.15s; min-width:4rem; }
+  .cl-pass    { color:#4ade80; border-color:#2e2e42; }
+  .cl-pass:hover { border-color:#22c55e; }
+  .cl-sel-pass{ border-color:#22c55e; background:#0a1f0a; color:#4ade80; }
+  .cl-fail    { color:#f87171; border-color:#2e2e42; }
+  .cl-fail:hover { border-color:#ef4444; }
+  .cl-sel-fail{ border-color:#ef4444; background:#1f0a0a; color:#f87171; }
 
   /* Result grid */
   .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
