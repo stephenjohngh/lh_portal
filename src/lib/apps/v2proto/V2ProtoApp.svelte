@@ -9,8 +9,9 @@
   import ComponentsTab   from './components/ComponentsTab.svelte';
   import PlanViewTab     from './components/PlanViewTab.svelte';
   import MaintenanceView from './components/MaintenanceView.svelte';
-  import AdminTab        from './components/admin/AdminTab.svelte';
-  import V2ReportsTab    from './components/V2ReportsTab.svelte';
+  import AdminTab           from './components/admin/AdminTab.svelte';
+  import V2ReportsTab       from './components/V2ReportsTab.svelte';
+  import V2InspectionsTab   from './components/V2InspectionsTab.svelte';
 
   let activeTab = 'types';
 
@@ -32,6 +33,7 @@
     { id: 'components',  label: 'Components',     icon: '🧩' },
     { id: 'plans',       label: 'Plan View',      icon: '🗺' },
     { id: 'maintenance', label: 'Maintenance',    icon: '🔧' },
+    { id: 'inspections', label: 'Inspections',    icon: '🔍' },
     { id: 'reports',     label: 'Reports',        icon: '📄' },
     { id: 'admin',       label: 'Admin',          icon: '⚙' }
   ];
@@ -85,6 +87,8 @@
     <PlanViewTab />
   {:else if activeTab === 'maintenance'}
     <MaintenanceView {systems} {types} {regime} />
+  {:else if activeTab === 'inspections'}
+    <V2InspectionsTab />
   {:else if activeTab === 'reports'}
     <V2ReportsTab />
   {:else if activeTab === 'admin'}
