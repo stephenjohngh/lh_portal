@@ -32,6 +32,10 @@
 
   $: canSave = !!result;
 
+  // ── Checklist help popup ─────────────────────────────────────────────────────
+  let activeHelpId = null;
+  function toggleHelp(id) { activeHelpId = activeHelpId === id ? null : id; }
+
   // ── Checklist reactive logic ─────────────────────────────────────────────────
   // When any attr is FAIL → drive result to 'failed' + auto-fill notes.
   // When all attrs are PASS → drive result to 'ok' + clear auto-generated notes.
@@ -155,20 +159,31 @@
     <div class="sec-lbl">CHECKLIST</div>
     <div class="checklist">
       {#each checklistDefs as def (def.id)}
-        <div class="cl-row">
-          <span class="cl-label">{def.name}</span>
-          <div class="cl-btns">
-            <button
-              class="cl-btn cl-pass"
-              class:cl-sel-pass={checklistResults[def.id] === true}
-              on:click={() => checklistResults = { ...checklistResults, [def.id]: true }}
-            >✓ PASS</button>
-            <button
-              class="cl-btn cl-fail"
-              class:cl-sel-fail={checklistResults[def.id] === false}
-              on:click={() => checklistResults = { ...checklistResults, [def.id]: false }}
-            >✗ FAIL</button>
+        <div class="cl-item">
+          <div class="cl-row">
+            <span class="cl-label">
+              {def.name}
+              {#if def.help_notes}
+                <button class="cl-help-btn" class:cl-help-active={activeHelpId === def.id}
+                  on:click={() => toggleHelp(def.id)} title="Show guidance">ⓘ</button>
+              {/if}
+            </span>
+            <div class="cl-btns">
+              <button
+                class="cl-btn cl-pass"
+                class:cl-sel-pass={checklistResults[def.id] === true}
+                on:click={() => checklistResults = { ...checklistResults, [def.id]: true }}
+              >✓ PASS</button>
+              <button
+                class="cl-btn cl-fail"
+                class:cl-sel-fail={checklistResults[def.id] === false}
+                on:click={() => checklistResults = { ...checklistResults, [def.id]: false }}
+              >✗ FAIL</button>
+            </div>
           </div>
+          {#if def.help_notes && activeHelpId === def.id}
+            <div class="cl-help-popup">{def.help_notes}</div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -263,17 +278,21 @@
   .sec-lbl { font-size:0.62rem; letter-spacing:0.2em; color:#fb923c; font-weight:700; }
 
   /* Checklist — pass/fail per attribute */
-  .checklist  { display:flex; flex-direction:column; gap:0.5rem; }
-  .cl-row     { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; }
-  .cl-label   { font-size:0.82rem; color:#f0f0f0; flex:1; min-width:0; }
-  .cl-btns    { display:flex; gap:0.35rem; flex-shrink:0; }
-  .cl-btn     { padding:0.4rem 0.75rem; border-radius:6px; border:2px solid transparent; font-family:'DM Mono','Courier New',monospace; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; cursor:pointer; background:#1a1a2e; transition:all 0.15s; min-width:4rem; }
-  .cl-pass    { color:#4ade80; border-color:#2e2e42; }
-  .cl-pass:hover { border-color:#22c55e; }
-  .cl-sel-pass{ border-color:#22c55e; background:#0a1f0a; color:#4ade80; }
-  .cl-fail    { color:#f87171; border-color:#2e2e42; }
-  .cl-fail:hover { border-color:#ef4444; }
-  .cl-sel-fail{ border-color:#ef4444; background:#1f0a0a; color:#f87171; }
+  .checklist      { display:flex; flex-direction:column; gap:0.5rem; }
+  .cl-item        { display:flex; flex-direction:column; gap:0.35rem; }
+  .cl-row         { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; }
+  .cl-label       { font-size:0.82rem; color:#f0f0f0; flex:1; min-width:0; display:flex; align-items:center; gap:0.4rem; }
+  .cl-btns        { display:flex; gap:0.35rem; flex-shrink:0; }
+  .cl-btn         { padding:0.4rem 0.75rem; border-radius:6px; border:2px solid transparent; font-family:'DM Mono','Courier New',monospace; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; cursor:pointer; background:#1a1a2e; transition:all 0.15s; min-width:4rem; }
+  .cl-pass        { color:#4ade80; border-color:#2e2e42; }
+  .cl-pass:hover  { border-color:#22c55e; }
+  .cl-sel-pass    { border-color:#22c55e; background:#0a1f0a; color:#4ade80; }
+  .cl-fail        { color:#f87171; border-color:#2e2e42; }
+  .cl-fail:hover  { border-color:#ef4444; }
+  .cl-sel-fail    { border-color:#ef4444; background:#1f0a0a; color:#f87171; }
+  .cl-help-btn    { background:none; border:none; color:#7dd3fc; font-size:0.85rem; cursor:pointer; padding:0; line-height:1; flex-shrink:0; opacity:0.7; transition:opacity 0.15s; }
+  .cl-help-btn:hover, .cl-help-active { opacity:1; color:#38bdf8; }
+  .cl-help-popup  { font-size:0.76rem; color:#bae6fd; background:#0c1a2e; border:1px solid #1e3a5f; border-radius:6px; padding:0.5rem 0.65rem; line-height:1.5; }
 
   /* Result grid */
   .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }

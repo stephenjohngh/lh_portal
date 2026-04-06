@@ -469,7 +469,8 @@ function createV2ProtoStore() {
         is_primary:         data.is_primary ?? false,
         checkable:          data.checkable ?? false,
         presentation_order: Number(data.presentation_order) || 0,
-        visible:            data.visible ?? true
+        visible:            data.visible ?? true,
+        help_notes:         data.help_notes?.trim() || null
       };
       if (data.building_system_id) {
         payload.building_system_id = data.building_system_id;
@@ -488,7 +489,8 @@ function createV2ProtoStore() {
         is_primary:         data.is_primary,
         checkable:          data.checkable ?? false,
         presentation_order: Number(data.presentation_order) || 0,
-        visible:            data.visible
+        visible:            data.visible,
+        help_notes:         data.help_notes?.trim() || null
       });
     },
 

@@ -49,7 +49,8 @@
       is_primary:         def.is_primary,
       checkable:          def.checkable ?? false,
       presentation_order: def.presentation_order,
-      visible:            def.visible
+      visible:            def.visible,
+      help_notes:         def.help_notes ?? ''
     };
     error = '';
   }
@@ -64,7 +65,8 @@
       is_primary:         false,
       checkable:          false,
       presentation_order: (attrDefs.length + 1) * 10,
-      visible:            true
+      visible:            true,
+      help_notes:         ''
     };
     error = '';
   }
@@ -185,6 +187,9 @@
                   Visible
                 </label>
               </div>
+
+              <textarea bind:value={form.help_notes} class={inp} rows="3"
+                placeholder="Help notes shown to inspector in walk checklist (optional)"></textarea>
             </div>
             <div class="flex gap-2 mt-3">
               <button on:click={save} disabled={saving}
@@ -229,6 +234,9 @@
                   {/if}
                   {#if def.checkable}
                     <span class="text-green-400 text-xs" title="Shows in walk inspection checklist">✓list</span>
+                  {/if}
+                  {#if def.help_notes}
+                    <span class="text-sky-400 text-xs" title={def.help_notes}>💬</span>
                   {/if}
                 </div>
                 <div class="flex items-center gap-1.5 mt-0.5">
@@ -310,6 +318,9 @@
                 Visible
               </label>
             </div>
+
+            <textarea bind:value={form.help_notes} class={inp} rows="3"
+              placeholder="Help notes shown to inspector in walk checklist (optional)"></textarea>
           </div>
           <div class="flex gap-2 mt-3">
             <button on:click={save} disabled={saving}
