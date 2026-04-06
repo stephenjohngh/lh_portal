@@ -91,9 +91,20 @@ export function hCell(text, widthDxa, opts = {}) {
 /**
  * Data cell — white or alternating fill, dark body text.
  * opts: { alt, fill, size, bold, color, align }
+ * Newlines (\n) in text are rendered as line breaks within the cell.
  */
 export function dCell(text, widthDxa, opts = {}) {
-  const fill = opts.fill ?? (opts.alt ? COLOURS.altRowFill : 'FFFFFF');
+  const fill    = opts.fill ?? (opts.alt ? COLOURS.altRowFill : 'FFFFFF');
+  const runOpts = { size: opts.size ?? 18, bold: opts.bold ?? false, color: opts.color };
+
+  // Split on newlines; insert a break TextRun between each line so Word
+  // renders them on separate lines rather than collapsing \n to a space.
+  const lines    = String(text ?? '—').split('\n');
+  const textRuns = lines.flatMap((line, i) => {
+    const r = run(line || ' ', runOpts);
+    return i === 0 ? [r] : [new TextRun({ break: 1, font: 'Arial' }), r];
+  });
+
   return new TableCell({
     width:         { size: widthDxa, type: WidthType.DXA },
     margins:       CELL_PAD,
@@ -103,11 +114,7 @@ export function dCell(text, widthDxa, opts = {}) {
     children: [new Paragraph({
       alignment: opts.align ?? AlignmentType.LEFT,
       spacing:   { before: 0, after: 0 },
-      children:  [run(String(text ?? '—'), {
-        size:  opts.size  ?? 18,
-        bold:  opts.bold  ?? false,
-        color: opts.color,
-      })],
+      children:  textRuns,
     })],
   });
 }
