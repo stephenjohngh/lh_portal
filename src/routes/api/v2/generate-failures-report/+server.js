@@ -43,22 +43,21 @@ import { fmtGenerated, fmtDate, fmtDateTime } from '$lib/utils/dates';
 const logger = getLogger('v2GenerateFailuresReport');
 
 // ── Failures table ─────────────────────────────────────────────────────────────
-// Columns: System | Type | Ref | Label | Attributes | Inspected | Notes
-// DXA:      1200  | 1400 | 950 | 1100  |    1800    |    950    | 3066
-// Sum = 10466
-const FAIL_COLS = [1200, 1400, 950, 1100, 1800, 950, 3066];
+// Columns: Type | Ref | Label | Attributes | Inspected | Notes
+// DXA:     2000 | 950 | 1100  |    1800    |   1550    | 3066
+// Sum = 10466  (System column removed; 1200 DXA redistributed: +600 Type, +600 Inspected)
+const FAIL_COLS = [2000, 950, 1100, 1800, 1550, 3066];
 
 function buildFailuresTable(components) {
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('System',     FAIL_COLS[0]),
-      hCell('Type',       FAIL_COLS[1]),
-      hCell('Ref',        FAIL_COLS[2]),
-      hCell('Label',      FAIL_COLS[3]),
-      hCell('Attributes', FAIL_COLS[4]),
-      hCell('Inspected',  FAIL_COLS[5]),
-      hCell('Notes',      FAIL_COLS[6]),
+      hCell('Type',       FAIL_COLS[0]),
+      hCell('Ref',        FAIL_COLS[1]),
+      hCell('Label',      FAIL_COLS[2]),
+      hCell('Attributes', FAIL_COLS[3]),
+      hCell('Inspected',  FAIL_COLS[4]),
+      hCell('Notes',      FAIL_COLS[5]),
     ],
   });
 
@@ -73,13 +72,12 @@ function buildFailuresTable(components) {
 
     return new TableRow({
       children: [
-        dCell(c.system_name      ?? '—', FAIL_COLS[0], { alt }),
-        dCell(c.type_name        ?? '—', FAIL_COLS[1], { alt }),
-        dCell(ref,                        FAIL_COLS[2], { alt, bold: true }),
-        dCell(c.label            ?? '—', FAIL_COLS[3], { alt }),
-        dCell(attrs || '—',               FAIL_COLS[4], { alt }),
-        dCell(insp,                       FAIL_COLS[5], { alt, color: c.last_inspected ? undefined : COLOURS.textMuted }),
-        dCell(notesText,                  FAIL_COLS[6], { alt, color: c.last_notes ? COLOURS.failRed : undefined }),
+        dCell(c.type_name        ?? '—', FAIL_COLS[0], { alt }),
+        dCell(ref,                        FAIL_COLS[1], { alt, bold: true }),
+        dCell(c.label            ?? '—', FAIL_COLS[2], { alt }),
+        dCell(attrs || '—',               FAIL_COLS[3], { alt }),
+        dCell(insp,                       FAIL_COLS[4], { alt, color: c.last_inspected ? undefined : COLOURS.textMuted }),
+        dCell(notesText,                  FAIL_COLS[5], { alt, color: c.last_notes ? COLOURS.failRed : undefined }),
       ],
     });
   });
