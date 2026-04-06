@@ -36,16 +36,25 @@
   let activeHelpId = null;
   function toggleHelp(id) { activeHelpId = activeHelpId === id ? null : id; }
 
+  // ── Split checklist into pass/fail vs text/number input attrs ────────────────
+  $: passFailDefs = checklistDefs.filter(d => d.display_type !== 'text' && d.display_type !== 'number');
+  $: inputDefs    = checklistDefs.filter(d => d.display_type === 'text' || d.display_type === 'number');
+
+  // Reset text/number input values whenever the component changes (checklistDefs changes)
+  let inputValues = {};
+  $: checklistDefs, inputValues = {};
+
   // ── Checklist reactive logic ─────────────────────────────────────────────────
-  // When any attr is FAIL → drive result to 'failed' + auto-fill notes.
-  // When all attrs are PASS → drive result to 'ok' + clear auto-generated notes.
+  // Only pass/fail attrs drive the result and auto-notes.
+  // When any pass/fail attr is FAIL → drive result to 'failed' + auto-fill notes.
+  // When all pass/fail attrs are PASS → drive result to 'ok' + clear auto-generated notes.
   // If nothing is selected yet, leave result alone.
-  $: if (checklistDefs.length > 0) {
-    const anyFail = checklistDefs.some(d => checklistResults[d.id] === false);
-    const allPass = checklistDefs.every(d => checklistResults[d.id] === true);
+  $: if (passFailDefs.length > 0) {
+    const anyFail = passFailDefs.some(d => checklistResults[d.id] === false);
+    const allPass = passFailDefs.every(d => checklistResults[d.id] === true);
     if (anyFail) {
       result = 'failed';
-      const failedNames = checklistDefs
+      const failedNames = passFailDefs
         .filter(d => checklistResults[d.id] === false)
         .map(d => d.name);
       notes = 'Failed: ' + failedNames.join(', ');
@@ -143,6 +152,14 @@
   }
 
   async function handleSaveClick() {
+    // Append any text/number attr values to notes before saving
+    const inputLines = inputDefs
+      .filter(d => inputValues[d.id] !== undefined && String(inputValues[d.id]).trim() !== '')
+      .map(d => `${d.name}: ${String(inputValues[d.id]).trim()}`);
+    if (inputLines.length > 0) {
+      notes = notes ? notes + '\n' + inputLines.join('\n') : inputLines.join('\n');
+    }
+
     const newUrls = await uploadAllPending();
     photoUrls     = [...photoUrls, ...newUrls];
     // Clear pending (successful ones now in photoUrls)
@@ -154,11 +171,11 @@
 </script>
 
 <!-- ── Dynamic checklist — PASS / FAIL per attribute ─────────────────────────── -->
-{#if checklistDefs.length > 0}
+{#if passFailDefs.length > 0}
   <div class="sec">
     <div class="sec-lbl">CHECKLIST</div>
     <div class="checklist">
-      {#each checklistDefs as def (def.id)}
+      {#each passFailDefs as def (def.id)}
         <div class="cl-item">
           <div class="cl-row">
             <span class="cl-label">
@@ -180,6 +197,37 @@
                 on:click={() => checklistResults = { ...checklistResults, [def.id]: false }}
               >✗ FAIL</button>
             </div>
+          </div>
+          {#if def.help_notes && activeHelpId === def.id}
+            <div class="cl-help-popup">{def.help_notes}</div>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  </div>
+{/if}
+
+<!-- ── Text / number attrs — recorded as notes on save ───────────────────────── -->
+{#if inputDefs.length > 0}
+  <div class="sec">
+    <div class="sec-lbl">READINGS</div>
+    <div class="checklist">
+      {#each inputDefs as def (def.id)}
+        <div class="cl-item">
+          <div class="cl-row cl-row-input">
+            <span class="cl-label">
+              {def.name}
+              {#if def.help_notes}
+                <button class="cl-help-btn" class:cl-help-active={activeHelpId === def.id}
+                  on:click={() => toggleHelp(def.id)} title="Show guidance">ⓘ</button>
+              {/if}
+            </span>
+            <input
+              class="cl-input"
+              type={def.display_type === 'number' ? 'number' : 'text'}
+              placeholder={def.display_type === 'number' ? '0' : '—'}
+              bind:value={inputValues[def.id]}
+            />
           </div>
           {#if def.help_notes && activeHelpId === def.id}
             <div class="cl-help-popup">{def.help_notes}</div>
@@ -293,6 +341,11 @@
   .cl-help-btn    { background:none; border:none; color:#7dd3fc; font-size:0.85rem; cursor:pointer; padding:0; line-height:1; flex-shrink:0; opacity:0.7; transition:opacity 0.15s; }
   .cl-help-btn:hover, .cl-help-active { opacity:1; color:#38bdf8; }
   .cl-help-popup  { font-size:0.76rem; color:#bae6fd; background:#0c1a2e; border:1px solid #1e3a5f; border-radius:6px; padding:0.5rem 0.65rem; line-height:1.5; }
+  /* Text / number reading inputs */
+  .cl-row-input   { align-items:center; }
+  .cl-input       { width:7rem; padding:0.4rem 0.6rem; background:#111122; border:2px solid #2e2e42; border-radius:6px; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; font-size:0.82rem; text-align:right; transition:border-color 0.15s; flex-shrink:0; }
+  .cl-input:focus { outline:none; border-color:#fb923c; }
+  .cl-input::placeholder { color:#555; }
 
   /* Result grid */
   .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
