@@ -54,13 +54,14 @@
       const { component, floor, type } = item;
       const name = `Repair_${buildingInitials(selectedBuilding)}_${floor?.short_name ?? '?'}_${new Date().toLocaleDateString('en-GB', { month:'short', year:'2-digit' }).replace(/\s+/g,'_')}`;
       await v2walkStore.startSession({
-        building:     selectedBuilding,
+        building:          selectedBuilding,
         floor,
-        typeFilter:   [component.type_code],
-        emergencyOnly: false,
-        sessionName:  name,
-        sessionType:  'repair',
-        preset:       'custom',
+        typeFilter:        [component.type_code],
+        emergencyOnly:     false,
+        sessionName:       name,
+        sessionType:       'repair',
+        preset:            'custom',
+        targetComponentId: component.id,
       });
       dispatch('started');
     } catch (err) {

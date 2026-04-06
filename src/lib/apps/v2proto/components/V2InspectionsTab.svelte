@@ -295,10 +295,16 @@
                   <span class="qs-el">{st.components} comp.</span>
                 {:else}
                   {@const done = session.inspected_components_count >= session.total_components_count && session.total_components_count > 0}
-                  <span class="{done ? 'qs-complete' : 'qs-el'}">
-                    {done ? 'Completed' : 'Incomplete'}
-                    {session.inspected_components_count}/{session.total_components_count}
-                  </span>
+                  {#if session.session_type === 'test'}
+                    <span class="{done ? 'qs-complete' : 'qs-el'}">
+                      {done ? 'Completed' : 'Incomplete'}
+                      {session.inspected_components_count}/{session.total_components_count}
+                    </span>
+                  {:else}
+                    <span class="qs-el">
+                      {session.inspected_components_count}/{session.total_components_count}
+                    </span>
+                  {/if}
                 {/if}
               </div>
 

@@ -260,13 +260,17 @@ function createV2WalkStore() {
 
   // ── Start single-floor session ───────────────────────────────────────────────
 
-  async function startSession({ building, floor, typeFilter, emergencyOnly, sessionName, sessionType, preset }) {
-    logger('startSession:', { building, floor: floor?.short_name, typeFilter });
+  async function startSession({ building, floor, typeFilter, emergencyOnly, sessionName, sessionType, preset, targetComponentId }) {
+    logger('startSession:', { building, floor: floor?.short_name, typeFilter, targetComponentId });
     const state = getState();
     const floorComponents = state.allComponents[floor.id] ?? [];
-    const walkComponents  = buildWalkComponents(
+    let walkComponents  = buildWalkComponents(
       floorComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
     );
+    // Repair sessions target a single specific component — limit the walk list to it.
+    if (sessionType === 'repair' && targetComponentId) {
+      walkComponents = walkComponents.filter(c => c.id === targetComponentId);
+    }
 
     const session = await createSession({
       session_type:              sessionType,
