@@ -243,6 +243,102 @@
     });
   }
 
+  // ── Quick report: Failed Components ──────────────────────────────────────────
+  // Pre-configured — no filter UI needed; always fails + all floors.
+  let generatingFailures = false;
+  let failuresError      = '';
+
+  async function generateFailuresReport() {
+    const failedComponents = components.filter(c => c.status === 'failed');
+    if (failedComponents.length === 0) {
+      failuresError = 'No failed components found.';
+      return;
+    }
+
+    generatingFailures = true;
+    failuresError = '';
+
+    try {
+      const building    = facilities[0]?.name ?? 'Lancaster House';
+      const now         = new Date();
+      const generatedAt = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const inspections = $v2protoStore.inspections;
+
+      // Group failed components by floor, preserving level_order
+      const byFloorMap = {};
+      for (const c of failedComponents) {
+        if (!byFloorMap[c.floor_id]) byFloorMap[c.floor_id] = [];
+        byFloorMap[c.floor_id].push(c);
+      }
+
+      const floorsPayload = floors
+        .filter(f => byFloorMap[f.id]?.length > 0)
+        .map(f => {
+          // Sort: system → type → asset_id
+          const sorted = [...byFloorMap[f.id]].sort((a, b) => {
+            const ta = typeOf(a), tb = typeOf(b);
+            const sa = systemOf(ta)?.name ?? '';
+            const sb = systemOf(tb)?.name ?? '';
+            return sa.localeCompare(sb) ||
+                   (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
+                   (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
+          });
+
+          const resolvedComponents = sorted.map(c => {
+            const t   = typeOf(c);
+            const sys = systemOf(t);
+            const attrs = (componentAttrs[c.id] ?? [])
+              .map(a => ({ name: attrIdToName[a.type_attribute_id] ?? '', value: a.value }))
+              .filter(a => a.name && a.value != null && a.value !== '');
+            const insp = inspections[c.id];
+            return {
+              asset_id:         c.asset_id,
+              label:            c.label,
+              type_code:        c.type_code,
+              type_name:        t?.name    ?? c.type_code,
+              type_initial:     t?.initial ?? '?',
+              system_name:      sys?.name  ?? '',
+              floor_short:      f.short_name,
+              attributes:       attrs,
+              last_inspected:   insp?.inspected_at   ?? null,
+              last_notes:       insp?.inspector_notes ?? null,
+            };
+          });
+
+          return {
+            floor: { id: f.id, short_name: f.short_name, name: f.name, level_order: f.level_order },
+            components: resolvedComponents,
+          };
+        });
+
+      const res = await fetch('/api/v2/generate-failures-report', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ building, generatedAt, floors: floorsPayload }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Server error ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `Failed_Components_${now.toISOString().slice(0, 10)}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+    } catch (err) {
+      failuresError = err.message;
+    } finally {
+      generatingFailures = false;
+    }
+  }
+
+  $: failedCount = components.filter(c => c.status === 'failed').length;
+
   // ── Report generation ──────────────────────────────────────────────────────────
   let generating = false;
   let error      = '';
@@ -360,6 +456,49 @@
     <p class="text-sm text-slate-400">
       Configure the scope and filters below, then generate a Word document for printing.
     </p>
+  </div>
+
+  <!-- ── Pre-configured reports ───────────────────────────────────────────── -->
+  <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-slate-300 mb-1 uppercase tracking-wide">Quick Reports</h3>
+    <p class="text-xs text-slate-500 mb-3">One-click reports — no filters needed.</p>
+
+    <div class="flex flex-wrap gap-3">
+
+      <!-- Failed Components -->
+      <div class="quick-card border-red-900/60 bg-red-950/20">
+        <div class="quick-card-header">
+          <span class="text-red-400 text-lg">✗</span>
+          <div>
+            <div class="font-semibold text-sm text-red-300">Failed Components</div>
+            <div class="text-xs text-slate-500 mt-0.5">
+              All failed components, grouped by floor, with latest inspection notes
+            </div>
+          </div>
+          <span class="ml-auto text-xl font-bold tabular-nums
+            {failedCount > 0 ? 'text-red-400' : 'text-slate-600'}">{failedCount}</span>
+        </div>
+        {#if failuresError}
+          <p class="text-xs text-red-400 mt-2">⚠ {failuresError}</p>
+        {/if}
+        <Button
+          variant="danger"
+          size="small"
+          disabled={generatingFailures || failedCount === 0}
+          on:click={generateFailuresReport}
+          class="mt-3"
+        >
+          {generatingFailures ? 'Generating…' : `⬇ Download (${failedCount} items)`}
+        </Button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── General report (configurable) ────────────────────────────────────── -->
+  <div>
+    <h3 class="text-sm font-semibold text-slate-300 mb-1 uppercase tracking-wide">General Report</h3>
+    <p class="text-xs text-slate-500 mb-3">Configure scope and filters, then generate.</p>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -584,3 +723,15 @@
     </div>
   </div>
 </div>
+
+<style>
+  .quick-card {
+    flex: 1; min-width: 260px; max-width: 420px;
+    border: 1px solid; border-radius: 8px;
+    padding: 0.875rem 1rem;
+    display: flex; flex-direction: column;
+  }
+  .quick-card-header {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+  }
+</style>
