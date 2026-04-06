@@ -20,7 +20,9 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
-  import Icon            from '$lib/components/icons/Icon.svelte';
+  import Icon                from '$lib/components/icons/Icon.svelte';
+  import Button              from '$lib/components/common/Button.svelte';
+  import V2InspectionsReport from './V2InspectionsReport.svelte';
 
   const logger = getLogger('V2InspectionsTab');
 
@@ -35,6 +37,7 @@
   // ── State ────────────────────────────────────────────────────────────────
   let sessions    = [];
   let inspections = {};      // { [sessionId]: flattened inspection[] }
+  let showReport  = false;
   let loading     = true;
   let loadingId   = null;
   let error       = null;
@@ -205,6 +208,11 @@
       <span class="ts-count">{filtered.length} session{filtered.length !== 1 ? 's' : ''}</span>
       {#if openCount   > 0}<span class="ts-open">{openCount} open</span>{/if}
       {#if closedCount > 0}<span class="ts-closed">{closedCount} closed</span>{/if}
+      <Button variant="secondary" size="small" icon="download"
+        disabled={filtered.length === 0}
+        on:click={() => showReport = true}>
+        Report
+      </Button>
     </div>
   </div>
 
@@ -430,6 +438,16 @@
   {/if}
 
 </div>
+
+{#if showReport}
+  <V2InspectionsReport
+    sessions={filtered}
+    types={types}
+    floors={floors}
+    inspectionsCache={inspections}
+    on:close={() => showReport = false}
+  />
+{/if}
 
 <style>
   .insp-tab   { display: flex; flex-direction: column; gap: 1rem; }

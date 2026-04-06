@@ -1,0 +1,320 @@
+// src/routes/api/v2/generate-inspections-report/+server.js
+//
+// Generate Word document inspection reports for V2 component inspections.
+//
+// Summary:  Cover + one table row per session.
+// Detailed: Cover + one section per session (metadata + inspection table + photos).
+//
+// Key V2 differences from V1:
+//   - result values lowercase: 'ok' | 'failed' | 'problem' | 'inactive'
+//   - photo_urls is an array (multiple photos per inspection)
+//   - session.floor_short_name pre-resolved client-side (floor_id is the raw FK)
+//   - session.inspector_name pre-resolved from profiles join
+//   - session.session_preset_label pre-resolved from presetLabel()
+//   - component ref format: floor_name/type_initial/asset_id
+//
+// Request body:
+//   { sessions: [{ session, inspections }], reportType: 'summary' | 'detailed' }
+
+import { json } from '@sveltejs/kit';
+import {
+  Document, Packer,
+  Paragraph, TextRun,
+  Table, TableRow, TableCell,
+  PageBreak, ImageRun,
+  WidthType, HeadingLevel, ShadingType,
+  AlignmentType, VerticalAlign, convertInchesToTwip,
+} from 'docx';
+import { getLogger } from '$lib/utils/logger';
+import {
+  hCell, dCell, run, para,
+  makeHeader, makeFooter, DOC_STYLES, pageProps,
+  CONTENT_W, COLOURS, BORDERS, CELL_PAD,
+} from '$lib/server/docxHelpers.js';
+import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration } from '$lib/utils/dates';
+
+const logger = getLogger('v2GenerateInspectionsReport');
+
+// ── Result helpers ─────────────────────────────────────────────────────────────
+function resultColor(result) {
+  return result === 'ok'       ? COLOURS.passGreen
+       : result === 'failed'   ? COLOURS.failRed
+       : result === 'problem'  ? 'EA580C'
+       : '6B7280';
+}
+
+function resultLabel(result) {
+  return { ok: 'PASS', failed: 'FAIL', problem: 'PROBLEM', inactive: 'INACTIVE' }[result]
+      ?? (result ?? '—').toUpperCase();
+}
+
+// ── Session stats (inline — avoids SSR import of v2walkHelpers) ───────────────
+function sessionStats(inspections) {
+  return {
+    ok:         inspections.filter(r => r.result === 'ok').length,
+    failed:     inspections.filter(r => r.result === 'failed').length,
+    problem:    inspections.filter(r => r.result === 'problem').length,
+    inactive:   inspections.filter(r => r.result === 'inactive').length,
+    components: new Set(inspections.map(r => r.component_id)).size,
+    total:      inspections.length,
+  };
+}
+
+// ── Component ref string ───────────────────────────────────────────────────────
+function componentRef(ins) {
+  const floor = ins.floor_name   ?? '?';
+  const init  = ins.type_initial ?? '?';
+  const id    = ins.asset_id     ?? '?';
+  return `${floor}/${init}/${id}`;
+}
+
+// ── Image fetch ────────────────────────────────────────────────────────────────
+async function fetchImageBuffer(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) { logger('⚠️ Image fetch failed:', response.status, url); return null; }
+    return Buffer.from(await response.arrayBuffer());
+  } catch (err) {
+    logger('❌ Image fetch error:', err.message, url); return null;
+  }
+}
+
+// ── Cover page ─────────────────────────────────────────────────────────────────
+function buildCover(sessions, reportType, generatedAt) {
+  const buildings = [...new Set(sessions.map(s => s.building))].sort();
+  const title     = reportType === 'summary' ? 'V2 Inspection Summary Report' : 'V2 Inspection Detailed Report';
+  return [
+    new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: title, font: 'Arial', size: 48, bold: true, color: COLOURS.textDark })] }),
+    new Paragraph({ spacing: { after: 80 },  children: [new TextRun({ text: buildings.join(', '), font: 'Arial', size: 24, color: '475569' })] }),
+    new Paragraph({ spacing: { after: 80 },  children: [new TextRun({ text: `Generated: ${generatedAt}`, font: 'Arial', size: 20, color: COLOURS.textMuted })] }),
+    new Paragraph({ spacing: { after: 400 }, children: [new TextRun({ text: `${sessions.length} session${sessions.length !== 1 ? 's' : ''}`, font: 'Arial', size: 20, color: COLOURS.textMuted })] }),
+  ];
+}
+
+// ── Summary table ──────────────────────────────────────────────────────────────
+// Columns: Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Problem | N/A | Notes
+// DXA:      900 |    1100  |  700  |  1100  | 1100 |    1000   |    700   |  650  |550 | 550  |   650   | 650 |  816
+// Sum = 10466
+const SUM_COLS = [900, 1100, 700, 1100, 1100, 1000, 700, 650, 550, 550, 650, 650, 816];
+
+function buildSummaryTable(sessionData) {
+  const headers = ['Date', 'Building', 'Floor', 'Preset', 'Name', 'Inspector',
+                   'Duration', 'Comps', 'OK', 'Fail', 'Prob', 'N/A', 'Notes'];
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children:    headers.map((h, i) => hCell(h, SUM_COLS[i])),
+  });
+
+  const dataRows = sessionData.map(({ session: s, inspections }, idx) => {
+    const st  = sessionStats(inspections);
+    const alt = idx % 2 === 1;
+    const dur = fmtDuration(s.started_at, s.closed_at);
+    const flr = s.floor_short_name ? `Floor ${s.floor_short_name}` : 'All';
+    return new TableRow({
+      children: [
+        dCell(fmtDate(s.started_at),        SUM_COLS[0],  { alt }),
+        dCell(s.building,                   SUM_COLS[1],  { alt }),
+        dCell(flr,                          SUM_COLS[2],  { alt }),
+        dCell(s.session_preset_label ?? s.session_preset ?? '—', SUM_COLS[3], { alt }),
+        dCell(s.session_name || '—',        SUM_COLS[4],  { alt }),
+        dCell(s.inspector_name || '—',      SUM_COLS[5],  { alt }),
+        dCell(dur,                          SUM_COLS[6],  { alt }),
+        dCell(String(st.components),        SUM_COLS[7],  { alt, bold: true }),
+        dCell(st.ok       || '—', SUM_COLS[8],  { alt, color: st.ok       ? COLOURS.passGreen : '9CA3AF' }),
+        dCell(st.failed   || '—', SUM_COLS[9],  { alt, color: st.failed   ? COLOURS.failRed   : '9CA3AF' }),
+        dCell(st.problem  || '—', SUM_COLS[10], { alt, color: st.problem  ? 'EA580C'           : '9CA3AF' }),
+        dCell(st.inactive || '—', SUM_COLS[11], { alt, color: st.inactive ? '6B7280'           : '9CA3AF' }),
+        dCell(s.notes || '—',               SUM_COLS[12], { alt }),
+      ],
+    });
+  });
+
+  return new Table({
+    width:        { size: CONTENT_W, type: WidthType.DXA },
+    columnWidths: SUM_COLS,
+    rows:         [headerRow, ...dataRows],
+  });
+}
+
+// ── Detailed section — one per session ─────────────────────────────────────────
+// Inspection table columns: Component | Label | Result | Time | Notes
+// DXA:                         1600  |  1700  |   900  | 1200 |  5066
+// Sum = 10466
+const DET_COLS = [1600, 1700, 900, 1200, 5066];
+
+async function buildDetailedSession({ session: s, inspections }, isFirst) {
+  const children = [];
+
+  if (!isFirst) children.push(new Paragraph({ children: [new PageBreak()] }));
+
+  const st  = sessionStats(inspections);
+  const flr = s.floor_short_name ? `Floor ${s.floor_short_name}` : 'All Floors';
+
+  // Session heading
+  children.push(new Paragraph({
+    heading:  HeadingLevel.HEADING_1,
+    spacing:  { before: 0, after: 160 },
+    children: [new TextRun({
+      text: `${s.building} — ${flr} — ${s.session_preset_label ?? s.session_preset ?? '—'}`,
+      font: 'Arial', size: 32, bold: true,
+    })],
+  }));
+
+  // Metadata 2-column table
+  const META_L = 1800;
+  const META_R = CONTENT_W - META_L;
+
+  function mkMetaRow(label, value, valueColor) {
+    return new TableRow({
+      children: [
+        dCell(label,                META_L, { fill: 'F8FAFC', bold: true, color: '475569' }),
+        dCell(String(value ?? '—'), META_R, { fill: 'FFFFFF', color: valueColor }),
+      ],
+    });
+  }
+
+  const metaRows = [
+    mkMetaRow('Session Name', s.session_name || '—'),
+    mkMetaRow('Session Type', (s.session_type ?? '—').charAt(0).toUpperCase() + (s.session_type ?? '').slice(1)),
+    mkMetaRow('Date / Time',  fmtDateTime(s.started_at)),
+    mkMetaRow('Inspector',    s.inspector_name || '—'),
+    mkMetaRow('Duration',     fmtDuration(s.started_at, s.closed_at)),
+    mkMetaRow('Status',       s.status === 'open' ? 'Open' : 'Closed',
+                              s.status === 'open' ? COLOURS.warnAmber : '6B7280'),
+    mkMetaRow('Components',   `${st.components} inspected (${st.total} records)`),
+    mkMetaRow('Results',      `Pass: ${st.ok}   Fail: ${st.failed}   Problem: ${st.problem}   Inactive: ${st.inactive}`),
+  ];
+  if (s.notes) metaRows.push(mkMetaRow('Closing Notes', s.notes));
+
+  children.push(new Table({
+    width:        { size: CONTENT_W, type: WidthType.DXA },
+    columnWidths: [META_L, META_R],
+    rows:         metaRows,
+  }));
+
+  children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
+
+  // Inspection table
+  if (!inspections.length) {
+    children.push(new Paragraph({
+      spacing:  { after: 120 },
+      children: [new TextRun({ text: 'No inspections recorded in this session.', italics: true, color: '9CA3AF', font: 'Arial', size: 18 })],
+    }));
+    return children;
+  }
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: [
+      hCell('Component', DET_COLS[0]),
+      hCell('Label',     DET_COLS[1]),
+      hCell('Result',    DET_COLS[2]),
+      hCell('Time',      DET_COLS[3]),
+      hCell('Notes',     DET_COLS[4]),
+    ],
+  });
+
+  const dataRows = [];
+
+  for (let idx = 0; idx < inspections.length; idx++) {
+    const ins = inspections[idx];
+    const alt = idx % 2 === 1;
+    const res = ins.result ?? ins.inspection_result ?? '';
+
+    dataRows.push(new TableRow({
+      children: [
+        dCell(componentRef(ins),        DET_COLS[0], { alt, bold: true }),
+        dCell(ins.label || '—',         DET_COLS[1], { alt }),
+        dCell(resultLabel(res),         DET_COLS[2], { alt, bold: true, color: resultColor(res) }),
+        dCell(fmtTime(ins.inspected_at),DET_COLS[3], { alt }),
+        dCell(ins.inspector_notes,      DET_COLS[4], { alt }),
+      ],
+    }));
+
+    // Photos — V2 has photo_urls as an array (multiple per inspection)
+    const photoUrls = Array.isArray(ins.photo_urls) ? ins.photo_urls : [];
+    for (const url of photoUrls) {
+      try {
+        const imageBuffer = await fetchImageBuffer(url);
+        const photoChild = imageBuffer
+          ? new Paragraph({ children: [new ImageRun({ data: imageBuffer, transformation: { width: 400, height: 300 } })] })
+          : new Paragraph({ children: [new TextRun({ text: '[Photo unavailable]', italics: true, color: '9CA3AF', font: 'Arial', size: 18 })] });
+
+        dataRows.push(new TableRow({
+          children: [new TableCell({
+            width:      { size: CONTENT_W, type: WidthType.DXA },
+            columnSpan: 5,
+            margins:    { top: convertInchesToTwip(0.1), bottom: convertInchesToTwip(0.1), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
+            shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
+            children:   [photoChild],
+          })],
+        }));
+      } catch (err) {
+        logger('❌ Photo error:', err.message, url);
+      }
+    }
+  }
+
+  children.push(new Table({
+    width:        { size: CONTENT_W, type: WidthType.DXA },
+    columnWidths: DET_COLS,
+    rows:         [headerRow, ...dataRows],
+  }));
+
+  return children;
+}
+
+// ── POST handler ───────────────────────────────────────────────────────────────
+export async function POST({ request }) {
+  logger('📄 POST /api/v2/generate-inspections-report');
+
+  try {
+    const { sessions, reportType } = await request.json();
+
+    if (!sessions?.length) return json({ error: 'No sessions supplied' }, { status: 400 });
+
+    const generatedAt = fmtGenerated();
+    const buildings   = [...new Set(sessions.map(d => d.session.building))].sort().join(', ');
+    const titleLabel  = reportType === 'summary' ? 'V2 Inspection Summary' : 'V2 Inspection Report';
+
+    const children = [...buildCover(sessions.map(d => d.session), reportType, generatedAt)];
+
+    if (reportType === 'summary') {
+      children.push(buildSummaryTable(sessions));
+    } else {
+      for (let i = 0; i < sessions.length; i++) {
+        const sessionChildren = await buildDetailedSession(sessions[i], i === 0);
+        children.push(...sessionChildren);
+      }
+    }
+
+    const doc = new Document({
+      styles:   DOC_STYLES,
+      sections: [{
+        properties: pageProps(),
+        headers:    { default: makeHeader(`${buildings} — ${titleLabel}`, generatedAt) },
+        footers:    { default: makeFooter() },
+        children,
+      }],
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    logger('✅ Generated', reportType, 'report | sessions:', sessions.length, '| size:', buffer.byteLength);
+
+    const slug     = reportType === 'summary' ? 'Summary' : 'Detailed';
+    const dateSlug = new Date().toISOString().slice(0, 10);
+    const filename = `V2_Inspections_${slug}_${dateSlug}.docx`;
+
+    return new Response(buffer, {
+      headers: {
+        'Content-Type':        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+
+  } catch (err) {
+    logger('❌ Error:', err.message, err.stack);
+    return json({ error: err.message }, { status: 500 });
+  }
+}
