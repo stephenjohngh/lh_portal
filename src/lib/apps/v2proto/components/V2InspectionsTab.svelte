@@ -294,8 +294,10 @@
                   {#if st.ok       > 0}<span class="qs-pass">✓ {st.ok}</span>{/if}
                   <span class="qs-el">{st.components} comp.</span>
                 {:else}
-                  <span class="qs-el">
-                    {session.inspected_components_count}/{session.total_components_count} comp.
+                  {@const done = session.inspected_components_count >= session.total_components_count && session.total_components_count > 0}
+                  <span class="{done ? 'qs-complete' : 'qs-el'}">
+                    {done ? 'Completed' : 'Incomplete'}
+                    {session.inspected_components_count}/{session.total_components_count}
                   </span>
                 {/if}
               </div>
@@ -470,7 +472,8 @@
   .qs-fail   { color: rgb(248 113 113); font-weight: 700; }
   .qs-repair { color: rgb(251 146 60);  font-weight: 600; }
   .qs-pass   { color: rgb(74 222 128);  font-weight: 600; }
-  .qs-el     { color: rgb(107 114 128); }
+  .qs-el       { color: rgb(107 114 128); }
+  .qs-complete { color: rgb(74 222 128); }
 
   /* Status pill */
   .status-badge  { flex-shrink: 0; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid transparent; }
