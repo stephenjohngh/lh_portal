@@ -376,7 +376,7 @@
                         {@const worst    = worstResult(grp.rows)}
                         {@const firstRow = grp.rows[0]}
                         {@const typeObj  = resolveType(grp.type_code)}
-                        {@const displayName = `${grp.floor_name ?? '?'} / ${grp.asset_id ?? '?'}`}
+                        {@const displayName = `${grp.floor_name ?? '?'} / ${typeObj?.initial ?? '?'} / ${grp.asset_id ?? '?'}`}
                         <tr class="insp-row insp-row-{worst}">
                           <td class="font-medium font-mono">{displayName}</td>
                           <td>
@@ -395,7 +395,7 @@
                               {resultLabel(worst)}
                             </Badge>
                           </td>
-                          <td class="text-sm text-slate-400">{fmtTime(firstRow.inspected_at)}</td>
+                          <td class="text-sm text-slate-400">{fmtDateTime(firstRow.inspected_at)}</td>
                           <td class="text-sm text-slate-400 notes-cell">
                             {#if firstRow.inspector_notes}
                               <span class="notes-lines">{firstRow.inspector_notes}</span>
@@ -507,7 +507,7 @@
   .insp-row-ok      { border-left: 3px solid rgb(74 222 128 / 0.3); }
   .insp-row-inactive{ border-left: 3px solid rgb(71 85 105 / 0.5); }
   .notes-cell       { max-width: 260px; vertical-align: top; }
-  .notes-lines      { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; line-height: 1.4; }
+  .notes-lines      { display: block; white-space: pre-line; line-height: 1.4; max-height: 5rem; overflow-y: auto; }
   .photo-indicator  { font-size: 0.85rem; }
 
   /* Type chip */

@@ -360,6 +360,7 @@
   /* Text / number reading inputs */
   .cl-row-input   { align-items:center; }
   .cl-input       { width:7rem; padding:0.4rem 0.6rem; background:#111122; border:2px solid #2e2e42; border-radius:6px; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; font-size:0.82rem; text-align:right; transition:border-color 0.15s; flex-shrink:0; }
+  .cl-input[type="number"] { padding-right:1.5rem; }
   .cl-input:focus { outline:none; border-color:#fb923c; }
   .cl-input::placeholder { color:#555; }
 
