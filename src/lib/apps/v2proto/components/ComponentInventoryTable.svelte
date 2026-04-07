@@ -76,7 +76,7 @@
     return defsForType(attrDefs, types, c.type_code)
       .filter(d => d.visible !== false && !d.checkable)
       .map(d => {
-        const raw = lookupAttrValue(componentAttrs, c.id, d.id);
+        const raw = lookupAttrValue(componentAttrs, c.id, d.id) ?? d.default_value ?? null;
         if (raw == null || raw === '') return null;
         if (d.display_type === 'checkbox') {
           return raw === 'true' ? { name: d.name, value: 'Yes' } : null;
