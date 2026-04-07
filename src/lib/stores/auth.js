@@ -19,7 +19,11 @@ function createAuthStore() {
       const { data: { session } } = await supabase.auth.getSession();
       set({ user: session?.user ?? null, loading: false });
 
-      supabase.auth.onAuthStateChange((_event, session) => {
+      supabase.auth.onAuthStateChange((event, session) => {
+        // TOKEN_REFRESHED only rotates the JWT — the user identity is unchanged.
+        // Updating the store on that event causes reactive statements in +page.svelte
+        // to re-run loadUserPermissions() every ~60 min, which the user sees as a reload.
+        if (event === 'TOKEN_REFRESHED') return;
         set({ user: session?.user ?? null, loading: false });
       });
     },

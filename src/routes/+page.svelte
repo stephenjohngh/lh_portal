@@ -36,14 +36,18 @@
     goto('/login');
   }
 
-  onMount(async () => {
-    if ($auth.user) {
-      await loadUserPermissions();
-    }
-  });
+  // Load permissions once per distinct user ID.
+  // Using a tracked ID guard prevents re-running on token refresh or other
+  // auth events that update the store object without changing the user.
+  let lastPermissionsUserId = null;
 
-  $: if ($auth.user) {
+  $: if ($auth.user && $auth.user.id !== lastPermissionsUserId) {
+    lastPermissionsUserId = $auth.user.id;
     loadUserPermissions();
+  }
+
+  $: if (!$auth.user) {
+    lastPermissionsUserId = null;
   }
 
   async function loadUserPermissions() {
