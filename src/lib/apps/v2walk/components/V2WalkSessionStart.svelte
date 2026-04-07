@@ -74,14 +74,14 @@
       if (!fid) return 0;
       const comps = (allComponents[fid] ?? []).filter(c => tf.includes(c.type_code));
       if (emergencyOnly) {
-        return comps.filter(c => (allComponentAttrs[c.id] ?? []).some(a => a.attr_name === 'emergency' && a.value === 'true')).length;
+        return comps.filter(c => (allComponentAttrs[c.id] ?? []).some(a => a.attr_name?.toLowerCase() === 'emergency' && a.value === 'true')).length;
       }
       return comps.length;
     } else {
       return buildingFloors.reduce((n, f) => {
         const comps = (allComponents[f.id] ?? []).filter(c => tf.includes(c.type_code));
         if (emergencyOnly) {
-          return n + comps.filter(c => (allComponentAttrs[c.id] ?? []).some(a => a.attr_name === 'emergency' && a.value === 'true')).length;
+          return n + comps.filter(c => (allComponentAttrs[c.id] ?? []).some(a => a.attr_name?.toLowerCase() === 'emergency' && a.value === 'true')).length;
         }
         return n + comps.length;
       }, 0);
@@ -93,6 +93,7 @@
     const floor = scope === 'single_floor' ? selectedFloor : null;
     sessionName = generateSessionName({ preset, building, floor, scope });
   }
+
 
   // System groups for custom tree
   $: systemGroups = (() => {
@@ -273,15 +274,6 @@
     </div>
 
 
-    <!-- ── Diagnostic strip (temporary) ─────────────────────────────────────── -->
-    <div class="diag">
-      <div>facilities: {facilities.length} | floors: {floors.length} | buildingFloors: {buildingFloors.length}</div>
-      <div>selectedFacility: {selectedFacility?.name ?? 'NONE'} (id:{selectedFacility?.id?.slice(0,8) ?? 'null'})</div>
-      <div>selectedFloor: {selectedFloor?.name ?? 'NONE'} (id:{selectedFloor?.id?.slice(0,8) ?? 'null'})</div>
-      <div>allComponents keys: {Object.keys(allComponents).length} | floor match: {allComponents[selectedFloor?.id]?.length ?? 0}</div>
-      <div>typeFilter len: {presetTypeFilter.length} | emergencyOnly: {emergencyOnly}</div>
-    </div>
-
     <!-- ── Session name ───────────────────────────────────────────────────────── -->
     <section class="grp">
       <div class="grp-lbl">SESSION NAME</div>
@@ -328,8 +320,7 @@
   .cb-on      { background:#7c3aed; border-color:#7c3aed; }
   .cb-partial { background:#5b21b6; border-color:#5b21b6; }
   .summary-box { background:#111122; border:1px solid #2e2e42; border-radius:8px; padding:1rem; display:flex; flex-direction:column; gap:0.5rem; }
-  .diag { background:#1a0e30; border:1px solid #4c1d95; border-radius:6px; padding:0.75rem; font-size:0.62rem; color:#c4b5fd; line-height:1.7; font-family:monospace; }
-  .sum-row { display:flex; justify-content:space-between; align-items:baseline; }
+.sum-row { display:flex; justify-content:space-between; align-items:baseline; }
   .sum-k { font-size:0.65rem; letter-spacing:0.15em; color:#888; }
   .sum-v { font-size:0.95rem; color:#f0f0f0; font-weight:700; }
   .sum-zero { color:#ef4444; }

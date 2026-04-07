@@ -82,11 +82,11 @@ function buildWalkComponents(floorComponents, typeFilter, emergencyOnly, allComp
   let list = floorComponents.filter(c => {
     // Type filter: must be in the selected type_codes array
     if (!typeFilter.includes(c.type_code)) return false;
-    // Emergency-only: check component_attributes for attr_name='emergency', value='true'
+    // Emergency-only: check component_attributes for attr_name='Emergency' (case-insensitive), value='true'
     // (attr_name is enriched into allComponentAttrs rows during load()).
     if (emergencyOnly) {
       const isEmergency = (allComponentAttrs[c.id] ?? [])
-        .some(a => a.attr_name === 'emergency' && a.value === 'true');
+        .some(a => a.attr_name?.toLowerCase() === 'emergency' && a.value === 'true');
       if (!isEmergency) return false;
     }
     return true;
