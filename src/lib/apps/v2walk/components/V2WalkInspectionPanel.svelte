@@ -8,9 +8,9 @@
   import { resultLabel }  from '../utils/v2walkHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import V2WalkResultSection from './V2WalkResultSection.svelte';
-  import WalkButton  from '$lib/apps/walk/components/common/WalkButton.svelte';
-  import WalkSpinner from '$lib/apps/walk/components/common/WalkSpinner.svelte';
-  import WalkBadge   from '$lib/apps/walk/components/common/WalkBadge.svelte';
+  import WalkButton  from '$lib/apps/v2walk/components/common/WalkButton.svelte';
+  import WalkSpinner from '$lib/apps/v2walk/components/common/WalkSpinner.svelte';
+  import WalkBadge   from '$lib/apps/v2walk/components/common/WalkBadge.svelte';
 
   const logger   = getLogger('V2WalkInspectionPanel');
   const dispatch = createEventDispatcher();

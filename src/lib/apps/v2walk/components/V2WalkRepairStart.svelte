@@ -5,9 +5,9 @@
   import { getLogger }   from '$lib/utils/logger';
   import { v2walkStore } from '../stores/v2walkStore.js';
   import { buildingInitials } from '../utils/sessionNaming.js';
-  import WalkError  from '$lib/apps/walk/components/common/WalkError.svelte';
-  import WalkButton from '$lib/apps/walk/components/common/WalkButton.svelte';
-  import WalkSpinner from '$lib/apps/walk/components/common/WalkSpinner.svelte';
+  import WalkError  from '$lib/apps/v2walk/components/common/WalkError.svelte';
+  import WalkButton from '$lib/apps/v2walk/components/common/WalkButton.svelte';
+  import WalkSpinner from '$lib/apps/v2walk/components/common/WalkSpinner.svelte';
 
   const logger   = getLogger('V2WalkRepairStart');
   const dispatch = createEventDispatcher();

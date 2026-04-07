@@ -4,9 +4,9 @@
   import { createEventDispatcher } from 'svelte';
   import { getLogger }   from '$lib/utils/logger';
   import { v2walkStore } from '../stores/v2walkStore.js';
-  import WalkButton   from '$lib/apps/walk/components/common/WalkButton.svelte';
-  import WalkError    from '$lib/apps/walk/components/common/WalkError.svelte';
-  import WalkTextarea from '$lib/apps/walk/components/common/WalkTextarea.svelte';
+  import WalkButton   from '$lib/apps/v2walk/components/common/WalkButton.svelte';
+  import WalkError    from '$lib/apps/v2walk/components/common/WalkError.svelte';
+  import WalkTextarea from '$lib/apps/v2walk/components/common/WalkTextarea.svelte';
 
   const logger   = getLogger('V2WalkComponentEditor');
   const dispatch = createEventDispatcher();

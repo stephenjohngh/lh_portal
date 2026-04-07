@@ -4,7 +4,7 @@
   import { v2walkStore }  from '../stores/v2walkStore.js';
   import { fmtDate, fmtTime, fmtDuration } from '$lib/utils/dates';
   import { presetLabel, sessionFloorLabel } from '../utils/v2walkHelpers.js';
-  import WalkBadge from '$lib/apps/walk/components/common/WalkBadge.svelte';
+  import WalkBadge from '$lib/apps/v2walk/components/common/WalkBadge.svelte';
 
   const dispatch = createEventDispatcher();
   export let canEdit = false;

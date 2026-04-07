@@ -11,7 +11,7 @@
   import V2WalkRepairStart    from './components/V2WalkRepairStart.svelte';
   import V2WalkSession        from './components/V2WalkSession.svelte';
   import V2WalkSessionSummary from './components/V2WalkSessionSummary.svelte';
-  import WalkError            from '$lib/apps/walk/components/common/WalkError.svelte';
+  import WalkError            from '$lib/apps/v2walk/components/common/WalkError.svelte';
 
 
   const logger = getLogger('V2WalkApp');

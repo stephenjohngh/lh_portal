@@ -10,11 +10,11 @@
   import V2WalkJumpList              from './V2WalkJumpList.svelte';
   import V2WalkPlanViewer            from './V2WalkPlanViewer.svelte';
   import V2WalkComponentPlanViewer   from './V2WalkComponentPlanViewer.svelte';
-  import WalkStatsBars from '$lib/apps/walk/components/WalkStatsBars.svelte';
-  import WalkBadge     from '$lib/apps/walk/components/common/WalkBadge.svelte';
-  import WalkTextarea  from '$lib/apps/walk/components/common/WalkTextarea.svelte';
-  import WalkButton    from '$lib/apps/walk/components/common/WalkButton.svelte';
-  import WalkError     from '$lib/apps/walk/components/common/WalkError.svelte';
+  import WalkStatsBars from '$lib/apps/v2walk/components/common/WalkStatsBars.svelte';
+  import WalkBadge     from '$lib/apps/v2walk/components/common/WalkBadge.svelte';
+  import WalkTextarea  from '$lib/apps/v2walk/components/common/WalkTextarea.svelte';
+  import WalkButton    from '$lib/apps/v2walk/components/common/WalkButton.svelte';
+  import WalkError     from '$lib/apps/v2walk/components/common/WalkError.svelte';
 
   const logger   = getLogger('V2WalkSession');
   const dispatch = createEventDispatcher();

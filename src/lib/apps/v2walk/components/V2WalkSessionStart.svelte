@@ -6,11 +6,11 @@
   import { getLogger }    from '$lib/utils/logger';
   import { v2walkStore }  from '../stores/v2walkStore.js';
   import { generateSessionName } from '../utils/sessionNaming.js';
-  import WalkButton from '$lib/apps/walk/components/common/WalkButton.svelte';
-  import WalkInput  from '$lib/apps/walk/components/common/WalkInput.svelte';
-  import WalkSelect from '$lib/apps/walk/components/common/WalkSelect.svelte';
-  import WalkError  from '$lib/apps/walk/components/common/WalkError.svelte';
-  import WalkSpinner from '$lib/apps/walk/components/common/WalkSpinner.svelte';
+  import WalkButton from '$lib/apps/v2walk/components/common/WalkButton.svelte';
+  import WalkInput  from '$lib/apps/v2walk/components/common/WalkInput.svelte';
+  import WalkSelect from '$lib/apps/v2walk/components/common/WalkSelect.svelte';
+  import WalkError  from '$lib/apps/v2walk/components/common/WalkError.svelte';
+  import WalkSpinner from '$lib/apps/v2walk/components/common/WalkSpinner.svelte';
 
   const logger   = getLogger('V2WalkSessionStart');
   const dispatch = createEventDispatcher();

@@ -5,9 +5,9 @@
   import { v2walkStore }  from '../stores/v2walkStore.js';
   import { flattenInspectionRows, groupByComponent, worstResult, resultLabel, sessionFloorLabel, presetLabel } from '../utils/v2walkHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
-  import WalkStatsBars from '$lib/apps/walk/components/WalkStatsBars.svelte';
-  import WalkError     from '$lib/apps/walk/components/common/WalkError.svelte';
-  import WalkButton    from '$lib/apps/walk/components/common/WalkButton.svelte';
+  import WalkStatsBars from '$lib/apps/v2walk/components/common/WalkStatsBars.svelte';
+  import WalkError     from '$lib/apps/v2walk/components/common/WalkError.svelte';
+  import WalkButton    from '$lib/apps/v2walk/components/common/WalkButton.svelte';
 
   const dispatch = createEventDispatcher();
 

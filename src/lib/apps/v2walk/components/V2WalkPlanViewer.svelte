@@ -5,7 +5,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { resultLabel } from '../utils/v2walkHelpers.js';
-  import WalkButton from '$lib/apps/walk/components/common/WalkButton.svelte';
+  import WalkButton from '$lib/apps/v2walk/components/common/WalkButton.svelte';
 
   const dispatch = createEventDispatcher();
 
