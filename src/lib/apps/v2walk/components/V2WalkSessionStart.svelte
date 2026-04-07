@@ -39,7 +39,10 @@
 
   // ── Derived ───────────────────────────────────────────────────────────────────
   $: selectedFacility  = facilities.find(f => f.id === selectedFacilityId) ?? facilities[0];
-  $: buildingFloors    = floors.filter(f => f.facility_id === selectedFacility?.id);
+  // Only walkable floors (walk_order != null), sorted by walk_order
+  $: buildingFloors    = floors
+    .filter(f => f.facility_id === selectedFacility?.id && f.walk_order != null)
+    .sort((a, b) => a.walk_order - b.walk_order);
   $: selectedFloor     = buildingFloors.find(f => f.id === selectedFloorId) ?? buildingFloors[0];
 
   // Building name = facility short_name or name

@@ -310,11 +310,13 @@ function createV2WalkStore() {
     const facility     = state.facilities.find(f =>
       f.short_name === building || f.name === building
     );
-    const buildingFloors = state.floors.filter(f =>
-      f.facility_id === (facility?.id ?? null)
-    );
+    // Only include floors with walk_order set (null = excluded from walks e.g. roof, external).
+    // Sort by walk_order so the walk sequence matches the configured order.
+    const buildingFloors = state.floors
+      .filter(f => f.facility_id === (facility?.id ?? null) && f.walk_order != null)
+      .sort((a, b) => a.walk_order - b.walk_order);
 
-    if (buildingFloors.length === 0) throw new Error(`No floors found for building: ${building}`);
+    if (buildingFloors.length === 0) throw new Error(`No walkable floors found for building: ${building}. Set walk_order on floors in Admin.`);
 
     const total = buildingFloors.reduce((n, floor) =>
       n + buildWalkComponents(
@@ -383,7 +385,9 @@ function createV2WalkStore() {
       const facility      = state.facilities.find(f =>
         f.short_name === session.building || f.name === session.building
       );
-      const buildingFloors = state.floors.filter(f => f.facility_id === (facility?.id ?? null));
+      const buildingFloors = state.floors
+        .filter(f => f.facility_id === (facility?.id ?? null) && f.walk_order != null)
+        .sort((a, b) => a.walk_order - b.walk_order);
 
       const floorProgress = calcFloorProgress(
         buildingFloors, state.allComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}, inspections

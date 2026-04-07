@@ -10,6 +10,7 @@
   import AttrDefPanel     from './AttrDefPanel.svelte';
   import OptionsPanel     from './OptionsPanel.svelte';
   import MaintenancePanel from './MaintenancePanel.svelte';
+  import FloorPanel       from './FloorPanel.svelte';
 
   // ── Selection state ────────────────────────────────────────────────
   let selectedSystemId  = null;
@@ -193,5 +194,12 @@
       on:saved={onSaved}
     />
   {/if}
+
+  <!-- ── Floor walk order ──────────────────────────────────────────── -->
+  <FloorPanel
+    floors={store.floors}
+    facilities={store.facilities}
+    on:saved={onSaved}
+  />
 
 </div>
