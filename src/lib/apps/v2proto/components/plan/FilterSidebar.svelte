@@ -105,11 +105,11 @@
   }
 
   function clearAll() {
-    // Hide every type and every status (all checkboxes off → nothing showing)
-    const allCodes    = systemGroups.flatMap(g => g.types.map(t => t.code));
-    const allStatuses = STATUSES.map(s => s.value);
+    // Hide every type (all type checkboxes off) and clear search.
+    // Status filter is intentionally left untouched — it is a sticky
+    // independent control, not cleared by this button.
+    const allCodes = systemGroups.flatMap(g => g.types.map(t => t.code));
     dispatch('changetypes',      { hidden: new Set(allCodes) });
-    dispatch('changestatuses',   { hidden: new Set(allStatuses) });
     dispatch('searchchange',     { query: '' });
     dispatch('changeshowspaces', { show: true });
   }
