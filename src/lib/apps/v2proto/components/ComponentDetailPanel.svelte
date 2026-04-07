@@ -221,40 +221,23 @@
 
   <!-- ── Sticky header ───────────────────────────────────────────── -->
   <div class="flex items-start gap-3 p-5 pb-4 border-b border-slate-700 shrink-0">
-    {#if origType}
-      <div
-        class="w-11 h-11 rounded-lg flex items-center justify-center text-white font-bold text-xl shrink-0"
-        style="background-color: #{origType.colour}"
-        title={origType.name}
-      >{origType.initial}</div>
-    {:else}
-      <div class="w-11 h-11 rounded-lg bg-slate-600 flex items-center justify-center text-slate-400 shrink-0 text-xl">?</div>
-    {/if}
-
     <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="font-bold text-white text-lg leading-tight">
-          {component.label || component.asset_id || origType?.name || component.type_code}
+      <!-- Line 1: floor/type/id  ·  label -->
+      <div class="flex items-baseline gap-2 flex-wrap">
+        <span class="font-bold font-mono text-white text-base leading-tight tracking-wide">
+          {floor?.short_name ?? '?'}/{origType?.initial ?? '?'}/{component.asset_id ?? '?'}
         </span>
-        {#if component.label && component.asset_id}
-          <span class="text-sm text-slate-500 font-mono">{component.asset_id}</span>
+        {#if component.label}
+          <span class="text-slate-300 text-base leading-tight">{component.label}</span>
         {/if}
         {#if dirty}
           <span class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-            unsaved changes
+            unsaved
           </span>
         {/if}
       </div>
-      <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-        {#if floor}
-          <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-700 border border-slate-600 text-slate-400"
-                title={floor.name}>{floor.short_name}</span>
-        {/if}
-        <span class="text-sm text-slate-400">{origType?.name ?? component.type_code}</span>
-        {#if component.primary_attribute}
-          <span class="text-sm text-yellow-300 font-medium">★ {component.primary_attribute}</span>
-        {/if}
-      </div>
+      <!-- Line 2: type name -->
+      <p class="text-sm text-slate-500 mt-0.5">{origType?.name ?? component.type_code}</p>
     </div>
 
     <button
