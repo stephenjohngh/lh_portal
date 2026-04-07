@@ -74,7 +74,7 @@
 
   $: openCount   = filtered.filter(s => s.status === 'open').length;
   $: closedCount = filtered.filter(s => s.status === 'closed').length;
-  $: hasFilters  = filterStatus || filterSessionType || filterPreset || filterDateFrom || filterDateTo;
+  $: hasFilters  = filterSessionType || filterPreset || filterDateFrom || filterDateTo;
 
   onMount(loadSessions);
 
@@ -138,7 +138,10 @@
   }
 
   function clearFilters() {
-    filterStatus = filterSessionType = filterPreset = filterDateFrom = filterDateTo = '';
+    filterSessionType = '';
+    filterPreset      = '';
+    filterDateFrom    = '';
+    filterDateTo      = '';
   }
 
   // ── Badge colours ────────────────────────────────────────────────────────
