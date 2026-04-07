@@ -1,14 +1,16 @@
 <!-- src/lib/apps/v2proto/components/ComponentsTab.svelte -->
 <!-- Components tab: list, create, detail-edit, and inspect components.
-     Reads all data from v2protoStore directly (no props needed).
-     List view matches the plan inventory: one compact row per component. -->
+     Reads all data from v2protoStore directly.
+     Uses ComponentInventoryTable for the shared list/summary view.
+     Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
+
 <script>
   import { v2protoStore } from '../stores/v2protoStore.js';
-  import { typeByCode, defsForType, attrValue as lookupAttrValue } from '../lookups.js';
 
-  import ComponentForm        from './ComponentForm.svelte';
-  import ComponentDetailPanel from './ComponentDetailPanel.svelte';
-  import InspectionPanel      from './InspectionPanel.svelte';
+  import ComponentInventoryTable from './ComponentInventoryTable.svelte';
+  import ComponentForm           from './ComponentForm.svelte';
+  import ComponentDetailPanel    from './ComponentDetailPanel.svelte';
+  import InspectionPanel         from './InspectionPanel.svelte';
 
   // ── Store bindings ────────────────────────────────────────────────
   $: store          = $v2protoStore;
@@ -23,127 +25,93 @@
   $: componentAttrs = store.componentAttrs;
   $: inspections    = store.inspections;
 
-  // ── Local state ───────────────────────────────────────────────────
+  // ── Floor presets ─────────────────────────────────────────────────
+  // short_name sets that define each preset
+  const RESIDENTIAL_SHORT = new Set(['G','1','2','3','4','5','6','7']);
+  const BASEMENT_SHORT    = new Set(['X','L','G']);
+
+  // ── Filter state ──────────────────────────────────────────────────
+  let floorPreset    = 'all';   // 'all' | 'residential' | 'basement' | 'single'
+  let filterFloorId  = '';
+  let filterTypeCode = '';
+  let filterStatus   = '';
+  let searchQuery    = '';
+
   let showForm            = false;
   let saving              = false;
-  let filterFloorId       = '';
   let errorMsg            = '';
   let editingComponent    = null;
   let inspectingComponent = null;
 
-  // ── Delete confirm state (two-click) ─────────────────────────────
-  let confirmingDelete = new Set();
-  const confirmTimers  = {};
+  // ── Derived: unique statuses present in components ────────────────
+  $: allStatuses = [...new Set(components.map(c => (c.status || 'ok').toLowerCase()))].sort();
 
-  function startDelete(c, e) {
-    e.stopPropagation();
-    if (confirmingDelete.has(c.id)) {
-      clearTimeout(confirmTimers[c.id]);
-      delete confirmTimers[c.id];
-      confirmingDelete.delete(c.id);
-      confirmingDelete = new Set(confirmingDelete);
-      doDelete(c.id);
-      return;
-    }
-    confirmingDelete.add(c.id);
-    confirmingDelete = new Set(confirmingDelete);
-    confirmTimers[c.id] = setTimeout(() => {
-      confirmingDelete.delete(c.id);
-      confirmingDelete = new Set(confirmingDelete);
-    }, 3000);
-  }
+  // ── Floor sets for presets ────────────────────────────────────────
+  $: residentialFloorIds = new Set(floors.filter(f => RESIDENTIAL_SHORT.has(f.short_name)).map(f => f.id));
+  $: basementFloorIds    = new Set(floors.filter(f => BASEMENT_SHORT.has(f.short_name)).map(f => f.id));
 
-  function cancelDelete(id, e) {
-    e?.stopPropagation();
-    clearTimeout(confirmTimers[id]);
-    delete confirmTimers[id];
-    confirmingDelete.delete(id);
-    confirmingDelete = new Set(confirmingDelete);
-  }
-
-  async function doDelete(id) {
-    try {
-      await v2protoStore.deleteComponent(id);
-      if (editingComponent?.id    === id) editingComponent    = null;
-      if (inspectingComponent?.id === id) inspectingComponent = null;
-    } catch (err) { errorMsg = err.message; }
-  }
-
-  // ── Derived: inspection helpers ───────────────────────────────────
-  $: inspectingType = inspectingComponent
-    ? (types.find(t => t.code === inspectingComponent.type_code) ?? null)
-    : null;
-  $: inspectingCheckable = inspectingType
-    ? (attrDefs[inspectingType.id] ?? []).filter(d => d.checkable && d.visible)
-    : [];
-  $: inspectingLastInspection = inspectingComponent
-    ? (inspections[inspectingComponent.id] ?? null)
-    : null;
-
-  // ── Filtered + sorted list ────────────────────────────────────────
+  // ── Filtered component list ───────────────────────────────────────
   $: filteredComponents = (() => {
-    const base = filterFloorId
-      ? components.filter(c => c.floor_id === filterFloorId)
-      : components;
-    return [...base].sort((a, b) => {
+    let list = components;
+
+    // Floor preset
+    if (floorPreset === 'residential') {
+      list = list.filter(c => residentialFloorIds.has(c.floor_id));
+    } else if (floorPreset === 'basement') {
+      list = list.filter(c => basementFloorIds.has(c.floor_id));
+    } else if (floorPreset === 'single' && filterFloorId) {
+      list = list.filter(c => c.floor_id === filterFloorId);
+    }
+
+    // Type
+    if (filterTypeCode) list = list.filter(c => c.type_code === filterTypeCode);
+
+    // Status
+    if (filterStatus) list = list.filter(c => (c.status || 'ok').toLowerCase() === filterStatus);
+
+    // Search (asset_id, label, linked_component_ref)
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(c =>
+        (c.asset_id  ?? '').toLowerCase().includes(q) ||
+        (c.label     ?? '').toLowerCase().includes(q) ||
+        (c.linked_component_ref ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    // Sort: floor level_order → type presentation_order
+    return [...list].sort((a, b) => {
       const flA = floors.find(f => f.id === a.floor_id);
       const flB = floors.find(f => f.id === b.floor_id);
-      if ((flA?.level_order ?? 9999) !== (flB?.level_order ?? 9999))
-        return (flA?.level_order ?? 9999) - (flB?.level_order ?? 9999);
+      const loA = flA?.level_order ?? 9999;
+      const loB = flB?.level_order ?? 9999;
+      if (loA !== loB) return loA - loB;
       const tA = types.find(t => t.code === a.type_code);
       const tB = types.find(t => t.code === b.type_code);
       return (tA?.presentation_order ?? 9999) - (tB?.presentation_order ?? 9999);
     });
   })();
 
-  // ── Row helpers ───────────────────────────────────────────────────
-  function typeFor(c)  { return typeByCode(types, c.type_code); }
-  function floorFor(c) { return floors.find(f => f.id === c.floor_id) ?? null; }
+  // ── Active filter label (for table title) ─────────────────────────
+  $: floorLabel = (() => {
+    if (floorPreset === 'residential') return 'Residential (G–7)';
+    if (floorPreset === 'basement')    return 'Basement (X, L, G)';
+    if (floorPreset === 'single' && filterFloorId) {
+      const fl = floors.find(f => f.id === filterFloorId);
+      return fl ? `${fl.name} (${fl.short_name})` : 'Single floor';
+    }
+    return 'All floors';
+  })();
 
-  function refStr(c) {
-    const t   = typeFor(c);
-    const fl  = floorFor(c)?.short_name ?? '?';
-    const ini = t?.initial ?? '?';
-    const id  = c.asset_id || c.label || '—';
-    return `${fl}/${ini}/${id}`;
-  }
+  // ── Inspection helpers ────────────────────────────────────────────
+  $: inspectingType = inspectingComponent
+    ? (types.find(t => t.code === inspectingComponent.type_code) ?? null) : null;
+  $: inspectingCheckable = inspectingType
+    ? (attrDefs[inspectingType.id] ?? []).filter(d => d.checkable && d.visible) : [];
+  $: inspectingLastInspection = inspectingComponent
+    ? (inspections[inspectingComponent.id] ?? null) : null;
 
-  function allAttrPairs(c) {
-    const t = typeFor(c);
-    if (!t) return [];
-    return defsForType(attrDefs, types, c.type_code)
-      .filter(d => d.visible !== false)
-      .map(d => ({ name: d.name, value: lookupAttrValue(componentAttrs, c.id, d.id) }))
-      .filter(p => p.value != null && p.value !== '');
-  }
-
-  function fmtDate(c) {
-    const ts = c.updated_at ?? c.created_at;
-    if (!ts) return '';
-    const d    = new Date(ts);
-    const diff = Date.now() - d;
-    if (diff < 60_000)         return 'just now';
-    if (diff < 3_600_000)      return `${Math.floor(diff / 60_000)}m`;
-    if (diff < 86_400_000)     return `${Math.floor(diff / 3_600_000)}h`;
-    if (diff < 86_400_000 * 7) return `${Math.floor(diff / 86_400_000)}d`;
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  }
-
-  function statusCls(s) {
-    if (s === 'problem')  return 'bg-amber-900/50 text-amber-400';
-    if (s === 'failed')   return 'bg-red-900/50 text-red-400';
-    if (s === 'inactive') return 'bg-slate-700 text-slate-500';
-    return 'bg-green-900/50 text-green-400';
-  }
-
-  function statusDot(s) {
-    if (s === 'problem')  return 'bg-amber-400';
-    if (s === 'failed')   return 'bg-red-400';
-    if (s === 'inactive') return 'bg-slate-500';
-    return 'bg-green-400';
-  }
-
-  // ── Create handler ────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────
   async function handleSubmit(e) {
     const { fields, attrValues } = e.detail;
     saving = true; errorMsg = '';
@@ -165,6 +133,24 @@
     editingComponent    = null;
     errorMsg            = '';
   }
+
+  async function handleDelete(e) {
+    try {
+      await v2protoStore.deleteComponent(e.detail.component.id);
+      if (editingComponent?.id    === e.detail.component.id) editingComponent    = null;
+      if (inspectingComponent?.id === e.detail.component.id) inspectingComponent = null;
+    } catch (err) { errorMsg = err.message; }
+  }
+
+  function clearFilters() {
+    floorPreset   = 'all';
+    filterFloorId = '';
+    filterTypeCode = '';
+    filterStatus  = '';
+    searchQuery   = '';
+  }
+
+  $: hasFilters = floorPreset !== 'all' || filterTypeCode || filterStatus || searchQuery.trim();
 </script>
 
 <!-- Error banner -->
@@ -176,7 +162,6 @@
 {/if}
 
 {#if inspectingComponent}
-  <!-- Inspection panel -->
   <div class="max-w-xl">
     <InspectionPanel
       component={inspectingComponent}
@@ -189,7 +174,6 @@
   </div>
 
 {:else if editingComponent}
-  <!-- Full detail / edit panel -->
   <div class="max-w-2xl">
     <ComponentDetailPanel
       component={editingComponent}
@@ -205,7 +189,6 @@
   </div>
 
 {:else if showForm}
-  <!-- Component creation form -->
   <div class="max-w-2xl bg-slate-800 rounded-xl border border-slate-700 p-6">
     <ComponentForm
       {types} {systems} {attrDefs} {attrOptions}
@@ -217,26 +200,12 @@
   </div>
 
 {:else}
-  <!-- Toolbar -->
-  <div class="flex items-center gap-4 mb-4">
-    <div class="flex items-center gap-2">
-      <span class="text-sm text-slate-400">Floor:</span>
-      <select
-        bind:value={filterFloorId}
-        class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-               focus:outline-none focus:border-purple-500"
-      >
-        <option value="">All floors</option>
-        {#each floors as f}
-          <option value={f.id}>{f.name} ({f.short_name})</option>
-        {/each}
-      </select>
-    </div>
-
+  <!-- New Component button -->
+  <div class="flex justify-end mb-3">
     <button
       on:click={() => { showForm = true; errorMsg = ''; }}
       disabled={floors.length === 0 || types.length === 0}
-      class="ml-auto px-4 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
+      class="px-4 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
              disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors
              flex items-center gap-2"
     >
@@ -244,171 +213,154 @@
     </button>
   </div>
 
-  <!-- Component list -->
   {#if store.loadingComponents}
     <p class="text-slate-500 text-sm">Loading components…</p>
 
-  {:else if filteredComponents.length === 0}
+  {:else if components.length === 0}
     <div class="text-center py-16 text-slate-500">
       <p class="text-4xl mb-3">🧩</p>
-      <p class="text-lg mb-1">
-        {filterFloorId ? 'No components on this floor' : 'No components yet'}
-      </p>
+      <p class="text-lg mb-1">No components yet</p>
       <p class="text-sm">
         {floors.length === 0
           ? 'Run migrations 014–016 to set up the location hierarchy.'
-          : 'Click "New Component" to create one using the new data model.'}
+          : 'Click "New Component" to create one.'}
       </p>
     </div>
 
   {:else}
-    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-slate-700">
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Components</p>
-        <span class="text-xs text-slate-600">
-          {filteredComponents.length} {filteredComponents.length !== 1 ? 'items' : 'item'}
-        </span>
-      </div>
+    <ComponentInventoryTable
+      components={filteredComponents}
+      {componentAttrs}
+      {attrDefs}
+      {types}
+      {systems}
+      {floors}
+      title="Components"
+      on:selectcomponent={e => { editingComponent = e.detail.component; errorMsg = ''; }}
+      on:deletecomponent={handleDelete}
+      on:inspect={e => { inspectingComponent = e.detail.component; editingComponent = null; errorMsg = ''; }}
+    >
+      <!-- ── Filters slot — rendered inside the card header ─────── -->
+      <div slot="filters" class="px-4 py-3 border-b border-slate-700 flex flex-wrap gap-3 items-end bg-slate-800/60">
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs border-collapse">
-          <thead>
-            <tr class="border-b border-slate-700 text-left bg-slate-800">
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-5"></th>
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Ref</th>
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Type</th>
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Status</th>
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Attributes</th>
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Position</th>
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Modified</th>
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each filteredComponents as c (c.id)}
-              {@const t      = typeFor(c)}
-              {@const attrs  = allAttrPairs(c)}
-              {@const inDel  = confirmingDelete.has(c.id)}
-              {@const status = (c.status || 'ok').toLowerCase()}
-              <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-              <tr
-                class="border-b border-slate-700/30 hover:bg-slate-700/30
-                       cursor-pointer transition-colors group
-                       {inDel ? 'bg-red-900/10' : ''}"
-                on:click={() => { editingComponent = c; errorMsg = ''; }}
-                title="Click to view / edit"
-              >
-
-                <!-- ① Icon -->
-                <td class="pl-3 pr-1 py-1">
-                  {#if t}
-                    <div
-                      class="w-4 h-4 flex items-center justify-center text-white
-                             text-[9px] font-bold shrink-0
-                             {t.marker_shape === 'circle' ? 'rounded-full' : 'rounded'}"
-                      style:background-color="#{t.colour}"
-                    >{t.initial}</div>
-                  {:else}
-                    <div class="w-4 h-4 rounded bg-slate-600 shrink-0"></div>
-                  {/if}
-                </td>
-
-                <!-- ② Ref: Floor/Initial/AssetID -->
-                <td class="px-2 py-1 font-mono text-slate-300 whitespace-nowrap
-                           group-hover:text-white transition-colors">
-                  {refStr(c)}
-                </td>
-
-                <!-- ③ Type name -->
-                <td class="px-2 py-1 text-slate-400 whitespace-nowrap">
-                  {t?.name ?? c.type_code}
-                </td>
-
-                <!-- ④ Status dot + badge -->
-                <td class="px-2 py-1 whitespace-nowrap">
-                  <span class="inline-flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full shrink-0 {statusDot(status)}"></span>
-                    <span class="px-1 py-0.5 rounded text-[10px] font-medium {statusCls(status)}">
-                      {status}
-                    </span>
-                  </span>
-                </td>
-
-                <!-- ⑤ Attributes: values in presentation order, · separated -->
-                <td class="px-2 py-1 text-slate-400 max-w-[320px]">
-                  {#if attrs.length > 0}
-                    <span class="truncate block"
-                          title={attrs.map(p => `${p.name}: ${p.value}`).join(' · ')}>
-                      {#each attrs as p, i}
-                        {#if i > 0}<span class="text-slate-700 mx-0.5">·</span>{/if}
-                        <span class="text-slate-300">{p.value}</span>
-                      {/each}
-                    </span>
-                  {:else}
-                    <span class="text-slate-700">—</span>
-                  {/if}
-                </td>
-
-                <!-- ⑥ Position -->
-                <td class="px-2 py-1 font-mono text-slate-500 whitespace-nowrap text-[10px]">
-                  {#if c.x_position != null}
-                    {(c.x_position * 100).toFixed(0)}%,{(c.y_position * 100).toFixed(0)}%
-                  {:else}
-                    <span class="text-slate-700">—</span>
-                  {/if}
-                </td>
-
-                <!-- ⑦ Date -->
-                <td class="px-2 py-1 text-slate-500 whitespace-nowrap text-[10px]">
-                  {fmtDate(c)}
-                </td>
-
-                <!-- ⑧ Actions -->
-                <td class="px-2 py-1 whitespace-nowrap" on:click|stopPropagation>
-                  <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100
-                              transition-opacity {inDel ? '!opacity-100' : ''}">
-
-                    {#if !inDel}
-                      <button
-                        on:click|stopPropagation={() => {
-                          inspectingComponent = c; editingComponent = null; errorMsg = '';
-                        }}
-                        class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600
-                               text-slate-300 hover:text-white transition-colors text-[10px]"
-                        title="Open inspection panel"
-                      >🔍</button>
-                    {/if}
-
-                    {#if inDel}
-                      <button
-                        on:click|stopPropagation={e => cancelDelete(c.id, e)}
-                        class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600
-                               text-slate-400 transition-colors text-[10px]"
-                        title="Cancel"
-                      >✕</button>
-                      <button
-                        on:click|stopPropagation={e => startDelete(c, e)}
-                        class="px-1.5 py-0.5 rounded bg-red-700 hover:bg-red-600
-                               text-white font-medium transition-colors text-[10px]"
-                        title="Confirm delete"
-                      >Delete?</button>
-                    {:else}
-                      <button
-                        on:click|stopPropagation={e => startDelete(c, e)}
-                        class="px-1.5 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
-                               text-red-500 border border-red-900/40 transition-colors text-[10px]"
-                        title="Delete (click twice)"
-                      >🗑</button>
-                    {/if}
-
-                  </div>
-                </td>
-
-              </tr>
+        <!-- Floor scope -->
+        <div class="flex flex-col gap-1">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Floor</p>
+          <div class="flex rounded-lg overflow-hidden border border-slate-600 text-xs">
+            {#each [
+              { id: 'all',         label: 'All' },
+              { id: 'residential', label: 'Residential' },
+              { id: 'basement',    label: 'Basement' },
+              { id: 'single',      label: 'Single…' },
+            ] as p (p.id)}
+              <button
+                on:click={() => { floorPreset = p.id; if (p.id !== 'single') filterFloorId = ''; }}
+                class="px-3 py-1.5 border-l border-slate-600 first:border-l-0 transition-colors
+                       {floorPreset === p.id
+                         ? 'bg-purple-600 text-white font-medium'
+                         : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}"
+              >{p.label}</button>
             {/each}
-          </tbody>
-        </table>
+          </div>
+        </div>
+
+        <!-- Single floor picker (only when preset = single) -->
+        {#if floorPreset === 'single'}
+          <div class="flex flex-col gap-1">
+            <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Select floor</p>
+            <select
+              bind:value={filterFloorId}
+              class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
+                     focus:outline-none focus:border-purple-500"
+            >
+              <option value="">— pick a floor —</option>
+              {#each floors as f}
+                <option value={f.id}>{f.name} ({f.short_name})</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
+
+        <!-- Type filter -->
+        <div class="flex flex-col gap-1">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Type</p>
+          <select
+            bind:value={filterTypeCode}
+            class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
+                   focus:outline-none focus:border-purple-500 min-w-[130px]"
+          >
+            <option value="">All types</option>
+            {#each types as t (t.code)}
+              <option value={t.code}>{t.name}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Status filter -->
+        <div class="flex flex-col gap-1">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Status</p>
+          <select
+            bind:value={filterStatus}
+            class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
+                   focus:outline-none focus:border-purple-500"
+          >
+            <option value="">All statuses</option>
+            {#each allStatuses as s}
+              <option value={s}>{s}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Search -->
+        <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Search</p>
+          <input
+            type="text"
+            bind:value={searchQuery}
+            placeholder="Ref, label…"
+            class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
+                   placeholder:text-slate-500 focus:outline-none focus:border-purple-500 w-full"
+          />
+        </div>
+
+        <!-- Clear filters -->
+        {#if hasFilters}
+          <button
+            on:click={clearFilters}
+            class="text-xs text-purple-400 hover:text-purple-300 transition-colors self-end pb-1.5"
+          >Clear</button>
+        {/if}
+
+        <!-- Active filter summary -->
+        <div class="w-full flex flex-wrap gap-1.5 mt-0.5">
+          {#if floorPreset !== 'all'}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
+                         bg-purple-900/40 text-purple-300 border border-purple-700/40">
+              {floorLabel}
+            </span>
+          {/if}
+          {#if filterTypeCode}
+            {@const tn = types.find(t => t.code === filterTypeCode)?.name ?? filterTypeCode}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
+                         bg-slate-700 text-slate-300 border border-slate-600">
+              Type: {tn}
+            </span>
+          {/if}
+          {#if filterStatus}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
+                         bg-slate-700 text-slate-300 border border-slate-600">
+              Status: {filterStatus}
+            </span>
+          {/if}
+          {#if searchQuery.trim()}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
+                         bg-slate-700 text-slate-300 border border-slate-600">
+              "{searchQuery.trim()}"
+            </span>
+          {/if}
+        </div>
+
       </div>
-    </div>
+    </ComponentInventoryTable>
   {/if}
 {/if}
