@@ -82,8 +82,9 @@
             <td class="py-2 pr-4 font-mono text-slate-300 text-xs">{row.short_name}</td>
             <td class="py-2 pr-4">
               <input
-                type="number"
-                min="1"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 placeholder="—"
                 bind:value={row._walkOrder}
                 on:input={() => markDirty(row)}
