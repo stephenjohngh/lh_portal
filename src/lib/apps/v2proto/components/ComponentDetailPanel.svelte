@@ -8,6 +8,7 @@
   import { typeByCode, floorById } from '../lookups.js';
   import AttrField from './AttrField.svelte';
   import { inp, sec, STATUSES } from '../ui.js';
+  import { api } from '$lib/utils/api';
 
   export let component;          // components row
   export let types       = [];
@@ -178,6 +179,40 @@
       day: 'numeric', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
+  }
+
+  // ── Inspection history (last 5, latest first) ─────────────────────
+  let recentInspections   = [];
+  let loadingInspections  = false;
+
+  async function loadInspectionHistory(componentId) {
+    loadingInspections = true;
+    recentInspections  = [];
+    try {
+      recentInspections = await api.get('component_inspections', {
+        filters:   { component_id: componentId },
+        orderBy:   'inspected_at',
+        ascending: false,
+        limit:     5,
+      });
+    } catch (_) {
+      recentInspections = [];
+    } finally {
+      loadingInspections = false;
+    }
+  }
+
+  // Reload whenever the selected component changes (reuses the loadedId sentinel)
+  $: loadInspectionHistory(component.id);
+
+  function resultBadgeClass(r) {
+    return r === 'ok'       ? 'bg-green-600/30 text-green-400 border-green-700/40'  :
+           r === 'failed'   ? 'bg-red-600/30 text-red-400 border-red-700/40'        :
+           r === 'problem'  ? 'bg-amber-600/30 text-amber-400 border-amber-700/40'  :
+                              'bg-slate-700/60 text-slate-400 border-slate-600/40';
+  }
+  function resultText(r) {
+    return { ok: '✓ PASS', failed: '✗ FAIL', problem: '⚙ PROBLEM', inactive: '— INACTIVE' }[r] ?? (r ?? '—');
   }
 </script>
 
@@ -438,43 +473,35 @@
       {/if}
     </section>
 
-    <!-- ── Last inspection ────────────────────────────────────────── -->
+    <!-- ── Inspection history ────────────────────────────────────── -->
     <section class="border border-slate-700 rounded-lg p-4 bg-slate-800/30">
-      <div class="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <p class="{sec} mb-1">Last Inspection</p>
-          {#if inspection}
-            {@const iDate = new Date(inspection.inspected_at)}
-            <div class="flex items-center gap-3 flex-wrap">
-              <span class="text-sm text-slate-300">
-                {iDate.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
-              </span>
-              <span class="text-xs px-2 py-0.5 rounded font-medium
-                {inspection.inspection_result === 'OK'       ? 'bg-green-600/30 text-green-400'   :
-                 inspection.inspection_result === 'problem'  ? 'bg-yellow-600/30 text-yellow-400' :
-                 inspection.inspection_result === 'failed'   ? 'bg-red-600/30 text-red-400'       :
-                                                               'bg-slate-700 text-slate-400'}">
-                {inspection.inspection_result}
-              </span>
-              {#if inspection.inspector_notes}
-                <span class="text-xs text-slate-500 italic truncate max-w-[200px]"
-                      title={inspection.inspector_notes}>
-                  "{inspection.inspector_notes}"
+      <p class="{sec} mb-3">Inspection History</p>
+
+      {#if loadingInspections}
+        <p class="text-sm text-slate-500 italic">Loading…</p>
+
+      {:else if recentInspections.length === 0}
+        <p class="text-sm text-slate-500 italic">Not yet inspected.</p>
+
+      {:else}
+        <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {#each recentInspections as insp (insp.id)}
+            <div class="border border-slate-700/60 rounded-lg p-3 bg-slate-800/50">
+              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                <span class="text-xs text-slate-400 tabular-nums">{fmt(insp.inspected_at)}</span>
+                <span class="text-xs px-2 py-0.5 rounded border font-medium {resultBadgeClass(insp.inspection_result)}">
+                  {resultText(insp.inspection_result)}
                 </span>
+              </div>
+              {#if insp.inspector_notes}
+                <p class="text-sm text-slate-300 whitespace-pre-line leading-relaxed">{insp.inspector_notes}</p>
+              {:else}
+                <p class="text-xs text-slate-600 italic">No notes recorded</p>
               {/if}
             </div>
-          {:else}
-            <p class="text-sm text-slate-500 italic">Not yet inspected.</p>
-          {/if}
+          {/each}
         </div>
-        <button
-          on:click={handleInspect}
-          class="text-sm px-3 py-1.5 rounded-lg bg-purple-600/80 hover:bg-purple-600
-                 text-white transition-colors shrink-0"
-        >
-          Record Inspection →
-        </button>
-      </div>
+      {/if}
     </section>
 
     <!-- ── Metadata ───────────────────────────────────────────────── -->
