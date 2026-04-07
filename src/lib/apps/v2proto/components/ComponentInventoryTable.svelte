@@ -100,6 +100,29 @@
     return 'bg-green-400';
   }
 
+  // ── Sort: floor → system → type → asset_id ───────────────────────
+  $: sortedComponents = [...components].sort((a, b) => {
+    const flA = floors.find(f => f.id === a.floor_id);
+    const flB = floors.find(f => f.id === b.floor_id);
+    const loA = flA?.level_order ?? 9999;
+    const loB = flB?.level_order ?? 9999;
+    if (loA !== loB) return loA - loB;
+
+    const tA  = types.find(t => t.code === a.type_code);
+    const tB  = types.find(t => t.code === b.type_code);
+    const sA  = systems.find(s => s.id === tA?.building_system_id);
+    const sB  = systems.find(s => s.id === tB?.building_system_id);
+    const spA = sA?.presentation_order ?? 9999;
+    const spB = sB?.presentation_order ?? 9999;
+    if (spA !== spB) return spA - spB;
+
+    const tpA = tA?.presentation_order ?? 9999;
+    const tpB = tB?.presentation_order ?? 9999;
+    if (tpA !== tpB) return tpA - tpB;
+
+    return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
+  });
+
   // ── Summary data ──────────────────────────────────────────────────
   $: summaryRows = (() => {
     const rows = new Map();
@@ -177,7 +200,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each components as c (c.id)}
+          {#each sortedComponents as c (c.id)}
             {@const t      = typeFor(c)}
             {@const attrs  = allAttrPairs(c)}
             {@const inDel  = confirmingDelete.has(c.id)}

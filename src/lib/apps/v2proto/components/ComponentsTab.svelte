@@ -33,9 +33,13 @@
   // ── Filter state ──────────────────────────────────────────────────
   let floorPreset    = 'all';   // 'all' | 'residential' | 'basement' | 'single'
   let filterFloorId  = '';
+  let filterSystemId = '';      // '' = all systems
   let filterTypeCode = '';
   let filterStatus   = '';
   let searchQuery    = '';
+
+  // Reset type filter when system changes
+  $: if (filterSystemId) filterTypeCode = '';
 
   let showForm            = false;
   let saving              = false;
@@ -63,6 +67,12 @@
       list = list.filter(c => c.floor_id === filterFloorId);
     }
 
+    // System (filter via type's building_system_id)
+    if (filterSystemId) {
+      const systemTypeCodes = new Set(types.filter(t => t.building_system_id === filterSystemId).map(t => t.code));
+      list = list.filter(c => systemTypeCodes.has(c.type_code));
+    }
+
     // Type
     if (filterTypeCode) list = list.filter(c => c.type_code === filterTypeCode);
 
@@ -79,17 +89,7 @@
       );
     }
 
-    // Sort: floor level_order → type presentation_order
-    return [...list].sort((a, b) => {
-      const flA = floors.find(f => f.id === a.floor_id);
-      const flB = floors.find(f => f.id === b.floor_id);
-      const loA = flA?.level_order ?? 9999;
-      const loB = flB?.level_order ?? 9999;
-      if (loA !== loB) return loA - loB;
-      const tA = types.find(t => t.code === a.type_code);
-      const tB = types.find(t => t.code === b.type_code);
-      return (tA?.presentation_order ?? 9999) - (tB?.presentation_order ?? 9999);
-    });
+    return list;
   })();
 
   // ── Active filter label (for table title) ─────────────────────────
@@ -142,15 +142,21 @@
     } catch (err) { errorMsg = err.message; }
   }
 
+  // Types filtered to selected system (for the type dropdown)
+  $: typesForSystem = filterSystemId
+    ? types.filter(t => t.building_system_id === filterSystemId)
+    : types;
+
   function clearFilters() {
-    floorPreset   = 'all';
-    filterFloorId = '';
+    floorPreset    = 'all';
+    filterFloorId  = '';
+    filterSystemId = '';
     filterTypeCode = '';
-    filterStatus  = '';
-    searchQuery   = '';
+    filterStatus   = '';
+    searchQuery    = '';
   }
 
-  $: hasFilters = floorPreset !== 'all' || filterTypeCode || filterStatus || searchQuery.trim();
+  $: hasFilters = floorPreset !== 'all' || filterSystemId || filterTypeCode || filterStatus || searchQuery.trim();
 </script>
 
 <!-- Error banner -->
@@ -281,7 +287,22 @@
           </div>
         {/if}
 
-        <!-- Type filter -->
+        <!-- System filter -->
+        <div class="flex flex-col gap-1">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">System</p>
+          <select
+            bind:value={filterSystemId}
+            class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
+                   focus:outline-none focus:border-purple-500 min-w-[130px]"
+          >
+            <option value="">All systems</option>
+            {#each systems as s (s.id)}
+              <option value={s.id}>{s.name}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Type filter (scoped to selected system) -->
         <div class="flex flex-col gap-1">
           <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Type</p>
           <select
@@ -290,7 +311,7 @@
                    focus:outline-none focus:border-purple-500 min-w-[130px]"
           >
             <option value="">All types</option>
-            {#each types as t (t.code)}
+            {#each typesForSystem as t (t.code)}
               <option value={t.code}>{t.name}</option>
             {/each}
           </select>
@@ -337,6 +358,13 @@
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
                          bg-purple-900/40 text-purple-300 border border-purple-700/40">
               {floorLabel}
+            </span>
+          {/if}
+          {#if filterSystemId}
+            {@const sn = systems.find(s => s.id === filterSystemId)?.name ?? '?'}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
+                         bg-slate-700 text-slate-300 border border-slate-600">
+              System: {sn}
             </span>
           {/if}
           {#if filterTypeCode}
