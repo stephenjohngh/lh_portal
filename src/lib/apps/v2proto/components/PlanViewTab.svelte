@@ -730,7 +730,6 @@
           {attrDefs} {attrOptions}
           components={$v2protoStore.components}
           attrs={componentAttrs[selectedComponent.id] ?? []}
-          inspection={inspections[selectedComponent.id] ?? null}
           on:saved={handleDetailSaved}
           on:close={() => { selectedComponent = null; sidebarMode = 'none'; }}
           on:inspect={handleDetailInspect}

@@ -20,7 +20,6 @@
   export let attrOptions = {};
   export let attrs       = [];   // component_attributes[] for this component
   export let components  = [];   // all components[] for datalist
-  export let inspection  = null; // latest component_inspections row or null
 
   const dispatch = createEventDispatcher();
 

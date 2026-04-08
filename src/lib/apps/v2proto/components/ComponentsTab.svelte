@@ -186,7 +186,6 @@
       {types} {systems} {floors} {facilities} {plans}
       {attrDefs} {attrOptions} {components}
       attrs={componentAttrs[editingComponent.id] ?? []}
-      inspection={inspections[editingComponent.id] ?? null}
       on:saved={handleDetailSaved}
       on:close={() => editingComponent = null}
       on:inspect={handleDetailInspect}
