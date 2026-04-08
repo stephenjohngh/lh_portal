@@ -21,24 +21,16 @@
   $: plans          = store.plans;
   $: facilities     = store.facilities;
 
-  // Flat map: type_attribute_id → attribute name (for resolving attr labels)
-  $: attrIdToName = (() => {
-    const map = {};
-    for (const defs of Object.values(attrDefs)) {
-      for (const d of defs) map[d.id] = d.name;
-    }
-    return map;
-  })();
-
   // ── Report section toggles ────────────────────────────────────────────────────
   // Per-floor sections (all appear together for each floor in this order):
-  let includePlan         = false;   // plan graphic
-  let includeList         = true;    // full component table
-  let includeFloorSummary = true;    // type/status count table for that floor
-  // Separate final section:
-  let includeFullSummary  = false;   // aggregate pivot across all floors
+  let includePlan              = false;   // plan graphic
+  let includeList              = true;    // full component table
+  let includeFloorSummary      = true;    // type/status count table for that floor
+  // Separate final sections:
+  let includeFullSummary       = false;   // aggregate pivot across all floors
+  let includeFullComponentList = false;   // all-floors combined component table
 
-  $: noneSelected = !includePlan && !includeList && !includeFloorSummary && !includeFullSummary;
+  $: noneSelected = !includePlan && !includeList && !includeFloorSummary && !includeFullSummary && !includeFullComponentList;
 
   // ── Scope: floors ─────────────────────────────────────────────────────────────
   // empty set = all floors; floorsCleared = true means user explicitly unchecked all
@@ -63,10 +55,11 @@
       const saved = localStorage.getItem(REPORT_PREF_KEY);
       if (saved) {
         const p = JSON.parse(saved);
-        includePlan         = p.includePlan         ?? false;
-        includeList         = p.includeList         ?? true;
-        includeFloorSummary = p.includeFloorSummary ?? true;
-        includeFullSummary  = p.includeFullSummary  ?? false;
+        includePlan              = p.includePlan              ?? false;
+        includeList              = p.includeList              ?? true;
+        includeFloorSummary      = p.includeFloorSummary      ?? true;
+        includeFullSummary       = p.includeFullSummary       ?? false;
+        includeFullComponentList = p.includeFullComponentList ?? false;
         floorsCleared       = p.floorsCleared       ?? false;
         systemsCleared      = p.systemsCleared      ?? false;
         const validFloors   = new Set(floors.map(f => f.id));
@@ -83,7 +76,7 @@
   // Auto-save whenever any setting changes (all Set changes use reassignment so Svelte tracks them)
   $: if (prefsRestored) {
     localStorage.setItem(REPORT_PREF_KEY, JSON.stringify({
-      includePlan, includeList, includeFloorSummary, includeFullSummary,
+      includePlan, includeList, includeFloorSummary, includeFullSummary, includeFullComponentList,
       selectedFloorIds:  [...selectedFloorIds],
       floorsCleared,
       selectedSystemIds: [...selectedSystemIds],
@@ -95,6 +88,28 @@
   // ── Helpers ───────────────────────────────────────────────────────────────────
   function typeOf(c)  { return types.find(t => t.code === c.type_code); }
   function systemOf(t){ return t ? systems.find(s => s.id === t.building_system_id) : null; }
+
+  // Resolve all non-checkable, visible attr name/value pairs for a component.
+  // Merges stored component_attributes with type-level default_value fallback.
+  function resolveAttrs(c) {
+    const t = typeOf(c);
+    if (!t) return [];
+    const defs   = attrDefs[t.id] ?? [];
+    const stored = componentAttrs[c.id] ?? [];
+    const storedMap = {};
+    for (const a of stored) storedMap[a.type_attribute_id] = a.value;
+    return defs
+      .filter(d => d.visible !== false && !d.checkable)
+      .map(d => {
+        const raw = storedMap[d.id] ?? d.default_value ?? null;
+        if (raw == null || raw === '') return null;
+        if (d.display_type === 'checkbox') {
+          return raw === 'true' ? { name: d.name, value: 'Yes' } : null;
+        }
+        return { name: d.name, value: String(raw) };
+      })
+      .filter(Boolean);
+  }
 
   // ── Filtered component set ────────────────────────────────────────────────────
   $: filteredComponents = components.filter(c => {
@@ -287,9 +302,6 @@
           const resolvedComponents = sorted.map(c => {
             const t   = typeOf(c);
             const sys = systemOf(t);
-            const attrs = (componentAttrs[c.id] ?? [])
-              .map(a => ({ name: attrIdToName[a.type_attribute_id] ?? '', value: a.value }))
-              .filter(a => a.name && a.value != null && a.value !== '');
             const insp = inspections[c.id];
             return {
               asset_id:         c.asset_id,
@@ -299,7 +311,7 @@
               type_initial:     t?.initial ?? '?',
               system_name:      sys?.name  ?? '',
               floor_short:      f.short_name,
-              attributes:       attrs,
+              attributes:       resolveAttrs(c),
               last_inspected:   insp?.inspected_at   ?? null,
               last_notes:       insp?.inspector_notes ?? null,
             };
@@ -361,10 +373,11 @@
       const now         = new Date();
       const generatedAt = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       const reportTypes = [
-        ...(includePlan         ? ['plan']          : []),
-        ...(includeList         ? ['full_list']      : []),
-        ...(includeFloorSummary ? ['floor_summary']  : []),
-        ...(includeFullSummary  ? ['full_summary']   : []),
+        ...(includePlan              ? ['plan']                  : []),
+        ...(includeList              ? ['full_list']              : []),
+        ...(includeFloorSummary      ? ['floor_summary']          : []),
+        ...(includeFullSummary       ? ['full_summary']           : []),
+        ...(includeFullComponentList ? ['full_component_list']    : []),
       ];
 
       // Build per-floor payload (including optional annotated plan images)
@@ -385,21 +398,18 @@
           const resolvedComponents = sortedComps.map(c => {
             const t   = typeOf(c);
             const sys = systemOf(t);
-            const attrs = (componentAttrs[c.id] ?? [])
-              .map(a => ({ name: attrIdToName[a.type_attribute_id] ?? '', value: a.value }))
-              .filter(a => a.name && a.value != null && a.value !== '');
             return {
-              id:               c.id,
-              asset_id:         c.asset_id,
-              label:            c.label,
-              type_code:        c.type_code,
-              type_name:        t?.name    ?? c.type_code,
-              type_initial:     t?.initial ?? '?',
-              type_colour:      t?.colour  ?? '888888',
-              system_name:      sys?.name  ?? '',
-              status:           c.status,
+              id:                c.id,
+              asset_id:          c.asset_id,
+              label:             c.label,
+              type_code:         c.type_code,
+              type_name:         t?.name    ?? c.type_code,
+              type_initial:      t?.initial ?? '?',
+              type_colour:       t?.colour  ?? '888888',
+              system_name:       sys?.name  ?? '',
+              status:            c.status,
               primary_attribute: c.primary_attribute,
-              attributes:       attrs,
+              attributes:        resolveAttrs(c),
             };
           });
 
@@ -418,12 +428,41 @@
         })
       );
 
+      // Build full combined component list (all floors, floor→system→type→asset_id sort)
+      const allComponentsPayload = includeFullComponentList
+        ? filteredByFloor.flatMap(({ floor, components: comps }) => {
+            const t_comps = [...comps].sort((a, b) => {
+              const ta = typeOf(a), tb = typeOf(b);
+              const sa = systemOf(ta)?.name ?? '';
+              const sb = systemOf(tb)?.name ?? '';
+              return sa.localeCompare(sb) ||
+                     (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
+                     (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
+            });
+            return t_comps.map(c => {
+              const t   = typeOf(c);
+              const sys = systemOf(t);
+              return {
+                floor_short:  floor.short_name,
+                floor_order:  floor.level_order ?? 9999,
+                system_name:  sys?.name ?? '',
+                type_name:    t?.name   ?? c.type_code,
+                asset_id:     c.asset_id,
+                label:        c.label,
+                status:       c.status,
+                attributes:   resolveAttrs(c),
+              };
+            });
+          })
+        : [];
+
       const res = await fetch('/api/v2/generate-report', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          options: { reportTypes, building, filterSummary, generatedAt },
-          floors:  floorsPayload,
+          options:       { reportTypes, building, filterSummary, generatedAt },
+          floors:        floorsPayload,
+          allComponents: allComponentsPayload,
         }),
       });
 
@@ -526,8 +565,9 @@
 
         <div class="border-t border-slate-700 pt-3">
           <p class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Separate Final Section</p>
-          <div class="pl-1">
-            <Checkbox bind:checked={includeFullSummary} label="📈 Full Summary (all selected floors combined)" />
+          <div class="pl-1 space-y-2">
+            <Checkbox bind:checked={includeFullSummary}       label="📈 Full Summary (all selected floors combined)" />
+            <Checkbox bind:checked={includeFullComponentList} label="📋 Full Component List (all selected floors combined)" />
           </div>
         </div>
       </div>
@@ -695,6 +735,9 @@
           {/if}
           {#if includeFullSummary}
             <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Full summary — all floors combined</li>
+          {/if}
+          {#if includeFullComponentList}
+            <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Full component list — all floors combined</li>
           {/if}
           {#if noneSelected}
             <li class="text-amber-400">⚠ Nothing selected</li>

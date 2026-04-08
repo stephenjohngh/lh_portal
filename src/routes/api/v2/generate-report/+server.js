@@ -102,6 +102,83 @@ function sortComponents(comps) {
   );
 }
 
+// ── Full component list table (all floors combined) ───────────────────────────
+// Columns: Floor | System | Type | Id | Label | Attributes | Status
+// DXA:      700  |  1300  | 1500 | 560| 1800  |    2600    |  2006  = 10466
+const FCL_COLS = [700, 1300, 1500, 560, 1800, 2600, 2006];
+
+function buildFullComponentListTable(components) {
+  // components arrive pre-sorted (floor_order → system → type → asset_id) from client
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: [
+      hCell('Floor',      FCL_COLS[0]),
+      hCell('System',     FCL_COLS[1]),
+      hCell('Type',       FCL_COLS[2]),
+      hCell('Id',         FCL_COLS[3]),
+      hCell('Label',      FCL_COLS[4]),
+      hCell('Attributes', FCL_COLS[5]),
+      hCell('Status',     FCL_COLS[6]),
+    ],
+  });
+
+  const dataRows = components.map((c, idx) => {
+    const alt   = idx % 2 === 1;
+    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('  ·  ');
+    return new TableRow({
+      children: [
+        dCell(c.floor_short  ?? '—', FCL_COLS[0], { alt }),
+        dCell(c.system_name  ?? '—', FCL_COLS[1], { alt }),
+        dCell(c.type_name    ?? '—', FCL_COLS[2], { alt }),
+        dCell(c.asset_id     ?? '—', FCL_COLS[3], { alt }),
+        dCell(c.label        ?? '—', FCL_COLS[4], { alt }),
+        dCell(attrs || '—',          FCL_COLS[5], { alt }),
+        statusCell(c.status, FCL_COLS[6], alt),
+      ],
+    });
+  });
+
+  return new Table({
+    width:        { size: CONTENT_W, type: WidthType.DXA },
+    layout:       TableLayoutType.FIXED,
+    columnWidths: FCL_COLS,
+    borders:      BORDERS,
+    rows:         [headerRow, ...dataRows],
+  });
+}
+
+function buildFullComponentListSection(allComponents, building, filterSummary) {
+  const children = [];
+
+  children.push(new Paragraph({
+    heading:  HeadingLevel.HEADING_1,
+    spacing:  { before: 0, after: 200 },
+    children: [run(`${building} — Full Component List`, { size: 36, bold: true, color: COLOURS.textDark })],
+  }));
+
+  if (filterSummary && filterSummary !== 'All components') {
+    children.push(para([
+      run('Filters: ', { bold: true, size: 18 }),
+      run(filterSummary, { italics: true, size: 18, color: COLOURS.textMuted }),
+    ], { after: 200 }));
+  }
+
+  children.push(para([
+    run(`${allComponents.length} component${allComponents.length === 1 ? '' : 's'} total`,
+      { size: 18, color: COLOURS.textMuted }),
+  ], { after: 160 }));
+
+  if (allComponents.length === 0) {
+    children.push(para('No components match the current filters.', { after: 160 }));
+    return children;
+  }
+
+  children.push(buildFullComponentListTable(allComponents));
+  children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
+
+  return children;
+}
+
 // ── Full component table (per floor) ─────────────────────────────────────────
 // Columns: System | Type | Asset ID | Label | Attributes | Notes | Status
 // DXA:     1400  | 1600 |   68     | 1957  |    2200    | 2791  |  450  = 10466
@@ -324,7 +401,7 @@ export async function POST({ request }) {
 
   try {
     const body = await request.json();
-    const { options = {}, floors = [] } = body;
+    const { options = {}, floors = [], allComponents = [] } = body;
 
     const {
       reportTypes  = [],
@@ -340,10 +417,11 @@ export async function POST({ request }) {
       return json({ error: 'No floor data supplied.' }, { status: 400 });
     }
 
-    const wantPlan         = reportTypes.includes('plan');
-    const wantList         = reportTypes.includes('full_list');
-    const wantFloorSummary = reportTypes.includes('floor_summary');
-    const wantFullSummary  = reportTypes.includes('full_summary');
+    const wantPlan              = reportTypes.includes('plan');
+    const wantList              = reportTypes.includes('full_list');
+    const wantFloorSummary      = reportTypes.includes('floor_summary');
+    const wantFullSummary       = reportTypes.includes('full_summary');
+    const wantFullComponentList = reportTypes.includes('full_component_list');
 
     logger('Report types:', reportTypes.join(', '), '| Floors:', floors.length, '| Building:', building);
 
@@ -441,6 +519,12 @@ export async function POST({ request }) {
     if (wantFullSummary) {
       children.push(new Paragraph({ children: [new PageBreak()] }));
       children.push(...buildFullSummarySection(floors, building, filterSummary));
+    }
+
+    // ── Full component list section (all floors combined) ─────────────────────
+    if (wantFullComponentList) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+      children.push(...buildFullComponentListSection(allComponents, building, filterSummary));
     }
 
     // ── Build document ────────────────────────────────────────────────────────
