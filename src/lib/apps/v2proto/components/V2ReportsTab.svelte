@@ -26,6 +26,7 @@
   let includePlan              = false;   // plan graphic
   let includeList              = true;    // full component table
   let includeFloorSummary      = true;    // type/status count table for that floor
+  let includeNotes             = false;   // latest inspection notes column (per-floor table)
   // Separate final sections:
   let includeFullSummary       = false;   // aggregate pivot across all floors
   let includeFullComponentList = false;   // all-floors combined component table
@@ -58,6 +59,7 @@
         includePlan              = p.includePlan              ?? false;
         includeList              = p.includeList              ?? true;
         includeFloorSummary      = p.includeFloorSummary      ?? true;
+        includeNotes             = p.includeNotes             ?? false;
         includeFullSummary       = p.includeFullSummary       ?? false;
         includeFullComponentList = p.includeFullComponentList ?? false;
         floorsCleared       = p.floorsCleared       ?? false;
@@ -76,7 +78,7 @@
   // Auto-save whenever any setting changes (all Set changes use reassignment so Svelte tracks them)
   $: if (prefsRestored) {
     localStorage.setItem(REPORT_PREF_KEY, JSON.stringify({
-      includePlan, includeList, includeFloorSummary, includeFullSummary, includeFullComponentList,
+      includePlan, includeList, includeFloorSummary, includeNotes, includeFullSummary, includeFullComponentList,
       selectedFloorIds:  [...selectedFloorIds],
       floorsCleared,
       selectedSystemIds: [...selectedSystemIds],
@@ -300,8 +302,8 @@
           });
 
           const resolvedComponents = sorted.map(c => {
-            const t   = typeOf(c);
-            const sys = systemOf(t);
+            const t    = typeOf(c);
+            const sys  = systemOf(t);
             const insp = inspections[c.id];
             return {
               asset_id:         c.asset_id,
@@ -311,6 +313,7 @@
               type_initial:     t?.initial ?? '?',
               system_name:      sys?.name  ?? '',
               floor_short:      f.short_name,
+              status:           c.status,
               attributes:       resolveAttrs(c),
               last_inspected:   insp?.inspected_at   ?? null,
               last_notes:       insp?.inspector_notes ?? null,
@@ -323,10 +326,20 @@
           };
         });
 
-      const res = await fetch('/api/v2/generate-failures-report', {
+      const res = await fetch('/api/v2/generate-report', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ building, generatedAt, floors: floorsPayload }),
+        body:    JSON.stringify({
+          options: {
+            reportTypes:   ['full_list'],
+            building,
+            filterSummary: 'Status: failed',
+            generatedAt,
+            includeNotes:  true,
+          },
+          floors:        floorsPayload,
+          allComponents: [],
+        }),
       });
 
       if (!res.ok) {
@@ -396,8 +409,9 @@
           });
 
           const resolvedComponents = sortedComps.map(c => {
-            const t   = typeOf(c);
-            const sys = systemOf(t);
+            const t    = typeOf(c);
+            const sys  = systemOf(t);
+            const insp = includeNotes ? ($v2protoStore.inspections[c.id] ?? null) : null;
             return {
               id:                c.id,
               asset_id:          c.asset_id,
@@ -410,6 +424,8 @@
               status:            c.status,
               primary_attribute: c.primary_attribute,
               attributes:        resolveAttrs(c),
+              last_inspected:    insp?.inspected_at    ?? null,
+              last_notes:        insp?.inspector_notes ?? null,
             };
           });
 
@@ -460,7 +476,7 @@
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          options:       { reportTypes, building, filterSummary, generatedAt },
+          options:       { reportTypes, building, filterSummary, generatedAt, includeNotes },
           floors:        floorsPayload,
           allComponents: allComponentsPayload,
         }),
@@ -555,6 +571,7 @@
           <Checkbox bind:checked={includePlan}         label="🗺 Plan Graphic" />
           <Checkbox bind:checked={includeList}         label="📋 Full Component Table" />
           <Checkbox bind:checked={includeFloorSummary} label="📊 Floor Summary" />
+          <Checkbox bind:checked={includeNotes}        label="📝 Inspection Notes" />
         </div>
 
         {#if includePlan}
@@ -729,6 +746,9 @@
           {/if}
           {#if includeList}
             <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Full component table (per floor)</li>
+          {/if}
+          {#if includeNotes}
+            <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Inspection notes column (latest per component)</li>
           {/if}
           {#if includeFloorSummary}
             <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Floor summary by type (per floor)</li>

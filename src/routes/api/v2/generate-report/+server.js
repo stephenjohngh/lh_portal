@@ -182,7 +182,7 @@ function buildFullComponentListSection(allComponents, building, filterSummary) {
 // System column removed — sort order (system→type→asset) preserved in data.
 const FL_COLS = [2500, 560, 2200, 2657, 1559, 990];
 
-function buildComponentTable(components) {
+function buildComponentTable(components, includeNotes = false) {
   const sorted = sortComponents(components);
 
   const headerRow = new TableRow({
@@ -200,13 +200,14 @@ function buildComponentTable(components) {
   const dataRows = sorted.map((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('\n');
+    const notes = includeNotes ? (c.last_notes ?? '') : '';
     return new TableRow({
       children: [
         dCell(c.type_name   ?? '—', FL_COLS[0], { alt }),
         dCell(c.asset_id    ?? '—', FL_COLS[1], { alt }),
         dCell(c.label       ?? '—', FL_COLS[2], { alt }),
         dCell(attrs || '—',         FL_COLS[3], { alt }),
-        dCell('',                   FL_COLS[4], { alt }),
+        dCell(notes,                FL_COLS[4], { alt }),
         statusCell(c.status, FL_COLS[5], alt),
       ],
     });
@@ -399,10 +400,11 @@ export async function POST({ request }) {
     const { options = {}, floors = [], allComponents = [] } = body;
 
     const {
-      reportTypes  = [],
-      building     = 'Lancaster House',
+      reportTypes   = [],
+      building      = 'Lancaster House',
       filterSummary = '',
-      generatedAt  = '',
+      generatedAt   = '',
+      includeNotes  = false,
     } = options;
 
     if (!reportTypes.length) {
@@ -499,7 +501,7 @@ export async function POST({ request }) {
 
       // ── Full component table ──────────────────────────────────────────────
       if (wantList) {
-        children.push(buildComponentTable(components));
+        children.push(buildComponentTable(components, includeNotes));
         children.push(new Paragraph({ spacing: { after: 240 }, children: [] }));
       }
 
