@@ -193,13 +193,13 @@
             <p class="text-xs text-slate-500">X Position (0–1)</p>
             <input type="number" min="0" max="1" step="0.01"
               bind:value={xPosition}
-              class="{cls} w-28" />
+              class="{inp} w-28" />
           </div>
           <div class="flex flex-col gap-1">
             <p class="text-xs text-slate-500">Y Position (0–1)</p>
             <input type="number" min="0" max="1" step="0.01"
               bind:value={yPosition}
-              class="{cls} w-28" />
+              class="{inp} w-28" />
           </div>
         </div>
       {/if}
@@ -217,7 +217,7 @@
       bind:value={linkedComponentRef}
       list="component-refs"
       placeholder="e.g. DB / G / Fire Door / FD-042"
-      class="{cls} font-mono placeholder-slate-600"
+      class="{inp} font-mono placeholder-slate-600"
     />
     <datalist id="component-refs">
       {#each refOptions as ref}

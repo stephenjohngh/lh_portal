@@ -8,8 +8,10 @@ import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
-import { supabase }      from '$lib/supabaseClient';
+import { supabase }      from '$lib/supabaseClient';   // auth only
 import { sortByFloor }   from '$lib/utils/floorSorting';
+import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
+import { sortByResultFloorAsset } from '$lib/apps/v2/utils/componentSorting.js';
 
 const logger = getLogger('v2walkStore');
 
@@ -164,20 +166,8 @@ function createV2WalkStore() {
           api.get('component_attributes'),
         ]);
 
-      // Build attrDefs: effective attribute set per type
-      const attrDefs = {};
-      const systemDefs = defs.filter(d => d.building_system_id != null);
-      const typeDefs   = defs.filter(d => d.component_type_id  != null);
-      for (const t of types) {
-        const inherited = systemDefs
-          .filter(d => d.building_system_id === t.building_system_id)
-          .map(a => ({ ...a, _scope: 'system' }));
-        const own = typeDefs
-          .filter(d => d.component_type_id === t.id)
-          .map(a => ({ ...a, _scope: 'type' }));
-        attrDefs[t.id] = [...inherited, ...own]
-          .sort((a, b) => a.presentation_order - b.presentation_order);
-      }
+      // Build attrDefs: effective attribute set per type (no options/regime needed for walk)
+      const { attrDefs } = resolveHierarchy(systems, types, defs);
 
       // Build a map from type_attribute_id → name so we can enrich component_attributes
       // rows with attr_name (component_attributes has no name column — it's in type_attributes).
@@ -662,11 +652,7 @@ function createV2WalkStore() {
 
     if (attrValues !== null) {
       // Delete-all + re-insert pattern (same as v2proto)
-      const { error } = await supabase
-        .from('component_attributes')
-        .delete()
-        .eq('component_id', componentId);
-      if (error) throw error;
+      await api.deleteMany('component_attributes', { component_id: componentId });
 
       if (Object.keys(attrValues).length > 0) {
         const rows = Object.entries(attrValues)
@@ -679,8 +665,7 @@ function createV2WalkStore() {
             updated_by: userId,
           }));
         if (rows.length > 0) {
-          const { error: insertErr } = await supabase.from('component_attributes').insert(rows);
-          if (insertErr) throw insertErr;
+          await api.createMany('component_attributes', rows, false);
         }
       }
     }
@@ -730,31 +715,17 @@ function createV2WalkStore() {
       results.push(...comps.map(c => ({ ...c, _floor: floor })));
     }
 
-    return results.sort((a, b) => {
-      if (a.status !== b.status) return a.status === 'failed' ? -1 : 1;
-      if ((a._floor?.level_order ?? 999) !== (b._floor?.level_order ?? 999))
-        return (a._floor?.level_order ?? 999) - (b._floor?.level_order ?? 999);
-      return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
-    });
+    return results.sort((a, b) => sortByResultFloorAsset(
+      { result: a.status, floor_order: a._floor?.level_order ?? 999, asset_id: a.asset_id },
+      { result: b.status, floor_order: b._floor?.level_order ?? 999, asset_id: b.asset_id }
+    ));
   }
 
   // ── Delete session ───────────────────────────────────────────────────────────
 
   async function deleteSession(sessionId) {
-    const { error: inspErr } = await supabase
-      .from('component_inspections')
-      .delete()
-      .eq('v2_walk_session_id', sessionId);
-    if (inspErr) throw new Error('Failed to delete inspections: ' + inspErr.message);
-
-    const { data, error: sessErr } = await supabase
-      .from('v2_walk_sessions')
-      .delete()
-      .eq('id', sessionId)
-      .select();
-    if (sessErr) throw new Error('Failed to delete session: ' + sessErr.message);
-    if (!data?.length) throw new Error('Session not deleted — check permissions');
-
+    await api.deleteMany('component_inspections', { v2_walk_session_id: sessionId });
+    await api.delete('v2_walk_sessions', sessionId);
     await loadSessions();
   }
 

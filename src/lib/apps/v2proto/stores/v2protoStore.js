@@ -3,6 +3,7 @@ import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
 import { getLogger } from '$lib/utils/logger';
 import { auth } from '$lib/stores/auth';
+import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
 
 const logger = getLogger('v2proto');
 
@@ -23,54 +24,13 @@ export function buildRef(component, floors, facilities, types) {
   return `${facName} / ${flrName} / ${typeName} / ${id}`;
 }
 
-// ── Inheritance resolution ─────────────────────────────────────────────────
-// Called once at load/reload. Separates raw defs into:
-//   systemAttrDefs — indexed by systemId  (system-scoped rows only)
-//   attrDefs       — indexed by typeId    (effective = system-inherited + type-own)
-//                    each row carries _scope: 'system' | 'type' for the admin UI
-//   attrOptions    — indexed by attrDefId (unchanged — all options regardless of scope)
-//   regimeMap      — indexed by typeId
-//
-// DATA LOADING STRATEGY:
-//   All type_attributes rows (both scopes) are fetched in a single query.
-//   JS separates them by scope, then builds the effective attribute list per type
-//   by merging system-inherited attrs (first) + type-own attrs, ordered by
-//   presentation_order. After init, every render simply looks up attrDefs[typeId]
-//   with no further DB calls. At ~700 components per building this is well under
-//   100ms total load time.
-function resolveHierarchy(systems, types, defs, options, regime) {
-  const systemAttrDefs = {};
-  const attrDefs       = {};
-  const attrOptions    = {};
-  const regimeMap      = {};
-
-  // Partition raw defs by scope
-  const systemDefs = defs.filter(d => d.building_system_id != null);
-  const typeDefs   = defs.filter(d => d.component_type_id  != null);
-
-  // Index system-level attrs for admin management
-  for (const sys of systems) {
-    systemAttrDefs[sys.id] = systemDefs.filter(d => d.building_system_id === sys.id);
-  }
-
-  // Build effective attribute set per type (inherited + own), mark scope
-  for (const t of types) {
-    const inherited  = (systemAttrDefs[t.building_system_id] ?? [])
-      .map(a => ({ ...a, _scope: 'system' }));
-    const own        = typeDefs
-      .filter(d => d.component_type_id === t.id)
-      .map(a => ({ ...a, _scope: 'type' }));
-    attrDefs[t.id]   = [...inherited, ...own]
-      .sort((a, b) => a.presentation_order - b.presentation_order);
-    regimeMap[t.id]  = regime.filter(r => r.type_id === t.id);
-  }
-
-  // Index options by attr def id (works for both system and type attrs)
-  for (const d of defs) {
-    attrOptions[d.id] = options.filter(o => o.type_attribute_id === d.id);
-  }
-
-  return { systemAttrDefs, attrDefs, attrOptions, regimeMap };
+// ── Auth guard helper ──────────────────────────────────────────────────────────
+// Call this at the top of any write method. Throws immediately if no user is
+// authenticated so no DB write occurs with a null created_by / updated_by.
+function requireUserId() {
+  const userId = get(auth).user?.id;
+  if (!userId) throw new Error('Not authenticated');
+  return userId;
 }
 
 function createV2ProtoStore() {
@@ -193,7 +153,7 @@ function createV2ProtoStore() {
       // fields:     { plan_id, type_code, primary_attribute, label, asset_id,
       //               x_position, y_position, linked_component_ref? }
       // attrValues: [{ type_attribute_id, value }]
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
 
       const component = await api.create('components', {
         ...fields,
@@ -223,7 +183,7 @@ function createV2ProtoStore() {
     // computes the old ref string and clears it from any other components
     // that reference it before saving, so stale links don't accumulate.
     async updateComponent(id, fields) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       let oldRef = null;
 
       update(s => {
@@ -311,7 +271,7 @@ function createV2ProtoStore() {
     // Lightweight position update — skips identity change / stale-ref logic
     // because x_position, y_position and plan_id don't affect buildRef.
     async moveComponent(id, planId, x, y) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       const rx = Math.round(x * 1000) / 1000;
       const ry = Math.round(y * 1000) / 1000;
       await api.update('components', id, {
@@ -371,7 +331,7 @@ function createV2ProtoStore() {
 
     // ── Systems CRUD ────────────────────────────────────────────────────
     async createSystem(data) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       const row = await api.create('building_systems', {
         name:               data.name?.trim(),
         uniclass_code:      data.uniclass_code?.trim() || null,
@@ -392,7 +352,7 @@ function createV2ProtoStore() {
     },
 
     async updateSystem(id, data) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       return await api.update('building_systems', id, {
         name:               data.name?.trim(),
         uniclass_code:      data.uniclass_code?.trim() || null,
@@ -406,7 +366,7 @@ function createV2ProtoStore() {
 
     // ── Component Types CRUD ────────────────────────────────────────────
     async createType(data) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       return await api.create('component_types', {
         building_system_id: data.building_system_id,
         code:               data.code?.trim().toLowerCase().replace(/\s+/g, '_'),
@@ -430,7 +390,7 @@ function createV2ProtoStore() {
     },
 
     async updateType(id, data) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       return await api.update('component_types', id, {
         name:               data.name?.trim(),
         description:        data.description?.trim() || null,
@@ -543,7 +503,7 @@ function createV2ProtoStore() {
     // ── Maintenance Regime CRUD ─────────────────────────────────────────
     // Note: maintenance_regime has created_by but no updated_by, no updated_at trigger
     async createRegime(data) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       return await api.create('maintenance_regime', {
         type_id:          data.type_id,
         attribute_filter: data.attribute_filter?.trim() || null,
@@ -573,7 +533,7 @@ function createV2ProtoStore() {
     // colour:  hex string WITHOUT leading '#', e.g. 'a855f7'
 
     async createSpace(data) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       const space = await api.create('spaces', {
         plan_id:    data.plan_id,
         floor_id:   data.floor_id  || null,
@@ -595,7 +555,7 @@ function createV2ProtoStore() {
     // Updates editable fields on a space (name, space_type, colour, height_m, notes).
     // Polygon is intentionally excluded — use updateSpacePolygon for that.
     async updateSpace(id, data) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       const updated = await api.update('spaces', id, {
         name:       data.name.trim(),
         space_type: data.space_type?.trim() || null,
@@ -614,7 +574,7 @@ function createV2ProtoStore() {
     },
 
     async updateSpacePolygon(id, polygon) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       const rounded = polygon.map(v => ({ x: Math.round(v.x * 1000) / 1000, y: Math.round(v.y * 1000) / 1000 }));
       const updated = await api.update('spaces', id, { polygon: rounded, updated_by: userId });
       update(s => ({
@@ -636,21 +596,21 @@ function createV2ProtoStore() {
 
     async createAnnotation(fields) {
       // fields: { plan_id, floor_id, text, x_position, y_position, font_size, colour, bold }
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       const row = await api.create('plan_annotations', { ...fields, created_by: userId });
       update(s => ({ ...s, annotations: [...s.annotations, row] }));
       return row;
     },
 
     async updateAnnotation(id, fields) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       const row = await api.update('plan_annotations', id, { ...fields, updated_by: userId });
       update(s => ({ ...s, annotations: s.annotations.map(a => a.id === id ? { ...a, ...row } : a) }));
       return row;
     },
 
     async moveAnnotation(id, x, y) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
       await api.update('plan_annotations', id, { x_position: x, y_position: y, updated_by: userId });
       update(s => ({ ...s, annotations: s.annotations.map(a => a.id === id ? { ...a, x_position: x, y_position: y } : a) }));
     },
@@ -683,7 +643,7 @@ function createV2ProtoStore() {
     // walk_session_id is nullable for prototype/ad-hoc use; in the production
     // walk app it will always be set from the active walk session.
     async saveInspection(componentId, { result, notes, checklistResults }) {
-      const userId = get(auth).user?.id;
+      const userId = requireUserId();
 
       const inspection = await api.create('component_inspections', {
         component_id:      componentId,

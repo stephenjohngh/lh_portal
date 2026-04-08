@@ -3,6 +3,8 @@
      and delegates to the active tab component. -->
 <script>
   import { onMount } from 'svelte';
+  import { auth } from '$lib/stores/auth';
+  import { permissions } from '$lib/stores/permissions';
   import { v2protoStore } from './stores/v2protoStore.js';
 
   import TypeBrowser     from './components/TypeBrowser.svelte';
@@ -24,19 +26,25 @@
   $: components = store.components;
 
   onMount(async () => {
+    if ($auth.user) {
+      await permissions.init($auth.user.id, 'v2proto');
+    }
     await v2protoStore.load();
     await v2protoStore.loadComponents();
   });
 
   const TABS = [
-    { id: 'types',       label: 'Type Browser',  icon: '🗂' },
-    { id: 'components',  label: 'Components',     icon: '🧩' },
-    { id: 'plans',       label: 'Plan View',      icon: '🗺' },
-    { id: 'maintenance', label: 'Maintenance',    icon: '🔧' },
-    { id: 'inspections', label: 'Inspections',    icon: '🔍' },
-    { id: 'reports',     label: 'Reports',        icon: '📄' },
-    { id: 'admin',       label: 'Admin',          icon: '⚙' }
+    { id: 'types',       label: 'Type Browser',  icon: '🗂',  adminOnly: false },
+    { id: 'components',  label: 'Components',     icon: '🧩',  adminOnly: false },
+    { id: 'plans',       label: 'Plan View',      icon: '🗺',  adminOnly: false },
+    { id: 'maintenance', label: 'Maintenance',    icon: '🔧',  adminOnly: false },
+    { id: 'inspections', label: 'Inspections',    icon: '🔍',  adminOnly: false },
+    { id: 'reports',     label: 'Reports',        icon: '📄',  adminOnly: false },
+    { id: 'admin',       label: 'Admin',          icon: '⚙',  adminOnly: true  },
   ];
+
+  // If the active tab requires admin and user is no longer admin, reset to types
+  $: if (activeTab === 'admin' && !$permissions.isAdmin) activeTab = 'types';
 </script>
 
 <div class="text-white">
@@ -59,22 +67,24 @@
   <!-- Tabs -->
   <div class="flex space-x-1 border-b border-slate-600 mb-6">
     {#each TABS as tab}
-      <button
-        class="px-4 py-2 text-sm transition-colors flex items-center gap-1.5
-               {activeTab === tab.id
-                 ? 'border-b-2 border-purple-500 text-white font-semibold'
-                 : 'text-slate-400 hover:text-white'}"
-        on:click={() => activeTab = tab.id}
-      >
-        <span>{tab.icon}</span>
-        <span>{tab.label}</span>
-        {#if tab.id === 'types' && types.length > 0}
-          <span class="text-xs text-slate-500">({types.length})</span>
-        {/if}
-        {#if tab.id === 'components' && components.length > 0}
-          <span class="text-xs text-slate-500">({components.length})</span>
-        {/if}
-      </button>
+      {#if !tab.adminOnly || $permissions.isAdmin}
+        <button
+          class="px-4 py-2 text-sm transition-colors flex items-center gap-1.5
+                 {activeTab === tab.id
+                   ? 'border-b-2 border-purple-500 text-white font-semibold'
+                   : 'text-slate-400 hover:text-white'}"
+          on:click={() => activeTab = tab.id}
+        >
+          <span>{tab.icon}</span>
+          <span>{tab.label}</span>
+          {#if tab.id === 'types' && types.length > 0}
+            <span class="text-xs text-slate-500">({types.length})</span>
+          {/if}
+          {#if tab.id === 'components' && components.length > 0}
+            <span class="text-xs text-slate-500">({components.length})</span>
+          {/if}
+        </button>
+      {/if}
     {/each}
   </div>
 
@@ -92,7 +102,14 @@
   {:else if activeTab === 'reports'}
     <V2ReportsTab />
   {:else if activeTab === 'admin'}
-    <AdminTab />
+    {#if $permissions.isAdmin}
+      <AdminTab />
+    {:else}
+      <div class="py-16 text-center text-slate-500 text-sm">
+        <p class="text-2xl mb-3">🔒</p>
+        Admin access required.
+      </div>
+    {/if}
   {/if}
 
 </div>

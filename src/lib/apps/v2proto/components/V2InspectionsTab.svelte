@@ -15,6 +15,7 @@
     sessionFloorLabel,
     presetLabel,
   } from '$lib/apps/v2walk/utils/v2walkHelpers.js';
+  import { resultBadgeColor } from '$lib/apps/v2/utils/resultConstants.js';
   import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
   import Badge           from '$lib/components/common/Badge.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -145,9 +146,7 @@
   }
 
   // ── Badge colours ────────────────────────────────────────────────────────
-  function resultBadgeColor(r) {
-    return { ok: 'bg-green-600', failed: 'bg-red-600', problem: 'bg-orange-500', inactive: 'bg-slate-600' }[r] ?? 'bg-slate-600';
-  }
+  // resultBadgeColor is imported from $lib/apps/v2/utils/resultConstants.js
   function sessionTypeBadge(t) {
     return { inspection: 'bg-blue-600', test: 'bg-amber-600', repair: 'bg-orange-700' }[t] ?? 'bg-slate-600';
   }

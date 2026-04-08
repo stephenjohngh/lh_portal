@@ -30,6 +30,7 @@ import {
   makeHeader, makeFooter,
   DOC_STYLES, pageProps
 } from '$lib/server/docxHelpers.js';
+import { sortBySystemTypeAsset } from '$lib/apps/v2/utils/componentSorting.js';
 
 const logger = getLogger('v2GenerateReport');
 
@@ -95,11 +96,7 @@ function numCellHeader(value, widthDxa) {
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
 function sortComponents(comps) {
-  return [...comps].sort((a, b) =>
-    (a.system_name ?? '').localeCompare(b.system_name ?? '') ||
-    (a.type_name   ?? '').localeCompare(b.type_name   ?? '') ||
-    (a.asset_id    ?? '').localeCompare(b.asset_id    ?? '', undefined, { numeric: true, sensitivity: 'base' })
-  );
+  return [...comps].sort(sortBySystemTypeAsset);
 }
 
 // ── Full component list table (all floors combined) ───────────────────────────
