@@ -6,13 +6,14 @@
 //   floors:  [{ floor, components, imageBase64, imageWidth, imageHeight }]
 //
 // reportTypes: array of one or more:
-//   'plan'          — plan graphic per floor
-//   'full_list'     — full component table per floor
-//   'floor_summary' — type/status count table per floor
-//   'full_summary'  — aggregate summary across all floors (appended at end)
+//   'plan'                — plan graphic per floor
+//   'full_list'           — full component table per floor (no System col)
+//   'floor_summary'       — type/status count table per floor
+//   'full_component_list' — all-floors combined component table (after per-floor content)
+//   'full_summary'        — aggregate pivot across all floors (after full_component_list)
 //
 // Each floor's content is grouped together. Page break between floors.
-// Full summary (if requested) follows on a new page after all floors.
+// Separate final sections follow in order: full_component_list → full_summary.
 
 import { json } from '@sveltejs/kit';
 import {
@@ -100,9 +101,10 @@ function sortComponents(comps) {
 }
 
 // ── Full component list table (all floors combined) ───────────────────────────
-// Columns: Floor | System | Type | Id | Label | Attributes | Status
-// DXA:      700  |  1300  | 1500 | 560| 1800  |    2600    |  2006  = 10466
-const FCL_COLS = [700, 1300, 1500, 560, 1800, 2600, 2006];
+// Columns: Floor | Type | Id | Label | Attributes | Status
+// DXA:      700  | 2000 | 560| 2100  |    3100    |  2006  = 10466
+// System column removed — sort order (floor→system→type→asset) preserved in data.
+const FCL_COLS = [700, 2000, 560, 2100, 3100, 2006];
 
 function buildFullComponentListTable(components) {
   // components arrive pre-sorted (floor_order → system → type → asset_id) from client
@@ -110,27 +112,25 @@ function buildFullComponentListTable(components) {
     tableHeader: true,
     children: [
       hCell('Floor',      FCL_COLS[0]),
-      hCell('System',     FCL_COLS[1]),
-      hCell('Type',       FCL_COLS[2]),
-      hCell('Id',         FCL_COLS[3]),
-      hCell('Label',      FCL_COLS[4]),
-      hCell('Attributes', FCL_COLS[5]),
-      hCell('Status',     FCL_COLS[6]),
+      hCell('Type',       FCL_COLS[1]),
+      hCell('Id',         FCL_COLS[2]),
+      hCell('Label',      FCL_COLS[3]),
+      hCell('Attributes', FCL_COLS[4]),
+      hCell('Status',     FCL_COLS[5]),
     ],
   });
 
   const dataRows = components.map((c, idx) => {
     const alt   = idx % 2 === 1;
-    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('  ·  ');
+    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('\n');
     return new TableRow({
       children: [
         dCell(c.floor_short  ?? '—', FCL_COLS[0], { alt }),
-        dCell(c.system_name  ?? '—', FCL_COLS[1], { alt }),
-        dCell(c.type_name    ?? '—', FCL_COLS[2], { alt }),
-        dCell(c.asset_id     ?? '—', FCL_COLS[3], { alt }),
-        dCell(c.label        ?? '—', FCL_COLS[4], { alt }),
-        dCell(attrs || '—',          FCL_COLS[5], { alt }),
-        statusCell(c.status, FCL_COLS[6], alt),
+        dCell(c.type_name    ?? '—', FCL_COLS[1], { alt }),
+        dCell(c.asset_id     ?? '—', FCL_COLS[2], { alt }),
+        dCell(c.label        ?? '—', FCL_COLS[3], { alt }),
+        dCell(attrs || '—',          FCL_COLS[4], { alt }),
+        statusCell(c.status, FCL_COLS[5], alt),
       ],
     });
   });
@@ -177,10 +177,10 @@ function buildFullComponentListSection(allComponents, building, filterSummary) {
 }
 
 // ── Full component table (per floor) ─────────────────────────────────────────
-// Columns: System | Type | Asset ID | Label | Attributes | Notes | Status
-// DXA:     1400  | 1600 |   68     | 1957  |    2200    | 2791  |  450  = 10466
-// Asset ID = 30% of previous 225 (→ 68); freed 157 added to Label (1800 → 1957)
-const FL_COLS = [1400, 1600, 560, 1957, 2200, 1759, 990];
+// Columns: Type | Id | Label | Attributes | Notes | Status
+// DXA:     2500 | 560| 2200  |    2657    | 1559  |  990  = 10466
+// System column removed — sort order (system→type→asset) preserved in data.
+const FL_COLS = [2500, 560, 2200, 2657, 1559, 990];
 
 function buildComponentTable(components) {
   const sorted = sortComponents(components);
@@ -188,28 +188,26 @@ function buildComponentTable(components) {
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('System',     FL_COLS[0]),
-      hCell('Type',       FL_COLS[1]),
-      hCell('Id',         FL_COLS[2]),
-      hCell('Label',      FL_COLS[3]),
-      hCell('Attributes', FL_COLS[4]),
-      hCell('Notes',      FL_COLS[5]),
-      hCell('Status',     FL_COLS[6]),
+      hCell('Type',       FL_COLS[0]),
+      hCell('Id',         FL_COLS[1]),
+      hCell('Label',      FL_COLS[2]),
+      hCell('Attributes', FL_COLS[3]),
+      hCell('Notes',      FL_COLS[4]),
+      hCell('Status',     FL_COLS[5]),
     ],
   });
 
   const dataRows = sorted.map((c, idx) => {
     const alt   = idx % 2 === 1;
-    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('  ·  ');
+    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('\n');
     return new TableRow({
       children: [
-        dCell(c.system_name ?? '—', FL_COLS[0], { alt }),
-        dCell(c.type_name   ?? '—', FL_COLS[1], { alt }),
-        dCell(c.asset_id    ?? '—', FL_COLS[2], { alt }),
-        dCell(c.label       ?? '—', FL_COLS[3], { alt }),
-        dCell(attrs || '—',         FL_COLS[4], { alt }),
-        dCell('',                   FL_COLS[5], { alt }),
-        statusCell(c.status, FL_COLS[6], alt),
+        dCell(c.type_name   ?? '—', FL_COLS[0], { alt }),
+        dCell(c.asset_id    ?? '—', FL_COLS[1], { alt }),
+        dCell(c.label       ?? '—', FL_COLS[2], { alt }),
+        dCell(attrs || '—',         FL_COLS[3], { alt }),
+        dCell('',                   FL_COLS[4], { alt }),
+        statusCell(c.status, FL_COLS[5], alt),
       ],
     });
   });
@@ -512,16 +510,16 @@ export async function POST({ request }) {
       }
     }
 
-    // ── Full summary section (all floors combined) ────────────────────────────
-    if (wantFullSummary) {
-      children.push(new Paragraph({ children: [new PageBreak()] }));
-      children.push(...buildFullSummarySection(floors, building, filterSummary));
-    }
-
     // ── Full component list section (all floors combined) ─────────────────────
     if (wantFullComponentList) {
       children.push(new Paragraph({ children: [new PageBreak()] }));
       children.push(...buildFullComponentListSection(allComponents, building, filterSummary));
+    }
+
+    // ── Full summary section (all floors combined) ────────────────────────────
+    if (wantFullSummary) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+      children.push(...buildFullSummarySection(floors, building, filterSummary));
     }
 
     // ── Build document ────────────────────────────────────────────────────────
