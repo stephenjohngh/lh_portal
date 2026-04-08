@@ -443,7 +443,11 @@ export async function POST({ request }) {
     }
 
     // ── Per-floor content ─────────────────────────────────────────────────────
-    for (let fi = 0; fi < floors.length; fi++) {
+    // Only iterate floors when at least one per-floor section is requested.
+    // If only final sections (full_component_list / full_summary) are selected,
+    // skip this loop entirely — otherwise each floor emits a heading with nothing below it.
+    const wantAnyPerFloor = wantPlan || wantList || wantFloorSummary;
+    for (let fi = 0; wantAnyPerFloor && fi < floors.length; fi++) {
       const { floor, components = [], imageBase64, imageWidth, imageHeight } = floors[fi];
 
       // Page break between floors (not before the first floor)
@@ -512,13 +516,15 @@ export async function POST({ request }) {
 
     // ── Full component list section (all floors combined) ─────────────────────
     if (wantFullComponentList) {
-      children.push(new Paragraph({ children: [new PageBreak()] }));
+      // Only add a page break if there was preceding per-floor content
+      if (wantAnyPerFloor) children.push(new Paragraph({ children: [new PageBreak()] }));
       children.push(...buildFullComponentListSection(allComponents, building, filterSummary));
     }
 
     // ── Full summary section (all floors combined) ────────────────────────────
     if (wantFullSummary) {
-      children.push(new Paragraph({ children: [new PageBreak()] }));
+      // Add a page break if there was any preceding content beyond the title
+      if (wantAnyPerFloor || wantFullComponentList) children.push(new Paragraph({ children: [new PageBreak()] }));
       children.push(...buildFullSummarySection(floors, building, filterSummary));
     }
 
