@@ -14,9 +14,10 @@ const logger = getLogger('v2planStore');
 
 // ── Cache config ──────────────────────────────────────────────────────────────
 
-const CACHE_KEY_HIERARCHY = 'v2plan_cache_hierarchy';
-const CACHE_KEY_FLOOR     = id => `v2plan_cache_floor_${id}`;
-const CACHE_KEY_FILTER    = 'v2plan_filter';
+const CACHE_KEY_HIERARCHY   = 'v2plan_cache_hierarchy';
+const CACHE_KEY_FLOOR       = id => `v2plan_cache_floor_${id}`;
+const CACHE_KEY_FILTER      = 'v2plan_filter';
+const CACHE_KEY_LAST_FLOOR  = 'v2plan_last_floor_id';
 const TTL_HIERARCHY_MS    = 24 * 60 * 60 * 1000;   // 24 h
 const TTL_FLOOR_MS        =  1 * 60 * 60 * 1000;   //  1 h
 const FETCH_TIMEOUT_MS    = 8000;
@@ -172,9 +173,13 @@ async function load() {
     cachedAt,
   }));
 
-  // Auto-select first floor
+  // Restore last-viewed floor, falling back to the first floor
   if (hierarchyData.floors.length > 0) {
-    await selectFloor(hierarchyData.floors[0].id, false);
+    const lastFloorId = localStorage.getItem(CACHE_KEY_LAST_FLOOR);
+    const target = lastFloorId && hierarchyData.floors.find(f => f.id === lastFloorId)
+      ? lastFloorId
+      : hierarchyData.floors[0].id;
+    await selectFloor(target, false);
   }
 }
 
@@ -185,6 +190,9 @@ async function selectFloor(floorId, forceRefresh = false) {
 
   // Find matching plan
   const plan = state.plans.find(p => p.floor_id === floorId) ?? null;
+
+  // Persist so the next session opens the same floor
+  try { localStorage.setItem(CACHE_KEY_LAST_FLOOR, floorId); } catch { /* ignore */ }
 
   update(s => ({
     ...s,
