@@ -212,9 +212,13 @@ function buildComponentTable(components, includeNotes = false) {
   });
 
   const dataRows = sorted.map((c, idx) => {
-    const alt   = idx % 2 === 1;
-    const attrs = fmtAttrs(c.attributes);
-    const notes = includeNotes ? (c.last_notes ?? '') : '';
+    const alt      = idx % 2 === 1;
+    const attrs    = fmtAttrs(c.attributes);
+    // Component's own notes always shown; inspection notes appended when includeNotes is on
+    const noteParts = [];
+    if (c.notes)                     noteParts.push(c.notes);
+    if (includeNotes && c.last_notes) noteParts.push(c.last_notes);
+    const notes = noteParts.join('\n');
     return new TableRow({
       children: [
         dCell(c.type_name   ?? '—', FL_COLS[0], { alt }),

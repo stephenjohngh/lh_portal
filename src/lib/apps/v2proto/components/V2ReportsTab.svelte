@@ -320,6 +320,7 @@
               floor_short:      f.short_name,
               status:           c.status,
               attributes:       resolveAttrs(c),
+              notes:            c.notes              ?? null,
               last_inspected:   insp?.inspected_at   ?? null,
               last_notes:       insp?.inspector_notes ?? null,
             };
@@ -429,8 +430,9 @@
               status:            c.status,
               primary_attribute: c.primary_attribute,
               attributes:        resolveAttrs(c),
+              notes:             c.notes             ?? null,   // component's own notes (always)
               last_inspected:    insp?.inspected_at    ?? null,
-              last_notes:        insp?.inspector_notes ?? null,
+              last_notes:        insp?.inspector_notes ?? null, // inspection notes (gated by includeNotes)
             };
           });
 
