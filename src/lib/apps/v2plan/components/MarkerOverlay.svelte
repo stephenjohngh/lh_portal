@@ -85,7 +85,7 @@
   }
 </script>
 
-<!-- Space SVG overlay (behind markers) -->
+<!-- Space SVG overlay — fills/borders only (no SVG text; labels rendered as HTML below) -->
 {#if showSpaces && spaces.length > 0}
   <svg class="spaces-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
     {#each spaces as space (space.id)}
@@ -98,20 +98,22 @@
           stroke-width="0.003"
           stroke-dasharray={col ? 'none' : '0.008 0.008'}
         />
-        {#if space.show_label}
-          {@const ctr = centroid(space.polygon)}
-          <text
-            x={ctr.x} y={ctr.y}
-            font-size="0.025"
-            text-anchor="middle"
-            dominant-baseline="middle"
-            fill={col ?? '#64748b'}
-            opacity="0.8"
-          >{space.name}</text>
-        {/if}
       {/if}
     {/each}
   </svg>
+
+  <!-- Space name labels as HTML so font-size is in px, not SVG units -->
+  {#each spaces as space (space.id)}
+    {#if space.show_label && space.polygon && space.polygon.length >= 3}
+      {@const ctr = centroid(space.polygon)}
+      {@const col = space.colour && space.colour !== 'none' ? `#${space.colour.replace('#','')}` : '#64748b'}
+      <div
+        class="space-label"
+        style="left:{ctr.x * 100}%; top:{ctr.y * 100}%; color:{col};"
+        aria-hidden="true"
+      >{space.name}</div>
+    {/if}
+  {/each}
 {/if}
 
 <!-- Component markers -->
@@ -185,6 +187,19 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
+  }
+
+  .space-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.75;
+    pointer-events: none;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    z-index: 5;
   }
 
   .marker-wrapper {

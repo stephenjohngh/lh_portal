@@ -14,8 +14,10 @@ const logger = getLogger('v2planStore');
 
 // ── Cache config ──────────────────────────────────────────────────────────────
 
-const CACHE_KEY_HIERARCHY   = 'v2plan_cache_hierarchy';
-const CACHE_KEY_FLOOR       = id => `v2plan_cache_floor_${id}`;
+// Bump CACHE_VERSION whenever the shape of cached data changes (forces fresh fetch).
+const CACHE_VERSION         = 2;
+const CACHE_KEY_HIERARCHY   = `v2plan_cache_hierarchy_v${CACHE_VERSION}`;
+const CACHE_KEY_FLOOR       = id => `v2plan_cache_floor_${id}_v${CACHE_VERSION}`;
 const CACHE_KEY_FILTER      = 'v2plan_filter';
 const CACHE_KEY_LAST_FLOOR  = 'v2plan_last_floor_id';
 const TTL_HIERARCHY_MS    = 24 * 60 * 60 * 1000;   // 24 h
