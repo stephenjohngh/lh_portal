@@ -103,12 +103,12 @@ function withTimeout(promise, ms) {
 async function fetchHierarchy() {
   const [facilitiesRes, floorsRes, systemsRes, typesRes, defsRes, plansRes] =
     await Promise.all([
-      withTimeout(api.get('facilities',        { orderBy: 'name' }),                FETCH_TIMEOUT_MS),
-      withTimeout(api.get('floors',            { orderBy: 'level_order' }),         FETCH_TIMEOUT_MS),
-      withTimeout(api.get('building_systems',  { orderBy: 'display_order', filters: { visible: true } }), FETCH_TIMEOUT_MS),
-      withTimeout(api.get('component_types',   { orderBy: 'name', filters: { visible: true } }), FETCH_TIMEOUT_MS),
-      withTimeout(api.get('type_attributes',   { orderBy: 'presentation_order' }),  FETCH_TIMEOUT_MS),
-      withTimeout(api.get('plans',             { select: 'id,floor_id,image_url,image_aspect_ratio,floor_level,scale_ref', orderBy: 'floor_level' }), FETCH_TIMEOUT_MS),
+      withTimeout(api.get('facilities'),                                                                    FETCH_TIMEOUT_MS),
+      withTimeout(api.get('floors',           { orderBy: 'level_order' }),                                 FETCH_TIMEOUT_MS),
+      withTimeout(api.get('building_systems', { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
+      withTimeout(api.get('component_types',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
+      withTimeout(api.get('type_attributes',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
+      withTimeout(api.get('plans',            { select: 'id,floor_id,image_url,image_aspect_ratio,floor_level,scale_ref', orderBy: 'floor_level' }), FETCH_TIMEOUT_MS),
     ]);
 
   const { attrDefs } = resolveHierarchy(systemsRes, typesRes, defsRes);
@@ -246,7 +246,8 @@ async function selectFloor(floorId, forceRefresh = false) {
 }
 
 async function fetchFloorForPlan(planId, floorId) {
-  const [components, spaces, rawInspections] = await Promise.all([
+  // Step 1: fetch components and spaces in parallel
+  const [components, spaces] = await Promise.all([
     withTimeout(
       api.get('components', {
         select: 'id,asset_id,label,notes,status,type_code,plan_id,x_position,y_position,floor_id,linked_component_ref',
@@ -264,58 +265,60 @@ async function fetchFloorForPlan(planId, floorId) {
           FETCH_TIMEOUT_MS
         ).catch(() => [])
       : Promise.resolve([]),
-    withTimeout(
-      (async () => {
-        // Get component IDs for this floor then fetch their latest inspections
-        const compIds = await api.get('components', {
-          select: 'id',
-          filters: { floor_id: floorId },
-        });
-        if (!compIds.length) return [];
-        return api.get('component_inspections', {
-          select: 'id,component_id,inspection_result,inspector_notes,inspected_at',
-          orderBy: 'inspected_at',
-          ascending: false,
-        });
-      })(),
-      FETCH_TIMEOUT_MS
-    ).catch(() => []),
   ]);
 
-  // Build latest inspection map
+  // Step 2: fetch inspections only if there are components on this floor.
+  // Load all inspections and filter client-side — api.js doesn't support .in() queries.
+  // component_inspections is typically small; we build a Set for the floor's IDs.
+  const floorCompIds = new Set(components.map(c => c.id));
+  let rawInspections = [];
+
+  if (floorCompIds.size > 0) {
+    rawInspections = await withTimeout(
+      api.get('component_inspections', {
+        select: 'id,component_id,inspection_result,inspector_notes,inspected_at',
+        orderBy: 'inspected_at',
+        ascending: false,
+      }),
+      FETCH_TIMEOUT_MS
+    ).catch(() => []);
+  }
+
+  // Build latest-inspection map, keeping only this floor's components
   const inspections = {};
   for (const insp of rawInspections) {
-    if (!inspections[insp.component_id]) {
+    if (floorCompIds.has(insp.component_id) && !inspections[insp.component_id]) {
       inspections[insp.component_id] = insp;
     }
   }
 
-  // Filter inspections to only components on this floor
-  const floorCompIds = new Set(components.map(c => c.id));
-  const filtered = {};
-  for (const [cid, insp] of Object.entries(inspections)) {
-    if (floorCompIds.has(cid)) filtered[cid] = insp;
-  }
-
-  return { components, spaces: spaces ?? [], inspections: filtered };
+  return { components, spaces: spaces ?? [], inspections };
 }
 
 async function loadComponentAttrs(componentId) {
   const state = get({ subscribe });
-  if (state.componentAttrs[componentId]) return; // already cached
+  if (state.componentAttrs[componentId]) return; // already cached for this session
 
   try {
     const rows = await api.get('component_attributes', {
-      select: 'id,component_id,type_attribute_id,value,attr_name:type_attributes(name,display_type)',
+      select: 'id,component_id,type_attribute_id,value',
       filters: { component_id: componentId },
     });
 
-    // Flatten nested attr_name join
-    const attrs = rows.map(r => ({
-      ...r,
-      attr_name:    r.attr_name?.name ?? '',
-      display_type: r.attr_name?.display_type ?? 'text',
-    }));
+    // Enrich from the already-loaded attrDefs (flat map of all defs by id).
+    // Build id→def lookup once from attrDefs (which is indexed by typeId).
+    const allDefs = Object.values(state.attrDefs).flat();
+    const defById = {};
+    for (const d of allDefs) defById[d.id] = d;
+
+    const attrs = rows.map(r => {
+      const def = defById[r.type_attribute_id];
+      return {
+        ...r,
+        attr_name:    def?.name         ?? '',
+        display_type: def?.display_type ?? 'text',
+      };
+    });
 
     update(s => ({
       ...s,
