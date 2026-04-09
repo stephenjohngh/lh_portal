@@ -95,6 +95,15 @@ function numCellHeader(value, widthDxa) {
   });
 }
 
+// ── Attribute formatting ──────────────────────────────────────────────────────
+// number attrs → "name: value"  (the name provides essential context for a number)
+// all other types → "value"     (name is redundant for text/select/checkbox values)
+function fmtAttrs(attributes) {
+  return (attributes ?? [])
+    .map(a => a.display_type === 'number' ? `${a.name}: ${a.value}` : a.value)
+    .join('\n');
+}
+
 // ── Sort helper ───────────────────────────────────────────────────────────────
 function sortComponents(comps) {
   return [...comps].sort(sortBySystemTypeAsset);
@@ -102,9 +111,9 @@ function sortComponents(comps) {
 
 // ── Full component list table (all floors combined) ───────────────────────────
 // Columns: Floor | Type | Id | Label | Attributes | Status
-// DXA:      700  | 2000 | 560| 2100  |    3100    |  2006  = 10466
-// System column removed — sort order (floor→system→type→asset) preserved in data.
-const FCL_COLS = [700, 2000, 560, 2100, 3100, 2006];
+// DXA:      700  | 1600 | 560| 3430  |    2170    |  2006  = 10466
+// Type: 80% of original 2000. Attrs: 70% of original 3100. Freed width → Label.
+const FCL_COLS = [700, 1600, 560, 3430, 2170, 2006];
 
 function buildFullComponentListTable(components) {
   // components arrive pre-sorted (floor_order → system → type → asset_id) from client
@@ -122,7 +131,7 @@ function buildFullComponentListTable(components) {
 
   const dataRows = components.map((c, idx) => {
     const alt   = idx % 2 === 1;
-    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('\n');
+    const attrs = fmtAttrs(c.attributes);
     return new TableRow({
       children: [
         dCell(c.floor_short  ?? '—', FCL_COLS[0], { alt }),
@@ -178,9 +187,9 @@ function buildFullComponentListSection(allComponents, building, filterSummary) {
 
 // ── Full component table (per floor) ─────────────────────────────────────────
 // Columns: Type | Id | Label | Attributes | Notes | Status
-// DXA:     2500 | 560| 2200  |    2657    | 1559  |  990  = 10466
-// System column removed — sort order (system→type→asset) preserved in data.
-const FL_COLS = [2500, 560, 2200, 2657, 1559, 990];
+// DXA:     2000 | 560| 2200  |    1860    | 2856  |  990  = 10466
+// Type: 80% of original 2500. Attrs: 70% of original 2657. Freed width → Notes.
+const FL_COLS = [2000, 560, 2200, 1860, 2856, 990];
 
 function buildComponentTable(components, includeNotes = false) {
   const sorted = sortComponents(components);
@@ -199,7 +208,7 @@ function buildComponentTable(components, includeNotes = false) {
 
   const dataRows = sorted.map((c, idx) => {
     const alt   = idx % 2 === 1;
-    const attrs = (c.attributes ?? []).map(a => `${a.name}: ${a.value}`).join('\n');
+    const attrs = fmtAttrs(c.attributes);
     const notes = includeNotes ? (c.last_notes ?? '') : '';
     return new TableRow({
       children: [

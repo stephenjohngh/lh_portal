@@ -93,6 +93,9 @@
 
   // Resolve all non-checkable, visible attr name/value pairs for a component.
   // Merges stored component_attributes with type-level default_value fallback.
+  // Rules:
+  //   - Values of 'None' or 'No' are suppressed entirely.
+  //   - display_type is forwarded so the server can format number attrs differently.
   function resolveAttrs(c) {
     const t = typeOf(c);
     if (!t) return [];
@@ -106,9 +109,11 @@
         const raw = storedMap[d.id] ?? d.default_value ?? null;
         if (raw == null || raw === '') return null;
         if (d.display_type === 'checkbox') {
-          return raw === 'true' ? { name: d.name, value: 'Yes' } : null;
+          return raw === 'true' ? { name: d.name, value: 'Yes', display_type: 'checkbox' } : null;
         }
-        return { name: d.name, value: String(raw) };
+        const value = String(raw);
+        if (value === 'None' || value === 'No') return null;
+        return { name: d.name, value, display_type: d.display_type ?? 'text' };
       })
       .filter(Boolean);
   }
