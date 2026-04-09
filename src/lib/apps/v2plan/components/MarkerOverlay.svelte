@@ -6,7 +6,6 @@
   export let components    = [];
   export let spaces        = [];
   export let types         = [];
-  export let inspections   = {};
   export let hiddenTypes   = new Set();
   export let hiddenStatuses = new Set();
   export let showSpaces    = true;

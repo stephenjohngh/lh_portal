@@ -220,7 +220,6 @@
           {components}
           {spaces}
           {types}
-          {inspections}
           {hiddenTypes}
           {hiddenStatuses}
           {showSpaces}
