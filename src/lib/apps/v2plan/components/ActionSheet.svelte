@@ -60,7 +60,7 @@
       <span class="action-label">Copy reference</span>
     </button>
 
-    {#if component.x_position != null}
+    {#if component.plan_id != null}
       <button class="action-row" on:click={centreOnPlan}>
         <span class="action-icon">⌖</span>
         <span class="action-label">Centre on plan</span>

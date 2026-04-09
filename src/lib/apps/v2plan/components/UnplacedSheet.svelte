@@ -21,8 +21,10 @@
     return types.find(t => t.code === typeCode) ?? null;
   }
 
-  $: placed   = components.filter(c => c.x_position != null && c.y_position != null);
-  $: unplaced = components.filter(c => c.x_position == null || c.y_position == null);
+  // Placed = has a plan assignment; unplaced = floor-level only (plan_id null).
+  // x/y are NOT NULL in the DB but only meaningful when plan_id is set.
+  $: placed   = components.filter(c => c.plan_id != null);
+  $: unplaced = components.filter(c => c.plan_id == null);
 
   $: activeList = tab === 'placed' ? placed : unplaced;
 

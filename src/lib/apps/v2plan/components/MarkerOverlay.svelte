@@ -53,10 +53,10 @@
     return false;
   }
 
-  // Only render markers with a plan position
-  $: placedComponents = components.filter(c =>
-    c.x_position != null && c.y_position != null
-  );
+  // Only render markers that have been placed on a plan (plan_id set).
+  // x_position / y_position are NOT NULL in the DB but are only meaningful
+  // when plan_id is set (per migration 015 comment).
+  $: placedComponents = components.filter(c => c.plan_id != null);
 
   // Compute centroid for space labels
   function centroid(polygon) {
