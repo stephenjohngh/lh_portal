@@ -96,11 +96,11 @@ function numCellHeader(value, widthDxa) {
 }
 
 // ── Attribute formatting ──────────────────────────────────────────────────────
-// number attrs → "name: value"  (the name provides essential context for a number)
-// all other types → "value"     (name is redundant for text/select/checkbox values)
+// number attrs → "name: value"  (the value is meaningless without the label)
+// all other types → "name"      (the name alone is sufficient — value is implied or self-evident)
 function fmtAttrs(attributes) {
   return (attributes ?? [])
-    .map(a => a.display_type === 'number' ? `${a.name}: ${a.value}` : a.value)
+    .map(a => a.display_type === 'number' ? `${a.name}: ${a.value}` : a.name)
     .join('\n');
 }
 

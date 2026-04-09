@@ -112,7 +112,7 @@
           return raw === 'true' ? { name: d.name, value: 'Yes', display_type: 'checkbox' } : null;
         }
         const value = String(raw);
-        if (value === 'None' || value === 'No') return null;
+        if (value === 'None' || value === 'No' || value === 'Unknown') return null;
         return { name: d.name, value, display_type: d.display_type ?? 'text' };
       })
       .filter(Boolean);
