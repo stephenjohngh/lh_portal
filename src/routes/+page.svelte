@@ -22,6 +22,7 @@
   import WalkApp from '$lib/apps/walk/WalkApp.svelte';
   import V2ProtoApp from '$lib/apps/v2proto/V2ProtoApp.svelte';
   import V2WalkApp  from '$lib/apps/v2walk/V2WalkApp.svelte';
+  import V2PlanApp  from '$lib/apps/v2plan/V2PlanApp.svelte';
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -96,7 +97,8 @@
       'demo2': Demo,
       'settings': SettingsApp,
       'v2proto': V2ProtoApp,
-      'v2walk':  V2WalkApp
+      'v2walk':  V2WalkApp,
+      'v2plan':  V2PlanApp
     };
     return components[appId];
   }
@@ -227,7 +229,7 @@
         </div>
       {:else}
         {#if getAppComponent(activeApp)}
-          <svelte:component this={getAppComponent(activeApp)} />
+          <svelte:component this={getAppComponent(activeApp)} on:navigate={e => activeApp = e.detail} />
         {:else}
           <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
             <h2 class="text-3xl font-bold mb-4">

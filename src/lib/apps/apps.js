@@ -85,6 +85,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'v2plan',
+    name: 'V2 Plan',
+    icon: 'grid',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Mobile read-only floor plan viewer using the v2 component data model'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -108,6 +117,7 @@ export const APP_IDS = {
   DEMO2:   'demo2',
   V2PROTO: 'v2proto',
   V2WALK:  'v2walk',
+  V2PLAN:  'v2plan',
   SETTINGS:'settings'
 };
 
