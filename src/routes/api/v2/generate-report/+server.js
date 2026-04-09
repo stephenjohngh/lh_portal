@@ -96,11 +96,16 @@ function numCellHeader(value, widthDxa) {
 }
 
 // ── Attribute formatting ──────────────────────────────────────────────────────
-// number attrs → "name: value"  (the value is meaningless without the label)
-// all other types → "name"      (the name alone is sufficient — value is implied or self-evident)
+// number   → "name: value"  (bare number is meaningless without its label)
+// dropdown → "value"        (the selected option is the meaningful text)
+// others   → "name"         (presence of the attr is what matters; value is implied)
 function fmtAttrs(attributes) {
   return (attributes ?? [])
-    .map(a => a.display_type === 'number' ? `${a.name}: ${a.value}` : a.name)
+    .map(a => {
+      if (a.display_type === 'number')   return `${a.name}: ${a.value}`;
+      if (a.display_type === 'dropdown') return a.value;
+      return a.name;
+    })
     .join('\n');
 }
 
