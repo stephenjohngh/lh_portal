@@ -265,107 +265,26 @@
     });
   }
 
-  // ── Quick report: Failed Components ──────────────────────────────────────────
-  // Pre-configured — no filter UI needed; always fails + all floors.
-  let generatingFailures = false;
-  let failuresError      = '';
+  // ── Quick report presets ──────────────────────────────────────────────────────
+  // Each preset applies a set of filter + section options to the general report.
+  // The user then reviews the configuration and clicks Generate.
+  let configuredPreset = '';   // name of the last applied preset (for feedback)
 
-  async function generateFailuresReport() {
-    const failedComponents = components.filter(c => c.status === 'failed');
-    if (failedComponents.length === 0) {
-      failuresError = 'No failed components found.';
-      return;
-    }
-
-    generatingFailures = true;
-    failuresError = '';
-
-    try {
-      const building    = facilities[0]?.name ?? 'Lancaster House';
-      const now         = new Date();
-      const generatedAt = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-      const inspections = $v2protoStore.inspections;
-
-      // Group failed components by floor, preserving level_order
-      const byFloorMap = {};
-      for (const c of failedComponents) {
-        if (!byFloorMap[c.floor_id]) byFloorMap[c.floor_id] = [];
-        byFloorMap[c.floor_id].push(c);
-      }
-
-      const floorsPayload = floors
-        .filter(f => byFloorMap[f.id]?.length > 0)
-        .map(f => {
-          // Sort: system → type → asset_id
-          const sorted = [...byFloorMap[f.id]].sort((a, b) => {
-            const ta = typeOf(a), tb = typeOf(b);
-            const sa = systemOf(ta)?.name ?? '';
-            const sb = systemOf(tb)?.name ?? '';
-            return sa.localeCompare(sb) ||
-                   (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
-                   (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
-          });
-
-          const resolvedComponents = sorted.map(c => {
-            const t    = typeOf(c);
-            const sys  = systemOf(t);
-            const insp = inspections[c.id];
-            return {
-              asset_id:         c.asset_id,
-              label:            c.label,
-              type_code:        c.type_code,
-              type_name:        t?.name    ?? c.type_code,
-              type_initial:     t?.initial ?? '?',
-              system_name:      sys?.name  ?? '',
-              floor_short:      f.short_name,
-              status:           c.status,
-              attributes:       resolveAttrs(c),
-              notes:            c.notes              ?? null,
-              last_inspected:   insp?.inspected_at   ?? null,
-              last_notes:       insp?.inspector_notes ?? null,
-            };
-          });
-
-          return {
-            floor: { id: f.id, short_name: f.short_name, name: f.name, level_order: f.level_order },
-            components: resolvedComponents,
-          };
-        });
-
-      const res = await fetch('/api/v2/generate-report', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          options: {
-            reportTypes:   ['full_list'],
-            building,
-            filterSummary: 'Status: failed',
-            generatedAt,
-            includeNotes:  true,
-          },
-          floors:        floorsPayload,
-          allComponents: [],
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Server error ${res.status}`);
-      }
-
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `Failed_Components_${now.toISOString().slice(0, 10)}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-
-    } catch (err) {
-      failuresError = err.message;
-    } finally {
-      generatingFailures = false;
-    }
+  function configureFailuresReport() {
+    // Status: failed only; all floors; all systems
+    selectedStatuses  = new Set(['failed']);
+    floorsCleared     = false;
+    selectedFloorIds  = new Set();
+    systemsCleared    = false;
+    selectedSystemIds = new Set();
+    // Sections: per-floor component table + floor summary; combined full list; notes on
+    includePlan              = false;
+    includeList              = true;
+    includeFloorSummary      = true;
+    includeNotes             = true;
+    includeFullComponentList = true;
+    includeFullSummary       = false;
+    configuredPreset = 'Failed Components';
   }
 
   $: failedCount = components.filter(c => c.status === 'failed').length;
@@ -520,10 +439,17 @@
     </p>
   </div>
 
-  <!-- ── Pre-configured reports ───────────────────────────────────────────── -->
+  <!-- ── Quick report presets ─────────────────────────────────────────────── -->
   <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
     <h3 class="text-sm font-semibold text-slate-300 mb-1 uppercase tracking-wide">Quick Reports</h3>
-    <p class="text-xs text-slate-500 mb-3">One-click reports — no filters needed.</p>
+    <p class="text-xs text-slate-500 mb-3">
+      Pre-configured filter presets — click <strong class="text-slate-400">Configure</strong>
+      to apply, then use <strong class="text-slate-400">Generate</strong> below.
+    </p>
+
+    {#if configuredPreset}
+      <p class="text-xs text-green-400 mb-3">✓ "{configuredPreset}" preset applied — review filters below, then Generate.</p>
+    {/if}
 
     <div class="flex flex-wrap gap-3">
 
@@ -534,23 +460,20 @@
           <div>
             <div class="font-semibold text-sm text-red-300">Failed Components</div>
             <div class="text-xs text-slate-500 mt-0.5">
-              All failed components, grouped by floor, with latest inspection notes
+              All failed, all floors · per-floor table + combined list · with notes
             </div>
           </div>
           <span class="ml-auto text-xl font-bold tabular-nums
             {failedCount > 0 ? 'text-red-400' : 'text-slate-600'}">{failedCount}</span>
         </div>
-        {#if failuresError}
-          <p class="text-xs text-red-400 mt-2">⚠ {failuresError}</p>
-        {/if}
         <Button
-          variant="danger"
+          variant="secondary"
           size="small"
-          disabled={generatingFailures || failedCount === 0}
-          on:click={generateFailuresReport}
+          disabled={failedCount === 0}
+          on:click={configureFailuresReport}
           class="mt-3"
         >
-          {generatingFailures ? 'Generating…' : `⬇ Download (${failedCount} items)`}
+          Configure
         </Button>
       </div>
 
