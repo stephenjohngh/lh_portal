@@ -155,19 +155,6 @@
   aria-modal="true"
   aria-label="Component details"
 >
-  <!-- Drag handle -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div
-    class="drag-handle-area"
-    on:touchstart|nonpassive={onDragStart}
-    on:touchmove|nonpassive={onDragMove}
-    on:touchend={onDragEnd}
-    on:mousedown={onDragStart}
-    on:mousemove={onDragMove}
-    on:mouseup={onDragEnd}
-  >
-    <div class="drag-handle"></div>
-  </div>
 
   {#if component}
     <div class="sheet-scroll">
@@ -279,26 +266,11 @@
   .sheet.half   { transform: translateY(0);    height: 55vh; }
   .sheet.full   { transform: translateY(0);    height: 90vh; }
 
-  .drag-handle-area {
-    padding: 12px 0 6px;
-    display: flex;
-    justify-content: center;
-    flex-shrink: 0;
-    cursor: grab;
-  }
-
-  .drag-handle {
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: #252540;
-  }
-
   .sheet-scroll {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0 16px 32px;
+    padding: 16px 16px 32px;
     scrollbar-width: thin;
     scrollbar-color: #252540 transparent;
   }
