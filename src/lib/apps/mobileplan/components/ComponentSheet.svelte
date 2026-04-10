@@ -12,7 +12,6 @@
 
   export let component   = null;   // component row
   export let types       = [];
-  export let attrDefs    = {};     // { [typeId]: attr defs[] } (unused here — attrs come from store)
   export let inspections = {};     // { [componentId]: latest inspection }
 
   // ── Sheet state ──────────────────────────────────────────────────────────────

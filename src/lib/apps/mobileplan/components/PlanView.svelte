@@ -12,7 +12,6 @@
   export let spaces        = [];
   export let annotations   = [];
   export let types         = [];
-  export let inspections   = {};
   export let hiddenTypes   = new Set();
   export let hiddenStatuses = new Set();
   export let showSpaces    = true;
@@ -262,7 +261,6 @@
     display: block;
     max-width: none;  /* allow natural size */
     pointer-events: none;
-    draggable: false;
   }
 
   .plan-transformed img.hidden {

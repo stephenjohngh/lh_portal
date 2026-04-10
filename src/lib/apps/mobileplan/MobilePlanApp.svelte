@@ -180,7 +180,6 @@
         spaces={state.spaces}
         annotations={state.annotations}
         types={state.types}
-        inspections={state.inspections}
         hiddenTypes={state.hiddenTypes}
         hiddenStatuses={state.hiddenStatuses}
         showSpaces={state.showSpaces}
@@ -199,7 +198,6 @@
     <ComponentSheet
       component={selectedComponent}
       types={state.types}
-      attrDefs={state.attrDefs}
       inspections={state.inspections}
       on:close={closeComponentSheet}
     />
