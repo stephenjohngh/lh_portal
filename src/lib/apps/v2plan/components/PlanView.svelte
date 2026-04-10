@@ -10,6 +10,7 @@
   export let plan          = null;   // { image_url, image_aspect_ratio } | null
   export let components    = [];
   export let spaces        = [];
+  export let annotations   = [];
   export let types         = [];
   export let inspections   = {};
   export let hiddenTypes   = new Set();
@@ -219,6 +220,7 @@
         <MarkerOverlay
           {components}
           {spaces}
+          {annotations}
           {types}
           {hiddenTypes}
           {hiddenStatuses}

@@ -1,24 +1,32 @@
 <script>
   import { auth } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
 
   let email = '';
   let password = '';
   let error = '';
   let loading = false;
 
+  // Read optional redirect destination (e.g. /v2plan, /v2walk)
+  // Restrict to relative paths only — no open redirect.
+  $: redirectTo = (() => {
+    const r = $page.url.searchParams.get('redirect') ?? '';
+    return r.startsWith('/') && !r.startsWith('//') ? r : '/';
+  })();
+
   async function handleLogin() {
     loading = true;
     error = '';
-    
+
     const result = await auth.login(email, password);
-    
+
     if (result.success) {
-      goto('/');
+      goto(redirectTo);
     } else {
       error = result.error;
     }
-    
+
     loading = false;
   }
 </script>

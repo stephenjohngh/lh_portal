@@ -18,7 +18,7 @@
 
   let state = {
     building: null, floors: [], systems: [], types: [], attrDefs: {}, plans: [],
-    currentFloor: null, currentPlan: null, components: [], spaces: [], inspections: {},
+    currentFloor: null, currentPlan: null, components: [], spaces: [], annotations: [], inspections: {},
     hiddenTypes: new Set(), hiddenStatuses: new Set(), showSpaces: true,
     usingCache: false, cachedAt: null,
     loading: false, loadingFloor: false, error: null,
@@ -178,6 +178,7 @@
         plan={state.currentPlan}
         components={state.components}
         spaces={state.spaces}
+        annotations={state.annotations}
         types={state.types}
         inspections={state.inspections}
         hiddenTypes={state.hiddenTypes}

@@ -5,6 +5,7 @@
 
   export let components    = [];
   export let spaces        = [];
+  export let annotations   = [];
   export let types         = [];
   export let hiddenTypes   = new Set();
   export let hiddenStatuses = new Set();
@@ -116,6 +117,23 @@
   {/each}
 {/if}
 
+<!-- Plan annotations (read-only text labels) -->
+{#each annotations as ann (ann.id)}
+  <div
+    class="annotation-label"
+    class:ann-bold={ann.bold}
+    style="
+      left:{ann.x_position * 100}%;
+      top:{ann.y_position * 100}%;
+      color:#{ann.colour ?? 'fbbf24'};
+      background-color:#{ann.colour ?? 'fbbf24'}33;
+      border-color:#{ann.colour ?? 'fbbf24'}66;
+      font-size:{ann.font_size === 'xs' ? '10px' : ann.font_size === 'sm' ? '12px' : ann.font_size === 'md' ? '14px' : ann.font_size === 'lg' ? '16px' : '18px'};
+    "
+    aria-hidden="true"
+  >{ann.text}</div>
+{/each}
+
 <!-- Component markers -->
 {#each placedComponents as c (c.id)}
   {@const type      = getType(c.type_code)}
@@ -198,8 +216,27 @@
     opacity: 0.75;
     pointer-events: none;
     white-space: nowrap;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
     z-index: 5;
+  }
+
+  .annotation-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    white-space: pre-wrap;
+    max-width: 160px;
+    word-break: break-word;
+    line-height: 1.3;
+    pointer-events: none;
+    z-index: 8;
+  }
+
+  .annotation-label.ann-bold {
+    font-weight: 700;
   }
 
   .marker-wrapper {

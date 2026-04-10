@@ -71,7 +71,13 @@
     localHiddenTypes = next;
   }
 
-  // ── Apply / Clear ─────────────────────────────────────────────────────────
+  // ── Apply / Clear / Set All ───────────────────────────────────────────────
+
+  // Derive button label from current state:
+  // "Set All" when everything is hidden; "Clear" otherwise.
+  $: allHidden =
+    ALL_STATUSES.every(s => localHiddenStatuses.has(s)) &&
+    types.every(t => localHiddenTypes.has(t.code));
 
   function apply() {
     v2planStore.setFilter({
@@ -82,10 +88,16 @@
     dispatch('close');
   }
 
-  function clear() {
-    localHiddenTypes    = new Set();
-    localHiddenStatuses = new Set();
-    localShowSpaces     = true;
+  function clearOrSetAll() {
+    if (allHidden) {
+      // Set All — show everything
+      localHiddenTypes    = new Set();
+      localHiddenStatuses = new Set();
+    } else {
+      // Clear — hide everything
+      localHiddenTypes    = new Set(types.map(t => t.code));
+      localHiddenStatuses = new Set(ALL_STATUSES);
+    }
   }
 
   function dismiss() {
@@ -101,7 +113,7 @@
   <!-- Header -->
   <div class="sheet-header">
     <span class="sheet-title">Filters</span>
-    <button class="clear-btn" on:click={clear}>Clear</button>
+    <button class="clear-btn" on:click={clearOrSetAll}>{allHidden ? 'Set All' : 'Clear'}</button>
   </div>
 
   <div class="sheet-scroll">

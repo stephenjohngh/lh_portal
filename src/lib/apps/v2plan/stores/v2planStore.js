@@ -15,7 +15,7 @@ const logger = getLogger('v2planStore');
 // ── Cache config ──────────────────────────────────────────────────────────────
 
 // Bump CACHE_VERSION whenever the shape of cached data changes (forces fresh fetch).
-const CACHE_VERSION         = 2;
+const CACHE_VERSION         = 3;
 const CACHE_KEY_HIERARCHY   = `v2plan_cache_hierarchy_v${CACHE_VERSION}`;
 const CACHE_KEY_FLOOR       = id => `v2plan_cache_floor_${id}_v${CACHE_VERSION}`;
 const CACHE_KEY_FILTER      = 'v2plan_filter';
@@ -40,6 +40,7 @@ const INITIAL = {
   currentPlan:    null,
   components:     [],
   spaces:         [],
+  annotations:    [],   // plan_annotations[] for the current plan
   inspections:    {},   // { [componentId]: latest inspection row }
 
   // On-demand (lazy, cached per session)
@@ -202,6 +203,7 @@ async function selectFloor(floorId, forceRefresh = false) {
     currentPlan:   plan,
     components:    [],
     spaces:        [],
+    annotations:   [],
     inspections:   {},
     loadingFloor:  true,
     error:         null,
@@ -248,6 +250,7 @@ async function selectFloor(floorId, forceRefresh = false) {
     ...s,
     components:   floorData.components,
     spaces:       floorData.spaces,
+    annotations:  floorData.annotations,
     inspections:  floorData.inspections,
     loadingFloor: false,
     usingCache,
@@ -256,8 +259,8 @@ async function selectFloor(floorId, forceRefresh = false) {
 }
 
 async function fetchFloorForPlan(planId, floorId) {
-  // Step 1: fetch components and spaces in parallel
-  const [components, spaces] = await Promise.all([
+  // Step 1: fetch components, spaces, and annotations in parallel
+  const [components, spaces, annotations] = await Promise.all([
     withTimeout(
       api.get('components', {
         select: 'id,asset_id,label,notes,status,type_code,plan_id,x_position,y_position,floor_id,linked_component_ref',
@@ -270,6 +273,15 @@ async function fetchFloorForPlan(planId, floorId) {
       ? withTimeout(
           api.get('spaces', {
             select: 'id,name,colour,polygon,show_label,plan_id',
+            filters: { plan_id: planId },
+          }),
+          FETCH_TIMEOUT_MS
+        ).catch(() => [])
+      : Promise.resolve([]),
+    planId
+      ? withTimeout(
+          api.get('plan_annotations', {
+            select: 'id,text,x_position,y_position,font_size,colour,bold,plan_id',
             filters: { plan_id: planId },
           }),
           FETCH_TIMEOUT_MS
@@ -302,7 +314,7 @@ async function fetchFloorForPlan(planId, floorId) {
     }
   }
 
-  return { components, spaces: spaces ?? [], inspections };
+  return { components, spaces: spaces ?? [], annotations: annotations ?? [], inspections };
 }
 
 async function loadComponentAttrs(componentId) {
