@@ -1,9 +1,9 @@
-<!-- src/lib/apps/v2proto/components/admin/SystemPanel.svelte -->
+<!-- src/lib/apps/admin/components/SystemPanel.svelte -->
 <!-- Panel 1 of 4: Building Systems list with inline add / edit. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../../stores/v2protoStore.js';
-  import { inp } from '../../ui.js';
+  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
+  import { inp } from '$lib/apps/v2proto/ui.js';
 
   export let systems         = [];
   export let selectedSystemId = null;

@@ -1,11 +1,11 @@
-<!-- src/lib/apps/v2proto/components/admin/OptionsPanel.svelte -->
+<!-- src/lib/apps/admin/components/OptionsPanel.svelte -->
 <!-- Panel 4 of 4: Dropdown / radio options for the selected Attribute Definition.
      Only meaningful when attrDef.display_type is 'dropdown' or 'radio'.
      Each option can carry a priority_override. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../../stores/v2protoStore.js';
-  import { inp } from '../../ui.js';
+  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
+  import { inp } from '$lib/apps/v2proto/ui.js';
 
   export let options  = [];    // type_attribute_options[] for selected attr def
   export let attrDef  = null;  // the selected type_attributes row (or null)

@@ -14,14 +14,18 @@
   import PasswordResetModal from './components/modals/PasswordResetModal.svelte';
   import ManageAppsModal from './components/modals/ManageAppsModal.svelte';
   import DeleteUserModal from './components/modals/DeleteUserModal.svelte';
-  import AuditLogsView from './components/AuditLogsView.svelte'; // NEW
+  import AuditLogsView from './components/AuditLogsView.svelte';
+  import ComponentTypesTab from './components/ComponentTypesTab.svelte';
+  import FloorPanel from './components/FloorPanel.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
 
   let searchTerm = '';
   let isAdmin = false;
-  let activeTab = 'users'; // NEW: 'users' or 'audit'
+  let activeTab = 'users';
+  let v2Loaded = false;   // lazy — load v2protoStore only when a v2 tab is first opened
   
   // Modal states
   let showCreateModal = false;
@@ -67,6 +71,14 @@
 
   function handleCreateSuccess() {
     searchTerm = '';
+  }
+
+  async function activateTab(id) {
+    activeTab = id;
+    if ((id === 'types' || id === 'floors') && !v2Loaded) {
+      v2Loaded = true;
+      await v2protoStore.load();
+    }
   }
 
   function handleCreateClose() {
@@ -119,13 +131,13 @@
       {/if}
     </div>
 
-    <!-- Tab Navigation (NEW) -->
+    <!-- Tab Navigation -->
     <div class="flex space-x-2 border-b border-slate-600">
       <button
-        class="px-4 py-2 transition-colors {activeTab === 'users' 
-          ? 'border-b-2 border-purple-500 text-white font-semibold' 
+        class="px-4 py-2 transition-colors {activeTab === 'users'
+          ? 'border-b-2 border-purple-500 text-white font-semibold'
           : 'text-gray-400 hover:text-white'}"
-        on:click={() => activeTab = 'users'}
+        on:click={() => activateTab('users')}
       >
         <span class="flex items-center space-x-2">
           <span>👥</span>
@@ -135,14 +147,36 @@
       </button>
       {#if isAdmin}
         <button
-          class="px-4 py-2 transition-colors {activeTab === 'audit' 
-            ? 'border-b-2 border-purple-500 text-white font-semibold' 
+          class="px-4 py-2 transition-colors {activeTab === 'audit'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
             : 'text-gray-400 hover:text-white'}"
-          on:click={() => activeTab = 'audit'}
+          on:click={() => activateTab('audit')}
         >
           <span class="flex items-center space-x-2">
             <span>📋</span>
             <span>Audit Logs</span>
+          </span>
+        </button>
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'types'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('types')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>🗂</span>
+            <span>Component Types</span>
+          </span>
+        </button>
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'floors'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('floors')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>🏢</span>
+            <span>Floors</span>
           </span>
         </button>
       {/if}
@@ -200,8 +234,25 @@
     {/if}
 
   {:else if activeTab === 'audit'}
-    <!-- AUDIT LOGS TAB - New Content -->
     <AuditLogsView />
+
+  {:else if activeTab === 'types'}
+    {#if $v2protoStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <ComponentTypesTab />
+    {/if}
+
+  {:else if activeTab === 'floors'}
+    {#if $v2protoStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <FloorPanel
+        floors={$v2protoStore.floors}
+        facilities={$v2protoStore.facilities}
+        on:saved={() => v2protoStore.load()}
+      />
+    {/if}
   {/if}
 </div>
 

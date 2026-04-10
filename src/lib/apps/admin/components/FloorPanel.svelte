@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/admin/FloorPanel.svelte -->
+<!-- src/lib/apps/admin/components/FloorPanel.svelte -->
 <!-- Configure walk_order per floor. NULL = excluded from building-wide walk sessions. -->
 <script>
   import { createEventDispatcher } from 'svelte';

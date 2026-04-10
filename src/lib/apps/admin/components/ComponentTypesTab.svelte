@@ -1,16 +1,15 @@
-<!-- src/lib/apps/v2proto/components/admin/AdminTab.svelte -->
+<!-- src/lib/apps/admin/components/ComponentTypesTab.svelte -->
 <!-- Four-panel admin UI: Systems → Types → Attribute Definitions → Options
      Plus a Maintenance Regime sub-panel below for the selected type.
      All CRUD is handled in child panels; this component manages
      selection state and calls reload() after any save. -->
 <script>
-  import { v2protoStore } from '../../stores/v2protoStore.js';
+  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
   import SystemPanel      from './SystemPanel.svelte';
   import TypePanel        from './TypePanel.svelte';
   import AttrDefPanel     from './AttrDefPanel.svelte';
   import OptionsPanel     from './OptionsPanel.svelte';
   import MaintenancePanel from './MaintenancePanel.svelte';
-  import FloorPanel       from './FloorPanel.svelte';
 
   // ── Selection state ────────────────────────────────────────────────
   let selectedSystemId  = null;
@@ -76,10 +75,6 @@
   }
 
   // ── CSV export: system, type, attribute, option ────────────────────
-  // Each row represents one leaf node in the hierarchy. Parent rows are
-  // repeated on every child so the file reads top-to-bottom without
-  // headers. Rows are emitted even when a level has no children so
-  // every system/type/attribute always appears at least once.
   function exportCsv() {
     const s    = $v2protoStore;
     const rows = [['system', 'type', 'attribute', 'option']];
@@ -137,7 +132,6 @@
              bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-slate-100
              border border-slate-600 transition-colors"
     >
-      <!-- download icon -->
       <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd"
           d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
@@ -194,12 +188,5 @@
       on:saved={onSaved}
     />
   {/if}
-
-  <!-- ── Floor walk order ──────────────────────────────────────────── -->
-  <FloorPanel
-    floors={store.floors}
-    facilities={store.facilities}
-    on:saved={onSaved}
-  />
 
 </div>

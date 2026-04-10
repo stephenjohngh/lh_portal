@@ -11,7 +11,6 @@
   import ComponentsTab   from './components/ComponentsTab.svelte';
   import PlanViewTab     from './components/PlanViewTab.svelte';
   import MaintenanceView from './components/MaintenanceView.svelte';
-  import AdminTab           from './components/admin/AdminTab.svelte';
   import V2ReportsTab       from './components/V2ReportsTab.svelte';
   import V2InspectionsTab   from './components/V2InspectionsTab.svelte';
 
@@ -40,11 +39,7 @@
     { id: 'maintenance', label: 'Maintenance',    icon: '🔧',  adminOnly: false },
     { id: 'inspections', label: 'Inspections',    icon: '🔍',  adminOnly: false },
     { id: 'reports',     label: 'Reports',        icon: '📄',  adminOnly: false },
-    { id: 'admin',       label: 'Admin',          icon: '⚙',  adminOnly: true  },
   ];
-
-  // If the active tab requires admin and user is no longer admin, reset to types
-  $: if (activeTab === 'admin' && !$permissions.isAdmin) activeTab = 'types';
 </script>
 
 <div class="text-white">
@@ -101,15 +96,6 @@
     <V2InspectionsTab />
   {:else if activeTab === 'reports'}
     <V2ReportsTab />
-  {:else if activeTab === 'admin'}
-    {#if $permissions.isAdmin}
-      <AdminTab />
-    {:else}
-      <div class="py-16 text-center text-slate-500 text-sm">
-        <p class="text-2xl mb-3">🔒</p>
-        Admin access required.
-      </div>
-    {/if}
   {/if}
 
 </div>

@@ -1,9 +1,9 @@
-<!-- src/lib/apps/v2proto/components/admin/TypePanel.svelte -->
+<!-- src/lib/apps/admin/components/TypePanel.svelte -->
 <!-- Panel 2 of 4: Component Types for the selected System. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../../stores/v2protoStore.js';
-  import { inp } from '../../ui.js';
+  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
+  import { inp } from '$lib/apps/v2proto/ui.js';
 
   export let types           = [];
   export let selectedSystemId = null;

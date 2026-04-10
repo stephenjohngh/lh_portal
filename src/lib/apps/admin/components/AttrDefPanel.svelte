@@ -1,9 +1,9 @@
-<!-- src/lib/apps/v2proto/components/admin/AttrDefPanel.svelte -->
+<!-- src/lib/apps/admin/components/AttrDefPanel.svelte -->
 <!-- Panel 3 of 4: Attribute Definitions for the selected Type. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../../stores/v2protoStore.js';
-  import { inp } from '../../ui.js';
+  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
+  import { inp } from '$lib/apps/v2proto/ui.js';
 
   export let attrDefs          = [];   // effective type_attributes[], each with _scope: 'system'|'type'
   export let mode              = null; // 'type' | 'system' | null

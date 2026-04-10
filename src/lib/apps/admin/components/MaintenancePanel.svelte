@@ -1,10 +1,10 @@
-<!-- src/lib/apps/v2proto/components/admin/MaintenancePanel.svelte -->
+<!-- src/lib/apps/admin/components/MaintenancePanel.svelte -->
 <!-- Sub-panel below the 4 columns. Shows maintenance_regime rows for the
      selected Type. Admin can add, edit, and DELETE regime rows. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../../stores/v2protoStore.js';
-  import { inp } from '../../ui.js';
+  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
+  import { inp } from '$lib/apps/v2proto/ui.js';
 
   export let regimeRows    = [];   // maintenance_regime[] for selected type
   export let typeId        = null;
