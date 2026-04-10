@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/V2WalkComponentPlanViewer.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionComponentPlanViewer.svelte -->
 <!-- Modal showing current component's location on the floor plan image.
      Uses canvas rendering identical to WalkPlanViewer in the v1 walk app.
      Only shown when currentComponent.plan_id is set (component is placed). -->

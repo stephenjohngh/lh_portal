@@ -40,8 +40,8 @@
   $: annotations    = store.annotations ?? [];
 
   // ── Navigation state ─────────────────────────────────────────────
-  const PREF_FLOOR = 'lh_v2plan_selectedFloorId';
-  const PREF_PLAN  = 'lh_v2plan_selectedPlanId';
+  const PREF_FLOOR = 'lh_v2proto_selectedFloorId';
+  const PREF_PLAN  = 'lh_v2proto_selectedPlanId';
   let selectedFloorId = '';
   let selectedPlanId  = '';
 

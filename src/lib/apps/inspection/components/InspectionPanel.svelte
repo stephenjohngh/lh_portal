@@ -1,18 +1,18 @@
-<!-- src/lib/apps/inspection/components/V2WalkInspectionPanel.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionPanel.svelte -->
 <!-- Single inspection panel for any component type.
      Dynamically renders the checkable type_attributes for this component's type. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { resultLabel }  from '../utils/v2walkHelpers.js';
+  import { resultLabel }  from '../utils/inspectionHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
-  import V2WalkResultSection from './V2WalkResultSection.svelte';
+  import InspectionResultSection from './InspectionResultSection.svelte';
   import WalkButton  from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkSpinner from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
   import WalkBadge   from '$lib/apps/inspection/components/common/WalkBadge.svelte';
 
-  const logger   = getLogger('V2WalkInspectionPanel');
+  const logger   = getLogger('InspectionPanel');
   const dispatch = createEventDispatcher();
 
   export let component;   // current components row
@@ -95,7 +95,7 @@
   </div>
 
   <div class="ip-body">
-    <V2WalkResultSection
+    <InspectionResultSection
       bind:result
       bind:notes
       bind:checklistResults

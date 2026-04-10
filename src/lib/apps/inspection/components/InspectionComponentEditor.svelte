@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/V2WalkComponentEditor.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionComponentEditor.svelte -->
 <!-- Admin-only: full component + attribute editing during a v2 walk. -->
 <script>
   import { createEventDispatcher } from 'svelte';
@@ -8,7 +8,7 @@
   import WalkError    from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
 
-  const logger   = getLogger('V2WalkComponentEditor');
+  const logger   = getLogger('InspectionComponentEditor');
   const dispatch = createEventDispatcher();
 
   export let component;  // components row

@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/V2WalkRepairStart.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionRepairStart.svelte -->
 <!-- Lists all failed/problem components and starts a single-component repair session. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
@@ -9,7 +9,7 @@
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkSpinner from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
 
-  const logger   = getLogger('V2WalkRepairStart');
+  const logger   = getLogger('InspectionRepairStart');
   const dispatch = createEventDispatcher();
 
   $: facilities    = $inspectionStore.facilities;

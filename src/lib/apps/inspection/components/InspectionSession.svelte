@@ -1,22 +1,22 @@
-<!-- src/lib/apps/inspection/components/V2WalkSession.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionSession.svelte -->
 <!-- Core v2 walk screen: navigate components, record inspections, edit, jump, close -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { resultLabel, presetLabel, sessionFloorLabel } from '../utils/v2walkHelpers.js';
-  import V2WalkInspectionPanel       from './V2WalkInspectionPanel.svelte';
-  import V2WalkComponentEditor       from './V2WalkComponentEditor.svelte';
-  import V2WalkJumpList              from './V2WalkJumpList.svelte';
-  import V2WalkPlanViewer            from './V2WalkPlanViewer.svelte';
-  import V2WalkComponentPlanViewer   from './V2WalkComponentPlanViewer.svelte';
+  import { resultLabel, presetLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
+  import InspectionPanel             from './InspectionPanel.svelte';
+  import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
+  import InspectionJumpList          from './InspectionJumpList.svelte';
+  import InspectionPlanViewer        from './InspectionPlanViewer.svelte';
+  import InspectionComponentPlanViewer from './InspectionComponentPlanViewer.svelte';
   import WalkStatsBars from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
   import WalkBadge     from '$lib/apps/inspection/components/common/WalkBadge.svelte';
   import WalkTextarea  from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
   import WalkButton    from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkError     from '$lib/apps/inspection/components/common/WalkError.svelte';
 
-  const logger   = getLogger('V2WalkSession');
+  const logger   = getLogger('InspectionSession');
   const dispatch = createEventDispatcher();
 
   export let canEdit = false;
@@ -175,7 +175,7 @@
   <!-- ── View router ──────────────────────────────────────────────────────── -->
 
   {#if view === 'inspect' && currentComponent}
-    <V2WalkInspectionPanel
+    <InspectionPanel
       component={currentComponent}
       floor={currentFloor}
       type={currentType}
@@ -185,7 +185,7 @@
     />
 
   {:else if view === 'edit' && currentComponent}
-    <V2WalkComponentEditor
+    <InspectionComponentEditor
       component={currentComponent}
       floor={currentFloor}
       on:saved={handleEditSaved}
@@ -193,7 +193,7 @@
     />
 
   {:else if view === 'jump'}
-    <V2WalkJumpList
+    <InspectionJumpList
       {components}
       {currentIndex}
       {inspections}
@@ -204,7 +204,7 @@
     />
 
   {:else if view === 'plan'}
-    <V2WalkPlanViewer
+    <InspectionPlanViewer
       {components}
       {currentIndex}
       {inspections}
@@ -215,7 +215,7 @@
     />
 
   {:else if view === 'component-plan' && currentComponent && currentPlan}
-    <V2WalkComponentPlanViewer
+    <InspectionComponentPlanViewer
       component={currentComponent}
       plan={currentPlan}
       floor={currentFloor}

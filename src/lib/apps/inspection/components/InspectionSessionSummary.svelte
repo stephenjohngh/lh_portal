@@ -1,9 +1,9 @@
-<!-- src/lib/apps/inspection/components/V2WalkSessionSummary.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionSessionSummary.svelte -->
 <!-- Read-only summary of a completed v2 walk session: stats + per-component results -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { flattenInspectionRows, groupByComponent, worstResult, resultLabel, sessionFloorLabel, presetLabel } from '../utils/v2walkHelpers.js';
+  import { flattenInspectionRows, groupByComponent, worstResult, resultLabel, sessionFloorLabel, presetLabel } from '../utils/inspectionHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import WalkStatsBars from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
   import WalkError     from '$lib/apps/inspection/components/common/WalkError.svelte';

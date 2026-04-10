@@ -1,6 +1,6 @@
 // src/lib/apps/inspection/utils/sessionNaming.js
 
-import { presetLabel } from './v2walkHelpers.js';
+import { presetLabel } from './inspectionHelpers.js';
 
 /**
  * Builds an initials string from a building/facility name.

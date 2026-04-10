@@ -1,10 +1,10 @@
-<!-- src/lib/apps/inspection/components/V2WalkPlanViewer.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionPlanViewer.svelte -->
 <!-- Floor component map: grouped component list for the current floor.
      Note: V2 components do not yet have SVG position data.
      This view provides a practical spatial overview by type group. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { resultLabel } from '../utils/v2walkHelpers.js';
+  import { resultLabel } from '../utils/inspectionHelpers.js';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
 
   const dispatch = createEventDispatcher();

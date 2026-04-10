@@ -17,7 +17,7 @@
   import {
     flattenInspectionRows,
     presetLabel,
-  } from '$lib/apps/inspection/utils/v2walkHelpers.js';
+  } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
 

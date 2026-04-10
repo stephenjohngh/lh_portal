@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/V2WalkSessionStart.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionSessionStart.svelte -->
 <!-- Configure and start a new test or inspection session.
      Presets: Emergency Lighting, Fire Doors, Apartment Doors, Custom (full tree). -->
 <script>
@@ -12,7 +12,7 @@
   import WalkError  from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkSpinner from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
 
-  const logger   = getLogger('V2WalkSessionStart');
+  const logger   = getLogger('InspectionSessionStart');
   const dispatch = createEventDispatcher();
 
   export let sessionType = 'test';   // 'test' | 'inspection'

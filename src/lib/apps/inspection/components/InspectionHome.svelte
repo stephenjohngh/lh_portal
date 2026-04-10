@@ -1,9 +1,9 @@
-<!-- src/lib/apps/inspection/components/V2WalkHome.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionHome.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { fmtDate, fmtTime, fmtDuration } from '$lib/utils/dates';
-  import { presetLabel, sessionFloorLabel } from '../utils/v2walkHelpers.js';
+  import { presetLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
   import WalkBadge from '$lib/apps/inspection/components/common/WalkBadge.svelte';
 
   const dispatch = createEventDispatcher();

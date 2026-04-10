@@ -6,11 +6,11 @@
   import { permissions } from '$lib/stores/permissions';
   import { auth }       from '$lib/stores/auth';
   import { inspectionStore } from './stores/inspectionStore.js';
-  import V2WalkHome           from './components/V2WalkHome.svelte';
-  import V2WalkSessionStart   from './components/V2WalkSessionStart.svelte';
-  import V2WalkRepairStart    from './components/V2WalkRepairStart.svelte';
-  import V2WalkSession        from './components/V2WalkSession.svelte';
-  import V2WalkSessionSummary from './components/V2WalkSessionSummary.svelte';
+  import InspectionHome           from './components/InspectionHome.svelte';
+  import InspectionSessionStart   from './components/InspectionSessionStart.svelte';
+  import InspectionRepairStart    from './components/InspectionRepairStart.svelte';
+  import InspectionSession        from './components/InspectionSession.svelte';
+  import InspectionSessionSummary from './components/InspectionSessionSummary.svelte';
   import WalkError            from '$lib/apps/inspection/components/common/WalkError.svelte';
 
 
@@ -18,7 +18,7 @@
 
   // Screens: 'home' | 'start_session' | 'start_repair' | 'walk' | 'summary'
   let screen         = 'home';
-  let sessionType    = 'test';    // passed to V2WalkSessionStart
+  let sessionType    = 'test';    // passed to InspectionSessionStart
   let summarySession = null;
   let loading        = true;
   let initError      = null;
@@ -94,7 +94,7 @@
     <WalkError message={initError} />
 
   {:else if screen === 'home'}
-    <V2WalkHome
+    <InspectionHome
       {canEdit}
       on:startTest={() => { sessionType = 'test'; screen = 'start_session'; }}
       on:startInspection={() => { sessionType = 'inspection'; screen = 'start_session'; }}
@@ -104,21 +104,21 @@
     />
 
   {:else if screen === 'start_session'}
-    <V2WalkSessionStart
+    <InspectionSessionStart
       {sessionType}
       on:started={() => screen = 'walk'}
       on:cancel={() => screen = 'home'}
     />
 
   {:else if screen === 'start_repair'}
-    <V2WalkRepairStart
+    <InspectionRepairStart
       on:started={() => screen = 'walk'}
       on:finish={handleFinishRepair}
       on:back={() => screen = 'home'}
     />
 
   {:else if screen === 'walk'}
-    <V2WalkSession
+    <InspectionSession
       {canEdit}
       on:paused={handleSessionPaused}
       on:closed={handleSessionClosed}
@@ -126,7 +126,7 @@
     />
 
   {:else if screen === 'summary' && summarySession}
-    <V2WalkSessionSummary
+    <InspectionSessionSummary
       session={summarySession}
       on:back={() => { summarySession = null; screen = 'home'; }}
     />

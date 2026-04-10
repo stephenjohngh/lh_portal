@@ -15,7 +15,7 @@
 
   const dispatch = createEventDispatcher();
 
-  const QUICKADD_PREF_KEY = 'lh_v2plan_quickadd';
+  const QUICKADD_PREF_KEY = 'lh_v2proto_quickadd';
 
   let selectedTypeId      = '';
   let label               = '';

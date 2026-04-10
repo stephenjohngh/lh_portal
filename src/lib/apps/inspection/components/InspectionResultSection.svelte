@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/V2WalkResultSection.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionResultSection.svelte -->
 <!-- Result selection, dynamic checklist, multi-photo capture, notes, save.
      Supports up to 4 photos per inspection. photo_urls is an array. -->
 <script>
@@ -13,7 +13,7 @@
 
   const MAX_PHOTOS = 4;
 
-  const logger   = getLogger('V2WalkResultSection');
+  const logger   = getLogger('InspectionResultSection');
   const dispatch = createEventDispatcher();
 
   // Two-way bindable

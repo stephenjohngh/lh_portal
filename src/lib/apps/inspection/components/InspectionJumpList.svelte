@@ -1,8 +1,8 @@
-<!-- src/lib/apps/inspection/components/V2WalkJumpList.svelte -->
+<!-- src/lib/apps/inspection/components/InspectionJumpList.svelte -->
 <!-- Full scrollable component list for jumping to any item in the session. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { resultLabel, worstResult } from '../utils/v2walkHelpers.js';
+  import { resultLabel, worstResult } from '../utils/inspectionHelpers.js';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
 
   const dispatch = createEventDispatcher();

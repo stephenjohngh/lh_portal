@@ -1,4 +1,4 @@
-// src/lib/apps/inspection/utils/v2walkHelpers.js
+// src/lib/apps/inspection/utils/inspectionHelpers.js
 // Helpers for v2 component_inspections schema.
 // Key differences from v1:
 //   - Rows use component_id (not plan_element_id)
