@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/UserStats.svelte -->
+<!-- src/lib/apps/admin/components/UserStats.svelte -->
 <script>
   export let users = [];
 

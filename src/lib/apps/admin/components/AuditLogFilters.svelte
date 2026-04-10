@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/AuditLogFilters.svelte -->
+<!-- src/lib/apps/admin/components/AuditLogFilters.svelte -->
 <!-- Advanced filtering for audit logs -->
 <script>
   import { createEventDispatcher } from 'svelte';

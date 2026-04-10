@@ -20,7 +20,7 @@ const logger = getLogger('auditLogger');
  * @param {string} targetId       - UUID of the affected record.
  * @param {string} targetName     - Human-readable name for the record.
  * @param {object} data           - Optional extra fields passed through to the API:
- *   @param {string}  [data.appId]         - Originating app: 'issues' | 'plans' | 'users'
+ *   @param {string}  [data.appId]         - Originating app: 'issues' | 'plans' | 'admin'
  *   @param {string}  [data.eventCategory] - Category override (defaults to appId or targetType)
  *   @param {string}  [data.eventAction]   - Specific action label e.g. 'create_plan'
  *   @param {string}  [data.severity]      - 'info' | 'warning' | 'error' | 'critical'

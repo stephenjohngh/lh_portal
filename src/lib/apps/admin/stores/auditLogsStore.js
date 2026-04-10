@@ -1,4 +1,4 @@
-// src/lib/apps/users/stores/auditLogsStore.js
+// src/lib/apps/admin/stores/auditLogsStore.js
 // Client-side store for audit logs
 // UPDATED: getStats() counts plan events; app_id selected in all queries
 

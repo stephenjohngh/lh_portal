@@ -25,8 +25,8 @@ export const AVAILABLE_APPS = [
     description: 'Dashboard and app overview'
   },
   {
-    id: 'users',
-    name: 'Users',
+    id: 'admin',
+    name: 'Admin',
     icon: 'users',
     alwaysVisible: false,
     requiresPermission: true,
@@ -109,7 +109,7 @@ export const AVAILABLE_APPS = [
  */
 export const APP_IDS = {
   HOME:    'home',
-  USERS:   'users',
+  ADMIN:   'admin',
   ISSUES:  'issues',
   PLANS:   'plans',
   WALK:    'walk',

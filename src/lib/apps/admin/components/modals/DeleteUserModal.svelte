@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/modals/DeleteUserModal.svelte -->
+<!-- src/lib/apps/admin/components/modals/DeleteUserModal.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { usersStore } from '../../stores/usersStore';

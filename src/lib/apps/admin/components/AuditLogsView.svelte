@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/AuditLogsView.svelte -->
+<!-- src/lib/apps/admin/components/AuditLogsView.svelte -->
 <!-- Main audit logs view with filtering, search, and statistics -->
 <script>
   import { onMount } from 'svelte';

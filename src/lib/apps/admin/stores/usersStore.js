@@ -1,4 +1,4 @@
-// src/lib/apps/users/stores/usersStore.js
+// src/lib/apps/admin/stores/usersStore.js
 // FIXED: Added requesting_user_id to resetPassword function
 
 import { writable } from 'svelte/store';

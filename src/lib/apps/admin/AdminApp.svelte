@@ -1,5 +1,5 @@
-<!-- src/lib/apps/users/UserListApp.svelte -->
-<!-- UPDATED: Added Audit Logs tab for admin users -->
+<!-- src/lib/apps/admin/AdminApp.svelte -->
+<!-- User management, permissions, and audit log viewer -->
 <script>
   import { onMount } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
@@ -40,9 +40,9 @@
   );
 
   onMount(async () => {
-    // Initialize permissions for 'users' app
+    // Initialize permissions for 'admin' app
     if ($auth.user) {
-      await permissions.init($auth.user.id, 'users');
+      await permissions.init($auth.user.id, 'admin');
       isAdmin = await checkIsAdmin($auth.user.id);
     }
     

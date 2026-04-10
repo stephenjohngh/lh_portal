@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/AuditDashboard.svelte -->
+<!-- src/lib/apps/admin/components/AuditDashboard.svelte -->
 <!-- Dashboard showing audit log statistics -->
 <script>
   import { onMount } from 'svelte';

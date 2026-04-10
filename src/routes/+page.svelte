@@ -13,7 +13,7 @@
 
   const logger = getLogger('MainApp');
 
-  import UserListApp from '$lib/apps/users/UserListApp.svelte';
+  import AdminApp from '$lib/apps/admin/AdminApp.svelte';
   import IssuesTrackerApp from '$lib/apps/issues/IssuesTrackerApp.svelte';
   import DemoApp from '$lib/apps/demo/DemoApp.svelte';
   import Demo from '$lib/apps/demo/Demo.svelte';
@@ -89,7 +89,7 @@
 
   function getAppComponent(appId) {
     const components = {
-      'users': UserListApp,
+      'admin': AdminApp,
       'issues': IssuesTrackerApp,
       'plans': PlansApp,
       'walk':  WalkApp,

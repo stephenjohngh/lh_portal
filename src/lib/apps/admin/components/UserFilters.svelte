@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/UserFilters.svelte -->
+<!-- src/lib/apps/admin/components/UserFilters.svelte -->
 <script>
   import Icon from '$lib/components/icons/Icon.svelte';
   

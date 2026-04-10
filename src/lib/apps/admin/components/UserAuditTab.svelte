@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/UserAuditTab.svelte -->
+<!-- src/lib/apps/admin/components/UserAuditTab.svelte -->
 <!-- Tab integration for UserListApp to add Audit Logs -->
 <script>
   import AuditLogsView from './AuditLogsView.svelte';

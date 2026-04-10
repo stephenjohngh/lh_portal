@@ -1,40 +1,27 @@
-<!-- src/lib/apps/users/components/modals/CreateUserModal.svelte -->
+<!-- src/lib/apps/admin/components/modals/PasswordResetModal.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { usersStore } from '../../stores/usersStore';
   import Modal from '$lib/components/common/Modal.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
-  import { isValidEmail, isRequired } from '$lib/utils/validation';
 
   export let show = false;
+  export let user = null;
 
   const dispatch = createEventDispatcher();
 
-  let email = '';
   let password = '';
-  let fullName = '';
-  let creating = false;
+  let passwordConfirm = '';
+  let resetting = false;
   let error = '';
-  let emailError = '';
   let passwordError = '';
 
   function validateForm() {
-    emailError = '';
     passwordError = '';
     error = '';
 
-    if (!isRequired(email)) {
-      emailError = 'Email is required';
-      return false;
-    }
-
-    if (!isValidEmail(email)) {
-      emailError = 'Invalid email format';
-      return false;
-    }
-
-    if (!isRequired(password)) {
+    if (!password) {
       passwordError = 'Password is required';
       return false;
     }
@@ -44,21 +31,22 @@
       return false;
     }
 
+    if (password !== passwordConfirm) {
+      error = 'Passwords do not match';
+      return false;
+    }
+
     return true;
   }
 
   async function handleSubmit() {
-    if (!validateForm()) return;
+    if (!user || !validateForm()) return;
 
-    creating = true;
+    resetting = true;
     error = '';
 
     try {
-      await usersStore.createUser({
-        email,
-        password,
-        fullName
-      });
+      await usersStore.resetPassword(user.id, password);
 
       dispatch('success');
       resetForm();
@@ -67,15 +55,13 @@
     } catch (err) {
       error = err.message;
     } finally {
-      creating = false;
+      resetting = false;
     }
   }
 
   function resetForm() {
-    email = '';
     password = '';
-    fullName = '';
-    emailError = '';
+    passwordConfirm = '';
     passwordError = '';
     error = '';
   }
@@ -89,11 +75,19 @@
 
 <Modal
   bind:show
-  title="Create New User"
+  title="Reset Password"
   size="medium"
   on:close={handleClose}
 >
   <div class="space-y-4">
+    <!-- User Info -->
+    {#if user}
+      <div class="p-3 bg-slate-700/50 rounded-lg">
+        <p class="text-sm text-gray-400 mb-1">Resetting password for:</p>
+        <p class="font-semibold text-white">{user.email}</p>
+      </div>
+    {/if}
+
     <!-- Error Message -->
     {#if error}
       <div class="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
@@ -101,44 +95,33 @@
       </div>
     {/if}
 
-    <!-- Email -->
+    <!-- New Password -->
     <FormInput
-      label="Email Address"
-      type="email"
-      bind:value={email}
-      placeholder="user@example.com"
-      required={true}
-      error={emailError}
-      on:input={() => emailError = ''}
-      disabled={creating}
-    />
-
-    <!-- Full Name -->
-    <FormInput
-      label="Full Name"
-      type="text"
-      bind:value={fullName}
-      placeholder="John Doe"
-      disabled={creating}
-    />
-
-    <!-- Password -->
-    <FormInput
-      label="Password"
+      label="New Password"
       type="password"
       bind:value={password}
       placeholder="Minimum 6 characters"
       required={true}
       error={passwordError}
       on:input={() => passwordError = ''}
-      disabled={creating}
+      disabled={resetting}
     />
 
-    <!-- Info Box -->
-    <div class="p-3 bg-blue-500/10 border border-blue-500/50 rounded-lg">
-      <p class="text-blue-400 text-sm">
-        The user will receive an email with their login credentials.
-        They can change their password after first login.
+    <!-- Confirm Password -->
+    <FormInput
+      label="Confirm Password"
+      type="password"
+      bind:value={passwordConfirm}
+      placeholder="Re-enter password"
+      required={true}
+      disabled={resetting}
+    />
+
+    <!-- Warning -->
+    <div class="p-3 bg-amber-500/10 border border-amber-500/50 rounded-lg">
+      <p class="text-amber-400 text-sm">
+        ⚠️ The user will need to use this new password for their next login.
+        Make sure to communicate it securely.
       </p>
     </div>
   </div>
@@ -150,20 +133,20 @@
       size="large"
       fullWidth={true}
       on:click={handleClose}
-      disabled={creating}
+      disabled={resetting}
     >
       Cancel
     </Button>
     <Button
-      variant="primary"
+      variant="amber"
       size="large"
       fullWidth={true}
-      icon="plus"
-      loading={creating}
-      disabled={creating}
+      icon="settings"
+      loading={resetting}
+      disabled={resetting}
       on:click={handleSubmit}
     >
-      {creating ? 'Creating...' : 'Create User'}
+      {resetting ? 'Resetting...' : 'Reset Password'}
     </Button>
   </div>
 </Modal>

@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/UserCard.svelte -->
+<!-- src/lib/apps/admin/components/UserCard.svelte -->
 <!-- REFACTORED: Uses new CSS utility classes -->
 <script>
   import { createEventDispatcher } from 'svelte';

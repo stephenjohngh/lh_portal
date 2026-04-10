@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/modals/ManageAppsModal.svelte -->
+<!-- src/lib/apps/admin/components/modals/ManageAppsModal.svelte -->
 <!-- Updated to use apps.js, ErrorDisplay, and LoadingSpinner -->
 <script>
   import { createEventDispatcher } from 'svelte';

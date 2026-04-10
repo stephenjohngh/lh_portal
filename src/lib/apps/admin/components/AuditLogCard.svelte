@@ -1,4 +1,4 @@
-<!-- src/lib/apps/users/components/AuditLogCard.svelte -->
+<!-- src/lib/apps/admin/components/AuditLogCard.svelte -->
 <!-- Individual audit log card with expandable details -->
 <script>
   import { createEventDispatcher } from 'svelte';
