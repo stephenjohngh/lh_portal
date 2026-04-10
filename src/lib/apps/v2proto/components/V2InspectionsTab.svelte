@@ -14,7 +14,7 @@
     resultLabel,
     sessionFloorLabel,
     presetLabel,
-  } from '$lib/apps/v2walk/utils/v2walkHelpers.js';
+  } from '$lib/apps/inspection/utils/v2walkHelpers.js';
   import { resultBadgeColor } from '$lib/apps/v2/utils/resultConstants.js';
   import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
   import Badge           from '$lib/components/common/Badge.svelte';

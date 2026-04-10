@@ -8,7 +8,7 @@
   let error = '';
   let loading = false;
 
-  // Read optional redirect destination (e.g. /v2plan, /v2walk)
+  // Read optional redirect destination (e.g. /mobileplan, /inspection)
   // Restrict to relative paths only — no open redirect.
   $: redirectTo = (() => {
     const r = $page.url.searchParams.get('redirect') ?? '';

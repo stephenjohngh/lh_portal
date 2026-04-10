@@ -76,8 +76,8 @@ export const AVAILABLE_APPS = [
   },
 
   {
-    id: 'v2walk',
-    name: 'V2 Walk',
+    id: 'inspection',
+    name: 'Inspection',
     icon: 'walk',
     alwaysVisible: false,
     requiresPermission: true,
@@ -85,8 +85,8 @@ export const AVAILABLE_APPS = [
   },
 
   {
-    id: 'v2plan',
-    name: 'V2 Plan',
+    id: 'mobileplan',
+    name: 'Mobile Plan',
     icon: 'grid',
     alwaysVisible: false,
     requiresPermission: true,
@@ -115,9 +115,9 @@ export const APP_IDS = {
   WALK:    'walk',
   DEMO:    'demo',
   DEMO2:   'demo2',
-  V2PROTO: 'v2proto',
-  V2WALK:  'v2walk',
-  V2PLAN:  'v2plan',
+  V2PROTO:    'v2proto',
+  INSPECTION: 'inspection',
+  MOBILEPLAN: 'mobileplan',
   SETTINGS:'settings'
 };
 

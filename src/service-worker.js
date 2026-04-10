@@ -53,7 +53,7 @@ self.addEventListener('fetch', event => {
   }
 
   // Skip authenticated Supabase API calls — let them go straight to network.
-  // Data is cached in localStorage by v2planStore, not here.
+  // Data is cached in localStorage by mobileplanStore, not here.
   if (url.hostname.endsWith('.supabase.co')) {
     return;
   }
