@@ -12,6 +12,7 @@
   import { v2protoStore }        from '../stores/v2protoStore.js';
   import { typeByCode, checkableDefs } from '../lookups.js';
   import { computeMetresPerUnit } from './plan/planMeasure.js';
+  import { permissions }          from '$lib/stores/permissions';
   import PlanToolbar              from './plan/PlanToolbar.svelte';
   import PlanCanvas               from './plan/PlanCanvas.svelte';
   import SpaceDrawingSidebar      from './plan/SpaceDrawingSidebar.svelte';
@@ -23,6 +24,7 @@
   import InspectionPanel          from './InspectionPanel.svelte';
   import QuickAddForm             from './QuickAddForm.svelte';
   import AnnotationSidebar        from './plan/AnnotationSidebar.svelte';
+  import PlanAdminModal           from './plan/PlanAdminModal.svelte';
 
   // ── Store bindings ────────────────────────────────────────────────
   $: store          = $v2protoStore;
@@ -105,6 +107,10 @@
   let scalePoint2      = null;   // { x, y } second reference click
   let scaleSaving      = false;
   let imageAspectRatio = null;   // captured from <img> naturalWidth/naturalHeight
+
+  // ── Plan admin modal state ────────────────────────────────────────
+  let planAdminOpen = false;
+  let planAdminMode = 'new';    // 'new' | 'edit' | 'copy'
 
   // ── Derived: floor / plan views ───────────────────────────────────
   $: plansForFloor      = selectedFloorId
@@ -592,6 +598,49 @@
     vertexDragIndex      = null;
   }
 
+  // ── Plan admin ─────────────────────────────────────────────────────
+  function onPlanAdmin({ detail: { mode } }) {
+    planAdminMode = mode;
+    planAdminOpen = true;
+  }
+
+  function handlePlanAdminDone({ detail: { plan, action, copied } }) {
+    planAdminOpen = false;
+    if (action === 'created' || action === 'copied') {
+      // Navigate to the new plan: set floor then plan
+      if (plan.floor_id) {
+        selectedFloorId = plan.floor_id;
+        localStorage.setItem(PREF_FLOOR, plan.floor_id);
+      }
+      selectedPlanId = plan.id;
+      localStorage.setItem(PREF_PLAN, plan.id);
+      resetSelection();
+      cancelSpaceDrawing();
+      clearScaleDrawing();
+    }
+    // For 'updated': the plan row in the store is already patched; selectedPlan
+    // is derived reactively so no manual update needed.
+  }
+
+  function handlePlanAdminDeleted({ detail: { planId } }) {
+    planAdminOpen = false;
+    // If the deleted plan was selected, reset navigation
+    if (selectedPlanId === planId) {
+      selectedPlanId = '';
+      resetSelection();
+      cancelSpaceDrawing();
+      clearScaleDrawing();
+      // Try to navigate to another plan on the same floor
+      const fallback = plans.find(p => p.floor_id === selectedFloorId && p.id !== planId);
+      if (fallback) {
+        selectedPlanId = fallback.id;
+        localStorage.setItem(PREF_PLAN, fallback.id);
+      } else {
+        localStorage.removeItem(PREF_PLAN);
+      }
+    }
+  }
+
   // ── Space polygon move ─────────────────────────────────────────────
   function onSpaceMoveDragstart({ detail: { space, x, y } }) {
     if (drawingMode !== 'space') return;  // move only allowed in Spaces mode
@@ -625,10 +674,13 @@
     {unplacedComponents}
     hasScale={!!selectedPlan?.scale_ref}
     {metresPerUnit}
+    showPlanAdmin={$permissions.isAdmin}
+    hasPlan={!!selectedPlan}
     on:floorchange={onFloorChange}
     on:planchange={onPlanChange}
     on:modechange={onModeChange}
     on:clearscale={handleClearScale}
+    on:planadmin={onPlanAdmin}
   />
 
   <!-- ── Mode hint bar ─────────────────────────────────────────────── -->
@@ -884,6 +936,17 @@
 
     </div><!-- /.sidebar -->
   </div><!-- /.main area -->
+
+  <!-- ── Plan admin modal ─────────────────────────────────────────── -->
+  <PlanAdminModal
+    bind:show={planAdminOpen}
+    mode={planAdminMode}
+    plan={selectedPlan}
+    {floors}
+    on:done={handlePlanAdminDone}
+    on:deleted={handlePlanAdminDeleted}
+    on:close={() => planAdminOpen = false}
+  />
 
   <!-- ── Inventory table (full width, below plan) ──────────────── -->
   {#if selectedPlanId && (planComponents.length > 0 || visibleComponents.length > 0)}

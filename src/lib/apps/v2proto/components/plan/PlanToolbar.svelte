@@ -17,6 +17,8 @@
   export let unplacedComponents = [];
   export let hasScale           = false;
   export let metresPerUnit      = null;
+  export let showPlanAdmin      = false;  // true when current user is admin
+  export let hasPlan            = false;  // true when a plan is currently selected
 
   const dispatch = createEventDispatcher();
 
@@ -94,6 +96,32 @@
         class="text-teal-700 hover:text-teal-500 transition-colors ml-0.5"
         title="Remove scale calibration"
       >✕</button>
+    </div>
+  {/if}
+
+  <!-- Plan admin buttons (admin-only) -->
+  {#if showPlanAdmin}
+    <div class="flex items-center gap-1 shrink-0">
+      <button
+        on:click={() => dispatch('planadmin', { mode: 'new' })}
+        title="Create a new floor plan"
+        class="px-2.5 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
+               text-slate-300 border border-slate-600 transition-colors"
+      >⊕ New</button>
+      {#if hasPlan}
+        <button
+          on:click={() => dispatch('planadmin', { mode: 'edit' })}
+          title="Edit this plan's info or replace its image"
+          class="px-2.5 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
+                 text-slate-300 border border-slate-600 transition-colors"
+        >✎ Edit</button>
+        <button
+          on:click={() => dispatch('planadmin', { mode: 'copy' })}
+          title="Copy this plan and all its components"
+          class="px-2.5 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
+                 text-slate-300 border border-slate-600 transition-colors"
+        >⎘ Copy</button>
+      {/if}
     </div>
   {/if}
 

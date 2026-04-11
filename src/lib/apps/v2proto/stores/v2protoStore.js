@@ -3,6 +3,7 @@ import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
 import { getLogger } from '$lib/utils/logger';
 import { auth } from '$lib/stores/auth';
+import { supabase } from '$lib/supabaseClient';
 import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
 
 const logger = getLogger('v2proto');
@@ -677,7 +678,157 @@ function createV2ProtoStore() {
 
       logger('Saved inspection for component:', componentId, result);
       return inspection;
-    }
+    },
+
+    // ── Plan admin ──────────────────────────────────────────────────────
+    // Upload an image file to the plan-images storage bucket.
+    // Returns the public URL of the uploaded file.
+    async uploadPlanImage(file) {
+      const ext  = file.name.split('.').pop().toLowerCase();
+      const path = `plans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from('plan-images').upload(path, file);
+      if (error) throw new Error(`Image upload failed: ${error.message}`);
+      const { data: { publicUrl } } = supabase.storage.from('plan-images').getPublicUrl(path);
+      return publicUrl;
+    },
+
+    // Create a new plan record, uploading the provided image file first.
+    // data: { name, building, floor_id, description }
+    async createPlan(data, file) {
+      requireUserId();
+      const imageUrl = await this.uploadPlanImage(file);
+      const plan = await api.create('plans', {
+        name:        data.name?.trim()        || null,
+        building:    data.building?.trim()    || '',
+        floor_id:    data.floor_id            || null,
+        description: data.description?.trim() || null,
+        image_url:   imageUrl,
+      });
+      update(s => ({
+        ...s,
+        plans: [...s.plans, plan].sort((a, b) => (a.building ?? '').localeCompare(b.building ?? ''))
+      }));
+      logger('Created plan:', plan.id, data.building);
+      return plan;
+    },
+
+    // Update plan metadata fields only (no image).
+    async updatePlanInfo(planId, data) {
+      requireUserId();
+      const updated = await api.update('plans', planId, {
+        name:        data.name?.trim()        || null,
+        building:    data.building?.trim()    || '',
+        floor_id:    data.floor_id            || null,
+        description: data.description?.trim() || null,
+      });
+      update(s => ({
+        ...s,
+        plans: s.plans.map(p => p.id === planId ? { ...p, ...updated } : p)
+      }));
+      logger('Updated plan info:', planId);
+      return updated;
+    },
+
+    // Replace the image on an existing plan.
+    // Also clears scale_ref and image_aspect_ratio — both must be re-calibrated.
+    async replacePlanImage(planId, file) {
+      requireUserId();
+      const imageUrl = await this.uploadPlanImage(file);
+      const updated  = await api.update('plans', planId, {
+        image_url:          imageUrl,
+        image_aspect_ratio: null,
+        scale_ref:          null,
+      });
+      update(s => ({
+        ...s,
+        plans: s.plans.map(p => p.id === planId ? { ...p, ...updated } : p)
+      }));
+      logger('Replaced plan image:', planId);
+      return updated;
+    },
+
+    // Copy a plan: creates a new plan row reusing the same image URL,
+    // then copies all components (with their attribute values) one by one.
+    // scale_ref is NOT copied — it references pixel distances on the original image.
+    // onProgress(done, total) is called after each component is copied (optional).
+    // Returns { plan, copied } — the new plan row and count of components copied.
+    async copyPlan(sourcePlanId, data, onProgress = null) {
+      const userId = requireUserId();
+
+      let sourcePlan = null;
+      update(s => { sourcePlan = s.plans.find(p => p.id === sourcePlanId); return s; });
+      if (!sourcePlan) throw new Error('Source plan not found');
+
+      // Create new plan row with the same image (no upload needed)
+      const newPlan = await api.create('plans', {
+        name:               (data.name ?? sourcePlan.name)?.trim()        || null,
+        building:           (data.building ?? sourcePlan.building)?.trim() || '',
+        floor_id:           data.floor_id ?? sourcePlan.floor_id           ?? null,
+        description:        sourcePlan.description                         || null,
+        image_url:          sourcePlan.image_url,
+        image_aspect_ratio: sourcePlan.image_aspect_ratio                  || null,
+        // scale_ref intentionally omitted (reset to null)
+      });
+
+      // Fetch source components fresh from the DB
+      const srcComponents = await api.get('components', { filters: { plan_id: sourcePlanId } });
+      const total = srcComponents.length;
+
+      let copied = 0;
+      if (total > 0) {
+        const allAttrs = await api.get('component_attributes');
+
+        for (const c of srcComponents) {
+          if (onProgress) onProgress(copied, total);
+          const newComp = await api.create('components', {
+            plan_id:           newPlan.id,
+            floor_id:          c.floor_id,
+            type_code:         c.type_code,
+            primary_attribute: c.primary_attribute,
+            label:             c.label,
+            asset_id:          c.asset_id,
+            x_position:        c.x_position,
+            y_position:        c.y_position,
+            status:            c.status ?? 'ok',
+            notes:             c.notes,
+            created_by:        userId,
+            updated_by:        userId,
+            // linked_component_ref intentionally omitted (cross-refs would be stale)
+          });
+          const attrs = allAttrs.filter(a => a.component_id === c.id);
+          if (attrs.length > 0) {
+            await api.createMany('component_attributes', attrs.map(a => ({
+              component_id:      newComp.id,
+              type_attribute_id: a.type_attribute_id,
+              value:             a.value,
+            })), false);
+          }
+          copied++;
+        }
+        if (onProgress) onProgress(copied, total);
+      }
+
+      update(s => ({
+        ...s,
+        plans: [...s.plans, newPlan].sort((a, b) => (a.building ?? '').localeCompare(b.building ?? ''))
+      }));
+      logger(`Copied plan ${sourcePlanId} → ${newPlan.id}, ${copied} components`);
+      return { plan: newPlan, copied };
+    },
+
+    // Delete a plan row. The DB should cascade-delete spaces and annotations.
+    // Local state is also cleaned up accordingly.
+    async deletePlan(planId) {
+      requireUserId();
+      await api.delete('plans', planId);
+      update(s => ({
+        ...s,
+        plans:       s.plans.filter(p => p.id !== planId),
+        spaces:      s.spaces.filter(sp => sp.plan_id !== planId),
+        annotations: s.annotations.filter(a => a.plan_id !== planId),
+      }));
+      logger('Deleted plan:', planId);
+    },
   };
 }
 
