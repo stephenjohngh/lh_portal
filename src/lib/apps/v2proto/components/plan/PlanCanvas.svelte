@@ -103,8 +103,15 @@
             stroke-width="0.003"
             stroke-opacity={isNone ? 0.5 : 0.8}
             stroke-dasharray={isNone ? '0.015,0.008' : null}
-            style="pointer-events:{drawingMode === 'space' ? 'none' : 'all'}; cursor:pointer"
+            style="pointer-events:{drawingMode === 'space' ? 'all' : 'none'};
+                   cursor:{selectedSpace?.id === space.id && !vertexEditingActive ? 'grab' : 'pointer'}"
             on:click|stopPropagation={() => dispatch('spaceclick', { space })}
+            on:mousedown|stopPropagation={e => {
+              if (selectedSpace?.id === space.id && !vertexEditingActive) {
+                const { x, y } = getXY(e);
+                dispatch('spacemovedragstart', { space, x, y });
+              }
+            }}
           />
         {/if}
       {/each}
@@ -120,6 +127,7 @@
               fill="#a855f7" stroke="white" stroke-width="0.003"
               style="pointer-events:auto; cursor:grab"
               on:mousedown|stopPropagation={() => dispatch('spacevertexdragstart', { index: i })}
+              on:click|stopPropagation
             />
           {/each}
         {/if}
@@ -244,7 +252,8 @@
   {#each planAnnotations as ann (ann.id)}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div
-      class="absolute select-none pointer-events-auto max-w-[180px]"
+      class="absolute select-none max-w-[180px]
+           {drawingMode === 'annotation' ? 'pointer-events-auto' : 'pointer-events-none'}"
       style="left:{ann.x_position * 100}%; top:{ann.y_position * 100}%;
              transform:translate(-50%,-50%); z-index:{selectedAnnotation?.id === ann.id ? 22 : 12}"
       on:click|stopPropagation={() => dispatch('annotationclick', { annotation: ann })}

@@ -88,6 +88,13 @@
   let editingPolygon      = null;   // { spaceId, vertices: [{x,y}] }
   let vertexDragIndex     = null;   // index of vertex being dragged
 
+  // ── Space move state ──────────────────────────────────────────────
+  // Active when user mousedowns on a selected (non-vertex-editing) polygon.
+  // editingPolygon is reused as the live copy during the move.
+  let spaceMoveDragging    = false;
+  let spaceMoveOrigin      = null;   // { x, y } mouse position when move drag started
+  let spaceMoveBasePolygon = null;   // original polygon vertices before move
+
   // ── Annotation state ──────────────────────────────────────────────
   let selectedAnnotation   = null;   // the annotation being edited
   let annotationDraggingId = null;
@@ -188,14 +195,17 @@
 
   // ── Helpers ───────────────────────────────────────────────────────
   function resetSelection() {
-    selectedComponent   = null;
-    selectedSpace       = null;
-    selectedAnnotation  = null;
-    sidebarMode         = 'none';
-    newPos              = null;
-    vertexEditingActive = false;
-    editingPolygon      = null;
-    vertexDragIndex     = null;
+    selectedComponent    = null;
+    selectedSpace        = null;
+    selectedAnnotation   = null;
+    sidebarMode          = 'none';
+    newPos               = null;
+    vertexEditingActive  = false;
+    editingPolygon       = null;
+    vertexDragIndex      = null;
+    spaceMoveDragging    = false;
+    spaceMoveOrigin      = null;
+    spaceMoveBasePolygon = null;
   }
 
   function cancelSpaceDrawing() {
@@ -312,7 +322,15 @@
   }
 
   function onSpaceClick({ detail: { space } }) {
-    if (drawingMode === 'space') return; // shouldn't reach here (pointer-events:none)
+    if (drawingMode !== 'space') return;
+    // If mid-draw, cancel it before switching to edit
+    if (drawingVertices.length > 0) cancelSpaceDrawing();
+    // Cancel vertex editing when switching to a different space
+    if (selectedSpace?.id !== space.id) {
+      vertexEditingActive = false;
+      editingPolygon      = null;
+      vertexDragIndex     = null;
+    }
     selectedSpace     = space;
     selectedComponent = null;
     sidebarMode       = 'space-detail';
@@ -381,7 +399,7 @@
     if (drawingVertices.length < 3 || !drawingSpaceName.trim()) return;
     saving = true; errorMsg = '';
     try {
-      await v2protoStore.createSpace({
+      const newSpace = await v2protoStore.createSpace({
         plan_id:    selectedPlanId,
         floor_id:   selectedFloorId || null,
         name:       drawingSpaceName.trim(),
@@ -391,6 +409,8 @@
         show_label: drawingShowLabel,
       });
       cancelSpaceDrawing();
+      drawingMode = 'off';
+      if (newSpace) { selectedSpace = newSpace; sidebarMode = 'space-detail'; }
     } catch (err) { errorMsg = err.message; }
     finally       { saving = false; }
   }
@@ -450,6 +470,7 @@
   }
 
   function onAnnotationClick({ detail: { annotation } }) {
+    if (drawingMode !== 'annotation') return;
     selectedAnnotation = annotation;
     sidebarMode        = 'annotation-detail';
   }
@@ -496,29 +517,62 @@
   }
 
   function handleMousemoveVertex(e) {
-    if (vertexDragIndex === null || !editingPolygon || !canvasEl) return;
+    if (vertexDragIndex === null && !spaceMoveDragging) return;
+    if (!canvasEl) return;
     const rect = canvasEl.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height));
-    editingPolygon = {
-      ...editingPolygon,
-      vertices: editingPolygon.vertices.map((v, i) => i === vertexDragIndex ? { x, y } : v),
-    };
+
+    if (vertexDragIndex !== null && editingPolygon) {
+      editingPolygon = {
+        ...editingPolygon,
+        vertices: editingPolygon.vertices.map((v, i) => i === vertexDragIndex ? { x, y } : v),
+      };
+    } else if (spaceMoveDragging && spaceMoveBasePolygon && spaceMoveOrigin) {
+      const dx = x - spaceMoveOrigin.x;
+      const dy = y - spaceMoveOrigin.y;
+      editingPolygon = {
+        spaceId: selectedSpace.id,
+        vertices: spaceMoveBasePolygon.map(v => ({
+          x: Math.max(0, Math.min(1, v.x + dx)),
+          y: Math.max(0, Math.min(1, v.y + dy)),
+        })),
+      };
+    }
   }
 
   async function handleMouseupVertex() {
-    if (vertexDragIndex === null || !editingPolygon) return;
-    vertexDragIndex = null;
-    // Capture before the await — editingPolygon could be cleared (e.g. user
-    // presses "Done editing") while the store round-trip is in flight.
-    const poly = editingPolygon;
-    try {
-      await v2protoStore.updateSpacePolygon(poly.spaceId, poly.vertices);
-      // Sync selectedSpace so SpaceDetailSidebar shows the updated vertex count
-      const updated = $v2protoStore.spaces.find(s => s.id === poly.spaceId);
-      if (updated && selectedSpace?.id === updated.id) selectedSpace = updated;
-    } catch (err) {
-      errorMsg = err.message;
+    if (vertexDragIndex === null && !spaceMoveDragging) return;
+
+    if (vertexDragIndex !== null) {
+      vertexDragIndex = null;
+      // Capture before the await — editingPolygon could be cleared (e.g. user
+      // presses "Done editing") while the store round-trip is in flight.
+      const poly = editingPolygon;
+      if (!poly) return;
+      try {
+        await v2protoStore.updateSpacePolygon(poly.spaceId, poly.vertices);
+        // Sync selectedSpace so SpaceDetailSidebar shows the updated vertex count
+        const updated = $v2protoStore.spaces.find(s => s.id === poly.spaceId);
+        if (updated && selectedSpace?.id === updated.id) selectedSpace = updated;
+      } catch (err) {
+        errorMsg = err.message;
+      }
+    } else if (spaceMoveDragging) {
+      spaceMoveDragging    = false;
+      spaceMoveOrigin      = null;
+      spaceMoveBasePolygon = null;
+      const poly = editingPolygon;
+      if (!poly) return;
+      try {
+        await v2protoStore.updateSpacePolygon(poly.spaceId, poly.vertices);
+        const updated = $v2protoStore.spaces.find(s => s.id === poly.spaceId);
+        if (updated && selectedSpace?.id === updated.id) selectedSpace = updated;
+      } catch (err) {
+        errorMsg = err.message;
+      }
+      // Clear live copy only when not also vertex-editing
+      if (!vertexEditingActive) editingPolygon = null;
     }
   }
 
@@ -531,9 +585,20 @@
   }
 
   function onDoneEditShape() {
-    vertexEditingActive = false;
-    editingPolygon      = null;
-    vertexDragIndex     = null;
+    vertexEditingActive  = false;
+    editingPolygon       = null;
+    vertexDragIndex      = null;
+  }
+
+  // ── Space polygon move ─────────────────────────────────────────────
+  function onSpaceMoveDragstart({ detail: { space, x, y } }) {
+    if (!selectedSpace || selectedSpace.id !== space.id || vertexEditingActive) return;
+    const sp = planSpaces.find(s => s.id === selectedSpace.id);
+    if (!sp) return;
+    spaceMoveDragging    = true;
+    spaceMoveOrigin      = { x, y };
+    spaceMoveBasePolygon = sp.polygon.map(v => ({ ...v }));
+    editingPolygon       = { spaceId: sp.id, vertices: sp.polygon.map(v => ({ ...v })) };
   }
 </script>
 
@@ -576,13 +641,15 @@
                 text-xs text-purple-300/80 flex items-center gap-2">
       <span>⬡</span>
       <span>
-        Click on the plan to add polygon vertices.
-        {#if drawingVertices.length >= 3}
-          Click the first vertex <strong>●</strong> to close, or press <strong>Finish</strong>.
-        {:else if drawingVertices.length > 0}
-          {3 - drawingVertices.length} more {3 - drawingVertices.length === 1 ? 'vertex' : 'vertices'} needed.
+        {#if drawingVertices.length > 0}
+          Click on the plan to add polygon vertices.
+          {#if drawingVertices.length >= 3}
+            Click the first vertex <strong>●</strong> to close, or press <strong>Finish</strong>.
+          {:else}
+            {3 - drawingVertices.length} more {3 - drawingVertices.length === 1 ? 'vertex' : 'vertices'} needed.
+          {/if}
         {:else}
-          Click anywhere to start drawing.
+          Click an existing space to select and edit it, or click a blank area to draw a new space.
         {/if}
       </span>
     </div>
@@ -678,6 +745,7 @@
           on:markerdragstart={onMarkerDragstart}
           on:spaceclick={onSpaceClick}
           on:spacevertexdragstart={onVertexDragstart}
+          on:spacemovedragstart={onSpaceMoveDragstart}
           on:annotationclick={onAnnotationClick}
           on:annotationdragstart={onAnnotationDragstart}
           on:closepoly={onClosePoly}
