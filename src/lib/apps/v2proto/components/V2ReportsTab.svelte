@@ -4,10 +4,11 @@
      Per-floor content (in order): Plan graphic | Full component table | Floor summary table
      Optional separate section: Full summary across all selected floors. -->
 <script>
-  import { v2protoStore } from '../stores/v2protoStore.js';
-  import Button        from '$lib/components/common/Button.svelte';
-  import Checkbox      from '$lib/components/common/Checkbox.svelte';
-  import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
+  import { v2protoStore }         from '../stores/v2protoStore.js';
+  import { generateReportDocument } from './plan/reportGenerator.js';
+  import Button         from '$lib/components/common/Button.svelte';
+  import Checkbox       from '$lib/components/common/Checkbox.svelte';
+  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   // ── Store data ────────────────────────────────────────────────────────────────
@@ -185,86 +186,6 @@
     selectedStatuses = s;
   }
 
-  // ── Plan image annotation ──────────────────────────────────────────────────────
-  // Draws component markers on a canvas copy of the floor plan image.
-  // Returns { base64, width, height } or null if no plan available.
-  async function drawFloorPlan(floor, floorComps) {
-    const plan = plans.find(p => p.floor_id === floor.id);
-    if (!plan?.image_url) return null;
-
-    return new Promise(resolve => {
-      const canvas = document.createElement('canvas');
-      const img    = new Image();
-      img.crossOrigin = 'anonymous';
-
-      img.onload = () => {
-        canvas.width  = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-
-        // Scale marker sizes relative to image width so they remain legible
-        // after the image is shrunk to fit the Word page (~1/3 native size).
-        // Reference: 1500px wide image → scale 1.0
-        const scale      = Math.max(1, canvas.width / 1500);
-        const r          = Math.round(14 * scale);   // circle radius
-        const initSize   = Math.round(11 * scale);   // type initial inside circle
-        const idSize     = Math.round(22 * scale);   // asset ID label
-        const outlineW   = Math.round(4  * scale);   // text outline width
-
-        for (const c of floorComps) {
-          if (c.x_position == null || c.y_position == null || c.plan_id !== plan.id) continue;
-          const t      = typeOf(c);
-          const colour = t?.colour ? `#${t.colour}` : '#8b5cf6';
-          const x      = c.x_position * canvas.width;
-          const y      = c.y_position * canvas.height;
-
-          // Filled circle with white border
-          ctx.shadowColor = 'rgba(0,0,0,0.45)';
-          ctx.shadowBlur  = Math.round(5 * scale);
-          ctx.fillStyle   = colour;
-          ctx.beginPath();
-          ctx.arc(x, y, r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur  = 0;
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth   = Math.round(2 * scale);
-          ctx.stroke();
-
-          // Type initial inside circle
-          ctx.fillStyle    = '#ffffff';
-          ctx.font         = `bold ${initSize}px Arial`;
-          ctx.textAlign    = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(t?.initial ?? '?', x, y);
-
-          // Asset ID below circle — thick dark outline for legibility on any background
-          const assetId = c.asset_id ?? '';
-          if (assetId) {
-            ctx.font         = `900 ${idSize}px Arial`;
-            ctx.textAlign    = 'center';
-            ctx.textBaseline = 'top';
-            ctx.lineWidth    = outlineW;
-            ctx.strokeStyle  = 'rgba(0,0,0,0.9)';
-            ctx.lineJoin     = 'round';
-            ctx.strokeText(assetId, x, y + r + Math.round(3 * scale));
-            ctx.fillStyle    = '#ffffff';
-            ctx.fillText(assetId, x, y + r + Math.round(3 * scale));
-          }
-        }
-
-        resolve({
-          base64: canvas.toDataURL('image/png').replace('data:image/png;base64,', ''),
-          width:  canvas.width,
-          height: canvas.height,
-        });
-      };
-
-      img.onerror = () => resolve(null);
-      img.src = plan.image_url;
-    });
-  }
-
   // ── Quick report presets ──────────────────────────────────────────────────────
   // Each preset applies a set of filter + section options to the general report.
   // The user then reviews the configuration and clicks Generate.
@@ -289,7 +210,7 @@
 
   $: failedCount = components.filter(c => c.status === 'failed').length;
 
-  // ── Report generation ──────────────────────────────────────────────────────────
+  // ── Report generation ─────────────────────────────────────────────────────────
   let generating = false;
   let error      = '';
 
@@ -305,122 +226,28 @@
 
     generating = true;
     error = '';
-
     try {
       const building    = facilities[0]?.name ?? 'Lancaster House';
-      const now         = new Date();
-      const generatedAt = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const generatedAt = new Date().toLocaleDateString('en-GB',
+        { day: '2-digit', month: 'short', year: 'numeric' });
       const reportTypes = [
-        ...(includePlan              ? ['plan']                  : []),
-        ...(includeList              ? ['full_list']              : []),
-        ...(includeFloorSummary      ? ['floor_summary']          : []),
-        ...(includeFullSummary       ? ['full_summary']           : []),
-        ...(includeFullComponentList ? ['full_component_list']    : []),
+        ...(includePlan              ? ['plan']               : []),
+        ...(includeList              ? ['full_list']           : []),
+        ...(includeFloorSummary      ? ['floor_summary']       : []),
+        ...(includeFullSummary       ? ['full_summary']        : []),
+        ...(includeFullComponentList ? ['full_component_list'] : []),
       ];
 
-      // Build per-floor payload (including optional annotated plan images)
-      const floorsPayload = await Promise.all(
-        filteredByFloor.map(async ({ floor, components: comps }) => {
-          const imageData = includePlan ? await drawFloorPlan(floor, comps) : null;
-
-          // Sort System → Type → Asset ID before sending to server
-          const sortedComps = [...comps].sort((a, b) => {
-            const ta = typeOf(a), tb = typeOf(b);
-            const sa = systemOf(ta)?.name ?? '';
-            const sb = systemOf(tb)?.name ?? '';
-            return sa.localeCompare(sb) ||
-                   (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
-                   (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
-          });
-
-          const resolvedComponents = sortedComps.map(c => {
-            const t    = typeOf(c);
-            const sys  = systemOf(t);
-            const insp = includeNotes ? ($v2protoStore.inspections[c.id] ?? null) : null;
-            return {
-              id:                c.id,
-              asset_id:          c.asset_id,
-              label:             c.label,
-              type_code:         c.type_code,
-              type_name:         t?.name    ?? c.type_code,
-              type_initial:      t?.initial ?? '?',
-              type_colour:       t?.colour  ?? '888888',
-              system_name:       sys?.name  ?? '',
-              status:            c.status,
-              primary_attribute: c.primary_attribute,
-              attributes:        resolveAttrs(c),
-              notes:             c.notes             ?? null,   // component's own notes (always)
-              last_inspected:    insp?.inspected_at    ?? null,
-              last_notes:        insp?.inspector_notes ?? null, // inspection notes (gated by includeNotes)
-            };
-          });
-
-          return {
-            floor: {
-              id:          floor.id,
-              short_name:  floor.short_name,
-              name:        floor.name,
-              level_order: floor.level_order,
-            },
-            components:  resolvedComponents,
-            imageBase64: imageData?.base64  ?? null,
-            imageWidth:  imageData?.width   ?? null,
-            imageHeight: imageData?.height  ?? null,
-          };
-        })
-      );
-
-      // Build full combined component list (all floors, floor→system→type→asset_id sort)
-      const allComponentsPayload = includeFullComponentList
-        ? filteredByFloor.flatMap(({ floor, components: comps }) => {
-            const t_comps = [...comps].sort((a, b) => {
-              const ta = typeOf(a), tb = typeOf(b);
-              const sa = systemOf(ta)?.name ?? '';
-              const sb = systemOf(tb)?.name ?? '';
-              return sa.localeCompare(sb) ||
-                     (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
-                     (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
-            });
-            return t_comps.map(c => {
-              const t   = typeOf(c);
-              const sys = systemOf(t);
-              return {
-                floor_short:  floor.short_name,
-                floor_order:  floor.level_order ?? 9999,
-                system_name:  sys?.name ?? '',
-                type_name:    t?.name   ?? c.type_code,
-                asset_id:     c.asset_id,
-                label:        c.label,
-                status:       c.status,
-                attributes:   resolveAttrs(c),
-              };
-            });
-          })
-        : [];
-
-      const res = await fetch('/api/v2/generate-report', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          options:       { reportTypes, building, filterSummary, generatedAt, includeNotes },
-          floors:        floorsPayload,
-          allComponents: allComponentsPayload,
-        }),
+      await generateReportDocument({
+        reportTypes, building, filterSummary, generatedAt,
+        includeNotes, includeFullComponentList, includePlan,
+        filteredByFloor,
+        plans,
+        inspections: $v2protoStore.inspections,
+        typeOfFn:       typeOf,
+        systemOfFn:     systemOf,
+        resolveAttrsFn: resolveAttrs,
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Server error ${res.status}`);
-      }
-
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `components-${now.toISOString().slice(0, 10)}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-
     } catch (err) {
       error = err.message;
     } finally {
