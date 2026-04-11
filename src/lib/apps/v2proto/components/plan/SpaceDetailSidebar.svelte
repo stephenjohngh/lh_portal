@@ -15,6 +15,7 @@
   export let metresPerUnit        = null;   // null if no scale set
   export let planAR               = null;   // image aspect ratio
   export let vertexEditingActive  = false;  // true while editing polygon corners
+  export let readOnly             = false;  // hide mutating actions (View mode)
 
   const dispatch = createEventDispatcher();
 
@@ -267,13 +268,15 @@
     <div class="flex flex-col gap-0.5 pt-1 border-t border-slate-700/60">
       <div class="flex items-center justify-between">
         <p class="text-xs text-slate-600">{poly.length} polygon vertices</p>
-        <button
-          on:click={() => dispatch(vertexEditingActive ? 'doneeditshape' : 'editshape')}
-          class="text-xs px-2 py-0.5 rounded transition-colors
-                 {vertexEditingActive
-                   ? 'bg-purple-600 text-white hover:bg-purple-500'
-                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
-        >{vertexEditingActive ? 'Done editing' : 'Edit shape ✦'}</button>
+        {#if !readOnly}
+          <button
+            on:click={() => dispatch(vertexEditingActive ? 'doneeditshape' : 'editshape')}
+            class="text-xs px-2 py-0.5 rounded transition-colors
+                   {vertexEditingActive
+                     ? 'bg-purple-600 text-white hover:bg-purple-500'
+                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
+          >{vertexEditingActive ? 'Done editing' : 'Edit shape ✦'}</button>
+        {/if}
       </div>
       {#if floor}
         <p class="text-xs text-slate-600">Floor: {floor.name}</p>
@@ -286,8 +289,14 @@
   <!-- ── Sticky footer ─────────────────────────────────────────────── -->
   <div class="px-4 py-3 border-t border-slate-700 flex gap-2">
 
-    <!-- Delete / confirm -->
-    {#if confirming}
+    {#if readOnly}
+      <button
+        on:click={() => dispatch('close')}
+        class="flex-1 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600
+               text-slate-300 transition-colors"
+      >Close</button>
+
+    {:else if confirming}
       <button
         on:click={() => confirming = false}
         class="px-3 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
@@ -298,6 +307,7 @@
         class="flex-1 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-600
                text-white font-medium transition-colors"
       >Confirm delete</button>
+
     {:else}
       <button
         on:click={handleDelete}

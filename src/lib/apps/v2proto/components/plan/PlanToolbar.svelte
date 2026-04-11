@@ -22,7 +22,7 @@
 
   const MODES = [
     { mode: 'off',        label: '👁 View',        title: 'View only',                           activeClass: 'bg-slate-600'  },
-    { mode: 'component',  label: '✏️ Components',  title: 'Place and reposition components',     activeClass: 'bg-amber-600'  },
+    { mode: 'component',  label: '✏️ Edit',         title: 'Place and reposition components',     activeClass: 'bg-amber-600'  },
     { mode: 'space',      label: '⬡ Spaces',       title: 'Draw space polygons',                 activeClass: 'bg-purple-700' },
     { mode: 'scale',      label: '📏 Scale',        title: 'Set scale reference for measurement', activeClass: 'bg-teal-700'   },
     { mode: 'annotation', label: '🏷 Annotate',      title: 'Place text annotations on the plan',  activeClass: 'bg-sky-700'    },

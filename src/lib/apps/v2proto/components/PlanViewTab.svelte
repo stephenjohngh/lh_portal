@@ -322,14 +322,16 @@
   }
 
   function onSpaceClick({ detail: { space } }) {
-    if (drawingMode !== 'space') return;
-    // If mid-draw, cancel it before switching to edit
-    if (drawingVertices.length > 0) cancelSpaceDrawing();
-    // Cancel vertex editing when switching to a different space
-    if (selectedSpace?.id !== space.id) {
-      vertexEditingActive = false;
-      editingPolygon      = null;
-      vertexDragIndex     = null;
+    if (drawingMode !== 'space' && drawingMode !== 'off') return;
+    if (drawingMode === 'space') {
+      // If mid-draw, cancel it before switching to edit
+      if (drawingVertices.length > 0) cancelSpaceDrawing();
+      // Cancel vertex editing when switching to a different space
+      if (selectedSpace?.id !== space.id) {
+        vertexEditingActive = false;
+        editingPolygon      = null;
+        vertexDragIndex     = null;
+      }
     }
     selectedSpace     = space;
     selectedComponent = null;
@@ -592,6 +594,7 @@
 
   // ── Space polygon move ─────────────────────────────────────────────
   function onSpaceMoveDragstart({ detail: { space, x, y } }) {
+    if (drawingMode !== 'space') return;  // move only allowed in Spaces mode
     if (!selectedSpace || selectedSpace.id !== space.id || vertexEditingActive) return;
     const sp = planSpaces.find(s => s.id === selectedSpace.id);
     if (!sp) return;
@@ -798,6 +801,7 @@
           {attrDefs} {attrOptions}
           components={$v2protoStore.components}
           attrs={componentAttrs[selectedComponent.id] ?? []}
+          readOnly={drawingMode === 'off'}
           on:saved={handleDetailSaved}
           on:close={() => { selectedComponent = null; sidebarMode = 'none'; }}
           on:inspect={handleDetailInspect}
@@ -827,6 +831,7 @@
           {metresPerUnit}
           {planAR}
           {vertexEditingActive}
+          readOnly={drawingMode === 'off'}
           on:saved={({ detail }) => { selectedSpace = detail.space; }}
           on:close={() => { selectedSpace = null; sidebarMode = 'none'; resetSelection(); }}
           on:deleted={() => { resetSelection(); }}

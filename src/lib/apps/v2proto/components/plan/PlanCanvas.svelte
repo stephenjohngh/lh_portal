@@ -103,7 +103,7 @@
             stroke-width="0.003"
             stroke-opacity={isNone ? 0.5 : 0.8}
             stroke-dasharray={isNone ? '0.015,0.008' : null}
-            style="pointer-events:{drawingMode === 'space' ? 'all' : 'none'};
+            style="pointer-events:{drawingMode === 'space' || drawingMode === 'off' ? 'all' : 'none'};
                    cursor:{selectedSpace?.id === space.id && !vertexEditingActive ? 'grab' : 'pointer'}"
             on:click|stopPropagation={() => dispatch('spaceclick', { space })}
             on:mousedown|stopPropagation={e => {

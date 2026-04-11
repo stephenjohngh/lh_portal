@@ -20,6 +20,7 @@
   export let attrOptions = {};
   export let attrs       = [];   // component_attributes[] for this component
   export let components  = [];   // all components[] for datalist
+  export let readOnly    = false; // hide mutating actions (View mode)
 
   const dispatch = createEventDispatcher();
 
@@ -500,7 +501,7 @@
   <!-- ── Sticky footer actions ──────────────────────────────────── -->
   <div class="p-5 pt-4 border-t border-slate-700 shrink-0">
 
-    {#if confirmDel}
+    {#if confirmDel && !readOnly}
       <div class="mb-3 px-4 py-3 rounded-lg bg-red-900/30 border border-red-700/50 text-sm text-red-300">
         <p class="font-semibold mb-2">Delete this component?</p>
         <p class="text-red-400/80 text-xs mb-3">
@@ -523,25 +524,29 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <button
-        on:click={() => confirmDel = true}
-        class="text-sm px-3 py-1.5 rounded-lg text-slate-500 hover:text-red-400
-               hover:bg-red-900/20 transition-colors border border-transparent
-               hover:border-red-900/30"
-        title="Delete component"
-      >Delete</button>
+      {#if !readOnly}
+        <button
+          on:click={() => confirmDel = true}
+          class="text-sm px-3 py-1.5 rounded-lg text-slate-500 hover:text-red-400
+                 hover:bg-red-900/20 transition-colors border border-transparent
+                 hover:border-red-900/30"
+          title="Delete component"
+        >Delete</button>
+      {/if}
 
       <div class="ml-auto flex gap-2">
         <button
           on:click={() => dispatch('close')}
           class="px-4 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-        >Cancel</button>
-        <button
-          on:click={handleSave}
-          disabled={saving || !dirty}
-          class="px-5 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-                 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors"
-        >{saving ? 'Saving…' : 'Save Changes'}</button>
+        >{readOnly ? 'Close' : 'Cancel'}</button>
+        {#if !readOnly}
+          <button
+            on:click={handleSave}
+            disabled={saving || !dirty}
+            class="px-5 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
+                   disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors"
+          >{saving ? 'Saving…' : 'Save Changes'}</button>
+        {/if}
       </div>
     </div>
   </div>
