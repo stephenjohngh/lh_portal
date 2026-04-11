@@ -22,6 +22,10 @@
 
   const dispatch = createEventDispatcher();
 
+  // Plan admin dropdown
+  let adminOpen = false;
+  function adminAction(mode) { adminOpen = false; dispatch('planadmin', { mode }); }
+
   const MODES = [
     { mode: 'off',        label: '👁 View',        title: 'View only',                           activeClass: 'bg-slate-600'  },
     { mode: 'component',  label: '✏️ Edit',         title: 'Place and reposition components',     activeClass: 'bg-amber-600'  },
@@ -99,28 +103,51 @@
     </div>
   {/if}
 
-  <!-- Plan admin buttons (admin-only) -->
+  <!-- Plan Admin dropdown (admin-only) -->
   {#if showPlanAdmin}
-    <div class="flex items-center gap-1 shrink-0">
+    <div class="relative shrink-0">
       <button
-        on:click={() => dispatch('planadmin', { mode: 'new' })}
-        title="Create a new floor plan"
-        class="px-2.5 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
-               text-slate-300 border border-slate-600 transition-colors"
-      >⊕ New</button>
-      {#if hasPlan}
-        <button
-          on:click={() => dispatch('planadmin', { mode: 'edit' })}
-          title="Edit this plan's info or replace its image"
-          class="px-2.5 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
-                 text-slate-300 border border-slate-600 transition-colors"
-        >✎ Edit</button>
-        <button
-          on:click={() => dispatch('planadmin', { mode: 'copy' })}
-          title="Copy this plan and all its components"
-          class="px-2.5 py-1.5 text-xs rounded-lg bg-slate-700 hover:bg-slate-600
-                 text-slate-300 border border-slate-600 transition-colors"
-        >⎘ Copy</button>
+        on:click={() => adminOpen = !adminOpen}
+        class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg
+               bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600
+               transition-colors"
+      >
+        ⚙ Plan Admin
+        <span class="text-slate-500 text-[10px]">{adminOpen ? '▲' : '▼'}</span>
+      </button>
+
+      {#if adminOpen}
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div
+          class="absolute left-0 top-full mt-1 z-50 min-w-[10rem]
+                 bg-slate-800 border border-slate-600 rounded-lg shadow-xl
+                 flex flex-col py-1 text-xs"
+          on:mouseleave={() => adminOpen = false}
+        >
+          <button
+            on:click={() => adminAction('new')}
+            class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
+                   hover:bg-slate-700 transition-colors"
+          >
+            <span class="w-4 text-center">⊕</span> New Plan
+          </button>
+          {#if hasPlan}
+            <button
+              on:click={() => adminAction('edit')}
+              class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
+                     hover:bg-slate-700 transition-colors"
+            >
+              <span class="w-4 text-center">✎</span> Edit Info / Image
+            </button>
+            <button
+              on:click={() => adminAction('copy')}
+              class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
+                     hover:bg-slate-700 transition-colors"
+            >
+              <span class="w-4 text-center">⎘</span> Copy Plan
+            </button>
+          {/if}
+        </div>
       {/if}
     </div>
   {/if}
