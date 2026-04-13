@@ -2,8 +2,8 @@
 <!-- Panel 2 of 4: Component Types for the selected System. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
-  import { inp } from '$lib/apps/v2proto/ui.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '$lib/apps/building_assets/ui.js';
 
   export let types           = [];
   export let selectedSystemId = null;
@@ -25,7 +25,7 @@
     if (!confirm('Delete this type? This will also delete its attribute definitions and options.')) return;
     deletingId = id;
     try {
-      await v2protoStore.deleteType(id);
+      await buildingAssetsStore.deleteType(id);
       dispatch('saved');
     } catch (err) {
       error = err.message;
@@ -35,7 +35,7 @@
   }
 
   // Attr def counts per type (from live store)
-  $: attrCounts = Object.entries($v2protoStore.attrDefs).reduce((acc, [typeId, defs]) => {
+  $: attrCounts = Object.entries($buildingAssetsStore.attrDefs).reduce((acc, [typeId, defs]) => {
     acc[typeId] = defs.length;
     return acc;
   }, {});
@@ -97,7 +97,7 @@
     error  = '';
     try {
       if (editingId === 'new') {
-        const row = await v2protoStore.createType({
+        const row = await buildingAssetsStore.createType({
           ...form,
           building_system_id: selectedSystemId
         });
@@ -105,7 +105,7 @@
         editingId = null;
         dispatch('select', row.id);
       } else {
-        await v2protoStore.updateType(editingId, form);
+        await buildingAssetsStore.updateType(editingId, form);
         dispatch('saved');
         editingId = null;
       }

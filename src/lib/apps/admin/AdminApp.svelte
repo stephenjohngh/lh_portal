@@ -20,12 +20,12 @@
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
 
   let searchTerm = '';
   let isAdmin = false;
   let activeTab = 'users';
-  let v2Loaded = false;   // lazy — load v2protoStore only when a v2 tab is first opened
+  let v2Loaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
   
   // Modal states
   let showCreateModal = false;
@@ -77,7 +77,7 @@
     activeTab = id;
     if ((id === 'types' || id === 'floors') && !v2Loaded) {
       v2Loaded = true;
-      await v2protoStore.load();
+      await buildingAssetsStore.load();
     }
   }
 
@@ -237,20 +237,20 @@
     <AuditLogsView />
 
   {:else if activeTab === 'types'}
-    {#if $v2protoStore.loading}
+    {#if $buildingAssetsStore.loading}
       <LoadingSpinner />
     {:else}
       <ComponentTypesTab />
     {/if}
 
   {:else if activeTab === 'floors'}
-    {#if $v2protoStore.loading}
+    {#if $buildingAssetsStore.loading}
       <LoadingSpinner />
     {:else}
       <FloorPanel
-        floors={$v2protoStore.floors}
-        facilities={$v2protoStore.facilities}
-        on:saved={() => v2protoStore.load()}
+        floors={$buildingAssetsStore.floors}
+        facilities={$buildingAssetsStore.facilities}
+        on:saved={() => buildingAssetsStore.load()}
       />
     {/if}
   {/if}

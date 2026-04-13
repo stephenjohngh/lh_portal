@@ -4,7 +4,7 @@
      All CRUD is handled in child panels; this component manages
      selection state and calls reload() after any save. -->
 <script>
-  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import SystemPanel      from './SystemPanel.svelte';
   import TypePanel        from './TypePanel.svelte';
   import AttrDefPanel     from './AttrDefPanel.svelte';
@@ -17,7 +17,7 @@
   let selectedAttrDefId = null;
 
   // ── Derived from store ─────────────────────────────────────────────
-  $: store            = $v2protoStore;
+  $: store            = $buildingAssetsStore;
   $: systems          = store.systems;
   $: types            = store.types;
   $: attrDefs         = store.attrDefs;          // { [typeId]: effective attrs with _scope }
@@ -71,12 +71,12 @@
 
   // ── After any save: reload the store, keep selections ─────────────
   async function onSaved() {
-    await v2protoStore.reload();
+    await buildingAssetsStore.reload();
   }
 
   // ── CSV export: system, type, attribute, option ────────────────────
   function exportCsv() {
-    const s    = $v2protoStore;
+    const s    = $buildingAssetsStore;
     const rows = [['system', 'type', 'attribute', 'option']];
 
     for (const sys of s.systems) {

@@ -4,8 +4,8 @@
      Each option can carry a priority_override. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
-  import { inp } from '$lib/apps/v2proto/ui.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '$lib/apps/building_assets/ui.js';
 
   export let options  = [];    // type_attribute_options[] for selected attr def
   export let attrDef  = null;  // the selected type_attributes row (or null)
@@ -24,7 +24,7 @@
     if (!confirm('Delete this option?')) return;
     deletingId = id;
     try {
-      await v2protoStore.deleteOption(id);
+      await buildingAssetsStore.deleteOption(id);
       dispatch('saved');
     } catch (err) {
       error = err.message;
@@ -70,12 +70,12 @@
     error  = '';
     try {
       if (editingId === 'new') {
-        await v2protoStore.createOption({
+        await buildingAssetsStore.createOption({
           ...form,
           type_attribute_id: attrDef.id
         });
       } else {
-        await v2protoStore.updateOption(editingId, form);
+        await buildingAssetsStore.updateOption(editingId, form);
       }
       dispatch('saved');
       editingId = null;

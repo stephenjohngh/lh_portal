@@ -50,12 +50,12 @@ export const AVAILABLE_APPS = [
   },
 
   {
-    id: 'v2proto',
-    name: 'V2 Proto',
+    id: 'building_assets',
+    name: 'Building Assets',
     icon: 'beaker',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Prototype demonstrating the v2 component data model'
+    description: 'Building asset management — type hierarchy, components, floor plans and reports'
   },
 
   {
@@ -96,7 +96,7 @@ export const APP_IDS = {
   ISSUES:  'issues',
   DEMO:    'demo',
   DEMO2:   'demo2',
-  V2PROTO:    'v2proto',
+  BUILDING_ASSETS: 'building_assets',
   INSPECTION: 'inspection',
   MOBILEPLAN: 'mobileplan',
   SETTINGS:'settings'

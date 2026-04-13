@@ -2,8 +2,8 @@
 <!-- Panel 1 of 4: Building Systems list with inline add / edit. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
-  import { inp } from '$lib/apps/v2proto/ui.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '$lib/apps/building_assets/ui.js';
 
   export let systems         = [];
   export let selectedSystemId = null;
@@ -20,7 +20,7 @@
     if (!confirm('Delete this system? This will also delete all its types and attributes.')) return;
     deletingId = id;
     try {
-      await v2protoStore.deleteSystem(id);
+      await buildingAssetsStore.deleteSystem(id);
       dispatch('saved');
     } catch (err) {
       error = err.message;
@@ -30,7 +30,7 @@
   }
 
   // Type counts per system (derived from live store)
-  $: typeCounts = $v2protoStore.types.reduce((acc, t) => {
+  $: typeCounts = $buildingAssetsStore.types.reduce((acc, t) => {
     acc[t.building_system_id] = (acc[t.building_system_id] ?? 0) + 1;
     return acc;
   }, {});
@@ -73,12 +73,12 @@
     error  = '';
     try {
       if (editingId === 'new') {
-        const row = await v2protoStore.createSystem(form);
+        const row = await buildingAssetsStore.createSystem(form);
         dispatch('saved');
         editingId = null;
         dispatch('select', row.id);  // auto-select the newly created system
       } else {
-        await v2protoStore.updateSystem(editingId, form);
+        await buildingAssetsStore.updateSystem(editingId, form);
         dispatch('saved');
         editingId = null;
       }

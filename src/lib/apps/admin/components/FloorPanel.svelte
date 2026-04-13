@@ -6,7 +6,7 @@
   import { getLogger } from '$lib/utils/logger';
   import Button      from '$lib/components/common/Button.svelte';
 
-  export let floors     = [];   // all floors[] from v2protoStore
+  export let floors     = [];   // all floors[] from buildingAssetsStore
   export let facilities = [];   // facilities[] for building label
 
   const logger   = getLogger('FloorPanel');

@@ -3,8 +3,8 @@
      selected Type. Admin can add, edit, and DELETE regime rows. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
-  import { inp } from '$lib/apps/v2proto/ui.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '$lib/apps/building_assets/ui.js';
 
   export let regimeRows    = [];   // maintenance_regime[] for selected type
   export let typeId        = null;
@@ -63,9 +63,9 @@
     error  = '';
     try {
       if (editingId === 'new') {
-        await v2protoStore.createRegime({ ...form, type_id: typeId });
+        await buildingAssetsStore.createRegime({ ...form, type_id: typeId });
       } else {
-        await v2protoStore.updateRegime(editingId, form);
+        await buildingAssetsStore.updateRegime(editingId, form);
       }
       dispatch('saved');
       editingId = null;
@@ -80,7 +80,7 @@
     if (!confirm('Delete this maintenance task? This cannot be undone.')) return;
     deletingId = id;
     try {
-      await v2protoStore.deleteRegime(id);
+      await buildingAssetsStore.deleteRegime(id);
       dispatch('saved');
     } catch (err) {
       error = err.message;

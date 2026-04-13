@@ -2,8 +2,8 @@
 <!-- Panel 3 of 4: Attribute Definitions for the selected Type. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '$lib/apps/v2proto/stores/v2protoStore.js';
-  import { inp } from '$lib/apps/v2proto/ui.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { inp } from '$lib/apps/building_assets/ui.js';
 
   export let attrDefs          = [];   // effective type_attributes[], each with _scope: 'system'|'type'
   export let mode              = null; // 'type' | 'system' | null
@@ -25,7 +25,7 @@
     if (!confirm('Delete this attribute definition? This will also delete its options and any component values using it.')) return;
     deletingId = id;
     try {
-      await v2protoStore.deleteAttrDef(id);
+      await buildingAssetsStore.deleteAttrDef(id);
       dispatch('saved');
     } catch (err) {
       error = err.message;
@@ -87,19 +87,19 @@
     try {
       if (form.is_primary && existingPrimary) {
         // Clear any existing is_primary before setting this one
-        await v2protoStore.clearPrimaryForType(selectedTypeId);
+        await buildingAssetsStore.clearPrimaryForType(selectedTypeId);
       }
 
       if (editingId === 'new') {
         const scopeKey = mode === 'system'
           ? { building_system_id: selectedSystemId }
           : { component_type_id:  selectedTypeId };
-        const row = await v2protoStore.createAttrDef({ ...form, ...scopeKey });
+        const row = await buildingAssetsStore.createAttrDef({ ...form, ...scopeKey });
         dispatch('saved');
         editingId = null;
         dispatch('select', row.id);
       } else {
-        await v2protoStore.updateAttrDef(editingId, form);
+        await buildingAssetsStore.updateAttrDef(editingId, form);
         dispatch('saved');
         editingId = null;
       }
