@@ -1,11 +1,11 @@
-<!-- src/lib/apps/v2proto/components/V2InspectionsTab.svelte -->
+<!-- src/lib/apps/building_assets/components/V2InspectionsTab.svelte -->
 <!-- All v2 walk sessions (v2_walk_sessions), open first then latest-first.
      Expand a row to see per-component inspection detail.                    -->
 <script>
   import { onMount }         from 'svelte';
   import { api }             from '$lib/utils/api';
   import { getLogger }       from '$lib/utils/logger';
-  import { v2protoStore }    from '../stores/v2protoStore.js';
+  import { buildingAssetsStore }    from '../stores/buildingAssetsStore.js';
   import {
     flattenInspectionRows,
     groupByComponent,
@@ -28,8 +28,8 @@
   const logger = getLogger('V2InspectionsTab');
 
   // ── Store refs ──────────────────────────────────────────────────────────
-  $: floors = $v2protoStore.floors;
-  $: types  = $v2protoStore.types;
+  $: floors = $buildingAssetsStore.floors;
+  $: types  = $buildingAssetsStore.types;
 
   function resolveType(type_code) {
     return types.find(t => t.code === type_code) ?? null;

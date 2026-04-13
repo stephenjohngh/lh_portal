@@ -1,11 +1,11 @@
-<!-- src/lib/apps/v2proto/components/ComponentForm.svelte -->
+<!-- src/lib/apps/building_assets/components/ComponentForm.svelte -->
 <!-- Create a new component. Location is selected by Floor (from the Facility/Floor
      hierarchy) rather than by graphical plan. The plan is an optional secondary
      field — it is needed only when placing the component on a drawing. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import AttrField from './AttrField.svelte';
-  import { buildRef } from '../stores/v2protoStore.js';
+  import { buildRef } from '../stores/buildingAssetsStore.js';
   import { inp } from '../ui.js';
 
   export let types       = [];    // component_types[]

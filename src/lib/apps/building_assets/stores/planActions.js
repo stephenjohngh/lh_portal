@@ -1,12 +1,12 @@
-// src/lib/apps/v2proto/stores/planActions.js
+// src/lib/apps/building_assets/stores/planActions.js
 // Plan domain: plans[], scale calibration, image upload, plan CRUD, copy.
-// Receives the writable `update` function and the supabase client from v2protoStore.
+// Receives the writable `update` function and the supabase client from buildingAssetsStore.
 
 import { api }        from '$lib/utils/api';
 import { getLogger }  from '$lib/utils/logger';
 import { requireUserId } from './helpers.js';
 
-const logger = getLogger('v2proto');
+const logger = getLogger('BuildingAssets');
 
 // Factory — call once at store creation time.
 // supabase: the supabase client (needed for Storage operations).

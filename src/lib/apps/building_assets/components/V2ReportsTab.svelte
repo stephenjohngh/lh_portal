@@ -1,10 +1,10 @@
-<!-- src/lib/apps/v2proto/components/V2ReportsTab.svelte -->
+<!-- src/lib/apps/building_assets/components/V2ReportsTab.svelte -->
 <!-- Report builder for V2 components. Lets the user configure scope + filters,
      then generates a .docx for download.
      Per-floor content (in order): Plan graphic | Full component table | Floor summary table
      Optional separate section: Full summary across all selected floors. -->
 <script>
-  import { v2protoStore }         from '../stores/v2protoStore.js';
+  import { buildingAssetsStore }         from '../stores/buildingAssetsStore.js';
   import { generateReportDocument } from './plan/reportGenerator.js';
   import Button         from '$lib/components/common/Button.svelte';
   import Checkbox       from '$lib/components/common/Checkbox.svelte';
@@ -12,7 +12,7 @@
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   // ── Store data ────────────────────────────────────────────────────────────────
-  $: store          = $v2protoStore;
+  $: store          = $buildingAssetsStore;
   $: systems        = store.systems;
   $: types          = store.types;
   $: floors         = store.floors;
@@ -243,7 +243,7 @@
         includeNotes, includeFullComponentList, includePlan,
         filteredByFloor,
         plans,
-        inspections: $v2protoStore.inspections,
+        inspections: $buildingAssetsStore.inspections,
         typeOfFn:       typeOf,
         systemOfFn:     systemOf,
         resolveAttrsFn: resolveAttrs,

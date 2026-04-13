@@ -6,7 +6,7 @@
 // ctx: { getCanvas(), setError(msg) }
 
 import { writable, get } from 'svelte/store';
-import { v2protoStore }  from '../../stores/v2protoStore.js';
+import { buildingAssetsStore }  from '../../stores/buildingAssetsStore.js';
 
 export function createAnnotationDragController({ getCanvas, setError }) {
   const annotationDraggingId = writable(null);
@@ -36,7 +36,7 @@ export function createAnnotationDragController({ getCanvas, setError }) {
     if (!id) return;
     const pos = get(annotationDragPos)[id];
     if (pos) {
-      try { await v2protoStore.moveAnnotation(id, pos.x, pos.y); }
+      try { await buildingAssetsStore.moveAnnotation(id, pos.x, pos.y); }
       catch (err) { setError(err.message); }
     }
     annotationDraggingId.set(null);

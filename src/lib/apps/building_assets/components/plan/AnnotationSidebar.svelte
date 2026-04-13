@@ -3,7 +3,7 @@
      Owns its own form state; dispatches 'saved', 'deleted', 'close' to parent. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../../stores/v2protoStore.js';
+  import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
 
   export let annotation; // plan_annotations row
@@ -51,7 +51,7 @@
     if (!text.trim()) { error = 'Text cannot be empty'; return; }
     saving = true; error = '';
     try {
-      const updated = await v2protoStore.updateAnnotation(annotation.id, {
+      const updated = await buildingAssetsStore.updateAnnotation(annotation.id, {
         text:      text.trim(),
         font_size,
         colour:    colour.replace('#', ''),
@@ -70,7 +70,7 @@
     if (!confirm('Delete this annotation?')) return;
     deleting = true; error = '';
     try {
-      await v2protoStore.deleteAnnotation(annotation.id);
+      await buildingAssetsStore.deleteAnnotation(annotation.id);
       dispatch('deleted');
     } catch (err) {
       error = err.message;

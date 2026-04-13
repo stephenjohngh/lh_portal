@@ -6,7 +6,7 @@
 // ctx: { getCanvas(), getPlanId(), setError(msg) }
 
 import { writable, get }  from 'svelte/store';
-import { v2protoStore }   from '../../stores/v2protoStore.js';
+import { buildingAssetsStore }   from '../../stores/buildingAssetsStore.js';
 
 export function createComponentDragController({ getCanvas, getPlanId, setError }) {
   const draggingId = writable(null);
@@ -34,7 +34,7 @@ export function createComponentDragController({ getCanvas, getPlanId, setError }
     if (!id) return;
     const pos = get(dragPos)[id];
     if (pos) {
-      try { await v2protoStore.moveComponent(id, getPlanId(), pos.x, pos.y); }
+      try { await buildingAssetsStore.moveComponent(id, getPlanId(), pos.x, pos.y); }
       catch (err) { setError(err.message); }
     }
     draggingId.set(null);

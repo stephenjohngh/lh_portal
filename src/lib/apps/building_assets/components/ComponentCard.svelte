@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/ComponentCard.svelte -->
+<!-- src/lib/apps/building_assets/components/ComponentCard.svelte -->
 <!-- Displays one component with its resolved type and attribute values -->
 <script>
   import { createEventDispatcher } from 'svelte';

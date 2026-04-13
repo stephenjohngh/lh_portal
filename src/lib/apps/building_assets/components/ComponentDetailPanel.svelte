@@ -1,10 +1,10 @@
-<!-- src/lib/apps/v2proto/components/ComponentDetailPanel.svelte -->
+<!-- src/lib/apps/building_assets/components/ComponentDetailPanel.svelte -->
 <!-- Full detail view + inline editor for a single component.
      Shows every field, all attribute values, last inspection summary,
      and allows editing and saving. Calls the store directly. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore, buildRef } from '../stores/v2protoStore.js';
+  import { buildingAssetsStore, buildRef } from '../stores/buildingAssetsStore.js';
   import { typeByCode, floorById } from '../lookups.js';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
@@ -137,8 +137,8 @@
         x_position:           planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : component.x_position,
         y_position:           planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : component.y_position
       };
-      await v2protoStore.updateComponent(component.id, fields);
-      await v2protoStore.updateComponentAttrs(component.id, attrValues);
+      await buildingAssetsStore.updateComponent(component.id, fields);
+      await buildingAssetsStore.updateComponentAttrs(component.id, attrValues);
       dirty = false;
       dispatch('saved');
     } catch (err) {
@@ -151,7 +151,7 @@
   async function handleDelete() {
     deleting = true;
     try {
-      await v2protoStore.deleteComponent(component.id);
+      await buildingAssetsStore.deleteComponent(component.id);
       dispatch('deleted');
     } catch (err) {
       errorMsg = err.message;

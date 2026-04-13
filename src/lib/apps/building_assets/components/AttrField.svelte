@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/AttrField.svelte -->
+<!-- src/lib/apps/building_assets/components/AttrField.svelte -->
 <!-- Renders a single attribute input control based on type_attributes.display_type -->
 <script>
   import { createEventDispatcher } from 'svelte';

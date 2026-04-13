@@ -1,5 +1,5 @@
-// src/lib/apps/v2proto/stores/helpers.js
-// Shared utilities used across all v2proto action modules.
+// src/lib/apps/building_assets/stores/helpers.js
+// Shared utilities used across all building_assets action modules.
 
 import { get } from 'svelte/store';
 import { auth } from '$lib/stores/auth';

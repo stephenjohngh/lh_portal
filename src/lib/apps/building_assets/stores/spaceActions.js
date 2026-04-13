@@ -1,4 +1,4 @@
-// src/lib/apps/v2proto/stores/spaceActions.js
+// src/lib/apps/building_assets/stores/spaceActions.js
 // Spaces domain: named polygon areas drawn on floor plans.
 // polygon: [{ x: float, y: float }] — fractional coordinates 0–1
 // colour:  hex string WITHOUT leading '#', e.g. 'a855f7'
@@ -7,7 +7,7 @@ import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
 import { requireUserId } from './helpers.js';
 
-const logger = getLogger('v2proto');
+const logger = getLogger('BuildingAssets');
 
 const round3 = v => Math.round(v * 1000) / 1000;
 const roundPoly = polygon => polygon.map(v => ({ x: round3(v.x), y: round3(v.y) }));

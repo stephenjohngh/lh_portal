@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/ComponentMarker.svelte -->
+<!-- src/lib/apps/building_assets/components/ComponentMarker.svelte -->
 <!-- A single component marker pinned on a floor plan.
      Position is expressed as fractions 0–1 and converted to CSS percentages.
      The parent container must be position:relative and exactly overlay the plan image. -->

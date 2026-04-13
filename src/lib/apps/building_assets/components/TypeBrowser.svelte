@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/TypeBrowser.svelte -->
+<!-- src/lib/apps/building_assets/components/TypeBrowser.svelte -->
 <!-- Read-only browser: System → Type → Attribute Definitions + Options -->
 <script>
   export let systems  = [];

@@ -1,12 +1,12 @@
-// src/lib/apps/v2proto/stores/componentActions.js
+// src/lib/apps/building_assets/stores/componentActions.js
 // Component domain: components[], component_attributes{}, component_inspections{}.
-// Receives the writable `update` function from v2protoStore.
+// Receives the writable `update` function from buildingAssetsStore.
 
 import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
 import { requireUserId, buildRef } from './helpers.js';
 
-const logger = getLogger('v2proto');
+const logger = getLogger('BuildingAssets');
 
 // Factory — call once at store creation time.
 export function createComponentActions(update) {

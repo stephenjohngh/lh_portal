@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/QuickAddForm.svelte -->
+<!-- src/lib/apps/building_assets/components/QuickAddForm.svelte -->
 <!-- Minimal inline form for placing a new component from a plan-click.
      Only captures type, label, asset_id, and the primary attribute.
      floor_id / plan_id / x_position / y_position are injected by PlanViewTab. -->
@@ -15,7 +15,7 @@
 
   const dispatch = createEventDispatcher();
 
-  const QUICKADD_PREF_KEY = 'lh_v2proto_quickadd';
+  const QUICKADD_PREF_KEY = 'lh_building_assets_quickadd';
 
   let selectedTypeId      = '';
   let label               = '';

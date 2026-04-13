@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/PlanViewTab.svelte -->
+<!-- src/lib/apps/building_assets/components/PlanViewTab.svelte -->
 <!-- Plan view orchestrator.
      Owns navigation, mode/sidebar state, filters and plan admin.
      Complex drag/edit logic is delegated to three JS controllers:
@@ -6,7 +6,7 @@
        annotationDragController — annotation drag-to-reposition
        spaceEditController      — space drawing buffer, vertex drag, polygon move  -->
 <script>
-  import { v2protoStore }                 from '../stores/v2protoStore.js';
+  import { buildingAssetsStore }                 from '../stores/buildingAssetsStore.js';
   import { typeByCode, checkableDefs }    from '../lookups.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
   import { permissions }                  from '$lib/stores/permissions';
@@ -28,7 +28,7 @@
   import PlanAdminModal      from './plan/PlanAdminModal.svelte';
 
   // ── Store bindings ────────────────────────────────────────────────
-  $: store          = $v2protoStore;
+  $: store          = $buildingAssetsStore;
   $: facilities     = store.facilities;
   $: floors         = store.floors;
   $: plans          = store.plans;
@@ -43,8 +43,8 @@
   $: annotations    = store.annotations ?? [];
 
   // ── Navigation state ─────────────────────────────────────────────
-  const PREF_FLOOR = 'lh_v2proto_selectedFloorId';
-  const PREF_PLAN  = 'lh_v2proto_selectedPlanId';
+  const PREF_FLOOR = 'lh_building_assets_selectedFloorId';
+  const PREF_PLAN  = 'lh_building_assets_selectedPlanId';
   let selectedFloorId = '';
   let selectedPlanId  = '';
 
@@ -322,14 +322,14 @@
     const { fields, attrValues } = e.detail;
     saving = true; errorMsg = '';
     try {
-      await v2protoStore.createComponent({
+      await buildingAssetsStore.createComponent({
         ...fields,
         floor_id:   selectedFloorId,
         plan_id:    selectedPlanId,
         x_position: Math.round((newPos?.x ?? 0.5) * 1000) / 1000,
         y_position: Math.round((newPos?.y ?? 0.5) * 1000) / 1000,
       }, attrValues);
-      await v2protoStore.loadComponents();
+      await buildingAssetsStore.loadComponents();
       sidebarMode = 'none'; newPos = null;
     } catch (err) { errorMsg = err.message; }
     finally       { saving = false; }
@@ -340,7 +340,7 @@
     if ($drawingVertices.length < 3 || !drawingSpaceName.trim()) return;
     saving = true; errorMsg = '';
     try {
-      const newSpace = await v2protoStore.createSpace({
+      const newSpace = await buildingAssetsStore.createSpace({
         plan_id:    selectedPlanId,
         floor_id:   selectedFloorId || null,
         name:       drawingSpaceName.trim(),
@@ -362,7 +362,7 @@
     scaleSaving = true; errorMsg = '';
     try {
       const ar = imageAspectRatio ?? selectedPlan?.image_aspect_ratio ?? 1;
-      await v2protoStore.updatePlanScale(selectedPlanId,
+      await buildingAssetsStore.updatePlanScale(selectedPlanId,
         { x1: scalePoint1.x, y1: scalePoint1.y, x2: scalePoint2.x, y2: scalePoint2.y, metres }, ar);
       clearScaleDrawing();
       drawingMode = 'off';
@@ -372,14 +372,14 @@
 
   async function handleClearScale() {
     if (!confirm('Remove the scale from this plan? Measurements will no longer be shown.')) return;
-    try { await v2protoStore.updatePlanScale(selectedPlanId, null, null); }
+    try { await buildingAssetsStore.updatePlanScale(selectedPlanId, null, null); }
     catch (err) { errorMsg = err.message; }
   }
 
   // ── Component detail panel callbacks ─────────────────────────────
   function handleDetailSaved() {
     if (selectedComponent) {
-      selectedComponent = $v2protoStore.components.find(c => c.id === selectedComponent.id) ?? null;
+      selectedComponent = $buildingAssetsStore.components.find(c => c.id === selectedComponent.id) ?? null;
     }
   }
 
@@ -391,7 +391,7 @@
   // ── Annotation create ─────────────────────────────────────────────
   async function handleCreateAnnotation(x, y) {
     try {
-      const ann = await v2protoStore.createAnnotation({
+      const ann = await buildingAssetsStore.createAnnotation({
         plan_id: selectedPlanId, floor_id: selectedFloorId || null,
         text: 'New note', x_position: x, y_position: y,
         font_size: 'sm', colour: 'fbbf24', bold: false,
@@ -549,7 +549,7 @@
         <ComponentDetailPanel
           component={selectedComponent}
           {types} {systems} {floors} {facilities} {plans} {attrDefs} {attrOptions}
-          components={$v2protoStore.components}
+          components={$buildingAssetsStore.components}
           attrs={componentAttrs[selectedComponent.id] ?? []}
           readOnly={drawingMode === 'off'}
           on:saved={handleDetailSaved}
@@ -642,7 +642,7 @@
       }}
       on:deletecomponent={async ({ detail: { component } }) => {
         try {
-          await v2protoStore.deleteComponent(component.id);
+          await buildingAssetsStore.deleteComponent(component.id);
           if (selectedComponent?.id === component.id) { selectedComponent = null; sidebarMode = 'none'; }
         } catch (err) { errorMsg = err.message; }
       }}

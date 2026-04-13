@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/ComponentInventoryTable.svelte -->
+<!-- src/lib/apps/building_assets/components/ComponentInventoryTable.svelte -->
 <!-- Shared inventory table used by both ComponentsTab and plan/ComponentInventory.
      Renders a list view (one row per component) or a summary view (counts by type).
 

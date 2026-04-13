@@ -1,11 +1,11 @@
-<!-- src/lib/apps/v2proto/V2ProtoApp.svelte -->
+<!-- src/lib/apps/building_assets/BuildingAssetsApp.svelte -->
 <!-- Thin tab shell: loads the store, renders tab navigation,
      and delegates to the active tab component. -->
 <script>
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
-  import { v2protoStore } from './stores/v2protoStore.js';
+  import { buildingAssetsStore } from './stores/buildingAssetsStore.js';
 
   import TypeBrowser     from './components/TypeBrowser.svelte';
   import ComponentsTab   from './components/ComponentsTab.svelte';
@@ -16,7 +16,7 @@
 
   let activeTab = 'types';
 
-  $: store      = $v2protoStore;
+  $: store      = $buildingAssetsStore;
   $: systems    = store.systems;
   $: types      = store.types;
   $: attrDefs   = store.attrDefs;
@@ -26,10 +26,10 @@
 
   onMount(async () => {
     if ($auth.user) {
-      await permissions.init($auth.user.id, 'v2proto');
+      await permissions.init($auth.user.id, 'building_assets');
     }
-    await v2protoStore.load();
-    await v2protoStore.loadComponents();
+    await buildingAssetsStore.load();
+    await buildingAssetsStore.loadComponents();
   });
 
   const TABS = [

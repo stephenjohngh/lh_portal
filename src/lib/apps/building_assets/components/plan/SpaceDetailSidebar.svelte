@@ -5,7 +5,7 @@
      Save / Cancel / Delete footer. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore }          from '../../stores/v2protoStore.js';
+  import { buildingAssetsStore }          from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
   import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, fmt1 }
     from './planMeasure.js';
@@ -86,7 +86,7 @@
     if (!editName.trim()) { errorMsg = 'Name is required.'; return; }
     saving = true; errorMsg = '';
     try {
-      const updated = await v2protoStore.updateSpace(space.id, {
+      const updated = await buildingAssetsStore.updateSpace(space.id, {
         name:       editName,
         space_type: editType,
         colour:     editColourHex === 'none' ? 'none' : editColourHex.replace('#', ''),
@@ -108,7 +108,7 @@
   async function handleDelete() {
     if (!confirming) { confirming = true; return; }
     try {
-      await v2protoStore.deleteSpace(space.id);
+      await buildingAssetsStore.deleteSpace(space.id);
       dispatch('deleted');
     } catch (err) {
       errorMsg = err.message;

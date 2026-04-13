@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/MaintenanceView.svelte -->
+<!-- src/lib/apps/building_assets/components/MaintenanceView.svelte -->
 <!-- Shows maintenance_regime rows for types, demonstrating attribute_filter -->
 <script>
   export let systems  = [];

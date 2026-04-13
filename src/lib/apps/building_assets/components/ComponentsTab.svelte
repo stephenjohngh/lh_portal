@@ -1,11 +1,11 @@
-<!-- src/lib/apps/v2proto/components/ComponentsTab.svelte -->
+<!-- src/lib/apps/building_assets/components/ComponentsTab.svelte -->
 <!-- Components tab: list, create, detail-edit, and inspect components.
-     Reads all data from v2protoStore directly.
+     Reads all data from buildingAssetsStore directly.
      Uses ComponentInventoryTable for the shared list/summary view.
      Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
 
 <script>
-  import { v2protoStore } from '../stores/v2protoStore.js';
+  import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
 
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
   import ComponentForm           from './ComponentForm.svelte';
@@ -13,7 +13,7 @@
   import InspectionPanel         from './InspectionPanel.svelte';
 
   // ── Store bindings ────────────────────────────────────────────────
-  $: store          = $v2protoStore;
+  $: store          = $buildingAssetsStore;
   $: facilities     = store.facilities;
   $: floors         = store.floors;
   $: systems        = store.systems;
@@ -116,15 +116,15 @@
     const { fields, attrValues } = e.detail;
     saving = true; errorMsg = '';
     try {
-      await v2protoStore.createComponent(fields, attrValues);
+      await buildingAssetsStore.createComponent(fields, attrValues);
       showForm = false;
-      await v2protoStore.loadComponents();
+      await buildingAssetsStore.loadComponents();
     } catch (err) { errorMsg = err.message; }
     finally       { saving = false; }
   }
 
   function handleDetailSaved() {
-    editingComponent = $v2protoStore.components.find(c => c.id === editingComponent?.id) ?? null;
+    editingComponent = $buildingAssetsStore.components.find(c => c.id === editingComponent?.id) ?? null;
     errorMsg = '';
   }
 
@@ -136,7 +136,7 @@
 
   async function handleDelete(e) {
     try {
-      await v2protoStore.deleteComponent(e.detail.component.id);
+      await buildingAssetsStore.deleteComponent(e.detail.component.id);
       if (editingComponent?.id    === e.detail.component.id) editingComponent    = null;
       if (inspectingComponent?.id === e.detail.component.id) inspectingComponent = null;
     } catch (err) { errorMsg = err.message; }

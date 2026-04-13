@@ -15,7 +15,7 @@
 // }
 
 import { writable, get } from 'svelte/store';
-import { v2protoStore }  from '../../stores/v2protoStore.js';
+import { buildingAssetsStore }  from '../../stores/buildingAssetsStore.js';
 
 export function createSpaceEditController(ctx) {
   // ── Exposed stores ──────────────────────────────────────────────────
@@ -142,9 +142,9 @@ export function createSpaceEditController(ctx) {
       const poly = get(editingPolygon);
       if (!poly) return;
       try {
-        await v2protoStore.updateSpacePolygon(poly.spaceId, poly.vertices);
+        await buildingAssetsStore.updateSpacePolygon(poly.spaceId, poly.vertices);
         // Sync selectedSpace so SpaceDetailSidebar shows the updated vertex count.
-        const updated = get(v2protoStore).spaces.find(s => s.id === poly.spaceId);
+        const updated = get(buildingAssetsStore).spaces.find(s => s.id === poly.spaceId);
         const sel     = ctx.getSelectedSpace();
         if (updated && sel?.id === updated.id) ctx.setSelectedSpace(updated);
       } catch (err) {
@@ -158,8 +158,8 @@ export function createSpaceEditController(ctx) {
       const poly = get(editingPolygon);
       if (!poly) return;
       try {
-        await v2protoStore.updateSpacePolygon(poly.spaceId, poly.vertices);
-        const updated = get(v2protoStore).spaces.find(s => s.id === poly.spaceId);
+        await buildingAssetsStore.updateSpacePolygon(poly.spaceId, poly.vertices);
+        const updated = get(buildingAssetsStore).spaces.find(s => s.id === poly.spaceId);
         const sel     = ctx.getSelectedSpace();
         if (updated && sel?.id === updated.id) ctx.setSelectedSpace(updated);
       } catch (err) {

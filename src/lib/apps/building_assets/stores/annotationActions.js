@@ -1,4 +1,4 @@
-// src/lib/apps/v2proto/stores/annotationActions.js
+// src/lib/apps/building_assets/stores/annotationActions.js
 // Annotations domain: free-form text labels placed on floor plan images.
 // x_position and y_position are 0–1 fractions of the plan image dimensions.
 

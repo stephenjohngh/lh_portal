@@ -1,4 +1,4 @@
-<!-- src/lib/apps/v2proto/components/V2InspectionsReport.svelte -->
+<!-- src/lib/apps/building_assets/components/V2InspectionsReport.svelte -->
 <!-- Report modal for V2 walk inspection sessions.
      Mirrors WalkInspectionsReport but adapted for V2 data model:
        - v2_walk_sessions + component_inspections
@@ -27,7 +27,7 @@
   // ── Props ─────────────────────────────────────────────────────────────────
   // sessions: already-filtered list shown in the tab
   export let sessions         = [];
-  // types + floors: from $v2protoStore — needed for client-side resolution
+  // types + floors: from $buildingAssetsStore — needed for client-side resolution
   export let types            = [];
   export let floors           = [];
   // inspectionsCache: already-loaded flattened rows from the tab (may be partial)

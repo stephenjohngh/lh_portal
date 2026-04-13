@@ -1,7 +1,7 @@
-// src/lib/apps/v2proto/stores/typeHierarchyActions.js
+// src/lib/apps/building_assets/stores/typeHierarchyActions.js
 // Type hierarchy domain: building_systems, component_types, type_attributes,
 // type_attribute_options, maintenance_regime and the reload() orchestrator.
-// Receives the writable `update` function from v2protoStore so all mutations
+// Receives the writable `update` function from buildingAssetsStore so all mutations
 // land in the single shared store state.
 
 import { api }              from '$lib/utils/api';
@@ -9,7 +9,7 @@ import { getLogger }        from '$lib/utils/logger';
 import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
 import { requireUserId }    from './helpers.js';
 
-const logger = getLogger('v2proto');
+const logger = getLogger('BuildingAssets');
 
 // Factory — call once at store creation time.
 // update: the writable store's update function.

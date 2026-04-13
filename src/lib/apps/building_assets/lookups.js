@@ -1,4 +1,4 @@
-// Shared lookup helpers for the v2proto app.
+// Shared lookup helpers for the Building Assets app.
 // Centralise the repeated .find() / ?? [] patterns that appear in 20+ locations.
 
 /** Look up a component_types row by its code string. */

@@ -1,4 +1,4 @@
-// src/lib/apps/v2proto/stores/v2protoStore.js
+// src/lib/apps/building_assets/stores/buildingAssetsStore.js
 // Orchestrator: owns the single writable store and the top-level load() method,
 // then composes all domain action modules into the exported singleton.
 //
@@ -23,9 +23,9 @@ import { createAnnotationActions }      from './annotationActions.js';
 // Re-export helpers that components import directly from this module.
 export { buildRef } from './helpers.js';
 
-const logger = getLogger('v2proto');
+const logger = getLogger('BuildingAssets');
 
-function createV2ProtoStore() {
+function createBuildingAssetsStore() {
   const { subscribe, update } = writable({
     // Location hierarchy
     facilities:        [],   // facilities[]
@@ -121,4 +121,4 @@ function createV2ProtoStore() {
   };
 }
 
-export const v2protoStore = createV2ProtoStore();
+export const buildingAssetsStore = createBuildingAssetsStore();

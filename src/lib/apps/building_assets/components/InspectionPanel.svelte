@@ -1,11 +1,11 @@
-<!-- src/lib/apps/v2proto/components/InspectionPanel.svelte -->
+<!-- src/lib/apps/building_assets/components/InspectionPanel.svelte -->
 <!-- Walk inspection panel for a single component.
      Shows overall result selector, checkable attribute checklist, and notes.
      checklist_results saved as JSONB on component_inspections.
      Demonstrates the checkable attribute flow in the v2 data model. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../stores/v2protoStore.js';
+  import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { STATUSES } from '../ui.js';
 
   export let component      = null;  // components row
@@ -51,7 +51,7 @@
     saving = true;
     error  = '';
     try {
-      await v2protoStore.saveInspection(component.id, {
+      await buildingAssetsStore.saveInspection(component.id, {
         result,
         notes,
         checklistResults: checklist

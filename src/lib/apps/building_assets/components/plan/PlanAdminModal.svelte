@@ -4,7 +4,7 @@
      plan: the currently selected plan (required for edit/copy, ignored for new). -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { v2protoStore } from '../../stores/v2protoStore.js';
+  import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import Modal    from '$lib/components/common/Modal.svelte';
   import Button   from '$lib/components/common/Button.svelte';
 
@@ -103,7 +103,7 @@
     if (!imageFile)           { errorMsg = 'Please select a plan image.'; return; }
     saving = true; errorMsg = '';
     try {
-      const created = await v2protoStore.createPlan({
+      const created = await buildingAssetsStore.createPlan({
         name:        editName.trim()  || null,
         building:    editBuilding.trim(),
         floor_id:    editFloorId      || null,
@@ -122,14 +122,14 @@
     if (!editBuilding.trim()) { errorMsg = 'Building name is required.'; return; }
     saving = true; errorMsg = '';
     try {
-      let updated = await v2protoStore.updatePlanInfo(plan.id, {
+      let updated = await buildingAssetsStore.updatePlanInfo(plan.id, {
         name:        editName.trim()  || null,
         building:    editBuilding.trim(),
         floor_id:    editFloorId      || null,
         description: editDesc.trim()  || null,
       });
       if (imageFile) {
-        updated = await v2protoStore.replacePlanImage(plan.id, imageFile);
+        updated = await buildingAssetsStore.replacePlanImage(plan.id, imageFile);
       }
       dispatch('done', { plan: { ...plan, ...updated }, action: 'updated' });
       show = false;
@@ -145,7 +145,7 @@
     saving = true; errorMsg = '';
     copyProgress = { done: 0, total: null };
     try {
-      const { plan: newPlan, copied } = await v2protoStore.copyPlan(
+      const { plan: newPlan, copied } = await buildingAssetsStore.copyPlan(
         plan.id,
         {
           name:     editName.trim()    || null,
@@ -168,7 +168,7 @@
     if (!confirming) { confirming = true; return; }
     saving = true; errorMsg = '';
     try {
-      await v2protoStore.deletePlan(plan.id);
+      await buildingAssetsStore.deletePlan(plan.id);
       dispatch('deleted', { planId: plan.id });
       show = false;
     } catch (err) {
