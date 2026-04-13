@@ -55,7 +55,7 @@ export const AVAILABLE_APPS = [
     icon: 'beaker',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Building asset management — type hierarchy, components, floor plans and reports'
+    description: 'Building asset management - type hierarchy, components, floor plans and reports'
   },
 
   {
