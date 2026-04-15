@@ -14,7 +14,8 @@
   import V2ReportsTab       from './components/V2ReportsTab.svelte';
   import V2InspectionsTab   from './components/V2InspectionsTab.svelte';
 
-  let activeTab = 'types';
+  let activeTab   = 'types';
+  let initialized = false;   // true after the first load completes
 
   $: store      = $buildingAssetsStore;
   $: systems    = store.systems;
@@ -30,6 +31,7 @@
     }
     await buildingAssetsStore.load();
     await buildingAssetsStore.loadComponents();
+    initialized = true;
   });
 
   const TABS = [
@@ -44,13 +46,13 @@
 
 <div class="text-white">
 
-  <!-- Status -->
-  {#if store.loading}
-    <div class="text-slate-400 text-sm mb-4">Loading type hierarchy…</div>
+  <!-- Loading state — shown until first load completes -->
+  {#if !initialized || store.loading}
+    <div class="text-slate-400 text-sm mb-4">Loading…</div>
   {/if}
 
-  <!-- Data model banner — shown when tables are empty -->
-  {#if !store.loading && systems.length === 0}
+  <!-- Data model banner — only shown after load completes and DB is genuinely empty -->
+  {#if initialized && !store.loading && systems.length === 0}
     <div class="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-300">
       <p class="font-semibold mb-1">⚠ No data found</p>
       <p>Run the Phase 1 SQL migrations (001–009) in Supabase to populate the type hierarchy.
