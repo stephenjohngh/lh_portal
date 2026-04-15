@@ -54,6 +54,9 @@
     });
   }
 
+  // Status config for current component
+  $: statusCfg = STATUS_CFG[(component.status ?? 'ok').toLowerCase()] ?? STATUS_CFG.ok;
+
   // Walk-checklist section toggle
   let showWalkAttrs = false;
 </script>
@@ -166,10 +169,9 @@
     <!-- ── Status ────────────────────────────────────────────────────── -->
     <section>
       <p class={sec}>Status</p>
-      {@const cfg = STATUS_CFG[(component.status ?? 'ok').toLowerCase()] ?? STATUS_CFG.ok}
       <div class="mt-2">
-        <span class="inline-block px-3 py-1.5 rounded text-sm font-semibold text-white {cfg.bg}">
-          {cfg.label}
+        <span class="inline-block px-3 py-1.5 rounded text-sm font-semibold text-white {statusCfg.bg}">
+          {statusCfg.label}
         </span>
       </div>
     </section>
