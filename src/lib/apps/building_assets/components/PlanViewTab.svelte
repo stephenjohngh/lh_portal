@@ -550,7 +550,7 @@
         />
 
       {:else if sidebarMode === 'detail' && selectedComponent}
-        {#if readOnly}
+        {#if readOnly || drawingMode === 'off'}
           <ComponentDetailView
             component={selectedComponent}
             {types} {floors} {facilities} {plans} {attrDefs} {attrOptions}
