@@ -11,6 +11,7 @@
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
   import ComponentForm           from './ComponentForm.svelte';
   import ComponentDetailPanel    from './ComponentDetailPanel.svelte';
+  import ComponentDetailView     from './ComponentDetailView.svelte';
   import InspectionPanel         from './InspectionPanel.svelte';
 
   // ── Store bindings ────────────────────────────────────────────────
@@ -183,17 +184,26 @@
 
 {:else if editingComponent}
   <div class="max-w-2xl">
-    <ComponentDetailPanel
-      component={editingComponent}
-      {types} {systems} {floors} {facilities} {plans}
-      {attrDefs} {attrOptions} {components}
-      attrs={componentAttrs[editingComponent.id] ?? []}
-      {readOnly}
-      on:saved={handleDetailSaved}
-      on:close={() => editingComponent = null}
-      on:inspect={handleDetailInspect}
-      on:deleted={() => editingComponent = null}
-    />
+    {#if readOnly}
+      <ComponentDetailView
+        component={editingComponent}
+        {types} {floors} {facilities} {plans}
+        {attrDefs} {attrOptions} {components}
+        attrs={componentAttrs[editingComponent.id] ?? []}
+        on:close={() => editingComponent = null}
+      />
+    {:else}
+      <ComponentDetailPanel
+        component={editingComponent}
+        {types} {systems} {floors} {facilities} {plans}
+        {attrDefs} {attrOptions} {components}
+        attrs={componentAttrs[editingComponent.id] ?? []}
+        on:saved={handleDetailSaved}
+        on:close={() => editingComponent = null}
+        on:inspect={handleDetailInspect}
+        on:deleted={() => editingComponent = null}
+      />
+    {/if}
   </div>
 
 {:else if showForm}

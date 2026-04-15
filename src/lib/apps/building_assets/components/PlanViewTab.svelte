@@ -22,6 +22,7 @@
   import FilterSidebar       from './plan/FilterSidebar.svelte';
   import ComponentInventory  from './plan/ComponentInventory.svelte';
   import ComponentDetailPanel from './ComponentDetailPanel.svelte';
+  import ComponentDetailView  from './ComponentDetailView.svelte';
   import InspectionPanel     from './InspectionPanel.svelte';
   import QuickAddForm        from './QuickAddForm.svelte';
   import AnnotationSidebar   from './plan/AnnotationSidebar.svelte';
@@ -549,17 +550,26 @@
         />
 
       {:else if sidebarMode === 'detail' && selectedComponent}
-        <ComponentDetailPanel
-          component={selectedComponent}
-          {types} {systems} {floors} {facilities} {plans} {attrDefs} {attrOptions}
-          components={$buildingAssetsStore.components}
-          attrs={componentAttrs[selectedComponent.id] ?? []}
-          readOnly={drawingMode === 'off'}
-          on:saved={handleDetailSaved}
-          on:close={() => { selectedComponent = null; sidebarMode = 'none'; }}
-          on:inspect={handleDetailInspect}
-          on:deleted={() => { selectedComponent = null; sidebarMode = 'none'; }}
-        />
+        {#if readOnly}
+          <ComponentDetailView
+            component={selectedComponent}
+            {types} {floors} {facilities} {plans} {attrDefs} {attrOptions}
+            components={$buildingAssetsStore.components}
+            attrs={componentAttrs[selectedComponent.id] ?? []}
+            on:close={() => { selectedComponent = null; sidebarMode = 'none'; }}
+          />
+        {:else}
+          <ComponentDetailPanel
+            component={selectedComponent}
+            {types} {systems} {floors} {facilities} {plans} {attrDefs} {attrOptions}
+            components={$buildingAssetsStore.components}
+            attrs={componentAttrs[selectedComponent.id] ?? []}
+            on:saved={handleDetailSaved}
+            on:close={() => { selectedComponent = null; sidebarMode = 'none'; }}
+            on:inspect={handleDetailInspect}
+            on:deleted={() => { selectedComponent = null; sidebarMode = 'none'; }}
+          />
+        {/if}
 
       {:else if sidebarMode === 'space-drawing'}
         <SpaceDrawingSidebar
