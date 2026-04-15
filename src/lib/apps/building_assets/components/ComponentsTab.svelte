@@ -187,7 +187,7 @@
     {#if readOnly}
       <ComponentDetailView
         component={editingComponent}
-        {types} {floors} {facilities} {plans}
+        {types} {floors} {facilities}
         {attrDefs} {attrOptions} {components}
         attrs={componentAttrs[editingComponent.id] ?? []}
         on:close={() => editingComponent = null}

@@ -15,7 +15,6 @@
   export let types       = [];
   export let floors      = [];
   export let facilities  = [];
-  export let plans       = [];
   export let attrDefs    = {};  // { typeId: effective attrs[] }
   export let attrOptions = {};  // { attrDefId: options[] } — for option label lookup
   export let attrs       = [];  // component_attributes[] for this component
@@ -26,7 +25,6 @@
   // ── Derived ──────────────────────────────────────────────────────────
   $: type        = typeByCode(types, component.type_code);
   $: floor       = floorById(floors, component.floor_id);
-  $: plan        = plans.find(p => p.id === component.plan_id) ?? null;
   $: typeId      = type?.id ?? null;
   $: defs        = typeId ? (attrDefs[typeId] ?? []) : [];
   $: standardDefs = defs.filter(d => !d.checkable);
@@ -85,12 +83,8 @@
         {#if component.label}
           <span class="text-slate-300 text-base leading-tight">{component.label}</span>
         {/if}
-        <!-- Read-only badge -->
-        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-500 border border-slate-600 uppercase tracking-wide">
-          view only
-        </span>
       </div>
-      <p class="text-sm text-slate-500 mt-0.5">{type?.name ?? component.type_code}</p>
+      <p class="font-semibold text-slate-400 text-base mt-0.5">{type?.name ?? component.type_code}</p>
     </div>
 
     <button
@@ -102,69 +96,6 @@
 
   <!-- ── Scrollable body ─────────────────────────────────────────────── -->
   <div class="flex-1 overflow-y-auto p-5 space-y-6">
-
-    <!-- ── Location ─────────────────────────────────────────────────── -->
-    <section>
-      <p class={sec}>Location</p>
-      <dl class="grid grid-cols-2 gap-x-4 gap-y-3 mt-2">
-        <div>
-          <dt class="text-xs text-slate-500 mb-0.5">Floor</dt>
-          <dd class="text-sm text-slate-200">
-            {#if floor}
-              {floor.name}
-              <span class="font-mono text-slate-400 text-xs ml-1">({floor.short_name})</span>
-            {:else}
-              <span class="text-slate-600">—</span>
-            {/if}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs text-slate-500 mb-0.5">Plan</dt>
-          <dd class="text-sm text-slate-200">
-            {plan?.name ?? (component.plan_id ? 'Placed' : 'Not placed')}
-          </dd>
-        </div>
-        {#if component.plan_id}
-          <div>
-            <dt class="text-xs text-slate-500 mb-0.5">X Position</dt>
-            <dd class="text-sm font-mono text-slate-300">{component.x_position?.toFixed(3) ?? '—'}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-slate-500 mb-0.5">Y Position</dt>
-            <dd class="text-sm font-mono text-slate-300">{component.y_position?.toFixed(3) ?? '—'}</dd>
-          </div>
-        {/if}
-      </dl>
-    </section>
-
-    <!-- ── Identity ──────────────────────────────────────────────────── -->
-    <section>
-      <p class={sec}>Identity</p>
-      <dl class="grid grid-cols-2 gap-x-4 gap-y-3 mt-2">
-        <div class="col-span-2">
-          <dt class="text-xs text-slate-500 mb-0.5">Component Type</dt>
-          <dd class="text-sm text-slate-200">{type?.name ?? component.type_code}</dd>
-        </div>
-        <div>
-          <dt class="text-xs text-slate-500 mb-0.5">Label</dt>
-          <dd class="text-sm text-slate-200">
-            {#if component.label}{component.label}{:else}<span class="text-slate-600">—</span>{/if}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs text-slate-500 mb-0.5">Asset ID</dt>
-          <dd class="text-sm font-mono text-slate-200">
-            {#if component.asset_id}{component.asset_id}{:else}<span class="text-slate-600">—</span>{/if}
-          </dd>
-        </div>
-        {#if component.primary_attribute}
-          <div class="col-span-2">
-            <dt class="text-xs text-slate-500 mb-0.5">Primary Attribute</dt>
-            <dd class="text-sm font-semibold text-yellow-300">★ {component.primary_attribute}</dd>
-          </div>
-        {/if}
-      </dl>
-    </section>
 
     <!-- ── Status ────────────────────────────────────────────────────── -->
     <section>
