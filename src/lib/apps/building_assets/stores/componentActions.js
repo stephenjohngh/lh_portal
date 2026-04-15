@@ -37,7 +37,19 @@ export function createComponentActions(update) {
         }
       }
 
-      update(s => ({ ...s, components, componentAttrs, inspections, loadingComponents: false }));
+      // Index component_links by from_component_id (graceful degradation if table missing)
+      let componentLinks = {};
+      try {
+        const allLinks = await api.get('component_links', { orderBy: 'created_at', ascending: true });
+        for (const link of allLinks) {
+          if (!componentLinks[link.from_component_id]) componentLinks[link.from_component_id] = [];
+          componentLinks[link.from_component_id].push(link);
+        }
+      } catch {
+        logger('component_links table not available — run migration 033 to enable');
+      }
+
+      update(s => ({ ...s, components, componentAttrs, componentLinks, inspections, loadingComponents: false }));
       logger(`Loaded ${components.length} components`);
     } catch (err) {
       logger('Load components error:', err.message);
@@ -232,6 +244,55 @@ export function createComponentActions(update) {
     return inspection;
   }
 
+  // ── Component links CRUD ─────────────────────────────────────────────
+  // component_links: { id, from_component_id, to_component_ref, link_type, created_at }
+
+  async function addComponentLink(fromComponentId, toRef, linkType) {
+    const userId = requireUserId();
+    const link = await api.create('component_links', {
+      from_component_id: fromComponentId,
+      to_component_ref:  toRef.trim(),
+      link_type:         linkType?.trim() || null,
+      created_by:        userId
+    });
+    update(s => {
+      const existing = s.componentLinks[fromComponentId] ?? [];
+      return {
+        ...s,
+        componentLinks: { ...s.componentLinks, [fromComponentId]: [...existing, link] }
+      };
+    });
+    logger('Added component link:', link.id);
+    return link;
+  }
+
+  async function updateComponentLink(linkId, fromComponentId, linkType) {
+    const updated = await api.update('component_links', linkId,
+      { link_type: linkType?.trim() || null });
+    update(s => ({
+      ...s,
+      componentLinks: {
+        ...s.componentLinks,
+        [fromComponentId]: (s.componentLinks[fromComponentId] ?? []).map(l =>
+          l.id === linkId ? { ...l, link_type: updated.link_type } : l
+        )
+      }
+    }));
+    logger('Updated component link:', linkId);
+  }
+
+  async function deleteComponentLink(linkId, fromComponentId) {
+    await api.delete('component_links', linkId);
+    update(s => ({
+      ...s,
+      componentLinks: {
+        ...s.componentLinks,
+        [fromComponentId]: (s.componentLinks[fromComponentId] ?? []).filter(l => l.id !== linkId)
+      }
+    }));
+    logger('Deleted component link:', linkId);
+  }
+
   return {
     loadComponents,
     createComponent,
@@ -241,5 +302,8 @@ export function createComponentActions(update) {
     moveComponent,
     deleteComponent,
     saveInspection,
+    addComponentLink,
+    updateComponentLink,
+    deleteComponentLink,
   };
 }

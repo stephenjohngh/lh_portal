@@ -5,7 +5,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import AttrField from './AttrField.svelte';
-  import { buildRef } from '../stores/buildingAssetsStore.js';
   import { inp } from '../ui.js';
 
   export let types       = [];    // component_types[]
@@ -15,7 +14,6 @@
   export let plans       = [];    // all plans[] — filtered to selected floor for plan picker
   export let floors      = [];    // floors[] ordered by level_order
   export let facilities  = [];    // facilities[] — for display and buildRef
-  export let components  = [];    // all components[] — for linked_component_ref datalist
   export let saving      = false;
 
   const dispatch = createEventDispatcher();
@@ -28,7 +26,6 @@
   let assetId            = '';
   let xPosition          = 0.5;
   let yPosition          = 0.5;
-  let linkedComponentRef = '';
   let attrValues         = {}; // { attrDefId: string }
 
   // ── Derived ────────────────────────────────────────────────────────
@@ -45,11 +42,6 @@
   $: defs         = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
   $: primaryDef   = defs.find(d => d.is_primary) ?? null;
   $: primaryAttribute = primaryDef ? (attrValues[primaryDef.id] ?? '') : '';
-
-  // datalist: canonical ref string for every existing component
-  $: refOptions = components
-    .map(c => buildRef(c, floors, facilities, types))
-    .filter(Boolean);
 
   // ── Handlers ───────────────────────────────────────────────────────
 
@@ -84,7 +76,6 @@
       asset_id:             assetId            || null,
       x_position:           planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : 0.5,
       y_position:           planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : 0.5,
-      linked_component_ref: linkedComponentRef.trim() || null
     };
 
     const attrValueRows = Object.entries(attrValues)
@@ -204,31 +195,6 @@
         </div>
       {/if}
     </div>
-  </div>
-
-  <!-- ── Linked component reference ───────────────────────────── -->
-  <div class="flex flex-col gap-1">
-    <p class="text-xs text-slate-400">
-      Linked Component
-      <span class="text-slate-600 ml-1 font-normal">— cross-reference to a related component</span>
-    </p>
-    <input
-      type="text"
-      bind:value={linkedComponentRef}
-      list="component-refs"
-      placeholder="e.g. DB / G / Fire Door / FD-042"
-      class="{inp} font-mono placeholder-slate-600"
-    />
-    <datalist id="component-refs">
-      {#each refOptions as ref}
-        <option value={ref}></option>
-      {/each}
-    </datalist>
-    {#if linkedComponentRef.trim()}
-      <p class="text-xs text-slate-500">
-        → links to <span class="text-purple-400 font-mono">"{linkedComponentRef.trim()}"</span>
-      </p>
-    {/if}
   </div>
 
   <!-- ── Dynamic Attribute Fields ─────────────────────────────── -->

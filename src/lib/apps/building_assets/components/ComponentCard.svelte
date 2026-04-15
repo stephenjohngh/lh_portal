@@ -3,6 +3,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, floorById } from '../lookups.js';
+  import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
 
   export let component;         // components row
   export let types    = [];     // component_types[] — for lookup
@@ -17,6 +18,7 @@
   $: floor          = floorById(floors, component.floor_id);
   $: defs           = defsForType(attrDefs, types, component.type_code);
   $: checkableCount = defs.filter(d => d.checkable).length;
+  $: linkCount      = ($buildingAssetsStore.componentLinks[component.id] ?? []).length;
 
   // Build display list of attribute values with their definition names
   $: attrDisplay = attrs
@@ -127,11 +129,10 @@
       </div>
     {/if}
 
-    <!-- Linked component ref -->
-    {#if component.linked_component_ref}
-      <p class="text-xs text-purple-400/80 mt-1.5 font-mono truncate"
-         title="Linked component: {component.linked_component_ref}">
-        🔗 {component.linked_component_ref}
+    <!-- Linked components -->
+    {#if linkCount > 0}
+      <p class="text-xs text-purple-400/80 mt-1.5">
+        🔗 {linkCount} linked component{linkCount === 1 ? '' : 's'}
       </p>
     {/if}
 

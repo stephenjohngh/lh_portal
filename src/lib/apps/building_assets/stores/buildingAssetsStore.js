@@ -40,6 +40,7 @@ function createBuildingAssetsStore() {
     // Component data
     components:        [],   // components[]
     componentAttrs:    {},   // { [componentId]: component_attributes[] }
+    componentLinks:    {},   // { [componentId]: component_links[] }
     inspections:       {},   // { [componentId]: latest component_inspections row }
     // Plan / spatial data
     plans:             [],   // plans[]

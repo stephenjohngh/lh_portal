@@ -8,6 +8,7 @@
   import { typeByCode, floorById } from '../lookups.js';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
+  import ComponentLinks              from './ComponentLinks.svelte';
   import { inp, sec, STATUSES }      from '../ui.js';
 
   export let component;          // components row
@@ -32,7 +33,6 @@
   let assetId            = component.asset_id       ?? '';
   let status             = component.status         ?? 'OK';
   let notes              = component.notes          ?? '';
-  let linkedComponentRef = component.linked_component_ref ?? '';
   let xPosition          = component.x_position     ?? 0.5;
   let yPosition          = component.y_position     ?? 0.5;
 
@@ -58,7 +58,6 @@
     assetId            = component.asset_id             ?? '';
     status             = component.status               ?? 'OK';
     notes              = component.notes                ?? '';
-    linkedComponentRef = component.linked_component_ref ?? '';
     xPosition          = component.x_position           ?? 0.5;
     yPosition          = component.y_position           ?? 0.5;
     attrValues         = Object.fromEntries(attrs.map(a => [a.type_attribute_id, a.value]));
@@ -78,12 +77,6 @@
   $: walkDefs       = defs.filter(d =>  d.checkable);
   $: primaryAttr    = primaryDef ? (attrValues[primaryDef.id] ?? '') : '';
   $: plansForFloor  = selectedFloorId ? plans.filter(p => p.floor_id === selectedFloorId) : [];
-
-  // datalist options for linked component ref
-  $: refOptions = components
-    .filter(c => c.id !== component.id)
-    .map(c => buildRef(c, floors, facilities, types))
-    .filter(Boolean);
 
   // Type badge for the original (unedited) type
   $: origType = typeByCode(types, component.type_code);
@@ -133,7 +126,6 @@
         asset_id:             assetId.trim()  || null,
         status,
         notes:                notes.trim()    || null,
-        linked_component_ref: linkedComponentRef.trim() || null,
         x_position:           planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : component.x_position,
         y_position:           planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : component.y_position
       };
@@ -398,31 +390,15 @@
       ></textarea>
     </section>
 
-    <!-- ── Linked component ref ───────────────────────────────────── -->
-    <section>
-      <p class={sec}>
-        Linked Component
-        <span class="font-normal normal-case text-slate-600 ml-1">— cross-reference to a related component</span>
-      </p>
-      <input
-        type="text"
-        bind:value={linkedComponentRef}
-        on:input={markDirty}
-        list="detail-component-refs"
-        placeholder="e.g. LH / G / Fire Door / FD-042"
-        class="{inp} font-mono placeholder-slate-600"
-      />
-      <datalist id="detail-component-refs">
-        {#each refOptions as ref}
-          <option value={ref}></option>
-        {/each}
-      </datalist>
-      {#if linkedComponentRef.trim()}
-        <p class="text-xs text-slate-500 mt-1">
-          → <span class="text-purple-400 font-mono">"{linkedComponentRef.trim()}"</span>
-        </p>
-      {/if}
-    </section>
+    <!-- ── Linked components ─────────────────────────────────────── -->
+    <ComponentLinks
+      componentId={component.id}
+      {components}
+      {floors}
+      {facilities}
+      {types}
+      {readOnly}
+    />
 
     <!-- ── Inspection history ────────────────────────────────────── -->
     <ComponentInspectionHistory componentId={component.id} />

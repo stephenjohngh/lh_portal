@@ -197,7 +197,7 @@
   <div class="max-w-2xl bg-slate-800 rounded-xl border border-slate-700 p-6">
     <ComponentForm
       {types} {systems} {attrDefs} {attrOptions}
-      {plans} {floors} {facilities} {components}
+      {plans} {floors} {facilities}
       {saving}
       on:submit={handleSubmit}
       on:cancel={() => { showForm = false; errorMsg = ''; }}
