@@ -207,6 +207,7 @@
             {@const attrs  = allAttrPairs(c)}
             {@const inDel  = confirmingDelete.has(c.id)}
             {@const status = (c.status || 'ok').toLowerCase()}
+            {@const links  = componentLinks[c.id] ?? []}
             <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
             <tr
               class="border-b border-slate-700/30 hover:bg-slate-700/30 cursor-pointer
@@ -272,7 +273,6 @@
               </td>
 
               <!-- ⑦ Linked -->
-              {@const links = componentLinks[c.id] ?? []}
               <td class="px-2 py-2 text-slate-400 max-w-[200px]">
                 {#if links.length > 0}
                   <span class="truncate block text-purple-400/80 font-mono text-[10px]"
