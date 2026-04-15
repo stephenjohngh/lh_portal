@@ -19,6 +19,7 @@
   export let metresPerUnit      = null;
   export let showPlanAdmin      = false;  // true when current user is admin
   export let hasPlan            = false;  // true when a plan is currently selected
+  export let readOnly           = false;
 
   const dispatch = createEventDispatcher();
 
@@ -74,7 +75,7 @@
 
   <!-- 4-way mode toggle -->
   <div class="flex rounded-lg overflow-hidden border border-slate-600 text-sm shrink-0">
-    {#each MODES as btn, i (btn.mode)}
+    {#each (readOnly ? MODES.filter(m => m.mode === 'off') : MODES) as btn, i (btn.mode)}
       <button
         on:click={() => dispatch('modechange', { mode: btn.mode })}
         title={btn.title}

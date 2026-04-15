@@ -23,6 +23,7 @@
   export let systems        = [];
   export let floors         = [];
   export let title          = 'Inventory';
+  export let readOnly       = false;
 
   const dispatch = createEventDispatcher();
 
@@ -288,7 +289,7 @@
               <td class="px-2 py-2 whitespace-nowrap" on:click|stopPropagation>
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity
                             {inDel ? '!opacity-100' : ''}">
-                  {#if !inDel}
+                  {#if !inDel && !readOnly}
                     <button
                       on:click|stopPropagation={() => dispatch('inspect', { component: c })}
                       class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600

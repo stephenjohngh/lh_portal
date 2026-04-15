@@ -42,6 +42,8 @@
   $: spaces         = store.spaces;
   $: annotations    = store.annotations ?? [];
 
+  $: readOnly = !$permissions.isAdmin && !$permissions.canModify;
+
   // ── Navigation state ─────────────────────────────────────────────
   const PREF_FLOOR = 'lh_building_assets_selectedFloorId';
   const PREF_PLAN  = 'lh_building_assets_selectedPlanId';
@@ -231,6 +233,7 @@
 
   // ── Mode toggle ───────────────────────────────────────────────────
   function onModeChange({ detail: { mode } }) {
+    if (readOnly) return;
     drawingMode = (drawingMode === mode) ? 'off' : mode;
     if (drawingMode !== 'space')      cancelSpaceDrawing();
     if (drawingMode !== 'component')  { dragCtrl.reset(); newPos = null; }
@@ -438,7 +441,7 @@
     {floors} {plansForFloor} {selectedFloorId} {selectedPlanId}
     {drawingMode} {planComponents} {visibleComponents} {planSpaces} {unplacedComponents}
     hasScale={!!selectedPlan?.scale_ref} {metresPerUnit}
-    showPlanAdmin={$permissions.isAdmin} hasPlan={!!selectedPlan}
+    showPlanAdmin={$permissions.isAdmin} hasPlan={!!selectedPlan} {readOnly}
     on:floorchange={onFloorChange}
     on:planchange={onPlanChange}
     on:modechange={onModeChange}

@@ -6,6 +6,7 @@
 
 <script>
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
+  import { permissions }         from '$lib/stores/permissions';
 
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
   import ComponentForm           from './ComponentForm.svelte';
@@ -157,6 +158,7 @@
   }
 
   $: hasFilters = floorPreset !== 'all' || filterSystemId || filterTypeCode || filterStatus || searchQuery.trim();
+  $: readOnly = !$permissions.isAdmin && !$permissions.canModify;
 </script>
 
 <!-- Error banner -->
@@ -186,6 +188,7 @@
       {types} {systems} {floors} {facilities} {plans}
       {attrDefs} {attrOptions} {components}
       attrs={componentAttrs[editingComponent.id] ?? []}
+      {readOnly}
       on:saved={handleDetailSaved}
       on:close={() => editingComponent = null}
       on:inspect={handleDetailInspect}
@@ -206,6 +209,7 @@
 
 {:else}
   <!-- New Component button -->
+  {#if !readOnly}
   <div class="flex justify-end mb-3">
     <button
       on:click={() => { showForm = true; errorMsg = ''; }}
@@ -217,6 +221,7 @@
       <span>+</span> New Component
     </button>
   </div>
+  {/if}
 
   {#if store.loadingComponents}
     <p class="text-slate-500 text-sm">Loading components…</p>
@@ -242,6 +247,7 @@
       {systems}
       {floors}
       title="Components"
+      {readOnly}
       on:selectcomponent={e => { editingComponent = e.detail.component; errorMsg = ''; }}
       on:deletecomponent={handleDelete}
       on:inspect={e => { inspectingComponent = e.detail.component; editingComponent = null; errorMsg = ''; }}
