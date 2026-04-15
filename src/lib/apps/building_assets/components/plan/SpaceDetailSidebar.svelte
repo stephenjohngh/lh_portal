@@ -185,84 +185,131 @@
       </div>
     {/if}
 
-    <!-- ── Name ──────────────────────────────────────────────────── -->
-    <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400" for="sp-name">
-        Name <span class="text-red-400">*</span>
-      </label>
-      <input
-        id="sp-name"
-        type="text"
-        bind:value={editName}
-        class={inp}
-      />
-    </div>
+      {#if readOnly}
 
-    <!-- ── Space type ────────────────────────────────────────────── -->
-    <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400" for="sp-type">Type</label>
-      <select id="sp-type" bind:value={editType} class={inp}>
-        <option value="">— none —</option>
-        {#each SPACE_TYPES as st}
-          <option value={st}>{st}</option>
-        {/each}
-      </select>
-    </div>
+      <!-- ── Read-only fields ───────────────────────────────────────── -->
+      <dl class="space-y-2">
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Name</dt>
+          <dd class="text-sm text-slate-200">{space.name || '—'}</dd>
+        </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Type</dt>
+          <dd class="text-sm text-slate-200">{#if space.space_type}{space.space_type}{:else}<span class="text-slate-600">—</span>{/if}</dd>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Colour</dt>
+          <dd class="flex items-center gap-2">
+            {#if space.colour && space.colour !== 'none'}
+              <span class="w-4 h-4 rounded-full inline-block shrink-0"
+                    style="background-color:#{space.colour}"></span>
+            {:else}
+              <span class="text-slate-600 text-sm">None</span>
+            {/if}
+          </dd>
+        </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Height</dt>
+          <dd class="text-sm text-slate-200">
+            {#if space.height_m != null}{space.height_m} m{:else}<span class="text-slate-600">—</span>{/if}
+          </dd>
+        </div>
+        {#if space.notes}
+          <div class="px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+            <dt class="text-xs text-slate-500 mb-1">Notes</dt>
+            <dd class="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{space.notes}</dd>
+          </div>
+        {/if}
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Show label</dt>
+          <dd class="text-sm {space.show_label ? 'text-green-400' : 'text-slate-500'}">
+            {space.show_label ? '✓ Yes' : '✗ No'}
+          </dd>
+        </div>
+      </dl>
 
-    <!-- ── Colour ────────────────────────────────────────────────── -->
-    <div>
-      <p class="text-xs text-slate-400 mb-1.5">Colour</p>
-      <div class="flex gap-1.5 flex-wrap">
-        {#each SPACE_COLOURS as sc (sc.hex)}
-          {@const isNone = sc.hex === 'none'}
-          <button
-            on:click={() => editColourHex = sc.hex}
-            title={sc.label}
-            class="w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center
-                   {editColourHex === sc.hex
-                     ? 'border-white scale-110'
-                     : 'border-transparent hover:border-slate-400'}
-                   {isNone ? 'bg-slate-700' : ''}"
-            style={!isNone ? `background-color:${sc.hex}` : ''}
-          >{#if isNone}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</button>
-        {/each}
+    {:else}
+
+      <!-- ── Name ──────────────────────────────────────────────────── -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-name">
+          Name <span class="text-red-400">*</span>
+        </label>
+        <input
+          id="sp-name"
+          type="text"
+          bind:value={editName}
+          class={inp}
+        />
       </div>
-    </div>
 
-    <!-- ── Height ────────────────────────────────────────────────── -->
-    <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400" for="sp-height">
-        Ceiling height (m)
-        <span class="text-slate-600 font-normal ml-1">— enables volume calculation</span>
+      <!-- ── Space type ────────────────────────────────────────────── -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-type">Type</label>
+        <select id="sp-type" bind:value={editType} class={inp}>
+          <option value="">— none —</option>
+          {#each SPACE_TYPES as st}
+            <option value={st}>{st}</option>
+          {/each}
+        </select>
+      </div>
+
+      <!-- ── Colour ────────────────────────────────────────────────── -->
+      <div>
+        <p class="text-xs text-slate-400 mb-1.5">Colour</p>
+        <div class="flex gap-1.5 flex-wrap">
+          {#each SPACE_COLOURS as sc (sc.hex)}
+            {@const isNone = sc.hex === 'none'}
+            <button
+              on:click={() => editColourHex = sc.hex}
+              title={sc.label}
+              class="w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center
+                     {editColourHex === sc.hex
+                       ? 'border-white scale-110'
+                       : 'border-transparent hover:border-slate-400'}
+                     {isNone ? 'bg-slate-700' : ''}"
+              style={!isNone ? `background-color:${sc.hex}` : ''}
+            >{#if isNone}<span class="text-slate-500 text-[9px] leading-none">∅</span>{/if}</button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- ── Height ────────────────────────────────────────────────── -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-height">
+          Ceiling height (m)
+          <span class="text-slate-600 font-normal ml-1">— enables volume calculation</span>
+        </label>
+        <input
+          id="sp-height"
+          type="number"
+          min="0.1"
+          step="0.1"
+          bind:value={editHeightM}
+          placeholder="e.g. 2.8"
+          class={inp}
+        />
+      </div>
+
+      <!-- ── Notes ─────────────────────────────────────────────────── -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-notes">Notes</label>
+        <textarea
+          id="sp-notes"
+          rows="2"
+          bind:value={editNotes}
+          placeholder="Optional notes…"
+          class="{inp} resize-none"
+        ></textarea>
+      </div>
+
+      <!-- ── Show label ─────────────────────────────────────────────── -->
+      <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+        <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
+        Show name label on plan
       </label>
-      <input
-        id="sp-height"
-        type="number"
-        min="0.1"
-        step="0.1"
-        bind:value={editHeightM}
-        placeholder="e.g. 2.8"
-        class={inp}
-      />
-    </div>
 
-    <!-- ── Notes ─────────────────────────────────────────────────── -->
-    <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400" for="sp-notes">Notes</label>
-      <textarea
-        id="sp-notes"
-        rows="2"
-        bind:value={editNotes}
-        placeholder="Optional notes…"
-        class="{inp} resize-none"
-      ></textarea>
-    </div>
-
-    <!-- ── Show label ─────────────────────────────────────────────── -->
-    <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-      <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
-      Show name label on plan
-    </label>
+    {/if}
 
     <!-- ── Metadata ───────────────────────────────────────────────── -->
     <div class="flex flex-col gap-0.5 pt-1 border-t border-slate-700/60">

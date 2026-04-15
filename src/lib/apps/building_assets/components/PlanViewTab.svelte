@@ -593,7 +593,7 @@
         <SpaceDetailSidebar
           space={selectedSpace} {floors} {metresPerUnit} {planAR}
           vertexEditingActive={$vertexEditingActive}
-          readOnly={drawingMode === 'off'}
+          readOnly={readOnly || drawingMode === 'off'}
           on:saved={({ detail }) => { selectedSpace = detail.space; }}
           on:close={() => { selectedSpace = null; sidebarMode = 'none'; resetSelection(); }}
           on:deleted={() => { resetSelection(); }}
