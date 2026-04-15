@@ -8,6 +8,7 @@
 
   export let components     = [];
   export let componentAttrs = {};
+  export let componentLinks = {};
   export let types          = [];
   export let systems        = [];
   export let attrDefs       = {};
@@ -20,6 +21,7 @@
 <ComponentInventoryTable
   {components}
   {componentAttrs}
+  {componentLinks}
   {attrDefs}
   {types}
   {systems}

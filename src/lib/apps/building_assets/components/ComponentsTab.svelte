@@ -236,6 +236,7 @@
     <ComponentInventoryTable
       components={filteredComponents}
       {componentAttrs}
+      componentLinks={store.componentLinks}
       {attrDefs}
       {types}
       {systems}

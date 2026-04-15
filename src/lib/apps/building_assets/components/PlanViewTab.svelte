@@ -633,7 +633,7 @@
   <!-- ── Inventory table (full width, below plan) ──────────────────── -->
   {#if selectedPlanId && (planComponents.length > 0 || visibleComponents.length > 0)}
     <ComponentInventory
-      components={visibleComponents} {componentAttrs} {types} {systems} {attrDefs} {floors}
+      components={visibleComponents} {componentAttrs} componentLinks={store.componentLinks} {types} {systems} {attrDefs} {floors}
       on:selectcomponent={({ detail: { component } }) => {
         selectedComponent = component; sidebarMode = 'detail';
       }}

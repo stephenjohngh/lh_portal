@@ -17,6 +17,7 @@
 
   export let components     = [];
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }
+  export let componentLinks = {};   // { [componentId]: component_links[] }
   export let attrDefs       = {};   // { [typeId]: effective attr defs }
   export let types          = [];
   export let systems        = [];
@@ -196,6 +197,7 @@
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Type</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Status</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Attributes</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Linked</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
           </tr>
         </thead>
@@ -269,7 +271,20 @@
                 {/if}
               </td>
 
-              <!-- ⑦ Actions -->
+              <!-- ⑦ Linked -->
+              {@const links = componentLinks[c.id] ?? []}
+              <td class="px-2 py-2 text-slate-400 max-w-[200px]">
+                {#if links.length > 0}
+                  <span class="truncate block text-purple-400/80 font-mono text-[10px]"
+                        title={links.map(l => l.to_component_ref).join(', ')}>
+                    {links.map(l => l.to_component_ref).join(', ')}
+                  </span>
+                {:else}
+                  <span class="text-slate-700">—</span>
+                {/if}
+              </td>
+
+              <!-- ⑧ Actions -->
               <td class="px-2 py-2 whitespace-nowrap" on:click|stopPropagation>
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity
                             {inDel ? '!opacity-100' : ''}">
