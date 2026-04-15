@@ -288,7 +288,7 @@
               <!-- ⑧ Actions -->
               <td class="px-2 py-2 whitespace-nowrap" on:click|stopPropagation>
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity
-                            {inDel ? '!opacity-100' : ''}">
+                            {inDel && !readOnly ? '!opacity-100' : ''}">
                   {#if !inDel && !readOnly}
                     <button
                       on:click|stopPropagation={() => dispatch('inspect', { component: c })}
@@ -297,25 +297,27 @@
                       title="Inspect"
                     >🔍</button>
                   {/if}
-                  {#if inDel}
-                    <button
-                      on:click|stopPropagation={e => cancelDelete(c.id, e)}
-                      class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600
-                             text-slate-400 transition-colors text-[10px]"
-                      title="Cancel"
-                    >✕</button>
-                    <button
-                      on:click|stopPropagation={e => startDelete(c, e)}
-                      class="px-1.5 py-0.5 rounded bg-red-700 hover:bg-red-600
-                             text-white font-medium transition-colors text-[10px]"
-                    >Delete?</button>
-                  {:else}
-                    <button
-                      on:click|stopPropagation={e => startDelete(c, e)}
-                      class="px-1.5 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
-                             text-red-500 border border-red-900/40 transition-colors text-[10px]"
-                      title="Delete (click twice)"
-                    >🗑</button>
+                  {#if !readOnly}
+                    {#if inDel}
+                      <button
+                        on:click|stopPropagation={e => cancelDelete(c.id, e)}
+                        class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600
+                               text-slate-400 transition-colors text-[10px]"
+                        title="Cancel"
+                      >✕</button>
+                      <button
+                        on:click|stopPropagation={e => startDelete(c, e)}
+                        class="px-1.5 py-0.5 rounded bg-red-700 hover:bg-red-600
+                               text-white font-medium transition-colors text-[10px]"
+                      >Delete?</button>
+                    {:else}
+                      <button
+                        on:click|stopPropagation={e => startDelete(c, e)}
+                        class="px-1.5 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
+                               text-red-500 border border-red-900/40 transition-colors text-[10px]"
+                        title="Delete (click twice)"
+                      >🗑</button>
+                    {/if}
                   {/if}
                 </div>
               </td>
