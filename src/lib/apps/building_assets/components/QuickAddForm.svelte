@@ -104,7 +104,7 @@
         primary_attribute: primaryValue || null,
         label:             label.trim()  || null,
         asset_id:          assetId.trim() || null,
-        status:            'OK'
+        status:            'ok'
       },
       attrValues: allAttrValues
     });

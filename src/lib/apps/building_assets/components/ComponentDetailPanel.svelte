@@ -31,7 +31,7 @@
   let selectedTypeId     = typeByCode(types, component.type_code)?.id ?? '';
   let label              = component.label          ?? '';
   let assetId            = component.asset_id       ?? '';
-  let status             = component.status         ?? 'OK';
+  let status             = component.status         ?? 'ok';
   let notes              = component.notes          ?? '';
   let xPosition          = component.x_position     ?? 0.5;
   let yPosition          = component.y_position     ?? 0.5;
@@ -56,7 +56,7 @@
     selectedTypeId     = typeByCode(types, component.type_code)?.id ?? '';
     label              = component.label                ?? '';
     assetId            = component.asset_id             ?? '';
-    status             = component.status               ?? 'OK';
+    status             = component.status               ?? 'ok';
     notes              = component.notes                ?? '';
     xPosition          = component.x_position           ?? 0.5;
     yPosition          = component.y_position           ?? 0.5;
@@ -81,8 +81,7 @@
   // Type badge for the original (unedited) type
   $: origType = typeByCode(types, component.type_code);
 
-  // Map shared STATUSES to local STATUS_OPTS with 'OK' value casing
-  const STATUS_OPTS = STATUSES.map(s => s.value === 'ok' ? { ...s, value: 'OK' } : s);
+  const STATUS_OPTS = STATUSES;
 
   function markDirty() { dirty = true; }
 
