@@ -4,7 +4,7 @@
 
 import { api }        from '$lib/utils/api';
 import { getLogger }  from '$lib/utils/logger';
-import { requireUserId } from './helpers.js';
+import { requireUserId, buildRef } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -99,21 +99,42 @@ export function createPlanActions(update, supabase) {
 
   // ── Copy a plan ───────────────────────────────────────────────────────
   // Creates a new plan row reusing the same image URL, then copies all
-  // components (with their attribute values) one by one.
+  // components (with their attribute values) and their component_links.
+  //
   // scale_ref is NOT copied — it references pixel distances on the original.
   // onProgress(done, total) is called after each component is copied.
+  //
+  // Component floor_id: all copied components get newPlan.floor_id (not the
+  // source floor), so they are correctly associated with the new floor.
+  //
+  // Link remapping: for each copied component's links, to_component_ref strings
+  // that point to another source-plan component are rewritten with the new
+  // floor's short_name so they resolve against the new copies. Links that
+  // point to components outside the source plan are preserved unchanged.
+  //
   // Returns { plan, copied } — new plan row and count of components copied.
   async function copyPlan(sourcePlanId, data, onProgress = null) {
     const userId = requireUserId();
 
-    let sourcePlan = null;
-    update(s => { sourcePlan = s.plans.find(p => p.id === sourcePlanId); return s; });
+    let sourcePlan  = null;
+    let floors      = [];
+    let facilities  = [];
+    let types       = [];
+    update(s => {
+      sourcePlan = s.plans.find(p => p.id === sourcePlanId);
+      floors     = s.floors;
+      facilities = s.facilities;
+      types      = s.types;
+      return s;
+    });
     if (!sourcePlan) throw new Error('Source plan not found');
+
+    const newFloorId = data.floor_id ?? sourcePlan.floor_id ?? null;
 
     const newPlan = await api.create('plans', {
       name:               (data.name     ?? sourcePlan.name)?.trim()     || null,
       building:           (data.building ?? sourcePlan.building)?.trim() || '',
-      floor_id:           data.floor_id  ?? sourcePlan.floor_id          ?? null,
+      floor_id:           newFloorId,
       description:        sourcePlan.description                         || null,
       image_url:          sourcePlan.image_url,
       image_aspect_ratio: sourcePlan.image_aspect_ratio                  || null,
@@ -124,6 +145,9 @@ export function createPlanActions(update, supabase) {
     const total = srcComponents.length;
     let copied = 0;
 
+    // oldId → newComp — built during the component loop, used for link remapping
+    const idMap = {};
+
     if (total > 0) {
       const allAttrs = await api.get('component_attributes');
 
@@ -132,7 +156,7 @@ export function createPlanActions(update, supabase) {
 
         const newComp = await api.create('components', {
           plan_id:           newPlan.id,
-          floor_id:          c.floor_id,
+          floor_id:          newFloorId,   // all copies go to the new floor
           type_code:         c.type_code,
           primary_attribute: c.primary_attribute,
           label:             c.label,
@@ -143,8 +167,10 @@ export function createPlanActions(update, supabase) {
           notes:             c.notes,
           created_by:        userId,
           updated_by:        userId,
-          // linked_component_ref omitted — cross-refs would be stale
+          // linked_component_ref omitted — stale after floor change
         });
+
+        idMap[c.id] = newComp;
 
         const attrs = allAttrs.filter(a => a.component_id === c.id);
         if (attrs.length > 0) {
@@ -157,6 +183,54 @@ export function createPlanActions(update, supabase) {
         copied++;
       }
       if (onProgress) onProgress(copied, total);
+    }
+
+    // ── Copy component links ──────────────────────────────────────────────
+    // For each source component that has links, create equivalent links on
+    // the new components. to_component_ref strings are rewritten when they
+    // point to another component in the source plan (internal link), so that
+    // the new link resolves to the corresponding new-floor copy.
+    // Links pointing outside the source plan are kept as-is.
+    const srcIds = srcComponents.map(c => c.id);
+    if (srcIds.length > 0) {
+      let allLinks = [];
+      try {
+        allLinks = await api.get('component_links');
+      } catch {
+        // component_links table may not exist in older deployments — skip silently
+        logger('component_links not available — skipping link copy');
+      }
+
+      const srcLinks = allLinks.filter(l => srcIds.includes(l.from_component_id));
+
+      if (srcLinks.length > 0) {
+        // Pre-build a map: old to_component_ref → new to_component_ref
+        // Only covers refs that point to components in the source plan.
+        const refRemap = {};
+        for (const c of srcComponents) {
+          const oldRef = buildRef(c,                           floors, facilities, types);
+          const newRef = buildRef({ ...c, floor_id: newFloorId }, floors, facilities, types);
+          if (oldRef && newRef && oldRef !== newRef) refRemap[oldRef] = newRef;
+        }
+
+        const linkRows = srcLinks
+          .map(link => {
+            const newFromId = idMap[link.from_component_id]?.id;
+            if (!newFromId) return null;   // guard — should not happen
+            return {
+              from_component_id: newFromId,
+              to_component_ref:  refRemap[link.to_component_ref] ?? link.to_component_ref,
+              link_type:         link.link_type ?? null,
+              created_by:        userId,
+            };
+          })
+          .filter(Boolean);
+
+        if (linkRows.length > 0) {
+          await api.createMany('component_links', linkRows, false);
+          logger(`Copied ${linkRows.length} component link(s)`);
+        }
+      }
     }
 
     update(s => ({
