@@ -73,8 +73,14 @@
     return `${fl}/${ini}/${id}`;
   }
 
-  // Non-checkable visible attr pairs in presentation order.
-  // Checkbox attrs shown only when value='true' (as "Name: Yes").
+  // Attribute pairs using the same rules as the component report:
+  //   number   → { name, value, display_type:'number' }   — show "name: value"
+  //   dropdown → { name, value, display_type:'dropdown' }  — show "value" only
+  //   checkbox → included only when true                   — show "name" only
+  //   others   → { name, value, display_type:'text' }      — show "name" only
+  // Suppressed: visible=false, checkable, null/empty, or value in (None/No/Unknown)
+  const SUPPRESSED = new Set(['None', 'No', 'Unknown']);
+
   function allAttrPairs(c) {
     return defsForType(attrDefs, types, c.type_code)
       .filter(d => d.visible !== false && !d.checkable)
@@ -82,9 +88,10 @@
         const raw = lookupAttrValue(componentAttrs, c.id, d.id) ?? d.default_value ?? null;
         if (raw == null || raw === '') return null;
         if (d.display_type === 'checkbox') {
-          return raw === 'true' ? { name: d.name, value: 'Yes' } : null;
+          return raw === 'true' ? { name: d.name, value: 'Yes', display_type: 'checkbox' } : null;
         }
-        return { name: d.name, value: raw };
+        if (SUPPRESSED.has(String(raw))) return null;
+        return { name: d.name, value: String(raw), display_type: d.display_type ?? 'text' };
       })
       .filter(Boolean);
   }
@@ -259,14 +266,24 @@
                 </span>
               </td>
 
-              <!-- ⑥ Attributes (non-checkable, Name: Value) -->
+              <!-- ⑥ Attributes (report rules: number=name:value, dropdown=value, others=name) -->
               <td class="px-2 py-2 text-slate-400 max-w-[360px]">
                 {#if attrs.length > 0}
-                  <span class="block" title={attrs.map(p => `${p.name}: ${p.value}`).join(' · ')}>
+                  {@const tooltip = attrs.map(p =>
+                    p.display_type === 'number'   ? `${p.name}: ${p.value}` :
+                    p.display_type === 'dropdown' ? p.value : p.name
+                  ).join(' · ')}
+                  <span class="block" title={tooltip}>
                     {#each attrs as p, i}
                       {#if i > 0}<span class="text-slate-700 mx-0.5">·</span>{/if}
-                      <span class="text-slate-500">{p.name}:</span>
-                      <span class="text-slate-300 ml-0.5">{p.value}</span>
+                      {#if p.display_type === 'number'}
+                        <span class="text-slate-500">{p.name}:</span>
+                        <span class="text-slate-300 ml-0.5">{p.value}</span>
+                      {:else if p.display_type === 'dropdown'}
+                        <span class="text-slate-300">{p.value}</span>
+                      {:else}
+                        <span class="text-slate-300">{p.name}</span>
+                      {/if}
                     {/each}
                   </span>
                 {:else}
