@@ -197,17 +197,17 @@
   <!-- ── List view ──────────────────────────────────────────────── -->
   {:else if view === 'list'}
     <div class="overflow-x-auto">
-      <table class="w-full text-xs border-collapse">
+      <table class="w-full text-xs border-collapse table-fixed">
         <thead>
           <tr class="border-b border-slate-700 text-left sticky top-0 bg-slate-800">
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-5"></th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Ref</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-7"></th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Ref</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-36">Label</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-24">Type</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-28">Type</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Status</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide max-w-[864px]">Attributes</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-44">Linked</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Notes</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Attributes</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-40">Linked</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-48">Notes</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
           </tr>
         </thead>
@@ -227,7 +227,7 @@
             >
 
               <!-- ① Type marker -->
-              <td class="pl-3 pr-1 py-2">
+              <td class="pl-3 pr-1 py-2 overflow-hidden">
                 {#if t}
                   <div
                     class="w-4 h-4 flex items-center justify-center text-white
@@ -241,12 +241,12 @@
               </td>
 
               <!-- ② Ref -->
-              <td class="px-2 py-2 font-mono text-slate-300 whitespace-nowrap group-hover:text-white transition-colors">
+              <td class="px-2 py-2 font-mono text-slate-300 overflow-hidden group-hover:text-white transition-colors">
                 {refStr(c, t)}
               </td>
 
               <!-- ③ Label -->
-              <td class="px-2 py-2 text-slate-300 w-36 max-w-[144px]">
+              <td class="px-2 py-2 text-slate-300 overflow-hidden">
                 {#if c.label}
                   <span class="truncate block" title={c.label}>{c.label}</span>
                 {:else}
@@ -255,12 +255,12 @@
               </td>
 
               <!-- ④ Type name -->
-              <td class="px-2 py-2 text-slate-400 w-24 max-w-[96px]">
+              <td class="px-2 py-2 text-slate-400 overflow-hidden">
                 <span class="truncate block" title={t?.name ?? c.type_code}>{t?.name ?? c.type_code}</span>
               </td>
 
               <!-- ⑤ Status -->
-              <td class="px-2 py-2 w-20">
+              <td class="px-2 py-2 overflow-hidden">
                 <span class="inline-flex items-center gap-1">
                   <span class="w-1.5 h-1.5 rounded-full shrink-0 {statusDot(status)}"></span>
                   <span class="px-1 py-0.5 rounded text-[10px] font-medium {statusCls(status)}">{status}</span>
@@ -268,13 +268,13 @@
               </td>
 
               <!-- ⑥ Attributes (report rules: number=name:value, dropdown=value, others=name) -->
-              <td class="px-2 py-2 text-slate-400 max-w-[864px]">
+              <td class="px-2 py-2 text-slate-400 overflow-hidden">
                 {#if attrs.length > 0}
                   {@const tooltip = attrs.map(p =>
                     p.display_type === 'number'   ? `${p.name}: ${p.value}` :
                     p.display_type === 'dropdown' ? p.value : p.name
                   ).join(', ')}
-                  <span class="block" title={tooltip}>
+                  <span class="truncate block" title={tooltip}>
                     {#each attrs as p, i}
                       {#if i > 0}<span class="text-slate-500">, </span>{/if}
                       {#if p.display_type === 'number'}
@@ -293,7 +293,7 @@
               </td>
 
               <!-- ⑦ Linked -->
-              <td class="px-2 py-2 text-slate-400 w-44 max-w-[176px]">
+              <td class="px-2 py-2 text-slate-400 overflow-hidden">
                 {#if links.length > 0}
                   <span class="truncate block text-purple-400/80 font-mono text-[10px]"
                         title={links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}>
@@ -305,7 +305,7 @@
               </td>
 
               <!-- ⑧ Notes -->
-              <td class="px-2 py-2 text-slate-400">
+              <td class="px-2 py-2 text-slate-400 overflow-hidden">
                 {#if c.notes}
                   <span class="truncate block text-sm text-slate-500" title={c.notes}>{c.notes}</span>
                 {:else}
