@@ -205,8 +205,8 @@
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-36">Label</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-24">Type</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Status</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide max-w-[288px]">Attributes</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-40">Linked</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide max-w-[864px]">Attributes</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-44">Linked</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Notes</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
           </tr>
@@ -268,7 +268,7 @@
               </td>
 
               <!-- ⑥ Attributes (report rules: number=name:value, dropdown=value, others=name) -->
-              <td class="px-2 py-2 text-slate-400 max-w-[288px]">
+              <td class="px-2 py-2 text-slate-400 max-w-[864px]">
                 {#if attrs.length > 0}
                   {@const tooltip = attrs.map(p =>
                     p.display_type === 'number'   ? `${p.name}: ${p.value}` :
@@ -293,7 +293,7 @@
               </td>
 
               <!-- ⑦ Linked -->
-              <td class="px-2 py-2 text-slate-400 w-40 max-w-[160px]">
+              <td class="px-2 py-2 text-slate-400 w-44 max-w-[176px]">
                 {#if links.length > 0}
                   <span class="truncate block text-purple-400/80 font-mono text-[10px]"
                         title={links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}>
