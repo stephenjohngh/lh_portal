@@ -77,23 +77,23 @@
   // ── CSV export: system, type, attribute, option ────────────────────
   function exportCsv() {
     const s    = $buildingAssetsStore;
-    const rows = [['system', 'type', 'attribute', 'option']];
+    const rows = [['system', 'type', 'initial', 'attribute', 'option']];
 
     for (const sys of s.systems) {
       const sysTypes = s.types.filter(t => t.building_system_id === sys.id);
-      if (!sysTypes.length) { rows.push([sys.name, '', '', '']); continue; }
+      if (!sysTypes.length) { rows.push([sys.name, '', '', '', '']); continue; }
 
       for (const type of sysTypes) {
         const attrs = s.attrDefs[type.id] ?? [];
-        if (!attrs.length) { rows.push([sys.name, type.name, '', '']); continue; }
+        if (!attrs.length) { rows.push([sys.name, type.name, type.initial ?? '', '', '']); continue; }
 
         for (const attr of attrs) {
           const options = s.attrOptions[attr.id] ?? [];
           if (!options.length) {
-            rows.push([sys.name, type.name, attr.name, '']);
+            rows.push([sys.name, type.name, type.initial ?? '', attr.name, '']);
           } else {
             for (const opt of options) {
-              rows.push([sys.name, type.name, attr.name, opt.value]);
+              rows.push([sys.name, type.name, type.initial ?? '', attr.name, opt.value]);
             }
           }
         }
