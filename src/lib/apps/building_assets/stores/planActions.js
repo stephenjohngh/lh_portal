@@ -116,14 +116,12 @@ export function createPlanActions(update, supabase) {
   async function copyPlan(sourcePlanId, data, onProgress = null) {
     const userId = requireUserId();
 
-    let sourcePlan  = null;
-    let floors      = [];
-    let facilities  = [];
-    let types       = [];
+    let sourcePlan = null;
+    let floors     = [];
+    let types      = [];
     update(s => {
       sourcePlan = s.plans.find(p => p.id === sourcePlanId);
       floors     = s.floors;
-      facilities = s.facilities;
       types      = s.types;
       return s;
     });
@@ -205,34 +203,21 @@ export function createPlanActions(update, supabase) {
 
       if (srcLinks.length > 0) {
         // Pre-build a map: old to_component_ref → new to_component_ref.
-        // New refs are always short format: "{floorSN}/{initial}/{assetId}".
-        // Existing DB links may be in the legacy long format:
-        //   "{facility} / {floor} / {typeName} / {id}"
-        // so both are mapped, ensuring copies work regardless of which
-        // format a given link was originally stored in.
-        const newFloor    = floors.find(f => f.id === newFloorId);
-        const newFloorSN  = newFloor?.short_name ?? '?';
+        // Format: "{floorSN}/{initial}/{assetId}" — only the floor segment changes.
+        const newFloor   = floors.find(f => f.id === newFloorId);
+        const newFloorSN = newFloor?.short_name ?? '?';
 
         const refRemap = {};
         for (const c of srcComponents) {
-          const srcFloor    = floors.find(f => f.id === c.floor_id);
-          const srcFloorSN  = srcFloor?.short_name ?? '?';
-          const srcFacility = srcFloor ? facilities.find(f => f.id === srcFloor.facility_id) : null;
-          const facName     = srcFacility?.short_name ?? '?';
-          const type        = types.find(t => t.code === c.type_code);
-          const initial     = type?.initial ?? '?';
-          const typeName    = type?.name ?? c.type_code ?? '?';
-          const assetId     = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
+          const srcFloor   = floors.find(f => f.id === c.floor_id);
+          const srcFloorSN = srcFloor?.short_name ?? '?';
+          const type       = types.find(t => t.code === c.type_code);
+          const initial    = type?.initial ?? '?';
+          const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
 
-          const newRef      = `${newFloorSN}/${initial}/${assetId}`;
-
-          // Short format (new data)
-          const oldShortRef = `${srcFloorSN}/${initial}/${assetId}`;
-          if (oldShortRef !== newRef) refRemap[oldShortRef] = newRef;
-
-          // Long format (legacy DB data)
-          const oldLongRef  = `${facName} / ${srcFloorSN} / ${typeName} / ${assetId}`;
-          if (oldLongRef !== newRef) refRemap[oldLongRef] = newRef;
+          const oldRef = `${srcFloorSN}/${initial}/${assetId}`;
+          const newRef = `${newFloorSN}/${initial}/${assetId}`;
+          if (oldRef !== newRef) refRemap[oldRef] = newRef;
         }
 
         const linkRows = srcLinks

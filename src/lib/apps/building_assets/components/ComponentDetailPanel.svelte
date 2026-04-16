@@ -4,7 +4,7 @@
      and allows editing and saving. Calls the store directly. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { buildingAssetsStore, buildRef } from '../stores/buildingAssetsStore.js';
+  import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { typeByCode, floorById } from '../lookups.js';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';

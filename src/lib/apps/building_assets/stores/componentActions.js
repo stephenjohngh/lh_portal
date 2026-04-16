@@ -4,7 +4,7 @@
 
 import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
-import { requireUserId, buildRef } from './helpers.js';
+import { requireUserId } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -87,50 +87,9 @@ export function createComponentActions(update) {
     return component;
   }
 
-  // ── Nulls linked_component_ref on every component referencing oldRef ──
-  // Called automatically by updateComponent when identity fields change.
-  async function clearStaleRefs(oldRef) {
-    if (!oldRef) return;
-    await api.updateMany('components',
-      { linked_component_ref: oldRef },
-      { linked_component_ref: null }
-    );
-    update(s => ({
-      ...s,
-      components: s.components.map(c =>
-        c.linked_component_ref === oldRef
-          ? { ...c, linked_component_ref: null }
-          : c
-      )
-    }));
-    logger('Cleared stale refs to:', oldRef);
-  }
-
   // ── Update a component ────────────────────────────────────────────────
-  // When identity fields (label, asset_id, type_code, plan_id) change,
-  // computes the old ref string and clears it from any other components
-  // that reference it before saving, so stale links don't accumulate.
   async function updateComponent(id, fields) {
     const userId = requireUserId();
-    let oldRef = null;
-
-    update(s => {
-      const existing = s.components.find(c => c.id === id);
-      if (existing) {
-        const identityChanged =
-          fields.floor_id  !== existing.floor_id  ||
-          fields.label     !== existing.label      ||
-          fields.asset_id  !== existing.asset_id   ||
-          fields.type_code !== existing.type_code  ||
-          fields.plan_id   !== existing.plan_id;
-        if (identityChanged) {
-          oldRef = buildRef(existing, s.floors, s.facilities, s.types);
-        }
-      }
-      return s;
-    });
-
-    if (oldRef) await clearStaleRefs(oldRef);
 
     const updated = await api.update('components', id, {
       ...fields,
@@ -171,8 +130,7 @@ export function createComponentActions(update) {
   }
 
   // ── Move a component (drag-to-reposition / plan placement) ───────────
-  // Lightweight position-only update — skips stale-ref logic because
-  // x_position, y_position and plan_id don't affect the buildRef string.
+  // Lightweight position-only update — skips full updateComponent overhead.
   async function moveComponent(id, planId, x, y) {
     const userId = requireUserId();
     const rx = Math.round(x * 1000) / 1000;
@@ -297,7 +255,6 @@ export function createComponentActions(update) {
     loadComponents,
     createComponent,
     updateComponent,
-    clearStaleRefs,
     updateComponentAttrs,
     moveComponent,
     deleteComponent,

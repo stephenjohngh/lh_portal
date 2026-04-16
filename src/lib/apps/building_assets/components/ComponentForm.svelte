@@ -13,7 +13,7 @@
   export let attrOptions = {};    // { attrDefId: type_attribute_options[] }
   export let plans       = [];    // all plans[] — filtered to selected floor for plan picker
   export let floors      = [];    // floors[] ordered by level_order
-  export let facilities  = [];    // facilities[] — for display and buildRef
+  export let facilities  = [];    // facilities[] — for display
   export let saving      = false;
 
   const dispatch = createEventDispatcher();

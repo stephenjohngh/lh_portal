@@ -20,9 +20,6 @@ import { createPlanActions }            from './planActions.js';
 import { createSpaceActions }           from './spaceActions.js';
 import { createAnnotationActions }      from './annotationActions.js';
 
-// Re-export helpers that components import directly from this module.
-export { buildRef } from './helpers.js';
-
 const logger = getLogger('BuildingAssets');
 
 function createBuildingAssetsStore() {
