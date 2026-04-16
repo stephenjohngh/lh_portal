@@ -1,16 +1,17 @@
 <!-- src/lib/apps/issues/components/ActionsSection.svelte -->
 <script>
   import { issuesStore } from '../stores/issuesStore';
-  import { formatDate,formatDateTime, isOverdue, wasModified } from '$lib/utils/dates';
+  import { formatDate, formatDateTime, isOverdue, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import ActionForm      from './ActionForm.svelte';
   import { onMount }    from 'svelte';
   import { api }        from '$lib/utils/api';
   import { getLogger }  from '$lib/utils/logger';
-  import { sortActions } from '$lib/utils/actionSort'; // ← NEW: Import sorting utility
+  import { sortActions } from '$lib/utils/actionSort';
 
   const logger = getLogger('ActionsSection');
 
@@ -21,17 +22,10 @@
   let editingAction = null;
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
-  let showAllActions = false; // NEW: Show completed actions toggle
-  let profiles = []; // List of all user profiles
-  let mutationError = '';  // shown below the form when a store call fails
+  let showAllActions = false;
+  let profiles = [];
+  let mutationError = '';
   let saving = false;
-  
-  let newAction = { 
-    action_text: '', 
-    name_text: '', 
-    date_deadline: '', 
-    status: ACTION_STATUS.PENDING
-  };
 
   // Fetch all profiles on mount
   onMount(async () => {
@@ -45,15 +39,6 @@
       logger('❌ Error loading profiles:', err);
       profiles = [];
     }
-  }
-
-  function resetNewAction() {
-    newAction = { 
-      action_text: '', 
-      name_text: '', 
-      date_deadline: '', 
-      status: ACTION_STATUS.PENDING
-    };
   }
 
   // Create assignee options: blank + all profiles + "External"
@@ -74,14 +59,12 @@
     ? sortedActions
     : sortedActions.filter(a => a.status !== ACTION_STATUS.COMPLETED);
 
-  async function addAction() {
-    if (!newAction.action_text.trim()) return;
+  async function addAction({ detail }) {
     saving = true;
     mutationError = '';
-    const result = await issuesStore.addAction(issueId, newAction);
+    const result = await issuesStore.addAction(issueId, detail);
     saving = false;
     if (!result.success) { mutationError = result.error ?? 'Failed to add action'; return; }
-    resetNewAction();
     showAddModal = false;
   }
 
@@ -288,76 +271,13 @@
 </div>
 
 <!-- Add Action Modal -->
-{#if showAddModal}
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-slate-800 rounded-lg p-6 max-w-lg w-full border border-slate-700">
-      <h3 class="text-xl font-bold mb-4">New Action</h3>
-      <div class="space-y-4">
-        <div>
-          <label for="action-text" class="block text-sm font-medium mb-2">Action Description *</label>
-          <textarea
-            id="action-text"
-            bind:value={newAction.action_text}
-            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-            placeholder="What needs to be done?"
-            rows="3"
-          ></textarea>
-        </div>
-        <div>
-          <label for="action-assignee" class="block text-sm font-medium mb-2">Assigned To</label>
-          <select
-            id="action-assignee"
-            bind:value={newAction.name_text}
-            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-          >
-            {#each assigneeOptions as option}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </select>
-        </div>
-        <div>
-          <label for="action-deadline" class="block text-sm font-medium mb-2">Deadline</label>
-          <input
-            id="action-deadline"
-            type="date"
-            bind:value={newAction.date_deadline}
-            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-          />
-        </div>
-        <div>
-          <label for="action-status" class="block text-sm font-medium mb-2">Status</label>
-          <select
-            id="action-status"
-            bind:value={newAction.status}
-            class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-          >
-            {#each ACTION_STATUS_OPTIONS as statusOption}
-              <option value={statusOption.value}>{statusOption.label}</option>
-            {/each}
-          </select>
-        </div>
-        <div class="flex space-x-2 justify-end">
-          <Button
-            variant="secondary"
-            size="large"
-            on:click={() => { showAddModal = false; mutationError = ''; }}
-          >
-            Cancel
-          </Button>
-          <ProtectedButton
-            action="modify"
-            variant="amber"
-            size="large"
-            disabled={saving}
-            on:click={addAction}
-          >
-            {saving ? 'Saving…' : 'Add Action'}
-          </ProtectedButton>
-        </div>
-      </div>
-    </div>
-  </div>
-{/if}
+<ActionForm
+  show={showAddModal}
+  {assigneeOptions}
+  {saving}
+  on:submit={addAction}
+  on:cancel={() => { showAddModal = false; mutationError = ''; }}
+/>
 
 <!-- Delete Confirmation Dialog -->
 <ConfirmDialog

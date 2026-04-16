@@ -535,7 +535,7 @@
               class="text-slate-500 hover:text-white transition-colors">✕</button>
           </div>
           <QuickAddForm
-            {types} {systems} {attrDefs} {attrOptions} {saving}
+            {saving}
             on:submit={handleQuickAdd}
             on:cancel={() => { sidebarMode = 'none'; newPos = null; }}
           />
@@ -646,7 +646,7 @@
   <!-- ── Inventory table (full width, below plan) ──────────────────── -->
   {#if selectedPlanId && (planComponents.length > 0 || visibleComponents.length > 0)}
     <ComponentInventory
-      components={visibleComponents} {componentAttrs} componentLinks={store.componentLinks} {types} {systems} {attrDefs} {floors} {readOnly}
+      components={visibleComponents} {readOnly}
       on:selectcomponent={({ detail: { component } }) => {
         selectedComponent = component; sidebarMode = 'detail';
       }}

@@ -3,15 +3,16 @@
      Only captures type, label, asset_id, and the primary attribute.
      floor_id / plan_id / x_position / y_position are injected by PlanViewTab. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import { inp } from '../ui.js';
-  import AttrField from './AttrField.svelte';
+  import { createEventDispatcher }    from 'svelte';
+  import { buildingAssetsStore }      from '../stores/buildingAssetsStore.js';
+  import { inp }                      from '../ui.js';
+  import AttrField                    from './AttrField.svelte';
 
-  export let types       = [];
-  export let systems     = [];
-  export let attrDefs    = {};
-  export let attrOptions = {};
-  export let saving      = false;
+  // Reference data comes from the store — no prop drilling needed.
+  // Only UI state is passed in from PlanViewTab.
+  export let saving = false;
+
+  $: ({ types, systems, attrDefs, attrOptions } = $buildingAssetsStore);
 
   const dispatch = createEventDispatcher();
 

@@ -1,32 +1,31 @@
 <!-- plan/ComponentInventory.svelte -->
 <!-- Thin wrapper around ComponentInventoryTable for the plan view.
      Always shows the current plan floor's components (already filtered by PlanViewTab).
-     No floor selector here — floor is fixed by the active plan. -->
+     Reference data (types, systems, floors, attrDefs, componentAttrs, componentLinks)
+     is sourced directly from buildingAssetsStore — no prop drilling required.
+     Only the filtered component list and readOnly flag come from PlanViewTab. -->
 
 <script>
-  import ComponentInventoryTable from '../ComponentInventoryTable.svelte';
+  import { createEventDispatcher }  from 'svelte';
+  import { buildingAssetsStore }    from '../stores/buildingAssetsStore.js';
+  import ComponentInventoryTable    from '../ComponentInventoryTable.svelte';
 
-  export let components     = [];
-  export let componentAttrs = {};
-  export let componentLinks = {};
-  export let types          = [];
-  export let systems        = [];
-  export let attrDefs       = {};
-  export let floors         = [];
-  export let readOnly       = false;
+  export let components = [];   // filtered components[] passed down from PlanViewTab
+  export let readOnly   = false;
 
-  import { createEventDispatcher } from 'svelte';
+  $: store = $buildingAssetsStore;
+
   const dispatch = createEventDispatcher();
 </script>
 
 <ComponentInventoryTable
   {components}
-  {componentAttrs}
-  {componentLinks}
-  {attrDefs}
-  {types}
-  {systems}
-  {floors}
+  componentAttrs={store.componentAttrs}
+  componentLinks={store.componentLinks}
+  attrDefs={store.attrDefs}
+  types={store.types}
+  systems={store.systems}
+  floors={store.floors}
   {readOnly}
   title="Inventory"
   on:selectcomponent={e => dispatch('selectcomponent', e.detail)}
