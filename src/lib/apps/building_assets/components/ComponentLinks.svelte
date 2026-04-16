@@ -19,27 +19,32 @@
   $: fromComponent = components.find(c => c.id === componentId);
   $: fromFloorId   = fromComponent?.floor_id ?? null;
 
-  // Build sorted select options — current floor first, then others by level_order
+  // Build sorted select options — current floor first, then floor/initial/id alphabetically
   $: selectOptions = components
     .filter(c => c.id !== componentId)
     .map(c => {
-      const floor    = floors.find(f => f.id === c.floor_id);
-      const type     = types.find(t => t.code === c.type_code);
-      const short    = `${floor?.short_name ?? '?'}/${type?.initial ?? '?'}/${c.asset_id || '—'}`;
-      const display  = c.label ? `${short}  · ${c.label}` : short;
+      const floor   = floors.find(f => f.id === c.floor_id);
+      const type    = types.find(t => t.code === c.type_code);
+      const floorSN = floor?.short_name ?? '?';
+      const initial = type?.initial     ?? '?';
+      const assetId = c.asset_id        || '—';
+      const short   = `${floorSN}/${initial}/${assetId}`;
+      const display = c.label ? `${short}  · ${c.label}` : short;
       return {
-        value:      buildRef(c, floors, facilities, types),
+        value:     buildRef(c, floors, facilities, types),
         display,
-        sameFloor:  c.floor_id === fromFloorId,
-        floorOrder: floor?.level_order ?? 9999,
-        typeOrder:  type?.presentation_order ?? 9999,
-        assetId:    c.asset_id ?? ''
+        sameFloor: c.floor_id === fromFloorId,
+        floorSN,
+        initial,
+        assetId:   c.asset_id ?? ''
       };
     })
     .sort((a, b) => {
       if (a.sameFloor !== b.sameFloor) return a.sameFloor ? -1 : 1;
-      if (a.floorOrder !== b.floorOrder) return a.floorOrder - b.floorOrder;
-      if (a.typeOrder  !== b.typeOrder)  return a.typeOrder  - b.typeOrder;
+      const fl = a.floorSN.localeCompare(b.floorSN, undefined, { numeric: true });
+      if (fl !== 0) return fl;
+      const ini = a.initial.localeCompare(b.initial);
+      if (ini !== 0) return ini;
       return a.assetId.localeCompare(b.assetId, undefined, { numeric: true });
     });
 
