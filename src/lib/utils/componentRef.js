@@ -29,8 +29,10 @@ export function fmtComponentRef(ref, types = []) {
 }
 
 /**
- * Find the component whose buildRef matches the given stored ref string.
- * Returns the matching component object, or null if not found.
+ * Find the component whose ref matches the given stored ref string.
+ * Handles both formats:
+ *   Short (current):  "{floorShortName}/{typeInitial}/{assetId}"   e.g. "G/FD/FD-042"
+ *   Long  (legacy):   "{facility} / {floor} / {typeName} / {id}"  e.g. "LH / G / Fire Door / FD-042"
  *
  * @param {string}   ref        - stored to_component_ref value
  * @param {object[]} components - all components[]
@@ -40,6 +42,20 @@ export function fmtComponentRef(ref, types = []) {
  */
 export function findComponentByRef(ref, components, floors, facilities, types) {
   if (!ref || !components?.length) return null;
+
+  // Short format: "{floorSN}/{initial}/{assetId}" — no spaces, exactly 3 slash-segments
+  const shortParts = ref.split('/');
+  if (shortParts.length === 3 && !ref.includes(' ')) {
+    const [floorSN, initial, assetId] = shortParts;
+    return components.find(c => {
+      const floor = floors.find(f => f.id === c.floor_id);
+      const type  = types.find(t => t.code === c.type_code);
+      const id    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
+      return floor?.short_name === floorSN && type?.initial === initial && id === assetId;
+    }) ?? null;
+  }
+
+  // Long format (legacy): "{facility} / {floor} / {typeName} / {id}"
   for (const c of components) {
     const floor    = floors.find(f => f.id === c.floor_id);
     const facility = floor ? facilities.find(f => f.id === floor.facility_id) : null;

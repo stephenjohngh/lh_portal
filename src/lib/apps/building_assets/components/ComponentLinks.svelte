@@ -4,7 +4,7 @@
      Writes via store CRUD methods (addComponentLink / updateComponentLink / deleteComponentLink).
      readOnly prop hides all mutating controls. -->
 <script>
-  import { buildingAssetsStore, buildRef } from '../stores/buildingAssetsStore.js';
+  import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { inp, sec }                      from '../ui.js';
   import { permissions }                   from '$lib/stores/permissions.js';
   import { fmtComponentRef, findComponentByRef } from '$lib/utils/componentRef.js';
@@ -33,7 +33,7 @@
       const short   = `${floorSN}/${initial}/${assetId}`;
       const display = short;
       return {
-        value:     buildRef(c, floors, facilities, types),
+        value:     short,   // stored as "{floorSN}/{initial}/{assetId}" — short format
         display,
         sameFloor: c.floor_id === fromFloorId,
         floorSN,
