@@ -4,7 +4,7 @@
 
 import { api }        from '$lib/utils/api';
 import { getLogger }  from '$lib/utils/logger';
-import { requireUserId, buildRef } from './helpers.js';
+import { requireUserId } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -204,13 +204,24 @@ export function createPlanActions(update, supabase) {
       const srcLinks = allLinks.filter(l => srcIds.includes(l.from_component_id));
 
       if (srcLinks.length > 0) {
-        // Pre-build a map: old to_component_ref → new to_component_ref
-        // Only covers refs that point to components in the source plan.
+        // Pre-build a map: old to_component_ref → new to_component_ref.
+        // Refs are stored in the short format used by the link dropdown:
+        //   "{floorShortName}/{typeInitial}/{assetId}"  e.g. "G/FD/FD-042"
+        // Only the floor segment changes; initial and assetId stay the same.
+        const newFloor   = floors.find(f => f.id === newFloorId);
+        const newFloorSN = newFloor?.short_name ?? '?';
+
         const refRemap = {};
         for (const c of srcComponents) {
-          const oldRef = buildRef(c,                           floors, facilities, types);
-          const newRef = buildRef({ ...c, floor_id: newFloorId }, floors, facilities, types);
-          if (oldRef && newRef && oldRef !== newRef) refRemap[oldRef] = newRef;
+          const srcFloor   = floors.find(f => f.id === c.floor_id);
+          const srcFloorSN = srcFloor?.short_name ?? '?';
+          const type       = types.find(t => t.code === c.type_code);
+          const initial    = type?.initial ?? '?';
+          const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
+
+          const oldRef = `${srcFloorSN}/${initial}/${assetId}`;
+          const newRef = `${newFloorSN}/${initial}/${assetId}`;
+          if (oldRef !== newRef) refRemap[oldRef] = newRef;
         }
 
         const linkRows = srcLinks
