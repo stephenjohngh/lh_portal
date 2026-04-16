@@ -10,6 +10,7 @@
 
   const logger = getLogger('DemoApp');
   
+
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
