@@ -205,9 +205,9 @@
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-36">Label</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-28">Type</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Status</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-48">Attributes</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-44">Linked</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-56">Notes</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[240px]">Attributes</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[166px]">Linked</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Notes</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
           </tr>
         </thead>
