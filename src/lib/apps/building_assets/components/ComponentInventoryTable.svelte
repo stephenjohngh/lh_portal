@@ -202,11 +202,12 @@
           <tr class="border-b border-slate-700 text-left sticky top-0 bg-slate-800">
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-5"></th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Ref</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Label</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Type</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Status</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Attributes</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide whitespace-nowrap">Linked</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-36">Label</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-24">Type</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Status</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide max-w-[288px]">Attributes</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-40">Linked</th>
+            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Notes</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
           </tr>
         </thead>
@@ -245,7 +246,7 @@
               </td>
 
               <!-- ③ Label -->
-              <td class="px-2 py-2 text-slate-300 max-w-[160px]">
+              <td class="px-2 py-2 text-slate-300 w-36 max-w-[144px]">
                 {#if c.label}
                   <span class="truncate block" title={c.label}>{c.label}</span>
                 {:else}
@@ -254,12 +255,12 @@
               </td>
 
               <!-- ④ Type name -->
-              <td class="px-2 py-2 text-slate-400 whitespace-nowrap">
-                {t?.name ?? c.type_code}
+              <td class="px-2 py-2 text-slate-400 w-24 max-w-[96px]">
+                <span class="truncate block" title={t?.name ?? c.type_code}>{t?.name ?? c.type_code}</span>
               </td>
 
               <!-- ⑤ Status -->
-              <td class="px-2 py-2 whitespace-nowrap">
+              <td class="px-2 py-2 w-20">
                 <span class="inline-flex items-center gap-1">
                   <span class="w-1.5 h-1.5 rounded-full shrink-0 {statusDot(status)}"></span>
                   <span class="px-1 py-0.5 rounded text-[10px] font-medium {statusCls(status)}">{status}</span>
@@ -267,7 +268,7 @@
               </td>
 
               <!-- ⑥ Attributes (report rules: number=name:value, dropdown=value, others=name) -->
-              <td class="px-2 py-2 text-slate-400 max-w-[360px]">
+              <td class="px-2 py-2 text-slate-400 max-w-[288px]">
                 {#if attrs.length > 0}
                   {@const tooltip = attrs.map(p =>
                     p.display_type === 'number'   ? `${p.name}: ${p.value}` :
@@ -292,7 +293,7 @@
               </td>
 
               <!-- ⑦ Linked -->
-              <td class="px-2 py-2 text-slate-400 max-w-[200px]">
+              <td class="px-2 py-2 text-slate-400 w-40 max-w-[160px]">
                 {#if links.length > 0}
                   <span class="truncate block text-purple-400/80 font-mono text-[10px]"
                         title={links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}>
@@ -303,7 +304,16 @@
                 {/if}
               </td>
 
-              <!-- ⑧ Actions -->
+              <!-- ⑧ Notes -->
+              <td class="px-2 py-2 text-slate-400">
+                {#if c.notes}
+                  <span class="truncate block text-sm text-slate-500" title={c.notes}>{c.notes}</span>
+                {:else}
+                  <span class="text-slate-700">—</span>
+                {/if}
+              </td>
+
+              <!-- ⑨ Actions -->
               <td class="px-2 py-2 whitespace-nowrap" on:click|stopPropagation>
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity
                             {inDel && !readOnly ? '!opacity-100' : ''}">
