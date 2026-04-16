@@ -9,15 +9,22 @@
 // Inspection (to resolve which linked components also need checking).
 
 /**
- * Reformat a stored ref for compact display — strips the type name segment
- * and removes spaces around separators.
- *   "LH / G / Fire Door / FD-042"  →  "LH/G/FD-042"
- * Falls back to just removing spaces if the string isn't the expected 4-part format.
+ * Reformat a stored ref for compact display as floor/initial/assetId.
+ *   "LH / G / Fire Door / FD-042"  →  "G/FD/FD-042"
+ * Pass the types array so the type name can be resolved to its initial.
+ * Falls back to stripping spaces if the format doesn't match or types is empty.
+ *
+ * @param {string}   ref   - stored to_component_ref value
+ * @param {object[]} types - component_types[] — used to resolve type initial
  */
-export function fmtComponentRef(ref) {
+export function fmtComponentRef(ref, types = []) {
   if (!ref) return '—';
   const parts = ref.split(' / ');
-  if (parts.length === 4) return `${parts[0]}/${parts[1]}/${parts[3]}`;
+  if (parts.length === 4) {
+    const typeName = parts[2];
+    const initial  = types.find(t => t.name === typeName)?.initial ?? typeName.slice(0, 2).toUpperCase();
+    return `${parts[1]}/${initial}/${parts[3]}`;
+  }
   return ref.replace(/ \/ /g, '/');
 }
 

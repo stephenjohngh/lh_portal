@@ -278,8 +278,8 @@
               <td class="px-2 py-2 text-slate-400 max-w-[200px]">
                 {#if links.length > 0}
                   <span class="truncate block text-purple-400/80 font-mono text-[10px]"
-                        title={links.map(l => fmtComponentRef(l.to_component_ref)).join(', ')}>
-                    {links.map(l => fmtComponentRef(l.to_component_ref)).join(', ')}
+                        title={links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}>
+                    {links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}
                   </span>
                 {:else}
                   <span class="text-slate-700">—</span>

@@ -225,7 +225,7 @@
         <!-- Inline edit row -->
         {:else if editingId === link.id}
           <div class="p-2.5 rounded-lg bg-slate-700/50 border border-purple-500/30 space-y-1.5">
-            <p class="text-xs font-mono text-purple-300 truncate">{fmtComponentRef(link.to_component_ref)}</p>
+            <p class="text-xs font-mono text-purple-300 truncate">{fmtComponentRef(link.to_component_ref, types)}</p>
             <div class="flex gap-2 items-center">
               <input
                 type="text"
@@ -259,7 +259,7 @@
                 class="text-sm font-mono text-purple-300 hover:text-purple-200
                        hover:underline transition-colors truncate block text-left w-full"
                 title="View component detail"
-              >{fmtComponentRef(link.to_component_ref)}</button>
+              >{fmtComponentRef(link.to_component_ref, types)}</button>
               {#if link.link_type}
                 <span class="inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded
                              bg-slate-600/60 text-slate-300 border border-slate-600">
