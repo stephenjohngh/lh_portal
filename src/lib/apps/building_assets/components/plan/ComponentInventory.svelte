@@ -13,6 +13,7 @@
   export let systems        = [];
   export let attrDefs       = {};
   export let floors         = [];
+  export let readOnly       = false;
 
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
@@ -26,6 +27,7 @@
   {types}
   {systems}
   {floors}
+  {readOnly}
   title="Inventory"
   on:selectcomponent={e => dispatch('selectcomponent', e.detail)}
   on:deletecomponent={e => dispatch('deletecomponent', e.detail)}
