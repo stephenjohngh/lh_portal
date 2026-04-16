@@ -3,9 +3,8 @@
 <script>
   import { onMount } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
-  import { auth } from '$lib/stores/auth';
-  import { usersStore } from './stores/usersStore';
-  import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
+  import { auth }        from '$lib/stores/auth';
+  import { usersStore }  from './stores/usersStore';
   
   import UserFilters from './components/UserFilters.svelte';
   import UserCard from './components/UserCard.svelte';
@@ -23,7 +22,6 @@
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
 
   let searchTerm = '';
-  let isAdmin = false;
   let activeTab = 'users';
   let v2Loaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
   
@@ -47,7 +45,6 @@
     // Initialize permissions for 'admin' app
     if ($auth.user) {
       await permissions.init($auth.user.id, 'admin');
-      isAdmin = await checkIsAdmin($auth.user.id);
     }
     
     // Fetch users
@@ -119,7 +116,7 @@
         <h2 class="heading-page">Admin Portal</h2>
         <p class="text-muted">User management and activity monitoring</p>
       </div>
-      {#if isAdmin && activeTab === 'users'}
+      {#if $permissions.isAdmin && activeTab === 'users'}
         <Button
           variant="primary"
           size="large"
@@ -145,7 +142,7 @@
           <span class="text-xs text-muted">({users.length})</span>
         </span>
       </button>
-      {#if isAdmin}
+      {#if $permissions.isAdmin}
         <button
           class="px-4 py-2 transition-colors {activeTab === 'audit'
             ? 'border-b-2 border-purple-500 text-white font-semibold'
@@ -217,9 +214,8 @@
     {:else}
       <div class="grid-cards">
         {#each filteredUsers as user (user.id)}
-          <UserCard 
+          <UserCard
             {user}
-            {isAdmin}
             on:resetPassword={handlePasswordReset}
             on:manageApps={handleManageApps}
             on:deleteUser={handleDeleteUser}

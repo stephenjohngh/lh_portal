@@ -23,6 +23,8 @@
   let sortDir   = 'desc';        // 'desc' | 'asc'
 
   let newComment = { comment_text: '', historic: false };
+  let mutationError = '';
+  let saving = false;
 
   // Filter historic, then sort
   $: filteredComments = showHistoric
@@ -43,27 +45,35 @@
 
   async function addComment() {
     if (!newComment.comment_text.trim()) return;
-    await issuesStore.addComment(issueId, newComment.comment_text);
+    saving = true;
+    mutationError = '';
+    const result = await issuesStore.addComment(issueId, newComment.comment_text);
+    saving = false;
+    if (!result.success) { mutationError = result.error ?? 'Failed to add comment'; return; }
     newComment = { comment_text: '', historic: false };
     showAddForm = false;
   }
 
   async function updateComment() {
     if (!editingComment.comment_text.trim()) return;
-    await issuesStore.updateComment(
+    saving = true;
+    mutationError = '';
+    const result = await issuesStore.updateComment(
       editingComment.id,
       editingComment.comment_text,
       editingComment.historic
     );
+    saving = false;
+    if (!result.success) { mutationError = result.error ?? 'Failed to update comment'; return; }
     editingComment = null;
   }
 
   async function deleteComment() {
-    if (pendingDeleteId) {
-      await issuesStore.deleteComment(pendingDeleteId);
-      pendingDeleteId = null;
-      showDeleteConfirm = false;
-    }
+    if (!pendingDeleteId) return;
+    const result = await issuesStore.deleteComment(pendingDeleteId);
+    if (!result.success) { mutationError = result.error ?? 'Failed to delete comment'; }
+    pendingDeleteId = null;
+    showDeleteConfirm = false;
   }
 
   function startEdit(comment) {
@@ -129,6 +139,10 @@
     </div>
   </div>
 
+  {#if mutationError}
+    <p class="text-sm text-red-400 bg-red-900/20 border border-red-800/40 rounded px-3 py-2 mb-2">{mutationError}</p>
+  {/if}
+
   <!-- ── Add comment form ───────────────────────────────────────────── -->
   {#if showAddForm}
     <div class="bg-slate-700/50 rounded p-3 border border-blue-500/50 mb-2">
@@ -142,7 +156,7 @@
         <Button
           variant="secondary"
           size="small"
-          on:click={() => { showAddForm = false; newComment.comment_text = ''; }}
+          on:click={() => { showAddForm = false; newComment.comment_text = ''; mutationError = ''; }}
         >
           Cancel
         </Button>
@@ -151,9 +165,10 @@
           variant="blue"
           size="small"
           icon="plus"
+          disabled={saving}
           on:click={addComment}
         >
-          Add Comment
+          {saving ? 'Saving…' : 'Add Comment'}
         </ProtectedButton>
       </div>
     </div>
@@ -182,9 +197,10 @@
                 variant="blue"
                 size="small"
                 icon="edit"
+                disabled={saving}
                 on:click={updateComment}
               >
-                Update
+                {saving ? 'Saving…' : 'Update'}
               </ProtectedButton>
             </div>
           </div>

@@ -2,13 +2,13 @@
 <!-- REFACTORED: Uses new CSS utility classes -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { auth } from '$lib/stores/auth';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import Badge from '$lib/components/common/Badge.svelte';
+  import { auth }        from '$lib/stores/auth';
+  import { permissions } from '$lib/stores/permissions.js';
+  import Icon            from '$lib/components/icons/Icon.svelte';
+  import Badge           from '$lib/components/common/Badge.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
 
   export let user;
-  export let isAdmin = false;
 
   const dispatch = createEventDispatcher();
 
@@ -65,7 +65,7 @@
   </div>
 
   <!-- Actions -->
-  {#if isAdmin}
+  {#if $permissions.isAdmin}
     <div class="btn-group-wrap">
       <ProtectedButton
         action="modify"

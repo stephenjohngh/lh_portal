@@ -442,7 +442,7 @@
     {floors} {plansForFloor} {selectedFloorId} {selectedPlanId}
     {drawingMode} {planComponents} {visibleComponents} {planSpaces} {unplacedComponents}
     hasScale={!!selectedPlan?.scale_ref} {metresPerUnit}
-    showPlanAdmin={$permissions.isAdmin} hasPlan={!!selectedPlan} {readOnly}
+    hasPlan={!!selectedPlan} {readOnly}
     on:floorchange={onFloorChange}
     on:planchange={onPlanChange}
     on:modechange={onModeChange}

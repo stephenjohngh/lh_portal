@@ -23,6 +23,8 @@
   let pendingDeleteId = null;
   let showAllActions = false; // NEW: Show completed actions toggle
   let profiles = []; // List of all user profiles
+  let mutationError = '';  // shown below the form when a store call fails
+  let saving = false;
   
   let newAction = { 
     action_text: '', 
@@ -74,24 +76,34 @@
 
   async function addAction() {
     if (!newAction.action_text.trim()) return;
-    await issuesStore.addAction(issueId, newAction);
+    saving = true;
+    mutationError = '';
+    const result = await issuesStore.addAction(issueId, newAction);
+    saving = false;
+    if (!result.success) { mutationError = result.error ?? 'Failed to add action'; return; }
     resetNewAction();
     showAddModal = false;
   }
 
   async function updateAction() {
     if (!editingAction) return;
-    await issuesStore.updateAction(editingAction.id, editingAction);
+    saving = true;
+    mutationError = '';
+    const result = await issuesStore.updateAction(editingAction.id, editingAction);
+    saving = false;
+    if (!result.success) { mutationError = result.error ?? 'Failed to update action'; return; }
     editingAction = null;
   }
 
   function confirmDeleteAction(actionId) {
+    mutationError = '';
     pendingDeleteId = actionId;
     showDeleteConfirm = true;
   }
 
   async function handleDeleteConfirm() {
-    await issuesStore.deleteAction(pendingDeleteId);
+    const result = await issuesStore.deleteAction(pendingDeleteId);
+    if (!result.success) { mutationError = result.error ?? 'Failed to delete action'; }
     showDeleteConfirm = false;
     pendingDeleteId = null;
   }
@@ -133,6 +145,10 @@
     </div>
   </div>
   
+  {#if mutationError}
+    <p class="text-sm text-red-400 bg-red-900/20 border border-red-800/40 rounded px-3 py-2 mb-2">{mutationError}</p>
+  {/if}
+
   {#if visibleActions.length > 0}
     <div class="space-y-1">
       {#each visibleActions as action}
@@ -324,7 +340,7 @@
           <Button
             variant="secondary"
             size="large"
-            on:click={() => showAddModal = false}
+            on:click={() => { showAddModal = false; mutationError = ''; }}
           >
             Cancel
           </Button>
@@ -332,9 +348,10 @@
             action="modify"
             variant="amber"
             size="large"
+            disabled={saving}
             on:click={addAction}
           >
-            Add Action
+            {saving ? 'Saving…' : 'Add Action'}
           </ProtectedButton>
         </div>
       </div>

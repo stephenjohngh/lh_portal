@@ -4,6 +4,7 @@
      Search has moved to FilterSidebar. -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { permissions }          from '$lib/stores/permissions.js';
 
   export let floors             = [];
   export let plansForFloor      = [];
@@ -17,7 +18,6 @@
   export let unplacedComponents = [];
   export let hasScale           = false;
   export let metresPerUnit      = null;
-  export let showPlanAdmin      = false;  // true when current user is admin
   export let hasPlan            = false;  // true when a plan is currently selected
   export let readOnly           = false;
 
@@ -105,7 +105,7 @@
   {/if}
 
   <!-- Plan Admin dropdown (admin-only) -->
-  {#if showPlanAdmin}
+  {#if $permissions.isAdmin}
     <div class="relative shrink-0">
       <button
         on:click={() => adminOpen = !adminOpen}
