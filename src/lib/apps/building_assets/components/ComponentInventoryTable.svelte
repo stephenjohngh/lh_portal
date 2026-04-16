@@ -275,7 +275,7 @@
                   ).join(', ')}
                   <span class="block" title={tooltip}>
                     {#each attrs as p, i}
-                      {#if i > 0}<span class="text-slate-700">,</span>{/if}
+                      {#if i > 0}<span class="text-slate-500">, </span>{/if}
                       {#if p.display_type === 'number'}
                         <span class="text-slate-500">{p.name}:</span>
                         <span class="text-slate-300 ml-0.5">{p.value}</span>
