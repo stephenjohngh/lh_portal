@@ -7,6 +7,8 @@
   import { buildingAssetsStore, buildRef } from '../stores/buildingAssetsStore.js';
   import { inp, sec }                      from '../ui.js';
   import { permissions }                   from '$lib/stores/permissions.js';
+  import { fmtComponentRef, findComponentByRef } from '$lib/utils/componentRef.js';
+  import ComponentDetailView               from './ComponentDetailView.svelte';
 
   export let componentId;     // string — the component whose links we manage
   export let components = []; // all components[] — for the ref datalist
@@ -118,12 +120,12 @@
 
   $: canModify = !readOnly && ($permissions.isAdmin || $permissions.canModify);
 
-  // Reformat stored ref "LH / 1 / Sounder / 02" → "LH/1/02" (drop type, remove spaces)
-  function fmtRef(ref) {
-    if (!ref) return '—';
-    const parts = ref.split(' / ');
-    if (parts.length === 4) return `${parts[0]}/${parts[1]}/${parts[3]}`;
-    return ref.replace(/ \/ /g, '/');  // fallback: just remove spaces
+  // ── Linked component view modal ───────────────────────────────────────
+  let viewingComponent = null;
+
+  function openLinkedComponent(ref) {
+    const store = $buildingAssetsStore;
+    viewingComponent = findComponentByRef(ref, store.components, store.floors, store.facilities, store.types) ?? null;
   }
 </script>
 
@@ -223,7 +225,7 @@
         <!-- Inline edit row -->
         {:else if editingId === link.id}
           <div class="p-2.5 rounded-lg bg-slate-700/50 border border-purple-500/30 space-y-1.5">
-            <p class="text-xs font-mono text-purple-300 truncate">{fmtRef(link.to_component_ref)}</p>
+            <p class="text-xs font-mono text-purple-300 truncate">{fmtComponentRef(link.to_component_ref)}</p>
             <div class="flex gap-2 items-center">
               <input
                 type="text"
@@ -252,7 +254,12 @@
                       border border-slate-700/60 group">
             <span class="text-slate-400 mt-0.5 shrink-0">🔗</span>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-mono text-purple-300 truncate">{fmtRef(link.to_component_ref)}</p>
+              <button
+                on:click={() => openLinkedComponent(link.to_component_ref)}
+                class="text-sm font-mono text-purple-300 hover:text-purple-200
+                       hover:underline transition-colors truncate block text-left w-full"
+                title="View component detail"
+              >{fmtComponentRef(link.to_component_ref)}</button>
               {#if link.link_type}
                 <span class="inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded
                              bg-slate-600/60 text-slate-300 border border-slate-600">
@@ -286,3 +293,28 @@
   {/if}
 
 </section>
+
+<!-- ── Linked component detail overlay ──────────────────────────────── -->
+{#if viewingComponent}
+  {@const store = $buildingAssetsStore}
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60"
+    on:click|self={() => viewingComponent = null}
+    on:keydown={e => e.key === 'Escape' && (viewingComponent = null)}
+  >
+    <div class="w-full max-w-2xl">
+      <ComponentDetailView
+        component={viewingComponent}
+        types={store.types}
+        floors={store.floors}
+        facilities={store.facilities}
+        attrDefs={store.attrDefs}
+        attrOptions={store.attrOptions}
+        components={store.components}
+        attrs={store.componentAttrs[viewingComponent.id] ?? []}
+        on:close={() => viewingComponent = null}
+      />
+    </div>
+  </div>
+{/if}
