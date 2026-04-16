@@ -15,11 +15,36 @@
   export let types      = [];
   export let readOnly   = false;
 
-  // Datalist: one canonical ref string per component (excluding self)
-  $: refOptions = components
+  // Find the from-component to know its floor for sorting
+  $: fromComponent = components.find(c => c.id === componentId);
+  $: fromFloorId   = fromComponent?.floor_id ?? null;
+
+  // Build sorted select options — current floor first, then others by level_order
+  $: selectOptions = components
     .filter(c => c.id !== componentId)
-    .map(c => buildRef(c, floors, facilities, types))
-    .filter(Boolean);
+    .map(c => {
+      const floor    = floors.find(f => f.id === c.floor_id);
+      const type     = types.find(t => t.code === c.type_code);
+      const short    = `${floor?.short_name ?? '?'}/${type?.initial ?? '?'}/${c.asset_id || '—'}`;
+      const display  = c.label ? `${short}  · ${c.label}` : short;
+      return {
+        value:      buildRef(c, floors, facilities, types),
+        display,
+        sameFloor:  c.floor_id === fromFloorId,
+        floorOrder: floor?.level_order ?? 9999,
+        typeOrder:  type?.presentation_order ?? 9999,
+        assetId:    c.asset_id ?? ''
+      };
+    })
+    .sort((a, b) => {
+      if (a.sameFloor !== b.sameFloor) return a.sameFloor ? -1 : 1;
+      if (a.floorOrder !== b.floorOrder) return a.floorOrder - b.floorOrder;
+      if (a.typeOrder  !== b.typeOrder)  return a.typeOrder  - b.typeOrder;
+      return a.assetId.localeCompare(b.assetId, undefined, { numeric: true });
+    });
+
+  $: thisFloorOptions  = selectOptions.filter(o =>  o.sameFloor);
+  $: otherFloorOptions = selectOptions.filter(o => !o.sameFloor);
 
   // Current links from store
   $: links = $buildingAssetsStore.componentLinks[componentId] ?? [];
@@ -115,18 +140,23 @@
     <div class="mb-3 p-3 rounded-lg bg-slate-700/50 border border-purple-500/30 space-y-2">
       <div>
         <p class="text-xs text-slate-400 mb-1">Linked component <span class="text-red-400">*</span></p>
-        <input
-          type="text"
-          bind:value={addRef}
-          list="link-refs-{componentId}"
-          placeholder="e.g. LH / G / Fire Door / FD-042"
-          class="{inp} font-mono placeholder-slate-600"
-        />
-        <datalist id="link-refs-{componentId}">
-          {#each refOptions as ref}
-            <option value={ref}></option>
-          {/each}
-        </datalist>
+        <select bind:value={addRef} class="{inp} font-mono">
+          <option value="">— select component —</option>
+          {#if thisFloorOptions.length > 0}
+            <optgroup label="This floor">
+              {#each thisFloorOptions as opt}
+                <option value={opt.value}>{opt.display}</option>
+              {/each}
+            </optgroup>
+          {/if}
+          {#if otherFloorOptions.length > 0}
+            <optgroup label="Other floors">
+              {#each otherFloorOptions as opt}
+                <option value={opt.value}>{opt.display}</option>
+              {/each}
+            </optgroup>
+          {/if}
+        </select>
       </div>
       <div>
         <p class="text-xs text-slate-400 mb-1">Link type <span class="text-slate-600">(optional)</span></p>
