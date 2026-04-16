@@ -43,11 +43,12 @@
   // Reset type filter when system changes
   $: if (filterSystemId) filterTypeCode = '';
 
-  let showForm            = false;
-  let saving              = false;
-  let errorMsg            = '';
-  let editingComponent    = null;
-  let inspectingComponent = null;
+  let showForm              = false;
+  let saving                = false;
+  let errorMsg              = '';
+  let editingComponent      = null;
+  let inspectingComponent   = null;
+  let showInspectionNotes   = false;
 
   // ── Derived: unique statuses present in components ────────────────
   $: allStatuses = [...new Set(components.map(c => (c.status || 'ok').toLowerCase()))].sort();
@@ -256,6 +257,8 @@
       {types}
       {systems}
       {floors}
+      {inspections}
+      {showInspectionNotes}
       title="Components"
       {readOnly}
       on:selectcomponent={e => { editingComponent = e.detail.component; errorMsg = ''; }}
@@ -359,6 +362,15 @@
                    placeholder:text-slate-500 focus:outline-none focus:border-purple-500 w-full"
           />
         </div>
+
+        <!-- Inspection Notes column toggle -->
+        <label class="flex items-center gap-1.5 cursor-pointer self-end pb-1.5
+                       text-xs text-slate-400 hover:text-slate-300 transition-colors">
+          <input type="checkbox" bind:checked={showInspectionNotes}
+                 class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-700
+                        accent-purple-500 cursor-pointer" />
+          Insp. Notes
+        </label>
 
         <!-- Clear filters -->
         {#if hasFilters}

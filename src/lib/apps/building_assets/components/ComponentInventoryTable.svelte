@@ -16,6 +16,7 @@
   import { typeByCode, defsForType, systemById, attrValue as lookupAttrValue } from '../lookups.js';
   import { fmtComponentRef } from '$lib/utils/componentRef.js';
   import { statusBadgeCls, statusDotCls } from '$lib/apps/v2/utils/resultConstants.js';
+  import { fmtDate } from '$lib/utils/dates.js';
 
   export let components     = [];
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }
@@ -24,8 +25,10 @@
   export let types          = [];
   export let systems        = [];
   export let floors         = [];
-  export let title          = 'Inventory';
-  export let readOnly       = false;
+  export let title               = 'Inventory';
+  export let readOnly            = false;
+  export let inspections         = {};   // { [componentId]: latest component_inspections row }
+  export let showInspectionNotes = false;
 
   const dispatch = createEventDispatcher();
 
@@ -199,6 +202,9 @@
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[260px]">Attributes</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[175px]">Linked</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Notes</th>
+            {#if showInspectionNotes}
+              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[200px]">Insp. Notes</th>
+            {/if}
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
           </tr>
         </thead>
@@ -304,7 +310,23 @@
                 {/if}
               </td>
 
-              <!-- ⑨ Actions -->
+              <!-- ⑨ Inspection notes (optional column) -->
+              {#if showInspectionNotes}
+                {@const insp = inspections[c.id] ?? null}
+                <td class="px-2 py-2 overflow-hidden">
+                  {#if insp}
+                    {#if insp.inspector_notes}
+                      <span class="truncate block text-xs text-slate-300"
+                            title={insp.inspector_notes}>{insp.inspector_notes}</span>
+                    {/if}
+                    <span class="block text-[10px] text-slate-600">{fmtDate(insp.inspected_at)}</span>
+                  {:else}
+                    <span class="text-slate-700">—</span>
+                  {/if}
+                </td>
+              {/if}
+
+              <!-- ⑩ Actions -->
               <td class="px-2 py-2 whitespace-nowrap" on:click|stopPropagation>
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity
                             {inDel && !readOnly ? '!opacity-100' : ''}">
