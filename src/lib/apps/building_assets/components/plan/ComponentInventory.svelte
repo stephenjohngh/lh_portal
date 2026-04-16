@@ -7,7 +7,7 @@
 
 <script>
   import { createEventDispatcher }  from 'svelte';
-  import { buildingAssetsStore }    from '../stores/buildingAssetsStore.js';
+  import { buildingAssetsStore }    from '../../stores/buildingAssetsStore.js';
   import ComponentInventoryTable    from '../ComponentInventoryTable.svelte';
 
   export let components = [];   // filtered components[] passed down from PlanViewTab
