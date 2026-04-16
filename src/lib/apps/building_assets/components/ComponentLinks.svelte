@@ -29,7 +29,7 @@
       const initial = type?.initial     ?? '?';
       const assetId = c.asset_id        || '—';
       const short   = `${floorSN}/${initial}/${assetId}`;
-      const display = c.label ? `${short}  · ${c.label}` : short;
+      const display = short;
       return {
         value:     buildRef(c, floors, facilities, types),
         display,
