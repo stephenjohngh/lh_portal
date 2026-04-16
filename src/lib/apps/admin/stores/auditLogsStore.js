@@ -64,9 +64,10 @@ function createAuditLogsStore() {
         update(state => ({
           ...state,
           logs: offset === 0 ? data : [...state.logs, ...data],
-          loading: false,
+          loading:    false,
+          error:      null,
           totalCount: count || 0,
-          hasMore: (offset + limit) < (count || 0)
+          hasMore:    (offset + limit) < (count || 0)
         }));
 
       } catch (err) {

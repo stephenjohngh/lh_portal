@@ -131,32 +131,23 @@ function createAuthStore() {
         // Clear local state immediately
         set({ user: null, loading: false });
 
-        // Log logout - WAIT for it to complete before redirecting
+        // Log logout — fire-and-forget, do not block the redirect
         if (userId && userEmail) {
-          try {
-            await fetch('/api/audit/log', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: userId,
-                userEmail: userEmail,
-                eventType: 'logout',
-                targetType: 'user',
-                targetId: userId,
-                targetName: userEmail,
-                metadata: {
-                  logout_type: 'user_initiated'
-                }
-              })
-            });
-            logger('✅ Logout logged successfully');
-          } catch (logError) {
-            logger('Failed to log logout:', logError.message);
-            // Continue with logout even if logging fails
-          }
+          fetch('/api/audit/log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              userEmail,
+              eventType:  'logout',
+              targetType: 'user',
+              targetId:   userId,
+              targetName: userEmail,
+              metadata:   { logout_type: 'user_initiated' }
+            })
+          }).catch(err => logger('Failed to log logout:', err.message));
         }
 
-        // Now redirect (after logging completes)
         window.location.href = '/login';
 
         return { success: true };

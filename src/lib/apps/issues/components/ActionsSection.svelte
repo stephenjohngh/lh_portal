@@ -7,9 +7,12 @@
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabaseClient';
+  import { onMount }    from 'svelte';
+  import { api }        from '$lib/utils/api';
+  import { getLogger }  from '$lib/utils/logger';
   import { sortActions } from '$lib/utils/actionSort'; // ← NEW: Import sorting utility
+
+  const logger = getLogger('ActionsSection');
 
   export let issueId;
   export let actions = [];
@@ -34,16 +37,11 @@
   });
 
   async function loadProfiles() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .order('full_name');
-    
-    if (error) {
-      console.error('Error loading profiles:', error);
+    try {
+      profiles = await api.get('profiles', { select: 'full_name', orderBy: 'full_name' });
+    } catch (err) {
+      logger('❌ Error loading profiles:', err);
       profiles = [];
-    } else {
-      profiles = data || [];
     }
   }
 

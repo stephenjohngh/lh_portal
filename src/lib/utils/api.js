@@ -5,7 +5,10 @@
  * Provides consistent error handling, logging, and retry logic
  */
 
-import { supabase } from '$lib/supabaseClient';
+import { supabase }    from '$lib/supabaseClient';
+import { getLogger }   from '$lib/utils/logger';
+
+const logger = getLogger('api');
 
 /**
  * API Client Class
@@ -21,7 +24,7 @@ class ApiClient {
    * @private
    */
   handleError(operation, table, error) {
-    console.error(`❌ API Error [${operation} ${table}]:`, error);
+    logger(`❌ API Error [${operation} ${table}]:`, error);
     
     // Add more context to error
     const enhancedError = new Error(error.message || 'An error occurred');
@@ -43,7 +46,7 @@ class ApiClient {
       return await fn();
     } catch (error) {
       if (attempts <= 1) throw error;
-      console.warn(`Retrying... (${this.retryAttempts - attempts + 1}/${this.retryAttempts})`);
+      logger(`⚠️ Retrying... (${this.retryAttempts - attempts + 1}/${this.retryAttempts})`);
       await new Promise(resolve => setTimeout(resolve, this.retryDelay));
       return this.retry(fn, attempts - 1);
     }

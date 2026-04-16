@@ -48,3 +48,20 @@ export const STATUSES = [
 export function statusCfg(value) {
   return STATUSES.find(s => s.value === (value ?? 'ok')) ?? STATUSES[0];
 }
+
+// ── Convenience helpers for components ───────────────────────────────────────
+
+/** Badge background + text class for a status value (building assets theme). */
+export function statusBadgeCls(value) {
+  return statusCfg(value).badge;
+}
+
+/** Dot/circle fill class for a status value. */
+export function statusDotCls(value) {
+  return statusCfg(value).dot;
+}
+
+/** Text-only colour class for a status value. */
+export function statusTextCls(value) {
+  return statusCfg(value).dot.replace('bg-', 'text-');
+}

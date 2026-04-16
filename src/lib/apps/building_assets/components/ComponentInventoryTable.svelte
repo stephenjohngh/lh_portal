@@ -15,6 +15,7 @@
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, systemById, attrValue as lookupAttrValue } from '../lookups.js';
   import { fmtComponentRef } from '$lib/utils/componentRef.js';
+  import { statusBadgeCls, statusDotCls } from '$lib/apps/v2/utils/resultConstants.js';
 
   export let components     = [];
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }
@@ -97,18 +98,8 @@
   }
 
   // ── Status helpers ────────────────────────────────────────────────
-  function statusCls(s) {
-    if (s === 'problem')  return 'bg-amber-900/50 text-amber-400';
-    if (s === 'failed')   return 'bg-red-900/50 text-red-400';
-    if (s === 'inactive') return 'bg-slate-700 text-slate-500';
-    return 'bg-green-900/50 text-green-400';
-  }
-  function statusDot(s) {
-    if (s === 'problem')  return 'bg-amber-400';
-    if (s === 'failed')   return 'bg-red-400';
-    if (s === 'inactive') return 'bg-slate-500';
-    return 'bg-green-400';
-  }
+  const statusCls = statusBadgeCls;
+  const statusDot = statusDotCls;
 
   // ── Sort: floor → system → type → asset_id ───────────────────────
   $: sortedComponents = [...components].sort((a, b) => {

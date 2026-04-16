@@ -1,10 +1,11 @@
 // src/lib/apps/issues/stores/issuesStore.js
 // UPDATED: Uses general audit logging API endpoint for all events
-import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
-import { api } from '$lib/utils/api';
+import { writable }    from 'svelte/store';
+import { supabase }    from '$lib/supabaseClient';
+import { api }         from '$lib/utils/api';
 import { ISSUE_STATUS } from '$lib/utils/constants';
-import { getLogger } from '$lib/utils/logger';
+import { getLogger }   from '$lib/utils/logger';
+import { logAudit }    from '$lib/utils/auditLogger';
 
 const logger = getLogger('issuesStore');
 
@@ -16,60 +17,6 @@ function createIssuesStore() {
   });
 
   let realtimeChannel = null;
-
-  // ✨ GENERAL HELPER - Log any audit event via API
-  async function logAudit(eventType, targetType, targetId, targetName, data = {}) {
-    try {
-      // Get current user info
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        logger('⚠️ No user found, skipping audit log');
-        return;
-      }
-
-      // Get user email
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', user.id)
-        .single();
-
-      const userEmail = profile?.email || user.email;
-
-      logger('📝 Logging audit event:', { 
-        eventType, 
-        targetType, 
-        targetId, 
-        targetName,
-        userId: user.id,
-        userEmail 
-      });
-      
-      const response = await fetch('/api/audit/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          userEmail: userEmail,
-          eventType,
-          targetType,
-          targetId,
-          targetName,
-          ...data
-        })
-      });
-
-      const result = await response.json();
-      logger('✅ Audit log response:', result);
-      
-      if (!response.ok) {
-        logger('⚠️ Audit log failed:', result);
-      }
-    } catch (err) {
-      logger('❌ Failed to log audit event:', err);
-      // Don't fail the main operation if audit logging fails
-    }
-  }
 
   return {
     subscribe,
@@ -123,6 +70,7 @@ function createIssuesStore() {
 
     initializeRealtime() {
       if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
         supabase.removeChannel(realtimeChannel);
       }
 
@@ -214,9 +162,8 @@ function createIssuesStore() {
         
         logger('✅ Issue created:', newIssue.id, newIssue.issue_number);
 
-        // ✨ LOG AUDIT EVENT
-        logger('📝 Calling logAudit for issue creation...');
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'create',
           'issue',
           newIssue.id,
@@ -266,9 +213,8 @@ function createIssuesStore() {
 
         logger('✅ Issue updated');
 
-        // ✨ LOG AUDIT EVENT
-        logger('📝 Calling logAudit for issue update...');
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'update',
           'issue',
           issueId,
@@ -317,9 +263,8 @@ function createIssuesStore() {
 
         logger('✅ Issue deleted');
 
-        // ✨ LOG AUDIT EVENT
-        logger('📝 Calling logAudit for issue deletion...');
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'delete',
           'issue',
           issueId,
@@ -381,9 +326,8 @@ function createIssuesStore() {
         
         logger('✅ Comment created:', newComment.id);
 
-        // ✨ LOG AUDIT EVENT
-        logger('📝 Calling logAudit for comment creation...');
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'create',
           'comment',
           newComment.id,
@@ -431,8 +375,8 @@ function createIssuesStore() {
           updated_by: user?.id
         });
 
-        // ✨ LOG AUDIT EVENT
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'update',
           'comment',
           commentId,
@@ -478,8 +422,8 @@ function createIssuesStore() {
         // Delete comment
         await api.delete('comments', commentId);
 
-        // ✨ LOG AUDIT EVENT
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'delete',
           'comment',
           commentId,
@@ -542,9 +486,8 @@ function createIssuesStore() {
         
         logger('✅ Action created:', newAction.id);
 
-        // ✨ LOG AUDIT EVENT
-        logger('📝 Calling logAudit for action creation...');
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'create',
           'action',
           newAction.id,
@@ -601,9 +544,8 @@ function createIssuesStore() {
 
         logger('✅ Action updated');
 
-        // ✨ LOG AUDIT EVENT
-        logger('📝 Calling logAudit for action update...');
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'update',
           'action',
           actionId,
@@ -659,9 +601,8 @@ function createIssuesStore() {
 
         logger('✅ Action deleted');
 
-        // ✨ LOG AUDIT EVENT
-        logger('📝 Calling logAudit for action deletion...');
-        await logAudit(
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        logAudit(
           'delete',
           'action',
           actionId,

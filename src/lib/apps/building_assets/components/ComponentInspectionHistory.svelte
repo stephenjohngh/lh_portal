@@ -3,9 +3,10 @@
      Loads its own data via api.js when componentId changes.
      Purely presentational — no mutations. -->
 <script>
-  import { api }         from '$lib/utils/api';
-  import { fmtDateTime } from '$lib/utils/dates.js';
-  import { sec }         from '../ui.js';
+  import { api }           from '$lib/utils/api';
+  import { fmtDateTime }   from '$lib/utils/dates.js';
+  import { sec }           from '../ui.js';
+  import { statusBadgeCls } from '$lib/apps/v2/utils/resultConstants.js';
 
   export let componentId;   // string | null
 
@@ -32,11 +33,10 @@
     }
   }
 
+  // Border colours per status, used alongside the shared badge class
+  const STATUS_BORDER = { ok: 'border-green-700/40', failed: 'border-red-700/40', problem: 'border-amber-700/40' };
   function resultBadgeClass(r) {
-    return r === 'ok'      ? 'bg-green-600/30 text-green-400 border-green-700/40'  :
-           r === 'failed'  ? 'bg-red-600/30 text-red-400 border-red-700/40'        :
-           r === 'problem' ? 'bg-amber-600/30 text-amber-400 border-amber-700/40'  :
-                             'bg-slate-700/60 text-slate-400 border-slate-600/40';
+    return `${statusBadgeCls(r)} ${STATUS_BORDER[r] ?? 'border-slate-600/40'}`;
   }
 
   function resultText(r) {

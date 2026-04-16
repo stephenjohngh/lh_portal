@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, floorById } from '../lookups.js';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
+  import { statusBadgeCls } from '$lib/apps/v2/utils/resultConstants.js';
 
   export let component;         // components row
   export let types    = [];     // component_types[] — for lookup
@@ -39,12 +40,6 @@
     low:      'text-slate-400'
   };
 
-  const STATUS_COLOURS = {
-    OK:       'bg-green-600/30 text-green-400',
-    problem:  'bg-orange-600/30 text-orange-400',
-    failed:   'bg-red-600/30 text-red-400',
-    inactive: 'bg-slate-700 text-slate-500'
-  };
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -77,7 +72,7 @@
       {#if component.asset_id && component.label}
         <span class="text-slate-500 text-sm font-mono">{component.asset_id}</span>
       {/if}
-      <span class="text-xs px-1.5 py-0.5 rounded {STATUS_COLOURS[component.status] ?? STATUS_COLOURS.inactive}">
+      <span class="text-xs px-1.5 py-0.5 rounded {statusBadgeCls(component.status)}">
         {component.status}
       </span>
     </div>
