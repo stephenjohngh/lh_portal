@@ -117,6 +117,14 @@
   }
 
   $: canModify = !readOnly && ($permissions.isAdmin || $permissions.canModify);
+
+  // Reformat stored ref "LH / 1 / Sounder / 02" → "LH/1/02" (drop type, remove spaces)
+  function fmtRef(ref) {
+    if (!ref) return '—';
+    const parts = ref.split(' / ');
+    if (parts.length === 4) return `${parts[0]}/${parts[1]}/${parts[3]}`;
+    return ref.replace(/ \/ /g, '/');  // fallback: just remove spaces
+  }
 </script>
 
 <section class="border border-slate-700 rounded-lg p-4 bg-slate-800/30">
@@ -215,7 +223,7 @@
         <!-- Inline edit row -->
         {:else if editingId === link.id}
           <div class="p-2.5 rounded-lg bg-slate-700/50 border border-purple-500/30 space-y-1.5">
-            <p class="text-xs font-mono text-purple-300 truncate">{link.to_component_ref}</p>
+            <p class="text-xs font-mono text-purple-300 truncate">{fmtRef(link.to_component_ref)}</p>
             <div class="flex gap-2 items-center">
               <input
                 type="text"
@@ -244,7 +252,7 @@
                       border border-slate-700/60 group">
             <span class="text-slate-400 mt-0.5 shrink-0">🔗</span>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-mono text-purple-300 truncate">{link.to_component_ref}</p>
+              <p class="text-sm font-mono text-purple-300 truncate">{fmtRef(link.to_component_ref)}</p>
               {#if link.link_type}
                 <span class="inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded
                              bg-slate-600/60 text-slate-300 border border-slate-600">
