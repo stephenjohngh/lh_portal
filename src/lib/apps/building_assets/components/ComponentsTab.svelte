@@ -13,6 +13,7 @@
     loadPresets, createPreset, removePreset,
   } from '../componentPresets.js';
 
+  import { generateReportDocument } from './plan/reportGenerator.js';
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
   import ComponentPresetBar      from './ComponentPresetBar.svelte';
   import ComponentForm           from './ComponentForm.svelte';
@@ -153,6 +154,116 @@
     filterStatuses = new Set(filterStatuses);
     if (filterStatuses.has(s)) filterStatuses.delete(s);
     else filterStatuses.add(s);
+  }
+
+  // -- Report state --------------------------------------------------
+  let showReportPanel      = false;
+  let includePlan              = false;
+  let includeList              = true;
+  let includeFloorSummary      = true;
+  let includeNotes             = false;
+  let includeFullSummary       = false;
+  let includeFullComponentList = false;
+  let generatingReport = false;
+  let reportError      = '';
+
+  $: reportNoneSelected = !includePlan && !includeList && !includeFloorSummary
+                       && !includeFullSummary && !includeFullComponentList;
+
+  // -- Report helpers (identical to V2ReportsTab) --------------------
+  function typeOf(c)   { return types.find(t => t.code === c.type_code); }
+  function systemOf(t) { return t ? systems.find(s => s.id === t.building_system_id) : null; }
+
+  function resolveAttrs(c) {
+    const t = typeOf(c);
+    if (!t) return [];
+    const defs      = attrDefs[t.id] ?? [];
+    const stored    = componentAttrs[c.id] ?? [];
+    const storedMap = {};
+    for (const a of stored) storedMap[a.type_attribute_id] = a.value;
+    return defs
+      .filter(d => d.visible !== false && !d.checkable)
+      .map(d => {
+        const raw = storedMap[d.id] ?? d.default_value ?? null;
+        if (raw == null || raw === '') return null;
+        if (d.display_type === 'checkbox') {
+          return raw === 'true' ? { name: d.name, value: 'Yes', display_type: 'checkbox' } : null;
+        }
+        const value = String(raw);
+        if (value === 'None' || value === 'No' || value === 'Unknown') return null;
+        return { name: d.name, value, display_type: d.display_type ?? 'text' };
+      })
+      .filter(Boolean);
+  }
+
+  // Group filteredComponents by floor (preserves floor level_order)
+  $: filteredByFloor = (() => {
+    const map = {};
+    for (const c of filteredComponents) {
+      if (!map[c.floor_id]) map[c.floor_id] = [];
+      map[c.floor_id].push(c);
+    }
+    return floors
+      .filter(f => map[f.id]?.length > 0)
+      .map(f => ({ floor: f, components: map[f.id] }));
+  })();
+
+  // Human-readable filter description for the report document header
+  $: reportFilterSummary = (() => {
+    const parts = [];
+    if (floorPreset === 'residential') parts.push('Floors: Residential');
+    else if (floorPreset === 'basement') parts.push('Floors: Basement');
+    else if (floorPreset === 'custom' && filterFloorIds.size > 0) {
+      const names = floors.filter(f => filterFloorIds.has(f.id)).map(f => f.short_name).join(', ');
+      parts.push(`Floors: ${names}`);
+    }
+    if (filterSystemIds.size > 0) {
+      const names = systems.filter(s => filterSystemIds.has(s.id)).map(s => s.name).join(', ');
+      parts.push(`Systems: ${names}`);
+    }
+    if (filterTypeCodes.size > 0) {
+      const names = types.filter(t => filterTypeCodes.has(t.code)).map(t => t.name).join(', ');
+      parts.push(`Types: ${names}`);
+    }
+    if (filterStatuses.size > 0 && filterStatuses.size < 4) {
+      parts.push(`Status: ${[...filterStatuses].join(', ')}`);
+    }
+    if (searchQuery.trim()) parts.push(`Search: "${searchQuery.trim()}"`);
+    return parts.join(' · ') || 'All components';
+  })();
+
+  async function generateReport() {
+    if (reportNoneSelected || filteredComponents.length === 0) return;
+    generatingReport = true;
+    reportError      = '';
+    try {
+      const building    = facilities[0]?.name ?? 'Lancaster House';
+      const generatedAt = new Date().toLocaleDateString('en-GB',
+        { day: '2-digit', month: 'short', year: 'numeric' });
+      const reportTypes = [
+        ...(includePlan              ? ['plan']               : []),
+        ...(includeList              ? ['full_list']          : []),
+        ...(includeFloorSummary      ? ['floor_summary']      : []),
+        ...(includeFullSummary       ? ['full_summary']       : []),
+        ...(includeFullComponentList ? ['full_component_list']: []),
+      ];
+      await generateReportDocument({
+        reportTypes, building,
+        filterSummary: reportFilterSummary,
+        generatedAt,
+        includeNotes, includeFullComponentList, includePlan,
+        filteredByFloor,
+        plans,
+        inspections,
+        typeOfFn:       typeOf,
+        systemOfFn:     systemOf,
+        resolveAttrsFn: resolveAttrs,
+      });
+    } catch (err) {
+      reportError = err.message;
+    } finally {
+      generatingReport = false;
+    }
   }
 
   // -- Floor sets for presets ----------------------------------------
@@ -654,6 +765,84 @@
             </span>
           {/if}
         </div>
+
+      </div>
+
+      <!-- -- Report panel -------------------------------------------- -->
+      <div class="border-b border-slate-700/60 bg-slate-800/20">
+
+        <!-- Toggle row — always visible -->
+        <div class="px-4 py-2 flex items-center gap-3 flex-wrap">
+          <button
+            on:click={() => showReportPanel = !showReportPanel}
+            class="flex items-center gap-1.5 text-xs transition-colors
+                   {showReportPanel ? 'text-purple-300' : 'text-slate-500 hover:text-slate-300'}"
+          >
+            <span class="text-[10px]">{showReportPanel ? '▾' : '▸'}</span>
+            📄 Generate Report
+            <span class="text-slate-700 tabular-nums">({filteredComponents.length})</span>
+          </button>
+          {#if showReportPanel}
+            {#if reportNoneSelected}
+              <span class="text-[10px] text-amber-500/80">Select at least one section</span>
+            {/if}
+            <div class="ml-auto">
+              <button
+                on:click={generateReport}
+                disabled={generatingReport || filteredComponents.length === 0 || reportNoneSelected}
+                class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
+                       disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >{generatingReport ? 'Generating…' : '⬇ Download'}</button>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Section toggles — shown when expanded -->
+        {#if showReportPanel}
+          <div class="px-4 pb-3 flex flex-wrap gap-x-8 gap-y-2">
+
+            <div class="flex flex-col gap-1.5">
+              <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Per Floor</p>
+              <div class="flex flex-wrap gap-x-5 gap-y-1.5">
+                <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+                  <input type="checkbox" bind:checked={includePlan} class="accent-purple-500" />
+                  🗺 Plan Graphic
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+                  <input type="checkbox" bind:checked={includeList} class="accent-purple-500" />
+                  📋 Component Table
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+                  <input type="checkbox" bind:checked={includeFloorSummary} class="accent-purple-500" />
+                  📊 Floor Summary
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+                  <input type="checkbox" bind:checked={includeNotes} class="accent-purple-500" />
+                  📝 Inspection Notes
+                </label>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Final Section</p>
+              <div class="flex flex-wrap gap-x-5 gap-y-1.5">
+                <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+                  <input type="checkbox" bind:checked={includeFullSummary} class="accent-purple-500" />
+                  📈 Full Summary
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+                  <input type="checkbox" bind:checked={includeFullComponentList} class="accent-purple-500" />
+                  📋 Full Component List
+                </label>
+              </div>
+            </div>
+
+            {#if reportError}
+              <p class="w-full text-xs text-red-400">{reportError}</p>
+            {/if}
+
+          </div>
+        {/if}
 
       </div>
 
