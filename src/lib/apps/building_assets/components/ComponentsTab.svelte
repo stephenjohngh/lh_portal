@@ -5,10 +5,15 @@
      Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
 
 <script>
+  import { onMount }             from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { permissions }         from '$lib/stores/permissions';
+  import {
+    loadUserPresets, saveUserPresets, makePresetId,
+  } from '../componentPresets.js';
 
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
+  import ComponentPresetBar      from './ComponentPresetBar.svelte';
   import ComponentForm           from './ComponentForm.svelte';
   import ComponentDetailPanel    from './ComponentDetailPanel.svelte';
   import ComponentDetailView     from './ComponentDetailView.svelte';
@@ -40,9 +45,51 @@
   let filterStatus   = '';
   let searchQuery    = '';
 
-  // Reset type filter when system changes
-  $: if (filterSystemId) filterTypeCode = '';
+  // Clear type filter when system changes — but only if the current type doesn't
+  // belong to the newly selected system (preserves presets that set both system + type).
+  $: if (filterSystemId && types.length > 0) {
+    const validCodes = new Set(
+      types.filter(t => t.building_system_id === filterSystemId).map(t => t.code)
+    );
+    if (filterTypeCode && !validCodes.has(filterTypeCode)) filterTypeCode = '';
+  }
 
+  // ── Preset state ──────────────────────────────────────────────────
+  let userPresets = [];
+  onMount(() => { userPresets = loadUserPresets(); });
+
+  // Live snapshot of current filters + column visibility — passed to preset bar
+  // so it can highlight the active preset and capture the config on "Save as…".
+  $: currentConfig = {
+    filters: { floorPreset, filterFloorId, filterSystemId, filterTypeCode, filterStatus, searchQuery },
+    columns: { showNotes, showLinked, showInspectionNotes },
+  };
+
+  function applyPreset(e) {
+    const { filters: f, columns: c } = e.detail;
+    floorPreset    = f.floorPreset;
+    filterFloorId  = f.filterFloorId;
+    filterSystemId = f.filterSystemId;
+    filterTypeCode = f.filterTypeCode;
+    filterStatus   = f.filterStatus;
+    searchQuery    = f.searchQuery;
+    showNotes           = c.showNotes;
+    showLinked          = c.showLinked;
+    showInspectionNotes = c.showInspectionNotes;
+  }
+
+  function handleSavePreset(e) {
+    const { name, filters, columns } = e.detail;
+    userPresets = [...userPresets, { id: makePresetId(), name, filters, columns }];
+    saveUserPresets(userPresets);
+  }
+
+  function handleDeletePreset(e) {
+    userPresets = userPresets.filter(p => p.id !== e.detail.id);
+    saveUserPresets(userPresets);
+  }
+
+  // ── UI state ──────────────────────────────────────────────────────
   let showForm              = false;
   let saving                = false;
   let errorMsg              = '';
@@ -270,7 +317,19 @@
       on:inspect={e => { inspectingComponent = e.detail.component; editingComponent = null; errorMsg = ''; }}
     >
       <!-- ── Filters slot — rendered inside the card header ─────── -->
-      <div slot="filters" class="px-4 py-3 border-b border-slate-700 flex flex-wrap gap-3 items-end bg-slate-800/60">
+      <svelte:fragment slot="filters">
+
+      <!-- Preset bar -->
+      <ComponentPresetBar
+        {currentConfig}
+        {userPresets}
+        on:apply={applyPreset}
+        on:savepreset={handleSavePreset}
+        on:deletepreset={handleDeletePreset}
+      />
+
+      <!-- Filter controls -->
+      <div class="px-4 py-3 border-b border-slate-700 flex flex-wrap gap-3 items-end bg-slate-800/60">
 
         <!-- Floor scope -->
         <div class="flex flex-col gap-1">
@@ -440,6 +499,8 @@
         </div>
 
       </div>
+
+      </svelte:fragment>
     </ComponentInventoryTable>
   {/if}
 {/if}
