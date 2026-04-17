@@ -75,10 +75,18 @@
       searchQuery,
     },
     columns: { showNotes, showLinked, showInspectionNotes, view },
+    report: {
+      includePlan,
+      includeList,
+      includeFloorSummary,
+      includeNotes,
+      includeFullSummary,
+      includeFullComponentList,
+    },
   };
 
   function applyPreset(e) {
-    const { filters: f, columns: c } = e.detail;
+    const { filters: f, columns: c, report: r = {} } = e.detail;
     searchQuery   = f.searchQuery ?? '';
     // Floor — handle legacy 'single' preset (single filterFloorId string → Set)
     filterFloorIds = new Set(f.filterFloorIds ?? (f.filterFloorId ? [f.filterFloorId] : []));
@@ -93,13 +101,20 @@
     showLinked          = c.showLinked;
     showInspectionNotes = c.showInspectionNotes;
     view                = c.view ?? 'list';
+    // Restore report options (use defaults for presets saved before report was tracked)
+    includePlan              = r.includePlan              ?? false;
+    includeList              = r.includeList              ?? true;
+    includeFloorSummary      = r.includeFloorSummary      ?? true;
+    includeNotes             = r.includeNotes             ?? false;
+    includeFullSummary       = r.includeFullSummary       ?? false;
+    includeFullComponentList = r.includeFullComponentList ?? false;
   }
 
   async function handleSavePreset(e) {
-    const { name, filters, columns, sortOrder } = e.detail;
+    const { name, filters, columns, report, sortOrder } = e.detail;
     savingPreset = true;
     try {
-      const preset = await createPreset(name, filters, columns, $auth.user.id, sortOrder);
+      const preset = await createPreset(name, filters, columns, report, $auth.user.id, sortOrder);
       presets = [...presets, preset];
     } catch (err) {
       errorMsg = `Could not save preset: ${err.message}`;

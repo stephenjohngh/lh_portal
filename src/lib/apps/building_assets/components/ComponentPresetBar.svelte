@@ -15,8 +15,8 @@
        Admins only: additional Order # field → if set, saved as a standard report
 
      Events:
-       apply        — { filters, columns }
-       savepreset   — { name, filters, columns, sortOrder: int|null }
+       apply        — { filters, columns, report }
+       savepreset   — { name, filters, columns, report, sortOrder: int|null }
        deletepreset — { id } -->
 
 <script>
@@ -46,6 +46,7 @@
     dispatch('apply', {
       filters: { ...preset.filters },
       columns: { ...preset.columns },
+      report:  { ...(preset.report ?? {}) },
     });
   }
 
@@ -81,6 +82,7 @@
       name,
       filters:   { ...currentConfig.filters },
       columns:   { ...currentConfig.columns },
+      report:    { ...(currentConfig.report ?? {}) },
       sortOrder,
     });
     showSaveInput  = false;

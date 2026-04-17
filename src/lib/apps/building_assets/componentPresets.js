@@ -1,14 +1,15 @@
-﻿// src/lib/apps/building_assets/componentPresets.js
-// Named filter/column configurations for the Components tab.
+// src/lib/apps/building_assets/componentPresets.js
+// Named filter/column/report configurations for the Components tab.
 //
 // sort_order IS NOT NULL  →  "standard report" preset, created by an admin,
 //                            visible to all users, shown first (sorted by value).
 // sort_order IS NULL      →  personal preset, visible only to owner,
 //                            shown second (sorted alphabetically by name).
 //
-// Future extension: add a `report` section to the config JSONB to capture
-// V2ReportsTab content toggles (includePlan, includeList, etc.) so a single
-// preset drives both the table view and the report generator.
+// Config JSONB shape: { filters, columns, report }
+//   filters — floor, system, type, status, search
+//   columns — showNotes, showLinked, showInspectionNotes, view
+//   report  — which report sections to include on Generate
 
 import { api } from '$lib/utils/api';
 
@@ -29,6 +30,14 @@ export const DEFAULT_CONFIG = {
     showInspectionNotes: false,
     view:                'list',
   },
+  report: {
+    includePlan:              false,
+    includeList:              true,
+    includeFloorSummary:      true,
+    includeNotes:             false,
+    includeFullSummary:       false,
+    includeFullComponentList: false,
+  },
 };
 
 // -- DB helpers ----------------------------------------------------------------
@@ -40,6 +49,7 @@ function rowToPreset(row) {
     sort_order: row.sort_order ?? null,
     filters:    row.config?.filters ?? {},
     columns:    row.config?.columns ?? {},
+    report:     row.config?.report  ?? {},
   };
 }
 
@@ -54,10 +64,10 @@ export async function loadPresets() {
 
 /** Save a new named preset.
  *  sortOrder: integer or null (null = personal; integer = shared standard report). */
-export async function createPreset(name, filters, columns, userId, sortOrder = null) {
+export async function createPreset(name, filters, columns, report, userId, sortOrder = null) {
   const row = await api.create('component_presets', {
     name,
-    config:     { filters, columns },
+    config:     { filters, columns, report },
     sort_order: sortOrder,
     created_by: userId,
   });
@@ -70,14 +80,15 @@ export async function removePreset(id) {
 }
 
 // -- Config equality -----------------------------------------------------------
-// Returns true when a preset's filters + columns match the supplied live config.
+// Returns true when a preset's filters + columns + report match the live config.
 // Handles both new (array) and legacy (single-string) filter formats for
 // smooth backward compatibility with presets saved before multi-select.
 export function configMatches(preset, config) {
   if (!config) return false;
   const pf = preset.filters;
   const pc = preset.columns;
-  const { filters: cf, columns: cc } = config;
+  const pr = preset.report  ?? {};
+  const { filters: cf, columns: cc, report: cr = {} } = config;
 
   // Normalise a value that may be an array (new) or a single string (legacy) to a Set.
   function toSet(v) {
@@ -101,6 +112,12 @@ export function configMatches(preset, config) {
     pc.showNotes           === cc.showNotes           &&
     pc.showLinked          === cc.showLinked          &&
     pc.showInspectionNotes === cc.showInspectionNotes &&
-    (pc.view ?? 'list')    === (cc.view ?? 'list')
+    (pc.view ?? 'list')    === (cc.view ?? 'list')   &&
+    (pr.includePlan              ?? false) === (cr.includePlan              ?? false) &&
+    (pr.includeList              ?? true)  === (cr.includeList              ?? true)  &&
+    (pr.includeFloorSummary      ?? true)  === (cr.includeFloorSummary      ?? true)  &&
+    (pr.includeNotes             ?? false) === (cr.includeNotes             ?? false) &&
+    (pr.includeFullSummary       ?? false) === (cr.includeFullSummary       ?? false) &&
+    (pr.includeFullComponentList ?? false) === (cr.includeFullComponentList ?? false)
   );
 }
