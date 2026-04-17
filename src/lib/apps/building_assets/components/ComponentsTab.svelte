@@ -252,7 +252,7 @@
     {#if readOnly}
       <ComponentDetailView
         component={editingComponent}
-        {types} {floors} {facilities}
+        {types} {floors}
         {attrDefs} {attrOptions} {components}
         attrs={componentAttrs[editingComponent.id] ?? []}
         on:close={() => editingComponent = null}
@@ -260,7 +260,7 @@
     {:else}
       <ComponentDetailPanel
         component={editingComponent}
-        {types} {systems} {floors} {facilities} {plans}
+        {types} {systems} {floors} {plans}
         {attrDefs} {attrOptions} {components}
         attrs={componentAttrs[editingComponent.id] ?? []}
         on:saved={handleDetailSaved}

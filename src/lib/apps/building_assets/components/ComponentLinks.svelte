@@ -13,7 +13,6 @@
   export let componentId;     // string — the component whose links we manage
   export let components = []; // all components[] — for the ref datalist
   export let floors     = [];
-  export let facilities = [];
   export let types      = [];
   export let readOnly   = false;
 

@@ -15,11 +15,6 @@
   export let photoUrls     = [];   // already-uploaded URLs
   export let pendingPhotos = [];   // { blob, preview, uploading, error }
 
-  // -- Context passed from parent (used in uploadAllPending, kept here
-  //    as passthrough props so the parent doesn't need to own them) --
-  export let session   = null;
-  export let component = null;
-
   // -- Camera state — local to this component ------------------------
   let capturing    = false;
   let videoElement = null;

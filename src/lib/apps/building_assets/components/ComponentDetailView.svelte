@@ -14,7 +14,6 @@
   export let component;         // components row
   export let types       = [];
   export let floors      = [];
-  export let facilities  = [];
   export let attrDefs    = {};  // { typeId: effective attrs[] }
   export const attrOptions = {};  // { attrDefId: options[] } — reserved for option label lookup (not yet used in view)
   export let attrs       = [];  // component_attributes[] for this component
@@ -203,7 +202,6 @@
       componentId={component.id}
       {components}
       {floors}
-      {facilities}
       {types}
       readOnly={true}
     />

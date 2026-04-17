@@ -214,7 +214,7 @@
 </div>
 
 <!-- -- Photos ------------------------------------------------------------------- -->
-<PhotoPanel bind:photoUrls bind:pendingPhotos {session} {component} />
+<PhotoPanel bind:photoUrls bind:pendingPhotos />
 
 <!-- -- Notes -------------------------------------------------------------------- -->
 <div class="sec">

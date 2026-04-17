@@ -15,7 +15,6 @@
   export let types       = [];
   export let systems     = [];
   export let floors      = [];
-  export let facilities  = [];
   export let plans       = [];
   export let attrDefs    = {};   // { typeId: effective attrs[] }
   export let attrOptions = {};
@@ -394,7 +393,6 @@
       componentId={component.id}
       {components}
       {floors}
-      {facilities}
       {types}
       {readOnly}
     />
