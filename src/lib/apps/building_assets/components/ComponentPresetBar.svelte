@@ -69,9 +69,12 @@
 
     // Sort order only honoured when admin fills the field with a valid integer
     let sortOrder = null;
-    if ($permissions.isAdmin && sortOrderInput.trim() !== '') {
-      const n = parseInt(sortOrderInput.trim(), 10);
-      if (!isNaN(n)) sortOrder = n;
+    if ($permissions.isAdmin) {
+      const raw = String(sortOrderInput ?? '').trim();
+      if (raw !== '') {
+        const n = parseInt(raw, 10);
+        if (!isNaN(n)) sortOrder = n;
+      }
     }
 
     dispatch('savepreset', {
@@ -232,7 +235,8 @@
       <!-- Order # (admin only) -->
       {#if $permissions.isAdmin}
         <input
-          type="number"
+          type="text"
+          inputmode="numeric"
           bind:value={sortOrderInput}
           on:keydown={onKeydown}
           placeholder="Order #"
