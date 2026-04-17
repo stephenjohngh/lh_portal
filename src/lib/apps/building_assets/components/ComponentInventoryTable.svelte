@@ -157,7 +157,7 @@
   );
 </script>
 
-<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+<div class="bg-slate-800 rounded-xl border border-slate-700">
 
   <!-- -- Card header: title + view toggle --------------------------- -->
   <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-700 flex-wrap">

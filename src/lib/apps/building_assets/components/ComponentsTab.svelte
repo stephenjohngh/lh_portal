@@ -39,20 +39,20 @@
   const BASEMENT_SHORT    = new Set(['X','L','G']);
 
   // -- Filter state --------------------------------------------------
-  let floorPreset    = 'all';   // 'all' | 'residential' | 'basement' | 'single'
-  let filterFloorId  = '';
-  let filterSystemId = '';      // '' = all systems
-  let filterTypeCode = '';
-  let filterStatus   = '';
-  let searchQuery    = '';
+  let floorPreset     = 'all';   // 'all' | 'residential' | 'basement' | 'single'
+  let filterFloorId   = '';
+  let filterSystemIds = new Set();   // empty = all systems
+  let filterTypeCodes = new Set();
+  let filterStatuses  = new Set();
+  let searchQuery     = '';
 
-  // Clear type filter when system changes — but only if the current type doesn't
-  // belong to the newly selected system (preserves presets that set both system + type).
-  $: if (filterSystemId && types.length > 0) {
+  // Remove type selections that no longer belong to any selected system.
+  $: if (filterSystemIds.size > 0 && types.length > 0 && filterTypeCodes.size > 0) {
     const validCodes = new Set(
-      types.filter(t => t.building_system_id === filterSystemId).map(t => t.code)
+      types.filter(t => filterSystemIds.has(t.building_system_id)).map(t => t.code)
     );
-    if (filterTypeCode && !validCodes.has(filterTypeCode)) filterTypeCode = '';
+    const hasInvalid = [...filterTypeCodes].some(c => !validCodes.has(c));
+    if (hasInvalid) filterTypeCodes = new Set([...filterTypeCodes].filter(c => validCodes.has(c)));
   }
 
   // -- Preset state --------------------------------------------------
@@ -65,18 +65,26 @@
 
   // Live snapshot passed to preset bar for active-highlight + "Save as…" capture.
   $: currentConfig = {
-    filters: { floorPreset, filterFloorId, filterSystemId, filterTypeCode, filterStatus, searchQuery },
+    filters: {
+      floorPreset,
+      filterFloorId,
+      filterSystemIds: [...filterSystemIds],
+      filterTypeCodes: [...filterTypeCodes],
+      filterStatuses:  [...filterStatuses],
+      searchQuery,
+    },
     columns: { showNotes, showLinked, showInspectionNotes, view },
   };
 
   function applyPreset(e) {
     const { filters: f, columns: c } = e.detail;
-    floorPreset    = f.floorPreset;
-    filterFloorId  = f.filterFloorId;
-    filterSystemId = f.filterSystemId;
-    filterTypeCode = f.filterTypeCode;
-    filterStatus   = f.filterStatus;
-    searchQuery    = f.searchQuery;
+    floorPreset   = f.floorPreset   ?? 'all';
+    filterFloorId = f.filterFloorId ?? '';
+    searchQuery   = f.searchQuery   ?? '';
+    // Support both new (arrays) and legacy single-value preset formats
+    filterSystemIds = new Set(f.filterSystemIds ?? (f.filterSystemId ? [f.filterSystemId] : []));
+    filterTypeCodes = new Set(f.filterTypeCodes ?? (f.filterTypeCode ? [f.filterTypeCode] : []));
+    filterStatuses  = new Set(f.filterStatuses  ?? (f.filterStatus  ? [f.filterStatus]  : []));
     showNotes           = c.showNotes;
     showLinked          = c.showLinked;
     showInspectionNotes = c.showInspectionNotes;
@@ -119,6 +127,25 @@
   // -- All canonical component status values (always shown in full) --
   const ALL_STATUSES = ['ok', 'failed', 'problem', 'inactive'];
 
+  // -- Multi-select dropdown state -----------------------------------
+  let openDropdown = null;   // 'system' | 'type' | 'status' | null
+
+  function toggleSystem(id) {
+    filterSystemIds = new Set(filterSystemIds);
+    if (filterSystemIds.has(id)) filterSystemIds.delete(id);
+    else filterSystemIds.add(id);
+  }
+  function toggleType(code) {
+    filterTypeCodes = new Set(filterTypeCodes);
+    if (filterTypeCodes.has(code)) filterTypeCodes.delete(code);
+    else filterTypeCodes.add(code);
+  }
+  function toggleStatus(s) {
+    filterStatuses = new Set(filterStatuses);
+    if (filterStatuses.has(s)) filterStatuses.delete(s);
+    else filterStatuses.add(s);
+  }
+
   // -- Floor sets for presets ----------------------------------------
   $: residentialFloorIds = new Set(floors.filter(f => RESIDENTIAL_SHORT.has(f.short_name)).map(f => f.id));
   $: basementFloorIds    = new Set(floors.filter(f => BASEMENT_SHORT.has(f.short_name)).map(f => f.id));
@@ -137,16 +164,18 @@
     }
 
     // System (filter via type's building_system_id)
-    if (filterSystemId) {
-      const systemTypeCodes = new Set(types.filter(t => t.building_system_id === filterSystemId).map(t => t.code));
+    if (filterSystemIds.size > 0) {
+      const systemTypeCodes = new Set(
+        types.filter(t => filterSystemIds.has(t.building_system_id)).map(t => t.code)
+      );
       list = list.filter(c => systemTypeCodes.has(c.type_code));
     }
 
     // Type
-    if (filterTypeCode) list = list.filter(c => c.type_code === filterTypeCode);
+    if (filterTypeCodes.size > 0) list = list.filter(c => filterTypeCodes.has(c.type_code));
 
     // Status
-    if (filterStatus) list = list.filter(c => (c.status || 'ok').toLowerCase() === filterStatus);
+    if (filterStatuses.size > 0) list = list.filter(c => filterStatuses.has((c.status || 'ok').toLowerCase()));
 
     // Search (asset_id, label, linked_component_ref)
     if (searchQuery.trim()) {
@@ -217,8 +246,8 @@
   // building index maps gives a stable, cheap comparator.
   $: systemOrderIndex = Object.fromEntries(systems.map((s, i) => [s.id, i]));
   $: typeOrderIndex   = Object.fromEntries(types.map((t, i) => [t.code, i]));
-  $: typesForSystem = filterSystemId
-    ? types.filter(t => t.building_system_id === filterSystemId)
+  $: typesForSystem = filterSystemIds.size > 0
+    ? types.filter(t => filterSystemIds.has(t.building_system_id))
     : [...types].sort((a, b) => {
         const sd = (systemOrderIndex[a.building_system_id] ?? 999)
                  - (systemOrderIndex[b.building_system_id] ?? 999);
@@ -227,15 +256,15 @@
       });
 
   function clearFilters() {
-    floorPreset    = 'all';
-    filterFloorId  = '';
-    filterSystemId = '';
-    filterTypeCode = '';
-    filterStatus   = '';
-    searchQuery    = '';
+    floorPreset     = 'all';
+    filterFloorId   = '';
+    filterSystemIds = new Set();
+    filterTypeCodes = new Set();
+    filterStatuses  = new Set();
+    searchQuery     = '';
   }
 
-  $: hasFilters = floorPreset !== 'all' || filterSystemId || filterTypeCode || filterStatus || searchQuery.trim();
+  $: hasFilters = floorPreset !== 'all' || filterSystemIds.size > 0 || filterTypeCodes.size > 0 || filterStatuses.size > 0 || searchQuery.trim();
   $: readOnly = !$permissions.isAdmin && !$permissions.canModify;
 </script>
 
@@ -398,49 +427,119 @@
           </div>
         {/if}
 
-        <!-- System filter -->
-        <div class="flex flex-col gap-1">
+        <!-- System filter — multi-select dropdown -->
+        <div class="flex flex-col gap-1 relative">
           <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">System</p>
-          <select
-            bind:value={filterSystemId}
-            class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
-                   focus:outline-none focus:border-purple-500 min-w-[130px]"
+          <button
+            on:click={() => openDropdown = openDropdown === 'system' ? null : 'system'}
+            class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
+                   focus:outline-none min-w-[130px] flex items-center justify-between gap-2 text-left
+                   {filterSystemIds.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
           >
-            <option value="">All systems</option>
-            {#each systems as s (s.id)}
-              <option value={s.id}>{s.name}</option>
-            {/each}
-          </select>
+            <span class="truncate">
+              {#if filterSystemIds.size === 0}All systems
+              {:else if filterSystemIds.size === 1}{systems.find(s => filterSystemIds.has(s.id))?.name ?? '1 selected'}
+              {:else}{filterSystemIds.size} systems{/if}
+            </span>
+            <span class="text-slate-500 shrink-0 text-[10px]">▾</span>
+          </button>
+          {#if openDropdown === 'system'}
+            <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
+                        rounded-lg shadow-xl min-w-max py-1 max-h-64 overflow-y-auto">
+              {#each systems as s (s.id)}
+                <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
+                  <input type="checkbox" checked={filterSystemIds.has(s.id)}
+                         on:change={() => toggleSystem(s.id)}
+                         class="rounded accent-purple-500 shrink-0" />
+                  <span class="text-xs text-slate-300 whitespace-nowrap">{s.name}</span>
+                </label>
+              {/each}
+            </div>
+          {/if}
         </div>
 
-        <!-- Type filter (scoped to selected system) -->
-        <div class="flex flex-col gap-1">
+        <!-- Type filter — multi-select dropdown, grouped by system when unfiltered -->
+        <div class="flex flex-col gap-1 relative">
           <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Type</p>
-          <select
-            bind:value={filterTypeCode}
-            class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
-                   focus:outline-none focus:border-purple-500 min-w-[130px]"
+          <button
+            on:click={() => openDropdown = openDropdown === 'type' ? null : 'type'}
+            class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
+                   focus:outline-none min-w-[130px] flex items-center justify-between gap-2 text-left
+                   {filterTypeCodes.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
           >
-            <option value="">All types</option>
-            {#each typesForSystem as t (t.code)}
-              <option value={t.code}>{t.name}</option>
-            {/each}
-          </select>
+            <span class="truncate">
+              {#if filterTypeCodes.size === 0}All types
+              {:else if filterTypeCodes.size === 1}{types.find(t => filterTypeCodes.has(t.code))?.name ?? '1 selected'}
+              {:else}{filterTypeCodes.size} types{/if}
+            </span>
+            <span class="text-slate-500 shrink-0 text-[10px]">▾</span>
+          </button>
+          {#if openDropdown === 'type'}
+            <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
+                        rounded-lg shadow-xl min-w-max py-1 max-h-72 overflow-y-auto">
+              {#if filterSystemIds.size > 0}
+                <!-- Flat list scoped to selected systems -->
+                {#each typesForSystem as t (t.code)}
+                  <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
+                    <input type="checkbox" checked={filterTypeCodes.has(t.code)}
+                           on:change={() => toggleType(t.code)}
+                           class="rounded accent-purple-500 shrink-0" />
+                    <span class="text-xs text-slate-300 whitespace-nowrap">{t.name}</span>
+                  </label>
+                {/each}
+              {:else}
+                <!-- Grouped by system -->
+                {#each systems as s (s.id)}
+                  {@const sysTypes = typesForSystem.filter(t => t.building_system_id === s.id)}
+                  {#if sysTypes.length > 0}
+                    <div class="px-3 pt-2 pb-0.5 text-[10px] text-slate-500 uppercase tracking-wider font-medium
+                                border-b border-slate-700/60 first:pt-1">
+                      {s.name}
+                    </div>
+                    {#each sysTypes as t (t.code)}
+                      <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
+                        <input type="checkbox" checked={filterTypeCodes.has(t.code)}
+                               on:change={() => toggleType(t.code)}
+                               class="rounded accent-purple-500 shrink-0" />
+                        <span class="text-xs text-slate-300 whitespace-nowrap">{t.name}</span>
+                      </label>
+                    {/each}
+                  {/if}
+                {/each}
+              {/if}
+            </div>
+          {/if}
         </div>
 
-        <!-- Status filter -->
-        <div class="flex flex-col gap-1">
+        <!-- Status filter — multi-select dropdown -->
+        <div class="flex flex-col gap-1 relative">
           <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Status</p>
-          <select
-            bind:value={filterStatus}
-            class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
-                   focus:outline-none focus:border-purple-500"
+          <button
+            on:click={() => openDropdown = openDropdown === 'status' ? null : 'status'}
+            class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
+                   focus:outline-none min-w-[100px] flex items-center justify-between gap-2 text-left
+                   {filterStatuses.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
           >
-            <option value="">All statuses</option>
-            {#each ALL_STATUSES as s}
-              <option value={s}>{s}</option>
-            {/each}
-          </select>
+            <span class="truncate">
+              {#if filterStatuses.size === 0}All statuses
+              {:else if filterStatuses.size === 1}{[...filterStatuses][0]}
+              {:else}{filterStatuses.size} statuses{/if}
+            </span>
+            <span class="text-slate-500 shrink-0 text-[10px]">▾</span>
+          </button>
+          {#if openDropdown === 'status'}
+            <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
+                        rounded-lg shadow-xl min-w-max py-1">
+              {#each ALL_STATUSES as s}
+                <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
+                  <input type="checkbox" checked={filterStatuses.has(s)}
+                         on:change={() => toggleStatus(s)}
+                         class="rounded accent-purple-500 shrink-0" />
+                  <span class="text-xs text-slate-300 whitespace-nowrap">{s}</span>
+                </label>
+              {/each}
+            </div>
+          {/if}
         </div>
 
         <!-- Search -->
@@ -499,24 +598,24 @@
               {floorLabel}
             </span>
           {/if}
-          {#if filterSystemId}
-            {@const sn = systems.find(s => s.id === filterSystemId)?.name ?? '?'}
+          {#if filterSystemIds.size > 0}
+            {@const names = systems.filter(s => filterSystemIds.has(s.id)).map(s => s.name)}
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
                          bg-slate-700 text-slate-300 border border-slate-600">
-              System: {sn}
+              System: {names.join(', ')}
             </span>
           {/if}
-          {#if filterTypeCode}
-            {@const tn = types.find(t => t.code === filterTypeCode)?.name ?? filterTypeCode}
+          {#if filterTypeCodes.size > 0}
+            {@const names = types.filter(t => filterTypeCodes.has(t.code)).map(t => t.name)}
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
                          bg-slate-700 text-slate-300 border border-slate-600">
-              Type: {tn}
+              Type: {names.join(', ')}
             </span>
           {/if}
-          {#if filterStatus}
+          {#if filterStatuses.size > 0}
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
                          bg-slate-700 text-slate-300 border border-slate-600">
-              Status: {filterStatus}
+              Status: {[...filterStatuses].join(', ')}
             </span>
           {/if}
           {#if searchQuery.trim()}
@@ -528,6 +627,12 @@
         </div>
 
       </div>
+
+      <!-- Backdrop — closes any open multi-select dropdown on outside click -->
+      {#if openDropdown}
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+        <div class="fixed inset-0 z-40" on:click={() => openDropdown = null}></div>
+      {/if}
 
       </svelte:fragment>
     </ComponentInventoryTable>

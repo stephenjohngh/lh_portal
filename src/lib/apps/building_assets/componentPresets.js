@@ -16,12 +16,12 @@ import { api } from '$lib/utils/api';
 // Mirrors the initial values in ComponentsTab.svelte.
 export const DEFAULT_CONFIG = {
   filters: {
-    floorPreset:    'all',
-    filterFloorId:  '',
-    filterSystemId: '',
-    filterTypeCode: '',
-    filterStatus:   '',
-    searchQuery:    '',
+    floorPreset:     'all',
+    filterFloorId:   '',
+    filterSystemIds: [],
+    filterTypeCodes: [],
+    filterStatuses:  [],
+    searchQuery:     '',
   },
   columns: {
     showNotes:           true,
@@ -71,18 +71,32 @@ export async function removePreset(id) {
 
 // -- Config equality -----------------------------------------------------------
 // Returns true when a preset's filters + columns match the supplied live config.
-// Ignores filterFloorId — only meaningful when floorPreset === 'single'.
+// Handles both new (array) and legacy (single-string) filter formats for
+// smooth backward compatibility with presets saved before multi-select.
 export function configMatches(preset, config) {
   if (!config) return false;
   const pf = preset.filters;
   const pc = preset.columns;
   const { filters: cf, columns: cc } = config;
+
+  // Normalise a value that may be an array (new) or a single string (legacy) to a Set.
+  function toSet(v) {
+    if (Array.isArray(v)) return new Set(v);
+    return v ? new Set([v]) : new Set();
+  }
+  function sameSet(a, b) {
+    const sa = toSet(a), sb = toSet(b);
+    if (sa.size !== sb.size) return false;
+    for (const x of sa) if (!sb.has(x)) return false;
+    return true;
+  }
+
   return (
-    pf.floorPreset    === cf.floorPreset    &&
-    pf.filterSystemId === cf.filterSystemId &&
-    pf.filterTypeCode === cf.filterTypeCode &&
-    pf.filterStatus   === cf.filterStatus   &&
-    pf.searchQuery    === cf.searchQuery    &&
+    (pf.floorPreset  ?? 'all') === (cf.floorPreset  ?? 'all') &&
+    (pf.searchQuery  ?? '')    === (cf.searchQuery   ?? '')    &&
+    sameSet(pf.filterSystemIds ?? pf.filterSystemId, cf.filterSystemIds ?? cf.filterSystemId) &&
+    sameSet(pf.filterTypeCodes ?? pf.filterTypeCode, cf.filterTypeCodes ?? cf.filterTypeCode) &&
+    sameSet(pf.filterStatuses  ?? pf.filterStatus,   cf.filterStatuses  ?? cf.filterStatus)  &&
     pc.showNotes           === cc.showNotes           &&
     pc.showLinked          === cc.showLinked          &&
     pc.showInspectionNotes === cc.showInspectionNotes &&
