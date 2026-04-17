@@ -28,6 +28,8 @@
   export let title               = 'Inventory';
   export let readOnly            = false;
   export let inspections         = {};   // { [componentId]: latest component_inspections row }
+  export let showNotes           = true;
+  export let showLinked          = true;
   export let showInspectionNotes = false;
 
   const dispatch = createEventDispatcher();
@@ -200,8 +202,12 @@
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-28">Type</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Status</th>
             <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[260px]">Attributes</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[175px]">Linked</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide">Notes</th>
+            {#if showLinked}
+              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[175px]">Linked</th>
+            {/if}
+            {#if showNotes}
+              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[175px]">Notes</th>
+            {/if}
             {#if showInspectionNotes}
               <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[200px]">Insp. Notes</th>
             {/if}
@@ -290,25 +296,29 @@
               </td>
 
               <!-- ⑦ Linked -->
-              <td class="px-2 py-2 text-slate-400 overflow-hidden">
-                {#if links.length > 0}
-                  <span class="truncate block text-purple-400/80 font-mono text-[10px]"
-                        title={links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}>
-                    {links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}
-                  </span>
-                {:else}
-                  <span class="text-slate-700">—</span>
-                {/if}
-              </td>
+              {#if showLinked}
+                <td class="px-2 py-2 text-slate-400 overflow-hidden">
+                  {#if links.length > 0}
+                    <span class="truncate block text-purple-400/80 font-mono text-[10px]"
+                          title={links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}>
+                      {links.map(l => fmtComponentRef(l.to_component_ref, types)).join(', ')}
+                    </span>
+                  {:else}
+                    <span class="text-slate-700">—</span>
+                  {/if}
+                </td>
+              {/if}
 
               <!-- ⑧ Notes -->
-              <td class="px-2 py-2 text-slate-400 overflow-hidden">
-                {#if c.notes}
-                  <span class="truncate block text-sm text-slate-500" title={c.notes}>{c.notes}</span>
-                {:else}
-                  <span class="text-slate-700">—</span>
-                {/if}
-              </td>
+              {#if showNotes}
+                <td class="px-2 py-2 text-slate-400 overflow-hidden">
+                  {#if c.notes}
+                    <span class="truncate block text-sm text-slate-500" title={c.notes}>{c.notes}</span>
+                  {:else}
+                    <span class="text-slate-700">—</span>
+                  {/if}
+                </td>
+              {/if}
 
               <!-- ⑨ Inspection notes (optional column) -->
               {#if showInspectionNotes}
