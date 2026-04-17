@@ -1,17 +1,14 @@
 // src/lib/apps/building_assets/componentPresets.js
 // Named filter/column configurations for the Components tab.
 //
-// A preset captures:
-//   filters — floor scope, system, type, status, search
-//   columns — table column visibility
+// sort_order IS NOT NULL  →  "standard report" preset, created by an admin,
+//                            visible to all users, shown first (sorted by value).
+// sort_order IS NULL      →  personal preset, visible only to owner,
+//                            shown second (sorted alphabetically by name).
 //
-// Built-in presets are hardcoded constants (no DB row).
-// User presets are persisted to the component_presets table (migration 034).
-// RLS ensures each user only sees their own presets.
-//
-// Future extension: add a `report` section to capture V2ReportsTab content
-// toggles (includePlan, includeList, etc.) so a single preset drives both
-// the table view and the report generator.
+// Future extension: add a `report` section to the config JSONB to capture
+// V2ReportsTab content toggles (includePlan, includeList, etc.) so a single
+// preset drives both the table view and the report generator.
 
 import { api } from '$lib/utils/api';
 
@@ -33,54 +30,20 @@ export const DEFAULT_CONFIG = {
   },
 };
 
-// ── Built-in presets ──────────────────────────────────────────────────────────
-// Always visible, cannot be deleted, no DB row.
-export const BUILTIN_PRESETS = [
-  {
-    id:      'builtin_all',
-    name:    'All',
-    filters: { ...DEFAULT_CONFIG.filters },
-    columns: { ...DEFAULT_CONFIG.columns },
-  },
-  {
-    id:      'builtin_residential',
-    name:    'Residential',
-    filters: { ...DEFAULT_CONFIG.filters, floorPreset: 'residential' },
-    columns: { ...DEFAULT_CONFIG.columns },
-  },
-  {
-    id:      'builtin_basement',
-    name:    'Basement',
-    filters: { ...DEFAULT_CONFIG.filters, floorPreset: 'basement' },
-    columns: { ...DEFAULT_CONFIG.columns },
-  },
-  {
-    id:      'builtin_failed',
-    name:    'Failed',
-    filters: { ...DEFAULT_CONFIG.filters, filterStatus: 'failed' },
-    columns: { ...DEFAULT_CONFIG.columns, showInspectionNotes: true },
-  },
-  {
-    id:      'builtin_problem',
-    name:    'Problems',
-    filters: { ...DEFAULT_CONFIG.filters, filterStatus: 'problem' },
-    columns: { ...DEFAULT_CONFIG.columns, showInspectionNotes: true },
-  },
-];
-
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
-// Flatten a DB row into the flat preset shape used by the UI.
 function rowToPreset(row) {
   return {
-    id:      row.id,
-    name:    row.name,
-    filters: row.config?.filters ?? {},
-    columns: row.config?.columns ?? {},
+    id:         row.id,
+    name:       row.name,
+    sort_order: row.sort_order ?? null,
+    filters:    row.config?.filters ?? {},
+    columns:    row.config?.columns ?? {},
   };
 }
 
-/** Load all presets for the current user (RLS enforced). */
+/** Load all presets visible to the current user (RLS enforced).
+ *  Returns unsorted — caller should split by sort_order and sort each group. */
 export async function loadPresets() {
   const rows = await api.get('component_presets', {
     orderBy: 'created_at', ascending: true,
@@ -88,25 +51,26 @@ export async function loadPresets() {
   return rows.map(rowToPreset);
 }
 
-/** Save a new named preset to the DB. Returns the created preset. */
-export async function createPreset(name, filters, columns, userId) {
+/** Save a new named preset.
+ *  sortOrder: integer or null (null = personal; integer = shared standard report). */
+export async function createPreset(name, filters, columns, userId, sortOrder = null) {
   const row = await api.create('component_presets', {
     name,
     config:     { filters, columns },
+    sort_order: sortOrder,
     created_by: userId,
   });
   return rowToPreset(row);
 }
 
-/** Delete a user preset by ID. */
+/** Delete a preset by ID. RLS allows admins to delete any preset. */
 export async function removePreset(id) {
   await api.delete('component_presets', id);
 }
 
 // ── Config equality ───────────────────────────────────────────────────────────
 // Returns true when a preset's filters + columns match the supplied live config.
-// Ignores filterFloorId — only meaningful when floorPreset === 'single', which
-// no built-in preset uses.
+// Ignores filterFloorId — only meaningful when floorPreset === 'single'.
 export function configMatches(preset, config) {
   if (!config) return false;
   const pf = preset.filters;

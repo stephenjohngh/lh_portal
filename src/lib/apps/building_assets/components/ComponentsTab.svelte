@@ -56,11 +56,11 @@
   }
 
   // ── Preset state ──────────────────────────────────────────────────
-  let userPresets   = [];
-  let savingPreset  = false;
+  let presets      = [];
+  let savingPreset = false;
 
   onMount(async () => {
-    try { userPresets = await loadPresets(); } catch { /* non-critical */ }
+    try { presets = await loadPresets(); } catch { /* non-critical */ }
   });
 
   // Live snapshot passed to preset bar for active-highlight + "Save as…" capture.
@@ -83,11 +83,11 @@
   }
 
   async function handleSavePreset(e) {
-    const { name, filters, columns } = e.detail;
+    const { name, filters, columns, sortOrder } = e.detail;
     savingPreset = true;
     try {
-      const preset = await createPreset(name, filters, columns, $auth.user.id);
-      userPresets  = [...userPresets, preset];
+      const preset = await createPreset(name, filters, columns, $auth.user.id, sortOrder);
+      presets = [...presets, preset];
     } catch (err) {
       errorMsg = `Could not save preset: ${err.message}`;
     } finally {
@@ -98,7 +98,7 @@
   async function handleDeletePreset(e) {
     try {
       await removePreset(e.detail.id);
-      userPresets = userPresets.filter(p => p.id !== e.detail.id);
+      presets = presets.filter(p => p.id !== e.detail.id);
     } catch (err) {
       errorMsg = `Could not delete preset: ${err.message}`;
     }
@@ -337,7 +337,7 @@
       <!-- Preset bar -->
       <ComponentPresetBar
         {currentConfig}
-        {userPresets}
+        {presets}
         saving={savingPreset}
         on:apply={applyPreset}
         on:savepreset={handleSavePreset}
