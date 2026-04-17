@@ -7,7 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore }          from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
-  import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, fmt1 }
+  import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
 
   export let space;
@@ -70,11 +70,14 @@
   );
 
   // -- Measurements -------------------------------------------------
-  $: poly   = space?.polygon ?? [];
-  $: perim  = poly.length >= 3 ? measurePerimeter(poly, planAR, metresPerUnit) : null;
-  $: area   = poly.length >= 3 ? measureArea(poly, planAR, metresPerUnit)      : null;
-  $: vol    = poly.length >= 3
+  $: poly     = space?.polygon ?? [];
+  $: perim    = poly.length >= 3 ? measurePerimeter(poly, planAR, metresPerUnit) : null;
+  $: area     = poly.length >= 3 ? measureArea(poly, planAR, metresPerUnit)      : null;
+  $: vol      = poly.length >= 3
     ? measureVolume(poly, planAR, metresPerUnit, space?.height_m ?? null) : null;
+  $: sides    = poly.length >= 3 ? measureSides(poly, planAR, metresPerUnit) : [];
+  $: shortest = sides.length ? sides[0]                  : null;
+  $: longest  = sides.length ? sides[sides.length - 1]  : null;
 
   // Show live volume preview using editHeightM while editing
   $: previewVol = area != null && parsedHeight > 0 ? area * parsedHeight : null;
@@ -170,6 +173,16 @@
             {:else}
               <p class="text-sm text-teal-700">— m³</p>
             {/if}
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 pt-2 border-t border-teal-800/40">
+          <div>
+            <p class="text-xs text-teal-500/70">Longest side</p>
+            <p class="text-sm font-semibold text-teal-300">{fmt1(longest)} m</p>
+          </div>
+          <div>
+            <p class="text-xs text-teal-500/70">Shortest side</p>
+            <p class="text-sm font-semibold text-teal-300">{fmt1(shortest)} m</p>
           </div>
         </div>
         {#if previewVol == null && !editHeightM}

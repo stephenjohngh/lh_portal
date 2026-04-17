@@ -105,6 +105,26 @@ export function measureVolume(polygon, AR, mpu, heightM) {
 }
 
 /**
+ * All polygon edge lengths in metres, sorted ascending.
+ * Useful for deriving the shortest and longest side of a space.
+ * Returns [] if the polygon has fewer than 2 vertices or scale is unavailable.
+ * @param {Array<{x:number, y:number}>} polygon
+ * @param {number} AR
+ * @param {number} mpu  metres_per_unit
+ * @returns {number[]}
+ */
+export function measureSides(polygon, AR, mpu) {
+  if (!polygon?.length || !AR || !mpu) return [];
+  const sides = [];
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i];
+    const b = polygon[(i + 1) % polygon.length];
+    sides.push(Math.sqrt(((b.x - a.x) * AR) ** 2 + (b.y - a.y) ** 2) * mpu);
+  }
+  return sides.sort((a, b) => a - b);
+}
+
+/**
  * Format a number to 1 decimal place, or '—' if null/undefined.
  * @param {number|null} n
  * @returns {string}
