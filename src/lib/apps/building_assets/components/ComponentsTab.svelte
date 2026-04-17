@@ -39,8 +39,8 @@
   const BASEMENT_SHORT    = new Set(['X','L','G']);
 
   // -- Filter state --------------------------------------------------
-  let floorPreset     = 'all';   // 'all' | 'residential' | 'basement' | 'single'
-  let filterFloorId   = '';
+  let floorPreset     = 'all';   // 'all' | 'residential' | 'basement' | 'custom'
+  let filterFloorIds  = new Set();   // only used when floorPreset === 'custom'
   let filterSystemIds = new Set();   // empty = all systems
   let filterTypeCodes = new Set();
   let filterStatuses  = new Set();
@@ -67,7 +67,7 @@
   $: currentConfig = {
     filters: {
       floorPreset,
-      filterFloorId,
+      filterFloorIds:  [...filterFloorIds],
       filterSystemIds: [...filterSystemIds],
       filterTypeCodes: [...filterTypeCodes],
       filterStatuses:  [...filterStatuses],
@@ -78,9 +78,12 @@
 
   function applyPreset(e) {
     const { filters: f, columns: c } = e.detail;
-    floorPreset   = f.floorPreset   ?? 'all';
-    filterFloorId = f.filterFloorId ?? '';
-    searchQuery   = f.searchQuery   ?? '';
+    searchQuery   = f.searchQuery ?? '';
+    // Floor — handle legacy 'single' preset (single filterFloorId string → Set)
+    filterFloorIds = new Set(f.filterFloorIds ?? (f.filterFloorId ? [f.filterFloorId] : []));
+    floorPreset    = f.floorPreset === 'single'
+      ? (filterFloorIds.size > 0 ? 'custom' : 'all')
+      : (f.floorPreset ?? 'all');
     // Support both new (arrays) and legacy single-value preset formats
     filterSystemIds = new Set(f.filterSystemIds ?? (f.filterSystemId ? [f.filterSystemId] : []));
     filterTypeCodes = new Set(f.filterTypeCodes ?? (f.filterTypeCode ? [f.filterTypeCode] : []));
@@ -130,6 +133,12 @@
   // -- Multi-select dropdown state -----------------------------------
   let openDropdown = null;   // 'system' | 'type' | 'status' | null
 
+  function toggleFloor(id) {
+    filterFloorIds = new Set(filterFloorIds);
+    if (filterFloorIds.has(id)) filterFloorIds.delete(id);
+    else filterFloorIds.add(id);
+    floorPreset = filterFloorIds.size > 0 ? 'custom' : 'all';
+  }
   function toggleSystem(id) {
     filterSystemIds = new Set(filterSystemIds);
     if (filterSystemIds.has(id)) filterSystemIds.delete(id);
@@ -154,13 +163,13 @@
   $: filteredComponents = (() => {
     let list = components;
 
-    // Floor preset
+    // Floor
     if (floorPreset === 'residential') {
       list = list.filter(c => residentialFloorIds.has(c.floor_id));
     } else if (floorPreset === 'basement') {
       list = list.filter(c => basementFloorIds.has(c.floor_id));
-    } else if (floorPreset === 'single' && filterFloorId) {
-      list = list.filter(c => c.floor_id === filterFloorId);
+    } else if (floorPreset === 'custom' && filterFloorIds.size > 0) {
+      list = list.filter(c => filterFloorIds.has(c.floor_id));
     }
 
     // System (filter via type's building_system_id)
@@ -194,9 +203,12 @@
   $: floorLabel = (() => {
     if (floorPreset === 'residential') return 'Residential (G–7)';
     if (floorPreset === 'basement')    return 'Basement (X, L, G)';
-    if (floorPreset === 'single' && filterFloorId) {
-      const fl = floors.find(f => f.id === filterFloorId);
-      return fl ? `${fl.name} (${fl.short_name})` : 'Single floor';
+    if (floorPreset === 'custom' && filterFloorIds.size > 0) {
+      if (filterFloorIds.size === 1) {
+        const fl = floors.find(f => filterFloorIds.has(f.id));
+        return fl ? `${fl.name} (${fl.short_name})` : '1 floor';
+      }
+      return `${filterFloorIds.size} floors`;
     }
     return 'All floors';
   })();
@@ -256,8 +268,8 @@
       });
 
   function clearFilters() {
-    floorPreset     = 'all';
-    filterFloorId   = '';
+    floorPreset    = 'all';
+    filterFloorIds = new Set();
     filterSystemIds = new Set();
     filterTypeCodes = new Set();
     filterStatuses  = new Set();
@@ -389,43 +401,60 @@
       <!-- Filter controls -->
       <div class="px-4 py-3 border-b border-slate-700 flex flex-wrap gap-3 items-end bg-slate-800/60">
 
-        <!-- Floor scope -->
+        <!-- Floor scope — presets + multi-select individual floors -->
         <div class="flex flex-col gap-1">
           <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Floor</p>
-          <div class="flex rounded-lg overflow-hidden border border-slate-600 text-xs">
-            {#each [
-              { id: 'all',         label: 'All' },
-              { id: 'residential', label: 'Residential' },
-              { id: 'basement',    label: 'Basement' },
-              { id: 'single',      label: 'Single…' },
-            ] as p (p.id)}
+          <div class="flex items-center gap-1.5">
+            <!-- Named presets -->
+            <div class="flex rounded-lg overflow-hidden border border-slate-600 text-xs">
+              {#each [
+                { id: 'all',         label: 'All' },
+                { id: 'residential', label: 'Residential' },
+                { id: 'basement',    label: 'Basement' },
+              ] as p (p.id)}
+                <button
+                  on:click={() => { floorPreset = p.id; filterFloorIds = new Set(); }}
+                  class="px-3 py-1.5 border-l border-slate-600 first:border-l-0 transition-colors
+                         {floorPreset === p.id
+                           ? 'bg-purple-600 text-white font-medium'
+                           : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}"
+                >{p.label}</button>
+              {/each}
+            </div>
+            <!-- Individual floor multi-select -->
+            <div class="relative">
               <button
-                on:click={() => { floorPreset = p.id; if (p.id !== 'single') filterFloorId = ''; }}
-                class="px-3 py-1.5 border-l border-slate-600 first:border-l-0 transition-colors
-                       {floorPreset === p.id
-                         ? 'bg-purple-600 text-white font-medium'
-                         : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}"
-              >{p.label}</button>
-            {/each}
+                on:click={() => openDropdown = openDropdown === 'floor' ? null : 'floor'}
+                class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
+                       focus:outline-none flex items-center gap-1.5
+                       {filterFloorIds.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
+                title="Select individual floors"
+              >
+                <span>
+                  {#if filterFloorIds.size === 0}Floors…
+                  {:else if filterFloorIds.size === 1}{floors.find(f => filterFloorIds.has(f.id))?.short_name ?? '1'}
+                  {:else}{filterFloorIds.size} floors{/if}
+                </span>
+                <span class="text-slate-500 text-[10px]">▾</span>
+              </button>
+              {#if openDropdown === 'floor'}
+                <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
+                            rounded-lg shadow-xl min-w-max py-1 max-h-72 overflow-y-auto">
+                  {#each floors as f (f.id)}
+                    <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
+                      <input type="checkbox" checked={filterFloorIds.has(f.id)}
+                             on:change={() => toggleFloor(f.id)}
+                             class="rounded accent-purple-500 shrink-0" />
+                      <span class="text-xs text-slate-300 whitespace-nowrap">
+                        {f.name} <span class="text-slate-500">({f.short_name})</span>
+                      </span>
+                    </label>
+                  {/each}
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
-
-        <!-- Single floor picker (only when preset = single) -->
-        {#if floorPreset === 'single'}
-          <div class="flex flex-col gap-1">
-            <p class="text-[10px] text-slate-500 uppercase tracking-wide font-medium">Select floor</p>
-            <select
-              bind:value={filterFloorId}
-              class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-xs text-white
-                     focus:outline-none focus:border-purple-500"
-            >
-              <option value="">— pick a floor —</option>
-              {#each floors as f}
-                <option value={f.id}>{f.name} ({f.short_name})</option>
-              {/each}
-            </select>
-          </div>
-        {/if}
 
         <!-- System filter — multi-select dropdown -->
         <div class="flex flex-col gap-1 relative">

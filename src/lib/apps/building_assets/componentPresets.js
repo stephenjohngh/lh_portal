@@ -17,7 +17,7 @@ import { api } from '$lib/utils/api';
 export const DEFAULT_CONFIG = {
   filters: {
     floorPreset:     'all',
-    filterFloorId:   '',
+    filterFloorIds:  [],
     filterSystemIds: [],
     filterTypeCodes: [],
     filterStatuses:  [],
@@ -94,9 +94,10 @@ export function configMatches(preset, config) {
   return (
     (pf.floorPreset  ?? 'all') === (cf.floorPreset  ?? 'all') &&
     (pf.searchQuery  ?? '')    === (cf.searchQuery   ?? '')    &&
-    sameSet(pf.filterSystemIds ?? pf.filterSystemId, cf.filterSystemIds ?? cf.filterSystemId) &&
-    sameSet(pf.filterTypeCodes ?? pf.filterTypeCode, cf.filterTypeCodes ?? cf.filterTypeCode) &&
-    sameSet(pf.filterStatuses  ?? pf.filterStatus,   cf.filterStatuses  ?? cf.filterStatus)  &&
+    sameSet(pf.filterFloorIds  ?? (pf.filterFloorId  ? [pf.filterFloorId]  : []), cf.filterFloorIds  ?? []) &&
+    sameSet(pf.filterSystemIds ?? (pf.filterSystemId ? [pf.filterSystemId] : []), cf.filterSystemIds ?? []) &&
+    sameSet(pf.filterTypeCodes ?? (pf.filterTypeCode ? [pf.filterTypeCode] : []), cf.filterTypeCodes ?? []) &&
+    sameSet(pf.filterStatuses  ?? (pf.filterStatus   ? [pf.filterStatus]   : []), cf.filterStatuses  ?? []) &&
     pc.showNotes           === cc.showNotes           &&
     pc.showLinked          === cc.showLinked          &&
     pc.showInspectionNotes === cc.showInspectionNotes &&
