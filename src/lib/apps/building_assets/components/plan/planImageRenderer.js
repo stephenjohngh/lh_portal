@@ -144,11 +144,20 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
       // No lower clamp — small plans get proportionally smaller markers.
       // Absolute pixel minimums keep text legible even at the smallest scale.
       // Upper clamp of 2.5 prevents enormous markers on very high-res scans.
-      const scale    = Math.min(2.5, canvas.width / 1500);
-      const r        = Math.max(6,  Math.round(14 * scale));   // marker radius
-      const initSize = Math.max(5,  Math.round(11 * scale));   // initial font size
-      const idSize   = Math.max(9,  Math.round(22 * scale));   // asset ID font size
-      const outlineW = Math.max(2,  Math.round(4  * scale));   // asset ID outline width
+      const scale = Math.min(2.5, canvas.width / 1500);
+
+      // Base marker dimensions at scale 1.0 for the default 'md' size.
+      // Per-marker sizes are derived by multiplying these by a size multiplier.
+      const baseR        = Math.round(14 * scale);   // md radius
+      const baseInitSize = Math.round(11 * scale);   // md initial font size
+      // Asset ID label stays at a consistent size regardless of marker_size.
+      const idSize   = Math.max(9,  Math.round(22 * scale));
+      const outlineW = Math.max(2,  Math.round(4  * scale));
+
+      // Multipliers relative to 'md' (w-6 = 24px), matching ComponentMarker.svelte:
+      //   sm = w-4 (16px) = 16/24   md = w-6 (24px) = 1.0
+      //   lg = w-8 (32px) = 32/24   xl = w-11 (44px) = 44/24
+      const SIZE_MULT = { sm: 0.667, md: 1.0, lg: 1.333, xl: 1.833 };
 
       for (const c of floorComps) {
         if (c.x_position == null || c.y_position == null || c.plan_id !== plan.id) continue;
@@ -158,6 +167,11 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
         const shape  = t?.marker_shape ?? 'circle';
         const x      = c.x_position * canvas.width;
         const y      = c.y_position * canvas.height;
+
+        // Per-marker size (sm/md/lg/xl), with absolute pixel minimums for legibility
+        const mult     = SIZE_MULT[t?.marker_size ?? 'md'] ?? 1.0;
+        const r        = Math.max(4, Math.round(baseR        * mult));
+        const initSize = Math.max(4, Math.round(baseInitSize * mult));
 
         // Inactive components are drawn at 40% opacity (matches live plan CSS opacity-40)
         if (c.status === 'inactive') ctx.globalAlpha = 0.4;
