@@ -116,8 +116,8 @@
   let showInspectionNotes = false;
   let view                = 'list';   // 'list' | 'summary' — owned here so presets can restore it
 
-  // -- Derived: unique statuses present in components ----------------
-  $: allStatuses = [...new Set(components.map(c => (c.status || 'ok').toLowerCase()))].sort();
+  // -- All canonical component status values (always shown in full) --
+  const ALL_STATUSES = ['ok', 'failed', 'problem', 'inactive'];
 
   // -- Floor sets for presets ----------------------------------------
   $: residentialFloorIds = new Set(floors.filter(f => RESIDENTIAL_SHORT.has(f.short_name)).map(f => f.id));
@@ -211,10 +211,20 @@
     } catch (err) { errorMsg = err.message; }
   }
 
-  // Types filtered to selected system (for the type dropdown)
+  // Types for the dropdown: filtered to selected system when one is set,
+  // otherwise all types sorted by system presentation_order then type presentation_order.
+  // Both arrays come from the store pre-sorted by presentation_order, so
+  // building index maps gives a stable, cheap comparator.
+  $: systemOrderIndex = Object.fromEntries(systems.map((s, i) => [s.id, i]));
+  $: typeOrderIndex   = Object.fromEntries(types.map((t, i) => [t.code, i]));
   $: typesForSystem = filterSystemId
     ? types.filter(t => t.building_system_id === filterSystemId)
-    : types;
+    : [...types].sort((a, b) => {
+        const sd = (systemOrderIndex[a.building_system_id] ?? 999)
+                 - (systemOrderIndex[b.building_system_id] ?? 999);
+        if (sd !== 0) return sd;
+        return (typeOrderIndex[a.code] ?? 999) - (typeOrderIndex[b.code] ?? 999);
+      });
 
   function clearFilters() {
     floorPreset    = 'all';
@@ -427,7 +437,7 @@
                    focus:outline-none focus:border-purple-500"
           >
             <option value="">All statuses</option>
-            {#each allStatuses as s}
+            {#each ALL_STATUSES as s}
               <option value={s}>{s}</option>
             {/each}
           </select>
