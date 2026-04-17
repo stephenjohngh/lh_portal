@@ -32,9 +32,9 @@
   export let showLinked          = true;
   export let showInspectionNotes = false;
 
-  const dispatch = createEventDispatcher();
+  export let view = 'list';   // 'list' | 'summary' — lifted to parent so presets can restore it
 
-  let view = 'list';   // 'list' | 'summary'
+  const dispatch = createEventDispatcher();
 
   // -- Delete confirm (two-click, 3 s timeout) -----------------------
   let confirmingDelete = new Set();

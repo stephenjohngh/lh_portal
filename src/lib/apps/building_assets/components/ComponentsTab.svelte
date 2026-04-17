@@ -66,7 +66,7 @@
   // Live snapshot passed to preset bar for active-highlight + "Save as…" capture.
   $: currentConfig = {
     filters: { floorPreset, filterFloorId, filterSystemId, filterTypeCode, filterStatus, searchQuery },
-    columns: { showNotes, showLinked, showInspectionNotes },
+    columns: { showNotes, showLinked, showInspectionNotes, view },
   };
 
   function applyPreset(e) {
@@ -80,6 +80,7 @@
     showNotes           = c.showNotes;
     showLinked          = c.showLinked;
     showInspectionNotes = c.showInspectionNotes;
+    view                = c.view ?? 'list';
   }
 
   async function handleSavePreset(e) {
@@ -113,6 +114,7 @@
   let showNotes           = true;
   let showLinked          = true;
   let showInspectionNotes = false;
+  let view                = 'list';   // 'list' | 'summary' — owned here so presets can restore it
 
   // -- Derived: unique statuses present in components ----------------
   $: allStatuses = [...new Set(components.map(c => (c.status || 'ok').toLowerCase()))].sort();
@@ -325,6 +327,7 @@
       {showNotes}
       {showLinked}
       {showInspectionNotes}
+      bind:view
       title="Components"
       {readOnly}
       on:selectcomponent={e => { editingComponent = e.detail.component; errorMsg = ''; }}

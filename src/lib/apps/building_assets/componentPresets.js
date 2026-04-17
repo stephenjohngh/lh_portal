@@ -27,6 +27,7 @@ export const DEFAULT_CONFIG = {
     showNotes:           true,
     showLinked:          true,
     showInspectionNotes: false,
+    view:                'list',
   },
 };
 
@@ -84,6 +85,7 @@ export function configMatches(preset, config) {
     pf.searchQuery    === cf.searchQuery    &&
     pc.showNotes           === cc.showNotes           &&
     pc.showLinked          === cc.showLinked          &&
-    pc.showInspectionNotes === cc.showInspectionNotes
+    pc.showInspectionNotes === cc.showInspectionNotes &&
+    (pc.view ?? 'list')    === (cc.view ?? 'list')
   );
 }
