@@ -96,10 +96,29 @@
     if (e.key === 'Escape') cancelSave();
   }
 
-  // -- Delete --------------------------------------------------------
-  function deletePreset(id, e) {
+  // -- Delete (two-click: arm then confirm, auto-cancel after 3 s) --
+  let confirmingId  = null;
+  let confirmTimer  = null;
+
+  function armDelete(id, e) {
     e.stopPropagation();
-    dispatch('deletepreset', { id });
+    if (confirmingId === id) {
+      // Second click — confirm
+      clearTimeout(confirmTimer);
+      confirmingId = null;
+      dispatch('deletepreset', { id });
+      return;
+    }
+    // First click — arm
+    clearTimeout(confirmTimer);
+    confirmingId = id;
+    confirmTimer = setTimeout(() => { confirmingId = null; }, 3000);
+  }
+
+  function cancelDelete(e) {
+    e.stopPropagation();
+    clearTimeout(confirmTimer);
+    confirmingId = null;
   }
 </script>
 
@@ -111,26 +130,39 @@
 
   <!-- -- Group 1: standard reports (sort_order IS NOT NULL) ---------- -->
   {#each standardGroup as p (p.id)}
-    {@const active = configMatches(p, currentConfig)}
+    {@const active    = configMatches(p, currentConfig)}
+    {@const confirming = confirmingId === p.id}
     <div class="flex items-center rounded overflow-hidden border transition-colors
-                {active
-                  ? 'border-purple-500/50 bg-purple-800/30'
-                  : 'border-slate-600/40 bg-slate-700/50 hover:border-slate-500/60'}">
+                {confirming
+                  ? 'border-red-500/50 bg-red-900/20'
+                  : active
+                    ? 'border-purple-500/50 bg-purple-800/30'
+                    : 'border-slate-600/40 bg-slate-700/50 hover:border-slate-500/60'}">
       <button
         on:click={() => apply(p)}
         class="px-2.5 py-0.5 text-[11px] font-medium transition-colors
-               {active ? 'text-purple-200' : 'text-slate-300 hover:text-white'}"
+               {confirming ? 'text-red-300/70' : active ? 'text-purple-200' : 'text-slate-300 hover:text-white'}"
       >{p.name}</button>
       <!-- Delete only for admins on standard presets -->
       {#if $permissions.isAdmin}
         <button
-          on:click={e => deletePreset(p.id, e)}
+          on:click={e => armDelete(p.id, e)}
           class="px-1.5 py-0.5 text-[10px] border-l transition-colors
-                 {active
-                   ? 'border-purple-500/40 text-purple-400 hover:text-red-400 hover:bg-purple-900/40'
-                   : 'border-slate-600/40 text-slate-600 hover:text-red-400 hover:bg-slate-700'}"
-          title="Remove standard preset"
-        >✕</button>
+                 {confirming
+                   ? 'border-red-500/40 bg-red-700/60 text-white font-semibold'
+                   : active
+                     ? 'border-purple-500/40 text-purple-400 hover:text-red-400 hover:bg-purple-900/40'
+                     : 'border-slate-600/40 text-slate-600 hover:text-red-400 hover:bg-slate-700'}"
+          title={confirming ? 'Click again to confirm delete' : 'Remove standard preset'}
+        >{confirming ? 'Delete?' : '✕'}</button>
+        {#if confirming}
+          <button
+            on:click={cancelDelete}
+            class="px-1.5 py-0.5 text-[10px] border-l border-red-500/40
+                   text-red-400/70 hover:text-slate-300 transition-colors"
+            title="Cancel"
+          >✕</button>
+        {/if}
       {/if}
     </div>
   {/each}
@@ -149,24 +181,37 @@
 
   <!-- -- Group 2: personal presets (sort_order IS NULL) ------------- -->
   {#each personalGroup as p (p.id)}
-    {@const active = configMatches(p, currentConfig)}
+    {@const active     = configMatches(p, currentConfig)}
+    {@const confirming = confirmingId === p.id}
     <div class="flex items-center rounded overflow-hidden border transition-colors
-                {active
-                  ? 'border-purple-500/50 bg-purple-800/30'
-                  : 'border-slate-600/50 bg-slate-700/60 hover:border-slate-500/60'}">
+                {confirming
+                  ? 'border-red-500/50 bg-red-900/20'
+                  : active
+                    ? 'border-purple-500/50 bg-purple-800/30'
+                    : 'border-slate-600/50 bg-slate-700/60 hover:border-slate-500/60'}">
       <button
         on:click={() => apply(p)}
         class="px-2.5 py-0.5 text-[11px] transition-colors
-               {active ? 'text-purple-200 font-medium' : 'text-slate-300 hover:text-white'}"
+               {confirming ? 'text-red-300/70' : active ? 'text-purple-200 font-medium' : 'text-slate-300 hover:text-white'}"
       >{p.name}</button>
       <button
-        on:click={e => deletePreset(p.id, e)}
+        on:click={e => armDelete(p.id, e)}
         class="px-1.5 py-0.5 text-[10px] border-l transition-colors
-               {active
-                 ? 'border-purple-500/40 text-purple-400 hover:text-red-400 hover:bg-purple-900/40'
-                 : 'border-slate-600/50 text-slate-600 hover:text-red-400 hover:bg-slate-700'}"
-        title="Remove preset"
-      >✕</button>
+               {confirming
+                 ? 'border-red-500/40 bg-red-700/60 text-white font-semibold'
+                 : active
+                   ? 'border-purple-500/40 text-purple-400 hover:text-red-400 hover:bg-purple-900/40'
+                   : 'border-slate-600/50 text-slate-600 hover:text-red-400 hover:bg-slate-700'}"
+        title={confirming ? 'Click again to confirm delete' : 'Remove preset'}
+      >{confirming ? 'Delete?' : '✕'}</button>
+      {#if confirming}
+        <button
+          on:click={cancelDelete}
+          class="px-1.5 py-0.5 text-[10px] border-l border-red-500/40
+                 text-red-400/70 hover:text-slate-300 transition-colors"
+          title="Cancel"
+        >✕</button>
+      {/if}
     </div>
   {/each}
 
