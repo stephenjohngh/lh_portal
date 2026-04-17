@@ -15,6 +15,7 @@
 
   export let currentConfig = null;   // { filters, columns } — live state from parent
   export let userPresets   = [];     // [{ id, name, filters, columns }] — managed by parent
+  export let saving        = false;  // true while parent is persisting a new preset
 
   const dispatch = createEventDispatcher();
 
@@ -129,10 +130,10 @@
       />
       <button
         on:click={confirmSave}
-        disabled={!savingName.trim()}
+        disabled={!savingName.trim() || saving}
         class="px-2 py-0.5 rounded text-[11px] bg-purple-600 hover:bg-purple-500
                text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-      >Save</button>
+      >{saving ? 'Saving…' : 'Save'}</button>
       <button
         on:click={cancelSave}
         class="px-1.5 py-0.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors"

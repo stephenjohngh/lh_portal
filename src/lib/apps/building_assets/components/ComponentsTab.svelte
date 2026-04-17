@@ -8,8 +8,9 @@
   import { onMount }             from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { permissions }         from '$lib/stores/permissions';
+  import { auth }                from '$lib/stores/auth.js';
   import {
-    loadUserPresets, saveUserPresets, makePresetId,
+    loadPresets, createPreset, removePreset,
   } from '../componentPresets.js';
 
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
@@ -55,11 +56,14 @@
   }
 
   // ── Preset state ──────────────────────────────────────────────────
-  let userPresets = [];
-  onMount(() => { userPresets = loadUserPresets(); });
+  let userPresets   = [];
+  let savingPreset  = false;
 
-  // Live snapshot of current filters + column visibility — passed to preset bar
-  // so it can highlight the active preset and capture the config on "Save as…".
+  onMount(async () => {
+    try { userPresets = await loadPresets(); } catch { /* non-critical */ }
+  });
+
+  // Live snapshot passed to preset bar for active-highlight + "Save as…" capture.
   $: currentConfig = {
     filters: { floorPreset, filterFloorId, filterSystemId, filterTypeCode, filterStatus, searchQuery },
     columns: { showNotes, showLinked, showInspectionNotes },
@@ -78,15 +82,26 @@
     showInspectionNotes = c.showInspectionNotes;
   }
 
-  function handleSavePreset(e) {
+  async function handleSavePreset(e) {
     const { name, filters, columns } = e.detail;
-    userPresets = [...userPresets, { id: makePresetId(), name, filters, columns }];
-    saveUserPresets(userPresets);
+    savingPreset = true;
+    try {
+      const preset = await createPreset(name, filters, columns, $auth.user.id);
+      userPresets  = [...userPresets, preset];
+    } catch (err) {
+      errorMsg = `Could not save preset: ${err.message}`;
+    } finally {
+      savingPreset = false;
+    }
   }
 
-  function handleDeletePreset(e) {
-    userPresets = userPresets.filter(p => p.id !== e.detail.id);
-    saveUserPresets(userPresets);
+  async function handleDeletePreset(e) {
+    try {
+      await removePreset(e.detail.id);
+      userPresets = userPresets.filter(p => p.id !== e.detail.id);
+    } catch (err) {
+      errorMsg = `Could not delete preset: ${err.message}`;
+    }
   }
 
   // ── UI state ──────────────────────────────────────────────────────
@@ -323,6 +338,7 @@
       <ComponentPresetBar
         {currentConfig}
         {userPresets}
+        saving={savingPreset}
         on:apply={applyPreset}
         on:savepreset={handleSavePreset}
         on:deletepreset={handleDeletePreset}
