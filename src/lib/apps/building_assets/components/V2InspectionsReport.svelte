@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/V2InspectionsReport.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/V2InspectionsReport.svelte -->
 <!-- Report modal for V2 walk inspection sessions.
      Mirrors WalkInspectionsReport but adapted for V2 data model:
        - v2_walk_sessions + component_inspections
@@ -24,7 +24,7 @@
   const logger   = getLogger('V2InspectionsReport');
   const dispatch = createEventDispatcher();
 
-  // ── Props ─────────────────────────────────────────────────────────────────
+  // -- Props -----------------------------------------------------------------
   // sessions: already-filtered list shown in the tab
   export let sessions         = [];
   // types + floors: from $buildingAssetsStore — needed for client-side resolution
@@ -33,10 +33,10 @@
   // inspectionsCache: already-loaded flattened rows from the tab (may be partial)
   export let inspectionsCache = {};   // { [sessionId]: flattened[] }
 
-  // ── Report type ───────────────────────────────────────────────────────────
+  // -- Report type -----------------------------------------------------------
   let reportType = 'summary';   // 'summary' | 'detailed'
 
-  // ── Session selection (default: all) ──────────────────────────────────────
+  // -- Session selection (default: all) --------------------------------------
   let selectedIds = new Set(sessions.map(s => s.id));
 
   $: selectedSessions = sessions.filter(s => selectedIds.has(s.id));
@@ -51,7 +51,7 @@
     selectedIds = next;
   }
 
-  // ── Client-side resolution helpers ────────────────────────────────────────
+  // -- Client-side resolution helpers ----------------------------------------
   function resolveType(type_code) {
     return types.find(t => t.code === type_code) ?? null;
   }
@@ -100,7 +100,7 @@
     });
   }
 
-  // ── Report generation ─────────────────────────────────────────────────────
+  // -- Report generation -----------------------------------------------------
   let generating  = false;
   let genProgress = '';
   let genError    = null;
@@ -166,7 +166,7 @@
 
   <div class="section-spacing">
 
-    <!-- ── Report type ────────────────────────────────────────────────────── -->
+    <!-- -- Report type ------------------------------------------------------ -->
     <div>
       <h4 class="font-semibold mb-3">Report Type</h4>
       <div class="flex gap-3">
@@ -195,7 +195,7 @@
       </div>
     </div>
 
-    <!-- ── Session selector ───────────────────────────────────────────────── -->
+    <!-- -- Session selector ------------------------------------------------- -->
     <div>
       <div class="flex items-center justify-between mb-2">
         <h4 class="font-semibold">

@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   // src/lib/apps/mobileplan/components/FilterSheet.svelte
   // Filter by status, spaces toggle, and system/type tree.
   // Changes are applied when user taps "Apply Filters".
@@ -30,7 +30,7 @@
     localShowSpaces     = showSpaces;
   }
 
-  // ── Status toggle ─────────────────────────────────────────────────────────
+  // -- Status toggle ---------------------------------------------------------
 
   function toggleStatus(s) {
     const next = new Set(localHiddenStatuses);
@@ -38,7 +38,7 @@
     localHiddenStatuses = next;
   }
 
-  // ── System/type tree ──────────────────────────────────────────────────────
+  // -- System/type tree ------------------------------------------------------
 
   function typesForSystem(systemId) {
     return types.filter(t => t.building_system_id === systemId);
@@ -71,7 +71,7 @@
     localHiddenTypes = next;
   }
 
-  // ── Apply / Clear / Set All ───────────────────────────────────────────────
+  // -- Apply / Clear / Set All -----------------------------------------------
 
   // Derive button label from current state:
   // "Set All" when everything is hidden; "Clear" otherwise.

@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/InspectionSessionSummary.svelte -->
+﻿<!-- src/lib/apps/inspection/components/InspectionSessionSummary.svelte -->
 <!-- Read-only summary of a completed v2 walk session: stats + per-component results -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
@@ -61,7 +61,7 @@
     <div class="sum-title">SESSION SUMMARY</div>
   </div>
 
-  <!-- ── Meta ─────────────────────────────────────────────────────────────── -->
+  <!-- -- Meta --------------------------------------------------------------- -->
   <div class="meta">
     <div class="meta-preset">{presetDisp}</div>
     {#if session?.emergency_only}

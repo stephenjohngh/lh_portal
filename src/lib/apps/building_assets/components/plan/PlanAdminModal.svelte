@@ -1,4 +1,4 @@
-<!-- plan/PlanAdminModal.svelte -->
+﻿<!-- plan/PlanAdminModal.svelte -->
 <!-- Admin panel for creating, editing and copying V2 floor plans.
      mode: 'new' | 'edit' | 'copy'
      plan: the currently selected plan (required for edit/copy, ignored for new). -->
@@ -18,7 +18,7 @@
   const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
   const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
-  // ── Form state ────────────────────────────────────────────────────
+  // -- Form state ----------------------------------------------------
   let editName     = '';
   let editBuilding = '';
   let editFloorId  = '';
@@ -68,7 +68,7 @@
            : mode === 'edit' ? 'Edit Plan Info'
            :                   'Copy Plan';
 
-  // ── Image handling ────────────────────────────────────────────────
+  // -- Image handling ------------------------------------------------
   function clearImage() {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     imageFile    = null;
@@ -97,7 +97,7 @@
   function onDragLeave()   { dragOver = false; }
   function onDrop(e)       { e.preventDefault(); dragOver = false; acceptFile(e.dataTransfer.files?.[0]); }
 
-  // ── Submit handlers ───────────────────────────────────────────────
+  // -- Submit handlers -----------------------------------------------
   async function handleNew() {
     if (!editBuilding.trim()) { errorMsg = 'Building name is required.'; return; }
     if (!imageFile)           { errorMsg = 'Please select a plan image.'; return; }
@@ -197,7 +197,7 @@
       </p>
     {/if}
 
-    <!-- ── Copy progress bar ───────────────────────────────────── -->
+    <!-- -- Copy progress bar ------------------------------------- -->
     {#if copyProgress !== null}
       <div class="flex flex-col gap-1.5">
         <p class="text-xs text-slate-400">
@@ -220,7 +220,7 @@
       </div>
     {/if}
 
-    <!-- ── Source plan info (copy mode) ───────────────────────── -->
+    <!-- -- Source plan info (copy mode) ------------------------- -->
     {#if mode === 'copy' && plan}
       <div class="rounded-lg bg-slate-700/50 border border-slate-600/50 px-3 py-2.5">
         <p class="text-xs text-slate-500 mb-1">Copying from</p>
@@ -238,7 +238,7 @@
       </div>
     {/if}
 
-    <!-- ── Floor picker ────────────────────────────────────────── -->
+    <!-- -- Floor picker ------------------------------------------ -->
     <div class="flex flex-col gap-1">
       <label for="pa-floor" class="text-xs text-slate-400">Floor</label>
       <select
@@ -255,7 +255,7 @@
       </select>
     </div>
 
-    <!-- ── Building ────────────────────────────────────────────── -->
+    <!-- -- Building ---------------------------------------------- -->
     <div class="flex flex-col gap-1">
       <label for="pa-building" class="text-xs text-slate-400">
         Building <span class="text-red-400">*</span>
@@ -271,7 +271,7 @@
       />
     </div>
 
-    <!-- ── Name (optional) ─────────────────────────────────────── -->
+    <!-- -- Name (optional) --------------------------------------- -->
     <div class="flex flex-col gap-1">
       <label for="pa-name" class="text-xs text-slate-400">
         Plan name
@@ -288,7 +288,7 @@
       />
     </div>
 
-    <!-- ── Description (new/edit only) ────────────────────────── -->
+    <!-- -- Description (new/edit only) -------------------------- -->
     {#if mode !== 'copy'}
       <div class="flex flex-col gap-1">
         <label for="pa-desc" class="text-xs text-slate-400">Description</label>
@@ -304,7 +304,7 @@
       </div>
     {/if}
 
-    <!-- ── Image upload (new, and replace section for edit) ───── -->
+    <!-- -- Image upload (new, and replace section for edit) ----- -->
     {#if mode === 'new' || mode === 'edit'}
       <div class="flex flex-col gap-1.5">
         <p class="text-xs text-slate-400">
@@ -370,7 +370,7 @@
 
   </div><!-- /.body -->
 
-  <!-- ── Footer ─────────────────────────────────────────────────── -->
+  <!-- -- Footer --------------------------------------------------- -->
   <svelte:fragment slot="footer">
     <div class="flex gap-2 w-full">
 

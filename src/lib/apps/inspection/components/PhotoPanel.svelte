@@ -1,4 +1,4 @@
-<!-- inspection/components/PhotoPanel.svelte -->
+﻿<!-- inspection/components/PhotoPanel.svelte -->
 <!-- Manages photo capture, pending queue, and display of uploaded photos.
      Uses the inspection scoped-style theme (no Tailwind).
      Parent owns pendingPhotos and photoUrls via bind: so it can run
@@ -11,25 +11,25 @@
 
   const MAX_PHOTOS = 4;
 
-  // ── Bound by parent — parent owns these arrays ────────────────────
+  // -- Bound by parent — parent owns these arrays --------------------
   export let photoUrls     = [];   // already-uploaded URLs
   export let pendingPhotos = [];   // { blob, preview, uploading, error }
 
-  // ── Context passed from parent (used in uploadAllPending, kept here
-  //    as passthrough props so the parent doesn't need to own them) ──
+  // -- Context passed from parent (used in uploadAllPending, kept here
+  //    as passthrough props so the parent doesn't need to own them) --
   export let session   = null;
   export let component = null;
 
-  // ── Camera state — local to this component ────────────────────────
+  // -- Camera state — local to this component ------------------------
   let capturing    = false;
   let videoElement = null;
   let stream       = null;
 
-  // ── Derived ───────────────────────────────────────────────────────
+  // -- Derived -------------------------------------------------------
   $: totalPhotos = photoUrls.length + pendingPhotos.length;
   $: canAddPhoto = totalPhotos < MAX_PHOTOS;
 
-  // ── Camera ────────────────────────────────────────────────────────
+  // -- Camera --------------------------------------------------------
   async function startCamera() {
     if (!canAddPhoto) return;
     capturing = true;
@@ -70,7 +70,7 @@
     }, 'image/jpeg', 0.8);
   }
 
-  // ── Remove ────────────────────────────────────────────────────────
+  // -- Remove --------------------------------------------------------
   function removePending(i) {
     const p = pendingPhotos[i];
     if (p.preview) URL.revokeObjectURL(p.preview);

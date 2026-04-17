@@ -1,4 +1,4 @@
-// src/lib/apps/building_assets/stores/buildingAssetsStore.js
+﻿// src/lib/apps/building_assets/stores/buildingAssetsStore.js
 // Orchestrator: owns the single writable store and the top-level load() method,
 // then composes all domain action modules into the exported singleton.
 //
@@ -49,14 +49,14 @@ function createBuildingAssetsStore() {
     error:             null
   });
 
-  // ── Domain action sets ─────────────────────────────────────────────────
+  // -- Domain action sets -------------------------------------------------
   const typeActions  = createTypeHierarchyActions(update);
   const compActions  = createComponentActions(update);
   const planActions  = createPlanActions(update, supabase);
   const spaceActions = createSpaceActions(update);
   const annActions   = createAnnotationActions(update);
 
-  // ── Top-level load ─────────────────────────────────────────────────────
+  // -- Top-level load -----------------------------------------------------
   // Loads the full type hierarchy, location hierarchy, plans, spaces and
   // annotations in one shot. Called once on app mount.
   async function load() {

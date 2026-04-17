@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/V2InspectionsTab.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/V2InspectionsTab.svelte -->
 <!-- All v2 walk sessions (v2_walk_sessions), open first then latest-first.
      Expand a row to see per-component inspection detail.                    -->
 <script>
@@ -27,7 +27,7 @@
 
   const logger = getLogger('V2InspectionsTab');
 
-  // ── Store refs ──────────────────────────────────────────────────────────
+  // -- Store refs ----------------------------------------------------------
   $: floors = $buildingAssetsStore.floors;
   $: types  = $buildingAssetsStore.types;
 
@@ -35,7 +35,7 @@
     return types.find(t => t.code === type_code) ?? null;
   }
 
-  // ── State ────────────────────────────────────────────────────────────────
+  // -- State ----------------------------------------------------------------
   let sessions    = [];
   let inspections = {};      // { [sessionId]: flattened inspection[] }
   let showReport  = false;
@@ -46,14 +46,14 @@
   let deletingId  = null;
   let confirmId   = null;
 
-  // ── Filters ──────────────────────────────────────────────────────────────
+  // -- Filters --------------------------------------------------------------
   let filterStatus      = '';
   let filterSessionType = '';
   let filterPreset      = '';
   let filterDateFrom    = '';
   let filterDateTo      = '';
 
-  // ── Derived: sort then filter ────────────────────────────────────────────
+  // -- Derived: sort then filter --------------------------------------------
   // Open sessions always float to top; within each status group, latest first.
   $: sorted = [...sessions].sort((a, b) => {
     if (a.status !== b.status) return a.status === 'open' ? -1 : 1;
@@ -79,7 +79,7 @@
 
   onMount(loadSessions);
 
-  // ── Data loading ─────────────────────────────────────────────────────────
+  // -- Data loading ---------------------------------------------------------
   async function loadSessions() {
     loading = true; error = null;
     try {
@@ -145,7 +145,7 @@
     filterDateTo      = '';
   }
 
-  // ── Badge colours ────────────────────────────────────────────────────────
+  // -- Badge colours --------------------------------------------------------
   // resultBadgeColor is imported from $lib/apps/v2/utils/resultConstants.js
   function sessionTypeBadge(t) {
     return { inspection: 'bg-blue-600', test: 'bg-amber-600', repair: 'bg-orange-700' }[t] ?? 'bg-slate-600';
@@ -157,7 +157,7 @@
 
 <div class="insp-tab">
 
-  <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+  <!-- -- Toolbar ------------------------------------------------------------ -->
   <div class="toolbar">
     <div class="filters">
 
@@ -218,7 +218,7 @@
     </div>
   </div>
 
-  <!-- ── Body ─────────────────────────────────────────────────────────────── -->
+  <!-- -- Body --------------------------------------------------------------- -->
   {#if loading}
     <div class="state-center">
       <LoadingSpinner size="medium" text="Loading sessions…" />
@@ -246,7 +246,7 @@
 
         <div class="sess-card" class:sess-open={session.status === 'open'}>
 
-          <!-- ── Session row ──────────────────────────────────────────────── -->
+          <!-- -- Session row ------------------------------------------------ -->
           <div class="sess-row-wrap">
             <button class="sess-row" on:click={() => toggleExpand(session)}>
               <span class="chev">{isExpanded ? '▾' : '▸'}</span>
@@ -340,7 +340,7 @@
             </ProtectedButton>
           </div>
 
-          <!-- ── Expanded detail ──────────────────────────────────────────── -->
+          <!-- -- Expanded detail -------------------------------------------- -->
           {#if isExpanded}
             <div class="sess-detail">
               {#if isLoadingThis}

@@ -1,8 +1,8 @@
-// src/lib/apps/v2/utils/resultConstants.js
+﻿// src/lib/apps/v2/utils/resultConstants.js
 // Result and status constants shared across v2proto and v2walk.
 // Single source of truth for result labels, badge colours, ranking, and status config.
 
-// ── Result display labels ─────────────────────────────────────────────────────
+// -- Result display labels -----------------------------------------------------
 export const RESULT_LABELS = {
   ok:       '✓ PASS',
   failed:   '✗ FAIL',
@@ -10,7 +10,7 @@ export const RESULT_LABELS = {
   inactive: '— INACTIVE',
 };
 
-// ── Tailwind badge background classes (standard app theme) ────────────────────
+// -- Tailwind badge background classes (standard app theme) --------------------
 export const RESULT_BADGE_COLOURS = {
   ok:       'bg-green-600',
   failed:   'bg-red-600',
@@ -18,10 +18,10 @@ export const RESULT_BADGE_COLOURS = {
   inactive: 'bg-slate-600',
 };
 
-// ── Sort rank: lower = more severe ───────────────────────────────────────────
+// -- Sort rank: lower = more severe -------------------------------------------
 export const RESULT_RANK = { failed: 0, problem: 1, ok: 2, inactive: 3 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 export function resultLabel(result) {
   return RESULT_LABELS[result] ?? result;
@@ -35,7 +35,7 @@ export function resultBadgeColor(result) {
   return RESULT_BADGE_COLOURS[result] ?? 'bg-slate-600';
 }
 
-// ── Status config array (for v2proto UI: dots, rings, badges) ────────────────
+// -- Status config array (for v2proto UI: dots, rings, badges) ----------------
 // Canonical list of all possible component statuses with Tailwind styling.
 export const STATUSES = [
   { value: 'ok',       label: 'OK',       dot: 'bg-green-400',  bg: 'bg-green-600',  ring: 'ring-green-500',  badge: 'bg-green-900/50 text-green-400',  dim: 'bg-green-900/30 text-green-700'  },
@@ -49,7 +49,7 @@ export function statusCfg(value) {
   return STATUSES.find(s => s.value === (value ?? 'ok')) ?? STATUSES[0];
 }
 
-// ── Convenience helpers for components ───────────────────────────────────────
+// -- Convenience helpers for components ---------------------------------------
 
 /** Badge background + text class for a status value (building assets theme). */
 export function statusBadgeCls(value) {

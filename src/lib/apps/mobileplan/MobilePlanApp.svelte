@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   // src/lib/apps/mobileplan/MobilePlanApp.svelte
   // Mobile-first, read-only floor plan viewer using the V2 component data model.
   // Entry point — initialises permissions, loads store, renders shell layout.
@@ -14,7 +14,7 @@
   import FilterSheet           from './components/FilterSheet.svelte';
   import UnplacedSheet         from './components/UnplacedSheet.svelte';
 
-  // ── Store state ──────────────────────────────────────────────────────────────
+  // -- Store state --------------------------------------------------------------
 
   let state = {
     building: null, floors: [], systems: [], types: [], attrDefs: {}, plans: [],
@@ -29,18 +29,18 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── Sheet visibility ──────────────────────────────────────────────────────────
+  // -- Sheet visibility ----------------------------------------------------------
 
   let selectedComponent = null;   // opens ComponentSheet
   let actionComponent   = null;   // opens ActionSheet
   let showFilter        = false;
   let showList          = false;
 
-  // ── Plan view ref (for centreOnComponent) ────────────────────────────────────
+  // -- Plan view ref (for centreOnComponent) ------------------------------------
 
   let planViewEl;
 
-  // ── Online / cache indicators ────────────────────────────────────────────────
+  // -- Online / cache indicators ------------------------------------------------
 
   let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
@@ -51,13 +51,13 @@
     if (isOnline) await mobileplanStore.refresh();
   }
 
-  // ── Cache age label (reactive) ────────────────────────────────────────────────
+  // -- Cache age label (reactive) ------------------------------------------------
 
   $: cacheLabel = state.cachedAt
     ? mobileplanStore.ageLabel(Date.now() - state.cachedAt.getTime())
     : null;
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────────
+  // -- Lifecycle -----------------------------------------------------------------
 
   onMount(async () => {
     if ($auth.user) {
@@ -75,7 +75,7 @@
     window.removeEventListener('offline', handleOffline);
   });
 
-  // ── Event handlers ────────────────────────────────────────────────────────────
+  // -- Event handlers ------------------------------------------------------------
 
   function onMarkerTap(e) {
     selectedComponent = e.detail ?? e;
@@ -259,7 +259,7 @@
     z-index: 100;  /* above portal nav */
   }
 
-  /* ── Header ── */
+  /* -- Header -- */
   .app-header {
     display: flex;
     align-items: center;
@@ -351,7 +351,7 @@
   .offline-pill { background: #d97706; color: #0d0d14; }
   .cache-pill   { background: #252540; color: #64748b; }
 
-  /* ── Main content ── */
+  /* -- Main content -- */
   .main-content {
     flex: 1;
     overflow: hidden;

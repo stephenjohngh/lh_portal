@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/ComponentForm.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/ComponentForm.svelte -->
 <!-- Create a new component. Location is selected by Floor (from the Facility/Floor
      hierarchy) rather than by graphical plan. The plan is an optional secondary
      field — it is needed only when placing the component on a drawing. -->
@@ -18,7 +18,7 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── Form state ─────────────────────────────────────────────────────
+  // -- Form state -----------------------------------------------------
   let selectedFloorId    = '';
   let planId             = '';
   let selectedTypeId     = '';
@@ -28,7 +28,7 @@
   let yPosition          = 0.5;
   let attrValues         = {}; // { attrDefId: string }
 
-  // ── Derived ────────────────────────────────────────────────────────
+  // -- Derived --------------------------------------------------------
 
   // Default facility — auto-selected (one building per deployment)
   $: defaultFacility = facilities[0] ?? null;
@@ -43,7 +43,7 @@
   $: primaryDef   = defs.find(d => d.is_primary) ?? null;
   $: primaryAttribute = primaryDef ? (attrValues[primaryDef.id] ?? '') : '';
 
-  // ── Handlers ───────────────────────────────────────────────────────
+  // -- Handlers -------------------------------------------------------
 
   function onFloorChange() {
     // Auto-select plan if exactly one plan exists for this floor
@@ -99,7 +99,7 @@
 <div class="flex flex-col gap-5">
   <h3 class="text-lg font-semibold text-white">New Component</h3>
 
-  <!-- ── Building (read-only — auto-selected default facility) ──── -->
+  <!-- -- Building (read-only — auto-selected default facility) ---- -->
   {#if defaultFacility}
     <div class="flex items-center gap-2 px-3 py-2 rounded bg-slate-800 border border-slate-700">
       <span class="text-xs text-slate-500 uppercase tracking-wider">Building</span>
@@ -108,7 +108,7 @@
     </div>
   {/if}
 
-  <!-- ── Floor + Type ─────────────────────────────────────────── -->
+  <!-- -- Floor + Type ------------------------------------------- -->
   <div class="grid grid-cols-2 gap-4">
     <div class="flex flex-col gap-1">
       <p class="text-xs text-slate-400">Floor <span class="text-red-400">*</span></p>
@@ -145,7 +145,7 @@
     </div>
   </div>
 
-  <!-- ── Label + Asset ID ─────────────────────────────────────── -->
+  <!-- -- Label + Asset ID --------------------------------------- -->
   <div class="grid grid-cols-2 gap-4">
     <div class="flex flex-col gap-1">
       <p class="text-xs text-slate-400">Label</p>
@@ -157,7 +157,7 @@
     </div>
   </div>
 
-  <!-- ── Plan placement (optional) ────────────────────────────── -->
+  <!-- -- Plan placement (optional) ------------------------------ -->
   <div class="border border-slate-700 rounded-lg p-3 bg-slate-800/30">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
       Plan Placement
@@ -197,7 +197,7 @@
     </div>
   </div>
 
-  <!-- ── Dynamic Attribute Fields ─────────────────────────────── -->
+  <!-- -- Dynamic Attribute Fields ------------------------------- -->
   {#if selectedType && defs.length > 0}
     <div class="border border-slate-600 rounded-lg p-4 bg-slate-800/50">
       <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -229,7 +229,7 @@
     </div>
   {/if}
 
-  <!-- ── Actions ──────────────────────────────────────────────── -->
+  <!-- -- Actions ------------------------------------------------ -->
   <div class="flex justify-end gap-3 pt-2 border-t border-slate-700">
     <button
       on:click={handleCancel}

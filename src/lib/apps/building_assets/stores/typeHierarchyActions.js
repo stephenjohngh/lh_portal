@@ -1,4 +1,4 @@
-// src/lib/apps/building_assets/stores/typeHierarchyActions.js
+﻿// src/lib/apps/building_assets/stores/typeHierarchyActions.js
 // Type hierarchy domain: building_systems, component_types, type_attributes,
 // type_attribute_options, maintenance_regime and the reload() orchestrator.
 // Receives the writable `update` function from buildingAssetsStore so all mutations
@@ -15,7 +15,7 @@ const logger = getLogger('BuildingAssets');
 // update: the writable store's update function.
 export function createTypeHierarchyActions(update) {
 
-  // ── Reload all type hierarchy data ────────────────────────────────────
+  // -- Reload all type hierarchy data ------------------------------------
   async function reload() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
@@ -43,7 +43,7 @@ export function createTypeHierarchyActions(update) {
     }
   }
 
-  // ── Building Systems CRUD ─────────────────────────────────────────────
+  // -- Building Systems CRUD ---------------------------------------------
   async function createSystem(data) {
     const userId = requireUserId();
     const row = await api.create('building_systems', {
@@ -78,7 +78,7 @@ export function createTypeHierarchyActions(update) {
     logger('Deleted system:', id);
   }
 
-  // ── Component Types CRUD ──────────────────────────────────────────────
+  // -- Component Types CRUD ----------------------------------------------
   async function createType(data) {
     const userId = requireUserId();
     return await api.create('component_types', {
@@ -128,7 +128,7 @@ export function createTypeHierarchyActions(update) {
     logger('Deleted type:', id);
   }
 
-  // ── Attribute Definitions CRUD ────────────────────────────────────────
+  // -- Attribute Definitions CRUD ----------------------------------------
   // type_attributes has no created_by / updated_by columns.
   // Scope is determined by which FK is provided:
   //   data.component_type_id  → type-level attribute
@@ -186,7 +186,7 @@ export function createTypeHierarchyActions(update) {
     logger('Deleted attr def:', id);
   }
 
-  // ── Type Attribute Options CRUD ───────────────────────────────────────
+  // -- Type Attribute Options CRUD ---------------------------------------
   // type_attribute_options has no created_by / updated_by columns.
   async function createOption(data) {
     return await api.create('type_attribute_options', {
@@ -212,7 +212,7 @@ export function createTypeHierarchyActions(update) {
     logger('Deleted option:', id);
   }
 
-  // ── Maintenance Regime CRUD ───────────────────────────────────────────
+  // -- Maintenance Regime CRUD -------------------------------------------
   // maintenance_regime has created_by but no updated_by, no updated_at trigger.
   async function createRegime(data) {
     const userId = requireUserId();

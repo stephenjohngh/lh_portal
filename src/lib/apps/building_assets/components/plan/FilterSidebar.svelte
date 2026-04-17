@@ -1,4 +1,4 @@
-<!-- plan/FilterSidebar.svelte -->
+﻿<!-- plan/FilterSidebar.svelte -->
 <!-- Default sidebar when no component/space is selected.
      Contains the search bar, system → type filter tree, status filter, and unplaced list.
 
@@ -28,7 +28,7 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── System → type groups (only types present on this plan) ────────
+  // -- System → type groups (only types present on this plan) --------
   $: systemGroups = (() => {
     const codesOnPlan = [...new Set(planComponents.map(c => c.type_code))];
     const typeObjs    = codesOnPlan
@@ -76,7 +76,7 @@
     })
   );
 
-  // ── Toggle helpers ────────────────────────────────────────────────
+  // -- Toggle helpers ------------------------------------------------
   // System: if all children visible → hide all; otherwise → show all.
   function toggleSystem(group) {
     const allVisible = group.types.every(t => !hiddenTypes.has(t.code));
@@ -128,7 +128,7 @@
 
   <div class="p-3 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
 
-    <!-- ── Search ─────────────────────────────────────────────────── -->
+    <!-- -- Search --------------------------------------------------- -->
     <div class="relative">
       <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm
                    select-none pointer-events-none">🔍</span>
@@ -143,7 +143,7 @@
       />
     </div>
 
-    <!-- ── System / Type tree ─────────────────────────────────────── -->
+    <!-- -- System / Type tree --------------------------------------- -->
     {#if systemGroups.length === 0}
       <p class="text-xs text-slate-600 italic px-1">No components on this plan yet.</p>
     {:else}
@@ -230,7 +230,7 @@
       </div>
     {/if}
 
-    <!-- ── Status filter ──────────────────────────────────────────── -->
+    <!-- -- Status filter -------------------------------------------- -->
     <!-- Exclusive model: all checked = show all; uncheck to hide that status. -->
     {#if planComponents.length > 0}
       <div>
@@ -272,7 +272,7 @@
       </div>
     {/if}
 
-    <!-- ── Spaces visibility ──────────────────────────────────────── -->
+    <!-- -- Spaces visibility ---------------------------------------- -->
     {#if planSpaces.length > 0}
       <div>
         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Spaces</p>
@@ -302,7 +302,7 @@
       </div>
     {/if}
 
-    <!-- ── Unplaced components ─────────────────────────────────────── -->
+    <!-- -- Unplaced components --------------------------------------- -->
     {#if unplacedComponents.length > 0}
       <div class="border-t border-slate-700 pt-3">
         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">

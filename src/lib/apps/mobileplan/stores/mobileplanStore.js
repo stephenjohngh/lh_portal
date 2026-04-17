@@ -1,4 +1,4 @@
-// src/lib/apps/mobileplan/stores/mobileplanStore.js
+﻿// src/lib/apps/mobileplan/stores/mobileplanStore.js
 // Read-only store for the Mobile Plan viewer app.
 // Loads building, floors, type hierarchy, plans, components, spaces and
 // inspections. Caches everything in localStorage for offline fallback.
@@ -12,7 +12,7 @@ import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
 
 const logger = getLogger('mobileplanStore');
 
-// ── Cache config ──────────────────────────────────────────────────────────────
+// -- Cache config --------------------------------------------------------------
 
 // Bump CACHE_VERSION whenever the shape of cached data changes (forces fresh fetch).
 const CACHE_VERSION         = 4;
@@ -24,7 +24,7 @@ const TTL_HIERARCHY_MS    = 24 * 60 * 60 * 1000;   // 24 h
 const TTL_FLOOR_MS        =  1 * 60 * 60 * 1000;   //  1 h
 const FETCH_TIMEOUT_MS    = 8000;
 
-// ── Initial state ─────────────────────────────────────────────────────────────
+// -- Initial state -------------------------------------------------------------
 
 const INITIAL = {
   // Static — loaded once
@@ -63,7 +63,7 @@ const INITIAL = {
 
 const { subscribe, update, set } = writable({ ...INITIAL, hiddenTypes: new Set(), hiddenStatuses: new Set() });
 
-// ── Cache helpers ─────────────────────────────────────────────────────────────
+// -- Cache helpers -------------------------------------------------------------
 
 function writeCache(key, data) {
   try {
@@ -91,7 +91,7 @@ function ageLabel(ms) {
   return `${Math.floor(ms / 3_600_000)}h ago`;
 }
 
-// ── Network with timeout ──────────────────────────────────────────────────────
+// -- Network with timeout ------------------------------------------------------
 
 function withTimeout(promise, ms) {
   return Promise.race([
@@ -102,7 +102,7 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-// ── Load type hierarchy (building / floors / types / plans) ───────────────────
+// -- Load type hierarchy (building / floors / types / plans) -------------------
 
 async function fetchHierarchy() {
   const [facilitiesRes, floorsRes, systemsRes, typesRes, defsRes, plansRes] =
@@ -127,7 +127,7 @@ async function fetchHierarchy() {
   };
 }
 
-// ── Public store methods ──────────────────────────────────────────────────────
+// -- Public store methods ------------------------------------------------------
 
 async function load() {
   update(s => ({ ...s, loading: true, error: null }));
@@ -397,7 +397,7 @@ async function refresh() {
   }
 }
 
-// ── Export ────────────────────────────────────────────────────────────────────
+// -- Export --------------------------------------------------------------------
 
 export const mobileplanStore = {
   subscribe,

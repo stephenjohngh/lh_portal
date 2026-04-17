@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/V2ReportsTab.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/V2ReportsTab.svelte -->
 <!-- Report builder for V2 components. Lets the user configure scope + filters,
      then generates a .docx for download.
      Per-floor content (in order): Plan graphic | Full component table | Floor summary table
@@ -11,7 +11,7 @@
   import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
-  // ── Store data ────────────────────────────────────────────────────────────────
+  // -- Store data ----------------------------------------------------------------
   $: store          = $buildingAssetsStore;
   $: systems        = store.systems;
   $: types          = store.types;
@@ -22,7 +22,7 @@
   $: plans          = store.plans;
   $: facilities     = store.facilities;
 
-  // ── Report section toggles ────────────────────────────────────────────────────
+  // -- Report section toggles ----------------------------------------------------
   // Per-floor sections (all appear together for each floor in this order):
   let includePlan              = false;   // plan graphic
   let includeList              = true;    // full component table
@@ -34,12 +34,12 @@
 
   $: noneSelected = !includePlan && !includeList && !includeFloorSummary && !includeFullSummary && !includeFullComponentList;
 
-  // ── Scope: floors ─────────────────────────────────────────────────────────────
+  // -- Scope: floors -------------------------------------------------------------
   // empty set = all floors; floorsCleared = true means user explicitly unchecked all
   let selectedFloorIds  = new Set();
   let floorsCleared     = false;
 
-  // ── Filters ───────────────────────────────────────────────────────────────────
+  // -- Filters -------------------------------------------------------------------
   // empty set = all systems; systemsCleared = true means user explicitly unchecked all
   let selectedSystemIds = new Set();
   let systemsCleared    = false;
@@ -47,7 +47,7 @@
   const ALL_STATUSES = ['ok', 'problem', 'failed', 'inactive'];
   let selectedStatuses  = new Set(ALL_STATUSES);
 
-  // ── Preferences: persist report settings across sessions ─────────────────────
+  // -- Preferences: persist report settings across sessions ---------------------
   const REPORT_PREF_KEY = 'lh_v2report_prefs';
 
   // Restore once, after floor + system data has loaded (to validate stored IDs)
@@ -88,7 +88,7 @@
     }));
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
+  // -- Helpers -------------------------------------------------------------------
   function typeOf(c)  { return types.find(t => t.code === c.type_code); }
   function systemOf(t){ return t ? systems.find(s => s.id === t.building_system_id) : null; }
 
@@ -119,7 +119,7 @@
       .filter(Boolean);
   }
 
-  // ── Filtered component set ────────────────────────────────────────────────────
+  // -- Filtered component set ----------------------------------------------------
   $: filteredComponents = components.filter(c => {
     if (floorsCleared) return false;
     if (selectedFloorIds.size  > 0 && !selectedFloorIds.has(c.floor_id))  return false;
@@ -169,7 +169,7 @@
     count: comps.length,
   }));
 
-  // ── Toggle helpers ─────────────────────────────────────────────────────────────
+  // -- Toggle helpers -------------------------------------------------------------
   function toggleFloor(id) {
     const s = new Set(selectedFloorIds);
     s.has(id) ? s.delete(id) : s.add(id);
@@ -186,7 +186,7 @@
     selectedStatuses = s;
   }
 
-  // ── Quick report presets ──────────────────────────────────────────────────────
+  // -- Quick report presets ------------------------------------------------------
   // Each preset applies a set of filter + section options to the general report.
   // The user then reviews the configuration and clicks Generate.
   let configuredPreset = '';   // name of the last applied preset (for feedback)
@@ -210,7 +210,7 @@
 
   $: failedCount = components.filter(c => c.status === 'failed').length;
 
-  // ── Report generation ─────────────────────────────────────────────────────────
+  // -- Report generation ---------------------------------------------------------
   let generating = false;
   let error      = '';
 
@@ -266,7 +266,7 @@
     </p>
   </div>
 
-  <!-- ── Quick report presets ─────────────────────────────────────────────── -->
+  <!-- -- Quick report presets ----------------------------------------------- -->
   <div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
     <h3 class="text-sm font-semibold text-slate-300 mb-1 uppercase tracking-wide">Quick Reports</h3>
     <p class="text-xs text-slate-500 mb-3">
@@ -307,7 +307,7 @@
     </div>
   </div>
 
-  <!-- ── General report (configurable) ────────────────────────────────────── -->
+  <!-- -- General report (configurable) -------------------------------------- -->
   <div>
     <h3 class="text-sm font-semibold text-slate-300 mb-1 uppercase tracking-wide">General Report</h3>
     <p class="text-xs text-slate-500 mb-3">Configure scope and filters, then generate.</p>
@@ -315,7 +315,7 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    <!-- ── Left column: config ─────────────────────────────────────────────── -->
+    <!-- -- Left column: config ----------------------------------------------- -->
     <div class="lg:col-span-2 space-y-5">
 
       <!-- Report sections -->
@@ -464,7 +464,7 @@
 
     </div>
 
-    <!-- ── Right column: preview + generate ───────────────────────────────── -->
+    <!-- -- Right column: preview + generate --------------------------------- -->
     <div class="space-y-4">
 
       <!-- Preview summary -->

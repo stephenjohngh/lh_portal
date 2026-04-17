@@ -1,4 +1,4 @@
-// src/lib/apps/building_assets/stores/componentActions.js
+﻿// src/lib/apps/building_assets/stores/componentActions.js
 // Component domain: components[], component_attributes{}, component_inspections{}.
 // Receives the writable `update` function from buildingAssetsStore.
 
@@ -11,7 +11,7 @@ const logger = getLogger('BuildingAssets');
 // Factory — call once at store creation time.
 export function createComponentActions(update) {
 
-  // ── Load components (optionally filtered by plan) ─────────────────────
+  // -- Load components (optionally filtered by plan) ---------------------
   async function loadComponents(planId = null) {
     update(s => ({ ...s, loadingComponents: true }));
     try {
@@ -57,7 +57,7 @@ export function createComponentActions(update) {
     }
   }
 
-  // ── Create a component with its attribute values ──────────────────────
+  // -- Create a component with its attribute values ----------------------
   // fields:     { plan_id, type_code, primary_attribute, label, asset_id,
   //               x_position, y_position, linked_component_ref? }
   // attrValues: [{ type_attribute_id, value }]
@@ -87,7 +87,7 @@ export function createComponentActions(update) {
     return component;
   }
 
-  // ── Update a component ────────────────────────────────────────────────
+  // -- Update a component ------------------------------------------------
   async function updateComponent(id, fields) {
     const userId = requireUserId();
 
@@ -104,7 +104,7 @@ export function createComponentActions(update) {
     return updated;
   }
 
-  // ── Replace the full attribute set for a component ────────────────────
+  // -- Replace the full attribute set for a component --------------------
   // Deletes all existing rows then inserts the new set.
   // attrValues: { [type_attribute_id]: string }
   async function updateComponentAttrs(componentId, attrValues) {
@@ -129,7 +129,7 @@ export function createComponentActions(update) {
     logger('Updated component attrs:', componentId, rows.length, 'values');
   }
 
-  // ── Move a component (drag-to-reposition / plan placement) ───────────
+  // -- Move a component (drag-to-reposition / plan placement) -----------
   // Lightweight position-only update — skips full updateComponent overhead.
   async function moveComponent(id, planId, x, y) {
     const userId = requireUserId();
@@ -150,7 +150,7 @@ export function createComponentActions(update) {
     logger('Moved component:', id, `→ plan:${planId} (${x.toFixed(3)}, ${y.toFixed(3)})`);
   }
 
-  // ── Delete a component (cascades component_attributes) ───────────────
+  // -- Delete a component (cascades component_attributes) ---------------
   async function deleteComponent(id) {
     await api.delete('components', id);
     update(s => ({
@@ -162,7 +162,7 @@ export function createComponentActions(update) {
     }));
   }
 
-  // ── Save an inspection result for a component ─────────────────────────
+  // -- Save an inspection result for a component -------------------------
   // checklistResults: { [type_attribute_id]: boolean } — checkable attrs only.
   // walk_session_id is nullable for prototype/ad-hoc use.
   async function saveInspection(componentId, { result, notes, checklistResults }) {
@@ -202,7 +202,7 @@ export function createComponentActions(update) {
     return inspection;
   }
 
-  // ── Component links CRUD ─────────────────────────────────────────────
+  // -- Component links CRUD ---------------------------------------------
   // component_links: { id, from_component_id, to_component_ref, link_type, created_at }
 
   async function addComponentLink(fromComponentId, toRef, linkType) {

@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/MaintenancePanel.svelte -->
+﻿<!-- src/lib/apps/admin/components/MaintenancePanel.svelte -->
 <!-- Sub-panel below the 4 columns. Shows maintenance_regime rows for the
      selected Type. Admin can add, edit, and DELETE regime rows. -->
 <script>
@@ -191,7 +191,7 @@
       {#each regimeRows as row (row.id)}
 
         {#if editingId === row.id}
-          <!-- ── Inline edit form ──────────────────────────────── -->
+          <!-- -- Inline edit form -------------------------------- -->
           <div class="p-4 bg-slate-700/30">
             <p class="text-xs font-semibold text-purple-400 mb-3">Edit Task</p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -240,7 +240,7 @@
           </div>
 
         {:else}
-          <!-- ── Normal row ─────────────────────────────────────── -->
+          <!-- -- Normal row --------------------------------------- -->
           <div class="px-4 py-3 flex items-center gap-3 group hover:bg-slate-700/20 transition-colors">
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-white truncate">{row.task_name}</p>

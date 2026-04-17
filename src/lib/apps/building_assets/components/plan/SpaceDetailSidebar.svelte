@@ -1,4 +1,4 @@
-<!-- plan/SpaceDetailSidebar.svelte -->
+﻿<!-- plan/SpaceDetailSidebar.svelte -->
 <!-- Full detail and edit panel for a selected space.
      Fields: name, space_type, colour, height_m, notes.
      Measurements (perimeter, area, volume) shown when plan is scaled.
@@ -19,7 +19,7 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── Editable fields ───────────────────────────────────────────────
+  // -- Editable fields -----------------------------------------------
   let editName      = '';
   let editType      = '';
   let editColourHex = '';
@@ -69,7 +69,7 @@
     parsedHeight  !== (space.height_m    ?? null)
   );
 
-  // ── Measurements ─────────────────────────────────────────────────
+  // -- Measurements -------------------------------------------------
   $: poly   = space?.polygon ?? [];
   $: perim  = poly.length >= 3 ? measurePerimeter(poly, planAR, metresPerUnit) : null;
   $: area   = poly.length >= 3 ? measureArea(poly, planAR, metresPerUnit)      : null;
@@ -119,7 +119,7 @@
 
 <div class="bg-slate-800 rounded-xl border border-slate-700 flex flex-col">
 
-  <!-- ── Sticky header ─────────────────────────────────────────────── -->
+  <!-- -- Sticky header ----------------------------------------------- -->
   <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-700">
     <div class="flex items-center gap-2 min-w-0">
       <div
@@ -140,7 +140,7 @@
     >✕</button>
   </div>
 
-  <!-- ── Scrollable body ───────────────────────────────────────────── -->
+  <!-- -- Scrollable body --------------------------------------------- -->
   <div class="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
 
     <!-- Error -->
@@ -150,7 +150,7 @@
       </p>
     {/if}
 
-    <!-- ── Measurements (read-only, scale-dependent) ─────────────── -->
+    <!-- -- Measurements (read-only, scale-dependent) --------------- -->
     {#if metresPerUnit && poly.length >= 3}
       <div class="p-2.5 rounded-lg bg-teal-900/30 border border-teal-700/40">
         <p class="text-xs text-teal-500/70 uppercase tracking-wide mb-2">Measurements</p>
@@ -187,7 +187,7 @@
 
       {#if readOnly}
 
-      <!-- ── Read-only fields ───────────────────────────────────────── -->
+      <!-- -- Read-only fields ----------------------------------------- -->
       <dl class="space-y-2">
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Name</dt>
@@ -230,7 +230,7 @@
 
     {:else}
 
-      <!-- ── Name ──────────────────────────────────────────────────── -->
+      <!-- -- Name ---------------------------------------------------- -->
       <div class="flex flex-col gap-1">
         <label class="text-xs text-slate-400" for="sp-name">
           Name <span class="text-red-400">*</span>
@@ -243,7 +243,7 @@
         />
       </div>
 
-      <!-- ── Space type ────────────────────────────────────────────── -->
+      <!-- -- Space type ---------------------------------------------- -->
       <div class="flex flex-col gap-1">
         <label class="text-xs text-slate-400" for="sp-type">Type</label>
         <select id="sp-type" bind:value={editType} class={inp}>
@@ -254,7 +254,7 @@
         </select>
       </div>
 
-      <!-- ── Colour ────────────────────────────────────────────────── -->
+      <!-- -- Colour -------------------------------------------------- -->
       <div>
         <p class="text-xs text-slate-400 mb-1.5">Colour</p>
         <div class="flex gap-1.5 flex-wrap">
@@ -274,7 +274,7 @@
         </div>
       </div>
 
-      <!-- ── Height ────────────────────────────────────────────────── -->
+      <!-- -- Height -------------------------------------------------- -->
       <div class="flex flex-col gap-1">
         <label class="text-xs text-slate-400" for="sp-height">
           Ceiling height (m)
@@ -291,7 +291,7 @@
         />
       </div>
 
-      <!-- ── Notes ─────────────────────────────────────────────────── -->
+      <!-- -- Notes --------------------------------------------------- -->
       <div class="flex flex-col gap-1">
         <label class="text-xs text-slate-400" for="sp-notes">Notes</label>
         <textarea
@@ -303,7 +303,7 @@
         ></textarea>
       </div>
 
-      <!-- ── Show label ─────────────────────────────────────────────── -->
+      <!-- -- Show label ----------------------------------------------- -->
       <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
         <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
         Show name label on plan
@@ -311,7 +311,7 @@
 
     {/if}
 
-    <!-- ── Metadata ───────────────────────────────────────────────── -->
+    <!-- -- Metadata ------------------------------------------------- -->
     <div class="flex flex-col gap-0.5 pt-1 border-t border-slate-700/60">
       <div class="flex items-center justify-between">
         <p class="text-xs text-slate-600">{poly.length} polygon vertices</p>
@@ -333,7 +333,7 @@
 
   </div><!-- /.body -->
 
-  <!-- ── Sticky footer ─────────────────────────────────────────────── -->
+  <!-- -- Sticky footer ----------------------------------------------- -->
   <div class="px-4 py-3 border-t border-slate-700 flex gap-2">
 
     {#if readOnly}

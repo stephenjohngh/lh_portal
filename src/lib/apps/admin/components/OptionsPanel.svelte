@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/OptionsPanel.svelte -->
+﻿<!-- src/lib/apps/admin/components/OptionsPanel.svelte -->
 <!-- Panel 4 of 4: Dropdown / radio options for the selected Attribute Definition.
      Only meaningful when attrDef.display_type is 'dropdown' or 'radio'.
      Each option can carry a priority_override. -->
@@ -142,7 +142,7 @@
       {#each options as opt (opt.id)}
 
         {#if editingId === opt.id}
-          <!-- ── Inline edit form ─────────────────────────────── -->
+          <!-- -- Inline edit form ------------------------------- -->
           <div class="p-3 border-b border-slate-700 bg-slate-700/40">
             <p class="text-xs font-semibold text-purple-400 mb-2">Edit Option</p>
             {#if error}<p class="text-xs text-red-400 mb-2">{error}</p>{/if}
@@ -178,7 +178,7 @@
           </div>
 
         {:else}
-          <!-- ── Normal row ─────────────────────────────────────── -->
+          <!-- -- Normal row --------------------------------------- -->
           <div class="px-3 py-2.5 border-b border-slate-700/50 flex items-center gap-2 group
                       hover:bg-slate-700/40 transition-colors">
             <p class="flex-1 text-sm font-medium
@@ -216,7 +216,7 @@
         <p class="px-3 py-4 text-xs text-slate-600 italic">No options yet</p>
       {/if}
 
-      <!-- ── New option form ────────────────────────────────────── -->
+      <!-- -- New option form -------------------------------------- -->
       {#if editingId === 'new'}
         <div class="p-3 bg-slate-700/40">
           <p class="text-xs font-semibold text-green-400 mb-2">New Option</p>

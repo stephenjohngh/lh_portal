@@ -1,4 +1,4 @@
-// plan/reportGenerator.js
+﻿// plan/reportGenerator.js
 // Builds the full report payload, POSTs to the API, and triggers the file download.
 // All pure logic with no Svelte store dependencies — the caller passes in
 // resolved data so this module stays framework-agnostic.
@@ -37,7 +37,7 @@ export async function generateReportDocument(params) {
     typeOfFn, systemOfFn, resolveAttrsFn,
   } = params;
 
-  // ── Sort helper (System → Type → Asset ID) ────────────────────────────
+  // -- Sort helper (System → Type → Asset ID) ----------------------------
   function sortComponents(comps) {
     return [...comps].sort((a, b) => {
       const ta = typeOfFn(a), tb = typeOfFn(b);
@@ -50,7 +50,7 @@ export async function generateReportDocument(params) {
     });
   }
 
-  // ── Per-floor payload (with optional annotated plan images) ───────────
+  // -- Per-floor payload (with optional annotated plan images) -----------
   const floorsPayload = await Promise.all(
     filteredByFloor.map(async ({ floor, components: comps }) => {
       const imageData = includePlan
@@ -96,7 +96,7 @@ export async function generateReportDocument(params) {
     })
   );
 
-  // ── Full combined component list (all floors) ─────────────────────────
+  // -- Full combined component list (all floors) -------------------------
   const allComponentsPayload = includeFullComponentList
     ? filteredByFloor.flatMap(({ floor, components: comps }) =>
         sortComponents(comps).map(c => {
@@ -116,7 +116,7 @@ export async function generateReportDocument(params) {
       )
     : [];
 
-  // ── POST to API ───────────────────────────────────────────────────────
+  // -- POST to API -------------------------------------------------------
   const res = await fetch('/api/v2/generate-report', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -132,7 +132,7 @@ export async function generateReportDocument(params) {
     throw new Error(body.error || `Server error ${res.status}`);
   }
 
-  // ── Trigger download ──────────────────────────────────────────────────
+  // -- Trigger download --------------------------------------------------
   const filename = `components-${new Date().toISOString().slice(0, 10)}.docx`;
   const blob = await res.blob();
   const url  = URL.createObjectURL(blob);

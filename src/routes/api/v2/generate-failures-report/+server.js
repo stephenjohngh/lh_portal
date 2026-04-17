@@ -1,4 +1,4 @@
-// src/routes/api/v2/generate-failures-report/+server.js
+﻿// src/routes/api/v2/generate-failures-report/+server.js
 //
 // Pre-configured "Failed Components" report.
 // Shows every component currently at 'failed' status, grouped by floor,
@@ -42,7 +42,7 @@ import { fmtGenerated, fmtDate, fmtDateTime } from '$lib/utils/dates';
 
 const logger = getLogger('v2GenerateFailuresReport');
 
-// ── Failures table ─────────────────────────────────────────────────────────────
+// -- Failures table -------------------------------------------------------------
 // Columns: Type | Ref | Label | Attributes | Inspected | Notes
 // DXA:     2000 | 950 | 1100  |    1800    |   1550    | 3066
 // Sum = 10466  (System column removed; 1200 DXA redistributed: +600 Type, +600 Inspected)
@@ -91,7 +91,7 @@ function buildFailuresTable(components) {
   });
 }
 
-// ── POST handler ───────────────────────────────────────────────────────────────
+// -- POST handler ---------------------------------------------------------------
 export async function POST({ request }) {
   logger('📄 POST /api/v2/generate-failures-report');
 
@@ -106,7 +106,7 @@ export async function POST({ request }) {
 
     const children = [];
 
-    // ── Cover ────────────────────────────────────────────────────────────────
+    // -- Cover ----------------------------------------------------------------
     children.push(new Paragraph({
       spacing:  { after: 200 },
       children: [new TextRun({ text: title, font: 'Arial', size: 48, bold: true, color: COLOURS.failRed })],
@@ -130,7 +130,7 @@ export async function POST({ request }) {
       })],
     }));
 
-    // ── Per-floor sections ────────────────────────────────────────────────────
+    // -- Per-floor sections ----------------------------------------------------
     for (let fi = 0; fi < floors.length; fi++) {
       const { floor, components = [] } = floors[fi];
 
@@ -155,7 +155,7 @@ export async function POST({ request }) {
       children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
     }
 
-    // ── Build document ────────────────────────────────────────────────────────
+    // -- Build document --------------------------------------------------------
     const doc = new Document({
       styles:   DOC_STYLES,
       sections: [{

@@ -1,4 +1,4 @@
-// src/lib/apps/inspection/stores/inspectionStore.js
+﻿// src/lib/apps/inspection/stores/inspectionStore.js
 // Inspection store — mirrors walkStore.js but operates on the v2 schema:
 //   components / component_types / floors  (not plan_elements)
 //   v2_walk_sessions                       (not walk_sessions)
@@ -23,7 +23,7 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
   });
 }
 
-// ── Initial state ─────────────────────────────────────────────────────────────
+// -- Initial state -------------------------------------------------------------
 
 const INITIAL_STATE = {
   // Static data loaded once
@@ -62,7 +62,7 @@ const RESET_SESSION_STATE = {
   floorProgress:  {},
 };
 
-// ── Auth helpers ──────────────────────────────────────────────────────────────
+// -- Auth helpers --------------------------------------------------------------
 
 async function getCurrentUserId() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -76,7 +76,7 @@ async function getCurrentUserName(userId) {
   } catch { return null; }
 }
 
-// ── Build walk component list ─────────────────────────────────────────────────
+// -- Build walk component list -------------------------------------------------
 // Given the full components list for a floor and the session's type_filter + emergency_only,
 // returns the filtered and sorted component list for walking.
 
@@ -98,7 +98,7 @@ function buildWalkComponents(floorComponents, typeFilter, emergencyOnly, allComp
   );
 }
 
-// ── First non-empty floor helper ──────────────────────────────────────────────
+// -- First non-empty floor helper ----------------------------------------------
 // Scans buildingFloors from startIndex in direction (+1 or -1) and returns the
 // first floor that has at least one matching component, plus its component list.
 // Returns null if no such floor exists.
@@ -113,7 +113,7 @@ function firstNonEmptyFloor(buildingFloors, allComponents, typeFilter, emergency
   return null;
 }
 
-// ── Floor progress helpers ────────────────────────────────────────────────────
+// -- Floor progress helpers ----------------------------------------------------
 
 function initFloorProgress(buildingFloors, allComponents, typeFilter, emergencyOnly, allComponentAttrs) {
   const progress = {};
@@ -140,14 +140,14 @@ function calcFloorProgress(buildingFloors, allComponents, typeFilter, emergencyO
   return progress;
 }
 
-// ── Store factory ─────────────────────────────────────────────────────────────
+// -- Store factory -------------------------------------------------------------
 
 function createInspectionStore() {
   const { subscribe, update } = writable(INITIAL_STATE);
 
   function getState() { return get({ subscribe }); }
 
-  // ── Initial load ────────────────────────────────────────────────────────────
+  // -- Initial load ------------------------------------------------------------
 
   async function load() {
     logger('Loading inspection data…');
@@ -217,7 +217,7 @@ function createInspectionStore() {
     }
   }
 
-  // ── Sessions ────────────────────────────────────────────────────────────────
+  // -- Sessions ----------------------------------------------------------------
 
   async function loadSessions() {
     update(s => ({ ...s, loading: true }));
@@ -248,7 +248,7 @@ function createInspectionStore() {
     });
   }
 
-  // ── Start single-floor session ───────────────────────────────────────────────
+  // -- Start single-floor session -----------------------------------------------
 
   async function startSession({ building, floor, typeFilter, emergencyOnly, sessionName, sessionType, preset, targetComponentId }) {
     logger('startSession:', { building, floor: floor?.short_name, typeFilter, targetComponentId });
@@ -289,7 +289,7 @@ function createInspectionStore() {
     return session;
   }
 
-  // ── Start building-wide session ──────────────────────────────────────────────
+  // -- Start building-wide session ----------------------------------------------
 
   async function startBuildingWideSession({ building, typeFilter, emergencyOnly, sessionName, sessionType, preset }) {
     logger('startBuildingWideSession:', { building, typeFilter });
@@ -350,7 +350,7 @@ function createInspectionStore() {
     return session;
   }
 
-  // ── Resume ───────────────────────────────────────────────────────────────────
+  // -- Resume -------------------------------------------------------------------
 
   async function resumeSession(session) {
     logger('resumeSession:', session.id);
@@ -420,7 +420,7 @@ function createInspectionStore() {
     }
   }
 
-  // ── Pause / complete / close ─────────────────────────────────────────────────
+  // -- Pause / complete / close -------------------------------------------------
 
   async function pauseSession() {
     update(s => ({ ...s, ...RESET_SESSION_STATE }));
@@ -444,7 +444,7 @@ function createInspectionStore() {
     await completeSession(sessionId, notes);
   }
 
-  // ── Navigation ───────────────────────────────────────────────────────────────
+  // -- Navigation ---------------------------------------------------------------
 
   function goToIndex(index) {
     update(s => ({
@@ -534,7 +534,7 @@ function createInspectionStore() {
     };
   }
 
-  // ── Inspections ──────────────────────────────────────────────────────────────
+  // -- Inspections --------------------------------------------------------------
 
   // Upsert an inspection record.
   // photo_urls: array of strings (already uploaded); checklist: { attrId: bool }
@@ -644,7 +644,7 @@ function createInspectionStore() {
     });
   }
 
-  // ── Component editing (admin during walk) ────────────────────────────────────
+  // -- Component editing (admin during walk) ------------------------------------
 
   async function updateComponent(componentId, fields, attrValues = null) {
     const userId = await getCurrentUserId();
@@ -693,7 +693,7 @@ function createInspectionStore() {
     return updated;
   }
 
-  // ── Repair list ──────────────────────────────────────────────────────────────
+  // -- Repair list --------------------------------------------------------------
 
   async function getFailedComponents(building) {
     const state    = getState();
@@ -721,7 +721,7 @@ function createInspectionStore() {
     ));
   }
 
-  // ── Delete session ───────────────────────────────────────────────────────────
+  // -- Delete session -----------------------------------------------------------
 
   async function deleteSession(sessionId) {
     await api.deleteMany('component_inspections', { v2_walk_session_id: sessionId });
@@ -729,7 +729,7 @@ function createInspectionStore() {
     await loadSessions();
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────────
+  // -- Public API ----------------------------------------------------------------
 
   return {
     subscribe,

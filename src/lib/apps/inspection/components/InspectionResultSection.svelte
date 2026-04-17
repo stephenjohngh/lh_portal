@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/InspectionResultSection.svelte -->
+﻿<!-- src/lib/apps/inspection/components/InspectionResultSection.svelte -->
 <!-- Result selection, dynamic checklist, multi-photo capture, notes, save.
      Supports up to 4 photos per inspection. photo_urls is an array.
      Photo capture/display is delegated to PhotoPanel; this component owns
@@ -32,11 +32,11 @@
 
   $: canSave = !!result;
 
-  // ── Checklist help popup ─────────────────────────────────────────────────────
+  // -- Checklist help popup -----------------------------------------------------
   let activeHelpId = null;
   function toggleHelp(id) { activeHelpId = activeHelpId === id ? null : id; }
 
-  // ── Split checklist into pass/fail vs text/number input attrs ────────────────
+  // -- Split checklist into pass/fail vs text/number input attrs ----------------
   $: passFailDefs = checklistDefs.filter(d => d.display_type !== 'text' && d.display_type !== 'number');
   $: inputDefs    = checklistDefs.filter(d => d.display_type === 'text' || d.display_type === 'number');
 
@@ -44,7 +44,7 @@
   let inputValues = {};
   $: checklistDefs, inputValues = {};
 
-  // ── Checklist reactive logic ─────────────────────────────────────────────────
+  // -- Checklist reactive logic -------------------------------------------------
   // Only pass/fail attrs drive the result. The "Failed: X, Y" line is kept
   // in autoFailNote (never written into the notes textarea) so that user-typed
   // notes and text/number readings are never overwritten by reactive changes.
@@ -67,7 +67,7 @@
     }
   }
 
-  // ── Photo state ──────────────────────────────────────────────────────────────
+  // -- Photo state --------------------------------------------------------------
   // PhotoPanel owns the camera/capture UI; this component owns pendingPhotos
   // so that uploadAllPending() can run as part of the save flow here.
   let pendingPhotos = [];   // { blob, preview, uploading, error }
@@ -126,7 +126,7 @@
   $: uploading = pendingPhotos.some(p => p.uploading);
 </script>
 
-<!-- ── Dynamic checklist — PASS / FAIL per attribute ─────────────────────────── -->
+<!-- -- Dynamic checklist — PASS / FAIL per attribute --------------------------- -->
 {#if passFailDefs.length > 0}
   <div class="sec">
     <div class="sec-lbl">CHECKLIST</div>
@@ -163,7 +163,7 @@
   </div>
 {/if}
 
-<!-- ── Text / number attrs — recorded as notes on save ───────────────────────── -->
+<!-- -- Text / number attrs — recorded as notes on save ------------------------- -->
 {#if inputDefs.length > 0}
   <div class="sec">
     <div class="sec-lbl">READINGS</div>
@@ -194,7 +194,7 @@
   </div>
 {/if}
 
-<!-- ── Result buttons ─────────────────────────────────────────────────────────── -->
+<!-- -- Result buttons ----------------------------------------------------------- -->
 <div class="sec">
   <div class="sec-lbl">INSPECTION RESULT</div>
   <div class="result-grid">
@@ -213,10 +213,10 @@
   </div>
 </div>
 
-<!-- ── Photos ─────────────────────────────────────────────────────────────────── -->
+<!-- -- Photos ------------------------------------------------------------------- -->
 <PhotoPanel bind:photoUrls bind:pendingPhotos {session} {component} />
 
-<!-- ── Notes ──────────────────────────────────────────────────────────────────── -->
+<!-- -- Notes -------------------------------------------------------------------- -->
 <div class="sec">
   <div class="sec-lbl">NOTES</div>
   {#if autoFailNote}

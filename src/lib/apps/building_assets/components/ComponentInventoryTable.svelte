@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/ComponentInventoryTable.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/ComponentInventoryTable.svelte -->
 <!-- Shared inventory table used by both ComponentsTab and plan/ComponentInventory.
      Renders a list view (one row per component) or a summary view (counts by type).
 
@@ -36,7 +36,7 @@
 
   let view = 'list';   // 'list' | 'summary'
 
-  // ── Delete confirm (two-click, 3 s timeout) ───────────────────────
+  // -- Delete confirm (two-click, 3 s timeout) -----------------------
   let confirmingDelete = new Set();
   const confirmTimers  = {};
 
@@ -66,7 +66,7 @@
     confirmingDelete = new Set(confirmingDelete);
   }
 
-  // ── Row helpers ───────────────────────────────────────────────────
+  // -- Row helpers ---------------------------------------------------
   function typeFor(c)  { return typeByCode(types, c.type_code); }
   function floorFor(c) { return floors.find(f => f.id === c.floor_id) ?? null; }
   function systemFor(t) { return t ? systemById(systems, t.building_system_id) : null; }
@@ -102,11 +102,11 @@
       .filter(Boolean);
   }
 
-  // ── Status helpers ────────────────────────────────────────────────
+  // -- Status helpers ------------------------------------------------
   const statusCls = statusBadgeCls;
   const statusDot = statusDotCls;
 
-  // ── Sort: floor → system → type → asset_id ───────────────────────
+  // -- Sort: floor → system → type → asset_id -----------------------
   $: sortedComponents = [...components].sort((a, b) => {
     const flA = floors.find(f => f.id === a.floor_id);
     const flB = floors.find(f => f.id === b.floor_id);
@@ -129,7 +129,7 @@
     return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
   });
 
-  // ── Summary data ──────────────────────────────────────────────────
+  // -- Summary data --------------------------------------------------
   $: summaryRows = (() => {
     const rows = new Map();
     for (const c of components) {
@@ -159,7 +159,7 @@
 
 <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
 
-  <!-- ── Card header: title + view toggle ─────────────────────────── -->
+  <!-- -- Card header: title + view toggle --------------------------- -->
   <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-700 flex-wrap">
     <p class="font-semibold text-white text-sm shrink-0">{title}</p>
 
@@ -181,16 +181,16 @@
     </span>
   </div>
 
-  <!-- ── Optional filters slot (ComponentsTab only) ─────────────── -->
+  <!-- -- Optional filters slot (ComponentsTab only) --------------- -->
   <slot name="filters" />
 
-  <!-- ── Empty state ────────────────────────────────────────────── -->
+  <!-- -- Empty state ---------------------------------------------- -->
   {#if components.length === 0}
     <p class="px-4 py-8 text-sm text-slate-600 italic text-center">
       No components match the current filters.
     </p>
 
-  <!-- ── List view ──────────────────────────────────────────────── -->
+  <!-- -- List view ------------------------------------------------ -->
   {:else if view === 'list'}
     <div class="overflow-x-auto">
       <table class="w-full text-xs border-collapse table-fixed">
@@ -379,7 +379,7 @@
       </table>
     </div>
 
-  <!-- ── Summary view ──────────────────────────────────────────── -->
+  <!-- -- Summary view -------------------------------------------- -->
   {:else}
     <div class="overflow-x-auto">
       <table class="w-full text-xs border-collapse">

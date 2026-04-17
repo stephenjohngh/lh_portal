@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/ComponentPresetBar.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/ComponentPresetBar.svelte -->
 <!-- Horizontal preset bar shown above the Components tab filter row.
      Presets are split into two display groups based on sort_order:
 
@@ -30,7 +30,7 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── Group and sort ────────────────────────────────────────────────
+  // -- Group and sort ------------------------------------------------
   $: standardGroup = presets
     .filter(p => p.sort_order != null)
     .sort((a, b) => a.sort_order - b.sort_order);
@@ -41,7 +41,7 @@
 
   $: showDivider = standardGroup.length > 0 && personalGroup.length > 0;
 
-  // ── Apply ─────────────────────────────────────────────────────────
+  // -- Apply ---------------------------------------------------------
   function apply(preset) {
     dispatch('apply', {
       filters: { ...preset.filters },
@@ -49,7 +49,7 @@
     });
   }
 
-  // ── Save-as flow ──────────────────────────────────────────────────
+  // -- Save-as flow --------------------------------------------------
   let showSaveInput  = false;
   let savingName     = '';
   let sortOrderInput = '';   // admin-only field; '' = null (personal)
@@ -96,7 +96,7 @@
     if (e.key === 'Escape') cancelSave();
   }
 
-  // ── Delete ────────────────────────────────────────────────────────
+  // -- Delete --------------------------------------------------------
   function deletePreset(id, e) {
     e.stopPropagation();
     dispatch('deletepreset', { id });
@@ -109,7 +109,7 @@
     Preset
   </span>
 
-  <!-- ── Group 1: standard reports (sort_order IS NOT NULL) ────────── -->
+  <!-- -- Group 1: standard reports (sort_order IS NOT NULL) ---------- -->
   {#each standardGroup as p (p.id)}
     {@const active = configMatches(p, currentConfig)}
     <div class="flex items-center rounded overflow-hidden border transition-colors
@@ -142,12 +142,12 @@
     </span>
   {/if}
 
-  <!-- ── Divider ────────────────────────────────────────────────────── -->
+  <!-- -- Divider ------------------------------------------------------ -->
   {#if showDivider}
-    <span class="text-slate-700 select-none px-0.5">│</span>
+    <span class="text-slate-700 select-none px-0.5">|</span>
   {/if}
 
-  <!-- ── Group 2: personal presets (sort_order IS NULL) ───────────── -->
+  <!-- -- Group 2: personal presets (sort_order IS NULL) ------------- -->
   {#each personalGroup as p (p.id)}
     {@const active = configMatches(p, currentConfig)}
     <div class="flex items-center rounded overflow-hidden border transition-colors
@@ -170,7 +170,7 @@
     </div>
   {/each}
 
-  <!-- ── Save as… ──────────────────────────────────────────────────── -->
+  <!-- -- Save as… ---------------------------------------------------- -->
   <div class="flex items-center gap-1.5 ml-auto">
     {#if showSaveInput}
       <!-- Name -->

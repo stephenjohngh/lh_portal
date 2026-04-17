@@ -1,4 +1,4 @@
-<!-- ComponentLinks.svelte -->
+﻿<!-- ComponentLinks.svelte -->
 <!-- Manages the list of component_links for a single component.
      Reads from $buildingAssetsStore.componentLinks[componentId].
      Writes via store CRUD methods (addComponentLink / updateComponentLink / deleteComponentLink).
@@ -56,19 +56,19 @@
   // Current links from store
   $: links = $buildingAssetsStore.componentLinks[componentId] ?? [];
 
-  // ── Add form state ────────────────────────────────────────────────────
+  // -- Add form state ----------------------------------------------------
   let showAddForm  = false;
   let addRef       = '';
   let addLinkType  = '';
   let addSaving    = false;
   let addError     = '';
 
-  // ── Inline edit state ─────────────────────────────────────────────────
+  // -- Inline edit state -------------------------------------------------
   let editingId       = null;   // link id being edited
   let editLinkType    = '';
   let editSaving      = false;
 
-  // ── Delete confirm ────────────────────────────────────────────────────
+  // -- Delete confirm ----------------------------------------------------
   let confirmDeleteId = null;
   let deleting        = false;
 
@@ -120,7 +120,7 @@
 
   $: canModify = !readOnly && ($permissions.isAdmin || $permissions.canModify);
 
-  // ── Linked component view modal ───────────────────────────────────────
+  // -- Linked component view modal ---------------------------------------
   let viewingComponent = null;
 
   function openLinkedComponent(ref) {
@@ -294,7 +294,7 @@
 
 </section>
 
-<!-- ── Linked component detail overlay ──────────────────────────────── -->
+<!-- -- Linked component detail overlay -------------------------------- -->
 {#if viewingComponent}
   {@const store = $buildingAssetsStore}
   <!-- svelte-ignore a11y-no-static-element-interactions -->

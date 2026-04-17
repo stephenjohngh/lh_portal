@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/ComponentDetailPanel.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/ComponentDetailPanel.svelte -->
 <!-- Full detail view + inline editor for a single component.
      Shows every field, all attribute values, last inspection summary,
      and allows editing and saving. Calls the store directly. -->
@@ -25,7 +25,7 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── Edit state (initialised from props) ─────────────────────────────
+  // -- Edit state (initialised from props) -----------------------------
   let selectedFloorId    = component.floor_id      ?? '';
   let planId             = component.plan_id        ?? '';
   let selectedTypeId     = typeByCode(types, component.type_code)?.id ?? '';
@@ -47,7 +47,7 @@
   let dirty        = false;   // any change made?
   let showWalkAttrs = false;  // toggle for checkable (walk checklist) attributes
 
-  // ── loadedId pattern: re-initialise form whenever the selected component changes ──
+  // -- loadedId pattern: re-initialise form whenever the selected component changes --
   let loadedId = component.id;
   $: if (component.id !== loadedId) {
     loadedId           = component.id;
@@ -68,7 +68,7 @@
     showWalkAttrs      = false;
   }
 
-  // ── Derived ──────────────────────────────────────────────────────────
+  // -- Derived ----------------------------------------------------------
   $: selectedType   = types.find(t => t.id === selectedTypeId) ?? null;
   $: floor          = floorById(floors, selectedFloorId);
   $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
@@ -178,7 +178,7 @@
 <!-- Outer scroll container -->
 <div class="bg-slate-800 rounded-xl border border-slate-700 flex flex-col max-h-[90vh]">
 
-  <!-- ── Sticky header ───────────────────────────────────────────── -->
+  <!-- -- Sticky header --------------------------------------------- -->
   <div class="flex items-start gap-3 p-5 pb-4 border-b border-slate-700 shrink-0">
     <div class="flex-1 min-w-0">
       <!-- Line 1: floor/type/id  ·  label -->
@@ -206,7 +206,7 @@
     >✕</button>
   </div>
 
-  <!-- ── Scrollable body ─────────────────────────────────────────── -->
+  <!-- -- Scrollable body ------------------------------------------- -->
   <div class="flex-1 overflow-y-auto p-5 space-y-6">
 
     {#if errorMsg}
@@ -216,7 +216,7 @@
       </div>
     {/if}
 
-    <!-- ── Location ──────────────────────────────────────────────── -->
+    <!-- -- Location ------------------------------------------------ -->
     <section>
       <p class={sec}>Location</p>
       <div class="grid grid-cols-2 gap-4">
@@ -256,7 +256,7 @@
       {/if}
     </section>
 
-    <!-- ── Identity ──────────────────────────────────────────────── -->
+    <!-- -- Identity ------------------------------------------------ -->
     <section>
       <p class={sec}>Identity</p>
       <div class="flex flex-col gap-3">
@@ -293,7 +293,7 @@
       </div>
     </section>
 
-    <!-- ── Status ────────────────────────────────────────────────── -->
+    <!-- -- Status -------------------------------------------------- -->
     <section>
       <p class={sec}>Status</p>
       <div class="grid grid-cols-4 gap-2">
@@ -307,7 +307,7 @@
       </div>
     </section>
 
-    <!-- ── Attribute values ───────────────────────────────────────── -->
+    <!-- -- Attribute values ----------------------------------------- -->
     {#if defs.length > 0}
       <section>
         <div class="flex items-center justify-between gap-2 mb-3">
@@ -375,7 +375,7 @@
       <p class="text-xs text-slate-600 italic">No attribute definitions for this type.</p>
     {/if}
 
-    <!-- ── Notes ─────────────────────────────────────────────────── -->
+    <!-- -- Notes --------------------------------------------------- -->
     <section>
       <p class={sec}>Notes</p>
       <textarea
@@ -389,7 +389,7 @@
       ></textarea>
     </section>
 
-    <!-- ── Linked components ─────────────────────────────────────── -->
+    <!-- -- Linked components --------------------------------------- -->
     <ComponentLinks
       componentId={component.id}
       {components}
@@ -399,10 +399,10 @@
       {readOnly}
     />
 
-    <!-- ── Inspection history ────────────────────────────────────── -->
+    <!-- -- Inspection history -------------------------------------- -->
     <ComponentInspectionHistory componentId={component.id} />
 
-    <!-- ── Metadata ───────────────────────────────────────────────── -->
+    <!-- -- Metadata ------------------------------------------------- -->
     <section class="text-xs text-slate-600 space-y-0.5 pb-1">
       <p>ID <span class="font-mono text-slate-500">{component.id}</span></p>
       <p>Created   <span class="text-slate-500">{fmt(component.created_at)}</span></p>
@@ -413,7 +413,7 @@
 
   </div><!-- end scrollable body -->
 
-  <!-- ── Sticky footer actions ──────────────────────────────────── -->
+  <!-- -- Sticky footer actions ------------------------------------ -->
   <div class="p-5 pt-4 border-t border-slate-700 shrink-0">
 
     {#if confirmDel && !readOnly}

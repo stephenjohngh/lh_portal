@@ -1,10 +1,10 @@
-// src/lib/utils/dates.js
+﻿// src/lib/utils/dates.js
 // Shared date/time formatting utilities for the LH Portal.
 //
 // All en-GB display functions are grouped at the top.
 // Legacy en-US functions (used by IssuesTrackerApp) are preserved below.
 
-// ── en-GB helpers (Walk, Plans, Reports) ────────────────────────────────────
+// -- en-GB helpers (Walk, Plans, Reports) ------------------------------------
 
 const GB = 'en-GB';
 
@@ -58,7 +58,7 @@ export function fmtDuration(startIso, endIso) {
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
-// ── Legacy en-US helpers (used by IssuesTrackerApp, AuditDashboard etc.) ────
+// -- Legacy en-US helpers (used by IssuesTrackerApp, AuditDashboard etc.) ----
 // These are preserved as-is to avoid changing behaviour in parts of the app
 // that weren't part of the refactor.
 

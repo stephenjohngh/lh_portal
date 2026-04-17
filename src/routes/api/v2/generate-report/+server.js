@@ -1,4 +1,4 @@
-// src/routes/api/v2/generate-report/+server.js
+﻿// src/routes/api/v2/generate-report/+server.js
 // Generate a Word document report for V2 components.
 //
 // Accepts: { options, floors }
@@ -35,7 +35,7 @@ import { sortBySystemTypeAsset } from '$lib/apps/v2/utils/componentSorting.js';
 
 const logger = getLogger('v2GenerateReport');
 
-// ── Status helpers ────────────────────────────────────────────────────────────
+// -- Status helpers ------------------------------------------------------------
 const STATUS_LABEL = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' };
 const STATUS_COLOUR = {
   ok:       COLOURS.passGreen,
@@ -95,7 +95,7 @@ function numCellHeader(value, widthDxa) {
   });
 }
 
-// ── Attribute formatting ──────────────────────────────────────────────────────
+// -- Attribute formatting ------------------------------------------------------
 // number   → "name: value"  (bare number is meaningless without its label)
 // dropdown → "value"        (the selected option is the meaningful text)
 // others   → "name"         (presence of the attr is what matters; value is implied)
@@ -109,12 +109,12 @@ function fmtAttrs(attributes) {
     .join('\n');
 }
 
-// ── Sort helper ───────────────────────────────────────────────────────────────
+// -- Sort helper ---------------------------------------------------------------
 function sortComponents(comps) {
   return [...comps].sort(sortBySystemTypeAsset);
 }
 
-// ── Full component list table (all floors combined) ───────────────────────────
+// -- Full component list table (all floors combined) ---------------------------
 // Columns: Floor | Type | Id | Label | Attributes | Status
 // DXA:      700  | 1600 | 560| 3430  |    2170    |  2006  = 10466
 // Type: 80% of original 2000. Attrs: 70% of original 3100. Freed width → Label.
@@ -190,7 +190,7 @@ function buildFullComponentListSection(allComponents, building, filterSummary) {
   return children;
 }
 
-// ── Full component table (per floor) ─────────────────────────────────────────
+// -- Full component table (per floor) -----------------------------------------
 // Columns: Type | Id | Label | Attributes | Notes | Status
 // DXA:     2000 | 560| 2200  |    1860    | 2856  |  990  = 10466
 // Type: 80% of original 2500. Attrs: 70% of original 2657. Freed width → Notes.
@@ -240,7 +240,7 @@ function buildComponentTable(components, includeNotes = false) {
   });
 }
 
-// ── Per-floor summary pivot table ─────────────────────────────────────────────
+// -- Per-floor summary pivot table ---------------------------------------------
 // Columns: System | Type | OK | Problem | Failed | Inactive | Total  (matches Full Summary)
 // DXA:     2000  | 2200 | 1050 | 1200  |  1050  |   1200  | 1766  = 10466
 const FS_COLS = [2000, 2200, 1050, 1200, 1050, 1200, 1766];
@@ -304,7 +304,7 @@ function buildFloorSummaryTable(components) {
   });
 }
 
-// ── Full summary pivot table (System | Type | OK | Problem | Failed | Inactive | Total) ──
+// -- Full summary pivot table (System | Type | OK | Problem | Failed | Inactive | Total) --
 // DXA: 2000 | 2200 | 1050 | 1200 | 1050 | 1200 | 1766 = 10466
 const SM_COLS = [2000, 2200, 1050, 1200, 1050, 1200, 1766];
 
@@ -409,7 +409,7 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
   return children;
 }
 
-// ── POST handler ──────────────────────────────────────────────────────────────
+// -- POST handler --------------------------------------------------------------
 export async function POST({ request }) {
   logger('📄 POST /api/v2/generate-report');
 
@@ -445,7 +445,7 @@ export async function POST({ request }) {
       day: '2-digit', month: 'short', year: 'numeric',
     });
 
-    // ── Assemble document ─────────────────────────────────────────────────────
+    // -- Assemble document -----------------------------------------------------
     const children = [];
 
     // Document title + filter summary
@@ -462,7 +462,7 @@ export async function POST({ request }) {
       ], { after: 240 }));
     }
 
-    // ── Per-floor content ─────────────────────────────────────────────────────
+    // -- Per-floor content -----------------------------------------------------
     // Only iterate floors when at least one per-floor section is requested.
     // If only final sections (full_component_list / full_summary) are selected,
     // skip this loop entirely — otherwise each floor emits a heading with nothing below it.
@@ -485,7 +485,7 @@ export async function POST({ request }) {
         )],
       }));
 
-      // ── Plan graphic ──────────────────────────────────────────────────────
+      // -- Plan graphic ------------------------------------------------------
       if (wantPlan) {
         if (imageBase64 && imageWidth && imageHeight) {
           const maxPts = 520;
@@ -517,13 +517,13 @@ export async function POST({ request }) {
         continue;
       }
 
-      // ── Full component table ──────────────────────────────────────────────
+      // -- Full component table ----------------------------------------------
       if (wantList) {
         children.push(buildComponentTable(components, includeNotes));
         children.push(new Paragraph({ spacing: { after: 240 }, children: [] }));
       }
 
-      // ── Floor summary table ───────────────────────────────────────────────
+      // -- Floor summary table -----------------------------------------------
       if (wantFloorSummary) {
         children.push(para('Floor Summary', { bold: true, size: 20, before: 120, after: 100 }));
         const fsTable = buildFloorSummaryTable(components);
@@ -534,21 +534,21 @@ export async function POST({ request }) {
       }
     }
 
-    // ── Full component list section (all floors combined) ─────────────────────
+    // -- Full component list section (all floors combined) ---------------------
     if (wantFullComponentList) {
       // Only add a page break if there was preceding per-floor content
       if (wantAnyPerFloor) children.push(new Paragraph({ children: [new PageBreak()] }));
       children.push(...buildFullComponentListSection(allComponents, building, filterSummary));
     }
 
-    // ── Full summary section (all floors combined) ────────────────────────────
+    // -- Full summary section (all floors combined) ----------------------------
     if (wantFullSummary) {
       // Add a page break if there was any preceding content beyond the title
       if (wantAnyPerFloor || wantFullComponentList) children.push(new Paragraph({ children: [new PageBreak()] }));
       children.push(...buildFullSummarySection(floors, building, filterSummary));
     }
 
-    // ── Build document ────────────────────────────────────────────────────────
+    // -- Build document --------------------------------------------------------
     const doc = new Document({
       styles:   DOC_STYLES,
       sections: [{

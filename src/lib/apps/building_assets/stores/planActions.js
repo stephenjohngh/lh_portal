@@ -1,4 +1,4 @@
-// src/lib/apps/building_assets/stores/planActions.js
+﻿// src/lib/apps/building_assets/stores/planActions.js
 // Plan domain: plans[], scale calibration, image upload, plan CRUD, copy.
 // Receives the writable `update` function and the supabase client from buildingAssetsStore.
 
@@ -12,7 +12,7 @@ const logger = getLogger('BuildingAssets');
 // supabase: the supabase client (needed for Storage operations).
 export function createPlanActions(update, supabase) {
 
-  // ── Image upload ──────────────────────────────────────────────────────
+  // -- Image upload ------------------------------------------------------
   // Uploads to the plan-images bucket and returns the public URL.
   async function uploadPlanImage(file) {
     const ext  = file.name.split('.').pop().toLowerCase();
@@ -23,7 +23,7 @@ export function createPlanActions(update, supabase) {
     return publicUrl;
   }
 
-  // ── Scale calibration ─────────────────────────────────────────────────
+  // -- Scale calibration -------------------------------------------------
   // Saves a scale reference line and the image aspect ratio on a plan.
   // scaleRef:    { x1, y1, x2, y2, metres }  (or null to clear)
   // aspectRatio: number — native image W / H  (or null to clear)
@@ -41,7 +41,7 @@ export function createPlanActions(update, supabase) {
     return updated;
   }
 
-  // ── Create a new plan (uploads image first) ───────────────────────────
+  // -- Create a new plan (uploads image first) ---------------------------
   // data: { name, building, floor_id, description }
   async function createPlan(data, file) {
     requireUserId();
@@ -62,7 +62,7 @@ export function createPlanActions(update, supabase) {
     return plan;
   }
 
-  // ── Update plan metadata (no image change) ────────────────────────────
+  // -- Update plan metadata (no image change) ----------------------------
   async function updatePlanInfo(planId, data) {
     requireUserId();
     const updated = await api.update('plans', planId, {
@@ -79,7 +79,7 @@ export function createPlanActions(update, supabase) {
     return updated;
   }
 
-  // ── Replace the image on an existing plan ────────────────────────────
+  // -- Replace the image on an existing plan ----------------------------
   // Also clears scale_ref and image_aspect_ratio — both must be re-calibrated.
   async function replacePlanImage(planId, file) {
     requireUserId();
@@ -97,7 +97,7 @@ export function createPlanActions(update, supabase) {
     return updated;
   }
 
-  // ── Copy a plan ───────────────────────────────────────────────────────
+  // -- Copy a plan -------------------------------------------------------
   // Creates a new plan row reusing the same image URL, then copies all
   // components (with their attribute values) and their component_links.
   //
@@ -183,7 +183,7 @@ export function createPlanActions(update, supabase) {
       if (onProgress) onProgress(copied, total);
     }
 
-    // ── Copy component links ──────────────────────────────────────────────
+    // -- Copy component links ----------------------------------------------
     // For each source component that has links, create equivalent links on
     // the new components. to_component_ref strings are rewritten when they
     // point to another component in the source plan (internal link), so that
@@ -249,7 +249,7 @@ export function createPlanActions(update, supabase) {
     return { plan: newPlan, copied };
   }
 
-  // ── Delete a plan ─────────────────────────────────────────────────────
+  // -- Delete a plan -----------------------------------------------------
   // DB should cascade-delete spaces and annotations; local state is cleaned up too.
   async function deletePlan(planId) {
     requireUserId();

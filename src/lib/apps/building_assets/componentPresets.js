@@ -1,4 +1,4 @@
-// src/lib/apps/building_assets/componentPresets.js
+﻿// src/lib/apps/building_assets/componentPresets.js
 // Named filter/column configurations for the Components tab.
 //
 // sort_order IS NOT NULL  →  "standard report" preset, created by an admin,
@@ -12,7 +12,7 @@
 
 import { api } from '$lib/utils/api';
 
-// ── Default state ─────────────────────────────────────────────────────────────
+// -- Default state -------------------------------------------------------------
 // Mirrors the initial values in ComponentsTab.svelte.
 export const DEFAULT_CONFIG = {
   filters: {
@@ -30,7 +30,7 @@ export const DEFAULT_CONFIG = {
   },
 };
 
-// ── DB helpers ────────────────────────────────────────────────────────────────
+// -- DB helpers ----------------------------------------------------------------
 
 function rowToPreset(row) {
   return {
@@ -68,7 +68,7 @@ export async function removePreset(id) {
   await api.delete('component_presets', id);
 }
 
-// ── Config equality ───────────────────────────────────────────────────────────
+// -- Config equality -----------------------------------------------------------
 // Returns true when a preset's filters + columns match the supplied live config.
 // Ignores filterFloorId — only meaningful when floorPreset === 'single'.
 export function configMatches(preset, config) {

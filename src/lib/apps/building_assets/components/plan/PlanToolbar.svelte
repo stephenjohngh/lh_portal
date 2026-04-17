@@ -1,4 +1,4 @@
-<!-- plan/PlanToolbar.svelte -->
+﻿<!-- plan/PlanToolbar.svelte -->
 <!-- Floor / plan pickers, mode toggle, scale indicator, stats.
      All state is owned by PlanViewTab; this component is purely presentational.
      Search has moved to FilterSidebar. -->
@@ -37,7 +37,7 @@
 
 </script>
 
-<!-- ── Row 1: Navigation + modes + stats ───────────────────────────── -->
+<!-- -- Row 1: Navigation + modes + stats ----------------------------- -->
 <div class="flex items-center gap-3 flex-wrap">
 
   <!-- Floor picker -->

@@ -1,4 +1,4 @@
-// src/lib/apps/inspection/utils/inspectionHelpers.js
+﻿// src/lib/apps/inspection/utils/inspectionHelpers.js
 // Helpers for v2 component_inspections schema.
 // Key differences from v1:
 //   - Rows use component_id (not plan_element_id)
@@ -13,7 +13,7 @@ import { sortByFloorAsset } from '$lib/apps/v2/utils/componentSorting.js';
 // Re-export so callers that already import these from here keep working.
 export { resultLabel, resultRank } from '$lib/apps/v2/utils/resultConstants.js';
 
-// ── Flatten ───────────────────────────────────────────────────────────────────
+// -- Flatten -------------------------------------------------------------------
 // Promotes nested join fields to the top level.
 // Raw row from loadSessionInspections join:
 //   component_inspections row
@@ -37,7 +37,7 @@ export function flattenInspectionRows(rows) {
   }));
 }
 
-// ── Group by component ────────────────────────────────────────────────────────
+// -- Group by component --------------------------------------------------------
 // Returns array of { component_id, asset_id, label, type_code, type_name,
 //                    floor_name, floor_order, rows[] }
 // Sorted: failed → problem → ok → inactive, then floor order, then asset_id.
@@ -67,7 +67,7 @@ export function groupByComponent(rows) {
   });
 }
 
-// ── Session stats ─────────────────────────────────────────────────────────────
+// -- Session stats -------------------------------------------------------------
 export function sessionStats(inspections) {
   return {
     ok:       inspections.filter(r => (r.result ?? r.inspection_result) === 'ok').length,
@@ -79,7 +79,7 @@ export function sessionStats(inspections) {
   };
 }
 
-// ── Worst result in a group ───────────────────────────────────────────────────
+// -- Worst result in a group ---------------------------------------------------
 export function worstResult(rows) {
   if (rows.some(r => r.result === 'failed'))  return 'failed';
   if (rows.some(r => r.result === 'problem')) return 'problem';
@@ -87,7 +87,7 @@ export function worstResult(rows) {
   return 'inactive';
 }
 
-// ── Component display name ────────────────────────────────────────────────────
+// -- Component display name ----------------------------------------------------
 // Returns e.g. "G / FD-042" (floor short_name / asset_id)
 export function componentDisplayName(component, floor) {
   const floorName = floor?.short_name ?? component?.floor?.short_name ?? '?';
@@ -95,14 +95,14 @@ export function componentDisplayName(component, floor) {
   return `${floorName} / ${id}`;
 }
 
-// ── Session floor label ───────────────────────────────────────────────────────
+// -- Session floor label -------------------------------------------------------
 export function sessionFloorLabel(session, floors) {
   if (!session.floor_id) return 'All Floors';
   const floor = floors?.find(f => f.id === session.floor_id);
   return floor ? `Floor ${floor.short_name}` : 'Floor ?';
 }
 
-// ── Preset label ─────────────────────────────────────────────────────────────
+// -- Preset label -------------------------------------------------------------
 export function presetLabel(preset) {
   return {
     custom:              'Custom',

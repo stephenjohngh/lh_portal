@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/InspectionSession.svelte -->
+﻿<!-- src/lib/apps/inspection/components/InspectionSession.svelte -->
 <!-- Core v2 walk screen: navigate components, record inspections, edit, jump, close -->
 <script>
   import { createEventDispatcher } from 'svelte';
@@ -124,7 +124,7 @@
 
 <div class="ws">
 
-  <!-- ── Session bar ──────────────────────────────────────────────────────── -->
+  <!-- -- Session bar -------------------------------------------------------- -->
   <div class="sbar">
     <div class="sbar-l">
       <div class="sbar-name">{headerLabel}</div>
@@ -160,7 +160,7 @@
     <div class="prog-track"><div class="prog-fill" style="width:{progress*100}%"></div></div>
   {/if}
 
-  <!-- ── Stats bars ──────────────────────────────────────────────────────── -->
+  <!-- -- Stats bars -------------------------------------------------------- -->
   {#if !isRepair && view === 'card'}
     <WalkStatsBars
       total={totalComponents}
@@ -172,7 +172,7 @@
     />
   {/if}
 
-  <!-- ── View router ──────────────────────────────────────────────────────── -->
+  <!-- -- View router -------------------------------------------------------- -->
 
   {#if view === 'inspect' && currentComponent}
     <InspectionPanel
@@ -249,7 +249,7 @@
     </div>
 
   {:else if view === 'card'}
-    <!-- ── Component card ───────────────────────────────────────────────── -->
+    <!-- -- Component card ------------------------------------------------- -->
     {#if currentComponent}
       <div class="ccard" class:ccard-repair={isRepair}>
 
@@ -345,7 +345,7 @@
 <style>
   .ws { display:flex; flex-direction:column; min-height:calc(100vh - 64px); background:#0d0d14; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; }
 
-  /* ── Session bar ─────────────────────────────────────────────────────────── */
+  /* -- Session bar ----------------------------------------------------------- */
   .sbar { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; background:#111122; border-bottom:1px solid #2e2e42; gap:0.5rem; min-height:56px; }
   .sbar-l { flex:1; min-width:0; }
   .sbar-name { font-size:0.82rem; font-weight:700; color:#f0f0f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -359,11 +359,11 @@
   .finish-btn { background:#166534; border:none; border-radius:5px; color:#4ade80; font-family:inherit; font-size:0.65rem; font-weight:800; letter-spacing:0.08em; padding:0.35rem 0.65rem; cursor:pointer; }
   .finish-btn:hover { background:#15803d; }
 
-  /* ── Progress bar ────────────────────────────────────────────────────────── */
+  /* -- Progress bar ---------------------------------------------------------- */
   .prog-track { height:3px; background:#1a1a2e; }
   .prog-fill  { height:100%; background:#fb923c; transition:width 0.3s; }
 
-  /* ── Component card ──────────────────────────────────────────────────────── */
+  /* -- Component card -------------------------------------------------------- */
   .ccard { display:flex; flex-direction:column; gap:0; }
   .ccard-repair { background:#0d0a00; }
 
@@ -381,7 +381,7 @@
   .st-problem  { color:#fbbf24; border-color:#713f12; background:#1a1200; }
   .st-inactive { color:#888;    border-color:#3e3e58; background:#1a1a2e; }
 
-  /* ── Inspection result badge ─────────────────────────────────────────────── */
+  /* -- Inspection result badge ----------------------------------------------- */
   .cinsp { display:flex; align-items:baseline; gap:0.75rem; padding:0.875rem 1rem; border-left:3px solid; }
   .cinsp-ok       { border-color:#22c55e; background:#071207; }
   .cinsp-failed   { border-color:#ef4444; background:#120707; }
@@ -395,7 +395,7 @@
   .cinsp-notes { font-size:0.72rem; color:#ccc; font-style:italic; flex:1; }
   .cinsp-none { padding:0.875rem 1rem; font-size:0.78rem; color:#555; font-style:italic; }
 
-  /* ── Navigation ──────────────────────────────────────────────────────────── */
+  /* -- Navigation ------------------------------------------------------------ */
   .nav-row { display:flex; align-items:center; padding:0.875rem 1rem; gap:0.5rem; border-bottom:1px solid #1a1a2e; }
   .nav-btn { flex:1; padding:0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#f0f0f0; font-family:inherit; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.15s; }
   .nav-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
@@ -405,10 +405,10 @@
   .jump-btn:hover, .map-btn:hover, .plan-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
   .plan-btn:disabled { opacity:0.3; cursor:not-allowed; }
 
-  /* ── Action buttons ──────────────────────────────────────────────────────── */
+  /* -- Action buttons -------------------------------------------------------- */
   .act-row { display:flex; gap:0.75rem; padding:1rem; }
 
-  /* ── Building floor strip ────────────────────────────────────────────────── */
+  /* -- Building floor strip -------------------------------------------------- */
   .floor-strip { display:flex; gap:0; border-top:2px solid #2e2e42; background:#0a0a18; overflow-x:auto; }
   .fl-cell { flex:1; min-width:3.5rem; display:flex; flex-direction:column; align-items:center; padding:0.5rem 0.25rem; border-right:1px solid #1a1a2e; }
   .fl-cell:last-child { border-right:none; }
@@ -417,7 +417,7 @@
   .fl-prog { font-size:0.6rem; color:#888; margin-top:0.2rem; }
   .fl-active .fl-name { color:#fb923c; }
 
-  /* ── Close sheet ─────────────────────────────────────────────────────────── */
+  /* -- Close sheet ----------------------------------------------------------- */
   .close-sheet { display:flex; flex-direction:column; flex:1; }
   .close-hdr { display:flex; align-items:center; gap:1rem; padding:1rem 1.25rem; background:#111122; border-bottom:1px solid #2e2e42; }
   .close-title { font-size:0.65rem; letter-spacing:0.25em; color:#fb923c; flex:1; text-align:center; }
@@ -425,7 +425,7 @@
   .close-sec { display:flex; flex-direction:column; gap:0.5rem; }
   .close-sec-lbl { font-size:0.62rem; letter-spacing:0.2em; color:#fb923c; font-weight:700; }
 
-  /* ── Empty state ─────────────────────────────────────────────────────────── */
+  /* -- Empty state ----------------------------------------------------------- */
   .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:1rem; color:#555; font-size:0.85rem; padding:4rem 2rem; }
   .empty-icon  { font-size:3rem; color:#2e2e42; }
 

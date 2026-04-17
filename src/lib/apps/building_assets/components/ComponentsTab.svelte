@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/ComponentsTab.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/ComponentsTab.svelte -->
 <!-- Components tab: list, create, detail-edit, and inspect components.
      Reads all data from buildingAssetsStore directly.
      Uses ComponentInventoryTable for the shared list/summary view.
@@ -20,7 +20,7 @@
   import ComponentDetailView     from './ComponentDetailView.svelte';
   import InspectionPanel         from './InspectionPanel.svelte';
 
-  // ── Store bindings ────────────────────────────────────────────────
+  // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;
   $: facilities     = store.facilities;
   $: floors         = store.floors;
@@ -33,12 +33,12 @@
   $: componentAttrs = store.componentAttrs;
   $: inspections    = store.inspections;
 
-  // ── Floor presets ─────────────────────────────────────────────────
+  // -- Floor presets -------------------------------------------------
   // short_name sets that define each preset
   const RESIDENTIAL_SHORT = new Set(['G','1','2','3','4','5','6','7']);
   const BASEMENT_SHORT    = new Set(['X','L','G']);
 
-  // ── Filter state ──────────────────────────────────────────────────
+  // -- Filter state --------------------------------------------------
   let floorPreset    = 'all';   // 'all' | 'residential' | 'basement' | 'single'
   let filterFloorId  = '';
   let filterSystemId = '';      // '' = all systems
@@ -55,7 +55,7 @@
     if (filterTypeCode && !validCodes.has(filterTypeCode)) filterTypeCode = '';
   }
 
-  // ── Preset state ──────────────────────────────────────────────────
+  // -- Preset state --------------------------------------------------
   let presets      = [];
   let savingPreset = false;
 
@@ -104,7 +104,7 @@
     }
   }
 
-  // ── UI state ──────────────────────────────────────────────────────
+  // -- UI state ------------------------------------------------------
   let showForm              = false;
   let saving                = false;
   let errorMsg              = '';
@@ -114,14 +114,14 @@
   let showLinked          = true;
   let showInspectionNotes = false;
 
-  // ── Derived: unique statuses present in components ────────────────
+  // -- Derived: unique statuses present in components ----------------
   $: allStatuses = [...new Set(components.map(c => (c.status || 'ok').toLowerCase()))].sort();
 
-  // ── Floor sets for presets ────────────────────────────────────────
+  // -- Floor sets for presets ----------------------------------------
   $: residentialFloorIds = new Set(floors.filter(f => RESIDENTIAL_SHORT.has(f.short_name)).map(f => f.id));
   $: basementFloorIds    = new Set(floors.filter(f => BASEMENT_SHORT.has(f.short_name)).map(f => f.id));
 
-  // ── Filtered component list ───────────────────────────────────────
+  // -- Filtered component list ---------------------------------------
   $: filteredComponents = (() => {
     let list = components;
 
@@ -159,7 +159,7 @@
     return list;
   })();
 
-  // ── Active filter label (for table title) ─────────────────────────
+  // -- Active filter label (for table title) -------------------------
   $: floorLabel = (() => {
     if (floorPreset === 'residential') return 'Residential (G–7)';
     if (floorPreset === 'basement')    return 'Basement (X, L, G)';
@@ -170,7 +170,7 @@
     return 'All floors';
   })();
 
-  // ── Inspection helpers ────────────────────────────────────────────
+  // -- Inspection helpers --------------------------------------------
   $: inspectingType = inspectingComponent
     ? (types.find(t => t.code === inspectingComponent.type_code) ?? null) : null;
   $: inspectingCheckable = inspectingType
@@ -178,7 +178,7 @@
   $: inspectingLastInspection = inspectingComponent
     ? (inspections[inspectingComponent.id] ?? null) : null;
 
-  // ── Handlers ─────────────────────────────────────────────────────
+  // -- Handlers -----------------------------------------------------
   async function handleSubmit(e) {
     const { fields, attrValues } = e.detail;
     saving = true; errorMsg = '';
@@ -331,7 +331,7 @@
       on:deletecomponent={handleDelete}
       on:inspect={e => { inspectingComponent = e.detail.component; editingComponent = null; errorMsg = ''; }}
     >
-      <!-- ── Filters slot — rendered inside the card header ─────── -->
+      <!-- -- Filters slot — rendered inside the card header ------- -->
       <svelte:fragment slot="filters">
 
       <!-- Preset bar -->

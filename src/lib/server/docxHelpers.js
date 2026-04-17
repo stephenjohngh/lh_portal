@@ -1,4 +1,4 @@
-// src/lib/server/docxHelpers.js
+﻿// src/lib/server/docxHelpers.js
 // Shared Word document primitives for all report server endpoints.
 // Server-only — in $lib/server/ so it cannot be accidentally imported client-side.
 
@@ -8,13 +8,13 @@ import {
   WidthType, BorderStyle, ShadingType, VerticalAlign
 } from 'docx';
 
-// ── A4 portrait page geometry ────────────────────────────────────────────────
+// -- A4 portrait page geometry ------------------------------------------------
 export const PAGE_W    = 11906;
 export const PAGE_H    = 16838;
 export const MARGIN    = 720;                       // 0.5 inch all sides
 export const CONTENT_W = PAGE_W - 2 * MARGIN;      // 10466 DXA
 
-// ── Shared colour tokens ─────────────────────────────────────────────────────
+// -- Shared colour tokens -----------------------------------------------------
 export const COLOURS = {
   headerFill:  '2C3E6B',   // dark navy — table header rows
   altRowFill:  'F2F5FA',   // very light blue — alternating data rows
@@ -28,7 +28,7 @@ export const COLOURS = {
   subheading:  '2C3E6B',   // same as headerFill — Heading 2 colour
 };
 
-// ── Shared cell / border constants ───────────────────────────────────────────
+// -- Shared cell / border constants -------------------------------------------
 export const CELL_PAD = { top: 80, bottom: 80, left: 120, right: 120 };
 
 const BORDER_1 = { style: BorderStyle.SINGLE, size: 1, color: COLOURS.border };
@@ -41,7 +41,7 @@ export const BORDERS = {
   insideVertical:   BORDER_1,
 };
 
-// ── Text run helper ───────────────────────────────────────────────────────────
+// -- Text run helper -----------------------------------------------------------
 // opts: { size, bold, italics, color }
 export function run(text, opts = {}) {
   return new TextRun({
@@ -54,7 +54,7 @@ export function run(text, opts = {}) {
   });
 }
 
-// ── Paragraph helper ──────────────────────────────────────────────────────────
+// -- Paragraph helper ----------------------------------------------------------
 // children: string (auto-wrapped in run()) or TextRun[]
 // opts: { size, bold, italics, color, align, before, after, border, heading }
 export function para(children, opts = {}) {
@@ -68,7 +68,7 @@ export function para(children, opts = {}) {
   });
 }
 
-// ── Table cell helpers ────────────────────────────────────────────────────────
+// -- Table cell helpers --------------------------------------------------------
 
 /**
  * Header cell — dark navy fill, white bold text.
@@ -119,7 +119,7 @@ export function dCell(text, widthDxa, opts = {}) {
   });
 }
 
-// ── Running page header ───────────────────────────────────────────────────────
+// -- Running page header -------------------------------------------------------
 // Renders: "Title  [tab]  generatedAt" with a bottom border line.
 export function makeHeader(title, generatedAt) {
   return new Header({
@@ -136,7 +136,7 @@ export function makeHeader(title, generatedAt) {
   });
 }
 
-// ── Page-numbered footer ──────────────────────────────────────────────────────
+// -- Page-numbered footer ------------------------------------------------------
 export function makeFooter() {
   return new Footer({
     children: [new Paragraph({
@@ -152,7 +152,7 @@ export function makeFooter() {
   });
 }
 
-// ── Standard document styles ──────────────────────────────────────────────────
+// -- Standard document styles --------------------------------------------------
 export const DOC_STYLES = {
   default: { document: { run: { font: 'Arial', size: 18 } } },
   paragraphStyles: [
@@ -169,7 +169,7 @@ export const DOC_STYLES = {
   ],
 };
 
-// ── Page section properties helper ───────────────────────────────────────────
+// -- Page section properties helper -------------------------------------------
 // Returns the properties object used in document sections[].properties
 export function pageProps(opts = {}) {
   const m = opts.margin ?? MARGIN;
@@ -181,7 +181,7 @@ export function pageProps(opts = {}) {
   };
 }
 
-// ── Floor label helpers (server-side mirror of planConstants.js) ─────────────
+// -- Floor label helpers (server-side mirror of planConstants.js) -------------
 const FLOOR_NAMES = {
   L: 'Lower', U: 'Upper', G: 'Ground',
   '1': 'First', '2': 'Second', '3': 'Third', '4': 'Fourth',

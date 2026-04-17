@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   // src/lib/apps/mobileplan/components/PlanView.svelte
   // Pan/zoom plan image container with gesture handling.
   // Hosts MarkerOverlay and FAB buttons.
@@ -20,7 +20,7 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── Transform state ─────────────────────────────────────────────────────────
+  // -- Transform state ---------------------------------------------------------
 
   let tx = 0, ty = 0, scale = 1;
   const MIN_SCALE = 0.4;
@@ -73,7 +73,7 @@
     ty = clamp(ty, -ih * (1 - margin), ch * (1 - margin));
   }
 
-  // ── Gesture callbacks ────────────────────────────────────────────────────────
+  // -- Gesture callbacks --------------------------------------------------------
 
   function onPan(dx, dy) {
     tx += dx;
@@ -131,7 +131,7 @@
 
   const gestures = createGestureHandlers({ onPan, onZoom, onTap, onDoubleTap, onLongPress });
 
-  // ── Centre on a specific component ──────────────────────────────────────────
+  // -- Centre on a specific component ------------------------------------------
 
   export function centreOnComponent(component) {
     if (!container || !imgEl) return;
@@ -149,7 +149,7 @@
     applyPanBounds();
   }
 
-  // ── Lifecycle ────────────────────────────────────────────────────────────────
+  // -- Lifecycle ----------------------------------------------------------------
 
   let resizeObserver;
 

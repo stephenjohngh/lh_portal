@@ -1,4 +1,4 @@
-<!-- plan/PlanCanvas.svelte -->
+﻿<!-- plan/PlanCanvas.svelte -->
 <!-- The plan image with SVG polygon overlay, scale reference line, and component markers.
      Coordinate conversions (mouse → fraction) happen here; the parent receives fractions. -->
 <script>
@@ -79,7 +79,7 @@
     on:load={handleImgLoad}
   />
 
-  <!-- ── SVG overlay: spaces, scale lines, drawing vertices ──────── -->
+  <!-- -- SVG overlay: spaces, scale lines, drawing vertices -------- -->
   <!-- pointer-events:none on the SVG; individual elements opt in -->
   <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
   <svg
@@ -204,7 +204,7 @@
 
   </svg>
 
-  <!-- ── Space labels (above SVG) ──────────────────────────────── -->
+  <!-- -- Space labels (above SVG) -------------------------------- -->
   {#if showSpaces}
     {#each planSpaces as space (space.id)}
       {#if space.polygon?.length >= 3 && space.show_label !== false}
@@ -225,7 +225,7 @@
     {/each}
   {/if}
 
-  <!-- ── Component markers ─────────────────────────────────────── -->
+  <!-- -- Component markers --------------------------------------- -->
   {#each positionedComponents as c (c.id)}
     <ComponentMarker
       component={c}
@@ -248,7 +248,7 @@
     ></div>
   {/if}
 
-  <!-- ── Text annotations ──────────────────────────────────────── -->
+  <!-- -- Text annotations ---------------------------------------- -->
   {#each planAnnotations as ann (ann.id)}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div

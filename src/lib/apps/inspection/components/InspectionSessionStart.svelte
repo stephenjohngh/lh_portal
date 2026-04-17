@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/InspectionSessionStart.svelte -->
+﻿<!-- src/lib/apps/inspection/components/InspectionSessionStart.svelte -->
 <!-- Configure and start a new test or inspection session.
      Presets: Emergency Lighting, Fire Doors, Apartment Doors, Custom (full tree). -->
 <script>
@@ -24,7 +24,7 @@
   $: allComponents     = $inspectionStore.allComponents;
   $: allComponentAttrs = $inspectionStore.allComponentAttrs ?? {};
 
-  // ── Form state ────────────────────────────────────────────────────────────────
+  // -- Form state ----------------------------------------------------------------
   let scope      = 'single_floor';   // 'single_floor' | 'building'
   let preset     = 'emergency_lighting';
   let showCustom = false;
@@ -37,7 +37,7 @@
   // Custom tree: set of hidden type codes (same exclusive model as plan filter)
   let hiddenTypeCodes = new Set();
 
-  // ── Derived ───────────────────────────────────────────────────────────────────
+  // -- Derived -------------------------------------------------------------------
   $: selectedFacility  = facilities.find(f => f.id === selectedFacilityId) ?? facilities[0];
   // Only walkable floors (walk_order != null), sorted by walk_order
   $: buildingFloors    = floors
@@ -178,7 +178,7 @@
 
   <div class="ss-body">
 
-    <!-- ── Scope ─────────────────────────────────────────────────────────────── -->
+    <!-- -- Scope --------------------------------------------------------------- -->
     <section class="grp">
       <div class="grp-lbl">SCOPE</div>
       <div class="scope-row">
@@ -191,7 +191,7 @@
       </div>
     </section>
 
-    <!-- ── Building / floor ───────────────────────────────────────────────────── -->
+    <!-- -- Building / floor ----------------------------------------------------- -->
     {#if facilities.length > 1}
       <section class="grp">
         <div class="grp-lbl">BUILDING</div>
@@ -213,7 +213,7 @@
       </section>
     {/if}
 
-    <!-- ── Preset ─────────────────────────────────────────────────────────────── -->
+    <!-- -- Preset --------------------------------------------------------------- -->
     <section class="grp">
       <div class="grp-lbl">INSPECTION TYPE</div>
       <div class="preset-list">
@@ -230,7 +230,7 @@
       </div>
     </section>
 
-    <!-- ── Custom type tree ───────────────────────────────────────────────────── -->
+    <!-- -- Custom type tree ----------------------------------------------------- -->
     {#if showCustom && preset === 'custom'}
       <section class="grp">
         <div class="grp-lbl">SELECT TYPES</div>
@@ -264,7 +264,7 @@
       </section>
     {/if}
 
-    <!-- ── Summary box ────────────────────────────────────────────────────────── -->
+    <!-- -- Summary box ---------------------------------------------------------- -->
     <div class="summary-box">
       <div class="sum-row">
         <span class="sum-k">COMPONENTS</span>
@@ -277,7 +277,7 @@
     </div>
 
 
-    <!-- ── Session name ───────────────────────────────────────────────────────── -->
+    <!-- -- Session name --------------------------------------------------------- -->
     <section class="grp">
       <div class="grp-lbl">SESSION NAME</div>
       <WalkInput bind:value={sessionName} placeholder="Session name…" />

@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   // src/lib/apps/mobileplan/components/ComponentSheet.svelte
   // Read-only bottom sheet showing component detail.
   // States: hidden | half (55vh) | full (90vh)
@@ -14,7 +14,7 @@
   export let types       = [];
   export let inspections = {};     // { [componentId]: latest inspection }
 
-  // ── Sheet state ──────────────────────────────────────────────────────────────
+  // -- Sheet state --------------------------------------------------------------
 
   let sheetState   = 'hidden';  // 'hidden' | 'half' | 'full'
   let loadingAttrs = false;
@@ -33,7 +33,7 @@
     loadingAttrs = false;
   }
 
-  // ── Subscribe to store for componentAttrs ─────────────────────────────────────
+  // -- Subscribe to store for componentAttrs -------------------------------------
 
   let componentAttrs = {};
   const unsub = mobileplanStore.subscribe(s => {
@@ -43,7 +43,7 @@
 
   $: attrs = component ? (componentAttrs[component.id] ?? []) : [];
 
-  // ── Attribute display (same rules as report) ─────────────────────────────────
+  // -- Attribute display (same rules as report) ---------------------------------
 
   function fmtAttrs(attrValues) {
     return attrValues
@@ -60,7 +60,7 @@
 
   $: fmtAttrList = fmtAttrs(attrs);
 
-  // ── Type lookup ──────────────────────────────────────────────────────────────
+  // -- Type lookup --------------------------------------------------------------
 
   function getType(typeCode) {
     return types.find(t => t.code === typeCode) ?? null;
@@ -68,7 +68,7 @@
 
   $: type = component ? getType(component.type_code) : null;
 
-  // ── Result display ───────────────────────────────────────────────────────────
+  // -- Result display -----------------------------------------------------------
 
   function resultLabel(r) {
     switch (r) {
@@ -92,7 +92,7 @@
 
   $: latestInsp = component ? inspections[component.id] : null;
 
-  // ── Drag to dismiss ──────────────────────────────────────────────────────────
+  // -- Drag to dismiss ----------------------------------------------------------
 
   let sheetEl;
   let dragStartY   = null;

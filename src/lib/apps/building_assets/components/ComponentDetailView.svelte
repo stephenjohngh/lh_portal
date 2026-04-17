@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/ComponentDetailView.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/ComponentDetailView.svelte -->
 <!-- Read-only detail panel for a single component.
      Shows all the same sections as ComponentDetailPanel but rendered as
      static text — no form inputs, no save/delete actions.
@@ -22,7 +22,7 @@
 
   const dispatch = createEventDispatcher();
 
-  // ── Derived ──────────────────────────────────────────────────────────
+  // -- Derived ----------------------------------------------------------
   $: type        = typeByCode(types, component.type_code);
   $: floor       = floorById(floors, component.floor_id);
   $: typeId      = type?.id ?? null;
@@ -62,7 +62,7 @@
 <!-- Outer container — matches ComponentDetailPanel sizing -->
 <div class="bg-slate-800 rounded-xl border border-slate-700 flex flex-col max-h-[90vh]">
 
-  <!-- ── Sticky header ───────────────────────────────────────────────── -->
+  <!-- -- Sticky header ------------------------------------------------- -->
   <div class="flex items-start gap-3 p-5 pb-4 border-b border-slate-700 shrink-0">
     <!-- Type colour badge -->
     {#if type}
@@ -94,10 +94,10 @@
     >✕</button>
   </div>
 
-  <!-- ── Scrollable body ─────────────────────────────────────────────── -->
+  <!-- -- Scrollable body ----------------------------------------------- -->
   <div class="flex-1 overflow-y-auto p-5 space-y-6">
 
-    <!-- ── Status ────────────────────────────────────────────────────── -->
+    <!-- -- Status ------------------------------------------------------ -->
     <section>
       <p class={sec}>Status</p>
       <div class="mt-2">
@@ -107,7 +107,7 @@
       </div>
     </section>
 
-    <!-- ── Attributes ─────────────────────────────────────────────────── -->
+    <!-- -- Attributes --------------------------------------------------- -->
     {#if standardDefs.length > 0 || walkDefs.length > 0}
       <section>
         <div class="flex items-center justify-between gap-2 mb-2">
@@ -187,7 +187,7 @@
       <p class="text-xs text-slate-600 italic">No attribute definitions for this type.</p>
     {/if}
 
-    <!-- ── Notes ──────────────────────────────────────────────────────── -->
+    <!-- -- Notes -------------------------------------------------------- -->
     {#if component.notes}
       <section>
         <p class={sec}>Notes</p>
@@ -198,7 +198,7 @@
       </section>
     {/if}
 
-    <!-- ── Linked components (read-only) ─────────────────────────────── -->
+    <!-- -- Linked components (read-only) ------------------------------- -->
     <ComponentLinks
       componentId={component.id}
       {components}
@@ -208,10 +208,10 @@
       readOnly={true}
     />
 
-    <!-- ── Inspection history ─────────────────────────────────────────── -->
+    <!-- -- Inspection history ------------------------------------------- -->
     <ComponentInspectionHistory componentId={component.id} />
 
-    <!-- ── Metadata ───────────────────────────────────────────────────── -->
+    <!-- -- Metadata ----------------------------------------------------- -->
     <section class="text-xs text-slate-600 space-y-0.5 pb-1">
       <p>ID <span class="font-mono text-slate-500">{component.id}</span></p>
       <p>Created <span class="text-slate-500">{fmt(component.created_at)}</span></p>
@@ -222,7 +222,7 @@
 
   </div><!-- end scrollable body -->
 
-  <!-- ── Footer: close only ────────────────────────────────────────────── -->
+  <!-- -- Footer: close only ---------------------------------------------- -->
   <div class="p-5 pt-4 border-t border-slate-700 shrink-0 flex justify-end">
     <button
       on:click={() => dispatch('close')}

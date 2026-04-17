@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/SystemPanel.svelte -->
+﻿<!-- src/lib/apps/admin/components/SystemPanel.svelte -->
 <!-- Panel 1 of 4: Building Systems list with inline add / edit. -->
 <script>
   import { createEventDispatcher } from 'svelte';
@@ -106,7 +106,7 @@
     {#each systems as sys (sys.id)}
 
       {#if editingId === sys.id}
-        <!-- ── Inline edit form ───────────────────────────────────── -->
+        <!-- -- Inline edit form ------------------------------------- -->
         <div class="p-3 border-b border-slate-700 bg-slate-700/40">
           <p class="text-xs font-semibold text-purple-400 mb-2">Edit System</p>
           {#if error}
@@ -142,7 +142,7 @@
         </div>
 
       {:else}
-        <!-- ── Normal row ─────────────────────────────────────────── -->
+        <!-- -- Normal row ------------------------------------------- -->
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
         <div
           class="w-full text-left px-3 py-2.5 border-b border-slate-700/50 transition-colors group cursor-pointer
@@ -184,12 +184,12 @@
 
     {/each}
 
-    <!-- ── No data empty state ──────────────────────────────────── -->
+    <!-- -- No data empty state ------------------------------------ -->
     {#if systems.length === 0 && editingId !== 'new'}
       <p class="px-3 py-4 text-xs text-slate-600 italic">No systems yet</p>
     {/if}
 
-    <!-- ── New system form ─────────────────────────────────────── -->
+    <!-- -- New system form --------------------------------------- -->
     {#if editingId === 'new'}
       <div class="p-3 bg-slate-700/40">
         <p class="text-xs font-semibold text-green-400 mb-2">New System</p>

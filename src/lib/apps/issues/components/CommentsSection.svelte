@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/CommentsSection.svelte -->
+﻿<!-- src/lib/apps/issues/components/CommentsSection.svelte -->
 <script>
   import { issuesStore } from '../stores/issuesStore';
   import { formatDateTime, wasModified } from '$lib/utils/dates';
@@ -88,7 +88,7 @@
 
 <div class="bg-slate-800/30 rounded-lg p-3">
 
-  <!-- ── Header row ─────────────────────────────────────────────────── -->
+  <!-- -- Header row --------------------------------------------------- -->
   <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
     <h4 class="font-semibold flex items-center space-x-2">
       <Icon name="comment" size={5} className="text-blue-400" />
@@ -143,7 +143,7 @@
     <p class="text-sm text-red-400 bg-red-900/20 border border-red-800/40 rounded px-3 py-2 mb-2">{mutationError}</p>
   {/if}
 
-  <!-- ── Add comment form ───────────────────────────────────────────── -->
+  <!-- -- Add comment form --------------------------------------------- -->
   {#if showAddForm}
     <div class="bg-slate-700/50 rounded p-3 border border-blue-500/50 mb-2">
       <textarea
@@ -174,7 +174,7 @@
     </div>
   {/if}
 
-  <!-- ── Comment list ───────────────────────────────────────────────── -->
+  <!-- -- Comment list ------------------------------------------------- -->
   {#if visibleComments.length > 0}
     <div class="space-y-1">
       {#each visibleComments as comment (comment.id)}
@@ -261,7 +261,7 @@
 
 </div>
 
-<!-- ── Full comment view modal ─────────────────────────────────────── -->
+<!-- -- Full comment view modal --------------------------------------- -->
 <Modal
   show={!!viewingComment}
   title="Comment"
@@ -301,7 +301,7 @@
   </svelte:fragment>
 </Modal>
 
-<!-- ── Delete confirmation ─────────────────────────────────────────── -->
+<!-- -- Delete confirmation ------------------------------------------- -->
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Comment"

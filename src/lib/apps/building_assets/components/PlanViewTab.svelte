@@ -1,4 +1,4 @@
-<!-- src/lib/apps/building_assets/components/PlanViewTab.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/PlanViewTab.svelte -->
 <!-- Plan view orchestrator.
      Owns navigation, mode/sidebar state, filters and plan admin.
      Complex drag/edit logic is delegated to three JS controllers:
@@ -28,7 +28,7 @@
   import AnnotationSidebar   from './plan/AnnotationSidebar.svelte';
   import PlanAdminModal      from './plan/PlanAdminModal.svelte';
 
-  // ── Store bindings ────────────────────────────────────────────────
+  // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;
   $: facilities     = store.facilities;
   $: floors         = store.floors;
@@ -45,13 +45,13 @@
 
   $: readOnly = !$permissions.isAdmin && !$permissions.canModify;
 
-  // ── Navigation state ─────────────────────────────────────────────
+  // -- Navigation state ---------------------------------------------
   const PREF_FLOOR = 'lh_building_assets_selectedFloorId';
   const PREF_PLAN  = 'lh_building_assets_selectedPlanId';
   let selectedFloorId = '';
   let selectedPlanId  = '';
 
-  // ── Mode / sidebar / selection state ─────────────────────────────
+  // -- Mode / sidebar / selection state -----------------------------
   // drawingMode: 'off' | 'component' | 'space' | 'scale' | 'annotation'
   // sidebarMode: 'none' | 'form' | 'detail' | 'inspect' |
   //              'space-drawing' | 'space-detail' | 'scale-input' | 'annotation-detail'
@@ -64,32 +64,32 @@
   let saving            = false;
   let errorMsg          = '';
 
-  // ── Filter state ─────────────────────────────────────────────────
+  // -- Filter state -------------------------------------------------
   let hiddenTypes    = new Set();
   let hiddenStatuses = new Set();
   let searchQuery    = '';
   let showSpaces     = true;
 
-  // ── Space drawing form state (bind: targets in SpaceDrawingSidebar) ─
+  // -- Space drawing form state (bind: targets in SpaceDrawingSidebar) -
   let drawingSpaceName = '';
   let drawingSpaceType = '';
   let drawingColourHex = '#a855f7';
   let drawingShowLabel = true;
 
-  // ── Scale calibration state ───────────────────────────────────────
+  // -- Scale calibration state ---------------------------------------
   let scalePoint1      = null;
   let scalePoint2      = null;
   let scaleSaving      = false;
   let imageAspectRatio = null;
 
-  // ── Plan admin modal state ────────────────────────────────────────
+  // -- Plan admin modal state ----------------------------------------
   let planAdminOpen = false;
   let planAdminMode = 'new';
 
-  // ── Canvas element (bound from PlanCanvas, used by controllers) ──
+  // -- Canvas element (bound from PlanCanvas, used by controllers) --
   let canvasEl = null;
 
-  // ── Controllers ───────────────────────────────────────────────────
+  // -- Controllers ---------------------------------------------------
   const dragCtrl = createComponentDragController({
     getCanvas:  () => canvasEl,
     getPlanId:  () => selectedPlanId,
@@ -113,7 +113,7 @@
   });
   const { drawingVertices, vertexEditingActive, editingPolygon } = spaceCtrl;
 
-  // ── Derived: floor / plan views ───────────────────────────────────
+  // -- Derived: floor / plan views -----------------------------------
   $: plansForFloor  = selectedFloorId ? plans.filter(p => p.floor_id === selectedFloorId) : [];
   $: selectedPlan   = plans.find(p => p.id === selectedPlanId) ?? null;
   $: selectedFloor  = floors.find(f => f.id === selectedFloorId) ?? null;
@@ -140,7 +140,7 @@
   $: unplacedComponents = selectedFloorId
     ? components.filter(c => c.floor_id === selectedFloorId && !c.plan_id) : [];
 
-  // ── Derived: filters ──────────────────────────────────────────────
+  // -- Derived: filters ----------------------------------------------
   $: visibleComponents = planComponents.filter(c => {
     if (hiddenTypes.has(c.type_code)) return false;
     const status = (c.status || 'ok').toLowerCase();
@@ -160,16 +160,16 @@
     return ov ? { ...c, x_position: ov.x, y_position: ov.y } : c;
   });
 
-  // ── Derived: inspection panel context ────────────────────────────
+  // -- Derived: inspection panel context ----------------------------
   $: selType           = selectedComponent ? typeByCode(types, selectedComponent.type_code) : null;
   $: selCheckable      = selectedComponent ? checkableDefs(attrDefs, types, selectedComponent.type_code) : [];
   $: selLastInspection = selectedComponent ? (inspections[selectedComponent.id] ?? null) : null;
 
-  // ── Derived: scale ────────────────────────────────────────────────
+  // -- Derived: scale ------------------------------------------------
   $: planAR        = selectedPlan?.image_aspect_ratio ?? imageAspectRatio;
   $: metresPerUnit = computeMetresPerUnit(selectedPlan?.scale_ref, planAR);
 
-  // ── Auto-select: restore saved floor/plan preference ─────────────
+  // -- Auto-select: restore saved floor/plan preference -------------
   let autoSelected = false;
   $: if (!autoSelected && floors.length > 0 && plans.length > 0) {
     const savedFloor = localStorage.getItem(PREF_FLOOR);
@@ -186,7 +186,7 @@
     autoSelected = true;
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────
+  // -- Helpers -------------------------------------------------------
   function resetSelection() {
     selectedComponent  = null;
     selectedSpace      = null;
@@ -211,7 +211,7 @@
     if (sidebarMode === 'scale-input') sidebarMode = 'none';
   }
 
-  // ── Navigation handlers ───────────────────────────────────────────
+  // -- Navigation handlers -------------------------------------------
   function onFloorChange({ detail: { floorId } }) {
     selectedFloorId = floorId;
     selectedPlanId  = '';
@@ -232,7 +232,7 @@
     localStorage.setItem(PREF_PLAN, planId);
   }
 
-  // ── Mode toggle ───────────────────────────────────────────────────
+  // -- Mode toggle ---------------------------------------------------
   function onModeChange({ detail: { mode } }) {
     if (readOnly) return;
     drawingMode = (drawingMode === mode) ? 'off' : mode;
@@ -247,13 +247,13 @@
     if (sidebarMode === 'annotation-detail' && drawingMode !== 'annotation') sidebarMode = 'none';
   }
 
-  // ── Filter handlers ───────────────────────────────────────────────
+  // -- Filter handlers -----------------------------------------------
   function onChangeTypes({ detail: { hidden } })    { hiddenTypes    = hidden; }
   function onChangeStatuses({ detail: { hidden } }) { hiddenStatuses = hidden; }
   function onSearchChange({ detail: { query } })    { searchQuery    = query;  }
   function onChangeShowSpaces({ detail: { show } }) { showSpaces     = show;   }
 
-  // ── Canvas click handler ──────────────────────────────────────────
+  // -- Canvas click handler ------------------------------------------
   function onPlanClick({ detail: pos }) {
     const { x, y } = pos;
 
@@ -303,13 +303,13 @@
 
   function onImgLoad({ detail: { aspectRatio } }) { imageAspectRatio = aspectRatio; }
 
-  // ── Marker drag — delegate to componentDragController ────────────
+  // -- Marker drag — delegate to componentDragController ------------
   function onMarkerDragstart({ detail }) {
     if (drawingMode !== 'component') return;
     dragCtrl.onDragstart(detail.component);
   }
 
-  // ── Annotation events — delegate to annotationDragController ─────
+  // -- Annotation events — delegate to annotationDragController -----
   function onAnnotationClick({ detail: { annotation } }) {
     if (drawingMode !== 'annotation') return;
     selectedAnnotation = annotation;
@@ -321,7 +321,7 @@
     annCtrl.onDragstart(annotation);
   }
 
-  // ── Component quick-add ───────────────────────────────────────────
+  // -- Component quick-add -------------------------------------------
   async function handleQuickAdd(e) {
     const { fields, attrValues } = e.detail;
     saving = true; errorMsg = '';
@@ -339,7 +339,7 @@
     finally       { saving = false; }
   }
 
-  // ── Space drawing finish ──────────────────────────────────────────
+  // -- Space drawing finish ------------------------------------------
   async function handleFinishDrawing() {
     if ($drawingVertices.length < 3 || !drawingSpaceName.trim()) return;
     saving = true; errorMsg = '';
@@ -360,7 +360,7 @@
     finally       { saving = false; }
   }
 
-  // ── Scale calibration ─────────────────────────────────────────────
+  // -- Scale calibration ---------------------------------------------
   async function handleApplyScale({ detail: { metres } }) {
     if (!scalePoint1 || !scalePoint2 || !metres) return;
     scaleSaving = true; errorMsg = '';
@@ -380,7 +380,7 @@
     catch (err) { errorMsg = err.message; }
   }
 
-  // ── Component detail panel callbacks ─────────────────────────────
+  // -- Component detail panel callbacks -----------------------------
   function handleDetailSaved() {
     if (selectedComponent) {
       selectedComponent = $buildingAssetsStore.components.find(c => c.id === selectedComponent.id) ?? null;
@@ -392,7 +392,7 @@
     sidebarMode       = 'inspect';
   }
 
-  // ── Annotation create ─────────────────────────────────────────────
+  // -- Annotation create ---------------------------------------------
   async function handleCreateAnnotation(x, y) {
     try {
       const ann = await buildingAssetsStore.createAnnotation({
@@ -405,7 +405,7 @@
     } catch (err) { errorMsg = err.message; }
   }
 
-  // ── Plan admin ────────────────────────────────────────────────────
+  // -- Plan admin ----------------------------------------------------
   function onPlanAdmin({ detail: { mode } }) { planAdminMode = mode; planAdminOpen = true; }
 
   function handlePlanAdminDone({ detail: { plan, action } }) {
@@ -437,7 +437,7 @@
 
 <div class="flex flex-col gap-3">
 
-  <!-- ── Toolbar ───────────────────────────────────────────────────── -->
+  <!-- -- Toolbar ----------------------------------------------------- -->
   <PlanToolbar
     {floors} {plansForFloor} {selectedFloorId} {selectedPlanId}
     {drawingMode} {planComponents} {visibleComponents} {planSpaces} {unplacedComponents}
@@ -450,7 +450,7 @@
     on:planadmin={onPlanAdmin}
   />
 
-  <!-- ── Mode hint bar ─────────────────────────────────────────────── -->
+  <!-- -- Mode hint bar ----------------------------------------------- -->
   <PlanModeHints
     {drawingMode}
     vertexEditingActive={$vertexEditingActive}
@@ -459,7 +459,7 @@
     {scalePoint2}
   />
 
-  <!-- ── Error bar ─────────────────────────────────────────────────── -->
+  <!-- -- Error bar --------------------------------------------------- -->
   {#if errorMsg}
     <div class="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-400
                 flex justify-between items-center">
@@ -468,7 +468,7 @@
     </div>
   {/if}
 
-  <!-- ── Main area: canvas + sidebar ───────────────────────────────── -->
+  <!-- -- Main area: canvas + sidebar --------------------------------- -->
   <div class="flex gap-4 items-start">
 
     <!-- Canvas column -->
@@ -635,7 +635,7 @@
     </div><!-- /.sidebar -->
   </div><!-- /.main area -->
 
-  <!-- ── Plan admin modal ──────────────────────────────────────────── -->
+  <!-- -- Plan admin modal -------------------------------------------- -->
   <PlanAdminModal
     bind:show={planAdminOpen} mode={planAdminMode} plan={selectedPlan} {floors}
     on:done={handlePlanAdminDone}
@@ -643,7 +643,7 @@
     on:close={() => planAdminOpen = false}
   />
 
-  <!-- ── Inventory table (full width, below plan) ──────────────────── -->
+  <!-- -- Inventory table (full width, below plan) -------------------- -->
   {#if selectedPlanId && (planComponents.length > 0 || visibleComponents.length > 0)}
     <ComponentInventory
       components={visibleComponents} {readOnly}

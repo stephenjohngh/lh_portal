@@ -1,4 +1,4 @@
-// src/routes/api/v2/generate-inspections-report/+server.js
+﻿// src/routes/api/v2/generate-inspections-report/+server.js
 //
 // Generate Word document inspection reports for V2 component inspections.
 //
@@ -35,7 +35,7 @@ import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration } from '$lib/u
 
 const logger = getLogger('v2GenerateInspectionsReport');
 
-// ── Result helpers ─────────────────────────────────────────────────────────────
+// -- Result helpers -------------------------------------------------------------
 function resultColor(result) {
   return result === 'ok'       ? COLOURS.passGreen
        : result === 'failed'   ? COLOURS.failRed
@@ -48,7 +48,7 @@ function resultLabel(result) {
       ?? (result ?? '—').toUpperCase();
 }
 
-// ── Session stats (inline — avoids SSR import of v2walkHelpers) ───────────────
+// -- Session stats (inline — avoids SSR import of v2walkHelpers) ---------------
 function sessionStats(inspections) {
   return {
     ok:         inspections.filter(r => r.result === 'ok').length,
@@ -60,7 +60,7 @@ function sessionStats(inspections) {
   };
 }
 
-// ── Component ref string ───────────────────────────────────────────────────────
+// -- Component ref string -------------------------------------------------------
 function componentRef(ins) {
   const floor = ins.floor_name   ?? '?';
   const init  = ins.type_initial ?? '?';
@@ -68,7 +68,7 @@ function componentRef(ins) {
   return `${floor}/${init}/${id}`;
 }
 
-// ── Image fetch ────────────────────────────────────────────────────────────────
+// -- Image fetch ----------------------------------------------------------------
 async function fetchImageBuffer(url) {
   try {
     const response = await fetch(url);
@@ -79,7 +79,7 @@ async function fetchImageBuffer(url) {
   }
 }
 
-// ── Cover page ─────────────────────────────────────────────────────────────────
+// -- Cover page -----------------------------------------------------------------
 function buildCover(sessions, reportType, generatedAt) {
   const buildings = [...new Set(sessions.map(s => s.building))].sort();
   const title     = reportType === 'summary' ? 'V2 Inspection Summary Report' : 'V2 Inspection Detailed Report';
@@ -91,7 +91,7 @@ function buildCover(sessions, reportType, generatedAt) {
   ];
 }
 
-// ── Summary table ──────────────────────────────────────────────────────────────
+// -- Summary table --------------------------------------------------------------
 // Columns: Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Problem | N/A | Notes
 // DXA:      900 |    1100  |  700  |  1100  | 1100 |    1000   |    700   |  650  |550 | 550  |   650   | 650 |  816
 // Sum = 10466
@@ -137,7 +137,7 @@ function buildSummaryTable(sessionData) {
   });
 }
 
-// ── Detailed section — one per session ─────────────────────────────────────────
+// -- Detailed section — one per session -----------------------------------------
 // Inspection table columns: Component | Label | Result | Time | Notes
 // DXA:                         1600  |  1700  |   900  | 1200 |  5066
 // Sum = 10466
@@ -265,7 +265,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
   return children;
 }
 
-// ── POST handler ───────────────────────────────────────────────────────────────
+// -- POST handler ---------------------------------------------------------------
 export async function POST({ request }) {
   logger('📄 POST /api/v2/generate-inspections-report');
 

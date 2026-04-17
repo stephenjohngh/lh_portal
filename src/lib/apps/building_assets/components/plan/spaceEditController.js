@@ -1,4 +1,4 @@
-// plan/spaceEditController.js
+﻿// plan/spaceEditController.js
 // Manages all space polygon editing state: vertex dragging, polygon move, and
 // the drawing-vertices buffer used while a new space is being drawn.
 //
@@ -18,7 +18,7 @@ import { writable, get } from 'svelte/store';
 import { buildingAssetsStore }  from '../../stores/buildingAssetsStore.js';
 
 export function createSpaceEditController(ctx) {
-  // ── Exposed stores ──────────────────────────────────────────────────
+  // -- Exposed stores --------------------------------------------------
   // drawingVertices: the in-progress polygon vertices while drawing a new space.
   // vertexEditingActive: true when the user has clicked "Edit shape" on a space.
   // editingPolygon: { spaceId, vertices } live copy during vertex drag or move.
@@ -26,13 +26,13 @@ export function createSpaceEditController(ctx) {
   const vertexEditingActive = writable(false);
   const editingPolygon     = writable(null);
 
-  // ── Internal-only state (no reactivity needed outside this module) ──
+  // -- Internal-only state (no reactivity needed outside this module) --
   let vertexDragIndex     = null;
   let spaceMoveDragging   = false;
   let spaceMoveOrigin     = null;
   let spaceMoveBasePolygon = null;
 
-  // ── Drawing buffer helpers ──────────────────────────────────────────
+  // -- Drawing buffer helpers ------------------------------------------
 
   // Append a vertex to the in-progress polygon.
   function addVertex(pt) {
@@ -45,7 +45,7 @@ export function createSpaceEditController(ctx) {
     drawingVertices.set([]);
   }
 
-  // ── Vertex / move editing helpers ───────────────────────────────────
+  // -- Vertex / move editing helpers -----------------------------------
 
   // Reset all vertex / move editing state (called from resetSelection and
   // onModeChange in the parent).
@@ -58,7 +58,7 @@ export function createSpaceEditController(ctx) {
     spaceMoveBasePolygon = null;
   }
 
-  // ── "Edit shape" / "Done editing" (dispatched by SpaceDetailSidebar) ──
+  // -- "Edit shape" / "Done editing" (dispatched by SpaceDetailSidebar) --
 
   function onEditShape() {
     const sp = ctx.getPlanSpaces().find(s => s.id === ctx.getSelectedSpace()?.id);
@@ -73,7 +73,7 @@ export function createSpaceEditController(ctx) {
     vertexDragIndex = null;
   }
 
-  // ── Vertex drag (dispatched by PlanCanvas SVG vertex circles) ───────
+  // -- Vertex drag (dispatched by PlanCanvas SVG vertex circles) -------
 
   function onVertexDragstart({ detail: { index } }) {
     const sel = ctx.getSelectedSpace();
@@ -87,7 +87,7 @@ export function createSpaceEditController(ctx) {
     vertexDragIndex = index;
   }
 
-  // ── Space polygon move (mousedown on polygon body) ───────────────────
+  // -- Space polygon move (mousedown on polygon body) -------------------
 
   function onSpaceMoveDragstart({ detail: { space, x, y } }) {
     if (ctx.getDrawingMode() !== 'space') return;
@@ -101,7 +101,7 @@ export function createSpaceEditController(ctx) {
     editingPolygon.set({ spaceId: sp.id, vertices: sp.polygon.map(v => ({ ...v })) });
   }
 
-  // ── Mouse move: update live polygon for vertex drag OR polygon move ──
+  // -- Mouse move: update live polygon for vertex drag OR polygon move --
 
   function onMousemove(e) {
     if (vertexDragIndex === null && !spaceMoveDragging) return;
@@ -130,7 +130,7 @@ export function createSpaceEditController(ctx) {
     }
   }
 
-  // ── Mouse up: persist the finished vertex drag or polygon move ───────
+  // -- Mouse up: persist the finished vertex drag or polygon move -------
 
   async function onMouseup() {
     if (vertexDragIndex === null && !spaceMoveDragging) return;

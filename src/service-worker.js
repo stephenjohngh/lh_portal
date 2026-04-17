@@ -1,4 +1,4 @@
-// src/service-worker.js
+﻿// src/service-worker.js
 // SvelteKit service worker — auto-registered by SvelteKit when this file exists.
 // Two caches:
 //   lh-shell-{version}   — app bundle (pre-cached on install)
@@ -13,7 +13,7 @@ const IMAGES_CACHE = 'lh-plan-images-v1';
 // Assets to pre-cache (app shell)
 const ASSETS = [...build, ...files];
 
-// ── Install: pre-cache app shell ─────────────────────────────────────────────
+// -- Install: pre-cache app shell ---------------------------------------------
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -22,7 +22,7 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// ── Activate: delete old shell caches ────────────────────────────────────────
+// -- Activate: delete old shell caches ----------------------------------------
 
 self.addEventListener('activate', event => {
   event.waitUntil(
@@ -37,7 +37,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// ── Fetch: route requests to the right cache strategy ────────────────────────
+// -- Fetch: route requests to the right cache strategy ------------------------
 
 self.addEventListener('fetch', event => {
   const { request } = event;
@@ -68,7 +68,7 @@ self.addEventListener('fetch', event => {
   event.respondWith(networkFirst(request));
 });
 
-// ── Cache strategies ──────────────────────────────────────────────────────────
+// -- Cache strategies ----------------------------------------------------------
 
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);

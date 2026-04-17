@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/ComponentTypesTab.svelte -->
+﻿<!-- src/lib/apps/admin/components/ComponentTypesTab.svelte -->
 <!-- Four-panel admin UI: Systems → Types → Attribute Definitions → Options
      Plus a Maintenance Regime sub-panel below for the selected type.
      All CRUD is handled in child panels; this component manages
@@ -11,12 +11,12 @@
   import OptionsPanel     from './OptionsPanel.svelte';
   import MaintenancePanel from './MaintenancePanel.svelte';
 
-  // ── Selection state ────────────────────────────────────────────────
+  // -- Selection state ------------------------------------------------
   let selectedSystemId  = null;
   let selectedTypeId    = null;
   let selectedAttrDefId = null;
 
-  // ── Derived from store ─────────────────────────────────────────────
+  // -- Derived from store ---------------------------------------------
   $: store            = $buildingAssetsStore;
   $: systems          = store.systems;
   $: types            = store.types;
@@ -53,7 +53,7 @@
   $: primaryAttrDef  = attrDefsForPanel.find(d => d.is_primary) ?? null;
   $: primaryOptions  = primaryAttrDef ? (attrOptions[primaryAttrDef.id] ?? []) : [];
 
-  // ── Selection handlers ─────────────────────────────────────────────
+  // -- Selection handlers ---------------------------------------------
   function selectSystem(id) {
     selectedSystemId  = id;
     selectedTypeId    = null;
@@ -69,12 +69,12 @@
     selectedAttrDefId = id;
   }
 
-  // ── After any save: reload the store, keep selections ─────────────
+  // -- After any save: reload the store, keep selections -------------
   async function onSaved() {
     await buildingAssetsStore.reload();
   }
 
-  // ── CSV export: system, type, attribute, option ────────────────────
+  // -- CSV export: system, type, attribute, option --------------------
   function exportCsv() {
     const s    = $buildingAssetsStore;
     const rows = [['system', 'type', 'initial', 'attribute', 'option']];
@@ -117,7 +117,7 @@
 
 <div class="space-y-4">
 
-  <!-- ── Toolbar ───────────────────────────────────────────────────── -->
+  <!-- -- Toolbar ----------------------------------------------------- -->
   <div class="flex items-center justify-between">
     {#if store.loading}
       <p class="text-slate-400 text-sm">Reloading…</p>
@@ -141,7 +141,7 @@
     </button>
   </div>
 
-  <!-- ── Four-panel layout ─────────────────────────────────────────── -->
+  <!-- -- Four-panel layout ------------------------------------------- -->
   <div class="flex min-h-[520px] rounded-xl border border-slate-700 overflow-hidden divide-x divide-slate-700">
 
     <SystemPanel
@@ -177,7 +177,7 @@
 
   </div>
 
-  <!-- ── Maintenance regime (only when a type is selected) ─────────── -->
+  <!-- -- Maintenance regime (only when a type is selected) ----------- -->
   {#if selectedTypeId}
     {@const selectedType = types.find(t => t.id === selectedTypeId)}
     <MaintenancePanel

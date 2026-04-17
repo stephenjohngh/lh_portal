@@ -1,4 +1,4 @@
-<!-- src/lib/apps/inspection/components/InspectionPanel.svelte -->
+﻿<!-- src/lib/apps/inspection/components/InspectionPanel.svelte -->
 <!-- Single inspection panel for any component type.
      Dynamically renders the checkable type_attributes for this component's type. -->
 <script>
@@ -108,7 +108,7 @@
       on:save={handleSave}
     />
 
-    <!-- ── History ────────────────────────────────────────────────────────────── -->
+    <!-- -- History -------------------------------------------------------------- -->
     {#if histLoading}
       <WalkSpinner />
     {:else if history.length > 0}
