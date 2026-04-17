@@ -25,12 +25,15 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
 
       // Scale marker sizes relative to image width so they remain legible
       // after the image is shrunk to fit the Word page (~1/3 native size).
-      // Reference: 1500 px wide → scale 1.0
-      const scale    = Math.max(1, canvas.width / 1500);
-      const r        = Math.round(14 * scale);   // circle radius
-      const initSize = Math.round(11 * scale);   // type initial inside circle
-      const idSize   = Math.round(22 * scale);   // asset ID label
-      const outlineW = Math.round(4  * scale);   // text outline width
+      // Reference: 1500 px wide → scale 1.0.
+      // No lower clamp — small plans get proportionally smaller markers.
+      // Absolute pixel minimums keep text legible even at the smallest scale.
+      // Upper clamp of 2.5 prevents enormous markers on very high-res scans.
+      const scale    = Math.min(2.5, canvas.width / 1500);
+      const r        = Math.max(6,  Math.round(14 * scale));   // circle radius
+      const initSize = Math.max(5,  Math.round(11 * scale));   // type initial inside circle
+      const idSize   = Math.max(9,  Math.round(22 * scale));   // asset ID label
+      const outlineW = Math.max(2,  Math.round(4  * scale));   // text outline width
 
       for (const c of floorComps) {
         if (c.x_position == null || c.y_position == null || c.plan_id !== plan.id) continue;
@@ -41,14 +44,14 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
 
         // Filled circle with white border
         ctx.shadowColor = 'rgba(0,0,0,0.45)';
-        ctx.shadowBlur  = Math.round(5 * scale);
+        ctx.shadowBlur  = Math.max(2, Math.round(5 * scale));
         ctx.fillStyle   = colour;
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur  = 0;
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth   = Math.round(2 * scale);
+        ctx.lineWidth   = Math.max(1, Math.round(2 * scale));
         ctx.stroke();
 
         // Type initial inside circle
