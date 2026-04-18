@@ -115,41 +115,42 @@ function sortComponents(comps) {
 }
 
 // -- Full component list table (all floors combined) ---------------------------
-// Columns: Floor | Type | Id | Label | Attributes | [Linked] | [Notes] | Status
-// Optional columns (Linked, Notes) are included based on column visibility flags.
-// Total content width: 10466 DXA. Label/Attrs split ~60/40 of remaining space.
+// Fixed columns: Floor | Type | Id | Label | Attributes | Status
+// Optional (each independent): Linked | Notes | Insp. Notes
+// Total content width: 10466 DXA. Label/Attrs share remaining space ~60/40.
 
 function buildFullComponentListTable(components, colOpts = {}) {
   const { showNotes = false, showLinked = false, showInspectionNotes = false } = colOpts;
-  const wantNotes  = showNotes || showInspectionNotes;
-  const wantLinked = showLinked;
 
   const FLOOR_W = 700;
   const TYPE_W  = 1600;
   const ID_W    = 560;
   const STAT_W  = 1200;
-  const NOTE_W  = wantNotes  ? 1800 : 0;
-  const LINK_W  = wantLinked ? 1000 : 0;
-  const remain  = CONTENT_W - FLOOR_W - TYPE_W - ID_W - STAT_W - NOTE_W - LINK_W;
+  const LINK_W  = showLinked          ? 1000 : 0;
+  const NOTE_W  = showNotes           ? 1400 : 0;
+  const INSP_W  = showInspectionNotes ? 1200 : 0;
+  const remain  = CONTENT_W - FLOOR_W - TYPE_W - ID_W - STAT_W - LINK_W - NOTE_W - INSP_W;
   const LABEL_W = Math.round(remain * 0.60);
   const ATTR_W  = remain - LABEL_W;
 
   const colWidths = [FLOOR_W, TYPE_W, ID_W, LABEL_W, ATTR_W,
-    ...(wantLinked ? [LINK_W] : []),
-    ...(wantNotes  ? [NOTE_W] : []),
+    ...(showLinked          ? [LINK_W] : []),
+    ...(showNotes           ? [NOTE_W] : []),
+    ...(showInspectionNotes ? [INSP_W] : []),
     STAT_W];
 
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Floor',      FLOOR_W),
-      hCell('Type',       TYPE_W),
-      hCell('Id',         ID_W),
-      hCell('Label',      LABEL_W),
-      hCell('Attributes', ATTR_W),
-      ...(wantLinked ? [hCell('Linked', LINK_W)] : []),
-      ...(wantNotes  ? [hCell('Notes',  NOTE_W)] : []),
-      hCell('Status',     STAT_W),
+      hCell('Floor',       FLOOR_W),
+      hCell('Type',        TYPE_W),
+      hCell('Id',          ID_W),
+      hCell('Label',       LABEL_W),
+      hCell('Attributes',  ATTR_W),
+      ...(showLinked          ? [hCell('Linked',      LINK_W)] : []),
+      ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
+      ...(showInspectionNotes ? [hCell('Insp. Notes', INSP_W)] : []),
+      hCell('Status',      STAT_W),
     ],
   });
 
@@ -157,10 +158,6 @@ function buildFullComponentListTable(components, colOpts = {}) {
   const dataRows = components.map((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = fmtAttrs(c.attributes);
-    const noteParts = [];
-    if (showNotes           && c.notes)      noteParts.push(c.notes);
-    if (showInspectionNotes && c.last_notes) noteParts.push(c.last_notes);
-    const notes = noteParts.join('\n');
     return new TableRow({
       children: [
         dCell(c.floor_short  ?? '—', FLOOR_W, { alt }),
@@ -168,8 +165,9 @@ function buildFullComponentListTable(components, colOpts = {}) {
         dCell(c.asset_id     ?? '—', ID_W,    { alt }),
         dCell(c.label        ?? '—', LABEL_W, { alt }),
         dCell(attrs || '—',          ATTR_W,  { alt }),
-        ...(wantLinked ? [dCell(c.linked_component_ref ?? '—', LINK_W, { alt })] : []),
-        ...(wantNotes  ? [dCell(notes,                         NOTE_W, { alt })] : []),
+        ...(showLinked          ? [dCell(c.linked_component_ref ?? '', LINK_W, { alt })] : []),
+        ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
+        ...(showInspectionNotes ? [dCell(c.last_notes ?? '',           INSP_W, { alt })] : []),
         statusCell(c.status, STAT_W, alt),
       ],
     });
@@ -217,27 +215,27 @@ function buildFullComponentListSection(allComponents, building, filterSummary, c
 }
 
 // -- Full component table (per floor) -----------------------------------------
-// Columns: Type | Id | Label | Attributes | [Linked] | [Notes] | Status
-// Optional columns (Linked, Notes) are included based on column visibility flags.
-// Total content width: 10466 DXA. Label/Attrs split ~55/45 of remaining space.
+// Fixed columns: Type | Id | Label | Attributes | Status
+// Optional (each independent): Linked | Notes | Insp. Notes
+// Total content width: 10466 DXA. Label/Attrs share remaining space ~55/45.
 
 function buildComponentTable(components, colOpts = {}) {
   const { showNotes = false, showLinked = false, showInspectionNotes = false } = colOpts;
-  const wantNotes  = showNotes || showInspectionNotes;
-  const wantLinked = showLinked;
 
-  const TYPE_W  = 2000;
+  const TYPE_W  = 1800;
   const ID_W    = 560;
   const STAT_W  = 990;
-  const NOTE_W  = wantNotes  ? 2200 : 0;
-  const LINK_W  = wantLinked ? 1200 : 0;
-  const remain  = CONTENT_W - TYPE_W - ID_W - STAT_W - NOTE_W - LINK_W;
+  const LINK_W  = showLinked          ? 1100 : 0;
+  const NOTE_W  = showNotes           ? 1500 : 0;
+  const INSP_W  = showInspectionNotes ? 1400 : 0;
+  const remain  = CONTENT_W - TYPE_W - ID_W - STAT_W - LINK_W - NOTE_W - INSP_W;
   const LABEL_W = Math.round(remain * 0.55);
   const ATTR_W  = remain - LABEL_W;
 
   const colWidths = [TYPE_W, ID_W, LABEL_W, ATTR_W,
-    ...(wantLinked ? [LINK_W] : []),
-    ...(wantNotes  ? [NOTE_W] : []),
+    ...(showLinked          ? [LINK_W] : []),
+    ...(showNotes           ? [NOTE_W] : []),
+    ...(showInspectionNotes ? [INSP_W] : []),
     STAT_W];
 
   const sorted = sortComponents(components);
@@ -245,31 +243,29 @@ function buildComponentTable(components, colOpts = {}) {
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Type',       TYPE_W),
-      hCell('Id',         ID_W),
-      hCell('Label',      LABEL_W),
-      hCell('Attributes', ATTR_W),
-      ...(wantLinked ? [hCell('Linked', LINK_W)] : []),
-      ...(wantNotes  ? [hCell('Notes',  NOTE_W)] : []),
-      hCell('Status',     STAT_W),
+      hCell('Type',        TYPE_W),
+      hCell('Id',          ID_W),
+      hCell('Label',       LABEL_W),
+      hCell('Attributes',  ATTR_W),
+      ...(showLinked          ? [hCell('Linked',      LINK_W)] : []),
+      ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
+      ...(showInspectionNotes ? [hCell('Insp. Notes', INSP_W)] : []),
+      hCell('Status',      STAT_W),
     ],
   });
 
   const dataRows = sorted.map((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = fmtAttrs(c.attributes);
-    const noteParts = [];
-    if (showNotes           && c.notes)      noteParts.push(c.notes);
-    if (showInspectionNotes && c.last_notes) noteParts.push(c.last_notes);
-    const notes = noteParts.join('\n');
     return new TableRow({
       children: [
         dCell(c.type_name  ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id   ?? '—', ID_W,    { alt }),
         dCell(c.label      ?? '—', LABEL_W, { alt }),
         dCell(attrs || '—',        ATTR_W,  { alt }),
-        ...(wantLinked ? [dCell(c.linked_component_ref ?? '—', LINK_W, { alt })] : []),
-        ...(wantNotes  ? [dCell(notes,                         NOTE_W, { alt })] : []),
+        ...(showLinked          ? [dCell(c.linked_component_ref ?? '', LINK_W, { alt })] : []),
+        ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
+        ...(showInspectionNotes ? [dCell(c.last_notes ?? '',           INSP_W, { alt })] : []),
         statusCell(c.status, STAT_W, alt),
       ],
     });
