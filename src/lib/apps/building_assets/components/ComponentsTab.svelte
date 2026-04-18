@@ -279,6 +279,73 @@
     }
   }
 
+  // -- CSV export (client-side, no server round-trip) ----------------
+  function generateCSV() {
+    if (filteredComponents.length === 0) return;
+
+    // RFC 4180 cell escaping
+    function esc(val) {
+      const s = String(val ?? '');
+      return (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r'))
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    }
+
+    // Sort within each floor: System → Type → Asset ID (matches report order)
+    function sortComps(comps) {
+      return [...comps].sort((a, b) => {
+        const ta = typeOf(a), tb = typeOf(b);
+        const sa = systemOf(ta)?.name ?? '', sb = systemOf(tb)?.name ?? '';
+        return sa.localeCompare(sb) ||
+               (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
+               (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined,
+                 { numeric: true, sensitivity: 'base' });
+      });
+    }
+
+    const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label', 'Attributes'];
+    if (showLinked)          headers.push('Linked');
+    if (showNotes)           headers.push('Notes');
+    if (showInspectionNotes) headers.push('Insp. Notes');
+    headers.push('Status');
+
+    const rows = [headers.map(esc).join(',')];
+
+    for (const { floor, components: comps } of filteredByFloor) {
+      for (const c of sortComps(comps)) {
+        const t    = typeOf(c);
+        const sys  = systemOf(t);
+        // Attributes: always "Name: Value" format for CSV readability
+        const attrs = resolveAttrs(c).map(a => `${a.name}: ${a.value}`).join('; ');
+        const insp  = inspections[c.id] ?? null;
+
+        const row = [
+          floor.short_name,
+          sys?.name    ?? '',
+          t?.name      ?? c.type_code,
+          c.asset_id   ?? '',
+          c.label      ?? '',
+          attrs,
+        ];
+        if (showLinked)          row.push(c.linked_component_ref ?? '');
+        if (showNotes)           row.push(c.notes ?? '');
+        if (showInspectionNotes) row.push(insp?.inspector_notes ?? '');
+        row.push(c.status ?? '');
+
+        rows.push(row.map(esc).join(','));
+      }
+    }
+
+    const csv      = rows.join('\r\n');
+    const blob     = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url      = URL.createObjectURL(blob);
+    const a        = document.createElement('a');
+    a.href         = url;
+    a.download     = `components-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // -- Floor sets for presets ----------------------------------------
   $: residentialFloorIds = new Set(floors.filter(f => RESIDENTIAL_SHORT.has(f.short_name)).map(f => f.id));
   $: basementFloorIds    = new Set(floors.filter(f => BASEMENT_SHORT.has(f.short_name)).map(f => f.id));
@@ -795,6 +862,16 @@
             📄 Generate Report
             <span class="text-slate-700 tabular-nums">({filteredComponents.length})</span>
           </button>
+
+          <!-- CSV — always available; respects column toggles, no section config needed -->
+          <button
+            on:click={generateCSV}
+            disabled={filteredComponents.length === 0}
+            class="px-2.5 py-1 text-xs rounded border border-slate-600
+                   text-slate-400 hover:text-white hover:border-slate-500
+                   disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >⬇ CSV</button>
+
           {#if showReportPanel}
             {#if reportNoneSelected}
               <span class="text-[10px] text-amber-500/80">Select at least one section</span>
@@ -805,7 +882,7 @@
                 disabled={generatingReport || filteredComponents.length === 0 || reportNoneSelected}
                 class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
                        disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >{generatingReport ? 'Generating…' : '⬇ Download'}</button>
+              >{generatingReport ? 'Generating…' : '⬇ Document'}</button>
             </div>
           {/if}
         </div>
