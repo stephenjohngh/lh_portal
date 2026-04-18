@@ -122,10 +122,10 @@ function sortComponents(comps) {
 function buildFullComponentListTable(components, colOpts = {}) {
   const { showNotes = false, showLinked = false, showInspectionNotes = false } = colOpts;
 
-  const FLOOR_W = 700;
+  const FLOOR_W = 400;
   const TYPE_W  = 1600;
   const ID_W    = 560;
-  const STAT_W  = 1200;
+  const STAT_W  = 1000;
   const LINK_W  = showLinked          ? 1000 : 0;
   const NOTE_W  = showNotes           ? 1400 : 0;
   const INSP_W  = showInspectionNotes ? 1200 : 0;
@@ -142,7 +142,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Floor',       FLOOR_W),
+      hCell('F',           FLOOR_W),
       hCell('Type',        TYPE_W),
       hCell('Id',          ID_W),
       hCell('Label',       LABEL_W),
@@ -224,7 +224,7 @@ function buildComponentTable(components, colOpts = {}) {
 
   const TYPE_W  = 1800;
   const ID_W    = 560;
-  const STAT_W  = 990;
+  const STAT_W  = 790;
   const LINK_W  = showLinked          ? 1100 : 0;
   const NOTE_W  = showNotes           ? 1500 : 0;
   const INSP_W  = showInspectionNotes ? 1400 : 0;
