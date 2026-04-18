@@ -867,28 +867,26 @@
             <span class="text-slate-700 tabular-nums">({filteredComponents.length})</span>
           </button>
 
-          <!-- CSV — always available; respects column toggles, no section config needed -->
-          <button
-            on:click={generateCSV}
-            disabled={filteredComponents.length === 0}
-            class="px-2.5 py-1 text-xs rounded border border-slate-600
-                   text-slate-400 hover:text-white hover:border-slate-500
-                   disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >⬇ CSV</button>
+          {#if showReportPanel && reportNoneSelected}
+            <span class="text-[10px] text-amber-500/80">Select at least one section</span>
+          {/if}
 
-          {#if showReportPanel}
-            {#if reportNoneSelected}
-              <span class="text-[10px] text-amber-500/80">Select at least one section</span>
-            {/if}
-            <div class="ml-auto">
+          <div class="ml-auto flex items-center gap-2">
+            {#if showReportPanel}
               <button
                 on:click={generateReport}
                 disabled={generatingReport || filteredComponents.length === 0 || reportNoneSelected}
                 class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
                        disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >{generatingReport ? 'Generating…' : '⬇ Document'}</button>
-            </div>
-          {/if}
+            {/if}
+            <button
+              on:click={generateCSV}
+              disabled={filteredComponents.length === 0}
+              class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
+                     disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >⬇ CSV</button>
+          </div>
         </div>
 
         <!-- Section toggles — shown when expanded -->
