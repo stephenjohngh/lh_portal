@@ -32,6 +32,7 @@
   $: plans          = store.plans;
   $: components     = store.components;
   $: componentAttrs = store.componentAttrs;
+  $: componentLinks = store.componentLinks;
   $: inspections    = store.inspections;
 
   // -- Floor presets -------------------------------------------------
@@ -271,6 +272,7 @@
         typeOfFn:       typeOf,
         systemOfFn:     systemOf,
         resolveAttrsFn: resolveAttrs,
+        linkedRefsFn:   c => (componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '),
       });
     } catch (err) {
       reportError = err.message;
@@ -328,7 +330,7 @@
           c.label      ?? '',
           attrs,
         ];
-        if (showLinked)          row.push(c.linked_component_ref ?? '');
+        if (showLinked)          row.push((componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '));
         if (showNotes)           row.push(c.notes ?? '');
         if (showInspectionNotes) row.push(insp?.inspector_notes ?? '');
         row.push(c.status ?? '');

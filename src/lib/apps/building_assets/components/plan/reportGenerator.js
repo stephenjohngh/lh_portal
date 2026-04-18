@@ -24,6 +24,7 @@
 //   typeOfFn:                (component) => type | undefined
 //   systemOfFn:              (type)      => system | undefined
 //   resolveAttrsFn:          (component) => { name, value, display_type }[]
+//   linkedRefsFn:            (component) => string  — joined to_component_ref values
 // }
 //
 // Returns { filename } on success (download is triggered as a side-effect).
@@ -38,6 +39,7 @@ export async function generateReportDocument(params) {
     showNotes = false, showLinked = false, showInspectionNotes = false,
     filteredByFloor, plans, inspections,
     typeOfFn, systemOfFn, resolveAttrsFn,
+    linkedRefsFn = () => '',
   } = params;
 
   // -- Sort helper (System → Type → Asset ID) ----------------------------
@@ -78,9 +80,9 @@ export async function generateReportDocument(params) {
           status:                c.status,
           primary_attribute:     c.primary_attribute,
           attributes:            resolveAttrsFn(c),
-          notes:                 c.notes              ?? null,
-          linked_component_ref:  c.linked_component_ref ?? null,
-          last_inspected:        insp?.inspected_at    ?? null,
+          notes:                 c.notes           ?? null,
+          linked_component_ref:  linkedRefsFn(c),
+          last_inspected:        insp?.inspected_at ?? null,
           last_notes:            insp?.inspector_notes ?? null,
         };
       });
@@ -116,9 +118,9 @@ export async function generateReportDocument(params) {
             label:                c.label,
             status:               c.status,
             attributes:           resolveAttrsFn(c),
-            notes:                c.notes                  ?? null,
-            linked_component_ref: c.linked_component_ref   ?? null,
-            last_notes:           insp?.inspector_notes    ?? null,
+            notes:                c.notes              ?? null,
+            linked_component_ref: linkedRefsFn(c),
+            last_notes:           insp?.inspector_notes ?? null,
           };
         })
       )
