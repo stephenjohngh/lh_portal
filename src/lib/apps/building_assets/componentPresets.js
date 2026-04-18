@@ -34,7 +34,6 @@ export const DEFAULT_CONFIG = {
     includePlan:              false,
     includeList:              true,
     includeFloorSummary:      true,
-    includeNotes:             false,
     includeFullSummary:       false,
     includeFullComponentList: false,
   },
@@ -116,7 +115,6 @@ export function configMatches(preset, config) {
     (pr.includePlan              ?? false) === (cr.includePlan              ?? false) &&
     (pr.includeList              ?? true)  === (cr.includeList              ?? true)  &&
     (pr.includeFloorSummary      ?? true)  === (cr.includeFloorSummary      ?? true)  &&
-    (pr.includeNotes             ?? false) === (cr.includeNotes             ?? false) &&
     (pr.includeFullSummary       ?? false) === (cr.includeFullSummary       ?? false) &&
     (pr.includeFullComponentList ?? false) === (cr.includeFullComponentList ?? false)
   );

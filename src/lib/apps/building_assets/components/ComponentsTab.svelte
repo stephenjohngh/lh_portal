@@ -79,7 +79,6 @@
       includePlan,
       includeList,
       includeFloorSummary,
-      includeNotes,
       includeFullSummary,
       includeFullComponentList,
     },
@@ -105,7 +104,6 @@
     includePlan              = r.includePlan              ?? false;
     includeList              = r.includeList              ?? true;
     includeFloorSummary      = r.includeFloorSummary      ?? true;
-    includeNotes             = r.includeNotes             ?? false;
     includeFullSummary       = r.includeFullSummary       ?? false;
     includeFullComponentList = r.includeFullComponentList ?? false;
   }
@@ -176,7 +174,6 @@
   let includePlan              = false;
   let includeList              = true;
   let includeFloorSummary      = true;
-  let includeNotes             = false;
   let includeFullSummary       = false;
   let includeFullComponentList = false;
   let generatingReport = false;
@@ -266,7 +263,8 @@
         reportTypes, building,
         filterSummary: reportFilterSummary,
         generatedAt,
-        includeNotes, includeFullComponentList, includePlan,
+        includePlan, includeFullComponentList,
+        showNotes, showLinked, showInspectionNotes,
         filteredByFloor,
         plans,
         inspections,
@@ -830,10 +828,6 @@
                 <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
                   <input type="checkbox" bind:checked={includeFloorSummary} class="accent-purple-500" />
                   📊 Floor Summary
-                </label>
-                <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
-                  <input type="checkbox" bind:checked={includeNotes} class="accent-purple-500" />
-                  📝 Inspection Notes
                 </label>
               </div>
             </div>

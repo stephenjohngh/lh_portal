@@ -115,36 +115,62 @@ function sortComponents(comps) {
 }
 
 // -- Full component list table (all floors combined) ---------------------------
-// Columns: Floor | Type | Id | Label | Attributes | Status
-// DXA:      700  | 1600 | 560| 3430  |    2170    |  2006  = 10466
-// Type: 80% of original 2000. Attrs: 70% of original 3100. Freed width → Label.
-const FCL_COLS = [700, 1600, 560, 3430, 2170, 2006];
+// Columns: Floor | Type | Id | Label | Attributes | [Linked] | [Notes] | Status
+// Optional columns (Linked, Notes) are included based on column visibility flags.
+// Total content width: 10466 DXA. Label/Attrs split ~60/40 of remaining space.
 
-function buildFullComponentListTable(components) {
-  // components arrive pre-sorted (floor_order → system → type → asset_id) from client
+function buildFullComponentListTable(components, colOpts = {}) {
+  const { showNotes = false, showLinked = false, showInspectionNotes = false } = colOpts;
+  const wantNotes  = showNotes || showInspectionNotes;
+  const wantLinked = showLinked;
+
+  const FLOOR_W = 700;
+  const TYPE_W  = 1600;
+  const ID_W    = 560;
+  const STAT_W  = 1200;
+  const NOTE_W  = wantNotes  ? 1800 : 0;
+  const LINK_W  = wantLinked ? 1000 : 0;
+  const remain  = CONTENT_W - FLOOR_W - TYPE_W - ID_W - STAT_W - NOTE_W - LINK_W;
+  const LABEL_W = Math.round(remain * 0.60);
+  const ATTR_W  = remain - LABEL_W;
+
+  const colWidths = [FLOOR_W, TYPE_W, ID_W, LABEL_W, ATTR_W,
+    ...(wantLinked ? [LINK_W] : []),
+    ...(wantNotes  ? [NOTE_W] : []),
+    STAT_W];
+
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Floor',      FCL_COLS[0]),
-      hCell('Type',       FCL_COLS[1]),
-      hCell('Id',         FCL_COLS[2]),
-      hCell('Label',      FCL_COLS[3]),
-      hCell('Attributes', FCL_COLS[4]),
-      hCell('Status',     FCL_COLS[5]),
+      hCell('Floor',      FLOOR_W),
+      hCell('Type',       TYPE_W),
+      hCell('Id',         ID_W),
+      hCell('Label',      LABEL_W),
+      hCell('Attributes', ATTR_W),
+      ...(wantLinked ? [hCell('Linked', LINK_W)] : []),
+      ...(wantNotes  ? [hCell('Notes',  NOTE_W)] : []),
+      hCell('Status',     STAT_W),
     ],
   });
 
+  // components arrive pre-sorted (floor_order → system → type → asset_id) from client
   const dataRows = components.map((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = fmtAttrs(c.attributes);
+    const noteParts = [];
+    if (showNotes           && c.notes)      noteParts.push(c.notes);
+    if (showInspectionNotes && c.last_notes) noteParts.push(c.last_notes);
+    const notes = noteParts.join('\n');
     return new TableRow({
       children: [
-        dCell(c.floor_short  ?? '—', FCL_COLS[0], { alt }),
-        dCell(c.type_name    ?? '—', FCL_COLS[1], { alt }),
-        dCell(c.asset_id     ?? '—', FCL_COLS[2], { alt }),
-        dCell(c.label        ?? '—', FCL_COLS[3], { alt }),
-        dCell(attrs || '—',          FCL_COLS[4], { alt }),
-        statusCell(c.status, FCL_COLS[5], alt),
+        dCell(c.floor_short  ?? '—', FLOOR_W, { alt }),
+        dCell(c.type_name    ?? '—', TYPE_W,  { alt }),
+        dCell(c.asset_id     ?? '—', ID_W,    { alt }),
+        dCell(c.label        ?? '—', LABEL_W, { alt }),
+        dCell(attrs || '—',          ATTR_W,  { alt }),
+        ...(wantLinked ? [dCell(c.linked_component_ref ?? '—', LINK_W, { alt })] : []),
+        ...(wantNotes  ? [dCell(notes,                         NOTE_W, { alt })] : []),
+        statusCell(c.status, STAT_W, alt),
       ],
     });
   });
@@ -152,13 +178,13 @@ function buildFullComponentListTable(components) {
   return new Table({
     width:        { size: CONTENT_W, type: WidthType.DXA },
     layout:       TableLayoutType.FIXED,
-    columnWidths: FCL_COLS,
+    columnWidths: colWidths,
     borders:      BORDERS,
     rows:         [headerRow, ...dataRows],
   });
 }
 
-function buildFullComponentListSection(allComponents, building, filterSummary) {
+function buildFullComponentListSection(allComponents, building, filterSummary, colOpts = {}) {
   const children = [];
 
   children.push(new Paragraph({
@@ -184,49 +210,67 @@ function buildFullComponentListSection(allComponents, building, filterSummary) {
     return children;
   }
 
-  children.push(buildFullComponentListTable(allComponents));
+  children.push(buildFullComponentListTable(allComponents, colOpts));
   children.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
 
   return children;
 }
 
 // -- Full component table (per floor) -----------------------------------------
-// Columns: Type | Id | Label | Attributes | Notes | Status
-// DXA:     2000 | 560| 2200  |    1860    | 2856  |  990  = 10466
-// Type: 80% of original 2500. Attrs: 70% of original 2657. Freed width → Notes.
-const FL_COLS = [2000, 560, 2200, 1860, 2856, 990];
+// Columns: Type | Id | Label | Attributes | [Linked] | [Notes] | Status
+// Optional columns (Linked, Notes) are included based on column visibility flags.
+// Total content width: 10466 DXA. Label/Attrs split ~55/45 of remaining space.
 
-function buildComponentTable(components, includeNotes = false) {
+function buildComponentTable(components, colOpts = {}) {
+  const { showNotes = false, showLinked = false, showInspectionNotes = false } = colOpts;
+  const wantNotes  = showNotes || showInspectionNotes;
+  const wantLinked = showLinked;
+
+  const TYPE_W  = 2000;
+  const ID_W    = 560;
+  const STAT_W  = 990;
+  const NOTE_W  = wantNotes  ? 2200 : 0;
+  const LINK_W  = wantLinked ? 1200 : 0;
+  const remain  = CONTENT_W - TYPE_W - ID_W - STAT_W - NOTE_W - LINK_W;
+  const LABEL_W = Math.round(remain * 0.55);
+  const ATTR_W  = remain - LABEL_W;
+
+  const colWidths = [TYPE_W, ID_W, LABEL_W, ATTR_W,
+    ...(wantLinked ? [LINK_W] : []),
+    ...(wantNotes  ? [NOTE_W] : []),
+    STAT_W];
+
   const sorted = sortComponents(components);
 
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Type',       FL_COLS[0]),
-      hCell('Id',         FL_COLS[1]),
-      hCell('Label',      FL_COLS[2]),
-      hCell('Attributes', FL_COLS[3]),
-      hCell('Notes',      FL_COLS[4]),
-      hCell('Status',     FL_COLS[5]),
+      hCell('Type',       TYPE_W),
+      hCell('Id',         ID_W),
+      hCell('Label',      LABEL_W),
+      hCell('Attributes', ATTR_W),
+      ...(wantLinked ? [hCell('Linked', LINK_W)] : []),
+      ...(wantNotes  ? [hCell('Notes',  NOTE_W)] : []),
+      hCell('Status',     STAT_W),
     ],
   });
 
   const dataRows = sorted.map((c, idx) => {
-    const alt      = idx % 2 === 1;
-    const attrs    = fmtAttrs(c.attributes);
-    // Component's own notes always shown; inspection notes appended when includeNotes is on
+    const alt   = idx % 2 === 1;
+    const attrs = fmtAttrs(c.attributes);
     const noteParts = [];
-    if (c.notes)                     noteParts.push(c.notes);
-    if (includeNotes && c.last_notes) noteParts.push(c.last_notes);
+    if (showNotes           && c.notes)      noteParts.push(c.notes);
+    if (showInspectionNotes && c.last_notes) noteParts.push(c.last_notes);
     const notes = noteParts.join('\n');
     return new TableRow({
       children: [
-        dCell(c.type_name   ?? '—', FL_COLS[0], { alt }),
-        dCell(c.asset_id    ?? '—', FL_COLS[1], { alt }),
-        dCell(c.label       ?? '—', FL_COLS[2], { alt }),
-        dCell(attrs || '—',         FL_COLS[3], { alt }),
-        dCell(notes,                FL_COLS[4], { alt }),
-        statusCell(c.status, FL_COLS[5], alt),
+        dCell(c.type_name  ?? '—', TYPE_W,  { alt }),
+        dCell(c.asset_id   ?? '—', ID_W,    { alt }),
+        dCell(c.label      ?? '—', LABEL_W, { alt }),
+        dCell(attrs || '—',        ATTR_W,  { alt }),
+        ...(wantLinked ? [dCell(c.linked_component_ref ?? '—', LINK_W, { alt })] : []),
+        ...(wantNotes  ? [dCell(notes,                         NOTE_W, { alt })] : []),
+        statusCell(c.status, STAT_W, alt),
       ],
     });
   });
@@ -234,7 +278,7 @@ function buildComponentTable(components, includeNotes = false) {
   return new Table({
     width:        { size: CONTENT_W, type: WidthType.DXA },
     layout:       TableLayoutType.FIXED,
-    columnWidths: FL_COLS,
+    columnWidths: colWidths,
     borders:      BORDERS,
     rows:         [headerRow, ...dataRows],
   });
@@ -418,12 +462,15 @@ export async function POST({ request }) {
     const { options = {}, floors = [], allComponents = [] } = body;
 
     const {
-      reportTypes   = [],
-      building      = 'Lancaster House',
-      filterSummary = '',
-      generatedAt   = '',
-      includeNotes  = false,
+      reportTypes          = [],
+      building             = 'Lancaster House',
+      filterSummary        = '',
+      generatedAt          = '',
+      showNotes            = false,
+      showLinked           = false,
+      showInspectionNotes  = false,
     } = options;
+    const colOpts = { showNotes, showLinked, showInspectionNotes };
 
     if (!reportTypes.length) {
       return json({ error: 'No report sections requested.' }, { status: 400 });
@@ -519,7 +566,7 @@ export async function POST({ request }) {
 
       // -- Full component table ----------------------------------------------
       if (wantList) {
-        children.push(buildComponentTable(components, includeNotes));
+        children.push(buildComponentTable(components, colOpts));
         children.push(new Paragraph({ spacing: { after: 240 }, children: [] }));
       }
 
@@ -538,7 +585,7 @@ export async function POST({ request }) {
     if (wantFullComponentList) {
       // Only add a page break if there was preceding per-floor content
       if (wantAnyPerFloor) children.push(new Paragraph({ children: [new PageBreak()] }));
-      children.push(...buildFullComponentListSection(allComponents, building, filterSummary));
+      children.push(...buildFullComponentListSection(allComponents, building, filterSummary, colOpts));
     }
 
     // -- Full summary section (all floors combined) ----------------------------

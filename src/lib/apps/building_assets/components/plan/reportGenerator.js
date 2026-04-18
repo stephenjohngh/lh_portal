@@ -5,13 +5,15 @@
 //
 // params: {
 //   // Report configuration
-//   reportTypes:             string[]     — e.g. ['plan', 'full_list', 'floor_summary', …]
-//   building:                string
-//   filterSummary:           string
-//   generatedAt:             string
-//   includeNotes:            boolean
+//   reportTypes:              string[]  — e.g. ['plan', 'full_list', 'floor_summary', …]
+//   building:                 string
+//   filterSummary:            string
+//   generatedAt:              string
+//   includePlan:              boolean
 //   includeFullComponentList: boolean
-//   includePlan:             boolean
+//   showNotes:                boolean   — include component notes column
+//   showLinked:               boolean   — include linked-component reference column
+//   showInspectionNotes:      boolean   — include inspection notes in notes column
 //
 //   // Data (already filtered to the desired scope)
 //   filteredByFloor:         { floor, components }[]
@@ -32,7 +34,8 @@ import { drawAnnotatedPlanImage } from './planImageRenderer.js';
 export async function generateReportDocument(params) {
   const {
     reportTypes, building, filterSummary, generatedAt,
-    includeNotes, includeFullComponentList, includePlan,
+    includePlan, includeFullComponentList,
+    showNotes = false, showLinked = false, showInspectionNotes = false,
     filteredByFloor, plans, inspections,
     typeOfFn, systemOfFn, resolveAttrsFn,
   } = params;
@@ -62,22 +65,23 @@ export async function generateReportDocument(params) {
       const resolvedComponents = sortedComps.map(c => {
         const t    = typeOfFn(c);
         const sys  = systemOfFn(t);
-        const insp = includeNotes ? (inspections[c.id] ?? null) : null;
+        const insp = showInspectionNotes ? (inspections[c.id] ?? null) : null;
         return {
-          id:                c.id,
-          asset_id:          c.asset_id,
-          label:             c.label,
-          type_code:         c.type_code,
-          type_name:         t?.name    ?? c.type_code,
-          type_initial:      t?.initial ?? '?',
-          type_colour:       t?.colour  ?? '888888',
-          system_name:       sys?.name  ?? '',
-          status:            c.status,
-          primary_attribute: c.primary_attribute,
-          attributes:        resolveAttrsFn(c),
-          notes:             c.notes              ?? null,
-          last_inspected:    insp?.inspected_at    ?? null,
-          last_notes:        insp?.inspector_notes ?? null,
+          id:                    c.id,
+          asset_id:              c.asset_id,
+          label:                 c.label,
+          type_code:             c.type_code,
+          type_name:             t?.name    ?? c.type_code,
+          type_initial:          t?.initial ?? '?',
+          type_colour:           t?.colour  ?? '888888',
+          system_name:           sys?.name  ?? '',
+          status:                c.status,
+          primary_attribute:     c.primary_attribute,
+          attributes:            resolveAttrsFn(c),
+          notes:                 c.notes              ?? null,
+          linked_component_ref:  c.linked_component_ref ?? null,
+          last_inspected:        insp?.inspected_at    ?? null,
+          last_notes:            insp?.inspector_notes ?? null,
         };
       });
 
@@ -100,17 +104,21 @@ export async function generateReportDocument(params) {
   const allComponentsPayload = includeFullComponentList
     ? filteredByFloor.flatMap(({ floor, components: comps }) =>
         sortComponents(comps).map(c => {
-          const t   = typeOfFn(c);
-          const sys = systemOfFn(t);
+          const t    = typeOfFn(c);
+          const sys  = systemOfFn(t);
+          const insp = showInspectionNotes ? (inspections[c.id] ?? null) : null;
           return {
-            floor_short: floor.short_name,
-            floor_order: floor.level_order ?? 9999,
-            system_name: sys?.name ?? '',
-            type_name:   t?.name   ?? c.type_code,
-            asset_id:    c.asset_id,
-            label:       c.label,
-            status:      c.status,
-            attributes:  resolveAttrsFn(c),
+            floor_short:          floor.short_name,
+            floor_order:          floor.level_order ?? 9999,
+            system_name:          sys?.name ?? '',
+            type_name:            t?.name   ?? c.type_code,
+            asset_id:             c.asset_id,
+            label:                c.label,
+            status:               c.status,
+            attributes:           resolveAttrsFn(c),
+            notes:                c.notes                  ?? null,
+            linked_component_ref: c.linked_component_ref   ?? null,
+            last_notes:           insp?.inspector_notes    ?? null,
           };
         })
       )
@@ -121,7 +129,7 @@ export async function generateReportDocument(params) {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
-      options:       { reportTypes, building, filterSummary, generatedAt, includeNotes },
+      options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes },
       floors:        floorsPayload,
       allComponents: allComponentsPayload,
     }),
