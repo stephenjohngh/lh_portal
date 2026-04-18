@@ -272,7 +272,7 @@
         typeOfFn:       typeOf,
         systemOfFn:     systemOf,
         resolveAttrsFn: resolveAttrs,
-        linkedRefsFn:   c => (componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '),
+        linkedRefsFn:   c => (componentLinks[c.id] ?? []).map(l => l.to_component_ref).join('\n'),
       });
     } catch (err) {
       reportError = err.message;
