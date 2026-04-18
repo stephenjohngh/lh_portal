@@ -863,30 +863,29 @@
                    {showReportPanel ? 'text-purple-300' : 'text-slate-500 hover:text-slate-300'}"
           >
             <span class="text-[10px]">{showReportPanel ? '▾' : '▸'}</span>
-            📄 Generate Report
+            📄 Report Options
             <span class="text-slate-700 tabular-nums">({filteredComponents.length})</span>
           </button>
 
-          {#if showReportPanel && reportNoneSelected}
-            <span class="text-[10px] text-amber-500/80">Select at least one section</span>
-          {/if}
-
-          <div class="ml-auto flex items-center gap-2">
-            {#if showReportPanel}
+          {#if showReportPanel}
+            {#if reportNoneSelected}
+              <span class="text-[10px] text-amber-500/80">Select at least one section</span>
+            {/if}
+            <div class="ml-auto flex items-center gap-2">
               <button
                 on:click={generateReport}
                 disabled={generatingReport || filteredComponents.length === 0 || reportNoneSelected}
                 class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
                        disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >{generatingReport ? 'Generating…' : '⬇ Document'}</button>
-            {/if}
-            <button
-              on:click={generateCSV}
-              disabled={filteredComponents.length === 0}
-              class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
-                     disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >⬇ CSV</button>
-          </div>
+              <button
+                on:click={generateCSV}
+                disabled={filteredComponents.length === 0}
+                class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
+                       disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >⬇ CSV</button>
+            </div>
+          {/if}
         </div>
 
         <!-- Section toggles — shown when expanded -->
