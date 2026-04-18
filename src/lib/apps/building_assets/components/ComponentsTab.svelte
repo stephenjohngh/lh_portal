@@ -315,8 +315,9 @@
       for (const c of sortComps(comps)) {
         const t    = typeOf(c);
         const sys  = systemOf(t);
-        // Attributes: always "Name: Value" format for CSV readability
-        const attrs = resolveAttrs(c).map(a => `${a.name}: ${a.value}`).join('; ');
+        // Attributes: always "Name: Value" format, pipe-separated so Excel
+        // doesn't mistake the separator for a column delimiter on import.
+        const attrs = resolveAttrs(c).map(a => `${a.name}: ${a.value}`).join(' | ');
         const insp  = inspections[c.id] ?? null;
 
         const row = [
@@ -336,7 +337,8 @@
       }
     }
 
-    const csv      = rows.join('\r\n');
+    // UTF-8 BOM (\uFEFF) tells Excel to open as UTF-8 without an import wizard
+    const csv      = '\uFEFF' + rows.join('\r\n');
     const blob     = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url      = URL.createObjectURL(blob);
     const a        = document.createElement('a');
