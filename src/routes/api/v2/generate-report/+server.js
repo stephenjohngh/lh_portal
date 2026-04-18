@@ -330,7 +330,7 @@ function buildFloorSummaryTable(components) {
         numCell(row.problem,   FS_COLS[3], COLOURS.warnAmber),
         numCell(row.failed,    FS_COLS[4], COLOURS.failRed),
         numCell(row.inactive,  FS_COLS[5], '9CA3AF'),
-        dCell(String(total),   FS_COLS[6], { bold: true }),
+        numCell(total,         FS_COLS[6], COLOURS.textDark),
       ],
     });
   });
@@ -415,7 +415,7 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
         numCell(row.problem,  SM_COLS[3], COLOURS.warnAmber),
         numCell(row.failed,   SM_COLS[4], COLOURS.failRed),
         numCell(row.inactive, SM_COLS[5], '9CA3AF'),
-        dCell(String(total),  SM_COLS[6], { bold: true }),
+        numCell(total,        SM_COLS[6], COLOURS.textDark),
       ],
     });
   });
