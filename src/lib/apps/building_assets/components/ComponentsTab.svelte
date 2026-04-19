@@ -183,7 +183,7 @@
   $: reportNoneSelected = !includePlan && !includeList && !includeFloorSummary
                        && !includeFullSummary && !includeFullComponentList;
 
-  // -- Report helpers (identical to V2ReportsTab) --------------------
+  // -- Report helpers ---------------------------------------------------
   function typeOf(c)   { return types.find(t => t.code === c.type_code); }
   function systemOf(t) { return t ? systems.find(s => s.id === t.building_system_id) : null; }
 

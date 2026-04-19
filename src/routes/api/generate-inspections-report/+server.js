@@ -1,13 +1,12 @@
-﻿// src/routes/api/v2/generate-inspections-report/+server.js
+﻿// src/routes/api/generate-inspections-report/+server.js
 //
-// Generate Word document inspection reports for V2 component inspections.
+// Generate Word document inspection reports for component inspections.
 //
 // Summary:  Cover + one table row per session.
 // Detailed: Cover + one section per session (metadata + inspection table + photos).
 //
-// Key V2 differences from V1:
-//   - result values lowercase: 'ok' | 'failed' | 'problem' | 'inactive'
-//   - photo_urls is an array (multiple photos per inspection)
+// Result values lowercase: 'ok' | 'failed' | 'problem' | 'inactive'
+// photo_urls is an array (multiple photos per inspection)
 //   - session.floor_short_name pre-resolved client-side (floor_id is the raw FK)
 //   - session.inspector_name pre-resolved from profiles join
 //   - session.session_preset_label pre-resolved from presetLabel()
@@ -33,7 +32,7 @@ import {
 } from '$lib/server/docxHelpers.js';
 import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration } from '$lib/utils/dates';
 
-const logger = getLogger('v2GenerateInspectionsReport');
+const logger = getLogger('generateInspectionsReport');
 
 // -- Result helpers -------------------------------------------------------------
 function resultColor(result) {
@@ -48,7 +47,7 @@ function resultLabel(result) {
       ?? (result ?? '—').toUpperCase();
 }
 
-// -- Session stats (inline — avoids SSR import of v2walkHelpers) ---------------
+// -- Session stats (inline — avoids SSR import issues with walk helpers) -------
 function sessionStats(inspections) {
   return {
     ok:         inspections.filter(r => r.result === 'ok').length,
@@ -82,7 +81,7 @@ async function fetchImageBuffer(url) {
 // -- Cover page -----------------------------------------------------------------
 function buildCover(sessions, reportType, generatedAt) {
   const buildings = [...new Set(sessions.map(s => s.building))].sort();
-  const title     = reportType === 'summary' ? 'V2 Inspection Summary Report' : 'V2 Inspection Detailed Report';
+  const title     = reportType === 'summary' ? 'Inspection Summary Report' : 'Inspection Detailed Report';
   return [
     new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: title, font: 'Arial', size: 48, bold: true, color: COLOURS.textDark })] }),
     new Paragraph({ spacing: { after: 80 },  children: [new TextRun({ text: buildings.join(', '), font: 'Arial', size: 24, color: '475569' })] }),
@@ -267,7 +266,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
 
 // -- POST handler ---------------------------------------------------------------
 export async function POST({ request }) {
-  logger('📄 POST /api/v2/generate-inspections-report');
+  logger('📄 POST /api/generate-inspections-report');
 
   try {
     const { sessions, reportType } = await request.json();
@@ -276,7 +275,7 @@ export async function POST({ request }) {
 
     const generatedAt = fmtGenerated();
     const buildings   = [...new Set(sessions.map(d => d.session.building))].sort().join(', ');
-    const titleLabel  = reportType === 'summary' ? 'V2 Inspection Summary' : 'V2 Inspection Report';
+    const titleLabel  = reportType === 'summary' ? 'Inspection Summary' : 'Inspection Report';
 
     const children = [...buildCover(sessions.map(d => d.session), reportType, generatedAt)];
 
@@ -304,7 +303,7 @@ export async function POST({ request }) {
 
     const slug     = reportType === 'summary' ? 'Summary' : 'Detailed';
     const dateSlug = new Date().toISOString().slice(0, 10);
-    const filename = `V2_Inspections_${slug}_${dateSlug}.docx`;
+    const filename = `Inspections_${slug}_${dateSlug}.docx`;
 
     return new Response(buffer, {
       headers: {

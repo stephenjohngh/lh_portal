@@ -11,7 +11,7 @@
   import ComponentsTab    from './components/ComponentsTab.svelte';
   import PlanViewTab      from './components/PlanViewTab.svelte';
   import MaintenanceView  from './components/MaintenanceView.svelte';
-  import V2InspectionsTab from './components/V2InspectionsTab.svelte';
+  import InspectionsTab from './components/InspectionsTab.svelte';
 
   let activeTab   = 'components';
   let initialized = false;   // true after the first load completes
@@ -93,7 +93,7 @@
   {:else if activeTab === 'maintenance'}
     <MaintenanceView {systems} {types} {regime} />
   {:else if activeTab === 'inspections'}
-    <V2InspectionsTab />
+    <InspectionsTab />
   {/if}
 
 </div>

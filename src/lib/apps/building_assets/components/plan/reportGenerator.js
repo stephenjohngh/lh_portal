@@ -127,7 +127,7 @@ export async function generateReportDocument(params) {
     : [];
 
   // -- POST to API -------------------------------------------------------
-  const res = await fetch('/api/v2/generate-report', {
+  const res = await fetch('/api/generate-report', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({

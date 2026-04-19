@@ -1,4 +1,4 @@
-﻿<!-- src/lib/apps/building_assets/components/V2InspectionsTab.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/InspectionsTab.svelte -->
 <!-- All v2 walk sessions (v2_walk_sessions), open first then latest-first.
      Expand a row to see per-component inspection detail.                    -->
 <script>
@@ -23,9 +23,9 @@
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
   import Icon                from '$lib/components/icons/Icon.svelte';
   import Button              from '$lib/components/common/Button.svelte';
-  import V2InspectionsReport from './V2InspectionsReport.svelte';
+  import InspectionsReport from './InspectionsReport.svelte';
 
-  const logger = getLogger('V2InspectionsTab');
+  const logger = getLogger('InspectionsTab');
 
   // -- Store refs ----------------------------------------------------------
   $: floors = $buildingAssetsStore.floors;
@@ -442,7 +442,7 @@
 </div>
 
 {#if showReport}
-  <V2InspectionsReport
+  <InspectionsReport
     sessions={filtered}
     types={types}
     floors={floors}

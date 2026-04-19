@@ -1,4 +1,4 @@
-﻿<!-- src/lib/apps/building_assets/components/V2InspectionsReport.svelte -->
+﻿<!-- src/lib/apps/building_assets/components/InspectionsReport.svelte -->
 <!-- Report modal for V2 walk inspection sessions.
      Mirrors WalkInspectionsReport but adapted for V2 data model:
        - v2_walk_sessions + component_inspections
@@ -21,7 +21,7 @@
   import { fmtDateTime } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
 
-  const logger   = getLogger('V2InspectionsReport');
+  const logger   = getLogger('InspectionsReport');
   const dispatch = createEventDispatcher();
 
   // -- Props -----------------------------------------------------------------
@@ -135,7 +135,7 @@
 
       genProgress = 'Generating document…';
 
-      const response = await fetch('/api/v2/generate-inspections-report', {
+      const response = await fetch('/api/generate-inspections-report', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ sessions: sessionsWithInspections, reportType }),
@@ -148,7 +148,7 @@
 
       const date     = new Date().toISOString().slice(0, 10);
       const slug     = reportType === 'summary' ? 'Summary' : 'Detailed';
-      const filename = `V2_Inspections_${slug}_${date}.docx`;
+      const filename = `Inspections_${slug}_${date}.docx`;
       await downloadResponse(response, filename);
 
       dispatch('close');

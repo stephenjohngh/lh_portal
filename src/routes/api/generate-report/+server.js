@@ -1,5 +1,5 @@
-﻿// src/routes/api/v2/generate-report/+server.js
-// Generate a Word document report for V2 components.
+﻿// src/routes/api/generate-report/+server.js
+// Generate a Word document report for building asset components.
 //
 // Accepts: { options, floors }
 //   options: { reportTypes, building, filterSummary, generatedAt }
@@ -33,7 +33,7 @@ import {
 } from '$lib/server/docxHelpers.js';
 import { sortBySystemTypeAsset } from '$lib/apps/v2/utils/componentSorting.js';
 
-const logger = getLogger('v2GenerateReport');
+const logger = getLogger('generateReport');
 
 // -- Status helpers ------------------------------------------------------------
 const STATUS_LABEL = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' };
@@ -451,7 +451,7 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
 
 // -- POST handler --------------------------------------------------------------
 export async function POST({ request }) {
-  logger('📄 POST /api/v2/generate-report');
+  logger('📄 POST /api/generate-report');
 
   try {
     const body = await request.json();
@@ -603,7 +603,7 @@ export async function POST({ request }) {
     });
 
     const buffer = await Packer.toBuffer(doc);
-    logger('✅ V2 report generated, size:', buffer.byteLength, 'bytes');
+    logger('✅ Report generated, size:', buffer.byteLength, 'bytes');
 
     const safeBuilding = building.replace(/[^a-z0-9]/gi, '_');
     const dateSlug     = new Date().toISOString().slice(0, 10);
