@@ -7,14 +7,13 @@
   import { permissions } from '$lib/stores/permissions';
   import { buildingAssetsStore } from './stores/buildingAssetsStore.js';
 
-  import TypeBrowser     from './components/TypeBrowser.svelte';
-  import ComponentsTab   from './components/ComponentsTab.svelte';
-  import PlanViewTab     from './components/PlanViewTab.svelte';
-  import MaintenanceView from './components/MaintenanceView.svelte';
-  import V2ReportsTab       from './components/V2ReportsTab.svelte';
-  import V2InspectionsTab   from './components/V2InspectionsTab.svelte';
+  import TypeBrowser      from './components/TypeBrowser.svelte';
+  import ComponentsTab    from './components/ComponentsTab.svelte';
+  import PlanViewTab      from './components/PlanViewTab.svelte';
+  import MaintenanceView  from './components/MaintenanceView.svelte';
+  import V2InspectionsTab from './components/V2InspectionsTab.svelte';
 
-  let activeTab   = 'types';
+  let activeTab   = 'components';
   let initialized = false;   // true after the first load completes
 
   $: store      = $buildingAssetsStore;
@@ -35,12 +34,11 @@
   });
 
   const TABS = [
-    { id: 'types',       label: 'Type Browser',  icon: '🗂',  adminOnly: false },
     { id: 'components',  label: 'Components',     icon: '🧩',  adminOnly: false },
     { id: 'plans',       label: 'Plan View',      icon: '🗺',  adminOnly: false },
-    { id: 'maintenance', label: 'Maintenance',    icon: '🔧',  adminOnly: false },
     { id: 'inspections', label: 'Inspections',    icon: '🔍',  adminOnly: false },
-    { id: 'reports',     label: 'Reports',        icon: '📄',  adminOnly: false },
+    { id: 'maintenance', label: 'Maintenance',    icon: '🔧',  adminOnly: false },
+    { id: 'types',       label: 'Type Browser',   icon: '🗂',  adminOnly: false },
   ];
 </script>
 
@@ -96,8 +94,6 @@
     <MaintenanceView {systems} {types} {regime} />
   {:else if activeTab === 'inspections'}
     <V2InspectionsTab />
-  {:else if activeTab === 'reports'}
-    <V2ReportsTab />
   {/if}
 
 </div>
