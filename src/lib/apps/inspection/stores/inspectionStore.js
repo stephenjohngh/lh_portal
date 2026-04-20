@@ -1,8 +1,6 @@
 ﻿// src/lib/apps/inspection/stores/inspectionStore.js
-// Inspection store — mirrors walkStore.js but operates on the v2 schema:
-//   components / component_types / floors  (not plan_elements)
-//   v2_walk_sessions                       (not walk_sessions)
-//   component_inspections                  (photo_urls array, checklist_results)
+// State store for the inspection walk system.
+// Tables: components, component_types, floors, v2_walk_sessions, component_inspections.
 
 import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
@@ -10,8 +8,8 @@ import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';   // auth only
 import { sortByFloor }   from '$lib/utils/floorSorting';
-import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
-import { sortByResultFloorAsset } from '$lib/apps/v2/utils/componentSorting.js';
+import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
+import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
 
 const logger = getLogger('inspectionStore');
 

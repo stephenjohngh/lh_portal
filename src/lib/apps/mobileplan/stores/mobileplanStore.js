@@ -8,7 +8,7 @@
 import { writable, get } from 'svelte/store';
 import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
-import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
+import { resolveHierarchy } from '$lib/utils/attrResolution.js';
 
 const logger = getLogger('mobileplanStore');
 

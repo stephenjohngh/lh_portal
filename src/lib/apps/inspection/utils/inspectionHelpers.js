@@ -1,17 +1,13 @@
 ﻿// src/lib/apps/inspection/utils/inspectionHelpers.js
-// Helpers for v2 component_inspections schema.
-// Key differences from v1:
-//   - Rows use component_id (not plan_element_id)
-//   - Rows join to components → component_types + floors
-//   - photo_urls is a jsonb array (not photo_url string)
-//   - checklist_results is a jsonb object { type_attribute_id: boolean }
+// Helpers for the component_inspections schema:
+// flatten/group inspection rows, session stats, display helpers, preset labels.
 
 import { getFloorOrder } from '$lib/utils/floorSorting';
-import { resultRank as _resultRank, resultLabel as _resultLabel } from '$lib/apps/v2/utils/resultConstants.js';
-import { sortByFloorAsset } from '$lib/apps/v2/utils/componentSorting.js';
+import { resultRank as _resultRank, resultLabel as _resultLabel } from '$lib/utils/resultConstants.js';
+import { sortByFloorAsset } from '$lib/utils/componentSorting.js';
 
 // Re-export so callers that already import these from here keep working.
-export { resultLabel, resultRank } from '$lib/apps/v2/utils/resultConstants.js';
+export { resultLabel, resultRank } from '$lib/utils/resultConstants.js';
 
 // -- Flatten -------------------------------------------------------------------
 // Promotes nested join fields to the top level.

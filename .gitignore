@@ -25,3 +25,7 @@ vite.config.ts.timestamp-*
 
 
 cmds.txt
+
+# DB backups (contains credentials / large sql dumps)
+/scripts/
+/backups/

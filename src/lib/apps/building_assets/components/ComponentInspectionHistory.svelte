@@ -6,7 +6,7 @@
   import { api }           from '$lib/utils/api';
   import { fmtDateTime }   from '$lib/utils/dates.js';
   import { sec }           from '../ui.js';
-  import { statusBadgeCls } from '$lib/apps/v2/utils/resultConstants.js';
+  import { statusBadgeCls } from '$lib/utils/resultConstants.js';
 
   export let componentId;   // string | null
 

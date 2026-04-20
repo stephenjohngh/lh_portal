@@ -15,7 +15,7 @@
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, systemById, attrValue as lookupAttrValue } from '../lookups.js';
   import { fmtComponentRef } from '$lib/utils/componentRef.js';
-  import { statusBadgeCls, statusDotCls } from '$lib/apps/v2/utils/resultConstants.js';
+  import { statusBadgeCls, statusDotCls } from '$lib/utils/resultConstants.js';
   import { fmtDate } from '$lib/utils/dates.js';
 
   export let components     = [];

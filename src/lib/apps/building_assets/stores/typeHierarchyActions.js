@@ -6,7 +6,7 @@
 
 import { api }              from '$lib/utils/api';
 import { getLogger }        from '$lib/utils/logger';
-import { resolveHierarchy } from '$lib/apps/v2/utils/attrResolution.js';
+import { resolveHierarchy } from '$lib/utils/attrResolution.js';
 import { requireUserId }    from './helpers.js';
 
 const logger = getLogger('BuildingAssets');

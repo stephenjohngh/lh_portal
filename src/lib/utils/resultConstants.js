@@ -1,6 +1,7 @@
-﻿// src/lib/apps/v2/utils/resultConstants.js
-// Result and status constants shared across v2proto and v2walk.
+// src/lib/utils/resultConstants.js
+// Result and status constants for component inspections.
 // Single source of truth for result labels, badge colours, ranking, and status config.
+// Used by: inspection app, building assets app, and report generation.
 
 // -- Result display labels -----------------------------------------------------
 export const RESULT_LABELS = {
@@ -35,7 +36,7 @@ export function resultBadgeColor(result) {
   return RESULT_BADGE_COLOURS[result] ?? 'bg-slate-600';
 }
 
-// -- Status config array (for v2proto UI: dots, rings, badges) ----------------
+// -- Status config array (for building assets UI: dots, rings, badges) --------
 // Canonical list of all possible component statuses with Tailwind styling.
 export const STATUSES = [
   { value: 'ok',       label: 'OK',       dot: 'bg-green-400',  bg: 'bg-green-600',  ring: 'ring-green-500',  badge: 'bg-green-900/50 text-green-400',  dim: 'bg-green-900/30 text-green-700'  },

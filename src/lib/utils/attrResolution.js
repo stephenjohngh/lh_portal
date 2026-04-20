@@ -1,5 +1,6 @@
-// src/lib/apps/v2/utils/attrResolution.js
-// Shared attribute hierarchy resolution used by both v2proto and v2walk.
+// src/lib/utils/attrResolution.js
+// Attribute hierarchy resolution — separates raw type_attributes rows into
+// resolved maps indexed by systemId, typeId and attrDefId.
 //
 // Separates raw type_attributes rows into:
 //   systemAttrDefs — indexed by systemId  (system-scoped rows only)
@@ -8,7 +9,7 @@
 //   attrOptions    — indexed by attrDefId (all options; empty if options not supplied)
 //   regimeMap      — indexed by typeId    (empty if regime not supplied)
 //
-// options and regime are optional — v2walk does not use them.
+// Used by: buildingAssetsStore, inspectionStore, mobileplanStore.
 
 export function resolveHierarchy(systems, types, defs, options = [], regime = []) {
   const systemAttrDefs = {};

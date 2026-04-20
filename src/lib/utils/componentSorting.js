@@ -1,5 +1,5 @@
-﻿// src/lib/apps/v2/utils/componentSorting.js
-// Component sort helpers shared across v2proto and v2walk.
+// src/lib/utils/componentSorting.js
+// Component sort helpers shared across inspection, building assets and report generation.
 // All functions are pure (no store or DOM access).
 
 // -- Sort by result severity ---------------------------------------------------

@@ -28,7 +28,7 @@
 <div class="home">
 
   <div class="home-hdr">
-    <div class="home-logo">◈ V2 INSPECTION</div>
+    <div class="home-logo">◈ INSPECTION</div>
     <div class="home-tagline">Component Inspection Walk</div>
   </div>
 

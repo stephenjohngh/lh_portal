@@ -31,7 +31,7 @@ import {
   makeHeader, makeFooter,
   DOC_STYLES, pageProps
 } from '$lib/server/docxHelpers.js';
-import { sortBySystemTypeAsset } from '$lib/apps/v2/utils/componentSorting.js';
+import { sortBySystemTypeAsset } from '$lib/utils/componentSorting.js';
 
 const logger = getLogger('generateReport');
 

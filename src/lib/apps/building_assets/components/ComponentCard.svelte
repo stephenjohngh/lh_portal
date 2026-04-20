@@ -4,7 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, floorById } from '../lookups.js';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
-  import { statusBadgeCls } from '$lib/apps/v2/utils/resultConstants.js';
+  import { statusBadgeCls } from '$lib/utils/resultConstants.js';
 
   export let component;         // components row
   export let types    = [];     // component_types[] — for lookup

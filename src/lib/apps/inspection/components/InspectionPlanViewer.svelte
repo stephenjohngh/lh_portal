@@ -1,7 +1,6 @@
 <!-- src/lib/apps/inspection/components/InspectionPlanViewer.svelte -->
-<!-- Floor component map: grouped component list for the current floor.
-     Note: V2 components do not yet have SVG position data.
-     This view provides a practical spatial overview by type group. -->
+<!-- Floor component map: grouped component list for the current floor,
+     organised by type for a practical spatial overview. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { resultLabel } from '../utils/inspectionHelpers.js';

@@ -4,7 +4,7 @@
      The parent container must be position:relative and exactly overlay the plan image. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { statusTextCls } from '$lib/apps/v2/utils/resultConstants.js';
+  import { statusTextCls } from '$lib/utils/resultConstants.js';
 
   export let component;           // components row (x_position, y_position, status)
   export let type     = null;     // component_types row (colour, initial, marker_shape)

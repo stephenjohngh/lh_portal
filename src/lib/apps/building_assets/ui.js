@@ -7,4 +7,4 @@ export const btnDanger = 'px-4 py-2 text-sm rounded-lg bg-red-900/40 hover:bg-re
 
 // Status config (STATUSES, statusCfg) — re-exported from shared constants
 // so that any code importing from ui.js continues to work unchanged.
-export { STATUSES, statusCfg } from '$lib/apps/v2/utils/resultConstants.js';
+export { STATUSES, statusCfg } from '$lib/utils/resultConstants.js';
