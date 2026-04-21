@@ -411,6 +411,6 @@
     min-width: 80px; text-align: center;
   }
   .chain-prev    { border-color: rgb(71 85 105 / 0.5); background: rgb(30 41 59 / 0.3); }
-  .chain-current { border-color: rgb(139 92 246 / 0.5); background: rgb(139 92 246 / 0.08); }
+  .chain-current { border-color: rgb(var(--lh-accent-rgb) / 0.5); background: rgb(var(--lh-accent-rgb) / 0.08); }
   .chain-next    { border-color: rgb(71 85 105 / 0.5); background: rgb(30 41 59 / 0.3); }
 </style>

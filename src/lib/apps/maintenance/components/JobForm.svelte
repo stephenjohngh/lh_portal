@@ -255,6 +255,6 @@
     border: 1px solid rgb(71 85 105); background: rgb(51 65 85 / 0.4);
     color: #cbd5e1; cursor: pointer; transition: all 0.12s;
   }
-  .scope-btn:hover    { border-color: rgb(139 92 246 / 0.6); }
-  .scope-btn-active   { border-color: rgb(139 92 246); background: rgb(139 92 246 / 0.15); color: #e2e8f0; }
+  .scope-btn:hover    { border-color: rgb(var(--lh-accent-rgb) / 0.6); }
+  .scope-btn-active   { border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.15); color: #e2e8f0; }
 </style>

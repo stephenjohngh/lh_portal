@@ -6,6 +6,26 @@
 */
 @import "tailwindcss" source("../src");
 
+/* ── LH Portal CSS custom properties ───────────────────────────────────────
+   Single runtime source of truth for scoped <style> blocks that cannot
+   import from theme.js directly.  Tailwind utility classes use the
+   @theme overrides below; scoped CSS uses var(--lh-*).
+   ─────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Main portal accent (teal) */
+  --lh-accent:         #3c9683;
+  --lh-accent-rgb:     60 150 131;   /* for rgb(var(--lh-accent-rgb) / 0.1) */
+  --lh-accent-light:   #6db0a2;
+  --lh-accent-lighter: #94c5bb;
+  --lh-accent-dark:    #307869;
+  --lh-accent-darker:  #245a4f;
+  --lh-accent-bg:      #0c1e1a;
+
+  /* Sub-app accents (scoped CSS only — not in Tailwind palette) */
+  --lh-inspection-accent: #fb923c;   /* orange — Inspection app  */
+  --lh-mobileplan-accent: #2dd4bf;   /* teal   — Mobile Plan app */
+}
+
 /* ── LH Portal accent colour override ──────────────────────────────────────
    Replaces Tailwind's default purple palette with the LH teal accent.
    Base: RGB(60, 150, 131) = #3c9683 (purple-500 slot).

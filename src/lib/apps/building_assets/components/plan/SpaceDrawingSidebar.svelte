@@ -6,13 +6,14 @@
   import { createEventDispatcher } from 'svelte';
   import { SPACE_TYPES, SPACE_COLOURS } from './planMeasure.js';
   import { inp } from '../../ui.js';
+  import { ACCENT } from '$lib/theme.js';
 
   export let vertices    = [];
   export let saving      = false;
   // Two-way bound from PlanViewTab so it shares the same state
   export let spaceName   = '';
   export let spaceType   = '';
-  export let colourHex   = '#3c9683';
+  export let colourHex   = ACCENT;
   export let showLabel   = true;
 
   const dispatch = createEventDispatcher();

@@ -90,5 +90,5 @@
     margin-bottom: -1px;
   }
   .tab-btn:hover  { color: #cbd5e1; }
-  .tab-btn-active { color: #e2e8f0; border-bottom-color: rgb(139 92 246); }
+  .tab-btn-active { color: #e2e8f0; border-bottom-color: var(--lh-accent); }
 </style>

@@ -129,11 +129,11 @@
   .sec     { display:flex; flex-direction:column; gap:0.75rem; }
   .sec-lbl { font-size:0.62rem; letter-spacing:0.2em; color:#fb923c; font-weight:700; }
 
-  .photo-btn       { padding:1.25rem; background:#5b21b6; border:none; border-radius:10px; color:#fff; font-family:'DM Mono','Courier New',monospace; font-size:0.9rem; font-weight:800; letter-spacing:0.15em; cursor:pointer; transition:background 0.15s; }
-  .photo-btn:hover { background:#245a4f; }
+  .photo-btn       { padding:1.25rem; background:var(--lh-accent); border:none; border-radius:10px; color:#fff; font-family:'DM Mono','Courier New',monospace; font-size:0.9rem; font-weight:800; letter-spacing:0.15em; cursor:pointer; transition:background 0.15s; }
+  .photo-btn:hover { background:var(--lh-accent-dark); }
   .photo-grid      { display:grid; grid-template-columns:repeat(4,1fr); gap:0.4rem; }
   .thumb           { position:relative; border-radius:6px; overflow:hidden; border:2px solid #2e2e42; aspect-ratio:1; }
-  .thumb-pending   { border-color:#5b21b6; }
+  .thumb-pending   { border-color:var(--lh-accent); }
   .thumb img       { width:100%; height:100%; object-fit:cover; display:block; }
   .thumb-remove    { position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.75); border:none; border-radius:3px; color:#f87171; font-size:0.65rem; font-weight:700; cursor:pointer; padding:1px 4px; line-height:1.4; }
   .thumb-overlay   { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); color:#fb923c; font-size:1.2rem; }

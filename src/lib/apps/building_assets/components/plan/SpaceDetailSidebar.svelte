@@ -9,6 +9,7 @@
   import { inp } from '../../ui.js';
   import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
+  import { ACCENT } from '$lib/theme.js';
 
   export let space;
   export let floors               = [];
@@ -41,7 +42,7 @@
     editType      = space?.space_type  ?? '';
     editColourHex = space
       ? (space.colour === 'none' ? 'none' : `#${space.colour}`)
-      : '#3c9683';
+      : ACCENT;
     editHeightM   = space?.height_m != null ? String(space.height_m) : '';
     editNotes     = space?.notes      ?? '';
     editShowLabel = space?.show_label ?? true;

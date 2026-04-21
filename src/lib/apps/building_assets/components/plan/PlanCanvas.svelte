@@ -5,6 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import { centroid } from './planMeasure.js';
   import ComponentMarker from '../ComponentMarker.svelte';
+  import { ACCENT, ACCENT_LIGHT } from '$lib/theme.js';
 
   export let plan;                       // selected plan object
   export let floor;                      // selected floor object
@@ -124,7 +125,7 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <circle
               cx={v.x} cy={v.y} r="0.016"
-              fill="#3c9683" stroke="white" stroke-width="0.003"
+              fill={ACCENT} stroke="white" stroke-width="0.003"
               style="pointer-events:auto; cursor:grab"
               on:mousedown|stopPropagation={() => dispatch('spacevertexdragstart', { index: i })}
               on:click|stopPropagation
@@ -168,7 +169,7 @@
     {#if drawingVertices.length >= 2}
       <polyline
         points={drawingVertices.map(v => `${v.x},${v.y}`).join(' ')}
-        fill="none" stroke="#3c9683" stroke-width="0.003"
+        fill="none" stroke={ACCENT} stroke-width="0.003"
         stroke-dasharray="0.015,0.01" stroke-opacity="0.9"
       />
     {/if}
@@ -180,7 +181,7 @@
         y1={drawingVertices[drawingVertices.length - 1].y}
         x2={drawingVertices[0].x}
         y2={drawingVertices[0].y}
-        stroke="#3c9683" stroke-width="0.002"
+        stroke={ACCENT} stroke-width="0.002"
         stroke-dasharray="0.008,0.008" stroke-opacity="0.4"
       />
     {/if}
@@ -191,7 +192,7 @@
       <circle
         cx={v.x} cy={v.y}
         r={i === 0 && drawingVertices.length >= 3 ? 0.016 : 0.01}
-        fill={i === 0 ? '#3c9683' : '#6db0a2'}
+        fill={i === 0 ? ACCENT : ACCENT_LIGHT}
         stroke="white" stroke-width="0.002"
         style={i === 0 && drawingVertices.length >= 3
           ? 'pointer-events:auto; cursor:crosshair'

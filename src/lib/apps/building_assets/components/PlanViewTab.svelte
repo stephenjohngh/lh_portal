@@ -9,6 +9,7 @@
   import { buildingAssetsStore }                 from '../stores/buildingAssetsStore.js';
   import { typeByCode, checkableDefs }    from '../lookups.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
+  import { ACCENT }                       from '$lib/theme.js';
   import { permissions }                  from '$lib/stores/permissions';
   import { createComponentDragController }  from './plan/componentDragController.js';
   import { createAnnotationDragController } from './plan/annotationDragController.js';
@@ -73,7 +74,7 @@
   // -- Space drawing form state (bind: targets in SpaceDrawingSidebar) -
   let drawingSpaceName = '';
   let drawingSpaceType = '';
-  let drawingColourHex = '#3c9683';
+  let drawingColourHex = ACCENT;
   let drawingShowLabel = true;
 
   // -- Scale calibration state ---------------------------------------
@@ -200,7 +201,7 @@
     spaceCtrl.cancelDrawing();   // resets drawingVertices store
     drawingSpaceName = '';
     drawingSpaceType = '';
-    drawingColourHex = '#3c9683';
+    drawingColourHex = ACCENT;
     drawingShowLabel = true;
     if (sidebarMode === 'space-drawing') sidebarMode = 'none';
   }

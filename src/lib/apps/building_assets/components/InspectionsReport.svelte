@@ -275,8 +275,8 @@
     background: rgb(51 65 85 / 0.3);
     cursor: pointer; transition: all 0.15s; color: #e2e8f0;
   }
-  .type-btn:hover    { border-color: rgb(139 92 246 / 0.5); background: rgb(139 92 246 / 0.05); }
-  .type-btn-active   { border-color: rgb(139 92 246); background: rgb(139 92 246 / 0.1); }
+  .type-btn:hover    { border-color: rgb(var(--lh-accent-rgb) / 0.5); background: rgb(var(--lh-accent-rgb) / 0.05); }
+  .type-btn-active   { border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.1); }
   .type-icon         { font-size: 1.25rem; flex-shrink: 0; }
 
   .session-list {
@@ -292,7 +292,7 @@
     border: 1px solid transparent;
   }
   .sess-row:hover  { background: rgb(71 85 105 / 0.4); }
-  .sess-selected   { background: rgb(139 92 246 / 0.08); border-color: rgb(139 92 246 / 0.2); }
+  .sess-selected   { background: rgb(var(--lh-accent-rgb) / 0.08); border-color: rgb(var(--lh-accent-rgb) / 0.2); }
 
   .sess-info        { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
   .sess-name-text   { font-size: 0.875rem; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

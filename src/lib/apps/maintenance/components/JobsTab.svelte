@@ -198,11 +198,11 @@
 <style>
   .new-btn {
     padding: 0.375rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500;
-    background: rgb(139 92 246 / 0.15); color: #c4b5fd;
-    border: 1px solid rgb(139 92 246 / 0.35); cursor: pointer;
+    background: rgb(var(--lh-accent-rgb) / 0.15); color: var(--lh-accent-lighter);
+    border: 1px solid rgb(var(--lh-accent-rgb) / 0.35); cursor: pointer;
     transition: background 0.12s;
   }
-  .new-btn:hover { background: rgb(139 92 246 / 0.3); }
+  .new-btn:hover { background: rgb(var(--lh-accent-rgb) / 0.3); }
 
   .filter-chip {
     padding: 0.2rem 0.75rem; border-radius: 9999px; font-size: 0.75rem;
@@ -210,7 +210,7 @@
     color: #94a3b8; cursor: pointer; transition: all 0.12s;
   }
   .filter-chip:hover    { border-color: rgb(100 116 139); color: #cbd5e1; }
-  .filter-chip-active   { border-color: rgb(139 92 246 / 0.7); background: rgb(139 92 246 / 0.12); color: #e2e8f0; }
+  .filter-chip-active   { border-color: rgb(var(--lh-accent-rgb) / 0.7); background: rgb(var(--lh-accent-rgb) / 0.12); color: #e2e8f0; }
 
   .complete-btn {
     width: 28px; height: 28px; border-radius: 6px; font-size: 0.875rem;
