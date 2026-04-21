@@ -1,4 +1,4 @@
-<!-- plan/SpaceDrawingSidebar.svelte -->
+﻿<!-- plan/SpaceDrawingSidebar.svelte -->
 <!-- Sidebar panel shown while the user is drawing a space polygon.
      Name / type / colour state is owned by PlanViewTab via bind: so that the
      parent can also call finish when the user closes the polygon on the canvas. -->
@@ -12,7 +12,7 @@
   // Two-way bound from PlanViewTab so it shares the same state
   export let spaceName   = '';
   export let spaceType   = '';
-  export let colourHex   = '#a855f7';
+  export let colourHex   = '#3c9683';
   export let showLabel   = true;
 
   const dispatch = createEventDispatcher();

@@ -320,7 +320,7 @@
   .type-dot { width:0.625rem; height:0.625rem; border-radius:50%; flex-shrink:0; }
   .cb { width:1rem; height:1rem; border:1.5px solid #5e5e78; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:700; color:#fff; flex-shrink:0; }
   .cb-sm { width:0.85rem; height:0.85rem; font-size:0.6rem; }
-  .cb-on      { background:#7c3aed; border-color:#7c3aed; }
+  .cb-on      { background:#307869; border-color:#307869; }
   .cb-partial { background:#5b21b6; border-color:#5b21b6; }
   .summary-box { background:#111122; border:1px solid #2e2e42; border-radius:8px; padding:1rem; display:flex; flex-direction:column; gap:0.5rem; }
 .sum-row { display:flex; justify-content:space-between; align-items:baseline; }

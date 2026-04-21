@@ -73,7 +73,7 @@
   // -- Space drawing form state (bind: targets in SpaceDrawingSidebar) -
   let drawingSpaceName = '';
   let drawingSpaceType = '';
-  let drawingColourHex = '#a855f7';
+  let drawingColourHex = '#3c9683';
   let drawingShowLabel = true;
 
   // -- Scale calibration state ---------------------------------------
@@ -200,7 +200,7 @@
     spaceCtrl.cancelDrawing();   // resets drawingVertices store
     drawingSpaceName = '';
     drawingSpaceType = '';
-    drawingColourHex = '#a855f7';
+    drawingColourHex = '#3c9683';
     drawingShowLabel = true;
     if (sidebarMode === 'space-drawing') sidebarMode = 'none';
   }

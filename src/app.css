@@ -6,6 +6,26 @@
 */
 @import "tailwindcss" source("../src");
 
+/* ── LH Portal accent colour override ──────────────────────────────────────
+   Replaces Tailwind's default purple palette with the LH teal accent.
+   Base: RGB(60, 150, 131) = #3c9683 (purple-500 slot).
+   Lighter shades → white; darker shades → black.
+   Used by every purple-* Tailwind class across the portal.
+   ─────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-purple-50:  #f1f8f6;
+  --color-purple-100: #e2efec;
+  --color-purple-200: #bbdad4;
+  --color-purple-300: #94c5bb;
+  --color-purple-400: #6db0a2;
+  --color-purple-500: #3c9683;
+  --color-purple-600: #307869;
+  --color-purple-700: #245a4f;
+  --color-purple-800: #183c34;
+  --color-purple-900: #0c1e1a;
+  --color-purple-950: #060f0d;
+}
+
 
 /* app.css
  * specify exactly which folders to look in

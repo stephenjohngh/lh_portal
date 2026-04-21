@@ -1,9 +1,9 @@
-// src/lib/utils/planConstants.js
+﻿// src/lib/utils/planConstants.js
 // Constants for Plans app - element types, subtypes, colors, and configurations
 
 export const ELEMENT_TYPE_OPTIONS = [
   { value: 'communal_door',  label: 'Communal Door',  icon: '🚪', color: '#c2410c', description: 'Entrance, fire, emergency and interior communal doors' },
-  { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#a855f7', description: 'Apartment fire doors' },
+  { value: 'apartment_door', label: 'Apartment Door', icon: '🚪', color: '#3c9683', description: 'Apartment fire doors' },
   { value: 'light',          label: 'Light',          icon: '💡', color: '#eab308', description: 'Bulkheads, battens, exit signs, downlights, pendants' },
   { value: 'fire_control',   label: 'Fire Control',   icon: '■',  color: '#ef4444', description: 'Sensors, call points, panels, sprinklers' },
   { value: 'other',          label: 'Other',          icon: '⚙️', color: '#06b6d4', description: 'Tanks, pumps, fans, cameras, aerials' }

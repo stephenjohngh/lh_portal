@@ -41,7 +41,7 @@
     editType      = space?.space_type  ?? '';
     editColourHex = space
       ? (space.colour === 'none' ? 'none' : `#${space.colour}`)
-      : '#a855f7';
+      : '#3c9683';
     editHeightM   = space?.height_m != null ? String(space.height_m) : '';
     editNotes     = space?.notes      ?? '';
     editShowLabel = space?.show_label ?? true;

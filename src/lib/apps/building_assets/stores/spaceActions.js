@@ -1,7 +1,7 @@
-// src/lib/apps/building_assets/stores/spaceActions.js
+﻿// src/lib/apps/building_assets/stores/spaceActions.js
 // Spaces domain: named polygon areas drawn on floor plans.
 // polygon: [{ x: float, y: float }] — fractional coordinates 0–1
-// colour:  hex string WITHOUT leading '#', e.g. 'a855f7'
+// colour:  hex string WITHOUT leading '#', e.g. '3c9683'
 
 import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
@@ -11,7 +11,7 @@ const logger = getLogger('BuildingAssets');
 
 const round3 = v => Math.round(v * 1000) / 1000;
 const roundPoly = polygon => polygon.map(v => ({ x: round3(v.x), y: round3(v.y) }));
-const normaliseColour = c => c === 'none' ? 'none' : (c?.replace('#', '') || 'a855f7');
+const normaliseColour = c => c === 'none' ? 'none' : (c?.replace('#', '') || '3c9683');
 
 // Factory — call once at store creation time.
 export function createSpaceActions(update) {
