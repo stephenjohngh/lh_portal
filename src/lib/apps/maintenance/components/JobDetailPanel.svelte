@@ -241,8 +241,7 @@
               <div class="chain-node chain-next">
                 <span class="text-xs text-slate-500">Next</span>
                 <span class="text-xs text-slate-300 mt-0.5">{fmtDate(nextJob.scheduled_date)}</span>
-                {@const nextRag = ragConfig(nextJob.rag)}
-                <span class="text-xs mt-0.5 {nextJob.rag === 'overdue' ? 'text-red-400' : nextJob.rag === 'due_soon' ? 'text-amber-400' : 'text-green-400'}">{nextRag.label}</span>
+                <span class="text-xs mt-0.5 {nextJob.rag === 'overdue' ? 'text-red-400' : nextJob.rag === 'due_soon' ? 'text-amber-400' : 'text-green-400'}">{ragConfig(nextJob.rag).label}</span>
               </div>
             {/if}
           </div>
