@@ -1,22 +1,28 @@
 <!-- src/lib/apps/maintenance/MaintenanceApp.svelte -->
-<!-- Maintenance App entry point. Tabs: Diary | All Jobs -->
+<!-- Maintenance App entry point. Tabs: Diary | All Jobs | Documents | Schedule -->
 <script>
   import { onMount }          from 'svelte';
   import { auth }             from '$lib/stores/auth';
   import { permissions }      from '$lib/stores/permissions';
   import { maintenanceStore } from './stores/maintenanceStore.js';
-  import StatsBar  from './components/StatsBar.svelte';
-  import DiaryTab  from './components/DiaryTab.svelte';
-  import JobsTab   from './components/JobsTab.svelte';
+  import StatsBar       from './components/StatsBar.svelte';
+  import DiaryTab       from './components/DiaryTab.svelte';
+  import JobsTab        from './components/JobsTab.svelte';
+  import DocumentsTab   from './components/DocumentsTab.svelte';
+  import SchedulerPanel from './components/SchedulerPanel.svelte';
 
-  $: store = $maintenanceStore;
-  $: jobs  = store.jobs;
+  $: store   = $maintenanceStore;
+  $: jobs    = store.jobs;
+  $: allDocs = store.allDocs;
+  $: canEdit = $permissions.isAdmin;
 
   let activeTab = 'diary';
 
-  const TABS = [
-    { key: 'diary', label: 'Diary' },
-    { key: 'jobs',  label: 'All Jobs' },
+  $: TABS = [
+    { key: 'diary',    label: 'Diary' },
+    { key: 'jobs',     label: 'All Jobs' },
+    { key: 'documents', label: 'Documents' },
+    ...(canEdit ? [{ key: 'schedule', label: 'Schedule' }] : []),
   ];
 
   onMount(async () => {
@@ -44,8 +50,10 @@
     </div>
   {/if}
 
-  <!-- Stats summary -->
-  <StatsBar {jobs} />
+  <!-- Stats summary (hidden on documents/schedule tabs) -->
+  {#if activeTab === 'diary' || activeTab === 'jobs'}
+    <StatsBar {jobs} />
+  {/if}
 
   <!-- Tab bar -->
   <div class="flex border-b border-slate-700">
@@ -63,8 +71,12 @@
   <!-- Tab content -->
   {#if activeTab === 'diary'}
     <DiaryTab {jobs} />
-  {:else}
+  {:else if activeTab === 'jobs'}
     <JobsTab {jobs} />
+  {:else if activeTab === 'documents'}
+    <DocumentsTab docs={allDocs} />
+  {:else if activeTab === 'schedule'}
+    <SchedulerPanel {jobs} />
   {/if}
 
 </div>

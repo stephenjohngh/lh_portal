@@ -13,7 +13,6 @@ import { jobRag, addDays, toDateString } from '../utils/maintenanceHelpers.js';
 const logger = getLogger('maintenanceStore');
 
 function requireUserId() {
-  // Pull auth state from localStorage (same pattern as other stores)
   const raw = localStorage.getItem('sb-' + (import.meta.env.VITE_SUPABASE_URL?.split('//')[1]?.split('.')[0] ?? '') + '-auth-token');
   if (raw) {
     try { return JSON.parse(raw)?.user?.id ?? null; } catch { return null; }
@@ -26,14 +25,16 @@ function enrichJob(job) {
 }
 
 function createMaintenanceStore() {
-  const { subscribe, update, set } = writable({
-    jobs:      [],     // maintenance_jobs enriched with .rag
-    docsByJob: {},     // { [jobId]: maintenance_documents[] } — lazy loaded
-    systems:   [],     // building_systems
-    types:     [],     // component_types
-    regime:    [],     // maintenance_regime (flat)
-    loading:   false,
-    error:     null,
+  const { subscribe, update } = writable({
+    jobs:          [],    // maintenance_jobs enriched with .rag
+    allDocs:       [],    // ALL maintenance_documents with job info embedded
+    docsByJob:     {},    // { [jobId]: maintenance_documents[] } — lazy per-job cache
+    jobComponents: {},    // { [jobId]: maintenance_job_components[] }
+    systems:       [],    // building_systems
+    types:         [],    // component_types
+    regime:        [],    // maintenance_regime (flat)
+    loading:       false,
+    error:         null,
   });
 
   // ── Load ───────────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ function createMaintenanceStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [jobs, systems, types, regime] = await Promise.all([
+      const [jobs, systems, types, regime, allDocs] = await Promise.all([
         api.get('maintenance_jobs', {
           select:    '*, regime:maintenance_regime(id, task_name, frequency_days, type_id)',
           orderBy:   'scheduled_date',
@@ -50,17 +51,23 @@ function createMaintenanceStore() {
         api.get('building_systems',  { orderBy: 'name' }),
         api.get('component_types',   { orderBy: 'name' }),
         api.get('maintenance_regime', { orderBy: 'task_name' }),
+        api.get('maintenance_documents', {
+          select:    '*, job:maintenance_jobs(id, title, scope_label, scheduled_date)',
+          orderBy:   'created_at',
+          ascending: false,
+        }),
       ]);
 
       update(s => ({
         ...s,
         jobs:    jobs.map(enrichJob),
+        allDocs,
         systems,
         types,
         regime,
         loading: false,
       }));
-      logger('✅ Loaded', jobs.length, 'jobs');
+      logger('✅ Loaded', jobs.length, 'jobs,', allDocs.length, 'docs');
     } catch (err) {
       logger('❌ Load failed:', err.message);
       update(s => ({ ...s, loading: false, error: err.message }));
@@ -81,10 +88,9 @@ function createMaintenanceStore() {
   }
 
   async function uploadDocument(jobId, file, docType, expiryDate = null) {
-    const userId = requireUserId();
-    const ext    = file.name.split('.').pop().toLowerCase();
-    const ts     = Date.now();
-    const safeName  = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const userId  = requireUserId();
+    const ts      = Date.now();
+    const safeName    = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `${jobId}/${docType}/${ts}_${safeName}`;
 
     const { error: uploadErr } = await supabase.storage
@@ -104,10 +110,21 @@ function createMaintenanceStore() {
       uploaded_by:  userId,
     }, true);
 
-    update(s => {
-      const existing = s.docsByJob[jobId] ?? [];
-      return { ...s, docsByJob: { ...s.docsByJob, [jobId]: [doc, ...existing] } };
-    });
+    // Enrich with job context for allDocs
+    const s       = get({ subscribe });
+    const jobInfo = s.jobs.find(j => j.id === jobId);
+    const enriched = {
+      ...doc,
+      job: jobInfo
+        ? { id: jobInfo.id, title: jobInfo.title, scope_label: jobInfo.scope_label, scheduled_date: jobInfo.scheduled_date }
+        : null,
+    };
+
+    update(st => ({
+      ...st,
+      docsByJob: { ...st.docsByJob, [jobId]: [doc, ...(st.docsByJob[jobId] ?? [])] },
+      allDocs:   [enriched, ...st.allDocs],
+    }));
 
     logAudit('create', 'maintenance_document', doc.id, file.name, {
       appId: 'maintenance', eventCategory: 'maintenance', severity: 'info',
@@ -119,21 +136,70 @@ function createMaintenanceStore() {
   }
 
   async function deleteDocument(docId, storagePath) {
-    const userId = requireUserId();
-
     await supabase.storage.from('maintenance-docs').remove([storagePath]);
     await api.delete('maintenance_documents', docId);
 
     update(s => {
-      const next = { ...s.docsByJob };
-      for (const [jobId, docs] of Object.entries(next)) {
-        next[jobId] = docs.filter(d => d.id !== docId);
+      const nextByJob = { ...s.docsByJob };
+      for (const [jid, docs] of Object.entries(nextByJob)) {
+        nextByJob[jid] = docs.filter(d => d.id !== docId);
       }
-      return { ...s, docsByJob: next };
+      return {
+        ...s,
+        docsByJob: nextByJob,
+        allDocs:   s.allDocs.filter(d => d.id !== docId),
+      };
     });
 
     logAudit('delete', 'maintenance_document', docId, storagePath, {
       appId: 'maintenance', eventCategory: 'maintenance', severity: 'info',
+    });
+  }
+
+  // ── Job components ─────────────────────────────────────────────────────────
+
+  async function loadJobComponents(jobId) {
+    const comps = await api.get('maintenance_job_components', {
+      select:  '*, component:components(id, asset_id, name, label, type_code)',
+      filters: { job_id: jobId },
+      orderBy: 'created_at',
+    });
+    update(s => ({ ...s, jobComponents: { ...s.jobComponents, [jobId]: comps } }));
+    return comps;
+  }
+
+  async function saveJobComponents(jobId, components) {
+    // Delete existing, then re-insert all non-empty results
+    await api.deleteMany('maintenance_job_components', { job_id: jobId });
+
+    const rows = components
+      .filter(c => c.result)
+      .map(c => ({
+        job_id:       jobId,
+        component_id: c.component_id,
+        result:       c.result,
+        notes:        c.notes?.trim() || null,
+      }));
+
+    if (rows.length > 0) {
+      await api.createMany('maintenance_job_components', rows, false);
+    }
+
+    await loadJobComponents(jobId);
+    logger('✅ Saved', rows.length, 'component results for job', jobId);
+  }
+
+  /**
+   * Load components in scope for per-component result entry.
+   * Returns an array — does NOT update the store.
+   */
+  async function loadScopeComponents(scopeType, scopeId) {
+    if (!scopeId || scopeType === 'building' || scopeType === 'component') return [];
+    const filterKey = scopeType === 'system' ? 'system_id' : 'type_id';
+    return api.get('components', {
+      select:  'id, asset_id, name, label, type_code, primary_attribute',
+      filters: { [filterKey]: scopeId },
+      orderBy: 'asset_id',
     });
   }
 
@@ -188,7 +254,9 @@ function createMaintenanceStore() {
   }
 
   /**
-   * Close a job. If the job has a regime_id, auto-create the next recurrence.
+   * Close a job.
+   * payload.nextJobDate (string YYYY-MM-DD) overrides the calculated recurrence date.
+   * payload.components ([{component_id, result, notes}]) saves per-component results.
    */
   async function completeJob(id, payload) {
     const userId = requireUserId();
@@ -196,6 +264,8 @@ function createMaintenanceStore() {
       result, completedDate, completionNotes,
       contractorName, engineerName, referenceNumber,
       createNextJob = true,
+      nextJobDate   = null,   // hard expiry override (YYYY-MM-DD)
+      components    = [],     // per-component results
     } = payload;
 
     const updated = await api.update('maintenance_jobs', id, {
@@ -209,30 +279,34 @@ function createMaintenanceStore() {
       updated_by:       userId,
     }, true);
 
-    let nextJob = null;
+    // Save per-component results if provided
+    if (components.length > 0) {
+      await saveJobComponents(id, components);
+    }
 
-    // Auto-create next recurrence if linked to a regime
+    let nextJob = null;
     if (createNextJob && updated.regime_id) {
-      const s       = get({ subscribe });
-      const regime  = s.regime.find(r => r.id === updated.regime_id);
+      const s      = get({ subscribe });
+      const regime = s.regime.find(r => r.id === updated.regime_id);
       if (regime) {
-        const nextDate = toDateString(addDays(new Date(completedDate), regime.frequency_days));
+        const calculatedDate = toDateString(addDays(new Date(completedDate + 'T00:00:00'), regime.frequency_days));
+        const scheduledDate  = nextJobDate || calculatedDate;
+
         nextJob = await api.create('maintenance_jobs', {
-          regime_id:    updated.regime_id,
-          scope_type:   updated.scope_type,
-          scope_id:     updated.scope_id,
-          scope_label:  updated.scope_label,
-          title:        updated.title,
-          description:  updated.description,
-          scheduled_date: nextDate,
-          status:       'scheduled',
-          created_by:   userId,
+          regime_id:      updated.regime_id,
+          scope_type:     updated.scope_type,
+          scope_id:       updated.scope_id,
+          scope_label:    updated.scope_label,
+          title:          updated.title,
+          description:    updated.description,
+          scheduled_date: scheduledDate,
+          status:         'scheduled',
+          created_by:     userId,
         }, true);
 
-        // Link completed job → next job
         await api.update('maintenance_jobs', id, { next_job_id: nextJob.id, updated_by: userId });
         updated.next_job_id = nextJob.id;
-        logger('✅ Created next recurrence:', nextDate);
+        logger('✅ Created next recurrence:', scheduledDate);
       }
     }
 
@@ -281,17 +355,99 @@ function createMaintenanceStore() {
 
   async function deleteJob(id) {
     await api.delete('maintenance_jobs', id);
-    update(s => ({ ...s, jobs: s.jobs.filter(j => j.id !== id) }));
+    update(s => ({
+      ...s,
+      jobs:    s.jobs.filter(j => j.id !== id),
+      allDocs: s.allDocs.filter(d => d.job?.id !== id),
+    }));
     logAudit('delete', 'maintenance_job', id, id, {
       appId: 'maintenance', eventCategory: 'maintenance', severity: 'warn',
     });
     logger('✅ Deleted job:', id);
   }
 
+  // ── Bulk job generator ─────────────────────────────────────────────────────
+
+  /**
+   * Generate jobs for selected regimes within a date range.
+   * selections: [{ regime_id, title, scope_type, scope_id, scope_label }]
+   * fromDate / toDate: YYYY-MM-DD strings
+   * Skips dates where a job for that regime + scope already exists.
+   */
+  async function generateJobs(selections, fromDate, toDate) {
+    const userId  = requireUserId();
+    const created = [];
+    const s       = get({ subscribe });
+
+    for (const sel of selections) {
+      const regime = s.regime.find(r => r.id === sel.regime_id);
+      if (!regime) continue;
+
+      // All existing scheduled_dates for this regime+scope combo
+      const existingDates = new Set(
+        s.jobs
+          .filter(j =>
+            j.regime_id   === sel.regime_id  &&
+            j.scope_type  === sel.scope_type &&
+            j.scope_id    === (sel.scope_id ?? null)
+          )
+          .map(j => j.scheduled_date)
+      );
+
+      // Start from fromDate, or from day after the last existing job's date
+      const existingArr = [...existingDates].sort();
+      let nextDate = fromDate;
+      if (existingArr.length > 0) {
+        const afterLast = toDateString(
+          addDays(new Date(existingArr[existingArr.length - 1] + 'T00:00:00'), regime.frequency_days)
+        );
+        if (afterLast > nextDate) nextDate = afterLast;
+      }
+
+      while (nextDate <= toDate) {
+        if (!existingDates.has(nextDate)) {
+          const job = await api.create('maintenance_jobs', {
+            regime_id:      sel.regime_id,
+            scope_type:     sel.scope_type,
+            scope_id:       sel.scope_id || null,
+            scope_label:    sel.scope_label,
+            title:          sel.title || regime.task_name,
+            status:         'scheduled',
+            scheduled_date: nextDate,
+            created_by:     userId,
+          }, true);
+          created.push(enrichJob(job));
+          existingDates.add(nextDate);
+        }
+        nextDate = toDateString(
+          addDays(new Date(nextDate + 'T00:00:00'), regime.frequency_days)
+        );
+      }
+    }
+
+    if (created.length > 0) {
+      update(st => ({
+        ...st,
+        jobs: [...st.jobs, ...created].sort((a, b) =>
+          a.scheduled_date.localeCompare(b.scheduled_date)
+        ),
+      }));
+      logAudit('create', 'maintenance_job', 'bulk', `${created.length} jobs`, {
+        appId: 'maintenance', eventCategory: 'maintenance', severity: 'info',
+        afterData: { count: created.length, fromDate, toDate },
+      });
+    }
+
+    logger('✅ Generated', created.length, 'jobs');
+    return created;
+  }
+
   return {
     subscribe, load,
     loadJobDocuments, uploadDocument, deleteDocument,
+    loadJobComponents, saveJobComponents, loadScopeComponents,
     createJob, updateJob, completeJob, cancelJob, reopenJob, deleteJob,
+    generateJobs,
   };
 }
 

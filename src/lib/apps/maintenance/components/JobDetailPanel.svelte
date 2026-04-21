@@ -1,5 +1,5 @@
 <!-- src/lib/apps/maintenance/components/JobDetailPanel.svelte -->
-<!-- Modal showing full job detail, documents and action buttons. -->
+<!-- Modal showing full job detail, documents, component results, history chain and actions. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { maintenanceStore }  from '../stores/maintenanceStore.js';
@@ -9,6 +9,7 @@
     docTypeIcon, fmtBytes, frequencyLabel, daysRelative, expiryRag,
   } from '../utils/maintenanceHelpers.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
+  import { downloadResponse }  from '$lib/utils/download.js';
   import DocumentUpload    from './DocumentUpload.svelte';
   import JobForm           from './JobForm.svelte';
   import RecordCompletionForm from './RecordCompletionForm.svelte';
@@ -28,14 +29,30 @@
   $: res    = resultConfig(job?.result);
   $: canEdit = $permissions.isAdmin;
 
+  // History chain
+  $: prevJob = job?.id ? store.jobs.find(j => j.next_job_id === job.id) : null;
+  $: nextJob = job?.next_job_id ? store.jobs.find(j => j.id === job.next_job_id) : null;
+
+  // Per-component results
+  $: jobComponents = store.jobComponents[job?.id] ?? null;
+  $: showComponents = job?.scope_type === 'system' || job?.scope_type === 'type';
+
   let showEdit       = false;
   let showComplete   = false;
   let showCancelConf = false;
   let showDeleteConf = false;
+  let downloading    = false;
 
   onMount(async () => {
-    if (job?.id && !store.docsByJob[job.id]) {
-      await maintenanceStore.loadJobDocuments(job.id);
+    if (job?.id) {
+      const promises = [];
+      if (!store.docsByJob[job.id]) {
+        promises.push(maintenanceStore.loadJobDocuments(job.id));
+      }
+      if (showComponents && jobComponents === null) {
+        promises.push(maintenanceStore.loadJobComponents(job.id));
+      }
+      if (promises.length) await Promise.all(promises);
     }
   });
 
@@ -49,6 +66,13 @@
     if (r === 'expired')  return 'text-red-400';
     if (r === 'expiring') return 'text-amber-400';
     return 'text-slate-400';
+  }
+
+  function compResultBadge(result) {
+    if (result === 'pass') return 'text-green-400';
+    if (result === 'fail') return 'text-red-400';
+    if (result === 'n_a')  return 'text-slate-500';
+    return 'text-slate-500';
   }
 
   async function handleCancel() {
@@ -69,6 +93,33 @@
     await maintenanceStore.reopenJob(job.id);
     dispatch('changed');
     dispatch('close');
+  }
+
+  async function downloadCertificate() {
+    downloading = true;
+    try {
+      const payload = {
+        job,
+        jobComponents: jobComponents ?? [],
+        docs,
+        regime: regime ?? null,
+        building: 'Lonsdale House',
+        generatedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      };
+      const res = await fetch('/api/maintenance/generate-certificate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const safe  = (job.title ?? 'job').replace(/[^a-z0-9]/gi, '_');
+      const date  = new Date().toISOString().slice(0, 10);
+      await downloadResponse(res, `Maintenance_Certificate_${safe}_${date}.docx`);
+    } catch (err) {
+      alert('Download failed: ' + err.message);
+    } finally {
+      downloading = false;
+    }
   }
 </script>
 
@@ -161,6 +212,71 @@
         </div>
       {/if}
 
+      <!-- History chain -->
+      {#if prevJob || nextJob}
+        <div>
+          <p class="text-xs text-slate-500 mb-2">History chain</p>
+          <div class="flex items-center gap-2 flex-wrap">
+            {#if prevJob}
+              <div class="chain-node chain-prev">
+                <span class="text-xs text-slate-500">Prev</span>
+                <span class="text-xs text-slate-300 mt-0.5">{fmtDate(prevJob.scheduled_date)}</span>
+                {#if prevJob.result}
+                  {@const prevRes = resultConfig(prevJob.result)}
+                  {#if prevRes}
+                    <span class="text-xs mt-0.5 {prevRes.badge.includes('green') ? 'text-green-400' : prevRes.badge.includes('red') ? 'text-red-400' : 'text-amber-400'}">{prevRes.label}</span>
+                  {/if}
+                {/if}
+              </div>
+              <span class="text-slate-600 text-lg">→</span>
+            {/if}
+
+            <div class="chain-node chain-current">
+              <span class="text-xs text-slate-400">This job</span>
+              <span class="text-xs text-slate-200 mt-0.5">{fmtDate(job.scheduled_date)}</span>
+            </div>
+
+            {#if nextJob}
+              <span class="text-slate-600 text-lg">→</span>
+              <div class="chain-node chain-next">
+                <span class="text-xs text-slate-500">Next</span>
+                <span class="text-xs text-slate-300 mt-0.5">{fmtDate(nextJob.scheduled_date)}</span>
+                {@const nextRag = ragConfig(nextJob.rag)}
+                <span class="text-xs mt-0.5 {nextJob.rag === 'overdue' ? 'text-red-400' : nextJob.rag === 'due_soon' ? 'text-amber-400' : 'text-green-400'}">{nextRag.label}</span>
+              </div>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Per-component results -->
+      {#if showComponents && jobComponents !== null && jobComponents.length > 0}
+        <div>
+          <p class="text-xs text-slate-500 mb-2">
+            Per-component results
+            <span class="text-slate-600">({jobComponents.length})</span>
+          </p>
+          <div class="rounded-lg border border-slate-700 divide-y divide-slate-700/40 overflow-hidden">
+            {#each jobComponents as jc (jc.id)}
+              <div class="flex items-center gap-3 px-4 py-2.5">
+                <span class="text-xs font-mono text-slate-400 w-16 flex-shrink-0">
+                  {jc.component?.asset_id ?? '—'}
+                </span>
+                <span class="text-sm text-slate-300 flex-1 min-w-0 truncate">
+                  {jc.component?.label || jc.component?.name || '—'}
+                </span>
+                <span class="text-xs font-semibold flex-shrink-0 {compResultBadge(jc.result)}">
+                  {jc.result === 'pass' ? 'Pass' : jc.result === 'fail' ? 'Fail' : jc.result === 'n_a' ? 'N/A' : '—'}
+                </span>
+                {#if jc.notes}
+                  <span class="text-xs text-slate-500 flex-shrink-0 truncate max-w-32">{jc.notes}</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
       <!-- Documents -->
       <div>
         <p class="text-sm font-semibold text-slate-300 mb-3">
@@ -172,7 +288,6 @@
             on:uploaded={() => maintenanceStore.loadJobDocuments(job.id)}
             on:deleted={() => maintenanceStore.loadJobDocuments(job.id)} />
         {:else}
-          <!-- Read-only document list -->
           {#if docs.length > 0}
             <div class="divide-y divide-slate-700/50">
               {#each docs as doc (doc.id)}
@@ -203,8 +318,8 @@
     </div>
 
     <!-- Footer actions -->
-    <div slot="footer" class="flex items-center justify-between gap-3">
-      <div class="flex gap-2">
+    <div slot="footer" class="flex items-center justify-between gap-3 flex-wrap">
+      <div class="flex gap-2 flex-wrap">
         {#if canEdit && job.status !== 'cancelled'}
           {#if job.status !== 'completed'}
             <Button variant="danger" size="small"
@@ -222,7 +337,14 @@
           </Button>
         {/if}
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
+        {#if job.status === 'completed'}
+          <Button variant="secondary" size="small"
+            on:click={downloadCertificate}
+            disabled={downloading}>
+            {downloading ? 'Generating…' : '⬇ Certificate'}
+          </Button>
+        {/if}
         {#if canEdit && job.status !== 'completed' && job.status !== 'cancelled'}
           <Button variant="secondary" size="small" on:click={() => showEdit = true}>
             Edit
@@ -272,3 +394,14 @@
     on:cancel={() => showDeleteConf = false}
   />
 {/if}
+
+<style>
+  .chain-node {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0.375rem 0.75rem; border-radius: 8px; border: 1px solid;
+    min-width: 80px; text-align: center;
+  }
+  .chain-prev    { border-color: rgb(71 85 105 / 0.5); background: rgb(30 41 59 / 0.3); }
+  .chain-current { border-color: rgb(139 92 246 / 0.5); background: rgb(139 92 246 / 0.08); }
+  .chain-next    { border-color: rgb(71 85 105 / 0.5); background: rgb(30 41 59 / 0.3); }
+</style>
