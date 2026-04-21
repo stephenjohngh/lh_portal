@@ -8,6 +8,7 @@
   import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
   import { getLogger } from '$lib/utils/logger';
   import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
+  import { portalSettings } from '$lib/stores/portalSettings.js';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
 
@@ -30,7 +31,17 @@
   let loading = true;
 
   const allApps = AVAILABLE_APPS;
+
+  // All apps the user can access (home page grid)
   $: displayedApps = userApps;
+
+  // Subset of displayedApps shown in the top bar, controlled by portal_settings
+  $: topbarApps = (() => {
+    const { loaded, ids } = $portalSettings;
+    if (!loaded || ids === null) return displayedApps;   // no config = show all
+    // Preserve displayedApps order while filtering to pinned IDs
+    return displayedApps.filter(a => ids.includes(a.id));
+  })();
 
   $: if (!$auth.loading && !$auth.user) {
     goto('/login');
@@ -68,6 +79,9 @@
 
       const permittedAppIds = (permissions || []).map(p => p.app_id);
       userApps = getAppsForUser(permittedAppIds);
+
+      // Load top-bar config (non-blocking — store defaults to "show all" on error)
+      portalSettings.load();
 
       logger('User permissions loaded');
       logger('Is admin:', isAdmin);
@@ -124,14 +138,18 @@
               <Icon name="menu" size={6} />
             </button>
             
-            <div class="flex items-center space-x-2">
+            <button
+              on:click={() => activeApp = 'home'}
+              class="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+              aria-label="Go to home"
+            >
               <Icon name="lhlogo" size={6} className="text-purple-400" />
               <span class="font-bold text-xl">LH Apps</span>
-            </div>
+            </button>
           </div>
 
           <div class="hidden lg:flex items-center space-x-1">
-            {#each displayedApps as app}
+            {#each topbarApps as app}
               <button
                 on:click={() => activeApp = app.id}
                 aria-label={app.name}
@@ -166,7 +184,7 @@
 
       {#if menuOpen}
         <div class="lg:hidden border-t border-slate-700 bg-slate-800">
-          {#each displayedApps as app}
+          {#each topbarApps as app}
             <button
               on:click={() => {
                 activeApp = app.id;

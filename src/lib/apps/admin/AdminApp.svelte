@@ -16,6 +16,7 @@
   import AuditLogsView from './components/AuditLogsView.svelte';
   import ComponentTypesTab from './components/ComponentTypesTab.svelte';
   import FloorPanel from './components/FloorPanel.svelte';
+  import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -176,6 +177,17 @@
             <span>Floors</span>
           </span>
         </button>
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'portal'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('portal')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>⚙</span>
+            <span>Portal</span>
+          </span>
+        </button>
       {/if}
     </div>
   </div>
@@ -249,6 +261,9 @@
         on:saved={() => buildingAssetsStore.load()}
       />
     {/if}
+
+  {:else if activeTab === 'portal'}
+    <PortalSettingsPanel />
   {/if}
 </div>
 
