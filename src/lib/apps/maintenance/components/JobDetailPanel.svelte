@@ -22,12 +22,14 @@
 
   const dispatch = createEventDispatcher();
 
-  $: store  = $maintenanceStore;
-  $: docs   = store.docsByJob[job?.id] ?? [];
-  $: regime = job?.regime_id ? store.regime.find(r => r.id === job.regime_id) : null;
-  $: rag    = ragConfig(job?.rag ?? 'scheduled');
-  $: res    = resultConfig(job?.result);
-  $: canEdit = $permissions.isAdmin;
+  $: store         = $maintenanceStore;
+  $: docs          = store.docsByJob[job?.id] ?? [];
+  $: regime        = job?.regime_id ? store.regime.find(r => r.id === job.regime_id) : null;
+  $: rag           = ragConfig(job?.rag ?? 'scheduled');
+  $: res           = resultConfig(job?.result);
+  $: canEdit       = $permissions.isAdmin;
+  // Contractors can complete their own assigned jobs
+  $: canComplete   = canEdit || store.isContractor;
 
   // History chain
   $: prevJob = job?.id ? store.jobs.find(j => j.next_job_id === job.id) : null;
@@ -185,6 +187,12 @@
           <div>
             <p class="text-xs text-slate-500 mb-0.5">Reference</p>
             <p class="text-slate-200 font-mono text-xs">{job.reference_number}</p>
+          </div>
+        {/if}
+        {#if job.hard_expiry_date}
+          <div>
+            <p class="text-xs text-slate-500 mb-0.5">Hard expiry</p>
+            <p class="text-amber-300 font-medium">{fmtDate(job.hard_expiry_date)}</p>
           </div>
         {/if}
       </div>
@@ -348,6 +356,8 @@
           <Button variant="secondary" size="small" on:click={() => showEdit = true}>
             Edit
           </Button>
+        {/if}
+        {#if canComplete && job.status !== 'completed' && job.status !== 'cancelled'}
           <Button variant="primary" size="small" on:click={() => showComplete = true}>
             ✓ Mark complete
           </Button>

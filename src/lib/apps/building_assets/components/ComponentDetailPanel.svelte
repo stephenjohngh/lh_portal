@@ -8,6 +8,7 @@
   import { typeByCode, floorById } from '../lookups.js';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
+  import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
   import ComponentLinks              from './ComponentLinks.svelte';
   import { inp, sec, STATUSES }      from '../ui.js';
 
@@ -399,6 +400,9 @@
 
     <!-- -- Inspection history -------------------------------------- -->
     <ComponentInspectionHistory componentId={component.id} />
+
+    <!-- -- Maintenance history -------------------------------------- -->
+    <ComponentMaintenanceHistory componentId={component.id} />
 
     <!-- -- Metadata ------------------------------------------------- -->
     <section class="text-xs text-slate-600 space-y-0.5 pb-1">

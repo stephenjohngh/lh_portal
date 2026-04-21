@@ -33,6 +33,8 @@ function createMaintenanceStore() {
     systems:       [],    // building_systems
     types:         [],    // component_types
     regime:        [],    // maintenance_regime (flat)
+    contractors:   [],    // profiles[] where is_contractor=true (for job assignment)
+    isContractor:  false, // true when the current user is a contractor
     loading:       false,
     error:         null,
   });
@@ -42,7 +44,18 @@ function createMaintenanceStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [jobs, systems, types, regime, allDocs] = await Promise.all([
+      // Detect current user's contractor status
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id ?? null;
+      let isContractor = false;
+      if (userId) {
+        try {
+          const profile = await api.getById('profiles', userId, 'is_contractor');
+          isContractor = profile?.is_contractor ?? false;
+        } catch { /* profile fetch failure is non-fatal */ }
+      }
+
+      const [jobs, systems, types, regime, allDocs, contractors] = await Promise.all([
         api.get('maintenance_jobs', {
           select:    '*, regime:maintenance_regime(id, task_name, frequency_days, type_id)',
           orderBy:   'scheduled_date',
@@ -56,18 +69,26 @@ function createMaintenanceStore() {
           orderBy:   'created_at',
           ascending: false,
         }),
+        // Contractor profiles for job assignment selector
+        api.get('profiles', {
+          select:    'id, full_name, email',
+          filters:   { is_contractor: true },
+          orderBy:   'full_name',
+        }).catch(() => []),   // graceful fallback if column not yet migrated
       ]);
 
       update(s => ({
         ...s,
-        jobs:    jobs.map(enrichJob),
+        jobs:         jobs.map(enrichJob),
         allDocs,
         systems,
         types,
         regime,
+        contractors,
+        isContractor,
         loading: false,
       }));
-      logger('✅ Loaded', jobs.length, 'jobs,', allDocs.length, 'docs');
+      logger('✅ Loaded', jobs.length, 'jobs,', allDocs.length, 'docs,', contractors.length, 'contractors');
     } catch (err) {
       logger('❌ Load failed:', err.message);
       update(s => ({ ...s, loading: false, error: err.message }));

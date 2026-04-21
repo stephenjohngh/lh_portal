@@ -45,9 +45,14 @@
       </div>
     </div>
 
-    {#if user.is_admin}
-      <Badge color="bg-purple-600">Admin</Badge>
-    {/if}
+    <div class="flex gap-1.5 flex-wrap justify-end">
+      {#if user.is_admin}
+        <Badge color="bg-purple-600">Admin</Badge>
+      {/if}
+      {#if user.is_contractor}
+        <Badge color="bg-blue-600">Contractor</Badge>
+      {/if}
+    </div>
   </div>
 
   <!-- User Info -->

@@ -4,7 +4,9 @@
 // -- RAG / status --------------------------------------------------------------
 
 /**
- * Compute RAG status for a job based on scheduled_date and status.
+ * Compute RAG status for a job based on scheduled_date (or hard_expiry_date) and status.
+ * If hard_expiry_date is set and is earlier than scheduled_date, it is used for the
+ * overdue / due-soon calculation (regulatory / insurance deadlines take priority).
  * Returns: 'overdue' | 'due_soon' | 'in_progress' | 'scheduled' | 'completed' | 'cancelled'
  */
 export function jobRag(job) {
@@ -12,7 +14,12 @@ export function jobRag(job) {
   if (job.status === 'cancelled')   return 'cancelled';
   if (job.status === 'in_progress') return 'in_progress';
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due   = new Date(job.scheduled_date + 'T00:00:00');
+
+  // Effective due date: use the earlier of scheduled_date and hard_expiry_date (when set)
+  const scheduled = new Date(job.scheduled_date + 'T00:00:00');
+  const hard      = job.hard_expiry_date ? new Date(job.hard_expiry_date + 'T00:00:00') : null;
+  const due       = (hard && hard < scheduled) ? hard : scheduled;
+
   if (due < today) return 'overdue';
   const soon = new Date(today); soon.setDate(soon.getDate() + 30);
   if (due <= soon) return 'due_soon';

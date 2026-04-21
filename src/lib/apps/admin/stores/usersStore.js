@@ -248,6 +248,33 @@ function createUsersStore() {
       }
     },
 
+    async toggleContractor(userId, currentValue) {
+      logger('Toggling contractor status:', { userId, currentValue });
+      const newValue = !currentValue;
+
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_contractor: newValue })
+          .eq('id', userId);
+
+        if (error) throw error;
+
+        update(state => ({
+          ...state,
+          users: state.users.map(u =>
+            u.id === userId ? { ...u, is_contractor: newValue } : u
+          ),
+        }));
+
+        logger('Set is_contractor:', newValue);
+
+      } catch (err) {
+        logger('Failed to toggle contractor status:', err);
+        throw err;
+      }
+    },
+
     async toggleAppReadOnly(userId, appId, currentValue) {
       logger('Toggling read-only:', { userId, appId, currentValue });
       const newValue = !currentValue;

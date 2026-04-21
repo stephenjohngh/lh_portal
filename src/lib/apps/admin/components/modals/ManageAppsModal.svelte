@@ -22,10 +22,11 @@
   // Use centralized app config
   const availableApps = getPermissionedApps();
 
-  let permissions = [];
-  let readOnly = {};
-  let loading = false;
-  let error = '';
+  let permissions      = [];
+  let readOnly         = {};
+  let loading          = false;
+  let error            = '';
+  let togglingContractor = false;
 
   // Get the separate stores
   const appPermissionsStore = usersStore.appPermissions;
@@ -91,6 +92,22 @@
     }
   }
 
+  async function toggleContractor() {
+    if (!user) return;
+    togglingContractor = true;
+    error = '';
+    try {
+      await usersStore.toggleContractor(user.id, user.is_contractor || false);
+      // Reflect the optimistic update from the store back to the passed user object
+      user = { ...user, is_contractor: !(user.is_contractor || false) };
+    } catch (err) {
+      logger('Failed to toggle contractor status:', err);
+      error = `Failed to update contractor status: ${err.message}`;
+    } finally {
+      togglingContractor = false;
+    }
+  }
+
   function handleClose() {
     show = false;
     error = '';
@@ -116,6 +133,29 @@
       message={error} 
       onDismiss={() => error = ''}
     />
+
+    <!-- Contractor account toggle -->
+    <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+      <label class="flex items-center gap-3 cursor-pointer group">
+        <Checkbox
+          checked={user?.is_contractor || false}
+          disabled={togglingContractor}
+          on:change={toggleContractor}
+        />
+        <div class="flex-1">
+          <p class="text-sm font-medium text-slate-200 group-hover:text-white">
+            Contractor account
+          </p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Restricts this user to only seeing maintenance jobs assigned to them.
+            Allows them to complete jobs and upload documents.
+          </p>
+        </div>
+        {#if togglingContractor}
+          <span class="text-xs text-slate-500 animate-pulse">Saving…</span>
+        {/if}
+      </label>
+    </div>
 
     <!-- Loading State -->
     {#if loading}
