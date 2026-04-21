@@ -77,6 +77,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'maintenance',
+    name: 'Maintenance',
+    icon: 'calendar',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Schedule and record maintenance jobs; track overdue and upcoming tasks'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -98,8 +107,9 @@ export const APP_IDS = {
   DEMO2:   'demo2',
   BUILDING_ASSETS: 'building_assets',
   INSPECTION: 'inspection',
-  MOBILEPLAN: 'mobileplan',
-  SETTINGS:'settings'
+  MOBILEPLAN:   'mobileplan',
+  MAINTENANCE:  'maintenance',
+  SETTINGS:     'settings'
 };
 
 /**
