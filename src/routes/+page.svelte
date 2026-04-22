@@ -208,7 +208,7 @@
     <main class="max-w-7xl mx-auto px-4 py-8">
       {#if activeApp === 'home'}
         <div>
-          <h1 class="text-4xl font-bold mb-4">Welcome to LH Apps Portal</h1>
+          <h1 class="text-4xl font-bold mb-4">LH Services Portal</h1>
           <p class="text-gray-400 mb-8">
             {#if isAdmin}
               You're logged in as an administrator. Select an app from the menu to get started.
