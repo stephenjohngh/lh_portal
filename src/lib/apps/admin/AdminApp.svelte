@@ -17,10 +17,13 @@
   import ComponentTypesTab from './components/ComponentTypesTab.svelte';
   import FloorPanel from './components/FloorPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
+  import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
+  import TenYearPlanTab from './components/TenYearPlanTab.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { maintenanceGroupsStore } from './stores/maintenanceGroupsStore.js';
 
   let searchTerm = '';
   let activeTab = 'users';
@@ -73,9 +76,12 @@
 
   async function activateTab(id) {
     activeTab = id;
-    if ((id === 'types' || id === 'floors') && !v2Loaded) {
+    if ((id === 'types' || id === 'floors' || id === 'maint-groups' || id === 'ten-year') && !v2Loaded) {
       v2Loaded = true;
       await buildingAssetsStore.load();
+    }
+    if ((id === 'maint-groups' || id === 'ten-year') && $maintenanceGroupsStore.groups.length === 0) {
+      await maintenanceGroupsStore.load();
     }
   }
 
@@ -188,6 +194,28 @@
             <span>Portal</span>
           </span>
         </button>
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'maint-groups'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('maint-groups')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>🗃</span>
+            <span>Maint. Groups</span>
+          </span>
+        </button>
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'ten-year'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('ten-year')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>📅</span>
+            <span>10-Yr Plan</span>
+          </span>
+        </button>
       {/if}
     </div>
   </div>
@@ -264,6 +292,25 @@
 
   {:else if activeTab === 'portal'}
     <PortalSettingsPanel />
+
+  {:else if activeTab === 'maint-groups'}
+    {#if $buildingAssetsStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <MaintenanceGroupsTab
+        systems={$buildingAssetsStore.systems}
+        types={$buildingAssetsStore.types}
+        spaces={$buildingAssetsStore.spaces}
+        floors={$buildingAssetsStore.floors}
+      />
+    {/if}
+
+  {:else if activeTab === 'ten-year'}
+    {#if $buildingAssetsStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <TenYearPlanTab />
+    {/if}
   {/if}
 </div>
 
