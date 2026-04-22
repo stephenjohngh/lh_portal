@@ -52,7 +52,7 @@ export const AVAILABLE_APPS = [
   {
     id: 'building_assets',
     name: 'Building Assets',
-    icon: 'beaker',
+    icon: 'lhlogo',
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Building asset management - type hierarchy, components, floor plans and reports'

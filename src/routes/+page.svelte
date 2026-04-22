@@ -11,6 +11,7 @@
   import { portalSettings } from '$lib/stores/portalSettings.js';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
+  import lhLogo from '$lib/assets/LH_services_logo.png';
 
   const logger = getLogger('MainApp');
 
@@ -143,7 +144,7 @@
               class="flex items-center space-x-2 hover:opacity-80 transition-opacity"
               aria-label="Go to home"
             >
-              <Icon name="lhlogo" size={6} className="text-purple-400" />
+              <img src={lhLogo} alt="LH Services" class="h-9 w-auto" />
               <span class="font-bold text-xl">LH Apps</span>
             </button>
           </div>
