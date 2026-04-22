@@ -144,9 +144,8 @@
               class="flex items-center space-x-2 hover:opacity-80 transition-opacity"
               aria-label="Go to home"
             >
-              <img src={lhLogo} alt="LH Services" class="h-9 w-auto" />
-              <span class="font-bold text-xl text-white">LH Apps</span>
-            </button>
+              <img src={lhLogo} alt="LH Services" class="h-12 w-auto" />
+                          </button>
           </div>
 
           <div class="hidden lg:flex items-center space-x-1">
