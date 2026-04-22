@@ -127,25 +127,25 @@
   </div>
 {:else if $auth.user}
   <div class="min-h-screen bg-slate-900 text-white">
-    <nav class="bg-slate-800/50 backdrop-blur-lg border-b border-slate-700 sticky top-0 z-50">
+    <nav class="bg-purple-900 backdrop-blur-lg border-b border-purple-800/60 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center space-x-4">
             <button
               on:click={() => menuOpen = !menuOpen}
               aria-label="Toggle menu"
-              class="p-2 hover:bg-slate-700 rounded-lg transition-colors lg:hidden"
+              class="p-2 hover:bg-purple-800/70 rounded-lg transition-colors lg:hidden"
             >
               <Icon name="menu" size={6} />
             </button>
-            
+
             <button
               on:click={() => activeApp = 'home'}
               class="flex items-center space-x-2 hover:opacity-80 transition-opacity"
               aria-label="Go to home"
             >
               <img src={lhLogo} alt="LH Services" class="h-9 w-auto" />
-              <span class="font-bold text-xl">LH Apps</span>
+              <span class="font-bold text-xl text-white">LH Apps</span>
             </button>
           </div>
 
@@ -156,8 +156,8 @@
                 aria-label={app.name}
                 class={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                   activeApp === app.id
-                    ? 'bg-slate-600 text-white'
-                    : 'hover:bg-slate-700 text-gray-300'
+                    ? 'bg-purple-700 text-white'
+                    : 'hover:bg-purple-800/70 text-purple-200'
                 }`}
               >
                 <Icon name={app.icon} size={5} />
@@ -168,8 +168,8 @@
 
           <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
-              <Icon name="user" size={5} className="text-gray-400" />
-              <span class="text-sm text-gray-300 hidden sm:block">{$auth.user.email}</span>
+              <Icon name="user" size={5} className="text-purple-300" />
+              <span class="text-sm text-purple-200 hidden sm:block">{$auth.user.email}</span>
             </div>
             <Button
               variant="danger"
@@ -184,7 +184,7 @@
       </div>
 
       {#if menuOpen}
-        <div class="lg:hidden border-t border-slate-700 bg-slate-800">
+        <div class="lg:hidden border-t border-purple-800/60 bg-purple-950">
           {#each topbarApps as app}
             <button
               on:click={() => {
@@ -194,8 +194,8 @@
               aria-label={app.name}
               class={`flex items-center space-x-3 w-full px-4 py-3 transition-colors ${
                 activeApp === app.id
-                  ? 'bg-slate-600 text-white'
-                  : 'hover:bg-slate-700 text-gray-300'
+                  ? 'bg-purple-700 text-white'
+                  : 'hover:bg-purple-800/70 text-purple-200'
               }`}
             >
               <Icon name={app.icon} size={8} />
