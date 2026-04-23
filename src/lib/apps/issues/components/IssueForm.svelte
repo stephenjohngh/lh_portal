@@ -25,6 +25,7 @@
     name: ''
   };
 
+  // Populate form when editing an existing issue
   $: if (issue) {
     formData = {
       name: issue.name,
@@ -32,6 +33,13 @@
       priority: parseInt(issue.priority) || 3,
       status: issue.status || ISSUE_STATUS.CURRENT
     };
+  }
+
+  // Reset to blank each time the modal opens for a new issue.
+  // The component is reused between opens so formData must be cleared explicitly.
+  $: if (show && !issue) {
+    formData  = { name: '', description: '', priority: 3, status: ISSUE_STATUS.CURRENT };
+    formErrors = { name: '' };
   }
 
   // NEW: Dynamic modal title with issue number
