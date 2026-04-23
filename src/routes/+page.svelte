@@ -9,6 +9,7 @@
   import { getLogger } from '$lib/utils/logger';
   import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
   import { portalSettings } from '$lib/stores/portalSettings.js';
+  import { DB_OVERRIDE_KEY, isDbOverride, activeDbUrl } from '$lib/supabaseClient';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import lhLogo from '$lib/assets/LH_services_logo.png';
@@ -204,6 +205,31 @@
         </div>
       {/if}
     </nav>
+
+    <!-- DB override banner — only shown when localStorage override is active -->
+    {#if isDbOverride}
+      <div class="bg-amber-500/15 border-b border-amber-500/40 px-4 py-2">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+          <div class="flex items-center gap-2 text-amber-300 text-sm">
+            <span class="text-base">⚠</span>
+            <span>
+              <strong>Override database active</strong> — connected to
+              <code class="text-xs bg-amber-900/40 px-1.5 py-0.5 rounded font-mono">{activeDbUrl}</code>
+              instead of the production config.
+            </span>
+          </div>
+          <button
+            class="text-xs text-amber-300 hover:text-white border border-amber-500/50 hover:border-amber-400 px-3 py-1 rounded transition-colors whitespace-nowrap"
+            on:click={() => {
+              localStorage.removeItem(DB_OVERRIDE_KEY);
+              window.location.href = '/';
+            }}
+          >
+            Reset to Default
+          </button>
+        </div>
+      </div>
+    {/if}
 
     <main class="max-w-7xl mx-auto px-4 py-8">
       {#if activeApp === 'home'}
