@@ -10,7 +10,9 @@
   import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
   import { portalSettings } from '$lib/stores/portalSettings.js';
   import { DB_OVERRIDE_KEY, isDbOverride, activeDbUrl } from '$lib/supabaseClient';
-  import { PUBLIC_ENV_LABEL } from '$env/static/public';
+  // Optional var — import.meta.env returns undefined (not an error) when unset.
+  // $env/static/public would throw if the variable isn't defined in .env.
+  const PUBLIC_ENV_LABEL = import.meta.env.PUBLIC_ENV_LABEL ?? '';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import lhLogo from '$lib/assets/LH_services_logo.png';
