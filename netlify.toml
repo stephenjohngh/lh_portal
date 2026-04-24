@@ -3,6 +3,7 @@
   publish = "build"
 
 [build.environment]
-  NODE_VERSION = "20"
-
-
+  NODE_VERSION       = "20"
+  # DEPLOYMENT_TARGET is intentionally absent — omitting it selects adapter-netlify
+  # (see svelte.config.js). Only set it to 'northflank' on Northflank.
+  PUBLIC_ENV_LABEL   = "production"

@@ -10,6 +10,7 @@
   import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
   import { portalSettings } from '$lib/stores/portalSettings.js';
   import { DB_OVERRIDE_KEY, isDbOverride, activeDbUrl } from '$lib/supabaseClient';
+  import { PUBLIC_ENV_LABEL } from '$env/static/public';
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import lhLogo from '$lib/assets/LH_services_logo.png';
@@ -227,6 +228,15 @@
           >
             Reset to Default
           </button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Test environment banner — baked at build time via PUBLIC_ENV_LABEL -->
+    {#if PUBLIC_ENV_LABEL && PUBLIC_ENV_LABEL !== 'production'}
+      <div class="bg-teal-500/10 border-b border-teal-500/30 px-4 py-1.5">
+        <div class="max-w-7xl mx-auto text-center text-xs text-teal-300">
+          🧪 <strong>{PUBLIC_ENV_LABEL.toUpperCase()}</strong> environment — {activeDbUrl}
         </div>
       </div>
     {/if}
