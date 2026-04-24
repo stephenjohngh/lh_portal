@@ -9,7 +9,10 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync",
 		"start": "node build",
-		"check": "svelte-check --tsconfig ./jsconfig.json"
+		"check": "svelte-check --tsconfig ./jsconfig.json",
+		"db:push:test": "supabase db push --db-url \"$TEST_DB_URL\"",
+		"db:push:prod": "supabase db push --db-url \"$PROD_DB_URL\"",
+		"db:push:all": "npm run db:push:test && npm run db:push:prod"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
