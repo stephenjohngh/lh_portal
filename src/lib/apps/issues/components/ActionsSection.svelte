@@ -27,6 +27,10 @@
   let mutationError = '';
   let saving = false;
 
+  // Sort state — default: smart sort (Status → Deadline → Created)
+  let sortField = 'smart';   // 'smart' | 'deadline' | 'updated_at' | 'created_at'
+  let sortDir   = 'asc';     // 'asc' | 'desc' — for 'smart' this is ignored
+
   // Fetch all profiles on mount
   onMount(async () => {
     await loadProfiles();
@@ -48,8 +52,29 @@
     { value: 'External', label: 'External' }
   ];
 
-  // NEW SORTING: Status → Deadline → Created (using utility function)
-  $: sortedActions = sortActions(actions);
+  // Sorting: 'smart' uses the utility (Status → Deadline → Created).
+  // Other fields use a simple comparator that respects sortDir.
+  // Nulls always sort to the bottom regardless of direction.
+  $: sortedActions = (() => {
+    if (sortField === 'smart') return sortActions(actions);
+
+    const dir = sortDir === 'desc' ? -1 : 1;
+    const getVal = (a) => {
+      if (sortField === 'deadline')   return a.date_deadline ? new Date(a.date_deadline).getTime() : null;
+      if (sortField === 'updated_at') return new Date(a.updated_at || a.created_at).getTime();
+      if (sortField === 'created_at') return new Date(a.created_at).getTime();
+      return null;
+    };
+
+    return [...actions].sort((a, b) => {
+      const aVal = getVal(a);
+      const bVal = getVal(b);
+      if (aVal === null && bVal === null) return 0;
+      if (aVal === null) return 1;        // nulls last
+      if (bVal === null) return -1;
+      return (aVal - bVal) * dir;
+    });
+  })();
 
   // Count completed actions (computed once)
   $: completedCount = actions.filter(a => a.status === ACTION_STATUS.COMPLETED).length;
@@ -58,6 +83,10 @@
   $: visibleActions = showAllActions
     ? sortedActions
     : sortedActions.filter(a => a.status !== ACTION_STATUS.COMPLETED);
+
+  function toggleSortDir() {
+    sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+  }
 
   async function addAction({ detail }) {
     saving = true;
@@ -98,7 +127,7 @@
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-3">
-  <div class="flex justify-between items-center mb-2">
+  <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
     <h4 class="font-semibold flex items-center space-x-2">
       <Icon name="clipboard" size={5} className="text-{UI_COLORS.ACTION_TEXT}" />
       <span>Actions ({visibleActions.length})</span>
@@ -106,7 +135,7 @@
         <span class="text-xs text-gray-400">({actions.length - visibleActions.length} completed)</span>
       {/if}
     </h4>
-    <div class="flex items-center space-x-3">
+    <div class="flex items-center gap-2 flex-wrap">
       {#if completedCount > 0}
         <Button
           variant="secondary"
@@ -116,6 +145,31 @@
           {showAllActions ? 'Hide' : 'Include'} Completed
         </Button>
       {/if}
+
+      <!-- Sort controls -->
+      <div class="flex items-center gap-1">
+        <select
+          bind:value={sortField}
+          class="text-xs bg-slate-700 border border-slate-600 rounded px-2 py-1 text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
+          title="Sort actions by…"
+        >
+          <option value="smart">Smart</option>
+          <option value="deadline">Deadline</option>
+          <option value="updated_at">Modified</option>
+          <option value="created_at">Created</option>
+        </select>
+        <button
+          on:click={toggleSortDir}
+          disabled={sortField === 'smart'}
+          class="text-xs px-2 py-1 bg-slate-700 border border-slate-600 rounded text-gray-300 hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 leading-none disabled:opacity-40 disabled:cursor-not-allowed"
+          title={sortField === 'smart'
+            ? 'Smart sort uses a fixed order (status → deadline → created)'
+            : (sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first')}
+        >
+          {sortDir === 'desc' ? '↓' : '↑'}
+        </button>
+      </div>
+
       <ProtectedButton
         action="modify"
         variant="amber"
