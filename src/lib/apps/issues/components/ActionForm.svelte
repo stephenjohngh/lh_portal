@@ -87,6 +87,7 @@
             action="modify"
             variant="amber"
             size="large"
+            icon="plus"
             disabled={saving || !action_text.trim()}
             on:click={handleSubmit}
           >

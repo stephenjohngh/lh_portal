@@ -245,15 +245,7 @@
                   </select>
                 </div>
               </div>
-              <div class="flex space-x-2">
-                <ProtectedButton
-                  action="modify"
-                  variant="primary"
-                  size="small"
-                  on:click={updateAction}
-                >
-                  Save
-                </ProtectedButton>
+              <div class="flex justify-end gap-2">
                 <Button
                   variant="secondary"
                   size="small"
@@ -261,6 +253,16 @@
                 >
                   Cancel
                 </Button>
+                <ProtectedButton
+                  action="modify"
+                  variant="amber"
+                  size="small"
+                  icon="edit"
+                  disabled={saving}
+                  on:click={updateAction}
+                >
+                  {saving ? 'Saving…' : 'Update'}
+                </ProtectedButton>
               </div>
             </div>
           {:else}
