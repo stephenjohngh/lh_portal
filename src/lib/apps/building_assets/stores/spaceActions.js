@@ -5,9 +5,12 @@
 
 import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
+import { logAudit }      from '$lib/utils/auditLogger';
 import { requireUserId } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
+
+const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' };
 
 const round3 = v => Math.round(v * 1000) / 1000;
 const roundPoly = polygon => polygon.map(v => ({ x: round3(v.x), y: round3(v.y) }));
@@ -33,6 +36,7 @@ export function createSpaceActions(update) {
     });
     update(s => ({ ...s, spaces: [...s.spaces, space] }));
     logger('Created space:', space.id, space.name);
+    logAudit('create', 'space', space.id, space.name, { ...AUDIT_OPTS, afterData: space });
     return space;
   }
 
@@ -54,6 +58,7 @@ export function createSpaceActions(update) {
       spaces: s.spaces.map(sp => sp.id === id ? { ...sp, ...updated } : sp)
     }));
     logger('Updated space:', id, updated.name);
+    logAudit('update', 'space', id, updated.name, { ...AUDIT_OPTS, afterData: updated });
     return updated;
   }
 
@@ -69,9 +74,13 @@ export function createSpaceActions(update) {
   }
 
   async function deleteSpace(id) {
+    let before = null;
+    update(s => { before = s.spaces.find(sp => sp.id === id) ?? null; return s; });
     await api.delete('spaces', id);
     update(s => ({ ...s, spaces: s.spaces.filter(sp => sp.id !== id) }));
     logger('Deleted space:', id);
+    logAudit('delete', 'space', id, before?.name || id,
+      { ...AUDIT_OPTS, beforeData: before });
   }
 
   return { createSpace, updateSpace, updateSpacePolygon, deleteSpace };

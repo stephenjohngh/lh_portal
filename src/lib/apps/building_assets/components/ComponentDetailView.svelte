@@ -11,6 +11,7 @@
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
   import { sec, STATUSES }           from '../ui.js';
+  import { fmtDateTime }             from '$lib/utils/dates.js';
 
   export let component;         // components row
   export let types       = [];
@@ -44,13 +45,7 @@
     return value;
   }
 
-  function fmt(dt) {
-    if (!dt) return '—';
-    return new Date(dt).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-  }
+  const fmt = fmtDateTime;
 
   // Status config for current component
   $: statusCfg = STATUS_CFG[(component.status ?? 'ok').toLowerCase()] ?? STATUS_CFG.ok;

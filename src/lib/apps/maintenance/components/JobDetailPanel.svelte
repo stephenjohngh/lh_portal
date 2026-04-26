@@ -16,6 +16,7 @@
   import Modal   from '$lib/components/common/Modal.svelte';
   import Button  from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
 
   export let job;
   export let show = true;
@@ -44,6 +45,7 @@
   let showCancelConf = false;
   let showDeleteConf = false;
   let downloading    = false;
+  let downloadError  = '';
 
   onMount(async () => {
     if (job?.id) {
@@ -118,7 +120,7 @@
       const date  = new Date().toISOString().slice(0, 10);
       await downloadResponse(res, `Maintenance_Certificate_${safe}_${date}.docx`);
     } catch (err) {
-      alert('Download failed: ' + err.message);
+      downloadError = 'Download failed: ' + err.message;
     } finally {
       downloading = false;
     }
@@ -146,6 +148,10 @@
     </div>
 
     <div class="space-y-6">
+
+      {#if downloadError}
+        <ErrorDisplay message={downloadError} onDismiss={() => downloadError = ''} />
+      {/if}
 
       <!-- Key details grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">

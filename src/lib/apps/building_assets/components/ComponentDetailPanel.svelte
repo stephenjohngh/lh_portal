@@ -11,6 +11,7 @@
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
   import ComponentLinks              from './ComponentLinks.svelte';
   import { inp, sec, STATUSES }      from '../ui.js';
+  import { fmtDateTime }             from '$lib/utils/dates.js';
 
   export let component;          // components row
   export let types       = [];
@@ -164,13 +165,7 @@
   })).filter(g => g.types.length > 0);
 
   // Format dates
-  function fmt(dt) {
-    if (!dt) return '—';
-    return new Date(dt).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-  }
+  const fmt = fmtDateTime;
 
 
 </script>

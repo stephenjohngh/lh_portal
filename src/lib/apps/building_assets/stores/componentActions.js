@@ -4,9 +4,13 @@
 
 import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
+import { logAudit }      from '$lib/utils/auditLogger';
 import { requireUserId } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
+
+const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' };
+const componentName = c => c?.label || c?.asset_id || c?.id || 'component';
 
 // Factory — call once at store creation time.
 export function createComponentActions(update) {
@@ -84,6 +88,9 @@ export function createComponentActions(update) {
     }
 
     logger('Created component:', component.id);
+    logAudit('create', 'component', component.id, componentName(component), {
+      ...AUDIT_OPTS, afterData: component
+    });
     return component;
   }
 
@@ -101,6 +108,9 @@ export function createComponentActions(update) {
       components: s.components.map(c => c.id === id ? { ...c, ...updated } : c)
     }));
 
+    logAudit('update', 'component', id, componentName(updated), {
+      ...AUDIT_OPTS, afterData: fields
+    });
     return updated;
   }
 
@@ -152,6 +162,8 @@ export function createComponentActions(update) {
 
   // -- Delete a component (cascades component_attributes) ---------------
   async function deleteComponent(id) {
+    let before = null;
+    update(s => { before = s.components.find(c => c.id === id) ?? null; return s; });
     await api.delete('components', id);
     update(s => ({
       ...s,
@@ -160,6 +172,9 @@ export function createComponentActions(update) {
         Object.entries(s.componentAttrs).filter(([k]) => k !== id)
       )
     }));
+    logAudit('delete', 'component', id, componentName(before), {
+      ...AUDIT_OPTS, beforeData: before
+    });
   }
 
   // -- Save an inspection result for a component -------------------------
@@ -199,6 +214,10 @@ export function createComponentActions(update) {
     }));
 
     logger('Saved inspection for component:', componentId, result);
+    logAudit('create', 'component_inspection', inspection.id, `inspection ${result}`, {
+      ...AUDIT_OPTS, eventAction: 'save_inspection',
+      afterData: { component_id: componentId, result, notes }
+    });
     return inspection;
   }
 
@@ -221,6 +240,8 @@ export function createComponentActions(update) {
       };
     });
     logger('Added component link:', link.id);
+    logAudit('create', 'component_link', link.id, toRef,
+      { ...AUDIT_OPTS, afterData: link });
     return link;
   }
 

@@ -34,11 +34,18 @@
   let errorMsg   = '';
   let confirming = false;  // delete confirm
 
-  // Track which mode+plan we last initialised from so we reset only on change
+  // Reset form state on every false → true transition of `show`, plus when
+  // mode or selected plan changes while the modal is already open. This
+  // ensures a fresh slate every time the user opens the modal — even if it's
+  // the same plan+mode as last time (previously the loadedKey-only check
+  // skipped the reset, leaving stale errorMsg / image preview behind).
+  let lastShow  = false;
   let loadedKey = null;
   $: {
-    const key = `${mode}-${plan?.id ?? 'new'}`;
-    if (key !== loadedKey) {
+    const key      = `${mode}-${plan?.id ?? 'new'}`;
+    const opening  = show && !lastShow;
+    const keyMoved = show && key !== loadedKey;
+    if (opening || keyMoved) {
       loadedKey    = key;
       errorMsg     = '';
       confirming   = false;
@@ -62,6 +69,7 @@
         editDesc     = '';
       }
     }
+    lastShow = show;
   }
 
   $: title = mode === 'new'  ? 'New Floor Plan'

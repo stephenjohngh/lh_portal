@@ -6,6 +6,7 @@
   import { fmtDate } from '$lib/utils/dates.js';
   import { downloadResponse } from '$lib/utils/download.js';
   import Button from '$lib/components/common/Button.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
 
   export let jobs = [];   // store.jobs — for computing last/next dates
 
@@ -113,6 +114,7 @@
 
   // -- Schedule report ----------------------------------------------------------
   let downloading = false;
+  let downloadError = '';
 
   async function downloadScheduleReport() {
     downloading = true;
@@ -131,7 +133,7 @@
       const date = new Date().toISOString().slice(0, 10);
       await downloadResponse(res, `Maintenance_Schedule_${date}.docx`);
     } catch (err) {
-      alert('Download failed: ' + err.message);
+      downloadError = 'Download failed: ' + err.message;
     } finally {
       downloading = false;
     }
@@ -139,6 +141,10 @@
 </script>
 
 <div class="space-y-8">
+
+  {#if downloadError}
+    <ErrorDisplay message={downloadError} onDismiss={() => downloadError = ''} />
+  {/if}
 
   <!-- Reports section -->
   <div class="rounded-lg border border-slate-700 p-4">

@@ -6,10 +6,13 @@
 
 import { api }              from '$lib/utils/api';
 import { getLogger }        from '$lib/utils/logger';
+import { logAudit }         from '$lib/utils/auditLogger';
 import { resolveHierarchy } from '$lib/utils/attrResolution.js';
 import { requireUserId }    from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
+
+const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' };
 
 // Factory — call once at store creation time.
 // update: the writable store's update function.
@@ -57,12 +60,14 @@ export function createTypeHierarchyActions(update) {
       updated_by:         userId
     });
     logger('Created system:', row.id);
+    logAudit('create', 'building_system', row.id, row.name,
+      { ...AUDIT_OPTS, afterData: row });
     return row;
   }
 
   async function updateSystem(id, data) {
     const userId = requireUserId();
-    return await api.update('building_systems', id, {
+    const row = await api.update('building_systems', id, {
       name:               data.name?.trim(),
       uniclass_code:      data.uniclass_code?.trim() || null,
       description:        data.description?.trim()   || null,
@@ -71,17 +76,21 @@ export function createTypeHierarchyActions(update) {
       visible:            data.visible,
       updated_by:         userId
     });
+    logAudit('update', 'building_system', id, row.name,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function deleteSystem(id) {
     await api.delete('building_systems', id);
     logger('Deleted system:', id);
+    logAudit('delete', 'building_system', id, id, { ...AUDIT_OPTS });
   }
 
   // -- Component Types CRUD ----------------------------------------------
   async function createType(data) {
     const userId = requireUserId();
-    return await api.create('component_types', {
+    const row = await api.create('component_types', {
       building_system_id: data.building_system_id,
       code:               data.code?.trim().toLowerCase().replace(/\s+/g, '_'),
       name:               data.name?.trim(),
@@ -101,11 +110,14 @@ export function createTypeHierarchyActions(update) {
       created_by:         userId,
       updated_by:         userId
     });
+    logAudit('create', 'component_type', row.id, row.name,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function updateType(id, data) {
     const userId = requireUserId();
-    return await api.update('component_types', id, {
+    const row = await api.update('component_types', id, {
       name:               data.name?.trim(),
       description:        data.description?.trim()       || null,
       initial:            data.initial?.trim().charAt(0).toUpperCase() || '?',
@@ -121,11 +133,15 @@ export function createTypeHierarchyActions(update) {
       notes:              data.notes?.trim()             || null,
       updated_by:         userId
     });
+    logAudit('update', 'component_type', id, row.name,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function deleteType(id) {
     await api.delete('component_types', id);
     logger('Deleted type:', id);
+    logAudit('delete', 'component_type', id, id, { ...AUDIT_OPTS });
   }
 
   // -- Attribute Definitions CRUD ----------------------------------------
@@ -150,11 +166,14 @@ export function createTypeHierarchyActions(update) {
     } else {
       payload.component_type_id = data.component_type_id;
     }
-    return await api.create('type_attributes', payload);
+    const row = await api.create('type_attributes', payload);
+    logAudit('create', 'type_attribute', row.id, row.name,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function updateAttrDef(id, data) {
-    return await api.update('type_attributes', id, {
+    const row = await api.update('type_attributes', id, {
       name:               data.name?.trim(),
       display_type:       data.display_type,
       required:           data.required,
@@ -165,6 +184,9 @@ export function createTypeHierarchyActions(update) {
       visible:            data.visible,
       help_notes:         data.help_notes?.trim()        || null
     });
+    logAudit('update', 'type_attribute', id, row.name,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   // Clear is_primary on all attr defs in the effective set for a type.
@@ -184,58 +206,73 @@ export function createTypeHierarchyActions(update) {
   async function deleteAttrDef(id) {
     await api.delete('type_attributes', id);
     logger('Deleted attr def:', id);
+    logAudit('delete', 'type_attribute', id, id, { ...AUDIT_OPTS });
   }
 
   // -- Type Attribute Options CRUD ---------------------------------------
   // type_attribute_options has no created_by / updated_by columns.
   async function createOption(data) {
-    return await api.create('type_attribute_options', {
+    const row = await api.create('type_attribute_options', {
       type_attribute_id:  data.type_attribute_id,
       value:              data.value?.trim(),
       presentation_order: Number(data.presentation_order) || 0,
       visible:            data.visible                   ?? true,
       priority_override:  data.priority_override         || null
     });
+    logAudit('create', 'type_attribute_option', row.id, row.value,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function updateOption(id, data) {
-    return await api.update('type_attribute_options', id, {
+    const row = await api.update('type_attribute_options', id, {
       value:              data.value?.trim(),
       presentation_order: Number(data.presentation_order) || 0,
       visible:            data.visible,
       priority_override:  data.priority_override         || null
     });
+    logAudit('update', 'type_attribute_option', id, row.value,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function deleteOption(id) {
     await api.delete('type_attribute_options', id);
     logger('Deleted option:', id);
+    logAudit('delete', 'type_attribute_option', id, id, { ...AUDIT_OPTS });
   }
 
   // -- Maintenance Regime CRUD -------------------------------------------
   // maintenance_regime has created_by but no updated_by, no updated_at trigger.
   async function createRegime(data) {
     const userId = requireUserId();
-    return await api.create('maintenance_regime', {
+    const row = await api.create('maintenance_regime', {
       type_id:          data.type_id,
       attribute_filter: data.attribute_filter?.trim() || null,
       task_name:        data.task_name?.trim(),
       frequency_days:   parseInt(data.frequency_days),
       created_by:       userId
     });
+    logAudit('create', 'maintenance_regime', row.id, row.task_name,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function updateRegime(id, data) {
-    return await api.update('maintenance_regime', id, {
+    const row = await api.update('maintenance_regime', id, {
       attribute_filter: data.attribute_filter?.trim() || null,
       task_name:        data.task_name?.trim(),
       frequency_days:   parseInt(data.frequency_days)
     });
+    logAudit('update', 'maintenance_regime', id, row.task_name,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
   }
 
   async function deleteRegime(id) {
     await api.delete('maintenance_regime', id);
     logger('Deleted regime:', id);
+    logAudit('delete', 'maintenance_regime', id, id, { ...AUDIT_OPTS });
   }
 
   return {

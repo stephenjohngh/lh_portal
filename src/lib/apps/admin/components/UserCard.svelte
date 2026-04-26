@@ -7,6 +7,7 @@
   import Icon            from '$lib/components/icons/Icon.svelte';
   import Badge           from '$lib/components/common/Badge.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
+  import { fmtDate }     from '$lib/utils/dates.js';
 
   export let user;
 
@@ -59,12 +60,12 @@
   <div class="section-spacing mb-4">
     <div class="text-icon text-muted-sm">
       <Icon name="calendar" size={4} />
-      <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
+      <span>Joined {fmtDate(user.created_at)}</span>
     </div>
     {#if user.last_sign_in_at}
       <div class="text-icon text-muted-sm">
         <Icon name="clock" size={4} />
-        <span>Last login {new Date(user.last_sign_in_at).toLocaleDateString()}</span>
+        <span>Last login {fmtDate(user.last_sign_in_at)}</span>
       </div>
     {/if}
   </div>

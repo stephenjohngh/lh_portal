@@ -8,6 +8,7 @@
   import Modal from '$lib/components/common/Modal.svelte';
   import { PRIORITIES } from '$lib/utils/priorities';
   import { ISSUE_STATUS, ISSUE_STATUS_OPTIONS } from '$lib/utils/constants';
+  import { fmtDate } from '$lib/utils/dates.js';
 
   export let show = false;
   export let issue = null; // null for new, object for edit
@@ -95,7 +96,7 @@
               Issue #{issue.issue_number}
             </p>
             <p class="text-xs text-gray-400">
-              Created {new Date(issue.created_at).toLocaleDateString()}
+              Created {fmtDate(issue.created_at)}
             </p>
           </div>
         </div>

@@ -7,6 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { STATUSES } from '../ui.js';
+  import { fmtDate } from '$lib/utils/dates.js';
 
   export let component      = null;  // components row
   export let typeConfig     = null;  // component_types row
@@ -182,9 +183,7 @@
   {#if lastInspection}
     <p class="text-xs text-slate-600">
       Last inspected:
-      {new Date(lastInspection.inspected_at).toLocaleDateString('en-GB', {
-        day: 'numeric', month: 'short', year: 'numeric'
-      })}
+      {fmtDate(lastInspection.inspected_at)}
       — result was
       <span class="text-slate-400">{lastInspection.inspection_result}</span>
     </p>

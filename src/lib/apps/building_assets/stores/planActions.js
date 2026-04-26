@@ -4,9 +4,12 @@
 
 import { api }        from '$lib/utils/api';
 import { getLogger }  from '$lib/utils/logger';
+import { logAudit }   from '$lib/utils/auditLogger';
 import { requireUserId } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
+
+const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' };
 
 // Factory — call once at store creation time.
 // supabase: the supabase client (needed for Storage operations).
@@ -28,9 +31,11 @@ export function createPlanActions(update, supabase) {
   // scaleRef:    { x1, y1, x2, y2, metres }  (or null to clear)
   // aspectRatio: number — native image W / H  (or null to clear)
   async function updatePlanScale(planId, scaleRef, aspectRatio) {
+    const userId = requireUserId();
     const updated = await api.update('plans', planId, {
       scale_ref:          scaleRef,
-      image_aspect_ratio: aspectRatio
+      image_aspect_ratio: aspectRatio,
+      updated_by:         userId
     });
     update(s => ({
       ...s,
@@ -38,13 +43,17 @@ export function createPlanActions(update, supabase) {
     }));
     logger('Updated plan scale:', planId,
       scaleRef ? `ref=${scaleRef.metres}m AR=${aspectRatio}` : 'cleared');
+    logAudit('update', 'plan', planId, updated.name || updated.building || planId, {
+      ...AUDIT_OPTS, eventAction: 'update_plan_scale',
+      afterData: { scale_ref: scaleRef, image_aspect_ratio: aspectRatio }
+    });
     return updated;
   }
 
   // -- Create a new plan (uploads image first) ---------------------------
   // data: { name, building, floor_id, description }
   async function createPlan(data, file) {
-    requireUserId();
+    const userId = requireUserId();
     const imageUrl = await uploadPlanImage(file);
     const plan = await api.create('plans', {
       name:        data.name?.trim()        || null,
@@ -52,6 +61,8 @@ export function createPlanActions(update, supabase) {
       floor_id:    data.floor_id            || null,
       description: data.description?.trim() || null,
       image_url:   imageUrl,
+      created_by:  userId,
+      updated_by:  userId
     });
     update(s => ({
       ...s,
@@ -59,41 +70,53 @@ export function createPlanActions(update, supabase) {
         (a.building ?? '').localeCompare(b.building ?? ''))
     }));
     logger('Created plan:', plan.id, data.building);
+    logAudit('create', 'plan', plan.id, plan.name || plan.building || plan.id, {
+      ...AUDIT_OPTS, afterData: plan
+    });
     return plan;
   }
 
   // -- Update plan metadata (no image change) ----------------------------
   async function updatePlanInfo(planId, data) {
-    requireUserId();
+    const userId = requireUserId();
     const updated = await api.update('plans', planId, {
       name:        data.name?.trim()        || null,
       building:    data.building?.trim()    || '',
       floor_id:    data.floor_id            || null,
       description: data.description?.trim() || null,
+      updated_by:  userId
     });
     update(s => ({
       ...s,
       plans: s.plans.map(p => p.id === planId ? { ...p, ...updated } : p)
     }));
     logger('Updated plan info:', planId);
+    logAudit('update', 'plan', planId, updated.name || updated.building || planId, {
+      ...AUDIT_OPTS, afterData: updated
+    });
     return updated;
   }
 
   // -- Replace the image on an existing plan ----------------------------
   // Also clears scale_ref and image_aspect_ratio — both must be re-calibrated.
   async function replacePlanImage(planId, file) {
-    requireUserId();
+    const userId = requireUserId();
     const imageUrl = await uploadPlanImage(file);
     const updated  = await api.update('plans', planId, {
       image_url:          imageUrl,
       image_aspect_ratio: null,
       scale_ref:          null,
+      updated_by:         userId
     });
     update(s => ({
       ...s,
       plans: s.plans.map(p => p.id === planId ? { ...p, ...updated } : p)
     }));
     logger('Replaced plan image:', planId);
+    logAudit('update', 'plan', planId, updated.name || updated.building || planId, {
+      ...AUDIT_OPTS, eventAction: 'replace_plan_image',
+      afterData: { image_url: imageUrl }
+    });
     return updated;
   }
 
@@ -136,6 +159,8 @@ export function createPlanActions(update, supabase) {
       description:        sourcePlan.description                         || null,
       image_url:          sourcePlan.image_url,
       image_aspect_ratio: sourcePlan.image_aspect_ratio                  || null,
+      created_by:         userId,
+      updated_by:         userId
       // scale_ref intentionally omitted (reset to null)
     });
 
@@ -246,6 +271,10 @@ export function createPlanActions(update, supabase) {
         (a.building ?? '').localeCompare(b.building ?? ''))
     }));
     logger(`Copied plan ${sourcePlanId} → ${newPlan.id}, ${copied} components`);
+    logAudit('create', 'plan', newPlan.id, newPlan.name || newPlan.building || newPlan.id, {
+      ...AUDIT_OPTS, eventAction: 'copy_plan',
+      afterData: { source_plan_id: sourcePlanId, components_copied: copied }
+    });
     return { plan: newPlan, copied };
   }
 
@@ -253,6 +282,8 @@ export function createPlanActions(update, supabase) {
   // DB should cascade-delete spaces and annotations; local state is cleaned up too.
   async function deletePlan(planId) {
     requireUserId();
+    let beforePlan = null;
+    update(s => { beforePlan = s.plans.find(p => p.id === planId) ?? null; return s; });
     await api.delete('plans', planId);
     update(s => ({
       ...s,
@@ -261,6 +292,9 @@ export function createPlanActions(update, supabase) {
       annotations: s.annotations.filter(a => a.plan_id !== planId),
     }));
     logger('Deleted plan:', planId);
+    logAudit('delete', 'plan', planId,
+      beforePlan?.name || beforePlan?.building || planId,
+      { ...AUDIT_OPTS, beforeData: beforePlan });
   }
 
   return {

@@ -14,6 +14,7 @@
   let activeSection = 'components';
   let showModal = false;
   let showConfirm = false;
+  let confirmedFlash = false;
   let editingItem = null;
   let selectedTab = 'buttons';
 
@@ -38,7 +39,8 @@
 
   function handleConfirm() {
     showConfirm = false;
-    alert('Action confirmed!');
+    confirmedFlash = true;
+    setTimeout(() => { confirmedFlash = false; }, 2000);
   }
 </script>
 
@@ -482,6 +484,9 @@
               <Button variant="danger" size="medium" icon="delete" on:click={() => showConfirm = true}>
                 Delete Item
               </Button>
+              {#if confirmedFlash}
+                <p class="mt-3 text-sm text-green-400">✅ Action confirmed!</p>
+              {/if}
             </div>
 
             <div class="bg-slate-800/50 rounded-lg p-6">

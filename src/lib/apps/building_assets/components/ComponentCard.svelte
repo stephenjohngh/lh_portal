@@ -5,6 +5,7 @@
   import { typeByCode, defsForType, floorById } from '../lookups.js';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { statusBadgeCls } from '$lib/utils/resultConstants.js';
+  import { fmtDate } from '$lib/utils/dates.js';
 
   export let component;         // components row
   export let types    = [];     // component_types[] — for lookup
@@ -114,7 +115,7 @@
     {#if inspection}
       <div class="flex items-center gap-3 mt-1.5 flex-wrap">
         <span class="text-xs text-slate-500">
-          Inspected {new Date(inspection.inspected_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
+          Inspected {fmtDate(inspection.inspected_at)}
         </span>
         {#if checkableCount > 0 && checkedCount !== null}
           <span class="text-xs {checkedCount === checkableCount ? 'text-green-400' : 'text-yellow-400'}">

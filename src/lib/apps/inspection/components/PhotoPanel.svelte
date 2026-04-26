@@ -4,8 +4,10 @@
      Parent owns pendingPhotos and photoUrls via bind: so it can run
      uploadAllPending() as part of its own save flow. -->
 <script>
+  import { onDestroy }      from 'svelte';
   import { getLogger }      from '$lib/utils/logger';
   import { compressImage }  from '$lib/apps/inspection/utils/imageCompression';
+  import WalkError          from '$lib/apps/inspection/components/common/WalkError.svelte';
 
   const logger = getLogger('PhotoPanel');
 
@@ -19,6 +21,8 @@
   let capturing    = false;
   let videoElement = null;
   let stream       = null;
+  let captureError = '';
+  let destroyed    = false;
 
   // -- Derived -------------------------------------------------------
   $: totalPhotos = photoUrls.length + pendingPhotos.length;
@@ -28,6 +32,7 @@
   async function startCamera() {
     if (!canAddPhoto) return;
     capturing = true;
+    captureError = '';
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -36,7 +41,7 @@
       videoElement.play();
     } catch (err) {
       logger('Camera error:', err);
-      alert('Could not access camera: ' + err.message);
+      captureError = 'Could not access camera: ' + err.message;
       capturing = false;
     }
   }
@@ -46,24 +51,39 @@
     capturing = false;
   }
 
+  // Wrap canvas.toBlob in a Promise so the await chain is linear and we can
+  // bail if the component is unmounted mid-capture.
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob returned null')), type, quality);
+    });
+  }
+
   async function capturePhoto() {
     if (!videoElement) return;
     const canvas  = document.createElement('canvas');
     canvas.width  = videoElement.videoWidth;
     canvas.height = videoElement.videoHeight;
     canvas.getContext('2d').drawImage(videoElement, 0, 0);
-    canvas.toBlob(async (blob) => {
-      try {
-        const compressed = await compressImage(blob, { maxSizeMB: 0.5, maxWidthOrHeight: 1024 });
-        const preview    = URL.createObjectURL(compressed);
-        pendingPhotos    = [...pendingPhotos, { blob: compressed, preview, uploading: false, error: null }];
-        stopCamera();
-      } catch (err) {
-        logger('Compress error:', err);
-        alert('Failed to process image');
-      }
-    }, 'image/jpeg', 0.8);
+
+    try {
+      const blob       = await canvasToBlob(canvas, 'image/jpeg', 0.8);
+      if (destroyed) return;
+      const compressed = await compressImage(blob, { maxSizeMB: 0.5, maxWidthOrHeight: 1024 });
+      if (destroyed) { URL.revokeObjectURL(URL.createObjectURL(compressed)); return; }
+      const preview    = URL.createObjectURL(compressed);
+      pendingPhotos    = [...pendingPhotos, { blob: compressed, preview, uploading: false, error: null }];
+      stopCamera();
+    } catch (err) {
+      logger('Capture error:', err);
+      if (!destroyed) captureError = 'Failed to process image';
+    }
   }
+
+  onDestroy(() => {
+    destroyed = true;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+  });
 
   // -- Remove --------------------------------------------------------
   function removePending(i) {
@@ -79,6 +99,10 @@
 
 <div class="sec">
   <div class="sec-lbl">PHOTOS ({totalPhotos}/{MAX_PHOTOS})</div>
+
+  {#if captureError}
+    <WalkError message={captureError} onDismiss={() => captureError = ''} />
+  {/if}
 
   <!-- Uploaded photo thumbnails -->
   {#if photoUrls.length > 0}

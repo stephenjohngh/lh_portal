@@ -3,11 +3,12 @@
 <script>
   import ReportFilters from './ReportFilters.svelte';
   import ReportIssueCard from './ReportIssueCard.svelte';
-  import { 
-    filterIssues, 
-    groupIssuesByStatus, 
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import {
+    filterIssues,
+    groupIssuesByStatus,
     getDefaultFilterDate,
-    getTodayDate 
+    getTodayDate
   } from './reportUtils';
   import { getLogger } from '$lib/utils/logger';
 
@@ -20,6 +21,7 @@
   let includeParked = false;
   let includeCompleted = false;
   let filterDate = getDefaultFilterDate();
+  let downloadError = '';
 
   $: filteredIssues = filterIssues(issues, filterDate);
   $: groupedIssues = groupIssuesByStatus(filteredIssues);
@@ -119,7 +121,7 @@
       
     } catch (err) {
       logger('❌ Error downloading Word document:', err.message);
-      alert(`Failed to generate Word document:\n\n${err.message}\n\nCheck browser console (F12) for details.`);
+      downloadError = `Failed to generate Word document: ${err.message}. Check browser console (F12) for details.`;
     }
   }
 </script>
@@ -138,6 +140,12 @@
         onDownloadWord={downloadWord}
         onClose={close}
       />
+
+      {#if downloadError}
+        <div class="px-8 pt-4">
+          <ErrorDisplay message={downloadError} onDismiss={() => downloadError = ''} />
+        </div>
+      {/if}
 
       <!-- Report Content -->
       <div class="flex-1 overflow-y-auto p-8 bg-white text-gray-900">

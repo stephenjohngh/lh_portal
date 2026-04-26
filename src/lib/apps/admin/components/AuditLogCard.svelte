@@ -15,6 +15,7 @@
   let expanded = false;
   let showFlagDialog = false;
   let flagReason = '';
+  let flagError = '';
 
   const severityColors = {
     info:     'bg-blue-600',
@@ -62,9 +63,10 @@
 
   function handleFlag() {
     if (!flagReason.trim()) {
-      alert('Please provide a reason for flagging this log');
+      flagError = 'Please provide a reason for flagging this log';
       return;
     }
+    flagError = '';
     dispatch('flag', flagReason);
     showFlagDialog = false;
     flagReason = '';
@@ -205,9 +207,12 @@
         rows="3"
         class="textarea mb-3"
       ></textarea>
+      {#if flagError}
+        <p class="text-sm text-red-400 mb-3">{flagError}</p>
+      {/if}
       <div class="flex space-x-2">
         <Button variant="danger" size="small" on:click={handleFlag}>Flag Event</Button>
-        <Button variant="secondary" size="small" on:click={() => { showFlagDialog = false; flagReason = ''; }}>Cancel</Button>
+        <Button variant="secondary" size="small" on:click={() => { showFlagDialog = false; flagReason = ''; flagError = ''; }}>Cancel</Button>
       </div>
     </div>
   {/if}

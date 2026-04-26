@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import { supabase } from '$lib/supabaseClient';
   import { formatDate, isOverdue } from '$lib/utils/dates';
   import { getLogger } from '$lib/utils/logger';
@@ -17,6 +18,7 @@
   let profiles = [];
   let selectedUser = 'all';
   let isGenerating = false;
+  let downloadError = '';
 
   onMount(async () => {
     await loadProfiles();
@@ -141,7 +143,7 @@
       
     } catch (err) {
       logger('❌ Error downloading report:', err.message);
-      alert(`Failed to generate report:\n\n${err.message}\n\nCheck browser console (F12) for details.`);
+      downloadError = `Failed to generate report: ${err.message}. Check browser console (F12) for details.`;
     } finally {
       isGenerating = false;
     }
@@ -202,6 +204,12 @@
           </Button>
         </div>
       </div>
+
+      {#if downloadError}
+        <div class="px-8 pt-4">
+          <ErrorDisplay message={downloadError} onDismiss={() => downloadError = ''} />
+        </div>
+      {/if}
 
       <!-- Report Content -->
       <div class="flex-1 overflow-y-auto p-8 bg-white text-gray-900">

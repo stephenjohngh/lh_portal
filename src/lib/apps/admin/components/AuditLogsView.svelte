@@ -27,6 +27,7 @@
   let showDashboard   = true;
   let selectedLogs    = new Set();
   let showBulkActions = false;
+  let localError      = '';
 
   $: ({ logs, loading, error, totalCount, hasMore } = $auditLogsStore);
   $: showBulkActions = selectedLogs.size > 0;
@@ -51,7 +52,7 @@
     try {
       await auditLogsStore.exportToCSV(filters);
     } catch (err) {
-      alert(err.message);
+      localError = err.message;
     }
   }
 
@@ -77,7 +78,7 @@
       selectedLogs.clear();
       selectedLogs = selectedLogs;
     } catch (err) {
-      alert(err.message);
+      localError = err.message;
     }
   }
 
@@ -86,18 +87,18 @@
     try {
       await auditLogsStore.deleteLog(logId);
     } catch (err) {
-      alert(err.message);
+      localError = err.message;
     }
   }
 
   async function handleFlagLog(logId, reason) {
     try { await auditLogsStore.flagLog(logId, reason); }
-    catch (err) { alert(err.message); }
+    catch (err) { localError = err.message; }
   }
 
   async function handleUnflagLog(logId) {
     try { await auditLogsStore.unflagLog(logId); }
-    catch (err) { alert(err.message); }
+    catch (err) { localError = err.message; }
   }
 </script>
 
@@ -161,6 +162,7 @@
   </div>
 
   <ErrorDisplay message={error} onDismiss={() => auditLogsStore.clearError()} />
+  <ErrorDisplay message={localError} onDismiss={() => localError = ''} />
 
   {#if loading && logs.length === 0}
     <LoadingSpinner />
