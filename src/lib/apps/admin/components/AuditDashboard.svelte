@@ -1,5 +1,8 @@
 <!-- src/lib/apps/admin/components/AuditDashboard.svelte -->
-<!-- Dashboard showing audit log statistics -->
+<!-- Dense audit-log dashboard. One row of stat tiles + one slim health-summary
+     row, instead of the 4-row block this used to be. The previous app-activity
+     progress bars were dropped because the same information is now reachable
+     directly via the App filter dropdown in the parent toolbar. -->
 <script>
   import { onMount } from 'svelte';
   import { auditLogsStore } from '../stores/auditLogsStore';
@@ -18,6 +21,12 @@
   // totalCount from the store reflects the full DB count (not just the page)
   $: totalCount = $auditLogsStore.totalCount;
 
+  // Derived health flags
+  $: failRatePct = (stats.totalLogins + stats.failedLogins) > 0
+    ? (stats.failedLogins / (stats.totalLogins + stats.failedLogins) * 100)
+    : 0;
+  $: failRateHigh = stats.failedLogins > stats.totalLogins * 0.2 && stats.failedLogins > 0;
+
   async function loadStats() {
     loading = true;
     try {
@@ -33,132 +42,70 @@
   onMount(loadStats);
 </script>
 
-<div class="mb-6">
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-    <div class="card">
-      <div class="text-3xl font-bold text-white">{totalCount}</div>
-      <div class="text-muted-sm">Total Events</div>
-      <div class="text-xs text-muted mt-1">All logged activities</div>
+<div class="mb-4 space-y-2">
+
+  <!-- Single dense row of 8 stat tiles -->
+  <div class="grid grid-cols-4 md:grid-cols-8 gap-2">
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-white leading-tight">{totalCount}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Total</div>
     </div>
-    <div class="card">
-      <div class="text-3xl font-bold text-green-400">{stats.totalLogins}</div>
-      <div class="text-muted-sm">Successful Logins</div>
-      <div class="text-xs text-muted mt-1">User sign-ins</div>
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-green-400 leading-tight">{stats.totalLogins}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Logins</div>
     </div>
-    <div class="card">
-      <div class="text-3xl font-bold text-red-400">{stats.failedLogins}</div>
-      <div class="text-muted-sm">Failed Logins</div>
-      <div class="text-xs text-muted mt-1">Authentication failures</div>
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-red-400 leading-tight">{stats.failedLogins}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Fails</div>
     </div>
-    <div class="card">
-      <div class="text-3xl font-bold text-blue-400">{stats.dataChanges}</div>
-      <div class="text-muted-sm">Data Changes</div>
-      <div class="text-xs text-muted mt-1">Create/Update/Delete</div>
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-blue-400 leading-tight">{stats.dataChanges}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Changes</div>
+    </div>
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-purple-400 leading-tight">{stats.criticalEvents}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Critical</div>
+    </div>
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-amber-400 leading-tight">{stats.warningEvents}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Warnings</div>
+    </div>
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-red-400 leading-tight">{stats.flaggedEvents}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Flagged</div>
+    </div>
+    <div class="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600">
+      <div class="text-lg font-bold text-cyan-400 leading-tight">{stats.permissionChanges}</div>
+      <div class="text-[10px] text-gray-400 uppercase tracking-wide">Perms</div>
     </div>
   </div>
 
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-    <div class="card">
-      <div class="text-3xl font-bold text-purple-400">{stats.criticalEvents}</div>
-      <div class="text-muted-sm">Critical Events</div>
-      <div class="text-xs text-muted mt-1">High severity issues</div>
-    </div>
-    <div class="card">
-      <div class="text-3xl font-bold text-amber-400">{stats.warningEvents}</div>
-      <div class="text-muted-sm">Warnings</div>
-      <div class="text-xs text-muted mt-1">Potential issues</div>
-    </div>
-    <div class="card">
-      <div class="text-3xl font-bold text-red-400">{stats.flaggedEvents}</div>
-      <div class="text-muted-sm">Flagged Events</div>
-      <div class="text-xs text-muted mt-1">Marked as suspicious</div>
-    </div>
-    <div class="card">
-      <div class="text-3xl font-bold text-cyan-400">{stats.permissionChanges}</div>
-      <div class="text-muted-sm">Permission Changes</div>
-      <div class="text-xs text-muted mt-1">Access modifications</div>
-    </div>
-  </div>
-
-  <!-- Activity by app -->
-  <div class="grid grid-cols-4 gap-4">
-    <div class="card">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-muted-sm">🔐 Authentication</span>
-        <span class="text-2xl font-bold text-blue-400">{stats.authEvents}</span>
-      </div>
-      <div class="w-full bg-slate-700 rounded-full h-2">
-        <div class="bg-blue-400 h-2 rounded-full"
-          style="width: {stats.totalEvents > 0 ? (stats.authEvents / stats.totalEvents * 100) : 0}%"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-muted-sm">👥 User Management</span>
-        <span class="text-2xl font-bold text-purple-400">{stats.userEvents}</span>
-      </div>
-      <div class="w-full bg-slate-700 rounded-full h-2">
-        <div class="bg-purple-400 h-2 rounded-full"
-          style="width: {stats.totalEvents > 0 ? (stats.userEvents / stats.totalEvents * 100) : 0}%"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-muted-sm">📋 Issues</span>
-        <span class="text-2xl font-bold text-green-400">{stats.issueEvents}</span>
-      </div>
-      <div class="w-full bg-slate-700 rounded-full h-2">
-        <div class="bg-green-400 h-2 rounded-full"
-          style="width: {stats.totalEvents > 0 ? (stats.issueEvents / stats.totalEvents * 100) : 0}%"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-muted-sm">🗺 Floor Plans</span>
-        <span class="text-2xl font-bold text-amber-400">{stats.planEvents}</span>
-      </div>
-      <div class="w-full bg-slate-700 rounded-full h-2">
-        <div class="bg-amber-400 h-2 rounded-full"
-          style="width: {stats.totalEvents > 0 ? (stats.planEvents / stats.totalEvents * 100) : 0}%"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="mt-4 grid grid-cols-3 gap-4">
-    <div class="card {stats.failedLogins > stats.totalLogins * 0.2 ? 'border-red-500' : 'border-slate-600'}">
-      <div class="flex items-center space-x-2 mb-1">
-        <span class="text-muted-sm">Failed Login Rate</span>
-        {#if stats.failedLogins > stats.totalLogins * 0.2}
-          <span class="text-red-400 text-xs">⚠ High</span>
-        {:else}
-          <span class="text-green-400 text-xs">✓ Normal</span>
-        {/if}
-      </div>
-      <div class="text-xl font-bold">
-        {stats.totalLogins > 0 ? ((stats.failedLogins / (stats.totalLogins + stats.failedLogins)) * 100).toFixed(1) : 0}%
-      </div>
-    </div>
-    <div class="card {stats.criticalEvents > 0 ? 'border-purple-500' : 'border-slate-600'}">
-      <div class="flex items-center space-x-2 mb-1">
-        <span class="text-muted-sm">Critical Events</span>
-        {#if stats.criticalEvents > 0}
-          <span class="text-purple-400 text-xs">⚠ {stats.criticalEvents} found</span>
-        {:else}
-          <span class="text-green-400 text-xs">✓ None</span>
-        {/if}
-      </div>
-      <div class="text-xl font-bold">{stats.criticalEvents}</div>
-    </div>
-    <div class="card {stats.flaggedEvents > 0 ? 'border-red-500' : 'border-slate-600'}">
-      <div class="flex items-center space-x-2 mb-1">
-        <span class="text-muted-sm">Flagged Activity</span>
-        {#if stats.flaggedEvents > 0}
-          <span class="text-red-400 text-xs">🚩 {stats.flaggedEvents} flagged</span>
-        {:else}
-          <span class="text-green-400 text-xs">✓ None</span>
-        {/if}
-      </div>
-      <div class="text-xl font-bold">{stats.flaggedEvents}</div>
-    </div>
+  <!-- Slim health-summary line -->
+  <div class="flex flex-wrap items-center gap-3 text-xs text-gray-400 px-1">
+    <span class="flex items-center gap-1.5">
+      <span class="text-gray-500">Fail rate:</span>
+      <span class="font-semibold {failRateHigh ? 'text-red-400' : 'text-green-400'}">
+        {failRatePct.toFixed(1)}%
+      </span>
+      {#if failRateHigh}<span class="text-red-400">⚠</span>{:else}<span class="text-green-400">✓</span>{/if}
+    </span>
+    <span class="text-slate-600">·</span>
+    <span class="flex items-center gap-1.5">
+      <span class="text-gray-500">Critical:</span>
+      <span class="font-semibold {stats.criticalEvents > 0 ? 'text-purple-400' : 'text-green-400'}">
+        {stats.criticalEvents}
+      </span>
+      {#if stats.criticalEvents > 0}<span class="text-purple-400">⚠</span>{:else}<span class="text-green-400">✓</span>{/if}
+    </span>
+    <span class="text-slate-600">·</span>
+    <span class="flex items-center gap-1.5">
+      <span class="text-gray-500">Flagged:</span>
+      <span class="font-semibold {stats.flaggedEvents > 0 ? 'text-red-400' : 'text-green-400'}">
+        {stats.flaggedEvents}
+      </span>
+      {#if stats.flaggedEvents > 0}<span class="text-red-400">🚩</span>{:else}<span class="text-green-400">✓</span>{/if}
+    </span>
+    <span class="text-slate-600">·</span>
+    <span class="text-gray-500">Last {timeRange} days</span>
   </div>
 </div>
