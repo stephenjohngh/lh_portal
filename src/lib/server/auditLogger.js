@@ -93,7 +93,8 @@ export async function logAudit(event) {
     changes,
     metadata,
     severity = 'info',
-    flagged = false
+    flagged = false,
+    appId = null
   } = event;
 
   logger('logAudit:', { eventType, eventCategory, targetType, userEmail });
@@ -116,6 +117,7 @@ export async function logAudit(event) {
       target_type: targetType || null,
       target_id: targetId || null,
       target_name: targetName || null,
+      app_id: appId || null,
       changes: changes || null,
       metadata: metadata || null,
       severity: severity,
