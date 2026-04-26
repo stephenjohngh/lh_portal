@@ -10,11 +10,18 @@
 
   const dispatch = createEventDispatcher();
 
+  // App filter values must match `appId` strings actually written by logAudit() across
+  // the codebase. Keep legacy values ('users', 'plans') so historical rows are still filterable.
   const apps = [
-    { value: null,     label: 'All Apps' },
-    { value: 'users',  label: '👥 Users' },
-    { value: 'issues', label: '📋 Issues' },
-    { value: 'plans',  label: '🗺 Floor Plans' }
+    { value: null,              label: 'All Apps' },
+    { value: 'admin',           label: '👥 Admin / Users' },
+    { value: 'issues',          label: '📋 Issues' },
+    { value: 'building_assets', label: '🏢 Building Assets' },
+    { value: 'inspection',      label: '🚶 Inspection' },
+    { value: 'maintenance',     label: '🔧 Maintenance' },
+    { value: 'mobileplan',      label: '📱 Mobile Plan' },
+    { value: 'users',           label: '👥 Users (legacy)' },
+    { value: 'plans',           label: '🗺 Floor Plans (legacy)' }
   ];
 
   const eventTypes = [
@@ -94,8 +101,10 @@
       case 'auth':     filters.eventCategory = 'auth';     break;
       case 'critical': filters.severity      = 'critical'; break;
       case 'flagged':  filters.flaggedOnly   = true;       break;
-      case 'plans':    filters.appId         = 'plans';    break;
-      case 'issues':   filters.appId         = 'issues';   break;
+      case 'assets':   filters.appId         = 'building_assets'; break;
+      case 'issues':   filters.appId         = 'issues';          break;
+      case 'inspection': filters.appId       = 'inspection';      break;
+      case 'maintenance': filters.appId      = 'maintenance';     break;
     }
     dispatch('change');
   }
@@ -115,7 +124,9 @@
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('week')}>Last 7 Days</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('month')}>Last 30 Days</Button>
     <span class="text-muted mx-1">|</span>
-    <Button variant="secondary" size="small" on:click={() => setQuickFilter('plans')}>🗺 Plans</Button>
+    <Button variant="secondary" size="small" on:click={() => setQuickFilter('assets')}>🏢 Assets</Button>
+    <Button variant="secondary" size="small" on:click={() => setQuickFilter('inspection')}>🚶 Inspection</Button>
+    <Button variant="secondary" size="small" on:click={() => setQuickFilter('maintenance')}>🔧 Maintenance</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('issues')}>📋 Issues</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('auth')}>🔐 Auth</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('critical')}>🔴 Critical</Button>
