@@ -178,13 +178,14 @@
         suggestionSource = 'ai_failed';
         suggestionInfo   = 'AI suggestion unavailable. Using the comment text — edit as needed.';
       } else if (!data.shouldSuggest) {
-        // Model declined — keep the card open with comment text as a
-        // fallback so the user can still create an action manually.
-        suggestionDraft  = comment.comment_text;
+        // Model declined — leave the textarea blank so the user starts
+        // from a clean slate. The reasoning is shown above the field;
+        // the user can type their own action or dismiss.
+        suggestionDraft  = '';
         suggestionSource = 'ai_declined';
         suggestionInfo   = data.reasoning
-          ? `AI didn't identify a clear action: "${data.reasoning}". Edit and add anyway, or dismiss.`
-          : "AI didn't identify a clear action. Edit and add anyway, or dismiss.";
+          ? `AI didn't identify a clear action: "${data.reasoning}". Type your own action or dismiss.`
+          : "AI didn't identify a clear action. Type your own action or dismiss.";
       } else {
         suggestionDraft  = data.action_text || comment.comment_text;
         suggestionSource = 'ai';
