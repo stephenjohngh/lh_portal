@@ -9,6 +9,17 @@ import { logAudit }    from '$lib/utils/auditLogger';
 
 const logger = getLogger('issuesStore');
 
+// Local wrapper that bakes in appId: 'issues' (and a sensible default
+// severity) so every audit row this store emits is filterable by app.
+// Mirrors the pattern used in the inspection / maintenance stores.
+function audit(eventType, targetType, targetId, targetName, data = {}) {
+  logAudit(eventType, targetType, targetId, targetName, {
+    appId:    'issues',
+    severity: eventType === 'delete' ? 'warning' : 'info',
+    ...data,
+  });
+}
+
 function createIssuesStore() {
   const { subscribe, set, update } = writable({
     issues: [],
@@ -163,7 +174,7 @@ function createIssuesStore() {
         logger('✅ Issue created:', newIssue.id, newIssue.issue_number);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'create',
           'issue',
           newIssue.id,
@@ -214,7 +225,7 @@ function createIssuesStore() {
         logger('✅ Issue updated');
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'update',
           'issue',
           issueId,
@@ -264,7 +275,7 @@ function createIssuesStore() {
         logger('✅ Issue deleted');
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'delete',
           'issue',
           issueId,
@@ -327,7 +338,7 @@ function createIssuesStore() {
         logger('✅ Comment created:', newComment.id);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'create',
           'comment',
           newComment.id,
@@ -376,7 +387,7 @@ function createIssuesStore() {
         });
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'update',
           'comment',
           commentId,
@@ -423,7 +434,7 @@ function createIssuesStore() {
         await api.delete('comments', commentId);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'delete',
           'comment',
           commentId,
@@ -487,7 +498,7 @@ function createIssuesStore() {
         logger('✅ Action created:', newAction.id);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'create',
           'action',
           newAction.id,
@@ -545,7 +556,7 @@ function createIssuesStore() {
         logger('✅ Action updated');
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'update',
           'action',
           actionId,
@@ -602,7 +613,7 @@ function createIssuesStore() {
         logger('✅ Action deleted');
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
-        logAudit(
+        audit(
           'delete',
           'action',
           actionId,

@@ -160,14 +160,47 @@ async function getConfiguredModel() {
 
 // ── Handler ───────────────────────────────────────────────────────────────
 export async function POST({ request }) {
+  // Outer-scope state so the audit helper (and the catch block) can see
+  // partial information when an exit path is taken before we reach the
+  // model call.
+  let profile     = null;
+  let issue_id    = null;
+  let comment_id  = null;
+  let issueName   = null;
+  let model       = DEFAULT_MODEL;
+
+  /**
+   * Fire-and-forget audit row. Skipped silently when we don't yet know
+   * who the caller is (i.e. before auth has succeeded) — those failures
+   * are noisy in server logs but don't pollute the audit table.
+   */
+  function recordAudit(eventAction, severity = 'info', extraMetadata = {}) {
+    if (!profile) return;
+    logAudit({
+      userId:        profile.id,
+      userEmail:     profile.email,
+      eventType:     'ai_suggest',
+      eventCategory: 'ai_assist',
+      eventAction,
+      targetType:    'comment',
+      targetId:      comment_id || null,
+      targetName:    issueName ? `Issue: ${issueName}`.slice(0, 200) : 'AI suggestion',
+      appId:         'issues',
+      severity,
+      metadata: {
+        issue_id,
+        model,
+        ...extraMetadata
+      }
+    }).catch(err => logger('audit log failed (non-fatal):', err.message));
+  }
+
   try {
     const body = await request.json();
-    const {
-      requesting_user_id,
-      comment_id,
-      issue_id,
-      comment_text
-    } = body;
+    const requesting_user_id = body.requesting_user_id;
+    issue_id    = body.issue_id   ?? null;
+    comment_id  = body.comment_id ?? null;
+    const comment_text = body.comment_text;
 
     // ── Validate input ────────────────────────────────────────────────
     if (!requesting_user_id) {
@@ -181,19 +214,21 @@ export async function POST({ request }) {
     }
 
     // ── Auth: must be a real profile ─────────────────────────────────
-    const { data: profile, error: profileErr } = await supabaseAdmin
+    const { data: loadedProfile, error: profileErr } = await supabaseAdmin
       .from('profiles')
       .select('id, email')
       .eq('id', requesting_user_id)
       .single();
-    if (profileErr || !profile) {
+    if (profileErr || !loadedProfile) {
       logger('❌ Unknown user:', requesting_user_id, profileErr?.message);
       return json({ error: 'Unauthorized' }, { status: 403 });
     }
+    profile = loadedProfile;
 
     // ── Rate limit per user ──────────────────────────────────────────
     if (!checkRateLimit(requesting_user_id)) {
       logger('⚠️ Rate limited:', profile.email);
+      recordAudit('rate_limited', 'warning', { reason: 'per_user_hourly_cap' });
       return json(
         { error: `Rate limit exceeded (${RATE_LIMIT_PER_HOUR} suggestions/hour). Try again later.` },
         { status: 429 }
@@ -204,6 +239,7 @@ export async function POST({ request }) {
     const apiKey = privateEnv.ANTHROPIC_API_KEY;
     if (!apiKey) {
       logger('ℹ️ ANTHROPIC_API_KEY not set; AI suggestions disabled');
+      recordAudit('unconfigured', 'warning', { reason: 'missing_api_key' });
       return json(
         { error: 'AI suggestions are not configured on this server' },
         { status: 503 }
@@ -232,8 +268,10 @@ export async function POST({ request }) {
 
     if (issueErr || !issue) {
       logger('❌ Issue not found:', issue_id, issueErr?.message);
+      recordAudit('failed', 'error', { reason: 'issue_not_found' });
       return json({ error: 'Issue not found' }, { status: 404 });
     }
+    issueName = issue.name;
 
     // Pick up to 3 prior comments, excluding the new one
     const priorCommentLines = (recentComments || [])
@@ -267,31 +305,45 @@ ${openActionsBlock}
 Use the suggest_action tool.`;
 
     // ── Resolve the configured model (admin-overridable) ─────────────
-    const model = await getConfiguredModel();
+    model = await getConfiguredModel();
 
     // ── Call Claude with prompt caching + structured output ──────────
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model,
-      max_tokens: 400,
-      tools: [TOOL_DEFINITION],
-      tool_choice: { type: 'tool', name: 'suggest_action' },
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' }
-        }
-      ],
-      messages: [
-        { role: 'user', content: userMessage }
-      ]
-    });
+    let response;
+    try {
+      response = await client.messages.create({
+        model,
+        max_tokens: 400,
+        tools: [TOOL_DEFINITION],
+        tool_choice: { type: 'tool', name: 'suggest_action' },
+        system: [
+          {
+            type: 'text',
+            text: SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' }
+          }
+        ],
+        messages: [
+          { role: 'user', content: userMessage }
+        ]
+      });
+    } catch (apiErr) {
+      logger('❌ Anthropic API error:', apiErr.message);
+      recordAudit('failed', 'error', {
+        reason: 'anthropic_api_error',
+        error: (apiErr.message || '').slice(0, 500)
+      });
+      return json(
+        { error: 'AI service error', message: apiErr.message },
+        { status: 502 }
+      );
+    }
 
     const toolUse = response.content.find(b => b.type === 'tool_use');
     if (!toolUse) {
       logger('❌ Model returned no tool_use block');
+      recordAudit('failed', 'error', { reason: 'no_tool_use' });
       return json({ error: 'Model did not return a structured suggestion' }, { status: 502 });
     }
 
@@ -302,29 +354,14 @@ Use the suggest_action tool.`;
 
     logger('✅ Suggestion:', shouldSuggest, '—', reasoning);
 
-    // ── Audit log fire-and-forget ────────────────────────────────────
-    logAudit({
-      userId:        profile.id,
-      userEmail:     profile.email,
-      eventType:     'ai_suggest',
-      eventCategory: 'ai_assist',
-      eventAction:   'suggest_action',
-      targetType:    'comment',
-      targetId:      comment_id || null,
-      targetName:    `Issue: ${issue.name}`.slice(0, 200),
-      appId:         'issues',
-      severity:      'info',
-      metadata: {
-        issue_id,
-        model,
-        shouldSuggest,
-        reasoning:             reasoning.slice(0, 500),
-        input_tokens:          response.usage?.input_tokens,
-        output_tokens:         response.usage?.output_tokens,
-        cache_read_tokens:     response.usage?.cache_read_input_tokens,
-        cache_creation_tokens: response.usage?.cache_creation_input_tokens
-      }
-    }).catch(err => logger('audit log failed (non-fatal):', err.message));
+    recordAudit(shouldSuggest ? 'suggested' : 'declined', 'info', {
+      shouldSuggest,
+      reasoning:             reasoning.slice(0, 500),
+      input_tokens:          response.usage?.input_tokens,
+      output_tokens:         response.usage?.output_tokens,
+      cache_read_tokens:     response.usage?.cache_read_input_tokens,
+      cache_creation_tokens: response.usage?.cache_creation_input_tokens
+    });
 
     return json({
       shouldSuggest,
@@ -334,6 +371,10 @@ Use the suggest_action tool.`;
 
   } catch (err) {
     logger('❌ Unexpected error:', err.message);
+    recordAudit('failed', 'error', {
+      reason: 'unexpected_error',
+      error: (err.message || '').slice(0, 500)
+    });
     return json(
       { error: 'Internal server error', message: err.message },
       { status: 500 }

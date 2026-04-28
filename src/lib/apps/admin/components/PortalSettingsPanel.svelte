@@ -6,6 +6,7 @@
   import { AVAILABLE_APPS } from '$lib/apps/apps.js';
   import { portalSettings } from '$lib/stores/portalSettings.js';
   import { supabase }       from '$lib/supabaseClient';
+  import { logAudit }       from '$lib/utils/auditLogger';
   import { getLogger }      from '$lib/utils/logger';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import Button       from '$lib/components/common/Button.svelte';
@@ -49,10 +50,11 @@
     }
   ];
 
-  let aiModel    = null;     // null = still loading
-  let aiSaving   = false;
-  let aiSaved    = false;
-  let aiError    = '';
+  let aiModel         = null;     // null = still loading
+  let aiModelPrevious = null;     // last persisted value — used for audit delta
+  let aiSaving        = false;
+  let aiSaved         = false;
+  let aiError         = '';
 
   async function loadAiModel() {
     try {
@@ -64,11 +66,13 @@
       if (err) throw err;
       const v = data?.value;
       // Default to Haiku if no row exists or an unknown value is stored
-      aiModel = AI_MODELS.find(m => m.value === v)?.value ?? 'claude-haiku-4-5';
+      aiModel         = AI_MODELS.find(m => m.value === v)?.value ?? 'claude-haiku-4-5';
+      aiModelPrevious = aiModel;
     } catch (err) {
       logger('⚠️ Failed to load ai_model setting:', err.message);
       aiError = 'Failed to load: ' + err.message;
-      aiModel = 'claude-haiku-4-5';
+      aiModel         = 'claude-haiku-4-5';
+      aiModelPrevious = 'claude-haiku-4-5';
     }
   }
 
@@ -89,6 +93,19 @@
       if (err) throw err;
       aiSaved = true;
       logger('✅ Saved ai_model:', aiModel);
+
+      // Audit only when the value actually changed — avoids spam from
+      // an admin clicking Save without changing the radio.
+      if (aiModel !== aiModelPrevious) {
+        logAudit('update', 'portal_setting', 'ai_model', 'AI assistant model', {
+          appId:         'admin',
+          eventCategory: 'system',
+          severity:      'info',
+          beforeData:    { model: aiModelPrevious },
+          afterData:     { model: aiModel }
+        });
+        aiModelPrevious = aiModel;
+      }
     } catch (err) {
       aiError = 'Save failed: ' + err.message;
       logger('❌ Save failed:', err.message);
