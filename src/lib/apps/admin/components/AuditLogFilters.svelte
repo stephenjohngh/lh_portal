@@ -35,7 +35,8 @@
     { value: 'permission_change',  label: '⚙ Permission Change' },
     { value: 'password_reset',     label: '🔑 Password Reset' },
     { value: 'session_expired',    label: '⏱ Session Expired' },
-    { value: 'suspicious_activity',label: '⚠ Suspicious Activity' }
+    { value: 'suspicious_activity',label: '⚠ Suspicious Activity' },
+    { value: 'ai_suggest',         label: '🤖 AI Suggestion' }
   ];
 
   const categories = [
@@ -48,7 +49,8 @@
     { value: 'plans',       label: '🗺 Floor Plans' },
     { value: 'permissions', label: '⚙ Permissions' },
     { value: 'security',    label: '🛡 Security' },
-    { value: 'system',      label: '⚡ System' }
+    { value: 'system',      label: '⚡ System' },
+    { value: 'ai_assist',   label: '🤖 AI Assist' }
   ];
 
   const severities = [
