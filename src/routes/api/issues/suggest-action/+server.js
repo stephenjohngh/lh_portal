@@ -125,7 +125,38 @@ const TOOL_DEFINITION = {
   }
 };
 
-const MODEL = 'claude-haiku-4-5';
+// Default model when no override is saved in portal_settings.
+const DEFAULT_MODEL = 'claude-haiku-4-5';
+
+// Allowlist — admins can only switch among these. Anything else falls
+// back to DEFAULT_MODEL so a typo or stale row can't break the route.
+// Keep ordered cheapest → most expensive; the admin UI mirrors this.
+const ALLOWED_MODELS = new Set([
+  'claude-haiku-4-5',
+  'claude-sonnet-4-5',
+  'claude-opus-4-5'
+]);
+
+/**
+ * Read the configured Claude model from portal_settings.ai_model.
+ * Returns DEFAULT_MODEL when the row is missing, the value isn't a
+ * string, or it isn't in the allowlist.
+ */
+async function getConfiguredModel() {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('portal_settings')
+      .select('value')
+      .eq('key', 'ai_model')
+      .maybeSingle();
+    if (error) throw error;
+    const v = data?.value;
+    if (typeof v === 'string' && ALLOWED_MODELS.has(v)) return v;
+  } catch (err) {
+    logger('⚠️ Failed to read ai_model setting; using default:', err.message);
+  }
+  return DEFAULT_MODEL;
+}
 
 // ── Handler ───────────────────────────────────────────────────────────────
 export async function POST({ request }) {
@@ -235,11 +266,14 @@ ${openActionsBlock}
 
 Use the suggest_action tool.`;
 
-    // ── Call Claude Haiku with prompt caching + structured output ────
+    // ── Resolve the configured model (admin-overridable) ─────────────
+    const model = await getConfiguredModel();
+
+    // ── Call Claude with prompt caching + structured output ──────────
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
-      model: MODEL,
+      model,
       max_tokens: 400,
       tools: [TOOL_DEFINITION],
       tool_choice: { type: 'tool', name: 'suggest_action' },
@@ -282,7 +316,7 @@ Use the suggest_action tool.`;
       severity:      'info',
       metadata: {
         issue_id,
-        model:                 MODEL,
+        model,
         shouldSuggest,
         reasoning:             reasoning.slice(0, 500),
         input_tokens:          response.usage?.input_tokens,
