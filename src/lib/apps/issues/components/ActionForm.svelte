@@ -7,9 +7,13 @@
   import Button          from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
 
-  export let show           = false;
-  export let assigneeOptions = [];   // [{ value, label }]
-  export let saving          = false;
+  export let show              = false;
+  export let assigneeOptions   = [];   // [{ value, label }]
+  export let saving            = false;
+  // Optional prefill — used when the form is opened from a suggestion
+  // (e.g. the "Create Action from Comment" flow). Defaults to '' so
+  // existing call sites that just pass `show` keep their previous behaviour.
+  export let initialActionText = '';
 
   const dispatch = createEventDispatcher();
 
@@ -18,8 +22,9 @@
   let date_deadline  = '';
   let status         = ACTION_STATUS.PENDING;
 
-  // Reset form whenever the modal opens
-  $: if (show) { action_text = ''; name_text = ''; date_deadline = ''; status = ACTION_STATUS.PENDING; }
+  // Reset form whenever the modal opens. Seed action_text from the
+  // initialActionText prop (empty string by default).
+  $: if (show) { action_text = initialActionText; name_text = ''; date_deadline = ''; status = ACTION_STATUS.PENDING; }
 
   function handleSubmit() {
     if (!action_text.trim()) return;

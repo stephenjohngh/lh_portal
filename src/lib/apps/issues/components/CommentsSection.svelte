@@ -1,13 +1,18 @@
 ﻿<!-- src/lib/apps/issues/components/CommentsSection.svelte -->
 <script>
+  import { onMount } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';
   import { formatDateTime, wasModified } from '$lib/utils/dates';
-  import { ACTION_STATUS } from '$lib/utils/constants';
+  import { api } from '$lib/utils/api';
+  import { getLogger } from '$lib/utils/logger';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Modal from '$lib/components/common/Modal.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import ActionForm from './ActionForm.svelte';
+
+  const logger = getLogger('CommentsSection');
 
   export let issueId;
   export let comments = [];
@@ -31,9 +36,33 @@
   // Day 0.5 scaffold: the suggestion text is just the comment text itself.
   // The same UI shape will host AI-generated suggestions in the LLM version.
   let suggestionForId  = null;   // comment.id whose suggestion card is open (null = none)
-  let suggestionDraft  = '';     // editable action text
-  let suggestionSaving = false;
+  let suggestionDraft  = '';     // editable action text in the suggestion card
+  let suggestionSaving = false;  // true while the ActionForm submit is in flight
   let suggestionError  = '';
+
+  // ActionForm modal — opened from the suggestion card so the user can
+  // fill in deadline / assignee / status before saving.
+  let showActionForm        = false;
+  let actionFormInitialText = '';
+
+  // Profile list for the ActionForm assignee dropdown — duplicated here
+  // (also loaded by ActionsSection) so this section is self-contained.
+  let profiles = [];
+
+  onMount(async () => {
+    try {
+      profiles = await api.get('profiles', { select: 'full_name', orderBy: 'full_name' });
+    } catch (err) {
+      logger('❌ Error loading profiles for action form:', err);
+      profiles = [];
+    }
+  });
+
+  $: assigneeOptions = [
+    { value: '', label: '' },
+    ...profiles.map(p => ({ value: p.full_name, label: p.full_name })),
+    { value: 'External', label: 'External' }
+  ];
 
   // Filter historic, then sort
   $: filteredComments = showHistoric
@@ -115,23 +144,37 @@
     suggestionSaving = false;
   }
 
-  async function addSuggestionAsAction() {
+  // Open the full ActionForm modal seeded with the current draft text,
+  // so the user can pick an assignee / deadline / status before saving.
+  function openSuggestionInActionForm() {
     const text = suggestionDraft.trim();
     if (!text) return;
+    suggestionError       = '';
+    actionFormInitialText = text;
+    showActionForm        = true;
+  }
+
+  async function handleActionFormSubmit({ detail }) {
     suggestionSaving = true;
     suggestionError  = '';
-    const result = await issuesStore.addAction(issueId, {
-      action_text:   text,
-      name_text:     '',
-      date_deadline: null,
-      status:        ACTION_STATUS.PENDING
-    });
+    const result = await issuesStore.addAction(issueId, detail);
     suggestionSaving = false;
     if (!result.success) {
+      // Surface the error on the suggestion card and keep the modal
+      // open so the user can adjust and retry.
       suggestionError = result.error ?? 'Failed to create action';
       return;
     }
+    showActionForm        = false;
+    actionFormInitialText = '';
     dismissSuggestion();
+  }
+
+  function handleActionFormCancel() {
+    showActionForm        = false;
+    actionFormInitialText = '';
+    // Leave the suggestion card open so the user can edit and try again
+    // or click Dismiss.
   }
 </script>
 
@@ -347,9 +390,10 @@
                     size="small"
                     icon="plus"
                     disabled={suggestionSaving || !suggestionDraft.trim()}
-                    on:click={addSuggestionAsAction}
+                    on:click={openSuggestionInActionForm}
+                    title="Open the action form pre-filled with this text"
                   >
-                    {suggestionSaving ? 'Adding…' : 'Add Action'}
+                    {suggestionSaving ? 'Adding…' : 'Add Action…'}
                   </ProtectedButton>
                 </div>
               </div>
@@ -412,4 +456,14 @@
   danger={true}
   on:confirm={deleteComment}
   on:cancel={() => { showDeleteConfirm = false; pendingDeleteId = null; }}
+/>
+
+<!-- -- Action form (opened from a comment's suggestion card) --------- -->
+<ActionForm
+  show={showActionForm}
+  initialActionText={actionFormInitialText}
+  {assigneeOptions}
+  saving={suggestionSaving}
+  on:submit={handleActionFormSubmit}
+  on:cancel={handleActionFormCancel}
 />
