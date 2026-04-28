@@ -2,6 +2,7 @@
 <script>
   import { issuesStore } from '../stores/issuesStore';
   import { formatDateTime, wasModified } from '$lib/utils/dates';
+  import { ACTION_STATUS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Modal from '$lib/components/common/Modal.svelte';
@@ -25,6 +26,14 @@
   let newComment = { comment_text: '', historic: false };
   let mutationError = '';
   let saving = false;
+
+  // -- "Create Action from Comment" suggestion state -------------------
+  // Day 0.5 scaffold: the suggestion text is just the comment text itself.
+  // The same UI shape will host AI-generated suggestions in the LLM version.
+  let suggestionForId  = null;   // comment.id whose suggestion card is open (null = none)
+  let suggestionDraft  = '';     // editable action text
+  let suggestionSaving = false;
+  let suggestionError  = '';
 
   // Filter historic, then sort
   $: filteredComments = showHistoric
@@ -83,6 +92,46 @@
 
   function cancelEdit() {
     editingComment = null;
+  }
+
+  // -- Suggestion-card handlers ----------------------------------------
+  // Day 0.5 uses the comment text verbatim as the draft. When the LLM
+  // version lands, the only change is that openSuggestion() will fetch
+  // the suggested text from /api/issues/suggest-action instead of
+  // copying the comment directly.
+  function openSuggestion(comment) {
+    // Close any other inline editor so the panel doesn't get crowded
+    editingComment   = null;
+    viewingComment   = null;
+    suggestionError  = '';
+    suggestionForId  = comment.id;
+    suggestionDraft  = comment.comment_text;
+  }
+
+  function dismissSuggestion() {
+    suggestionForId  = null;
+    suggestionDraft  = '';
+    suggestionError  = '';
+    suggestionSaving = false;
+  }
+
+  async function addSuggestionAsAction() {
+    const text = suggestionDraft.trim();
+    if (!text) return;
+    suggestionSaving = true;
+    suggestionError  = '';
+    const result = await issuesStore.addAction(issueId, {
+      action_text:   text,
+      name_text:     '',
+      date_deadline: null,
+      status:        ACTION_STATUS.PENDING
+    });
+    suggestionSaving = false;
+    if (!result.success) {
+      suggestionError = result.error ?? 'Failed to create action';
+      return;
+    }
+    dismissSuggestion();
   }
 </script>
 
@@ -225,6 +274,15 @@
                   action="modify"
                   variant="secondary"
                   size="small"
+                  icon="clipboard"
+                  iconPosition="only"
+                  on:click={() => openSuggestion(comment)}
+                  title="Create Action from Comment"
+                />
+                <ProtectedButton
+                  action="modify"
+                  variant="secondary"
+                  size="small"
                   icon="edit"
                   iconPosition="only"
                   on:click={() => startEdit(comment)}
@@ -253,6 +311,49 @@
                 <span class="text-amber-400">Historic</span>
               {/if}
             </div>
+
+            <!-- Suggested-action panel (Day 0.5: comment text verbatim;
+                 the LLM version will replace the draft text via API). -->
+            {#if suggestionForId === comment.id}
+              <div class="mt-2 bg-amber-900/15 border border-amber-700/40 rounded p-3 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                    <span>💡 Suggested action from comment</span>
+                    <span class="text-amber-500/60 font-normal italic text-[10px]">draft — edit before adding</span>
+                  </p>
+                  <button
+                    on:click={dismissSuggestion}
+                    class="text-gray-400 hover:text-white text-sm leading-none"
+                    title="Dismiss"
+                    aria-label="Dismiss suggestion"
+                  >✕</button>
+                </div>
+                <textarea
+                  bind:value={suggestionDraft}
+                  rows="2"
+                  placeholder="Action description"
+                  class="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
+                ></textarea>
+                {#if suggestionError}
+                  <p class="text-xs text-red-400">{suggestionError}</p>
+                {/if}
+                <div class="flex justify-end gap-2">
+                  <Button variant="secondary" size="small" on:click={dismissSuggestion}>
+                    Dismiss
+                  </Button>
+                  <ProtectedButton
+                    action="modify"
+                    variant="amber"
+                    size="small"
+                    icon="plus"
+                    disabled={suggestionSaving || !suggestionDraft.trim()}
+                    on:click={addSuggestionAsAction}
+                  >
+                    {suggestionSaving ? 'Adding…' : 'Add Action'}
+                  </ProtectedButton>
+                </div>
+              </div>
+            {/if}
           </div>
         {/if}
       {/each}
