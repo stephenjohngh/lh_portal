@@ -1,6 +1,8 @@
 ﻿<!-- src/lib/apps/issues/components/CommentsSection.svelte -->
 <script>
   import { onMount } from 'svelte';
+  import { env as publicEnv } from '$env/dynamic/public';
+  import { auth } from '$lib/stores/auth';
   import { issuesStore } from '../stores/issuesStore';
   import { formatDateTime, wasModified } from '$lib/utils/dates';
   import { api } from '$lib/utils/api';
@@ -13,6 +15,11 @@
   import ActionForm from './ActionForm.svelte';
 
   const logger = getLogger('CommentsSection');
+
+  // Feature flag — when 'true', the suggestion card calls the LLM API on
+  // open. When unset/anything else, we use the comment text verbatim
+  // (Day 0.5 fallback, identical behaviour to before this feature shipped).
+  const AI_SUGGESTIONS_ENABLED = publicEnv.PUBLIC_AI_SUGGESTIONS_ENABLED === 'true';
 
   export let issueId;
   export let comments = [];
@@ -33,12 +40,18 @@
   let saving = false;
 
   // -- "Create Action from Comment" suggestion state -------------------
-  // Day 0.5 scaffold: the suggestion text is just the comment text itself.
-  // The same UI shape will host AI-generated suggestions in the LLM version.
-  let suggestionForId  = null;   // comment.id whose suggestion card is open (null = none)
-  let suggestionDraft  = '';     // editable action text in the suggestion card
-  let suggestionSaving = false;  // true while the ActionForm submit is in flight
-  let suggestionError  = '';
+  // The suggestion card has two source paths:
+  //   1. AI: hit /api/issues/suggest-action and use the returned action_text.
+  //   2. Fallback: copy the comment text verbatim (used when the feature
+  //      flag is off, the API returns 5xx, or the model declines but the
+  //      user still wants to draft something manually).
+  let suggestionForId   = null;   // comment.id whose suggestion card is open (null = none)
+  let suggestionDraft   = '';     // editable action text in the suggestion card
+  let suggestionSaving  = false;  // true while the ActionForm submit is in flight
+  let suggestionLoading = false;  // true while the AI API call is in flight
+  let suggestionSource  = 'comment'; // 'ai' | 'comment' | 'ai_declined' | 'ai_failed'
+  let suggestionInfo    = '';     // user-facing reasoning / fallback notice
+  let suggestionError   = '';
 
   // ActionForm modal — opened from the suggestion card so the user can
   // fill in deadline / assignee / status before saving.
@@ -124,24 +137,77 @@
   }
 
   // -- Suggestion-card handlers ----------------------------------------
-  // Day 0.5 uses the comment text verbatim as the draft. When the LLM
-  // version lands, the only change is that openSuggestion() will fetch
-  // the suggested text from /api/issues/suggest-action instead of
-  // copying the comment directly.
-  function openSuggestion(comment) {
+  async function openSuggestion(comment) {
     // Close any other inline editor so the panel doesn't get crowded
-    editingComment   = null;
-    viewingComment   = null;
-    suggestionError  = '';
-    suggestionForId  = comment.id;
-    suggestionDraft  = comment.comment_text;
+    editingComment    = null;
+    viewingComment    = null;
+    suggestionError   = '';
+    suggestionInfo    = '';
+    suggestionForId   = comment.id;
+
+    if (!AI_SUGGESTIONS_ENABLED) {
+      // Day 0.5 path: just copy the comment text into the editable draft.
+      suggestionDraft  = comment.comment_text;
+      suggestionSource = 'comment';
+      return;
+    }
+
+    // AI path: open the card with a loading state, fetch a suggestion,
+    // populate the draft (or fall back to comment text).
+    suggestionLoading = true;
+    suggestionDraft   = '';
+    suggestionSource  = 'ai';
+
+    try {
+      const res = await fetch('/api/issues/suggest-action', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesting_user_id: $auth.user?.id,
+          comment_id:         comment.id,
+          issue_id:           issueId,
+          comment_text:       comment.comment_text
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // 4xx / 5xx — fall back to comment text and surface a soft notice
+        logger('⚠️ AI suggestion failed:', res.status, data?.error);
+        suggestionDraft  = comment.comment_text;
+        suggestionSource = 'ai_failed';
+        suggestionInfo   = 'AI suggestion unavailable. Using the comment text — edit as needed.';
+      } else if (!data.shouldSuggest) {
+        // Model declined — keep the card open with comment text as a
+        // fallback so the user can still create an action manually.
+        suggestionDraft  = comment.comment_text;
+        suggestionSource = 'ai_declined';
+        suggestionInfo   = data.reasoning
+          ? `AI didn't identify a clear action: "${data.reasoning}". Edit and add anyway, or dismiss.`
+          : "AI didn't identify a clear action. Edit and add anyway, or dismiss.";
+      } else {
+        suggestionDraft  = data.action_text || comment.comment_text;
+        suggestionSource = 'ai';
+        suggestionInfo   = data.reasoning ? `Reasoning: ${data.reasoning}` : '';
+      }
+    } catch (err) {
+      logger('❌ AI suggestion fetch error:', err);
+      suggestionDraft  = comment.comment_text;
+      suggestionSource = 'ai_failed';
+      suggestionInfo   = 'AI suggestion unavailable. Using the comment text — edit as needed.';
+    } finally {
+      suggestionLoading = false;
+    }
   }
 
   function dismissSuggestion() {
-    suggestionForId  = null;
-    suggestionDraft  = '';
-    suggestionError  = '';
-    suggestionSaving = false;
+    suggestionForId   = null;
+    suggestionDraft   = '';
+    suggestionError   = '';
+    suggestionInfo    = '';
+    suggestionSaving  = false;
+    suggestionLoading = false;
+    suggestionSource  = 'comment';
   }
 
   // Open the full ActionForm modal seeded with the current draft text,
@@ -355,14 +421,32 @@
               {/if}
             </div>
 
-            <!-- Suggested-action panel (Day 0.5: comment text verbatim;
-                 the LLM version will replace the draft text via API). -->
+            <!-- Suggested-action panel.
+                 Source can be: 'ai' (LLM suggested), 'ai_declined' (LLM
+                 said no — fell back to comment text), 'ai_failed' (API
+                 error — fell back to comment text), 'comment' (feature
+                 flag off — Day 0.5 fallback). -->
             {#if suggestionForId === comment.id}
               <div class="mt-2 bg-amber-900/15 border border-amber-700/40 rounded p-3 space-y-2">
                 <div class="flex items-center justify-between gap-2">
-                  <p class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
-                    <span>💡 Suggested action from comment</span>
-                    <span class="text-amber-500/60 font-normal italic text-[10px]">draft — edit before adding</span>
+                  <p class="text-xs font-semibold text-amber-300 flex items-center gap-1.5 flex-wrap">
+                    <span>
+                      💡
+                      {#if suggestionLoading}
+                        AI suggestion — thinking…
+                      {:else if suggestionSource === 'ai'}
+                        AI-suggested action
+                      {:else if suggestionSource === 'ai_declined'}
+                        Suggested action (AI declined)
+                      {:else if suggestionSource === 'ai_failed'}
+                        Suggested action (AI unavailable)
+                      {:else}
+                        Suggested action from comment
+                      {/if}
+                    </span>
+                    {#if !suggestionLoading}
+                      <span class="text-amber-500/60 font-normal italic text-[10px]">draft — review before adding</span>
+                    {/if}
                   </p>
                   <button
                     on:click={dismissSuggestion}
@@ -371,15 +455,28 @@
                     aria-label="Dismiss suggestion"
                   >✕</button>
                 </div>
-                <textarea
-                  bind:value={suggestionDraft}
-                  rows="2"
-                  placeholder="Action description"
-                  class="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
-                ></textarea>
+
+                {#if suggestionLoading}
+                  <div class="flex items-center gap-2 px-2 py-3 text-sm text-amber-300/70">
+                    <Icon name="refresh" size={4} className="animate-spin" />
+                    <span>Asking the AI for a suggested action…</span>
+                  </div>
+                {:else}
+                  <textarea
+                    bind:value={suggestionDraft}
+                    rows="2"
+                    placeholder="Action description"
+                    class="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
+                  ></textarea>
+                  {#if suggestionInfo}
+                    <p class="text-[11px] text-amber-200/60 italic">{suggestionInfo}</p>
+                  {/if}
+                {/if}
+
                 {#if suggestionError}
                   <p class="text-xs text-red-400">{suggestionError}</p>
                 {/if}
+
                 <div class="flex justify-end gap-2">
                   <Button variant="secondary" size="small" on:click={dismissSuggestion}>
                     Dismiss
@@ -389,7 +486,7 @@
                     variant="amber"
                     size="small"
                     icon="plus"
-                    disabled={suggestionSaving || !suggestionDraft.trim()}
+                    disabled={suggestionLoading || suggestionSaving || !suggestionDraft.trim()}
                     on:click={openSuggestionInActionForm}
                     title="Open the action form pre-filled with this text"
                   >
