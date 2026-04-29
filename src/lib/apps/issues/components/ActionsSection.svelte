@@ -1,5 +1,6 @@
 <!-- src/lib/apps/issues/components/ActionsSection.svelte -->
 <script>
+  import { createEventDispatcher } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';
   import { formatDate, formatDateTime, isOverdue, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
@@ -17,20 +18,8 @@
 
   export let issueId;
   export let actions  = [];
-  // Passed in by IssueCard so we can resolve the source comment for any
-  // action that was created via "Create Action from Comment".
-  export let comments = [];
 
-  // Map for fast source-comment lookup keyed by comment.id.
-  $: commentById = Object.fromEntries((comments || []).map(c => [c.id, c]));
-
-  // Set of action.ids whose source-comment block is expanded.
-  let expandedSources = new Set();
-  function toggleSource(actionId) {
-    if (expandedSources.has(actionId)) expandedSources.delete(actionId);
-    else                                expandedSources.add(actionId);
-    expandedSources = expandedSources;
-  }
+  const dispatch = createEventDispatcher();
 
   let showAddModal = false;
   let editingAction = null;
@@ -314,34 +303,6 @@
                   {/if}
                 </p>
 
-                <!-- Source comment, when this action was created via the
-                     "Create Action from Comment" flow. Hidden by default;
-                     the comment-icon button in the action button group
-                     toggles it open. The source comment may have been
-                     deleted (FK ON DELETE SET NULL) — in that case
-                     source_comment_id is null and the toggle button
-                     doesn't render. If the id is still set but the
-                     comment isn't in the loaded list, we show a generic
-                     "no longer available" notice. -->
-                {#if action.source_comment_id && expandedSources.has(action.id)}
-                  {@const src = commentById[action.source_comment_id]}
-                  <div class="mt-2 px-2 py-1.5 rounded bg-blue-900/15 border-l-2 border-blue-400/60 text-xs">
-                    <p class="text-blue-300/80 font-medium flex items-center gap-1.5">
-                      <span>💬 From comment</span>
-                      {#if src?.created_at}
-                        <span class="text-gray-500 font-normal">— {formatDate(src.created_at)}</span>
-                      {/if}
-                      {#if src?.historic}
-                        <span class="text-amber-400/80 font-normal">• historic</span>
-                      {/if}
-                    </p>
-                    {#if src}
-                      <p class="text-gray-300 mt-1 whitespace-pre-wrap">{src.comment_text}</p>
-                    {:else}
-                      <p class="text-gray-500 italic mt-1">Source comment is no longer available.</p>
-                    {/if}
-                  </div>
-                {/if}
               </div>
               <div class="flex space-x-1">
                 {#if action.source_comment_id}
@@ -350,8 +311,8 @@
                     size="small"
                     icon="comment"
                     iconPosition="only"
-                    on:click={() => toggleSource(action.id)}
-                    title={expandedSources.has(action.id) ? 'Hide source comment' : 'Show source comment'}
+                    on:click={() => dispatch('jumpToComment', { commentId: action.source_comment_id })}
+                    title="Jump to source comment"
                   />
                 {/if}
                 <ProtectedButton

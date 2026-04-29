@@ -45,28 +45,27 @@
     showDeleteConfirm = false;
   }
 
-  // Jump to a specific action — invoked from CommentsSection's
-  // 'already linked' panel via the View in Actions button. Ensures the
-  // Actions section is expanded, scrolls to the action, and ring-
-  // highlights it. The highlight persists until the user's next click
-  // anywhere on the page.
-  async function handleJumpToAction({ detail }) {
-    const actionId = detail?.actionId;
-    if (!actionId) return;
+  // Generic jump-and-highlight helper used by both the comment→action
+  // jump (View in Actions button) and the action→comment jump (comment
+  // icon button on a linked action). Ensures the relevant section is
+  // expanded, scrolls the target into view, and ring-highlights it
+  // until the user's next click anywhere on the page.
+  async function jumpAndHighlight({ targetId, expandIf, toggleEvent }) {
+    if (!targetId) return;
 
     // Clear any existing jump highlight before starting a new one
     document.querySelectorAll('.lh-jump-highlight').forEach(el => {
       el.classList.remove('ring-2', 'ring-purple-400', 'lh-jump-highlight');
     });
 
-    if (!showActions) {
-      dispatch('toggleActions');
-      // Two ticks: one for the parent to flip showActions=true, another
-      // for ActionsSection's DOM to mount.
+    if (expandIf) {
+      dispatch(toggleEvent);
+      // Two ticks: one for the parent to flip the show flag, another
+      // for the child section's DOM to mount.
       await tick();
       await tick();
     }
-    const el = document.getElementById(`action-${actionId}`);
+    const el = document.getElementById(targetId);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el.classList.add('ring-2', 'ring-purple-400', 'lh-jump-highlight');
@@ -79,6 +78,22 @@
       () => el.classList.remove('ring-2', 'ring-purple-400', 'lh-jump-highlight'),
       { once: true, capture: true }
     );
+  }
+
+  function handleJumpToAction({ detail }) {
+    return jumpAndHighlight({
+      targetId:    `action-${detail?.actionId}`,
+      expandIf:    !showActions,
+      toggleEvent: 'toggleActions'
+    });
+  }
+
+  function handleJumpToComment({ detail }) {
+    return jumpAndHighlight({
+      targetId:    `comment-${detail?.commentId}`,
+      expandIf:    !showComments,
+      toggleEvent: 'toggleComments'
+    });
   }
 
   $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED 
@@ -240,7 +255,7 @@
         <ActionsSection
           issueId={issue.id}
           actions={issue.actions || []}
-          comments={issue.comments || []}
+          on:jumpToComment={handleJumpToComment}
         />
       </div>
     </div>

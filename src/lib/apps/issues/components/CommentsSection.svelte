@@ -452,7 +452,10 @@
           {@const isPanelOpen = suggestionForId === comment.id}
           {@const hasLinked   = !!linkedActionByCommentId[comment.id]}
           <!-- Comment display -->
-          <div class="bg-slate-700/50 rounded p-2 border-l-2 border-blue-400 {comment.historic ? 'opacity-60' : ''}">
+          <div
+            id={`comment-${comment.id}`}
+            class="bg-slate-700/50 rounded p-2 border-l-2 border-blue-400 {comment.historic ? 'opacity-60' : ''}"
+          >
             <div class="flex justify-between items-start gap-2">
 
               <!-- Text: max 5 lines with scroll; click opens full view -->
