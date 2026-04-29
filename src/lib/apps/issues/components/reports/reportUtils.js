@@ -1,6 +1,6 @@
-// src/lib/components/reports/reportUtils.js
+// src/lib/apps/issues/components/reports/reportUtils.js
 import { ACTION_STATUS, ISSUE_STATUS } from '$lib/utils/constants';
-import { formatDate } from '$lib/utils/dates';
+import { fmtDate, fmtDateLong } from '$lib/utils/dates';
 
 
 /**
@@ -55,10 +55,10 @@ export function hasRecentChanges(issue, filterDateTime) {
  * Format timestamp with creation and modification dates
  */
 export function formatTimestamp(createdAt, updatedAt) {
-  const created = formatDate(createdAt);
+  const created = fmtDate(createdAt);
   const hasModification = updatedAt && 
     new Date(updatedAt).getTime() !== new Date(createdAt).getTime();
-  const modified = hasModification ? ` • Modified: ${formatDate(updatedAt)}` : '';
+  const modified = hasModification ? ` • Modified: ${fmtDate(updatedAt)}` : '';
   return created + modified;
 }
 
@@ -114,18 +114,14 @@ export function getDefaultFilterDate() {
 }
 
 /**
- * Get today's date formatted for display
+ * Today's date for the printed report header (en-GB, full month).
  */
 export function getTodayDate() {
-  return new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  return fmtDateLong(new Date().toISOString());
 }
 
 /**
- * Generate filter summary text
+ * Generate filter summary text (en-GB).
  */
 export function getFilterSummary(includeCurrent, includeParked, includeCompleted, filterDate) {
   const statuses = [
@@ -133,10 +129,10 @@ export function getFilterSummary(includeCurrent, includeParked, includeCompleted
     includeParked && 'Parked',
     includeCompleted && 'Completed'
   ].filter(Boolean).join(', ');
-  
+
   const dateInfo = filterDate
-    ? `Changes since ${new Date(filterDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+    ? `Changes since ${fmtDate(new Date(filterDate).toISOString())}`
     : 'All changes';
-  
+
   return `Showing: ${statuses} • ${dateInfo}`;
 }

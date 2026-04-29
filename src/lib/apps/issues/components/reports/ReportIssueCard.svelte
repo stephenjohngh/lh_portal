@@ -2,7 +2,7 @@
 <!-- REFACTORED: Uses new CSS utility classes -->
 <script>
   import { getPriorityLabel } from '$lib/utils/priorities';
-  import { formatDate, isOverdue } from '$lib/utils/dates';
+  import { fmtDate, isOverdue } from '$lib/utils/dates';
   import { formatTimestamp, STATUS_COLORS } from './reportUtils';
 
   export let issue;
@@ -68,9 +68,9 @@
           <div class="p-3 bg-gray-50 rounded border border-gray-200">
             <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
             <p class="text-xs text-gray-500 mt-1">
-              Added: {formatDate(comment.created_at)}
+              Added: {fmtDate(comment.created_at)}
               {#if comment.updated_at && new Date(comment.updated_at).getTime() - new Date(comment.created_at).getTime() > 1000}
-                • Modified: {formatDate(comment.updated_at)}
+                • Modified: {fmtDate(comment.updated_at)}
               {/if}
             </p>
           </div>
@@ -104,7 +104,7 @@
                 {/if}
                 {#if action.date_deadline}
                   <span class="text-xs px-2 py-1 rounded border {isOverdue(action.date_deadline) ? 'bg-red-100 text-red-700 border-red-300 font-semibold' : 'bg-orange-100 text-orange-700 border-orange-200'}">
-                    📅 Due: {formatDate(action.date_deadline)}
+                    📅 Due: {fmtDate(action.date_deadline)}
                     {#if isOverdue(action.date_deadline)}⚠️{/if}
                   </span>
                 {/if}
@@ -113,9 +113,9 @@
                 </span>
               </div>
               <p class="text-xs text-gray-500 mt-2">
-                Added: {formatDate(action.created_at)}
+                Added: {fmtDate(action.created_at)}
                 {#if action.updated_at && new Date(action.updated_at).getTime() - new Date(action.created_at).getTime() > 1000}
-                  • Modified: {formatDate(action.updated_at)}
+                  • Modified: {fmtDate(action.updated_at)}
                 {/if}
               </p>
             </div>

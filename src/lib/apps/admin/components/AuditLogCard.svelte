@@ -5,7 +5,7 @@
   import Icon from '$lib/components/icons/Icon.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import { formatDate, fmtDateTime } from '$lib/utils/dates';
+  import { fmtDateTime } from '$lib/utils/dates';
 
   export let log;
   export let selected = false;

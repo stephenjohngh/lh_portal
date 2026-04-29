@@ -7,7 +7,7 @@
   import Icon from '$lib/components/icons/Icon.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { formatDate, formatDateTime, isOverdue, wasModified } from '$lib/utils/dates';
+  import { fmtDate, fmtDateTime, isOverdue, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
   import { sortActions } from '$lib/utils/actionSort';
 
@@ -407,7 +407,7 @@
                           {/if}
                           {#if action.date_deadline}
                             <Badge variant={isOverdue(action.date_deadline) ? 'danger' : 'warning'} icon="📅" outline>
-                              {formatDate(action.date_deadline)}
+                              {fmtDate(action.date_deadline)}
                             </Badge>
                           {/if}
                           <Badge 
@@ -524,8 +524,8 @@
               
               <div class="section-spacing">
                 <div class="code-block">
-                  <code>formatDate('2024-02-15') → {formatDate('2024-02-15')}</code>
-                  <code>formatDateTime('2024-02-15T10:30:00', 'John Doe') → {formatDateTime('2024-02-15T10:30:00', 'John Doe')}</code>
+                  <code>fmtDate('2024-02-15') → {fmtDate('2024-02-15')}</code>
+                  <code>fmtDateTime('2024-02-15T10:30:00', 'John Doe') → {fmtDateTime('2024-02-15T10:30:00', 'John Doe')}</code>
                   <code>isOverdue('2024-01-01') → {isOverdue('2024-01-01')}</code>
                   <code>wasModified('2024-01-01', '2024-01-05') → {wasModified('2024-01-01', '2024-01-05')}</code>
                 </div>

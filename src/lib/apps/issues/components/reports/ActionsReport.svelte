@@ -6,7 +6,7 @@
   import Badge from '$lib/components/common/Badge.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import { supabase } from '$lib/supabaseClient';
-  import { formatDate, isOverdue } from '$lib/utils/dates';
+  import { fmtDate, fmtDateLong, isOverdue } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
   import { getLogger } from '$lib/utils/logger';
   import { sortActions } from '$lib/utils/actionSort';
@@ -106,13 +106,8 @@
     }
   }
 
-  function getTodayDate() {
-    return new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  }
+  // Today's date for the printed report header (en-GB, full month).
+  const todayLong = fmtDateLong(new Date().toISOString());
 </script>
 
 {#if show}
@@ -191,7 +186,7 @@
           <!-- Report Header -->
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Actions Report</h1>
-            <p class="text-gray-600 text-sm">Generated {getTodayDate()}</p>
+            <p class="text-gray-600 text-sm">Generated {todayLong}</p>
             <div class="mt-2 text-sm text-gray-500">
               Showing: {selectedUser === 'all' ? 'All Users' : selectedUser === 'unallocated' ? 'Unallocated' : selectedUser}
               • {sortedActions.length} {sortedActions.length === 1 ? 'action' : 'actions'}
@@ -231,7 +226,7 @@
                     {/if}
                     {#if action.date_deadline}
                       <Badge variant={isOverdue(action.date_deadline) ? 'danger' : 'warning'} icon="📅" outline>
-                        Due: {formatDate(action.date_deadline)}
+                        Due: {fmtDate(action.date_deadline)}
                         {#if isOverdue(action.date_deadline)} ⚠️{/if}
                       </Badge>
                     {/if}
@@ -249,9 +244,9 @@
                     {/if}
                   </div>
                   <p class="text-xs text-gray-500">
-                    Added: {formatDate(action.created_at)}
+                    Added: {fmtDate(action.created_at)}
                     {#if action.updated_at && new Date(action.updated_at).getTime() - new Date(action.created_at).getTime() > 1000}
-                      • Modified: {formatDate(action.updated_at)}
+                      • Modified: {fmtDate(action.updated_at)}
                     {/if}
                   </p>
                 </div>

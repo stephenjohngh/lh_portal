@@ -4,7 +4,7 @@
   import { env as publicEnv } from '$env/dynamic/public';
   import { auth } from '$lib/stores/auth';
   import { issuesStore } from '../stores/issuesStore';
-  import { formatDateTime, wasModified } from '$lib/utils/dates';
+  import { fmtDateTime, wasModified } from '$lib/utils/dates';
   import { api } from '$lib/utils/api';
   import { getLogger } from '$lib/utils/logger';
   import Icon from '$lib/components/icons/Icon.svelte';
@@ -509,10 +509,10 @@
             </div>
 
             <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 flex-wrap">
-              <span>Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}</span>
+              <span>Added: {fmtDateTime(comment.created_at, comment.created_by_profile?.full_name)}</span>
               {#if wasModified(comment.created_at, comment.updated_at)}
                 <span>•</span>
-                <span>Modified: {formatDateTime(comment.updated_at, comment.updated_by_profile?.full_name)}</span>
+                <span>Modified: {fmtDateTime(comment.updated_at, comment.updated_by_profile?.full_name)}</span>
               {/if}
               {#if comment.historic}
                 <span>•</span>
@@ -676,10 +676,10 @@
       {viewingComment.comment_text}
     </p>
     <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700 text-xs text-gray-500 flex-wrap">
-      <span>Added: {formatDateTime(viewingComment.created_at, viewingComment.created_by_profile?.full_name)}</span>
+      <span>Added: {fmtDateTime(viewingComment.created_at, viewingComment.created_by_profile?.full_name)}</span>
       {#if wasModified(viewingComment.created_at, viewingComment.updated_at)}
         <span>•</span>
-        <span>Modified: {formatDateTime(viewingComment.updated_at, viewingComment.updated_by_profile?.full_name)}</span>
+        <span>Modified: {fmtDateTime(viewingComment.updated_at, viewingComment.updated_by_profile?.full_name)}</span>
       {/if}
       {#if viewingComment.historic}
         <span>•</span>

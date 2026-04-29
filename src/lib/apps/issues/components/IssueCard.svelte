@@ -9,7 +9,7 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { getPriorityLabel } from '$lib/utils/priorities';
-  import { formatDate } from '$lib/utils/dates';
+  import { fmtDate } from '$lib/utils/dates';
   import { ISSUE_STATUS, ACTION_STATUS, UI_COLORS } from '$lib/utils/constants';
 
   export let issue;
@@ -156,10 +156,10 @@
         {/if}
         
         <div class="flex-row-lg mt-1 text-muted-sm">
-          <span>Created: {formatDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
+          <span>Created: {fmtDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
           {#if issue.updated_at && issue.updated_at !== issue.created_at}
             <span>•</span>
-            <span>Modified: {formatDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
+            <span>Modified: {fmtDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
           {/if}
          </div>
       </div>

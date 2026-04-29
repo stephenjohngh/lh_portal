@@ -2,7 +2,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';
-  import { formatDate, formatDateTime, isOverdue, wasModified } from '$lib/utils/dates';
+  import { fmtDate, fmtDateTime, isOverdue, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
@@ -285,7 +285,7 @@
                   {/if}
                   {#if action.date_deadline}
                     <span class="px-2 py-1 rounded border {isOverdue(action.date_deadline) && action.status !== ACTION_STATUS.COMPLETED ? 'bg-red-600 text-white font-semibold' : 'bg-orange-600/20 text-orange-300 border-orange-200'}">
-                      📅 Due: {formatDate(action.date_deadline)}
+                      📅 Due: {fmtDate(action.date_deadline)}
                       {#if isOverdue(action.date_deadline) && action.status !== ACTION_STATUS.COMPLETED}
                         ⚠️
                       {/if}
@@ -297,9 +297,9 @@
 
                 </div>
                 <p class="text-xs text-gray-500 mt-1">
-                  Added: {formatDateTime(action.created_at, action.created_by_profile?.full_name)}
+                  Added: {fmtDateTime(action.created_at, action.created_by_profile?.full_name)}
                   {#if wasModified(action.created_at, action.updated_at)}
-                    • Modified: {formatDateTime(action.updated_at, action.updated_by_profile?.full_name)}
+                    • Modified: {fmtDateTime(action.updated_at, action.updated_by_profile?.full_name)}
                   {/if}
                 </p>
 

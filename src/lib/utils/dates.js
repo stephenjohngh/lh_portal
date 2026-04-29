@@ -1,20 +1,37 @@
-﻿// src/lib/utils/dates.js
+// src/lib/utils/dates.js
 // Shared date/time formatting utilities for the LH Portal.
 //
-// All en-GB display functions are grouped at the top.
-// Legacy en-US functions (used by IssuesTrackerApp) are preserved below.
-
-// -- en-GB helpers (Walk, Plans, Reports) ------------------------------------
+// Single locale: en-GB ("23 Feb 2026", "14:35"). Use these helpers
+// everywhere — never inline toLocaleDateString / toLocaleString.
 
 const GB = 'en-GB';
 
 /**
- * "23 Feb 2026"
+ * "23 Feb 2026" — or "23 Feb 2026 (Stephen)" when userName is given.
+ * @param {string|null} iso
+ * @param {string|null} [userName]  Optional name appended in parentheses.
+ */
+export function fmtDate(iso, userName = null) {
+  if (!iso) return '—';
+  const formatted = new Date(iso).toLocaleDateString(GB, {
+    day:   '2-digit',
+    month: 'short',
+    year:  'numeric'
+  });
+  return userName ? `${formatted} (${userName})` : formatted;
+}
+
+/**
+ * "23 February 2026" — full month name. Used in document headers.
  * @param {string|null} iso
  */
-export function fmtDate(iso) {
+export function fmtDateLong(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(GB, { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(GB, {
+    day:   '2-digit',
+    month: 'long',
+    year:  'numeric'
+  });
 }
 
 /**
@@ -27,16 +44,18 @@ export function fmtTime(iso) {
 }
 
 /**
- * "23 Feb 2026 14:35"
+ * "23 Feb 2026 14:35" — or with a "(name)" suffix when userName is given.
  * @param {string|null} iso
+ * @param {string|null} [userName]
  */
-export function fmtDateTime(iso) {
+export function fmtDateTime(iso, userName = null) {
   if (!iso) return '—';
-  return fmtDate(iso) + ' ' + fmtTime(iso);
+  const formatted = `${fmtDate(iso)} ${fmtTime(iso)}`;
+  return userName ? `${formatted} (${userName})` : formatted;
 }
 
 /**
- * Current datetime formatted for document headers/cover pages.
+ * Current datetime formatted for document headers / cover pages.
  * "23 Feb 2026, 14:35"
  */
 export function fmtGenerated() {
@@ -58,178 +77,24 @@ export function fmtDuration(startIso, endIso) {
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
-// -- Legacy en-US helpers (used by IssuesTrackerApp, AuditDashboard etc.) ----
-// These are preserved as-is to avoid changing behaviour in parts of the app
-// that weren't part of the refactor.
-
 /**
- * Format a date string to a readable date (e.g., "Jan 15, 2025")
- * @param {string} dateString - ISO date string
- * @param {string} userName - Optional username to append
- * @returns {string} Formatted date
+ * True when the deadline is strictly before today (00:00 local).
+ * @param {string|null} deadlineIso
  */
-export function formatDate(dateString, userName = null) {
-  if (!dateString) return 'N/A';
-  const formatted = new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-  return userName ? `${formatted} (${userName})` : formatted;
-}
-
-/**
- * Format a date string to a readable date and time (e.g., "Jan 15, 2025, 2:30 PM")
- * @param {string} dateString - ISO date string
- * @param {string} userName - Optional username to append
- * @returns {string} Formatted date and time
- */
-export function formatDateTime(dateString, userName = null) {
-  if (!dateString) return 'N/A';
-  const formatted = new Date(dateString).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  return userName ? `${formatted} (${userName})` : formatted;
-}
-
-/**
- * Check if a deadline date is overdue (past today's date)
- * @param {string} deadlineString - ISO date string
- * @returns {boolean} True if deadline is in the past
- */
-export function isOverdue(deadlineString) {
-  if (!deadlineString) return false;
-  const deadline = new Date(deadlineString);
-  const today = new Date();
+export function isOverdue(deadlineIso) {
+  if (!deadlineIso) return false;
+  const deadline = new Date(deadlineIso);
+  const today    = new Date();
   today.setHours(0, 0, 0, 0);
   deadline.setHours(0, 0, 0, 0);
   return deadline < today;
 }
 
 /**
- * Get relative time string (e.g., "2h ago", "3d ago")
- * @param {string} dateString - ISO date string
- * @returns {string} Relative time description
- */
-export function getRelativeTime(dateString) {
-  if (!dateString) return 'N/A';
-
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1)  return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7)  return `${diffDays}d ago`;
-  return formatDate(dateString);
-}
-
-/**
- * Calculate days until a deadline
- * @param {string} deadlineString - ISO date string
- * @returns {number} Number of days (negative if overdue)
- */
-export function daysUntilDeadline(deadlineString) {
-  if (!deadlineString) return null;
-  const deadline = new Date(deadlineString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  deadline.setHours(0, 0, 0, 0);
-  const diffMs = deadline - today;
-  return Math.ceil(diffMs / 86400000);
-}
-
-/**
- * Format date with full month name (e.g., "January 30, 2026")
- * @param {string} dateString - ISO date string
- * @returns {string} Formatted date with full month
- */
-export function formatDateLong(dateString) {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-}
-
-/**
- * Format date and time with full details (for user management, etc.)
- * @param {string} dateString - ISO date string
- * @returns {string} Formatted date and time
- */
-export function formatDateTimeFull(dateString) {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-/**
- * Format relative time with full words (e.g., "2 hours ago", "3 days ago")
- * @param {string} dateString - ISO date string
- * @returns {string} Relative time in full words
- */
-export function formatRelativeTime(dateString) {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffSecs = Math.floor(diffMs / 1000);
-  const diffMins = Math.floor(diffSecs / 60);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSecs < 60)  return 'just now';
-  if (diffMins < 60)  return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  if (diffDays < 30)  return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-  return formatDate(dateString);
-}
-
-/**
- * Check if date is today
- * @param {string} dateString - ISO date string
- * @returns {boolean} True if date is today
- */
-export function isToday(dateString) {
-  if (!dateString) return false;
-  const date = new Date(dateString);
-  const today = new Date();
-  return date.toDateString() === today.toDateString();
-}
-
-/**
- * Check if date is within the past week
- * @param {string} dateString - ISO date string
- * @returns {boolean} True if within past 7 days
- */
-export function isWithinPastWeek(dateString) {
-  if (!dateString) return false;
-  const date = new Date(dateString);
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  return date >= weekAgo;
-}
-
-/**
- * Check if a record was modified after creation
- * @param {string} createdAt - ISO date string of creation
- * @param {string} updatedAt - ISO date string of last update
- * @returns {boolean} True if modified more than 1 second after creation
+ * True when updatedAt is more than 1s after createdAt — i.e. the record
+ * has been modified since creation.
+ * @param {string|null} createdAt
+ * @param {string|null} updatedAt
  */
 export function wasModified(createdAt, updatedAt) {
   if (!updatedAt || !createdAt) return false;
