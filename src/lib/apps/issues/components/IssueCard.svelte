@@ -10,7 +10,7 @@
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { getPriorityLabel } from '$lib/utils/priorities';
   import { fmtDate } from '$lib/utils/dates';
-  import { ISSUE_STATUS, ACTION_STATUS, UI_COLORS } from '$lib/utils/constants';
+  import { ISSUE_STATUS, ACTION_STATUS } from '$lib/utils/constants';
 
   export let issue;
   export let showComments = false;
@@ -203,7 +203,7 @@
         
         {#if outstandingActionsCount > 0}
           <div class="text-icon">
-            <Icon name="clipboard" size={4} className="text-{UI_COLORS.ACTION_TEXT}" />
+            <Icon name="clipboard" size={4} className="text-amber-400" />
             <span>
               {outstandingActionsCount} outstanding action{outstandingActionsCount !== 1 ? 's' : ''}
               {#if overdueActionsCount > 0}
@@ -251,7 +251,7 @@
   <!-- Actions Section -->
   {#if showActions}
     <div class="ml-8 mr-4 mb-3">
-      <div class="border-l-4 border-{UI_COLORS.ACTION_BORDER} pl-3">
+      <div class="border-l-4 border-amber-500 pl-3">
         <ActionsSection
           issueId={issue.id}
           actions={issue.actions || []}

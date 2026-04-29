@@ -8,7 +8,7 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { fmtDate, fmtDateTime, isOverdue, wasModified } from '$lib/utils/dates';
-  import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
+  import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import { sortActions } from '$lib/utils/actionSort';
 
   let activeSection = 'components';

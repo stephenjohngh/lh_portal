@@ -45,36 +45,9 @@ export const ACTION_STATUS_OPTIONS = [
   { value: ACTION_STATUS.COMPLETED, label: 'Completed' }
 ];
 
-/**
- * UI Color constants
- */
-export const UI_COLORS = {
-  // Action-related colors (amber theme)
-  ACTION_PRIMARY: 'amber-800',        // For buttons, icons, primary action elements
-  ACTION_BORDER: 'amber-500',         // For borders when expanded/active
-  ACTION_BG: 'amber-600',            // For backgrounds
-  ACTION_TEXT: 'amber-400',          // For text/icons in dark mode
-  
-  // Comment-related colors (blue theme)
-  COMMENT_PRIMARY: 'blue-600',
-  COMMENT_BORDER: 'blue-500',
-  COMMENT_TEXT: 'blue-400'
-};
-
-/**
- * Get Tailwind class for action color
- * @param {string} prefix - Tailwind prefix (bg-, text-, border-, etc.)
- * @returns {string} Full Tailwind class
- */
-export function getActionColor(prefix = 'bg') {
-  return `${prefix}-${UI_COLORS.ACTION_PRIMARY}`;
-}
-
-/**
- * Get Tailwind class for comment color
- * @param {string} prefix - Tailwind prefix (bg-, text-, border-, etc.)
- * @returns {string} Full Tailwind class
- */
-export function getCommentColor(prefix = 'bg') {
-  return `${prefix}-${UI_COLORS.COMMENT_PRIMARY}`;
-}
+// Section accents are inlined as literal Tailwind classes:
+//   actions  → text-amber-400 / border-amber-500
+//   comments → text-blue-400  / border-blue-500
+// Tailwind's JIT only sees classes that appear as literal substrings,
+// so a UI_COLORS constant with template-interpolated class names is
+// fragile. To rebrand, search the codebase for the literal class.
