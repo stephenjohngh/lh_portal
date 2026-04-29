@@ -47,11 +47,18 @@
 
   // Jump to a specific action — invoked from CommentsSection's
   // 'already linked' panel via the View in Actions button. Ensures the
-  // Actions section is expanded, then scrolls to the action and briefly
-  // ring-highlights it so the user sees where it landed.
+  // Actions section is expanded, scrolls to the action, and ring-
+  // highlights it. The highlight persists until the user's next click
+  // anywhere on the page.
   async function handleJumpToAction({ detail }) {
     const actionId = detail?.actionId;
     if (!actionId) return;
+
+    // Clear any existing jump highlight before starting a new one
+    document.querySelectorAll('.lh-jump-highlight').forEach(el => {
+      el.classList.remove('ring-2', 'ring-purple-400', 'lh-jump-highlight');
+    });
+
     if (!showActions) {
       dispatch('toggleActions');
       // Two ticks: one for the parent to flip showActions=true, another
@@ -62,8 +69,16 @@
     const el = document.getElementById(`action-${actionId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('ring-2', 'ring-purple-400');
-    setTimeout(() => el.classList.remove('ring-2', 'ring-purple-400'), 1800);
+    el.classList.add('ring-2', 'ring-purple-400', 'lh-jump-highlight');
+
+    // Clear on the user's next click anywhere. capture:true ensures we
+    // see clicks even on elements that stopPropagation; once:true makes
+    // the listener auto-detach after firing.
+    document.addEventListener(
+      'click',
+      () => el.classList.remove('ring-2', 'ring-purple-400', 'lh-jump-highlight'),
+      { once: true, capture: true }
+    );
   }
 
   $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED 
