@@ -149,6 +149,18 @@
   }
 
   // -- Suggestion-card handlers ----------------------------------------
+  // Top-level toggle that drives the per-comment button: if the panel
+  // for this comment is already open, close it; otherwise call
+  // openSuggestion() (which will route to the linked-action warning,
+  // the AI fetch, or the verbatim fallback depending on state).
+  function toggleSuggestion(comment) {
+    if (suggestionForId === comment.id) {
+      dismissSuggestion();
+    } else {
+      openSuggestion(comment);
+    }
+  }
+
   async function openSuggestion(comment) {
     // Close any other inline editor so the panel doesn't get crowded
     editingComment    = null;
@@ -393,6 +405,8 @@
           </div>
 
         {:else}
+          {@const isPanelOpen = suggestionForId === comment.id}
+          {@const hasLinked   = !!linkedActionByCommentId[comment.id]}
           <!-- Comment display -->
           <div class="bg-slate-700/50 rounded p-2 border-l-2 border-blue-400 {comment.historic ? 'opacity-60' : ''}">
             <div class="flex justify-between items-start gap-2">
@@ -408,14 +422,23 @@
               </div>
 
               <div class="flex gap-1 flex-shrink-0">
+                <!-- Action button:
+                     - has linked action + panel closed → 'Show linked action'   (chevron-down)
+                     - has linked action + panel open   → 'Hide linked action'   (chevron-up)
+                     - no linked action  + panel closed → 'Create Linked Action' (clipboard)
+                     - no linked action  + panel open   → 'Hide suggestion'      (chevron-up) -->
                 <ProtectedButton
                   action="modify"
                   variant="secondary"
                   size="small"
-                  icon="clipboard"
+                  icon={isPanelOpen
+                          ? 'chevron-up'
+                          : (hasLinked ? 'chevron-down' : 'clipboard')}
                   iconPosition="only"
-                  on:click={() => openSuggestion(comment)}
-                  title="Create Action from Comment"
+                  on:click={() => toggleSuggestion(comment)}
+                  title={isPanelOpen
+                           ? (hasLinked ? 'Hide linked action' : 'Hide suggestion')
+                           : (hasLinked ? 'Show linked action' : 'Create Linked Action')}
                 />
                 <ProtectedButton
                   action="modify"

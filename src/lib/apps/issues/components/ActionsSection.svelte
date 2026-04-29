@@ -312,20 +312,17 @@
                 </p>
 
                 <!-- Source comment, when this action was created via the
-                     "Create Action from Comment" flow. The source comment
-                     may have been deleted (FK ON DELETE SET NULL) — in
-                     that case source_comment_id is null and this block
-                     doesn't render at all. If the id is still set but
-                     the comment isn't in the loaded list (filtered out
-                     etc.), we show a generic "linked to a comment" line. -->
-                {#if action.source_comment_id}
+                     "Create Action from Comment" flow. Hidden by default;
+                     the comment-icon button in the action button group
+                     toggles it open. The source comment may have been
+                     deleted (FK ON DELETE SET NULL) — in that case
+                     source_comment_id is null and the toggle button
+                     doesn't render. If the id is still set but the
+                     comment isn't in the loaded list, we show a generic
+                     "no longer available" notice. -->
+                {#if action.source_comment_id && expandedSources.has(action.id)}
                   {@const src = commentById[action.source_comment_id]}
-                  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-                  <div
-                    class="mt-2 px-2 py-1.5 rounded bg-blue-900/15 border-l-2 border-blue-400/60 text-xs cursor-pointer hover:bg-blue-900/25 transition-colors"
-                    on:click={() => toggleSource(action.id)}
-                    title="Click to {expandedSources.has(action.id) ? 'collapse' : 'expand'} source comment"
-                  >
+                  <div class="mt-2 px-2 py-1.5 rounded bg-blue-900/15 border-l-2 border-blue-400/60 text-xs">
                     <p class="text-blue-300/80 font-medium flex items-center gap-1.5">
                       <span>💬 From comment</span>
                       {#if src?.created_at}
@@ -334,15 +331,9 @@
                       {#if src?.historic}
                         <span class="text-amber-400/80 font-normal">• historic</span>
                       {/if}
-                      <span class="ml-auto text-gray-500 text-[10px]">
-                        {expandedSources.has(action.id) ? '▾' : '▸'}
-                      </span>
                     </p>
                     {#if src}
-                      <p
-                        class="text-gray-300 mt-1 whitespace-pre-wrap"
-                        class:line-clamp-2={!expandedSources.has(action.id)}
-                      >{src.comment_text}</p>
+                      <p class="text-gray-300 mt-1 whitespace-pre-wrap">{src.comment_text}</p>
                     {:else}
                       <p class="text-gray-500 italic mt-1">Source comment is no longer available.</p>
                     {/if}
@@ -350,6 +341,16 @@
                 {/if}
               </div>
               <div class="flex space-x-1">
+                {#if action.source_comment_id}
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    icon="comment"
+                    iconPosition="only"
+                    on:click={() => toggleSource(action.id)}
+                    title={expandedSources.has(action.id) ? 'Hide source comment' : 'Show source comment'}
+                  />
+                {/if}
                 <ProtectedButton
                   action="modify"
                   variant="secondary"
