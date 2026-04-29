@@ -7,6 +7,7 @@
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import { supabase } from '$lib/supabaseClient';
   import { formatDate, isOverdue } from '$lib/utils/dates';
+  import { downloadResponse } from '$lib/utils/download';
   import { getLogger } from '$lib/utils/logger';
   import { sortActions } from '$lib/utils/actionSort';
 
@@ -65,85 +66,41 @@
   }
 
   async function downloadWord() {
-    logger('Download Actions Report clicked');
-    
     isGenerating = true;
-    
     try {
-      logger('Preparing data');
-      logger('Selected user:', selectedUser);
-      logger('Sorted actions count:', sortedActions.length);
-      
-      const requestBody = {
-        actions: sortedActions,
-        selectedUser,
-        userName: selectedUser === 'all' ? 'All Users' : selectedUser === 'unallocated' ? 'Unallocated' : selectedUser
-      };
-      
-      logger('Request body size:', JSON.stringify(requestBody).length, 'characters');
-      
-      logger('Sending request');
       const response = await fetch('/api/reports/generate-actions-docx', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actions: sortedActions,
+          selectedUser,
+          userName: selectedUser === 'all'         ? 'All Users'
+                  : selectedUser === 'unallocated' ? 'Unallocated'
+                  :                                  selectedUser
+        })
       });
 
-      logger('Response received:', response.status, response.statusText);
-
       if (!response.ok) {
-        logger('❌ Response not OK');
         const contentType = response.headers.get('content-type');
-        
         if (contentType?.includes('application/json')) {
-          const errorData = await response.json();
-          logger('Error data:', errorData);
-          throw new Error(errorData.error || 'Failed to generate report');
-        } else {
-          const errorText = await response.text();
-          logger('Error text:', errorText);
-          throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          const { error } = await response.json();
+          throw new Error(error || 'Failed to generate report');
         }
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
 
-      logger('Creating blob');
-      const blob = await response.blob();
-      logger('Blob created, size:', blob.size, 'bytes (', (blob.size / 1024).toFixed(2), 'KB)');
-
-      if (blob.size === 0) {
-        logger('❌ Generated document is empty');
-        throw new Error('Generated document is empty');
-      }
-
-      logger('Creating download URL');
-      const url = window.URL.createObjectURL(blob);
-      
-      const fileName = selectedUser === 'all' 
-        ? `Actions_Report_All_Users_${new Date().toISOString().split('T')[0]}.docx`
+      const today = new Date().toISOString().split('T')[0];
+      const fileName = selectedUser === 'all'
+        ? `Actions_Report_All_Users_${today}.docx`
         : selectedUser === 'unallocated'
-        ? `Actions_Report_Unallocated_${new Date().toISOString().split('T')[0]}.docx`
-        : `Actions_Report_${selectedUser.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
-      
-      logger('Filename:', fileName);
-      
-      logger('Triggering download');
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      
-      logger('Cleaning up');
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      logger('✅ Download complete');
-      
+          ? `Actions_Report_Unallocated_${today}.docx`
+          : `Actions_Report_${selectedUser.replace(/\s+/g, '_')}_${today}.docx`;
+
+      await downloadResponse(response, fileName);
+      logger('✅ Actions report downloaded:', fileName);
     } catch (err) {
       logger('❌ Error downloading report:', err.message);
-      downloadError = `Failed to generate report: ${err.message}. Check browser console (F12) for details.`;
+      downloadError = `Failed to generate report: ${err.message}.`;
     } finally {
       isGenerating = false;
     }
