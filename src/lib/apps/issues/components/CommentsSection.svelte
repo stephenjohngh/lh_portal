@@ -1,6 +1,6 @@
 ﻿<!-- src/lib/apps/issues/components/CommentsSection.svelte -->
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { env as publicEnv } from '$env/dynamic/public';
   import { auth } from '$lib/stores/auth';
   import { issuesStore } from '../stores/issuesStore';
@@ -20,6 +20,8 @@
   // open. When unset/anything else, we use the comment text verbatim
   // (Day 0.5 fallback, identical behaviour to before this feature shipped).
   const AI_SUGGESTIONS_ENABLED = publicEnv.PUBLIC_AI_SUGGESTIONS_ENABLED === 'true';
+
+  const dispatch = createEventDispatcher();
 
   export let issueId;
   export let comments = [];
@@ -69,6 +71,12 @@
   // fill in deadline / assignee / status before saving.
   let showActionForm        = false;
   let actionFormInitialText = '';
+
+  // Linked-action delete confirmation — used when the user opens the
+  // 'already linked' panel and clicks Delete linked action.
+  let showLinkedDeleteConfirm = false;
+  let pendingLinkedAction     = null;
+  let linkedDeleteError       = '';
 
   // Profile list for the ActionForm assignee dropdown — duplicated here
   // (also loaded by ActionsSection) so this section is self-contained.
@@ -283,6 +291,42 @@
     // Leave the suggestion card open so the user can edit and try again
     // or click Dismiss.
   }
+
+  // -- Linked-action handlers (shown inside the 'already_linked' panel) --
+
+  function viewLinkedAction(action) {
+    // Tell IssueCard to expand the Actions section (if collapsed) and
+    // scroll to this action. Then close our panel so the user lands on
+    // the action without our card in the way.
+    dispatch('jumpToAction', { actionId: action.id });
+    dismissSuggestion();
+  }
+
+  function requestDeleteLinked(action) {
+    linkedDeleteError       = '';
+    pendingLinkedAction     = action;
+    showLinkedDeleteConfirm = true;
+  }
+
+  async function confirmDeleteLinked() {
+    if (!pendingLinkedAction) return;
+    const result = await issuesStore.deleteAction(pendingLinkedAction.id);
+    if (!result.success) {
+      linkedDeleteError = result.error ?? 'Failed to delete linked action';
+      // Keep the dialog open so the user can retry / cancel
+      return;
+    }
+    showLinkedDeleteConfirm = false;
+    pendingLinkedAction     = null;
+    // Close the now-empty panel
+    dismissSuggestion();
+  }
+
+  function cancelDeleteLinked() {
+    showLinkedDeleteConfirm = false;
+    pendingLinkedAction     = null;
+    linkedDeleteError       = '';
+  }
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-3">
@@ -493,19 +537,7 @@
             {#if suggestionForId === comment.id}
               {#if suggestionSource === 'already_linked'}
                 {@const linked = linkedActionByCommentId[comment.id]}
-                <div class="mt-2 bg-red-900/15 border border-red-700/40 rounded p-3 space-y-2">
-                  <div class="flex items-center justify-between gap-2">
-                    <p class="text-xs font-semibold text-red-300 flex items-center gap-1.5">
-                      <span>⚠ This comment already has a linked action</span>
-                    </p>
-                    <button
-                      on:click={dismissSuggestion}
-                      class="text-gray-400 hover:text-white text-sm leading-none"
-                      title="Dismiss"
-                      aria-label="Dismiss"
-                    >✕</button>
-                  </div>
-
+                <div class="mt-2 bg-amber-900/15 border border-amber-700/40 rounded p-3 space-y-2">
                   {#if linked}
                     <div class="px-3 py-2 rounded bg-slate-800/80 border-l-2 border-amber-400">
                       <p class="text-sm text-gray-200 whitespace-pre-wrap">{linked.action_text}</p>
@@ -518,17 +550,37 @@
                         {/if}
                       </div>
                     </div>
+                  {:else}
+                    <p class="text-xs text-gray-500 italic">Linked action is no longer available.</p>
                   {/if}
 
-                  <p class="text-[11px] text-red-200/70 italic leading-relaxed">
-                    Each comment can only be linked to one action. Delete the linked action above (from the Actions section), then click <span class="font-mono">📋</span> again to create a new one.
-                  </p>
+                  {#if linkedDeleteError}
+                    <p class="text-xs text-red-400">{linkedDeleteError}</p>
+                  {/if}
 
-                  <div class="flex justify-end">
-                    <Button variant="secondary" size="small" on:click={dismissSuggestion}>
-                      Dismiss
-                    </Button>
-                  </div>
+                  {#if linked}
+                    <div class="flex justify-end gap-2 flex-wrap">
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        icon="clipboard"
+                        on:click={() => viewLinkedAction(linked)}
+                        title="Expand the Actions section and scroll to this action"
+                      >
+                        View in Actions
+                      </Button>
+                      <ProtectedButton
+                        action="modify"
+                        variant="danger"
+                        size="small"
+                        icon="delete"
+                        on:click={() => requestDeleteLinked(linked)}
+                        title="Delete the linked action (a new one can then be created)"
+                      >
+                        Delete linked action
+                      </ProtectedButton>
+                    </div>
+                  {/if}
                 </div>
 
               {:else}
@@ -669,4 +721,18 @@
   saving={suggestionSaving}
   on:submit={handleActionFormSubmit}
   on:cancel={handleActionFormCancel}
+/>
+
+<!-- -- Linked-action delete confirmation ----------------------------- -->
+<ConfirmDialog
+  show={showLinkedDeleteConfirm}
+  title="Delete linked action"
+  message={pendingLinkedAction
+    ? `Delete the linked action "${pendingLinkedAction.action_text}"? This cannot be undone.`
+    : 'Delete this linked action? This cannot be undone.'}
+  confirmText="Delete Action"
+  cancelText="Cancel"
+  danger={true}
+  on:confirm={confirmDeleteLinked}
+  on:cancel={cancelDeleteLinked}
 />

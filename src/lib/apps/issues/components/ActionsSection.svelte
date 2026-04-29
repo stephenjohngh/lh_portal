@@ -203,7 +203,10 @@
   {#if visibleActions.length > 0}
     <div class="space-y-1">
       {#each visibleActions as action}
-        <div class="bg-slate-700/50 rounded p-2 border-l-2 border-amber-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}">
+        <div
+          id={`action-${action.id}`}
+          class="bg-slate-700/50 rounded p-2 border-l-2 border-amber-400 {action.status === ACTION_STATUS.COMPLETED ? 'opacity-60' : ''}"
+        >
           {#if editingAction?.id === action.id}
             <div class="space-y-3">
               <div>

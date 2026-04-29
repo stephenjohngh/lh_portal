@@ -1,7 +1,7 @@
 <!-- src/lib/apps/issues/components/IssueCard.svelte -->
 <!-- REFACTORED: Uses new CSS utility classes -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import CommentsSection from './CommentsSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
@@ -43,6 +43,27 @@
   function confirmDelete() {
     dispatch('delete', issue.id);
     showDeleteConfirm = false;
+  }
+
+  // Jump to a specific action — invoked from CommentsSection's
+  // 'already linked' panel via the View in Actions button. Ensures the
+  // Actions section is expanded, then scrolls to the action and briefly
+  // ring-highlights it so the user sees where it landed.
+  async function handleJumpToAction({ detail }) {
+    const actionId = detail?.actionId;
+    if (!actionId) return;
+    if (!showActions) {
+      dispatch('toggleActions');
+      // Two ticks: one for the parent to flip showActions=true, another
+      // for ActionsSection's DOM to mount.
+      await tick();
+      await tick();
+    }
+    const el = document.getElementById(`action-${actionId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('ring-2', 'ring-purple-400');
+    setTimeout(() => el.classList.remove('ring-2', 'ring-purple-400'), 1800);
   }
 
   $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED 
@@ -191,6 +212,7 @@
           issueId={issue.id}
           comments={issue.comments || []}
           actions={issue.actions || []}
+          on:jumpToAction={handleJumpToAction}
         />
       </div>
     </div>
