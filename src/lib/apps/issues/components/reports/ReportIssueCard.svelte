@@ -1,7 +1,7 @@
 <!-- src/lib/apps/issues/components/reports/ReportIssueCard.svelte -->
 <!-- REFACTORED: Uses new CSS utility classes -->
 <script>
-  import { getPriorityLabel } from '$lib/utils/priorities';
+  import { getPriorityLabel } from '$lib/utils/constants';
   import { fmtDate, isOverdue } from '$lib/utils/dates';
   import { formatTimestamp, STATUS_COLORS } from './reportUtils';
 

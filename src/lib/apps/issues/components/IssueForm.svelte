@@ -6,7 +6,7 @@
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import FormSelect from '$lib/components/common/FormSelect.svelte';
   import Modal from '$lib/components/common/Modal.svelte';
-  import { PRIORITIES } from '$lib/utils/priorities';
+  import { PRIORITIES } from '$lib/utils/constants';
   import { ISSUE_STATUS, ISSUE_STATUS_OPTIONS } from '$lib/utils/constants';
   import { fmtDate } from '$lib/utils/dates.js';
 

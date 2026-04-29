@@ -8,9 +8,8 @@
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { getPriorityLabel } from '$lib/utils/priorities';
   import { fmtDate } from '$lib/utils/dates';
-  import { ISSUE_STATUS, ACTION_STATUS } from '$lib/utils/constants';
+  import { ISSUE_STATUS, ACTION_STATUS, getPriorityLabel } from '$lib/utils/constants';
 
   export let issue;
   export let showComments = false;
