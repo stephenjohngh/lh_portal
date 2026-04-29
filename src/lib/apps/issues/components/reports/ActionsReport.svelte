@@ -5,7 +5,7 @@
   import Button from '$lib/components/common/Button.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { supabase } from '$lib/supabaseClient';
+  import { profiles, profilesStore } from '$lib/stores/profiles';
   import { fmtDate, fmtDateLong, isOverdue } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
   import { getLogger } from '$lib/utils/logger';
@@ -16,28 +16,11 @@
   export let show = false;
   export let issues = [];
 
-  let profiles = [];
   let selectedUser = 'all';
   let isGenerating = false;
   let downloadError = '';
 
-  onMount(async () => {
-    await loadProfiles();
-  });
-
-  async function loadProfiles() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .order('full_name');
-    
-    if (error) {
-      logger('❌ Error loading profiles:', error.message);
-      profiles = [];
-    } else {
-      profiles = data || [];
-    }
-  }
+  onMount(() => profilesStore.load());
 
   $: allActions = issues.flatMap(issue => 
     (issue.actions || [])
@@ -138,7 +121,7 @@
           >
             <option value="all">All Users</option>
             <option value="unallocated">Unallocated</option>
-            {#each profiles as profile}
+            {#each $profiles.list as profile}
               <option value={profile.full_name}>{profile.full_name}</option>
             {/each}
             <option value="External">External</option>

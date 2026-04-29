@@ -1,20 +1,16 @@
 <!-- src/lib/apps/issues/components/ActionsSection.svelte -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';
+  import { profilesStore } from '$lib/stores/profiles';
   import { fmtDate, fmtDateTime, isOverdue, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS, UI_COLORS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import ActionForm      from './ActionForm.svelte';
-  import { onMount }    from 'svelte';
-  import { api }        from '$lib/utils/api';
-  import { getLogger }  from '$lib/utils/logger';
+  import ActionForm     from './ActionForm.svelte';
   import { sortActions } from '$lib/utils/actionSort';
-
-  const logger = getLogger('ActionsSection');
 
   export let issueId;
   export let actions  = [];
@@ -26,7 +22,6 @@
   let showDeleteConfirm = false;
   let pendingDeleteId = null;
   let showAllActions = false;
-  let profiles = [];
   let mutationError = '';
   let saving = false;
 
@@ -34,26 +29,10 @@
   let sortField = 'smart';   // 'smart' | 'deadline' | 'updated_at' | 'created_at'
   let sortDir   = 'asc';     // 'asc' | 'desc' — for 'smart' this is ignored
 
-  // Fetch all profiles on mount
-  onMount(async () => {
-    await loadProfiles();
-  });
-
-  async function loadProfiles() {
-    try {
-      profiles = await api.get('profiles', { select: 'full_name', orderBy: 'full_name' });
-    } catch (err) {
-      logger('❌ Error loading profiles:', err);
-      profiles = [];
-    }
-  }
-
-  // Create assignee options: blank + all profiles + "External"
-  $: assigneeOptions = [
-    { value: '', label: '' },
-    ...profiles.map(p => ({ value: p.full_name, label: p.full_name })),
-    { value: 'External', label: 'External' }
-  ];
+  // Profile-backed assignee options. profilesStore.load() is idempotent
+  // and shared across components, so calling here is cheap.
+  onMount(() => profilesStore.load());
+  const assigneeOptionsStore = profilesStore.assigneeOptions();
 
   // Sorting: 'smart' uses the utility (Status → Deadline → Created).
   // Other fields use a simple comparator that respects sortDir.
@@ -220,7 +199,7 @@
                     bind:value={editingAction.name_text}
                     class="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded text-white"
                   >
-                    {#each assigneeOptions as option}
+                    {#each $assigneeOptionsStore as option}
                       <option value={option.value}>{option.label}</option>
                     {/each}
                   </select>
@@ -347,7 +326,7 @@
 <!-- Add Action Modal -->
 <ActionForm
   show={showAddModal}
-  {assigneeOptions}
+  assigneeOptions={$assigneeOptionsStore}
   {saving}
   on:submit={addAction}
   on:cancel={() => { showAddModal = false; mutationError = ''; }}

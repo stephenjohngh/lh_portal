@@ -3,9 +3,9 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import { env as publicEnv } from '$env/dynamic/public';
   import { auth } from '$lib/stores/auth';
+  import { profilesStore } from '$lib/stores/profiles';
   import { issuesStore } from '../stores/issuesStore';
   import { fmtDateTime, wasModified } from '$lib/utils/dates';
-  import { api } from '$lib/utils/api';
   import { getLogger } from '$lib/utils/logger';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
@@ -78,24 +78,11 @@
   let pendingLinkedAction     = null;
   let linkedDeleteError       = '';
 
-  // Profile list for the ActionForm assignee dropdown — duplicated here
-  // (also loaded by ActionsSection) so this section is self-contained.
-  let profiles = [];
-
-  onMount(async () => {
-    try {
-      profiles = await api.get('profiles', { select: 'full_name', orderBy: 'full_name' });
-    } catch (err) {
-      logger('❌ Error loading profiles for action form:', err);
-      profiles = [];
-    }
-  });
-
-  $: assigneeOptions = [
-    { value: '', label: '' },
-    ...profiles.map(p => ({ value: p.full_name, label: p.full_name })),
-    { value: 'External', label: 'External' }
-  ];
+  // Profile-backed assignee options for the ActionForm modal opened from
+  // a comment's suggestion card. Shared, idempotent cache — see
+  // src/lib/stores/profiles.js.
+  onMount(() => profilesStore.load());
+  const assigneeOptionsStore = profilesStore.assigneeOptions();
 
   // Filter historic, then sort
   $: filteredComments = showHistoric
@@ -720,7 +707,7 @@
 <ActionForm
   show={showActionForm}
   initialActionText={actionFormInitialText}
-  {assigneeOptions}
+  assigneeOptions={$assigneeOptionsStore}
   saving={suggestionSaving}
   on:submit={handleActionFormSubmit}
   on:cancel={handleActionFormCancel}
