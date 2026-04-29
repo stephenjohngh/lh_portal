@@ -23,6 +23,17 @@
 
   export let issueId;
   export let comments = [];
+  // Passed in by IssueCard so we can tell, per comment, whether an
+  // action has already been created from it. One-to-one: at most one
+  // action per comment (enforced by DB partial unique index).
+  export let actions  = [];
+
+  // Map of comment.id → linked action (or undefined).
+  $: linkedActionByCommentId = Object.fromEntries(
+    actions
+      .filter(a => a?.source_comment_id)
+      .map(a => [a.source_comment_id, a])
+  );
 
   let showAddForm    = false;
   let editingComment = null;
@@ -49,7 +60,8 @@
   let suggestionDraft   = '';     // editable action text in the suggestion card
   let suggestionSaving  = false;  // true while the ActionForm submit is in flight
   let suggestionLoading = false;  // true while the AI API call is in flight
-  let suggestionSource  = 'comment'; // 'ai' | 'comment' | 'ai_declined' | 'ai_failed'
+  // 'ai' | 'comment' | 'ai_declined' | 'ai_failed' | 'already_linked'
+  let suggestionSource  = 'comment';
   let suggestionInfo    = '';     // user-facing reasoning / fallback notice
   let suggestionError   = '';
 
@@ -145,6 +157,16 @@
     suggestionInfo    = '';
     suggestionForId   = comment.id;
 
+    // If this comment already has a linked action, short-circuit to a
+    // warning panel — the user must delete the existing action first.
+    const existing = linkedActionByCommentId[comment.id];
+    if (existing) {
+      suggestionLoading = false;
+      suggestionDraft   = '';
+      suggestionSource  = 'already_linked';
+      return;
+    }
+
     if (!AI_SUGGESTIONS_ENABLED) {
       // Day 0.5 path: just copy the comment text into the editable draft.
       suggestionDraft  = comment.comment_text;
@@ -224,7 +246,13 @@
   async function handleActionFormSubmit({ detail }) {
     suggestionSaving = true;
     suggestionError  = '';
-    const result = await issuesStore.addAction(issueId, detail);
+    // Tag the new action with its source comment so it shows up as
+    // linked, and so the DB unique-index blocks a second linked action
+    // for the same comment.
+    const result = await issuesStore.addAction(issueId, {
+      ...detail,
+      source_comment_id: suggestionForId
+    });
     suggestionSaving = false;
     if (!result.success) {
       // Surface the error on the suggestion card and keep the modal
@@ -410,7 +438,7 @@
               </div>
             </div>
 
-            <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
+            <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 flex-wrap">
               <span>Added: {formatDateTime(comment.created_at, comment.created_by_profile?.full_name)}</span>
               {#if wasModified(comment.created_at, comment.updated_at)}
                 <span>•</span>
@@ -420,81 +448,135 @@
                 <span>•</span>
                 <span class="text-amber-400">Historic</span>
               {/if}
+              {#if linkedActionByCommentId[comment.id]}
+                <span>•</span>
+                <span
+                  class="text-purple-400/80"
+                  title={`Linked action: ${linkedActionByCommentId[comment.id].action_text}`}
+                >
+                  🔗 Has linked action
+                </span>
+              {/if}
             </div>
 
             <!-- Suggested-action panel.
-                 Source can be: 'ai' (LLM suggested), 'ai_declined' (LLM
-                 said no — fell back to comment text), 'ai_failed' (API
-                 error — fell back to comment text), 'comment' (feature
-                 flag off — Day 0.5 fallback). -->
+                 suggestionSource:
+                   'ai'             — LLM produced an action_text
+                   'ai_declined'    — LLM said no clear action
+                   'ai_failed'      — API error / network failure
+                   'comment'        — feature flag off (Day 0.5 fallback)
+                   'already_linked' — comment already has a linked action;
+                                      show warning instead of the form -->
             {#if suggestionForId === comment.id}
-              <div class="mt-2 bg-amber-900/15 border border-amber-700/40 rounded p-3 space-y-2">
-                <div class="flex items-center justify-between gap-2">
-                  <p class="text-xs font-semibold text-amber-300 flex items-center gap-1.5 flex-wrap">
-                    <span>
-                      💡
-                      {#if suggestionLoading}
-                        AI suggestion — thinking…
-                      {:else if suggestionSource === 'ai'}
-                        AI-suggested action
-                      {:else if suggestionSource === 'ai_declined'}
-                        Suggested action (AI declined)
-                      {:else if suggestionSource === 'ai_failed'}
-                        Suggested action (AI unavailable)
-                      {:else}
-                        Suggested action from comment
-                      {/if}
-                    </span>
-                    {#if !suggestionLoading}
-                      <span class="text-amber-500/60 font-normal italic text-[10px]">draft — review before adding</span>
-                    {/if}
-                  </p>
-                  <button
-                    on:click={dismissSuggestion}
-                    class="text-gray-400 hover:text-white text-sm leading-none"
-                    title="Dismiss"
-                    aria-label="Dismiss suggestion"
-                  >✕</button>
-                </div>
-
-                {#if suggestionLoading}
-                  <div class="flex items-center gap-2 px-2 py-3 text-sm text-amber-300/70">
-                    <Icon name="refresh" size={4} className="animate-spin" />
-                    <span>Asking the AI for a suggested action…</span>
+              {#if suggestionSource === 'already_linked'}
+                {@const linked = linkedActionByCommentId[comment.id]}
+                <div class="mt-2 bg-red-900/15 border border-red-700/40 rounded p-3 space-y-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="text-xs font-semibold text-red-300 flex items-center gap-1.5">
+                      <span>⚠ This comment already has a linked action</span>
+                    </p>
+                    <button
+                      on:click={dismissSuggestion}
+                      class="text-gray-400 hover:text-white text-sm leading-none"
+                      title="Dismiss"
+                      aria-label="Dismiss"
+                    >✕</button>
                   </div>
-                {:else}
-                  <textarea
-                    bind:value={suggestionDraft}
-                    rows="2"
-                    placeholder="Action description"
-                    class="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
-                  ></textarea>
-                  {#if suggestionInfo}
-                    <p class="text-[11px] text-amber-200/60 italic">{suggestionInfo}</p>
+
+                  {#if linked}
+                    <div class="px-3 py-2 rounded bg-slate-800/80 border-l-2 border-amber-400">
+                      <p class="text-sm text-gray-200 whitespace-pre-wrap">{linked.action_text}</p>
+                      <div class="flex items-center gap-2 mt-1.5 text-xs flex-wrap">
+                        <span class="px-1.5 py-0.5 rounded bg-purple-600/20 text-purple-300 border border-purple-200/30 capitalize">
+                          {linked.status}
+                        </span>
+                        {#if linked.name_text}
+                          <span class="text-gray-500">👤 {linked.name_text}</span>
+                        {/if}
+                      </div>
+                    </div>
                   {/if}
-                {/if}
 
-                {#if suggestionError}
-                  <p class="text-xs text-red-400">{suggestionError}</p>
-                {/if}
+                  <p class="text-[11px] text-red-200/70 italic leading-relaxed">
+                    Each comment can only be linked to one action. Delete the linked action above (from the Actions section), then click <span class="font-mono">📋</span> again to create a new one.
+                  </p>
 
-                <div class="flex justify-end gap-2">
-                  <Button variant="secondary" size="small" on:click={dismissSuggestion}>
-                    Dismiss
-                  </Button>
-                  <ProtectedButton
-                    action="modify"
-                    variant="amber"
-                    size="small"
-                    icon="plus"
-                    disabled={suggestionLoading || suggestionSaving || !suggestionDraft.trim()}
-                    on:click={openSuggestionInActionForm}
-                    title="Open the action form pre-filled with this text"
-                  >
-                    {suggestionSaving ? 'Adding…' : 'Add Action…'}
-                  </ProtectedButton>
+                  <div class="flex justify-end">
+                    <Button variant="secondary" size="small" on:click={dismissSuggestion}>
+                      Dismiss
+                    </Button>
+                  </div>
                 </div>
-              </div>
+
+              {:else}
+                <div class="mt-2 bg-amber-900/15 border border-amber-700/40 rounded p-3 space-y-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="text-xs font-semibold text-amber-300 flex items-center gap-1.5 flex-wrap">
+                      <span>
+                        💡
+                        {#if suggestionLoading}
+                          AI suggestion — thinking…
+                        {:else if suggestionSource === 'ai'}
+                          AI-suggested action
+                        {:else if suggestionSource === 'ai_declined'}
+                          Suggested action (AI declined)
+                        {:else if suggestionSource === 'ai_failed'}
+                          Suggested action (AI unavailable)
+                        {:else}
+                          Suggested action from comment
+                        {/if}
+                      </span>
+                      {#if !suggestionLoading}
+                        <span class="text-amber-500/60 font-normal italic text-[10px]">draft — review before adding</span>
+                      {/if}
+                    </p>
+                    <button
+                      on:click={dismissSuggestion}
+                      class="text-gray-400 hover:text-white text-sm leading-none"
+                      title="Dismiss"
+                      aria-label="Dismiss suggestion"
+                    >✕</button>
+                  </div>
+
+                  {#if suggestionLoading}
+                    <div class="flex items-center gap-2 px-2 py-3 text-sm text-amber-300/70">
+                      <Icon name="refresh" size={4} className="animate-spin" />
+                      <span>Asking the AI for a suggested action…</span>
+                    </div>
+                  {:else}
+                    <textarea
+                      bind:value={suggestionDraft}
+                      rows="2"
+                      placeholder="Action description"
+                      class="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
+                    ></textarea>
+                    {#if suggestionInfo}
+                      <p class="text-[11px] text-amber-200/60 italic">{suggestionInfo}</p>
+                    {/if}
+                  {/if}
+
+                  {#if suggestionError}
+                    <p class="text-xs text-red-400">{suggestionError}</p>
+                  {/if}
+
+                  <div class="flex justify-end gap-2">
+                    <Button variant="secondary" size="small" on:click={dismissSuggestion}>
+                      Dismiss
+                    </Button>
+                    <ProtectedButton
+                      action="modify"
+                      variant="amber"
+                      size="small"
+                      icon="plus"
+                      disabled={suggestionLoading || suggestionSaving || !suggestionDraft.trim()}
+                      on:click={openSuggestionInActionForm}
+                      title="Open the action form pre-filled with this text"
+                    >
+                      {suggestionSaving ? 'Adding…' : 'Add Action…'}
+                    </ProtectedButton>
+                  </div>
+                </div>
+              {/if}
             {/if}
           </div>
         {/if}

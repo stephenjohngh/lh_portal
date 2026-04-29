@@ -48,8 +48,9 @@ function createIssuesStore() {
               updated_by_profile:profiles!updated_by(full_name)
             ),
             actions (
-              id, action_text, name_text,  
-              date_deadline, status, created_at, updated_at,
+              id, action_text, name_text,
+              date_deadline, status, source_comment_id,
+              created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             )
@@ -476,7 +477,9 @@ function createIssuesStore() {
         
         logger('Issue found:', issue);
         
-        // Create action
+        // Create action. source_comment_id is set when this action was
+        // created from a comment via the "Create Action from Comment"
+        // suggestion flow; left null otherwise.
         const { data: newAction, error: createError } = await supabase
           .from('actions')
           .insert({
@@ -485,6 +488,7 @@ function createIssuesStore() {
             name_text: actionData.name_text,
             date_deadline: actionData.date_deadline || null,
             status: actionData.status,
+            source_comment_id: actionData.source_comment_id || null,
             created_at: now,
             updated_at: now,
             created_by: user?.id,
@@ -505,10 +509,11 @@ function createIssuesStore() {
           `Action on Issue #${issue?.issue_number}`,
           {
             afterData: {
-              action_text: actionData.action_text,
-              name_text: actionData.name_text,
-              status: actionData.status,
-              issue_name: issue?.name
+              action_text:        actionData.action_text,
+              name_text:          actionData.name_text,
+              status:             actionData.status,
+              source_comment_id:  actionData.source_comment_id || null,
+              issue_name:         issue?.name
             }
           }
         );

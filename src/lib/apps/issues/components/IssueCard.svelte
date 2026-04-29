@@ -187,9 +187,10 @@
   {#if showComments}
     <div class="ml-8 mr-4 mb-3">
       <div class="border-l-4 border-blue-500 pl-3">
-        <CommentsSection 
+        <CommentsSection
           issueId={issue.id}
           comments={issue.comments || []}
+          actions={issue.actions || []}
         />
       </div>
     </div>
@@ -199,9 +200,10 @@
   {#if showActions}
     <div class="ml-8 mr-4 mb-3">
       <div class="border-l-4 border-{UI_COLORS.ACTION_BORDER} pl-3">
-        <ActionsSection 
+        <ActionsSection
           issueId={issue.id}
           actions={issue.actions || []}
+          comments={issue.comments || []}
         />
       </div>
     </div>
