@@ -15,6 +15,7 @@
   import { fmtDateTime, wasModified } from '$lib/utils/dates';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
+  import MeetingBadge       from './meetings/MeetingBadge.svelte';
   import CommentSuggestionPanel from './CommentSuggestionPanel.svelte';
 
   // -- Props -----------------------------------------------------------
@@ -139,6 +140,12 @@
         <span class="text-purple-400/80" title={`Linked action: ${linkedAction.action_text}`}>
           🔗 Has linked action
         </span>
+      {/if}
+      {#if comment.meeting_id}
+        <MeetingBadge
+          meetingId={comment.meeting_id}
+          on:click={(e) => dispatch('meetingFilter', e.detail)}
+        />
       {/if}
     </div>
 

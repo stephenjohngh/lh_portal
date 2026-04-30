@@ -10,6 +10,7 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import ActionForm     from './ActionForm.svelte';
+  import MeetingBadge   from './meetings/MeetingBadge.svelte';
   import { sortActions } from '$lib/utils/actionSort';
 
   export let issueId;
@@ -275,12 +276,18 @@
                   </span>
 
                 </div>
-                <p class="text-xs text-gray-500 mt-1">
-                  Added: {fmtDateTime(action.created_at, action.created_by_profile?.full_name)}
+                <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                  <span>Added: {fmtDateTime(action.created_at, action.created_by_profile?.full_name)}</span>
                   {#if wasModified(action.created_at, action.updated_at)}
-                    • Modified: {fmtDateTime(action.updated_at, action.updated_by_profile?.full_name)}
+                    <span>• Modified: {fmtDateTime(action.updated_at, action.updated_by_profile?.full_name)}</span>
                   {/if}
-                </p>
+                  {#if action.meeting_id}
+                    <MeetingBadge
+                      meetingId={action.meeting_id}
+                      on:click={(e) => dispatch('meetingFilter', e.detail)}
+                    />
+                  {/if}
+                </div>
 
               </div>
               <div class="flex space-x-1">

@@ -4,6 +4,7 @@
   import { createEventDispatcher, tick } from 'svelte';
   import CommentsSection from './CommentsSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
+  import MeetingBadge from './meetings/MeetingBadge.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -154,11 +155,14 @@
           <p class="text-gray-300 whitespace-pre-wrap py-2">{issue.description}</p>
         {/if}
         
-        <div class="flex-row-lg mt-1 text-muted-sm">
+        <div class="flex-row-lg mt-1 text-muted-sm flex-wrap">
           <span>Created: {fmtDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
           {#if issue.updated_at && issue.updated_at !== issue.created_at}
             <span>•</span>
             <span>Modified: {fmtDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
+          {/if}
+          {#if issue.meeting_id}
+            <MeetingBadge meetingId={issue.meeting_id} on:click={(e) => dispatch('meetingFilter', e.detail)} />
           {/if}
          </div>
       </div>
@@ -242,6 +246,7 @@
           comments={issue.comments || []}
           actions={issue.actions || []}
           on:jumpToAction={handleJumpToAction}
+          on:meetingFilter
         />
       </div>
     </div>
@@ -255,6 +260,7 @@
           issueId={issue.id}
           actions={issue.actions || []}
           on:jumpToComment={handleJumpToComment}
+          on:meetingFilter
         />
       </div>
     </div>

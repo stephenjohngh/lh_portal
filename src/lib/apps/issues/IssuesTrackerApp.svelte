@@ -288,7 +288,7 @@
   {:else}
     <div class="section-spacing">
       {#each filteredIssues as issue (issue.id)}
-        <IssueCard 
+        <IssueCard
           {issue}
           showComments={expandedSections[issue.id]?.comments || false}
           showActions={expandedSections[issue.id]?.actions || false}
@@ -297,6 +297,7 @@
           on:edit={(e) => editingIssue = e.detail}
           on:toggleStatus={handleToggleStatus}
           on:delete={handleDeleteIssue}
+          on:meetingFilter={(e) => meetingFilterId = e.detail}
         />
       {/each}
     </div>

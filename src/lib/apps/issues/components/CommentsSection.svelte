@@ -395,6 +395,7 @@
           on:addAction={openSuggestionInActionForm}
           on:viewLinked={(e) => viewLinkedAction(e.detail)}
           on:deleteLinkedRequest={(e) => requestDeleteLinked(e.detail)}
+          on:meetingFilter
         />
       {/each}
     </div>
