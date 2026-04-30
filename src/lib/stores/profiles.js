@@ -1,20 +1,22 @@
 // src/lib/stores/profiles.js
 //
-// Single shared cache of `profiles.full_name` rows.
+// Single shared cache of profile rows.
 //
 // Used wherever an app needs to populate an "assignee" / "person" dropdown
-// from the user list — Issues actions, Issues actions report, etc.
-// Without this every component (CommentsSection, ActionsSection,
-// ActionsReport, …) would run its own `select full_name from profiles
-// order by full_name` per mount.
+// from the user list — Issues actions, Issues actions report, meeting
+// participants, etc. Without this every component would run its own
+// `select id, full_name from profiles order by full_name` per mount.
 //
 // Public surface:
 //   - `profiles`            — readable store: { loaded, list, error }
+//                             where list is [{ id, full_name }]
 //   - `profilesStore.load`  — fetch (idempotent — only hits the DB the first
 //                             time, subsequent calls are no-ops; pass
 //                             { force: true } to refetch)
 //   - `profilesStore.assigneeOptions(extras?)` — convenience derived helper
-//                             returning [{value, label}] for FormSelect/etc.
+//                             returning [{value, label}] for FormSelect.
+//                             value is full_name (matches the legacy
+//                             actions.name_text shape — string, not uuid).
 
 import { writable, derived } from 'svelte/store';
 import { api } from '$lib/utils/api';
@@ -24,7 +26,7 @@ const logger = getLogger('profilesStore');
 
 const _state = writable({
   loaded: false,
-  list:   [],     // [{ full_name }]
+  list:   [],     // [{ id, full_name }]
   error:  null
 });
 
@@ -40,7 +42,7 @@ async function load({ force = false } = {}) {
   _loadPromise = (async () => {
     try {
       const list = await api.get('profiles', {
-        select:  'full_name',
+        select:  'id, full_name',
         orderBy: 'full_name'
       });
       _state.set({ loaded: true, list: list || [], error: null });
