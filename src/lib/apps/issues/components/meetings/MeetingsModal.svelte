@@ -160,7 +160,11 @@
         variant="primary"
         size="small"
         icon="plus"
+        disabled={!!$meetingsStore.current}
         on:click={openCreate}
+        title={$meetingsStore.current
+          ? `Close "${$meetingsStore.current.title}" first — only one meeting can be open at a time.`
+          : 'Create a new meeting'}
       >
         New meeting
       </ProtectedButton>
