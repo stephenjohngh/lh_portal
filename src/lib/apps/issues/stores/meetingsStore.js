@@ -142,10 +142,19 @@ function createMeetingsStore() {
       const userId = user?.id ?? null;
 
       const before = await api.getById('meetings', id);
-      const row = await api.update('meetings', id, {
-        ...patch,
-        updated_by: userId
-      }, true);
+
+      // Allow-list of writable columns. UI-only fields from MeetingForm
+      // (openImmediately, etc.) are silently dropped here so they can
+      // never leak into the SQL UPDATE — PostgREST rejects unknown
+      // columns with "Could not find the '<col>' column ... in the
+      // schema cache".
+      const writable = {};
+      for (const k of ['title', 'meeting_type', 'meeting_date', 'notes', 'participants']) {
+        if (k in patch) writable[k] = patch[k];
+      }
+      writable.updated_by = userId;
+
+      const row = await api.update('meetings', id, writable, true);
 
       audit('update', 'meeting', id, row.title, {
         beforeData: before,
