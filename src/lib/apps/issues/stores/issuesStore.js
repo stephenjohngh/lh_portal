@@ -1,11 +1,12 @@
 // src/lib/apps/issues/stores/issuesStore.js
 // UPDATED: Uses general audit logging API endpoint for all events
-import { writable }    from 'svelte/store';
-import { supabase }    from '$lib/supabaseClient';
-import { api }         from '$lib/utils/api';
-import { ISSUE_STATUS } from '$lib/utils/constants';
-import { getLogger }   from '$lib/utils/logger';
-import { logAudit }    from '$lib/utils/auditLogger';
+import { get, writable }    from 'svelte/store';
+import { supabase }         from '$lib/supabaseClient';
+import { api }              from '$lib/utils/api';
+import { ISSUE_STATUS }     from '$lib/utils/constants';
+import { getLogger }        from '$lib/utils/logger';
+import { logAudit }         from '$lib/utils/auditLogger';
+import { currentMeeting }   from './meetingsStore';
 
 const logger = getLogger('issuesStore');
 
@@ -18,6 +19,12 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
     severity: eventType === 'delete' ? 'warning' : 'info',
     ...data,
   });
+}
+
+/** Read the currently-open meeting's id (or null). Used to auto-tag
+ *  new issues / comments / actions during a meeting. */
+function activeMeetingId() {
+  return get(currentMeeting)?.id ?? null;
 }
 
 function createIssuesStore() {
@@ -40,16 +47,17 @@ function createIssuesStore() {
           select: `
             *,
             issue_number,
+            meeting_id,
             created_by_profile:profiles!created_by(full_name),
             updated_by_profile:profiles!updated_by(full_name),
             comments (
-              id, comment_text, historic, created_at, updated_at,
+              id, comment_text, historic, meeting_id, created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             ),
             actions (
               id, action_text, name_text,
-              date_deadline, status, source_comment_id,
+              date_deadline, status, source_comment_id, meeting_id,
               created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
@@ -154,6 +162,8 @@ function createIssuesStore() {
         const { data: { user } } = await supabase.auth.getUser();
         logger('User:', user?.id, user?.email);
         
+        const meetingId = activeMeetingId();
+
         // Create issue
         const { data: newIssue, error: createError } = await supabase
           .from('issues')
@@ -162,12 +172,13 @@ function createIssuesStore() {
             description: issueData.description,
             priority: parseInt(issueData.priority) || 3,
             status: issueData.status || ISSUE_STATUS.CURRENT,
+            meeting_id: meetingId,
             created_at: now,
             updated_at: now,
             created_by: user?.id,
             updated_by: user?.id
           })
-          .select('id, issue_number, name')
+          .select('id, issue_number, name, meeting_id')
           .single();
 
         if (createError) throw createError;
@@ -326,6 +337,7 @@ function createIssuesStore() {
           .insert({
             issue_id: issueId,
             comment_text: commentText,
+            meeting_id: activeMeetingId(),
             created_at: now,
             updated_at: now,
             created_by: user?.id,
@@ -489,6 +501,7 @@ function createIssuesStore() {
             date_deadline: actionData.date_deadline || null,
             status: actionData.status,
             source_comment_id: actionData.source_comment_id || null,
+            meeting_id: activeMeetingId(),
             created_at: now,
             updated_at: now,
             created_by: user?.id,
