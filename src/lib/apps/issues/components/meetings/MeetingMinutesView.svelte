@@ -125,6 +125,26 @@
               {/if}
             </h3>
 
+            {#if m.comments.length > 0}
+              <p class="text-xs uppercase tracking-wide text-blue-400/80 font-semibold mt-3 mb-1.5">Comments</p>
+              <ul class="space-y-1.5">
+                {#each m.comments as c (c.id)}
+                  <li class="flex items-start gap-2 text-sm">
+                    <span class="text-blue-400 shrink-0 mt-0.5">•</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-slate-200 whitespace-pre-wrap">{c.comment_text}</p>
+                      <p class="text-xs text-slate-500 mt-0.5">
+                        added {fmtDateTime(c.created_at, c.created_by_profile?.full_name)}
+                        {#if c.historic}
+                          · <span class="text-amber-400">historic</span>
+                        {/if}
+                      </p>
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+
             {#if m.actions.length > 0}
               <p class="text-xs uppercase tracking-wide text-amber-400/80 font-semibold mt-3 mb-1.5">Actions</p>
               <ul class="space-y-1.5">
@@ -145,26 +165,6 @@
                         {/if}
                         <span class="text-slate-600">added {fmtDateTime(a.created_at, a.created_by_profile?.full_name)}</span>
                       </div>
-                    </div>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-
-            {#if m.comments.length > 0}
-              <p class="text-xs uppercase tracking-wide text-blue-400/80 font-semibold mt-3 mb-1.5">Comments</p>
-              <ul class="space-y-1.5">
-                {#each m.comments as c (c.id)}
-                  <li class="flex items-start gap-2 text-sm">
-                    <span class="text-blue-400 shrink-0 mt-0.5">•</span>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-slate-200 whitespace-pre-wrap">{c.comment_text}</p>
-                      <p class="text-xs text-slate-500 mt-0.5">
-                        added {fmtDateTime(c.created_at, c.created_by_profile?.full_name)}
-                        {#if c.historic}
-                          · <span class="text-amber-400">historic</span>
-                        {/if}
-                      </p>
                     </div>
                   </li>
                 {/each}
