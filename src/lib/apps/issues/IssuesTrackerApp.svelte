@@ -13,9 +13,10 @@
   import IssueForm from './components/IssueForm.svelte';
   import IssuesReport from './components/reports/IssuesReport.svelte';
   import ActionsReport from './components/reports/ActionsReport.svelte';
-  import MeetingBanner from './components/meetings/MeetingBanner.svelte';
-  import MeetingsModal from './components/meetings/MeetingsModal.svelte';
-  import MeetingForm   from './components/meetings/MeetingForm.svelte';
+  import MeetingBanner      from './components/meetings/MeetingBanner.svelte';
+  import MeetingsModal      from './components/meetings/MeetingsModal.svelte';
+  import MeetingForm        from './components/meetings/MeetingForm.svelte';
+  import MeetingMinutesView from './components/meetings/MeetingMinutesView.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
@@ -254,53 +255,61 @@
     </div>
   {/if}
 
-  <!-- Filters with Expand/Collapse Toggle -->
-  <div class="mb-4">
-    <IssueFilters
-      bind:searchTerm
-      bind:statusFilter
-      resultCount={filteredIssues.length}
-      showExpandToggle={filteredIssues.length > 0}
-      allExpanded={filteredIssues.every(issue =>
-        expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
-      )}
-      on:toggleExpand={(e) => e.detail ? expandAll() : collapseAll()}
-    />
-  </div>
-
   <!-- Error Display -->
-  <ErrorDisplay 
-    message={error} 
+  <ErrorDisplay
+    message={error}
     onDismiss={() => issuesStore.clearError()}
   />
 
-  <!-- Loading State -->
-  {#if loading}
-    <LoadingSpinner />
+  {#if filteredMeeting}
+    <!-- Meeting-minutes mode: clean, read-only view scoped to the
+         filtered meeting. Search / status filters are hidden because
+         they don't apply here — clear the meeting filter to get them
+         back. -->
+    {#if loading}
+      <LoadingSpinner />
+    {:else}
+      <MeetingMinutesView meeting={filteredMeeting} issues={filteredIssues} />
+    {/if}
 
-  <!-- Empty State -->
-  {:else if filteredIssues.length === 0}
-    <div class="empty-state">
-      No issues found. {searchTerm ? 'Try a different search.' : 'Click "New Issue" to create one.'}
-    </div>
-
-  <!-- Issues List -->
   {:else}
-    <div class="section-spacing">
-      {#each filteredIssues as issue (issue.id)}
-        <IssueCard
-          {issue}
-          showComments={expandedSections[issue.id]?.comments || false}
-          showActions={expandedSections[issue.id]?.actions || false}
-          on:toggleComments={() => toggleSection(issue.id, 'comments')}
-          on:toggleActions={() => toggleSection(issue.id, 'actions')}
-          on:edit={(e) => editingIssue = e.detail}
-          on:toggleStatus={handleToggleStatus}
-          on:delete={handleDeleteIssue}
-          on:meetingFilter={(e) => meetingFilterId = e.detail}
-        />
-      {/each}
+    <!-- Filters with Expand/Collapse Toggle -->
+    <div class="mb-4">
+      <IssueFilters
+        bind:searchTerm
+        bind:statusFilter
+        resultCount={filteredIssues.length}
+        showExpandToggle={filteredIssues.length > 0}
+        allExpanded={filteredIssues.every(issue =>
+          expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
+        )}
+        on:toggleExpand={(e) => e.detail ? expandAll() : collapseAll()}
+      />
     </div>
+
+    {#if loading}
+      <LoadingSpinner />
+    {:else if filteredIssues.length === 0}
+      <div class="empty-state">
+        No issues found. {searchTerm ? 'Try a different search.' : 'Click "New Issue" to create one.'}
+      </div>
+    {:else}
+      <div class="section-spacing">
+        {#each filteredIssues as issue (issue.id)}
+          <IssueCard
+            {issue}
+            showComments={expandedSections[issue.id]?.comments || false}
+            showActions={expandedSections[issue.id]?.actions || false}
+            on:toggleComments={() => toggleSection(issue.id, 'comments')}
+            on:toggleActions={() => toggleSection(issue.id, 'actions')}
+            on:edit={(e) => editingIssue = e.detail}
+            on:toggleStatus={handleToggleStatus}
+            on:delete={handleDeleteIssue}
+            on:meetingFilter={(e) => meetingFilterId = e.detail}
+          />
+        {/each}
+      </div>
+    {/if}
   {/if}
 </div>
 
