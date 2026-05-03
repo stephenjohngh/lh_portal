@@ -15,7 +15,6 @@
   import { onMount }              from 'svelte';
   import { fmtDate, fmtDateLong, fmtDateTime } from '$lib/utils/dates';
   import { profiles, profilesStore }           from '$lib/stores/profiles';
-  import Button                                from '$lib/components/common/Button.svelte';
 
   export let meeting = null;
   export let issues  = [];   // already filtered to this meeting's items
@@ -61,7 +60,7 @@
     return [...profileNames, ...(p.extras ?? [])];
   })();
 
-  function printMinutes() { window.print(); }
+
 </script>
 
 {#if meeting}
@@ -110,15 +109,6 @@
         </p>
       </div>
 
-      <Button
-        variant="secondary"
-        size="small"
-        icon="download"
-        on:click={printMinutes}
-        className="print:hidden"
-      >
-        Print
-      </Button>
     </div>
 
     <!-- ─── Per-issue sections ─────────────────────────────────────── -->
@@ -211,21 +201,3 @@
   </div>
 {/if}
 
-<style>
-  @media print {
-    .minutes-view {
-      background: white !important;
-      color: black !important;
-      border: none !important;
-      padding: 0 !important;
-    }
-    .minutes-view :global(*) {
-      color: black !important;
-    }
-    .minutes-view :global(.text-slate-400),
-    .minutes-view :global(.text-slate-500),
-    .minutes-view :global(.text-slate-600) {
-      color: #555 !important;
-    }
-  }
-</style>
