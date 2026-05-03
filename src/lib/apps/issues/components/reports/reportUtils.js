@@ -35,20 +35,17 @@ export function hasBeenUpdatedSince(timestamp, filterDateTime) {
 }
 
 /**
- * Check if an issue has recent changes (issue, comments, or actions)
+ * Check if an issue has recent changes (issue, comments, decisions, or actions)
  */
 export function hasRecentChanges(issue, filterDateTime) {
   if (!filterDateTime) return true;
-  
-  const issueUpdated = hasBeenUpdatedSince(issue.updated_at, filterDateTime);
-  const hasRecentComments = (issue.comments || []).some(c => 
-    hasBeenUpdatedSince(c.updated_at, filterDateTime)
-  );
-  const hasRecentActions = (issue.actions || []).some(a => 
-    hasBeenUpdatedSince(a.updated_at, filterDateTime)
-  );
-  
-  return issueUpdated || hasRecentComments || hasRecentActions;
+
+  const issueUpdated      = hasBeenUpdatedSince(issue.updated_at, filterDateTime);
+  const hasRecentComments  = (issue.comments  || []).some(c => hasBeenUpdatedSince(c.updated_at, filterDateTime));
+  const hasRecentDecisions = (issue.decisions || []).some(d => hasBeenUpdatedSince(d.updated_at, filterDateTime));
+  const hasRecentActions   = (issue.actions   || []).some(a => hasBeenUpdatedSince(a.updated_at, filterDateTime));
+
+  return issueUpdated || hasRecentComments || hasRecentDecisions || hasRecentActions;
 }
 
 /**
@@ -73,12 +70,15 @@ export function filterIssues(issues, filterDate) {
     .filter(issue => !filterDateTime || hasRecentChanges(issue, filterDateTime))
     .map(issue => ({
       ...issue,
-      // For completed issues, include ALL comments (even historic)
-      // For non-completed issues, filter out historic comments
-      comments: issue.status === ISSUE_STATUS.COMPLETED 
+      // For completed issues, include ALL comments/decisions (even historic)
+      // For non-completed issues, filter out historic ones
+      comments: issue.status === ISSUE_STATUS.COMPLETED
         ? (issue.comments || [])
         : (issue.comments || []).filter(c => !c.historic),
-      // Filter out completed actions (already done in outstandingActions)
+      decisions: issue.status === ISSUE_STATUS.COMPLETED
+        ? (issue.decisions || [])
+        : (issue.decisions || []).filter(d => !d.historic),
+      // Filter out completed actions
       outstandingActions: (issue.actions || []).filter(
         action => action.status !== ACTION_STATUS.COMPLETED
       )

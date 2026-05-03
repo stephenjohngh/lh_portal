@@ -27,11 +27,12 @@
     const id  = meeting.id;
     const out = [];
     for (const issue of issues) {
-      const meetingActions  = (issue.actions  || []).filter(a => a.meeting_id === id);
-      const meetingComments = (issue.comments || []).filter(c => c.meeting_id === id);
-      const isNew           = issue.meeting_id === id;
-      if (!isNew && meetingActions.length === 0 && meetingComments.length === 0) continue;
-      out.push({ issue, isNew, actions: meetingActions, comments: meetingComments });
+      const meetingActions   = (issue.actions   || []).filter(a => a.meeting_id === id);
+      const meetingComments  = (issue.comments  || []).filter(c => c.meeting_id === id);
+      const meetingDecisions = (issue.decisions || []).filter(d => d.meeting_id === id);
+      const isNew            = issue.meeting_id === id;
+      if (!isNew && meetingActions.length === 0 && meetingComments.length === 0 && meetingDecisions.length === 0) continue;
+      out.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions });
     }
     out.sort((a, b) => {
       if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
@@ -42,11 +43,12 @@
 
   $: totals = minutes.reduce(
     (acc, m) => ({
-      issues:   acc.issues   + (m.isNew ? 1 : 0),
-      actions:  acc.actions  + m.actions.length,
-      comments: acc.comments + m.comments.length
+      issues:    acc.issues    + (m.isNew ? 1 : 0),
+      actions:   acc.actions   + m.actions.length,
+      comments:  acc.comments  + m.comments.length,
+      decisions: acc.decisions + m.decisions.length
     }),
-    { issues: 0, actions: 0, comments: 0 }
+    { issues: 0, actions: 0, comments: 0, decisions: 0 }
   );
 
   // -- Resolve attendees to display names --------------------------------
@@ -106,6 +108,9 @@
           {totals.issues} new issue{totals.issues === 1 ? '' : 's'}
           · {totals.actions} action{totals.actions === 1 ? '' : 's'}
           · {totals.comments} comment{totals.comments === 1 ? '' : 's'}
+          {#if totals.decisions > 0}
+            · {totals.decisions} decision{totals.decisions === 1 ? '' : 's'}
+          {/if}
         </p>
       </div>
 
@@ -150,6 +155,30 @@
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(c.created_at, c.created_by_profile?.full_name)}
                             {#if c.historic}
+                              · <span class="text-amber-400">historic</span>
+                            {/if}
+                          </p>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+
+              {#if m.decisions.length > 0}
+                <div>
+                  <p class="text-[11px] uppercase tracking-wide text-violet-400/80 font-semibold mb-2">
+                    Decisions
+                  </p>
+                  <ul class="space-y-2">
+                    {#each m.decisions as d (d.id)}
+                      <li class="flex items-start gap-2 text-sm">
+                        <span class="text-violet-400 shrink-0 mt-0.5">•</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-slate-200 whitespace-pre-wrap">{d.decision_text}</p>
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
+                            {#if d.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
                           </p>

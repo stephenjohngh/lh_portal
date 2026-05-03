@@ -10,13 +10,9 @@
 
   const colors = STATUS_COLORS[statusType];
   
-  $: sortedComments = (issue.comments || [])
-    .slice()
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  
-  $: sortedActions = (issue.outstandingActions || [])
-    .slice()
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  $: sortedComments  = (issue.comments  || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  $: sortedDecisions = (issue.decisions || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  $: sortedActions   = (issue.outstandingActions || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 </script>
 
 <div class="border border-gray-300 rounded-lg overflow-hidden break-inside-avoid">
@@ -71,6 +67,34 @@
               Added: {fmtDate(comment.created_at)}
               {#if comment.updated_at && new Date(comment.updated_at).getTime() - new Date(comment.created_at).getTime() > 1000}
                 • Modified: {fmtDate(comment.updated_at)}
+              {/if}
+            </p>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Decisions Section -->
+  {#if sortedDecisions.length > 0}
+    <div class="p-4 bg-white border-t {colors.sectionBorder}">
+      <h4 class="font-semibold text-gray-900 mb-3 text-icon">
+        <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>Decisions ({sortedDecisions.length}):</span>
+      </h4>
+      <div class="section-spacing">
+        {#each sortedDecisions as decision}
+          <div class="p-3 bg-violet-50 rounded border border-violet-200">
+            <p class="text-gray-900 text-sm whitespace-pre-wrap">{decision.decision_text}</p>
+            <p class="text-xs text-gray-500 mt-1">
+              Added: {fmtDate(decision.created_at)}
+              {#if decision.updated_at && new Date(decision.updated_at).getTime() - new Date(decision.created_at).getTime() > 1000}
+                • Modified: {fmtDate(decision.updated_at)}
+              {/if}
+              {#if decision.historic}
+                • <span class="text-amber-600">historic</span>
               {/if}
             </p>
           </div>

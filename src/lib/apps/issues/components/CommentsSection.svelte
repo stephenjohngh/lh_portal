@@ -1,9 +1,11 @@
 <!-- src/lib/apps/issues/components/CommentsSection.svelte -->
 <!--
-  List + sort controls + add-comment form. Per-comment rendering and
-  the inline suggestion panel live in CommentItem / CommentSuggestionPanel.
+  List + sort controls + add-comment/add-decision forms. Per-comment rendering
+  and the inline suggestion panel live in CommentItem / CommentSuggestionPanel.
+  Per-decision rendering lives in DecisionItem.
   This file is the coordinator: it owns all suggestion state and hosts
   the cross-cutting modals (full-text viewer, delete confirms, ActionForm).
+  Comments and Decisions are interleaved in the same sort order.
 -->
 <script>
   import { onMount, createEventDispatcher } from 'svelte';
@@ -13,6 +15,7 @@
   import { permissions }      from '$lib/stores/permissions';
   import { issuesStore }      from '../stores/issuesStore';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
+  import DecisionItem         from './DecisionItem.svelte';
   import { getLogger }        from '$lib/utils/logger';
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import Button               from '$lib/components/common/Button.svelte';
@@ -32,11 +35,11 @@
 
   // -- Props -----------------------------------------------------------
   export let issueId;
-  export let comments = [];
+  export let comments   = [];
+  export let decisions  = [];
   // Passed in by IssueCard so we can tell, per comment, whether an
-  // action has already been created from it. One-to-one: at most one
-  // action per comment (enforced by DB partial unique index).
-  export let actions  = [];
+  // action has already been created from it.
+  export let actions    = [];
 
   // -- Derived ---------------------------------------------------------
   $: linkedActionByCommentId = Object.fromEntries(
@@ -46,17 +49,21 @@
   );
 
   // -- List / sort / filter state -------------------------------------
-  let showAddForm    = false;
-  let editingComment = null;
-  let viewingComment = null;
-  let showDeleteConfirm = false;
-  let pendingDeleteId   = null;
-  let showHistoric = false;
+  let showAddForm         = false;
+  let showAddDecisionForm = false;
+  let editingComment      = null;
+  let editingDecision     = null;
+  let viewingItem         = null;   // { ...data, _type: 'comment'|'decision' }
+  let showDeleteConfirm   = false;
+  let pendingDeleteId     = null;
+  let pendingDeleteType   = null;   // 'comment' | 'decision'
+  let showHistoric        = false;
 
   let sortField = 'updated_at';  // 'updated_at' | 'created_at'
   let sortDir   = 'desc';        // 'desc' | 'asc'
 
-  let newComment = { comment_text: '', historic: false };
+  let newComment  = { comment_text: '', historic: false };
+  let newDecision = { decision_text: '', historic: false };
   let mutationError = '';
   let saving = false;
 
@@ -84,18 +91,23 @@
   onMount(() => profilesStore.load());
   const assigneeOptionsStore = profilesStore.assigneeOptions();
 
-  // -- Filter + sort the comment list ----------------------------------
-  $: filteredComments = showHistoric
-    ? comments
-    : comments.filter(c => !c.historic);
+  // -- Filter + sort ---------------------------------------------------
+  $: filteredComments  = showHistoric ? comments  : comments.filter(c => !c.historic);
+  $: filteredDecisions = showHistoric ? decisions : decisions.filter(d => !d.historic);
 
-  $: visibleComments = [...filteredComments].sort((a, b) => {
+  // Interleaved, sorted list used for rendering
+  $: visibleItems = [
+    ...filteredComments.map(c => ({ ...c, _type: 'comment' })),
+    ...filteredDecisions.map(d => ({ ...d, _type: 'decision' }))
+  ].sort((a, b) => {
     const aVal = new Date(sortField === 'updated_at' ? (a.updated_at || a.created_at) : a.created_at);
     const bVal = new Date(sortField === 'updated_at' ? (b.updated_at || b.created_at) : b.created_at);
     return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
   });
 
-  $: historicCount = comments.filter(c => c.historic).length;
+  $: historicCount         = comments.filter(c => c.historic).length;
+  $: historicDecisionCount = decisions.filter(d => d.historic).length;
+  $: totalHistoricCount    = historicCount + historicDecisionCount;
 
   function toggleSortDir() {
     sortDir = sortDir === 'desc' ? 'asc' : 'desc';
@@ -136,17 +148,69 @@
     if (!pendingDeleteId) return;
     const result = await issuesStore.deleteComment(pendingDeleteId);
     if (!result.success) { mutationError = result.error ?? 'Failed to delete comment'; }
-    pendingDeleteId = null;
+    pendingDeleteId  = null;
+    pendingDeleteType = null;
     showDeleteConfirm = false;
   }
 
   function startEdit(comment) {
+    editingDecision = null;
     editingComment = {
       ...comment,
       override_created_at: toDateTimeLocal(comment.created_at),
       override_updated_at: toDateTimeLocal(comment.updated_at)
     };
-    viewingComment = null;
+    viewingItem = null;
+  }
+
+  // -- Decision CRUD ---------------------------------------------------
+  async function addDecision() {
+    if (!newDecision.decision_text.trim()) return;
+    saving = true;
+    mutationError = '';
+    const result = await issuesStore.addDecision(issueId, newDecision.decision_text);
+    saving = false;
+    if (!result.success) { mutationError = result.error ?? 'Failed to add decision'; return; }
+    newDecision = { decision_text: '', historic: false };
+    showAddDecisionForm = false;
+  }
+
+  async function updateDecision() {
+    if (!editingDecision.decision_text.trim()) return;
+    saving = true;
+    mutationError = '';
+    const result = await issuesStore.updateDecision(editingDecision.id, {
+      decision_text:       editingDecision.decision_text,
+      historic:            editingDecision.historic,
+      override_created_at: $permissions.isAdmin && editingDecision.override_created_at
+                             ? new Date(editingDecision.override_created_at).toISOString()
+                             : null,
+      override_updated_at: $permissions.isAdmin && editingDecision.override_updated_at
+                             ? new Date(editingDecision.override_updated_at).toISOString()
+                             : null
+    });
+    saving = false;
+    if (!result.success) { mutationError = result.error ?? 'Failed to update decision'; return; }
+    editingDecision = null;
+  }
+
+  async function deleteDecision() {
+    if (!pendingDeleteId) return;
+    const result = await issuesStore.deleteDecision(pendingDeleteId);
+    if (!result.success) { mutationError = result.error ?? 'Failed to delete decision'; }
+    pendingDeleteId  = null;
+    pendingDeleteType = null;
+    showDeleteConfirm = false;
+  }
+
+  function startEditDecision(decision) {
+    editingComment = null;
+    editingDecision = {
+      ...decision,
+      override_created_at: toDateTimeLocal(decision.created_at),
+      override_updated_at: toDateTimeLocal(decision.updated_at)
+    };
+    viewingItem = null;
   }
 
   // -- Suggestion panel handlers --------------------------------------
@@ -160,7 +224,7 @@
 
   async function openSuggestion(comment) {
     editingComment    = null;
-    viewingComment    = null;
+    viewingItem       = null;
     suggestionError   = '';
     suggestionInfo    = '';
     suggestionForId   = comment.id;
@@ -300,14 +364,14 @@
   <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
     <h4 class="font-semibold flex items-center space-x-2">
       <Icon name="comment" size={5} className="text-blue-400" />
-      <span>Comments ({visibleComments.length})</span>
-      {#if comments.length !== filteredComments.length}
-        <span class="text-xs text-gray-400">({historicCount} historic)</span>
+      <span>Comments &amp; Decisions ({visibleItems.length})</span>
+      {#if totalHistoricCount > 0 && !showHistoric}
+        <span class="text-xs text-gray-400">({totalHistoricCount} historic hidden)</span>
       {/if}
     </h4>
 
     <div class="flex items-center gap-2 flex-wrap">
-      {#if historicCount > 0}
+      {#if totalHistoricCount > 0}
         <Button variant="secondary" size="small" on:click={() => showHistoric = !showHistoric}>
           {showHistoric ? 'Hide' : 'Include'} Historic
         </Button>
@@ -339,6 +403,14 @@
         on:click={() => showAddForm = true}
       >
         Add Comment
+      </ProtectedButton>
+      <ProtectedButton
+        action="modify"
+        variant="secondary"
+        size="small"
+        on:click={() => showAddDecisionForm = true}
+      >
+        + Decision
       </ProtectedButton>
     </div>
   </div>
@@ -378,59 +450,104 @@
     </div>
   {/if}
 
-  <!-- ─── Comment list ──────────────────────────────────────── -->
-  {#if visibleComments.length > 0}
+  <!-- ─── Add decision form ─────────────────────────────────── -->
+  {#if showAddDecisionForm}
+    <div class="bg-slate-700/50 rounded p-3 border border-violet-500/50 mb-2">
+      <textarea
+        bind:value={newDecision.decision_text}
+        placeholder="Enter the decision…"
+        class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-y"
+        rows="4"
+      ></textarea>
+      <div class="flex justify-end gap-2 mt-2">
+        <Button
+          variant="secondary"
+          size="small"
+          on:click={() => { showAddDecisionForm = false; newDecision.decision_text = ''; mutationError = ''; }}
+        >
+          Cancel
+        </Button>
+        <ProtectedButton
+          action="modify"
+          variant="secondary"
+          size="small"
+          icon="plus"
+          disabled={saving}
+          on:click={addDecision}
+        >
+          {saving ? 'Saving…' : 'Add Decision'}
+        </ProtectedButton>
+      </div>
+    </div>
+  {/if}
+
+  <!-- ─── Interleaved comments + decisions list ─────────────── -->
+  {#if visibleItems.length > 0}
     <div class="space-y-1">
-      {#each visibleComments as comment (comment.id)}
-        <CommentItem
-          {comment}
-          bind:editingComment
-          {saving}
-          panelOpen={suggestionForId === comment.id}
-          panelMode={suggestionSource}
-          linkedAction={linkedActionByCommentId[comment.id] ?? null}
-          bind:suggestionDraft
-          {suggestionLoading}
-          {suggestionInfo}
-          {suggestionError}
-          {suggestionSaving}
-          {linkedDeleteError}
-          on:togglePanel={(e) => toggleSuggestion(e.detail)}
-          on:editStart={(e) => startEdit(e.detail)}
-          on:editCancel={() => editingComment = null}
-          on:editSave={updateComment}
-          on:deleteRequest={(e) => { pendingDeleteId = e.detail.id; showDeleteConfirm = true; }}
-          on:viewFull={(e) => viewingComment = e.detail}
-          on:dismiss={dismissSuggestion}
-          on:addAction={openSuggestionInActionForm}
-          on:viewLinked={(e) => viewLinkedAction(e.detail)}
-          on:deleteLinkedRequest={(e) => requestDeleteLinked(e.detail)}
-          on:meetingFilter
-        />
+      {#each visibleItems as item (item.id + item._type)}
+        {#if item._type === 'comment'}
+          <CommentItem
+            comment={item}
+            bind:editingComment
+            {saving}
+            panelOpen={suggestionForId === item.id}
+            panelMode={suggestionSource}
+            linkedAction={linkedActionByCommentId[item.id] ?? null}
+            bind:suggestionDraft
+            {suggestionLoading}
+            {suggestionInfo}
+            {suggestionError}
+            {suggestionSaving}
+            {linkedDeleteError}
+            on:togglePanel={(e) => toggleSuggestion(e.detail)}
+            on:editStart={(e) => startEdit(e.detail)}
+            on:editCancel={() => editingComment = null}
+            on:editSave={updateComment}
+            on:deleteRequest={(e) => { pendingDeleteId = e.detail.id; pendingDeleteType = 'comment'; showDeleteConfirm = true; }}
+            on:viewFull={(e) => { viewingItem = { ...e.detail, _type: 'comment' }; }}
+            on:dismiss={dismissSuggestion}
+            on:addAction={openSuggestionInActionForm}
+            on:viewLinked={(e) => viewLinkedAction(e.detail)}
+            on:deleteLinkedRequest={(e) => requestDeleteLinked(e.detail)}
+            on:meetingFilter
+          />
+        {:else}
+          <DecisionItem
+            decision={item}
+            bind:editingDecision
+            {saving}
+            on:editStart={(e) => startEditDecision(e.detail)}
+            on:editCancel={() => editingDecision = null}
+            on:editSave={updateDecision}
+            on:deleteRequest={(e) => { pendingDeleteId = e.detail.id; pendingDeleteType = 'decision'; showDeleteConfirm = true; }}
+            on:viewFull={(e) => { viewingItem = { ...e.detail, _type: 'decision' }; }}
+            on:meetingFilter
+          />
+        {/if}
       {/each}
     </div>
   {/if}
 
 </div>
 
-<!-- ─── Full comment view modal ─────────────────────────────── -->
+<!-- ─── Full item view modal ─────────────────────────────────── -->
 <Modal
-  show={!!viewingComment}
-  title="Comment"
+  show={!!viewingItem}
+  title={viewingItem?._type === 'decision' ? 'Decision' : 'Comment'}
   size="medium"
-  on:close={() => viewingComment = null}
+  on:close={() => viewingItem = null}
 >
-  {#if viewingComment}
+  {#if viewingItem}
     <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">
-      {viewingComment.comment_text}
+      {viewingItem._type === 'decision' ? viewingItem.decision_text : viewingItem.comment_text}
     </p>
     <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700 text-xs text-gray-500 flex-wrap">
-      <span>Added: {fmtDateTime(viewingComment.created_at, viewingComment.created_by_profile?.full_name)}</span>
-      {#if wasModified(viewingComment.created_at, viewingComment.updated_at)}
+      <span>Added: {fmtDateTime(viewingItem.created_at, viewingItem.created_by_profile?.full_name)}</span>
+      {#if wasModified(viewingItem.created_at, viewingItem.updated_at)}
         <span>•</span>
-        <span>Modified: {fmtDateTime(viewingComment.updated_at, viewingComment.updated_by_profile?.full_name)}</span>
+        <span>Modified: {fmtDateTime(viewingItem.updated_at, viewingItem.updated_by_profile?.full_name)}</span>
       {/if}
-      {#if viewingComment.historic}
+      {#if viewingItem.historic}
         <span>•</span>
         <span class="text-amber-400">Historic</span>
       {/if}
@@ -444,25 +561,27 @@
         variant="secondary"
         size="small"
         icon="edit"
-        on:click={() => startEdit(viewingComment)}
+        on:click={() => viewingItem._type === 'decision' ? startEditDecision(viewingItem) : startEdit(viewingItem)}
       >
         Edit
       </ProtectedButton>
-      <Button variant="secondary" on:click={() => viewingComment = null}>Close</Button>
+      <Button variant="secondary" on:click={() => viewingItem = null}>Close</Button>
     </div>
   </svelte:fragment>
 </Modal>
 
-<!-- ─── Comment delete confirmation ─────────────────────────── -->
+<!-- ─── Delete confirmation ───────────────────────────────────── -->
 <ConfirmDialog
   show={showDeleteConfirm}
-  title="Delete Comment"
-  message="Are you sure you want to delete this comment? This action cannot be undone."
-  confirmText="Delete Comment"
+  title={pendingDeleteType === 'decision' ? 'Delete Decision' : 'Delete Comment'}
+  message={pendingDeleteType === 'decision'
+    ? 'Are you sure you want to delete this decision? This action cannot be undone.'
+    : 'Are you sure you want to delete this comment? This action cannot be undone.'}
+  confirmText={pendingDeleteType === 'decision' ? 'Delete Decision' : 'Delete Comment'}
   cancelText="Cancel"
   danger={true}
-  on:confirm={deleteComment}
-  on:cancel={() => { showDeleteConfirm = false; pendingDeleteId = null; }}
+  on:confirm={pendingDeleteType === 'decision' ? deleteDecision : deleteComment}
+  on:cancel={() => { showDeleteConfirm = false; pendingDeleteId = null; pendingDeleteType = null; }}
 />
 
 <!-- ─── Action form (opened from suggestion panel) ─────────── -->

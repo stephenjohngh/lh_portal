@@ -133,11 +133,12 @@ function buildContent(meeting, issues, attendees) {
   const id  = meeting.id;
   const minutes = [];
   for (const issue of issues) {
-    const meetingActions  = (issue.actions  || []).filter(a => a.meeting_id === id);
-    const meetingComments = (issue.comments || []).filter(c => c.meeting_id === id);
-    const isNew           = issue.meeting_id === id;
-    if (!isNew && meetingActions.length === 0 && meetingComments.length === 0) continue;
-    minutes.push({ issue, isNew, actions: meetingActions, comments: meetingComments });
+    const meetingActions   = (issue.actions   || []).filter(a => a.meeting_id === id);
+    const meetingComments  = (issue.comments  || []).filter(c => c.meeting_id === id);
+    const meetingDecisions = (issue.decisions || []).filter(d => d.meeting_id === id);
+    const isNew            = issue.meeting_id === id;
+    if (!isNew && meetingActions.length === 0 && meetingComments.length === 0 && meetingDecisions.length === 0) continue;
+    minutes.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions });
   }
   minutes.sort((a, b) => {
     if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
@@ -148,17 +149,19 @@ function buildContent(meeting, issues, attendees) {
 
   const totals = minutes.reduce(
     (acc, m) => ({
-      issues:   acc.issues   + (m.isNew ? 1 : 0),
-      actions:  acc.actions  + m.actions.length,
-      comments: acc.comments + m.comments.length
+      issues:    acc.issues    + (m.isNew ? 1 : 0),
+      actions:   acc.actions   + m.actions.length,
+      comments:  acc.comments  + m.comments.length,
+      decisions: acc.decisions + m.decisions.length
     }),
-    { issues: 0, actions: 0, comments: 0 }
+    { issues: 0, actions: 0, comments: 0, decisions: 0 }
   );
 
   const summaryParts = [
     `${totals.issues} new issue${totals.issues === 1 ? '' : 's'}`,
     `${totals.actions} action${totals.actions === 1 ? '' : 's'}`,
-    `${totals.comments} comment${totals.comments === 1 ? '' : 's'}`
+    `${totals.comments} comment${totals.comments === 1 ? '' : 's'}`,
+    ...(totals.decisions > 0 ? [`${totals.decisions} decision${totals.decisions === 1 ? '' : 's'}`] : [])
   ];
   content.push(p(summaryParts.join('  ·  '), {
     size: 20, color: '888888',
@@ -183,7 +186,7 @@ function buildContent(meeting, issues, attendees) {
   // ── Per-issue sections ────────────────────────────────────────────────────
 
   for (const m of minutes) {
-    const { issue, isNew, comments, actions } = m;
+    const { issue, isNew, comments, decisions, actions } = m;
 
     // Issue header row (table for shading)
     const headerLabel = [
@@ -238,6 +241,33 @@ function buildContent(meeting, issues, attendees) {
           fmtShort(c.created_at),
           c.created_by_profile?.full_name,
           c.historic ? 'historic' : null
+        ].filter(Boolean).join('  ·  ');
+        content.push(p(meta, {
+          size: 18, color: '999999', italics: true,
+          _para: { indent: { left: 360 }, spacing: { after: 120 } }
+        }));
+      }
+    }
+
+    // Decisions
+    if (decisions.length > 0) {
+      content.push(p('Decisions', {
+        bold: true, size: 22, color: '7c3aed',
+        _para: { spacing: { before: 180, after: 80 } }
+      }));
+
+      const sortedDecisions = [...decisions].sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      );
+      for (const d of sortedDecisions) {
+        content.push(p(d.decision_text, {
+          size: 22,
+          _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
+        }));
+        const meta = [
+          fmtShort(d.created_at),
+          d.created_by_profile?.full_name,
+          d.historic ? 'historic' : null
         ].filter(Boolean).join('  ·  ');
         content.push(p(meta, {
           size: 18, color: '999999', italics: true,

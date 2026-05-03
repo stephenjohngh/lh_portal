@@ -55,6 +55,11 @@ function createIssuesStore() {
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             ),
+            decisions (
+              id, decision_text, historic, meeting_id, created_at, updated_at,
+              created_by_profile:profiles!created_by(full_name),
+              updated_by_profile:profiles!updated_by(full_name)
+            ),
             actions (
               id, action_text, name_text,
               date_deadline, status, source_comment_id, meeting_id,
@@ -137,6 +142,15 @@ function createIssuesStore() {
         { event: '*', schema: 'public', table: 'actions' },
         (payload) => {
           logger('Action changed:', payload);
+          this.fetchIssues();
+        }
+      );
+
+      realtimeChannel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'decisions' },
+        (payload) => {
+          logger('Decision changed:', payload);
           this.fetchIssues();
         }
       );
@@ -468,6 +482,106 @@ function createIssuesStore() {
               issue_name: issue?.name
             }
           }
+        );
+
+        await this.fetchIssues();
+        return { success: true };
+      } catch (err) {
+        update(state => ({ ...state, error: err.message }));
+        return { success: false, error: err.message };
+      }
+    },
+
+    // ============================================
+    // DECISIONS
+    // ============================================
+
+    async addDecision(issueId, decisionText) {
+      try {
+        const now = new Date().toISOString();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { data: issue } = await supabase
+          .from('issues').select('issue_number, name').eq('id', issueId).single();
+
+        const { data: newDecision, error: createError } = await supabase
+          .from('decisions')
+          .insert({
+            issue_id:      issueId,
+            decision_text: decisionText,
+            meeting_id:    activeMeetingId(),
+            created_at:    now,
+            updated_at:    now,
+            created_by:    user?.id,
+            updated_by:    user?.id
+          })
+          .select().single();
+
+        if (createError) throw createError;
+
+        audit('create', 'decision', newDecision.id,
+          `Decision on Issue #${issue?.issue_number}`,
+          { afterData: { decision_text: decisionText, issue_name: issue?.name } }
+        );
+
+        await this.fetchIssues();
+        return { success: true };
+      } catch (err) {
+        update(state => ({ ...state, error: err.message }));
+        return { success: false, error: err.message };
+      }
+    },
+
+    async updateDecision(decisionId, decisionData) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { data: before } = await supabase
+          .from('decisions').select('decision_text, historic, issue_id')
+          .eq('id', decisionId).single();
+
+        const { data: issue } = await supabase
+          .from('issues').select('issue_number').eq('id', before?.issue_id).single();
+
+        const payload = {
+          decision_text: decisionData.decision_text,
+          historic:      decisionData.historic ?? false,
+          updated_at:    decisionData.override_updated_at || new Date().toISOString(),
+          updated_by:    user?.id
+        };
+        if (decisionData.override_created_at) payload.created_at = decisionData.override_created_at;
+
+        await api.update('decisions', decisionId, payload);
+
+        audit('update', 'decision', decisionId,
+          `Decision on Issue #${issue?.issue_number}`,
+          {
+            beforeData: { decision_text: before?.decision_text, historic: before?.historic },
+            afterData:  { decision_text: decisionData.decision_text, historic: decisionData.historic }
+          }
+        );
+
+        await this.fetchIssues();
+        return { success: true };
+      } catch (err) {
+        update(state => ({ ...state, error: err.message }));
+        return { success: false, error: err.message };
+      }
+    },
+
+    async deleteDecision(decisionId) {
+      try {
+        const { data: decision } = await supabase
+          .from('decisions').select('decision_text, issue_id').eq('id', decisionId).single();
+
+        const { data: issue } = await supabase
+          .from('issues').select('issue_number').eq('id', decision?.issue_id).single();
+
+        await api.delete('decisions', decisionId);
+
+        audit('delete', 'decision', decisionId,
+          `Decision on Issue #${issue?.issue_number}`,
+          { beforeData: { decision_text: decision?.decision_text } }
         );
 
         await this.fetchIssues();

@@ -20,8 +20,9 @@
 
   let showDeleteConfirm = false;
 
-  $: nonHistoricCommentsCount = issue.comments?.filter(c => !c.historic).length || 0;
-  $: historicCommentsCount = issue.comments?.filter(c => c.historic).length || 0;
+  $: nonHistoricCommentsCount  = issue.comments?.filter(c => !c.historic).length  || 0;
+  $: historicCommentsCount    = issue.comments?.filter(c => c.historic).length    || 0;
+  $: nonHistoricDecisionCount = issue.decisions?.filter(d => !d.historic).length  || 0;
   
   $: outstandingActionsCount = issue.actions?.filter(action => 
     action.status !== ACTION_STATUS.COMPLETED
@@ -203,6 +204,15 @@
             </span>
           </div>
         {/if}
+
+        {#if nonHistoricDecisionCount > 0}
+          <div class="text-icon">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/50 font-semibold uppercase tracking-wide">D</span>
+            <span class="text-violet-300">
+              {nonHistoricDecisionCount} decision{nonHistoricDecisionCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+        {/if}
         
         {#if outstandingActionsCount > 0}
           <div class="text-icon">
@@ -244,6 +254,7 @@
         <CommentsSection
           issueId={issue.id}
           comments={issue.comments || []}
+          decisions={issue.decisions || []}
           actions={issue.actions || []}
           on:jumpToAction={handleJumpToAction}
           on:meetingFilter
@@ -270,7 +281,7 @@
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Issue"
-  message="Are you sure you want to delete '{issue.name}'? This will also delete {issue.comments?.length || 0} comments and {issue.actions?.length || 0} actions. This action cannot be undone."
+  message="Are you sure you want to delete '{issue.name}'? This will also delete {issue.comments?.length || 0} comments, {issue.decisions?.length || 0} decisions, and {issue.actions?.length || 0} actions. This action cannot be undone."
   confirmText="Delete Issue"
   cancelText="Cancel"
   danger={true}
