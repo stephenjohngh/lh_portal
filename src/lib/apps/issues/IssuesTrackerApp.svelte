@@ -162,17 +162,9 @@
 <div class="app-container" bind:this={containerElement}>
 
   <!-- ─── Header ──────────────────────────────────────────────────────── -->
-  <div class="flex-start mb-4">
-    <div>
-      <h2 class="heading-page">Issues Tracker</h2>
-      <p class="text-muted">Manage current issues, actions, and comments</p>
-    </div>
-    <div class="flex space-x-2">
-      <Button variant="primary" size="large" icon="plus"
-        on:click={() => showNewIssueModal = true}>
-        New Issue
-      </Button>
-    </div>
+  <div class="mb-4">
+    <h2 class="heading-page">Issues Tracker</h2>
+    <p class="text-muted">Manage current issues, actions, and comments</p>
   </div>
 
   <!-- ─── Tab bar ─────────────────────────────────────────────────────── -->
@@ -214,6 +206,17 @@
 
   <!-- ─── ISSUES TAB ──────────────────────────────────────────────────── -->
   {#if activeTab === 'issues'}
+
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between gap-3 mb-4">
+      <p class="text-sm text-slate-400">
+        {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
+      </p>
+      <Button variant="primary" size="small" icon="plus"
+        on:click={() => showNewIssueModal = true}>
+        New Issue
+      </Button>
+    </div>
 
     <!-- Active-meeting banner -->
     <MeetingBanner
