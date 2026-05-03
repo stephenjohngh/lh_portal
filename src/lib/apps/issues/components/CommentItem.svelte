@@ -12,7 +12,7 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fmtDateTime, wasModified } from '$lib/utils/dates';
+  import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
@@ -148,6 +148,17 @@
         />
       {/if}
     </div>
+
+    {#if hasLinked && !panelOpen}
+      <div class="mt-2 pl-2 border-l-2 border-amber-500/50 bg-amber-900/10 rounded-r py-1.5 pr-2">
+        <p class="text-xs font-medium text-amber-200 whitespace-pre-wrap">{linkedAction.action_text}</p>
+        <div class="flex flex-wrap gap-2 mt-0.5 text-[10px] text-gray-400">
+          {#if linkedAction.name_text}<span>👤 {linkedAction.name_text}</span>{/if}
+          {#if linkedAction.date_deadline}<span>📅 {fmtDate(linkedAction.date_deadline)}</span>{/if}
+          <span class="capitalize">{linkedAction.status}</span>
+        </div>
+      </div>
+    {/if}
 
     {#if panelOpen}
       <CommentSuggestionPanel
