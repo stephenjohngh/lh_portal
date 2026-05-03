@@ -161,12 +161,6 @@
 
 <div class="app-container" bind:this={containerElement}>
 
-  <!-- ─── Header ──────────────────────────────────────────────────────── -->
-  <div class="mb-4">
-    <h2 class="heading-page">Issues Tracker</h2>
-    <p class="text-muted">Manage current issues, actions, and comments</p>
-  </div>
-
   <!-- ─── Tab bar ─────────────────────────────────────────────────────── -->
   <div class="flex border-b border-slate-700 mb-5">
     <button
