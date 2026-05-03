@@ -13,6 +13,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
+  import { ACTION_STATUS } from '$lib/utils/constants';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
@@ -35,8 +36,13 @@
 
   const dispatch = createEventDispatcher();
 
-  // Derived button affordances (icon + tooltip change with state)
-  $: hasLinked   = !!linkedAction;
+  $: hasLinked        = !!linkedAction;
+  $: linkedCompleted  = linkedAction?.status === ACTION_STATUS.COMPLETED;
+
+  // Panel toggle button only shown for non-completed linked actions (or no link yet).
+  // Completed actions are hidden in ActionsSection by default so "jump to action" breaks.
+  $: showPanelToggle  = !linkedCompleted;
+
   $: actionIcon  = panelOpen
                      ? 'chevron-up'
                      : (hasLinked ? 'chevron-down' : 'clipboard');
@@ -95,15 +101,17 @@
       </div>
 
       <div class="flex gap-1 flex-shrink-0">
-        <ProtectedButton
-          action="modify"
-          variant="secondary"
-          size="small"
-          icon={actionIcon}
-          iconPosition="only"
-          on:click={() => dispatch('togglePanel', comment)}
-          title={actionTitle}
-        />
+        {#if showPanelToggle}
+          <ProtectedButton
+            action="modify"
+            variant="secondary"
+            size="small"
+            icon={actionIcon}
+            iconPosition="only"
+            on:click={() => dispatch('togglePanel', comment)}
+            title={actionTitle}
+          />
+        {/if}
         <ProtectedButton
           action="modify"
           variant="secondary"
@@ -150,8 +158,14 @@
     </div>
 
     {#if hasLinked && !panelOpen}
-      <div class="mt-2 pl-2 border-l-2 border-amber-500/50 bg-amber-900/10 rounded-r py-1.5 pr-2">
-        <p class="text-xs font-medium text-amber-200 whitespace-pre-wrap">{linkedAction.action_text}</p>
+      <div class="mt-2 pl-2 border-l-2 rounded-r py-1.5 pr-2
+                  {linkedCompleted
+                    ? 'border-slate-600/50 bg-slate-800/30 opacity-50'
+                    : 'border-amber-500/50 bg-amber-900/10'}">
+        <p class="text-xs font-medium whitespace-pre-wrap
+                  {linkedCompleted ? 'line-through text-gray-400' : 'text-amber-200'}">
+          {linkedAction.action_text}
+        </p>
         <div class="flex flex-wrap gap-2 mt-0.5 text-[10px] text-gray-400">
           {#if linkedAction.name_text}<span>👤 {linkedAction.name_text}</span>{/if}
           {#if linkedAction.date_deadline}<span>📅 {fmtDate(linkedAction.date_deadline)}</span>{/if}
