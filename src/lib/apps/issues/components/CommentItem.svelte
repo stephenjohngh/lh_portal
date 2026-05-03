@@ -163,7 +163,7 @@
                     ? 'border-slate-600/50 bg-slate-800/30 opacity-50'
                     : 'border-amber-500/50 bg-amber-900/10'}">
         <p class="text-xs font-medium whitespace-pre-wrap
-                  {linkedCompleted ? 'line-through text-gray-400' : 'text-amber-200'}">
+                  {linkedCompleted ? 'text-gray-500' : 'text-amber-200'}">
           {linkedAction.action_text}
         </p>
         <div class="flex flex-wrap gap-2 mt-0.5 text-[10px] text-gray-400">

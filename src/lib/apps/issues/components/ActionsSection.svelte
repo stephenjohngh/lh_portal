@@ -254,7 +254,7 @@
           {:else}
             <div class="flex justify-between items-start">
               <div class="flex-1">
-                <p class="text-gray-200 font-medium whitespace-pre-wrap {action.status === ACTION_STATUS.COMPLETED ? 'line-through' : ''}">
+                <p class="font-medium whitespace-pre-wrap {action.status === ACTION_STATUS.COMPLETED ? 'text-gray-500' : 'text-gray-200'}">
                   {action.action_text}
                 </p>
                 <div class="flex flex-wrap gap-2 mt-1 text-xs">
