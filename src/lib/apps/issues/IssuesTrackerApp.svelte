@@ -9,8 +9,7 @@
   import IssueFilters       from './components/IssueFilters.svelte';
   import IssueCard          from './components/IssueCard.svelte';
   import IssueForm          from './components/IssueForm.svelte';
-  import IssuesReport       from './components/reports/IssuesReport.svelte';
-  import ActionsReport      from './components/reports/ActionsReport.svelte';
+  import ReportsTab         from './components/reports/ReportsTab.svelte';
   import MeetingBanner      from './components/meetings/MeetingBanner.svelte';
   import MeetingForm        from './components/meetings/MeetingForm.svelte';
   import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
@@ -22,7 +21,7 @@
   const logger = getLogger('IssuesTrackerApp');
 
   // -- Tab state --------------------------------------------------------
-  let activeTab           = 'issues';   // 'issues' | 'meetings'
+  let activeTab           = 'issues';   // 'issues' | 'meetings' | 'reports'
   // When a MeetingBadge is clicked on an issue card, we switch to the
   // Meetings tab and auto-select that meeting.
   let meetingTabTargetId  = null;
@@ -32,8 +31,6 @@
   let statusFilter        = ISSUE_STATUS.CURRENT;
   let showNewIssueModal   = false;
   let editingIssue        = null;
-  let showReport          = false;
-  let showActionsReport   = false;
 
   // -- Meeting banner edit form (banner's "Edit" dispatches here) -------
   let showMeetingForm     = false;
@@ -171,14 +168,6 @@
       <p class="text-muted">Manage current issues, actions, and comments</p>
     </div>
     <div class="flex space-x-2">
-      <Button variant="primary" size="large" icon="chart"
-        on:click={() => showReport = true}>
-        Issues Report
-      </Button>
-      <Button variant="primary" size="large" icon="clipboard"
-        on:click={() => showActionsReport = true}>
-        Actions Report
-      </Button>
       <Button variant="primary" size="large" icon="plus"
         on:click={() => showNewIssueModal = true}>
         New Issue
@@ -211,6 +200,15 @@
           open
         </span>
       {/if}
+    </button>
+    <button
+      class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors
+             {activeTab === 'reports'
+               ? 'text-white border-purple-500'
+               : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
+      on:click={() => activeTab = 'reports'}
+    >
+      Reports
     </button>
   </div>
 
@@ -266,6 +264,10 @@
   <!-- ─── MEETINGS TAB ────────────────────────────────────────────────── -->
   {:else if activeTab === 'meetings'}
     <MeetingsTab {issues} initialMeetingId={meetingTabTargetId} />
+
+  <!-- ─── REPORTS TAB ─────────────────────────────────────────────────── -->
+  {:else if activeTab === 'reports'}
+    <ReportsTab {issues} />
   {/if}
 
 </div>
@@ -282,10 +284,6 @@
   on:submit={handleEditIssue}
   on:close={() => editingIssue = null}
 />
-
-<!-- ─── Report modals ───────────────────────────────────────────────── -->
-<IssuesReport  bind:show={showReport}        {issues} />
-<ActionsReport bind:show={showActionsReport} {issues} />
 
 <!-- ─── Meeting edit form (opened by banner's Edit button) ──────────── -->
 <MeetingForm
