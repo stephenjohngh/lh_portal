@@ -8,13 +8,14 @@
   import Modal from '$lib/components/common/Modal.svelte';
   import { PRIORITIES } from '$lib/utils/constants';
   import { ISSUE_STATUS, ISSUE_STATUS_OPTIONS } from '$lib/utils/constants';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate, toDateTimeLocal } from '$lib/utils/dates.js';
+  import { permissions } from '$lib/stores/permissions';
 
   export let show = false;
   export let issue = null; // null for new, object for edit
-  
+
   const dispatch = createEventDispatcher();
-  
+
   let formData = {
     name: issue?.name || '',
     description: issue?.description || '',
@@ -22,9 +23,11 @@
     status: issue?.status || ISSUE_STATUS.CURRENT
   };
 
-  let formErrors = {
-    name: ''
-  };
+  let formErrors = { name: '' };
+
+  // Admin-only date overrides (edit mode only)
+  let adminCreatedAt = '';
+  let adminUpdatedAt = '';
 
   // Populate form when editing an existing issue
   $: if (issue) {
@@ -34,6 +37,8 @@
       priority: parseInt(issue.priority) || 3,
       status: issue.status || ISSUE_STATUS.CURRENT
     };
+    adminCreatedAt = toDateTimeLocal(issue.created_at);
+    adminUpdatedAt = toDateTimeLocal(issue.updated_at);
   }
 
   // Reset to blank each time the modal opens for a new issue.
@@ -63,7 +68,12 @@
 
   function handleSubmit() {
     if (!validateForm()) return;
-    dispatch('submit', formData);
+    const payload = { ...formData };
+    if ($permissions.isAdmin && issue) {
+      if (adminCreatedAt) payload.override_created_at = new Date(adminCreatedAt).toISOString();
+      if (adminUpdatedAt) payload.override_updated_at = new Date(adminUpdatedAt).toISOString();
+    }
+    dispatch('submit', payload);
     close();
   }
 
@@ -128,7 +138,7 @@
         options={priorityOptions}
         required={true}
       />
-      
+
       <FormSelect
         label="Status"
         bind:value={formData.status}
@@ -136,6 +146,35 @@
         required={true}
       />
     </div>
+
+    {#if issue && $permissions.isAdmin}
+      <div class="border-t border-slate-600 pt-4">
+        <div class="flex items-start gap-2 px-3 py-2 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-3">
+          <span class="shrink-0">⚠️</span>
+          <span><strong>Admin only — record timestamps.</strong> In normal use leave these as their automatic values. Only edit to correct a historical data-entry error.</span>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="issue-admin-created" class="block text-xs font-medium text-slate-400 mb-1">Created</label>
+            <input
+              id="issue-admin-created"
+              type="datetime-local"
+              bind:value={adminCreatedAt}
+              class="w-full px-3 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+          <div>
+            <label for="issue-admin-updated" class="block text-xs font-medium text-slate-400 mb-1">Modified</label>
+            <input
+              id="issue-admin-updated"
+              type="datetime-local"
+              bind:value={adminUpdatedAt}
+              class="w-full px-3 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+        </div>
+      </div>
+    {/if}
   </div>
 
   <div slot="footer" class="flex space-x-3">

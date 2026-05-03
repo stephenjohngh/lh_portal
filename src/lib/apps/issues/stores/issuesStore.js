@@ -224,15 +224,17 @@ function createIssuesStore() {
 
         logger('Issue before update:', beforeIssue);
         
-        // Update issue
-        await api.update('issues', issueId, {
-          name: issueData.name,
+        // Update issue — admin may supply override timestamps.
+        const issuePayload = {
+          name:        issueData.name,
           description: issueData.description,
-          priority: parseInt(issueData.priority) || 3,
-          status: issueData.status || ISSUE_STATUS.CURRENT,
-          updated_at: new Date().toISOString(),
-          updated_by: user?.id
-        });
+          priority:    parseInt(issueData.priority) || 3,
+          status:      issueData.status || ISSUE_STATUS.CURRENT,
+          updated_at:  issueData.override_updated_at || new Date().toISOString(),
+          updated_by:  user?.id
+        };
+        if (issueData.override_created_at) issuePayload.created_at = issueData.override_created_at;
+        await api.update('issues', issueId, issuePayload);
 
         logger('✅ Issue updated');
 
@@ -373,8 +375,13 @@ function createIssuesStore() {
       }
     },
 
-    async updateComment(commentId, commentText, historic = false) {
+    async updateComment(commentId, commentData) {
       try {
+        const commentText          = commentData.comment_text;
+        const historic             = commentData.historic ?? false;
+        const override_created_at  = commentData.override_created_at ?? null;
+        const override_updated_at  = commentData.override_updated_at ?? null;
+
         const { data: { user } } = await supabase.auth.getUser();
 
         // Get comment before update
@@ -390,14 +397,16 @@ function createIssuesStore() {
           .select('issue_number, name')
           .eq('id', beforeComment?.issue_id)
           .single();
-        
-        // Update comment
-        await api.update('comments', commentId, {
+
+        // Update comment — admin may supply override timestamps.
+        const commentPayload = {
           comment_text: commentText,
-          historic: historic,
-          updated_at: new Date().toISOString(),
-          updated_by: user?.id
-        });
+          historic,
+          updated_at:  override_updated_at || new Date().toISOString(),
+          updated_by:  user?.id
+        };
+        if (override_created_at) commentPayload.created_at = override_created_at;
+        await api.update('comments', commentId, commentPayload);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
         audit(
@@ -412,7 +421,7 @@ function createIssuesStore() {
             },
             afterData: {
               comment_text: commentText,
-              historic: historic
+              historic
             }
           }
         );
@@ -561,15 +570,17 @@ function createIssuesStore() {
         
         logger('Action before update:', beforeAction);
         
-        // Update action
-        await api.update('actions', actionId, {
-          action_text: actionData.action_text,
-          name_text: actionData.name_text,
+        // Update action — admin may supply override timestamps.
+        const actionPayload = {
+          action_text:   actionData.action_text,
+          name_text:     actionData.name_text,
           date_deadline: actionData.date_deadline,
-          status: actionData.status,
-          updated_at: new Date().toISOString(),
-          updated_by: user?.id
-        });
+          status:        actionData.status,
+          updated_at:    actionData.override_updated_at || new Date().toISOString(),
+          updated_by:    user?.id
+        };
+        if (actionData.override_created_at) actionPayload.created_at = actionData.override_created_at;
+        await api.update('actions', actionId, actionPayload);
 
         logger('✅ Action updated');
 

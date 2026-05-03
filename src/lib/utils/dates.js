@@ -102,3 +102,16 @@ export function wasModified(createdAt, updatedAt) {
   const updated = new Date(updatedAt).getTime();
   return Math.abs(updated - created) > 1000;
 }
+
+/**
+ * Converts a UTC ISO timestamp to the `yyyy-MM-ddTHH:mm` string expected
+ * by `<input type="datetime-local">`, expressed in the user's local time.
+ * Round-trip: `new Date(value).toISOString()` converts back to UTC.
+ * @param {string|null} iso
+ */
+export function toDateTimeLocal(iso) {
+  if (!iso) return '';
+  const d   = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

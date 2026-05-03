@@ -10,8 +10,9 @@
   import { env as publicEnv } from '$env/dynamic/public';
   import { auth }             from '$lib/stores/auth';
   import { profilesStore }    from '$lib/stores/profiles';
+  import { permissions }      from '$lib/stores/permissions';
   import { issuesStore }      from '../stores/issuesStore';
-  import { fmtDateTime, wasModified } from '$lib/utils/dates';
+  import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import { getLogger }        from '$lib/utils/logger';
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import Button               from '$lib/components/common/Button.svelte';
@@ -116,11 +117,16 @@
     if (!editingComment.comment_text.trim()) return;
     saving = true;
     mutationError = '';
-    const result = await issuesStore.updateComment(
-      editingComment.id,
-      editingComment.comment_text,
-      editingComment.historic
-    );
+    const result = await issuesStore.updateComment(editingComment.id, {
+      comment_text:        editingComment.comment_text,
+      historic:            editingComment.historic,
+      override_created_at: $permissions.isAdmin && editingComment.override_created_at
+                             ? new Date(editingComment.override_created_at).toISOString()
+                             : null,
+      override_updated_at: $permissions.isAdmin && editingComment.override_updated_at
+                             ? new Date(editingComment.override_updated_at).toISOString()
+                             : null
+    });
     saving = false;
     if (!result.success) { mutationError = result.error ?? 'Failed to update comment'; return; }
     editingComment = null;
@@ -135,7 +141,11 @@
   }
 
   function startEdit(comment) {
-    editingComment = { ...comment };
+    editingComment = {
+      ...comment,
+      override_created_at: toDateTimeLocal(comment.created_at),
+      override_updated_at: toDateTimeLocal(comment.updated_at)
+    };
     viewingComment = null;
   }
 

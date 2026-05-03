@@ -3,7 +3,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';
   import { profilesStore } from '$lib/stores/profiles';
-  import { fmtDate, fmtDateTime, isOverdue, wasModified } from '$lib/utils/dates';
+  import { permissions }   from '$lib/stores/permissions';
+  import { fmtDate, fmtDateTime, isOverdue, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
   import Button from '$lib/components/common/Button.svelte';
@@ -84,7 +85,15 @@
     if (!editingAction) return;
     saving = true;
     mutationError = '';
-    const result = await issuesStore.updateAction(editingAction.id, editingAction);
+    const result = await issuesStore.updateAction(editingAction.id, {
+      ...editingAction,
+      override_created_at: $permissions.isAdmin && editingAction.override_created_at
+                             ? new Date(editingAction.override_created_at).toISOString()
+                             : null,
+      override_updated_at: $permissions.isAdmin && editingAction.override_updated_at
+                             ? new Date(editingAction.override_updated_at).toISOString()
+                             : null
+    });
     saving = false;
     if (!result.success) { mutationError = result.error ?? 'Failed to update action'; return; }
     editingAction = null;
@@ -231,6 +240,35 @@
                   </select>
                 </div>
               </div>
+              {#if $permissions.isAdmin}
+                <div class="border-t border-slate-500 pt-3">
+                  <div class="flex items-start gap-2 px-2 py-1.5 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-2">
+                    <span class="shrink-0">⚠️</span>
+                    <span><strong>Admin only — record timestamps.</strong> Leave as automatic values in normal use. Only change to correct a historical data-entry error.</span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label for="action-admin-created-{action.id}" class="block text-xs text-slate-400 mb-1">Created</label>
+                      <input
+                        id="action-admin-created-{action.id}"
+                        type="datetime-local"
+                        bind:value={editingAction.override_created_at}
+                        class="w-full px-2 py-1 text-xs bg-slate-600 border border-slate-500 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label for="action-admin-updated-{action.id}" class="block text-xs text-slate-400 mb-1">Modified</label>
+                      <input
+                        id="action-admin-updated-{action.id}"
+                        type="datetime-local"
+                        bind:value={editingAction.override_updated_at}
+                        class="w-full px-2 py-1 text-xs bg-slate-600 border border-slate-500 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              {/if}
+
               <div class="flex justify-end gap-2">
                 <Button
                   variant="secondary"
@@ -307,7 +345,11 @@
                   size="small"
                   icon="edit"
                   iconPosition="only"
-                  on:click={() => editingAction = {...action}}
+                  on:click={() => editingAction = {
+                    ...action,
+                    override_created_at: toDateTimeLocal(action.created_at),
+                    override_updated_at: toDateTimeLocal(action.updated_at)
+                  }}
                   title="Edit action"
                 />
                 <ProtectedButton

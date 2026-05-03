@@ -14,6 +14,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS } from '$lib/utils/constants';
+  import { permissions }    from '$lib/stores/permissions';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
@@ -67,6 +68,35 @@
       <input type="checkbox" bind:checked={editingComment.historic} class="rounded" />
       <span class="text-gray-400">Mark as historic</span>
     </label>
+    {#if $permissions.isAdmin}
+      <div class="border-t border-slate-600 pt-2 mt-2">
+        <div class="flex items-start gap-2 px-2 py-1.5 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-2">
+          <span class="shrink-0">⚠️</span>
+          <span><strong>Admin only — record timestamps.</strong> Leave as automatic values in normal use. Only change to correct a historical data-entry error.</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label for="comment-admin-created-{comment.id}" class="block text-xs text-slate-400 mb-0.5">Created</label>
+            <input
+              id="comment-admin-created-{comment.id}"
+              type="datetime-local"
+              bind:value={editingComment.override_created_at}
+              class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+          <div>
+            <label for="comment-admin-updated-{comment.id}" class="block text-xs text-slate-400 mb-0.5">Modified</label>
+            <input
+              id="comment-admin-updated-{comment.id}"
+              type="datetime-local"
+              bind:value={editingComment.override_updated_at}
+              class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <div class="flex justify-end gap-2 mt-2">
       <Button variant="secondary" size="small" on:click={cancelEdit}>Cancel</Button>
       <ProtectedButton
