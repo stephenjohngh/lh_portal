@@ -2,8 +2,9 @@
 <!--
   Modal form for creating or editing a meeting.
 
-  Title, date, type (free text + datalist sorted by frequency), notes,
-  and a participants picker:
+  Title (defaults to ordinal date on create), date, type (select from
+  known options — most-used first — or choose "Other…" to type freely),
+  notes, and a participants picker:
     - Multi-select chip list of profiles (from profilesStore).
     - Free-text "Add external" input that appends to participants.extras.
 
@@ -28,7 +29,6 @@
 
   // -- Form state ------------------------------------------------------
   let title           = '';
-  let meeting_type    = '';
   let meeting_date    = '';     // yyyy-mm-dd
   let notes           = '';
   let profile_ids     = [];     // uuid[]
@@ -37,14 +37,21 @@
   let openImmediately = true;   // only relevant when creating
   let formError       = '';
 
+  // Type picker: select drives type_key; custom text input drives type_custom.
+  // meeting_type is derived and used in validation + submit.
+  let type_key    = '';   // value shown in <select>; '__custom__' = "Other…"
+  let type_custom = '';   // text when "Other…" is chosen
+  $: meeting_type = type_key === '__custom__' ? type_custom : type_key;
+
   // -- Ordinal title formatter ----------------------------------------
-  // Converts 'yyyy-mm-dd' → '10th May 2026'
+  // Converts 'yyyy-mm-dd' → '10th May 2026'. Splits the string directly
+  // to avoid timezone ambiguity with new Date().
   function fmtTitleDate(isoDate) {
     if (!isoDate) return '';
     const [y, m, d] = isoDate.split('-').map(Number);
     const months = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
-    const v = d % 100;
+    const v   = d % 100;
     const sfx = (v >= 11 && v <= 13) ? 'th'
               : d % 10 === 1 ? 'st'
               : d % 10 === 2 ? 'nd'
@@ -52,11 +59,9 @@
     return `${d}${sfx} ${months[m - 1]} ${y}`;
   }
 
-  // -- Datalist of distinct meeting types, frequency-sorted -----------
-  // Existing types come first (most-used first). Hardcoded defaults
-  // fill the list on a brand-new database so there are always useful
-  // suggestions from the start. Free text is still allowed — just type
-  // something that isn't in the list.
+  // -- Type options: frequency-sorted existing types + hardcoded defaults -
+  // Using a <select> instead of <input list="..."> so ALL options are
+  // always visible, not just ones that match the current value.
   const TYPE_DEFAULTS = [
     'Management Meeting',
     'Residents Meeting',
@@ -74,28 +79,36 @@
       .sort((a, b) => b[1] - a[1])
       .map(([t]) => t);
   })();
-  // Existing types (most common first) then defaults not already present.
+
+  // Existing types most-common-first, then any defaults not already present.
   $: typeOptions = Array.from(new Set([...typeFrequency, ...TYPE_DEFAULTS]));
 
   // -- Initialise on show ---------------------------------------------
-  // Reactive blocks competing for the same fields are fragile (we hit
-  // this in PlanAdminModal earlier). Use a single show-transition guard.
   let prevShow = false;
   $: if (show && !prevShow) {
     prevShow = true;
     formError = '';
     if (meeting) {
-      title           = meeting.title           ?? '';
-      meeting_type    = meeting.meeting_type    ?? '';
-      meeting_date    = meeting.meeting_date    ?? '';
-      notes           = meeting.notes           ?? '';
-      profile_ids     = meeting.participants?.profile_ids ?? [];
-      extras          = meeting.participants?.extras      ?? [];
-      openImmediately = false;   // editing — irrelevant
+      title        = meeting.title        ?? '';
+      meeting_date = meeting.meeting_date ?? '';
+      notes        = meeting.notes        ?? '';
+      profile_ids  = meeting.participants?.profile_ids ?? [];
+      extras       = meeting.participants?.extras      ?? [];
+      openImmediately = false;
+      // If the stored type is in the option list, select it; otherwise "Other…"
+      const mt = meeting.meeting_type ?? '';
+      if (typeOptions.includes(mt)) {
+        type_key    = mt;
+        type_custom = '';
+      } else {
+        type_key    = '__custom__';
+        type_custom = mt;
+      }
     } else {
-      meeting_date    = new Date().toISOString().split('T')[0];   // today
+      meeting_date    = new Date().toISOString().split('T')[0];
       title           = fmtTitleDate(meeting_date);
-      meeting_type    = typeOptions[0] ?? TYPE_DEFAULTS[0];
+      type_key        = typeOptions[0] ?? TYPE_DEFAULTS[0];
+      type_custom     = '';
       notes           = '';
       profile_ids     = [];
       extras          = [];
@@ -135,9 +148,9 @@
   // -- Submit ----------------------------------------------------------
   function submit() {
     formError = '';
-    if (!title.trim())      { formError = 'Title is required.';        return; }
-    if (!meeting_date)      { formError = 'Date is required.';         return; }
-    if (!meeting_type.trim()){ formError = 'Type is required.';         return; }
+    if (!title.trim())        { formError = 'Title is required.';  return; }
+    if (!meeting_date)        { formError = 'Date is required.';   return; }
+    if (!meeting_type.trim()) { formError = 'Type is required.';   return; }
 
     dispatch('submit', {
       title:        title.trim(),
@@ -175,23 +188,31 @@
     />
 
     <div class="grid grid-cols-2 gap-3">
+
+      <!-- Type: <select> shows all options at once; "Other…" reveals a text input -->
       <div>
         <label for="meeting-type" class="block text-sm font-medium mb-1 text-gray-300">
           Type *
         </label>
-        <input
+        <select
           id="meeting-type"
-          type="text"
-          list="meeting-type-options"
-          bind:value={meeting_type}
+          bind:value={type_key}
           class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-          placeholder="e.g. Management Meeting"
-        />
-        <datalist id="meeting-type-options">
-          {#each typeOptions as t}
-            <option value={t}></option>
+        >
+          {#each typeOptions as t (t)}
+            <option value={t}>{t}</option>
           {/each}
-        </datalist>
+          <option value="__custom__">Other…</option>
+        </select>
+        {#if type_key === '__custom__'}
+          <input
+            type="text"
+            bind:value={type_custom}
+            placeholder="Enter meeting type"
+            aria-label="Custom meeting type"
+            class="mt-1.5 w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm"
+          />
+        {/if}
       </div>
 
       <FormInput
