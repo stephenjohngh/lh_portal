@@ -1,19 +1,17 @@
 <!-- src/lib/apps/issues/components/meetings/MeetingBanner.svelte -->
 <!--
-  Top-of-page banner shown while a meeting is open. Auto-vanishes
-  when the meeting closes (i.e. when currentMeeting goes null).
+  Top-of-page banner shown on the Issues tab while a meeting is open.
+  Auto-vanishes when the meeting closes.
 
   Live counters of issues / comments / actions tagged to the open
   meeting are computed from the parent's issues prop.
 
-  Three buttons:
-    "View items"  — dispatches viewItems with the meeting id (parent
-                    sets the meeting filter on the Issues list).
-    "Edit"        — dispatches edit (parent opens MeetingForm).
-    "Close"       — closes the meeting via meetingsStore.
+  Two buttons:
+    "Edit"  — dispatches 'edit' (parent opens MeetingForm).
+    "Close" — closes the meeting via meetingsStore.
 
-  When a closing-confirm is shown, the count summary helps the user
-  see what's about to be sealed off.
+  Meeting management (view minutes, reopen, delete) lives in the
+  Meetings tab — this banner is intentionally minimal.
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
@@ -86,14 +84,6 @@
     </div>
 
     <div class="flex items-center gap-2 shrink-0">
-      <Button
-        variant="secondary"
-        size="small"
-        on:click={() => dispatch('viewItems', { meetingId: meeting.id })}
-        title="Filter the list to items tagged to this meeting"
-      >
-        View items
-      </Button>
       <ProtectedButton
         action="modify"
         variant="secondary"

@@ -1,59 +1,56 @@
 <!-- src/lib/apps/issues/IssuesTrackerApp.svelte -->
-<!-- Updated to use ErrorDisplay and LoadingSpinner components -->
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
-  import { permissions } from '$lib/stores/permissions';
-  import { auth } from '$lib/stores/auth';
-  import { fmtDate } from '$lib/utils/dates';
-  import { getLogger } from '$lib/utils/logger';
-  import { issuesStore }   from './stores/issuesStore';
-  import { meetingsStore } from './stores/meetingsStore';
-  import IssueFilters from './components/IssueFilters.svelte';
-  import IssueCard from './components/IssueCard.svelte';
-  import IssueForm from './components/IssueForm.svelte';
-  import IssuesReport from './components/reports/IssuesReport.svelte';
-  import ActionsReport from './components/reports/ActionsReport.svelte';
+  import { permissions }    from '$lib/stores/permissions';
+  import { auth }           from '$lib/stores/auth';
+  import { getLogger }      from '$lib/utils/logger';
+  import { issuesStore }    from './stores/issuesStore';
+  import { meetingsStore }  from './stores/meetingsStore';
+  import IssueFilters       from './components/IssueFilters.svelte';
+  import IssueCard          from './components/IssueCard.svelte';
+  import IssueForm          from './components/IssueForm.svelte';
+  import IssuesReport       from './components/reports/IssuesReport.svelte';
+  import ActionsReport      from './components/reports/ActionsReport.svelte';
   import MeetingBanner      from './components/meetings/MeetingBanner.svelte';
-  import MeetingsModal      from './components/meetings/MeetingsModal.svelte';
   import MeetingForm        from './components/meetings/MeetingForm.svelte';
-  import MeetingMinutesView from './components/meetings/MeetingMinutesView.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { ISSUE_STATUS } from '$lib/utils/constants';
+  import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
+  import Button             from '$lib/components/common/Button.svelte';
+  import ErrorDisplay       from '$lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
+  import { ISSUE_STATUS }   from '$lib/utils/constants';
 
   const logger = getLogger('IssuesTrackerApp');
 
-  let searchTerm = '';
-  let statusFilter = ISSUE_STATUS.CURRENT;
-  let showNewIssueModal = false;
-  let editingIssue = null;
-  let showReport = false;
-  let showActionsReport = false;
+  // -- Tab state --------------------------------------------------------
+  let activeTab           = 'issues';   // 'issues' | 'meetings'
+  // When a MeetingBadge is clicked on an issue card, we switch to the
+  // Meetings tab and auto-select that meeting.
+  let meetingTabTargetId  = null;
 
-  // -- Meetings -----------------------------------------------------
-  let showMeetingsModal       = false;
-  let showMeetingForm         = false;
-  let editingMeeting          = null;
-  let meetingFormSaving       = false;
-  let meetingFormError        = '';
-  // When set, scope the issues list to items tagged to this meeting.
-  let meetingFilterId         = null;
+  // -- Issues tab state -------------------------------------------------
+  let searchTerm          = '';
+  let statusFilter        = ISSUE_STATUS.CURRENT;
+  let showNewIssueModal   = false;
+  let editingIssue        = null;
+  let showReport          = false;
+  let showActionsReport   = false;
 
-  // Persist UI state across data refreshes
-  let expandedSections = {}; // { issueId: { comments: bool, actions: bool } }
-  let scrollPosition = 0;
+  // -- Meeting banner edit form (banner's "Edit" dispatches here) -------
+  let showMeetingForm     = false;
+  let editingMeeting      = null;
+  let meetingFormSaving   = false;
+  let meetingFormError    = '';
+
+  // -- Scroll preservation ----------------------------------------------
+  let expandedSections    = {};
+  let scrollPosition      = 0;
   let containerElement;
 
   $: ({ issues, loading, error } = $issuesStore);
 
-  // Save scroll position before data refresh
   $: if (loading && containerElement) {
     scrollPosition = window.scrollY;
   }
-
-  // Restore scroll position after data refresh
   $: if (!loading && scrollPosition > 0) {
     tick().then(() => {
       window.scrollTo({ top: scrollPosition, behavior: 'instant' });
@@ -61,65 +58,44 @@
     });
   }
 
-  // -- Filter issues ------------------------------------------------
-  // The meeting filter is intersected with the search/status filter:
-  // we keep an issue if it's tagged to the meeting OR any of its
-  // comments / actions are tagged to it. This matches "show me what
-  // happened in that meeting" rather than "show me only issues created
-  // there".
-  $: filteredMeeting = $meetingsStore.list.find(m => m.id === meetingFilterId) ?? null;
+  // -- Filter issues (no meeting filter — that lives in the Meetings tab) -
+  $: filteredIssues = issues.filter(issue => {
+    const matchesSearch =
+      issue.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  $: filteredIssues = issues
-    .filter(issue => {
-      const matchesSearch = issue.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    let matchesStatus = false;
+    if (statusFilter === ISSUE_STATUS.CURRENT) {
+      matchesStatus = issue.status === ISSUE_STATUS.CURRENT || !issue.status;
+    } else if (statusFilter === ISSUE_STATUS.PARKED) {
+      matchesStatus = issue.status === ISSUE_STATUS.PARKED;
+    } else if (statusFilter === ISSUE_STATUS.COMPLETED) {
+      matchesStatus = issue.status === ISSUE_STATUS.COMPLETED;
+    }
 
-      let matchesStatus = false;
-      if (statusFilter === ISSUE_STATUS.CURRENT) {
-        matchesStatus = (issue.status === ISSUE_STATUS.CURRENT || !issue.status);
-      } else if (statusFilter === ISSUE_STATUS.PARKED) {
-        matchesStatus = issue.status === ISSUE_STATUS.PARKED;
-      } else if (statusFilter === ISSUE_STATUS.COMPLETED) {
-        matchesStatus = issue.status === ISSUE_STATUS.COMPLETED;
-      }
+    return matchesSearch && matchesStatus;
+  });
 
-      let matchesMeeting = true;
-      if (meetingFilterId) {
-        matchesMeeting =
-          issue.meeting_id === meetingFilterId ||
-          (issue.comments || []).some(c => c.meeting_id === meetingFilterId) ||
-          (issue.actions  || []).some(a => a.meeting_id === meetingFilterId);
-      }
-
-      return matchesSearch && matchesStatus && matchesMeeting;
-    });
-
-  function clearMeetingFilter() {
-    meetingFilterId = null;
+  // -- Meeting badge click: navigate to Meetings tab and select meeting --
+  function handleMeetingBadgeClick(e) {
+    meetingTabTargetId = e.detail;
+    activeTab          = 'meetings';
   }
 
-  // -- Meeting handlers --------------------------------------------
-  function openMeetingsModal()        { showMeetingsModal = true; }
-  function handleViewItems({ detail }) {
-    meetingFilterId = detail.meetingId;
-    showMeetingsModal = false;
-  }
-  function openEditMeeting(meeting) {
-    editingMeeting    = meeting;
-    showMeetingForm   = true;
-    showMeetingsModal = false;   // close the list while editing
+  // -- Banner: edit button dispatches here (opens lightweight form modal) -
+  function handleBannerEdit(e) {
+    editingMeeting  = e.detail;
+    showMeetingForm = true;
   }
   function closeMeetingForm() {
-    showMeetingForm = false;
-    editingMeeting  = null;
+    showMeetingForm  = false;
+    editingMeeting   = null;
     meetingFormError = '';
   }
   async function handleMeetingFormSubmit({ detail }) {
     meetingFormSaving = true;
     meetingFormError  = '';
-    const result = editingMeeting
-      ? await meetingsStore.update(editingMeeting.id, detail)
-      : await meetingsStore.create(detail);
+    const result = await meetingsStore.update(editingMeeting.id, detail);
     meetingFormSaving = false;
     if (!result.success) { meetingFormError = result.error ?? 'Failed to save meeting'; return; }
     closeMeetingForm();
@@ -129,10 +105,8 @@
     if ($auth.user) {
       await permissions.init($auth.user.id, 'issues');
     }
-
     issuesStore.fetchIssues();
     issuesStore.initializeRealtime();
-
     meetingsStore.load();
     meetingsStore.initializeRealtime();
   });
@@ -143,32 +117,29 @@
   });
 
   async function handleNewIssue(event) {
-    logger('handleNewIssue called');
     await issuesStore.addIssue(event.detail);
   }
 
   async function handleEditIssue(event) {
-    logger('handleEditIssue called');
     await issuesStore.updateIssue(editingIssue.id, event.detail);
   }
 
   async function handleDeleteIssue(event) {
     await issuesStore.deleteIssue(event.detail);
   }
-  
+
   async function handleToggleStatus(event) {
-    const issue = event.detail;
-    const newStatus = issue.status === ISSUE_STATUS.COMPLETED ? ISSUE_STATUS.CURRENT : ISSUE_STATUS.COMPLETED;
+    const issue     = event.detail;
+    const newStatus = issue.status === ISSUE_STATUS.COMPLETED
+      ? ISSUE_STATUS.CURRENT
+      : ISSUE_STATUS.COMPLETED;
     await issuesStore.updateIssue(issue.id, {
-      name: issue.name,
-      description: issue.description,
-      priority: issue.priority,
-      status: newStatus
+      name: issue.name, description: issue.description,
+      priority: issue.priority, status: newStatus
     });
   }
-  
+
   function toggleSection(issueId, section) {
-    logger('Toggle section called:', issueId, section);
     if (!expandedSections[issueId]) {
       expandedSections[issueId] = { comments: false, actions: false };
     }
@@ -192,88 +163,69 @@
 </script>
 
 <div class="app-container" bind:this={containerElement}>
-  <!-- Header -->
+
+  <!-- ─── Header ──────────────────────────────────────────────────────── -->
   <div class="flex-start mb-4">
     <div>
       <h2 class="heading-page">Issues Tracker</h2>
       <p class="text-muted">Manage current issues, actions, and comments</p>
     </div>
     <div class="flex space-x-2">
-      <Button
-        variant="secondary"
-        size="large"
-        icon="calendar"
-        on:click={openMeetingsModal}
-      >
-        Meetings{$meetingsStore.current ? ' • 1 open' : ''}
-      </Button>
-      <Button
-        variant="primary"
-        size="large"
-        icon="chart"
-        on:click={() => showReport = true}
-      >
+      <Button variant="primary" size="large" icon="chart"
+        on:click={() => showReport = true}>
         Issues Report
       </Button>
-      <Button
-        variant="primary"
-        size="large"
-        icon="clipboard"
-        on:click={() => showActionsReport = true}
-      >
+      <Button variant="primary" size="large" icon="clipboard"
+        on:click={() => showActionsReport = true}>
         Actions Report
       </Button>
-      <Button
-        variant="primary"
-        size="large"
-        icon="plus"
-        on:click={() => showNewIssueModal = true}
-      >
+      <Button variant="primary" size="large" icon="plus"
+        on:click={() => showNewIssueModal = true}>
         New Issue
       </Button>
     </div>
   </div>
 
-  <!-- Active-meeting banner (only when a meeting is open) -->
-  <MeetingBanner
-    issues={filteredIssues}
-    on:viewItems={handleViewItems}
-    on:edit={(e) => openEditMeeting(e.detail)}
-  />
+  <!-- ─── Tab bar ─────────────────────────────────────────────────────── -->
+  <div class="flex border-b border-slate-700 mb-5">
+    <button
+      class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors
+             {activeTab === 'issues'
+               ? 'text-white border-purple-500'
+               : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
+      on:click={() => activeTab = 'issues'}
+    >
+      Issues
+    </button>
+    <button
+      class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5
+             {activeTab === 'meetings'
+               ? 'text-white border-purple-500'
+               : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
+      on:click={() => { meetingTabTargetId = null; activeTab = 'meetings'; }}
+    >
+      Meetings
+      {#if $meetingsStore.current}
+        <span class="text-[10px] px-1.5 py-0.5 rounded-full
+                     bg-amber-500/20 text-amber-300 border border-amber-500/40 leading-none">
+          open
+        </span>
+      {/if}
+    </button>
+  </div>
 
-  <!-- Meeting-filter chip — visible only while a filter is active -->
-  {#if filteredMeeting}
-    <div class="rounded-lg bg-purple-500/10 border border-purple-500/40 px-4 py-2 mb-4
-                flex items-center justify-between gap-3 flex-wrap">
-      <p class="text-sm text-purple-200">
-        Filtering to meeting: <span class="font-semibold">{filteredMeeting.title}</span>
-        <span class="text-xs text-purple-300/70">({fmtDate(filteredMeeting.meeting_date)} · {filteredMeeting.meeting_type})</span>
-      </p>
-      <Button variant="secondary" size="small" icon="close" on:click={clearMeetingFilter}>
-        Clear filter
-      </Button>
-    </div>
-  {/if}
+  <!-- ─── ISSUES TAB ──────────────────────────────────────────────────── -->
+  {#if activeTab === 'issues'}
 
-  <!-- Error Display -->
-  <ErrorDisplay
-    message={error}
-    onDismiss={() => issuesStore.clearError()}
-  />
+    <!-- Active-meeting banner -->
+    <MeetingBanner
+      {issues}
+      on:edit={handleBannerEdit}
+    />
 
-  {#if filteredMeeting}
-    <!-- Meeting-minutes mode: clean, read-only view scoped to the
-         filtered meeting. Search / status filters are hidden because
-         they don't apply here — clear the meeting filter to get them
-         back. -->
-    {#if loading}
-      <LoadingSpinner />
-    {:else}
-      <MeetingMinutesView meeting={filteredMeeting} issues={filteredIssues} />
-    {/if}
+    <ErrorDisplay message={error} onDismiss={() => issuesStore.clearError()} />
 
-  {:else}
-    <!-- Filters with Expand/Collapse Toggle -->
+    <!-- Filters -->
     <div class="mb-4">
       <IssueFilters
         bind:searchTerm
@@ -299,55 +251,43 @@
           <IssueCard
             {issue}
             showComments={expandedSections[issue.id]?.comments || false}
-            showActions={expandedSections[issue.id]?.actions || false}
+            showActions={expandedSections[issue.id]?.actions   || false}
             on:toggleComments={() => toggleSection(issue.id, 'comments')}
             on:toggleActions={() => toggleSection(issue.id, 'actions')}
             on:edit={(e) => editingIssue = e.detail}
             on:toggleStatus={handleToggleStatus}
             on:delete={handleDeleteIssue}
-            on:meetingFilter={(e) => meetingFilterId = e.detail}
+            on:meetingFilter={handleMeetingBadgeClick}
           />
         {/each}
       </div>
     {/if}
+
+  <!-- ─── MEETINGS TAB ────────────────────────────────────────────────── -->
+  {:else if activeTab === 'meetings'}
+    <MeetingsTab {issues} initialMeetingId={meetingTabTargetId} />
   {/if}
+
 </div>
 
-<!-- New Issue Modal -->
-<IssueForm 
+<!-- ─── New / edit issue modals ─────────────────────────────────────── -->
+<IssueForm
   show={showNewIssueModal}
   on:submit={handleNewIssue}
   on:close={() => showNewIssueModal = false}
 />
-
-<!-- Edit Issue Modal -->
-<IssueForm 
+<IssueForm
   show={editingIssue !== null}
   issue={editingIssue}
   on:submit={handleEditIssue}
   on:close={() => editingIssue = null}
 />
 
-<!-- Outstanding Actions Report -->
-<IssuesReport 
-  bind:show={showReport}
-  {issues}
-/>
+<!-- ─── Report modals ───────────────────────────────────────────────── -->
+<IssuesReport  bind:show={showReport}        {issues} />
+<ActionsReport bind:show={showActionsReport} {issues} />
 
-<!-- Actions Report -->
-<ActionsReport
-  bind:show={showActionsReport}
-  {issues}
-/>
-
-<!-- Meetings list modal -->
-<MeetingsModal
-  bind:show={showMeetingsModal}
-  {issues}
-  on:viewItems={handleViewItems}
-/>
-
-<!-- Meeting form (used by both the banner's Edit and any direct edit) -->
+<!-- ─── Meeting edit form (opened by banner's Edit button) ──────────── -->
 <MeetingForm
   bind:show={showMeetingForm}
   meeting={editingMeeting}

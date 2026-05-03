@@ -20,7 +20,7 @@
     : null;
 
   $: tooltip = meeting
-    ? `${meeting.title}\n${fmtDateLong(meeting.meeting_date)} · ${meeting.meeting_type}\n(click to filter)`
+    ? `${meeting.title}\n${fmtDateLong(meeting.meeting_date)} · ${meeting.meeting_type}\n(click to view in Meetings tab)`
     : '';
 </script>
 
