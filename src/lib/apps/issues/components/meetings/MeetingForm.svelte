@@ -59,18 +59,8 @@
     return `${d}${sfx} ${months[m - 1]} ${y}`;
   }
 
-  // -- Type options: frequency-sorted existing types + hardcoded defaults -
-  // Using a <select> instead of <input list="..."> so ALL options are
-  // always visible, not just ones that match the current value.
-  const TYPE_DEFAULTS = [
-    'Management Meeting',
-    'Residents Meeting',
-    'Directors Meeting',
-    'Maintenance Review',
-    'AGM',
-  ];
-
-  $: typeFrequency = (() => {
+  // -- Type options: frequency-sorted existing types ----------------------
+  $: typeOptions = (() => {
     const counts = {};
     for (const m of $meetingsStore.list) {
       counts[m.meeting_type] = (counts[m.meeting_type] || 0) + 1;
@@ -79,9 +69,6 @@
       .sort((a, b) => b[1] - a[1])
       .map(([t]) => t);
   })();
-
-  // Existing types most-common-first, then any defaults not already present.
-  $: typeOptions = Array.from(new Set([...typeFrequency, ...TYPE_DEFAULTS]));
 
   // -- Initialise on show ---------------------------------------------
   let prevShow = false;
@@ -107,7 +94,7 @@
     } else {
       meeting_date    = new Date().toISOString().split('T')[0];
       title           = fmtTitleDate(meeting_date);
-      type_key        = typeOptions[0] ?? TYPE_DEFAULTS[0];
+      type_key        = typeOptions[0] ?? '';
       type_custom     = '';
       notes           = '';
       profile_ids     = [];
