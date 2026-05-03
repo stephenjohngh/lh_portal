@@ -20,6 +20,7 @@
   import ErrorDisplay           from '$lib/components/common/ErrorDisplay.svelte';
   import MeetingForm            from './MeetingForm.svelte';
   import MeetingMinutesView     from './MeetingMinutesView.svelte';
+  import MeetingAssignModal     from './MeetingAssignModal.svelte';
 
   // All issues (unfiltered by status/search) — used for item counts
   // and passed to MeetingMinutesView.
@@ -35,6 +36,9 @@
   let editingMeeting    = null;
   let saving            = false;
   let pageError         = '';
+
+  // -- Assign modal (admin only) ----------------------------------------
+  let showAssignModal = false;
 
   // -- Delete confirm ---------------------------------------------------
   let pendingDeleteMeeting = null;
@@ -175,6 +179,18 @@
     >
       Edit
     </ProtectedButton>
+
+    {#if $permissions.isAdmin}
+      <ProtectedButton
+        requireAdmin={true}
+        variant="secondary"
+        size="small"
+        on:click={() => showAssignModal = true}
+        title="Assign existing issues / comments / actions to this meeting"
+      >
+        Assign existing items
+      </ProtectedButton>
+    {/if}
 
     {#if selectedMeeting.status === 'open'}
       <ProtectedButton
@@ -389,6 +405,13 @@
   {saving}
   on:submit={handleSubmit}
   on:close={closeForm}
+/>
+
+<!-- ─── Assign existing items (admin migration tool) ─────────────────── -->
+<MeetingAssignModal
+  bind:show={showAssignModal}
+  meeting={selectedMeeting}
+  {issues}
 />
 
 <!-- ─── Delete confirm ───────────────────────────────────────────────── -->

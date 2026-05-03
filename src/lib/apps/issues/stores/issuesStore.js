@@ -656,6 +656,59 @@ function createIssuesStore() {
       }
     },
 
+    // Batch-assign existing issues / comments / actions to a meeting.
+    // Used by the admin "Assign existing items" migration tool.
+    async assignToMeeting(meetingId, { issueIds = [], commentIds = [], actionIds = [] }) {
+      try {
+        const total = issueIds.length + commentIds.length + actionIds.length;
+        if (total === 0) return { success: true };
+
+        logger(`📎 Assigning ${total} items to meeting ${meetingId}`);
+        const { data: { user } } = await supabase.auth.getUser();
+        const now = new Date().toISOString();
+
+        const tasks = [];
+        if (issueIds.length > 0) {
+          tasks.push(
+            supabase.from('issues')
+              .update({ meeting_id: meetingId, updated_by: user?.id, updated_at: now })
+              .in('id', issueIds)
+          );
+        }
+        if (commentIds.length > 0) {
+          tasks.push(
+            supabase.from('comments')
+              .update({ meeting_id: meetingId, updated_by: user?.id, updated_at: now })
+              .in('id', commentIds)
+          );
+        }
+        if (actionIds.length > 0) {
+          tasks.push(
+            supabase.from('actions')
+              .update({ meeting_id: meetingId, updated_by: user?.id, updated_at: now })
+              .in('id', actionIds)
+          );
+        }
+
+        const results = await Promise.all(tasks);
+        for (const { error: err } of results) {
+          if (err) throw err;
+        }
+
+        logger(`✅ Assigned ${total} items`);
+        audit('update', 'meeting', meetingId, `Assigned ${total} item(s) to meeting`, {
+          afterData: { issueIds, commentIds, actionIds }
+        });
+
+        await this.fetchIssues();
+        return { success: true };
+      } catch (err) {
+        logger('❌ Error assigning to meeting:', err);
+        update(state => ({ ...state, error: err.message }));
+        return { success: false, error: err.message };
+      }
+    },
+
     clearError() {
       update(state => ({ ...state, error: '' }));
     }
