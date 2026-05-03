@@ -28,7 +28,7 @@
 
   // -- Form state ------------------------------------------------------
   let title           = '';
-  let meeting_type    = 'team_progress';
+  let meeting_type    = '';
   let meeting_date    = '';     // yyyy-mm-dd
   let notes           = '';
   let profile_ids     = [];     // uuid[]
@@ -37,9 +37,34 @@
   let openImmediately = true;   // only relevant when creating
   let formError       = '';
 
+  // -- Ordinal title formatter ----------------------------------------
+  // Converts 'yyyy-mm-dd' → '10th May 2026'
+  function fmtTitleDate(isoDate) {
+    if (!isoDate) return '';
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const v = d % 100;
+    const sfx = (v >= 11 && v <= 13) ? 'th'
+              : d % 10 === 1 ? 'st'
+              : d % 10 === 2 ? 'nd'
+              : d % 10 === 3 ? 'rd' : 'th';
+    return `${d}${sfx} ${months[m - 1]} ${y}`;
+  }
+
   // -- Datalist of distinct meeting types, frequency-sorted -----------
-  // Pulled from existing meetings; the input is still free-text so a
-  // brand-new type just gets typed in.
+  // Existing types come first (most-used first). Hardcoded defaults
+  // fill the list on a brand-new database so there are always useful
+  // suggestions from the start. Free text is still allowed — just type
+  // something that isn't in the list.
+  const TYPE_DEFAULTS = [
+    'Management Meeting',
+    'Residents Meeting',
+    'Directors Meeting',
+    'Maintenance Review',
+    'AGM',
+  ];
+
   $: typeFrequency = (() => {
     const counts = {};
     for (const m of $meetingsStore.list) {
@@ -49,8 +74,8 @@
       .sort((a, b) => b[1] - a[1])
       .map(([t]) => t);
   })();
-  // Always include 'team_progress' so brand-new DBs autocomplete it.
-  $: typeOptions = Array.from(new Set(['team_progress', ...typeFrequency]));
+  // Existing types (most common first) then defaults not already present.
+  $: typeOptions = Array.from(new Set([...typeFrequency, ...TYPE_DEFAULTS]));
 
   // -- Initialise on show ---------------------------------------------
   // Reactive blocks competing for the same fields are fragile (we hit
@@ -61,16 +86,16 @@
     formError = '';
     if (meeting) {
       title           = meeting.title           ?? '';
-      meeting_type    = meeting.meeting_type    ?? 'team_progress';
+      meeting_type    = meeting.meeting_type    ?? '';
       meeting_date    = meeting.meeting_date    ?? '';
       notes           = meeting.notes           ?? '';
       profile_ids     = meeting.participants?.profile_ids ?? [];
       extras          = meeting.participants?.extras      ?? [];
       openImmediately = false;   // editing — irrelevant
     } else {
-      title           = '';
-      meeting_type    = typeOptions[0] ?? 'team_progress';
       meeting_date    = new Date().toISOString().split('T')[0];   // today
+      title           = fmtTitleDate(meeting_date);
+      meeting_type    = typeOptions[0] ?? TYPE_DEFAULTS[0];
       notes           = '';
       profile_ids     = [];
       extras          = [];
@@ -145,7 +170,7 @@
       label="Title"
       type="text"
       bind:value={title}
-      placeholder="e.g. Weekly progress – 30 Apr"
+      placeholder="e.g. 10th May 2026"
       required
     />
 
@@ -160,7 +185,7 @@
           list="meeting-type-options"
           bind:value={meeting_type}
           class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-          placeholder="team_progress"
+          placeholder="e.g. Management Meeting"
         />
         <datalist id="meeting-type-options">
           {#each typeOptions as t}
