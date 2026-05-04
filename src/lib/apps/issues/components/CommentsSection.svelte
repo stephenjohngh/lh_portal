@@ -16,6 +16,7 @@
   import { issuesStore }      from '../stores/issuesStore';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import DecisionItem         from './DecisionItem.svelte';
+  import MeetingBadge         from './meetings/MeetingBadge.svelte';
   import { getLogger }        from '$lib/utils/logger';
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import Button               from '$lib/components/common/Button.svelte';
@@ -550,6 +551,10 @@
       {#if viewingItem.historic}
         <span>•</span>
         <span class="text-amber-400">Historic</span>
+      {/if}
+      {#if viewingItem.meeting_id}
+        <span>•</span>
+        <MeetingBadge meetingId={viewingItem.meeting_id} />
       {/if}
     </div>
   {/if}
