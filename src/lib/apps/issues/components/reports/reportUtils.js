@@ -35,17 +35,25 @@ export function hasBeenUpdatedSince(timestamp, filterDateTime) {
 }
 
 /**
- * Check if an issue has recent changes (issue, comments, decisions, or actions)
+ * Check if an issue has activity (created) since the filter date.
+ *
+ * "Activity since" means items CREATED on or after the date — not items that
+ * were merely edited (e.g. status changes, action completions). Using
+ * updated_at caused old issues to surface whenever a status was changed or
+ * an action was marked complete, even though no new content had been added.
  */
 export function hasRecentChanges(issue, filterDateTime) {
   if (!filterDateTime) return true;
 
-  const issueUpdated      = hasBeenUpdatedSince(issue.updated_at, filterDateTime);
-  const hasRecentComments  = (issue.comments  || []).some(c => hasBeenUpdatedSince(c.updated_at, filterDateTime));
-  const hasRecentDecisions = (issue.decisions || []).some(d => hasBeenUpdatedSince(d.updated_at, filterDateTime));
-  const hasRecentActions   = (issue.actions   || []).some(a => hasBeenUpdatedSince(a.updated_at, filterDateTime));
+  // Issue itself was created on or after the filter date
+  if (hasBeenUpdatedSince(issue.created_at, filterDateTime)) return true;
 
-  return issueUpdated || hasRecentComments || hasRecentDecisions || hasRecentActions;
+  // A comment, decision, or action was ADDED on or after the filter date
+  if ((issue.comments  || []).some(c => hasBeenUpdatedSince(c.created_at, filterDateTime))) return true;
+  if ((issue.decisions || []).some(d => hasBeenUpdatedSince(d.created_at, filterDateTime))) return true;
+  if ((issue.actions   || []).some(a => hasBeenUpdatedSince(a.created_at, filterDateTime))) return true;
+
+  return false;
 }
 
 /**
@@ -131,8 +139,8 @@ export function getFilterSummary(includeCurrent, includeParked, includeCompleted
   ].filter(Boolean).join(', ');
 
   const dateInfo = filterDate
-    ? `Changes since ${fmtDate(new Date(filterDate).toISOString())}`
-    : 'All changes';
+    ? `Created since ${fmtDate(new Date(filterDate).toISOString())}`
+    : 'All dates';
 
   return `Showing: ${statuses} • ${dateInfo}`;
 }

@@ -92,7 +92,7 @@
     </div>
 
     <div>
-      <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Activity since</p>
+      <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Created since</p>
       <input
         type="date"
         bind:value={filterDate}
@@ -161,7 +161,7 @@
               includeParked    && 'Parked',
               includeCompleted && 'Completed'
             ].filter(Boolean).join(', ')}
-            {#if filterDate} · changes since {fmtDate(new Date(filterDate).toISOString())}{/if}
+            {#if filterDate} · created since {fmtDate(new Date(filterDate).toISOString())}{/if}
             {#if filterMeetingId} · meeting filter active{/if}
             · {displayedIssues.length} {displayedIssues.length === 1 ? 'issue' : 'issues'}
           </p>
