@@ -1,73 +1,54 @@
 // src/routes/api/reports/generate-actions-docx/+server.js
-// CLEANED: All console.log replaced with logger
+// Generates a Word document from the actions report data.
+// Accepts grouped data: { groups: [{ issue, actions }], selectedUser, userName, sortMode }
 
 import { json } from '@sveltejs/kit';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
-         AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType } from 'docx';
+import {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  AlignmentType, BorderStyle, WidthType, ShadingType
+} from 'docx';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('GenerateActionsDocx');
 
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+const BORDER  = { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' };
+const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
+
+function fmtShort(isoDate) {
+  if (!isoDate) return '';
+  return new Date(isoDate).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
+}
+
+function p(text, opts = {}) {
+  return new Paragraph({
+    children: [new TextRun({ text: String(text ?? ''), ...opts })],
+    ...(opts._para ?? {})
+  });
+}
+
+// ── Route handler ─────────────────────────────────────────────────────────────
+
 export async function POST({ request }) {
   logger('Actions DOCX generation request received');
-
   try {
-    logger('Parsing request body');
-    const requestBody = await request.json();
-    logger('✅ Request body parsed successfully');
-    
-    const { actions, selectedUser, userName } = requestBody;
-    
-    logger('Validating data');
-    logger('Actions type:', typeof actions);
-    logger('Actions is array:', Array.isArray(actions));
-    logger('Actions count:', actions?.length || 0);
-    logger('Selected user:', selectedUser);
-    logger('User name:', userName);
+    const { groups, selectedUser, userName, sortMode } = await request.json();
 
-    if (!actions) {
-      logger('❌ No actions provided');
-      return json({ error: 'No actions provided' }, { status: 400 });
+    if (!groups || !Array.isArray(groups)) {
+      return json({ error: 'No groups provided' }, { status: 400 });
     }
 
-    if (!Array.isArray(actions)) {
-      logger('❌ Actions is not an array');
-      return json({ error: 'Actions must be an array' }, { status: 400 });
-    }
-
-    if (actions.length === 0) {
-      logger('⚠️ No actions - returning 204');
+    const totalActions = groups.reduce((n, g) => n + (g.actions?.length ?? 0), 0);
+    if (totalActions === 0) {
       return new Response('', { status: 204 });
     }
 
-    logger('Creating document structure');
     const doc = new Document({
       styles: {
-        default: { 
-          document: { 
-            run: { font: "Arial", size: 24 }
-          } 
-        },
-        paragraphStyles: [
-          {
-            id: "Heading1",
-            name: "Heading 1",
-            basedOn: "Normal",
-            next: "Normal",
-            quickFormat: true,
-            run: { size: 32, bold: true, font: "Arial", color: "000000" },
-            paragraph: { spacing: { before: 240, after: 240 }, outlineLevel: 0 }
-          },
-          {
-            id: "Heading2",
-            name: "Heading 2",
-            basedOn: "Normal",
-            next: "Normal",
-            quickFormat: true,
-            run: { size: 28, bold: true, font: "Arial", color: "000000" },
-            paragraph: { spacing: { before: 180, after: 120 }, outlineLevel: 1 }
-          }
-        ]
+        default: { document: { run: { font: 'Arial', size: 24 } } }
       },
       sections: [{
         properties: {
@@ -76,26 +57,18 @@ export async function POST({ request }) {
             margin: { top: 720, right: 720, bottom: 720, left: 720 }
           }
         },
-        children: generateReportContent(actions, userName)
+        children: buildContent(groups, userName, sortMode, totalActions)
       }]
     });
 
-    logger('✅ Document structure created');
-
-    logger('Generating buffer');
     const buffer = await Packer.toBuffer(doc);
-    
-    logger('✅ Buffer generated successfully');
-    logger('Buffer size:', buffer.length, 'bytes (', (buffer.length / 1024).toFixed(2), 'KB)');
+    const today  = new Date().toISOString().split('T')[0];
+    const suffix = selectedUser === 'all'         ? 'All_Users'
+                 : selectedUser === 'unallocated' ? 'Unallocated'
+                 : (userName ?? '').replace(/\s+/g, '_');
+    const filename = `Actions_Report_${suffix}_${today}.docx`;
 
-    const filename = selectedUser === 'all'
-      ? `Actions_Report_All_Users_${new Date().toISOString().split('T')[0]}.docx`
-      : selectedUser === 'unallocated'
-      ? `Actions_Report_Unallocated_${new Date().toISOString().split('T')[0]}.docx`
-      : `Actions_Report_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
-
-    logger('Filename:', filename);
-    logger('✅ Sending response');
+    logger('✅ Generated', filename, buffer.length, 'bytes');
 
     return new Response(buffer, {
       headers: {
@@ -104,115 +77,82 @@ export async function POST({ request }) {
         'Content-Length': buffer.length.toString()
       }
     });
-
   } catch (err) {
-    logger('❌ Error generating actions report:', err.message);
-    logger('Stack:', err.stack);
-    
-    return json({ 
-      error: err.message,
-      type: err.constructor.name,
-      stack: err.stack
-    }, { status: 500 });
+    logger('❌', err.message);
+    return json({ error: err.message }, { status: 500 });
   }
 }
 
-function generateReportContent(actions, userName) {
-  logger('Generating report content');
-  logger('Actions count:', actions.length);
-  logger('User name:', userName);
-  
+// ── Document builder ──────────────────────────────────────────────────────────
+
+function buildContent(groups, userName, sortMode, totalActions) {
   const content = [];
-  
-  try {
-    logger('Adding report header');
-    content.push(
-      new Paragraph({
-        heading: HeadingLevel.HEADING_1,
-        children: [new TextRun("Actions Report")]
-      })
-    );
-    
-    const generatedDate = new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-    
-    logger('Adding metadata paragraph');
-    content.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `Generated: ${generatedDate} • Showing: ${userName} • ${actions.length} ${actions.length === 1 ? 'action' : 'actions'} (In-Progress, Pending)`,
-            size: 20,
-            color: "666666"
-          })
-        ],
-        spacing: { after: 360 }
-      })
-    );
 
-    logger('Processing', actions.length, 'actions');
-    actions.forEach((action, index) => {
-      logger('Processing action', index + 1, '/', actions.length);
-      try {
-        const actionContent = generateActionContent(action, index + 1);
-        content.push(...actionContent);
-      } catch (err) {
-        logger('❌ Error processing action', index + 1, ':', err.message);
-        throw err;
-      }
-    });
+  // ── Report header ─────────────────────────────────────────────────────────
 
-    logger('Adding footer');
-    content.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: "End of Report",
-            italics: true,
-            color: "999999"
-          })
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 480 }
-      })
-    );
+  content.push(p('Actions Report', {
+    bold: true, size: 36,
+    _para: { spacing: { after: 80 } }
+  }));
 
-    logger('✅ Report content generated:', content.length, 'elements');
-    return content;
-    
-  } catch (err) {
-    logger('❌ Error in generateReportContent:', err.message);
-    throw err;
-  }
-}
+  const sortLabel = sortMode === 'deadline'
+    ? 'Earliest deadline first'
+    : 'Priority → Issue number → Status → Deadline';
 
-function generateActionContent(action, number) {
-  const content = [];
-  const border = { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" };
-  const borders = { top: border, bottom: border, left: border, right: border };
-  
-  try {
+  content.push(p(
+    [
+      `Generated ${fmtShort(new Date().toISOString())}`,
+      userName,
+      `${totalActions} ${totalActions === 1 ? 'action' : 'actions'} across ${groups.length} ${groups.length === 1 ? 'issue' : 'issues'}`,
+      `Sorted: ${sortLabel}`
+    ].join('  ·  '),
+    { size: 20, color: '888888', _para: { spacing: { after: 60 } } }
+  ));
+
+  // Divider
+  content.push(new Paragraph({
+    children: [],
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' } },
+    spacing: { after: 360 }
+  }));
+
+  // ── Per-issue sections ────────────────────────────────────────────────────
+
+  let actionNumber = 1;
+
+  for (const { issue, actions } of groups) {
+    // Issue header row (darker shading to distinguish from action rows)
+    const issueLabel = [
+      issue.issue_number ? `#${issue.issue_number}` : null,
+      issue.name
+    ].filter(Boolean).join('  —  ');
+
+    const statusSuffix = issue.status === 'parked'    ? '  [Parked]'
+                       : issue.status === 'completed' ? '  [Completed]'
+                       : '';
+
     content.push(
       new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
+        width: { size: 10800, type: WidthType.DXA },
+        columnWidths: [10800],
         rows: [
           new TableRow({
             children: [
               new TableCell({
-                borders,
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                shading: { fill: "F5F5F5", type: ShadingType.CLEAR },
-                margins: { top: 120, bottom: 120, left: 180, right: 180 },
+                borders: BORDERS,
+                shading: { fill: 'DDDDDD', type: ShadingType.CLEAR },
+                margins: { top: 100, bottom: 100, left: 180, right: 180 },
+                width: { size: 10800, type: WidthType.DXA },
                 children: [
                   new Paragraph({
                     children: [
+                      new TextRun({ text: issueLabel, bold: true, size: 26 }),
+                      ...(statusSuffix
+                        ? [new TextRun({ text: statusSuffix, size: 22, color: '666666' })]
+                        : []),
                       new TextRun({
-                        text: `${number}. ${action.action_text}`,
-                        bold: true,
-                        size: 26
+                        text: `  (${actions.length} ${actions.length === 1 ? 'action' : 'actions'})`,
+                        size: 20, color: '888888'
                       })
                     ]
                   })
@@ -224,102 +164,78 @@ function generateActionContent(action, number) {
       })
     );
 
-    content.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `Issue: `,
-            size: 22,
-            color: "666666"
-          }),
-          new TextRun({
-            text: action.issue_name,
-            size: 22,
-            bold: true
-          })
-        ],
-        spacing: { before: 120, after: 80 }
-      })
-    );
-
-    const details = [];
-    
-    if (action.name_text) {
-      details.push(`👤 Assigned to: ${action.name_text}`);
-    }
-    
-    if (action.date_deadline) {
-      const deadline = new Date(action.date_deadline).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      const isOverdue = new Date(action.date_deadline) < new Date();
-      details.push(`📅 Due: ${deadline}${isOverdue ? ' ⚠️ OVERDUE' : ''}`);
-    }
-    
-    details.push(`Status: ${action.status}`);
-    
-    if (action.issue_status === 'parked') {
-      details.push('🅿️ Issue is Parked');
-    } else if (action.issue_status === 'completed') {
-      details.push('✓ Issue is Completed');
+    // Actions within this issue
+    for (const action of actions) {
+      content.push(...buildActionContent(action, actionNumber++));
     }
 
-    content.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: details.join(' • '),
-            size: 20,
-            color: "666666"
-          })
-        ],
-        spacing: { after: 80 }
-      })
-    );
-
-    const createdDate = new Date(action.created_at).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-    
-    const createdBy = action.created_by_profile?.full_name || 'Unknown';
-    
-    let dateInfo = `Added: ${createdDate} by ${createdBy}`;
-    
-    const createdTime = new Date(action.created_at).getTime();
-    const updatedTime = action.updated_at ? new Date(action.updated_at).getTime() : null;
-    
-    if (updatedTime && Math.abs(updatedTime - createdTime) > 1000) {
-      const updatedDate = new Date(action.updated_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-      const updatedBy = action.updated_by_profile?.full_name || 'Unknown';
-      dateInfo += ` • Modified: ${updatedDate} by ${updatedBy}`;
-    }
-    
-    content.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: dateInfo,
-            size: 18,
-            color: "999999",
-            italics: true
-          })
-        ],
-        spacing: { after: 360 }
-      })
-    );
-
-    return content;
-    
-  } catch (err) {
-    logger('❌ Error in generateActionContent for action', number, ':', err.message);
-    throw err;
+    content.push(new Paragraph({ children: [], spacing: { after: 240 } }));
   }
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+
+  content.push(p('End of Report', {
+    italics: true, color: '999999',
+    _para: {
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 480 },
+      border: { top: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' } }
+    }
+  }));
+
+  return content;
+}
+
+// ── Single action ─────────────────────────────────────────────────────────────
+
+function buildActionContent(action, number) {
+  const content = [];
+
+  // Action text (lightly shaded table row, indented under the issue header)
+  content.push(
+    new Table({
+      width: { size: 10440, type: WidthType.DXA },
+      columnWidths: [10440],
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: BORDERS,
+              shading: { fill: 'F5F5F5', type: ShadingType.CLEAR },
+              margins: { top: 80, bottom: 80, left: 180, right: 180 },
+              width: { size: 10440, type: WidthType.DXA },
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: `${number}.`, bold: true, size: 22, color: '888888' }),
+                    new TextRun({ text: `  ${action.action_text}`, bold: true, size: 22 })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      ],
+      margins: { left: 360 }
+    })
+  );
+
+  // Detail line: status · assignee · deadline · added
+  const isOverdue = action.date_deadline && new Date(action.date_deadline) < new Date();
+  const details = [
+    action.status,
+    action.name_text                ? `👤 ${action.name_text}` : null,
+    action.date_deadline            ? `📅 Due: ${fmtShort(action.date_deadline)}${isOverdue ? ' ⚠️' : ''}` : null,
+    `Added: ${fmtShort(action.created_at)}`
+  ].filter(Boolean).join('  ·  ');
+
+  content.push(p(details, {
+    size: 20, color: '666666',
+    _para: {
+      spacing: { before: 60, after: 300 },
+      indent: { left: 540 }
+    }
+  }));
+
+  return content;
 }

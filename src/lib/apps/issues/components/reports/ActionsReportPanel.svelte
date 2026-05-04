@@ -16,43 +16,120 @@
 
   onMount(() => profilesStore.load());
 
+  // ── Filters ───────────────────────────────────────────────────────────────
   let selectedUser      = 'all';
   let filterMeetingId   = '';
   let includeInProgress = true;
   let includePending    = true;
   let includeCompleted  = false;
 
+  // ── Sort ─────────────────────────────────────────────────────────────────
+  // 'standard' = priority → issue number → status → deadline → created
+  // 'deadline' = earliest action deadline first (per issue group)
+  let sortMode = 'standard';
+
   let isGenerating  = false;
   let downloadError = '';
 
-  $: allActions = issues.flatMap(issue =>
-    (issue.actions || []).map(action => ({
-      ...action,
-      issue_name:     issue.name,
-      issue_priority: issue.priority,
-      issue_status:   issue.status
-    }))
-  );
+  // ── Sort helpers ──────────────────────────────────────────────────────────
 
-  $: filteredActions = allActions.filter(action => {
-    const statusMatch =
-      (action.status === 'in-progress' && includeInProgress) ||
-      (action.status === 'pending'     && includePending)     ||
-      (action.status === 'completed'   && includeCompleted);
+  function deadlineThenCreated(a, b) {
+    const hasA = !!a.date_deadline;
+    const hasB = !!b.date_deadline;
+    if (hasA && !hasB) return -1;
+    if (!hasA && hasB) return  1;
+    if (hasA && hasB) {
+      const da = new Date(a.date_deadline).setHours(0, 0, 0, 0);
+      const db = new Date(b.date_deadline).setHours(0, 0, 0, 0);
+      if (da !== db) return da - db;
+    }
+    return new Date(a.created_at) - new Date(b.created_at);
+  }
 
-    const userMatch =
-      selectedUser === 'all'         ? true :
-      selectedUser === 'unallocated' ? (!action.name_text || !action.name_text.trim()) :
-      action.name_text === selectedUser;
+  function earliestDeadline(actions) {
+    return actions.reduce((min, a) => {
+      if (!a.date_deadline) return min;
+      const t = new Date(a.date_deadline).setHours(0, 0, 0, 0);
+      return min === null ? t : Math.min(min, t);
+    }, null);
+  }
 
-    const meetingMatch = filterMeetingId ? action.meeting_id === filterMeetingId : true;
+  // ── Core derived data ─────────────────────────────────────────────────────
 
-    return statusMatch && userMatch && meetingMatch;
-  });
+  $: sortedGroups = (() => {
+    const groups = issues
+      .map(issue => ({
+        issue: {
+          id:           issue.id,
+          name:         issue.name,
+          priority:     issue.priority,
+          issue_number: issue.issue_number,
+          status:       issue.status
+        },
+        actions: (issue.actions || []).filter(action => {
+          const statusMatch =
+            (action.status === 'in-progress' && includeInProgress) ||
+            (action.status === 'pending'     && includePending)     ||
+            (action.status === 'completed'   && includeCompleted);
+          const userMatch =
+            selectedUser === 'all'         ? true :
+            selectedUser === 'unallocated' ? (!action.name_text || !action.name_text.trim()) :
+            action.name_text === selectedUser;
+          const meetingMatch = filterMeetingId ? action.meeting_id === filterMeetingId : true;
+          return statusMatch && userMatch && meetingMatch;
+        })
+      }))
+      .filter(g => g.actions.length > 0);
 
-  $: sortedActions = sortActions(filteredActions);
+    // Sort actions within each group
+    for (const g of groups) {
+      if (sortMode === 'deadline') {
+        g.actions = g.actions.slice().sort(deadlineThenCreated);
+      } else {
+        g.actions = sortActions(g.actions); // status → deadline → created
+      }
+    }
+
+    // Sort groups
+    if (sortMode === 'deadline') {
+      groups.sort((a, b) => {
+        const aMin = earliestDeadline(a.actions);
+        const bMin = earliestDeadline(b.actions);
+        if (aMin !== null && bMin === null) return -1;
+        if (aMin === null && bMin !== null) return  1;
+        if (aMin !== null && bMin !== null && aMin !== bMin) return aMin - bMin;
+        if (a.issue.priority !== b.issue.priority) return a.issue.priority - b.issue.priority;
+        return (a.issue.issue_number ?? 0) - (b.issue.issue_number ?? 0);
+      });
+    } else {
+      groups.sort((a, b) => {
+        if (a.issue.priority !== b.issue.priority) return a.issue.priority - b.issue.priority;
+        return (a.issue.issue_number ?? 0) - (b.issue.issue_number ?? 0);
+      });
+    }
+
+    return groups;
+  })();
+
+  $: totalActionCount = sortedGroups.reduce((n, g) => n + g.actions.length, 0);
+
+  // Global action numbers (1, 2, 3… across all groups in display order)
+  $: actionNumbers = (() => {
+    const map = {};
+    let n = 1;
+    for (const g of sortedGroups) for (const a of g.actions) map[a.id] = n++;
+    return map;
+  })();
 
   $: todayLong = fmtDateLong(new Date().toISOString());
+
+  // ── Sort label for the report header ─────────────────────────────────────
+
+  $: sortLabel = sortMode === 'deadline'
+    ? 'Earliest deadline first'
+    : 'Priority → Issue number → Status → Deadline';
+
+  // ── Download ──────────────────────────────────────────────────────────────
 
   async function downloadWord() {
     isGenerating  = true;
@@ -62,7 +139,8 @@
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actions:      sortedActions,
+          groups:   sortedGroups,
+          sortMode,
           selectedUser,
           userName: selectedUser === 'all'         ? 'All Users'
                   : selectedUser === 'unallocated' ? 'Unallocated'
@@ -98,6 +176,7 @@
   <!-- ── Filter panel ── -->
   <aside class="w-64 shrink-0 border-r border-slate-700 bg-slate-800/60 p-5 flex flex-col gap-5 overflow-y-auto">
 
+    <!-- Assignee -->
     <div>
       <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Assignee</p>
       <select
@@ -113,6 +192,7 @@
       </select>
     </div>
 
+    <!-- Action status -->
     <div>
       <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Action status</p>
       <div class="flex flex-col gap-1.5">
@@ -131,6 +211,7 @@
       </div>
     </div>
 
+    <!-- Meeting -->
     <div>
       <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Meeting</p>
       <select
@@ -144,15 +225,34 @@
       </select>
     </div>
 
+    <!-- Sort -->
+    <div>
+      <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Sort by</p>
+      <div class="flex flex-col gap-1.5">
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+          <input type="radio" bind:group={sortMode} value="standard" class="accent-purple-400" />
+          Standard
+          <span class="text-[10px] text-slate-500 leading-tight">priority · issue · status</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+          <input type="radio" bind:group={sortMode} value="deadline" class="accent-purple-400" />
+          Deadline
+          <span class="text-[10px] text-slate-500 leading-tight">earliest first</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Download -->
     <div class="mt-auto pt-4 border-t border-slate-700">
       <p class="text-xs text-slate-500 mb-3">
-        {sortedActions.length} action{sortedActions.length === 1 ? '' : 's'}
+        {totalActionCount} action{totalActionCount === 1 ? '' : 's'}
+        across {sortedGroups.length} issue{sortedGroups.length === 1 ? '' : 's'}
       </p>
       <Button
         variant="primary"
         size="medium"
         icon="download"
-        disabled={isGenerating || sortedActions.length === 0}
+        disabled={isGenerating || totalActionCount === 0}
         on:click={downloadWord}
       >
         {isGenerating ? 'Generating…' : 'Download Word doc'}
@@ -167,58 +267,75 @@
   <div class="flex-1 overflow-y-auto bg-white text-gray-900">
     <div class="max-w-4xl mx-auto p-8">
 
-      {#if sortedActions.length === 0}
+      {#if totalActionCount === 0}
         <div class="text-center py-16 text-gray-400">
           <p class="text-lg font-medium">No actions match the current filters.</p>
           <p class="text-sm mt-1">Adjust the filters to see results.</p>
         </div>
 
       {:else}
+        <!-- Report header -->
         <div class="mb-8 pb-5 border-b border-gray-200">
           <h1 class="text-3xl font-bold text-gray-900 mb-1">Actions Report</h1>
           <p class="text-gray-500 text-sm">Generated {todayLong}</p>
           <p class="text-gray-400 text-xs mt-1">
             {selectedUser === 'all' ? 'All users' : selectedUser === 'unallocated' ? 'Unallocated' : selectedUser}
-            · {sortedActions.length} action{sortedActions.length === 1 ? '' : 's'}
+            · {totalActionCount} action{totalActionCount === 1 ? '' : 's'}
+            across {sortedGroups.length} issue{sortedGroups.length === 1 ? '' : 's'}
             {#if filterMeetingId} · meeting filter active{/if}
           </p>
-          <p class="text-gray-400 text-xs">Sorted: Status → Deadline → Created</p>
+          <p class="text-gray-400 text-xs">Sorted: {sortLabel}</p>
         </div>
 
-        <div class="space-y-4">
-          {#each sortedActions as action, index (action.id)}
-            <div class="border border-gray-300 rounded-lg overflow-hidden">
-              <div class="bg-gray-100 p-4 border-b border-gray-300">
-                <div class="flex items-start gap-3">
-                  <span class="text-base font-bold text-gray-400 shrink-0 mt-0.5">{index + 1}.</span>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-gray-900 leading-snug">{action.action_text}</p>
-                    <p class="text-sm text-gray-500 mt-0.5">
-                      Issue: <span class="font-medium text-gray-700">{action.issue_name}</span>
-                    </p>
-                  </div>
-                </div>
+        <!-- Grouped issues -->
+        <div class="space-y-8">
+          {#each sortedGroups as group (group.issue.id)}
+
+            <!-- Issue header -->
+            <div>
+              <div class="flex items-center gap-2 bg-gray-100 border border-gray-300 rounded-lg px-4 py-2.5 mb-3">
+                {#if group.issue.issue_number}
+                  <span class="text-gray-400 text-sm font-mono shrink-0">#{group.issue.issue_number}</span>
+                  <span class="text-gray-300 shrink-0">—</span>
+                {/if}
+                <span class="font-bold text-gray-800 flex-1 leading-snug">{group.issue.name}</span>
+                {#if group.issue.status === 'parked'}
+                  <span class="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded border border-amber-200 font-medium shrink-0">Parked</span>
+                {:else if group.issue.status === 'completed'}
+                  <span class="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded border border-green-200 font-medium shrink-0">Completed</span>
+                {/if}
+                <span class="text-xs text-gray-500 shrink-0">{group.actions.length} {group.actions.length === 1 ? 'action' : 'actions'}</span>
               </div>
-              <div class="p-4 bg-white">
-                <div class="flex flex-wrap gap-2 mb-2">
-                  {#if action.name_text}
-                    <Badge variant="info" icon="👤" outline>{action.name_text}</Badge>
-                  {/if}
-                  {#if action.date_deadline}
-                    <Badge variant={isOverdue(action.date_deadline) ? 'danger' : 'warning'} icon="📅" outline>
-                      Due: {fmtDate(action.date_deadline)}{isOverdue(action.date_deadline) ? ' ⚠️' : ''}
-                    </Badge>
-                  {/if}
-                  <Badge variant="primary" outline className="capitalize">{action.status}</Badge>
-                  {#if action.issue_status === 'parked'}
-                    <Badge variant="warning" icon="🅿️" outline>Issue Parked</Badge>
-                  {:else if action.issue_status === 'completed'}
-                    <Badge variant="success" icon="✓" outline>Issue Completed</Badge>
-                  {/if}
-                </div>
-                <p class="text-xs text-gray-400">Added: {fmtDate(action.created_at)}</p>
+
+              <!-- Actions for this issue -->
+              <div class="space-y-3 pl-2">
+                {#each group.actions as action (action.id)}
+                  <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                      <div class="flex items-start gap-3">
+                        <span class="text-sm font-bold text-gray-400 shrink-0 mt-0.5 tabular-nums">{actionNumbers[action.id]}.</span>
+                        <p class="font-semibold text-gray-900 leading-snug">{action.action_text}</p>
+                      </div>
+                    </div>
+                    <div class="px-4 py-3 bg-white">
+                      <div class="flex flex-wrap gap-2 mb-2">
+                        {#if action.name_text}
+                          <Badge variant="info" icon="👤" outline>{action.name_text}</Badge>
+                        {/if}
+                        {#if action.date_deadline}
+                          <Badge variant={isOverdue(action.date_deadline) ? 'danger' : 'warning'} icon="📅" outline>
+                            Due: {fmtDate(action.date_deadline)}{isOverdue(action.date_deadline) ? ' ⚠️' : ''}
+                          </Badge>
+                        {/if}
+                        <Badge variant="primary" outline className="capitalize">{action.status}</Badge>
+                      </div>
+                      <p class="text-xs text-gray-400">Added: {fmtDate(action.created_at)}</p>
+                    </div>
+                  </div>
+                {/each}
               </div>
             </div>
+
           {/each}
         </div>
 
