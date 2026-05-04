@@ -68,35 +68,66 @@ export function formatTimestamp(createdAt, updatedAt) {
 }
 
 /**
- * Filter and process issues for the report
+ * Filter and process issues for the report.
+ *
+ * @param {Array}  issues     - Raw issues from the store
+ * @param {string} filterDate - ISO date string (YYYY-MM-DD) or ''
+ * @param {object} options
+ *   includeHistoric         {boolean} - show historic comments/decisions
+ *   includeCompletedActions {boolean} - show completed actions alongside outstanding ones
+ *   issueNumbers            {number[]} - if non-empty, show ONLY these issue numbers,
+ *                                        bypassing the date filter (for drill-down)
  */
-export function filterIssues(issues, filterDate) {
+export function filterIssues(issues, filterDate, options = {}) {
+  const {
+    includeHistoric         = false,
+    includeCompletedActions = false,
+    issueNumbers            = []
+  } = options;
+
   const filterDateTime = filterDate ? new Date(filterDate).getTime() : null;
-  
-  return issues
-    .filter(issue => !issue.historic) // Filter out historic issues
-    .filter(issue => !filterDateTime || hasRecentChanges(issue, filterDateTime))
+
+  // When specific issue numbers are requested, bypass date + historic-issue
+  // filters entirely — the user is doing a targeted lookup.
+  let baseIssues;
+  if (issueNumbers.length > 0) {
+    baseIssues = issues.filter(issue => issueNumbers.includes(issue.issue_number));
+  } else {
+    baseIssues = issues
+      .filter(issue => !issue.historic)
+      .filter(issue => !filterDateTime || hasRecentChanges(issue, filterDateTime));
+  }
+
+  // When doing an issue-number drill-down we bypass date filtering for sub-items
+  // too — show everything for the requested issues.
+  const filterSubItems = !!filterDateTime && issueNumbers.length === 0;
+
+  return baseIssues
     .map(issue => ({
       ...issue,
-      // For completed issues, include ALL comments/decisions (even historic)
-      // For non-completed issues, filter out historic ones
-      comments: issue.status === ISSUE_STATUS.COMPLETED
-        ? (issue.comments || [])
-        : (issue.comments || []).filter(c => !c.historic),
-      decisions: issue.status === ISSUE_STATUS.COMPLETED
-        ? (issue.decisions || [])
-        : (issue.decisions || []).filter(d => !d.historic),
-      // Filter out completed actions
-      outstandingActions: (issue.actions || []).filter(
-        action => action.status !== ACTION_STATUS.COMPLETED
-      )
+      // Comments: filter by date (when active), then by historic flag.
+      comments: (issue.comments || [])
+        .filter(c => !filterSubItems || hasBeenUpdatedSince(c.created_at, filterDateTime))
+        .filter(c => includeHistoric || issue.status === ISSUE_STATUS.COMPLETED || !c.historic),
+      // Decisions: same logic as comments.
+      decisions: (issue.decisions || [])
+        .filter(d => !filterSubItems || hasBeenUpdatedSince(d.created_at, filterDateTime))
+        .filter(d => includeHistoric || issue.status === ISSUE_STATUS.COMPLETED || !d.historic),
+      // Actions: filter by date (when active), then by completion status.
+      // Sort outstanding before completed, then by created_at ASC within each group
+      // (the card re-sorts by the user's chosen direction).
+      outstandingActions: (issue.actions || [])
+        .filter(a => !filterSubItems || hasBeenUpdatedSince(a.created_at, filterDateTime))
+        .filter(a => includeCompletedActions || a.status !== ACTION_STATUS.COMPLETED)
+        .slice().sort((a, b) => {
+          const aC = a.status === ACTION_STATUS.COMPLETED ? 1 : 0;
+          const bC = b.status === ACTION_STATUS.COMPLETED ? 1 : 0;
+          if (aC !== bC) return aC - bC;
+          return new Date(a.created_at) - new Date(b.created_at);
+        })
     }))
     .sort((a, b) => {
-      // Sort by priority first
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority;
-      }
-      // Then by created_at (not updated_at)
+      if (a.priority !== b.priority) return a.priority - b.priority;
       return new Date(a.created_at) - new Date(b.created_at);
     });
 }

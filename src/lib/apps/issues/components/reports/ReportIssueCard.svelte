@@ -6,13 +6,22 @@
 
   export let issue;
   export let statusType = 'current';
+  export let sortOrder  = 'desc'; // 'desc' = latest first, 'asc' = oldest first
 
   const colors = STATUS_COLORS[statusType];
 
-  $: sortedComments  = (issue.comments  || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  $: sortedDecisions = (issue.decisions || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  // outstandingActions is already sorted by filterIssues: outstanding first, then completed, then by created_at
-  $: sortedActions   = issue.outstandingActions || [];
+  // Multiplier: 1 = oldest first (asc), -1 = newest first (desc)
+  $: dir = sortOrder === 'asc' ? 1 : -1;
+
+  $: sortedComments  = (issue.comments  || []).slice().sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
+  $: sortedDecisions = (issue.decisions || []).slice().sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
+  // Actions: always keep outstanding before completed; within each group sort by direction.
+  $: sortedActions   = (issue.outstandingActions || []).slice().sort((a, b) => {
+    const aC = a.status === ACTION_STATUS.COMPLETED ? 1 : 0;
+    const bC = b.status === ACTION_STATUS.COMPLETED ? 1 : 0;
+    if (aC !== bC) return aC - bC;
+    return dir * (new Date(a.created_at) - new Date(b.created_at));
+  });
 </script>
 
 <div class="border border-gray-300 rounded-lg overflow-hidden break-inside-avoid">
