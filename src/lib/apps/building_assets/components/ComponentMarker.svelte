@@ -78,8 +78,8 @@
                         : hovered ? 'scale-110' : ''}
            {editMode    ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
     style:background-color="#{colour}"
-    style:outline={haloColour ? `2px solid #${haloColour}` : null}
-    style:outline-offset={haloColour ? '3px' : null}
+    style:outline={haloColour ? `3px solid #${haloColour}` : null}
+    style:outline-offset={haloColour ? '0px' : null}
     on:click|stopPropagation={() => dispatch('click', { component })}
     on:mousedown|stopPropagation={e => { if (editMode) dispatch('dragstart', { e, component }); }}
     on:keydown={e => e.key === 'Enter' && dispatch('click', { component })}
