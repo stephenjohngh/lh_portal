@@ -7,7 +7,7 @@
        spaceEditController      — space drawing buffer, vertex drag, polygon move  -->
 <script>
   import { buildingAssetsStore }                 from '../stores/buildingAssetsStore.js';
-  import { typeByCode, checkableDefs }    from '../lookups.js';
+  import { typeByCode, checkableDefs, resolveComponentHalo } from '../lookups.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
   import { ACCENT }                       from '$lib/theme.js';
   import { permissions }                  from '$lib/stores/permissions';
@@ -156,9 +156,12 @@
   });
 
   // Apply component drag-position overrides reactively.
+  // Also attach _haloColour (6-char hex | null) for highlight rendering.
   $: positionedComponents = visibleComponents.map(c => {
-    const ov = $dragPos[c.id];
-    return ov ? { ...c, x_position: ov.x, y_position: ov.y } : c;
+    const ov   = $dragPos[c.id];
+    const base = ov ? { ...c, x_position: ov.x, y_position: ov.y } : c;
+    const halo = resolveComponentHalo(base, types, attrDefs, componentAttrs);
+    return halo ? { ...base, _haloColour: halo } : base;
   });
 
   // -- Derived: inspection panel context ----------------------------

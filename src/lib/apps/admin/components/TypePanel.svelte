@@ -52,10 +52,12 @@
       marker_size:        t.marker_size ?? 'md',
       attribute_group:    t.attribute_group ?? '',
       inspection_panel:   t.inspection_panel,
-      default_attribute:  t.default_attribute ?? '',
-      priority_base:      t.priority_base,
-      presentation_order: t.presentation_order,
-      visible:            t.visible
+      default_attribute:   t.default_attribute  ?? '',
+      priority_base:       t.priority_base,
+      presentation_order:  t.presentation_order,
+      visible:             t.visible,
+      highlight_attribute: t.highlight_attribute ?? '',
+      highlight_colour:    t.highlight_colour ? '#' + t.highlight_colour : ''
     };
     error = '';
   }
@@ -73,10 +75,12 @@
       marker_size:        'md',
       attribute_group:    '',
       inspection_panel:   'standard',
-      default_attribute:  '',
-      priority_base:      'medium',
-      presentation_order: (types.length + 1) * 10,
-      visible:            true
+      default_attribute:   '',
+      priority_base:       'medium',
+      presentation_order:  (types.length + 1) * 10,
+      visible:             true,
+      highlight_attribute: '',
+      highlight_colour:    ''
     };
     error = '';
   }
@@ -194,9 +198,29 @@
                 {/each}
               </select>
 
-              <input bind:value={form.attribute_group}  class={inp} placeholder="Attribute group (e.g. door)" />
-              <input bind:value={form.inspection_panel} class={inp} placeholder="Inspection panel (e.g. standard)" />
+              <input bind:value={form.attribute_group}   class={inp} placeholder="Attribute group (e.g. door)" />
+              <input bind:value={form.inspection_panel}  class={inp} placeholder="Inspection panel (e.g. standard)" />
               <input bind:value={form.default_attribute} class={inp} placeholder="Default attribute value" />
+
+              <!-- Highlight halo -->
+              <div class="pt-1 border-t border-slate-600/50 space-y-1">
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">Highlight halo</p>
+                <input bind:value={form.highlight_attribute} class={inp}
+                       placeholder="Attribute name (e.g. Retained Open)" />
+                <div class="flex gap-1.5 items-center">
+                  {#if form.highlight_colour}
+                    <input type="color" bind:value={form.highlight_colour}
+                           class="h-[28px] w-8 rounded border border-slate-600 cursor-pointer bg-slate-900 p-0.5 shrink-0" />
+                  {/if}
+                  <input bind:value={form.highlight_colour}
+                         class="{inp} flex-1 font-mono" placeholder="#colour (empty = auto)" maxlength="7" />
+                  {#if form.highlight_colour}
+                    <button type="button" on:click={() => form.highlight_colour = ''}
+                            class="text-xs px-1.5 py-0.5 rounded bg-slate-600 hover:bg-slate-500 text-white shrink-0"
+                            title="Clear — use auto-contrast colour">✕</button>
+                  {/if}
+                </div>
+              </div>
 
               <input type="number" bind:value={form.presentation_order} class={inp} placeholder="Order" />
 
@@ -322,6 +346,27 @@
 
             <input bind:value={form.attribute_group}  class={inp} placeholder="Attribute group (e.g. door)" />
             <input bind:value={form.inspection_panel} class={inp} placeholder="Inspection panel" />
+
+            <!-- Highlight halo -->
+            <div class="pt-1 border-t border-slate-600/50 space-y-1">
+              <p class="text-[10px] text-slate-500 uppercase tracking-wide">Highlight halo</p>
+              <input bind:value={form.highlight_attribute} class={inp}
+                     placeholder="Attribute name (e.g. Retained Open)" />
+              <div class="flex gap-1.5 items-center">
+                {#if form.highlight_colour}
+                  <input type="color" bind:value={form.highlight_colour}
+                         class="h-[28px] w-8 rounded border border-slate-600 cursor-pointer bg-slate-900 p-0.5 shrink-0" />
+                {/if}
+                <input bind:value={form.highlight_colour}
+                       class="{inp} flex-1 font-mono" placeholder="#colour (empty = auto)" maxlength="7" />
+                {#if form.highlight_colour}
+                  <button type="button" on:click={() => form.highlight_colour = ''}
+                          class="text-xs px-1.5 py-0.5 rounded bg-slate-600 hover:bg-slate-500 text-white shrink-0"
+                          title="Clear — use auto-contrast colour">✕</button>
+                {/if}
+              </div>
+            </div>
+
             <input type="number" bind:value={form.presentation_order} class={inp} placeholder="Order" />
 
             <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">

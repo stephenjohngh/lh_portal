@@ -105,10 +105,12 @@ export function createTypeHierarchyActions(update) {
       default_attribute:  data.default_attribute?.trim() || null,
       priority_base:      data.priority_base             || 'medium',
       presentation_order: Number(data.presentation_order) || 0,
-      visible:            data.visible ?? true,
-      notes:              data.notes?.trim()             || null,
-      created_by:         userId,
-      updated_by:         userId
+      visible:             data.visible ?? true,
+      notes:               data.notes?.trim()              || null,
+      highlight_attribute: data.highlight_attribute?.trim() || null,
+      highlight_colour:    data.highlight_colour?.replace('#', '').trim() || null,
+      created_by:          userId,
+      updated_by:          userId
     });
     logAudit('create', 'component_type', row.id, row.name,
       { ...AUDIT_OPTS, afterData: row });
@@ -129,9 +131,11 @@ export function createTypeHierarchyActions(update) {
       default_attribute:  data.default_attribute?.trim() || null,
       priority_base:      data.priority_base,
       presentation_order: Number(data.presentation_order) || 0,
-      visible:            data.visible,
-      notes:              data.notes?.trim()             || null,
-      updated_by:         userId
+      visible:             data.visible,
+      notes:               data.notes?.trim()              || null,
+      highlight_attribute: data.highlight_attribute?.trim() || null,
+      highlight_colour:    data.highlight_colour?.replace('#', '').trim() || null,
+      updated_by:          userId
     });
     logAudit('update', 'component_type', id, row.name,
       { ...AUDIT_OPTS, afterData: row });
