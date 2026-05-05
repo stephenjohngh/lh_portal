@@ -104,14 +104,24 @@
     dispatch('changestatuses', { hidden: next });
   }
 
-  function clearAll() {
-    // Hide every type (all type checkboxes off) and clear search.
-    // Status filter is intentionally left untouched — it is a sticky
-    // independent control, not cleared by this button.
+  // True when every type on this plan is currently visible.
+  $: allTypesVisible = systemGroups.every(g => g.types.every(t => !hiddenTypes.has(t.code)));
+
+  function toggleAll() {
     const allCodes = systemGroups.flatMap(g => g.types.map(t => t.code));
-    dispatch('changetypes',      { hidden: new Set(allCodes) });
-    dispatch('searchchange',     { query: '' });
-    dispatch('changeshowspaces', { show: true });
+    if (allTypesVisible) {
+      // Clear all — hide every type and reset search.
+      // Status filter is intentionally left untouched (sticky independent control).
+      dispatch('changetypes',      { hidden: new Set(allCodes) });
+      dispatch('searchchange',     { query: '' });
+      dispatch('changeshowspaces', { show: true });
+    } else {
+      // Set all — restore every type on this plan, reset search.
+      const newHidden = new Set(hiddenTypes);
+      for (const code of allCodes) newHidden.delete(code);
+      dispatch('changetypes',  { hidden: newHidden });
+      dispatch('searchchange', { query: '' });
+    }
   }
 </script>
 
@@ -121,9 +131,9 @@
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filters</p>
     <button
-      on:click={clearAll}
+      on:click={toggleAll}
       class="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-    >Clear all</button>
+    >{allTypesVisible ? 'Clear all' : 'Set all'}</button>
   </div>
 
   <div class="p-3 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
