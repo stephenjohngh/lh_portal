@@ -202,6 +202,8 @@
               <input bind:value={form.inspection_panel}  class={inp} placeholder="Inspection panel (e.g. standard)" />
               <input bind:value={form.default_attribute} class={inp} placeholder="Default attribute value" />
 
+              <input type="number" bind:value={form.presentation_order} class={inp} placeholder="Order" />
+
               <!-- Highlight halo -->
               <div class="pt-1 border-t border-slate-600/50 space-y-1">
                 <p class="text-[10px] text-slate-500 uppercase tracking-wide">Highlight halo</p>
@@ -221,8 +223,6 @@
                   {/if}
                 </div>
               </div>
-
-              <input type="number" bind:value={form.presentation_order} class={inp} placeholder="Order" />
 
               <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                 <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />
@@ -347,6 +347,8 @@
             <input bind:value={form.attribute_group}  class={inp} placeholder="Attribute group (e.g. door)" />
             <input bind:value={form.inspection_panel} class={inp} placeholder="Inspection panel" />
 
+            <input type="number" bind:value={form.presentation_order} class={inp} placeholder="Order" />
+
             <!-- Highlight halo -->
             <div class="pt-1 border-t border-slate-600/50 space-y-1">
               <p class="text-[10px] text-slate-500 uppercase tracking-wide">Highlight halo</p>
@@ -366,8 +368,6 @@
                 {/if}
               </div>
             </div>
-
-            <input type="number" bind:value={form.presentation_order} class={inp} placeholder="Order" />
 
             <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
               <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />
