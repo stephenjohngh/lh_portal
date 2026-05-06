@@ -1,7 +1,7 @@
 <!-- src/lib/apps/issues/components/IssueFilters.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { STATUS_FILTERS } from '$lib/utils/constants';
+  import { STATUS_FILTERS, ISSUE_STATUS } from '$lib/utils/constants';
   import Button from '$lib/components/common/Button.svelte';
 
   export let searchTerm    = '';
@@ -17,7 +17,13 @@
     dispatch('toggleExpand', !allExpanded);
   }
 
-  $: sortedIssues = [...issues].sort((a, b) => (a.issue_number ?? 0) - (b.issue_number ?? 0));
+  $: sortedIssues = [...issues]
+    .filter(issue => {
+      if (statusFilter === ISSUE_STATUS.CURRENT)
+        return issue.status === ISSUE_STATUS.CURRENT || !issue.status;
+      return issue.status === statusFilter;
+    })
+    .sort((a, b) => (a.issue_number ?? 0) - (b.issue_number ?? 0));
 
   function handleJump(e) {
     const issueId = e.target.value;
