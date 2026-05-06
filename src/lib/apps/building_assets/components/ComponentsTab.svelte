@@ -13,6 +13,7 @@
     loadPresets, createPreset, removePreset,
   } from '../componentPresets.js';
 
+  import { resolveComponentHalo }   from '../lookups.js';
   import { generateReportDocument } from './plan/reportGenerator.js';
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
   import ComponentPresetBar      from './ComponentPresetBar.svelte';
@@ -209,12 +210,14 @@
       .filter(Boolean);
   }
 
-  // Group filteredComponents by floor (preserves floor level_order)
+  // Group filteredComponents by floor (preserves floor level_order).
+  // Attach _haloColour to each component so the plan image renderer can draw rings.
   $: filteredByFloor = (() => {
     const map = {};
     for (const c of filteredComponents) {
       if (!map[c.floor_id]) map[c.floor_id] = [];
-      map[c.floor_id].push(c);
+      const halo = resolveComponentHalo(c, types, attrDefs, componentAttrs);
+      map[c.floor_id].push(halo ? { ...c, _haloColour: halo } : c);
     }
     return floors
       .filter(f => map[f.id]?.length > 0)

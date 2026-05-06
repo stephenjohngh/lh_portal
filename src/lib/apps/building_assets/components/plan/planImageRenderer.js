@@ -176,6 +176,17 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
         // Inactive components are drawn at 40% opacity (matches live plan CSS opacity-40)
         if (c.status === 'inactive') ctx.globalAlpha = 0.4;
 
+        // Halo ring — drawn BEFORE the marker so the shape renders on top
+        if (c._haloColour) {
+          const hw = Math.max(2, Math.round(3 * scale)); // 3 px at scale 1.0
+          ctx.beginPath();
+          ctx.arc(x, y, r + hw, 0, Math.PI * 2);
+          ctx.strokeStyle = `#${c._haloColour}`;
+          ctx.lineWidth   = hw;
+          ctx.shadowBlur  = 0;
+          ctx.stroke();
+        }
+
         // Draw marker shape
         drawShape(ctx, x, y, r, colour, shape, scale);
 
