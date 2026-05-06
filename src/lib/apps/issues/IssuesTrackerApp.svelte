@@ -157,6 +157,26 @@
     });
     expandedSections = expandedSections;
   }
+
+  async function handleJumpToIssue({ detail: { issueId } }) {
+    const issue = issues.find(i => i.id === issueId);
+    if (!issue) return;
+    // Switch to the status tab the issue lives in, clear any search
+    statusFilter = issue.status || ISSUE_STATUS.CURRENT;
+    searchTerm   = '';
+    // Wait for the filtered list to re-render before scrolling
+    await tick();
+    await tick();
+    const el = document.getElementById(`issue-${issueId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add('ring-2', 'ring-purple-400', 'lh-jump-highlight');
+    document.addEventListener(
+      'click',
+      () => el.classList.remove('ring-2', 'ring-purple-400', 'lh-jump-highlight'),
+      { once: true, capture: true }
+    );
+  }
 </script>
 
 <div class="app-container" bind:this={containerElement}>
@@ -225,12 +245,14 @@
       <IssueFilters
         bind:searchTerm
         bind:statusFilter
+        {issues}
         resultCount={filteredIssues.length}
         showExpandToggle={filteredIssues.length > 0}
         allExpanded={filteredIssues.every(issue =>
           expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
         )}
         on:toggleExpand={(e) => e.detail ? expandAll() : collapseAll()}
+        on:jumptoissue={handleJumpToIssue}
       />
     </div>
 
@@ -243,6 +265,7 @@
     {:else}
       <div class="section-spacing">
         {#each filteredIssues as issue (issue.id)}
+          <div id="issue-{issue.id}">
           <IssueCard
             {issue}
             showComments={expandedSections[issue.id]?.comments || false}
@@ -254,6 +277,7 @@
             on:delete={handleDeleteIssue}
             on:meetingFilter={handleMeetingBadgeClick}
           />
+          </div>
         {/each}
       </div>
     {/if}
