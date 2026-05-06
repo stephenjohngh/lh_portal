@@ -69,7 +69,8 @@
   let hiddenTypes    = new Set();
   let hiddenStatuses = new Set();
   let searchQuery    = '';
-  let showSpaces     = true;
+  let showSpaces       = false;
+  let showAnnotations  = true;
 
   // -- Space drawing form state (bind: targets in SpaceDrawingSidebar) -
   let drawingSpaceName = '';
@@ -255,7 +256,8 @@
   function onChangeTypes({ detail: { hidden } })    { hiddenTypes    = hidden; }
   function onChangeStatuses({ detail: { hidden } }) { hiddenStatuses = hidden; }
   function onSearchChange({ detail: { query } })    { searchQuery    = query;  }
-  function onChangeShowSpaces({ detail: { show } }) { showSpaces     = show;   }
+  function onChangeShowSpaces({ detail: { show } })       { showSpaces      = show; }
+  function onChangeShowAnnotations({ detail: { show } }) { showAnnotations = show; }
 
   // -- Canvas click handler ------------------------------------------
   function onPlanClick({ detail: pos }) {
@@ -502,7 +504,7 @@
           plan={selectedPlan} floor={selectedFloor}
           planSpaces={displaySpaces} {positionedComponents} {planAnnotations}
           {types} {selectedComponent} {selectedSpace} {selectedAnnotation}
-          {showSpaces} vertexEditingActive={$vertexEditingActive}
+          {showSpaces} {showAnnotations} vertexEditingActive={$vertexEditingActive}
           {drawingMode} drawingVertices={$drawingVertices}
           {scalePoint1} {scalePoint2}
           showNewPosDot={sidebarMode === 'form'} {newPos}
@@ -624,12 +626,15 @@
       {:else}
         <FilterSidebar
           {planComponents} {unplacedComponents} planSpaces={planSpaces}
-          {types} {systems} {hiddenTypes} {hiddenStatuses} {searchQuery} {showSpaces}
+          {planAnnotations}
+          {types} {systems} {hiddenTypes} {hiddenStatuses} {searchQuery}
+          {showSpaces} {showAnnotations}
           {selectedFloor} {drawingMode}
           on:changetypes={onChangeTypes}
           on:changestatuses={onChangeStatuses}
           on:searchchange={onSearchChange}
           on:changeshowspaces={onChangeShowSpaces}
+          on:changeshowannotations={onChangeShowAnnotations}
           on:selectcomponent={({ detail: { component } }) => {
             selectedComponent = component; sidebarMode = 'detail';
           }}

@@ -16,7 +16,8 @@
   export let selectedComponent    = null;
   export let selectedSpace        = null;
   export let selectedAnnotation   = null;
-  export let showSpaces           = true;   // filter toggle
+  export let showSpaces           = false;  // filter toggle
+  export let showAnnotations      = true;   // filter toggle
   export let vertexEditingActive  = false;  // true while editing a space's polygon vertices
   // drawingMode: 'off' | 'component' | 'space' | 'scale' | 'annotation'
   export let drawingMode          = 'off';
@@ -250,6 +251,7 @@
   {/if}
 
   <!-- -- Text annotations ---------------------------------------- -->
+  {#if showAnnotations}
   {#each planAnnotations as ann (ann.id)}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div
@@ -277,6 +279,7 @@
       >{ann.text}</div>
     </div>
   {/each}
+  {/if}
 
   <!-- Plan label (bottom-left corner) -->
   <div
