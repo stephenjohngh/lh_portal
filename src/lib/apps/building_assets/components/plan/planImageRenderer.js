@@ -178,7 +178,7 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
 
         // Halo ring — drawn BEFORE the marker so the shape renders on top
         if (c._haloColour) {
-          const hw = Math.max(2, Math.round(3 * scale)); // 3 px at scale 1.0
+          const hw = Math.max(3, Math.round(6 * scale)); // 6 px at scale 1.0
           ctx.beginPath();
           ctx.arc(x, y, r + hw, 0, Math.PI * 2);
           ctx.strokeStyle = `#${c._haloColour}`;
