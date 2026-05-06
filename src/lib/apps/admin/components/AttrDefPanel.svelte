@@ -1,4 +1,4 @@
-﻿<!-- src/lib/apps/admin/components/AttrDefPanel.svelte -->
+<!-- src/lib/apps/admin/components/AttrDefPanel.svelte -->
 <!-- Panel 3 of 4: Attribute Definitions for the selected Type. -->
 <script>
   import { createEventDispatcher } from 'svelte';
@@ -15,11 +15,18 @@
 
   const DISPLAY_TYPES = ['text', 'number', 'checkbox', 'dropdown', 'radio', 'textarea'];
 
+  // ── Full-attr edit / new ──────────────────────────────────────────────────
   let editingId  = null;
   let form       = {};
   let saving     = false;
   let deletingId = null;
   let error      = '';
+
+  // ── Default-value override (type mode only) ───────────────────────────────
+  let editingOverrideId = null;  // system attr id whose default is being overridden
+  let overrideValue     = '';
+  let savingOverride    = false;
+  let overrideError     = '';
 
   async function deleteRow(id) {
     if (!confirm('Delete this attribute definition? This will also delete its options and any component values using it.')) return;
@@ -36,10 +43,14 @@
 
   $: existingPrimary = attrDefs.find(d => d.is_primary && d.id !== editingId);
 
-  // In type mode an inherited (system-level) attr is read-only in this context
+  // In type mode an inherited (system-level) attr is read-only for full editing
   function isInherited(def) { return def._scope === 'system' && mode === 'type'; }
 
+  // Names of system-inherited attrs — used to block shadowing in Add form
+  $: inheritedNames = new Set(attrDefs.filter(d => d._scope === 'system').map(d => d.name));
+
   function startEdit(def) {
+    cancelOverride();
     editingId = def.id;
     form = {
       name:               def.name,
@@ -56,6 +67,7 @@
   }
 
   function startNew() {
+    cancelOverride();
     editingId = 'new';
     form = {
       name:               '',
@@ -71,7 +83,6 @@
     error = '';
   }
 
-  // Label for the Add button changes based on mode
   $: addLabel = mode === 'system' ? '+ Add System Attribute' : '+ Add Type Attribute';
 
   function cancel() {
@@ -82,11 +93,17 @@
 
   async function save() {
     if (!form.name?.trim()) { error = 'Name is required'; return; }
+
+    // In type mode, block names that shadow an inherited system attr
+    if (editingId === 'new' && mode === 'type' && inheritedNames.has(form.name.trim())) {
+      error = `"${form.name.trim()}" is already an inherited system attribute. Use the Override → button on that attribute to change its default value for this type.`;
+      return;
+    }
+
     saving = true;
     error  = '';
     try {
       if (form.is_primary && existingPrimary) {
-        // Clear any existing is_primary before setting this one
         await buildingAssetsStore.clearPrimaryForType(selectedTypeId);
       }
 
@@ -109,6 +126,59 @@
       saving = false;
     }
   }
+
+  // ── Override helpers ──────────────────────────────────────────────────────
+
+  function startOverride(def) {
+    cancel(); // close any full edit form
+    editingOverrideId = def.id;
+    overrideValue     = def._defaultOverride ? (def.default_value ?? '') : '';
+    overrideError     = '';
+  }
+
+  function cancelOverride() {
+    editingOverrideId = null;
+    overrideValue     = '';
+    overrideError     = '';
+  }
+
+  async function saveOverride(def) {
+    savingOverride = true;
+    overrideError  = '';
+    try {
+      if (def._defaultOverride) {
+        // Update the existing override row
+        await buildingAssetsStore.updateAttrDef(def._overrideId, { default_value: overrideValue });
+      } else {
+        // Create a new type-level row — only name + default_value matter
+        await buildingAssetsStore.createAttrDef({
+          component_type_id: selectedTypeId,
+          name:              def.name,
+          default_value:     overrideValue,
+          display_type:      def.display_type,  // mirrored for DB NOT NULL
+          visible:           true
+        });
+      }
+      cancelOverride();
+      dispatch('saved');
+    } catch (err) {
+      overrideError = err.message;
+    } finally {
+      savingOverride = false;
+    }
+  }
+
+  async function removeOverride(def) {
+    if (!confirm(`Remove the default-value override for "${def.name}"? The system default will apply again.`)) return;
+    try {
+      await buildingAssetsStore.deleteAttrDef(def._overrideId);
+      dispatch('saved');
+    } catch (err) {
+      overrideError = err.message;
+    }
+  }
+
+  // ── Style helpers ─────────────────────────────────────────────────────────
 
   const sel = inp + ' cursor-pointer';
 
@@ -134,7 +204,9 @@
       <p class="text-xs text-blue-400/70 mt-0.5">Inherited by all types in this system</p>
     {:else if mode === 'type'}
       <p class="text-xs text-slate-600 mt-0.5">
-        <span class="text-blue-400/70">↑ inherited</span> · own
+        <span class="text-blue-400/70">↑ inherited</span>
+        · <span class="text-amber-400/70">↻ default overridden</span>
+        · own
       </p>
     {/if}
   </div>
@@ -149,7 +221,7 @@
       {#each attrDefs as def (def.id)}
 
         {#if editingId === def.id}
-          <!-- -- Inline edit form ------------------------------- -->
+          <!-- ── Inline full-edit form ─────────────────────────────── -->
           <div class="p-3 border-b border-slate-700 bg-slate-700/40">
             <p class="text-xs font-semibold text-purple-400 mb-2">Edit Attribute</p>
             {#if error}<p class="text-xs text-red-400 mb-2">{error}</p>{/if}
@@ -205,7 +277,7 @@
           </div>
 
         {:else}
-          <!-- -- Normal row --------------------------------------- -->
+          <!-- ── Normal row ─────────────────────────────────────────── -->
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
           <div
             class="w-full text-left px-3 py-2.5 border-b border-slate-700/50 transition-colors group cursor-pointer
@@ -221,6 +293,10 @@
                   {#if isInherited(def)}
                     <span class="text-xs px-1 py-px rounded bg-blue-800/40 text-blue-400/80 font-mono"
                           title="Inherited from system — edit at system level">↑</span>
+                  {/if}
+                  {#if def._defaultOverride}
+                    <span class="text-xs px-1 py-px rounded bg-amber-700/30 text-amber-400/80 font-mono"
+                          title="Default value overridden for this type">↻</span>
                   {/if}
                   <p class="text-sm font-medium leading-tight
                              {def.visible ? (isInherited(def) ? 'text-slate-400' : 'text-white') : 'text-slate-500 line-through'}">
@@ -244,11 +320,16 @@
                     {def.display_type}
                   </span>
                   {#if def.default_value}
-                    <span class="text-xs text-slate-600 truncate">→ {def.default_value}</span>
+                    <span class="text-xs truncate {def._defaultOverride ? 'text-amber-500/80' : 'text-slate-600'}">
+                      → {def.default_value}
+                    </span>
                   {/if}
                 </div>
               </div>
+
+              <!-- Actions column -->
               {#if !isInherited(def)}
+                <!-- Type-own attr: full edit / delete -->
                 <div class="flex gap-1 shrink-0 mt-0.5">
                   <button
                     class="text-xs px-1.5 py-0.5 rounded text-slate-500
@@ -263,11 +344,64 @@
                     title="Delete attribute"
                   >{deletingId === def.id ? '…' : '✕'}</button>
                 </div>
+              {:else if def._defaultOverride}
+                <!-- Inherited + has override: edit/remove override -->
+                <div class="flex gap-1 shrink-0 mt-0.5">
+                  <button
+                    class="text-xs px-1.5 py-0.5 rounded text-amber-500/70
+                           hover:text-amber-300 hover:bg-amber-800/20 transition-colors"
+                    on:click|stopPropagation={() => startOverride(def)}
+                    title="Edit default value override">Edit</button>
+                  <button
+                    class="text-xs px-1.5 py-0.5 rounded text-slate-500
+                           hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    on:click|stopPropagation={() => removeOverride(def)}
+                    title="Remove override — revert to system default">✕</button>
+                </div>
               {:else}
-                <span class="shrink-0 text-xs text-blue-400/50 opacity-0 group-hover:opacity-100 mt-0.5"
-                      title="Select the system to edit inherited attributes">↑ sys</span>
+                <!-- Inherited, no override: offer Override button on hover -->
+                <button
+                  class="shrink-0 text-xs px-1.5 py-0.5 rounded text-slate-600
+                         hover:text-amber-300 hover:bg-amber-800/20 transition-colors
+                         opacity-0 group-hover:opacity-100 mt-0.5"
+                  on:click|stopPropagation={() => startOverride(def)}
+                  title="Override the default value for this type only"
+                >Override →</button>
               {/if}
             </div>
+
+            <!-- Inline override mini-form -->
+            {#if editingOverrideId === def.id}
+              <!-- svelte-ignore a11y-click-events-have-key-events -->
+              <div class="mt-2 pt-2 border-t border-amber-700/30"
+                   on:click|stopPropagation>
+                <p class="text-[10px] text-amber-400/70 mb-1.5 uppercase tracking-wide">
+                  Override default for this type
+                </p>
+                {#if overrideError}
+                  <p class="text-xs text-red-400 mb-1">{overrideError}</p>
+                {/if}
+                <div class="flex gap-1.5 items-center">
+                  <input
+                    bind:value={overrideValue}
+                    class="{inp} flex-1 text-xs"
+                    placeholder="New default value (empty = blank)"
+                  />
+                  <button
+                    on:click={() => saveOverride(def)}
+                    disabled={savingOverride}
+                    class="px-2 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500
+                           disabled:opacity-50 text-white transition-colors shrink-0"
+                  >{savingOverride ? '…' : '✓'}</button>
+                  <button
+                    on:click={cancelOverride}
+                    class="px-2 py-1 text-xs rounded bg-slate-600 hover:bg-slate-500
+                           text-white transition-colors shrink-0"
+                  >✕</button>
+                </div>
+              </div>
+            {/if}
+
           </div>
         {/if}
 
@@ -279,7 +413,7 @@
         </p>
       {/if}
 
-      <!-- -- New attr def form ------------------------------------ -->
+      <!-- ── New attr def form ──────────────────────────────────────── -->
       {#if editingId === 'new'}
         <div class="p-3 bg-slate-700/40">
           <p class="text-xs font-semibold text-green-400 mb-2">New Attribute</p>
