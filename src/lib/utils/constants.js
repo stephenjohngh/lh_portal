@@ -45,7 +45,7 @@ export const ACTION_STATUS_OPTIONS = [
 ];
 
 // ── Priorities ───────────────────────────────────────────────────────
-// Issue priority is an integer 1–5. The label/color shown on cards
+// Issue priority is an integer 1–6. The label/color shown on cards
 // comes from PRIORITIES; getPriorityLabel(n) is the safe accessor
 // (defaults to "Important" when an unknown value is passed).
 export const PRIORITIES = [
@@ -53,7 +53,8 @@ export const PRIORITIES = [
   { value: 2, label: 'Major Project', color: 'bg-slate-600' },
   { value: 3, label: 'Important',     color: 'bg-slate-600' },
   { value: 4, label: 'Minor',         color: 'bg-slate-600' },
-  { value: 5, label: 'Pending',       color: 'bg-slate-600' }
+  { value: 5, label: 'Admin',         color: 'bg-slate-600' },
+  { value: 6, label: 'Pending',       color: 'bg-slate-600' }
 ];
 
 /**
