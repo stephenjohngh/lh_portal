@@ -44,6 +44,11 @@
       map.get(sid).types.push(t);
     }
 
+    // Sort types within each system by presentation_order to match admin view
+    for (const group of map.values()) {
+      group.types.sort((a, b) => (a.presentation_order ?? 0) - (b.presentation_order ?? 0));
+    }
+
     return [...map.values()].sort((a, b) => {
       if (!a.system && !b.system) return 0;
       if (!a.system) return 1;
