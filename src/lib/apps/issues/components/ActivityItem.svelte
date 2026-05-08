@@ -21,7 +21,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
-  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
+  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
   import { permissions }    from '$lib/stores/permissions';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
@@ -77,6 +77,10 @@
     };
   }
 
+  function changeEditType(type) {
+    editingActivity = { ...editingActivity, activity_type: type, fields: {} };
+  }
+
   function cancelEdit() {
     dispatch('editCancel');
   }
@@ -93,6 +97,22 @@
 {#if editingActivity?.id === activity.id}
   <!-- ─── Edit mode ──────────────────────────────────────────── -->
   <div class="bg-slate-700/50 rounded p-3 border {editTypeConfig.borderEdit}">
+
+    <!-- Type picker -->
+    <div class="flex flex-wrap gap-1 mb-3">
+      {#each ACTIVITY_TYPES as t}
+        <button
+          type="button"
+          class="text-xs px-2.5 py-1 rounded-full border transition-colors
+                 {editingActivity.activity_type === t.value
+                   ? t.color + ' border-current bg-slate-600/80 text-white font-semibold'
+                   : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}"
+          on:click={() => changeEditType(t.value)}
+        >
+          {t.icon} {t.label}
+        </button>
+      {/each}
+    </div>
 
     <!-- Structured fields (email / call / letter) -->
     {#if editTypeConfig.fields.length > 0}
