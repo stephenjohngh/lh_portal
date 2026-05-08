@@ -535,12 +535,10 @@
       {@const f = viewingItem.fields || {}}
       <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-4 pb-3 border-b border-slate-700">
         {#each viewingTypeConfig.fields as field}
-          {#if f[field.key]}
-            <div class={field.span === 2 ? 'col-span-2' : ''}>
-              <dt class="text-slate-500 uppercase tracking-wide text-[10px]">{field.label}</dt>
-              <dd class="text-slate-200">{f[field.key]}</dd>
-            </div>
-          {/if}
+          <div class={field.span === 2 ? 'col-span-2' : ''}>
+            <dt class="text-slate-500 uppercase tracking-wide text-[10px]">{field.label}</dt>
+            <dd class="text-slate-200">{f[field.key] || '—'}</dd>
+          </div>
         {/each}
       </dl>
     {/if}
