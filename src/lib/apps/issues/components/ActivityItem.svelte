@@ -265,6 +265,13 @@
         title="Click to view full {typeConfig.label.toLowerCase()}"
         on:click={() => dispatch('viewFull', activity)}
       >
+        <!-- Type badge -->
+        {#if typeConfig.badgeText}
+          <span class="inline-block mb-1 text-[10px] px-1.5 py-0.5 rounded {typeConfig.badgeClass} font-semibold uppercase tracking-wide">
+            {typeConfig.icon} {typeConfig.badgeText}
+          </span>
+        {/if}
+
         <!-- Structured-field summary line (email / call / letter) -->
         {#if typeConfig.fields.length > 0}
           {@const f = activity.fields || {}}
@@ -349,11 +356,6 @@
 
     <!-- Metadata line -->
     <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 flex-wrap">
-      {#if typeConfig.badgeText}
-        <span class="text-[10px] px-1.5 py-0.5 rounded {typeConfig.badgeClass} font-semibold uppercase tracking-wide">
-          {typeConfig.icon} {typeConfig.badgeText}
-        </span>
-      {/if}
       <span>Added: {fmtDateTime(activity.created_at, activity.created_by_profile?.full_name)}</span>
       {#if wasModified(activity.created_at, activity.updated_at)}
         <span>•</span>
