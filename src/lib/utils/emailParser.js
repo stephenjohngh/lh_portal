@@ -142,17 +142,42 @@ function extractDisplay(raw) {
 /**
  * Parse a raw date string from an email header into YYYY-MM-DD.
  * Handles formats like:
- *   "Monday, 5 May 2025 10:30 AM"   (Outlook)
- *   "Tue, 06 May 2025 09:00:00 +0000" (RFC 2822)
+ *   "Tuesday, 26 April 2016 at 12:36:11 BST"  (Apple Mail / UK Gmail)
+ *   "Monday, 5 May 2025 10:30 AM"              (Outlook)
+ *   "Tue, 06 May 2025 09:00:00 +0000"          (RFC 2822)
  *   "6 May 2025"
  *   "05/06/2025"
  * Returns '' when the date cannot be parsed.
  */
+const MONTH_INDEX = {
+  jan:0, feb:1, mar:2, apr:3, may:4, jun:5,
+  jul:6, aug:7, sep:8, oct:9, nov:10, dec:11
+};
+
 function toISODate(raw) {
   if (!raw) return '';
-  // Strip leading day-of-week ("Monday, " etc.)
-  const cleaned = raw.trim().replace(/^[a-z]+,\s*/i, '');
-  const d = new Date(cleaned);
+  let s = raw.trim();
+
+  // Strip leading day-of-week ("Tuesday, " etc.)
+  s = s.replace(/^[a-z]+,\s*/i, '');
+  // Remove " at " between date and time ("26 April 2016 at 12:36")
+  s = s.replace(/\s+at\s+/i, ' ');
+  // Strip trailing timezone abbreviation or offset (BST, GMT, +0100, -0500 …)
+  s = s.replace(/\s+(?:[A-Z]{2,5}|[+-]\d{4})$/, '').trim();
+
+  // Try native Date first (handles ISO 8601, RFC 2822, "Month DD YYYY", etc.)
+  let d = new Date(s);
   if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+
+  // Fallback: "DD Month YYYY" European layout ("26 April 2016 12:36:11")
+  const m = s.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})/i);
+  if (m) {
+    const month = MONTH_INDEX[m[2].toLowerCase().slice(0, 3)];
+    if (month !== undefined) {
+      d = new Date(parseInt(m[3]), month, parseInt(m[1]));
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    }
+  }
+
   return '';
 }
