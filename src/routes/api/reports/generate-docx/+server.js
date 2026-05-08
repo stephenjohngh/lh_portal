@@ -423,42 +423,33 @@ async function generateIssueContent(issue, number) {
     })
   );
 
-  // ── Activity log — all types ────────────────────────────────────────
-  // Group activities by type and render each group as a labelled section.
-  // Structured fields (email/call/letter) appear as a summary line above
-  // the body text.
+  // ── Activity Log — all types, single chronological list ─────────────
   const ACTIVITY_TYPE_META = {
-    comment:  { label: 'Comments',  color: '1d4ed8' },
-    decision: { label: 'Decisions', color: '7c3aed' },
-    note:     { label: 'Notes',     color: 'd97706' },
-    email:    { label: 'Emails',    color: '0891b2' },
-    call:     { label: 'Calls',     color: '16a34a' },
-    letter:   { label: 'Letters',   color: 'ea580c' },
-    document: { label: 'Documents', color: 'e11d48' }
+    comment:  { label: 'Comment',  color: '1d4ed8' },
+    decision: { label: 'Decision', color: '7c3aed' },
+    note:     { label: 'Note',     color: 'd97706' },
+    email:    { label: 'Email',    color: '0891b2' },
+    call:     { label: 'Call',     color: '16a34a' },
+    letter:   { label: 'Letter',   color: 'ea580c' },
+    document: { label: 'Document', color: 'e11d48' }
   };
-  const TYPE_ORDER = ['comment', 'decision', 'note', 'email', 'call', 'letter', 'document'];
 
-  // Group by type, preserving chronological order within each group.
-  const byType = {};
-  for (const a of (issue.activities || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))) {
-    const t = a.activity_type || 'comment';
-    (byType[t] ??= []).push(a);
-  }
+  const sortedActivities = (issue.activities || [])
+    .slice()
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-  for (const type of TYPE_ORDER) {
-    const items = byType[type];
-    if (!items?.length) continue;
-
-    const meta = ACTIVITY_TYPE_META[type] ?? { label: type, color: '666666' };
-
+  if (sortedActivities.length > 0) {
     content.push(new Paragraph({
-      children: [new TextRun({ text: `${meta.label}:`, bold: true, size: 24, color: meta.color })],
+      children: [new TextRun({ text: `Activity Log (${sortedActivities.length}):`, bold: true, size: 24, color: '333333' })],
       spacing: { before: 180, after: 120 }
     }));
 
-    for (const item of items) {
-      // Structured-field summary line (email / call / letter)
+    for (const item of sortedActivities) {
+      const type = item.activity_type || 'comment';
+      const meta = ACTIVITY_TYPE_META[type] ?? { label: type, color: '666666' };
       const f = item.fields || {};
+
+      // Structured-field summary for email / call / letter
       let fieldsLine = '';
       if (type === 'email') {
         const parts = [];
@@ -480,26 +471,40 @@ async function generateIssueContent(issue, number) {
         fieldsLine = parts.join('  ·  ');
       }
 
+      // Type badge (+ optional fields summary) on first line
+      const badgeRuns = [
+        new TextRun({ text: `[${meta.label}]`, bold: true, size: 20, color: meta.color })
+      ];
       if (fieldsLine) {
+        badgeRuns.push(new TextRun({ text: `  ${fieldsLine}`, size: 20, color: '555555', italics: true }));
+      }
+      content.push(new Paragraph({
+        children: badgeRuns,
+        spacing: { before: 120, after: 20, left: 360 }
+      }));
+
+      // Body text (historic entries visually dimmed)
+      if (item.historic) {
         content.push(new Paragraph({
-          children: [new TextRun({ text: fieldsLine, size: 20, color: '444444', italics: true })],
-          spacing: { before: 60, after: 20, left: 360 }
+          children: [
+            new TextRun({ text: '[Historic]  ', bold: true, size: 20, color: 'd97706' }),
+            new TextRun({ text: item.body, size: 22, color: '888888', italics: true })
+          ],
+          spacing: { before: 0, after: 40, left: 360 }
+        }));
+      } else {
+        content.push(new Paragraph({
+          children: [new TextRun({ text: item.body, size: 22 })],
+          spacing: { before: 0, after: 40, left: 360 }
         }));
       }
-
-      // Body text
-      content.push(new Paragraph({
-        children: [new TextRun({ text: item.body, size: 22 })],
-        spacing: { before: fieldsLine ? 0 : 60, after: 40, left: 360 }
-      }));
 
       // Metadata line
       const cTime = new Date(item.created_at).getTime();
       const uTime = item.updated_at ? new Date(item.updated_at).getTime() : cTime;
-      let itemMeta = `Added: ${fmtShortDate(item.created_at)} by ${item.created_by_profile?.full_name || 'Unknown'}`;
-      if (uTime > cTime) {
-        itemMeta += ` • Modified: ${fmtShortDate(item.updated_at)}`;
-      }
+      let itemMeta = fmtShortDate(item.created_at);
+      if (item.created_by_profile?.full_name) itemMeta += `  ·  ${item.created_by_profile.full_name}`;
+      if (uTime - cTime > 1000) itemMeta += `  ·  Modified: ${fmtShortDate(item.updated_at)}`;
       content.push(new Paragraph({
         children: [new TextRun({ text: itemMeta, size: 18, color: '999999', italics: true })],
         spacing: { after: 120, left: 360 }
