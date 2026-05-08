@@ -86,7 +86,8 @@
           filterDate,
           includeCurrent,
           includeParked,
-          includeCompleted
+          includeCompleted,
+          sortOrder
         })
       });
       if (!response.ok) {

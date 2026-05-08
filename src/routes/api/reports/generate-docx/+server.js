@@ -14,7 +14,7 @@ export async function POST({ request }) {
 
   try {
     logger('Parsing request body');
-    const { issues, filterDate, includeCurrent, includeParked, includeCompleted } = await request.json();
+    const { issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder } = await request.json();
     
     logger('✅ Request parsed successfully');
     logger('Issues count:', issues?.length || 0);
@@ -112,7 +112,7 @@ export async function POST({ request }) {
             }
           }
         },
-        children: await generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted)
+        children: await generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder)
       }]
     });
 
@@ -149,7 +149,7 @@ export async function POST({ request }) {
   }
 }
 
-async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted) {
+async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder = 'desc') {
   logger('Generating report content');
   logger('Total issues provided:', issues.length);
   logger('Filters:', { includeCurrent, includeParked, includeCompleted });
@@ -238,7 +238,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     for (const issue of currentIssues) {
       logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
-        content.push(...await generateIssueContent(issue, issueNumber));
+        content.push(...await generateIssueContent(issue, issueNumber, sortOrder));
         issueNumber++;
       } catch (err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
@@ -259,7 +259,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     for (const issue of parkedIssues) {
       logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
-        content.push(...await generateIssueContent(issue, issueNumber));
+        content.push(...await generateIssueContent(issue, issueNumber, sortOrder));
         issueNumber++;
       } catch (err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
@@ -280,7 +280,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     for (const issue of completedIssues) {
       logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
-        content.push(...await generateIssueContent(issue, issueNumber));
+        content.push(...await generateIssueContent(issue, issueNumber, sortOrder));
         issueNumber++;
       } catch (err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
@@ -308,7 +308,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
   return content;
 }
 
-async function generateIssueContent(issue, number) {
+async function generateIssueContent(issue, number, sortOrder = 'desc') {
   const content = [];
   const border = { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" };
   const borders = { top: border, bottom: border, left: border, right: border };
@@ -434,9 +434,10 @@ async function generateIssueContent(issue, number) {
     document: { label: 'Document', color: 'e11d48' }
   };
 
+  const dir = sortOrder === 'asc' ? 1 : -1;
   const sortedActivities = (issue.activities || [])
     .slice()
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    .sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
 
   if (sortedActivities.length > 0) {
     content.push(new Paragraph({
