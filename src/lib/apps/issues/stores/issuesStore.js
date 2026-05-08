@@ -317,7 +317,7 @@ function createIssuesStore() {
     // notes, and all future typed activity types.
     // ============================================
 
-    async addActivity(issueId, { body, activity_type = 'comment' }) {
+    async addActivity(issueId, { body, activity_type = 'comment', fields = null }) {
       try {
         logger('➕ Adding activity to issue:', issueId, '(type:', activity_type, ')');
         const now = new Date().toISOString();
@@ -340,6 +340,7 @@ function createIssuesStore() {
             issue_id:      issueId,
             body,
             activity_type,
+            fields:        fields || null,
             meeting_id:    activeMeetingId(),
             created_at:    now,
             updated_at:    now,
@@ -381,6 +382,7 @@ function createIssuesStore() {
       try {
         const body                 = activityData.body;
         const historic             = activityData.historic ?? false;
+        const fields               = activityData.fields !== undefined ? activityData.fields : null;
         const override_created_at  = activityData.override_created_at ?? null;
         const override_updated_at  = activityData.override_updated_at ?? null;
 
@@ -404,6 +406,7 @@ function createIssuesStore() {
         const payload = {
           body,
           historic,
+          fields,
           updated_at: override_updated_at || new Date().toISOString(),
           updated_by: user?.id
         };

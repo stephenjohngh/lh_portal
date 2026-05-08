@@ -81,14 +81,104 @@ export const ACTIVITY_TYPE = {
   LETTER:   'letter'
 };
 
-/** Metadata for each activity type. Used for labels, icons, colours.
- *  Only COMMENT and DECISION are fully implemented; others are reserved
- *  for future structured-activity work. */
-export const ACTIVITY_TYPES = [
-  { value: ACTIVITY_TYPE.COMMENT,  label: 'Comment',  color: 'border-blue-400',   badge: null },
-  { value: ACTIVITY_TYPE.DECISION, label: 'Decision', color: 'border-violet-400', badge: 'Decision' },
-  { value: ACTIVITY_TYPE.NOTE,     label: 'Note',     color: 'border-slate-400',  badge: 'Note' },
-  { value: ACTIVITY_TYPE.EMAIL,    label: 'Email',    color: 'border-green-400',  badge: 'Email' },
-  { value: ACTIVITY_TYPE.CALL,     label: 'Call',     color: 'border-teal-400',   badge: 'Call' },
-  { value: ACTIVITY_TYPE.LETTER,   label: 'Letter',   color: 'border-orange-400', badge: 'Letter' }
-];
+/**
+ * Full configuration for each activity type.
+ *
+ * Used by ActivityLogSection (form picker, field inputs) and
+ * ActivityItem (display, edit form, border colours, badges).
+ *
+ * fields[] — structured metadata fields captured per type.
+ * Each field: { key, label, type ('text'|'date'|'select'), placeholder?, options?, span (1|2) }
+ * span:2 takes the full 2-col grid width.
+ */
+export const ACTIVITY_TYPE_CONFIG = {
+  [ACTIVITY_TYPE.COMMENT]: {
+    label:       'Comment',
+    icon:        '💬',
+    borderColor: 'border-blue-400',
+    badgeClass:  null,
+    badgeText:   null,
+    ringClass:   'focus:ring-blue-500',
+    borderEdit:  'border-blue-500/50',
+    placeholder: 'Enter your comment…',
+    fields:      []
+  },
+  [ACTIVITY_TYPE.DECISION]: {
+    label:       'Decision',
+    icon:        '✅',
+    borderColor: 'border-violet-400',
+    badgeClass:  'bg-violet-900/40 text-violet-300 border border-violet-700/50',
+    badgeText:   'Decision',
+    ringClass:   'focus:ring-violet-500',
+    borderEdit:  'border-violet-500/50',
+    placeholder: 'Enter the decision reached…',
+    fields:      []
+  },
+  [ACTIVITY_TYPE.NOTE]: {
+    label:       'Note',
+    icon:        '📝',
+    borderColor: 'border-amber-400',
+    badgeClass:  'bg-amber-900/40 text-amber-300 border border-amber-700/50',
+    badgeText:   'Note',
+    ringClass:   'focus:ring-amber-500',
+    borderEdit:  'border-amber-500/50',
+    placeholder: 'Enter your note…',
+    fields:      []
+  },
+  [ACTIVITY_TYPE.EMAIL]: {
+    label:       'Email',
+    icon:        '📧',
+    borderColor: 'border-cyan-400',
+    badgeClass:  'bg-cyan-900/40 text-cyan-300 border border-cyan-700/50',
+    badgeText:   'Email',
+    ringClass:   'focus:ring-cyan-500',
+    borderEdit:  'border-cyan-500/50',
+    placeholder: 'Summarise the email or paste key excerpts…',
+    fields: [
+      { key: 'from',       label: 'From',    type: 'text', placeholder: 'Sender name or address',    span: 1 },
+      { key: 'to',         label: 'To',      type: 'text', placeholder: 'Recipient name or address', span: 1 },
+      { key: 'subject',    label: 'Subject', type: 'text', placeholder: 'Email subject line',        span: 2 },
+      { key: 'email_date', label: 'Date',    type: 'date', placeholder: '',                          span: 1 }
+    ]
+  },
+  [ACTIVITY_TYPE.CALL]: {
+    label:       'Call',
+    icon:        '📞',
+    borderColor: 'border-green-400',
+    badgeClass:  'bg-green-900/40 text-green-300 border border-green-700/50',
+    badgeText:   'Call',
+    ringClass:   'focus:ring-green-500',
+    borderEdit:  'border-green-500/50',
+    placeholder: 'Notes from the call…',
+    fields: [
+      { key: 'caller',    label: 'Caller',    type: 'text',   placeholder: 'Caller name or number', span: 1 },
+      { key: 'direction', label: 'Direction', type: 'select', options: ['inbound', 'outbound'],      span: 1 },
+      { key: 'duration',  label: 'Duration',  type: 'text',   placeholder: 'e.g. 15 min',           span: 1 }
+    ]
+  },
+  [ACTIVITY_TYPE.LETTER]: {
+    label:       'Letter',
+    icon:        '📄',
+    borderColor: 'border-orange-400',
+    badgeClass:  'bg-orange-900/40 text-orange-300 border border-orange-700/50',
+    badgeText:   'Letter',
+    ringClass:   'focus:ring-orange-500',
+    borderEdit:  'border-orange-500/50',
+    placeholder: 'Summarise the letter…',
+    fields: [
+      { key: 'from',        label: 'From',      type: 'text', placeholder: 'Sender',             span: 1 },
+      { key: 'to',          label: 'To',        type: 'text', placeholder: 'Recipient',          span: 1 },
+      { key: 'reference',   label: 'Reference', type: 'text', placeholder: 'Ref no. or subject', span: 2 },
+      { key: 'letter_date', label: 'Date',      type: 'date', placeholder: '',                   span: 1 }
+    ]
+  }
+};
+
+/** Flat list derived from ACTIVITY_TYPE_CONFIG. Use for iteration in type pickers. */
+export const ACTIVITY_TYPES = Object.entries(ACTIVITY_TYPE_CONFIG).map(([value, cfg]) => ({
+  value,
+  label: cfg.label,
+  icon:  cfg.icon,
+  color: cfg.borderColor,
+  badge: cfg.badgeText
+}));

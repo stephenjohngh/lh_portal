@@ -3,7 +3,10 @@
   Activity Log — the unified list of activities for an issue.
   Formerly CommentsSection (activities table, replaces comments + decisions).
 
-  Renders comments and decisions interleaved in chronological order.
+  All activity types (comment, decision, note, email, call, letter) are
+  logged through a single unified form with a type-picker at the top and
+  type-specific structured fields below the body textarea.
+
   Per-activity rendering lives in ActivityItem.
   This file owns all suggestion-panel state and cross-cutting modals.
 -->
@@ -14,7 +17,7 @@
   import { profilesStore }    from '$lib/stores/profiles';
   import { permissions }      from '$lib/stores/permissions';
   import { issuesStore }      from '../stores/issuesStore';
-  import { ACTIVITY_TYPE }    from '$lib/utils/constants';
+  import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import MeetingBadge         from './meetings/MeetingBadge.svelte';
   import { getLogger }        from '$lib/utils/logger';
@@ -36,7 +39,7 @@
 
   // -- Props -----------------------------------------------------------
   export let issueId;
-  export let activities = [];  // all activities (comments + decisions)
+  export let activities = [];  // all activities (all types)
   // Passed in by IssueCard so we can tell, per comment activity, whether
   // an action has already been created from it.
   export let actions    = [];
@@ -49,21 +52,24 @@
   );
 
   // -- List / sort / filter state -------------------------------------
-  let showAddCommentForm  = false;
-  let showAddDecisionForm = false;
-  let editingActivity     = null;   // { ...activityRow } being edited
-  let viewingItem         = null;   // { ...activityRow, _type } for modal
-  let showDeleteConfirm   = false;
-  let pendingDeleteId     = null;
-  let showHistoric        = false;
+  let showAddForm       = false;
+  let editingActivity   = null;   // { ...activityRow } being edited
+  let viewingItem       = null;   // { ...activityRow } for modal
+  let showDeleteConfirm = false;
+  let pendingDeleteId   = null;
+  let showHistoric      = false;
 
   let sortField = 'updated_at';  // 'updated_at' | 'created_at'
   let sortDir   = 'desc';        // 'desc' | 'asc'
 
-  let newComment  = { body: '' };
-  let newDecision = { body: '' };
+  // -- New activity state ----------------------------------------------
+  // Keeps the last-used type selected so batch-logging (e.g. 3 emails)
+  // doesn't require re-selecting the type each time.
+  let newActivity = { body: '', activity_type: ACTIVITY_TYPE.COMMENT, fields: {} };
   let mutationError = '';
   let saving = false;
+
+  $: newTypeConfig = ACTIVITY_TYPE_CONFIG[newActivity.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT];
 
   // -- Suggestion panel state -----------------------------------------
   // One panel open at a time across all comment activities.
@@ -107,34 +113,37 @@
     sortDir = sortDir === 'desc' ? 'asc' : 'desc';
   }
 
-  // -- Comment CRUD ----------------------------------------------------
-  async function addComment() {
-    if (!newComment.body.trim()) return;
-    saving = true;
-    mutationError = '';
-    const result = await issuesStore.addActivity(issueId, {
-      body:          newComment.body,
-      activity_type: ACTIVITY_TYPE.COMMENT
-    });
-    saving = false;
-    if (!result.success) { mutationError = result.error ?? 'Failed to add comment'; return; }
-    newComment = { body: '' };
-    showAddCommentForm = false;
+  // -- Type selector ---------------------------------------------------
+  function selectType(type) {
+    // Reset fields on type change; preserve body so user doesn't lose typed text.
+    newActivity = { body: newActivity.body, activity_type: type, fields: {} };
   }
 
-  // -- Decision CRUD ---------------------------------------------------
-  async function addDecision() {
-    if (!newDecision.body.trim()) return;
+  // -- Add activity (unified for all types) ----------------------------
+  async function addNewActivity() {
+    if (!newActivity.body.trim()) return;
     saving = true;
     mutationError = '';
+
+    // Only persist fields if at least one is filled in.
+    const hasFields = Object.values(newActivity.fields || {}).some(v => v && String(v).trim());
     const result = await issuesStore.addActivity(issueId, {
-      body:          newDecision.body,
-      activity_type: ACTIVITY_TYPE.DECISION
+      body:          newActivity.body,
+      activity_type: newActivity.activity_type,
+      fields:        hasFields ? newActivity.fields : null
     });
     saving = false;
-    if (!result.success) { mutationError = result.error ?? 'Failed to add decision'; return; }
-    newDecision = { body: '' };
-    showAddDecisionForm = false;
+    if (!result.success) {
+      mutationError = result.error ?? `Failed to add ${newTypeConfig.label.toLowerCase()}`;
+      return;
+    }
+    // Keep same type selected for batch-logging; reset body + fields.
+    newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} };
+    showAddForm = false;
+  }
+
+  function setNewField(key, value) {
+    newActivity = { ...newActivity, fields: { ...(newActivity.fields ?? {}), [key]: value } };
   }
 
   // -- Unified update/delete ------------------------------------------
@@ -142,9 +151,12 @@
     if (!editingActivity?.body?.trim()) return;
     saving = true;
     mutationError = '';
+
+    const hasFields = Object.values(editingActivity.fields || {}).some(v => v && String(v).trim());
     const result = await issuesStore.updateActivity(editingActivity.id, {
       body:                editingActivity.body,
       historic:            editingActivity.historic,
+      fields:              hasFields ? editingActivity.fields : null,
       override_created_at: $permissions.isAdmin && editingActivity.override_created_at
                              ? new Date(editingActivity.override_created_at).toISOString()
                              : null,
@@ -171,6 +183,7 @@
   function startEdit(activity) {
     editingActivity = {
       ...activity,
+      fields: activity.fields ?? {},
       override_created_at: toDateTimeLocal(activity.created_at),
       override_updated_at: toDateTimeLocal(activity.updated_at)
     };
@@ -320,6 +333,11 @@
     pendingLinkedAction     = null;
     linkedDeleteError       = '';
   }
+
+  // -- View full modal helpers -----------------------------------------
+  $: viewingTypeConfig = viewingItem
+    ? (ACTIVITY_TYPE_CONFIG[viewingItem.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT])
+    : null;
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-3">
@@ -363,18 +381,10 @@
         action="modify"
         variant="blue"
         size="small"
-        icon="comment"
-        on:click={() => showAddCommentForm = true}
+        icon="plus"
+        on:click={() => { showAddForm = true; }}
       >
-        Add Comment
-      </ProtectedButton>
-      <ProtectedButton
-        action="modify"
-        variant="secondary"
-        size="small"
-        on:click={() => showAddDecisionForm = true}
-      >
-        + Decision
+        Log Activity
       </ProtectedButton>
     </div>
   </div>
@@ -383,20 +393,72 @@
     <p class="text-sm text-red-400 bg-red-900/20 border border-red-800/40 rounded px-3 py-2 mb-2">{mutationError}</p>
   {/if}
 
-  <!-- ─── Add comment form ──────────────────────────────────── -->
-  {#if showAddCommentForm}
-    <div class="bg-slate-700/50 rounded p-3 border border-blue-500/50 mb-2">
+  <!-- ─── Unified add form ──────────────────────────────────── -->
+  {#if showAddForm}
+    <div class="bg-slate-700/50 rounded p-3 border {newTypeConfig.borderEdit} mb-3">
+
+      <!-- Type picker pills -->
+      <div class="flex flex-wrap gap-1 mb-3">
+        {#each ACTIVITY_TYPES as t}
+          <button
+            type="button"
+            class="text-xs px-2.5 py-1 rounded-full border transition-colors
+                   {newActivity.activity_type === t.value
+                     ? t.color + ' border-current bg-slate-600/80 text-white font-semibold'
+                     : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}"
+            on:click={() => selectType(t.value)}
+          >
+            {t.icon} {t.label}
+          </button>
+        {/each}
+      </div>
+
+      <!-- Structured fields (email / call / letter only) -->
+      {#if newTypeConfig.fields.length > 0}
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          {#each newTypeConfig.fields as field}
+            <div class={field.span === 2 ? 'col-span-2' : ''}>
+              <label
+                for="new-field-{field.key}"
+                class="block text-[10px] text-slate-400 mb-0.5"
+              >{field.label}</label>
+              {#if field.type === 'select'}
+                <select
+                  id="new-field-{field.key}"
+                  value={newActivity.fields[field.key] || ''}
+                  on:change={(e) => setNewField(field.key, e.currentTarget.value)}
+                  class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 {newTypeConfig.ringClass}"
+                >
+                  {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
+                </select>
+              {:else}
+                <input
+                  id="new-field-{field.key}"
+                  type={field.type}
+                  value={newActivity.fields[field.key] || ''}
+                  placeholder={field.placeholder || ''}
+                  on:input={(e) => setNewField(field.key, e.currentTarget.value)}
+                  class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {newTypeConfig.ringClass}"
+                />
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      <!-- Body textarea -->
       <textarea
-        bind:value={newComment.body}
-        placeholder="Enter your comment…"
-        class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-        rows="5"
+        bind:value={newActivity.body}
+        placeholder={newTypeConfig.placeholder}
+        class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {newTypeConfig.ringClass} resize-y"
+        rows={newTypeConfig.fields.length > 0 ? 3 : 5}
       ></textarea>
+
       <div class="flex justify-end gap-2 mt-2">
         <Button
           variant="secondary"
           size="small"
-          on:click={() => { showAddCommentForm = false; newComment.body = ''; mutationError = ''; }}
+          on:click={() => { showAddForm = false; newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} }; mutationError = ''; }}
         >
           Cancel
         </Button>
@@ -405,41 +467,10 @@
           variant="blue"
           size="small"
           icon="plus"
-          disabled={saving}
-          on:click={addComment}
+          disabled={saving || !newActivity.body.trim()}
+          on:click={addNewActivity}
         >
-          {saving ? 'Saving…' : 'Add Comment'}
-        </ProtectedButton>
-      </div>
-    </div>
-  {/if}
-
-  <!-- ─── Add decision form ─────────────────────────────────── -->
-  {#if showAddDecisionForm}
-    <div class="bg-slate-700/50 rounded p-3 border border-violet-500/50 mb-2">
-      <textarea
-        bind:value={newDecision.body}
-        placeholder="Enter the decision…"
-        class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-y"
-        rows="4"
-      ></textarea>
-      <div class="flex justify-end gap-2 mt-2">
-        <Button
-          variant="secondary"
-          size="small"
-          on:click={() => { showAddDecisionForm = false; newDecision.body = ''; mutationError = ''; }}
-        >
-          Cancel
-        </Button>
-        <ProtectedButton
-          action="modify"
-          variant="secondary"
-          size="small"
-          icon="plus"
-          disabled={saving}
-          on:click={addDecision}
-        >
-          {saving ? 'Saving…' : 'Add Decision'}
+          {saving ? 'Saving…' : `Add ${newTypeConfig.label}`}
         </ProtectedButton>
       </div>
     </div>
@@ -476,6 +507,8 @@
         />
       {/each}
     </div>
+  {:else if !showAddForm}
+    <p class="text-xs text-slate-500 italic py-2">No activity yet.</p>
   {/if}
 
 </div>
@@ -483,11 +516,26 @@
 <!-- ─── Full item view modal ─────────────────────────────────── -->
 <Modal
   show={!!viewingItem}
-  title={viewingItem?.activity_type === ACTIVITY_TYPE.DECISION ? 'Decision' : 'Comment'}
+  title={viewingTypeConfig?.label ?? 'Activity'}
   size="medium"
   on:close={() => viewingItem = null}
 >
   {#if viewingItem}
+    <!-- Structured fields (for email / call / letter) -->
+    {#if viewingTypeConfig && viewingTypeConfig.fields.length > 0}
+      {@const f = viewingItem.fields || {}}
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-4 pb-3 border-b border-slate-700">
+        {#each viewingTypeConfig.fields as field}
+          {#if f[field.key]}
+            <div class={field.span === 2 ? 'col-span-2' : ''}>
+              <dt class="text-slate-500 uppercase tracking-wide text-[10px]">{field.label}</dt>
+              <dd class="text-slate-200">{f[field.key]}</dd>
+            </div>
+          {/if}
+        {/each}
+      </dl>
+    {/if}
+
     <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">
       {viewingItem.body}
     </p>

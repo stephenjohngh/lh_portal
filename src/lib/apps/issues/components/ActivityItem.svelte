@@ -1,27 +1,27 @@
 <!-- src/lib/apps/issues/components/ActivityItem.svelte -->
 <!--
-  Single activity row. Handles both comment and decision activity types.
-  Formerly: CommentItem (comment type) + DecisionItem (decision type).
+  Single activity row. Handles all activity types:
+  comment, decision, note, email, call, letter.
 
   Two render modes per item:
     - Edit mode (when editingActivity.id matches): inline edit form.
-    - Display mode: text + action buttons + metadata + (for comments, when
-                    open) a CommentSuggestionPanel underneath.
+    - Display mode: type badge + optional structured fields header +
+                    body text + action buttons + metadata.
+
+  For comment-type activities only: a suggestion panel (CommentSuggestionPanel)
+  appears below when the user clicks the "linked action" toggle.
 
   All state is owned by ActivityLogSection; this file is mostly markup +
   event dispatch. Bindable props:
-    - editingActivity  (so the edit form's textarea/checkbox bind back up)
+    - editingActivity  (so the edit form's textarea/checkbox/fields bind back up)
     - suggestionDraft  (so the panel's draft text binds back up)
 
-  Colour scheme by activity_type:
-    comment  → blue  border (border-blue-400)
-    decision → violet border (border-violet-400)
-    others   → slate border  (border-slate-400)
+  Left-border colour by activity_type — see ACTIVITY_TYPE_CONFIG.
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
-  import { ACTION_STATUS, ACTIVITY_TYPE } from '$lib/utils/constants';
+  import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { permissions }    from '$lib/stores/permissions';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
@@ -46,13 +46,15 @@
 
   const dispatch = createEventDispatcher();
 
-  $: isComment  = activity.activity_type === ACTIVITY_TYPE.COMMENT  || !activity.activity_type;
-  $: isDecision = activity.activity_type === ACTIVITY_TYPE.DECISION;
+  // -- Type config -----------------------------------------------------
+  $: typeConfig = ACTIVITY_TYPE_CONFIG[activity.activity_type]
+                    ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT];
 
-  // Border colour by type
-  $: borderColor = isDecision ? 'border-violet-400'
-                 : isComment  ? 'border-blue-400'
-                 : 'border-slate-400';
+  $: editTypeConfig = editingActivity
+    ? (ACTIVITY_TYPE_CONFIG[editingActivity.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT])
+    : typeConfig;
+
+  $: isComment  = activity.activity_type === ACTIVITY_TYPE.COMMENT || !activity.activity_type;
 
   // Suggestion panel: only for comment-type activities
   $: hasLinked       = !!linkedAction;
@@ -66,27 +68,77 @@
                      ? (hasLinked ? 'Hide linked action' : 'Hide suggestion')
                      : (hasLinked ? 'Show linked action' : 'Create Linked Action');
 
+  // -- Edit field helpers ----------------------------------------------
+  // Reassign editingActivity (not just mutate) so Svelte propagates up.
+  function setEditField(key, value) {
+    editingActivity = {
+      ...editingActivity,
+      fields: { ...(editingActivity.fields ?? {}), [key]: value }
+    };
+  }
+
   function cancelEdit() {
     dispatch('editCancel');
   }
 
-  // Ring colour for the edit form border
-  $: ringColor = isDecision ? 'focus:ring-violet-500' : 'focus:ring-blue-500';
-  $: borderEditColor = isDecision ? 'border-violet-500/50' : 'border-blue-500/50';
+  // -- Date formatting for structured fields ---------------------------
+  // field dates are stored as 'YYYY-MM-DD'; add a noon time to avoid
+  // timezone-shift issues when passing to fmtDate.
+  function fmtFieldDate(dateStr) {
+    if (!dateStr) return '';
+    return fmtDate(dateStr + 'T12:00:00');
+  }
 </script>
 
 {#if editingActivity?.id === activity.id}
   <!-- ─── Edit mode ──────────────────────────────────────────── -->
-  <div class="bg-slate-700/50 rounded p-3 border {borderEditColor}">
+  <div class="bg-slate-700/50 rounded p-3 border {editTypeConfig.borderEdit}">
+
+    <!-- Structured fields (email / call / letter) -->
+    {#if editTypeConfig.fields.length > 0}
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        {#each editTypeConfig.fields as field}
+          <div class={field.span === 2 ? 'col-span-2' : ''}>
+            <label
+              for="edit-field-{activity.id}-{field.key}"
+              class="block text-[10px] text-slate-400 mb-0.5"
+            >{field.label}</label>
+            {#if field.type === 'select'}
+              <select
+                id="edit-field-{activity.id}-{field.key}"
+                value={editingActivity.fields?.[field.key] || ''}
+                on:change={(e) => setEditField(field.key, e.currentTarget.value)}
+                class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+              >
+                {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
+              </select>
+            {:else}
+              <input
+                id="edit-field-{activity.id}-{field.key}"
+                type={field.type}
+                value={editingActivity.fields?.[field.key] || ''}
+                placeholder={field.placeholder || ''}
+                on:input={(e) => setEditField(field.key, e.currentTarget.value)}
+                class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+              />
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+
     <textarea
       bind:value={editingActivity.body}
-      class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {ringColor} resize-y"
-      rows={isDecision ? 4 : 5}
+      placeholder={editTypeConfig.placeholder}
+      class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {editTypeConfig.ringClass} resize-y"
+      rows={editTypeConfig.fields.length > 0 ? 3 : 5}
     ></textarea>
+
     <label class="flex items-center gap-2 mt-2 text-sm cursor-pointer">
       <input type="checkbox" bind:checked={editingActivity.historic} class="rounded" />
       <span class="text-gray-400">Mark as historic</span>
     </label>
+
     {#if $permissions.isAdmin}
       <div class="border-t border-slate-600 pt-2 mt-2">
         <div class="flex items-start gap-2 px-2 py-1.5 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-2">
@@ -120,7 +172,7 @@
       <Button variant="secondary" size="small" on:click={cancelEdit}>Cancel</Button>
       <ProtectedButton
         action="modify"
-        variant={isDecision ? 'secondary' : 'blue'}
+        variant="blue"
         size="small"
         icon="edit"
         disabled={saving}
@@ -135,17 +187,55 @@
   <!-- ─── Display mode ───────────────────────────────────────── -->
   <div
     id={`activity-${activity.id}`}
-    class="bg-slate-700/50 rounded p-2 border-l-2 {borderColor} {activity.historic ? 'opacity-60' : ''}"
+    class="bg-slate-700/50 rounded p-2 border-l-2 {typeConfig.borderColor} {activity.historic ? 'opacity-60' : ''}"
   >
     <div class="flex justify-between items-start gap-2">
 
-      <!-- Text: max 5 lines with scroll; click opens full view -->
+      <!-- Body area: structured fields header + body text -->
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div
-        class="flex-1 overflow-y-auto max-h-[6.5rem] rounded cursor-pointer hover:bg-slate-600/20 transition-colors px-1"
-        title="Click to view full {isDecision ? 'decision' : 'comment'}"
+        class="flex-1 min-w-0 overflow-y-auto max-h-[7.5rem] rounded cursor-pointer hover:bg-slate-600/20 transition-colors px-1"
+        title="Click to view full {typeConfig.label.toLowerCase()}"
         on:click={() => dispatch('viewFull', activity)}
       >
+        <!-- Structured-field summary line (email / call / letter) -->
+        {#if typeConfig.fields.length > 0}
+          {@const f = activity.fields || {}}
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1 text-[11px] text-slate-400 leading-snug">
+            {#if activity.activity_type === ACTIVITY_TYPE.EMAIL}
+              {#if f.from || f.to}
+                <span class="truncate">{f.from || '?'} → {f.to || '?'}</span>
+              {/if}
+              {#if f.subject}
+                <span class="text-slate-300 truncate max-w-[18rem]">Re: {f.subject}</span>
+              {/if}
+              {#if f.email_date}
+                <span class="shrink-0">{fmtFieldDate(f.email_date)}</span>
+              {/if}
+            {:else if activity.activity_type === ACTIVITY_TYPE.CALL}
+              {#if f.direction}
+                <span class="capitalize">{f.direction}</span>
+              {/if}
+              {#if f.caller}
+                <span>· {f.caller}</span>
+              {/if}
+              {#if f.duration}
+                <span>· {f.duration}</span>
+              {/if}
+            {:else if activity.activity_type === ACTIVITY_TYPE.LETTER}
+              {#if f.from || f.to}
+                <span class="truncate">{f.from || '?'} → {f.to || '?'}</span>
+              {/if}
+              {#if f.reference}
+                <span class="text-slate-300">Ref: {f.reference}</span>
+              {/if}
+              {#if f.letter_date}
+                <span class="shrink-0">{fmtFieldDate(f.letter_date)}</span>
+              {/if}
+            {/if}
+          </div>
+        {/if}
+
         <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
       </div>
 
@@ -168,7 +258,7 @@
           icon="edit"
           iconPosition="only"
           on:click={() => dispatch('editStart', activity)}
-          title="Edit {isDecision ? 'decision' : 'comment'}"
+          title="Edit {typeConfig.label.toLowerCase()}"
         />
         <ProtectedButton
           action="modify"
@@ -177,16 +267,16 @@
           icon="delete"
           iconPosition="only"
           on:click={() => dispatch('deleteRequest', activity)}
-          title="Delete {isDecision ? 'decision' : 'comment'}"
+          title="Delete {typeConfig.label.toLowerCase()}"
         />
       </div>
     </div>
 
     <!-- Metadata line -->
     <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 flex-wrap">
-      {#if isDecision}
-        <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/50 font-semibold uppercase tracking-wide">
-          Decision
+      {#if typeConfig.badgeText}
+        <span class="text-[10px] px-1.5 py-0.5 rounded {typeConfig.badgeClass} font-semibold uppercase tracking-wide">
+          {typeConfig.icon} {typeConfig.badgeText}
         </span>
       {/if}
       <span>Added: {fmtDateTime(activity.created_at, activity.created_by_profile?.full_name)}</span>
