@@ -50,7 +50,7 @@ function createIssuesStore() {
             created_by_profile:profiles!created_by(full_name),
             updated_by_profile:profiles!updated_by(full_name),
             activities (
-              id, body, activity_type, historic, meeting_id, created_at, updated_at,
+              id, body, activity_type, fields, historic, meeting_id, created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             ),
