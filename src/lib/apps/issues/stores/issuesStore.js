@@ -381,6 +381,7 @@ function createIssuesStore() {
     async updateActivity(activityId, activityData) {
       try {
         const body                 = activityData.body;
+        const activity_type        = activityData.activity_type ?? null;
         const historic             = activityData.historic ?? false;
         const fields               = activityData.fields !== undefined ? activityData.fields : null;
         const override_created_at  = activityData.override_created_at ?? null;
@@ -410,6 +411,7 @@ function createIssuesStore() {
           updated_at: override_updated_at || new Date().toISOString(),
           updated_by: user?.id
         };
+        if (activity_type) payload.activity_type = activity_type;
         if (override_created_at) payload.created_at = override_created_at;
         await api.update('activities', activityId, payload);
 

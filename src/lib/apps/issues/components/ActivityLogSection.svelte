@@ -155,6 +155,7 @@
     const hasFields = Object.values(editingActivity.fields || {}).some(v => v && String(v).trim());
     const result = await issuesStore.updateActivity(editingActivity.id, {
       body:                editingActivity.body,
+      activity_type:       editingActivity.activity_type,
       historic:            editingActivity.historic,
       fields:              hasFields ? editingActivity.fields : null,
       override_created_at: $permissions.isAdmin && editingActivity.override_created_at
