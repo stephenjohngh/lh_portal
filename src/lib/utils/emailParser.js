@@ -20,20 +20,25 @@
 export function parseEmailPaste(text) {
   if (!text || text.trim().length < 20) return null;
 
-  // ── 1. Detection ──────────────────────────────────────────────────
+  // ── 1. Strip quote markers ────────────────────────────────────────
+  // Some clients prefix every line of a forwarded block with "> ".
+  // Strip these up-front so all subsequent patterns work uniformly.
+  const normalised = text.split('\n').map(l => l.replace(/^>+\s?/, '')).join('\n');
+
+  // ── 2. Detection ──────────────────────────────────────────────────
   // Needs at least 2 recognisable header-style lines, OR a Gmail-style
   // "On [date] wrote:" separator.  This threshold avoids false positives on
   // prose that happens to contain "To:" or "Subject:".
   const headerCount = ['from:', 'to:', 'subject:', 'date:', 'sent:'].filter(
-    h => new RegExp('^' + h, 'im').test(text)
+    h => new RegExp('^' + h, 'im').test(normalised)
   ).length;
 
-  const hasGmailSep = /^on .{5,120}\bwrote:\s*$/im.test(text);
+  const hasGmailSep = /^on .{5,120}\bwrote:\s*$/im.test(normalised);
 
   if (headerCount < 2 && !hasGmailSep) return null;
 
-  // ── 2. Isolate the latest message ─────────────────────────────────
-  let workingText = text;
+  // ── 3. Isolate the latest message ─────────────────────────────────
+  let workingText = normalised;
   let wasThread   = false;
 
   // Outlook threads: the second "From:" line at the start of a line signals
@@ -61,7 +66,7 @@ export function parseEmailPaste(text) {
     }
   }
 
-  // ── 3. Parse header fields ────────────────────────────────────────
+  // ── 4. Parse header fields ────────────────────────────────────────
   const get = re => (re.exec(workingText)?.[1] ?? '').trim();
 
   const fromRaw  = get(/^from:\s+(.+)/im);
@@ -69,7 +74,7 @@ export function parseEmailPaste(text) {
   const subject  = get(/^subject:\s+(.+)/im);
   const dateRaw  = get(/^(?:date|sent):\s+(.+)/im);
 
-  // ── 4. Extract body ───────────────────────────────────────────────
+  // ── 5. Extract body ───────────────────────────────────────────────
   // Headers form a contiguous block near the start; the body follows
   // the first blank line after the last header line.
   const workingLines = workingText.split('\n');
