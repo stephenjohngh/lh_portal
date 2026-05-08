@@ -268,9 +268,9 @@
           <div id="issue-{issue.id}">
           <IssueCard
             {issue}
-            showComments={expandedSections[issue.id]?.comments || false}
+            showActivity={expandedSections[issue.id]?.comments || false}
             showActions={expandedSections[issue.id]?.actions   || false}
-            on:toggleComments={() => toggleSection(issue.id, 'comments')}
+            on:toggleActivity={() => toggleSection(issue.id, 'comments')}
             on:toggleActions={() => toggleSection(issue.id, 'actions')}
             on:edit={(e) => editingIssue = e.detail}
             on:toggleStatus={handleToggleStatus}

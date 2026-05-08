@@ -13,7 +13,7 @@
   import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '$lib/utils/constants';
 
   export let issue;
-  export let showComments = false;
+  export let showActivity = false;
   export let showActions = false;
 
   const dispatch = createEventDispatcher();
@@ -96,8 +96,8 @@
   function handleJumpToActivity({ detail }) {
     return jumpAndHighlight({
       targetId:    `activity-${detail?.activityId}`,
-      expandIf:    !showComments,
-      toggleEvent: 'toggleComments'
+      expandIf:    !showActivity,
+      toggleEvent: 'toggleActivity'
     });
   }
 
@@ -107,7 +107,7 @@
     ? 'bg-amber-900/20'
     : 'bg-slate-700/50';
 
-  $: activeBackgroundClass = (showComments || showActions)
+  $: activeBackgroundClass = (showActivity || showActions)
     ? (issue.status === ISSUE_STATUS.COMPLETED
         ? 'bg-emerald-900/30'
         : issue.status === ISSUE_STATUS.PARKED
@@ -121,7 +121,7 @@
     ? 'border-amber-700/40'
     : 'border-slate-600';
 
-  $: activeBorderClass = (showComments || showActions)
+  $: activeBorderClass = (showActivity || showActions)
     ? (issue.status === ISSUE_STATUS.COMPLETED
         ? 'border-emerald-500/60'
         : issue.status === ISSUE_STATUS.PARKED
@@ -130,7 +130,7 @@
     : borderClass;
 </script>
 
-<div class="{activeBackgroundClass} rounded-lg border-2 {activeBorderClass} overflow-hidden transition-all duration-300 ease-in-out {showComments || showActions ? 'shadow-lg shadow-purple-500/20' : ''}">
+<div class="{activeBackgroundClass} rounded-lg border-2 {activeBorderClass} overflow-hidden transition-all duration-300 ease-in-out {showActivity || showActions ? 'shadow-lg shadow-purple-500/20' : ''}">
   <!-- Issue Header -->
   <div class="p-3">
     <div class="flex-between items-start mb-1">
@@ -234,25 +234,25 @@
       <Button
         variant="primary"
         size="medium"
-        icon={showComments || showActions ? 'chevron-up' : 'chevron-down'}
-        title={showComments || showActions ? 'Collapse all sections' : 'Expand all sections'}
+        icon={showActivity || showActions ? 'chevron-up' : 'chevron-down'}
+        title={showActivity || showActions ? 'Collapse all sections' : 'Expand all sections'}
         on:click={() => {
-          if (showComments || showActions) {
-            if (showComments) dispatch('toggleComments');
+          if (showActivity || showActions) {
+            if (showActivity) dispatch('toggleActivity');
             if (showActions) dispatch('toggleActions');
           } else {
-            dispatch('toggleComments');
+            dispatch('toggleActivity');
             dispatch('toggleActions');
           }
         }}
       >
-        {showComments || showActions ? 'Collapse' : 'Expand'}
+        {showActivity || showActions ? 'Collapse' : 'Expand'}
       </Button>
     </div>
   </div>
 
   <!-- Activity Log Section -->
-  {#if showComments}
+  {#if showActivity}
     <div class="ml-8 mr-4 mb-3">
       <div class="border-l-4 border-blue-500 pl-3">
         <ActivityLogSection

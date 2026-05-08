@@ -66,16 +66,9 @@ function createIssuesStore() {
           ascending: true
         });
 
-        const sortedData = data.sort((a, b) => {
-          if (a.priority === b.priority) {
-            return new Date(a.created_at) - new Date(b.created_at);
-          }
-          return 0;
-        });
-
         update(state => ({
           ...state,
-          issues: sortedData,
+          issues: data,
           loading: false
         }));
       } catch (err) {

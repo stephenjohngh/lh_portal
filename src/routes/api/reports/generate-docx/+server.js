@@ -151,32 +151,14 @@ export async function POST({ request }) {
 
 async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder = 'desc') {
   logger('Generating report content');
-  logger('Total issues provided:', issues.length);
-  logger('Filters:', { includeCurrent, includeParked, includeCompleted });
-  
-  let filteredIssues = issues.filter(issue => {
-    const status = issue.status || 'current';
-    if (status === 'current' && includeCurrent) return true;
-    if (status === 'parked' && includeParked) return true;
-    if (status === 'completed' && includeCompleted) return true;
-    return false;
-  });
-  
-  filteredIssues.sort((a, b) => {
-    if (a.priority !== b.priority) {
-      return a.priority - b.priority;
-    }
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
-  
-  const currentIssues = filteredIssues.filter(i => (i.status || 'current') === 'current');
-  const parkedIssues = filteredIssues.filter(i => i.status === 'parked');
-  const completedIssues = filteredIssues.filter(i => i.status === 'completed');
-  
-  logger('Issues after filtering:', filteredIssues.length);
-  logger('- Current:', currentIssues.length);
-  logger('- Parked:', parkedIssues.length);
-  logger('- Completed:', completedIssues.length);
+  logger('Issues:', issues.length);
+
+  // Issues arrive pre-filtered and pre-sorted by the client — just split for section headings.
+  const currentIssues   = issues.filter(i => (i.status || 'current') === 'current');
+  const parkedIssues    = issues.filter(i => i.status === 'parked');
+  const completedIssues = issues.filter(i => i.status === 'completed');
+
+  logger('- Current:', currentIssues.length, '- Parked:', parkedIssues.length, '- Completed:', completedIssues.length);
   
   const content = [];
   
@@ -194,20 +176,15 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     includeCompleted && 'Completed'
   ].filter(Boolean).join(', ');
   
-  const generatedDate = new Date().toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const generatedDate = new Date().toLocaleDateString('en-GB', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
-  
+
   let headerText = `Generated: ${generatedDate} • Showing: ${statuses}`;
   if (filterDate) {
-    const filterDateFormatted = new Date(filterDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-    headerText += ` modified since: ${filterDateFormatted}`;
+    headerText += ` created since: ${fmtShortDate(filterDate)}`;
   }
   
   content.push(
@@ -382,27 +359,15 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
     );
   }
 
-  const createdDate = new Date(issue.created_at).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-  
   const createdBy = issue.created_by_profile?.full_name || 'Unknown';
-  
-  let dateInfo = `Created: ${createdDate} by ${createdBy}`;
-  
+  let dateInfo = `Created: ${fmtShortDate(issue.created_at)} by ${createdBy}`;
+
   const createdTime = new Date(issue.created_at).getTime();
   const updatedTime = issue.updated_at ? new Date(issue.updated_at).getTime() : createdTime;
-  
+
   if (updatedTime > createdTime) {
-    const updatedDate = new Date(issue.updated_at).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
     const updatedBy = issue.updated_by_profile?.full_name || 'Unknown';
-    dateInfo += ` • Modified: ${updatedDate} by ${updatedBy}`;
+    dateInfo += ` • Modified: ${fmtShortDate(issue.updated_at)} by ${updatedBy}`;
   }
   
   const outstandingCount = (issue.outstandingActions || []).length;
@@ -550,12 +515,8 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
         details.push(`👤 ${action.name_text}`);
       }
       if (action.date_deadline) {
-        const deadline = new Date(action.date_deadline).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric'
-        });
         const isOverdue = new Date(action.date_deadline) < new Date();
-        details.push(`📅 Due: ${deadline}${isOverdue ? ' ⚠️' : ''}`);
+        details.push(`📅 Due: ${fmtShortDate(action.date_deadline)}${isOverdue ? ' ⚠️' : ''}`);
       }
       if (action.status) {
         details.push(`Status: ${action.status}`);
@@ -576,27 +537,15 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
         );
       }
 
-      const actionCreatedDate = new Date(action.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-      
       const actionCreatedBy = action.created_by_profile?.full_name || 'Unknown';
-      
-      let actionDateInfo = `Added: ${actionCreatedDate} by ${actionCreatedBy}`;
-      
+      let actionDateInfo = `Added: ${fmtShortDate(action.created_at)} by ${actionCreatedBy}`;
+
       const actionCreatedTime = new Date(action.created_at).getTime();
       const actionUpdatedTime = action.updated_at ? new Date(action.updated_at).getTime() : actionCreatedTime;
-      
+
       if (actionUpdatedTime > actionCreatedTime) {
-        const actionUpdatedDate = new Date(action.updated_at).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
         const actionUpdatedBy = action.updated_by_profile?.full_name || 'Unknown';
-        actionDateInfo += ` • Modified: ${actionUpdatedDate} by ${actionUpdatedBy}`;
+        actionDateInfo += ` • Modified: ${fmtShortDate(action.updated_at)} by ${actionUpdatedBy}`;
       }
 
       content.push(
