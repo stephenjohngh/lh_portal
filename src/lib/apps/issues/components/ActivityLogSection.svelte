@@ -454,6 +454,14 @@
         rows={newTypeConfig.fields.length > 0 ? 3 : 5}
       ></textarea>
 
+      <!-- Document upload — coming soon -->
+      {#if newActivity.activity_type === ACTIVITY_TYPE.DOCUMENT}
+        <div class="flex items-center gap-2 mt-2 px-3 py-2 rounded border border-dashed border-rose-500/30 bg-rose-900/10 text-xs text-rose-300/70">
+          <span>📎</span>
+          <span>File attachment — coming in the next version. Add notes above for now.</span>
+        </div>
+      {/if}
+
       <div class="flex justify-end gap-2 mt-2">
         <Button
           variant="secondary"

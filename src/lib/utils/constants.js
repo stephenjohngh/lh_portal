@@ -78,7 +78,8 @@ export const ACTIVITY_TYPE = {
   NOTE:     'note',
   EMAIL:    'email',
   CALL:     'call',
-  LETTER:   'letter'
+  LETTER:   'letter',
+  DOCUMENT: 'document'
 };
 
 /**
@@ -171,6 +172,17 @@ export const ACTIVITY_TYPE_CONFIG = {
       { key: 'reference',   label: 'Reference', type: 'text', placeholder: 'Ref no. or subject', span: 2 },
       { key: 'letter_date', label: 'Date',      type: 'date', placeholder: '',                   span: 1 }
     ]
+  },
+  [ACTIVITY_TYPE.DOCUMENT]: {
+    label:       'Document',
+    icon:        '📎',
+    borderColor: 'border-rose-400',
+    badgeClass:  'bg-rose-900/40 text-rose-300 border border-rose-700/50',
+    badgeText:   'Document',
+    ringClass:   'focus:ring-rose-500',
+    borderEdit:  'border-rose-500/50',
+    placeholder: 'Notes about this document…',
+    fields:      []
   }
 };
 

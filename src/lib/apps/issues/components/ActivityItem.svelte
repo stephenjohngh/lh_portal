@@ -134,6 +134,14 @@
       rows={editTypeConfig.fields.length > 0 ? 3 : 5}
     ></textarea>
 
+    <!-- Document upload — coming soon -->
+    {#if editingActivity.activity_type === ACTIVITY_TYPE.DOCUMENT}
+      <div class="flex items-center gap-2 mt-2 px-3 py-2 rounded border border-dashed border-rose-500/30 bg-rose-900/10 text-xs text-rose-300/70">
+        <span>📎</span>
+        <span>File attachment — coming in the next version.</span>
+      </div>
+    {/if}
+
     <label class="flex items-center gap-2 mt-2 text-sm cursor-pointer">
       <input type="checkbox" bind:checked={editingActivity.historic} class="rounded" />
       <span class="text-gray-400">Mark as historic</span>
@@ -237,6 +245,11 @@
         {/if}
 
         <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
+        {#if activity.activity_type === ACTIVITY_TYPE.DOCUMENT}
+          <p class="text-[11px] text-rose-300/60 mt-1 italic">
+            📎 File attachment — coming in the next version
+          </p>
+        {/if}
       </div>
 
       <div class="flex gap-1 flex-shrink-0">
