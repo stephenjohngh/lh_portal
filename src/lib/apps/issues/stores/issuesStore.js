@@ -66,6 +66,14 @@ function createIssuesStore() {
           ascending: true
         });
 
+        // Primary: priority asc. Secondary: issue_number asc (DB only sorts by one
+        // column, so apply the tiebreaker client-side).
+        data.sort((a, b) =>
+          a.priority !== b.priority
+            ? a.priority - b.priority
+            : (a.issue_number || 0) - (b.issue_number || 0)
+        );
+
         update(state => ({
           ...state,
           issues: data,
