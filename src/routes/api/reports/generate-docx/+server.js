@@ -2,12 +2,20 @@
 // CLEANED: All console.log replaced with logger
 
 import { json } from '@sveltejs/kit';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
          VerticalAlign, PageBreak } from 'docx';
-import { getLogger } from '$lib/utils/logger';
+import { getLogger }       from '$lib/utils/logger';
+import { getPriorityLabel } from '$lib/utils/constants';
+import { buildFieldSummary } from '$lib/apps/issues/components/reports/reportUtils';
 
 const logger = getLogger('GenerateDocx');
+
+// Mirror of wasModified() from $lib/utils/dates — server-local copy.
+function wasModified(createdAt, updatedAt) {
+  if (!updatedAt) return false;
+  return new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 1000;
+}
 
 export async function POST({ request }) {
   logger('DOCX generation request received');
@@ -321,7 +329,7 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
         new Paragraph({
           children: [
             new TextRun({
-              text: getPriorityLabel(issue.priority),
+              text: getPriorityLabel(issue.priority).label,
               bold: true,
               size: 18,
               color: "FFFFFF"
@@ -362,10 +370,7 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
   const createdBy = issue.created_by_profile?.full_name || 'Unknown';
   let dateInfo = `Created: ${fmtShortDate(issue.created_at)} by ${createdBy}`;
 
-  const createdTime = new Date(issue.created_at).getTime();
-  const updatedTime = issue.updated_at ? new Date(issue.updated_at).getTime() : createdTime;
-
-  if (updatedTime > createdTime) {
+  if (wasModified(issue.created_at, issue.updated_at)) {
     const updatedBy = issue.updated_by_profile?.full_name || 'Unknown';
     dateInfo += ` • Modified: ${fmtShortDate(issue.updated_at)} by ${updatedBy}`;
   }
@@ -413,29 +418,9 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
     for (const item of sortedActivities) {
       const type = item.activity_type || 'comment';
       const meta = ACTIVITY_TYPE_META[type] ?? { label: type, color: '666666' };
-      const f = item.fields || {};
 
       // Structured-field summary for email / call / letter
-      let fieldsLine = '';
-      if (type === 'email') {
-        const parts = [];
-        if (f.from || f.to) parts.push(`${f.from || '?'} → ${f.to || '?'}`);
-        if (f.subject)       parts.push(`Re: ${f.subject}`);
-        if (f.email_date)    parts.push(fmtFieldDate(f.email_date));
-        fieldsLine = parts.join('  ·  ');
-      } else if (type === 'call') {
-        const parts = [];
-        if (f.direction) parts.push(f.direction);
-        if (f.caller)    parts.push(f.caller);
-        if (f.duration)  parts.push(f.duration);
-        fieldsLine = parts.join('  ·  ');
-      } else if (type === 'letter') {
-        const parts = [];
-        if (f.from || f.to) parts.push(`${f.from || '?'} → ${f.to || '?'}`);
-        if (f.reference)    parts.push(`Ref: ${f.reference}`);
-        if (f.letter_date)  parts.push(fmtFieldDate(f.letter_date));
-        fieldsLine = parts.join('  ·  ');
-      }
+      const fieldsLine = buildFieldSummary(type, item.fields);
 
       // Type badge (+ optional fields summary) on first line
       const badgeRuns = [
@@ -466,11 +451,9 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
       }
 
       // Metadata line
-      const cTime = new Date(item.created_at).getTime();
-      const uTime = item.updated_at ? new Date(item.updated_at).getTime() : cTime;
       let itemMeta = fmtShortDate(item.created_at);
       if (item.created_by_profile?.full_name) itemMeta += `  ·  ${item.created_by_profile.full_name}`;
-      if (uTime - cTime > 1000) itemMeta += `  ·  Modified: ${fmtShortDate(item.updated_at)}`;
+      if (wasModified(item.created_at, item.updated_at)) itemMeta += `  ·  Modified: ${fmtShortDate(item.updated_at)}`;
       content.push(new Paragraph({
         children: [new TextRun({ text: itemMeta, size: 18, color: '999999', italics: true })],
         spacing: { after: 120, left: 360 }
@@ -540,10 +523,7 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
       const actionCreatedBy = action.created_by_profile?.full_name || 'Unknown';
       let actionDateInfo = `Added: ${fmtShortDate(action.created_at)} by ${actionCreatedBy}`;
 
-      const actionCreatedTime = new Date(action.created_at).getTime();
-      const actionUpdatedTime = action.updated_at ? new Date(action.updated_at).getTime() : actionCreatedTime;
-
-      if (actionUpdatedTime > actionCreatedTime) {
+      if (wasModified(action.created_at, action.updated_at)) {
         const actionUpdatedBy = action.updated_by_profile?.full_name || 'Unknown';
         actionDateInfo += ` • Modified: ${fmtShortDate(action.updated_at)} by ${actionUpdatedBy}`;
       }
@@ -579,30 +559,10 @@ function fmtShortDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// Field dates are stored as YYYY-MM-DD; add a noon time to avoid timezone shift.
-function fmtFieldDate(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function getPriorityLabel(priority) {
-  const labels = {
-    1: "Top Priority",
-    2: "Major Project",
-    3: "Important",
-    4: "Minor",
-    5: "Pending"
-  };
-  return labels[priority] || `Priority ${priority}`;
-}
+// getPriorityLabel is imported from $lib/utils/constants — no local copy needed.
 
 function getPriorityColorHex(priority) {
-  const colors = {
-    1: "475569",
-    2: "475569",
-    3: "475569",
-    4: "475569",
-    5: "475569"
-  };
-  return colors[priority] || "6B7280";
+  // All priorities share the same slate colour in the Word doc header cell.
+  // Priorities 1–6 map to slate-600; unknown values fall back to gray-500.
+  return [1, 2, 3, 4, 5, 6].includes(Number(priority)) ? '475569' : '6B7280';
 }

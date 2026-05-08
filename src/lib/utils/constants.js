@@ -102,6 +102,10 @@ export const ACTIVITY_TYPE_CONFIG = {
     ringClass:   'focus:ring-amber-500',
     borderEdit:  'border-amber-500/50',
     placeholder: 'Enter your note…',
+    // Light-theme (report preview — white background)
+    reportBg:       'bg-amber-50',
+    reportBorder:   'border-amber-200',
+    reportBadgeCls: 'bg-amber-100 text-amber-700 border-amber-300',
     fields:      []
   },
   [ACTIVITY_TYPE.DECISION]: {
@@ -113,6 +117,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     ringClass:   'focus:ring-violet-500',
     borderEdit:  'border-violet-500/50',
     placeholder: 'Enter the decision reached…',
+    reportBg:       'bg-violet-50',
+    reportBorder:   'border-violet-200',
+    reportBadgeCls: 'bg-violet-100 text-violet-700 border-violet-300',
     fields:      []
   },
   [ACTIVITY_TYPE.COMMENT]: {
@@ -124,6 +131,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     ringClass:   'focus:ring-blue-500',
     borderEdit:  'border-blue-500/50',
     placeholder: 'Enter your comment…',
+    reportBg:       'bg-gray-50',
+    reportBorder:   'border-gray-200',
+    reportBadgeCls: 'bg-gray-100 text-gray-600 border-gray-300',
     fields:      []
   },
   [ACTIVITY_TYPE.EMAIL]: {
@@ -135,6 +145,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     ringClass:   'focus:ring-cyan-500',
     borderEdit:  'border-cyan-500/50',
     placeholder: 'Summarise the email or paste key excerpts…',
+    reportBg:       'bg-cyan-50',
+    reportBorder:   'border-cyan-200',
+    reportBadgeCls: 'bg-cyan-100 text-cyan-700 border-cyan-300',
     fields: [
       { key: 'from',       label: 'From',    type: 'text', placeholder: 'Sender name or address',    span: 1 },
       { key: 'to',         label: 'To',      type: 'text', placeholder: 'Recipient name or address', span: 1 },
@@ -151,6 +164,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     ringClass:   'focus:ring-green-500',
     borderEdit:  'border-green-500/50',
     placeholder: 'Notes from the call…',
+    reportBg:       'bg-green-50',
+    reportBorder:   'border-green-200',
+    reportBadgeCls: 'bg-green-100 text-green-700 border-green-300',
     fields: [
       { key: 'caller',    label: 'Caller',    type: 'text',   placeholder: 'Caller name or number', span: 1 },
       { key: 'direction', label: 'Direction', type: 'select', options: ['inbound', 'outbound'],      span: 1 },
@@ -166,6 +182,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     ringClass:   'focus:ring-orange-500',
     borderEdit:  'border-orange-500/50',
     placeholder: 'Summarise the letter…',
+    reportBg:       'bg-orange-50',
+    reportBorder:   'border-orange-200',
+    reportBadgeCls: 'bg-orange-100 text-orange-700 border-orange-300',
     fields: [
       { key: 'from',        label: 'From',      type: 'text', placeholder: 'Sender',             span: 1 },
       { key: 'to',          label: 'To',        type: 'text', placeholder: 'Recipient',          span: 1 },
@@ -182,6 +201,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     ringClass:   'focus:ring-rose-500',
     borderEdit:  'border-rose-500/50',
     placeholder: 'Notes about this document…',
+    reportBg:       'bg-rose-50',
+    reportBorder:   'border-rose-200',
+    reportBadgeCls: 'bg-rose-100 text-rose-700 border-rose-300',
     fields:      []
   }
 };

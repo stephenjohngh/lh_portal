@@ -1,7 +1,41 @@
 // src/lib/apps/issues/components/reports/reportUtils.js
-import { ACTION_STATUS, ISSUE_STATUS } from '$lib/utils/constants';
+import { ACTION_STATUS, ACTIVITY_TYPE, ISSUE_STATUS } from '$lib/utils/constants';
 import { fmtDate, fmtDateLong } from '$lib/utils/dates';
 
+
+/**
+ * Build a compact one-line summary string for structured activity types
+ * (email, call, letter). Returns '' for types without structured fields.
+ * Used by the report preview card and the Word doc generator.
+ *
+ * Field dates are stored as YYYY-MM-DD; noon time is appended to avoid
+ * timezone-shift issues when passing to fmtDate.
+ *
+ * @param {string} activityType
+ * @param {object|null} fields
+ * @returns {string}
+ */
+export function buildFieldSummary(activityType, fields) {
+  const f = fields || {};
+  if (activityType === ACTIVITY_TYPE.EMAIL) {
+    const parts = [];
+    if (f.from || f.to) parts.push(`${f.from || '?'} → ${f.to || '?'}`);
+    if (f.subject)       parts.push(`Re: ${f.subject}`);
+    if (f.email_date)    parts.push(fmtDate(f.email_date + 'T12:00:00'));
+    return parts.join(' · ');
+  }
+  if (activityType === ACTIVITY_TYPE.CALL) {
+    return [f.direction, f.caller, f.duration].filter(Boolean).join(' · ');
+  }
+  if (activityType === ACTIVITY_TYPE.LETTER) {
+    const parts = [];
+    if (f.from || f.to) parts.push(`${f.from || '?'} → ${f.to || '?'}`);
+    if (f.reference)    parts.push(`Ref: ${f.reference}`);
+    if (f.letter_date)  parts.push(fmtDate(f.letter_date + 'T12:00:00'));
+    return parts.join(' · ');
+  }
+  return '';
+}
 
 /**
  * Status color configurations for different issue states
