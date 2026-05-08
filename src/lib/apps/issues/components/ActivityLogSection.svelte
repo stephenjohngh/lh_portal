@@ -19,6 +19,7 @@
   import { issuesStore }      from '../stores/issuesStore';
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
+  import { parseEmailPaste } from '$lib/utils/emailParser';
   import MeetingBadge         from './meetings/MeetingBadge.svelte';
   import { getLogger }        from '$lib/utils/logger';
   import Icon                 from '$lib/components/icons/Icon.svelte';
@@ -144,6 +145,37 @@
 
   function setNewField(key, value) {
     newActivity = { ...newActivity, fields: { ...(newActivity.fields ?? {}), [key]: value } };
+  }
+
+  // -- Email paste parsing ---------------------------------------------
+  let parseNotice = '';
+  let parseNoticeTimer;
+
+  function handleBodyPaste(e) {
+    if (newActivity.activity_type !== ACTIVITY_TYPE.EMAIL) return;
+
+    const raw = e.clipboardData?.getData('text/plain');
+    if (!raw) return;
+
+    const parsed = parseEmailPaste(raw);
+    if (!parsed) return; // Not an email — let the default paste happen
+
+    e.preventDefault();
+
+    // Update structured fields with any parsed values (non-empty wins)
+    const fields = { ...(newActivity.fields || {}) };
+    if (parsed.from)       fields.from       = parsed.from;
+    if (parsed.to)         fields.to         = parsed.to;
+    if (parsed.subject)    fields.subject    = parsed.subject;
+    if (parsed.email_date) fields.email_date = parsed.email_date;
+
+    newActivity = { ...newActivity, body: parsed.body, fields };
+
+    clearTimeout(parseNoticeTimer);
+    parseNotice = parsed.wasThread
+      ? '✓ Thread detected — showing latest message only'
+      : '✓ Email fields extracted from paste';
+    parseNoticeTimer = setTimeout(() => { parseNotice = ''; }, 5000);
   }
 
   // -- Unified update/delete ------------------------------------------
@@ -450,10 +482,18 @@
       <!-- Body textarea -->
       <textarea
         bind:value={newActivity.body}
+        on:paste={handleBodyPaste}
         placeholder={newTypeConfig.placeholder}
         class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {newTypeConfig.ringClass} resize-y"
         rows={newTypeConfig.fields.length > 0 ? 3 : 5}
       ></textarea>
+
+      {#if parseNotice}
+        <p class="text-xs text-cyan-400 mt-1 flex items-center gap-1.5">
+          <span>{parseNotice}</span>
+          <button type="button" class="text-cyan-600 hover:text-cyan-400 leading-none" on:click={() => parseNotice = ''}>✕</button>
+        </p>
+      {/if}
 
       <!-- Document upload — coming soon -->
       {#if newActivity.activity_type === ACTIVITY_TYPE.DOCUMENT}

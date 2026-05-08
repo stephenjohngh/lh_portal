@@ -22,6 +22,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
+  import { parseEmailPaste } from '$lib/utils/emailParser';
   import { permissions }    from '$lib/stores/permissions';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
@@ -83,6 +84,36 @@
 
   function cancelEdit() {
     dispatch('editCancel');
+  }
+
+  // -- Email paste parsing (edit mode) ---------------------------------
+  let parseNotice = '';
+  let parseNoticeTimer;
+
+  function handleBodyPaste(e) {
+    if (editingActivity?.activity_type !== ACTIVITY_TYPE.EMAIL) return;
+
+    const raw = e.clipboardData?.getData('text/plain');
+    if (!raw) return;
+
+    const parsed = parseEmailPaste(raw);
+    if (!parsed) return;
+
+    e.preventDefault();
+
+    const fields = { ...(editingActivity.fields || {}) };
+    if (parsed.from)       fields.from       = parsed.from;
+    if (parsed.to)         fields.to         = parsed.to;
+    if (parsed.subject)    fields.subject    = parsed.subject;
+    if (parsed.email_date) fields.email_date = parsed.email_date;
+
+    editingActivity = { ...editingActivity, body: parsed.body, fields };
+
+    clearTimeout(parseNoticeTimer);
+    parseNotice = parsed.wasThread
+      ? '✓ Thread detected — showing latest message only'
+      : '✓ Email fields extracted from paste';
+    parseNoticeTimer = setTimeout(() => { parseNotice = ''; }, 5000);
   }
 
   // -- Date formatting for structured fields ---------------------------
@@ -149,10 +180,18 @@
 
     <textarea
       bind:value={editingActivity.body}
+      on:paste={handleBodyPaste}
       placeholder={editTypeConfig.placeholder}
       class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {editTypeConfig.ringClass} resize-y"
       rows={editTypeConfig.fields.length > 0 ? 3 : 5}
     ></textarea>
+
+    {#if parseNotice}
+      <p class="text-xs text-cyan-400 mt-1 flex items-center gap-1.5">
+        <span>{parseNotice}</span>
+        <button type="button" class="text-cyan-600 hover:text-cyan-400 leading-none" on:click={() => parseNotice = ''}>✕</button>
+      </p>
+    {/if}
 
     <!-- Document upload — coming soon -->
     {#if editingActivity.activity_type === ACTIVITY_TYPE.DOCUMENT}
