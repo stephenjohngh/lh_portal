@@ -1,8 +1,8 @@
 <!-- src/lib/apps/issues/components/IssueCard.svelte -->
-<!-- REFACTORED: Uses new CSS utility classes -->
+<!-- REFACTORED: Uses new CSS utility classes + ActivityLogSection (formerly CommentsSection) -->
 <script>
   import { createEventDispatcher, tick } from 'svelte';
-  import CommentsSection from './CommentsSection.svelte';
+  import ActivityLogSection from './ActivityLogSection.svelte';
   import ActionsSection from './ActionsSection.svelte';
   import MeetingBadge from './meetings/MeetingBadge.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
@@ -10,21 +10,25 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { fmtDate } from '$lib/utils/dates';
-  import { ISSUE_STATUS, ACTION_STATUS, getPriorityLabel } from '$lib/utils/constants';
+  import { ISSUE_STATUS, ACTION_STATUS, ACTIVITY_TYPE, getPriorityLabel } from '$lib/utils/constants';
 
   export let issue;
   export let showComments = false;
   export let showActions = false;
-  
+
   const dispatch = createEventDispatcher();
 
   let showDeleteConfirm = false;
 
-  $: nonHistoricCommentsCount  = issue.comments?.filter(c => !c.historic).length  || 0;
-  $: historicCommentsCount    = issue.comments?.filter(c => c.historic).length    || 0;
-  $: nonHistoricDecisionCount = issue.decisions?.filter(d => !d.historic).length  || 0;
-  
-  $: outstandingActionsCount = issue.actions?.filter(action => 
+  // Activities split by type for counts in the card header
+  $: commentActivities  = issue.activities?.filter(a => (a.activity_type ?? ACTIVITY_TYPE.COMMENT) === ACTIVITY_TYPE.COMMENT) || [];
+  $: decisionActivities = issue.activities?.filter(a => a.activity_type === ACTIVITY_TYPE.DECISION) || [];
+
+  $: nonHistoricCommentsCount  = commentActivities.filter(a => !a.historic).length;
+  $: historicCommentsCount     = commentActivities.filter(a => a.historic).length;
+  $: nonHistoricDecisionCount  = decisionActivities.filter(a => !a.historic).length;
+
+  $: outstandingActionsCount = issue.actions?.filter(action =>
     action.status !== ACTION_STATUS.COMPLETED
   ).length || 0;
 
@@ -46,8 +50,8 @@
     showDeleteConfirm = false;
   }
 
-  // Generic jump-and-highlight helper used by both the comment→action
-  // jump (View in Actions button) and the action→comment jump (comment
+  // Generic jump-and-highlight helper used by both the activity→action
+  // jump (View in Actions button) and the action→activity jump (comment
   // icon button on a linked action). Ensures the relevant section is
   // expanded, scrolls the target into view, and ring-highlights it
   // until the user's next click anywhere on the page.
@@ -89,34 +93,34 @@
     });
   }
 
-  function handleJumpToComment({ detail }) {
+  function handleJumpToActivity({ detail }) {
     return jumpAndHighlight({
-      targetId:    `comment-${detail?.commentId}`,
+      targetId:    `activity-${detail?.activityId}`,
       expandIf:    !showComments,
       toggleEvent: 'toggleComments'
     });
   }
 
-  $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED 
-    ? 'bg-emerald-900/20' 
-    : issue.status === ISSUE_STATUS.PARKED 
-    ? 'bg-amber-900/20' 
+  $: backgroundClass = issue.status === ISSUE_STATUS.COMPLETED
+    ? 'bg-emerald-900/20'
+    : issue.status === ISSUE_STATUS.PARKED
+    ? 'bg-amber-900/20'
     : 'bg-slate-700/50';
-  
+
   $: activeBackgroundClass = (showComments || showActions)
-    ? (issue.status === ISSUE_STATUS.COMPLETED 
-        ? 'bg-emerald-900/30' 
-        : issue.status === ISSUE_STATUS.PARKED 
-        ? 'bg-amber-900/30' 
+    ? (issue.status === ISSUE_STATUS.COMPLETED
+        ? 'bg-emerald-900/30'
+        : issue.status === ISSUE_STATUS.PARKED
+        ? 'bg-amber-900/30'
         : 'bg-slate-700/70')
     : backgroundClass;
-  
+
   $: borderClass = issue.status === ISSUE_STATUS.COMPLETED
     ? 'border-emerald-700/40'
     : issue.status === ISSUE_STATUS.PARKED
     ? 'border-amber-700/40'
     : 'border-slate-600';
-  
+
   $: activeBorderClass = (showComments || showActions)
     ? (issue.status === ISSUE_STATUS.COMPLETED
         ? 'border-emerald-500/60'
@@ -151,11 +155,11 @@
             </span>
           {/if}
         </div>
-        
+
         {#if issue.description}
           <p class="text-gray-300 whitespace-pre-wrap py-2">{issue.description}</p>
         {/if}
-        
+
         <div class="flex-row-lg mt-1 text-muted-sm flex-wrap">
           <span>Created: {fmtDate(issue.created_at, issue.created_by_profile?.full_name)}</span>
           {#if issue.updated_at && issue.updated_at !== issue.created_at}
@@ -165,9 +169,9 @@
           {#if issue.meeting_id}
             <MeetingBadge meetingId={issue.meeting_id} on:click={(e) => dispatch('meetingFilter', e.detail)} />
           {/if}
-         </div>
+        </div>
       </div>
-      
+
       <div class="btn-group">
         <ProtectedButton
           action="modify"
@@ -213,7 +217,7 @@
             </span>
           </div>
         {/if}
-        
+
         {#if outstandingActionsCount > 0}
           <div class="text-icon">
             <Icon name="clipboard" size={4} className="text-amber-400" />
@@ -226,7 +230,7 @@
           </div>
         {/if}
       </div>
-      
+
       <Button
         variant="primary"
         size="medium"
@@ -247,14 +251,13 @@
     </div>
   </div>
 
-  <!-- Comments Section -->
+  <!-- Activity Log Section -->
   {#if showComments}
     <div class="ml-8 mr-4 mb-3">
       <div class="border-l-4 border-blue-500 pl-3">
-        <CommentsSection
+        <ActivityLogSection
           issueId={issue.id}
-          comments={issue.comments || []}
-          decisions={issue.decisions || []}
+          activities={issue.activities || []}
           actions={issue.actions || []}
           on:jumpToAction={handleJumpToAction}
           on:meetingFilter
@@ -270,7 +273,7 @@
         <ActionsSection
           issueId={issue.id}
           actions={issue.actions || []}
-          on:jumpToComment={handleJumpToComment}
+          on:jumpToActivity={handleJumpToActivity}
           on:meetingFilter
         />
       </div>
@@ -281,7 +284,7 @@
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Issue"
-  message="Are you sure you want to delete '{issue.name}'? This will also delete {issue.comments?.length || 0} comments, {issue.decisions?.length || 0} decisions, and {issue.actions?.length || 0} actions. This action cannot be undone."
+  message="Are you sure you want to delete '{issue.name}'? This will also delete {issue.activities?.length || 0} activities and {issue.actions?.length || 0} actions. This action cannot be undone."
   confirmText="Delete Issue"
   cancelText="Cancel"
   danger={true}

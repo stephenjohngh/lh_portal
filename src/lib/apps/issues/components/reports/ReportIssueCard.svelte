@@ -13,8 +13,13 @@
   // Multiplier: 1 = oldest first (asc), -1 = newest first (desc)
   $: dir = sortOrder === 'asc' ? 1 : -1;
 
-  $: sortedComments  = (issue.comments  || []).slice().sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
-  $: sortedDecisions = (issue.decisions || []).slice().sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
+  // Activities split by type; both sorted chronologically per sort direction
+  $: sortedComments  = (issue.activities || [])
+    .filter(a => (a.activity_type ?? 'comment') === 'comment')
+    .slice().sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
+  $: sortedDecisions = (issue.activities || [])
+    .filter(a => a.activity_type === 'decision')
+    .slice().sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
   // Actions: always keep outstanding before completed; within each group sort by direction.
   $: sortedActions   = (issue.outstandingActions || []).slice().sort((a, b) => {
     const aC = a.status === ACTION_STATUS.COMPLETED ? 1 : 0;
@@ -76,7 +81,7 @@
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 font-semibold uppercase tracking-wide">Historic</span>
               </div>
-              <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{comment.comment_text}</p>
+              <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{comment.body}</p>
               <p class="text-xs text-gray-400 mt-1">
                 Added: {fmtDate(comment.created_at)}
                 {#if comment.updated_at && new Date(comment.updated_at).getTime() - new Date(comment.created_at).getTime() > 1000}
@@ -86,7 +91,7 @@
             </div>
           {:else}
             <div class="p-3 bg-gray-50 rounded border border-gray-200">
-              <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.comment_text}</p>
+              <p class="text-gray-900 text-sm whitespace-pre-wrap">{comment.body}</p>
               <p class="text-xs text-gray-500 mt-1">
                 Added: {fmtDate(comment.created_at)}
                 {#if comment.updated_at && new Date(comment.updated_at).getTime() - new Date(comment.created_at).getTime() > 1000}
@@ -117,7 +122,7 @@
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 font-semibold uppercase tracking-wide">Historic</span>
               </div>
-              <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{decision.decision_text}</p>
+              <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{decision.body}</p>
               <p class="text-xs text-gray-400 mt-1">
                 Added: {fmtDate(decision.created_at)}
                 {#if decision.updated_at && new Date(decision.updated_at).getTime() - new Date(decision.created_at).getTime() > 1000}
@@ -127,7 +132,7 @@
             </div>
           {:else}
             <div class="p-3 bg-violet-50 rounded border border-violet-200">
-              <p class="text-gray-900 text-sm whitespace-pre-wrap">{decision.decision_text}</p>
+              <p class="text-gray-900 text-sm whitespace-pre-wrap">{decision.body}</p>
               <p class="text-xs text-gray-500 mt-1">
                 Added: {fmtDate(decision.created_at)}
                 {#if decision.updated_at && new Date(decision.updated_at).getTime() - new Date(decision.created_at).getTime() > 1000}

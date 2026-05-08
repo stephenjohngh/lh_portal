@@ -163,11 +163,11 @@ export async function POST({ request }) {
   // Outer-scope state so the audit helper (and the catch block) can see
   // partial information when an exit path is taken before we reach the
   // model call.
-  let profile     = null;
-  let issue_id    = null;
-  let comment_id  = null;
-  let issueName   = null;
-  let model       = DEFAULT_MODEL;
+  let profile      = null;
+  let issue_id     = null;
+  let activity_id  = null;
+  let issueName    = null;
+  let model        = DEFAULT_MODEL;
 
   /**
    * Fire-and-forget audit row. Skipped silently when we don't yet know
@@ -182,8 +182,8 @@ export async function POST({ request }) {
       eventType:     'ai_suggest',
       eventCategory: 'ai_assist',
       eventAction,
-      targetType:    'comment',
-      targetId:      comment_id || null,
+      targetType:    'activity',
+      targetId:      activity_id || null,
       targetName:    issueName ? `Issue: ${issueName}`.slice(0, 200) : 'AI suggestion',
       appId:         'issues',
       severity,
@@ -196,21 +196,23 @@ export async function POST({ request }) {
   }
 
   try {
-    const body = await request.json();
-    const requesting_user_id = body.requesting_user_id;
-    issue_id    = body.issue_id   ?? null;
-    comment_id  = body.comment_id ?? null;
-    const comment_text = body.comment_text;
+    const reqBody = await request.json();
+    const requesting_user_id = reqBody.requesting_user_id;
+    issue_id     = reqBody.issue_id     ?? null;
+    // Accept both old comment_id and new activity_id for transition period
+    activity_id  = reqBody.activity_id  ?? reqBody.comment_id ?? null;
+    // Accept both old comment_text and new body for transition period
+    const activity_text = reqBody.body ?? reqBody.comment_text;
 
     // ── Validate input ────────────────────────────────────────────────
     if (!requesting_user_id) {
       return json({ error: 'No user ID provided' }, { status: 400 });
     }
-    if (!issue_id || !comment_text) {
-      return json({ error: 'issue_id and comment_text are required' }, { status: 400 });
+    if (!issue_id || !activity_text) {
+      return json({ error: 'issue_id and body are required' }, { status: 400 });
     }
-    if (typeof comment_text !== 'string' || comment_text.length > 4000) {
-      return json({ error: 'comment_text must be a string under 4000 characters' }, { status: 400 });
+    if (typeof activity_text !== 'string' || activity_text.length > 4000) {
+      return json({ error: 'body must be a string under 4000 characters' }, { status: 400 });
     }
 
     // ── Auth: must be a real profile ─────────────────────────────────
@@ -246,17 +248,18 @@ export async function POST({ request }) {
       );
     }
 
-    // ── Build context: issue + recent comments + open actions ────────
+    // ── Build context: issue + recent activities + open actions ─────
     const [
       { data: issue, error: issueErr },
-      { data: recentComments },
+      { data: recentActivities },
       { data: openActions }
     ] = await Promise.all([
       supabaseAdmin.from('issues').select('id, name, description').eq('id', issue_id).single(),
       supabaseAdmin
-        .from('comments')
-        .select('comment_text, created_at')
+        .from('activities')
+        .select('body, created_at')
         .eq('issue_id', issue_id)
+        .eq('activity_type', 'comment')
         .order('created_at', { ascending: false })
         .limit(5),
       supabaseAdmin
@@ -273,11 +276,11 @@ export async function POST({ request }) {
     }
     issueName = issue.name;
 
-    // Pick up to 3 prior comments, excluding the new one
-    const priorCommentLines = (recentComments || [])
-      .filter(c => c.comment_text !== comment_text)
+    // Pick up to 3 prior activities, excluding the new one
+    const priorCommentLines = (recentActivities || [])
+      .filter(a => a.body !== activity_text)
       .slice(0, 3)
-      .map(c => `- ${c.comment_text}`);
+      .map(a => `- ${a.body}`);
     const priorCommentsBlock = priorCommentLines.length > 0
       ? priorCommentLines.join('\n')
       : '(none)';
@@ -299,7 +302,7 @@ ${priorCommentsBlock}
 Currently open actions on this issue:
 ${openActionsBlock}
 
-<comment>${comment_text}</comment>
+<comment>${activity_text}</comment>
 <existing_actions>${openActionsLine}</existing_actions>
 
 Use the suggest_action tool.`;

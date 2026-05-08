@@ -423,7 +423,11 @@ async function generateIssueContent(issue, number) {
     })
   );
 
-  if (issue.comments && issue.comments.length > 0) {
+  // Filter activities by type for separate sections
+  const commentActivities  = (issue.activities || []).filter(a => (a.activity_type ?? 'comment') === 'comment');
+  const decisionActivities = (issue.activities || []).filter(a => a.activity_type === 'decision');
+
+  if (commentActivities.length > 0) {
     content.push(
       new Paragraph({
         children: [
@@ -437,7 +441,7 @@ async function generateIssueContent(issue, number) {
       })
     );
 
-    const sortedComments = [...issue.comments].sort(
+    const sortedComments = [...commentActivities].sort(
       (a, b) => new Date(a.created_at) - new Date(b.created_at)
     );
 
@@ -446,7 +450,7 @@ async function generateIssueContent(issue, number) {
         new Paragraph({
           children: [
             new TextRun({
-              text: comment.comment_text,
+              text: comment.body,
               size: 22
             })
           ],
@@ -482,6 +486,57 @@ async function generateIssueContent(issue, number) {
           children: [
             new TextRun({
               text: commentDateInfo,
+              size: 18,
+              color: "999999",
+              italics: true
+            })
+          ],
+          spacing: { after: 120, left: 360 }
+        })
+      );
+    }
+  }
+
+  if (decisionActivities.length > 0) {
+    content.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "Decisions:",
+            bold: true,
+            size: 24
+          })
+        ],
+        spacing: { before: 180, after: 120 }
+      })
+    );
+
+    const sortedDecisions = [...decisionActivities].sort(
+      (a, b) => new Date(a.created_at) - new Date(b.created_at)
+    );
+
+    for (const decision of sortedDecisions) {
+      content.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: decision.body,
+              size: 22
+            })
+          ],
+          spacing: { before: 60, after: 40, left: 360 }
+        })
+      );
+
+      const dCreatedDate = new Date(decision.created_at).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+      const dCreatedBy = decision.created_by_profile?.full_name || 'Unknown';
+      content.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `Added: ${dCreatedDate} by ${dCreatedBy}`,
               size: 18,
               color: "999999",
               italics: true

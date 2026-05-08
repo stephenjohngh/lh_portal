@@ -48,10 +48,9 @@ export function hasRecentChanges(issue, filterDateTime) {
   // Issue itself was created on or after the filter date
   if (hasBeenUpdatedSince(issue.created_at, filterDateTime)) return true;
 
-  // A comment, decision, or action was ADDED on or after the filter date
-  if ((issue.comments  || []).some(c => hasBeenUpdatedSince(c.created_at, filterDateTime))) return true;
-  if ((issue.decisions || []).some(d => hasBeenUpdatedSince(d.created_at, filterDateTime))) return true;
-  if ((issue.actions   || []).some(a => hasBeenUpdatedSince(a.created_at, filterDateTime))) return true;
+  // An activity (comment/decision) or action was ADDED on or after the filter date
+  if ((issue.activities || []).some(a => hasBeenUpdatedSince(a.created_at, filterDateTime))) return true;
+  if ((issue.actions    || []).some(a => hasBeenUpdatedSince(a.created_at, filterDateTime))) return true;
 
   return false;
 }
@@ -105,14 +104,11 @@ export function filterIssues(issues, filterDate, options = {}) {
   return baseIssues
     .map(issue => ({
       ...issue,
-      // Comments: filter by date (when active), then by historic flag.
-      comments: (issue.comments || [])
-        .filter(c => !filterSubItems || hasBeenUpdatedSince(c.created_at, filterDateTime))
-        .filter(c => includeHistoric || issue.status === ISSUE_STATUS.COMPLETED || !c.historic),
-      // Decisions: same logic as comments.
-      decisions: (issue.decisions || [])
-        .filter(d => !filterSubItems || hasBeenUpdatedSince(d.created_at, filterDateTime))
-        .filter(d => includeHistoric || issue.status === ISSUE_STATUS.COMPLETED || !d.historic),
+      // Activities: filter by date (when active), then by historic flag.
+      // Pass through as a unified array; ReportIssueCard splits by activity_type.
+      activities: (issue.activities || [])
+        .filter(a => !filterSubItems || hasBeenUpdatedSince(a.created_at, filterDateTime))
+        .filter(a => includeHistoric || issue.status === ISSUE_STATUS.COMPLETED || !a.historic),
       // Actions: filter by date (when active), then by completion status.
       // Sort outstanding before completed, then by created_at ASC within each group
       // (the card re-sorts by the user's chosen direction).

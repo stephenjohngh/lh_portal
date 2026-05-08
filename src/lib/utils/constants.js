@@ -5,7 +5,7 @@
 // strings — they appear in DB rows, audit logs, filters, dropdowns,
 // and Word reports, and they all need to stay in lock-step.
 //
-// Section accents (amber for actions, blue for comments) are NOT here
+// Section accents (amber for actions, blue for activity log) are NOT here
 // — they're inlined as literal Tailwind classes at each call site so
 // the JIT can see them. To rebrand: grep for the literal class name.
 
@@ -66,3 +66,29 @@ export function getPriorityLabel(priority) {
   const p = PRIORITIES.find(p => p.value === parseInt(priority));
   return p || PRIORITIES[2];
 }
+
+// ── Activity types ───────────────────────────────────────────────────
+// The activity log (formerly "comments & decisions") stores all
+// issue-related entries in one table. Each row has an activity_type
+// value from this registry. Extend here when adding new types —
+// the UI and DB migration must both be updated when a new type is added.
+export const ACTIVITY_TYPE = {
+  COMMENT:  'comment',
+  DECISION: 'decision',
+  NOTE:     'note',
+  EMAIL:    'email',
+  CALL:     'call',
+  LETTER:   'letter'
+};
+
+/** Metadata for each activity type. Used for labels, icons, colours.
+ *  Only COMMENT and DECISION are fully implemented; others are reserved
+ *  for future structured-activity work. */
+export const ACTIVITY_TYPES = [
+  { value: ACTIVITY_TYPE.COMMENT,  label: 'Comment',  color: 'border-blue-400',   badge: null },
+  { value: ACTIVITY_TYPE.DECISION, label: 'Decision', color: 'border-violet-400', badge: 'Decision' },
+  { value: ACTIVITY_TYPE.NOTE,     label: 'Note',     color: 'border-slate-400',  badge: 'Note' },
+  { value: ACTIVITY_TYPE.EMAIL,    label: 'Email',    color: 'border-green-400',  badge: 'Email' },
+  { value: ACTIVITY_TYPE.CALL,     label: 'Call',     color: 'border-teal-400',   badge: 'Call' },
+  { value: ACTIVITY_TYPE.LETTER,   label: 'Letter',   color: 'border-orange-400', badge: 'Letter' }
+];

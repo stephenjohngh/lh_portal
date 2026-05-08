@@ -37,7 +37,7 @@
     let i = 0, c = 0, a = 0;
     for (const issue of issues) {
       if (issue.meeting_id === meeting.id) i++;
-      for (const cm of issue.comments || []) if (cm.meeting_id === meeting.id) c++;
+      for (const ac of issue.activities || []) if (ac.meeting_id === meeting.id) c++;
       for (const ac of issue.actions  || []) if (ac.meeting_id === meeting.id) a++;
     }
     return { issues: i, comments: c, actions: a };

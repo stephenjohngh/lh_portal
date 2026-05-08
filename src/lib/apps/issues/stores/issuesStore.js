@@ -1,5 +1,5 @@
 // src/lib/apps/issues/stores/issuesStore.js
-// UPDATED: Uses general audit logging API endpoint for all events
+// UPDATED: comments → activities; comment_text → body; decisions merged into activities
 import { get, writable }    from 'svelte/store';
 import { supabase }         from '$lib/supabaseClient';
 import { api }              from '$lib/utils/api';
@@ -12,7 +12,6 @@ const logger = getLogger('issuesStore');
 
 // Local wrapper that bakes in appId: 'issues' (and a sensible default
 // severity) so every audit row this store emits is filterable by app.
-// Mirrors the pattern used in the inspection / maintenance stores.
 function audit(eventType, targetType, targetId, targetName, data = {}) {
   logAudit(eventType, targetType, targetId, targetName, {
     appId:    'issues',
@@ -22,7 +21,7 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
 }
 
 /** Read the currently-open meeting's id (or null). Used to auto-tag
- *  new issues / comments / actions during a meeting. */
+ *  new issues / activities / actions during a meeting. */
 function activeMeetingId() {
   return get(currentMeeting)?.id ?? null;
 }
@@ -41,7 +40,7 @@ function createIssuesStore() {
 
     async fetchIssues() {
       update(state => ({ ...state, loading: true, error: '' }));
-      
+
       try {
         const data = await api.get('issues', {
           select: `
@@ -50,19 +49,14 @@ function createIssuesStore() {
             meeting_id,
             created_by_profile:profiles!created_by(full_name),
             updated_by_profile:profiles!updated_by(full_name),
-            comments (
-              id, comment_text, historic, meeting_id, created_at, updated_at,
-              created_by_profile:profiles!created_by(full_name),
-              updated_by_profile:profiles!updated_by(full_name)
-            ),
-            decisions (
-              id, decision_text, historic, meeting_id, created_at, updated_at,
+            activities (
+              id, body, activity_type, historic, meeting_id, created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             ),
             actions (
               id, action_text, name_text,
-              date_deadline, status, source_comment_id, meeting_id,
+              date_deadline, status, source_activity_id, meeting_id,
               created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
@@ -78,17 +72,17 @@ function createIssuesStore() {
           }
           return 0;
         });
-        
-        update(state => ({ 
-          ...state, 
-          issues: sortedData, 
-          loading: false 
+
+        update(state => ({
+          ...state,
+          issues: sortedData,
+          loading: false
         }));
       } catch (err) {
-        update(state => ({ 
-          ...state, 
-          error: err.message, 
-          loading: false 
+        update(state => ({
+          ...state,
+          error: err.message,
+          loading: false
         }));
       }
     },
@@ -130,9 +124,9 @@ function createIssuesStore() {
 
       realtimeChannel.on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'comments' },
+        { event: '*', schema: 'public', table: 'activities' },
         (payload) => {
-          logger('Comment changed:', payload);
+          logger('Activity changed:', payload);
           this.fetchIssues();
         }
       );
@@ -142,15 +136,6 @@ function createIssuesStore() {
         { event: '*', schema: 'public', table: 'actions' },
         (payload) => {
           logger('Action changed:', payload);
-          this.fetchIssues();
-        }
-      );
-
-      realtimeChannel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'decisions' },
-        (payload) => {
-          logger('Decision changed:', payload);
           this.fetchIssues();
         }
       );
@@ -175,7 +160,7 @@ function createIssuesStore() {
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
         logger('User:', user?.id, user?.email);
-        
+
         const meetingId = activeMeetingId();
 
         // Create issue
@@ -196,7 +181,7 @@ function createIssuesStore() {
           .single();
 
         if (createError) throw createError;
-        
+
         logger('✅ Issue created:', newIssue.id, newIssue.issue_number);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
@@ -237,7 +222,7 @@ function createIssuesStore() {
           .single();
 
         logger('Issue before update:', beforeIssue);
-        
+
         // Update issue — admin may supply override timestamps.
         const issuePayload = {
           name:        issueData.name,
@@ -296,7 +281,7 @@ function createIssuesStore() {
           .single();
 
         logger('Issue to delete:', issue);
-        
+
         // Delete issue
         await api.delete('issues', issueId);
 
@@ -328,12 +313,13 @@ function createIssuesStore() {
     },
 
     // ============================================
-    // COMMENTS - With Audit Logging
+    // ACTIVITIES - Covers comments, decisions,
+    // notes, and all future typed activity types.
     // ============================================
 
-    async addComment(issueId, commentText) {
+    async addActivity(issueId, { body, activity_type = 'comment' }) {
       try {
-        logger('➕ Adding comment to issue:', issueId);
+        logger('➕ Adding activity to issue:', issueId, '(type:', activity_type, ')');
         const now = new Date().toISOString();
         const { data: { user } } = await supabase.auth.getUser();
         logger('User:', user?.id, user?.email);
@@ -344,220 +330,96 @@ function createIssuesStore() {
           .select('issue_number, name')
           .eq('id', issueId)
           .single();
-        
+
         logger('Issue found:', issue);
-        
-        // Create comment
-        const { data: newComment, error: createError } = await supabase
-          .from('comments')
-          .insert({
-            issue_id: issueId,
-            comment_text: commentText,
-            meeting_id: activeMeetingId(),
-            created_at: now,
-            updated_at: now,
-            created_by: user?.id,
-            updated_by: user?.id
-          })
-          .select()
-          .single();
 
-        if (createError) throw createError;
-        
-        logger('✅ Comment created:', newComment.id);
-
-        // ✨ LOG AUDIT EVENT (fire-and-forget)
-        audit(
-          'create',
-          'comment',
-          newComment.id,
-          `Comment on Issue #${issue?.issue_number}`,
-          {
-            afterData: {
-              comment_text: commentText,
-              issue_name: issue?.name
-            }
-          }
-        );
-
-        await this.fetchIssues();
-        return { success: true };
-      } catch (err) {
-        logger('❌ Error adding comment:', err);
-        update(state => ({ ...state, error: err.message }));
-        return { success: false, error: err.message };
-      }
-    },
-
-    async updateComment(commentId, commentData) {
-      try {
-        const commentText          = commentData.comment_text;
-        const historic             = commentData.historic ?? false;
-        const override_created_at  = commentData.override_created_at ?? null;
-        const override_updated_at  = commentData.override_updated_at ?? null;
-
-        const { data: { user } } = await supabase.auth.getUser();
-
-        // Get comment before update
-        const { data: beforeComment } = await supabase
-          .from('comments')
-          .select('comment_text, historic, issue_id')
-          .eq('id', commentId)
-          .single();
-
-        // Get issue for context
-        const { data: issue } = await supabase
-          .from('issues')
-          .select('issue_number, name')
-          .eq('id', beforeComment?.issue_id)
-          .single();
-
-        // Update comment — admin may supply override timestamps.
-        const commentPayload = {
-          comment_text: commentText,
-          historic,
-          updated_at:  override_updated_at || new Date().toISOString(),
-          updated_by:  user?.id
-        };
-        if (override_created_at) commentPayload.created_at = override_created_at;
-        await api.update('comments', commentId, commentPayload);
-
-        // ✨ LOG AUDIT EVENT (fire-and-forget)
-        audit(
-          'update',
-          'comment',
-          commentId,
-          `Comment on Issue #${issue?.issue_number}`,
-          {
-            beforeData: {
-              comment_text: beforeComment?.comment_text,
-              historic: beforeComment?.historic
-            },
-            afterData: {
-              comment_text: commentText,
-              historic
-            }
-          }
-        );
-
-        await this.fetchIssues();
-        return { success: true };
-      } catch (err) {
-        update(state => ({ ...state, error: err.message }));
-        return { success: false, error: err.message };
-      }
-    },
-
-    async deleteComment(commentId) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-
-        // Get comment data before deletion
-        const { data: comment } = await supabase
-          .from('comments')
-          .select('comment_text, historic, issue_id')
-          .eq('id', commentId)
-          .single();
-
-        // Get issue for context
-        const { data: issue } = await supabase
-          .from('issues')
-          .select('issue_number, name')
-          .eq('id', comment?.issue_id)
-          .single();
-        
-        // Delete comment
-        await api.delete('comments', commentId);
-
-        // ✨ LOG AUDIT EVENT (fire-and-forget)
-        audit(
-          'delete',
-          'comment',
-          commentId,
-          `Comment on Issue #${issue?.issue_number}`,
-          {
-            beforeData: {
-              comment_text: comment?.comment_text,
-              historic: comment?.historic,
-              issue_name: issue?.name
-            }
-          }
-        );
-
-        await this.fetchIssues();
-        return { success: true };
-      } catch (err) {
-        update(state => ({ ...state, error: err.message }));
-        return { success: false, error: err.message };
-      }
-    },
-
-    // ============================================
-    // DECISIONS
-    // ============================================
-
-    async addDecision(issueId, decisionText) {
-      try {
-        const now = new Date().toISOString();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        const { data: issue } = await supabase
-          .from('issues').select('issue_number, name').eq('id', issueId).single();
-
-        const { data: newDecision, error: createError } = await supabase
-          .from('decisions')
+        // Create activity
+        const { data: newActivity, error: createError } = await supabase
+          .from('activities')
           .insert({
             issue_id:      issueId,
-            decision_text: decisionText,
+            body,
+            activity_type,
             meeting_id:    activeMeetingId(),
             created_at:    now,
             updated_at:    now,
             created_by:    user?.id,
             updated_by:    user?.id
           })
-          .select().single();
+          .select()
+          .single();
 
         if (createError) throw createError;
 
-        audit('create', 'decision', newDecision.id,
-          `Decision on Issue #${issue?.issue_number}`,
-          { afterData: { decision_text: decisionText, issue_name: issue?.name } }
+        logger('✅ Activity created:', newActivity.id);
+
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        audit(
+          'create',
+          activity_type,
+          newActivity.id,
+          `${activity_type.charAt(0).toUpperCase() + activity_type.slice(1)} on Issue #${issue?.issue_number}`,
+          {
+            afterData: {
+              body,
+              activity_type,
+              issue_name: issue?.name
+            }
+          }
         );
 
         await this.fetchIssues();
         return { success: true };
       } catch (err) {
+        logger('❌ Error adding activity:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
     },
 
-    async updateDecision(decisionId, decisionData) {
+    async updateActivity(activityId, activityData) {
       try {
+        const body                 = activityData.body;
+        const historic             = activityData.historic ?? false;
+        const override_created_at  = activityData.override_created_at ?? null;
+        const override_updated_at  = activityData.override_updated_at ?? null;
+
         const { data: { user } } = await supabase.auth.getUser();
 
+        // Get activity before update
         const { data: before } = await supabase
-          .from('decisions').select('decision_text, historic, issue_id')
-          .eq('id', decisionId).single();
+          .from('activities')
+          .select('body, historic, activity_type, issue_id')
+          .eq('id', activityId)
+          .single();
 
+        // Get issue for context
         const { data: issue } = await supabase
-          .from('issues').select('issue_number').eq('id', before?.issue_id).single();
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', before?.issue_id)
+          .single();
 
+        // Update activity — admin may supply override timestamps.
         const payload = {
-          decision_text: decisionData.decision_text,
-          historic:      decisionData.historic ?? false,
-          updated_at:    decisionData.override_updated_at || new Date().toISOString(),
-          updated_by:    user?.id
+          body,
+          historic,
+          updated_at: override_updated_at || new Date().toISOString(),
+          updated_by: user?.id
         };
-        if (decisionData.override_created_at) payload.created_at = decisionData.override_created_at;
+        if (override_created_at) payload.created_at = override_created_at;
+        await api.update('activities', activityId, payload);
 
-        await api.update('decisions', decisionId, payload);
-
-        audit('update', 'decision', decisionId,
-          `Decision on Issue #${issue?.issue_number}`,
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        const aType = before?.activity_type ?? 'activity';
+        audit(
+          'update',
+          aType,
+          activityId,
+          `${aType.charAt(0).toUpperCase() + aType.slice(1)} on Issue #${issue?.issue_number}`,
           {
-            beforeData: { decision_text: before?.decision_text, historic: before?.historic },
-            afterData:  { decision_text: decisionData.decision_text, historic: decisionData.historic }
+            beforeData: { body: before?.body, historic: before?.historic },
+            afterData:  { body, historic }
           }
         );
 
@@ -569,19 +431,42 @@ function createIssuesStore() {
       }
     },
 
-    async deleteDecision(decisionId) {
+    async deleteActivity(activityId) {
       try {
-        const { data: decision } = await supabase
-          .from('decisions').select('decision_text, issue_id').eq('id', decisionId).single();
+        const { data: { user } } = await supabase.auth.getUser();
 
+        // Get activity data before deletion
+        const { data: activity } = await supabase
+          .from('activities')
+          .select('body, historic, activity_type, issue_id')
+          .eq('id', activityId)
+          .single();
+
+        // Get issue for context
         const { data: issue } = await supabase
-          .from('issues').select('issue_number').eq('id', decision?.issue_id).single();
+          .from('issues')
+          .select('issue_number, name')
+          .eq('id', activity?.issue_id)
+          .single();
 
-        await api.delete('decisions', decisionId);
+        // Delete activity
+        await api.delete('activities', activityId);
 
-        audit('delete', 'decision', decisionId,
-          `Decision on Issue #${issue?.issue_number}`,
-          { beforeData: { decision_text: decision?.decision_text } }
+        // ✨ LOG AUDIT EVENT (fire-and-forget)
+        const aType = activity?.activity_type ?? 'activity';
+        audit(
+          'delete',
+          aType,
+          activityId,
+          `${aType.charAt(0).toUpperCase() + aType.slice(1)} on Issue #${issue?.issue_number}`,
+          {
+            beforeData: {
+              body:          activity?.body,
+              activity_type: activity?.activity_type,
+              historic:      activity?.historic,
+              issue_name:    issue?.name
+            }
+          }
         );
 
         await this.fetchIssues();
@@ -609,32 +494,32 @@ function createIssuesStore() {
           .select('issue_number, name')
           .eq('id', issueId)
           .single();
-        
+
         logger('Issue found:', issue);
-        
-        // Create action. source_comment_id is set when this action was
-        // created from a comment via the "Create Action from Comment"
+
+        // Create action. source_activity_id is set when this action was
+        // created from an activity via the "Create Action from Comment"
         // suggestion flow; left null otherwise.
         const { data: newAction, error: createError } = await supabase
           .from('actions')
           .insert({
-            issue_id: issueId,
-            action_text: actionData.action_text,
-            name_text: actionData.name_text,
-            date_deadline: actionData.date_deadline || null,
-            status: actionData.status,
-            source_comment_id: actionData.source_comment_id || null,
-            meeting_id: activeMeetingId(),
-            created_at: now,
-            updated_at: now,
-            created_by: user?.id,
-            updated_by: user?.id
+            issue_id:           issueId,
+            action_text:        actionData.action_text,
+            name_text:          actionData.name_text,
+            date_deadline:      actionData.date_deadline || null,
+            status:             actionData.status,
+            source_activity_id: actionData.source_activity_id || null,
+            meeting_id:         activeMeetingId(),
+            created_at:         now,
+            updated_at:         now,
+            created_by:         user?.id,
+            updated_by:         user?.id
           })
           .select()
           .single();
 
         if (createError) throw createError;
-        
+
         logger('✅ Action created:', newAction.id);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
@@ -648,7 +533,7 @@ function createIssuesStore() {
               action_text:        actionData.action_text,
               name_text:          actionData.name_text,
               status:             actionData.status,
-              source_comment_id:  actionData.source_comment_id || null,
+              source_activity_id: actionData.source_activity_id || null,
               issue_name:         issue?.name
             }
           }
@@ -681,9 +566,9 @@ function createIssuesStore() {
           .select('issue_number, name')
           .eq('id', beforeAction?.issue_id)
           .single();
-        
+
         logger('Action before update:', beforeAction);
-        
+
         // Update action — admin may supply override timestamps.
         const actionPayload = {
           action_text:   actionData.action_text,
@@ -706,15 +591,15 @@ function createIssuesStore() {
           `Action on Issue #${issue?.issue_number}`,
           {
             beforeData: {
-              action_text: beforeAction?.action_text,
-              name_text: beforeAction?.name_text,
-              status: beforeAction?.status,
+              action_text:  beforeAction?.action_text,
+              name_text:    beforeAction?.name_text,
+              status:       beforeAction?.status,
               date_deadline: beforeAction?.date_deadline
             },
             afterData: {
-              action_text: actionData.action_text,
-              name_text: actionData.name_text,
-              status: actionData.status,
+              action_text:  actionData.action_text,
+              name_text:    actionData.name_text,
+              status:       actionData.status,
               date_deadline: actionData.date_deadline
             }
           }
@@ -747,9 +632,9 @@ function createIssuesStore() {
           .select('issue_number, name')
           .eq('id', action?.issue_id)
           .single();
-        
+
         logger('Action to delete:', action);
-        
+
         // Delete action
         await api.delete('actions', actionId);
 
@@ -763,11 +648,11 @@ function createIssuesStore() {
           `Action on Issue #${issue?.issue_number}`,
           {
             beforeData: {
-              action_text: action?.action_text,
-              name_text: action?.name_text,
-              status: action?.status,
+              action_text:  action?.action_text,
+              name_text:    action?.name_text,
+              status:       action?.status,
               date_deadline: action?.date_deadline,
-              issue_name: issue?.name
+              issue_name:   issue?.name
             }
           }
         );
@@ -781,11 +666,11 @@ function createIssuesStore() {
       }
     },
 
-    // Batch-assign existing issues / comments / actions to a meeting.
+    // Batch-assign existing issues / activities / actions to a meeting.
     // Used by the admin "Assign existing items" migration tool.
-    async assignToMeeting(meetingId, { issueIds = [], commentIds = [], actionIds = [] }) {
+    async assignToMeeting(meetingId, { issueIds = [], activityIds = [], actionIds = [] }) {
       try {
-        const total = issueIds.length + commentIds.length + actionIds.length;
+        const total = issueIds.length + activityIds.length + actionIds.length;
         if (total === 0) return { success: true };
 
         logger(`📎 Assigning ${total} items to meeting ${meetingId}`);
@@ -800,11 +685,11 @@ function createIssuesStore() {
               .in('id', issueIds)
           );
         }
-        if (commentIds.length > 0) {
+        if (activityIds.length > 0) {
           tasks.push(
-            supabase.from('comments')
+            supabase.from('activities')
               .update({ meeting_id: meetingId, updated_by: user?.id, updated_at: now })
-              .in('id', commentIds)
+              .in('id', activityIds)
           );
         }
         if (actionIds.length > 0) {
@@ -822,7 +707,7 @@ function createIssuesStore() {
 
         logger(`✅ Assigned ${total} items`);
         audit('update', 'meeting', meetingId, `Assigned ${total} item(s) to meeting`, {
-          afterData: { issueIds, commentIds, actionIds }
+          afterData: { issueIds, activityIds, actionIds }
         });
 
         await this.fetchIssues();

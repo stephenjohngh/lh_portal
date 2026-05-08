@@ -51,13 +51,16 @@
     const out = {};
     const bump = (mid, key) => {
       if (!mid) return;
-      if (!out[mid]) out[mid] = { issues: 0, comments: 0, actions: 0 };
+      if (!out[mid]) out[mid] = { issues: 0, comments: 0, decisions: 0, actions: 0 };
       out[mid][key]++;
     };
     for (const issue of issues) {
       bump(issue.meeting_id, 'issues');
-      for (const c of issue.comments || []) bump(c.meeting_id, 'comments');
-      for (const a of issue.actions  || []) bump(a.meeting_id, 'actions');
+      for (const a of issue.activities || []) {
+        if (a.activity_type === 'decision') bump(a.meeting_id, 'decisions');
+        else bump(a.meeting_id, 'comments');
+      }
+      for (const a of issue.actions || []) bump(a.meeting_id, 'actions');
     }
     return out;
   })();
@@ -118,11 +121,12 @@
 
   // -- Counters for one meeting --------------------------------------
   function fmtCounts(meetingId) {
-    const c = itemCounts[meetingId] ?? { issues: 0, comments: 0, actions: 0 };
+    const c = itemCounts[meetingId] ?? { issues: 0, comments: 0, decisions: 0, actions: 0 };
     const parts = [];
-    if (c.issues)   parts.push(`${c.issues} issue${c.issues   === 1 ? '' : 's'}`);
-    if (c.actions)  parts.push(`${c.actions} action${c.actions === 1 ? '' : 's'}`);
-    if (c.comments) parts.push(`${c.comments} comment${c.comments === 1 ? '' : 's'}`);
+    if (c.issues)    parts.push(`${c.issues} issue${c.issues     === 1 ? '' : 's'}`);
+    if (c.actions)   parts.push(`${c.actions} action${c.actions   === 1 ? '' : 's'}`);
+    if (c.comments)  parts.push(`${c.comments} comment${c.comments === 1 ? '' : 's'}`);
+    if (c.decisions) parts.push(`${c.decisions} decision${c.decisions === 1 ? '' : 's'}`);
     return parts.length ? parts.join(' · ') : 'no items tagged';
   }
 

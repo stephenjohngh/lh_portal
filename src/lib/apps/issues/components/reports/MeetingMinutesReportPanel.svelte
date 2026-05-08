@@ -31,9 +31,8 @@
   $: meetingIssues = selectedMeeting
     ? issues.filter(issue =>
         issue.meeting_id === selectedMeeting.id ||
-        (issue.comments  || []).some(c => c.meeting_id === selectedMeeting.id) ||
-        (issue.decisions || []).some(d => d.meeting_id === selectedMeeting.id) ||
-        (issue.actions   || []).some(a => a.meeting_id === selectedMeeting.id)
+        (issue.activities || []).some(a => a.meeting_id === selectedMeeting.id) ||
+        (issue.actions    || []).some(a => a.meeting_id === selectedMeeting.id)
       )
     : [];
 

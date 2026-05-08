@@ -329,13 +329,13 @@
 
               </div>
               <div class="flex space-x-1">
-                {#if action.source_comment_id}
+                {#if action.source_activity_id}
                   <Button
                     variant="secondary"
                     size="small"
                     icon="comment"
                     iconPosition="only"
-                    on:click={() => dispatch('jumpToComment', { commentId: action.source_comment_id })}
+                    on:click={() => dispatch('jumpToActivity', { activityId: action.source_activity_id })}
                     title="Jump to source comment"
                   />
                 {/if}

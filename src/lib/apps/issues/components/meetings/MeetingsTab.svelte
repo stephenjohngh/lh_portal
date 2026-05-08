@@ -76,9 +76,11 @@
     };
     for (const issue of issues) {
       bump(issue.meeting_id, 'issues');
-      for (const c of issue.comments  || []) bump(c.meeting_id, 'comments');
-      for (const d of issue.decisions || []) bump(d.meeting_id, 'decisions');
-      for (const a of issue.actions   || []) bump(a.meeting_id, 'actions');
+      for (const a of issue.activities || []) {
+        if (a.activity_type === 'decision') bump(a.meeting_id, 'decisions');
+        else bump(a.meeting_id, 'comments');
+      }
+      for (const a of issue.actions || []) bump(a.meeting_id, 'actions');
     }
     return out;
   })();
@@ -87,9 +89,8 @@
   $: meetingIssues = selectedMeeting
     ? issues.filter(issue =>
         issue.meeting_id === selectedMeeting.id ||
-        (issue.comments  || []).some(c => c.meeting_id === selectedMeeting.id) ||
-        (issue.decisions || []).some(d => d.meeting_id === selectedMeeting.id) ||
-        (issue.actions   || []).some(a => a.meeting_id === selectedMeeting.id)
+        (issue.activities || []).some(a => a.meeting_id === selectedMeeting.id) ||
+        (issue.actions    || []).some(a => a.meeting_id === selectedMeeting.id)
       )
     : [];
 

@@ -30,21 +30,21 @@
   let pageError        = '';
 
   // Selection sets — reassigned to trigger Svelte reactivity
-  let selectedIssues   = new Set();
-  let selectedComments = new Set();
-  let selectedActions  = new Set();
-  let expanded         = new Set();
+  let selectedIssues     = new Set();
+  let selectedActivities = new Set();   // formerly selectedComments
+  let selectedActions    = new Set();
+  let expanded           = new Set();
 
   // Reset when opened
   let prevShow = false;
   $: if (show && !prevShow) {
     prevShow = true;
-    selectedIssues   = new Set();
-    selectedComments = new Set();
-    selectedActions  = new Set();
-    expanded         = new Set();
-    pageError        = '';
-    showOnlyUntagged = true;
+    selectedIssues     = new Set();
+    selectedActivities = new Set();
+    selectedActions    = new Set();
+    expanded           = new Set();
+    pageError          = '';
+    showOnlyUntagged   = true;
   }
   $: if (!show) prevShow = false;
 
@@ -52,15 +52,15 @@
 
   function isUntagged(item)    { return !item.meeting_id; }
 
-  function visibleComments(issue) {
-    return (issue.comments || []).filter(c => showOnlyUntagged ? isUntagged(c) : true);
+  function visibleActivities(issue) {
+    return (issue.activities || []).filter(a => showOnlyUntagged ? isUntagged(a) : true);
   }
   function visibleActions(issue) {
     return (issue.actions || []).filter(a => showOnlyUntagged ? isUntagged(a) : true);
   }
   function issueHasVisibleItems(issue) {
     const selfVisible = showOnlyUntagged ? isUntagged(issue) : true;
-    return selfVisible || visibleComments(issue).length > 0 || visibleActions(issue).length > 0;
+    return selfVisible || visibleActivities(issue).length > 0 || visibleActions(issue).length > 0;
   }
 
   $: visibleIssues = issues.filter(issueHasVisibleItems);
@@ -68,18 +68,18 @@
   // -- Per-issue selection state ----------------------------------------
 
   function isAllSelectedForIssue(issue) {
-    const vc = visibleComments(issue);
-    const va = visibleActions(issue);
+    const va2 = visibleActivities(issue);
+    const va  = visibleActions(issue);
     const selfVisible = showOnlyUntagged ? isUntagged(issue) : true;
     const selfOk = !selfVisible || selectedIssues.has(issue.id);
-    const cOk = vc.every(c => selectedComments.has(c.id));
-    const aOk = va.every(a => selectedActions.has(a.id));
-    return selfOk && cOk && aOk && (selfVisible || vc.length > 0 || va.length > 0);
+    const aOk2 = va2.every(a => selectedActivities.has(a.id));
+    const aOk  = va.every(a => selectedActions.has(a.id));
+    return selfOk && aOk2 && aOk && (selfVisible || va2.length > 0 || va.length > 0);
   }
 
   function isAnySelectedForIssue(issue) {
     return selectedIssues.has(issue.id) ||
-      visibleComments(issue).some(c => selectedComments.has(c.id)) ||
+      visibleActivities(issue).some(a => selectedActivities.has(a.id)) ||
       visibleActions(issue).some(a => selectedActions.has(a.id));
   }
 
@@ -94,8 +94,8 @@
   function toggleIssue(id) {
     selectedIssues = toggleSet(selectedIssues, id);
   }
-  function toggleComment(id) {
-    selectedComments = toggleSet(selectedComments, id);
+  function toggleActivity(id) {
+    selectedActivities = toggleSet(selectedActivities, id);
   }
   function toggleAction(id) {
     selectedActions = toggleSet(selectedActions, id);
@@ -105,41 +105,41 @@
   }
 
   function selectAllForIssue(issue, checked) {
-    const vc = visibleComments(issue);
-    const va = visibleActions(issue);
+    const va2 = visibleActivities(issue);
+    const va  = visibleActions(issue);
     const selfVisible = showOnlyUntagged ? isUntagged(issue) : true;
-    const ni = new Set(selectedIssues);
-    const nc = new Set(selectedComments);
-    const na = new Set(selectedActions);
+    const ni  = new Set(selectedIssues);
+    const na2 = new Set(selectedActivities);
+    const na  = new Set(selectedActions);
     if (checked) {
       if (selfVisible) ni.add(issue.id);
-      for (const c of vc) nc.add(c.id);
-      for (const a of va) na.add(a.id);
+      for (const a of va2) na2.add(a.id);
+      for (const a of va)  na.add(a.id);
     } else {
       ni.delete(issue.id);
-      for (const c of vc) nc.delete(c.id);
-      for (const a of va) na.delete(a.id);
+      for (const a of va2) na2.delete(a.id);
+      for (const a of va)  na.delete(a.id);
     }
-    selectedIssues = ni; selectedComments = nc; selectedActions = na;
+    selectedIssues = ni; selectedActivities = na2; selectedActions = na;
   }
 
   function selectAll() {
-    const ni = new Set(), nc = new Set(), na = new Set();
+    const ni = new Set(), na2 = new Set(), na = new Set();
     for (const issue of visibleIssues) {
       if (showOnlyUntagged ? isUntagged(issue) : true) ni.add(issue.id);
-      for (const c of visibleComments(issue)) nc.add(c.id);
-      for (const a of visibleActions(issue))  na.add(a.id);
+      for (const a of visibleActivities(issue)) na2.add(a.id);
+      for (const a of visibleActions(issue))    na.add(a.id);
     }
-    selectedIssues = ni; selectedComments = nc; selectedActions = na;
+    selectedIssues = ni; selectedActivities = na2; selectedActions = na;
   }
 
   function clearAll() {
-    selectedIssues = new Set(); selectedComments = new Set(); selectedActions = new Set();
+    selectedIssues = new Set(); selectedActivities = new Set(); selectedActions = new Set();
   }
 
   // -- Totals -----------------------------------------------------------
 
-  $: totalSelected = selectedIssues.size + selectedComments.size + selectedActions.size;
+  $: totalSelected = selectedIssues.size + selectedActivities.size + selectedActions.size;
 
   // -- Helpers ----------------------------------------------------------
 
@@ -151,11 +151,11 @@
 
   function untaggedSummary(issue) {
     const parts = [];
-    if (isUntagged(issue))                                        parts.push('issue');
-    const uc = (issue.comments || []).filter(isUntagged).length;
-    const ua = (issue.actions  || []).filter(isUntagged).length;
-    if (uc > 0) parts.push(`${uc} comment${uc === 1 ? '' : 's'}`);
-    if (ua > 0) parts.push(`${ua} action${ua === 1 ? '' : 's'}`);
+    if (isUntagged(issue))                                           parts.push('issue');
+    const ua2 = (issue.activities || []).filter(isUntagged).length;
+    const ua  = (issue.actions    || []).filter(isUntagged).length;
+    if (ua2 > 0) parts.push(`${ua2} activit${ua2 === 1 ? 'y' : 'ies'}`);
+    if (ua  > 0) parts.push(`${ua} action${ua === 1 ? '' : 's'}`);
     return parts.length ? parts.join(', ') + ' untagged' : '';
   }
 
@@ -166,9 +166,9 @@
     saving    = true;
     pageError = '';
     const result = await issuesStore.assignToMeeting(meeting.id, {
-      issueIds:   [...selectedIssues],
-      commentIds: [...selectedComments],
-      actionIds:  [...selectedActions]
+      issueIds:    [...selectedIssues],
+      activityIds: [...selectedActivities],
+      actionIds:   [...selectedActions]
     });
     saving = false;
     if (!result.success) { pageError = result.error ?? 'Assignment failed'; return; }
@@ -228,11 +228,11 @@
 
       {:else}
         {#each visibleIssues as issue (issue.id)}
-          {@const vc        = visibleComments(issue)}
+          {@const va2       = visibleActivities(issue)}
           {@const va        = visibleActions(issue)}
           {@const isExp     = expanded.has(issue.id)}
           {@const allSel    = isAllSelectedForIssue(issue)}
-          {@const hasSubItems = vc.length > 0 || va.length > 0}
+          {@const hasSubItems = va2.length > 0 || va.length > 0}
           {@const selfVisible = showOnlyUntagged ? isUntagged(issue) : true}
 
           <div class="py-3">
@@ -304,24 +304,24 @@
                   </p>
                 {/if}
 
-                <!-- Comments -->
-                {#if vc.length > 0}
+                <!-- Activities (comments, decisions, etc.) -->
+                {#if va2.length > 0}
                   <div>
                     <p class="text-[10px] uppercase tracking-wide text-blue-400/70 font-semibold mb-1.5">
-                      Comments
+                      Activities
                     </p>
                     <div class="space-y-2">
-                      {#each vc as c (c.id)}
+                      {#each va2 as c (c.id)}
                         <label class="flex items-start gap-2 cursor-pointer group">
                           <input
                             type="checkbox"
-                            checked={selectedComments.has(c.id)}
+                            checked={selectedActivities.has(c.id)}
                             class="mt-0.5 rounded shrink-0"
-                            on:change={() => toggleComment(c.id)}
+                            on:change={() => toggleActivity(c.id)}
                           />
                           <div class="min-w-0">
                             <p class="text-sm text-slate-200 group-hover:text-white leading-snug line-clamp-2">
-                              {c.comment_text}
+                              {c.body}
                             </p>
                             {#if !isUntagged(c)}
                               <p class="text-[10px] text-amber-400 mt-0.5">

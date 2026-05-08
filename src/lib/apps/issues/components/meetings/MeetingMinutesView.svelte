@@ -27,11 +27,13 @@
     const id  = meeting.id;
     const out = [];
     for (const issue of issues) {
-      const meetingActions   = (issue.actions   || []).filter(a => a.meeting_id === id);
-      const meetingComments  = (issue.comments  || []).filter(c => c.meeting_id === id);
-      const meetingDecisions = (issue.decisions || []).filter(d => d.meeting_id === id);
+      const meetingActions   = (issue.actions    || []).filter(a => a.meeting_id === id);
+      // Split activities by type for separate display sections
+      const allActivities    = (issue.activities || []).filter(a => a.meeting_id === id);
+      const meetingComments  = allActivities.filter(a => (a.activity_type ?? 'comment') === 'comment');
+      const meetingDecisions = allActivities.filter(a => a.activity_type === 'decision');
       const isNew            = issue.meeting_id === id;
-      if (!isNew && meetingActions.length === 0 && meetingComments.length === 0 && meetingDecisions.length === 0) continue;
+      if (!isNew && meetingActions.length === 0 && allActivities.length === 0) continue;
       out.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions });
     }
     out.sort((a, b) => {
@@ -151,7 +153,7 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-blue-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
-                          <p class="text-slate-200 whitespace-pre-wrap">{c.comment_text}</p>
+                          <p class="text-slate-200 whitespace-pre-wrap">{c.body}</p>
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(c.created_at, c.created_by_profile?.full_name)}
                             {#if c.historic}
@@ -175,7 +177,7 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-violet-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
-                          <p class="text-slate-200 whitespace-pre-wrap">{d.decision_text}</p>
+                          <p class="text-slate-200 whitespace-pre-wrap">{d.body}</p>
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
                             {#if d.historic}

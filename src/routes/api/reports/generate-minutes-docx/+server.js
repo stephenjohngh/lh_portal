@@ -133,11 +133,12 @@ function buildContent(meeting, issues, attendees) {
   const id  = meeting.id;
   const minutes = [];
   for (const issue of issues) {
-    const meetingActions   = (issue.actions   || []).filter(a => a.meeting_id === id);
-    const meetingComments  = (issue.comments  || []).filter(c => c.meeting_id === id);
-    const meetingDecisions = (issue.decisions || []).filter(d => d.meeting_id === id);
+    const meetingActions   = (issue.actions    || []).filter(a => a.meeting_id === id);
+    const allActivities    = (issue.activities || []).filter(a => a.meeting_id === id);
+    const meetingComments  = allActivities.filter(a => (a.activity_type ?? 'comment') === 'comment');
+    const meetingDecisions = allActivities.filter(a => a.activity_type === 'decision');
     const isNew            = issue.meeting_id === id;
-    if (!isNew && meetingActions.length === 0 && meetingComments.length === 0 && meetingDecisions.length === 0) continue;
+    if (!isNew && meetingActions.length === 0 && allActivities.length === 0) continue;
     minutes.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions });
   }
   minutes.sort((a, b) => {
@@ -233,7 +234,7 @@ function buildContent(meeting, issues, attendees) {
         (a, b) => new Date(a.created_at) - new Date(b.created_at)
       );
       for (const c of sorted) {
-        content.push(p(c.comment_text, {
+        content.push(p(c.body, {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
@@ -260,7 +261,7 @@ function buildContent(meeting, issues, attendees) {
         (a, b) => new Date(a.created_at) - new Date(b.created_at)
       );
       for (const d of sortedDecisions) {
-        content.push(p(d.decision_text, {
+        content.push(p(d.body, {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
