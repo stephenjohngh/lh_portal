@@ -19,7 +19,8 @@ export function buildFieldSummary(activityType, fields) {
   const f = fields || {};
   if (activityType === ACTIVITY_TYPE.EMAIL) {
     const parts = [];
-    if (f.from || f.to) parts.push(`${f.from || '?'} → ${f.to || '?'}`);
+    if (f.notes)         parts.push(f.notes);
+    if (f.from || f.to)  parts.push(`${f.from || '?'} → ${f.to || '?'}`);
     if (f.subject)       parts.push(`Re: ${f.subject}`);
     if (f.email_date)    parts.push(fmtDate(f.email_date + 'T12:00:00'));
     return parts.join(' · ');

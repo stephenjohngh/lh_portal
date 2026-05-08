@@ -57,9 +57,14 @@
 
   // -- Filter issues (no meeting filter — that lives in the Meetings tab) -
   $: filteredIssues = issues.filter(issue => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      issue.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      issue.name?.toLowerCase().includes(term) ||
+      issue.description?.toLowerCase().includes(term) ||
+      (issue.activities || []).some(a =>
+        a.body?.toLowerCase().includes(term) ||
+        Object.values(a.fields || {}).some(v => typeof v === 'string' && v.toLowerCase().includes(term))
+      );
 
     let matchesStatus = false;
     if (statusFilter === ISSUE_STATUS.CURRENT) {

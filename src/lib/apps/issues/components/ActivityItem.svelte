@@ -270,6 +270,9 @@
           {@const f = activity.fields || {}}
           <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1 text-[11px] text-slate-400 leading-snug">
             {#if activity.activity_type === ACTIVITY_TYPE.EMAIL}
+              {#if f.notes}
+                <span class="text-slate-200 font-medium truncate max-w-[24rem]">{f.notes}</span>
+              {/if}
               {#if f.from || f.to}
                 <span class="truncate">{f.from || '?'} → {f.to || '?'}</span>
               {/if}

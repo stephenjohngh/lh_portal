@@ -149,10 +149,11 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBorder:   'border-cyan-200',
     reportBadgeCls: 'bg-cyan-100 text-cyan-700 border-cyan-300',
     fields: [
-      { key: 'from',       label: 'From',    type: 'text', placeholder: 'Sender name or address',    span: 1 },
-      { key: 'to',         label: 'To',      type: 'text', placeholder: 'Recipient name or address', span: 1 },
-      { key: 'subject',    label: 'Subject', type: 'text', placeholder: 'Email subject line',        span: 2 },
-      { key: 'email_date', label: 'Date',    type: 'date', placeholder: '',                          span: 1 }
+      { key: 'notes',      label: 'Email Notes', type: 'text', placeholder: 'Brief notes about this email…', span: 2 },
+      { key: 'from',       label: 'From',        type: 'text', placeholder: 'Sender name or address',        span: 1 },
+      { key: 'to',         label: 'To',          type: 'text', placeholder: 'Recipient name or address',     span: 1 },
+      { key: 'subject',    label: 'Subject',     type: 'text', placeholder: 'Email subject line',            span: 2 },
+      { key: 'email_date', label: 'Date',        type: 'date', placeholder: '',                              span: 1 }
     ]
   },
   [ACTIVITY_TYPE.CALL]: {
