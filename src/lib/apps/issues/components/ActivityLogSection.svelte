@@ -65,7 +65,7 @@
   // -- New activity state ----------------------------------------------
   // Keeps the last-used type selected so batch-logging (e.g. 3 emails)
   // doesn't require re-selecting the type each time.
-  let newActivity = { body: '', activity_type: ACTIVITY_TYPE.COMMENT, fields: {} };
+  let newActivity = { body: '', activity_type: ACTIVITY_TYPE.NOTE, fields: {} };
   let mutationError = '';
   let saving = false;
 

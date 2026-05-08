@@ -93,15 +93,15 @@ export const ACTIVITY_TYPE = {
  * span:2 takes the full 2-col grid width.
  */
 export const ACTIVITY_TYPE_CONFIG = {
-  [ACTIVITY_TYPE.COMMENT]: {
-    label:       'Comment',
-    icon:        '💬',
-    borderColor: 'border-blue-400',
-    badgeClass:  'bg-blue-900/40 text-blue-300 border border-blue-700/50',
-    badgeText:   'Comment',
-    ringClass:   'focus:ring-blue-500',
-    borderEdit:  'border-blue-500/50',
-    placeholder: 'Enter your comment…',
+  [ACTIVITY_TYPE.NOTE]: {
+    label:       'Note',
+    icon:        '📝',
+    borderColor: 'border-amber-400',
+    badgeClass:  'bg-amber-900/40 text-amber-300 border border-amber-700/50',
+    badgeText:   'Note',
+    ringClass:   'focus:ring-amber-500',
+    borderEdit:  'border-amber-500/50',
+    placeholder: 'Enter your note…',
     fields:      []
   },
   [ACTIVITY_TYPE.DECISION]: {
@@ -115,15 +115,15 @@ export const ACTIVITY_TYPE_CONFIG = {
     placeholder: 'Enter the decision reached…',
     fields:      []
   },
-  [ACTIVITY_TYPE.NOTE]: {
-    label:       'Note',
-    icon:        '📝',
-    borderColor: 'border-amber-400',
-    badgeClass:  'bg-amber-900/40 text-amber-300 border border-amber-700/50',
-    badgeText:   'Note',
-    ringClass:   'focus:ring-amber-500',
-    borderEdit:  'border-amber-500/50',
-    placeholder: 'Enter your note…',
+  [ACTIVITY_TYPE.COMMENT]: {
+    label:       'Comment',
+    icon:        '💬',
+    borderColor: 'border-blue-400',
+    badgeClass:  'bg-blue-900/40 text-blue-300 border border-blue-700/50',
+    badgeText:   'Comment',
+    ringClass:   'focus:ring-blue-500',
+    borderEdit:  'border-blue-500/50',
+    placeholder: 'Enter your comment…',
     fields:      []
   },
   [ACTIVITY_TYPE.EMAIL]: {
