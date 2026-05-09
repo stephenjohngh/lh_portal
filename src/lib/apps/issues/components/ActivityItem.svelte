@@ -309,6 +309,16 @@
               {#if f.letter_date}
                 <span class="shrink-0">{fmtFieldDate(f.letter_date)}</span>
               {/if}
+            {:else if activity.activity_type === ACTIVITY_TYPE.MEETING}
+              {#if f.title}
+                <span class="text-slate-200 font-medium truncate max-w-[24rem]">{f.title}</span>
+              {/if}
+              {#if f.meeting_date}
+                <span class="shrink-0">{fmtFieldDate(f.meeting_date)}</span>
+              {/if}
+              {#if f.participants}
+                <span class="text-slate-300 truncate max-w-[18rem]">👥 {f.participants}</span>
+              {/if}
             {/if}
           </div>
         {/if}

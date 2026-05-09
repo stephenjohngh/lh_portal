@@ -79,7 +79,8 @@ export const ACTIVITY_TYPE = {
   EMAIL:    'email',
   CALL:     'call',
   LETTER:   'letter',
-  DOCUMENT: 'document'
+  DOCUMENT: 'document',
+  MEETING:  'meeting'   // issue-specific meeting log (distinct from team meetings)
 };
 
 /**
@@ -206,6 +207,25 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBorder:   'border-rose-200',
     reportBadgeCls: 'bg-rose-100 text-rose-700 border-rose-300',
     fields:      []
+  },
+  [ACTIVITY_TYPE.MEETING]: {
+    label:       'Meeting',
+    icon:        '🤝',
+    borderColor: 'border-indigo-400',
+    badgeClass:  'bg-indigo-900/40 text-indigo-300 border border-indigo-700/50',
+    badgeText:   'Meeting',
+    ringClass:   'focus:ring-indigo-500',
+    borderEdit:  'border-indigo-500/50',
+    placeholder: 'Notes from the meeting…',
+    reportBg:       'bg-indigo-50',
+    reportBorder:   'border-indigo-200',
+    reportBadgeCls: 'bg-indigo-100 text-indigo-700 border-indigo-300',
+    fields: [
+      { key: 'title',        label: 'Meeting Title', type: 'text', placeholder: 'e.g. Site visit – roof inspection', span: 2 },
+      { key: 'meeting_date', label: 'Date',          type: 'date', placeholder: '',                                  span: 1 },
+      { key: 'participants', label: 'Participants',  type: 'text', placeholder: 'Names of those present',            span: 2 },
+      { key: 'summary',      label: 'Summary',       type: 'text', placeholder: 'Key points and outcomes…',          span: 2 }
+    ]
   }
 };
 

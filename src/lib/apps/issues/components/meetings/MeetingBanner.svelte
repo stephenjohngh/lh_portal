@@ -69,7 +69,7 @@
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2 flex-wrap">
         <span class="text-amber-300 text-base">🟡</span>
-        <span class="font-semibold text-white">Meeting in progress:</span>
+        <span class="font-semibold text-white">Team meeting in progress:</span>
         <span class="text-amber-100">{meeting.title}</span>
         <span class="text-xs text-amber-400/80">
           ({fmtDate(meeting.meeting_date)} · {meeting.meeting_type})

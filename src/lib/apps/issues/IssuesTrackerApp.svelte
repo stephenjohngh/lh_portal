@@ -207,7 +207,7 @@
                : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
       on:click={() => { meetingTabTargetId = null; activeTab = 'meetings'; }}
     >
-      Meetings
+      Team Meetings
       {#if $meetingsStore.current}
         <span class="text-[10px] px-1.5 py-0.5 rounded-full
                      bg-amber-500/20 text-amber-300 border border-amber-500/40 leading-none">

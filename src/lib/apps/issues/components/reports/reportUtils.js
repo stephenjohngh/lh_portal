@@ -35,6 +35,13 @@ export function buildFieldSummary(activityType, fields) {
     if (f.letter_date)  parts.push(fmtDate(f.letter_date + 'T12:00:00'));
     return parts.join(' · ');
   }
+  if (activityType === ACTIVITY_TYPE.MEETING) {
+    const parts = [];
+    if (f.title)         parts.push(f.title);
+    if (f.meeting_date)  parts.push(fmtDate(f.meeting_date + 'T12:00:00'));
+    if (f.participants)  parts.push(`👥 ${f.participants}`);
+    return parts.join(' · ');
+  }
   return '';
 }
 
