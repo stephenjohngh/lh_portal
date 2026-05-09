@@ -17,6 +17,13 @@ import { fmtDate, fmtDateLong } from '$lib/utils/dates';
  */
 export function buildFieldSummary(activityType, fields) {
   const f = fields || {};
+  // Simple types: return the optional one-line summary field (empty string if not set).
+  if (activityType === ACTIVITY_TYPE.COMMENT  ||
+      activityType === ACTIVITY_TYPE.NOTE      ||
+      activityType === ACTIVITY_TYPE.DECISION  ||
+      activityType === ACTIVITY_TYPE.DOCUMENT) {
+    return f.summary || '';
+  }
   if (activityType === ACTIVITY_TYPE.EMAIL) {
     const parts = [];
     if (f.notes)         parts.push(f.notes);

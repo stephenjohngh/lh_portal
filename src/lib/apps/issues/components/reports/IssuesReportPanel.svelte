@@ -43,6 +43,7 @@
   // ── Content options ───────────────────────────────────────────────────────
   let includeHistoric         = _saved?.includeHistoric         ?? false;
   let includeCompletedActions = _saved?.includeCompletedActions ?? false;
+  let summaryOnly             = _saved?.summaryOnly             ?? false;
 
   // ── Sort order ────────────────────────────────────────────────────────────
   let sortOrder = _saved?.sortOrder ?? 'desc';
@@ -51,7 +52,7 @@
   $: try {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       includeCurrent, includeParked, includeCompleted,
-      filterDate, includeHistoric, includeCompletedActions, sortOrder
+      filterDate, includeHistoric, includeCompletedActions, summaryOnly, sortOrder
     }));
   } catch { /* private browsing / quota exceeded — ignore */ }
 
@@ -109,7 +110,8 @@
           includeCurrent,
           includeParked,
           includeCompleted,
-          sortOrder
+          sortOrder,
+          summaryOnly
         })
       });
       if (!response.ok) {
@@ -153,6 +155,7 @@
       <div class="flex flex-col gap-2">
         <Checkbox bind:checked={includeHistoric}         color="blue" label="Include historic" />
         <Checkbox bind:checked={includeCompletedActions} color="blue" label="Include completed actions" />
+        <Checkbox bind:checked={summaryOnly}             color="blue" label="Summary headers only" />
       </div>
     </div>
 
@@ -280,6 +283,7 @@
                 {issue}
                 {sortOrder}
                 {filterDate}
+                {summaryOnly}
                 statusType={issue.status === 'completed' ? 'completed' : issue.status === 'parked' ? 'parked' : 'current'}
               />
             {/each}
@@ -293,7 +297,7 @@
               </h2>
               <div class="space-y-4">
                 {#each groupedIssues.current as issue (issue.id)}
-                  <ReportIssueCard {issue} {sortOrder} {filterDate} statusType="current" />
+                  <ReportIssueCard {issue} {sortOrder} {filterDate} {summaryOnly} statusType="current" />
                 {/each}
               </div>
             {/if}
@@ -304,7 +308,7 @@
               </h2>
               <div class="space-y-4">
                 {#each groupedIssues.parked as issue (issue.id)}
-                  <ReportIssueCard {issue} {sortOrder} {filterDate} statusType="parked" />
+                  <ReportIssueCard {issue} {sortOrder} {filterDate} {summaryOnly} statusType="parked" />
                 {/each}
               </div>
             {/if}
@@ -315,7 +319,7 @@
               </h2>
               <div class="space-y-4">
                 {#each groupedIssues.completed as issue (issue.id)}
-                  <ReportIssueCard {issue} {sortOrder} {filterDate} statusType="completed" />
+                  <ReportIssueCard {issue} {sortOrder} {filterDate} {summaryOnly} statusType="completed" />
                 {/each}
               </div>
             {/if}

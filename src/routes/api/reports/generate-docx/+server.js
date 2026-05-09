@@ -22,7 +22,7 @@ export async function POST({ request }) {
 
   try {
     logger('Parsing request body');
-    const { issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder } = await request.json();
+    const { issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder, summaryOnly } = await request.json();
     
     logger('✅ Request parsed successfully');
     logger('Issues count:', issues?.length || 0);
@@ -120,7 +120,7 @@ export async function POST({ request }) {
             }
           }
         },
-        children: await generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder)
+        children: await generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder, summaryOnly)
       }]
     });
 
@@ -157,7 +157,7 @@ export async function POST({ request }) {
   }
 }
 
-async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder = 'desc') {
+async function generateReportContent(issues, filterDate, includeCurrent, includeParked, includeCompleted, sortOrder = 'desc', summaryOnly = false) {
   logger('Generating report content');
   logger('Issues:', issues.length);
 
@@ -223,7 +223,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     for (const issue of currentIssues) {
       logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
-        content.push(...await generateIssueContent(issue, issueNumber, sortOrder));
+        content.push(...await generateIssueContent(issue, issueNumber, sortOrder, summaryOnly));
         issueNumber++;
       } catch (err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
@@ -231,7 +231,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
       }
     }
   }
-  
+
   if (parkedIssues.length > 0) {
     content.push(
       new Paragraph({
@@ -240,11 +240,11 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
         spacing: { before: 480, after: 240 }
       })
     );
-    
+
     for (const issue of parkedIssues) {
       logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
-        content.push(...await generateIssueContent(issue, issueNumber, sortOrder));
+        content.push(...await generateIssueContent(issue, issueNumber, sortOrder, summaryOnly));
         issueNumber++;
       } catch (err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
@@ -252,7 +252,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
       }
     }
   }
-  
+
   if (completedIssues.length > 0) {
     content.push(
       new Paragraph({
@@ -261,11 +261,11 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
         spacing: { before: 480, after: 240 }
       })
     );
-    
+
     for (const issue of completedIssues) {
       logger('Processing issue', issueNumber, ':', issue.name?.substring(0, 50));
       try {
-        content.push(...await generateIssueContent(issue, issueNumber, sortOrder));
+        content.push(...await generateIssueContent(issue, issueNumber, sortOrder, summaryOnly));
         issueNumber++;
       } catch (err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
@@ -293,7 +293,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
   return content;
 }
 
-async function generateIssueContent(issue, number, sortOrder = 'desc') {
+async function generateIssueContent(issue, number, sortOrder = 'desc', summaryOnly = false) {
   const content = [];
   const border = { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC" };
   const borders = { top: border, bottom: border, left: border, right: border };
@@ -401,7 +401,8 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
     email:    { label: 'Email',    color: '0891b2' },
     call:     { label: 'Call',     color: '16a34a' },
     letter:   { label: 'Letter',   color: 'ea580c' },
-    document: { label: 'Document', color: 'e11d48' }
+    document: { label: 'Document', color: 'e11d48' },
+    meeting:  { label: 'Meeting',  color: '4338ca' }
   };
 
   const dir = sortOrder === 'asc' ? 1 : -1;
@@ -434,20 +435,23 @@ async function generateIssueContent(issue, number, sortOrder = 'desc') {
         spacing: { before: 120, after: 20, left: 360 }
       }));
 
-      // Body text (historic entries visually dimmed)
-      if (item.historic) {
-        content.push(new Paragraph({
-          children: [
-            new TextRun({ text: '[Historic]  ', bold: true, size: 20, color: 'd97706' }),
-            new TextRun({ text: item.body, size: 22, color: '888888', italics: true })
-          ],
-          spacing: { before: 0, after: 40, left: 360 }
-        }));
-      } else {
-        content.push(new Paragraph({
-          children: [new TextRun({ text: item.body, size: 22 })],
-          spacing: { before: 0, after: 40, left: 360 }
-        }));
+      // Body text — omitted in summaryOnly mode when a summary line exists.
+      const showBody = !summaryOnly || !fieldsLine;
+      if (showBody) {
+        if (item.historic) {
+          content.push(new Paragraph({
+            children: [
+              new TextRun({ text: '[Historic]  ', bold: true, size: 20, color: 'd97706' }),
+              new TextRun({ text: item.body, size: 22, color: '888888', italics: true })
+            ],
+            spacing: { before: 0, after: 40, left: 360 }
+          }));
+        } else {
+          content.push(new Paragraph({
+            children: [new TextRun({ text: item.body, size: 22 })],
+            spacing: { before: 0, after: 40, left: 360 }
+          }));
+        }
       }
 
       // Metadata line

@@ -8,6 +8,7 @@
   export let statusType  = 'current';
   export let sortOrder   = 'desc'; // 'desc' = latest first, 'asc' = oldest first
   export let filterDate  = '';     // YYYY-MM-DD; activities before this date are hidden
+  export let summaryOnly = false;  // show only the summary header; body hidden until expanded
 
   const colors = STATUS_COLORS[statusType];
 
@@ -18,8 +19,6 @@
   $: filterDateTime = filterDate ? new Date(filterDate).getTime() : null;
 
   // All activities as a single chronological log, filtered by date.
-  // The date filter is applied here (not only upstream in filterIssues) so
-  // that it is guaranteed to run at render time.
   $: sortedActivities = (issue.activities || [])
     .filter(a => !filterDateTime || (a.created_at && new Date(a.created_at).getTime() >= filterDateTime))
     .slice()
@@ -35,6 +34,15 @@
 
   // Fallback config for unknown/missing activity types.
   const FALLBACK_CFG = ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT];
+
+  // Per-activity expand state for summaryOnly mode.
+  // Activities with a non-empty summary header are collapsed by default;
+  // clicking expand reveals the full body text.
+  let expanded = {}; // { [activityId]: boolean }
+  function toggleExpand(id) {
+    expanded[id] = !expanded[id];
+    expanded = expanded;
+  }
 </script>
 
 <div class="border border-gray-300 rounded-lg overflow-hidden break-inside-avoid">
@@ -83,19 +91,34 @@
       </h4>
       <div class="section-spacing">
         {#each sortedActivities as activity}
-          {@const cfg = ACTIVITY_TYPE_CONFIG[activity.activity_type] ?? FALLBACK_CFG}
-          {@const summary = buildFieldSummary(activity.activity_type, activity.fields)}
+          {@const cfg        = ACTIVITY_TYPE_CONFIG[activity.activity_type] ?? FALLBACK_CFG}
+          {@const summary    = buildFieldSummary(activity.activity_type, activity.fields)}
+          {@const hasSummary = !!summary}
+          {@const isExpanded = expanded[activity.id] ?? false}
+          <!-- In summaryOnly mode, body is hidden when a summary exists and the item is not expanded -->
+          {@const showBody   = !summaryOnly || !hasSummary || isExpanded}
+
           {#if activity.historic}
             <!-- Historic entry: amber-tinted regardless of type -->
             <div class="p-3 bg-amber-50 rounded border border-amber-200">
-              <div class="flex items-center gap-2 mb-1.5">
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 font-semibold uppercase tracking-wide">Historic</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded {cfg.reportBadgeCls} border font-semibold uppercase tracking-wide">{cfg.icon} {cfg.label}</span>
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 font-semibold uppercase tracking-wide">Historic</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded {cfg.reportBadgeCls} border font-semibold uppercase tracking-wide">{cfg.icon} {cfg.label}</span>
+                </div>
+                {#if summaryOnly && hasSummary}
+                  <button type="button" class="text-[10px] text-amber-600 hover:text-amber-800 underline shrink-0"
+                    on:click={() => toggleExpand(activity.id)}>
+                    {isExpanded ? 'collapse' : 'expand'}
+                  </button>
+                {/if}
               </div>
               {#if summary}
                 <p class="text-xs text-amber-700/70 italic mb-1">{summary}</p>
               {/if}
-              <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{activity.body}</p>
+              {#if showBody}
+                <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{activity.body}</p>
+              {/if}
               <p class="text-xs text-gray-400 mt-1">
                 {fmtDate(activity.created_at)}
                 {#if activity.created_by_profile?.full_name} · {activity.created_by_profile.full_name}{/if}
@@ -104,14 +127,22 @@
             </div>
           {:else}
             <!-- Normal entry: type-specific background -->
-            <div class="p-3 {cfg.reportBg} rounded border {cfg.reportBorder}">
-              <div class="flex items-center gap-2 mb-1.5">
+            <div class="{cfg.reportBg} rounded border {cfg.reportBorder} p-3">
+              <div class="flex items-center justify-between gap-2 mb-1.5">
                 <span class="text-[10px] px-1.5 py-0.5 rounded {cfg.reportBadgeCls} border font-semibold uppercase tracking-wide">{cfg.icon} {cfg.label}</span>
+                {#if summaryOnly && hasSummary}
+                  <button type="button" class="text-[10px] text-gray-400 hover:text-gray-600 underline shrink-0"
+                    on:click={() => toggleExpand(activity.id)}>
+                    {isExpanded ? 'collapse' : 'expand'}
+                  </button>
+                {/if}
               </div>
               {#if summary}
                 <p class="text-xs text-gray-500 italic mb-1">{summary}</p>
               {/if}
-              <p class="text-gray-900 text-sm whitespace-pre-wrap">{activity.body}</p>
+              {#if showBody}
+                <p class="text-gray-900 text-sm whitespace-pre-wrap">{activity.body}</p>
+              {/if}
               <p class="text-xs text-gray-500 mt-1">
                 {fmtDate(activity.created_at)}
                 {#if activity.created_by_profile?.full_name} · {activity.created_by_profile.full_name}{/if}

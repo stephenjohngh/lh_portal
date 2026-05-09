@@ -107,7 +107,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBg:       'bg-amber-50',
     reportBorder:   'border-amber-200',
     reportBadgeCls: 'bg-amber-100 text-amber-700 border-amber-300',
-    fields:      []
+    fields: [
+      { key: 'summary', label: 'Summary', type: 'text', placeholder: 'One-line summary for reports…', span: 2 }
+    ]
   },
   [ACTIVITY_TYPE.DECISION]: {
     label:       'Decision',
@@ -121,7 +123,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBg:       'bg-violet-50',
     reportBorder:   'border-violet-200',
     reportBadgeCls: 'bg-violet-100 text-violet-700 border-violet-300',
-    fields:      []
+    fields: [
+      { key: 'summary', label: 'Summary', type: 'text', placeholder: 'One-line summary for reports…', span: 2 }
+    ]
   },
   [ACTIVITY_TYPE.COMMENT]: {
     label:       'Comment',
@@ -135,7 +139,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBg:       'bg-gray-50',
     reportBorder:   'border-gray-200',
     reportBadgeCls: 'bg-gray-100 text-gray-600 border-gray-300',
-    fields:      []
+    fields: [
+      { key: 'summary', label: 'Summary', type: 'text', placeholder: 'One-line summary for reports…', span: 2 }
+    ]
   },
   [ACTIVITY_TYPE.EMAIL]: {
     label:       'Email',
@@ -206,7 +212,9 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBg:       'bg-rose-50',
     reportBorder:   'border-rose-200',
     reportBadgeCls: 'bg-rose-100 text-rose-700 border-rose-300',
-    fields:      []
+    fields: [
+      { key: 'summary', label: 'Summary', type: 'text', placeholder: 'One-line summary for reports…', span: 2 }
+    ]
   },
   [ACTIVITY_TYPE.MEETING]: {
     label:       'Meeting',
