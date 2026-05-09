@@ -75,48 +75,54 @@ export function parseEmailPaste(text) {
   const dateRaw  = get(/^(?:date|sent):\s+(.+)/im);
 
   // ── 5. Extract body ───────────────────────────────────────────────
-  // Headers form a contiguous block near the start; the body follows
-  // the first blank line after the last header line.
+  // Find the contiguous header block. It may be preceded by body text
+  // (Outlook reply layout), so we keep scanning past leading non-header
+  // lines rather than giving up at the first one.
   const workingLines = workingText.split('\n');
   const HEADER_LINE  = /^(?:from|to|cc|bcc|subject|date|sent|reply-to):\s+.+/i;
 
-  let inHeaders    = false;
-  let headerEndIdx = -1;
+  let headerStart = -1;  // index of first header line found
+  let headerEnd   = -1;  // index of last header line (or trailing blank)
 
-  for (let i = 0; i < Math.min(workingLines.length, 20); i++) {
+  for (let i = 0; i < Math.min(workingLines.length, 40); i++) {
     const trimmed = workingLines[i].trim();
     if (HEADER_LINE.test(trimmed)) {
-      inHeaders    = true;
-      headerEndIdx = i;
-    } else if (inHeaders) {
-      // Blank line after headers = end of header block
-      if (trimmed === '') {
-        headerEndIdx = i;
-        break;
-      }
-      // Non-blank, non-header line while in headers = end (no blank separator)
-      break;
-    } else if (trimmed !== '') {
-      // Non-blank line before any headers → headers are absent or come later
+      if (headerStart === -1) headerStart = i;
+      headerEnd = i;
+    } else if (headerStart !== -1) {
+      // Already inside the header block.
+      // A blank line marks its end; any other line stops the scan.
+      if (trimmed === '') headerEnd = i;
       break;
     }
+    // Non-header, non-blank lines BEFORE the header block: keep scanning.
   }
 
   let body = '';
 
-  if (headerEndIdx >= 0) {
-    body = workingLines.slice(headerEndIdx + 1).join('\n').trim();
+  if (headerEnd >= 0) {
+    // Primary: everything that follows the header block.
+    body = workingLines.slice(headerEnd + 1).join('\n').trim();
 
-    // Outlook sometimes puts the reply body BEFORE the header block.
-    // If the parsed body is empty, use whatever came before the headers instead.
-    if (!body) {
-      body = workingLines.slice(0, Math.max(0, headerEndIdx - 3)).join('\n').trim();
+    // Fallback (Outlook-style reply: body sits ABOVE the header block):
+    // if nothing follows the headers, use whatever preceded them.
+    if (!body && headerStart > 0) {
+      body = workingLines.slice(0, headerStart).join('\n').trim();
     }
   } else {
-    // No header block found — treat entire working text as body and strip
-    // quoted lines (lines starting with ">").
+    // No header block found — treat entire working text as body, stripping
+    // quote-marker lines.
     body = workingLines.filter(l => !l.startsWith('>')).join('\n').trim();
   }
+
+  // Final pass: strip any header-format lines that remain in the body
+  // (catches headers interspersed with text or missed by the block scan).
+  body = body
+    .split('\n')
+    .filter(l => !HEADER_LINE.test(l.trim()))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')   // collapse runs of blank lines left behind
+    .trim();
 
   return {
     from:       extractDisplay(fromRaw),
