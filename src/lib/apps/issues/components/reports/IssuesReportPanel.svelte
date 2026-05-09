@@ -257,6 +257,7 @@
               <ReportIssueCard
                 {issue}
                 {sortOrder}
+                {filterDate}
                 statusType={issue.status === 'completed' ? 'completed' : issue.status === 'parked' ? 'parked' : 'current'}
               />
             {/each}
@@ -270,7 +271,7 @@
               </h2>
               <div class="space-y-4">
                 {#each groupedIssues.current as issue (issue.id)}
-                  <ReportIssueCard {issue} {sortOrder} statusType="current" />
+                  <ReportIssueCard {issue} {sortOrder} {filterDate} statusType="current" />
                 {/each}
               </div>
             {/if}
@@ -281,7 +282,7 @@
               </h2>
               <div class="space-y-4">
                 {#each groupedIssues.parked as issue (issue.id)}
-                  <ReportIssueCard {issue} {sortOrder} statusType="parked" />
+                  <ReportIssueCard {issue} {sortOrder} {filterDate} statusType="parked" />
                 {/each}
               </div>
             {/if}
@@ -292,7 +293,7 @@
               </h2>
               <div class="space-y-4">
                 {#each groupedIssues.completed as issue (issue.id)}
-                  <ReportIssueCard {issue} {sortOrder} statusType="completed" />
+                  <ReportIssueCard {issue} {sortOrder} {filterDate} statusType="completed" />
                 {/each}
               </div>
             {/if}

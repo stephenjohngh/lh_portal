@@ -5,16 +5,23 @@
   import { buildFieldSummary, formatTimestamp, STATUS_COLORS } from './reportUtils';
 
   export let issue;
-  export let statusType = 'current';
-  export let sortOrder  = 'desc'; // 'desc' = latest first, 'asc' = oldest first
+  export let statusType  = 'current';
+  export let sortOrder   = 'desc'; // 'desc' = latest first, 'asc' = oldest first
+  export let filterDate  = '';     // YYYY-MM-DD; activities before this date are hidden
 
   const colors = STATUS_COLORS[statusType];
 
   // Multiplier: 1 = oldest first (asc), -1 = newest first (desc)
   $: dir = sortOrder === 'asc' ? 1 : -1;
 
-  // All activities as a single chronological log
+  // Timestamp for date comparison; null = no filter.
+  $: filterDateTime = filterDate ? new Date(filterDate).getTime() : null;
+
+  // All activities as a single chronological log, filtered by date.
+  // The date filter is applied here (not only upstream in filterIssues) so
+  // that it is guaranteed to run at render time.
   $: sortedActivities = (issue.activities || [])
+    .filter(a => !filterDateTime || (a.created_at && new Date(a.created_at).getTime() >= filterDateTime))
     .slice()
     .sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
 
