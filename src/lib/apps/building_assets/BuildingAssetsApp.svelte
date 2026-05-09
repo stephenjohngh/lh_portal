@@ -53,10 +53,7 @@
   {#if initialized && !store.loading && systems.length === 0}
     <div class="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-300">
       <p class="font-semibold mb-1">⚠ No data found</p>
-      <p>Run the Phase 1 SQL migrations (001–009) in Supabase to populate the type hierarchy.
-         The seed file (009_seed_data.sql) creates 5 systems, 22 types, 19 attribute definitions,
-         and 26 options.</p>
-    </div>
+     </div>
   {/if}
 
   <!-- Tabs -->
