@@ -15,23 +15,45 @@
 
   export let issues = [];
 
+  // ── Filter persistence ────────────────────────────────────────────────────
+  // Filters are saved to localStorage so they survive navigation and refresh.
+  // Meeting filter and issue-number drill-down are NOT persisted (context-specific).
+  const FILTER_KEY = 'lh_issues_report_filters';
+
+  function loadSaved() {
+    try {
+      const raw = localStorage.getItem(FILTER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  const _saved = loadSaved();
+
   // ── Status checkboxes ─────────────────────────────────────────────────────
-  let includeCurrent   = true;
-  let includeParked    = false;
-  let includeCompleted = false;
+  let includeCurrent   = _saved?.includeCurrent   ?? true;
+  let includeParked    = _saved?.includeParked    ?? false;
+  let includeCompleted = _saved?.includeCompleted ?? false;
 
   // ── Date filter ───────────────────────────────────────────────────────────
-  let filterDate      = getDefaultFilterDate();
+  let filterDate = _saved?.filterDate ?? getDefaultFilterDate();
 
   // ── Meeting filter ────────────────────────────────────────────────────────
   let filterMeetingId = '';
 
   // ── Content options ───────────────────────────────────────────────────────
-  let includeHistoric         = false;
-  let includeCompletedActions = false;
+  let includeHistoric         = _saved?.includeHistoric         ?? false;
+  let includeCompletedActions = _saved?.includeCompletedActions ?? false;
 
   // ── Sort order ────────────────────────────────────────────────────────────
-  let sortOrder = 'desc'; // 'desc' = latest first (default), 'asc' = oldest first
+  let sortOrder = _saved?.sortOrder ?? 'desc';
+
+  // Write filters to localStorage whenever any filter value changes.
+  $: try {
+    localStorage.setItem(FILTER_KEY, JSON.stringify({
+      includeCurrent, includeParked, includeCompleted,
+      filterDate, includeHistoric, includeCompletedActions, sortOrder
+    }));
+  } catch { /* private browsing / quota exceeded — ignore */ }
 
   // ── Issue number drill-down ───────────────────────────────────────────────
   let issueNumberInput = '';

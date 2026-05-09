@@ -169,7 +169,10 @@
     // Switch to the status tab the issue lives in, clear any search
     statusFilter = issue.status || ISSUE_STATUS.CURRENT;
     searchTerm   = '';
-    // Wait for the filtered list to re-render before scrolling
+    // Expand the issue so its activity log and actions are visible
+    expandedSections[issueId] = { comments: true, actions: true };
+    expandedSections = expandedSections;
+    // Wait for the filtered list and expanded sections to re-render before scrolling
     await tick();
     await tick();
     const el = document.getElementById(`issue-${issueId}`);
