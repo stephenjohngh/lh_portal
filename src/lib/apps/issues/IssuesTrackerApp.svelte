@@ -6,7 +6,6 @@
   import { getLogger }      from '$lib/utils/logger';
   import { issuesStore }    from './stores/issuesStore';
   import { meetingsStore }  from './stores/meetingsStore';
-  import IssueFilters       from './components/IssueFilters.svelte';
   import IssueCard          from './components/IssueCard.svelte';
   import IssueForm          from './components/IssueForm.svelte';
   import ReportsTab         from './components/reports/ReportsTab.svelte';
@@ -16,7 +15,7 @@
   import Button             from '$lib/components/common/Button.svelte';
   import ErrorDisplay       from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
-  import { ISSUE_STATUS }   from '$lib/utils/constants';
+  import { ISSUE_STATUS, STATUS_FILTERS } from '$lib/utils/constants';
 
   const logger = getLogger('IssuesTrackerApp');
 
@@ -37,6 +36,11 @@
   let editingMeeting      = null;
   let meetingFormSaving   = false;
   let meetingFormError    = '';
+
+  // -- Jump-to-issue state ----------------------------------------------
+  let jumpToIssueId = '';
+  // All issues sorted by number — shown in the jump dropdown regardless of status tab.
+  $: jumpIssues = [...issues].sort((a, b) => (a.issue_number ?? 0) - (b.issue_number ?? 0));
 
   // -- Scroll preservation ----------------------------------------------
   let expandedSections    = {};
@@ -149,21 +153,7 @@
     expandedSections = expandedSections;
   }
 
-  function expandAll() {
-    filteredIssues.forEach(issue => {
-      expandedSections[issue.id] = { comments: true, actions: true };
-    });
-    expandedSections = expandedSections;
-  }
-
-  function collapseAll() {
-    filteredIssues.forEach(issue => {
-      expandedSections[issue.id] = { comments: false, actions: false };
-    });
-    expandedSections = expandedSections;
-  }
-
-  async function handleJumpToIssue({ detail: { issueId } }) {
+  async function handleJumpToIssue(issueId) {
     const issue = issues.find(i => i.id === issueId);
     if (!issue) return;
     // Switch to the status tab the issue lives in, clear any search
@@ -185,60 +175,96 @@
       { once: true, capture: true }
     );
   }
+
+  async function handleJumpSelect() {
+    if (!jumpToIssueId) return;
+    await handleJumpToIssue(jumpToIssueId);
+  }
 </script>
 
 <div class="app-container" bind:this={containerElement}>
 
-  <!-- ─── Tab bar ─────────────────────────────────────────────────────── -->
-  <div class="flex border-b border-slate-700 mb-5">
-    <button
-      class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors
-             {activeTab === 'issues'
-               ? 'text-white border-purple-500'
-               : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-      on:click={() => activeTab = 'issues'}
-    >
-      Issues
-    </button>
-    <button
-      class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5
-             {activeTab === 'meetings'
-               ? 'text-white border-purple-500'
-               : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-      on:click={() => { meetingTabTargetId = null; activeTab = 'meetings'; }}
-    >
-      Team Meetings
-      {#if $meetingsStore.current}
-        <span class="text-[10px] px-1.5 py-0.5 rounded-full
-                     bg-amber-500/20 text-amber-300 border border-amber-500/40 leading-none">
-          open
+  <!-- ─── Sticky header: tab bar + compact issues toolbar ──────────────── -->
+  <!-- -mx-8 px-8 bleeds edge-to-edge across the app-container's p-8 padding -->
+  <div class="sticky top-16 z-20 bg-slate-800 -mx-8 px-8 border-b border-slate-700/60 mb-4">
+
+    <!-- Tab row -->
+    <div class="flex">
+      <button
+        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
+               {activeTab === 'issues'
+                 ? 'text-white border-purple-500'
+                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
+        on:click={() => activeTab = 'issues'}
+      >Issues</button>
+      <button
+        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5
+               {activeTab === 'meetings'
+                 ? 'text-white border-purple-500'
+                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
+        on:click={() => { meetingTabTargetId = null; activeTab = 'meetings'; }}
+      >
+        Team Meetings
+        {#if $meetingsStore.current}
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 leading-none">open</span>
+        {/if}
+      </button>
+      <button
+        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
+               {activeTab === 'reports'
+                 ? 'text-white border-purple-500'
+                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
+        on:click={() => activeTab = 'reports'}
+      >Reports</button>
+    </div>
+
+    <!-- Compact single-line toolbar (issues tab only) -->
+    {#if activeTab === 'issues'}
+      <div class="flex items-center gap-2 py-2">
+        <!-- Issue count -->
+        <span class="text-xs text-slate-400 shrink-0 whitespace-nowrap">
+          {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
         </span>
-      {/if}
-    </button>
-    <button
-      class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors
-             {activeTab === 'reports'
-               ? 'text-white border-purple-500'
-               : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-      on:click={() => activeTab = 'reports'}
-    >
-      Reports
-    </button>
+        <!-- Status filter -->
+        <select
+          bind:value={statusFilter}
+          class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
+                 focus:outline-none focus:ring-1 focus:ring-purple-500 shrink-0"
+        >
+          {#each STATUS_FILTERS as f}
+            <option value={f.value}>{f.label}</option>
+          {/each}
+        </select>
+        <!-- Jump to issue — retains chosen item -->
+        <select
+          bind:value={jumpToIssueId}
+          on:change={handleJumpSelect}
+          class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
+                 focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1 min-w-0"
+        >
+          <option value="">Jump to issue…</option>
+          {#each jumpIssues as issue (issue.id)}
+            <option value={issue.id}>{#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}</option>
+          {/each}
+        </select>
+        <!-- Search -->
+        <input
+          type="text"
+          bind:value={searchTerm}
+          placeholder="Search…"
+          class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
+                 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500
+                 flex-1 min-w-0"
+        />
+        <!-- New Issue -->
+        <Button variant="primary" size="small" icon="plus"
+          on:click={() => showNewIssueModal = true}>New Issue</Button>
+      </div>
+    {/if}
   </div>
 
   <!-- ─── ISSUES TAB ──────────────────────────────────────────────────── -->
   {#if activeTab === 'issues'}
-
-    <!-- Toolbar -->
-    <div class="flex items-center justify-between gap-3 mb-4">
-      <p class="text-sm text-slate-400">
-        {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
-      </p>
-      <Button variant="primary" size="small" icon="plus"
-        on:click={() => showNewIssueModal = true}>
-        New Issue
-      </Button>
-    </div>
 
     <!-- Active-meeting banner -->
     <MeetingBanner
@@ -247,22 +273,6 @@
     />
 
     <ErrorDisplay message={error} onDismiss={() => issuesStore.clearError()} />
-
-    <!-- Filters -->
-    <div class="mb-4">
-      <IssueFilters
-        bind:searchTerm
-        bind:statusFilter
-        {issues}
-        resultCount={filteredIssues.length}
-        showExpandToggle={filteredIssues.length > 0}
-        allExpanded={filteredIssues.every(issue =>
-          expandedSections[issue.id]?.comments && expandedSections[issue.id]?.actions
-        )}
-        on:toggleExpand={(e) => e.detail ? expandAll() : collapseAll()}
-        on:jumptoissue={handleJumpToIssue}
-      />
-    </div>
 
     {#if loading}
       <LoadingSpinner />
