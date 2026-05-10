@@ -417,7 +417,7 @@
         icon="plus"
         on:click={() => { showAddForm = true; }}
       >
-        Log Activity
+        New Activity
       </ProtectedButton>
     </div>
   </div>
