@@ -68,18 +68,20 @@
   // Suggestion panel: for comment / note / meeting activities
   $: hasLinked       = !!linkedAction;
   $: linkedCompleted = linkedAction?.status === ACTION_STATUS.COMPLETED;
-  // Combined expand state: either the body is expanded OR the panel is open.
-  $: isExpanded      = bodyExpanded || panelOpen;
-  // Show the chevron toggle if there's a collapsible summary OR a linkable panel.
-  $: showExpandToggle = hasSummary || (canLink && !linkedCompleted);
+  // Combined expand state: body expanded or the linked-action panel is open.
+  $: isExpanded       = bodyExpanded || panelOpen;
+  // Chevron shows when there is a collapsible summary OR an existing linked action.
+  // Never shows just because the activity *could* have a linked action — that
+  // avoids accidentally triggering AI generation on expand.
+  $: showExpandToggle = hasSummary || hasLinked;
 
   function handleExpandToggle() {
     const target = !isExpanded;
-    // Toggle body visibility when a summary exists.
+    // Toggle body text visibility.
     if (hasSummary) bodyExpanded = target;
-    // Toggle the suggestion / linked-action panel when applicable,
-    // but only if its current state differs from the target.
-    if (canLink && !linkedCompleted && panelOpen !== target) {
+    // Sync the linked-action panel only when one already exists.
+    // Never trigger AI generation from the expand button.
+    if (hasLinked && panelOpen !== target) {
       dispatch('togglePanel', activity);
     }
   }
@@ -129,14 +131,6 @@
       ? '✓ Thread detected — showing latest message only'
       : '✓ Email fields extracted from paste';
     parseNoticeTimer = setTimeout(() => { parseNotice = ''; }, 5000);
-  }
-
-  // -- Date formatting for structured fields ---------------------------
-  // field dates are stored as 'YYYY-MM-DD'; add a noon time to avoid
-  // timezone-shift issues when passing to fmtDate.
-  function fmtFieldDate(dateStr) {
-    if (!dateStr) return '';
-    return fmtDate(dateStr + 'T12:00:00');
   }
 
   // -- AI summary generation (edit form) --------------------------------
@@ -328,7 +322,7 @@
   </div>
 
 {:else}
-  {@const f = activity.fields || {}}
+  {@const fieldSummary = buildFieldSummary(activity.activity_type, activity.fields)}
   <!-- ─── Display mode ───────────────────────────────────────── -->
   <div
     id={`activity-${activity.id}`}
@@ -350,66 +344,10 @@
               {typeConfig.icon} {typeConfig.badgeText}
             </span>
           {/if}
-          {#if f.summary && (activity.activity_type === ACTIVITY_TYPE.COMMENT  ||
-                             activity.activity_type === ACTIVITY_TYPE.NOTE     ||
-                             activity.activity_type === ACTIVITY_TYPE.DECISION ||
-                             activity.activity_type === ACTIVITY_TYPE.DOCUMENT)}
-            <span class="text-slate-200 text-[11px]">{f.summary}</span>
+          {#if fieldSummary}
+            <span class="text-slate-200 text-[11px]">{fieldSummary}</span>
           {/if}
         </div>
-
-        <!-- Structured metadata line (email / call / letter / meeting only) -->
-        {#if activity.activity_type === ACTIVITY_TYPE.EMAIL  ||
-             activity.activity_type === ACTIVITY_TYPE.CALL   ||
-             activity.activity_type === ACTIVITY_TYPE.LETTER ||
-             activity.activity_type === ACTIVITY_TYPE.MEETING}
-          <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1 text-[11px] text-slate-400 leading-snug">
-            {#if activity.activity_type === ACTIVITY_TYPE.EMAIL}
-              {#if f.notes}
-                <span class="text-slate-200 font-medium truncate max-w-[24rem]">{f.notes}</span>
-              {/if}
-              {#if f.from || f.to}
-                <span class="truncate">{f.from || '?'} → {f.to || '?'}</span>
-              {/if}
-              {#if f.subject}
-                <span class="text-slate-300 truncate max-w-[18rem]">Re: {f.subject}</span>
-              {/if}
-              {#if f.email_date}
-                <span class="shrink-0">{fmtFieldDate(f.email_date)}</span>
-              {/if}
-            {:else if activity.activity_type === ACTIVITY_TYPE.CALL}
-              {#if f.direction}
-                <span class="capitalize">{f.direction}</span>
-              {/if}
-              {#if f.caller}
-                <span>· {f.caller}</span>
-              {/if}
-              {#if f.duration}
-                <span>· {f.duration}</span>
-              {/if}
-            {:else if activity.activity_type === ACTIVITY_TYPE.LETTER}
-              {#if f.from || f.to}
-                <span class="truncate">{f.from || '?'} → {f.to || '?'}</span>
-              {/if}
-              {#if f.reference}
-                <span class="text-slate-300">Ref: {f.reference}</span>
-              {/if}
-              {#if f.letter_date}
-                <span class="shrink-0">{fmtFieldDate(f.letter_date)}</span>
-              {/if}
-            {:else if activity.activity_type === ACTIVITY_TYPE.MEETING}
-              {#if f.title}
-                <span class="text-slate-200 font-medium truncate max-w-[24rem]">{f.title}</span>
-              {/if}
-              {#if f.meeting_date}
-                <span class="shrink-0">{fmtFieldDate(f.meeting_date)}</span>
-              {/if}
-              {#if f.participants}
-                <span class="text-slate-300 truncate max-w-[18rem]">👥 {f.participants}</span>
-              {/if}
-            {/if}
-          </div>
-        {/if}
 
         {#if !hasSummary || bodyExpanded}
           <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
