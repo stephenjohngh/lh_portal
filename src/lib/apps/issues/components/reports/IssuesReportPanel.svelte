@@ -3,7 +3,6 @@
   import Checkbox        from '$lib/components/common/Checkbox.svelte';
   import Button          from '$lib/components/common/Button.svelte';
   import ReportIssueCard from './ReportIssueCard.svelte';
-  import { meetingsStore } from '../../stores/meetingsStore';
   import {
     filterIssues, groupIssuesByStatus, getDefaultFilterDate, getTodayDate
   } from './reportUtils';
@@ -37,9 +36,6 @@
   // ── Date filter ───────────────────────────────────────────────────────────
   let filterDate = _saved?.filterDate ?? getDefaultFilterDate();
 
-  // ── Meeting filter ────────────────────────────────────────────────────────
-  let filterMeetingId = '';
-
   // ── Content options ───────────────────────────────────────────────────────
   let includeHistoric         = _saved?.includeHistoric         ?? false;
   let includeCompletedActions = _saved?.includeCompletedActions ?? false;
@@ -67,19 +63,7 @@
   let downloadError = '';
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  // When issue numbers are specified we bypass the meeting filter too —
-  // the user just wants to find those specific issues.
-  $: sourceIssues = issueNumbers.length > 0
-    ? issues
-    : (filterMeetingId
-        ? issues.filter(issue =>
-            issue.meeting_id === filterMeetingId ||
-            (issue.activities || []).some(a => a.meeting_id === filterMeetingId) ||
-            (issue.actions   || []).some(a => a.meeting_id === filterMeetingId)
-          )
-        : issues);
-
-  $: filteredIssues = filterIssues(sourceIssues, filterDate, {
+  $: filteredIssues = filterIssues(issues, filterDate, {
     includeHistoric,
     includeCompletedActions,
     issueNumbers
@@ -178,20 +162,6 @@
       {/if}
     </div>
 
-    <!-- Meeting filter -->
-    <div>
-      <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Meeting</p>
-      <select
-        bind:value={filterMeetingId}
-        class="w-full px-2.5 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-sm"
-      >
-        <option value="">All meetings</option>
-        {#each $meetingsStore.list as m (m.id)}
-          <option value={m.id}>{m.title} ({fmtDate(m.meeting_date)})</option>
-        {/each}
-      </select>
-    </div>
-
     <!-- Issue number drill-down -->
     <div>
       <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Issue numbers</p>
@@ -211,12 +181,12 @@
     <!-- Sort order -->
     <div>
       <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">Sort items</p>
-      <div class="flex flex-col gap-1.5">
-        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+      <div class="flex items-center gap-4">
+        <label class="flex items-center gap-1.5 cursor-pointer text-sm text-slate-300">
           <input type="radio" bind:group={sortOrder} value="desc" class="accent-purple-400" />
           Latest first
         </label>
-        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+        <label class="flex items-center gap-1.5 cursor-pointer text-sm text-slate-300">
           <input type="radio" bind:group={sortOrder} value="asc" class="accent-purple-400" />
           Oldest first
         </label>
@@ -267,7 +237,6 @@
                 includeCompleted && 'Completed'
               ].filter(Boolean).join(', ')}
               {#if filterDate} · created since {fmtDate(new Date(filterDate).toISOString())}{/if}
-              {#if filterMeetingId} · meeting filter active{/if}
             {/if}
             {#if includeHistoric} · incl. historic{/if}
             {#if includeCompletedActions} · incl. completed actions{/if}
