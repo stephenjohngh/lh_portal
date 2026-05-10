@@ -173,7 +173,12 @@
     await tick();
     const el = document.getElementById(`issue-${issueId}`);
     if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll so the issue title sits just below the sticky header.
+    // Offset = fixed nav (64px) + sticky tab+toolbar bar (≈76px) + 8px breathing room.
+    const stickyBar = containerElement?.querySelector('.sticky');
+    const stickyH   = stickyBar ? stickyBar.getBoundingClientRect().height : 76;
+    const top = window.scrollY + el.getBoundingClientRect().top - 64 - stickyH - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     el.classList.add('ring-2', 'ring-purple-400', 'lh-jump-highlight');
     document.addEventListener(
       'click',
