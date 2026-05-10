@@ -56,12 +56,18 @@
     ? (ACTIVITY_TYPE_CONFIG[editingActivity.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT])
     : typeConfig;
 
-  $: isComment  = activity.activity_type === ACTIVITY_TYPE.COMMENT || !activity.activity_type;
+  // Types that support linked actions / the AI suggestion panel.
+  $: canLink = activity.activity_type === ACTIVITY_TYPE.COMMENT  ||
+               activity.activity_type === ACTIVITY_TYPE.NOTE     ||
+               activity.activity_type === ACTIVITY_TYPE.MEETING  ||
+               !activity.activity_type;   // legacy null-type → treat as comment
 
-  // Suggestion panel: only for comment-type activities
+  $: isComment = canLink; // keep alias so nothing else needs changing
+
+  // Suggestion panel: for comment / note / meeting activities
   $: hasLinked       = !!linkedAction;
   $: linkedCompleted = linkedAction?.status === ACTION_STATUS.COMPLETED;
-  $: showPanelToggle = isComment && !linkedCompleted;
+  $: showPanelToggle = canLink && !linkedCompleted;
 
   $: actionIcon  = panelOpen
                      ? 'chevron-up'
