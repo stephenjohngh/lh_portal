@@ -5,7 +5,7 @@ import { fmtDate, fmtDateLong } from '$lib/utils/dates';
 
 /**
  * Build a compact one-line summary string for structured activity types
- * (email, call, letter). Returns '' for types without structured fields.
+ * (email, letter, meeting). Returns '' for types without structured fields.
  * Used by the report preview card and the Word doc generator.
  *
  * Field dates are stored as YYYY-MM-DD; noon time is appended to avoid
@@ -32,9 +32,7 @@ export function buildFieldSummary(activityType, fields) {
     if (f.email_date)    parts.push(fmtDate(f.email_date + 'T12:00:00'));
     return parts.join(' · ');
   }
-  if (activityType === ACTIVITY_TYPE.CALL) {
-    return [f.direction, f.caller, f.duration].filter(Boolean).join(' · ');
-  }
+
   if (activityType === ACTIVITY_TYPE.LETTER) {
     const parts = [];
     if (f.from || f.to) parts.push(`${f.from || '?'} → ${f.to || '?'}`);

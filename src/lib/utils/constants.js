@@ -77,7 +77,7 @@ export const ACTIVITY_TYPE = {
   DECISION: 'decision',
   NOTE:     'note',
   EMAIL:    'email',
-  CALL:     'call',
+
   LETTER:   'letter',
   DOCUMENT: 'document',
   MEETING:  'meeting'   // issue-specific meeting log (distinct from team meetings)
@@ -163,24 +163,7 @@ export const ACTIVITY_TYPE_CONFIG = {
       { key: 'email_date', label: 'Date',        type: 'date', placeholder: '',                              span: 1 }
     ]
   },
-  [ACTIVITY_TYPE.CALL]: {
-    label:       'Call',
-    icon:        '📞',
-    borderColor: 'border-green-400',
-    badgeClass:  'bg-green-900/40 text-green-300 border border-green-700/50',
-    badgeText:   'Call',
-    ringClass:   'focus:ring-green-500',
-    borderEdit:  'border-green-500/50',
-    placeholder: 'Notes from the call…',
-    reportBg:       'bg-green-50',
-    reportBorder:   'border-green-200',
-    reportBadgeCls: 'bg-green-100 text-green-700 border-green-300',
-    fields: [
-      { key: 'caller',    label: 'Caller',    type: 'text',   placeholder: 'Caller name or number', span: 1 },
-      { key: 'direction', label: 'Direction', type: 'select', options: ['inbound', 'outbound'],      span: 1 },
-      { key: 'duration',  label: 'Duration',  type: 'text',   placeholder: 'e.g. 15 min',           span: 1 }
-    ]
-  },
+
   [ACTIVITY_TYPE.LETTER]: {
     label:       'Letter',
     icon:        '📄',
