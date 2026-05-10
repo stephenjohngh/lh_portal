@@ -49,12 +49,12 @@ export const ACTION_STATUS_OPTIONS = [
 // comes from PRIORITIES; getPriorityLabel(n) is the safe accessor
 // (defaults to "Important" when an unknown value is passed).
 export const PRIORITIES = [
-  { value: 1, label: 'Top Priority',  color: 'bg-slate-600' },
-  { value: 2, label: 'Major Project', color: 'bg-slate-600' },
-  { value: 3, label: 'Important',     color: 'bg-slate-600' },
-  { value: 4, label: 'Minor',         color: 'bg-slate-600' },
-  { value: 5, label: 'Admin',         color: 'bg-slate-600' },
-  { value: 6, label: 'Pending',       color: 'bg-slate-600' }
+  { value: 1, label: 'Top Priority',  color: 'bg-slate-600 text-white' },
+  { value: 2, label: 'Major Project', color: 'bg-slate-600 text-white' },
+  { value: 3, label: 'Important',     color: 'bg-slate-600 text-white' },
+  { value: 4, label: 'Minor',         color: 'bg-slate-600 text-white' },
+  { value: 5, label: 'Admin',         color: 'bg-slate-600 text-white' },
+  { value: 6, label: 'Pending',       color: 'bg-slate-600 text-white' }
 ];
 
 /**
