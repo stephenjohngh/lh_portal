@@ -102,9 +102,12 @@
             <!-- Historic entry: amber-tinted regardless of type -->
             <div class="p-3 bg-amber-50 rounded border border-amber-200">
               <div class="flex items-center justify-between gap-2 mb-1.5">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 font-semibold uppercase tracking-wide">Historic</span>
                   <span class="text-[10px] px-1.5 py-0.5 rounded {cfg.reportBadgeCls} border font-semibold uppercase tracking-wide">{cfg.icon} {cfg.label}</span>
+                  {#if summary}
+                    <span class="text-amber-700 text-[11px]">{summary}</span>
+                  {/if}
                 </div>
                 {#if summaryOnly && hasSummary}
                   <button type="button" class="text-[10px] text-amber-600 hover:text-amber-800 underline shrink-0"
@@ -113,9 +116,6 @@
                   </button>
                 {/if}
               </div>
-              {#if summary}
-                <p class="text-xs text-amber-700/70 italic mb-1">{summary}</p>
-              {/if}
               {#if showBody}
                 <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{activity.body}</p>
               {/if}
@@ -129,7 +129,12 @@
             <!-- Normal entry: type-specific background -->
             <div class="{cfg.reportBg} rounded border {cfg.reportBorder} p-3">
               <div class="flex items-center justify-between gap-2 mb-1.5">
-                <span class="text-[10px] px-1.5 py-0.5 rounded {cfg.reportBadgeCls} border font-semibold uppercase tracking-wide">{cfg.icon} {cfg.label}</span>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded {cfg.reportBadgeCls} border font-semibold uppercase tracking-wide">{cfg.icon} {cfg.label}</span>
+                  {#if summary}
+                    <span class="text-gray-700 text-[11px]">{summary}</span>
+                  {/if}
+                </div>
                 {#if summaryOnly && hasSummary}
                   <button type="button" class="text-[10px] text-gray-400 hover:text-gray-600 underline shrink-0"
                     on:click={() => toggleExpand(activity.id)}>
@@ -137,9 +142,6 @@
                   </button>
                 {/if}
               </div>
-              {#if summary}
-                <p class="text-xs text-gray-500 italic mb-1">{summary}</p>
-              {/if}
               {#if showBody}
                 <p class="text-gray-900 text-sm whitespace-pre-wrap">{activity.body}</p>
               {/if}
