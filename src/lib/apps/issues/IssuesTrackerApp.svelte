@@ -39,8 +39,14 @@
 
   // -- Jump-to-issue state ----------------------------------------------
   let jumpToIssueId = '';
-  // All issues sorted by number — shown in the jump dropdown regardless of status tab.
-  $: jumpIssues = [...issues].sort((a, b) => (a.issue_number ?? 0) - (b.issue_number ?? 0));
+  // Issues matching the current status tab, sorted by number, for the jump dropdown.
+  $: jumpIssues = [...issues]
+    .filter(issue => {
+      if (statusFilter === ISSUE_STATUS.CURRENT)
+        return issue.status === ISSUE_STATUS.CURRENT || !issue.status;
+      return issue.status === statusFilter;
+    })
+    .sort((a, b) => (a.issue_number ?? 0) - (b.issue_number ?? 0));
 
   // -- Scroll preservation ----------------------------------------------
   let expandedSections    = {};
