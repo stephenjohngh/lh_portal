@@ -253,7 +253,7 @@
       on:paste={handleBodyPaste}
       placeholder={editTypeConfig.placeholder}
       class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {editTypeConfig.ringClass} resize-y"
-      rows={editTypeConfig.fields.length > 0 ? 3 : 5}
+      rows={6}
     ></textarea>
 
     {#if parseNotice}
