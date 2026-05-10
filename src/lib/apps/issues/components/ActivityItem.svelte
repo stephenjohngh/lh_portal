@@ -391,20 +391,22 @@
               {/if}
             {:else if f.summary}
               <!-- comment / note / decision / document with a summary field set -->
-              <span class="text-slate-200 truncate max-w-[32rem]">{f.summary}</span>
+              <span class="text-slate-400 shrink-0">Summary:</span>
+              <span class="text-slate-200">{f.summary}</span>
+            {/if}
+            <!-- Inline "Show Full Text" toggle — appears for any type that has a summary -->
+            {#if hasSummary}
+              <button
+                type="button"
+                class="text-[10px] text-slate-400 hover:text-slate-200 underline shrink-0 ml-auto"
+                on:click|stopPropagation={() => bodyExpanded = !bodyExpanded}
+              >{bodyExpanded ? 'Hide' : 'Show Full Text'}</button>
             {/if}
           </div>
         {/if}
 
         {#if !hasSummary || bodyExpanded}
           <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
-        {/if}
-        {#if hasSummary}
-          <button
-            type="button"
-            class="text-[10px] text-slate-400 hover:text-slate-200 underline mt-0.5"
-            on:click|stopPropagation={() => bodyExpanded = !bodyExpanded}
-          >{bodyExpanded ? 'collapse' : 'expand'}</button>
         {/if}
         {#if activity.activity_type === ACTIVITY_TYPE.DOCUMENT}
           <p class="text-[11px] text-rose-300/60 mt-1 italic">
