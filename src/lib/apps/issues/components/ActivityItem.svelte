@@ -25,6 +25,7 @@
   import { parseEmailPaste }   from '$lib/utils/emailParser';
   import { buildFieldSummary } from './reports/reportUtils';
   import { permissions }    from '$lib/stores/permissions';
+  import { auth }           from '$lib/stores/auth';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
@@ -131,6 +132,37 @@
     return fmtDate(dateStr + 'T12:00:00');
   }
 
+  // -- AI summary generation (edit form) --------------------------------
+  let summaryGenerating = false;
+  let summaryError      = '';
+
+  async function generateSummary() {
+    if (!editingActivity?.body?.trim()) return;
+    summaryGenerating = true;
+    summaryError      = '';
+    try {
+      const res = await fetch('/api/issues/suggest-summary', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesting_user_id: $auth.user?.id,
+          body:               editingActivity.body,
+          activity_type:      editingActivity.activity_type
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        summaryError = data.error || 'Could not generate summary';
+      } else {
+        setEditField('summary', data.summary || '');
+      }
+    } catch {
+      summaryError = 'Could not generate summary';
+    } finally {
+      summaryGenerating = false;
+    }
+  }
+
   // -- Summary / body expand state -------------------------------------
   // When an activity has a summary (structured fields OR a free-text
   // summary field), the body is collapsed by default.  Clicking "expand"
@@ -179,6 +211,28 @@
               >
                 {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
               </select>
+            {:else if field.key === 'summary' && (editingActivity?.activity_type === ACTIVITY_TYPE.NOTE || editingActivity?.activity_type === ACTIVITY_TYPE.COMMENT)}
+              <!-- Summary field with AI-generate button -->
+              <div class="flex gap-1">
+                <input
+                  id="edit-field-{activity.id}-{field.key}"
+                  type="text"
+                  value={editingActivity.fields?.[field.key] || ''}
+                  placeholder={field.placeholder || ''}
+                  on:input={(e) => setEditField(field.key, e.currentTarget.value)}
+                  class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+                />
+                <button
+                  type="button"
+                  on:click={generateSummary}
+                  disabled={summaryGenerating || !editingActivity?.body?.trim()}
+                  title="Generate one-line summary with AI"
+                  class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
+                >{summaryGenerating ? '…' : '✨'}</button>
+              </div>
+              {#if summaryError}
+                <p class="text-[10px] text-red-400 mt-0.5">{summaryError}</p>
+              {/if}
             {:else}
               <input
                 id="edit-field-{activity.id}-{field.key}"

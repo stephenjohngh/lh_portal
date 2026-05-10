@@ -70,6 +70,37 @@
   let mutationError = '';
   let saving = false;
 
+  // -- AI summary generation (note / comment add form) ----------------
+  let newSummaryGenerating = false;
+  let newSummaryError      = '';
+
+  async function generateNewSummary() {
+    if (!newActivity.body.trim()) return;
+    newSummaryGenerating = true;
+    newSummaryError      = '';
+    try {
+      const res = await fetch('/api/issues/suggest-summary', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesting_user_id: $auth.user?.id,
+          body:               newActivity.body,
+          activity_type:      newActivity.activity_type
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        newSummaryError = data.error || 'Could not generate summary';
+      } else {
+        setNewField('summary', data.summary || '');
+      }
+    } catch {
+      newSummaryError = 'Could not generate summary';
+    } finally {
+      newSummaryGenerating = false;
+    }
+  }
+
   $: newTypeConfig = ACTIVITY_TYPE_CONFIG[newActivity.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT];
 
   // -- Suggestion panel state -----------------------------------------
@@ -464,6 +495,28 @@
                 >
                   {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
                 </select>
+              {:else if field.key === 'summary' && (newActivity.activity_type === ACTIVITY_TYPE.NOTE || newActivity.activity_type === ACTIVITY_TYPE.COMMENT)}
+                <!-- Summary field with AI-generate button -->
+                <div class="flex gap-1">
+                  <input
+                    id="new-field-{field.key}"
+                    type="text"
+                    value={newActivity.fields[field.key] || ''}
+                    placeholder={field.placeholder || ''}
+                    on:input={(e) => setNewField(field.key, e.currentTarget.value)}
+                    class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {newTypeConfig.ringClass}"
+                  />
+                  <button
+                    type="button"
+                    on:click={generateNewSummary}
+                    disabled={newSummaryGenerating || !newActivity.body.trim()}
+                    title="Generate one-line summary with AI"
+                    class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
+                  >{newSummaryGenerating ? '…' : '✨'}</button>
+                </div>
+                {#if newSummaryError}
+                  <p class="text-[10px] text-red-400 mt-0.5">{newSummaryError}</p>
+                {/if}
               {:else}
                 <input
                   id="new-field-{field.key}"
