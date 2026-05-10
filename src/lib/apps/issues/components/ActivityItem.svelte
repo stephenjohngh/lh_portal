@@ -22,7 +22,8 @@
   import { createEventDispatcher } from 'svelte';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
-  import { parseEmailPaste } from '$lib/utils/emailParser';
+  import { parseEmailPaste }   from '$lib/utils/emailParser';
+  import { buildFieldSummary } from './reports/reportUtils';
   import { permissions }    from '$lib/stores/permissions';
   import Button             from '$lib/components/common/Button.svelte';
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
@@ -123,6 +124,15 @@
     if (!dateStr) return '';
     return fmtDate(dateStr + 'T12:00:00');
   }
+
+  // -- Summary / body expand state -------------------------------------
+  // When an activity has a summary (structured fields OR a free-text
+  // summary field), the body is collapsed by default.  Clicking "expand"
+  // reveals it; clicking "collapse" hides it again.
+  let bodyExpanded = false;
+  $: hasSummary = !!buildFieldSummary(activity.activity_type, activity.fields);
+  // Reset whenever the activity being displayed changes.
+  $: activity.id, bodyExpanded = false;
 </script>
 
 {#if editingActivity?.id === activity.id}
@@ -261,7 +271,7 @@
       <!-- Body area: structured fields header + body text -->
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div
-        class="flex-1 min-w-0 overflow-y-auto max-h-[7.5rem] rounded cursor-pointer hover:bg-slate-600/20 transition-colors px-1"
+        class="flex-1 min-w-0 rounded cursor-pointer hover:bg-slate-600/20 transition-colors px-1"
         title="Click to view full {typeConfig.label.toLowerCase()}"
         on:click={() => dispatch('viewFull', activity)}
       >
@@ -319,11 +329,23 @@
               {#if f.participants}
                 <span class="text-slate-300 truncate max-w-[18rem]">👥 {f.participants}</span>
               {/if}
+            {:else if f.summary}
+              <!-- comment / note / decision / document with a summary field set -->
+              <span class="text-slate-200 truncate max-w-[32rem]">{f.summary}</span>
             {/if}
           </div>
         {/if}
 
-        <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
+        {#if !hasSummary || bodyExpanded}
+          <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
+        {/if}
+        {#if hasSummary}
+          <button
+            type="button"
+            class="text-[10px] text-slate-400 hover:text-slate-200 underline mt-0.5"
+            on:click|stopPropagation={() => bodyExpanded = !bodyExpanded}
+          >{bodyExpanded ? 'collapse' : 'expand'}</button>
+        {/if}
         {#if activity.activity_type === ACTIVITY_TYPE.DOCUMENT}
           <p class="text-[11px] text-rose-300/60 mt-1 italic">
             📎 File attachment — coming in the next version
