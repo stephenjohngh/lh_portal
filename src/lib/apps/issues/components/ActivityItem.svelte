@@ -68,14 +68,21 @@
   // Suggestion panel: for comment / note / meeting activities
   $: hasLinked       = !!linkedAction;
   $: linkedCompleted = linkedAction?.status === ACTION_STATUS.COMPLETED;
-  $: showPanelToggle = canLink && !linkedCompleted;
+  // Combined expand state: either the body is expanded OR the panel is open.
+  $: isExpanded      = bodyExpanded || panelOpen;
+  // Show the chevron toggle if there's a collapsible summary OR a linkable panel.
+  $: showExpandToggle = hasSummary || (canLink && !linkedCompleted);
 
-  $: actionIcon  = panelOpen
-                     ? 'chevron-up'
-                     : (hasLinked ? 'chevron-down' : 'clipboard');
-  $: actionTitle = panelOpen
-                     ? (hasLinked ? 'Hide linked action' : 'Hide suggestion')
-                     : (hasLinked ? 'Show linked action' : 'Create Linked Action');
+  function handleExpandToggle() {
+    const target = !isExpanded;
+    // Toggle body visibility when a summary exists.
+    if (hasSummary) bodyExpanded = target;
+    // Toggle the suggestion / linked-action panel when applicable,
+    // but only if its current state differs from the target.
+    if (canLink && !linkedCompleted && panelOpen !== target) {
+      dispatch('togglePanel', activity);
+    }
+  }
 
   // -- Edit field helpers ----------------------------------------------
   // Reassign editingActivity (not just mutate) so Svelte propagates up.
@@ -321,6 +328,7 @@
   </div>
 
 {:else}
+  {@const f = activity.fields || {}}
   <!-- ─── Display mode ───────────────────────────────────────── -->
   <div
     id={`activity-${activity.id}`}
@@ -335,16 +343,26 @@
         title="Click to view full {typeConfig.label.toLowerCase()}"
         on:click={() => dispatch('viewFull', activity)}
       >
-        <!-- Type badge -->
-        {#if typeConfig.badgeText}
-          <span class="inline-block mb-1 text-[10px] px-1.5 py-0.5 rounded {typeConfig.badgeClass} font-semibold uppercase tracking-wide">
-            {typeConfig.icon} {typeConfig.badgeText}
-          </span>
-        {/if}
+        <!-- Badge row: type badge + summary text side-by-side -->
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+          {#if typeConfig.badgeText}
+            <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded {typeConfig.badgeClass} font-semibold uppercase tracking-wide">
+              {typeConfig.icon} {typeConfig.badgeText}
+            </span>
+          {/if}
+          {#if f.summary && (activity.activity_type === ACTIVITY_TYPE.COMMENT  ||
+                             activity.activity_type === ACTIVITY_TYPE.NOTE     ||
+                             activity.activity_type === ACTIVITY_TYPE.DECISION ||
+                             activity.activity_type === ACTIVITY_TYPE.DOCUMENT)}
+            <span class="text-slate-200 text-[11px]">{f.summary}</span>
+          {/if}
+        </div>
 
-        <!-- Structured-field summary line (email / call / letter) -->
-        {#if typeConfig.fields.length > 0}
-          {@const f = activity.fields || {}}
+        <!-- Structured metadata line (email / call / letter / meeting only) -->
+        {#if activity.activity_type === ACTIVITY_TYPE.EMAIL  ||
+             activity.activity_type === ACTIVITY_TYPE.CALL   ||
+             activity.activity_type === ACTIVITY_TYPE.LETTER ||
+             activity.activity_type === ACTIVITY_TYPE.MEETING}
           <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1 text-[11px] text-slate-400 leading-snug">
             {#if activity.activity_type === ACTIVITY_TYPE.EMAIL}
               {#if f.notes}
@@ -389,18 +407,6 @@
               {#if f.participants}
                 <span class="text-slate-300 truncate max-w-[18rem]">👥 {f.participants}</span>
               {/if}
-            {:else if f.summary}
-              <!-- comment / note / decision / document with a summary field set -->
-              <span class="text-slate-400 shrink-0">Summary:</span>
-              <span class="text-slate-200">{f.summary}</span>
-            {/if}
-            <!-- Inline "Show Full Text" toggle — appears for any type that has a summary -->
-            {#if hasSummary}
-              <button
-                type="button"
-                class="text-[10px] text-slate-400 hover:text-slate-200 underline shrink-0 ml-auto"
-                on:click|stopPropagation={() => bodyExpanded = !bodyExpanded}
-              >{bodyExpanded ? 'Hide' : 'Show Full Text'}</button>
             {/if}
           </div>
         {/if}
@@ -416,15 +422,15 @@
       </div>
 
       <div class="flex gap-1 flex-shrink-0">
-        {#if showPanelToggle}
+        {#if showExpandToggle}
           <ProtectedButton
             action="modify"
             variant="secondary"
             size="small"
-            icon={actionIcon}
+            icon={isExpanded ? 'chevron-up' : 'chevron-down'}
             iconPosition="only"
-            on:click={() => dispatch('togglePanel', activity)}
-            title={actionTitle}
+            on:click={handleExpandToggle}
+            title={isExpanded ? 'Hide details' : 'Show details'}
           />
         {/if}
         <ProtectedButton
