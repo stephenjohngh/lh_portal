@@ -202,76 +202,69 @@
       </div>
     </div>
 
-    <!-- Information Line -->
+    <!-- Information Line: N/H format — N = current, H = historic (grey) -->
     <div class="flex-between mt-3 pt-3 border-t border-slate-600/50">
-      <div class="flex-row-lg text-sm text-gray-300">
+      <div class="flex items-center gap-3 flex-wrap text-sm text-gray-300">
         {#if activityCounts.note > 0}
+          {@const h = activityCounts.note_h}
+          {@const cur = activityCounts.note - h}
           <div class="text-icon">
             <span>📝</span>
-            <span class="text-amber-300">
-              {activityCounts.note} note{activityCounts.note !== 1 ? 's' : ''}
-              {#if activityCounts.note_h > 0}<span class="text-gray-500">• {activityCounts.note_h} historic</span>{/if}
-            </span>
+            <span class="text-amber-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} note{activityCounts.note !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
         {#if activityCounts.decision > 0}
+          {@const h = activityCounts.decision_h}
+          {@const cur = activityCounts.decision - h}
           <div class="text-icon">
             <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/50 font-semibold uppercase tracking-wide">D</span>
-            <span class="text-violet-300">
-              {activityCounts.decision} decision{activityCounts.decision !== 1 ? 's' : ''}
-              {#if activityCounts.decision_h > 0}<span class="text-gray-500">• {activityCounts.decision_h} historic</span>{/if}
-            </span>
+            <span class="text-violet-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} decision{activityCounts.decision !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
         {#if activityCounts.comment > 0}
+          {@const h = activityCounts.comment_h}
+          {@const cur = activityCounts.comment - h}
           <div class="text-icon">
             <Icon name="comment" size={4} className="text-blue-400" />
-            <span>
-              {activityCounts.comment} comment{activityCounts.comment !== 1 ? 's' : ''}
-              {#if activityCounts.comment_h > 0}<span class="text-gray-500">• {activityCounts.comment_h} historic</span>{/if}
-            </span>
+            <span>{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} comment{activityCounts.comment !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
         {#if activityCounts.email > 0}
+          {@const h = activityCounts.email_h}
+          {@const cur = activityCounts.email - h}
           <div class="text-icon">
             <span>📧</span>
-            <span class="text-cyan-300">
-              {activityCounts.email} email{activityCounts.email !== 1 ? 's' : ''}
-              {#if activityCounts.email_h > 0}<span class="text-gray-500">• {activityCounts.email_h} historic</span>{/if}
-            </span>
+            <span class="text-cyan-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} email{activityCounts.email !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
         {#if activityCounts.letter > 0}
+          {@const h = activityCounts.letter_h}
+          {@const cur = activityCounts.letter - h}
           <div class="text-icon">
             <span>📄</span>
-            <span class="text-orange-300">
-              {activityCounts.letter} letter{activityCounts.letter !== 1 ? 's' : ''}
-              {#if activityCounts.letter_h > 0}<span class="text-gray-500">• {activityCounts.letter_h} historic</span>{/if}
-            </span>
+            <span class="text-orange-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} letter{activityCounts.letter !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
         {#if activityCounts.document > 0}
+          {@const h = activityCounts.document_h}
+          {@const cur = activityCounts.document - h}
           <div class="text-icon">
             <span>📎</span>
-            <span class="text-rose-300">
-              {activityCounts.document} document{activityCounts.document !== 1 ? 's' : ''}
-              {#if activityCounts.document_h > 0}<span class="text-gray-500">• {activityCounts.document_h} historic</span>{/if}
-            </span>
+            <span class="text-rose-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} document{activityCounts.document !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
         {#if activityCounts.meeting > 0}
+          {@const h = activityCounts.meeting_h}
+          {@const cur = activityCounts.meeting - h}
           <div class="text-icon">
             <span>🤝</span>
-            <span class="text-indigo-300">
-              {activityCounts.meeting} meeting{activityCounts.meeting !== 1 ? 's' : ''}
-              {#if activityCounts.meeting_h > 0}<span class="text-gray-500">• {activityCounts.meeting_h} historic</span>{/if}
-            </span>
+            <span class="text-indigo-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} meeting{activityCounts.meeting !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
