@@ -20,18 +20,21 @@
 
   let showDeleteConfirm = false;
 
-  // Single-pass activity counts for the card summary line
+  // Single-pass activity counts for the card summary line.
+  // Each type gets a total count and a _h (historic) sub-count.
   $: activityCounts = (() => {
-    const c = { comment: 0, decision: 0, note: 0, email: 0, letter: 0, document: 0, meeting: 0, _historicComment: 0 };
+    const types = ['note', 'decision', 'comment', 'email', 'letter', 'document', 'meeting'];
+    const c = {};
+    for (const t of types) { c[t] = 0; c[t + '_h'] = 0; }
     for (const a of issue.activities || []) {
       const t = a.activity_type ?? ACTIVITY_TYPE.COMMENT;
-      if (t in c) c[t]++;
-      if (t === ACTIVITY_TYPE.COMMENT && a.historic) c._historicComment++;
+      if (t in c) {
+        c[t]++;
+        if (a.historic) c[t + '_h']++;
+      }
     }
     return c;
   })();
-  $: nonHistoricCommentsCount = activityCounts.comment - activityCounts._historicComment;
-  $: historicCommentsCount    = activityCounts._historicComment;
 
   $: outstandingActionsCount = issue.actions?.filter(action =>
     action.status !== ACTION_STATUS.COMPLETED
@@ -202,14 +205,12 @@
     <!-- Information Line -->
     <div class="flex-between mt-3 pt-3 border-t border-slate-600/50">
       <div class="flex-row-lg text-sm text-gray-300">
-        {#if nonHistoricCommentsCount > 0}
+        {#if activityCounts.note > 0}
           <div class="text-icon">
-            <Icon name="comment" size={4} className="text-blue-400" />
-            <span>
-              {nonHistoricCommentsCount} comment{nonHistoricCommentsCount !== 1 ? 's' : ''}
-              {#if historicCommentsCount > 0}
-                <span class="text-gray-500">• {historicCommentsCount} historic</span>
-              {/if}
+            <span>📝</span>
+            <span class="text-amber-300">
+              {activityCounts.note} note{activityCounts.note !== 1 ? 's' : ''}
+              {#if activityCounts.note_h > 0}<span class="text-gray-500">• {activityCounts.note_h} historic</span>{/if}
             </span>
           </div>
         {/if}
@@ -219,42 +220,58 @@
             <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/50 font-semibold uppercase tracking-wide">D</span>
             <span class="text-violet-300">
               {activityCounts.decision} decision{activityCounts.decision !== 1 ? 's' : ''}
+              {#if activityCounts.decision_h > 0}<span class="text-gray-500">• {activityCounts.decision_h} historic</span>{/if}
             </span>
           </div>
         {/if}
 
-        {#if activityCounts.note > 0}
+        {#if activityCounts.comment > 0}
           <div class="text-icon">
-            <span>📝</span>
-            <span class="text-amber-300">{activityCounts.note} note{activityCounts.note !== 1 ? 's' : ''}</span>
+            <Icon name="comment" size={4} className="text-blue-400" />
+            <span>
+              {activityCounts.comment} comment{activityCounts.comment !== 1 ? 's' : ''}
+              {#if activityCounts.comment_h > 0}<span class="text-gray-500">• {activityCounts.comment_h} historic</span>{/if}
+            </span>
           </div>
         {/if}
 
         {#if activityCounts.email > 0}
           <div class="text-icon">
             <span>📧</span>
-            <span class="text-cyan-300">{activityCounts.email} email{activityCounts.email !== 1 ? 's' : ''}</span>
+            <span class="text-cyan-300">
+              {activityCounts.email} email{activityCounts.email !== 1 ? 's' : ''}
+              {#if activityCounts.email_h > 0}<span class="text-gray-500">• {activityCounts.email_h} historic</span>{/if}
+            </span>
           </div>
         {/if}
 
         {#if activityCounts.letter > 0}
           <div class="text-icon">
             <span>📄</span>
-            <span class="text-orange-300">{activityCounts.letter} letter{activityCounts.letter !== 1 ? 's' : ''}</span>
+            <span class="text-orange-300">
+              {activityCounts.letter} letter{activityCounts.letter !== 1 ? 's' : ''}
+              {#if activityCounts.letter_h > 0}<span class="text-gray-500">• {activityCounts.letter_h} historic</span>{/if}
+            </span>
           </div>
         {/if}
 
         {#if activityCounts.document > 0}
           <div class="text-icon">
             <span>📎</span>
-            <span class="text-rose-300">{activityCounts.document} document{activityCounts.document !== 1 ? 's' : ''}</span>
+            <span class="text-rose-300">
+              {activityCounts.document} document{activityCounts.document !== 1 ? 's' : ''}
+              {#if activityCounts.document_h > 0}<span class="text-gray-500">• {activityCounts.document_h} historic</span>{/if}
+            </span>
           </div>
         {/if}
 
         {#if activityCounts.meeting > 0}
           <div class="text-icon">
             <span>🤝</span>
-            <span class="text-indigo-300">{activityCounts.meeting} meeting{activityCounts.meeting !== 1 ? 's' : ''}</span>
+            <span class="text-indigo-300">
+              {activityCounts.meeting} meeting{activityCounts.meeting !== 1 ? 's' : ''}
+              {#if activityCounts.meeting_h > 0}<span class="text-gray-500">• {activityCounts.meeting_h} historic</span>{/if}
+            </span>
           </div>
         {/if}
 
