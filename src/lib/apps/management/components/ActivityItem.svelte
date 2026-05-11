@@ -270,10 +270,6 @@
 
     {#if $permissions.isAdmin}
       <div class="border-t border-slate-600 pt-2 mt-2">
-        <div class="flex items-start gap-2 px-2 py-1.5 rounded bg-amber-900/20 border border-amber-700/40 text-xs text-amber-200 mb-2">
-          <span class="shrink-0">⚠️</span>
-          <span><strong>Admin only — record timestamps.</strong> Leave as automatic values in normal use. Only change to correct a historical data-entry error.</span>
-        </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label for="activity-admin-created-{activity.id}" class="block text-xs text-slate-400 mb-0.5">Created</label>
