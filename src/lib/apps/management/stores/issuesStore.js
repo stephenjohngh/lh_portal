@@ -1,4 +1,4 @@
-// src/lib/apps/issues/stores/issuesStore.js
+// src/lib/apps/management/stores/issuesStore.js
 // UPDATED: comments → activities; comment_text → body; decisions merged into activities
 import { get, writable }    from 'svelte/store';
 import { supabase }         from '$lib/supabaseClient';

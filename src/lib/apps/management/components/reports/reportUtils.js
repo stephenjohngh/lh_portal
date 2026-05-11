@@ -1,4 +1,4 @@
-// src/lib/apps/issues/components/reports/reportUtils.js
+// src/lib/apps/management/components/reports/reportUtils.js
 import { ACTION_STATUS, ACTIVITY_TYPE, ISSUE_STATUS } from '$lib/utils/constants';
 import { fmtDate, fmtDateLong } from '$lib/utils/dates';
 

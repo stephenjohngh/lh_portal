@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/ActivityItem.svelte -->
+<!-- src/lib/apps/management/components/ActivityItem.svelte -->
 <!--
   Single activity row. Handles all activity types:
   comment, decision, note, email, call, letter.

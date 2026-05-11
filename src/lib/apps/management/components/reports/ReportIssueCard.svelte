@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/reports/ReportIssueCard.svelte -->
+<!-- src/lib/apps/management/components/reports/ReportIssueCard.svelte -->
 <script>
   import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDate, isOverdue, wasModified } from '$lib/utils/dates';

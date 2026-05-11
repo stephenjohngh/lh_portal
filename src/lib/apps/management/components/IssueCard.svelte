@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/IssueCard.svelte -->
+<!-- src/lib/apps/management/components/IssueCard.svelte -->
 <!-- REFACTORED: Uses new CSS utility classes + ActivityLogSection (formerly CommentsSection) -->
 <script>
   import { createEventDispatcher, tick } from 'svelte';

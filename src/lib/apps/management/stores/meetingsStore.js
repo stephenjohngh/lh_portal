@@ -1,4 +1,4 @@
-// src/lib/apps/issues/stores/meetingsStore.js
+// src/lib/apps/management/stores/meetingsStore.js
 //
 // Owns the "team progress meeting" state used by the Issues app. When
 // a meeting is open, every new issue/comment/action is auto-tagged
@@ -232,7 +232,7 @@ function createMeetingsStore() {
 
   /**
    * Clear meeting_id on one item ("untag from this meeting").
-   * @param {'issues'|'comments'|'actions'} table
+   * @param {'issues'|'activities'|'actions'} table
    * @param {string} rowId
    */
   async function untagItem(table, rowId) {

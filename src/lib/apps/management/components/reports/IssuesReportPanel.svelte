@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/reports/IssuesReportPanel.svelte -->
+<!-- src/lib/apps/management/components/reports/IssuesReportPanel.svelte -->
 <script>
   import Checkbox        from '$lib/components/common/Checkbox.svelte';
   import Button          from '$lib/components/common/Button.svelte';

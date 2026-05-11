@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/meetings/MeetingAssignModal.svelte -->
+<!-- src/lib/apps/management/components/meetings/MeetingAssignModal.svelte -->
 <!--
   Admin-only modal for retroactively assigning existing issues, comments,
   and actions to a meeting (migration tool).
@@ -393,8 +393,8 @@
         {#if selectedIssues.size > 0}
           · {selectedIssues.size} issue{selectedIssues.size === 1 ? '' : 's'}
         {/if}
-        {#if selectedComments.size > 0}
-          · {selectedComments.size} comment{selectedComments.size === 1 ? '' : 's'}
+        {#if selectedActivities.size > 0}
+          · {selectedActivities.size} {selectedActivities.size === 1 ? 'activity' : 'activities'}
         {/if}
         {#if selectedActions.size > 0}
           · {selectedActions.size} action{selectedActions.size === 1 ? '' : 's'}

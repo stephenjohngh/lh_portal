@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/ActionForm.svelte -->
+<!-- src/lib/apps/management/components/ActionForm.svelte -->
 <!-- Add-action modal. No store calls — dispatches 'submit' with action data
      so ActionsSection can handle the mutation and own saving/error state. -->
 <script>

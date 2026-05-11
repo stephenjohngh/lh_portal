@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/reports/MeetingMinutesReportPanel.svelte -->
+<!-- src/lib/apps/management/components/reports/MeetingMinutesReportPanel.svelte -->
 <script>
   import { onMount }     from 'svelte';
   import Button          from '$lib/components/common/Button.svelte';

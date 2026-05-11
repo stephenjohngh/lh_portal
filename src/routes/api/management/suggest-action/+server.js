@@ -1,4 +1,4 @@
-// src/routes/api/issues/suggest-action/+server.js
+// src/routes/api/management/suggest-action/+server.js
 //
 // AI-suggested action text from an issue comment.
 // Reads the new comment + issue context + currently-open actions, asks
@@ -20,7 +20,7 @@
 // restart, which is fine for this scale.
 //
 // Audit: every call (success or refusal) writes an audit_logs row with
-// app_id='issues', event_type='ai_suggest', so usage is traceable.
+// app_id='management', event_type='ai_suggest', so usage is traceable.
 
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
@@ -41,7 +41,7 @@ const rateBuckets = new Map(); // userId -> [timestamps]
 
 function checkRateLimit(userId) {
   const now = Date.now();
-  const oneHourAgo = now - 3600_000;
+  const oneHourAgo = now - 3_600_000;
   const recent = (rateBuckets.get(userId) || []).filter(t => t > oneHourAgo);
   recent.push(now);
   rateBuckets.set(userId, recent);

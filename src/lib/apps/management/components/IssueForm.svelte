@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/IssueForm.svelte -->
+<!-- src/lib/apps/management/components/IssueForm.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Button from '$lib/components/common/Button.svelte';

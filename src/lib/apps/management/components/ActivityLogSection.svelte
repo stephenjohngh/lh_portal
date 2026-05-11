@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/ActivityLogSection.svelte -->
+<!-- src/lib/apps/management/components/ActivityLogSection.svelte -->
 <!--
   Activity Log — the unified list of activities for an issue.
   Formerly CommentsSection (activities table, replaces comments + decisions).

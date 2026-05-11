@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/meetings/MeetingMinutesView.svelte -->
+<!-- src/lib/apps/management/components/meetings/MeetingMinutesView.svelte -->
 <!--
   Read-only "minutes" view rendered inside the Meetings tab when a
   meeting is selected.

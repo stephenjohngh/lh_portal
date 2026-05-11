@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/CommentSuggestionPanel.svelte -->
+<!-- src/lib/apps/management/components/CommentSuggestionPanel.svelte -->
 <!--
   The inline panel that opens under a comment when the user clicks the
   per-comment action button. Five modes, driven by the `mode` prop:

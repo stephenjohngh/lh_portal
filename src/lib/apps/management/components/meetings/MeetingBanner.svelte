@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/meetings/MeetingBanner.svelte -->
+<!-- src/lib/apps/management/components/meetings/MeetingBanner.svelte -->
 <!--
   Top-of-page banner shown on the Issues tab while a meeting is open.
   Auto-vanishes when the meeting closes.

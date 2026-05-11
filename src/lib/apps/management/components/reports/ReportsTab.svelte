@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/reports/ReportsTab.svelte -->
+<!-- src/lib/apps/management/components/reports/ReportsTab.svelte -->
 <!--
   Reports tab shell for the Issues app.
   Three sub-reports — each has a left filter panel + right live preview + Word doc download.

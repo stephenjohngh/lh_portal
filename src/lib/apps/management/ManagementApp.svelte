@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/IssuesTrackerApp.svelte -->
+<!-- src/lib/apps/management/ManagementApp.svelte -->
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
   import { permissions }    from '$lib/stores/permissions';
@@ -15,7 +15,7 @@
   import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
   import { ISSUE_STATUS, STATUS_FILTERS } from '$lib/utils/constants';
 
-  const logger = getLogger('IssuesTrackerApp');
+  const logger = getLogger('ManagementApp');
 
   // -- Tab state --------------------------------------------------------
   let activeTab           = 'issues';   // 'issues' | 'meetings' | 'reports'
@@ -126,7 +126,7 @@
 
   function toggleSection(issueId, section) {
     if (!expandedSections[issueId]) {
-      expandedSections[issueId] = { comments: false, actions: false };
+      expandedSections[issueId] = { activities: false, actions: false };
     }
     expandedSections[issueId][section] = !expandedSections[issueId][section];
     expandedSections = expandedSections;
@@ -139,7 +139,7 @@
     statusFilter = issue.status || ISSUE_STATUS.CURRENT;
     searchTerm   = '';
     // Expand the issue so its activity log and actions are visible
-    expandedSections[issueId] = { comments: true, actions: true };
+    expandedSections[issueId] = { activities: true, actions: true };
     expandedSections = expandedSections;
     // Wait for the filtered list and expanded sections to re-render before scrolling
     await tick();
@@ -269,9 +269,9 @@
           <div id="issue-{issue.id}">
           <IssueCard
             {issue}
-            showActivity={expandedSections[issue.id]?.comments || false}
+            showActivity={expandedSections[issue.id]?.activities || false}
             showActions={expandedSections[issue.id]?.actions   || false}
-            on:toggleActivity={() => toggleSection(issue.id, 'comments')}
+            on:toggleActivity={() => toggleSection(issue.id, 'activities')}
             on:toggleActions={() => toggleSection(issue.id, 'actions')}
             on:edit={(e) => editingIssue = e.detail}
             on:toggleStatus={handleToggleStatus}

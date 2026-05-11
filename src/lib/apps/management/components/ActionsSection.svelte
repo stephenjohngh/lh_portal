@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/ActionsSection.svelte -->
+<!-- src/lib/apps/management/components/ActionsSection.svelte -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { issuesStore } from '../stores/issuesStore';

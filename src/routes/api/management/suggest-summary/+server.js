@@ -1,4 +1,4 @@
-// src/routes/api/issues/suggest-summary/+server.js
+// src/routes/api/management/suggest-summary/+server.js
 //
 // AI-generated one-line summary for a note or comment activity.
 // Sends the activity body to Claude and returns a concise summary string

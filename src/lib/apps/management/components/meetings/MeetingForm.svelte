@@ -1,4 +1,4 @@
-<!-- src/lib/apps/issues/components/meetings/MeetingForm.svelte -->
+<!-- src/lib/apps/management/components/meetings/MeetingForm.svelte -->
 <!--
   Modal form for creating or editing a meeting.
 

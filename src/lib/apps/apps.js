@@ -40,7 +40,7 @@ export const AVAILABLE_APPS = [
     requiresPermission: true,
     description: 'Track and manage building issues'
   },
-{
+  {
     id: 'demo2',
     name: 'Demo App 2',
     icon: 'lhlogo',
@@ -100,16 +100,15 @@ export const AVAILABLE_APPS = [
  * Use these instead of magic strings
  */
 export const APP_IDS = {
-  HOME:    'home',
-  ADMIN:   'admin',
-  MANAGEMENT: 'management',
-  DEMO:    'demo',
-  DEMO2:   'demo2',
+  HOME:            'home',
+  ADMIN:           'admin',
+  MANAGEMENT:      'management',
+  DEMO2:           'demo2',
   BUILDING_ASSETS: 'building_assets',
-  INSPECTION: 'inspection',
-  MOBILEPLAN:   'mobileplan',
-  MAINTENANCE:  'maintenance',
-  SETTINGS:     'settings'
+  INSPECTION:      'inspection',
+  MOBILEPLAN:      'mobileplan',
+  MAINTENANCE:     'maintenance',
+  SETTINGS:        'settings'
 };
 
 /**
