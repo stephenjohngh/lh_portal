@@ -9,8 +9,6 @@
   import IssueCard          from './components/IssueCard.svelte';
   import IssueForm          from './components/IssueForm.svelte';
   import ReportsTab         from './components/reports/ReportsTab.svelte';
-  import MeetingBanner      from './components/meetings/MeetingBanner.svelte';
-  import MeetingForm        from './components/meetings/MeetingForm.svelte';
   import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
   import Button             from '$lib/components/common/Button.svelte';
   import ErrorDisplay       from '$lib/components/common/ErrorDisplay.svelte';
@@ -30,12 +28,6 @@
   let statusFilter        = ISSUE_STATUS.CURRENT;
   let showNewIssueModal   = false;
   let editingIssue        = null;
-
-  // -- Meeting banner edit form (banner's "Edit" dispatches here) -------
-  let showMeetingForm     = false;
-  let editingMeeting      = null;
-  let meetingFormSaving   = false;
-  let meetingFormError    = '';
 
   // -- Jump-to-issue state ----------------------------------------------
   let jumpToIssueId = '';
@@ -92,25 +84,6 @@
   function handleMeetingBadgeClick(e) {
     meetingTabTargetId = e.detail;
     activeTab          = 'meetings';
-  }
-
-  // -- Banner: edit button dispatches here (opens lightweight form modal) -
-  function handleBannerEdit(e) {
-    editingMeeting  = e.detail;
-    showMeetingForm = true;
-  }
-  function closeMeetingForm() {
-    showMeetingForm  = false;
-    editingMeeting   = null;
-    meetingFormError = '';
-  }
-  async function handleMeetingFormSubmit({ detail }) {
-    meetingFormSaving = true;
-    meetingFormError  = '';
-    const result = await meetingsStore.update(editingMeeting.id, detail);
-    meetingFormSaving = false;
-    if (!result.success) { meetingFormError = result.error ?? 'Failed to save meeting'; return; }
-    closeMeetingForm();
   }
 
   onMount(async () => {
@@ -200,7 +173,7 @@
   <div class="sticky top-16 z-20 bg-slate-800 -mx-8 px-8 border-b border-slate-700/60 mb-4">
 
     <!-- Tab row -->
-    <div class="flex">
+    <div class="flex items-stretch">
       <button
         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
                {activeTab === 'issues'
@@ -209,17 +182,12 @@
         on:click={() => activeTab = 'issues'}
       >Issues</button>
       <button
-        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5
+        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
                {activeTab === 'meetings'
                  ? 'text-white border-purple-500'
                  : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
         on:click={() => { meetingTabTargetId = null; activeTab = 'meetings'; }}
-      >
-        Team Meetings
-        {#if $meetingsStore.current}
-          <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 leading-none">open</span>
-        {/if}
-      </button>
+      >Team Meetings</button>
       <button
         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
                {activeTab === 'reports'
@@ -227,6 +195,16 @@
                  : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
         on:click={() => activeTab = 'reports'}
       >Reports</button>
+
+      <!-- Active meeting indicator — right-aligned in the tab row -->
+      {#if $meetingsStore.current}
+        <div class="ml-auto flex items-center gap-1.5 self-center px-2.5 py-1 rounded
+                    bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-none">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+          <span class="text-amber-400/80">Team Meeting in Progress</span>
+          <span class="font-medium truncate max-w-[18rem]">{$meetingsStore.current.title}</span>
+        </div>
+      {/if}
     </div>
 
     <!-- Compact single-line toolbar (issues tab only) -->
@@ -276,12 +254,6 @@
 
   <!-- ─── ISSUES TAB ──────────────────────────────────────────────────── -->
   {#if activeTab === 'issues'}
-
-    <!-- Active-meeting banner -->
-    <MeetingBanner
-      {issues}
-      on:edit={handleBannerEdit}
-    />
 
     <ErrorDisplay message={error} onDismiss={() => issuesStore.clearError()} />
 
@@ -335,11 +307,3 @@
   on:close={() => editingIssue = null}
 />
 
-<!-- ─── Meeting edit form (opened by banner's Edit button) ──────────── -->
-<MeetingForm
-  bind:show={showMeetingForm}
-  meeting={editingMeeting}
-  saving={meetingFormSaving}
-  on:submit={handleMeetingFormSubmit}
-  on:close={closeMeetingForm}
-/>
