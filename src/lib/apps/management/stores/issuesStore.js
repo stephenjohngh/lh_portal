@@ -10,11 +10,11 @@ import { currentMeeting }   from './meetingsStore';
 
 const logger = getLogger('issuesStore');
 
-// Local wrapper that bakes in appId: 'issues' (and a sensible default
+// Local wrapper that bakes in appId: 'management' (and a sensible default
 // severity) so every audit row this store emits is filterable by app.
 function audit(eventType, targetType, targetId, targetName, data = {}) {
   logAudit(eventType, targetType, targetId, targetName, {
-    appId:    'issues',
+    appId:    'management',
     severity: eventType === 'delete' ? 'warning' : 'info',
     ...data,
   });

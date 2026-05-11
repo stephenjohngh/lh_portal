@@ -33,12 +33,12 @@ export const AVAILABLE_APPS = [
     description: 'Manage users and app permissions'
   },
   {
-    id: 'issues',
-    name: 'Issues',
+    id: 'management',
+    name: 'Management',
     icon: 'clipboard',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Track and manage issues'
+    description: 'Track and manage building issues'
   },
 {
     id: 'demo2',
@@ -102,7 +102,7 @@ export const AVAILABLE_APPS = [
 export const APP_IDS = {
   HOME:    'home',
   ADMIN:   'admin',
-  ISSUES:  'issues',
+  MANAGEMENT: 'management',
   DEMO:    'demo',
   DEMO2:   'demo2',
   BUILDING_ASSETS: 'building_assets',

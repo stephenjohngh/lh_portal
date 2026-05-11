@@ -15,7 +15,7 @@
   const apps = [
     { value: null,              label: 'All Apps' },
     { value: 'admin',           label: '👥 Admin / Users' },
-    { value: 'issues',          label: '📋 Issues' },
+    { value: 'management',      label: '📋 Management' },
     { value: 'building_assets', label: '🏢 Building Assets' },
     { value: 'inspection',      label: '🚶 Inspection' },
     { value: 'maintenance',     label: '🔧 Maintenance' },
@@ -104,7 +104,7 @@
       case 'critical': filters.severity      = 'critical'; break;
       case 'flagged':  filters.flaggedOnly   = true;       break;
       case 'assets':   filters.appId         = 'building_assets'; break;
-      case 'issues':   filters.appId         = 'issues';          break;
+      case 'management': filters.appId        = 'management';       break;
       case 'inspection': filters.appId       = 'inspection';      break;
       case 'maintenance': filters.appId      = 'maintenance';     break;
     }
@@ -129,7 +129,7 @@
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('assets')}>🏢 Assets</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('inspection')}>🚶 Inspection</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('maintenance')}>🔧 Maintenance</Button>
-    <Button variant="secondary" size="small" on:click={() => setQuickFilter('issues')}>📋 Issues</Button>
+    <Button variant="secondary" size="small" on:click={() => setQuickFilter('management')}>📋 Management</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('auth')}>🔐 Auth</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('critical')}>🔴 Critical</Button>
     <Button variant="secondary" size="small" on:click={() => setQuickFilter('flagged')}>🚩 Flagged</Button>

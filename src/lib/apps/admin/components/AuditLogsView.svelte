@@ -38,7 +38,7 @@
   const quickApps = [
     { value: null,              label: 'All apps' },
     { value: 'admin',           label: '👥 Admin / Users' },
-    { value: 'issues',          label: '📋 Issues' },
+    { value: 'management',      label: '📋 Management' },
     { value: 'building_assets', label: '🏢 Building Assets' },
     { value: 'inspection',      label: '🚶 Inspection' },
     { value: 'maintenance',     label: '🔧 Maintenance' },

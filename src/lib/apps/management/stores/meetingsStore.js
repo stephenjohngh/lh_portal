@@ -16,11 +16,11 @@
 //   - `meetingsStore.delete(id)`     — admin only (RLS enforces)
 //   - `meetingsStore.untagItem(table, id)` — set meeting_id=null on one row
 //
-// All mutations write an audit_logs row with appId='issues',
+// All mutations write an audit_logs row with appId='management',
 // eventCategory='meetings'.
 //
 // Item counts (issues/comments/actions tagged to each meeting) come
-// from the IssuesTrackerApp's existing fetched data — we don't query
+// from ManagementApp's existing fetched data — we don't query
 // for them here, we recompute reactively in the UI from $issuesStore.
 
 import { writable, derived } from 'svelte/store';
@@ -35,7 +35,7 @@ const logger = getLogger('meetingsStore');
 // issuesStore's local `audit()` helper.
 function audit(eventType, targetType, targetId, targetName, data = {}) {
   logAudit(eventType, targetType, targetId, targetName, {
-    appId:         'issues',
+    appId:         'management',
     eventCategory: 'meetings',
     severity:      eventType === 'delete' ? 'warning' : 'info',
     ...data

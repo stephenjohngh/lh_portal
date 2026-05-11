@@ -101,7 +101,7 @@ export async function POST({ request }) {
       eventCategory: 'ai_assist',
       eventAction,
       targetType:    'activity',
-      appId:         'issues',
+      appId:         'management',
       severity,
       metadata:      { model, ...extra }
     }).catch(err => logger('audit log failed (non-fatal):', err.message));

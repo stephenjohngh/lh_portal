@@ -115,7 +115,7 @@
 
   onMount(async () => {
     if ($auth.user) {
-      await permissions.init($auth.user.id, 'issues');
+      await permissions.init($auth.user.id, 'management');
     }
     issuesStore.fetchIssues();
     issuesStore.initializeRealtime();

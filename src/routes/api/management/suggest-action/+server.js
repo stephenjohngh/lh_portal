@@ -185,7 +185,7 @@ export async function POST({ request }) {
       targetType:    'activity',
       targetId:      activity_id || null,
       targetName:    issueName ? `Issue: ${issueName}`.slice(0, 200) : 'AI suggestion',
-      appId:         'issues',
+      appId:         'management',
       severity,
       metadata: {
         issue_id,

@@ -142,7 +142,7 @@
     summaryGenerating = true;
     summaryError      = '';
     try {
-      const res = await fetch('/api/issues/suggest-summary', {
+      const res = await fetch('/api/management/suggest-summary', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

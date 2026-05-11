@@ -79,7 +79,7 @@
     newSummaryGenerating = true;
     newSummaryError      = '';
     try {
-      const res = await fetch('/api/issues/suggest-summary', {
+      const res = await fetch('/api/management/suggest-summary', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -289,7 +289,7 @@
     suggestionSource  = 'ai';
 
     try {
-      const res = await fetch('/api/issues/suggest-action', {
+      const res = await fetch('/api/management/suggest-action', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
