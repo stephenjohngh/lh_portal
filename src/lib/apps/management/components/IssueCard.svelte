@@ -20,13 +20,18 @@
 
   let showDeleteConfirm = false;
 
-  // Activities split by type for counts in the card header
-  $: commentActivities  = issue.activities?.filter(a => (a.activity_type ?? ACTIVITY_TYPE.COMMENT) === ACTIVITY_TYPE.COMMENT) || [];
-  $: decisionActivities = issue.activities?.filter(a => a.activity_type === ACTIVITY_TYPE.DECISION) || [];
-
-  $: nonHistoricCommentsCount  = commentActivities.filter(a => !a.historic).length;
-  $: historicCommentsCount     = commentActivities.filter(a => a.historic).length;
-  $: nonHistoricDecisionCount  = decisionActivities.filter(a => !a.historic).length;
+  // Single-pass activity counts for the card summary line
+  $: activityCounts = (() => {
+    const c = { comment: 0, decision: 0, note: 0, email: 0, letter: 0, document: 0, meeting: 0, _historicComment: 0 };
+    for (const a of issue.activities || []) {
+      const t = a.activity_type ?? ACTIVITY_TYPE.COMMENT;
+      if (t in c) c[t]++;
+      if (t === ACTIVITY_TYPE.COMMENT && a.historic) c._historicComment++;
+    }
+    return c;
+  })();
+  $: nonHistoricCommentsCount = activityCounts.comment - activityCounts._historicComment;
+  $: historicCommentsCount    = activityCounts._historicComment;
 
   $: outstandingActionsCount = issue.actions?.filter(action =>
     action.status !== ACTION_STATUS.COMPLETED
@@ -209,12 +214,47 @@
           </div>
         {/if}
 
-        {#if nonHistoricDecisionCount > 0}
+        {#if activityCounts.decision > 0}
           <div class="text-icon">
             <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/50 font-semibold uppercase tracking-wide">D</span>
             <span class="text-violet-300">
-              {nonHistoricDecisionCount} decision{nonHistoricDecisionCount !== 1 ? 's' : ''}
+              {activityCounts.decision} decision{activityCounts.decision !== 1 ? 's' : ''}
             </span>
+          </div>
+        {/if}
+
+        {#if activityCounts.note > 0}
+          <div class="text-icon">
+            <span>📝</span>
+            <span class="text-amber-300">{activityCounts.note} note{activityCounts.note !== 1 ? 's' : ''}</span>
+          </div>
+        {/if}
+
+        {#if activityCounts.email > 0}
+          <div class="text-icon">
+            <span>📧</span>
+            <span class="text-cyan-300">{activityCounts.email} email{activityCounts.email !== 1 ? 's' : ''}</span>
+          </div>
+        {/if}
+
+        {#if activityCounts.letter > 0}
+          <div class="text-icon">
+            <span>📄</span>
+            <span class="text-orange-300">{activityCounts.letter} letter{activityCounts.letter !== 1 ? 's' : ''}</span>
+          </div>
+        {/if}
+
+        {#if activityCounts.document > 0}
+          <div class="text-icon">
+            <span>📎</span>
+            <span class="text-rose-300">{activityCounts.document} document{activityCounts.document !== 1 ? 's' : ''}</span>
+          </div>
+        {/if}
+
+        {#if activityCounts.meeting > 0}
+          <div class="text-icon">
+            <span>🤝</span>
+            <span class="text-indigo-300">{activityCounts.meeting} meeting{activityCounts.meeting !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
