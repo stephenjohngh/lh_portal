@@ -68,22 +68,13 @@
   // Suggestion panel: for comment / note / meeting activities
   $: hasLinked       = !!linkedAction;
   $: linkedCompleted = linkedAction?.status === ACTION_STATUS.COMPLETED;
-  // Combined expand state: body expanded or the linked-action panel is open.
-  $: isExpanded       = bodyExpanded || panelOpen;
-  // Chevron shows when there is a collapsible summary OR an existing linked action.
-  // Never shows just because the activity *could* have a linked action — that
-  // avoids accidentally triggering AI generation on expand.
-  $: showExpandToggle = hasSummary || hasLinked;
+  // Expand toggle is purely for the body text (collapsible summary).
+  // The linked-action panel is controlled by its own dedicated button.
+  $: isExpanded       = bodyExpanded;
+  $: showExpandToggle = hasSummary;
 
   function handleExpandToggle() {
-    const target = !isExpanded;
-    // Toggle body text visibility.
-    if (hasSummary) bodyExpanded = target;
-    // Sync the linked-action panel only when one already exists.
-    // Never trigger AI generation from the expand button.
-    if (hasLinked && panelOpen !== target) {
-      dispatch('togglePanel', activity);
-    }
+    if (hasSummary) bodyExpanded = !bodyExpanded;
   }
 
   // -- Edit field helpers ----------------------------------------------
@@ -369,6 +360,19 @@
             iconPosition="only"
             on:click={handleExpandToggle}
             title={isExpanded ? 'Hide details' : 'Show details'}
+          />
+        {/if}
+        {#if canLink}
+          <ProtectedButton
+            action="modify"
+            variant={panelOpen ? 'primary' : 'secondary'}
+            size="small"
+            icon="clipboard"
+            iconPosition="only"
+            on:click={() => dispatch('togglePanel', activity)}
+            title={hasLinked
+              ? (panelOpen ? 'Hide linked action' : 'View linked action')
+              : 'Add linked action with AI suggestion'}
           />
         {/if}
         <ProtectedButton
