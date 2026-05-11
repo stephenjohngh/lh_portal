@@ -322,6 +322,8 @@
                   {#if action.meeting_id}
                     <MeetingBadge
                       meetingId={action.meeting_id}
+                      rowId={action.id}
+                      rowTable="actions"
                       on:click={(e) => dispatch('meetingFilter', e.detail)}
                     />
                   {/if}

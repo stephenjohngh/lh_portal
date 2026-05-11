@@ -167,7 +167,7 @@
             <span>Modified: {fmtDate(issue.updated_at, issue.updated_by_profile?.full_name)}</span>
           {/if}
           {#if issue.meeting_id}
-            <MeetingBadge meetingId={issue.meeting_id} on:click={(e) => dispatch('meetingFilter', e.detail)} />
+            <MeetingBadge meetingId={issue.meeting_id} rowId={issue.id} rowTable="issues" on:click={(e) => dispatch('meetingFilter', e.detail)} />
           {/if}
         </div>
       </div>

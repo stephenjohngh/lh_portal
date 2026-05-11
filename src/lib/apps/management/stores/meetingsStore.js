@@ -236,7 +236,7 @@ function createMeetingsStore() {
    * @param {string} rowId
    */
   async function untagItem(table, rowId) {
-    if (!['issues', 'comments', 'actions'].includes(table)) {
+    if (!['issues', 'activities', 'actions'].includes(table)) {
       return { success: false, error: `Unsupported table: ${table}` };
     }
     try {
@@ -247,7 +247,8 @@ function createMeetingsStore() {
         meeting_id: null,
         updated_by: userId
       });
-      audit('update', table.replace(/s$/, ''), rowId, '(untagged)', {
+      const targetType = { issues: 'issue', activities: 'activity', actions: 'action' }[table] ?? table;
+      audit('update', targetType, rowId, '(untagged)', {
         eventAction: 'untag_meeting'
       });
       return { success: true };
