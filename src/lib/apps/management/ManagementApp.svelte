@@ -199,7 +199,7 @@
       <!-- Active meeting indicator — right-aligned in the tab row -->
       {#if $meetingsStore.current}
         <div class="ml-auto flex items-center gap-1.5 self-center px-2.5 py-1 rounded
-                    bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-none">
+                    bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px]">
           <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
           <span class="text-amber-400/80">Team Meeting in Progress</span>
           <span class="font-medium truncate max-w-[18rem]">{$meetingsStore.current.title}</span>
