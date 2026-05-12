@@ -636,9 +636,11 @@
       </dl>
     {/if}
 
-    <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">
-      {viewingItem.body}
-    </p>
+    {#if viewingItem.activity_type === ACTIVITY_TYPE.NOTE && viewingItem.body?.startsWith('<')}
+      <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html viewingItem.body}</div>
+    {:else}
+      <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{viewingItem.body}</p>
+    {/if}
     <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700 text-xs text-gray-500 flex-wrap">
       <span>Added: {fmtDateTime(viewingItem.created_at, viewingItem.created_by_profile?.full_name)}</span>
       {#if wasModified(viewingItem.created_at, viewingItem.updated_at)}
