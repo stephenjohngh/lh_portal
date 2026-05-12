@@ -77,6 +77,10 @@
   $: canUndo     = editor?.can().undo()            ?? false;
   $: canRedo     = editor?.can().redo()            ?? false;
   $: isEmpty     = editor?.isEmpty                 ?? true;
+
+  // Base toolbar button classes — kept as a const so they're not repeated 8×
+  const TB  = 'flex items-center justify-center w-7 h-7 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors shrink-0';
+  const TBO = 'bg-slate-600 text-white'; // active/on state extra classes
 </script>
 
 <div class="rte-wrap rounded border border-slate-600 bg-slate-800 focus-within:ring-2 {ringClass} overflow-hidden">
@@ -84,33 +88,25 @@
   <!-- ── Toolbar ──────────────────────────────────────────────────── -->
   <div class="flex items-center gap-0.5 px-1.5 py-1 bg-slate-750 border-b border-slate-700">
 
-    <button type="button"
-      class="tbtn {bold ? 'tbtn-on' : ''}"
-      on:click={() => toggle('toggleBold')}
-      title="Bold (Ctrl+B)">
+    <button type="button" class="{TB} {bold ? TBO : ''}"
+      on:click={() => toggle('toggleBold')} title="Bold (Ctrl+B)">
       <strong>B</strong>
     </button>
 
-    <button type="button"
-      class="tbtn {italic ? 'tbtn-on' : ''}"
-      on:click={() => toggle('toggleItalic')}
-      title="Italic (Ctrl+I)">
+    <button type="button" class="{TB} {italic ? TBO : ''}"
+      on:click={() => toggle('toggleItalic')} title="Italic (Ctrl+I)">
       <em>I</em>
     </button>
 
-    <button type="button"
-      class="tbtn {underline ? 'tbtn-on' : ''}"
-      on:click={() => toggle('toggleUnderline')}
-      title="Underline (Ctrl+U)">
+    <button type="button" class="{TB} {underline ? TBO : ''}"
+      on:click={() => toggle('toggleUnderline')} title="Underline (Ctrl+U)">
       <span style="text-decoration:underline">U</span>
     </button>
 
     <div class="w-px h-4 bg-slate-600 mx-1 shrink-0"></div>
 
-    <button type="button"
-      class="tbtn {bulletList ? 'tbtn-on' : ''}"
-      on:click={() => toggle('toggleBulletList')}
-      title="Bullet list">
+    <button type="button" class="{TB} {bulletList ? TBO : ''}"
+      on:click={() => toggle('toggleBulletList')} title="Bullet list">
       <svg viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5">
         <circle cx="2" cy="4.5" r="1.5"/>
         <rect x="5" y="3.75" width="10" height="1.5" rx="0.5"/>
@@ -121,10 +117,8 @@
       </svg>
     </button>
 
-    <button type="button"
-      class="tbtn {orderedList ? 'tbtn-on' : ''}"
-      on:click={() => toggle('toggleOrderedList')}
-      title="Numbered list">
+    <button type="button" class="{TB} {orderedList ? TBO : ''}"
+      on:click={() => toggle('toggleOrderedList')} title="Numbered list">
       <svg viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5">
         <text x="0" y="6" font-size="6" font-family="monospace">1.</text>
         <rect x="5" y="3.75" width="10" height="1.5" rx="0.5"/>
@@ -137,22 +131,18 @@
 
     <div class="w-px h-4 bg-slate-600 mx-1 shrink-0"></div>
 
-    <button type="button"
-      class="tbtn {canUndo ? '' : 'opacity-30 cursor-not-allowed'}"
+    <button type="button" class="{TB} {canUndo ? '' : 'opacity-30 cursor-not-allowed'}"
       on:click={() => editor?.chain().focus().undo().run()}
-      disabled={!canUndo}
-      title="Undo (Ctrl+Z)">
+      disabled={!canUndo} title="Undo (Ctrl+Z)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" class="w-3.5 h-3.5">
         <path d="M3 6H10a4 4 0 010 8H5" stroke-linecap="round"/>
         <path d="M3 6L6 3M3 6L6 9" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
 
-    <button type="button"
-      class="tbtn {canRedo ? '' : 'opacity-30 cursor-not-allowed'}"
+    <button type="button" class="{TB} {canRedo ? '' : 'opacity-30 cursor-not-allowed'}"
       on:click={() => editor?.chain().focus().redo().run()}
-      disabled={!canRedo}
-      title="Redo (Ctrl+Y)">
+      disabled={!canRedo} title="Redo (Ctrl+Y)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" class="w-3.5 h-3.5">
         <path d="M13 6H6a4 4 0 000 8h5" stroke-linecap="round"/>
         <path d="M13 6L10 3M13 6L10 9" stroke-linecap="round" stroke-linejoin="round"/>
@@ -172,16 +162,6 @@
 </div>
 
 <style>
-  /* Toolbar button base + active state */
-  .tbtn {
-    @apply flex items-center justify-center w-7 h-7 rounded text-sm
-           text-slate-300 hover:bg-slate-700 hover:text-white
-           transition-colors shrink-0;
-  }
-  .tbtn-on {
-    @apply bg-slate-600 text-white;
-  }
-
   /* Toolbar background — between slate-700 and slate-800 */
   .rte-wrap :global(.bg-slate-750) {
     background-color: #2a3344;
@@ -189,8 +169,14 @@
 
   /* Placeholder */
   .rte-placeholder {
-    @apply absolute top-0 left-0 px-3 py-2 text-sm text-gray-500
-           pointer-events-none select-none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+    pointer-events: none;
+    user-select: none;
   }
 
   /* ProseMirror editor content area */
