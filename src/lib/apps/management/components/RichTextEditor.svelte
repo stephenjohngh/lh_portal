@@ -29,6 +29,18 @@
   let editorEl;
   let editor;
 
+  /**
+   * Tiptap parses its initial content as HTML, so raw newlines are collapsed.
+   * If the stored body is legacy plain text (pre-editor), convert each line
+   * to a <p> so whitespace is preserved on load.
+   * Bodies already written by Tiptap start with '<' and pass through unchanged.
+   */
+  function initContent(raw) {
+    if (!raw) return '';
+    if (raw.trimStart().startsWith('<')) return raw; // already HTML
+    return raw.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('');
+  }
+
   onMount(() => {
     editor = new Editor({
       element: editorEl,
@@ -45,7 +57,7 @@
           link:           false,
         }),
       ],
-      content: value || '',
+      content: initContent(value),
       editorProps: {
         attributes: { class: 'rte-prosemirror' }
       },
