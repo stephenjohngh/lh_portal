@@ -190,6 +190,19 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
     @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
   }
 
+  /* ========== RICH TEXT DISPLAY ========== */
+  /* Used wherever Tiptap HTML is rendered read-only (activity display,
+     reports, meeting minutes). Colour is inherited from the parent. */
+  .rich-content p          { margin: 0 0 0.3rem 0; }
+  .rich-content p:last-child { margin-bottom: 0; }
+  .rich-content ul         { list-style-type: disc;    padding-left: 1.4rem; margin: 0.2rem 0; }
+  .rich-content ol         { list-style-type: decimal; padding-left: 1.4rem; margin: 0.2rem 0; }
+  .rich-content li         { margin: 0.1rem 0; }
+  .rich-content li > p     { margin: 0; }
+  .rich-content strong     { font-weight: 700; }
+  .rich-content em         { font-style: italic; }
+  .rich-content u          { text-decoration: underline; text-underline-offset: 2px; }
+
   .grid-form {
     @apply grid grid-cols-1 md:grid-cols-2 gap-4;
   }

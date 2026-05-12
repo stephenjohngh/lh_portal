@@ -117,7 +117,11 @@
                 {/if}
               </div>
               {#if showBody}
-                <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{activity.body}</p>
+                {#if activity.activity_type === ACTIVITY_TYPE.NOTE && activity.body?.startsWith('<')}
+                  <div class="rich-content text-gray-500 text-sm italic">{@html activity.body}</div>
+                {:else}
+                  <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{activity.body}</p>
+                {/if}
               {/if}
               <p class="text-xs text-gray-400 mt-1">
                 {fmtDate(activity.created_at)}
@@ -143,7 +147,11 @@
                 {/if}
               </div>
               {#if showBody}
-                <p class="text-gray-900 text-sm whitespace-pre-wrap">{activity.body}</p>
+                {#if activity.activity_type === ACTIVITY_TYPE.NOTE && activity.body?.startsWith('<')}
+                  <div class="rich-content text-gray-900 text-sm">{@html activity.body}</div>
+                {:else}
+                  <p class="text-gray-900 text-sm whitespace-pre-wrap">{activity.body}</p>
+                {/if}
               {/if}
               <p class="text-xs text-gray-500 mt-1">
                 {fmtDate(activity.created_at)}

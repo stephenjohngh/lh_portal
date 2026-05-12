@@ -30,6 +30,7 @@
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
   import CommentSuggestionPanel from './CommentSuggestionPanel.svelte';
+  import RichTextEditor         from './RichTextEditor.svelte';
 
   // -- Props -----------------------------------------------------------
   export let activity;
@@ -240,13 +241,22 @@
       </div>
     {/if}
 
-    <textarea
-      bind:value={editingActivity.body}
-      on:paste={handleBodyPaste}
-      placeholder={editTypeConfig.placeholder}
-      class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {editTypeConfig.ringClass} resize-y"
-      rows={6}
-    ></textarea>
+    {#if editingActivity.activity_type === ACTIVITY_TYPE.NOTE}
+      <RichTextEditor
+        value={editingActivity.body}
+        placeholder={editTypeConfig.placeholder}
+        ringClass={editTypeConfig.ringClass}
+        on:change={(e) => { editingActivity = { ...editingActivity, body: e.detail }; }}
+      />
+    {:else}
+      <textarea
+        bind:value={editingActivity.body}
+        on:paste={handleBodyPaste}
+        placeholder={editTypeConfig.placeholder}
+        class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {editTypeConfig.ringClass} resize-y"
+        rows={6}
+      ></textarea>
+    {/if}
 
     {#if parseNotice}
       <p class="text-xs text-cyan-400 mt-1 flex items-center gap-1.5">
@@ -337,7 +347,11 @@
         </div>
 
         {#if !hasSummary || bodyExpanded}
-          <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
+          {#if activity.activity_type === ACTIVITY_TYPE.NOTE && activity.body?.startsWith('<')}
+            <div class="rich-content text-gray-200 text-sm">{@html activity.body}</div>
+          {:else}
+            <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
+          {/if}
         {/if}
         {#if activity.activity_type === ACTIVITY_TYPE.DOCUMENT}
           <p class="text-[11px] text-rose-300/60 mt-1 italic">
