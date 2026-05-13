@@ -210,7 +210,7 @@
           {@const cur = activityCounts.note - h}
           <div class="text-icon">
             <span>📝</span>
-            <span class="text-amber-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} note{activityCounts.note !== 1 ? 's' : ''}</span>
+            <span class="text-teal-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} note{activityCounts.note !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
@@ -246,7 +246,7 @@
           {@const cur = activityCounts.letter - h}
           <div class="text-icon">
             <span>📄</span>
-            <span class="text-orange-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} letter{activityCounts.letter !== 1 ? 's' : ''}</span>
+            <span class="text-yellow-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} letter{activityCounts.letter !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 

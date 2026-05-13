@@ -22,7 +22,7 @@
 
   export let value       = '';
   export let placeholder = 'Enter your note…';
-  export let ringClass   = 'focus-within:ring-amber-500/50';
+  export let ringClass   = 'focus-within:ring-teal-500/50';
 
   const dispatch = createEventDispatcher();
 

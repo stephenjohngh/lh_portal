@@ -97,16 +97,16 @@ export const ACTIVITY_TYPE_CONFIG = {
   [ACTIVITY_TYPE.NOTE]: {
     label:       'Note',
     icon:        '📝',
-    borderColor: 'border-amber-400',
-    badgeClass:  'bg-amber-900/40 text-amber-300 border border-amber-700/50',
+    borderColor: 'border-teal-400',
+    badgeClass:  'bg-teal-900/40 text-teal-300 border border-teal-700/50',
     badgeText:   'Note',
-    ringClass:   'focus:ring-amber-500',
-    borderEdit:  'border-amber-500/50',
+    ringClass:   'focus:ring-teal-500',
+    borderEdit:  'border-teal-500/50',
     placeholder: 'Enter your note…',
     // Light-theme (report preview — white background)
-    reportBg:       'bg-amber-50',
-    reportBorder:   'border-amber-200',
-    reportBadgeCls: 'bg-amber-100 text-amber-700 border-amber-300',
+    reportBg:       'bg-teal-50',
+    reportBorder:   'border-teal-200',
+    reportBadgeCls: 'bg-teal-100 text-teal-700 border-teal-300',
     fields: [
       { key: 'summary', label: 'Summary', type: 'text', placeholder: 'One-line summary for reports…', span: 2 }
     ]
@@ -167,15 +167,15 @@ export const ACTIVITY_TYPE_CONFIG = {
   [ACTIVITY_TYPE.LETTER]: {
     label:       'Letter',
     icon:        '📄',
-    borderColor: 'border-orange-400',
-    badgeClass:  'bg-orange-900/40 text-orange-300 border border-orange-700/50',
+    borderColor: 'border-yellow-400',
+    badgeClass:  'bg-yellow-900/40 text-yellow-300 border border-yellow-700/50',
     badgeText:   'Letter',
-    ringClass:   'focus:ring-orange-500',
-    borderEdit:  'border-orange-500/50',
+    ringClass:   'focus:ring-yellow-500',
+    borderEdit:  'border-yellow-500/50',
     placeholder: 'Summarise the letter…',
-    reportBg:       'bg-orange-50',
-    reportBorder:   'border-orange-200',
-    reportBadgeCls: 'bg-orange-100 text-orange-700 border-orange-300',
+    reportBg:       'bg-yellow-50',
+    reportBorder:   'border-yellow-200',
+    reportBadgeCls: 'bg-yellow-100 text-yellow-700 border-yellow-300',
     fields: [
       { key: 'from',        label: 'From',      type: 'text', placeholder: 'Sender',             span: 1 },
       { key: 'to',          label: 'To',        type: 'text', placeholder: 'Recipient',          span: 1 },
