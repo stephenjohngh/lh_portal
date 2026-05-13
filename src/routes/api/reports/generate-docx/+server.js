@@ -440,17 +440,12 @@ async function generateIssueContent(issue, number, sortOrder = 'desc', summaryOn
       if (showBody) {
         if (item.historic) {
           content.push(new Paragraph({
-            children: [
-              new TextRun({ text: '[Historic]  ', bold: true, size: 20, color: 'd97706' }),
-              new TextRun({ text: item.body, size: 22, color: '888888', italics: true })
-            ],
-            spacing: { before: 0, after: 40, left: 360 }
+            children: [new TextRun({ text: '[Historic]', bold: true, size: 20, color: 'd97706' })],
+            spacing: { before: 0, after: 0, left: 360 }
           }));
+          content.push(...parseHtmlToDocxParagraphs(item.body, { size: 22, color: '888888', italics: true, indent: 360 }));
         } else {
-          content.push(new Paragraph({
-            children: [new TextRun({ text: item.body, size: 22 })],
-            spacing: { before: 0, after: 40, left: 360 }
-          }));
+          content.push(...parseHtmlToDocxParagraphs(item.body, { size: 22, indent: 360 }));
         }
       }
 
@@ -556,6 +551,141 @@ async function generateIssueContent(issue, number, sortOrder = 'desc', summaryOn
   );
 
   return content;
+}
+
+/**
+ * Convert Tiptap HTML body text to an array of docx Paragraph objects.
+ * Handles: <p>, <ul>/<li>, <ol>/<li>, <br>, <strong>, <em>, <u>.
+ * Falls back to a single plain-text paragraph for legacy non-HTML bodies.
+ *
+ * @param {string} html
+ * @param {{ size?, color?, italics?, indent? }} opts
+ * @returns {Paragraph[]}
+ */
+function parseHtmlToDocxParagraphs(html, opts = {}) {
+  const { size = 22, color, italics = false, indent = 360 } = opts;
+
+  if (!html) {
+    return [new Paragraph({ children: [new TextRun({ text: '', size })], spacing: { after: 40, left: indent } })];
+  }
+
+  // Plain text (legacy pre-editor bodies) — split on newlines.
+  if (!html.trimStart().startsWith('<')) {
+    return html.split('\n').map(line =>
+      new Paragraph({
+        children: [new TextRun({ text: line, size, color, italics })],
+        spacing: { before: 0, after: 40, left: indent }
+      })
+    );
+  }
+
+  const paragraphs = [];
+
+  // Match top-level block elements: <p>, <ul>, <ol>
+  const blockRe = /<(p|ul|ol)([\s>][^]*?)<\/\1>/gi;
+  let match;
+  while ((match = blockRe.exec(html)) !== null) {
+    const tag      = match[1].toLowerCase();
+    const innerRaw = match[0];
+
+    if (tag === 'ul' || tag === 'ol') {
+      // Extract each <li> and build a bullet / numbered paragraph.
+      const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+      let liMatch;
+      let orderedNum = 1;
+      while ((liMatch = liRe.exec(innerRaw)) !== null) {
+        // Strip any wrapping <p> that Tiptap puts inside <li>.
+        const liInner = liMatch[1].replace(/<\/?p[^>]*>/gi, '').trim();
+        const runs    = parseInlineHtml(liInner, { size, color, italics });
+        if (tag === 'ul') {
+          paragraphs.push(new Paragraph({
+            children: runs,
+            numbering: { reference: 'bullets', level: 0 },
+            spacing: { before: 0, after: 40, left: indent }
+          }));
+        } else {
+          // Numbered list: prefix text rather than Word numbering (avoids counter sharing).
+          paragraphs.push(new Paragraph({
+            children: [
+              new TextRun({ text: `${orderedNum++}.  `, size, color }),
+              ...runs
+            ],
+            spacing: { before: 0, after: 40, left: indent + 240 }
+          }));
+        }
+      }
+    } else {
+      // <p> block: strip outer tags, handle empty / <br> paragraphs.
+      const inner = innerRaw.replace(/^<p[^>]*>|<\/p>$/gi, '').trim();
+      if (!inner || inner === '<br>') {
+        paragraphs.push(new Paragraph({
+          children: [new TextRun({ text: '', size })],
+          spacing: { before: 0, after: 40, left: indent }
+        }));
+      } else {
+        const runs = parseInlineHtml(inner, { size, color, italics });
+        paragraphs.push(new Paragraph({
+          children: runs,
+          spacing: { before: 0, after: 40, left: indent }
+        }));
+      }
+    }
+  }
+
+  // Fallback: no blocks matched — treat whole string as plain text.
+  if (paragraphs.length === 0) {
+    paragraphs.push(new Paragraph({
+      children: [new TextRun({ text: html.replace(/<[^>]+>/g, ''), size, color, italics })],
+      spacing: { before: 0, after: 40, left: indent }
+    }));
+  }
+
+  return paragraphs;
+}
+
+/**
+ * Parse inline HTML (<strong>, <em>, <u>) into an array of TextRun objects.
+ * Any unrecognised tags are stripped; HTML entities are decoded.
+ */
+function parseInlineHtml(html, { size = 22, color, italics = false } = {}) {
+  const runs = [];
+  let bold = false, italic = italics, underline = false;
+
+  // Split on inline formatting tags (case-insensitive).
+  const parts = html.split(/(<\/?(?:strong|em|u|s)>)/gi);
+
+  for (const part of parts) {
+    const lc = part.toLowerCase();
+    if      (lc === '<strong>')  { bold      = true;    continue; }
+    else if (lc === '</strong>') { bold      = false;   continue; }
+    else if (lc === '<em>')      { italic    = true;    continue; }
+    else if (lc === '</em>')     { italic    = italics; continue; }
+    else if (lc === '<u>')       { underline = true;    continue; }
+    else if (lc === '</u>')      { underline = false;   continue; }
+
+    // Strip any remaining tags (e.g. <br>) and decode common entities.
+    const text = part
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g,  '&')
+      .replace(/&lt;/g,   '<')
+      .replace(/&gt;/g,   '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g,  "'");
+
+    if (text) {
+      runs.push(new TextRun({
+        text,
+        size,
+        ...(color     ? { color }               : {}),
+        ...(bold      ? { bold: true }          : {}),
+        ...(italic    ? { italics: true }        : {}),
+        ...(underline ? { underline: {} }        : {})
+      }));
+    }
+  }
+
+  return runs.length > 0 ? runs : [new TextRun({ text: '', size })];
 }
 
 function fmtShortDate(iso) {
