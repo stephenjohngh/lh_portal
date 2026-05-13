@@ -123,12 +123,15 @@ export function formatTimestamp(createdAt, updatedAt) {
  *   includeCompletedActions {boolean} - show completed actions alongside outstanding ones
  *   issueNumbers            {number[]} - if non-empty, show ONLY these issue numbers,
  *                                        bypassing the date filter (for drill-down)
+ *   activityTypes           {Set<string>|null} - if provided, only include activities whose
+ *                                        activity_type is in this Set; null = all types
  */
 export function filterIssues(issues, filterDate, options = {}) {
   const {
     includeHistoric         = false,
     includeCompletedActions = false,
-    issueNumbers            = []
+    issueNumbers            = [],
+    activityTypes           = null   // null = all types; Set = only these types
   } = options;
 
   const filterDateTime = filterDate ? new Date(filterDate).getTime() : null;
@@ -155,7 +158,8 @@ export function filterIssues(issues, filterDate, options = {}) {
       // Pass through as a unified array; ReportIssueCard splits by activity_type.
       activities: (issue.activities || [])
         .filter(a => !filterSubItems || hasBeenUpdatedSince(a.created_at, filterDateTime))
-        .filter(a => includeHistoric || issue.status === ISSUE_STATUS.COMPLETED || !a.historic),
+        .filter(a => includeHistoric || issue.status === ISSUE_STATUS.COMPLETED || !a.historic)
+        .filter(a => !activityTypes || activityTypes.has(a.activity_type ?? ACTIVITY_TYPE.COMMENT)),
       // Actions: filter by date (when active), then by completion status.
       // Sort outstanding before completed, then by created_at ASC within each group
       // (the card re-sorts by the user's chosen direction).

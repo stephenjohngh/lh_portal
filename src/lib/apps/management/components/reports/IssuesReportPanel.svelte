@@ -41,6 +41,33 @@
   let includeCompletedActions = _saved?.includeCompletedActions ?? false;
   let summaryOnly             = _saved?.summaryOnly             ?? false;
 
+  // ── Activity type filter ──────────────────────────────────────────────────
+  // Each type has its own boolean; all default to true (show all types).
+  // Stored under typeFilter.{type} in localStorage.
+  const _tf = _saved?.typeFilter ?? {};
+  let typeNote     = _tf.note     ?? true;
+  let typeDecision = _tf.decision ?? true;
+  let typeComment  = _tf.comment  ?? true;
+  let typeEmail    = _tf.email    ?? true;
+  let typeLetter   = _tf.letter   ?? true;
+  let typeDocument = _tf.document ?? true;
+  let typeMeeting  = _tf.meeting  ?? true;
+
+  // Derived Set passed to filterIssues — null means all types (fast path).
+  $: enabledTypes = (() => {
+    const all = [typeNote, typeDecision, typeComment, typeEmail, typeLetter, typeDocument, typeMeeting];
+    if (all.every(Boolean)) return null; // all on — skip filtering
+    return new Set([
+      typeNote     && 'note',
+      typeDecision && 'decision',
+      typeComment  && 'comment',
+      typeEmail    && 'email',
+      typeLetter   && 'letter',
+      typeDocument && 'document',
+      typeMeeting  && 'meeting'
+    ].filter(Boolean));
+  })();
+
   // ── Sort order ────────────────────────────────────────────────────────────
   let sortOrder = _saved?.sortOrder ?? 'desc';
 
@@ -48,7 +75,11 @@
   $: try {
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       includeCurrent, includeParked, includeCompleted,
-      filterDate, includeHistoric, includeCompletedActions, summaryOnly, sortOrder
+      filterDate, includeHistoric, includeCompletedActions, summaryOnly, sortOrder,
+      typeFilter: {
+        note: typeNote, decision: typeDecision, comment: typeComment,
+        email: typeEmail, letter: typeLetter, document: typeDocument, meeting: typeMeeting
+      }
     }));
   } catch { /* private browsing / quota exceeded — ignore */ }
 
@@ -66,7 +97,8 @@
   $: filteredIssues = filterIssues(issues, filterDate, {
     includeHistoric,
     includeCompletedActions,
-    issueNumbers
+    issueNumbers,
+    activityTypes: enabledTypes
   });
 
   $: groupedIssues = groupIssuesByStatus(filteredIssues);
@@ -140,6 +172,32 @@
         <Checkbox bind:checked={includeHistoric}         color="blue" label="Include historic" />
         <Checkbox bind:checked={includeCompletedActions} color="blue" label="Include completed actions" />
         <Checkbox bind:checked={summaryOnly}             color="blue" label="Summary headers only" />
+      </div>
+    </div>
+
+    <!-- Activity types -->
+    <div>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Activity types</p>
+        <div class="flex gap-2">
+          <button type="button"
+            class="text-[10px] text-slate-400 hover:text-slate-200 underline"
+            on:click={() => { typeNote = typeDecision = typeComment = typeEmail = typeLetter = typeDocument = typeMeeting = true; }}
+          >All</button>
+          <button type="button"
+            class="text-[10px] text-slate-400 hover:text-slate-200 underline"
+            on:click={() => { typeNote = typeDecision = typeComment = typeEmail = typeLetter = typeDocument = typeMeeting = false; }}
+          >None</button>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <Checkbox bind:checked={typeNote}     label="📝 Note" />
+        <Checkbox bind:checked={typeDecision} label="✅ Decision" />
+        <Checkbox bind:checked={typeComment}  label="💬 Comment" />
+        <Checkbox bind:checked={typeEmail}    label="📧 Email" />
+        <Checkbox bind:checked={typeLetter}   label="📄 Letter" />
+        <Checkbox bind:checked={typeDocument} label="📎 Document" />
+        <Checkbox bind:checked={typeMeeting}  label="🤝 Meeting" />
       </div>
     </div>
 
