@@ -218,8 +218,8 @@
           {@const h = activityCounts.decision_h}
           {@const cur = activityCounts.decision - h}
           <div class="text-icon">
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/50 font-semibold uppercase tracking-wide">D</span>
-            <span class="text-violet-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} decision{activityCounts.decision !== 1 ? 's' : ''}</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/40 text-yellow-300 border border-yellow-700/50 font-semibold uppercase tracking-wide">D</span>
+            <span class="text-yellow-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} decision{activityCounts.decision !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
@@ -246,7 +246,7 @@
           {@const cur = activityCounts.letter - h}
           <div class="text-icon">
             <span>📄</span>
-            <span class="text-yellow-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} letter{activityCounts.letter !== 1 ? 's' : ''}</span>
+            <span class="text-slate-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} letter{activityCounts.letter !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
@@ -255,7 +255,7 @@
           {@const cur = activityCounts.document - h}
           <div class="text-icon">
             <span>📎</span>
-            <span class="text-rose-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} document{activityCounts.document !== 1 ? 's' : ''}</span>
+            <span class="text-gray-200">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} document{activityCounts.document !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
@@ -264,7 +264,7 @@
           {@const cur = activityCounts.meeting - h}
           <div class="text-icon">
             <span>🤝</span>
-            <span class="text-indigo-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} meeting{activityCounts.meeting !== 1 ? 's' : ''}</span>
+            <span class="text-rose-300">{cur}{#if h > 0}<span class="text-gray-500">/{h}</span>{/if} meeting{activityCounts.meeting !== 1 ? 's' : ''}</span>
           </div>
         {/if}
 
