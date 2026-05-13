@@ -7,7 +7,7 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          VerticalAlign, PageBreak } from 'docx';
 import { getLogger }       from '$lib/utils/logger';
 import { getPriorityLabel } from '$lib/utils/constants';
-import { buildFieldSummary } from '$lib/apps/issues/components/reports/reportUtils';
+import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils';
 
 const logger = getLogger('GenerateDocx');
 
