@@ -375,14 +375,14 @@
         {#if canLink}
           <ProtectedButton
             action="modify"
-            variant={panelOpen ? 'primary' : 'secondary'}
+            variant="amber"
             size="small"
             icon="clipboard"
             iconPosition="only"
             on:click={() => dispatch('togglePanel', activity)}
             title={hasLinked
               ? (panelOpen ? 'Hide linked action' : 'View linked action')
-              : 'Add linked action with AI suggestion'}
+              : (panelOpen ? 'Hide action panel' : 'Add linked action')}
           />
         {/if}
         <ProtectedButton
@@ -463,6 +463,7 @@
         saving={suggestionSaving}
         {linkedDeleteError}
         on:dismiss             on:addAction
+        on:suggestAI
         on:viewLinked          on:deleteLinkedRequest
       />
     {/if}

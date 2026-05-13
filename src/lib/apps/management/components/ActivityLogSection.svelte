@@ -263,20 +263,31 @@
     }
   }
 
-  async function openSuggestion(activity) {
+  function openSuggestion(activity) {
     editingActivity   = null;
     viewingItem       = null;
     suggestionError   = '';
     suggestionInfo    = '';
     suggestionForId   = activity.id;
 
-    // If this activity already has a linked action, short-circuit.
+    // If this activity already has a linked action, show it.
     if (linkedActionByActivityId[activity.id]) {
       suggestionLoading = false;
       suggestionDraft   = '';
       suggestionSource  = 'already_linked';
       return;
     }
+
+    // Open panel immediately in manual mode — user types or clicks AI suggest.
+    suggestionDraft   = '';
+    suggestionSource  = 'manual';
+    suggestionLoading = false;
+  }
+
+  // Called when user clicks "✨ Suggest with AI" inside the panel.
+  async function fetchAiSuggestion() {
+    const activity = activities.find(a => a.id === suggestionForId);
+    if (!activity) return;
 
     if (!AI_SUGGESTIONS_ENABLED) {
       suggestionDraft  = activity.body;
@@ -285,8 +296,8 @@
     }
 
     suggestionLoading = true;
-    suggestionDraft   = '';
-    suggestionSource  = 'ai';
+    suggestionError   = '';
+    suggestionInfo    = '';
 
     try {
       const res = await fetch('/api/management/suggest-action', {
@@ -305,7 +316,7 @@
         logger('⚠️ AI suggestion failed:', res.status, data?.error);
         suggestionDraft  = activity.body;
         suggestionSource = 'ai_failed';
-        suggestionInfo   = 'AI suggestion unavailable. Using the comment text — edit as needed.';
+        suggestionInfo   = 'AI suggestion unavailable. Using the activity text — edit as needed.';
       } else if (!data.shouldSuggest) {
         suggestionDraft  = '';
         suggestionSource = 'ai_declined';
@@ -321,7 +332,7 @@
       logger('❌ AI suggestion fetch error:', err);
       suggestionDraft  = activity.body;
       suggestionSource = 'ai_failed';
-      suggestionInfo   = 'AI suggestion unavailable. Using the comment text — edit as needed.';
+      suggestionInfo   = 'AI suggestion unavailable. Using the activity text — edit as needed.';
     } finally {
       suggestionLoading = false;
     }
@@ -603,6 +614,7 @@
           on:viewFull={(e) => { viewingItem = e.detail; }}
           on:dismiss={dismissSuggestion}
           on:addAction={openSuggestionInActionForm}
+          on:suggestAI={fetchAiSuggestion}
           on:viewLinked={(e) => viewLinkedAction(e.detail)}
           on:deleteLinkedRequest={(e) => requestDeleteLinked(e.detail)}
           on:meetingFilter

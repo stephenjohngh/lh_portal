@@ -1,18 +1,20 @@
 <!-- src/lib/apps/management/components/CommentSuggestionPanel.svelte -->
 <!--
-  The inline panel that opens under a comment when the user clicks the
-  per-comment action button. Five modes, driven by the `mode` prop:
+  The inline panel that opens under an activity when the user clicks the
+  linked-action (clipboard) button. Six modes, driven by the `mode` prop:
 
+    'manual'          — panel just opened; textarea is empty, user types or clicks AI
     'ai'              — LLM produced an action_text
     'ai_declined'     — LLM said no clear action; field empty by default
-    'ai_failed'       — API error / network failure; field falls back to comment text
-    'comment'         — feature flag off (Day 0.5 fallback): comment text verbatim
-    'already_linked'  — comment already has a linked action; show it with
-                        View / Delete buttons instead of the suggestion form
+    'ai_failed'       — API error / network failure; field falls back to activity text
+    'comment'         — feature flag off (Day 0.5 fallback): activity text verbatim
+    'already_linked'  — activity already has a linked action; show it with
+                        View / Delete buttons instead of the creation form
 
   The panel has no internal mutation logic. It dispatches up:
     'dismiss'             — close the panel
     'addAction'           — user committed the draft (parent should open ActionForm)
+    'suggestAI'           — user clicked "Suggest with AI" (parent calls the API)
     'viewLinked'          — jump to the linked action in the Actions section
     'deleteLinkedRequest' — open the delete-linked-action confirm dialog
 -->
@@ -84,34 +86,48 @@
   </div>
 
 {:else}
-  <!-- Suggestion form: header, optional spinner, draft textarea, footer -->
+  <!-- Action creation form: empty on open; user types or clicks AI suggest -->
   <div class="mt-2 bg-amber-900/15 border border-amber-700/40 rounded p-3 space-y-2">
+
+    <!-- Header row: label + AI button + dismiss -->
     <div class="flex items-center justify-between gap-2">
       <p class="text-xs font-semibold text-amber-300 flex items-center gap-1.5 flex-wrap">
         <span>
-          💡
+          📋
           {#if loading}
-            AI suggestion — thinking…
+            Getting AI suggestion…
           {:else if mode === 'ai'}
             AI-suggested action
           {:else if mode === 'ai_declined'}
             Suggested action (AI declined)
           {:else if mode === 'ai_failed'}
-            Suggested action (AI unavailable)
+            Suggestion unavailable
+          {:else if mode === 'comment'}
+            Suggested action from activity
           {:else}
-            Suggested action from comment
+            Linked action
           {/if}
         </span>
-        {#if !loading}
+        {#if !loading && mode !== 'manual'}
           <span class="text-amber-500/60 font-normal italic text-[10px]">draft — review before adding</span>
         {/if}
       </p>
-      <button
-        on:click={() => dispatch('dismiss')}
-        class="text-gray-400 hover:text-white text-sm leading-none"
-        title="Dismiss"
-        aria-label="Dismiss suggestion"
-      >✕</button>
+      <div class="flex items-center gap-1.5 shrink-0">
+        {#if !loading}
+          <button
+            type="button"
+            on:click={() => dispatch('suggestAI')}
+            class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 border border-slate-600 hover:border-purple-600/50 transition-colors"
+            title="Ask AI to suggest an action based on this activity"
+          >✨ Suggest with AI</button>
+        {/if}
+        <button
+          on:click={() => dispatch('dismiss')}
+          class="text-gray-400 hover:text-white text-sm leading-none"
+          title="Dismiss"
+          aria-label="Dismiss panel"
+        >✕</button>
+      </div>
     </div>
 
     {#if loading}
@@ -123,7 +139,7 @@
       <textarea
         bind:value={draft}
         rows="2"
-        placeholder="Action description"
+        placeholder="Describe the action to be taken…"
         class="w-full px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
       ></textarea>
       {#if info}
