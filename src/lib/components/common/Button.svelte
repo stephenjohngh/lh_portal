@@ -17,7 +17,7 @@
   // Color variant styles
   const variantStyles = {
     primary: 'bg-purple-500 hover:bg-purple-600 disabled:bg-purple-700',
-    amber: 'bg-amber-800 hover:bg-amber-700 disabled:bg-amber-900', // NEW: Amber variant for actions
+    amber: 'bg-amber-600 hover:bg-amber-500 disabled:bg-amber-700', // Actions accent — matches amber-400/500 border colours
     blue: 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800',
     green: 'bg-green-600 hover:bg-green-700 disabled:bg-green-800',
     secondary: 'bg-slate-600 hover:bg-slate-700 disabled:bg-slate-800',
