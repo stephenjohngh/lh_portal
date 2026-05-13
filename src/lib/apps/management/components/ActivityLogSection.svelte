@@ -207,7 +207,23 @@
     parseNoticeTimer = setTimeout(() => { parseNotice = ''; }, 5000);
 
     // Convert plain-text body to HTML paragraphs for the editor.
-    return parsed.body.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('');
+    // Normalise CRLF → LF first (Windows clipboard uses \r\n).
+    // Split on blank lines (paragraph breaks); within each paragraph,
+    // join soft-wrapped lines with <br> so they appear as a single block.
+    const normBody = parsed.body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    return normBody
+      .split(/\n\n+/)
+      .map(para => {
+        const trimmed = para.trim();
+        if (!trimmed) return null;
+        const inner = trimmed
+          .split('\n')
+          .map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
+          .join('<br>');
+        return `<p>${inner}</p>`;
+      })
+      .filter(Boolean)
+      .join('') || '<p></p>';
   }
 
   // -- Unified update/delete ------------------------------------------
