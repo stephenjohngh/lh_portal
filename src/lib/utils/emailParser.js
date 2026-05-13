@@ -43,7 +43,7 @@ export function parseEmailPaste(text) {
 
   // Outlook threads: the second "From:" line at the start of a line signals
   // the beginning of the previous message in the chain.
-  const fromMatches = [...text.matchAll(/^from:\s+.+/gim)];
+  const fromMatches = [...text.matchAll(/^from:\s*.+/gim)];
   if (fromMatches.length >= 2 && fromMatches[1].index > 30) {
     workingText = text.slice(0, fromMatches[1].index).trimEnd();
     wasThread   = true;
@@ -69,17 +69,17 @@ export function parseEmailPaste(text) {
   // ── 4. Parse header fields ────────────────────────────────────────
   const get = re => (re.exec(workingText)?.[1] ?? '').trim();
 
-  const fromRaw  = get(/^from:\s+(.+)/im);
-  const toRaw    = get(/^to:\s+(.+)/im);
-  const subject  = get(/^subject:\s+(.+)/im);
-  const dateRaw  = get(/^(?:date|sent):\s+(.+)/im);
+  const fromRaw  = get(/^from:\s*(.+)/im);
+  const toRaw    = get(/^to:\s*(.+)/im);
+  const subject  = get(/^subject:\s*(.+)/im);
+  const dateRaw  = get(/^(?:date|sent):\s*(.+)/im);
 
   // ── 5. Extract body ───────────────────────────────────────────────
   // Find the contiguous header block. It may be preceded by body text
   // (Outlook reply layout), so we keep scanning past leading non-header
   // lines rather than giving up at the first one.
   const workingLines = workingText.split('\n');
-  const HEADER_LINE  = /^(?:from|to|cc|bcc|subject|date|sent|reply-to):\s+.+/i;
+  const HEADER_LINE  = /^(?:from|to|cc|bcc|subject|date|sent|reply-to):\s*.+/i;
 
   let headerStart = -1;  // index of first header line found
   let headerEnd   = -1;  // index of last header line (or trailing blank)
@@ -116,7 +116,7 @@ export function parseEmailPaste(text) {
   }
 
   // Final pass: strip any header-format lines that remain in the body
-  // (catches headers interspersed with text or missed by the block scan).
+  // (catches no-space headers like "From:stephen" missed by earlier scan).
   body = body
     .split('\n')
     .filter(l => !HEADER_LINE.test(l.trim()))
@@ -169,8 +169,9 @@ function toISODate(raw) {
   if (!raw) return '';
   let s = raw.trim();
 
-  // Strip leading day-of-week ("Tuesday, " etc.)
-  s = s.replace(/^[a-z]+,\s*/i, '');
+  // Strip leading day-of-week, with or without a comma:
+  //   "Tuesday, 26 April…"  "Mon, 5 May…"  "Thu 15 Jan…"
+  s = s.replace(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*[,\s]+/i, '');
   // Remove " at " between date and time ("26 April 2016 at 12:36")
   s = s.replace(/\s+at\s+/i, ' ');
   // Strip trailing timezone abbreviation or offset (BST, GMT, +0100, -0500 …)
@@ -181,11 +182,25 @@ function toISODate(raw) {
   if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
 
   // Fallback: "DD Month YYYY" European layout ("26 April 2016 12:36:11")
-  const m = s.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})/i);
-  if (m) {
-    const month = MONTH_INDEX[m[2].toLowerCase().slice(0, 3)];
+  const mFull = s.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})/i);
+  if (mFull) {
+    const month = MONTH_INDEX[mFull[2].toLowerCase().slice(0, 3)];
     if (month !== undefined) {
-      d = new Date(parseInt(m[3]), month, parseInt(m[1]));
+      d = new Date(parseInt(mFull[3]), month, parseInt(mFull[1]));
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    }
+  }
+
+  // Fallback: "DD Mon" or "DD Mon HH:MM" with no year (e.g. "15 Jan 13:41").
+  // Assume current year; roll back one year if the result is in the future.
+  const mShort = s.match(/^(\d{1,2})\s+([a-z]+)/i);
+  if (mShort) {
+    const month = MONTH_INDEX[mShort[2].toLowerCase().slice(0, 3)];
+    if (month !== undefined) {
+      const today = new Date();
+      let year = today.getFullYear();
+      d = new Date(year, month, parseInt(mShort[1]));
+      if (d > today) d = new Date(year - 1, month, parseInt(mShort[1]));
       if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
     }
   }
