@@ -29,6 +29,7 @@
   import ConfirmDialog        from '$lib/components/common/ConfirmDialog.svelte';
   import ActionForm           from './ActionForm.svelte';
   import ActivityItem         from './ActivityItem.svelte';
+  import RichTextEditor       from './RichTextEditor.svelte';
 
   const logger = getLogger('ActivityLogSection');
 
@@ -178,35 +179,35 @@
     newActivity = { ...newActivity, fields: { ...(newActivity.fields ?? {}), [key]: value } };
   }
 
-  // -- Email paste parsing ---------------------------------------------
+  // -- Email paste parsing (add form) ----------------------------------
+  // Passed as onPaste to RichTextEditor; returns HTML for the editor to
+  // display, or null to let Tiptap handle the paste normally.
   let parseNotice = '';
   let parseNoticeTimer;
 
-  function handleBodyPaste(e) {
-    if (newActivity.activity_type !== ACTIVITY_TYPE.EMAIL) return;
+  function handleBodyPasteForEditor(rawText) {
+    if (newActivity.activity_type !== ACTIVITY_TYPE.EMAIL) return null;
 
-    const raw = e.clipboardData?.getData('text/plain');
-    if (!raw) return;
+    const parsed = parseEmailPaste(rawText);
+    if (!parsed) return null; // not an email — let Tiptap handle it
 
-    const parsed = parseEmailPaste(raw);
-    if (!parsed) return; // Not an email — let the default paste happen
-
-    e.preventDefault();
-
-    // Update structured fields with any parsed values (non-empty wins)
+    // Update structured fields with parsed values.
     const fields = { ...(newActivity.fields || {}) };
     if (parsed.from)       fields.from       = parsed.from;
     if (parsed.to)         fields.to         = parsed.to;
     if (parsed.subject)    fields.subject    = parsed.subject;
     if (parsed.email_date) fields.email_date = parsed.email_date;
 
-    newActivity = { ...newActivity, body: parsed.body, fields };
+    newActivity = { ...newActivity, fields };
 
     clearTimeout(parseNoticeTimer);
     parseNotice = parsed.wasThread
       ? '✓ Thread detected — showing latest message only'
       : '✓ Email fields extracted from paste';
     parseNoticeTimer = setTimeout(() => { parseNotice = ''; }, 5000);
+
+    // Convert plain-text body to HTML paragraphs for the editor.
+    return parsed.body.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('');
   }
 
   // -- Unified update/delete ------------------------------------------
@@ -543,14 +544,14 @@
         </div>
       {/if}
 
-      <!-- Body textarea -->
-      <textarea
-        bind:value={newActivity.body}
-        on:paste={handleBodyPaste}
+      <!-- Body (rich text editor — all activity types) -->
+      <RichTextEditor
+        value={newActivity.body}
         placeholder={newTypeConfig.placeholder}
-        class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {newTypeConfig.ringClass} resize-y"
-        rows={newTypeConfig.fields.length > 0 ? 3 : 5}
-      ></textarea>
+        ringClass={newTypeConfig.ringClass}
+        onPaste={handleBodyPasteForEditor}
+        on:change={(e) => { newActivity = { ...newActivity, body: e.detail }; }}
+      />
 
       {#if parseNotice}
         <p class="text-xs text-cyan-400 mt-1 flex items-center gap-1.5">
@@ -648,7 +649,7 @@
       </dl>
     {/if}
 
-    {#if viewingItem.activity_type === ACTIVITY_TYPE.NOTE && viewingItem.body?.startsWith('<')}
+    {#if viewingItem.body?.startsWith('<')}
       <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html viewingItem.body}</div>
     {:else}
       <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{viewingItem.body}</p>

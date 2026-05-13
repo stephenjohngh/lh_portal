@@ -24,6 +24,15 @@
   export let placeholder = 'Enter your note…';
   export let ringClass   = 'focus-within:ring-teal-500/50';
 
+  /**
+   * Optional paste interceptor for parent components (e.g. email auto-parse).
+   * Receives the raw plain-text paste string.
+   * Return an HTML string → editor content is replaced with that HTML.
+   * Return null/undefined → Tiptap handles the paste normally.
+   * @type {((rawText: string) => string | null | undefined) | null}
+   */
+  export let onPaste = null;
+
   const dispatch = createEventDispatcher();
 
   let editorEl;
@@ -59,7 +68,19 @@
       ],
       content: initContent(value),
       editorProps: {
-        attributes: { class: 'rte-prosemirror' }
+        attributes: { class: 'rte-prosemirror' },
+        // Intercept paste so parent can pre-process content (e.g. email parsing).
+        handlePaste: (view, event) => {
+          if (!onPaste) return false;
+          const raw = event.clipboardData?.getData('text/plain') || '';
+          const html = onPaste(raw);
+          if (html !== null && html !== undefined) {
+            // Schedule after current event cycle so editor is ready.
+            setTimeout(() => editor?.commands.setContent(html), 0);
+            return true; // suppress Tiptap's default paste
+          }
+          return false;
+        }
       },
       onTransaction: () => {
         // Re-assign to trigger Svelte reactivity (toolbar active states).

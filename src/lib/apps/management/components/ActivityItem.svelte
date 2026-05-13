@@ -96,19 +96,16 @@
   }
 
   // -- Email paste parsing (edit mode) ---------------------------------
+  // Passed as onPaste to RichTextEditor; returns HTML for the editor to
+  // display, or null to let Tiptap handle the paste normally.
   let parseNotice = '';
   let parseNoticeTimer;
 
-  function handleBodyPaste(e) {
-    if (editingActivity?.activity_type !== ACTIVITY_TYPE.EMAIL) return;
+  function handleBodyPasteForEditor(rawText) {
+    if (editingActivity?.activity_type !== ACTIVITY_TYPE.EMAIL) return null;
 
-    const raw = e.clipboardData?.getData('text/plain');
-    if (!raw) return;
-
-    const parsed = parseEmailPaste(raw);
-    if (!parsed) return;
-
-    e.preventDefault();
+    const parsed = parseEmailPaste(rawText);
+    if (!parsed) return null;
 
     const fields = { ...(editingActivity.fields || {}) };
     if (parsed.from)       fields.from       = parsed.from;
@@ -116,13 +113,16 @@
     if (parsed.subject)    fields.subject    = parsed.subject;
     if (parsed.email_date) fields.email_date = parsed.email_date;
 
-    editingActivity = { ...editingActivity, body: parsed.body, fields };
+    editingActivity = { ...editingActivity, fields };
 
     clearTimeout(parseNoticeTimer);
     parseNotice = parsed.wasThread
       ? '✓ Thread detected — showing latest message only'
       : '✓ Email fields extracted from paste';
     parseNoticeTimer = setTimeout(() => { parseNotice = ''; }, 5000);
+
+    // Convert plain-text body to HTML paragraphs for the editor.
+    return parsed.body.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('');
   }
 
   // -- AI summary generation (edit form) --------------------------------
@@ -241,22 +241,13 @@
       </div>
     {/if}
 
-    {#if editingActivity.activity_type === ACTIVITY_TYPE.NOTE}
-      <RichTextEditor
-        value={editingActivity.body}
-        placeholder={editTypeConfig.placeholder}
-        ringClass={editTypeConfig.ringClass}
-        on:change={(e) => { editingActivity = { ...editingActivity, body: e.detail }; }}
-      />
-    {:else}
-      <textarea
-        bind:value={editingActivity.body}
-        on:paste={handleBodyPaste}
-        placeholder={editTypeConfig.placeholder}
-        class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 {editTypeConfig.ringClass} resize-y"
-        rows={6}
-      ></textarea>
-    {/if}
+    <RichTextEditor
+      value={editingActivity.body}
+      placeholder={editTypeConfig.placeholder}
+      ringClass={editTypeConfig.ringClass}
+      onPaste={handleBodyPasteForEditor}
+      on:change={(e) => { editingActivity = { ...editingActivity, body: e.detail }; }}
+    />
 
     {#if parseNotice}
       <p class="text-xs text-cyan-400 mt-1 flex items-center gap-1.5">
@@ -347,7 +338,7 @@
         </div>
 
         {#if !hasSummary || bodyExpanded}
-          {#if activity.activity_type === ACTIVITY_TYPE.NOTE && activity.body?.startsWith('<')}
+          {#if activity.body?.startsWith('<')}
             <div class="rich-content text-gray-200 text-sm">{@html activity.body}</div>
           {:else}
             <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>

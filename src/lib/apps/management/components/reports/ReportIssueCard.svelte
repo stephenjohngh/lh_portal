@@ -117,7 +117,7 @@
                 {/if}
               </div>
               {#if showBody}
-                {#if activity.activity_type === ACTIVITY_TYPE.NOTE && activity.body?.startsWith('<')}
+                {#if activity.body?.startsWith('<')}
                   <div class="rich-content text-gray-500 text-sm italic">{@html activity.body}</div>
                 {:else}
                   <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{activity.body}</p>
@@ -147,7 +147,7 @@
                 {/if}
               </div>
               {#if showBody}
-                {#if activity.activity_type === ACTIVITY_TYPE.NOTE && activity.body?.startsWith('<')}
+                {#if activity.body?.startsWith('<')}
                   <div class="rich-content text-gray-900 text-sm">{@html activity.body}</div>
                 {:else}
                   <p class="text-gray-900 text-sm whitespace-pre-wrap">{activity.body}</p>
