@@ -6,6 +6,9 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { logLogin, logFailedLogin } from '$lib/server/auditLogger';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('AuthLogin');
 
 // Create Supabase client (matches your existing endpoint pattern)
 const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -23,7 +26,7 @@ export async function POST({ request }) {
       return json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    console.log('🔐 Login attempt for:', email);
+    logger('🔐 Login attempt for:', email);
 
     // Check if account is locked
     const attempts = failedLoginAttempts.get(email.toLowerCase());
@@ -31,7 +34,7 @@ export async function POST({ request }) {
       const timeSinceFirst = Date.now() - attempts.firstAttempt;
       
       if (attempts.count >= MAX_FAILED_ATTEMPTS && timeSinceFirst < LOCKOUT_DURATION) {
-        console.log('🚨 Account locked:', email);
+        logger('🚨 Account locked:', email);
         
         await logFailedLogin(email, request, 'account_locked_too_many_attempts');
 
@@ -53,7 +56,7 @@ export async function POST({ request }) {
     });
 
     if (error) {
-      console.log('❌ Login failed:', email);
+      logger('❌ Login failed:', email);
       
       // Track failed attempt
       const emailLower = email.toLowerCase();
@@ -81,7 +84,7 @@ export async function POST({ request }) {
     const previousFailedAttempts = attempts?.count || 0;
     failedLoginAttempts.delete(email.toLowerCase());
 
-    console.log('✅ Login successful:', email);
+    logger('✅ Login successful:', email);
 
     // ✨ LOG SUCCESSFUL LOGIN
     await logLogin(
@@ -102,7 +105,7 @@ export async function POST({ request }) {
     });
 
   } catch (err) {
-    console.error('Login error:', err);
+    logger('❌ Login error:', err.message);
     return json({ error: 'An error occurred during login' }, { status: 500 });
   }
 }

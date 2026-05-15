@@ -14,6 +14,7 @@
   import { meetingsStore }      from '../../stores/meetingsStore';
   import { permissions }        from '$lib/stores/permissions';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import { ACTIVITY_TYPE } from '$lib/utils/constants';
   import Button                 from '$lib/components/common/Button.svelte';
   import ProtectedButton        from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog          from '$lib/components/common/ConfirmDialog.svelte';
@@ -77,7 +78,7 @@
     for (const issue of issues) {
       bump(issue.meeting_id, 'issues');
       for (const a of issue.activities || []) {
-        if (a.activity_type === 'decision') bump(a.meeting_id, 'decisions');
+        if (a.activity_type === ACTIVITY_TYPE.DECISION) bump(a.meeting_id, 'decisions');
         else bump(a.meeting_id, 'activities');
       }
       for (const a of issue.actions || []) bump(a.meeting_id, 'actions');

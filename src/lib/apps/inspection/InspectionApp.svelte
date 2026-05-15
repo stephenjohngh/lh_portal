@@ -1,7 +1,7 @@
 <!-- src/lib/apps/inspection/InspectionApp.svelte -->
 <!-- Inspection App — mobile-first inspection tool using the v2 component data model -->
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, get } from 'svelte';
   import { getLogger }  from '$lib/utils/logger';
   import { permissions } from '$lib/stores/permissions';
   import { auth }       from '$lib/stores/auth';
@@ -66,7 +66,7 @@
 
   async function handleFinishRepair() {
     try {
-      const state = (() => { let s; inspectionStore.subscribe(v => { s = v; })(); return s; })();
+      const state = get(inspectionStore);
       if (state.activeSession?.status === 'open') {
         await inspectionStore.closeSession(state.activeSession.id);
       }

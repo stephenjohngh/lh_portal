@@ -181,6 +181,12 @@ export function pageProps(opts = {}) {
   };
 }
 
+// -- Date formatting (en-GB, server-side) -------------------------------------
+export function fmtShortDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 // -- Floor label helpers (server-side mirror of planConstants.js) -------------
 const FLOOR_NAMES = {
   L: 'Lower', U: 'Upper', G: 'Ground',

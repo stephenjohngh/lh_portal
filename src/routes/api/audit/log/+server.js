@@ -71,7 +71,6 @@ export async function POST({ request }) {
 
   } catch (err) {
     logger('❌ Error logging audit:', err.message);
-    // Don't fail the request — user operations must never be blocked by audit failures
-    return json({ success: true, warning: 'Audit log failed', error: err.message });
+    return json({ error: 'Audit log failed', detail: err.message }, { status: 500 });
   }
 }

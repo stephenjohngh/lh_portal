@@ -659,8 +659,6 @@ function createInspectionStore() {
             component_id: componentId,
             type_attribute_id,
             value: String(value),
-            created_by: userId,
-            updated_by: userId,
           }));
         if (rows.length > 0) {
           await api.createMany('component_attributes', rows, false);

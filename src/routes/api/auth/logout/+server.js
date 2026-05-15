@@ -6,6 +6,9 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { logLogout } from '$lib/server/auditLogger';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('AuthLogout');
 
 // Create Supabase client (matches your existing endpoint pattern)
 const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -19,7 +22,7 @@ export async function POST({ request }) {
       return json({ error: 'User information required' }, { status: 400 });
     }
 
-    console.log('🔓 Logout request from:', user_email);
+    logger('🔓 Logout request from:', user_email);
 
     // ✨ LOG LOGOUT EVENT
     await logLogout(
@@ -31,7 +34,7 @@ export async function POST({ request }) {
       }
     );
 
-    console.log('✅ Logout logged successfully');
+    logger('✅ Logout logged successfully');
 
     return json({
       success: true,
@@ -39,7 +42,7 @@ export async function POST({ request }) {
     });
 
   } catch (err) {
-    console.error('Logout error:', err);
+    logger('❌ Logout error:', err.message);
     return json({ error: 'An error occurred during logout' }, { status: 500 });
   }
 }

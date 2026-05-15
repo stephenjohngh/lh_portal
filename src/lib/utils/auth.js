@@ -3,6 +3,9 @@
 // NOW WITH READ-ONLY USER SUPPORT
 
 import { supabase } from '$lib/supabaseClient';
+import { getLogger } from '$lib/utils/logger';
+
+const logger = getLogger('auth');
 
 /**
  * Check if a user is an admin
@@ -20,13 +23,13 @@ export async function isAdmin(userId) {
       .single();
 
     if (error) {
-      console.error('Error checking admin status:', error);
+      logger('❌ Error checking admin status:', error.message);
       return false;
     }
 
     return data?.is_admin || false;
   } catch (err) {
-    console.error('Exception checking admin status:', err);
+    logger('❌ Exception checking admin status:', err.message);
     return false;
   }
 }
@@ -47,7 +50,7 @@ export async function isReadOnly(userId) {
       .single();
 
     if (error) {
-      console.error('Error checking read-only status:', error);
+      logger('❌ Error checking read-only status:', error.message);
       return false;
     }
 
@@ -56,7 +59,7 @@ export async function isReadOnly(userId) {
 
     return data?.is_read_only || false;
   } catch (err) {
-    console.error('Exception checking read-only status:', err);
+    logger('❌ Exception checking read-only status:', err.message);
     return false;
   }
 }
@@ -77,7 +80,7 @@ export async function canModify(userId) {
       .single();
 
     if (error) {
-      console.error('Error checking modify permission:', error);
+      logger('❌ Error checking modify permission:', error.message);
       return false;
     }
 
@@ -87,7 +90,7 @@ export async function canModify(userId) {
     // Regular users can modify if not read-only
     return !data?.is_read_only;
   } catch (err) {
-    console.error('Exception checking modify permission:', err);
+    logger('❌ Exception checking modify permission:', err.message);
     return false;
   }
 }
@@ -108,7 +111,7 @@ export async function getPermissionLevel(userId) {
       .single();
 
     if (error) {
-      console.error('Error getting permission level:', error);
+      logger('❌ Error getting permission level:', error.message);
       return 'read-only';
     }
 
@@ -116,7 +119,7 @@ export async function getPermissionLevel(userId) {
     if (data?.is_read_only) return 'read-only';
     return 'read-write';
   } catch (err) {
-    console.error('Exception getting permission level:', err);
+    logger('❌ Exception getting permission level:', err.message);
     return 'read-only';
   }
 }
@@ -131,7 +134,7 @@ export async function isCurrentUserAdmin() {
     if (!user) return false;
     return await isAdmin(user.id);
   } catch (err) {
-    console.error('Error checking current user admin status:', err);
+    logger('❌ Error checking current user admin status:', err.message);
     return false;
   }
 }
@@ -146,7 +149,7 @@ export async function isCurrentUserReadOnly() {
     if (!user) return false;
     return await isReadOnly(user.id);
   } catch (err) {
-    console.error('Error checking current user read-only status:', err);
+    logger('❌ Error checking current user read-only status:', err.message);
     return false;
   }
 }
@@ -161,7 +164,7 @@ export async function currentUserCanModify() {
     if (!user) return false;
     return await canModify(user.id);
   } catch (err) {
-    console.error('Error checking current user modify permission:', err);
+    logger('❌ Error checking current user modify permission:', err.message);
     return false;
   }
 }
@@ -176,7 +179,7 @@ export async function getCurrentUserPermissionLevel() {
     if (!user) return 'read-only';
     return await getPermissionLevel(user.id);
   } catch (err) {
-    console.error('Error getting current user permission level:', err);
+    logger('❌ Error getting current user permission level:', err.message);
     return 'read-only';
   }
 }
@@ -191,7 +194,7 @@ export async function getCurrentUser() {
     if (error) throw error;
     return user;
   } catch (err) {
-    console.error('Error getting current user:', err);
+    logger('❌ Error getting current user:', err.message);
     return null;
   }
 }
@@ -273,7 +276,7 @@ export async function canPerformAction(action, resource = null, userId = null) {
     
     return false;
   } catch (err) {
-    console.error('Error checking action permission:', err);
+    logger('❌ Error checking action permission:', err.message);
     return false;
   }
 }
@@ -296,7 +299,7 @@ export async function getUserProfile(userId) {
     if (error) throw error;
     return data;
   } catch (err) {
-    console.error('Error getting user profile:', err);
+    logger('❌ Error getting user profile:', err.message);
     return null;
   }
 }

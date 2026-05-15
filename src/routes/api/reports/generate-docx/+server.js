@@ -8,6 +8,7 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
 import { getLogger }       from '$lib/utils/logger';
 import { getPriorityLabel } from '$lib/utils/constants';
 import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils';
+import { fmtShortDate }     from '$lib/server/docxHelpers';
 
 const logger = getLogger('GenerateDocx');
 
@@ -688,12 +689,8 @@ function parseInlineHtml(html, { size = 22, color, italics = false } = {}) {
   return runs.length > 0 ? runs : [new TextRun({ text: '', size })];
 }
 
-function fmtShortDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
 // getPriorityLabel is imported from $lib/utils/constants — no local copy needed.
+// fmtShortDate is imported from $lib/server/docxHelpers.
 
 function getPriorityColorHex(priority) {
   // All priorities share the same slate colour in the Word doc header cell.

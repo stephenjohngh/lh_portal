@@ -41,7 +41,7 @@
   ).length || 0;
 
   $: overdueActionsCount = issue.actions?.filter(action => {
-    if (!action.date_deadline || action.status === 'completed') return false;
+    if (!action.date_deadline || action.status === ACTION_STATUS.COMPLETED) return false;
     const deadline = new Date(action.date_deadline);
     const today = new Date();
     today.setHours(0, 0, 0, 0);

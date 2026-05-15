@@ -5,7 +5,8 @@
   import { onMount }        from 'svelte';
   import { AVAILABLE_APPS } from '$lib/apps/apps.js';
   import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { supabase }       from '$lib/supabaseClient';
+  import { api }            from '$lib/utils/api';
+  import { auth }           from '$lib/stores/auth';
   import { logAudit }       from '$lib/utils/auditLogger';
   import { getLogger }      from '$lib/utils/logger';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
@@ -58,13 +59,12 @@
 
   async function loadAiModel() {
     try {
-      const { data, error: err } = await supabase
-        .from('portal_settings')
-        .select('value')
-        .eq('key', 'ai_model')
-        .maybeSingle();
-      if (err) throw err;
-      const v = data?.value;
+      const rows = await api.get('portal_settings', {
+        select: 'value',
+        filters: { key: 'ai_model' },
+        limit: 1
+      });
+      const v = rows[0]?.value;
       // Default to Haiku if no row exists or an unknown value is stored
       aiModel         = AI_MODELS.find(m => m.value === v)?.value ?? 'claude-haiku-4-5';
       aiModelPrevious = aiModel;
@@ -81,16 +81,13 @@
     aiError  = '';
     aiSaved  = false;
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id ?? null;
+      const userId = $auth.user?.id ?? null;
 
-      const { error: err } = await supabase
-        .from('portal_settings')
-        .upsert(
-          { key: 'ai_model', value: aiModel, updated_by: userId },
-          { onConflict: 'key' }
-        );
-      if (err) throw err;
+      await api.upsert(
+        'portal_settings',
+        { key: 'ai_model', value: aiModel, updated_by: userId },
+        { onConflict: 'key' }
+      );
       aiSaved = true;
       logger('✅ Saved ai_model:', aiModel);
 

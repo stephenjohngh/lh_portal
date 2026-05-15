@@ -7,7 +7,8 @@ import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, BorderStyle, WidthType, ShadingType
 } from 'docx';
-import { getLogger } from '$lib/utils/logger';
+import { getLogger }    from '$lib/utils/logger';
+import { fmtShortDate } from '$lib/server/docxHelpers';
 
 const logger = getLogger('GenerateActionsDocx');
 
@@ -15,13 +16,6 @@ const logger = getLogger('GenerateActionsDocx');
 
 const BORDER  = { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' };
 const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
-
-function fmtShort(isoDate) {
-  if (!isoDate) return '';
-  return new Date(isoDate).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric'
-  });
-}
 
 function p(text, opts = {}) {
   return new Paragraph({
@@ -101,7 +95,7 @@ function buildContent(groups, userName, sortMode, totalActions) {
 
   content.push(p(
     [
-      `Generated ${fmtShort(new Date().toISOString())}`,
+      `Generated ${fmtShortDate(new Date().toISOString())}`,
       userName,
       `${totalActions} ${totalActions === 1 ? 'action' : 'actions'} across ${groups.length} ${groups.length === 1 ? 'issue' : 'issues'}`,
       `Sorted: ${sortLabel}`
@@ -225,8 +219,8 @@ function buildActionContent(action, number) {
   const details = [
     action.status,
     action.name_text                ? `👤 ${action.name_text}` : null,
-    action.date_deadline            ? `📅 Due: ${fmtShort(action.date_deadline)}${isOverdue ? ' ⚠️' : ''}` : null,
-    `Added: ${fmtShort(action.created_at)}`
+    action.date_deadline            ? `📅 Due: ${fmtShortDate(action.date_deadline)}${isOverdue ? ' ⚠️' : ''}` : null,
+    `Added: ${fmtShortDate(action.created_at)}`
   ].filter(Boolean).join('  ·  ');
 
   content.push(p(details, {
