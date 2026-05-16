@@ -19,7 +19,8 @@
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
   import TenYearPlanTab from './components/TenYearPlanTab.svelte';
-  import DatabasePanel from './components/DatabasePanel.svelte';
+  import DatabasePanel   from './components/DatabasePanel.svelte';
+  import DocumentsTab    from './components/DocumentsTab.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -228,6 +229,17 @@
             <span>Database</span>
           </span>
         </button>
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'documents'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('documents')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>📁</span>
+            <span>Documents</span>
+          </span>
+        </button>
       {/if}
     </div>
   </div>
@@ -326,6 +338,9 @@
 
   {:else if activeTab === 'database'}
     <DatabasePanel />
+
+  {:else if activeTab === 'documents'}
+    <DocumentsTab />
   {/if}
 </div>
 
