@@ -1,7 +1,8 @@
 <!-- src/lib/apps/inspection/InspectionApp.svelte -->
 <!-- Inspection App — mobile-first inspection tool using the v2 component data model -->
 <script>
-  import { onMount, get } from 'svelte';
+  import { onMount }       from 'svelte';
+  import { get }           from 'svelte/store';
   import { getLogger }  from '$lib/utils/logger';
   import { permissions } from '$lib/stores/permissions';
   import { auth }       from '$lib/stores/auth';
