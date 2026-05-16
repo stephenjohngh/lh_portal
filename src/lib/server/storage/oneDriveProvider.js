@@ -201,7 +201,7 @@ export const oneDriveProvider = {
     const params = new URLSearchParams({
       $select: 'id,name,file,folder,size,webUrl,createdDateTime,lastModifiedDateTime',
       $top:    String(opts.limit ?? 100),
-      $orderby:'createdDateTime desc',
+      $orderby: 'createdDateTime desc',
     });
     if (opts.query)       params.set('$filter', `contains(name,'${opts.query}')`);
     if (opts.foldersOnly) params.set('$filter', 'folder ne null');

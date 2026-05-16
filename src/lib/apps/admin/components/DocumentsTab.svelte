@@ -18,27 +18,9 @@
   let filterCategory = '';
   let filterSearch   = '';
 
-  // Provider info (server-reported)
-  let providerName = '';
-
   onMount(async () => {
     await documentsStore.load();
-    try {
-      const res  = await fetch('/api/documents?limit=1');
-      const header = res.headers.get('x-storage-provider');
-      if (header) providerName = header;
-    } catch { /* ignore */ }
-    // Fetch provider name from a lightweight call
-    fetchProvider();
   });
-
-  async function fetchProvider() {
-    try {
-      const res  = await fetch('/api/documents/folders');
-      // provider name available via env on server — surface via debug route
-      // If the route added an x-provider header we'd show it; otherwise infer
-    } catch { /* ignore */ }
-  }
 
   async function applyFilters() {
     await documentsStore.load({
@@ -63,7 +45,10 @@
     }
   }
 
-  function handleUploaded() {
+  function handleUploaded(e) {
+    // e.detail is the array of newly uploaded document_library rows.
+    // If no filters are active the new docs are already in the store from
+    // the upload call; reload to apply any active filters and get server order.
     documentsStore.load({
       doc_type: filterDocType  || undefined,
       category: filterCategory || undefined,
@@ -88,7 +73,6 @@
       <h3 class="text-lg font-semibold text-slate-100">Document Library</h3>
       <p class="text-sm text-slate-400">
         Upload and index documents stored in external storage.
-        {#if providerName}Provider: <span class="text-teal-400">{providerName}</span>.{/if}
       </p>
     </div>
     <div class="flex gap-4 text-center flex-shrink-0">
