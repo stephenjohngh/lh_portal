@@ -2,9 +2,8 @@
 // Client-side store for the document library.
 // All server communication goes through the /api/documents/* routes.
 
-import { writable } from 'svelte/store';
-import { auth }     from '$lib/stores/auth';
-import { get }      from 'svelte/store';
+import { writable, get } from 'svelte/store';
+import { auth }          from '$lib/stores/auth';
 
 function createDocumentsStore() {
   const { subscribe, update, set } = writable({
