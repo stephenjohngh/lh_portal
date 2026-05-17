@@ -6,9 +6,11 @@
   import { documentsStore } from '$lib/stores/documentsStore';
   import DocumentUploader   from '$lib/components/common/documents/DocumentUploader.svelte';
   import DocumentList       from '$lib/components/common/documents/DocumentList.svelte';
+  import ConfirmDialog      from '$lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay       from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
   import { permissions }    from '$lib/stores/permissions';
+  import { debounce }       from '$lib/utils/debounce';
   import { DOC_TYPES, CATEGORIES } from '$lib/utils/documentUtils';
 
   $: ({ docs, loading, error } = $documentsStore);
@@ -30,16 +32,32 @@
     });
   }
 
+  const debouncedApplyFilters = debounce(applyFilters, 250);
+
   async function clearFilters() {
     filterDocType = ''; filterCategory = ''; filterSearch = '';
     await documentsStore.load();
   }
 
-  async function handleDelete(e) {
-    const doc = e.detail;
-    if (!confirm(`Delete "${doc.display_name ?? doc.filename}"? This cannot be undone.`)) return;
+  // Delete confirmation state
+  let pendingDelete  = null;
+  let deleting       = false;
+
+  function handleDelete(e) {
+    pendingDelete = e.detail;
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    deleting = true;
     // Errors are surfaced via documentsStore.error → ErrorDisplay
-    try { await documentsStore.remove(doc.id); } catch { /* shown in ErrorDisplay */ }
+    try { await documentsStore.remove(pendingDelete.id); } catch { /* shown */ }
+    deleting      = false;
+    pendingDelete = null;
+  }
+
+  function cancelDelete() {
+    pendingDelete = null;
   }
 
   function handleUploaded(e) {
@@ -110,7 +128,7 @@
         class="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-teal-500 w-48"
         placeholder="Name or title…"
         bind:value={filterSearch}
-        on:input={applyFilters}
+        on:input={debouncedApplyFilters}
       />
     </div>
     <div>
@@ -162,3 +180,14 @@
     />
   {/if}
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete document"
+  message={pendingDelete ? `Delete "${pendingDelete.display_name ?? pendingDelete.filename}"? This cannot be undone.` : ''}
+  confirmText="Delete"
+  danger={true}
+  processing={deleting}
+  on:confirm={confirmDelete}
+  on:cancel={cancelDelete}
+/>

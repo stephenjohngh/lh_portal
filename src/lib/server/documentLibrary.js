@@ -3,17 +3,19 @@
 // All storage operations go through the active storageProvider.
 // All DB index operations use the service-role Supabase client.
 
-import { createClient }    from '@supabase/supabase-js';
-import { storageProvider } from './storage/index.js';
-import { getLogger }       from '$lib/utils/logger';
+import { createClient }              from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL }        from '$env/static/public';
+import { SUPABASE_SERVICE_ROLE_KEY }  from '$env/static/private';
+import { storageProvider }            from './storage/index.js';
+import { getLogger }                  from '$lib/utils/logger';
 
 const logger = getLogger('DocumentLibrary');
 
+// Module-level singleton; createClient is cheap but no need to make per-call.
+const db = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
 function getDb() {
-  return createClient(
-    process.env.PUBLIC_SUPABASE_URL      ?? '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-  );
+  return db;
 }
 
 /**
