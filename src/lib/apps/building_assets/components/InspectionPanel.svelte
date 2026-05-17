@@ -24,9 +24,10 @@
     selCls: 'ring-2 ' + s.ring
   }));
 
-  // Initialise form from last inspection or defaults
-  // Normalise legacy 'OK' uppercase to 'ok' in case migration 022 hasn't run yet
-  let result = (lastInspection?.inspection_result ?? 'ok').toLowerCase();
+  // Initialise form from last inspection or defaults.
+  // DB CHECK constraints (migrations 022 + 123) enforce lowercase, so no
+  // normalisation is needed.
+  let result = lastInspection?.inspection_result ?? 'ok';
   let notes     = lastInspection?.inspector_notes   ?? '';
 
   // Build checklist: one entry per checkable attr, defaulting to false

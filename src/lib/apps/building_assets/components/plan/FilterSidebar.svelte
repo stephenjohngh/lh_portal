@@ -64,9 +64,8 @@
   }
 
   // Count per status (of ALL on-plan components, ignoring current filters)
-  // Normalise to lowercase so legacy 'OK' rows count correctly under the 'ok' bucket
   $: statusCounts = STATUSES.reduce((acc, s) => {
-    acc[s.value] = planComponents.filter(c => (c.status || 'ok').toLowerCase() === s.value).length;
+    acc[s.value] = planComponents.filter(c => (c.status ?? 'ok') === s.value).length;
     return acc;
   }, {});
 
