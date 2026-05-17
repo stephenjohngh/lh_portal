@@ -384,11 +384,15 @@
   let confirmClearScale = false;
 
   function handleClearScale() {
+    // Defensive: the toolbar button is admin-gated, but guard the
+    // handler too so a non-admin can't trigger it some other way.
+    if (!$permissions.isAdmin) return;
     confirmClearScale = true;
   }
 
   async function performClearScale() {
     confirmClearScale = false;
+    if (!$permissions.isAdmin) return;
     try { await buildingAssetsStore.updatePlanScale(selectedPlanId, null, null); }
     catch (err) { errorMsg = err.message; }
   }

@@ -88,7 +88,7 @@
     {/each}
   </div>
 
-  <!-- Scale indicator -->
+  <!-- Scale indicator — always visible; clear button admin-only -->
   {#if hasScale && metresPerUnit}
     <div
       class="flex items-center gap-1.5 text-xs text-teal-400/80 shrink-0"
@@ -96,11 +96,13 @@
     >
       <span>📏</span>
       <span class="font-mono">{(1 / metresPerUnit).toFixed(2)} u/m</span>
-      <button
-        on:click={() => dispatch('clearscale')}
-        class="text-teal-700 hover:text-teal-500 transition-colors ml-0.5"
-        title="Remove scale calibration"
-      >✕</button>
+      {#if $permissions.isAdmin}
+        <button
+          on:click={() => dispatch('clearscale')}
+          class="text-teal-700 hover:text-teal-500 transition-colors ml-0.5"
+          title="Remove scale calibration (admin)"
+        >✕</button>
+      {/if}
     </div>
   {/if}
 
