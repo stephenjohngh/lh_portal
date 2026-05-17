@@ -3,6 +3,9 @@
 // Uses browser-image-compression library.
 
 import imageCompression from 'browser-image-compression';
+import { getLogger }    from '$lib/utils/logger';
+
+const logger = getLogger('ImageCompression');
 
 /**
  * Compress an image blob to specified size and dimensions.
@@ -24,12 +27,13 @@ export async function compressImage(imageBlob, options = {}) {
   };
 
   try {
-    console.log('Original image size:', (imageBlob.size / 1024).toFixed(2), 'KB');
+    const before        = (imageBlob.size / 1024).toFixed(2);
     const compressedBlob = await imageCompression(imageBlob, compressionOptions);
-    console.log('Compressed image size:', (compressedBlob.size / 1024).toFixed(2), 'KB');
+    const after         = (compressedBlob.size / 1024).toFixed(2);
+    logger(`Compressed ${before} KB → ${after} KB`);
     return compressedBlob;
   } catch (error) {
-    console.error('Image compression failed:', error);
+    logger('❌ Compression failed:', error.message);
     throw new Error('Failed to compress image: ' + error.message);
   }
 }

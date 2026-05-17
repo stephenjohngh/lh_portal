@@ -21,7 +21,6 @@
 
   import AdminApp from '$lib/apps/admin/AdminApp.svelte';
   import ManagementApp from '$lib/apps/management/ManagementApp.svelte';
-  import DemoApp from '$lib/apps/demo/DemoApp.svelte';
   import Demo from '$lib/apps/demo/Demo.svelte';
   import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
   import BuildingAssetsApp from '$lib/apps/building_assets/BuildingAssetsApp.svelte';
@@ -109,7 +108,6 @@
     const components = {
       'admin': AdminApp,
       'management': ManagementApp,
-      'demo': DemoApp,
       'demo2': Demo,
       'settings': SettingsApp,
       'building_assets': BuildingAssetsApp,

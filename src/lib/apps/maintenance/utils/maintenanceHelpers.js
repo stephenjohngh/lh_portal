@@ -91,22 +91,9 @@ export function daysRelative(dateStr) {
   return `Due in ${diff} days`;
 }
 
-/** Add N days to a Date; returns a new Date. */
-export function addDays(date, days) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-/** Format a Date as YYYY-MM-DD string. */
-export function toDateString(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-/** Today as YYYY-MM-DD. */
-export function today() {
-  return toDateString(new Date());
-}
+// Date helpers — single source of truth lives in $lib/utils/dates.js.
+// Re-exported here so existing maintenance code keeps working.
+export { addDays, toDateString, today } from '$lib/utils/dates';
 
 /** Format bytes as human-readable string. */
 export function fmtBytes(bytes) {

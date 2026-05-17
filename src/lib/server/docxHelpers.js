@@ -182,10 +182,9 @@ export function pageProps(opts = {}) {
 }
 
 // -- Date formatting (en-GB, server-side) -------------------------------------
-export function fmtShortDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+// fmtShortDate lives in $lib/utils/dates.js; re-exported here so server route
+// callers can keep their existing import path.
+export { fmtShortDate } from '$lib/utils/dates';
 
 // -- Floor label helpers (server-side mirror of planConstants.js) -------------
 const FLOOR_NAMES = {

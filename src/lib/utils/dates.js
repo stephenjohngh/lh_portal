@@ -104,6 +104,45 @@ export function wasModified(createdAt, updatedAt) {
 }
 
 /**
+ * "23 Feb 2026" — alias of fmtDate kept for callers that want a more
+ * explicit name; uses `day: 'numeric'` so single-digit days render as
+ * "5 Feb 2026" rather than "05 Feb 2026".
+ * @param {string|null} iso
+ */
+export function fmtShortDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString(GB, {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
+
+/**
+ * Format a Date or ISO string as YYYY-MM-DD (UTC).
+ * Useful for `<input type="date">` values and DB date columns.
+ * @param {Date|string} value
+ */
+export function toDateString(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Today as a YYYY-MM-DD string (UTC). */
+export function today() {
+  return toDateString(new Date());
+}
+
+/**
+ * Add N days to a date; returns a new Date object.
+ * @param {Date|string} date
+ * @param {number} days
+ */
+export function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+/**
  * Converts a UTC ISO timestamp to the `yyyy-MM-ddTHH:mm` string expected
  * by `<input type="datetime-local">`, expressed in the user's local time.
  * Round-trip: `new Date(value).toISOString()` converts back to UTC.
