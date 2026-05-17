@@ -38,11 +38,8 @@
   async function handleDelete(e) {
     const doc = e.detail;
     if (!confirm(`Delete "${doc.display_name ?? doc.filename}"? This cannot be undone.`)) return;
-    try {
-      await documentsStore.remove(doc.id);
-    } catch (err) {
-      alert('Delete failed: ' + err.message);
-    }
+    // Errors are surfaced via documentsStore.error → ErrorDisplay
+    try { await documentsStore.remove(doc.id); } catch { /* shown in ErrorDisplay */ }
   }
 
   function handleUploaded(e) {

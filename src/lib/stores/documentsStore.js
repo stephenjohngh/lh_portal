@@ -1,12 +1,22 @@
 // src/lib/stores/documentsStore.js
 // Client-side store for the document library.
 // All server communication goes through the /api/documents/* routes.
+// Every request includes the user's Supabase access token in the Authorization
+// header — the server verifies it via requireAuth() / requireAdmin().
 
-import { writable, get } from 'svelte/store';
-import { auth }          from '$lib/stores/auth';
+import { writable } from 'svelte/store';
+import { supabase } from '$lib/supabaseClient';
+
+/** @returns {Promise<Record<string,string>>} headers including the bearer token, if any */
+async function authHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token
+    ? { Authorization: `Bearer ${session.access_token}` }
+    : {};
+}
 
 function createDocumentsStore() {
-  const { subscribe, update, set } = writable({
+  const { subscribe, update } = writable({
     docs:    [],
     loading: false,
     error:   null,
@@ -23,7 +33,7 @@ function createDocumentsStore() {
       for (const [k, v] of Object.entries(opts)) {
         if (v !== undefined && v !== null && v !== '') params.set(k, v);
       }
-      const res  = await fetch(`/api/documents?${params}`);
+      const res  = await fetch(`/api/documents?${params}`, { headers: await authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Failed to load documents');
       update(s => ({ ...s, docs: data, loading: false }));
@@ -39,22 +49,29 @@ function createDocumentsStore() {
    * @returns {Promise<Object>}  The new document_library row
    */
   async function upload(file, meta = {}) {
-    const userId = get(auth).user?.id ?? '';
-    const form   = new FormData();
+    const form = new FormData();
     form.append('file', file);
-    form.append('user_id', userId);
     for (const [k, v] of Object.entries(meta)) {
       if (v !== undefined && v !== null) {
         form.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v));
       }
     }
 
-    const res  = await fetch('/api/documents/upload', { method: 'POST', body: form });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Upload failed');
+    try {
+      const res = await fetch('/api/documents/upload', {
+        method:  'POST',
+        headers: await authHeaders(),
+        body:    form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed');
 
-    update(s => ({ ...s, docs: [data, ...s.docs] }));
-    return data;
+      update(s => ({ ...s, docs: [data, ...s.docs] }));
+      return data;
+    } catch (err) {
+      update(s => ({ ...s, error: err.message }));
+      throw err;
+    }
   }
 
   /**
@@ -63,7 +80,7 @@ function createDocumentsStore() {
    * @returns {Promise<string>}
    */
   async function getUrl(id) {
-    const res  = await fetch(`/api/documents/${id}/url`);
+    const res  = await fetch(`/api/documents/${id}/url`, { headers: await authHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? 'Failed to get URL');
     return data.url;
@@ -75,11 +92,10 @@ function createDocumentsStore() {
    * @param {Object} patch
    */
   async function updateMeta(id, patch) {
-    const userId = get(auth).user?.id ?? null;
-    const res    = await fetch(`/api/documents/${id}`, {
+    const res = await fetch(`/api/documents/${id}`, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ patch, user_id: userId }),
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+      body:    JSON.stringify({ patch }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? 'Update failed');
@@ -92,10 +108,18 @@ function createDocumentsStore() {
    * @param {string} id
    */
   async function remove(id) {
-    const res  = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-    update(s => ({ ...s, docs: s.docs.filter(d => d.id !== id) }));
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method:  'DELETE',
+        headers: await authHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      update(s => ({ ...s, docs: s.docs.filter(d => d.id !== id) }));
+    } catch (err) {
+      update(s => ({ ...s, error: err.message }));
+      throw err;
+    }
   }
 
   function clearError() {

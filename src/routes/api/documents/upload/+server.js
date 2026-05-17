@@ -1,10 +1,14 @@
 // POST /api/documents/upload — upload a file to storage + index it
 import { json }            from '@sveltejs/kit';
 import { uploadDocument }  from '$lib/server/documentLibrary';
+import { requireAuth }     from '$lib/server/requireAuth';
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
 export async function POST({ request }) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const formData = await request.formData();
     const file     = formData.get('file');
@@ -37,9 +41,8 @@ export async function POST({ request }) {
       tags:            JSON.parse(formData.get('tags') || '[]'),
     };
 
-    const userId = formData.get('user_id') || null;
-
-    const doc = await uploadDocument(buffer, filename, mimeType, meta, userId);
+    // Trusted uploader id from verified session, never from form data
+    const doc = await uploadDocument(buffer, filename, mimeType, meta, auth.user.id);
     return json(doc, { status: 201 });
   } catch (err) {
     return json({ error: err.message }, { status: 500 });

@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { documentsStore } from '$lib/stores/documentsStore';
   import { docTypeFromMime, formatFileSize, DOC_TYPES, CATEGORIES } from '$lib/utils/documentUtils';
 
   /** @type {string|null} Pre-set entity type (optional) */
@@ -73,20 +74,10 @@
     };
 
     try {
-      // Upload each file sequentially and report progress
+      // Upload each file sequentially via the store (auth header handled there)
       const results = [];
       for (let i = 0; i < files.length; i++) {
-        const form = new FormData();
-        form.append('file', files[i]);
-        for (const [k, v] of Object.entries(meta)) {
-          if (v !== null && v !== undefined) {
-            form.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v));
-          }
-        }
-        const res  = await fetch('/api/documents/upload', { method: 'POST', body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-        results.push(data);
+        results.push(await documentsStore.upload(files[i], meta));
         progress = Math.round(((i + 1) / files.length) * 100);
       }
       dispatch('uploaded', results);

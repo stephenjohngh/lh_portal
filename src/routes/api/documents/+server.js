@@ -1,8 +1,12 @@
 // GET /api/documents — list documents with optional filters
 import { json }          from '@sveltejs/kit';
 import { listDocuments } from '$lib/server/documentLibrary';
+import { requireAuth }   from '$lib/server/requireAuth';
 
-export async function GET({ url }) {
+export async function GET({ request, url }) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const opts = {
       entity_type:  url.searchParams.get('entity_type')  || undefined,
