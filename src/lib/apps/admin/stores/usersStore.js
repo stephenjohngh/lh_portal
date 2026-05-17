@@ -9,21 +9,26 @@ import { getLogger } from '$lib/utils/logger';
 const logger = getLogger("usersStore");
 
 function createUsersStore() {
-  const { subscribe, set, update } = writable({
+  const { subscribe, update } = writable({
     users: [],
     loading: false,
     error: null
   });
 
+  // Per-user sub-stores keyed by userId. Kept separate from the main `users`
+  // list so loading one user's permissions in the ManageAppsModal doesn't
+  // invalidate the whole user list. Mutated only by the store methods below.
   const appPermissions = writable({});
-  const appReadOnly = writable({});
-  const loadingApps = writable({});
+  const appReadOnly    = writable({});
+  const loadingApps    = writable({});
 
   return {
     subscribe,
-    appPermissions,
-    appReadOnly,
-    loadingApps,
+    // Subscribe-only views — consumers must mutate via the named methods
+    // (toggleAppPermission, toggleAppReadOnly, loadAppPermissions, …).
+    appPermissions: { subscribe: appPermissions.subscribe },
+    appReadOnly:    { subscribe: appReadOnly.subscribe },
+    loadingApps:    { subscribe: loadingApps.subscribe },
 
     async fetchUsers() {
       logger('Fetching users...');
