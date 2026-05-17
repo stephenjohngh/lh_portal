@@ -28,59 +28,44 @@ function createAuthStore() {
       });
     },
     
+    // Login flows through /api/auth/login (NOT supabase.auth directly).
+    // The server route enforces per-email rate limiting and writes the
+    // audit log (logLogin / logFailedLogin); this client just forwards
+    // the credentials, hydrates the local Supabase client with the
+    // returned session, and surfaces the result. See CLAUDE.md
+    // "Auth — server-routed login" for the design note.
     login: async (email, password) => {
       try {
         logger('Login attempt for:', email);
-        
-        // Login via Supabase (original way - this works!)
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
+
+        const res  = await fetch('/api/auth/login', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email, password }),
         });
-        
-        if (error) {
-          logger('❌ Login failed:', error.message);
-          
-          // Log failed login
-          fetch('/api/audit/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              eventType: 'failed_login',
-              targetType: 'user',
-              targetId: null,
-              targetName: email,
-              metadata: {
-                reason: error.message,
-                ip: null
-              }
-            })
-          }).catch(err => logger('Failed to log failed login:', err.message));
-          
-          return { success: false, error: error.message };
+        const body = await res.json();
+
+        if (!res.ok) {
+          logger('❌ Login failed:', body.error);
+          return {
+            success:           false,
+            error:             body.error ?? 'Login failed',
+            locked:            !!body.locked,
+            attemptsRemaining: body.attemptsRemaining,
+          };
         }
 
+        // Hydrate the local Supabase client with the session returned by
+        // the server so subscriptions, realtime, and any direct supabase
+        // calls (storage, auth) see the user. onAuthStateChange in
+        // initialize() picks up the change and updates the store.
+        await supabase.auth.setSession({
+          access_token:  body.session.access_token,
+          refresh_token: body.session.refresh_token,
+        });
+
         logger('✅ Login successful:', email);
-
-        // Log successful login
-        fetch('/api/audit/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: data.user.id,
-            userEmail: data.user.email,
-            eventType: 'login',
-            targetType: 'user',
-            targetId: data.user.id,
-            targetName: data.user.email,
-            metadata: {
-              provider: 'email',
-              session_id: data.session.access_token.substring(0, 20)
-            }
-          })
-        }).catch(err => logger('Failed to log login:', err.message));
-
-        return { success: true, data };
+        return { success: true, data: body };
       } catch (error) {
         logger('❌ Login exception:', error.message);
         return { success: false, error: error.message };
