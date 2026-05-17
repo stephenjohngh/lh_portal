@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '$lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let attrDefs          = [];   // effective type_attributes[], each with _scope: 'system'|'type'
   export let mode              = null; // 'type' | 'system' | null
@@ -16,11 +17,13 @@
   const DISPLAY_TYPES = ['text', 'number', 'checkbox', 'dropdown', 'radio', 'textarea'];
 
   // ── Full-attr edit / new ──────────────────────────────────────────────────
-  let editingId  = null;
-  let form       = {};
-  let saving     = false;
-  let deletingId = null;
-  let error      = '';
+  let editingId     = null;
+  let form          = {};
+  let saving        = false;
+  let deletingId    = null;
+  let pendingDelete = null;   // attrDef id pending confirmation
+  let pendingOverride = null; // def whose override is being removed
+  let error         = '';
 
   // ── Default-value override (type mode only) ───────────────────────────────
   let editingOverrideId = null;  // system attr id whose default is being overridden
@@ -28,8 +31,13 @@
   let savingOverride    = false;
   let overrideError     = '';
 
-  async function deleteRow(id) {
-    if (!confirm('Delete this attribute definition? This will also delete its options and any component values using it.')) return;
+  function deleteRow(id) {
+    pendingDelete = id;
+  }
+
+  async function confirmDelete() {
+    const id = pendingDelete;
+    if (!id) return;
     deletingId = id;
     try {
       await buildingAssetsStore.deleteAttrDef(id);
@@ -37,7 +45,8 @@
     } catch (err) {
       error = err.message;
     } finally {
-      deletingId = null;
+      deletingId    = null;
+      pendingDelete = null;
     }
   }
 
@@ -168,13 +177,20 @@
     }
   }
 
-  async function removeOverride(def) {
-    if (!confirm(`Remove the default-value override for "${def.name}"? The system default will apply again.`)) return;
+  function removeOverride(def) {
+    pendingOverride = def;
+  }
+
+  async function confirmRemoveOverride() {
+    const def = pendingOverride;
+    if (!def) return;
     try {
       await buildingAssetsStore.deleteAttrDef(def._overrideId);
       dispatch('saved');
     } catch (err) {
       overrideError = err.message;
+    } finally {
+      pendingOverride = null;
     }
   }
 
@@ -488,3 +504,24 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete attribute"
+  message="Delete this attribute definition? This will also delete its options and any component values using it."
+  confirmText="Delete"
+  danger={true}
+  processing={!!deletingId}
+  on:confirm={confirmDelete}
+  on:cancel={() => pendingDelete = null}
+/>
+
+<ConfirmDialog
+  show={!!pendingOverride}
+  title="Remove override"
+  message={pendingOverride ? `Remove the default-value override for "${pendingOverride.name}"? The system default will apply again.` : ''}
+  confirmText="Remove"
+  danger={true}
+  on:confirm={confirmRemoveOverride}
+  on:cancel={() => pendingOverride = null}
+/>

@@ -4,20 +4,27 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '$lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let systems         = [];
   export let selectedSystemId = null;
 
   const dispatch = createEventDispatcher();
 
-  let editingId  = null;   // uuid | 'new' | null
-  let form       = {};
-  let saving     = false;
-  let deletingId = null;
-  let error      = '';
+  let editingId     = null;   // uuid | 'new' | null
+  let form          = {};
+  let saving        = false;
+  let deletingId    = null;
+  let pendingDelete = null;
+  let error         = '';
 
-  async function deleteRow(id) {
-    if (!confirm('Delete this system? This will also delete all its types and attributes.')) return;
+  function deleteRow(id) {
+    pendingDelete = id;
+  }
+
+  async function confirmDelete() {
+    const id = pendingDelete;
+    if (!id) return;
     deletingId = id;
     try {
       await buildingAssetsStore.deleteSystem(id);
@@ -25,7 +32,8 @@
     } catch (err) {
       error = err.message;
     } finally {
-      deletingId = null;
+      deletingId    = null;
+      pendingDelete = null;
     }
   }
 
@@ -240,3 +248,14 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete system"
+  message="Delete this system? This will also delete all its types and attributes."
+  confirmText="Delete"
+  danger={true}
+  processing={!!deletingId}
+  on:confirm={confirmDelete}
+  on:cancel={() => pendingDelete = null}
+/>

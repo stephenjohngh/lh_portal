@@ -5,6 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '$lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let regimeRows    = [];   // maintenance_regime[] for selected type
   export let typeId        = null;
@@ -13,11 +14,12 @@
 
   const dispatch = createEventDispatcher();
 
-  let editingId   = null;
-  let form        = {};
-  let saving      = false;
-  let deletingId  = null;
-  let error       = '';
+  let editingId     = null;
+  let form          = {};
+  let saving        = false;
+  let deletingId    = null;
+  let pendingDelete = null;
+  let error         = '';
 
   function frequencyLabel(days) {
     if (!days) return '';
@@ -76,8 +78,13 @@
     }
   }
 
-  async function deleteRow(id) {
-    if (!confirm('Delete this maintenance task? This cannot be undone.')) return;
+  function deleteRow(id) {
+    pendingDelete = id;
+  }
+
+  async function confirmDelete() {
+    const id = pendingDelete;
+    if (!id) return;
     deletingId = id;
     try {
       await buildingAssetsStore.deleteRegime(id);
@@ -85,7 +92,8 @@
     } catch (err) {
       error = err.message;
     } finally {
-      deletingId = null;
+      deletingId    = null;
+      pendingDelete = null;
     }
   }
 
@@ -278,3 +286,14 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete maintenance task"
+  message="Delete this maintenance task? This cannot be undone."
+  confirmText="Delete"
+  danger={true}
+  processing={!!deletingId}
+  on:confirm={confirmDelete}
+  on:cancel={() => pendingDelete = null}
+/>

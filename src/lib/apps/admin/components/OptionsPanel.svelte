@@ -6,6 +6,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '$lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let options  = [];    // type_attribute_options[] for selected attr def
   export let attrDef  = null;  // the selected type_attributes row (or null)
@@ -14,14 +15,20 @@
 
   const PRIORITY_OVERRIDES = ['', 'critical', 'high', 'medium', 'low'];
 
-  let editingId  = null;
-  let form       = {};
-  let saving     = false;
-  let deletingId = null;
-  let error      = '';
+  let editingId     = null;
+  let form          = {};
+  let saving        = false;
+  let deletingId    = null;
+  let pendingDelete = null;
+  let error         = '';
 
-  async function deleteRow(id) {
-    if (!confirm('Delete this option?')) return;
+  function deleteRow(id) {
+    pendingDelete = id;
+  }
+
+  async function confirmDelete() {
+    const id = pendingDelete;
+    if (!id) return;
     deletingId = id;
     try {
       await buildingAssetsStore.deleteOption(id);
@@ -29,7 +36,8 @@
     } catch (err) {
       error = err.message;
     } finally {
-      deletingId = null;
+      deletingId    = null;
+      pendingDelete = null;
     }
   }
 
@@ -267,3 +275,14 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete option"
+  message="Delete this option?"
+  confirmText="Delete"
+  danger={true}
+  processing={!!deletingId}
+  on:confirm={confirmDelete}
+  on:cancel={() => pendingDelete = null}
+/>

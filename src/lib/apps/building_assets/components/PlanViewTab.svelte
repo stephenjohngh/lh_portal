@@ -28,6 +28,7 @@
   import QuickAddForm        from './QuickAddForm.svelte';
   import AnnotationSidebar   from './plan/AnnotationSidebar.svelte';
   import PlanAdminModal      from './plan/PlanAdminModal.svelte';
+  import ConfirmDialog       from '$lib/components/common/ConfirmDialog.svelte';
 
   // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;
@@ -380,8 +381,14 @@
     finally       { scaleSaving = false; }
   }
 
-  async function handleClearScale() {
-    if (!confirm('Remove the scale from this plan? Measurements will no longer be shown.')) return;
+  let confirmClearScale = false;
+
+  function handleClearScale() {
+    confirmClearScale = true;
+  }
+
+  async function performClearScale() {
+    confirmClearScale = false;
     try { await buildingAssetsStore.updatePlanScale(selectedPlanId, null, null); }
     catch (err) { errorMsg = err.message; }
   }
@@ -672,3 +679,13 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={confirmClearScale}
+  title="Remove scale"
+  message="Remove the scale from this plan? Measurements will no longer be shown."
+  confirmText="Remove"
+  danger={true}
+  on:confirm={performClearScale}
+  on:cancel={() => confirmClearScale = false}
+/>

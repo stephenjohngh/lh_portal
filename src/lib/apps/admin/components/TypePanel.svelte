@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { inp } from '$lib/apps/building_assets/ui.js';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let types           = [];
   export let selectedSystemId = null;
@@ -15,14 +16,20 @@
   const MARKER_SIZES   = ['sm', 'md', 'lg', 'xl'];
   const PRIORITY_BASES = ['critical', 'high', 'medium', 'low'];
 
-  let editingId  = null;
-  let form       = {};
-  let saving     = false;
-  let deletingId = null;
-  let error      = '';
+  let editingId    = null;
+  let form         = {};
+  let saving       = false;
+  let deletingId   = null;
+  let pendingDelete = null;  // id pending confirmation
+  let error        = '';
 
-  async function deleteRow(id) {
-    if (!confirm('Delete this type? This will also delete its attribute definitions and options.')) return;
+  function deleteRow(id) {
+    pendingDelete = id;
+  }
+
+  async function confirmDelete() {
+    const id = pendingDelete;
+    if (!id) return;
     deletingId = id;
     try {
       await buildingAssetsStore.deleteType(id);
@@ -30,7 +37,8 @@
     } catch (err) {
       error = err.message;
     } finally {
-      deletingId = null;
+      deletingId    = null;
+      pendingDelete = null;
     }
   }
 
@@ -403,3 +411,14 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete type"
+  message="Delete this type? This will also delete its attribute definitions and options."
+  confirmText="Delete"
+  danger={true}
+  processing={!!deletingId}
+  on:confirm={confirmDelete}
+  on:cancel={() => pendingDelete = null}
+/>

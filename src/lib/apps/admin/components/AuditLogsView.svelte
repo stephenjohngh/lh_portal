@@ -12,6 +12,7 @@
   import Button from '$lib/components/common/Button.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   let filters = {
     appId:         null,
@@ -111,23 +112,31 @@
     selectedLogs = selectedLogs;
   }
 
-  async function handleBulkDelete() {
-    if (!confirm(`Delete ${selectedLogs.size} audit logs? This cannot be undone.`)) return;
-    try {
-      await auditLogsStore.deleteLogs(Array.from(selectedLogs));
-      selectedLogs.clear();
-      selectedLogs = selectedLogs;
-    } catch (err) {
-      localError = err.message;
-    }
+  // Confirmation state — { kind: 'bulk' } | { kind: 'single', logId: string } | null
+  let pendingDelete = null;
+
+  function handleBulkDelete() {
+    pendingDelete = { kind: 'bulk' };
   }
 
-  async function handleDeleteLog(logId) {
-    if (!confirm('Delete this audit log? This cannot be undone.')) return;
+  function handleDeleteLog(logId) {
+    pendingDelete = { kind: 'single', logId };
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
     try {
-      await auditLogsStore.deleteLog(logId);
+      if (pendingDelete.kind === 'bulk') {
+        await auditLogsStore.deleteLogs(Array.from(selectedLogs));
+        selectedLogs.clear();
+        selectedLogs = selectedLogs;
+      } else {
+        await auditLogsStore.deleteLog(pendingDelete.logId);
+      }
     } catch (err) {
       localError = err.message;
+    } finally {
+      pendingDelete = null;
     }
   }
 
@@ -282,3 +291,15 @@
     {/if}
   {/if}
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete audit log{pendingDelete?.kind === 'bulk' ? 's' : ''}"
+  message={pendingDelete?.kind === 'bulk'
+    ? `Delete ${selectedLogs.size} audit logs? This cannot be undone.`
+    : 'Delete this audit log? This cannot be undone.'}
+  confirmText="Delete"
+  danger={true}
+  on:confirm={confirmDelete}
+  on:cancel={() => pendingDelete = null}
+/>

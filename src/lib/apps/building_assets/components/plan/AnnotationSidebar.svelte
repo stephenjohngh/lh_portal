@@ -5,6 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let annotation; // plan_annotations row
 
@@ -24,9 +25,10 @@
   let bold      = annotation.bold      ?? false;
   let notes     = annotation.notes     ?? '';
 
-  let saving    = false;
-  let deleting  = false;
-  let error     = '';
+  let saving       = false;
+  let deleting     = false;
+  let pendingDelete = false;  // confirmation state
+  let error        = '';
 
   // Dirty tracking
   $: dirty =
@@ -66,8 +68,11 @@
     }
   }
 
-  async function deleteAnnotation() {
-    if (!confirm('Delete this annotation?')) return;
+  function requestDeleteAnnotation() {
+    pendingDelete = true;
+  }
+
+  async function confirmDeleteAnnotation() {
     deleting = true; error = '';
     try {
       await buildingAssetsStore.deleteAnnotation(annotation.id);
@@ -75,6 +80,8 @@
     } catch (err) {
       error = err.message;
       deleting = false;
+    } finally {
+      pendingDelete = false;
     }
   }
 </script>
@@ -167,7 +174,7 @@
                transition-colors"
       >{saving ? 'Saving…' : 'Save'}</button>
       <button
-        on:click={deleteAnnotation}
+        on:click={requestDeleteAnnotation}
         disabled={deleting}
         class="px-3 py-2 text-sm rounded-lg bg-red-900/40 hover:bg-red-800/50
                disabled:opacity-40 text-red-400 border border-red-800/40 transition-colors"
@@ -177,3 +184,14 @@
 
   </div>
 </div>
+
+<ConfirmDialog
+  show={pendingDelete}
+  title="Delete annotation"
+  message="Delete this annotation?"
+  confirmText="Delete"
+  danger={true}
+  processing={deleting}
+  on:confirm={confirmDeleteAnnotation}
+  on:cancel={() => pendingDelete = false}
+/>
