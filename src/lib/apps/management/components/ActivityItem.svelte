@@ -30,7 +30,7 @@
   import ProtectedButton    from '$lib/components/common/ProtectedButton.svelte';
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
   import CommentSuggestionPanel from './CommentSuggestionPanel.svelte';
-  import RichTextEditor         from './RichTextEditor.svelte';
+  import RichTextEditor         from './LazyRichTextEditor.svelte';
 
   // -- Props -----------------------------------------------------------
   export let activity;

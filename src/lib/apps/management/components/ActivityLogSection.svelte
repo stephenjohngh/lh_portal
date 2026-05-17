@@ -29,7 +29,7 @@
   import ConfirmDialog        from '$lib/components/common/ConfirmDialog.svelte';
   import ActionForm           from './ActionForm.svelte';
   import ActivityItem         from './ActivityItem.svelte';
-  import RichTextEditor       from './RichTextEditor.svelte';
+  import RichTextEditor       from './LazyRichTextEditor.svelte';
 
   const logger = getLogger('ActivityLogSection');
 
