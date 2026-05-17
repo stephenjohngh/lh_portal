@@ -17,6 +17,7 @@
   import { fmtComponentRef } from '$lib/utils/componentRef.js';
   import { statusBadgeCls, statusDotCls } from '$lib/utils/resultConstants.js';
   import { fmtDate } from '$lib/utils/dates.js';
+  import { permissions } from '$lib/stores/permissions';
 
   export let components     = [];
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }
@@ -336,10 +337,10 @@
                 </td>
               {/if}
 
-              <!-- ⑩ Actions -->
+              <!-- ⑩ Actions — inspect for edit users; delete admin only -->
               <td class="px-2 py-2 whitespace-nowrap" on:click|stopPropagation>
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity
-                            {inDel && !readOnly ? '!opacity-100' : ''}">
+                            {inDel && $permissions.isAdmin ? '!opacity-100' : ''}">
                   {#if !inDel && !readOnly}
                     <button
                       on:click|stopPropagation={() => dispatch('inspect', { component: c })}
@@ -348,7 +349,7 @@
                       title="Inspect"
                     >🔍</button>
                   {/if}
-                  {#if !readOnly}
+                  {#if $permissions.isAdmin}
                     {#if inDel}
                       <button
                         on:click|stopPropagation={e => cancelDelete(c.id, e)}
@@ -366,7 +367,7 @@
                         on:click|stopPropagation={e => startDelete(c, e)}
                         class="px-1.5 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
                                text-red-500 border border-red-900/40 transition-colors text-[10px]"
-                        title="Delete (click twice)"
+                        title="Delete (admin · click twice)"
                       >🗑</button>
                     {/if}
                   {/if}

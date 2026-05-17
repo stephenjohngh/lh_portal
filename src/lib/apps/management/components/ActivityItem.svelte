@@ -23,6 +23,7 @@
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
   import { parseEmailPaste }   from '$lib/utils/emailParser';
+  import { canDeleteOwn }      from '$lib/utils/permissions';
   import { buildFieldSummary } from './reports/reportUtils';
   import { permissions }    from '$lib/stores/permissions';
   import { auth }           from '$lib/stores/auth';
@@ -401,15 +402,18 @@
           on:click={() => dispatch('editStart', activity)}
           title="Edit {typeConfig.label.toLowerCase()}"
         />
-        <ProtectedButton
-          action="modify"
-          variant="danger"
-          size="small"
-          icon="delete"
-          iconPosition="only"
-          on:click={() => dispatch('deleteRequest', activity)}
-          title="Delete {typeConfig.label.toLowerCase()}"
-        />
+        <!-- Delete: admin anytime; creator within 2h of creation. Mirrors
+             RLS policy 'activities: admin or owner within 2h' (migration 124). -->
+        {#if canDeleteOwn(activity, $auth.user?.id, $permissions.isAdmin)}
+          <Button
+            variant="danger"
+            size="small"
+            icon="delete"
+            iconPosition="only"
+            on:click={() => dispatch('deleteRequest', activity)}
+            title="Delete {typeConfig.label.toLowerCase()}"
+          />
+        {/if}
       </div>
     </div>
 

@@ -4,6 +4,8 @@
   import { issuesStore } from '../stores/issuesStore';
   import { profilesStore } from '$lib/stores/profiles';
   import { permissions }   from '$lib/stores/permissions';
+  import { auth }          from '$lib/stores/auth';
+  import { canDeleteOwn }  from '$lib/utils/permissions';
   import { fmtDate, fmtDateTime, isOverdue, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTION_STATUS_OPTIONS } from '$lib/utils/constants';
   import Icon from '$lib/components/icons/Icon.svelte';
@@ -354,15 +356,18 @@
                   }}
                   title="Edit action"
                 />
-                <ProtectedButton
-                  action="modify"
-                  variant="danger"
-                  size="small"
-                  icon="delete"
-                  iconPosition="only"
-                  on:click={() => confirmDeleteAction(action.id)}
-                  title="Delete action"
-                />
+                <!-- Delete: admin anytime; creator within 2h of creation. Mirrors
+                     RLS policy 'actions: admin or owner within 2h' (migration 124). -->
+                {#if canDeleteOwn(action, $auth.user?.id, $permissions.isAdmin)}
+                  <Button
+                    variant="danger"
+                    size="small"
+                    icon="delete"
+                    iconPosition="only"
+                    on:click={() => confirmDeleteAction(action.id)}
+                    title="Delete action"
+                  />
+                {/if}
               </div>
             </div>
           {/if}

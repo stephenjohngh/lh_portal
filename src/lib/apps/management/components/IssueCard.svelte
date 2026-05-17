@@ -190,14 +190,16 @@
           on:click={() => dispatch('edit', issue)}
           title="Edit issue"
         />
+        <!-- Issue delete: admin only. Issues are durable records;
+             match the RLS policy in migration 124. -->
         <ProtectedButton
-          action="modify"
+          requireAdmin={true}
           variant="danger"
           size="medium"
           icon="delete"
           iconPosition="only"
           on:click={handleDelete}
-          title="Delete issue"
+          title="Delete issue (admin)"
         />
       </div>
     </div>

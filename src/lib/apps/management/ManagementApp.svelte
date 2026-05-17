@@ -113,17 +113,6 @@
     await issuesStore.deleteIssue(event.detail);
   }
 
-  async function handleToggleStatus(event) {
-    const issue     = event.detail;
-    const newStatus = issue.status === ISSUE_STATUS.COMPLETED
-      ? ISSUE_STATUS.CURRENT
-      : ISSUE_STATUS.COMPLETED;
-    await issuesStore.updateIssue(issue.id, {
-      name: issue.name, description: issue.description,
-      priority: issue.priority, status: newStatus
-    });
-  }
-
   function toggleSection(issueId, section) {
     if (!expandedSections[issueId]) {
       expandedSections[issueId] = { activities: false, actions: false };
@@ -274,7 +263,6 @@
             on:toggleActivity={() => toggleSection(issue.id, 'activities')}
             on:toggleActions={() => toggleSection(issue.id, 'actions')}
             on:edit={(e) => editingIssue = e.detail}
-            on:toggleStatus={handleToggleStatus}
             on:delete={handleDeleteIssue}
             on:meetingFilter={handleMeetingBadgeClick}
           />

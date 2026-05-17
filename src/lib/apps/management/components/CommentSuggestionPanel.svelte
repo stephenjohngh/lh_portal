@@ -20,6 +20,9 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { auth }           from '$lib/stores/auth';
+  import { permissions }    from '$lib/stores/permissions';
+  import { canDeleteOwn }   from '$lib/utils/permissions';
   import Icon              from '$lib/components/icons/Icon.svelte';
   import Button            from '$lib/components/common/Button.svelte';
   import ProtectedButton   from '$lib/components/common/ProtectedButton.svelte';
@@ -71,16 +74,19 @@
         >
           View in Actions
         </Button>
-        <ProtectedButton
-          action="modify"
-          variant="danger"
-          size="small"
-          icon="delete"
-          on:click={() => dispatch('deleteLinkedRequest', linkedAction)}
-          title="Delete the linked action (a new one can then be created)"
-        >
-          Delete linked action
-        </ProtectedButton>
+        <!-- Delete: admin anytime; creator within 2h of creation. Mirrors
+             RLS policy 'actions: admin or owner within 2h' (migration 124). -->
+        {#if canDeleteOwn(linkedAction, $auth.user?.id, $permissions.isAdmin)}
+          <Button
+            variant="danger"
+            size="small"
+            icon="delete"
+            on:click={() => dispatch('deleteLinkedRequest', linkedAction)}
+            title="Delete the linked action (a new one can then be created)"
+          >
+            Delete linked action
+          </Button>
+        {/if}
       </div>
     {/if}
   </div>

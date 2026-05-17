@@ -8,6 +8,7 @@
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   export let annotation; // plan_annotations row
+  export let readOnly = false; // hide save/delete (View mode or read-only users)
 
   const dispatch = createEventDispatcher();
 
@@ -112,13 +113,14 @@
         rows="3"
         class="{inp} resize-none"
         placeholder="Annotation text…"
+        disabled={readOnly}
       ></textarea>
     </div>
 
     <!-- Font size -->
     <div>
       <label for="ann-size" class="text-xs text-slate-400 mb-1 block">Size</label>
-      <select id="ann-size" bind:value={font_size} class="{inp} cursor-pointer">
+      <select id="ann-size" bind:value={font_size} class="{inp} cursor-pointer" disabled={readOnly}>
         {#each FONT_SIZES as fs (fs.value)}
           <option value={fs.value}>{fs.label}</option>
         {/each}
@@ -130,21 +132,22 @@
       <label for="ann-colour" class="text-xs text-slate-400 mb-1 block">Colour</label>
       <div class="flex gap-2 items-center">
         <input id="ann-colour" type="color" bind:value={colour}
-               class="h-[30px] w-10 rounded border border-slate-600 cursor-pointer bg-slate-900 p-0.5 shrink-0" />
-        <input bind:value={colour} class="{inp} font-mono" placeholder="#fbbf24" maxlength="7" />
+               class="h-[30px] w-10 rounded border border-slate-600 cursor-pointer bg-slate-900 p-0.5 shrink-0"
+               disabled={readOnly} />
+        <input bind:value={colour} class="{inp} font-mono" placeholder="#fbbf24" maxlength="7" disabled={readOnly} />
       </div>
     </div>
 
     <!-- Bold -->
     <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-      <input type="checkbox" bind:checked={bold} class="rounded accent-purple-500" />
+      <input type="checkbox" bind:checked={bold} class="rounded accent-purple-500" disabled={readOnly} />
       Bold text
     </label>
 
     <!-- Notes (internal) -->
     <div>
       <label for="ann-notes" class="text-xs text-slate-400 mb-1 block">Notes (internal)</label>
-      <input id="ann-notes" bind:value={notes} class={inp} placeholder="Optional internal notes…" />
+      <input id="ann-notes" bind:value={notes} class={inp} placeholder="Optional internal notes…" disabled={readOnly} />
     </div>
 
     <!-- Preview -->
@@ -164,23 +167,25 @@
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="flex gap-2 pt-1">
-      <button
-        on:click={save}
-        disabled={saving || !dirty}
-        class="flex-1 py-2 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-               disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium
-               transition-colors"
-      >{saving ? 'Saving…' : 'Save'}</button>
-      <button
-        on:click={requestDeleteAnnotation}
-        disabled={deleting}
-        class="px-3 py-2 text-sm rounded-lg bg-red-900/40 hover:bg-red-800/50
-               disabled:opacity-40 text-red-400 border border-red-800/40 transition-colors"
-        title="Delete annotation"
-      >{deleting ? '…' : '🗑'}</button>
-    </div>
+    <!-- Actions — hidden when readOnly (View mode or read-only user) -->
+    {#if !readOnly}
+      <div class="flex gap-2 pt-1">
+        <button
+          on:click={save}
+          disabled={saving || !dirty}
+          class="flex-1 py-2 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
+                 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium
+                 transition-colors"
+        >{saving ? 'Saving…' : 'Save'}</button>
+        <button
+          on:click={requestDeleteAnnotation}
+          disabled={deleting}
+          class="px-3 py-2 text-sm rounded-lg bg-red-900/40 hover:bg-red-800/50
+                 disabled:opacity-40 text-red-400 border border-red-800/40 transition-colors"
+          title="Delete annotation"
+        >{deleting ? '…' : '🗑'}</button>
+      </div>
+    {/if}
 
   </div>
 </div>

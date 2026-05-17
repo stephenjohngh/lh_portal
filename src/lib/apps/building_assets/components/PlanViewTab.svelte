@@ -625,6 +625,7 @@
       {:else if sidebarMode === 'annotation-detail' && selectedAnnotation}
         <AnnotationSidebar
           annotation={selectedAnnotation}
+          readOnly={readOnly || drawingMode === 'off'}
           on:saved={({ detail }) => { selectedAnnotation = detail.annotation; }}
           on:deleted={() => { selectedAnnotation = null; sidebarMode = 'none'; }}
           on:close={() => { selectedAnnotation = null; sidebarMode = 'none'; }}

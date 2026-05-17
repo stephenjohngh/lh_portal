@@ -6,6 +6,7 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { typeByCode, floorById } from '../lookups.js';
+  import { permissions }             from '$lib/stores/permissions';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
@@ -413,7 +414,7 @@
   <!-- -- Sticky footer actions ------------------------------------ -->
   <div class="p-5 pt-4 border-t border-slate-700 shrink-0">
 
-    {#if confirmDel && !readOnly}
+    {#if confirmDel && $permissions.isAdmin}
       <div class="mb-3 px-4 py-3 rounded-lg bg-red-900/30 border border-red-700/50 text-sm text-red-300">
         <p class="font-semibold mb-2">Delete this component?</p>
         <p class="text-red-400/80 text-xs mb-3">
@@ -436,13 +437,15 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      {#if !readOnly}
+      <!-- Component delete: admin only (schema-level entity).
+           Matches the design decision logged in CLAUDE.md. -->
+      {#if $permissions.isAdmin}
         <button
           on:click={() => confirmDel = true}
           class="text-sm px-3 py-1.5 rounded-lg text-slate-500 hover:text-red-400
                  hover:bg-red-900/20 transition-colors border border-transparent
                  hover:border-red-900/30"
-          title="Delete component"
+          title="Delete component (admin)"
         >Delete</button>
       {/if}
 
