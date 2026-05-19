@@ -1,6 +1,6 @@
 ﻿<!-- src/lib/apps/building_assets/components/InspectionsTab.svelte -->
 <!-- All inspection walk sessions, open first then latest-first.
-     Backed by v2_walk_sessions; expand a row to see per-component detail. -->
+     Backed by walk_sessions; expand a row to see per-component detail. -->
 <script>
   import { onMount }         from 'svelte';
   import { api }             from '$lib/utils/api';
@@ -83,7 +83,7 @@
   async function loadSessions() {
     loading = true; error = null;
     try {
-      sessions = await api.get('v2_walk_sessions', {
+      sessions = await api.get('walk_sessions', {
         select:    '*, inspector:profiles!created_by(full_name)',
         orderBy:   'started_at',
         ascending: false,
@@ -105,7 +105,7 @@
       try {
         const rows = await api.get('component_inspections', {
           select:    '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
-          filters:   { v2_walk_session_id: session.id },
+          filters:   { walk_session_id: session.id },
           orderBy:   'inspected_at',
           ascending: true,
         });
@@ -124,7 +124,7 @@
     confirmId  = null;
     deletingId = session.id;
     try {
-      await api.delete('v2_walk_sessions', session.id);
+      await api.delete('walk_sessions', session.id);
       sessions   = sessions.filter(s => s.id !== session.id);
       if (expandedId === session.id) expandedId = null;
       const { [session.id]: _, ...rest } = inspections;

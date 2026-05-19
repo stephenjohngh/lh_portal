@@ -1,6 +1,6 @@
 ﻿// src/lib/apps/inspection/stores/inspectionStore.js
 // State store for the inspection walk system.
-// Tables: components, component_types, floors, v2_walk_sessions, component_inspections.
+// Tables: components, component_types, floors, walk_sessions, component_inspections.
 
 import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
@@ -221,7 +221,7 @@ function createInspectionStore() {
     update(s => ({ ...s, loading: true }));
     try {
       const userId   = await getCurrentUserId();
-      const sessions = await api.get('v2_walk_sessions', {
+      const sessions = await api.get('walk_sessions', {
         filters:   { created_by: userId },
         orderBy:   'started_at',
         ascending: false,
@@ -237,7 +237,7 @@ function createInspectionStore() {
   async function createSession(data) {
     const userId        = await getCurrentUserId();
     const inspectorName = await getCurrentUserName(userId);
-    return api.create('v2_walk_sessions', {
+    return api.create('walk_sessions', {
       ...data,
       inspector_name: inspectorName,
       status:         'open',
@@ -360,7 +360,7 @@ function createInspectionStore() {
 
     // Load existing inspections map
     const inspRows = await api.get('component_inspections', {
-      filters:   { v2_walk_session_id: session.id },
+      filters:   { walk_session_id: session.id },
       orderBy:   'inspected_at',
       ascending: true,
     });
@@ -427,7 +427,7 @@ function createInspectionStore() {
 
   async function completeSession(sessionId, notes = '') {
     const userId = await getCurrentUserId();
-    await api.update('v2_walk_sessions', sessionId, {
+    await api.update('walk_sessions', sessionId, {
       status:     'closed',
       closed_at:  new Date().toISOString(),
       notes:      notes || null,
@@ -555,7 +555,7 @@ function createInspectionStore() {
       });
     } else {
       inspection = await api.create('component_inspections', {
-        v2_walk_session_id: state.activeSession.id,
+        walk_session_id: state.activeSession.id,
         component_id:       componentId,
         inspection_result: result,
         inspector_notes:   notes || null,
@@ -623,7 +623,7 @@ function createInspectionStore() {
   async function loadComponentInspectionHistory(componentId) {
     try {
       return await api.get('component_inspections', {
-        select:    '*, inspector:profiles!inspected_by(full_name), session:v2_walk_sessions!v2_walk_session_id(session_name, building, started_at)',
+        select:    '*, inspector:profiles!inspected_by(full_name), session:walk_sessions!walk_session_id(session_name, building, started_at)',
         filters:   { component_id: componentId },
         orderBy:   'inspected_at',
         ascending: false,
@@ -636,7 +636,7 @@ function createInspectionStore() {
     // Type name/colour/initial are resolved client-side from $inspectionStore.types.
     return api.get('component_inspections', {
       select:    '*, component:components!component_id(asset_id, label, type_code, status, floor:floors!floor_id(short_name, level_order))',
-      filters:   { v2_walk_session_id: sessionId },
+      filters:   { walk_session_id: sessionId },
       orderBy:   'inspected_at',
       ascending: true,
     });
@@ -720,8 +720,8 @@ function createInspectionStore() {
   // -- Delete session -----------------------------------------------------------
 
   async function deleteSession(sessionId) {
-    await api.deleteMany('component_inspections', { v2_walk_session_id: sessionId });
-    await api.delete('v2_walk_sessions', sessionId);
+    await api.deleteMany('component_inspections', { walk_session_id: sessionId });
+    await api.delete('walk_sessions', sessionId);
     await loadSessions();
   }
 

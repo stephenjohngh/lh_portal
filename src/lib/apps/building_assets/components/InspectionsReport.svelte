@@ -1,6 +1,6 @@
 ﻿<!-- src/lib/apps/building_assets/components/InspectionsReport.svelte -->
 <!-- Report modal for inspection walk sessions.
-     Pulls from v2_walk_sessions + component_inspections; renders one
+     Pulls from walk_sessions + component_inspections; renders one
      inspection per component with photos, notes, result, and checklist.
 -->
 <script>
@@ -117,7 +117,7 @@
         if (!flatRows) {
           const rows = await api.get('component_inspections', {
             select:    '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
-            filters:   { v2_walk_session_id: session.id },
+            filters:   { walk_session_id: session.id },
             orderBy:   'inspected_at',
             ascending: true,
           });

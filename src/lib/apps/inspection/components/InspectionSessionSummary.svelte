@@ -11,7 +11,7 @@
 
   const dispatch = createEventDispatcher();
 
-  export let session; // row from the v2_walk_sessions table (kept historic name)
+  export let session; // walk_sessions row
 
   let inspections = [];
   let loading     = true;
