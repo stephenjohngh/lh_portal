@@ -1,5 +1,5 @@
 <!-- src/lib/apps/inspection/InspectionApp.svelte -->
-<!-- Inspection App — mobile-first inspection tool using the v2 component data model -->
+<!-- Inspection App — mobile-first inspection tool operating on the components data model -->
 <script>
   import { onMount }       from 'svelte';
   import { get }           from 'svelte/store';

@@ -649,7 +649,7 @@ function createInspectionStore() {
     const updated = await api.update('components', componentId, { ...fields, updated_by: userId });
 
     if (attrValues !== null) {
-      // Delete-all + re-insert pattern (same as v2proto)
+      // Delete-all + re-insert pattern — same shape as buildingAssetsStore
       await api.deleteMany('component_attributes', { component_id: componentId });
 
       if (Object.keys(attrValues).length > 0) {

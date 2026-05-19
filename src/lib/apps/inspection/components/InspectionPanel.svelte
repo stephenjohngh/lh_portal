@@ -18,7 +18,7 @@
   export let component;   // current components row
   export let floor;       // current floors row
   export let type;        // component_types row for this component
-  export let session;     // active v2_walk_sessions row
+  export let session;     // active row from the v2_walk_sessions table (kept historic name)
 
   $: attrDefs      = $inspectionStore.attrDefs;
   $: allTypes      = $inspectionStore.types;

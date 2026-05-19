@@ -1,5 +1,5 @@
 ﻿<!-- src/lib/apps/inspection/components/InspectionSessionSummary.svelte -->
-<!-- Read-only summary of a completed v2 walk session: stats + per-component results -->
+<!-- Read-only summary of a completed inspection walk session: stats + per-component results -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
@@ -11,7 +11,7 @@
 
   const dispatch = createEventDispatcher();
 
-  export let session; // v2_walk_sessions row
+  export let session; // row from the v2_walk_sessions table (kept historic name)
 
   let inspections = [];
   let loading     = true;

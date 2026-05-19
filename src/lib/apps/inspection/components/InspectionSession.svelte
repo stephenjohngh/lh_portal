@@ -1,5 +1,5 @@
 ﻿<!-- src/lib/apps/inspection/components/InspectionSession.svelte -->
-<!-- Core v2 walk screen: navigate components, record inspections, edit, jump, close -->
+<!-- Core inspection walk screen: navigate components, record inspections, edit, jump, close -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';

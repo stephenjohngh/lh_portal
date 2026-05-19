@@ -29,7 +29,7 @@
 
   let searchTerm = '';
   let activeTab = 'users';
-  let v2Loaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
+  let assetsStoreLoaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
   
   // Modal states
   let showCreateModal = false;
@@ -78,8 +78,8 @@
 
   async function activateTab(id) {
     activeTab = id;
-    if ((id === 'types' || id === 'floors' || id === 'maint-groups' || id === 'ten-year') && !v2Loaded) {
-      v2Loaded = true;
+    if ((id === 'types' || id === 'floors' || id === 'maint-groups' || id === 'ten-year') && !assetsStoreLoaded) {
+      assetsStoreLoaded = true;
       await buildingAssetsStore.load();
     }
     if ((id === 'maint-groups' || id === 'ten-year') && $maintenanceGroupsStore.groups.length === 0) {

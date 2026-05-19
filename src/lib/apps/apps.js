@@ -64,7 +64,7 @@ export const AVAILABLE_APPS = [
     icon: 'walk',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Mobile inspection walk using the v2 component data model'
+    description: 'Mobile-first inspection walk — record results, photos and notes per component'
   },
 
   {
@@ -73,7 +73,7 @@ export const AVAILABLE_APPS = [
     icon: 'grid',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Mobile read-only floor plan viewer using the v2 component data model'
+    description: 'Mobile-first read-only floor plan viewer'
   },
 
   {

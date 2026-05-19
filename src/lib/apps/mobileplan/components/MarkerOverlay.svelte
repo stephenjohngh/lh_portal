@@ -38,7 +38,7 @@
     } catch { return false; }
   }
 
-  // marker_size → px dimension (matches v2proto sm/md/lg/xl classes)
+  // marker_size enum (sm | md | lg | xl) → pixel size for the SVG marker
   function markerPx(size) {
     switch (size) {
       case 'sm': return 22;

@@ -231,7 +231,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
       ],
     }));
 
-    // Photos — V2 has photo_urls as an array (multiple per inspection)
+    // Photos — photo_urls is a JSONB array (multiple per inspection)
     const photoUrls = Array.isArray(ins.photo_urls) ? ins.photo_urls : [];
     for (const url of photoUrls) {
       try {

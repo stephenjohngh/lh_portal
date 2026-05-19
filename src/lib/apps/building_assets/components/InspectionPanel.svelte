@@ -2,7 +2,7 @@
 <!-- Walk inspection panel for a single component.
      Shows overall result selector, checkable attribute checklist, and notes.
      checklist_results saved as JSONB on component_inspections.
-     Demonstrates the checkable attribute flow in the v2 data model. -->
+     Renders type-driven dynamic attributes (type_attributes.checkable=true). -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';

@@ -1,5 +1,5 @@
 ﻿<!-- plan/PlanAdminModal.svelte -->
-<!-- Admin panel for creating, editing and copying V2 floor plans.
+<!-- Admin panel for creating, editing and copying floor plans.
      mode: 'new' | 'edit' | 'copy'
      plan: the currently selected plan (required for edit/copy, ignored for new). -->
 <script>

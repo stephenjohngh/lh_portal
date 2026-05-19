@@ -1,10 +1,7 @@
 ﻿<!-- src/lib/apps/building_assets/components/InspectionsReport.svelte -->
-<!-- Report modal for V2 walk inspection sessions.
-     Mirrors WalkInspectionsReport but adapted for V2 data model:
-       - v2_walk_sessions + component_inspections
-       - session_preset instead of element_type
-       - photo_urls array instead of photo_url string
-       - result values lowercase (ok/failed/problem/inactive)
+<!-- Report modal for inspection walk sessions.
+     Pulls from v2_walk_sessions + component_inspections; renders one
+     inspection per component with photos, notes, result, and checklist.
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
@@ -162,7 +159,7 @@
 </script>
 
 <Modal show={true} size="medium" on:close={() => dispatch('close')}>
-  <h3 slot="header" class="text-xl font-bold">V2 Inspection Report</h3>
+  <h3 slot="header" class="text-xl font-bold">Inspection Report</h3>
 
   <div class="section-spacing">
 

@@ -1,6 +1,6 @@
 ﻿<script>
   // src/lib/apps/mobileplan/MobilePlanApp.svelte
-  // Mobile-first, read-only floor plan viewer using the V2 component data model.
+  // Mobile-first, read-only floor plan viewer operating on the components data model.
   // Entry point — initialises permissions, loads store, renders shell layout.
 
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';

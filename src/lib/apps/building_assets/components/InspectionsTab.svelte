@@ -1,6 +1,6 @@
 ﻿<!-- src/lib/apps/building_assets/components/InspectionsTab.svelte -->
-<!-- All v2 walk sessions (v2_walk_sessions), open first then latest-first.
-     Expand a row to see per-component inspection detail.                    -->
+<!-- All inspection walk sessions, open first then latest-first.
+     Backed by v2_walk_sessions; expand a row to see per-component detail. -->
 <script>
   import { onMount }         from 'svelte';
   import { api }             from '$lib/utils/api';
@@ -162,8 +162,8 @@
     <div class="filters">
 
       <div class="fld">
-        <label for="v2i-status" class="flbl">Status</label>
-        <select id="v2i-status" class="select text-sm" bind:value={filterStatus}>
+        <label for="insp-status" class="flbl">Status</label>
+        <select id="insp-status" class="select text-sm" bind:value={filterStatus}>
           <option value="">All</option>
           <option value="open">Open</option>
           <option value="closed">Closed</option>
@@ -171,8 +171,8 @@
       </div>
 
       <div class="fld">
-        <label for="v2i-stype" class="flbl">Session type</label>
-        <select id="v2i-stype" class="select text-sm" bind:value={filterSessionType}>
+        <label for="insp-stype" class="flbl">Session type</label>
+        <select id="insp-stype" class="select text-sm" bind:value={filterSessionType}>
           <option value="">All</option>
           <option value="test">Test</option>
           <option value="inspection">Inspection</option>
@@ -181,8 +181,8 @@
       </div>
 
       <div class="fld">
-        <label for="v2i-preset" class="flbl">Preset</label>
-        <select id="v2i-preset" class="select text-sm" bind:value={filterPreset}>
+        <label for="insp-preset" class="flbl">Preset</label>
+        <select id="insp-preset" class="select text-sm" bind:value={filterPreset}>
           <option value="">All presets</option>
           <option value="emergency_lighting">Emergency Lighting</option>
           <option value="fire_doors">Fire Doors</option>
@@ -192,13 +192,13 @@
       </div>
 
       <div class="fld">
-        <label for="v2i-from" class="flbl">From</label>
-        <input id="v2i-from" type="date" class="input text-sm" bind:value={filterDateFrom} />
+        <label for="insp-from" class="flbl">From</label>
+        <input id="insp-from" type="date" class="input text-sm" bind:value={filterDateFrom} />
       </div>
 
       <div class="fld">
-        <label for="v2i-to" class="flbl">To</label>
-        <input id="v2i-to" type="date" class="input text-sm" bind:value={filterDateTo} />
+        <label for="insp-to" class="flbl">To</label>
+        <input id="insp-to" type="date" class="input text-sm" bind:value={filterDateTo} />
       </div>
 
       {#if hasFilters}
@@ -231,7 +231,7 @@
     <div class="empty-state">
       <Icon name="clipboard" size={12} className="text-gray-600 mx-auto mb-3" />
       <p class="text-gray-500">
-        {hasFilters ? 'No sessions match the current filters.' : 'No V2 walk sessions recorded yet.'}
+        {hasFilters ? 'No sessions match the current filters.' : 'No inspection sessions recorded yet.'}
       </p>
     </div>
 

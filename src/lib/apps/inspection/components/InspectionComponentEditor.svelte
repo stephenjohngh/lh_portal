@@ -1,5 +1,5 @@
 <!-- src/lib/apps/inspection/components/InspectionComponentEditor.svelte -->
-<!-- Admin-only: full component + attribute editing during a v2 walk. -->
+<!-- Admin-only: full component + attribute editing during an inspection walk. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger }   from '$lib/utils/logger';
