@@ -981,6 +981,8 @@
               <AttrFilterPopover
                 availableDefs={availFixedDefs}
                 {attrOptions}
+                {systems}
+                {types}
                 existing={popoverState.editIndex == null ? null : fixedAttrFilters[popoverState.editIndex]}
                 className="Fixed attribute"
                 on:apply={handlePopoverApply}
@@ -1017,6 +1019,8 @@
               <AttrFilterPopover
                 availableDefs={availConditionDefs}
                 {attrOptions}
+                {systems}
+                {types}
                 existing={popoverState.editIndex == null ? null : conditionAttrFilters[popoverState.editIndex]}
                 className="Condition attribute"
                 on:apply={handlePopoverApply}

@@ -23,6 +23,10 @@
   export let availableDefs = [];
   /** { [attrDefId]: type_attribute_options[] } — only used for dropdown/radio */
   export let attrOptions   = {};
+  /** building_systems[] — used to render system headers in the picker */
+  export let systems       = [];
+  /** component_types[]  — needed to resolve type-scoped attrs back to their system */
+  export let types         = [];
   /** Pre-fill for edit: { defId, op, values, includeUnset } or null */
   export let existing      = null;
   /** Label shown in the title bar — "Fixed" or "Condition" */
@@ -45,6 +49,40 @@
     const q = search.trim().toLowerCase();
     if (!q) return availableDefs;
     return availableDefs.filter(d => d.name.toLowerCase().includes(q));
+  })();
+
+  // -- Group filteredDefs into a flat row list with system headers ------
+  // availableDefs is already sorted by system → type → presentation_order
+  // (see utils/attrFilters.js), so we just insert a header row whenever
+  // the system changes between consecutive items.
+  $: typeById   = new Map(types.map(t   => [t.id, t]));
+  $: systemById = new Map(systems.map(s => [s.id, s]));
+
+  function systemIdOf(def) {
+    if (def.building_system_id) return def.building_system_id;
+    const t = typeById.get(def.component_type_id);
+    return t?.building_system_id ?? null;
+  }
+
+  // [{ kind:'header', sysId, name, colour } | { kind:'item', def }]
+  $: rows = (() => {
+    const out = [];
+    let lastSysId = Symbol('initial');
+    for (const def of filteredDefs) {
+      const sysId = systemIdOf(def);
+      if (sysId !== lastSysId) {
+        const sys = systemById.get(sysId);
+        out.push({
+          kind:   'header',
+          sysId,
+          name:   sys?.name ?? 'Other',
+          colour: sys?.colour ?? null,
+        });
+        lastSysId = sysId;
+      }
+      out.push({ kind: 'item', def });
+    }
+    return out;
   })();
 
   // When the user picks a new attribute, seed the draft with sensible defaults.
@@ -157,8 +195,22 @@
         </p>
       {:else}
         <ul class="py-1">
-          {#each filteredDefs as def (def.id)}
-            <li>
+          {#each rows as row, i (row.kind === 'header' ? `h:${row.sysId ?? 'none'}` : `i:${row.def.id}`)}
+            {#if row.kind === 'header'}
+              <li
+                class="px-3 py-1 text-[10px] uppercase tracking-wider font-semibold
+                       text-slate-300 bg-slate-800/60 border-y border-slate-700/60
+                       flex items-center gap-1.5 {i === 0 ? 'border-t-0' : 'mt-0.5'}"
+              >
+                {#if row.colour}
+                  <span class="w-2 h-2 rounded-sm shrink-0"
+                        style="background-color: #{row.colour}"></span>
+                {/if}
+                {row.name}
+              </li>
+            {:else}
+              {@const def = row.def}
+              <li>
               <button
                 on:click={() => pickAttr(def)}
                 class="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
@@ -169,7 +221,8 @@
                   <span class="text-[10px] text-blue-400/70" title="Inherited from system">↑sys</span>
                 {/if}
               </button>
-            </li>
+              </li>
+            {/if}
           {/each}
         </ul>
       {/if}
