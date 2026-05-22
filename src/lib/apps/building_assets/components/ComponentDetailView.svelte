@@ -6,12 +6,14 @@
 
 <script>
   import { createEventDispatcher }   from 'svelte';
-  import { typeByCode, floorById }   from '../lookups.js';
+  import { buildingAssetsStore }     from '../stores/buildingAssetsStore.js';
+  import { typeByCode, floorById, conditionChecklistDisplay } from '../lookups.js';
   import ComponentLinks              from './ComponentLinks.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
+  import ConditionChecklistChips     from './ConditionChecklistChips.svelte';
   import { sec, STATUSES }           from '../ui.js';
-  import { fmtDateTime }             from '$lib/utils/dates.js';
+  import { fmtDate, fmtDateTime }    from '$lib/utils/dates.js';
 
   export let component;         // components row
   export let types       = [];
@@ -20,6 +22,11 @@
   export const attrOptions = {};  // { attrDefId: options[] } — reserved for option label lookup (not yet used in view)
   export let attrs       = [];  // component_attributes[] for this component
   export let components  = [];  // all components[] — for ComponentLinks datalist
+
+  // Latest inspection comes from the store (always loaded with the component data)
+  $: latestInspection = component?.id
+    ? $buildingAssetsStore.inspections?.[component.id] ?? null
+    : null;
 
   const dispatch = createEventDispatcher();
 
@@ -149,32 +156,24 @@
           <p class="text-xs text-slate-600 italic">No standard attributes for this type.</p>
         {/if}
 
-        <!-- Condition attributes (collapsed by default) -->
+        <!-- Condition attributes (collapsed by default).
+             Read-only: values come from the LATEST inspection's
+             checklist_results, not from component_attributes. -->
         {#if showConditionAttrs && conditionDefs.length > 0}
-          <div class="mt-3 pt-3 border-t border-slate-700/60">
-            <p class="text-xs text-purple-400/60 mb-2">Condition attributes</p>
-            <dl class="space-y-2">
-              {#each conditionDefs as def (def.id)}
-                {@const val = attrMap[def.id] ?? def.default_value ?? null}
-                <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-                  <dt class="text-xs text-slate-500 shrink-0 w-32 truncate" title={def.name}>
-                    {def.name}
-                    {#if def._scope === 'system'}<span class="text-blue-400/50 ml-0.5" title="System attribute">↑</span>{/if}
-                  </dt>
-                  <dd class="text-sm text-slate-200 flex-1">
-                    {#if val == null || val === ''}
-                      <span class="text-slate-600">—</span>
-                    {:else if def.display_type === 'checkbox'}
-                      <span class="{val === 'true' ? 'text-green-400' : 'text-slate-500'}">
-                        {val === 'true' ? '✓ Yes' : '✗ No'}
-                      </span>
-                    {:else}
-                      {val}
-                    {/if}
-                  </dd>
-                </div>
-              {/each}
-            </dl>
+          <div class="mt-3 pt-3 border-t border-slate-700/60 space-y-2">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <p class="text-xs text-purple-400/60">Condition attributes</p>
+              {#if latestInspection?.inspected_at}
+                <p class="text-xs text-slate-600">
+                  as of {fmtDate(latestInspection.inspected_at)}
+                </p>
+              {:else}
+                <p class="text-xs text-slate-600 italic">never inspected</p>
+              {/if}
+            </div>
+            <ConditionChecklistChips
+              items={conditionChecklistDisplay(latestInspection, defs)}
+            />
           </div>
         {/if}
       </section>
@@ -203,7 +202,7 @@
     />
 
     <!-- -- Inspection history ------------------------------------------- -->
-    <ComponentInspectionHistory componentId={component.id} />
+    <ComponentInspectionHistory componentId={component.id} typeCode={component.type_code} />
 
     <!-- -- Maintenance history ------------------------------------------ -->
     <ComponentMaintenanceHistory componentId={component.id} />

@@ -17,6 +17,7 @@
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
+  import { conditionChecklistDisplay } from '../lookups.js';
 
   const logger   = getLogger('InspectionsReport');
   const dispatch = createEventDispatcher();
@@ -27,6 +28,10 @@
   // types + floors: from $buildingAssetsStore — needed for client-side resolution
   export let types            = [];
   export let floors           = [];
+  /** { [typeId]: type_attributes[] } — passed to enrich each inspection with
+      a structured condition_results array (name + pass/fail). The server
+      route doesn't have the types/attrDefs lookup, so we resolve client-side. */
+  export let attrDefs         = {};
   // inspectionsCache: already-loaded flattened rows from the tab (may be partial)
   export let inspectionsCache = {};   // { [sessionId]: flattened[] }
 
@@ -84,15 +89,22 @@
 
   /**
    * Add type_initial and type_name to each flattened inspection row so the
-   * server can build component refs without needing the types lookup table.
+   * server can build component refs without needing the types lookup table,
+   * plus a structured condition_results array {name, passed} so the server
+   * can render the per-attribute checklist without needing attrDefs.
    */
   function enrichInspections(flatRows) {
     return flatRows.map(r => {
       const typeObj = resolveType(r.type_code);
+      const defs    = typeObj ? (attrDefs[typeObj.id] ?? []) : [];
       return {
         ...r,
         type_initial: typeObj?.initial ?? '?',
         type_name:    typeObj?.name    ?? r.type_code ?? '?',
+        condition_results: conditionChecklistDisplay(r, defs).map(({ def, passed }) => ({
+          name: def.name,
+          passed,
+        })),
       };
     });
   }

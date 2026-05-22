@@ -5,14 +5,15 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
-  import { typeByCode, floorById } from '../lookups.js';
+  import { typeByCode, floorById, conditionChecklistDisplay } from '../lookups.js';
   import { permissions }             from '$lib/stores/permissions';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
   import ComponentLinks              from './ComponentLinks.svelte';
+  import ConditionChecklistChips     from './ConditionChecklistChips.svelte';
   import { inp, sec, STATUSES }      from '../ui.js';
-  import { fmtDateTime }             from '$lib/utils/dates.js';
+  import { fmtDate, fmtDateTime }    from '$lib/utils/dates.js';
 
   export let component;          // components row
   export let types       = [];
@@ -76,9 +77,16 @@
   $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
   $: primaryDef     = defs.find(d => d.is_primary) ?? null;
   // Fixed attributes (checkable=false) are intrinsic to the component;
-  // condition attributes (checkable=true) are re-evaluated each inspection.
+  // condition attributes (checkable=true) are re-evaluated each inspection
+  // and their values live on the latest component_inspections row.
   $: fixedDefs     = defs.filter(d => !d.checkable);
   $: conditionDefs = defs.filter(d =>  d.checkable);
+  // Latest inspection for this component (read from the store rather than
+  // requiring the parent to pass it down — the store always has it).
+  $: latestInspection = component?.id
+    ? $buildingAssetsStore.inspections?.[component.id] ?? null
+    : null;
+  $: conditionItems = conditionChecklistDisplay(latestInspection, defs);
   $: primaryAttr    = primaryDef ? (attrValues[primaryDef.id] ?? '') : '';
   $: plansForFloor  = selectedFloorId ? plans.filter(p => p.floor_id === selectedFloorId) : [];
 
@@ -345,27 +353,26 @@
           {/each}
         </div>
 
-        <!-- Condition attributes — shown only when toggled -->
+        <!-- Condition attributes — shown only when toggled.
+             Read-only: values come from the LATEST inspection's
+             checklist_results, not from component_attributes. To change
+             a value the user must record a new inspection. -->
         {#if showConditionAttrs && conditionDefs.length > 0}
-          <div class="mt-4 pt-3 border-t border-slate-700/60">
-            <p class="text-xs text-purple-400/60 mb-3">Condition attributes</p>
-            <div class="flex flex-col gap-4">
-              {#each conditionDefs as def (def.id)}
-                <div class="flex items-start gap-2">
-                  <div class="flex-1">
-                    <AttrField
-                      {def}
-                      options={attrOptions[def.id] ?? []}
-                      value={attrValues[def.id] ?? def.default_value ?? ''}
-                      on:change={onAttrChange}
-                    />
-                  </div>
-                  {#if def._scope === 'system'}
-                    <span class="text-xs text-blue-400/60 mt-5 shrink-0" title="Inherited from system">↑sys</span>
-                  {/if}
-                </div>
-              {/each}
+          <div class="mt-4 pt-3 border-t border-slate-700/60 space-y-2">
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <p class="text-xs text-purple-400/60">Condition attributes</p>
+              {#if latestInspection?.inspected_at}
+                <p class="text-xs text-slate-600">
+                  as of {fmtDate(latestInspection.inspected_at)}
+                </p>
+              {:else}
+                <p class="text-xs text-slate-600 italic">never inspected</p>
+              {/if}
             </div>
+            <ConditionChecklistChips items={conditionItems} />
+            <p class="text-[10px] text-slate-600 italic">
+              These values are set by recording an inspection — they're not editable here.
+            </p>
           </div>
         {/if}
       </section>
@@ -397,7 +404,7 @@
     />
 
     <!-- -- Inspection history -------------------------------------- -->
-    <ComponentInspectionHistory componentId={component.id} />
+    <ComponentInspectionHistory componentId={component.id} typeCode={component.type_code} />
 
     <!-- -- Maintenance history -------------------------------------- -->
     <ComponentMaintenanceHistory componentId={component.id} />

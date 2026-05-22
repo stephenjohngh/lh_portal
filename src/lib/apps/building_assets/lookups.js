@@ -22,6 +22,33 @@ export function checkableDefs(attrDefs, types, typeCode) {
   return defsForType(attrDefs, types, typeCode).filter(d => d.checkable && d.visible);
 }
 
+/**
+ * Build the per-attribute condition-checklist display data from an
+ * inspection row and the type's effective attribute defs.
+ *
+ * Used by every UI surface that shows the condition results of one
+ * inspection (ComponentDetailPanel current state, InspectionPanel
+ * last-inspection summary, ComponentInspectionHistory rows,
+ * InspectionsTab expandable rows, InspectionsReport Word doc).
+ *
+ * `passed` is true / false when the inspection recorded a value for
+ * that attribute, or null when the attribute exists on the type but
+ * has no entry in checklist_results (e.g. attr added after the
+ * inspection, or component never inspected).
+ *
+ * @param {Object|null} inspection — component_inspections row or null
+ * @param {Array}       defs       — type_attributes[] (effective set)
+ * @returns {Array<{ def: Object, passed: boolean|null }>}
+ */
+export function conditionChecklistDisplay(inspection, defs) {
+  const conditionDefs = (defs ?? []).filter(d => d.checkable && d.visible);
+  const results       = inspection?.checklist_results ?? {};
+  return conditionDefs.map(def => ({
+    def,
+    passed: typeof results[def.id] === 'boolean' ? results[def.id] : null,
+  }));
+}
+
 /** Raw attribute value for a component + attribute definition id. */
 export function attrValue(componentAttrs, componentId, defId) {
   return (componentAttrs[componentId] ?? []).find(a => a.type_attribute_id === defId)?.value ?? null;

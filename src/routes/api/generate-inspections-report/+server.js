@@ -231,6 +231,42 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
       ],
     }));
 
+    // Condition checklist — one row spanning all 5 columns listing each
+    // condition attribute and its pass/fail outcome for this inspection.
+    // condition_results comes from the client (enrichInspections) so we
+    // don't need the type/attr lookup tables here.
+    const condResults = Array.isArray(ins.condition_results) ? ins.condition_results : [];
+    if (condResults.length > 0) {
+      const condRuns = [];
+      condResults.forEach((c, j) => {
+        if (j > 0) condRuns.push(new TextRun({ text: '   ', font: 'Arial', size: 18 }));
+        const glyph = c.passed === true ? '✓ ' : c.passed === false ? '✗ ' : '— ';
+        const colour = c.passed === true ? '15803D' : c.passed === false ? 'B91C1C' : '6B7280';
+        condRuns.push(new TextRun({
+          text:  `${glyph}${c.name}`,
+          bold:  c.passed === false,
+          color: colour,
+          font:  'Arial',
+          size:  18,
+        }));
+      });
+      dataRows.push(new TableRow({
+        children: [new TableCell({
+          width:      { size: CONTENT_W, type: WidthType.DXA },
+          columnSpan: 5,
+          margins:    { top: convertInchesToTwip(0.05), bottom: convertInchesToTwip(0.05), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
+          shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
+          children:   [new Paragraph({
+            spacing:  { before: 0, after: 0 },
+            children: [
+              new TextRun({ text: 'Condition: ', bold: true, color: '475569', font: 'Arial', size: 18 }),
+              ...condRuns,
+            ],
+          })],
+        })],
+      }));
+    }
+
     // Photos — photo_urls is a JSONB array (multiple per inspection)
     const photoUrls = Array.isArray(ins.photo_urls) ? ins.photo_urls : [];
     for (const url of photoUrls) {

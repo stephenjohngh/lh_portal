@@ -7,13 +7,18 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
+  import { conditionChecklistDisplay } from '../lookups.js';
   import { STATUSES } from '../ui.js';
   import { fmtDate } from '$lib/utils/dates.js';
+  import ConditionChecklistChips from './ConditionChecklistChips.svelte';
 
   export let component      = null;  // components row
   export let typeConfig     = null;  // component_types row
   export let checkableAttrs = [];    // type_attributes[] where checkable = true (effective set)
   export let lastInspection = null;  // component_inspections row or null
+
+  // Per-attribute pass/fail from the last inspection, for the summary footer
+  $: lastInspectionItems = conditionChecklistDisplay(lastInspection, checkableAttrs);
 
   const dispatch = createEventDispatcher();
 
@@ -181,14 +186,20 @@
     ></textarea>
   </div>
 
-  <!-- Last inspection info -->
+  <!-- Last inspection info — date, overall result, and per-attribute summary
+       so the inspector sees what was an issue last time. -->
   {#if lastInspection}
-    <p class="text-xs text-slate-600">
-      Last inspected:
-      {fmtDate(lastInspection.inspected_at)}
-      — result was
-      <span class="text-slate-400">{lastInspection.inspection_result}</span>
-    </p>
+    <div class="space-y-1.5">
+      <p class="text-xs text-slate-600">
+        Last inspected:
+        {fmtDate(lastInspection.inspected_at)}
+        — result was
+        <span class="text-slate-400">{lastInspection.inspection_result}</span>
+      </p>
+      {#if lastInspectionItems.length > 0}
+        <ConditionChecklistChips items={lastInspectionItems} size="xs" />
+      {/if}
+    </div>
   {/if}
 
   <!-- Actions -->

@@ -24,6 +24,8 @@
   import Icon                from '$lib/components/icons/Icon.svelte';
   import Button              from '$lib/components/common/Button.svelte';
   import InspectionsReport from './InspectionsReport.svelte';
+  import ConditionChecklistChips from './ConditionChecklistChips.svelte';
+  import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
 
   const logger = getLogger('InspectionsTab');
 
@@ -45,6 +47,21 @@
   let expandedId  = null;
   let deletingId  = null;
   let confirmId   = null;
+
+  // Expanded component rows (one per session-component pair).
+  // Key: `${sessionId}:${componentId}` — keeps state isolated per session.
+  let expandedRowKeys = new Set();
+  function toggleRow(sessionId, componentId) {
+    const key = `${sessionId}:${componentId}`;
+    const next = new Set(expandedRowKeys);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    expandedRowKeys = next;
+  }
+  /** Effective condition-attribute defs for a type, looked up from the store. */
+  function condDefsFor(typeCode) {
+    const t = typeByCode($buildingAssetsStore.types, typeCode);
+    return t ? ($buildingAssetsStore.attrDefs[t.id] ?? []) : [];
+  }
 
   // -- Filters --------------------------------------------------------------
   let filterStatus      = '';
@@ -372,6 +389,7 @@
                   <table class="insp-table">
                     <thead>
                       <tr>
+                        <th class="w-6"></th>
                         <th>Component</th>
                         <th>Type</th>
                         <th>Label</th>
@@ -385,11 +403,26 @@
                     </thead>
                     <tbody>
                       {#each groups as grp (grp.component_id)}
-                        {@const worst    = worstResult(grp.rows)}
-                        {@const firstRow = grp.rows[0]}
-                        {@const typeObj  = resolveType(grp.type_code)}
-                        {@const displayName = `${grp.floor_name ?? '?'} / ${typeObj?.initial ?? '?'} / ${grp.asset_id ?? '?'}`}
+                        {@const worst        = worstResult(grp.rows)}
+                        {@const firstRow     = grp.rows[0]}
+                        {@const typeObj      = resolveType(grp.type_code)}
+                        {@const displayName  = `${grp.floor_name ?? '?'} / ${typeObj?.initial ?? '?'} / ${grp.asset_id ?? '?'}`}
+                        {@const hasPhotosCol = rowInspections.some(i => i.photo_urls?.length > 0)}
+                        {@const rowKey       = `${session.id}:${grp.component_id}`}
+                        {@const isExpanded   = expandedRowKeys.has(rowKey)}
+                        {@const items        = conditionChecklistDisplay(firstRow, condDefsFor(grp.type_code))}
                         <tr class="insp-row insp-row-{worst}">
+                          <td class="caret-cell">
+                            {#if items.length > 0}
+                              <button
+                                type="button"
+                                class="expand-btn {isExpanded ? 'expanded' : ''}"
+                                on:click={() => toggleRow(session.id, grp.component_id)}
+                                title={isExpanded ? 'Hide condition breakdown' : 'Show condition breakdown'}
+                                aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+                              >▸</button>
+                            {/if}
+                          </td>
                           <td class="font-medium font-mono">{displayName}</td>
                           <td>
                             {#if typeObj}
@@ -415,7 +448,7 @@
                               —
                             {/if}
                           </td>
-                          {#if rowInspections.some(i => i.photo_urls?.length > 0)}
+                          {#if hasPhotosCol}
                             <td class="text-slate-400 text-sm">
                               {#if firstRow.photo_urls?.length > 0}
                                 <span class="photo-indicator">📷 {firstRow.photo_urls.length}</span>
@@ -425,6 +458,17 @@
                             </td>
                           {/if}
                         </tr>
+                        {#if isExpanded && items.length > 0}
+                          <tr class="insp-row-expanded">
+                            <td></td>
+                            <td colspan={hasPhotosCol ? 7 : 6}>
+                              <div class="expanded-content">
+                                <p class="expanded-label">Condition checks</p>
+                                <ConditionChecklistChips {items} size="xs" />
+                              </div>
+                            </td>
+                          </tr>
+                        {/if}
                       {/each}
                     </tbody>
                   </table>
@@ -446,6 +490,7 @@
     sessions={filtered}
     types={types}
     floors={floors}
+    attrDefs={$buildingAssetsStore.attrDefs}
     inspectionsCache={inspections}
     on:close={() => showReport = false}
   />
@@ -531,6 +576,16 @@
   .notes-cell       { max-width: 260px; vertical-align: top; }
   .notes-lines      { display: block; white-space: pre-line; line-height: 1.4; max-height: 5rem; overflow-y: auto; }
   .photo-indicator  { font-size: 0.85rem; }
+
+  /* Expand caret + expanded row */
+  .caret-cell  { width: 1.5rem; padding-right: 0 !important; }
+  .expand-btn  { background: none; border: 0; color: rgb(148 163 184); cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; transition: transform 0.15s, color 0.15s; }
+  .expand-btn:hover { color: rgb(226 232 240); }
+  .expand-btn.expanded { transform: rotate(90deg); color: rgb(216 180 254); }
+  .insp-row-expanded     { background: rgb(15 23 42 / 0.4); border-bottom: 1px solid rgb(71 85 105 / 0.5); }
+  .insp-row-expanded td  { padding: 0.5rem 0.75rem; vertical-align: top; }
+  .expanded-content      { display: flex; flex-direction: column; gap: 0.35rem; }
+  .expanded-label        { font-size: 0.7rem; color: rgb(148 163 184); text-transform: uppercase; letter-spacing: 0.05em; }
 
   /* Type chip */
   .type-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; border: 1px solid; white-space: nowrap; }
