@@ -219,6 +219,18 @@ export function matchesAttrFilter(component, defs, componentAttrs, inspections, 
 
   const raw = lookupAttrValue(def, component.id, componentAttrs, inspections);
   if (raw == null || raw === '') {
+    // Special case: a Fixed checkbox attribute with no stored value
+    // is displayed as "No" in the UI (AttrField shows "No" for any
+    // non-'true' value). Filtering on "No" / is_false should therefore
+    // match these components too — otherwise unticked checkboxes never
+    // appear in a "No" filter, since most are stored as missing rather
+    // than an explicit 'false'.
+    //
+    // Condition checkboxes stay strict: null means "not inspected",
+    // which is semantically distinct from "passed = no".
+    if (!def.checkable && def.display_type === 'checkbox' && filter.op === 'is_false') {
+      return true;
+    }
     return !!filter.includeUnset;
   }
 
