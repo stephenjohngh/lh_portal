@@ -129,7 +129,7 @@
 
 <div class="px-4 py-2 border-b border-slate-700/40 flex flex-wrap items-center gap-1.5 bg-slate-800/30">
 
-  <span class="text-[10px] text-slate-500 uppercase tracking-wider font-medium shrink-0 mr-1">
+  <span class="text-[10px] text-slate-300 uppercase tracking-wider font-semibold shrink-0 mr-1">
     Preset
   </span>
 
