@@ -13,7 +13,7 @@
     loadPresets, createPreset, removePreset,
   } from '../componentPresets.js';
 
-  import { resolveComponentHalo }   from '../lookups.js';
+  import { resolveComponentHalo, conditionChecklistDisplay } from '../lookups.js';
   import { generateReportDocument } from './plan/reportGenerator.js';
   import ComponentInventoryTable from './ComponentInventoryTable.svelte';
   import ComponentPresetBar      from './ComponentPresetBar.svelte';
@@ -298,6 +298,17 @@
         systemOfFn:     systemOf,
         resolveAttrsFn: resolveAttrs,
         linkedRefsFn:   c => (componentLinks[c.id] ?? []).map(l => l.to_component_ref).join('\n'),
+        // Condition results from the latest inspection — used by the Word
+        // generator to draw a per-component sub-row showing checklist outcomes.
+        conditionResultsFn: c => {
+          const t    = typeOf(c);
+          const defs = t ? (attrDefs[t.id] ?? []) : [];
+          const insp = inspections[c.id] ?? null;
+          return conditionChecklistDisplay(insp, defs).map(({ def, passed }) => ({
+            name: def.name,
+            passed,
+          }));
+        },
       });
     } catch (err) {
       reportError = err.message;
@@ -306,46 +317,80 @@
     }
   }
 
-  // -- CSV export (client-side, no server round-trip) ----------------
+  // -- CSV exports (client-side, no server round-trip) ---------------
+  //
+  // Two flavours:
+  //   generateCSV()                — inventory CSV (one row per component,
+  //                                  attributes pipe-joined in one cell,
+  //                                  condition summary string)
+  //   generateConditionAuditCSV()  — UNPIVOTED, one column per condition
+  //                                  attribute across the types present
+  //                                  in filteredComponents. Designed for
+  //                                  Excel sort/filter on individual
+  //                                  conditions.
+
+  /** RFC 4180 cell escaping — quotes any value containing , " \n \r */
+  function csvEsc(val) {
+    const s = String(val ?? '');
+    return (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r'))
+      ? '"' + s.replace(/"/g, '""') + '"'
+      : s;
+  }
+
+  /** Sort components within each floor: System → Type → Asset ID */
+  function sortCompsForCSV(comps) {
+    return [...comps].sort((a, b) => {
+      const ta = typeOf(a), tb = typeOf(b);
+      const sa = systemOf(ta)?.name ?? '', sb = systemOf(tb)?.name ?? '';
+      return sa.localeCompare(sb) ||
+             (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
+             (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined,
+               { numeric: true, sensitivity: 'base' });
+    });
+  }
+
+  /** Trigger a CSV file download from an array of rows (rows already strings). */
+  function downloadCsv(filename, rows) {
+    // UTF-8 BOM (﻿) tells Excel to open as UTF-8 without an import wizard
+    const csv  = '﻿' + rows.join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function generateCSV() {
     if (filteredComponents.length === 0) return;
-
-    // RFC 4180 cell escaping
-    function esc(val) {
-      const s = String(val ?? '');
-      return (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r'))
-        ? '"' + s.replace(/"/g, '""') + '"'
-        : s;
-    }
-
-    // Sort within each floor: System → Type → Asset ID (matches report order)
-    function sortComps(comps) {
-      return [...comps].sort((a, b) => {
-        const ta = typeOf(a), tb = typeOf(b);
-        const sa = systemOf(ta)?.name ?? '', sb = systemOf(tb)?.name ?? '';
-        return sa.localeCompare(sb) ||
-               (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
-               (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined,
-                 { numeric: true, sensitivity: 'base' });
-      });
-    }
 
     const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label', 'Attributes'];
     if (showLinked)          headers.push('Linked');
     if (showNotes)           headers.push('Notes');
     if (showInspectionNotes) headers.push('Insp. Notes');
+    // Condition columns — always emitted. Empty cells if the component
+    // has no condition attrs or has never been inspected.
+    headers.push('Last Inspected', 'Condition (last)');
     headers.push('Status');
 
-    const rows = [headers.map(esc).join(',')];
+    const rows = [headers.map(csvEsc).join(',')];
 
     for (const { floor, components: comps } of filteredByFloor) {
-      for (const c of sortComps(comps)) {
-        const t    = typeOf(c);
-        const sys  = systemOf(t);
+      for (const c of sortCompsForCSV(comps)) {
+        const t     = typeOf(c);
+        const sys   = systemOf(t);
         // Attributes: always "Name: Value" format, pipe-separated so Excel
         // doesn't mistake the separator for a column delimiter on import.
         const attrs = resolveAttrs(c).map(a => `${a.name}: ${a.value}`).join(' | ');
         const insp  = inspections[c.id] ?? null;
+        const defs  = t ? (attrDefs[t.id] ?? []) : [];
+        const cond  = conditionChecklistDisplay(insp, defs)
+          .map(({ def, passed }) => {
+            const g = passed === true ? '✓' : passed === false ? '✗' : '—';
+            return `${def.name}: ${g}`;
+          })
+          .join(' | ');
 
         const row = [
           floor.short_name,
@@ -358,21 +403,79 @@
         if (showLinked)          row.push((componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '));
         if (showNotes)           row.push(c.notes ?? '');
         if (showInspectionNotes) row.push(insp?.inspector_notes ?? '');
+        // Last inspected as ISO yyyy-mm-dd (Excel parses cleanly) + condition string
+        row.push(insp?.inspected_at ? insp.inspected_at.slice(0, 10) : '');
+        row.push(cond);
         row.push(c.status ?? '');
 
-        rows.push(row.map(esc).join(','));
+        rows.push(row.map(csvEsc).join(','));
       }
     }
 
-    // UTF-8 BOM (\uFEFF) tells Excel to open as UTF-8 without an import wizard
-    const csv      = '\uFEFF' + rows.join('\r\n');
-    const blob     = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url      = URL.createObjectURL(blob);
-    const a        = document.createElement('a');
-    a.href         = url;
-    a.download     = `components-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadCsv(`components-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  }
+
+  /**
+   * Condition Audit CSV \u2014 unpivoted, one column per condition attribute
+   * across the types present in filteredComponents. Each cell:
+   *   \u2713 = passed in latest inspection
+   *   \u2717 = failed in latest inspection
+   *   \u2014 = applies to this type but has no recorded value (e.g. inspector
+   *       didn't tick it, attr added after inspection, never inspected)
+   *   (blank) = the attribute doesn't apply to this component's type
+   *
+   * Dynamic condition columns are sorted system \u2192 type \u2192 presentation_order
+   * (same shape as the filter popover, via availableConditionDefs).
+   */
+  function generateConditionAuditCSV() {
+    if (filteredComponents.length === 0) return;
+
+    // Union of condition defs across the types present in the filtered set.
+    const presentCodes = new Set(filteredComponents.map(c => c.type_code));
+    const condDefs     = availableConditionDefs(types, systems, attrDefs, presentCodes);
+    if (condDefs.length === 0) {
+      reportError = 'No condition attributes for the filtered components \u2014 nothing to audit.';
+      return;
+    }
+    reportError = '';
+
+    const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label', 'Last Inspected', 'Overall'];
+    for (const d of condDefs) headers.push(d.name);
+
+    const rows = [headers.map(csvEsc).join(',')];
+
+    for (const { floor, components: comps } of filteredByFloor) {
+      for (const c of sortCompsForCSV(comps)) {
+        const t          = typeOf(c);
+        const sys        = systemOf(t);
+        const insp       = inspections[c.id] ?? null;
+        // Which condition defs apply to *this* component's type \u2014 used to
+        // distinguish "doesn't apply" (blank) from "applies but not recorded" (\u2014).
+        const typeDefIds = new Set((t ? attrDefs[t.id] ?? [] : []).map(d => d.id));
+        const checklist  = insp?.checklist_results ?? {};
+
+        const row = [
+          floor.short_name,
+          sys?.name    ?? '',
+          t?.name      ?? c.type_code,
+          c.asset_id   ?? '',
+          c.label      ?? '',
+          insp?.inspected_at ? insp.inspected_at.slice(0, 10) : '',
+          insp?.inspection_result ?? '',
+        ];
+        for (const d of condDefs) {
+          if (!typeDefIds.has(d.id)) {
+            row.push('');                               // attribute doesn't apply
+          } else {
+            const v = checklist[d.id];
+            row.push(v === true ? '\u2713' : v === false ? '\u2717' : '\u2014');
+          }
+        }
+        rows.push(row.map(csvEsc).join(','));
+      }
+    }
+
+    downloadCsv(`condition-audit-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
   // -- Floor sets for presets ----------------------------------------
@@ -1068,7 +1171,15 @@
                 disabled={filteredComponents.length === 0}
                 class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
                        disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Inventory CSV — one row per component, attributes pipe-joined"
               >⬇ CSV</button>
+              <button
+                on:click={generateConditionAuditCSV}
+                disabled={filteredComponents.length === 0}
+                class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
+                       disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Condition Audit CSV — one column per condition attribute, ✓/✗ per component (Excel-filterable)"
+              >⬇ Condition Audit</button>
             </div>
           {/if}
         </div>

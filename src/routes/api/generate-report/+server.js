@@ -29,11 +29,57 @@ import {
   CONTENT_W, COLOURS, BORDERS, CELL_PAD,
   hCell, dCell, run, para,
   makeHeader, makeFooter,
-  DOC_STYLES, pageProps
+  DOC_STYLES, pageProps,
+  fmtShortDate,
 } from '$lib/server/docxHelpers.js';
 import { sortBySystemTypeAsset } from '$lib/utils/componentSorting.js';
 
 const logger = getLogger('generateReport');
+
+// -- Condition sub-row ---------------------------------------------------------
+// Returns a TableRow listing "Condition (date): ✓ Gap · ✓ Closer · ✗ Smoke seal"
+// for one component, or null when the component has no condition attrs / no
+// inspection. Caller filters out nulls. Used in both buildComponentTable and
+// buildFullComponentListTable.
+function buildConditionSubRow(c, columnSpan, alt) {
+  const items = Array.isArray(c.condition_results) ? c.condition_results : [];
+  if (items.length === 0) return null;
+
+  const dateStr = c.last_inspected ? fmtShortDate(c.last_inspected) : null;
+  const runs = [];
+  runs.push(new TextRun({
+    text:  dateStr ? `Condition (${dateStr}):  ` : 'Condition:  ',
+    bold:  true,
+    color: '475569',
+    font:  'Arial',
+    size:  16,
+  }));
+  items.forEach((it, j) => {
+    if (j > 0) runs.push(new TextRun({ text: '  ·  ', color: '94A3B8', font: 'Arial', size: 16 }));
+    const glyph  = it.passed === true ? '✓ ' : it.passed === false ? '✗ ' : '— ';
+    const colour = it.passed === true ? '15803D' : it.passed === false ? 'B91C1C' : '6B7280';
+    runs.push(new TextRun({
+      text:  `${glyph}${it.name}`,
+      bold:  it.passed === false,
+      color: colour,
+      font:  'Arial',
+      size:  16,
+    }));
+  });
+
+  return new TableRow({
+    children: [new TableCell({
+      width:      { size: CONTENT_W, type: WidthType.DXA },
+      columnSpan,
+      shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
+      margins:    CELL_PAD,
+      children:   [new Paragraph({
+        spacing:  { before: 0, after: 0 },
+        children: runs,
+      })],
+    })],
+  });
+}
 
 // -- Status helpers ------------------------------------------------------------
 const STATUS_LABEL = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' };
@@ -155,10 +201,10 @@ function buildFullComponentListTable(components, colOpts = {}) {
   });
 
   // components arrive pre-sorted (floor_order → system → type → asset_id) from client
-  const dataRows = components.map((c, idx) => {
+  const dataRows = components.flatMap((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = fmtAttrs(c.attributes);
-    return new TableRow({
+    const main  = new TableRow({
       children: [
         dCell(c.floor_short  ?? '—', FLOOR_W, { alt }),
         dCell(c.type_name    ?? '—', TYPE_W,  { alt }),
@@ -171,6 +217,10 @@ function buildFullComponentListTable(components, colOpts = {}) {
         statusCell(c.status, STAT_W, alt),
       ],
     });
+    // Sub-row with condition checklist; null when the component has no
+    // condition attrs or no inspection.
+    const sub = buildConditionSubRow(c, colWidths.length, alt);
+    return sub ? [main, sub] : [main];
   });
 
   return new Table({
@@ -254,10 +304,10 @@ function buildComponentTable(components, colOpts = {}) {
     ],
   });
 
-  const dataRows = sorted.map((c, idx) => {
+  const dataRows = sorted.flatMap((c, idx) => {
     const alt   = idx % 2 === 1;
     const attrs = fmtAttrs(c.attributes);
-    return new TableRow({
+    const main  = new TableRow({
       children: [
         dCell(c.type_name  ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id   ?? '—', ID_W,    { alt }),
@@ -269,6 +319,8 @@ function buildComponentTable(components, colOpts = {}) {
         statusCell(c.status, STAT_W, alt),
       ],
     });
+    const sub = buildConditionSubRow(c, colWidths.length, alt);
+    return sub ? [main, sub] : [main];
   });
 
   return new Table({

@@ -25,6 +25,12 @@
 //   systemOfFn:              (type)      => system | undefined
 //   resolveAttrsFn:          (component) => { name, value, display_type }[]
 //   linkedRefsFn:            (component) => string  — joined to_component_ref values
+//   conditionResultsFn:      (component) => { name, passed }[]
+//                            Pre-resolved condition-attribute pass/fail array
+//                            from the latest inspection's checklist_results.
+//                            Empty array when component has no condition attrs
+//                            or has never been inspected. The server renders
+//                            this as a chip-style sub-row beneath each row.
 // }
 //
 // Returns { filename } on success (download is triggered as a side-effect).
@@ -40,6 +46,7 @@ export async function generateReportDocument(params) {
     filteredByFloor, plans, inspections,
     typeOfFn, systemOfFn, resolveAttrsFn,
     linkedRefsFn = () => '',
+    conditionResultsFn = () => [],
   } = params;
 
   // -- Sort helper (System → Type → Asset ID) ----------------------------
@@ -65,9 +72,12 @@ export async function generateReportDocument(params) {
       const sortedComps = sortComponents(comps);
 
       const resolvedComponents = sortedComps.map(c => {
-        const t    = typeOfFn(c);
-        const sys  = systemOfFn(t);
-        const insp = showInspectionNotes ? (inspections[c.id] ?? null) : null;
+        const t       = typeOfFn(c);
+        const sys     = systemOfFn(t);
+        // Latest inspection is always read so we can render the condition
+        // sub-row + Last-inspected date. last_notes is only filled when
+        // the user asked to include inspector-notes column.
+        const insp    = inspections[c.id] ?? null;
         return {
           id:                    c.id,
           asset_id:              c.asset_id,
@@ -80,10 +90,11 @@ export async function generateReportDocument(params) {
           status:                c.status,
           primary_attribute:     c.primary_attribute,
           attributes:            resolveAttrsFn(c),
+          condition_results:     conditionResultsFn(c),
           notes:                 c.notes           ?? null,
           linked_component_ref:  linkedRefsFn(c),
           last_inspected:        insp?.inspected_at ?? null,
-          last_notes:            insp?.inspector_notes ?? null,
+          last_notes:            showInspectionNotes ? (insp?.inspector_notes ?? null) : null,
         };
       });
 
@@ -108,7 +119,7 @@ export async function generateReportDocument(params) {
         sortComponents(comps).map(c => {
           const t    = typeOfFn(c);
           const sys  = systemOfFn(t);
-          const insp = showInspectionNotes ? (inspections[c.id] ?? null) : null;
+          const insp = inspections[c.id] ?? null;
           return {
             floor_short:          floor.short_name,
             floor_order:          floor.level_order ?? 9999,
@@ -118,9 +129,11 @@ export async function generateReportDocument(params) {
             label:                c.label,
             status:               c.status,
             attributes:           resolveAttrsFn(c),
+            condition_results:    conditionResultsFn(c),
             notes:                c.notes              ?? null,
             linked_component_ref: linkedRefsFn(c),
-            last_notes:           insp?.inspector_notes ?? null,
+            last_inspected:       insp?.inspected_at   ?? null,
+            last_notes:           showInspectionNotes ? (insp?.inspector_notes ?? null) : null,
           };
         })
       )
