@@ -200,22 +200,22 @@
       <table class="w-full text-xs border-collapse table-fixed">
         <thead>
           <tr class="border-b border-slate-700 text-left sticky top-0 bg-slate-800">
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-7"></th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Ref</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-36">Label</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-28">Type</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-20">Status</th>
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[260px]">Attributes</th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-7"></th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Ref</th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-36">Label</th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-28">Type</th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Status</th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[260px]">Attributes</th>
             {#if showLinked}
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[175px]">Linked</th>
+              <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[175px]">Linked</th>
             {/if}
             {#if showNotes}
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[175px]">Notes</th>
+              <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[175px]">Notes</th>
             {/if}
             {#if showInspectionNotes}
-              <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-[200px]">Insp. Notes</th>
+              <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[200px]">Insp. Notes</th>
             {/if}
-            <th class="px-2 py-1.5 text-slate-500 font-medium uppercase tracking-wide w-16"></th>
+            <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-16"></th>
           </tr>
         </thead>
         <tbody>
@@ -389,9 +389,9 @@
       <table class="w-full text-xs border-collapse">
         <thead>
           <tr class="border-b border-slate-700 text-left">
-            <th class="px-3 py-2 text-slate-500 font-medium uppercase tracking-wide">System</th>
-            <th class="px-3 py-2 text-slate-500 font-medium uppercase tracking-wide">Type</th>
-            <th class="px-3 py-2 text-right text-slate-500 font-medium uppercase tracking-wide">Total</th>
+            <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">System</th>
+            <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">Type</th>
+            <th class="px-3 py-2 text-right text-slate-300 font-semibold uppercase tracking-wide">Total</th>
             <th class="px-3 py-2 text-right text-green-600 font-medium uppercase tracking-wide">OK</th>
             <th class="px-3 py-2 text-right text-amber-600 font-medium uppercase tracking-wide">Problem</th>
             <th class="px-3 py-2 text-right text-red-600 font-medium uppercase tracking-wide">Failed</th>

@@ -947,10 +947,15 @@
            values come from the latest inspection's checklist_results.
            -->
 
-      <!-- Fixed -->
+      <!-- Fixed.
+           Chip scroller has no flex-1, so it sizes to its content. The
+           Add-filter button sits right after the chips, near the label.
+           When chips overflow, the scroller scrolls horizontally (capped
+           at max-w-full inside its parent); the button stays anchored
+           right after the visible scroll viewport. -->
       <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 bg-slate-800/40">
         <span class="text-[10px] uppercase tracking-wide text-slate-300 font-semibold shrink-0 w-20">Fixed</span>
-        <div class="flex-1 overflow-x-auto flex items-center gap-1.5 py-0.5">
+        <div class="min-w-0 overflow-x-auto flex items-center gap-1.5 py-0.5 max-w-full">
           {#each fixedAttrFilters as f, i (i + ':' + f.defId)}
             <AttrFilterChip
               filter={f}
@@ -960,8 +965,8 @@
             />
           {/each}
         </div>
-        <!-- Anchor for popover: relative wrapper sits OUTSIDE the
-             overflow-x-auto scroller so the popover isn't clipped. -->
+        <!-- Button + popover wrapper sits OUTSIDE the overflow-x-auto
+             scroller so the dropdown isn't clipped. -->
         <div class="relative shrink-0">
           <button
             on:click={() => popoverState?.kind === 'fixed' && popoverState.editIndex == null ? closePopover() : openAddPopover('fixed')}
@@ -971,7 +976,7 @@
             title={availFixedDefs.length === 0 ? 'No fixed attributes available' : 'Add a fixed-attribute filter'}
           >+ Add filter</button>
           {#if popoverState?.kind === 'fixed'}
-            <div class="absolute top-full right-0 mt-1 z-50">
+            <div class="absolute top-full left-0 mt-1 z-50">
               <AttrFilterPopover
                 availableDefs={availFixedDefs}
                 {attrOptions}
@@ -988,7 +993,7 @@
       <!-- Condition -->
       <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 bg-slate-800/40">
         <span class="text-[10px] uppercase tracking-wide text-slate-300 font-semibold shrink-0 w-20">Condition</span>
-        <div class="flex-1 overflow-x-auto flex items-center gap-1.5 py-0.5">
+        <div class="min-w-0 overflow-x-auto flex items-center gap-1.5 py-0.5 max-w-full">
           {#each conditionAttrFilters as f, i (i + ':' + f.defId)}
             <AttrFilterChip
               filter={f}
@@ -1007,7 +1012,7 @@
             title={availConditionDefs.length === 0 ? 'No condition attributes available' : 'Add a condition-attribute filter'}
           >+ Add filter</button>
           {#if popoverState?.kind === 'condition'}
-            <div class="absolute top-full right-0 mt-1 z-50">
+            <div class="absolute top-full left-0 mt-1 z-50">
               <AttrFilterPopover
                 availableDefs={availConditionDefs}
                 {attrOptions}
@@ -1034,12 +1039,12 @@
         <div class="px-4 py-2 flex items-center gap-3 flex-wrap">
           <button
             on:click={() => showReportPanel = !showReportPanel}
-            class="flex items-center gap-1.5 text-xs transition-colors
-                   {showReportPanel ? 'text-purple-300' : 'text-slate-500 hover:text-slate-300'}"
+            class="flex items-center gap-1.5 text-xs font-semibold transition-colors
+                   {showReportPanel ? 'text-purple-300' : 'text-slate-300 hover:text-white'}"
           >
             <span class="text-[10px]">{showReportPanel ? '▾' : '▸'}</span>
             📄 Report Options
-            <span class="text-slate-700 tabular-nums">({filteredComponents.length})</span>
+            <span class="text-slate-500 tabular-nums font-normal">({filteredComponents.length})</span>
           </button>
 
           {#if showReportPanel}
