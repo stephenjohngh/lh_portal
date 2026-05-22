@@ -207,10 +207,14 @@ export function lookupAttrValue(def, componentId, componentAttrs, inspections) {
 export function matchesAttrFilter(component, defs, componentAttrs, inspections, filter) {
   const def = defs.find(d => d.id === filter.defId);
   if (!def) {
-    // This filter doesn't apply to the component's type at all.
-    // Returning true keeps it inclusive — a "narrows-by-other-types" filter
-    // shouldn't kick out components for which the attr is irrelevant.
-    return true;
+    // The filter's attribute isn't defined on this component's type at
+    // all — treat it the same as "has no value". The user's
+    // 'includeUnset' opt-in (off by default) decides whether to keep
+    // these components in the result; otherwise they're filtered out.
+    // Rationale: if the user filters by Fire rating = FD30, a Light
+    // that has no Fire rating attribute should NOT pass — they asked
+    // for components matching that criterion.
+    return !!filter.includeUnset;
   }
 
   const raw = lookupAttrValue(def, component.id, componentAttrs, inspections);
