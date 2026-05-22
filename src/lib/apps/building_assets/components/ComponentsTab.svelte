@@ -21,6 +21,11 @@
   import ComponentDetailPanel    from './ComponentDetailPanel.svelte';
   import ComponentDetailView     from './ComponentDetailView.svelte';
   import InspectionPanel         from './InspectionPanel.svelte';
+  import AttrFilterPopover       from './AttrFilterPopover.svelte';
+  import AttrFilterChip          from './AttrFilterChip.svelte';
+  import {
+    availableFixedDefs, availableConditionDefs, matchesAllAttrFilters,
+  } from '../utils/attrFilters.js';
 
   // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;
@@ -49,6 +54,18 @@
   let filterStatuses  = new Set();
   let searchQuery     = '';
 
+  // Attribute filters — arrays of { defId, op, values, includeUnset }.
+  // Fixed values come from componentAttrs; condition values come from
+  // the latest component_inspections row's checklist_results. See
+  // src/lib/apps/building_assets/utils/attrFilters.js.
+  let fixedAttrFilters     = [];
+  let conditionAttrFilters = [];
+
+  // Popover state — null when closed; otherwise { kind, editIndex }
+  //   kind:     'fixed' | 'condition'
+  //   editIndex: number (editing existing) or null (adding new)
+  let popoverState = null;
+
   // Remove type selections that no longer belong to any selected system.
   $: if (filterSystemIds.size > 0 && types.length > 0 && filterTypeCodes.size > 0) {
     const validCodes = new Set(
@@ -75,6 +92,8 @@
       filterTypeCodes: [...filterTypeCodes],
       filterStatuses:  [...filterStatuses],
       searchQuery,
+      fixedAttrFilters,
+      conditionAttrFilters,
     },
     columns: { showNotes, showLinked, showInspectionNotes, view },
     report: {
@@ -98,6 +117,9 @@
     filterSystemIds = new Set(f.filterSystemIds ?? (f.filterSystemId ? [f.filterSystemId] : []));
     filterTypeCodes = new Set(f.filterTypeCodes ?? (f.filterTypeCode ? [f.filterTypeCode] : []));
     filterStatuses  = new Set(f.filterStatuses  ?? (f.filterStatus  ? [f.filterStatus]  : []));
+    // Default to empty for presets saved before attribute filtering existed
+    fixedAttrFilters     = Array.isArray(f.fixedAttrFilters)     ? f.fixedAttrFilters     : [];
+    conditionAttrFilters = Array.isArray(f.conditionAttrFilters) ? f.conditionAttrFilters : [];
     showNotes           = c.showNotes;
     showLinked          = c.showLinked;
     showInspectionNotes = c.showInspectionNotes;
@@ -394,6 +416,18 @@
       );
     }
 
+    // Attribute filters — fixed (componentAttrs) and condition (inspections).
+    // Both arrays apply with AND semantics across filters; OR within a single
+    // 'in' filter's value list (handled inside matchesAttrFilter).
+    if (fixedAttrFilters.length > 0 || conditionAttrFilters.length > 0) {
+      const allFilters = [...fixedAttrFilters, ...conditionAttrFilters];
+      list = list.filter(c => {
+        const type = types.find(t => t.code === c.type_code);
+        const defs = type ? (attrDefs[type.id] ?? []) : [];
+        return matchesAllAttrFilters(c, defs, componentAttrs, inspections, allFilters);
+      });
+    }
+
     return list;
   })();
 
@@ -472,9 +506,59 @@
     filterTypeCodes = new Set();
     filterStatuses  = new Set();
     searchQuery     = '';
+    fixedAttrFilters     = [];
+    conditionAttrFilters = [];
   }
 
-  $: hasFilters = floorPreset !== 'all' || filterSystemIds.size > 0 || filterTypeCodes.size > 0 || filterStatuses.size > 0 || searchQuery.trim();
+  $: hasFilters = floorPreset !== 'all'
+              || filterSystemIds.size > 0
+              || filterTypeCodes.size > 0
+              || filterStatuses.size > 0
+              || searchQuery.trim()
+              || fixedAttrFilters.length > 0
+              || conditionAttrFilters.length > 0;
+
+  // -- Attribute filter availability (scoped to current Type filter) ---
+  $: availFixedDefs     = availableFixedDefs(types, attrDefs, filterTypeCodes);
+  $: availConditionDefs = availableConditionDefs(types, attrDefs, filterTypeCodes);
+
+  // Lookup map for chip → def (chips need access to the def for name etc.)
+  $: defById = (() => {
+    const m = new Map();
+    for (const arr of Object.values(attrDefs ?? {})) {
+      for (const d of arr) m.set(d.id, d);
+    }
+    return m;
+  })();
+
+  // -- Popover open / close / apply -----------------------------------
+  function openAddPopover(kind) {
+    popoverState = { kind, editIndex: null };
+  }
+  function openEditPopover(kind, index) {
+    popoverState = { kind, editIndex: index };
+  }
+  function closePopover() { popoverState = null; }
+
+  function handlePopoverApply(e) {
+    if (!popoverState) return;
+    const filter = e.detail;
+    const arr    = popoverState.kind === 'fixed' ? fixedAttrFilters : conditionAttrFilters;
+    const next   = [...arr];
+    if (popoverState.editIndex == null) next.push(filter);
+    else                                 next[popoverState.editIndex] = filter;
+    if (popoverState.kind === 'fixed') fixedAttrFilters     = next;
+    else                                conditionAttrFilters = next;
+    closePopover();
+  }
+
+  function removeFilter(kind, index) {
+    if (kind === 'fixed') {
+      fixedAttrFilters = fixedAttrFilters.filter((_, i) => i !== index);
+    } else {
+      conditionAttrFilters = conditionAttrFilters.filter((_, i) => i !== index);
+    }
+  }
   $: readOnly = !$permissions.isAdmin && !$permissions.canModify;
 </script>
 
@@ -935,6 +1019,91 @@
         {/if}
 
       </div>
+
+      <!-- ─── Attribute filter strips (Fixed / Condition) ──────────────
+           One horizontal-scroll row per attribute class. Each row shows
+           the active chips plus a "+ Add filter" button that opens a
+           popover scoped to the relevant attribute defs.
+           Fixed values come from componentAttrs; condition values come
+           from the latest inspection's checklist_results. -->
+
+      <!-- Fixed -->
+      <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 bg-slate-800/40">
+        <span class="text-[10px] uppercase tracking-wide text-slate-500 font-medium shrink-0 w-20">Fixed</span>
+        <div class="flex-1 overflow-x-auto flex items-center gap-1.5 py-0.5 relative">
+          {#each fixedAttrFilters as f, i (i + ':' + f.defId)}
+            <AttrFilterChip
+              filter={f}
+              def={defById.get(f.defId)}
+              on:edit={() => openEditPopover('fixed', i)}
+              on:remove={() => removeFilter('fixed', i)}
+            />
+          {/each}
+          <div class="relative shrink-0">
+            <button
+              on:click={() => popoverState?.kind === 'fixed' && popoverState.editIndex == null ? closePopover() : openAddPopover('fixed')}
+              class="px-2 py-0.5 text-xs rounded-full border border-dashed border-slate-600 text-slate-400
+                     hover:text-white hover:border-purple-500 whitespace-nowrap transition-colors"
+              disabled={availFixedDefs.length === 0}
+              title={availFixedDefs.length === 0 ? 'No fixed attributes available' : 'Add a fixed-attribute filter'}
+            >+ Add filter</button>
+            {#if popoverState?.kind === 'fixed'}
+              <div class="absolute top-full right-0 mt-1 z-50">
+                <AttrFilterPopover
+                  availableDefs={availFixedDefs}
+                  {attrOptions}
+                  existing={popoverState.editIndex == null ? null : fixedAttrFilters[popoverState.editIndex]}
+                  className="Fixed attribute"
+                  on:apply={handlePopoverApply}
+                  on:cancel={closePopover}
+                />
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+
+      <!-- Condition -->
+      <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 bg-slate-800/40">
+        <span class="text-[10px] uppercase tracking-wide text-slate-500 font-medium shrink-0 w-20">Condition</span>
+        <div class="flex-1 overflow-x-auto flex items-center gap-1.5 py-0.5 relative">
+          {#each conditionAttrFilters as f, i (i + ':' + f.defId)}
+            <AttrFilterChip
+              filter={f}
+              def={defById.get(f.defId)}
+              on:edit={() => openEditPopover('condition', i)}
+              on:remove={() => removeFilter('condition', i)}
+            />
+          {/each}
+          <div class="relative shrink-0">
+            <button
+              on:click={() => popoverState?.kind === 'condition' && popoverState.editIndex == null ? closePopover() : openAddPopover('condition')}
+              class="px-2 py-0.5 text-xs rounded-full border border-dashed border-slate-600 text-slate-400
+                     hover:text-white hover:border-purple-500 whitespace-nowrap transition-colors"
+              disabled={availConditionDefs.length === 0}
+              title={availConditionDefs.length === 0 ? 'No condition attributes available' : 'Add a condition-attribute filter'}
+            >+ Add filter</button>
+            {#if popoverState?.kind === 'condition'}
+              <div class="absolute top-full right-0 mt-1 z-50">
+                <AttrFilterPopover
+                  availableDefs={availConditionDefs}
+                  {attrOptions}
+                  existing={popoverState.editIndex == null ? null : conditionAttrFilters[popoverState.editIndex]}
+                  className="Condition attribute"
+                  on:apply={handlePopoverApply}
+                  on:cancel={closePopover}
+                />
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+
+      <!-- Popover backdrop — clicking outside the popover closes it -->
+      {#if popoverState}
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+        <div class="fixed inset-0 z-40" on:click={closePopover}></div>
+      {/if}
 
       <!-- Backdrop — closes any open multi-select dropdown on outside click -->
       {#if openDropdown}

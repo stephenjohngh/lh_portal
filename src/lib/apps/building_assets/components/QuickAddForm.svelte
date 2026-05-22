@@ -156,7 +156,7 @@
     </div>
   {/if}
 
-  <!-- Secondary attributes (non-primary, non-walk-checklist) -->
+  <!-- Secondary fixed attributes (non-primary; condition attrs excluded) -->
   {#each secondaryDefs as def (def.id)}
     <AttrField
       {def}

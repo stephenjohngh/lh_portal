@@ -1,8 +1,9 @@
 <!-- src/lib/apps/building_assets/components/InspectionPanel.svelte -->
-<!-- Walk inspection panel for a single component.
-     Shows overall result selector, checkable attribute checklist, and notes.
-     checklist_results saved as JSONB on component_inspections.
-     Renders type-driven dynamic attributes (type_attributes.checkable=true). -->
+<!-- Inspection panel for a single component.
+     Shows overall result selector, condition-attribute check list, and notes.
+     "Condition attributes" are the ones with type_attributes.checkable=true —
+     they vary over time and are recorded per inspection. Stored as JSONB on
+     component_inspections.checklist_results. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
@@ -118,12 +119,12 @@
     </div>
   </div>
 
-  <!-- Checklist -->
+  <!-- Condition-attribute checks -->
   {#if checkableAttrs.length > 0}
     <div>
       <div class="flex items-center justify-between mb-2">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          Inspection Checklist
+          Condition checks
           <span class="font-normal normal-case text-slate-500 ml-1">
             {checkedCount}/{checkableAttrs.length} checked
           </span>

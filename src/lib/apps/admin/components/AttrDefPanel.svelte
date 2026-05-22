@@ -268,7 +268,7 @@
                 </label>
                 <label class="flex items-center gap-2 text-xs text-green-300 cursor-pointer select-none">
                   <input type="checkbox" bind:checked={form.checkable} class="rounded accent-green-500" />
-                  ✓ Shows in walk checklist
+                  ◐ Condition attribute (re-evaluated each inspection)
                 </label>
                 <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                   <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />
@@ -325,7 +325,7 @@
                     <span class="text-red-400 text-xs">*</span>
                   {/if}
                   {#if def.checkable}
-                    <span class="text-green-400 text-xs" title="Shows in walk inspection checklist">✓list</span>
+                    <span class="text-green-400 text-xs" title="Condition attribute — re-evaluated each inspection">cond</span>
                   {/if}
                   {#if def.help_notes}
                     <span class="text-sky-400 text-xs" title={def.help_notes}>💬</span>
@@ -461,7 +461,7 @@
               </label>
               <label class="flex items-center gap-2 text-xs text-green-300 cursor-pointer select-none">
                 <input type="checkbox" bind:checked={form.checkable} class="rounded accent-green-500" />
-                ✓ Shows in walk checklist
+                ◐ Condition attribute (re-evaluated each inspection)
               </label>
               <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                 <input type="checkbox" bind:checked={form.visible} class="rounded accent-purple-500" />

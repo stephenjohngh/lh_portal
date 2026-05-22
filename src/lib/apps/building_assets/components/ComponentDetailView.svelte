@@ -28,8 +28,8 @@
   $: floor       = floorById(floors, component.floor_id);
   $: typeId      = type?.id ?? null;
   $: defs        = typeId ? (attrDefs[typeId] ?? []) : [];
-  $: standardDefs = defs.filter(d => !d.checkable);
-  $: walkDefs     = defs.filter(d =>  d.checkable);
+  $: fixedDefs = defs.filter(d => !d.checkable);
+  $: conditionDefs     = defs.filter(d =>  d.checkable);
   $: primaryDef   = defs.find(d => d.is_primary) ?? null;
 
   // Build a { defId → value } map from the loaded attrs array
@@ -50,8 +50,8 @@
   // Status config for current component
   $: statusCfg = STATUS_CFG[(component.status ?? 'ok').toLowerCase()] ?? STATUS_CFG.ok;
 
-  // Walk-checklist section toggle
-  let showWalkAttrs = false;
+  // Condition-attribute section toggle
+  let showConditionAttrs = false;
 </script>
 
 <!-- Outer container — matches ComponentDetailPanel sizing -->
@@ -103,27 +103,27 @@
     </section>
 
     <!-- -- Attributes --------------------------------------------------- -->
-    {#if standardDefs.length > 0 || walkDefs.length > 0}
+    {#if fixedDefs.length > 0 || conditionDefs.length > 0}
       <section>
         <div class="flex items-center justify-between gap-2 mb-2">
           <p class={sec}>
             {type?.name ?? 'Type'} Attributes
           </p>
-          {#if walkDefs.length > 0}
+          {#if conditionDefs.length > 0}
             <button
-              on:click={() => showWalkAttrs = !showWalkAttrs}
+              on:click={() => showConditionAttrs = !showConditionAttrs}
               class="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
-                     {showWalkAttrs
+                     {showConditionAttrs
                        ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
                        : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}"
-            >Walk checklist ({walkDefs.length})</button>
+            >Condition attrs ({conditionDefs.length})</button>
           {/if}
         </div>
 
         <!-- Standard attributes -->
-        {#if standardDefs.length > 0}
+        {#if fixedDefs.length > 0}
           <dl class="space-y-2">
-            {#each standardDefs as def (def.id)}
+            {#each fixedDefs as def (def.id)}
               {@const val = attrMap[def.id] ?? def.default_value ?? null}
               <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
                 <dt class="text-xs text-slate-500 shrink-0 w-32 truncate" title={def.name}>
@@ -149,12 +149,12 @@
           <p class="text-xs text-slate-600 italic">No standard attributes for this type.</p>
         {/if}
 
-        <!-- Walk checklist attributes (collapsed by default) -->
-        {#if showWalkAttrs && walkDefs.length > 0}
+        <!-- Condition attributes (collapsed by default) -->
+        {#if showConditionAttrs && conditionDefs.length > 0}
           <div class="mt-3 pt-3 border-t border-slate-700/60">
-            <p class="text-xs text-purple-400/60 mb-2">Walk checklist attributes</p>
+            <p class="text-xs text-purple-400/60 mb-2">Condition attributes</p>
             <dl class="space-y-2">
-              {#each walkDefs as def (def.id)}
+              {#each conditionDefs as def (def.id)}
                 {@const val = attrMap[def.id] ?? def.default_value ?? null}
                 <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
                   <dt class="text-xs text-slate-500 shrink-0 w-32 truncate" title={def.name}>

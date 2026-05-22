@@ -129,7 +129,7 @@
 <!-- -- Dynamic checklist — PASS / FAIL per attribute --------------------------- -->
 {#if passFailDefs.length > 0}
   <div class="sec">
-    <div class="sec-lbl">CHECKLIST</div>
+    <div class="sec-lbl">CONDITION CHECKS</div>
     <div class="checklist">
       {#each passFailDefs as def (def.id)}
         <div class="cl-item">

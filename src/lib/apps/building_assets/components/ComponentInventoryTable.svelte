@@ -3,8 +3,11 @@
      Renders a list view (one row per component) or a summary view (counts by type).
 
      List columns: Icon · Ref · Label · Type · Status · Attributes · Actions
-     Attributes: all non-checkable visible defs, shown as "Name: Value", checkboxes
-                 only shown when true ("Name: Yes"), false values hidden.
+     Attributes: all visible Fixed attribute defs (checkable=false), shown as
+                 "Name: Value", checkboxes only shown when true ("Name: Yes"),
+                 false values hidden. Condition attributes (checkable=true) are
+                 not shown here — their values come from the latest inspection,
+                 not the component_attributes table.
      Summary: System / Type / Total / OK / Problem / Failed / Inactive
 
      An optional named "filters" slot renders inside the card header, above the table.

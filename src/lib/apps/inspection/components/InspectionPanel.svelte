@@ -1,6 +1,8 @@
 ﻿<!-- src/lib/apps/inspection/components/InspectionPanel.svelte -->
 <!-- Single inspection panel for any component type.
-     Dynamically renders the checkable type_attributes for this component's type. -->
+     Dynamically renders the condition attributes (checkable=true) for this
+     component's type. -->
+
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';

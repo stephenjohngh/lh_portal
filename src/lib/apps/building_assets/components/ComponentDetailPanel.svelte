@@ -47,7 +47,7 @@
   let errorMsg     = '';
   let typeWarning  = false;   // shown when user changes type (attrs will reset)
   let dirty        = false;   // any change made?
-  let showWalkAttrs = false;  // toggle for checkable (walk checklist) attributes
+  let showConditionAttrs = false;  // toggle for condition attributes (checkable=true)
 
   // -- loadedId pattern: re-initialise form whenever the selected component changes --
   let loadedId = component.id;
@@ -67,7 +67,7 @@
     confirmDel         = false;
     errorMsg           = '';
     typeWarning        = false;
-    showWalkAttrs      = false;
+    showConditionAttrs      = false;
   }
 
   // -- Derived ----------------------------------------------------------
@@ -75,8 +75,10 @@
   $: floor          = floorById(floors, selectedFloorId);
   $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
   $: primaryDef     = defs.find(d => d.is_primary) ?? null;
-  $: standardDefs   = defs.filter(d => !d.checkable);
-  $: walkDefs       = defs.filter(d =>  d.checkable);
+  // Fixed attributes (checkable=false) are intrinsic to the component;
+  // condition attributes (checkable=true) are re-evaluated each inspection.
+  $: fixedDefs     = defs.filter(d => !d.checkable);
+  $: conditionDefs = defs.filter(d =>  d.checkable);
   $: primaryAttr    = primaryDef ? (attrValues[primaryDef.id] ?? '') : '';
   $: plansForFloor  = selectedFloorId ? plans.filter(p => p.floor_id === selectedFloorId) : [];
 
@@ -90,7 +92,7 @@
   function onTypeChange() {
     // Warn if the user is changing from the original type
     typeWarning   = selectedTypeId !== (origType?.id ?? '');
-    showWalkAttrs = false;
+    showConditionAttrs = false;
     if (typeWarning) {
       attrValues = {};
       // Populate defaults for the new type
@@ -313,20 +315,20 @@
               <span class="font-normal normal-case text-yellow-400 ml-2">★ {primaryAttr}</span>
             {/if}
           </p>
-          {#if walkDefs.length > 0}
+          {#if conditionDefs.length > 0}
             <button
-              on:click={() => showWalkAttrs = !showWalkAttrs}
+              on:click={() => showConditionAttrs = !showConditionAttrs}
               class="text-xs px-2 py-0.5 rounded border transition-colors shrink-0
-                     {showWalkAttrs
+                     {showConditionAttrs
                        ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
                        : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300'}"
-            >Walk checklist ({walkDefs.length})</button>
+            >Condition attrs ({conditionDefs.length})</button>
           {/if}
         </div>
 
-        <!-- Standard (non-checklist) attributes — always shown -->
+        <!-- Fixed attributes — always shown -->
         <div class="flex flex-col gap-4">
-          {#each standardDefs as def (def.id)}
+          {#each fixedDefs as def (def.id)}
             <div class="flex items-start gap-2">
               <div class="flex-1">
                 <AttrField
@@ -343,12 +345,12 @@
           {/each}
         </div>
 
-        <!-- Walk checklist attributes — shown only when toggled -->
-        {#if showWalkAttrs && walkDefs.length > 0}
+        <!-- Condition attributes — shown only when toggled -->
+        {#if showConditionAttrs && conditionDefs.length > 0}
           <div class="mt-4 pt-3 border-t border-slate-700/60">
-            <p class="text-xs text-purple-400/60 mb-3">Walk checklist attributes</p>
+            <p class="text-xs text-purple-400/60 mb-3">Condition attributes</p>
             <div class="flex flex-col gap-4">
-              {#each walkDefs as def (def.id)}
+              {#each conditionDefs as def (def.id)}
                 <div class="flex items-start gap-2">
                   <div class="flex-1">
                     <AttrField
