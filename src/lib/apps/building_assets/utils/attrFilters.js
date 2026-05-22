@@ -161,6 +161,18 @@ function availableDefs(types, systems, attrDefs, filterTypeCodes, checkable) {
  */
 function asNumber(v)  { const n = Number(v); return Number.isFinite(n) ? n : null; }
 function asString(v)  { return v == null ? '' : String(v); }
+
+/**
+ * Is this value semantically the same as "no value"? Used to make
+ * "filter by None" also match components with no stored value at all
+ * (which visually look identical in the table). Trims and lowercases,
+ * so "None", "none", " N/A " all qualify.
+ */
+function isEmptyEquivalent(v) {
+  if (v == null) return true;
+  const s = String(v).trim().toLowerCase();
+  return s === '' || s === 'none' || s === 'n/a';
+}
 function isTrueish(v) {
   if (v === true)  return true;
   if (v === false) return false;
@@ -219,7 +231,16 @@ export function matchesAttrFilter(component, defs, componentAttrs, inspections, 
 
   const raw = lookupAttrValue(def, component.id, componentAttrs, inspections);
   if (raw == null || raw === '') {
-    // Special case: a Fixed checkbox attribute with no stored value
+    // Special case 1: 'in' filter that includes an empty-equivalent
+    // value ("None", "N/A", "") should match unset components too —
+    // a dropdown of [Mechanical, None] picking None must include
+    // doors that have no Security attribute set at all, since those
+    // are visually indistinguishable from explicit "None" in the table.
+    if (filter.op === 'in' && (filter.values ?? []).some(isEmptyEquivalent)) {
+      return true;
+    }
+
+    // Special case 2: a Fixed checkbox attribute with no stored value
     // is displayed as "No" in the UI (AttrField shows "No" for any
     // non-'true' value). Filtering on "No" / is_false should therefore
     // match these components too — otherwise unticked checkboxes never
@@ -231,6 +252,7 @@ export function matchesAttrFilter(component, defs, componentAttrs, inspections, 
     if (!def.checkable && def.display_type === 'checkbox' && filter.op === 'is_false') {
       return true;
     }
+
     return !!filter.includeUnset;
   }
 
