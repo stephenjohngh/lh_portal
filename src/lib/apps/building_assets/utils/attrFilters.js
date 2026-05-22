@@ -73,20 +73,28 @@ function unionDefs(attrDefs, typeIds) {
  *   - Otherwise → union across the selected types (inherited attrs included
  *     naturally since defsForType already returns the effective set).
  *
+ * Sort order:
+ *   1. owning system (presentation_order, then name)
+ *   2. owning type (presentation_order, then name) — system-scoped attrs,
+ *      which apply across every type in their system, sort BEFORE any
+ *      type-scoped attrs within the same system
+ *   3. the attribute's own presentation_order, then name
+ *
  * @param {Array}    types
+ * @param {Array}    systems
  * @param {object}   attrDefs        { [typeId]: type_attributes[] }
  * @param {Set<string>|string[]} filterTypeCodes
  */
-export function availableFixedDefs(types, attrDefs, filterTypeCodes) {
-  return availableDefs(types, attrDefs, filterTypeCodes, /* checkable */ false);
+export function availableFixedDefs(types, systems, attrDefs, filterTypeCodes) {
+  return availableDefs(types, systems, attrDefs, filterTypeCodes, /* checkable */ false);
 }
 
 /** Effective Condition attribute definitions (checkable=true). */
-export function availableConditionDefs(types, attrDefs, filterTypeCodes) {
-  return availableDefs(types, attrDefs, filterTypeCodes, /* checkable */ true);
+export function availableConditionDefs(types, systems, attrDefs, filterTypeCodes) {
+  return availableDefs(types, systems, attrDefs, filterTypeCodes, /* checkable */ true);
 }
 
-function availableDefs(types, attrDefs, filterTypeCodes, checkable) {
+function availableDefs(types, systems, attrDefs, filterTypeCodes, checkable) {
   const codes = filterTypeCodes instanceof Set
     ? [...filterTypeCodes]
     : (filterTypeCodes ?? []);
@@ -95,10 +103,52 @@ function availableDefs(types, attrDefs, filterTypeCodes, checkable) {
     ? types.filter(t => codes.includes(t.code)).map(t => t.id)
     : types.map(t => t.id);
 
+  const typeById   = new Map(types.map(t   => [t.id, t]));
+  const systemById = new Map(systems.map(s => [s.id, s]));
+
+  // Owning system id for an attribute def:
+  //   - system-scoped: its own building_system_id
+  //   - type-scoped:   the system the owning type belongs to
+  function systemIdOf(def) {
+    if (def.building_system_id) return def.building_system_id;
+    const t = typeById.get(def.component_type_id);
+    return t?.building_system_id ?? null;
+  }
+
   return unionDefs(attrDefs, targetTypeIds)
     .filter(d => d.checkable === checkable)
-    .sort((a, b) => (a.presentation_order ?? 0) - (b.presentation_order ?? 0)
-                 || a.name.localeCompare(b.name));
+    .sort((a, b) => {
+      // 1. system
+      const aSysId = systemIdOf(a);
+      const bSysId = systemIdOf(b);
+      if (aSysId !== bSysId) {
+        const aSys = systemById.get(aSysId);
+        const bSys = systemById.get(bSysId);
+        const ao   = aSys?.presentation_order ?? 9_999;
+        const bo   = bSys?.presentation_order ?? 9_999;
+        if (ao !== bo) return ao - bo;
+        return (aSys?.name ?? '').localeCompare(bSys?.name ?? '');
+      }
+
+      // 2. type — system-scoped attrs (no component_type_id) sort before
+      //          type-scoped attrs within the same system
+      const aTypeId = a.component_type_id;
+      const bTypeId = b.component_type_id;
+      if (aTypeId !== bTypeId) {
+        if (aTypeId == null) return -1;
+        if (bTypeId == null) return  1;
+        const aType = typeById.get(aTypeId);
+        const bType = typeById.get(bTypeId);
+        const ao    = aType?.presentation_order ?? 9_999;
+        const bo    = bType?.presentation_order ?? 9_999;
+        if (ao !== bo) return ao - bo;
+        return (aType?.name ?? '').localeCompare(bType?.name ?? '');
+      }
+
+      // 3. the attribute's own presentation_order, then name
+      return ((a.presentation_order ?? 0) - (b.presentation_order ?? 0))
+          || a.name.localeCompare(b.name);
+    });
 }
 
 // ──────────────────────────────────────────────────────────────────────────

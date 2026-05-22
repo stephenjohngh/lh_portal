@@ -519,8 +519,9 @@
               || conditionAttrFilters.length > 0;
 
   // -- Attribute filter availability (scoped to current Type filter) ---
-  $: availFixedDefs     = availableFixedDefs(types, attrDefs, filterTypeCodes);
-  $: availConditionDefs = availableConditionDefs(types, attrDefs, filterTypeCodes);
+  //    Sorted by system → type → attribute presentation_order.
+  $: availFixedDefs     = availableFixedDefs(types, systems, attrDefs, filterTypeCodes);
+  $: availConditionDefs = availableConditionDefs(types, systems, attrDefs, filterTypeCodes);
 
   // Lookup map for chip → def (chips need access to the def for name etc.)
   $: defById = (() => {
