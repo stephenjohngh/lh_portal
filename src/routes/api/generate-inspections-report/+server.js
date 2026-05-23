@@ -22,7 +22,7 @@ import {
   Table, TableRow, TableCell,
   PageBreak, ImageRun,
   WidthType, HeadingLevel, ShadingType,
-  AlignmentType, VerticalAlign, convertInchesToTwip,
+  AlignmentType, VerticalAlign, convertInchesToTwip, TableLayoutType,
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
 import {
@@ -78,6 +78,42 @@ async function fetchImageBuffer(url) {
   }
 }
 
+// -- Image dimension helpers ----------------------------------------------------
+
+// Read natural dimensions from a JPEG or PNG buffer without any extra library.
+function getImageDimensions(buf) {
+  if (!buf || buf.length < 24) return null;
+  // PNG: width at byte 16, height at byte 20 (IHDR chunk)
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  // JPEG: scan for SOF0 (0xC0), SOF1 (0xC1), SOF2 (0xC2) markers
+  if (buf[0] === 0xFF && buf[1] === 0xD8) {
+    let i = 2;
+    while (i < buf.length - 9) {
+      if (buf[i] !== 0xFF) break;
+      const marker = buf[i + 1];
+      const len    = buf.readUInt16BE(i + 2);
+      if (marker === 0xC0 || marker === 0xC1 || marker === 0xC2) {
+        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+      }
+      i += 2 + len;
+    }
+  }
+  return null;
+}
+
+// Scale to fit within maxW × maxH preserving aspect ratio.
+// Falls back to (maxW × maxH) when natural dims are unknown.
+function fitDimensions(natW, natH, maxW, maxH) {
+  if (!natW || !natH || natW <= 0 || natH <= 0) return { width: maxW, height: maxH };
+  const ratio = natW / natH;
+  let w = natW, h = natH;
+  if (w > maxW) { w = maxW;     h = Math.round(w / ratio); }
+  if (h > maxH) { h = maxH;     w = Math.round(h * ratio); }
+  return { width: Math.max(1, Math.round(w)), height: Math.max(1, Math.round(h)) };
+}
+
 // -- Cover page -----------------------------------------------------------------
 function buildCover(sessions, reportType, generatedAt) {
   const buildings = [...new Set(sessions.map(s => s.building))].sort();
@@ -91,14 +127,14 @@ function buildCover(sessions, reportType, generatedAt) {
 }
 
 // -- Summary table --------------------------------------------------------------
-// Columns: Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Problem | N/A | Notes
-// DXA:      900 |    1100  |  700  |  1100  | 1100 |    1000   |    700   |  650  |550 | 550  |   650   | 650 |  816
+// Columns: Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Prob | N/A | Photos | Notes
+// DXA:      900 |   1100   |  700  |  1000  | 1000 |   1000   |   700    |  650  |550 | 550  |  650 | 650 |   400  |  616
 // Sum = 10466
-const SUM_COLS = [900, 1100, 700, 1100, 1100, 1000, 700, 650, 550, 550, 650, 650, 816];
+const SUM_COLS = [900, 1100, 700, 1000, 1000, 1000, 700, 650, 550, 550, 650, 650, 400, 616];
 
 function buildSummaryTable(sessionData) {
   const headers = ['Date', 'Building', 'Floor', 'Preset', 'Name', 'Inspector',
-                   'Duration', 'Comps', 'OK', 'Fail', 'Prob', 'N/A', 'Notes'];
+                   'Duration', 'Comps', 'OK', 'Fail', 'Prob', 'N/A', 'Photos', 'Notes'];
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -106,10 +142,13 @@ function buildSummaryTable(sessionData) {
   });
 
   const dataRows = sessionData.map(({ session: s, inspections }, idx) => {
-    const st  = sessionStats(inspections);
-    const alt = idx % 2 === 1;
-    const dur = fmtDuration(s.started_at, s.closed_at);
-    const flr = s.floor_short_name ? `Floor ${s.floor_short_name}` : 'All';
+    const st         = sessionStats(inspections);
+    const alt        = idx % 2 === 1;
+    const dur        = fmtDuration(s.started_at, s.closed_at);
+    const flr        = s.floor_short_name ? `Floor ${s.floor_short_name}` : 'All';
+    const photoCount = inspections.reduce(
+      (n, ins) => n + (Array.isArray(ins.photo_urls) ? ins.photo_urls.length : 0), 0
+    );
     return new TableRow({
       children: [
         dCell(fmtDate(s.started_at),        SUM_COLS[0],  { alt }),
@@ -124,7 +163,8 @@ function buildSummaryTable(sessionData) {
         dCell(st.failed   || '—', SUM_COLS[9],  { alt, color: st.failed   ? COLOURS.failRed   : '9CA3AF' }),
         dCell(st.problem  || '—', SUM_COLS[10], { alt, color: st.problem  ? 'EA580C'           : '9CA3AF' }),
         dCell(st.inactive || '—', SUM_COLS[11], { alt, color: st.inactive ? '6B7280'           : '9CA3AF' }),
-        dCell(s.notes || '—',               SUM_COLS[12], { alt }),
+        dCell(photoCount  || '—', SUM_COLS[12], { alt, color: photoCount  ? '0369A1'            : '9CA3AF' }),
+        dCell(s.notes || '—',               SUM_COLS[13], { alt }),
       ],
     });
   });
@@ -140,7 +180,98 @@ function buildSummaryTable(sessionData) {
 // Inspection table columns: Component | Label | Result | Time | Notes
 // DXA:                         1600  |  1700  |   900  | 1200 |  5066
 // Sum = 10466
-const DET_COLS = [1600, 1700, 900, 1200, 5066];
+const DET_COLS    = [1600, 1700, 900, 1200, 5066];
+const DET_N_COLS  = DET_COLS.length;
+const PHOTO_HALF_W = Math.floor(CONTENT_W / 2);   // ~5233 DXA — half of content width
+
+// Max pixel dimensions for images in the Word doc.
+// Side-by-side (pair): PHOTO_PAIR_PX  × PHOTO_PAIR_PX
+// Alone in a row:      PHOTO_SOLO_PX  × PHOTO_SOLO_PX
+const PHOTO_PAIR_PX = 280;
+const PHOTO_SOLO_PX = 380;
+
+// Build photo TableRows for one inspection.
+// Photos are laid out two-per-row (side by side in a nested inner table).
+// An odd final photo occupies the left cell with an empty right cell.
+// Each photo has a caption ("Photo N of M") below it.
+// Returns an array of TableRow objects (may be empty).
+async function buildPhotoRows(photoUrls, alt) {
+  if (!photoUrls.length) return [];
+
+  const fill    = alt ? 'F8FAFC' : 'FFFFFF';
+  const shading = { fill, type: ShadingType.CLEAR };
+  const margins = {
+    top: convertInchesToTwip(0.08), bottom: convertInchesToTwip(0.08),
+    left: convertInchesToTwip(0.1),  right:  convertInchesToTwip(0.1),
+  };
+
+  // Fetch all images in parallel; failures return null (graceful degradation)
+  const buffers = await Promise.all(
+    photoUrls.map(url => fetchImageBuffer(url).catch(() => null))
+  );
+
+  const rows = [];
+
+  for (let i = 0; i < photoUrls.length; i += 2) {
+    const isPair = i + 1 < photoUrls.length;
+    const maxPx  = isPair ? PHOTO_PAIR_PX : PHOTO_SOLO_PX;
+
+    // Build children array (image para + caption para) for one photo slot
+    function photoChildren(buf, photoNum) {
+      const dims   = buf ? getImageDimensions(buf) : null;
+      const { width, height } = fitDimensions(dims?.width, dims?.height, maxPx, maxPx);
+      const imgChild = buf
+        ? new ImageRun({ data: buf, transformation: { width, height } })
+        : new TextRun({ text: '[Photo unavailable]', italics: true, color: '9CA3AF', font: 'Arial', size: 18 });
+      return [
+        new Paragraph({ spacing: { before: 0, after: 40 },  children: [imgChild] }),
+        new Paragraph({ spacing: { before: 0, after: 0 },   children: [
+          new TextRun({
+            text: `Photo ${photoNum} of ${photoUrls.length}`,
+            italics: true, color: '9CA3AF', font: 'Arial', size: 16,
+          }),
+        ]}),
+      ];
+    }
+
+    // Build inner 2-column table so photos sit side by side within one spanning outer cell
+    const innerCells = [
+      new TableCell({
+        width:    { size: PHOTO_HALF_W, type: WidthType.DXA },
+        margins,
+        shading,
+        children: photoChildren(buffers[i], i + 1),
+      }),
+      new TableCell({
+        width:    { size: CONTENT_W - PHOTO_HALF_W, type: WidthType.DXA },
+        margins,
+        shading,
+        children: isPair
+          ? photoChildren(buffers[i + 1], i + 2)
+          : [new Paragraph({ children: [] })],   // empty right cell for odd photo
+      }),
+    ];
+
+    const innerTable = new Table({
+      width:        { size: CONTENT_W,  type: WidthType.DXA },
+      layout:       TableLayoutType.FIXED,
+      columnWidths: [PHOTO_HALF_W, CONTENT_W - PHOTO_HALF_W],
+      rows:         [new TableRow({ children: innerCells })],
+    });
+
+    rows.push(new TableRow({
+      children: [new TableCell({
+        width:      { size: CONTENT_W, type: WidthType.DXA },
+        columnSpan: DET_N_COLS,
+        margins:    { top: 0, bottom: 0, left: 0, right: 0 },
+        shading,
+        children:   [innerTable],
+      })],
+    }));
+  }
+
+  return rows;
+}
 
 async function buildDetailedSession({ session: s, inspections }, isFirst) {
   const children = [];
@@ -253,7 +384,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
       dataRows.push(new TableRow({
         children: [new TableCell({
           width:      { size: CONTENT_W, type: WidthType.DXA },
-          columnSpan: 5,
+          columnSpan: DET_N_COLS,
           margins:    { top: convertInchesToTwip(0.05), bottom: convertInchesToTwip(0.05), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
           shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
           children:   [new Paragraph({
@@ -267,27 +398,24 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
       }));
     }
 
-    // Photos — photo_urls is a JSONB array (multiple per inspection)
+    // Photos — side-by-side pairs, aspect-ratio aware, with captions
     const photoUrls = Array.isArray(ins.photo_urls) ? ins.photo_urls : [];
-    for (const url of photoUrls) {
-      try {
-        const imageBuffer = await fetchImageBuffer(url);
-        const photoChild = imageBuffer
-          ? new Paragraph({ children: [new ImageRun({ data: imageBuffer, transformation: { width: 400, height: 300 } })] })
-          : new Paragraph({ children: [new TextRun({ text: '[Photo unavailable]', italics: true, color: '9CA3AF', font: 'Arial', size: 18 })] });
-
-        dataRows.push(new TableRow({
-          children: [new TableCell({
-            width:      { size: CONTENT_W, type: WidthType.DXA },
-            columnSpan: 5,
-            margins:    { top: convertInchesToTwip(0.1), bottom: convertInchesToTwip(0.1), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
-            shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
-            children:   [photoChild],
-          })],
-        }));
-      } catch (err) {
-        logger('❌ Photo error:', err.message, url);
-      }
+    if (photoUrls.length > 0) {
+      const photoRows = await buildPhotoRows(photoUrls, alt);
+      dataRows.push(...photoRows);
+    } else {
+      // Explicitly note absence of photos for compliance traceability
+      dataRows.push(new TableRow({
+        children: [new TableCell({
+          width:      { size: CONTENT_W, type: WidthType.DXA },
+          columnSpan: DET_N_COLS,
+          margins:    { top: convertInchesToTwip(0.04), bottom: convertInchesToTwip(0.04), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
+          shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
+          children:   [new Paragraph({ spacing: { before: 0, after: 0 }, children: [
+            new TextRun({ text: 'No photos recorded.', italics: true, color: 'C0C8D0', font: 'Arial', size: 16 }),
+          ]})],
+        })],
+      }));
     }
   }
 
