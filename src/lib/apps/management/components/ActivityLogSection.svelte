@@ -22,7 +22,10 @@
   import { parseEmailPaste } from '$lib/utils/emailParser';
   import MeetingBadge         from './meetings/MeetingBadge.svelte';
   import { getLogger }        from '$lib/utils/logger';
+  import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
+  import { supabase }         from '$lib/supabaseClient';
   import Icon                 from '$lib/components/icons/Icon.svelte';
+  import DocAttachInput       from '$lib/components/common/DocAttachInput.svelte';
   import Button               from '$lib/components/common/Button.svelte';
   import Modal                from '$lib/components/common/Modal.svelte';
   import ProtectedButton      from '$lib/components/common/ProtectedButton.svelte';
@@ -69,7 +72,11 @@
   // doesn't require re-selecting the type each time.
   let newActivity = { body: '', activity_type: ACTIVITY_TYPE.NOTE, fields: {} };
   let mutationError = '';
-  let saving = false;
+  let saving        = false;
+
+  // Document activity state
+  let docFile      = null;   // File object selected in DocAttachInput
+  let docInputRef;           // ref to DocAttachInput for programmatic reset
 
   // -- AI summary generation (note / comment add form) ----------------
   let newSummaryGenerating = false;
@@ -154,25 +161,76 @@
 
   // -- Add activity (unified for all types) ----------------------------
   async function addNewActivity() {
-    if (!newActivity.body.trim()) return;
+    const isDocType = newActivity.activity_type === ACTIVITY_TYPE.DOCUMENT;
+
+    // For document type the file is required; body (notes) is optional.
+    // For every other type, body is required.
+    if (isDocType ? !docFile : !newActivity.body.trim()) return;
+
     saving = true;
     mutationError = '';
 
-    // Only persist fields if at least one is filled in.
-    const hasFields = Object.values(newActivity.fields || {}).some(v => v && String(v).trim());
-    const result = await issuesStore.addActivity(issueId, {
-      body:          newActivity.body,
-      activity_type: newActivity.activity_type,
-      fields:        hasFields ? newActivity.fields : null
-    });
-    saving = false;
-    if (!result.success) {
-      mutationError = result.error ?? `Failed to add ${newTypeConfig.label.toLowerCase()}`;
-      return;
+    try {
+      let fields = null;
+
+      if (isDocType) {
+        // Step 1: upload file via the document_library API
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) throw new Error('Not authenticated');
+
+        const form = new FormData();
+        form.append('file',         docFile);
+        form.append('entity_type',  'issue');
+        form.append('entity_id',    issueId);
+        form.append('folder_path',  'issues');
+        form.append('display_name', docFile.name);
+        form.append('doc_type',     'other');
+
+        const uploadRes = await fetch('/api/documents/upload', {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body:    form,
+        });
+        const doc = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(doc.error ?? 'Upload failed');
+
+        // Step 2: bake doc metadata + optional user summary into fields
+        fields = {
+          doc_id:       doc.id,
+          filename:     doc.filename,
+          display_name: doc.display_name,
+          file_size:    doc.file_size,
+          mime_type:    doc.mime_type,
+          web_view_url: doc.web_view_url,
+          summary:      newActivity.fields?.summary || null,
+        };
+      } else {
+        // Non-document types: persist structured fields if any are filled in
+        const hasFields = Object.values(newActivity.fields || {}).some(v => v && String(v).trim());
+        fields = hasFields ? newActivity.fields : null;
+      }
+
+      const result = await issuesStore.addActivity(issueId, {
+        body:          newActivity.body,
+        activity_type: newActivity.activity_type,
+        fields,
+      });
+
+      if (!result.success) {
+        mutationError = result.error ?? `Failed to add ${newTypeConfig.label.toLowerCase()}`;
+        return;
+      }
+
+      // Keep same type selected for batch-logging; reset body, fields, and file.
+      newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} };
+      docFile = null;
+      docInputRef?.reset();
+      showAddForm = false;
+    } catch (err) {
+      mutationError = err.message ?? `Failed to add ${newTypeConfig.label.toLowerCase()}`;
+    } finally {
+      saving = false;
     }
-    // Keep same type selected for batch-logging; reset body + fields.
-    newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} };
-    showAddForm = false;
   }
 
   function setNewField(key, value) {
@@ -576,11 +634,11 @@
         </p>
       {/if}
 
-      <!-- Document upload — coming soon -->
+      <!-- Document file attachment -->
       {#if newActivity.activity_type === ACTIVITY_TYPE.DOCUMENT}
-        <div class="flex items-center gap-2 mt-2 px-3 py-2 rounded border border-dashed border-rose-500/30 bg-rose-900/10 text-xs text-rose-300/70">
-          <span>📎</span>
-          <span>File attachment — coming in the next version. Add notes above for now.</span>
+        <div class="mt-2">
+          <p class="text-[10px] text-slate-400 mb-1">Attach file <span class="text-slate-600">(required)</span></p>
+          <DocAttachInput bind:this={docInputRef} bind:file={docFile} />
         </div>
       {/if}
 
@@ -588,7 +646,7 @@
         <Button
           variant="secondary"
           size="small"
-          on:click={() => { showAddForm = false; newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} }; mutationError = ''; }}
+          on:click={() => { showAddForm = false; newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} }; docFile = null; docInputRef?.reset(); mutationError = ''; }}
         >
           Cancel
         </Button>
@@ -597,7 +655,9 @@
           variant="blue"
           size="small"
           icon="plus"
-          disabled={saving || !newActivity.body.trim()}
+          disabled={saving || (newActivity.activity_type === ACTIVITY_TYPE.DOCUMENT
+            ? !docFile
+            : !newActivity.body.trim())}
           on:click={addNewActivity}
         >
           {saving ? 'Saving…' : `Add ${newTypeConfig.label}`}
@@ -665,11 +725,43 @@
       </dl>
     {/if}
 
-    {#if viewingItem.body?.startsWith('<')}
-      <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html viewingItem.body}</div>
-    {:else}
-      <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{viewingItem.body}</p>
+    {#if viewingItem.body}
+      {#if viewingItem.body.startsWith('<')}
+        <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html viewingItem.body}</div>
+      {:else}
+        <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{viewingItem.body}</p>
+      {/if}
     {/if}
+
+    <!-- Document attachment row -->
+    {#if viewingItem.activity_type === ACTIVITY_TYPE.DOCUMENT && viewingItem.fields?.doc_id}
+      <div class="flex items-center gap-3 mt-3 px-3 py-2.5 rounded-lg border border-slate-700
+                  bg-slate-800/40 {viewingItem.body ? 'mt-3' : ''}">
+        <span class="text-xl shrink-0">{mimeIcon(viewingItem.fields.mime_type)}</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-slate-200 truncate">
+            {viewingItem.fields.display_name || viewingItem.fields.filename}
+          </p>
+          {#if viewingItem.fields.file_size}
+            <p class="text-xs text-slate-500">{fmtBytes(viewingItem.fields.file_size)}</p>
+          {/if}
+        </div>
+        <a
+          href={viewingItem.fields.web_view_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200
+                 border border-purple-500/30 hover:border-purple-400 px-2.5 py-1 rounded
+                 transition-colors shrink-0"
+        >
+          <Icon name="download" size={3} />
+          Open
+        </a>
+      </div>
+    {:else if viewingItem.activity_type === ACTIVITY_TYPE.DOCUMENT}
+      <p class="text-sm text-slate-500 italic mt-2">No file attached.</p>
+    {/if}
+
     <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700 text-xs text-gray-500 flex-wrap">
       <span>Added: {fmtDateTime(viewingItem.created_at, viewingItem.created_by_profile?.full_name)}</span>
       {#if wasModified(viewingItem.created_at, viewingItem.updated_at)}

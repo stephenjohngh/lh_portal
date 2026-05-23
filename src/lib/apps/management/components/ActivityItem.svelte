@@ -20,6 +20,7 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { fmtBytes, mimeIcon }   from '$lib/utils/files.js';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
   import { parseEmailPaste }   from '$lib/utils/emailParser';
@@ -273,11 +274,26 @@
       </p>
     {/if}
 
-    <!-- Document upload — coming soon -->
-    {#if editingActivity.activity_type === ACTIVITY_TYPE.DOCUMENT}
-      <div class="flex items-center gap-2 mt-2 px-3 py-2 rounded border border-dashed border-rose-500/30 bg-rose-900/10 text-xs text-rose-300/70">
-        <span>📎</span>
-        <span>File attachment — coming in the next version.</span>
+    <!-- Document: show existing file as read-only (file cannot be changed; re-add to replace) -->
+    {#if editingActivity.activity_type === ACTIVITY_TYPE.DOCUMENT && editingActivity.fields?.doc_id}
+      <div class="flex items-center gap-3 mt-2 px-3 py-2 rounded border border-slate-700 bg-slate-800/40 text-xs">
+        <span class="text-base shrink-0">{mimeIcon(editingActivity.fields.mime_type)}</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-slate-300 truncate">
+            {editingActivity.fields.display_name || editingActivity.fields.filename}
+          </p>
+          <p class="text-slate-600 text-[10px]">To replace the file, delete this activity and re-add it.</p>
+        </div>
+        {#if editingActivity.fields.web_view_url}
+          <a
+            href={editingActivity.fields.web_view_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-purple-400 hover:text-purple-300 transition-colors shrink-0 p-1"
+            title="Open file"
+            on:click|stopPropagation
+          >↗</a>
+        {/if}
       </div>
     {/if}
 
@@ -362,9 +378,27 @@
           {/if}
         {/if}
         {#if activity.activity_type === ACTIVITY_TYPE.DOCUMENT}
-          <p class="text-[11px] text-rose-300/60 mt-1 italic">
-            📎 File attachment — coming in the next version
-          </p>
+          {#if activity.fields?.doc_id}
+            <div class="flex items-center gap-2 mt-1.5">
+              <span class="text-base shrink-0">{mimeIcon(activity.fields.mime_type)}</span>
+              <a
+                href={activity.fields.web_view_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-xs text-purple-300 hover:text-purple-200 underline underline-offset-2
+                       truncate transition-colors"
+                title="Open / download {activity.fields.display_name || activity.fields.filename}"
+                on:click|stopPropagation
+              >
+                {activity.fields.display_name || activity.fields.filename}
+              </a>
+              {#if activity.fields.file_size}
+                <span class="text-[10px] text-slate-500 shrink-0">{fmtBytes(activity.fields.file_size)}</span>
+              {/if}
+            </div>
+          {:else}
+            <p class="text-[11px] text-slate-500 mt-1 italic">📎 No file attached</p>
+          {/if}
         {/if}
       </div>
 

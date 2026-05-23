@@ -20,9 +20,13 @@ export function buildFieldSummary(activityType, fields) {
   // Simple types: return the optional one-line summary field (empty string if not set).
   if (activityType === ACTIVITY_TYPE.COMMENT  ||
       activityType === ACTIVITY_TYPE.NOTE      ||
-      activityType === ACTIVITY_TYPE.DECISION  ||
-      activityType === ACTIVITY_TYPE.DOCUMENT) {
+      activityType === ACTIVITY_TYPE.DECISION) {
     return f.summary || '';
+  }
+  // Document: show user summary first; fall back to filename so the report
+  // is useful even when no explicit summary was entered.
+  if (activityType === ACTIVITY_TYPE.DOCUMENT) {
+    return f.summary || f.display_name || f.filename || '';
   }
   if (activityType === ACTIVITY_TYPE.EMAIL) {
     const parts = [];

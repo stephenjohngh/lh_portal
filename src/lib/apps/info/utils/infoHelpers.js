@@ -1,24 +1,8 @@
 // src/lib/apps/info/utils/infoHelpers.js
 
-/** Format a byte count into a human-readable string. */
-export function fmtBytes(bytes) {
-  if (!bytes || bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
-
-/** Return a simple icon character for a MIME type. */
-export function mimeIcon(mimeType) {
-  if (!mimeType) return '📎';
-  if (mimeType === 'application/pdf')                      return '📄';
-  if (mimeType.startsWith('image/'))                       return '🖼';
-  if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
-  if (mimeType.includes('sheet') || mimeType.includes('excel'))   return '📊';
-  if (mimeType.startsWith('text/'))                        return '📃';
-  return '📎';
-}
+// fmtBytes and mimeIcon live in the shared utils — re-exported here for
+// backwards compatibility so existing Info-app imports don't need updating.
+export { fmtBytes, mimeIcon } from '$lib/utils/files.js';
 
 /** Parse a comma-separated tag string into a trimmed, deduplicated array. */
 export function parseTags(raw) {
