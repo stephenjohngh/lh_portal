@@ -203,8 +203,11 @@ export const oneDriveProvider = {
       $top:    String(opts.limit ?? 100),
       $orderby: 'createdDateTime desc',
     });
-    if (opts.query)       params.set('$filter', `contains(name,'${opts.query}')`);
-    if (opts.foldersOnly) params.set('$filter', 'folder ne null');
+    // Build OData $filter — combine clauses with 'and' so both can be active at once.
+    const filterClauses = [];
+    if (opts.query)       filterClauses.push(`contains(name,'${opts.query}')`);
+    if (opts.foldersOnly) filterClauses.push('folder ne null');
+    if (filterClauses.length) params.set('$filter', filterClauses.join(' and '));
 
     const data = await graph('GET', `/drives/${driveId}/items/${parentId}/children?${params}`);
     return (data?.value ?? [])

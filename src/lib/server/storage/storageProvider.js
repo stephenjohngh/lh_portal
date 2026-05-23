@@ -32,7 +32,7 @@
  * Storage provider interface — all providers must implement every method below.
  *
  * @typedef {Object} StorageProvider
- * @property {string} name  Identifier: 'google_drive' | 'supabase'
+ * @property {string} name  Identifier: 'google_drive' | 'onedrive' | 'supabase'
  *
  * @property {(
  *   buffer:   Buffer,

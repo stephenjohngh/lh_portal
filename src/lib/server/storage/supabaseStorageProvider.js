@@ -14,11 +14,16 @@ import { getLogger }    from '$lib/utils/logger';
 const logger = getLogger('SupabaseStorageProvider');
 const BUCKET = 'documents';
 
+// Module-level singleton — avoids creating a new client on every storage call.
+let _client = null;
 function getClient() {
-  return createClient(
-    process.env.PUBLIC_SUPABASE_URL      ?? '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-  );
+  if (!_client) {
+    _client = createClient(
+      process.env.PUBLIC_SUPABASE_URL      ?? '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+    );
+  }
+  return _client;
 }
 
 function publicUrl(supabase, path) {
@@ -31,7 +36,10 @@ export const supabaseStorageProvider = {
 
   async uploadFile(buffer, filename, mimeType, folderPath, _metadata = {}) {
     const supabase = getClient();
-    const path     = folderPath ? `${folderPath}/${filename}` : filename;
+    // Prefix with a timestamp to prevent collisions when two files share
+    // the same original name in the same virtual folder.
+    const unique   = `${Date.now()}_${filename}`;
+    const path     = folderPath ? `${folderPath}/${unique}` : unique;
 
     logger('Uploading to Supabase Storage:', path);
     const { data, error } = await supabase.storage
