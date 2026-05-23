@@ -1,6 +1,6 @@
 ﻿<!-- src/lib/apps/inspection/components/InspectionResultSection.svelte -->
 <!-- Result selection, dynamic checklist, multi-photo capture, notes, save.
-     Supports up to 4 photos per inspection. photo_urls is an array.
+     photo_urls is a JSONB array; capture limit is MAX_PHOTOS in PhotoPanel.
      Photo capture/display is delegated to PhotoPanel; this component owns
      pendingPhotos state so uploadAllPending() can run at save time. -->
 <script>

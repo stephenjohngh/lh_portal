@@ -209,8 +209,9 @@
   .insp-t    { color:#ccc; flex-shrink:0; }
   .insp-n    { color:#ddd; font-style:italic; flex:1; }
 
-  .photo-strip { display:flex; gap:0.3rem; margin-top:0.5rem; flex-wrap:wrap; }
-  .photo-link img { width:2.75rem; height:2.75rem; object-fit:cover; border-radius:4px; border:1px solid #2e2e42; }
+  .photo-strip { display:grid; grid-template-columns:repeat(auto-fill, minmax(3.5rem, 1fr)); gap:0.35rem; margin-top:0.5rem; }
+  .photo-link  { display:block; aspect-ratio:1; overflow:hidden; border-radius:4px; border:1px solid #2e2e42; }
+  .photo-link img { width:100%; height:100%; object-fit:cover; display:block; }
 
   .state-center { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4rem 2rem; gap:0.5rem; color:#ccc; font-size:0.82rem; letter-spacing:0.08em; flex:1; }
   .spinner { width:20px; height:20px; border:2px solid #2e2e42; border-top-color:#fb923c; border-radius:50%; animation:spin 0.8s linear infinite; }

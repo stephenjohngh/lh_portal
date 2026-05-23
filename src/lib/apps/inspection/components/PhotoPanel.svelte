@@ -11,7 +11,7 @@
 
   const logger = getLogger('PhotoPanel');
 
-  const MAX_PHOTOS = 4;
+  const MAX_PHOTOS = 8;
 
   // -- Bound by parent — parent owns these arrays --------------------
   export let photoUrls     = [];   // already-uploaded URLs
@@ -155,7 +155,7 @@
 
   .photo-btn       { padding:1.25rem; background:var(--lh-accent); border:none; border-radius:10px; color:#fff; font-family:'DM Mono','Courier New',monospace; font-size:0.9rem; font-weight:800; letter-spacing:0.15em; cursor:pointer; transition:background 0.15s; }
   .photo-btn:hover { background:var(--lh-accent-dark); }
-  .photo-grid      { display:grid; grid-template-columns:repeat(4,1fr); gap:0.4rem; }
+  .photo-grid      { display:grid; grid-template-columns:repeat(auto-fill, minmax(4rem, 1fr)); gap:0.4rem; }
   .thumb           { position:relative; border-radius:6px; overflow:hidden; border:2px solid #2e2e42; aspect-ratio:1; }
   .thumb-pending   { border-color:var(--lh-accent); }
   .thumb img       { width:100%; height:100%; object-fit:cover; display:block; }

@@ -88,6 +88,19 @@
           {:else}
             <p class="text-xs text-slate-600 italic">No notes recorded</p>
           {/if}
+          {#if insp.photo_urls?.length > 0}
+            <div class="flex flex-wrap gap-1 pt-1">
+              {#each insp.photo_urls as url, i (url)}
+                <a href={url} target="_blank" rel="noopener noreferrer"
+                   class="block w-10 h-10 rounded overflow-hidden border border-slate-600/60
+                          hover:border-slate-400 transition-colors shrink-0"
+                   title="Photo {i + 1} of {insp.photo_urls.length}"
+                >
+                  <img src={url} alt="Inspection {i + 1}" class="w-full h-full object-cover" />
+                </a>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
