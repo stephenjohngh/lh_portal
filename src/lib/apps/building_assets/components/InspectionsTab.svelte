@@ -23,8 +23,9 @@
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
   import Icon                from '$lib/components/icons/Icon.svelte';
   import Button              from '$lib/components/common/Button.svelte';
-  import InspectionsReport from './InspectionsReport.svelte';
+  import InspectionsReport       from './InspectionsReport.svelte';
   import ConditionChecklistChips from './ConditionChecklistChips.svelte';
+  import PhotoLightbox           from '$lib/components/common/PhotoLightbox.svelte';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
 
   const logger = getLogger('InspectionsTab');
@@ -160,6 +161,12 @@
 
   // -- Badge colours --------------------------------------------------------
   // resultBadgeColor is imported from $lib/utils/resultConstants.js
+  // Lightbox
+  let lightboxPhotos = [];
+  let lightboxIndex  = 0;
+  function openLightbox(photos, i) { lightboxPhotos = photos; lightboxIndex = i; }
+  function closeLightbox()         { lightboxPhotos = []; }
+
   function sessionTypeBadge(t) {
     return { inspection: 'bg-blue-600', test: 'bg-amber-600', repair: 'bg-orange-700' }[t] ?? 'bg-slate-600';
   }
@@ -445,11 +452,21 @@
                             {/if}
                           </td>
                           {#if hasPhotosCol}
-                            <td class="text-slate-400 text-sm">
+                            <td class="photo-thumb-cell">
                               {#if firstRow.photo_urls?.length > 0}
-                                <span class="photo-indicator">📷 {firstRow.photo_urls.length}</span>
+                                <div class="photo-thumbs">
+                                  {#each firstRow.photo_urls as url, i (url)}
+                                    <button
+                                      class="photo-thumb-btn"
+                                      on:click={() => openLightbox(firstRow.photo_urls, i)}
+                                      title="View photo {i + 1}"
+                                    >
+                                      <img src={url} alt="Photo {i + 1}" />
+                                    </button>
+                                  {/each}
+                                </div>
                               {:else}
-                                —
+                                <span class="text-slate-600">—</span>
                               {/if}
                             </td>
                           {/if}
@@ -480,6 +497,14 @@
   {/if}
 
 </div>
+
+{#if lightboxPhotos.length > 0}
+  <PhotoLightbox
+    photos={lightboxPhotos}
+    startIndex={lightboxIndex}
+    on:close={closeLightbox}
+  />
+{/if}
 
 {#if showReport}
   <InspectionsReport
@@ -571,7 +596,11 @@
   .insp-row-inactive{ border-left: 3px solid rgb(71 85 105 / 0.5); }
   .notes-cell       { max-width: 260px; vertical-align: top; }
   .notes-lines      { display: block; white-space: pre-line; line-height: 1.4; max-height: 5rem; overflow-y: auto; }
-  .photo-indicator  { font-size: 0.85rem; }
+  .photo-thumb-cell { vertical-align: middle; }
+  .photo-thumbs     { display: flex; flex-wrap: wrap; gap: 0.2rem; max-width: 8rem; }
+  .photo-thumb-btn  { display: block; width: 2rem; height: 2rem; padding: 0; border: 1px solid rgb(71 85 105 / 0.6); border-radius: 3px; overflow: hidden; cursor: zoom-in; background: none; transition: border-color 0.15s; }
+  .photo-thumb-btn:hover { border-color: rgb(148 163 184); }
+  .photo-thumb-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   /* Expand caret + expanded row */
   .caret-cell  { width: 1.5rem; padding-right: 0 !important; }

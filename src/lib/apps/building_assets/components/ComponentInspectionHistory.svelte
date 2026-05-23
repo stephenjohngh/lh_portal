@@ -11,6 +11,7 @@
   import { buildingAssetsStore }          from '../stores/buildingAssetsStore.js';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
   import ConditionChecklistChips          from './ConditionChecklistChips.svelte';
+  import PhotoLightbox                   from '$lib/components/common/PhotoLightbox.svelte';
 
   export let componentId;   // string | null
   /** Optional — when provided, used to look up the type's condition defs
@@ -58,6 +59,12 @@
     return { ok: '✓ PASS', failed: '✗ FAIL', problem: '⚙ PROBLEM', inactive: '— INACTIVE' }[r]
       ?? (r ?? '—');
   }
+
+  // Lightbox
+  let lightboxPhotos = [];
+  let lightboxIndex  = 0;
+  function openLightbox(photos, i) { lightboxPhotos = photos; lightboxIndex = i; }
+  function closeLightbox()         { lightboxPhotos = []; }
 </script>
 
 <section class="border border-slate-700 rounded-lg p-4 bg-slate-800/30">
@@ -79,6 +86,9 @@
             <span class="text-xs px-2 py-0.5 rounded border font-medium {resultBadgeClass(insp.inspection_result)}">
               {resultText(insp.inspection_result)}
             </span>
+            {#if insp.photo_urls?.length > 0}
+              <span class="text-xs text-slate-500">📷 {insp.photo_urls.length}</span>
+            {/if}
           </div>
           {#if items.length > 0}
             <ConditionChecklistChips {items} size="xs" />
@@ -91,13 +101,14 @@
           {#if insp.photo_urls?.length > 0}
             <div class="flex flex-wrap gap-1 pt-1">
               {#each insp.photo_urls as url, i (url)}
-                <a href={url} target="_blank" rel="noopener noreferrer"
-                   class="block w-10 h-10 rounded overflow-hidden border border-slate-600/60
-                          hover:border-slate-400 transition-colors shrink-0"
-                   title="Photo {i + 1} of {insp.photo_urls.length}"
+                <button
+                  on:click={() => openLightbox(insp.photo_urls, i)}
+                  class="block w-10 h-10 rounded overflow-hidden border border-slate-600/60
+                         hover:border-slate-400 transition-colors shrink-0 p-0 cursor-zoom-in"
+                  title="View photo {i + 1} of {insp.photo_urls.length}"
                 >
                   <img src={url} alt="Inspection {i + 1}" class="w-full h-full object-cover" />
-                </a>
+                </button>
               {/each}
             </div>
           {/if}
@@ -106,3 +117,11 @@
     </div>
   {/if}
 </section>
+
+{#if lightboxPhotos.length > 0}
+  <PhotoLightbox
+    photos={lightboxPhotos}
+    startIndex={lightboxIndex}
+    on:close={closeLightbox}
+  />
+{/if}

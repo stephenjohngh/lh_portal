@@ -5,9 +5,10 @@
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { flattenInspectionRows, groupByComponent, worstResult, resultLabel, sessionFloorLabel, presetLabel } from '../utils/inspectionHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
-  import WalkStatsBars from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
-  import WalkError     from '$lib/apps/inspection/components/common/WalkError.svelte';
-  import WalkButton    from '$lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkStatsBars      from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
+  import WalkError          from '$lib/apps/inspection/components/common/WalkError.svelte';
+  import WalkButton         from '$lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkPhotoLightbox  from '$lib/apps/inspection/components/common/WalkPhotoLightbox.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -52,6 +53,12 @@
   function getType(typeCode) {
     return types.find(t => t.code === typeCode);
   }
+
+  // Lightbox
+  let lightboxPhotos = [];
+  let lightboxIndex  = 0;
+  function openLightbox(photos, i) { lightboxPhotos = photos; lightboxIndex = i; }
+  function closeLightbox()         { lightboxPhotos = []; }
 </script>
 
 <div class="sum">
@@ -152,9 +159,13 @@
           {#if latest?.photo_urls?.length > 0}
             <div class="photo-strip">
               {#each latest.photo_urls as url, i (url)}
-                <a href={url} target="_blank" rel="noopener" class="photo-link">
+                <button
+                  class="photo-btn"
+                  on:click={() => openLightbox(latest.photo_urls, i)}
+                  title="View photo {i + 1}"
+                >
                   <img src={url} alt="Inspection {i+1}" />
-                </a>
+                </button>
               {/each}
             </div>
           {/if}
@@ -164,6 +175,14 @@
   {/if}
 
 </div>
+
+{#if lightboxPhotos.length > 0}
+  <WalkPhotoLightbox
+    photos={lightboxPhotos}
+    startIndex={lightboxIndex}
+    on:close={closeLightbox}
+  />
+{/if}
 
 <style>
   .sum { display:flex; flex-direction:column; min-height:calc(100vh - 64px); padding-bottom:2rem; background:#0d0d14; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; }
@@ -210,8 +229,9 @@
   .insp-n    { color:#ddd; font-style:italic; flex:1; }
 
   .photo-strip { display:grid; grid-template-columns:repeat(auto-fill, minmax(3.5rem, 1fr)); gap:0.35rem; margin-top:0.5rem; }
-  .photo-link  { display:block; aspect-ratio:1; overflow:hidden; border-radius:4px; border:1px solid #2e2e42; }
-  .photo-link img { width:100%; height:100%; object-fit:cover; display:block; }
+  .photo-btn   { display:block; aspect-ratio:1; overflow:hidden; border-radius:4px; border:1px solid #2e2e42; padding:0; background:none; cursor:zoom-in; transition:border-color 0.15s; }
+  .photo-btn:hover { border-color:#fb923c; }
+  .photo-btn img { width:100%; height:100%; object-fit:cover; display:block; }
 
   .state-center { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4rem 2rem; gap:0.5rem; color:#ccc; font-size:0.82rem; letter-spacing:0.08em; flex:1; }
   .spinner { width:20px; height:20px; border:2px solid #2e2e42; border-top-color:#fb923c; border-radius:50%; animation:spin 0.8s linear infinite; }

@@ -10,9 +10,10 @@
   import { resultLabel }  from '../utils/inspectionHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import InspectionResultSection from './InspectionResultSection.svelte';
-  import WalkButton  from '$lib/apps/inspection/components/common/WalkButton.svelte';
-  import WalkSpinner from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
-  import WalkBadge   from '$lib/apps/inspection/components/common/WalkBadge.svelte';
+  import WalkButton         from '$lib/apps/inspection/components/common/WalkButton.svelte';
+  import WalkSpinner        from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
+  import WalkBadge          from '$lib/apps/inspection/components/common/WalkBadge.svelte';
+  import WalkPhotoLightbox  from '$lib/apps/inspection/components/common/WalkPhotoLightbox.svelte';
 
   const logger   = getLogger('InspectionPanel');
   const dispatch = createEventDispatcher();
@@ -82,6 +83,12 @@
   function resultColor(r) {
     return { ok:'green', failed:'red', problem:'amber', inactive:'grey' }[r] ?? 'grey';
   }
+
+  // Lightbox for history photos
+  let lightboxPhotos = [];
+  let lightboxIndex  = 0;
+  function openLightbox(photos, i) { lightboxPhotos = photos; lightboxIndex = i; }
+  function closeLightbox()         { lightboxPhotos = []; }
 </script>
 
 <div class="ip">
@@ -127,9 +134,13 @@
                 {#if h.photo_urls?.length > 0}
                   <div class="hist-photos">
                     {#each h.photo_urls as url, i (url)}
-                      <a href={url} target="_blank" rel="noopener" class="hist-photo-link">
+                      <button
+                        class="hist-photo-btn"
+                        on:click={() => openLightbox(h.photo_urls, i)}
+                        title="View photo {i + 1}"
+                      >
                         <img src={url} alt="Photo {i+1}" />
-                      </a>
+                      </button>
                     {/each}
                   </div>
                 {/if}
@@ -141,6 +152,14 @@
     {/if}
   </div>
 </div>
+
+{#if lightboxPhotos.length > 0}
+  <WalkPhotoLightbox
+    photos={lightboxPhotos}
+    startIndex={lightboxIndex}
+    on:close={closeLightbox}
+  />
+{/if}
 
 <style>
   .ip { display:flex; flex-direction:column; min-height:calc(100vh - 64px); background:#0d0d14; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; }
@@ -158,6 +177,8 @@
   .hist-date  { font-size:0.7rem; color:#ccc; }
   .hist-sess  { font-size:0.68rem; color:#888; }
   .hist-notes { font-size:0.75rem; color:#ddd; font-style:italic; margin-top:0.2rem; }
-  .hist-photos { display:flex; gap:0.3rem; margin-top:0.35rem; flex-wrap:wrap; }
-  .hist-photo-link img { width:3rem; height:3rem; object-fit:cover; border-radius:4px; border:1px solid #2e2e42; }
+  .hist-photos    { display:flex; gap:0.3rem; margin-top:0.35rem; flex-wrap:wrap; }
+  .hist-photo-btn { display:block; width:3rem; height:3rem; padding:0; border:1px solid #2e2e42; border-radius:4px; overflow:hidden; cursor:zoom-in; background:none; transition:border-color 0.15s; }
+  .hist-photo-btn:hover { border-color:#fb923c; }
+  .hist-photo-btn img { width:100%; height:100%; object-fit:cover; display:block; }
 </style>
