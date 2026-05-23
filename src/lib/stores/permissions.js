@@ -11,6 +11,7 @@ function createPermissionsStore() {
   const { subscribe, set, update } = writable({
     loading: true,
     isAdmin: false,
+    isReadOnly: false, // profile-level read-only (overrides all app-level permissions)
     canModify: true, // Default for current app
     appPermissions: {}, // { appId: { hasAccess: bool, isReadOnly: bool } }
     userId: null
@@ -29,6 +30,7 @@ function createPermissionsStore() {
         set({
           loading: false,
           isAdmin: false,
+          isReadOnly: false,
           canModify: false,
           appPermissions: {},
           userId: null
@@ -40,13 +42,14 @@ function createPermissionsStore() {
         // Get user profile to check admin status
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('is_admin')
+          .select('is_admin, is_read_only')
           .eq('id', userId)
           .single();
 
         if (profileError) throw profileError;
 
-        const isAdmin = profile?.is_admin || false;
+        const isAdmin    = profile?.is_admin    || false;
+        const isReadOnly = !isAdmin && (profile?.is_read_only || false);
 
         // Get all app permissions for this user
         const { data: permissions, error: permError } = await supabase
@@ -65,13 +68,15 @@ function createPermissionsStore() {
           };
         });
 
-        // Determine canModify for current app
+        // Determine canModify for current app:
+        // admin always can; profile-level RO always blocks; otherwise check app-level
         const currentAppPerm = appPermissions[currentApp];
-        const canModify = isAdmin || (currentAppPerm?.hasAccess && !currentAppPerm?.isReadOnly);
+        const canModify = isAdmin || (!isReadOnly && currentAppPerm?.hasAccess && !currentAppPerm?.isReadOnly);
 
         set({
           loading: false,
           isAdmin,
+          isReadOnly,
           canModify,
           appPermissions,
           userId
@@ -89,6 +94,7 @@ function createPermissionsStore() {
         set({
           loading: false,
           isAdmin: false,
+          isReadOnly: false,
           canModify: false,
           appPermissions: {},
           userId
@@ -106,6 +112,8 @@ function createPermissionsStore() {
       update(state => {
         if (state.isAdmin) {
           result = true;
+        } else if (state.isReadOnly) {
+          result = false;
         } else {
           const appPerm = state.appPermissions[appId];
           result = appPerm?.hasAccess && !appPerm?.isReadOnly;

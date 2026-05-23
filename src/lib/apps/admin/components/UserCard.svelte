@@ -49,9 +49,13 @@
     <div class="flex gap-1.5 flex-wrap justify-end">
       {#if user.is_admin}
         <Badge color="bg-purple-600">Admin</Badge>
+      {:else if user.is_read_only}
+        <Badge color="bg-slate-500">Viewer</Badge>
+      {:else}
+        <Badge color="bg-blue-600">Editor</Badge>
       {/if}
       {#if user.is_contractor}
-        <Badge color="bg-blue-600">Contractor</Badge>
+        <Badge color="bg-amber-700">Contractor</Badge>
       {/if}
     </div>
   </div>

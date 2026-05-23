@@ -253,6 +253,90 @@ function createUsersStore() {
       }
     },
 
+    /**
+     * Set the profile-level role for a user.
+     * @param {string} userId
+     * @param {'admin'|'rw'|'ro'} role
+     */
+    async setUserRole(userId, role) {
+      logger('Setting user role:', { userId, role });
+      const updates = {
+        admin: { is_admin: true,  is_read_only: false },
+        rw:    { is_admin: false, is_read_only: false },
+        ro:    { is_admin: false, is_read_only: true  },
+      }[role];
+      if (!updates) throw new Error(`Unknown role: ${role}`);
+
+      const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+      if (error) throw error;
+
+      update(state => ({
+        ...state,
+        users: state.users.map(u => u.id === userId ? { ...u, ...updates } : u),
+      }));
+      logger('User role set:', role);
+    },
+
+    /**
+     * Set per-app access level for a user.
+     * @param {string} userId
+     * @param {string} appId
+     * @param {'none'|'rw'|'ro'} level
+     */
+    async setAppAccessLevel(userId, appId, level) {
+      logger('Setting app access level:', { userId, appId, level });
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (level === 'none') {
+        const { error } = await supabase
+          .from('app_permissions').delete()
+          .eq('user_id', userId).eq('app_id', appId);
+        if (error) throw error;
+
+        appPermissions.update(s => ({
+          ...s,
+          [userId]: (s[userId] || []).filter(id => id !== appId),
+        }));
+        appReadOnly.update(s => {
+          const copy = { ...(s[userId] || {}) };
+          delete copy[appId];
+          return { ...s, [userId]: copy };
+        });
+
+      } else {
+        const isRO = level === 'ro';
+
+        // Check if row already exists, then update or insert
+        const { data: existing } = await supabase
+          .from('app_permissions').select('id')
+          .eq('user_id', userId).eq('app_id', appId).maybeSingle();
+
+        if (existing) {
+          const { error } = await supabase
+            .from('app_permissions')
+            .update({ is_read_only: isRO, updated_by: user?.id })
+            .eq('user_id', userId).eq('app_id', appId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('app_permissions')
+            .insert({ user_id: userId, app_id: appId, is_read_only: isRO,
+                      created_by: user?.id, updated_by: user?.id });
+          if (error) throw error;
+        }
+
+        appPermissions.update(s => {
+          const list = s[userId] || [];
+          return { ...s, [userId]: list.includes(appId) ? list : [...list, appId] };
+        });
+        appReadOnly.update(s => ({
+          ...s,
+          [userId]: { ...(s[userId] || {}), [appId]: isRO },
+        }));
+      }
+      logger('App access level set:', { appId, level });
+    },
+
     async toggleContractor(userId, currentValue) {
       logger('Toggling contractor status:', { userId, currentValue });
       const newValue = !currentValue;

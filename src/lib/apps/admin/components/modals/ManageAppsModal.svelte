@@ -1,16 +1,17 @@
 <!-- src/lib/apps/admin/components/modals/ManageAppsModal.svelte -->
-<!-- Updated to use apps.js, ErrorDisplay, and LoadingSpinner -->
+<!-- Manage a user's role (Admin / Editor / Viewer) and per-app access level. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { usersStore } from '../../stores/usersStore';
-  import { getLogger } from '$lib/utils/logger';
+  import { auth }        from '$lib/stores/auth';
+  import { usersStore }  from '../../stores/usersStore';
+  import { getLogger }   from '$lib/utils/logger';
   import { getPermissionedApps } from '$lib/apps/apps';
-  import Modal from '$lib/components/common/Modal.svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import Checkbox from '$lib/components/common/Checkbox.svelte';
-  import Icon from '$lib/components/icons/Icon.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import Modal           from '$lib/components/common/Modal.svelte';
+  import Button          from '$lib/components/common/Button.svelte';
+  import Checkbox        from '$lib/components/common/Checkbox.svelte';
+  import Icon            from '$lib/components/icons/Icon.svelte';
+  import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
+  import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
 
   const logger = getLogger('ManageAppsModal');
 
@@ -19,43 +20,82 @@
 
   const dispatch = createEventDispatcher();
 
-  // Use centralized app config
   const availableApps = getPermissionedApps();
 
-  let permissions      = [];
-  let readOnly         = {};
-  let loading          = false;
-  let error            = '';
+  let permissions        = [];
+  let readOnly           = {};
+  let loading            = false;
+  let error              = '';
   let togglingContractor = false;
+  let settingRole        = false;
 
-  // Get the separate stores
   const appPermissionsStore = usersStore.appPermissions;
-  const appReadOnlyStore = usersStore.appReadOnly;
-  const loadingStore = usersStore.loadingApps;
+  const appReadOnlyStore    = usersStore.appReadOnly;
+  const loadingStore        = usersStore.loadingApps;
 
-  // Update local state when user changes
-  $: if (user && show) {
-    loadUserData();
+  $: if (user && show)            { loadUserData(); }
+  $: if (user && $appPermissionsStore) { permissions = $appPermissionsStore[user.id] || []; }
+  $: if (user && $appReadOnlyStore)    { readOnly    = $appReadOnlyStore[user.id]    || {}; }
+  $: if (user && $loadingStore)        { loading     = $loadingStore[user.id]        || false; }
+
+  // Guard: can't change your own role
+  $: isSelf = user?.id === $auth.user?.id;
+
+  // Derive current role from profile flags
+  $: currentRole = user?.is_admin ? 'admin' : user?.is_read_only ? 'ro' : 'rw';
+
+  const ROLES = [
+    {
+      id: 'admin',
+      label: 'Admin',
+      desc: 'Full access to all apps and portal administration. No per-app restrictions apply.',
+      activeCls: 'bg-purple-600 border-purple-500 text-white',
+      hoverCls:  'border-slate-600 text-slate-400 hover:border-purple-500 hover:text-purple-300',
+    },
+    {
+      id: 'rw',
+      label: 'Editor',
+      desc: 'Can read and write data in permitted apps. Per-app access controls apply.',
+      activeCls: 'bg-blue-600 border-blue-500 text-white',
+      hoverCls:  'border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-300',
+    },
+    {
+      id: 'ro',
+      label: 'Viewer',
+      desc: 'Read-only access to permitted apps. Cannot create, edit, or delete any data.',
+      activeCls: 'bg-slate-600 border-slate-500 text-white',
+      hoverCls:  'border-slate-600 text-slate-400 hover:border-slate-400 hover:text-slate-300',
+    },
+  ];
+
+  function roleBtnCls(r) {
+    const active = currentRole === r.id;
+    const base   = 'px-3 py-1.5 text-sm font-medium rounded border transition-colors';
+    const state  = settingRole || isSelf ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
+    return `${base} ${active ? r.activeCls : r.hoverCls} ${state}`;
   }
 
-  // Subscribe to store values and update local state
-  $: if (user && $appPermissionsStore) {
-    permissions = $appPermissionsStore[user.id] || [];
+  // Derive effective per-app access level for UI highlighting
+  function getAccessLevel(appId) {
+    if (!(permissions || []).includes(appId)) return 'none';
+    return readOnly[appId] ? 'ro' : 'rw';
   }
-  
-  $: if (user && $appReadOnlyStore) {
-    readOnly = $appReadOnlyStore[user.id] || {};
-  }
-  
-  $: if (user && $loadingStore) {
-    loading = $loadingStore[user.id] || false;
+
+  const ACCESS_LEVELS = [
+    { id: 'none', label: 'None',  activeCls: 'bg-slate-700 border-slate-500 text-white',  hoverCls: 'border-slate-600 text-slate-500 hover:border-slate-400 hover:text-slate-300' },
+    { id: 'rw',   label: 'Edit',  activeCls: 'bg-blue-700  border-blue-500  text-white',  hoverCls: 'border-slate-600 text-slate-400 hover:border-blue-500  hover:text-blue-300'  },
+    { id: 'ro',   label: 'View',  activeCls: 'bg-amber-700 border-amber-500 text-white',  hoverCls: 'border-slate-600 text-slate-400 hover:border-amber-500 hover:text-amber-300' },
+  ];
+
+  function accessBtnCls(appId, levelId) {
+    const active = getAccessLevel(appId) === levelId;
+    const lv     = ACCESS_LEVELS.find(l => l.id === levelId);
+    return `px-2 py-0.5 text-xs rounded border transition-colors ${active ? lv.activeCls : lv.hoverCls}`;
   }
 
   async function loadUserData() {
     if (!user) return;
-    
     error = '';
-    
     try {
       await usersStore.loadAppPermissions(user.id);
       await usersStore.loadAppReadOnly(user.id);
@@ -65,30 +105,32 @@
     }
   }
 
-  async function toggleAppPermission(appId) {
-    if (!user) return;
-
+  async function setRole(roleId) {
+    if (!user || settingRole || currentRole === roleId || isSelf) return;
+    settingRole = true;
     error = '';
-
     try {
-      await usersStore.toggleAppPermission(user.id, appId, permissions);
+      await usersStore.setUserRole(user.id, roleId);
+      user = { ...user,
+        is_admin:     roleId === 'admin',
+        is_read_only: roleId === 'ro',
+      };
     } catch (err) {
-      logger('Failed to update app permission:', err);
-      error = `Failed to update ${appId} permission: ${err.message}`;
+      logger('Failed to set role:', err);
+      error = `Failed to set role: ${err.message}`;
+    } finally {
+      settingRole = false;
     }
   }
 
-  async function toggleAppReadOnly(appId) {
+  async function setAccessLevel(appId, level) {
     if (!user) return;
-
     error = '';
-    const currentValue = readOnly[appId] || false;
-
     try {
-      await usersStore.toggleAppReadOnly(user.id, appId, currentValue);
+      await usersStore.setAppAccessLevel(user.id, appId, level);
     } catch (err) {
-      logger('Failed to update read-only status:', err);
-      error = `Failed to update read-only status: ${err.message}`;
+      logger('Failed to set access level:', err);
+      error = `Failed to update ${appId} access: ${err.message}`;
     }
   }
 
@@ -98,7 +140,6 @@
     error = '';
     try {
       await usersStore.toggleContractor(user.id, user.is_contractor || false);
-      // Reflect the optimistic update from the store back to the passed user object
       user = { ...user, is_contractor: !(user.is_contractor || false) };
     } catch (err) {
       logger('Failed to toggle contractor status:', err);
@@ -109,7 +150,7 @@
   }
 
   function handleClose() {
-    show = false;
+    show  = false;
     error = '';
     dispatch('close');
   }
@@ -117,24 +158,41 @@
 
 <Modal
   bind:show
-  title={user ? `Manage Apps for ${user.email}` : 'Manage Apps'}
+  title={user ? `Manage Access — ${user.full_name || user.email}` : 'Manage Access'}
   size="medium"
   on:close={handleClose}
 >
   <div class="form-spacing">
-    <!-- Instructions -->
-    <p class="text-muted-sm">
-      Select which apps <strong>{user?.email || 'this user'}</strong> can access. 
-      Changes take effect immediately but user must refresh their browser.
-    </p>
 
-    <!-- Error Display -->
-    <ErrorDisplay 
-      message={error} 
-      onDismiss={() => error = ''}
-    />
+    <ErrorDisplay message={error} onDismiss={() => error = ''} />
 
-    <!-- Contractor account toggle -->
+    <!-- ── Role ─────────────────────────────────────────────────────── -->
+    <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600 space-y-3">
+      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">Role</p>
+
+      {#if isSelf}
+        <p class="text-xs text-amber-400">You cannot change your own role.</p>
+      {/if}
+
+      <div class="flex gap-2 flex-wrap">
+        {#each ROLES as r}
+          <button
+            class={roleBtnCls(r)}
+            disabled={settingRole || isSelf}
+            on:click={() => setRole(r.id)}
+          >{r.label}</button>
+        {/each}
+        {#if settingRole}
+          <span class="text-xs text-slate-500 self-center animate-pulse">Saving…</span>
+        {/if}
+      </div>
+
+      <p class="text-xs text-slate-500">
+        {ROLES.find(r => r.id === currentRole)?.desc ?? ''}
+      </p>
+    </div>
+
+    <!-- ── Contractor ────────────────────────────────────────────────── -->
     <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
       <label class="flex items-center gap-3 cursor-pointer group">
         <Checkbox
@@ -157,71 +215,55 @@
       </label>
     </div>
 
-    <!-- Loading State -->
+    <!-- ── App access ────────────────────────────────────────────────── -->
     {#if loading}
       <LoadingSpinner size="medium" />
-
-    <!-- Apps List -->
     {:else}
-      <div class="section-spacing">
-        {#each availableApps as app}
-          {@const hasPermission = permissions.includes(app.id)}
-          {@const appReadOnly = readOnly[app.id] || false}
-          
-          <div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
-            <!-- App Access Checkbox -->
-            <div class="flex-row-md {hasPermission ? 'mb-3' : ''}">
-              <Checkbox
-                checked={hasPermission}
-                on:change={() => toggleAppPermission(app.id)}
-              />
-              <div class="flex-1">
-                <div class="flex-row">
-                  <Icon name={app.icon} size={5} className="text-purple-400" />
-                  <span class="font-medium">{app.name}</span>
-                </div>
-                {#if app.description}
-                  <p class="text-xs text-gray-500 mt-1">{app.description}</p>
-                {/if}
+      <div class="space-y-2">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">App Access</p>
+
+        {#if currentRole === 'admin'}
+          <p class="text-sm text-slate-500 italic">
+            Admins always have full access to all apps — no per-app restrictions apply.
+          </p>
+        {:else}
+          {#if currentRole === 'ro'}
+            <p class="text-xs text-amber-500/80">
+              This user is a Viewer — all permitted apps are read-only regardless of the Edit button below.
+            </p>
+          {/if}
+
+          {#each availableApps as app}
+            {@const level = getAccessLevel(app.id)}
+            <div class="bg-slate-700/50 rounded-lg px-3 py-2.5 border border-slate-600
+                        flex items-center gap-3">
+              <Icon name={app.icon} size={4} className="text-purple-400 shrink-0" />
+              <p class="text-sm text-slate-200 flex-1 min-w-0 truncate">{app.name}</p>
+              <div class="flex gap-1 shrink-0">
+                {#each ACCESS_LEVELS as lv}
+                  <button
+                    class={accessBtnCls(app.id, lv.id)}
+                    on:click={() => setAccessLevel(app.id, lv.id)}
+                  >{lv.label}</button>
+                {/each}
               </div>
             </div>
-            
-            <!-- Read-Only Toggle (only if has access) -->
-            {#if hasPermission}
-              <div class="ml-8 pl-3 border-l-2 border-slate-600">
-                <label class="flex-row cursor-pointer group">
-                  <Checkbox
-                    checked={appReadOnly}
-                    on:change={() => toggleAppReadOnly(app.id)}
-                  />
-                  <span class="text-sm text-gray-400 group-hover:text-gray-300">
-                    Read-only access (view only, cannot modify)
-                  </span>
-                </label>
-              </div>
-            {/if}
-          </div>
-        {/each}
+          {/each}
+        {/if}
       </div>
 
-      <!-- Info Message -->
       <div class="alert-info">
         <p class="text-sm">
           <Icon name="refresh" size={4} className="inline mr-1" />
-          User must refresh their browser to see app changes.
+          User must refresh their browser to see access changes.
         </p>
       </div>
     {/if}
+
   </div>
 
-  <!-- Footer -->
   <div slot="footer">
-    <Button
-      variant="primary"
-      size="large"
-      fullWidth={true}
-      on:click={handleClose}
-    >
+    <Button variant="primary" size="large" fullWidth={true} on:click={handleClose}>
       Done
     </Button>
   </div>
