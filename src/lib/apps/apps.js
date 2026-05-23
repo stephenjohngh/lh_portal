@@ -86,6 +86,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'info',
+    name: 'Info',
+    icon: 'book',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Building information repository — sections, notes and documents'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -108,6 +117,7 @@ export const APP_IDS = {
   INSPECTION:      'inspection',
   MOBILEPLAN:      'mobileplan',
   MAINTENANCE:     'maintenance',
+  INFO:            'info',
   SETTINGS:        'settings'
 };
 
