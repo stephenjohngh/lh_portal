@@ -38,6 +38,15 @@
   let showDeleteModal = false;
   let selectedUser = null;
 
+  // ManageAppsModal needs a live view of the user from the store so that role /
+  // contractor changes made inside the modal are immediately reflected when it
+  // is closed and reopened (selectedUser is a snapshot and goes stale once the
+  // store updates).
+  let manageUserId = null;
+  $: manageAppsUser = manageUserId
+    ? (users.find(u => u.id === manageUserId) ?? null)
+    : null;
+
   // Subscribe to store
   $: ({ users, loading, error } = $usersStore);
   
@@ -63,7 +72,7 @@
   }
 
   function handleManageApps(event) {
-    selectedUser = event.detail;
+    manageUserId = event.detail.id;
     showManageAppsModal = true;
   }
 
@@ -104,7 +113,7 @@
 
   function handleManageAppsClose() {
     showManageAppsModal = false;
-    selectedUser = null;
+    manageUserId = null;
   }
 
   function handleDeleteSuccess() {
@@ -358,9 +367,9 @@
   on:close={handlePasswordResetClose}
 />
 
-<ManageAppsModal 
+<ManageAppsModal
   bind:show={showManageAppsModal}
-  user={selectedUser}
+  user={manageAppsUser}
   on:close={handleManageAppsClose}
 />
 

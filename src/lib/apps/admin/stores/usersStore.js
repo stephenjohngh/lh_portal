@@ -306,17 +306,23 @@ function createUsersStore() {
       } else {
         const isRO = level === 'ro';
 
-        // Upsert: creates the row if absent, updates is_read_only if present.
-        // Avoids a SELECT round-trip and side-steps any RLS SELECT restrictions
-        // that would cause a false INSERT → unique-constraint failure.
-        const { error } = await supabase
+        // DELETE then INSERT: unconditionally safe regardless of whether the
+        // row already exists and regardless of how the unique constraint is
+        // named. DELETE on a missing row is a no-op (no error); the INSERT
+        // always creates a fresh row with the desired is_read_only value.
+        // This avoids (a) a SELECT round-trip, (b) upsert constraint-name
+        // guessing, and (c) RLS SELECT restrictions that could return a false
+        // null and cause INSERT to fail on a duplicate-key violation.
+        const { error: delErr } = await supabase
+          .from('app_permissions').delete()
+          .eq('user_id', userId).eq('app_id', appId);
+        if (delErr) throw delErr;
+
+        const { error: insErr } = await supabase
           .from('app_permissions')
-          .upsert(
-            { user_id: userId, app_id: appId, is_read_only: isRO,
-              created_by: user?.id, updated_by: user?.id },
-            { onConflict: 'user_id,app_id' }
-          );
-        if (error) throw error;
+          .insert({ user_id: userId, app_id: appId, is_read_only: isRO,
+                    created_by: user?.id, updated_by: user?.id });
+        if (insErr) throw insErr;
 
         appPermissions.update(s => {
           const list = s[userId] || [];

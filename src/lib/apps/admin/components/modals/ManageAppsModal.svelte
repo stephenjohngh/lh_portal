@@ -111,10 +111,10 @@
     error = '';
     try {
       await usersStore.setUserRole(user.id, roleId);
-      user = { ...user,
-        is_admin:     roleId === 'admin',
-        is_read_only: roleId === 'ro',
-      };
+      // No local `user = { ...user, ... }` here — the parent derives `user`
+      // from the store reactively, so the prop updates automatically once
+      // setUserRole() commits. Mutating the prop locally would (a) cause a
+      // second loadUserData() call and (b) be overwritten by the parent anyway.
     } catch (err) {
       logger('Failed to set role:', err);
       error = `Failed to set role: ${err.message}`;
@@ -140,7 +140,7 @@
     error = '';
     try {
       await usersStore.toggleContractor(user.id, user.is_contractor || false);
-      user = { ...user, is_contractor: !(user.is_contractor || false) };
+      // Parent prop updates from the store — no local mutation needed.
     } catch (err) {
       logger('Failed to toggle contractor status:', err);
       error = `Failed to update contractor status: ${err.message}`;
