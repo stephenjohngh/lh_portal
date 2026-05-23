@@ -19,7 +19,7 @@
   export let types       = [];
   export let floors      = [];
   export let attrDefs    = {};  // { typeId: effective attrs[] }
-  export const attrOptions = {};  // { attrDefId: options[] } — reserved for option label lookup (not yet used in view)
+  export let attrOptions = {};  // { attrDefId: options[] } — reserved for option label lookup (not yet used in view)
   export let attrs       = [];  // component_attributes[] for this component
   export let components  = [];  // all components[] — for ComponentLinks datalist
 

@@ -103,8 +103,9 @@
     showConditionAttrs = false;
     if (typeWarning) {
       attrValues = {};
-      // Populate defaults for the new type
-      for (const d of (attrDefs[selectedTypeId] ?? [])) {
+      // Populate defaults for the new type — fixed attrs only (condition attrs
+      // live in checklist_results, not component_attributes)
+      for (const d of (attrDefs[selectedTypeId] ?? []).filter(d => !d.checkable)) {
         if (d.default_value) attrValues[d.id] = d.default_value;
       }
     }

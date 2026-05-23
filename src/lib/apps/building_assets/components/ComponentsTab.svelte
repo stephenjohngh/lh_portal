@@ -26,6 +26,7 @@
   import {
     availableFixedDefs, availableConditionDefs, matchesAllAttrFilters,
   } from '../utils/attrFilters.js';
+  import { fmtGenerated } from '$lib/utils/dates.js';
 
   // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;
@@ -276,8 +277,7 @@
     reportError      = '';
     try {
       const building    = facilities[0]?.name ?? 'Lancaster House';
-      const generatedAt = new Date().toLocaleDateString('en-GB',
-        { day: '2-digit', month: 'short', year: 'numeric' });
+      const generatedAt = fmtGenerated();
       const reportTypes = [
         ...(includePlan              ? ['plan']               : []),
         ...(includeList              ? ['full_list']          : []),

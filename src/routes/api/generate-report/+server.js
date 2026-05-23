@@ -33,6 +33,7 @@ import {
   fmtShortDate,
 } from '$lib/server/docxHelpers.js';
 import { sortBySystemTypeAsset } from '$lib/utils/componentSorting.js';
+import { fmtGenerated }          from '$lib/utils/dates.js';
 
 const logger = getLogger('generateReport');
 
@@ -536,9 +537,7 @@ export async function POST({ request }) {
     logger('Report types:', reportTypes.join(', '), '| Floors:', floors.length, '| Building:', building);
 
     const docTitle = `${building} — Component Report`;
-    const genAt    = generatedAt || new Date().toLocaleDateString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-    });
+    const genAt    = generatedAt || fmtGenerated();
 
     // -- Assemble document -----------------------------------------------------
     const children = [];

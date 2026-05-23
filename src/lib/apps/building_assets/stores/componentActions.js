@@ -24,11 +24,12 @@ export function createComponentActions(update) {
 
       const components = await api.get('components', opts);
 
-      // Index component_attributes by component_id
+      // Index component_attributes by component_id in one pass
       const allAttrs = await api.get('component_attributes');
       const componentAttrs = {};
-      for (const c of components) {
-        componentAttrs[c.id] = allAttrs.filter(a => a.component_id === c.id);
+      for (const a of allAttrs) {
+        if (!componentAttrs[a.component_id]) componentAttrs[a.component_id] = [];
+        componentAttrs[a.component_id].push(a);
       }
 
       // Keep only the latest inspection per component (desc by inspected_at)

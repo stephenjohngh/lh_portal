@@ -33,10 +33,6 @@
   $: floors = $buildingAssetsStore.floors;
   $: types  = $buildingAssetsStore.types;
 
-  function resolveType(type_code) {
-    return types.find(t => t.code === type_code) ?? null;
-  }
-
   // -- State ----------------------------------------------------------------
   let sessions    = [];
   let inspections = {};      // { [sessionId]: flattened inspection[] }
@@ -405,7 +401,7 @@
                       {#each groups as grp (grp.component_id)}
                         {@const worst        = worstResult(grp.rows)}
                         {@const firstRow     = grp.rows[0]}
-                        {@const typeObj      = resolveType(grp.type_code)}
+                        {@const typeObj      = typeByCode(types, grp.type_code)}
                         {@const displayName  = `${grp.floor_name ?? '?'} / ${typeObj?.initial ?? '?'} / ${grp.asset_id ?? '?'}`}
                         {@const hasPhotosCol = rowInspections.some(i => i.photo_urls?.length > 0)}
                         {@const rowKey       = `${session.id}:${grp.component_id}`}

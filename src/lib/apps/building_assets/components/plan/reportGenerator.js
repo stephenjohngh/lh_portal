@@ -37,6 +37,7 @@
 // Throws on validation failure or network error.
 
 import { drawAnnotatedPlanImage } from './planImageRenderer.js';
+import { downloadResponse }       from '$lib/utils/download.js';
 
 export async function generateReportDocument(params) {
   const {
@@ -157,13 +158,7 @@ export async function generateReportDocument(params) {
 
   // -- Trigger download --------------------------------------------------
   const filename = `components-${new Date().toISOString().slice(0, 10)}.docx`;
-  const blob = await res.blob();
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  await downloadResponse(res, filename);
 
   return { filename };
 }

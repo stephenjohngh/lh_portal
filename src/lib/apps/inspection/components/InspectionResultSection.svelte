@@ -118,8 +118,8 @@
 
     const newUrls = await uploadAllPending();
     photoUrls     = [...photoUrls, ...newUrls];
-    // Clear pending (successful ones now in photoUrls)
-    pendingPhotos = pendingPhotos.filter(p => p.error !== null);
+    // Clear pending (successful ones now in photoUrls; keep only those that errored)
+    pendingPhotos = pendingPhotos.filter(p => !!p.error);
     dispatch('save');
   }
 
