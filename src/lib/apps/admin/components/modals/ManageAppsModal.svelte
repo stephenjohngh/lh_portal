@@ -75,23 +75,11 @@
     return `${base} ${active ? r.activeCls : r.hoverCls} ${state}`;
   }
 
-  // Derive effective per-app access level for UI highlighting
-  function getAccessLevel(appId) {
-    if (!(permissions || []).includes(appId)) return 'none';
-    return readOnly[appId] ? 'ro' : 'rw';
-  }
-
   const ACCESS_LEVELS = [
     { id: 'none', label: 'None',  activeCls: 'bg-slate-700 border-slate-500 text-white',  hoverCls: 'border-slate-600 text-slate-500 hover:border-slate-400 hover:text-slate-300' },
     { id: 'rw',   label: 'Edit',  activeCls: 'bg-blue-700  border-blue-500  text-white',  hoverCls: 'border-slate-600 text-slate-400 hover:border-blue-500  hover:text-blue-300'  },
     { id: 'ro',   label: 'View',  activeCls: 'bg-amber-700 border-amber-500 text-white',  hoverCls: 'border-slate-600 text-slate-400 hover:border-amber-500 hover:text-amber-300' },
   ];
-
-  function accessBtnCls(appId, levelId) {
-    const active = getAccessLevel(appId) === levelId;
-    const lv     = ACCESS_LEVELS.find(l => l.id === levelId);
-    return `px-2 py-0.5 text-xs rounded border transition-colors ${active ? lv.activeCls : lv.hoverCls}`;
-  }
 
   async function loadUserData() {
     if (!user) return;
@@ -234,15 +222,19 @@
           {/if}
 
           {#each availableApps as app}
-            {@const level = getAccessLevel(app.id)}
+            {@const level = permissions.includes(app.id)
+              ? (readOnly[app.id] ? 'ro' : 'rw')
+              : 'none'}
             <div class="bg-slate-700/50 rounded-lg px-3 py-2.5 border border-slate-600
                         flex items-center gap-3">
               <Icon name={app.icon} size={4} className="text-purple-400 shrink-0" />
               <p class="text-sm text-slate-200 flex-1 min-w-0 truncate">{app.name}</p>
               <div class="flex gap-1 shrink-0">
                 {#each ACCESS_LEVELS as lv}
+                  {@const isActive = level === lv.id}
                   <button
-                    class={accessBtnCls(app.id, lv.id)}
+                    class="px-2 py-0.5 text-xs rounded border transition-colors
+                           {isActive ? lv.activeCls : lv.hoverCls}"
                     on:click={() => setAccessLevel(app.id, lv.id)}
                   >{lv.label}</button>
                 {/each}
