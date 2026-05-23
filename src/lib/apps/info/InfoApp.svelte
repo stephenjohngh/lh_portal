@@ -179,7 +179,7 @@
   async function handleUpload(e) {
     const { file, description } = e.detail;
     try {
-      await infoStore.uploadDocument(viewingNoteId, file, description, $auth.user.id);
+      await infoStore.uploadDocument(viewingNoteId, file, description);
       showUploadModal = false;
       uploadModalRef?.done();
     } catch (err) {
@@ -189,7 +189,7 @@
 
   async function handleDeleteDoc(doc) {
     try {
-      await infoStore.deleteDocument(doc.id, doc.storage_path, viewingNoteId);
+      await infoStore.deleteDocument(doc.id, viewingNoteId);
     } catch (err) {
       appError = err.message;
     }

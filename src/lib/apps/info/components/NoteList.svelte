@@ -135,10 +135,6 @@
                   </span>
                 {/if}
 
-                {#if (note.documents ?? []).length > 0}
-                  <span>📎 {note.documents.length}</span>
-                {/if}
-
                 {#each (note.tags ?? []).slice(0, 3) as tag}
                   <span class="bg-slate-700 rounded px-1.5 py-px">{tag}</span>
                 {/each}

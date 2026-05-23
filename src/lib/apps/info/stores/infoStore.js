@@ -1,4 +1,6 @@
 // src/lib/apps/info/stores/infoStore.js
+// Documents use the shared document_library system (entity_type='info_note').
+// All document I/O goes through /api/documents/* — never direct Supabase storage.
 
 import { writable }    from 'svelte/store';
 import { api }         from '$lib/utils/api';
@@ -9,10 +11,18 @@ import { getLogger }   from '$lib/utils/logger';
 const logger = getLogger('infoStore');
 
 const NOTE_SELECT =
-  '*, section:info_sections(id,name,colour), documents:info_documents(id)';
+  '*, section:info_sections(id,name,colour)';
 
 const NOTE_DETAIL_SELECT =
-  '*, section:info_sections(id,name,colour), documents:info_documents(*), creator:profiles!created_by(full_name,email)';
+  '*, section:info_sections(id,name,colour), creator:profiles!created_by(full_name,email)';
+
+/** @returns {Promise<Record<string,string>>} bearer-auth headers */
+async function authHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token
+    ? { Authorization: `Bearer ${session.access_token}` }
+    : {};
+}
 
 function sortNotes(notes) {
   return [...notes].sort((a, b) => {
@@ -101,12 +111,27 @@ function createInfoStore() {
     }
   }
 
+  async function loadNoteDocuments(noteId) {
+    const params = new URLSearchParams({
+      entity_type: 'info_note',
+      entity_id:   noteId,
+    });
+    const res  = await fetch(`/api/documents?${params}`, { headers: await authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? 'Failed to load documents');
+    return data; // array of document_library rows
+  }
+
   async function loadNote(noteId) {
     update(s => ({ ...s, loadingNote: true, error: null }));
     try {
-      const note = await api.getById('info_notes', noteId, NOTE_DETAIL_SELECT);
-      update(s => ({ ...s, selectedNote: note, loadingNote: false }));
-      return note;
+      const [note, documents] = await Promise.all([
+        api.getById('info_notes', noteId, NOTE_DETAIL_SELECT),
+        loadNoteDocuments(noteId),
+      ]);
+      const full = { ...note, documents };
+      update(s => ({ ...s, selectedNote: full, loadingNote: false }));
+      return full;
     } catch (err) {
       update(s => ({ ...s, error: err.message, loadingNote: false }));
       throw err;
@@ -183,37 +208,33 @@ function createInfoStore() {
     }));
   }
 
-  // ── Documents ─────────────────────────────────────────────────────────────
+  // ── Documents (via document_library / /api/documents/*) ───────────────────
+  // entity_type = 'info_note', entity_id = noteId
 
-  async function uploadDocument(noteId, file, description, userId) {
-    const ts          = Date.now();
-    const safeName    = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `${noteId}/${ts}_${safeName}`;
+  async function uploadDocument(noteId, file, description) {
+    const form = new FormData();
+    form.append('file',         file);
+    form.append('entity_type',  'info_note');
+    form.append('entity_id',    noteId);
+    form.append('display_name', file.name);
+    form.append('doc_type',     'other');
+    form.append('folder_path',  'info');
+    if (description) form.append('description', description);
 
-    const { error: uploadErr } = await supabase.storage
-      .from('info-docs')
-      .upload(storagePath, file, { contentType: file.type, upsert: false });
+    const res  = await fetch('/api/documents/upload', {
+      method:  'POST',
+      headers: await authHeaders(),
+      body:    form,
+    });
+    const doc = await res.json();
+    if (!res.ok) throw new Error(doc.error ?? 'Upload failed');
 
-    if (uploadErr) throw new Error('Upload failed: ' + uploadErr.message);
-
-    const doc = await api.create('info_documents', {
-      note_id:      noteId,
-      filename:     file.name,
-      storage_path: storagePath,
-      file_size:    file.size,
-      mime_type:    file.type || null,
-      description:  description || null,
-      uploaded_by:  userId,
-    }, true);
-
+    // Append to selectedNote.documents if we're viewing this note
     update(s => ({
       ...s,
       selectedNote: s.selectedNote?.id === noteId
-        ? { ...s.selectedNote, documents: [...(s.selectedNote.documents ?? []), doc] }
+        ? { ...s.selectedNote, documents: [doc, ...(s.selectedNote.documents ?? [])] }
         : s.selectedNote,
-      notes: s.notes.map(n => n.id === noteId
-        ? { ...n, documents: [...(n.documents ?? []), { id: doc.id }] }
-        : n),
     }));
 
     logAudit('create', 'info_document', doc.id, file.name,
@@ -222,20 +243,22 @@ function createInfoStore() {
     return doc;
   }
 
-  async function deleteDocument(docId, storagePath, noteId) {
-    await supabase.storage.from('info-docs').remove([storagePath]);
-    await api.delete('info_documents', docId);
+  async function deleteDocument(docId, noteId) {
+    const res  = await fetch(`/api/documents/${docId}`, {
+      method:  'DELETE',
+      headers: await authHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+
     update(s => ({
       ...s,
       selectedNote: s.selectedNote?.id === noteId
         ? { ...s.selectedNote,
-            documents: s.selectedNote.documents.filter(d => d.id !== docId) }
+            documents: (s.selectedNote.documents ?? []).filter(d => d.id !== docId) }
         : s.selectedNote,
-      notes: s.notes.map(n => n.id === noteId
-        ? { ...n, documents: (n.documents ?? []).filter(d => d.id !== docId) }
-        : n),
     }));
-    logAudit('delete', 'info_document', docId, storagePath,
+    logAudit('delete', 'info_document', docId, docId,
       { appId: 'info', eventCategory: 'info', severity: 'info' });
   }
 

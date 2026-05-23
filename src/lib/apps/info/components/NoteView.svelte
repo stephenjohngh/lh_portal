@@ -9,7 +9,7 @@
   import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
-  import { fmtBytes, mimeIcon, infoDocUrl } from '../utils/infoHelpers.js';
+  import { fmtBytes, mimeIcon } from '../utils/infoHelpers.js';
 
   export let note    = null;  // full note with documents + creator
   export let loading = false;
@@ -185,7 +185,7 @@
                           bg-slate-800/40 px-3 py-2 group">
                 <span class="text-lg shrink-0">{mimeIcon(doc.mime_type)}</span>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm text-slate-200 truncate">{doc.filename}</p>
+                  <p class="text-sm text-slate-200 truncate">{doc.display_name || doc.filename}</p>
                   <p class="text-xs text-slate-500">
                     {#if doc.description}<span class="text-slate-400">{doc.description} · </span>{/if}
                     {#if doc.file_size}{fmtBytes(doc.file_size)} · {/if}
@@ -194,7 +194,7 @@
                 </div>
                 <!-- Download -->
                 <a
-                  href={infoDocUrl(doc.storage_path)}
+                  href={doc.web_view_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   class="p-1.5 rounded text-slate-500 hover:text-purple-300 transition-colors shrink-0"

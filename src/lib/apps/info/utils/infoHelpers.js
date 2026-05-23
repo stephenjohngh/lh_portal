@@ -20,12 +20,6 @@ export function mimeIcon(mimeType) {
   return '📎';
 }
 
-/** Build the public storage URL for an info-docs file. */
-export function infoDocUrl(storagePath) {
-  const base = import.meta.env.VITE_SUPABASE_URL;
-  return `${base}/storage/v1/object/public/info-docs/${storagePath}`;
-}
-
 /** Parse a comma-separated tag string into a trimmed, deduplicated array. */
 export function parseTags(raw) {
   return [...new Set(
