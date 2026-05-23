@@ -13,6 +13,7 @@
   export let disabled = false;
   export let fullWidth = false;
   export let className = '';
+  export let title = '';
 
   // Protection props
   export let action = 'view'; // 'view' | 'modify'
@@ -71,6 +72,7 @@
       {disabled}
       {fullWidth}
       className={className}
+      {title}
       on:click
     >
       <slot />

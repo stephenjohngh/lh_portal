@@ -286,7 +286,9 @@
 
   // -- Unified update/delete ------------------------------------------
   async function updateActivity() {
-    if (!editingActivity?.body?.trim()) return;
+    if (!editingActivity) return;
+    const isDoc = editingActivity.activity_type === ACTIVITY_TYPE.DOCUMENT;
+    if (!isDoc && !editingActivity.body?.trim()) return;
     saving = true;
     mutationError = '';
 
@@ -320,6 +322,7 @@
   }
 
   function startEdit(activity) {
+    mutationError = '';
     editingActivity = {
       ...activity,
       fields: activity.fields ?? {},
@@ -488,6 +491,70 @@
   $: viewingTypeConfig = viewingItem
     ? (ACTIVITY_TYPE_CONFIG[viewingItem.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT])
     : null;
+
+  // -- Edit-in-modal helpers -------------------------------------------
+  $: isEditingInModal = !!(editingActivity && viewingItem && editingActivity.id === viewingItem.id);
+
+  $: editTypeConfig = editingActivity
+    ? (ACTIVITY_TYPE_CONFIG[editingActivity.activity_type] ?? ACTIVITY_TYPE_CONFIG[ACTIVITY_TYPE.COMMENT])
+    : null;
+
+  let modalSummaryGenerating = false;
+  let modalSummaryError      = '';
+
+  function openEditModal(activity) {
+    mutationError = '';
+    editingActivity = {
+      ...activity,
+      fields: activity.fields ?? {},
+      override_created_at: toDateTimeLocal(activity.created_at),
+      override_updated_at: toDateTimeLocal(activity.updated_at)
+    };
+    viewingItem = activity;
+  }
+
+  function setEditField(key, value) {
+    editingActivity = {
+      ...editingActivity,
+      fields: { ...(editingActivity.fields ?? {}), [key]: value }
+    };
+  }
+
+  function changeEditType(type) {
+    editingActivity = { ...editingActivity, activity_type: type, fields: {} };
+  }
+
+  async function generateModalSummary() {
+    if (!editingActivity?.body?.trim()) return;
+    modalSummaryGenerating = true;
+    modalSummaryError = '';
+    try {
+      const res = await fetch('/api/management/suggest-summary', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesting_user_id: $auth.user?.id,
+          body:               editingActivity.body,
+          activity_type:      editingActivity.activity_type
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        modalSummaryError = data.error || 'Could not generate summary';
+      } else {
+        setEditField('summary', data.summary || '');
+      }
+    } catch {
+      modalSummaryError = 'Could not generate summary';
+    } finally {
+      modalSummaryGenerating = false;
+    }
+  }
+
+  async function updateActivityAndClose() {
+    await updateActivity();
+    if (!editingActivity) viewingItem = null;
+  }
 </script>
 
 <div class="bg-slate-800/30 rounded-lg p-3">
@@ -688,7 +755,13 @@
           on:editCancel={() => editingActivity = null}
           on:editSave={updateActivity}
           on:deleteRequest={(e) => { pendingDeleteId = e.detail.id; showDeleteConfirm = true; }}
-          on:viewFull={(e) => { viewingItem = e.detail; }}
+          on:viewFull={(e) => {
+            if ($permissions.isAdmin || $permissions.canModify) {
+              openEditModal(e.detail);
+            } else {
+              viewingItem = e.detail;
+            }
+          }}
           on:dismiss={dismissSuggestion}
           on:addAction={openSuggestionInActionForm}
           on:suggestAI={fetchAiSuggestion}
@@ -704,94 +777,256 @@
 
 </div>
 
-<!-- ─── Full item view modal ─────────────────────────────────── -->
+<!-- ─── Full item view / edit modal ──────────────────────────── -->
 <Modal
   show={!!viewingItem}
-  title={viewingTypeConfig?.label ?? 'Activity'}
-  size="medium"
-  on:close={() => viewingItem = null}
+  title={isEditingInModal
+    ? `Edit ${editTypeConfig?.label ?? 'Activity'}`
+    : (viewingTypeConfig?.label ?? 'Activity')}
+  size="large"
+  on:close={() => {
+    if (isEditingInModal) editingActivity = null;
+    viewingItem = null;
+  }}
 >
   {#if viewingItem}
-    <!-- Structured fields (for email / call / letter) -->
-    {#if viewingTypeConfig && viewingTypeConfig.fields.length > 0}
-      {@const f = viewingItem.fields || {}}
-      <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-4 pb-3 border-b border-slate-700">
-        {#each viewingTypeConfig.fields as field}
-          <div class={field.span === 2 ? 'col-span-2' : ''}>
-            <dt class="text-slate-500 uppercase tracking-wide text-[10px]">{field.label}</dt>
-            <dd class="text-slate-200">{f[field.key] || '—'}</dd>
-          </div>
-        {/each}
-      </dl>
-    {/if}
 
-    {#if viewingItem.body}
-      {#if viewingItem.body.startsWith('<')}
-        <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html viewingItem.body}</div>
-      {:else}
-        <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{viewingItem.body}</p>
+    {#if isEditingInModal && editingActivity}
+      <!-- ── Edit form ─────────────────────────────────────── -->
+      {#if mutationError}
+        <p class="text-sm text-red-400 bg-red-900/20 border border-red-800/40 rounded px-3 py-2 mb-3">{mutationError}</p>
       {/if}
-    {/if}
 
-    <!-- Document attachment row -->
-    {#if viewingItem.activity_type === ACTIVITY_TYPE.DOCUMENT && viewingItem.fields?.doc_id}
-      <div class="flex items-center gap-3 mt-3 px-3 py-2.5 rounded-lg border border-slate-700
-                  bg-slate-800/40 {viewingItem.body ? 'mt-3' : ''}">
-        <span class="text-xl shrink-0">{mimeIcon(viewingItem.fields.mime_type)}</span>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm text-slate-200 truncate">
-            {viewingItem.fields.display_name || viewingItem.fields.filename}
-          </p>
-          {#if viewingItem.fields.file_size}
-            <p class="text-xs text-slate-500">{fmtBytes(viewingItem.fields.file_size)}</p>
+      <!-- Type picker pills -->
+      <div class="flex flex-wrap gap-1 mb-3">
+        {#each ACTIVITY_TYPES as t}
+          <button
+            type="button"
+            class="text-xs px-2.5 py-1 rounded-full border transition-colors
+                   {editingActivity.activity_type === t.value
+                     ? t.color + ' border-current bg-slate-600/80 text-white font-semibold'
+                     : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}"
+            on:click={() => changeEditType(t.value)}
+          >
+            {t.icon} {t.label}
+          </button>
+        {/each}
+      </div>
+
+      <!-- Structured fields (email / letter / etc.) -->
+      {#if editTypeConfig && editTypeConfig.fields.length > 0}
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          {#each editTypeConfig.fields as field}
+            <div class={field.span === 2 ? 'col-span-2' : ''}>
+              <label
+                for="modal-edit-{viewingItem.id}-{field.key}"
+                class="block text-[10px] text-slate-400 mb-0.5"
+              >{field.label}</label>
+              {#if field.type === 'select'}
+                <select
+                  id="modal-edit-{viewingItem.id}-{field.key}"
+                  value={editingActivity.fields?.[field.key] || ''}
+                  on:change={(e) => setEditField(field.key, e.currentTarget.value)}
+                  class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+                >
+                  {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
+                </select>
+              {:else if field.key === 'summary' && (editingActivity.activity_type === ACTIVITY_TYPE.NOTE || editingActivity.activity_type === ACTIVITY_TYPE.COMMENT)}
+                <div class="flex gap-1">
+                  <input
+                    id="modal-edit-{viewingItem.id}-{field.key}"
+                    type="text"
+                    value={editingActivity.fields?.[field.key] || ''}
+                    placeholder={field.placeholder || ''}
+                    on:input={(e) => setEditField(field.key, e.currentTarget.value)}
+                    class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+                  />
+                  <button
+                    type="button"
+                    on:click={generateModalSummary}
+                    disabled={modalSummaryGenerating || !editingActivity.body?.trim()}
+                    title="Generate one-line summary with AI"
+                    class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
+                  >{modalSummaryGenerating ? '…' : '✨'}</button>
+                </div>
+                {#if modalSummaryError}
+                  <p class="text-[10px] text-red-400 mt-0.5">{modalSummaryError}</p>
+                {/if}
+              {:else}
+                <input
+                  id="modal-edit-{viewingItem.id}-{field.key}"
+                  type={field.type}
+                  value={editingActivity.fields?.[field.key] || ''}
+                  placeholder={field.placeholder || ''}
+                  on:input={(e) => setEditField(field.key, e.currentTarget.value)}
+                  class="w-full px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+                />
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      <!-- Body (rich text editor) -->
+      <RichTextEditor
+        value={editingActivity.body}
+        placeholder={editTypeConfig.placeholder}
+        ringClass={editTypeConfig.ringClass}
+        on:change={(e) => { editingActivity = { ...editingActivity, body: e.detail }; }}
+      />
+
+      <!-- Document: read-only display in edit mode -->
+      {#if editingActivity.activity_type === ACTIVITY_TYPE.DOCUMENT && editingActivity.fields?.doc_id}
+        <div class="flex items-center gap-3 mt-2 px-3 py-2 rounded border border-slate-700 bg-slate-800/40 text-xs">
+          <span class="text-base shrink-0">{mimeIcon(editingActivity.fields.mime_type)}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-slate-300 truncate">{editingActivity.fields.display_name || editingActivity.fields.filename}</p>
+            <p class="text-slate-600 text-[10px]">To replace the file, delete this activity and re-add it.</p>
+          </div>
+          {#if editingActivity.fields.web_view_url}
+            <a
+              href={editingActivity.fields.web_view_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-purple-400 hover:text-purple-300 transition-colors shrink-0 p-1"
+              title="Open file"
+            >↗</a>
           {/if}
         </div>
-        <a
-          href={viewingItem.fields.web_view_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200
-                 border border-purple-500/30 hover:border-purple-400 px-2.5 py-1 rounded
-                 transition-colors shrink-0"
-        >
-          <Icon name="download" size={3} />
-          Open
-        </a>
+      {/if}
+
+      <!-- Historic -->
+      <label class="flex items-center gap-2 mt-3 text-sm cursor-pointer">
+        <input type="checkbox" bind:checked={editingActivity.historic} class="rounded" />
+        <span class="text-gray-400">Mark as historic</span>
+      </label>
+
+      <!-- Admin date overrides -->
+      {#if $permissions.isAdmin}
+        <div class="border-t border-slate-600 pt-2 mt-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label for="modal-edit-admin-created-{viewingItem.id}" class="block text-xs text-slate-400 mb-0.5">Created</label>
+              <input
+                id="modal-edit-admin-created-{viewingItem.id}"
+                type="datetime-local"
+                bind:value={editingActivity.override_created_at}
+                class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+            <div>
+              <label for="modal-edit-admin-updated-{viewingItem.id}" class="block text-xs text-slate-400 mb-0.5">Modified</label>
+              <input
+                id="modal-edit-admin-updated-{viewingItem.id}"
+                type="datetime-local"
+                bind:value={editingActivity.override_updated_at}
+                class="w-full px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+          </div>
+        </div>
+      {/if}
+
+    {:else}
+      <!-- ── View mode ──────────────────────────────────────── -->
+      {#if viewingTypeConfig && viewingTypeConfig.fields.length > 0}
+        {@const f = viewingItem.fields || {}}
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-4 pb-3 border-b border-slate-700">
+          {#each viewingTypeConfig.fields as field}
+            <div class={field.span === 2 ? 'col-span-2' : ''}>
+              <dt class="text-slate-500 uppercase tracking-wide text-[10px]">{field.label}</dt>
+              <dd class="text-slate-200">{f[field.key] || '—'}</dd>
+            </div>
+          {/each}
+        </dl>
+      {/if}
+
+      {#if viewingItem.body}
+        {#if viewingItem.body.startsWith('<')}
+          <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html viewingItem.body}</div>
+        {:else}
+          <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{viewingItem.body}</p>
+        {/if}
+      {/if}
+
+      <!-- Document attachment row -->
+      {#if viewingItem.activity_type === ACTIVITY_TYPE.DOCUMENT && viewingItem.fields?.doc_id}
+        <div class="flex items-center gap-3 mt-3 px-3 py-2.5 rounded-lg border border-slate-700
+                    bg-slate-800/40 {viewingItem.body ? 'mt-3' : ''}">
+          <span class="text-xl shrink-0">{mimeIcon(viewingItem.fields.mime_type)}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-slate-200 truncate">
+              {viewingItem.fields.display_name || viewingItem.fields.filename}
+            </p>
+            {#if viewingItem.fields.file_size}
+              <p class="text-xs text-slate-500">{fmtBytes(viewingItem.fields.file_size)}</p>
+            {/if}
+          </div>
+          <a
+            href={viewingItem.fields.web_view_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200
+                   border border-purple-500/30 hover:border-purple-400 px-2.5 py-1 rounded
+                   transition-colors shrink-0"
+          >
+            <Icon name="download" size={3} />
+            Open
+          </a>
+        </div>
+      {:else if viewingItem.activity_type === ACTIVITY_TYPE.DOCUMENT}
+        <p class="text-sm text-slate-500 italic mt-2">No file attached.</p>
+      {/if}
+
+      <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700 text-xs text-gray-500 flex-wrap">
+        <span>Added: {fmtDateTime(viewingItem.created_at, viewingItem.created_by_profile?.full_name)}</span>
+        {#if wasModified(viewingItem.created_at, viewingItem.updated_at)}
+          <span>•</span>
+          <span>Modified: {fmtDateTime(viewingItem.updated_at, viewingItem.updated_by_profile?.full_name)}</span>
+        {/if}
+        {#if viewingItem.historic}
+          <span>•</span>
+          <span class="text-amber-400">Historic</span>
+        {/if}
+        {#if viewingItem.meeting_id}
+          <span>•</span>
+          <MeetingBadge meetingId={viewingItem.meeting_id} />
+        {/if}
       </div>
-    {:else if viewingItem.activity_type === ACTIVITY_TYPE.DOCUMENT}
-      <p class="text-sm text-slate-500 italic mt-2">No file attached.</p>
     {/if}
 
-    <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700 text-xs text-gray-500 flex-wrap">
-      <span>Added: {fmtDateTime(viewingItem.created_at, viewingItem.created_by_profile?.full_name)}</span>
-      {#if wasModified(viewingItem.created_at, viewingItem.updated_at)}
-        <span>•</span>
-        <span>Modified: {fmtDateTime(viewingItem.updated_at, viewingItem.updated_by_profile?.full_name)}</span>
-      {/if}
-      {#if viewingItem.historic}
-        <span>•</span>
-        <span class="text-amber-400">Historic</span>
-      {/if}
-      {#if viewingItem.meeting_id}
-        <span>•</span>
-        <MeetingBadge meetingId={viewingItem.meeting_id} />
-      {/if}
-    </div>
   {/if}
 
   <svelte:fragment slot="footer">
-    <div class="flex justify-end gap-2">
-      <ProtectedButton
-        action="modify"
-        variant="secondary"
-        size="small"
-        icon="edit"
-        on:click={() => startEdit(viewingItem)}
-      >
-        Edit
-      </ProtectedButton>
-      <Button variant="secondary" on:click={() => viewingItem = null}>Close</Button>
-    </div>
+    {#if isEditingInModal}
+      <div class="flex justify-end gap-2">
+        <Button variant="secondary" size="small" on:click={() => editingActivity = null}>Cancel</Button>
+        <ProtectedButton
+          action="modify"
+          variant="blue"
+          size="small"
+          icon="edit"
+          loading={saving}
+          disabled={saving || (editingActivity?.activity_type !== ACTIVITY_TYPE.DOCUMENT && !editingActivity?.body?.trim())}
+          on:click={updateActivityAndClose}
+        >
+          {saving ? 'Saving…' : 'Update'}
+        </ProtectedButton>
+      </div>
+    {:else}
+      <div class="flex justify-end gap-2">
+        <ProtectedButton
+          action="modify"
+          variant="secondary"
+          size="small"
+          icon="edit"
+          on:click={() => openEditModal(viewingItem)}
+        >
+          Edit
+        </ProtectedButton>
+        <Button variant="secondary" on:click={() => viewingItem = null}>Close</Button>
+      </div>
+    {/if}
   </svelte:fragment>
 </Modal>
 
