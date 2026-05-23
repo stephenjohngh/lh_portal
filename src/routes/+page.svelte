@@ -83,7 +83,7 @@
       }
 
       const permittedAppIds = (permissions || []).map(p => p.app_id);
-      userApps = getAppsForUser(permittedAppIds);
+      userApps = getAppsForUser(permittedAppIds, isAdmin);
 
       // Load top-bar config (non-blocking — store defaults to "show all" on error)
       portalSettings.load();
@@ -95,7 +95,7 @@
 
     } catch (err) {
       logger('Error loading user permissions:', err);
-      userApps = getAppsForUser([]);
+      userApps = getAppsForUser([], isAdmin);
     } finally {
       loading = false;
     }

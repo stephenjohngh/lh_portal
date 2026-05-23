@@ -147,20 +147,25 @@ export function getAppById(appId) {
 }
 
 /**
- * Get apps filtered by user permissions
+ * Get apps filtered by user permissions.
+ * Admins see every app without needing explicit app_permissions rows.
  * @param {string[]} permittedAppIds - Array of app IDs user has permission for
+ * @param {boolean}  isAdmin         - When true, all apps are returned (admin bypass)
  * @returns {AppDefinition[]} Apps user can access
  */
-export function getAppsForUser(permittedAppIds = []) {
+export function getAppsForUser(permittedAppIds = [], isAdmin = false) {
   return AVAILABLE_APPS.filter(app => {
     // Always show apps marked as alwaysVisible
     if (app.alwaysVisible) return true;
-    
-    // Show apps user has permission for
+
+    // Admins see all apps without explicit permission grants
+    if (isAdmin) return true;
+
+    // Show apps the user has been explicitly granted
     if (app.requiresPermission && permittedAppIds.includes(app.id)) {
       return true;
     }
-    
+
     return false;
   });
 }

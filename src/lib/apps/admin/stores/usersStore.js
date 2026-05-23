@@ -306,24 +306,17 @@ function createUsersStore() {
       } else {
         const isRO = level === 'ro';
 
-        // Check if row already exists, then update or insert
-        const { data: existing } = await supabase
-          .from('app_permissions').select('id')
-          .eq('user_id', userId).eq('app_id', appId).maybeSingle();
-
-        if (existing) {
-          const { error } = await supabase
-            .from('app_permissions')
-            .update({ is_read_only: isRO, updated_by: user?.id })
-            .eq('user_id', userId).eq('app_id', appId);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('app_permissions')
-            .insert({ user_id: userId, app_id: appId, is_read_only: isRO,
-                      created_by: user?.id, updated_by: user?.id });
-          if (error) throw error;
-        }
+        // Upsert: creates the row if absent, updates is_read_only if present.
+        // Avoids a SELECT round-trip and side-steps any RLS SELECT restrictions
+        // that would cause a false INSERT → unique-constraint failure.
+        const { error } = await supabase
+          .from('app_permissions')
+          .upsert(
+            { user_id: userId, app_id: appId, is_read_only: isRO,
+              created_by: user?.id, updated_by: user?.id },
+            { onConflict: 'user_id,app_id' }
+          );
+        if (error) throw error;
 
         appPermissions.update(s => {
           const list = s[userId] || [];
