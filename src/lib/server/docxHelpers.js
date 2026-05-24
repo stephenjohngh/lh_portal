@@ -181,8 +181,3 @@ export function pageProps(opts = {}) {
   };
 }
 
-// -- Date formatting (en-GB, server-side) -------------------------------------
-// fmtShortDate lives in $lib/utils/dates.js; re-exported here so server route
-// callers can keep their existing import path.
-export { fmtShortDate } from '$lib/utils/dates';
-

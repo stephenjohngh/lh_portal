@@ -8,7 +8,7 @@
     ragConfig, resultConfig, scopeTypeLabel, docTypeLabel,
     docTypeIcon, fmtBytes, frequencyLabel, daysRelative, expiryRag,
   } from '../utils/maintenanceHelpers.js';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
+  import { fmtDate, fmtDateTime, fmtToday } from '$lib/utils/dates.js';
   import { downloadResponse }  from '$lib/utils/download.js';
   import DocumentUpload    from './DocumentUpload.svelte';
   import JobForm           from './JobForm.svelte';
@@ -108,7 +108,7 @@
         docs,
         regime: regime ?? null,
         building: 'Lonsdale House',
-        generatedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        generatedAt: fmtToday(),
       };
       const res = await fetch('/api/maintenance/generate-certificate', {
         method: 'POST',

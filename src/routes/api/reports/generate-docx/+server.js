@@ -8,7 +8,7 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
 import { getLogger }       from '$lib/utils/logger';
 import { getPriorityLabel } from '$lib/utils/constants';
 import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils';
-import { fmtShortDate }     from '$lib/server/docxHelpers';
+import { fmtShortDate, fmtDateLong } from '$lib/utils/dates';
 
 const logger = getLogger('GenerateDocx');
 
@@ -185,11 +185,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
     includeCompleted && 'Completed'
   ].filter(Boolean).join(', ');
   
-  const generatedDate = new Date().toLocaleDateString('en-GB', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const generatedDate = fmtDateLong(new Date().toISOString());
 
   let headerText = `Generated: ${generatedDate} • Showing: ${statuses}`;
   if (filterDate) {
@@ -690,7 +686,7 @@ function parseInlineHtml(html, { size = 22, color, italics = false } = {}) {
 }
 
 // getPriorityLabel is imported from $lib/utils/constants — no local copy needed.
-// fmtShortDate is imported from $lib/server/docxHelpers.
+// fmtShortDate / fmtDateLong are imported from $lib/utils/dates.
 
 function getPriorityColorHex(priority) {
   // All priorities share the same slate colour in the Word doc header cell.

@@ -9,6 +9,7 @@ import {
   VerticalAlign
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
+import { fmtDateLong, fmtShortDate } from '$lib/utils/dates';
 
 const logger = getLogger('GenerateMinutesDocx');
 
@@ -63,19 +64,10 @@ export async function POST({ request }) {
 const BORDER = { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' };
 const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 
-function fmt(isoDate) {
-  if (!isoDate) return '';
-  return new Date(isoDate).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric'
-  });
-}
-
-function fmtShort(isoDate) {
-  if (!isoDate) return '';
-  return new Date(isoDate).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric'
-  });
-}
+// Local aliases pointing at the canonical helpers in $lib/utils/dates.
+// fmt → fmtDateLong ("23 February 2026"), fmtShort → fmtShortDate ("23 Feb 2026").
+const fmt      = iso => iso ? fmtDateLong(iso)  : '';
+const fmtShort = iso => iso ? fmtShortDate(iso) : '';
 
 function p(text, opts = {}) {
   return new Paragraph({

@@ -3,7 +3,7 @@
 <script>
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { frequencyLabel, scopeTypeLabel, toDateString, addDays, today } from '../utils/maintenanceHelpers.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate, fmtToday } from '$lib/utils/dates.js';
   import { downloadResponse } from '$lib/utils/download.js';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
@@ -122,7 +122,7 @@
       const payload = {
         jobs,
         building:    'Lonsdale House',
-        generatedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        generatedAt: fmtToday(),
       };
       const res = await fetch('/api/maintenance/generate-schedule', {
         method:  'POST',

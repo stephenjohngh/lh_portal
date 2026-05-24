@@ -5,7 +5,7 @@
   import Icon from '$lib/components/icons/Icon.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import { fmtDateTime } from '$lib/utils/dates';
+  import { fmtDateTime, fmtDateTimeSec } from '$lib/utils/dates';
 
   export let log;
   export let selected = false;
@@ -80,15 +80,8 @@
 
   function handleUnflag() { dispatch('unflag'); }
 
-  // fmtDateTime from dates.js gives "23 Feb 2026 14:35" (en-GB, no seconds).
-  // For the audit log we want seconds, so we build that here using the same locale.
-  function formatTimestamp(timestamp) {
-    if (!timestamp) return '—';
-    return new Date(timestamp).toLocaleString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
-  }
+  // Audit log needs second-level precision — fmtDateTime drops seconds.
+  const formatTimestamp = fmtDateTimeSec;
 </script>
 
 <div class="card {selected ? 'ring-2 ring-purple-500' : ''}">

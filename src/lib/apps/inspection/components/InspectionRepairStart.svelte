@@ -5,6 +5,7 @@
   import { getLogger }   from '$lib/utils/logger';
   import { inspectionStore } from '../stores/inspectionStore.js';
   import { buildingInitials } from '../utils/sessionNaming.js';
+  import { fmtMonthYearCompact } from '$lib/utils/dates';
   import WalkError  from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkSpinner from '$lib/apps/inspection/components/common/WalkSpinner.svelte';
@@ -52,7 +53,7 @@
     saving = true; error = null;
     try {
       const { component, floor, type } = item;
-      const name = `Repair_${buildingInitials(selectedBuilding)}_${floor?.short_name ?? '?'}_${new Date().toLocaleDateString('en-GB', { month:'short', year:'2-digit' }).replace(/\s+/g,'_')}`;
+      const name = `Repair_${buildingInitials(selectedBuilding)}_${floor?.short_name ?? '?'}_${fmtMonthYearCompact()}`;
       await inspectionStore.startSession({
         building:          selectedBuilding,
         floor,

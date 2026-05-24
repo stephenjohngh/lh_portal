@@ -1,6 +1,7 @@
 // src/lib/apps/inspection/utils/sessionNaming.js
 
 import { presetLabel } from './inspectionHelpers.js';
+import { fmtMonthYearCompact } from '$lib/utils/dates';
 
 /**
  * Builds an initials string from a building/facility name.
@@ -17,10 +18,7 @@ export function buildingInitials(name) {
  * e.g. "EL_LH_Bldg_Apr26", "FD_LH_FG_Apr26", "Custom_LH_F1_Apr26"
  */
 export function generateSessionName({ preset, building, floor, scope }) {
-  const date  = new Date();
-  const month = date.toLocaleDateString('en-GB', { month: 'short' });
-  const year  = date.toLocaleDateString('en-GB', { year: '2-digit' });
-  const dateStr    = `${month}${year}`;
+  const dateStr     = fmtMonthYearCompact();
   const buildingStr = buildingInitials(building);
   const scopeStr    = scope === 'building' ? 'Bldg' : `F${floor?.short_name ?? '?'}`;
 

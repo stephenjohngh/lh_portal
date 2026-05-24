@@ -55,6 +55,19 @@ export function fmtDateTime(iso, userName = null) {
 }
 
 /**
+ * "23 Feb 2026 14:35:42" — like fmtDateTime but includes seconds.
+ * Used by the audit log where second-level precision matters.
+ * @param {string|null} iso
+ */
+export function fmtDateTimeSec(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString(GB, {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+/**
  * Current datetime formatted for document headers / cover pages.
  * "23 Feb 2026, 14:35"
  */
@@ -114,6 +127,42 @@ export function fmtShortDate(iso) {
   return new Date(iso).toLocaleDateString(GB, {
     day: 'numeric', month: 'short', year: 'numeric',
   });
+}
+
+/**
+ * "23 Feb 2026" for a DB `date` column value like "2026-02-23".
+ *
+ * `new Date('2026-02-23')` is parsed as UTC midnight and may render as the
+ * previous day in negative-offset timezones. We append `T00:00:00` so it's
+ * parsed as local midnight — the value the user actually picked.
+ * Use this for any field whose DB type is `date` (not `timestamptz`).
+ * @param {string|null} dateStr  "YYYY-MM-DD"
+ */
+export function fmtDateOnly(dateStr) {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString(GB, {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+/** Current date as "23 Feb 2026" — convenience wrapper for fmtDate(today). */
+export function fmtToday() {
+  return fmtDate(new Date().toISOString());
+}
+
+/**
+ * Compact month-year string used in auto-generated session names.
+ * "Apr26" — short month + 2-digit year, no separator.
+ * @param {Date} [date]  defaults to now
+ */
+export function fmtMonthYearCompact(date = new Date()) {
+  const month = date.toLocaleDateString(GB, { month: 'short' });
+  const year  = date.toLocaleDateString(GB, { year:  '2-digit' });
+  return `${month}${year}`;
 }
 
 /**

@@ -15,6 +15,7 @@ import {
   WidthType, TableLayoutType
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
+import { fmtToday } from '$lib/utils/dates';
 import {
   CONTENT_W, COLOURS, BORDERS,
   hCell, dCell, run, para,
@@ -164,7 +165,7 @@ export async function POST({ request }) {
     const body = await request.json();
     const { jobs = [], building = 'Lonsdale House', generatedAt = '' } = body;
 
-    const genAt    = generatedAt || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const genAt    = generatedAt || fmtToday();
     const docTitle = `${building} — Maintenance Schedule`;
 
     const ragOrder = { overdue: 0, due_soon: 1, in_progress: 2, scheduled: 3, completed: 4, cancelled: 5 };

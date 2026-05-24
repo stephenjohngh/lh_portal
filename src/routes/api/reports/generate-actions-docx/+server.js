@@ -8,7 +8,7 @@ import {
   AlignmentType, BorderStyle, WidthType, ShadingType
 } from 'docx';
 import { getLogger }    from '$lib/utils/logger';
-import { fmtShortDate } from '$lib/server/docxHelpers';
+import { fmtShortDate } from '$lib/utils/dates';
 
 const logger = getLogger('GenerateActionsDocx');
 

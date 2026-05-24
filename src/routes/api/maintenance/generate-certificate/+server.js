@@ -19,6 +19,7 @@ import {
   BorderStyle
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
+import { fmtDateOnly, fmtToday } from '$lib/utils/dates';
 import {
   CONTENT_W, COLOURS, BORDERS, CELL_PAD,
   hCell, dCell, run, para,
@@ -33,12 +34,8 @@ const RESULT_COLOUR = { pass: COLOURS.passGreen, fail: COLOURS.failRed, partial:
 const SCOPE_LABEL   = { building: 'Building-wide', system: 'System', type: 'Type', component: 'Component' };
 const DOC_TYPE_LABEL = { certificate: 'Certificate', report: 'Report', photo: 'Photo', invoice: 'Invoice', other: 'Other' };
 
-function fmtDateStr(d) {
-  if (!d) return '—';
-  try {
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch { return d; }
-}
+// Local alias for date-column values like job.scheduled_date ("YYYY-MM-DD").
+const fmtDateStr = fmtDateOnly;
 
 // -- Detail block: two-column label/value rows ---------------------------------
 // Half CONTENT_W each
@@ -156,7 +153,7 @@ export async function POST({ request }) {
 
     if (!job) return json({ error: 'No job data supplied.' }, { status: 400 });
 
-    const genAt    = generatedAt || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const genAt    = generatedAt || fmtToday();
     const docTitle = `${building} — Maintenance Completion Certificate`;
     const resultLbl = job.result ? (RESULT_LABEL[job.result] ?? job.result) : 'Not recorded';
     const resultCol = job.result ? (RESULT_COLOUR[job.result] ?? COLOURS.textDark) : COLOURS.textMuted;
