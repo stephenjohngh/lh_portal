@@ -1,6 +1,5 @@
 // src/lib/server/auditLogger.js
 // Server-side audit logging utility
-// CLEANED: All console.log replaced with logger
 
 import { createClient } from '@supabase/supabase-js';
 import { getLogger } from '$lib/utils/logger';

@@ -2,10 +2,13 @@
 <script>
   import { auth } from '$lib/stores/auth';
   import { supabase } from '$lib/supabaseClient';
+  import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import Modal from '$lib/components/common/Modal.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
+
+  const logger = getLogger('SettingsApp');
 
   let showPasswordModal = false;
   let passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
@@ -39,7 +42,7 @@
       passwordSuccess = 'Password updated successfully!';
       setTimeout(() => { resetPasswordForm(); showPasswordModal = false; }, 2000);
     } catch (err) {
-      console.error('Password change error:', err);
+      logger('❌ Password change error:', err);
       passwordErrors.newPassword = err.message || 'Failed to update password';
     } finally {
       passwordLoading = false;

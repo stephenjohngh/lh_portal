@@ -9,7 +9,7 @@
 //   - `meetingsStore`        — readable store: { list, current, loaded, error }
 //   - `meetingsStore.load()`         — fetch all meetings (with item counts)
 //   - `meetingsStore.create(data)`   — create a meeting; returns { success, meeting?, error? }
-//   - `meetingsStore.update(id, patch)`
+//   - `meetingsStore.updateMeeting(id, patch)`
 //   - `meetingsStore.open(id)`       — flip status='open' (DB enforces single-open)
 //   - `meetingsStore.close(id)`      — flip status='closed', stamp closed_at
 //   - `meetingsStore.reopen(id)`     — UI restricts to "latest closed only"; this just re-opens
@@ -264,7 +264,7 @@ function createMeetingsStore() {
     initializeRealtime,
     cleanup,
     create,
-    update,
+    updateMeeting: update,
     open,
     close,
     reopen,

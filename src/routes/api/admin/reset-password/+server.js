@@ -1,5 +1,4 @@
 // src/routes/api/admin/reset-password/+server.js
-// CLEANED: All console.log replaced with logger
 
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';

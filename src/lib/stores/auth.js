@@ -1,5 +1,4 @@
 // src/lib/stores/auth.js
-// CLEANED: All console.log/console.error replaced with getLogger
 
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';

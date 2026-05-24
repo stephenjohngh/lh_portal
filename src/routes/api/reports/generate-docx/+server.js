@@ -1,6 +1,4 @@
 // src/routes/api/reports/generate-docx/+server.js
-// CLEANED: All console.log replaced with logger
-
 import { json } from '@sveltejs/kit';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,

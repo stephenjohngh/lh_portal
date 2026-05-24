@@ -198,11 +198,9 @@ export async function POST({ request }) {
   try {
     const reqBody = await request.json();
     const requesting_user_id = reqBody.requesting_user_id;
-    issue_id     = reqBody.issue_id     ?? null;
-    // Accept both old comment_id and new activity_id for transition period
-    activity_id  = reqBody.activity_id  ?? reqBody.comment_id ?? null;
-    // Accept both old comment_text and new body for transition period
-    const activity_text = reqBody.body ?? reqBody.comment_text;
+    issue_id     = reqBody.issue_id    ?? null;
+    activity_id  = reqBody.activity_id ?? null;
+    const activity_text = reqBody.body;
 
     // ── Validate input ────────────────────────────────────────────────
     if (!requesting_user_id) {

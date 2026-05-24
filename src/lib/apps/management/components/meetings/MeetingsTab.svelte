@@ -129,7 +129,7 @@
     saving    = true;
     pageError = '';
     const result = editingMeeting
-      ? await meetingsStore.update(editingMeeting.id, detail)
+      ? await meetingsStore.updateMeeting(editingMeeting.id, detail)
       : await meetingsStore.create(detail);
     saving = false;
     if (!result.success) { pageError = result.error ?? 'Failed to save meeting'; return; }

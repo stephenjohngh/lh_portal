@@ -6,6 +6,9 @@
 <script>
   import { onMount } from 'svelte';
   import { auditLogsStore } from '../stores/auditLogsStore';
+  import { getLogger } from '$lib/utils/logger';
+
+  const logger = getLogger('AuditDashboard');
 
   export const logs = [];  // passed in for external reference only — stats load from the store
 
@@ -32,7 +35,7 @@
     try {
       stats = await auditLogsStore.getStats(timeRange);
     } catch (err) {
-      console.error('Failed to load stats:', err);
+      logger('❌ Failed to load stats:', err);
     } finally {
       loading = false;
     }

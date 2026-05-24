@@ -25,7 +25,7 @@
   const ALL_APPS = AVAILABLE_APPS;
 
   // ── AI assistant section ─────────────────────────────────────────────
-  // Admins choose which Claude model the /api/issues/suggest-action
+  // Admins choose which Claude model the /api/management/suggest-action
   // route uses. The route reads portal_settings.ai_model on every call,
   // so changes take effect immediately — no redeploy required. Keep this
   // list ordered cheapest → most expensive; the API route mirrors the
