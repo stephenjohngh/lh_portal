@@ -722,20 +722,6 @@
   </div>
 
 {:else}
-  <!-- New Component button -->
-  {#if !readOnly}
-  <div class="flex justify-end mb-3">
-    <button
-      on:click={() => { showForm = true; errorMsg = ''; }}
-      disabled={floors.length === 0 || types.length === 0}
-      class="px-4 py-1.5 text-sm rounded-lg bg-purple-600 hover:bg-purple-500
-             disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors
-             flex items-center gap-2"
-    >
-      <span>+</span> New Component
-    </button>
-  </div>
-  {/if}
 
   {#if store.loadingComponents}
     <p class="text-slate-500 text-sm">Loading components…</p>
