@@ -327,7 +327,7 @@
       ...activity,
       fields: activity.fields ?? {},
       override_created_at: toDateTimeLocal(activity.created_at),
-      override_updated_at: toDateTimeLocal(activity.updated_at)
+      override_updated_at: ''   // blank = server sets updated_at to now on save
     };
     viewingItem = null;
   }
@@ -508,7 +508,7 @@
       ...activity,
       fields: activity.fields ?? {},
       override_created_at: toDateTimeLocal(activity.created_at),
-      override_updated_at: toDateTimeLocal(activity.updated_at)
+      override_updated_at: ''   // blank = server sets updated_at to now on save
     };
     viewingItem = activity;
   }
@@ -1000,7 +1000,7 @@
   <svelte:fragment slot="footer">
     {#if isEditingInModal}
       <div class="flex justify-end gap-2">
-        <Button variant="secondary" size="small" on:click={() => editingActivity = null}>Cancel</Button>
+        <Button variant="secondary" size="small" on:click={() => { editingActivity = null; viewingItem = null; }}>Cancel</Button>
         <ProtectedButton
           action="modify"
           variant="blue"
