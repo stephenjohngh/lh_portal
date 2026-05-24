@@ -2,7 +2,6 @@
 // Helpers for the component_inspections schema:
 // flatten/group inspection rows, session stats, display helpers, preset labels.
 
-import { getFloorOrder } from '$lib/utils/floorSorting';
 import { resultRank as _resultRank, resultLabel as _resultLabel } from '$lib/utils/resultConstants.js';
 import { sortByFloorAsset } from '$lib/utils/componentSorting.js';
 

@@ -7,7 +7,6 @@ import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';   // auth only
-import { sortByFloor }   from '$lib/utils/floorSorting';
 import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
 import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
 

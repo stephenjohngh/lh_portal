@@ -186,25 +186,3 @@ export function pageProps(opts = {}) {
 // callers can keep their existing import path.
 export { fmtShortDate } from '$lib/utils/dates';
 
-// -- Floor label helpers (server-side mirror of planConstants.js) -------------
-const FLOOR_NAMES = {
-  L: 'Lower', U: 'Upper', G: 'Ground',
-  '1': 'First', '2': 'Second', '3': 'Third', '4': 'Fourth',
-  '5': 'Fifth', '6': 'Sixth',  '7': 'Seventh',
-};
-
-const FLOOR_ORDER = {
-  L: 0, U: 1, G: 2,
-  '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9,
-};
-
-/** "G" → "Floor G — Ground",  "1" → "Floor 1 — First" */
-export function floorLabel(fl) {
-  const v = String(fl ?? '');
-  return FLOOR_NAMES[v] ? `Floor ${v} — ${FLOOR_NAMES[v]}` : `Floor ${v}`;
-}
-
-/** Numeric sort key for floor level strings. Unknown levels sort last. */
-export function floorSortKey(fl) {
-  return FLOOR_ORDER[String(fl)] ?? 99;
-}

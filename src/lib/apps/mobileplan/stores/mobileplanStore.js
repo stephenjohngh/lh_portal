@@ -112,10 +112,19 @@ async function fetchHierarchy() {
       withTimeout(api.get('building_systems', { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
       withTimeout(api.get('component_types',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
       withTimeout(api.get('type_attributes',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
-      withTimeout(api.get('plans',            { select: 'id,floor_id,image_url,image_aspect_ratio,floor_level,scale_ref', orderBy: 'floor_level' }), FETCH_TIMEOUT_MS),
+      withTimeout(api.get('plans',            { select: 'id,floor_id,image_url,image_aspect_ratio,floor_level,scale_ref' }), FETCH_TIMEOUT_MS),
     ]);
 
   const { attrDefs } = resolveHierarchy(systemsRes, typesRes, defsRes);
+
+  // Sort plans by their floor's level_order. The floors table (already
+  // ordered by level_order above) is the single source of truth for floor
+  // ordering — plans.floor_level is a stale text column and PostgREST text
+  // sort would order '1','10','2' lexicographically anyway.
+  const floorRank = new Map(floorsRes.map((f, i) => [f.id, i]));
+  const sortedPlans = [...plansRes].sort(
+    (a, b) => (floorRank.get(a.floor_id) ?? Infinity) - (floorRank.get(b.floor_id) ?? Infinity)
+  );
 
   return {
     building: facilitiesRes[0] ?? null,
@@ -123,7 +132,7 @@ async function fetchHierarchy() {
     systems:  systemsRes,
     types:    typesRes,
     attrDefs,
-    plans:    plansRes,
+    plans:    sortedPlans,
   };
 }
 
