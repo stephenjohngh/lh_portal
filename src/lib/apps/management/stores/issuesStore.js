@@ -6,6 +6,7 @@ import { api }              from '$lib/utils/api';
 import { ISSUE_STATUS }     from '$lib/utils/constants';
 import { getLogger }        from '$lib/utils/logger';
 import { logAudit }         from '$lib/utils/auditLogger';
+import { sanitizeHtml }     from '$lib/utils/sanitizeHtml';
 import { currentMeeting }   from './meetingsStore';
 
 const logger = getLogger('issuesStore');
@@ -325,6 +326,10 @@ function createIssuesStore() {
         const { data: { user } } = await supabase.auth.getUser();
         logger('User:', user?.id, user?.email);
 
+        // Sanitise the body once, at the write boundary, so every read path
+        // can render the stored string directly without further checks.
+        body = sanitizeHtml(body);
+
         // Get issue for audit context
         const { data: issue } = await supabase
           .from('issues')
@@ -381,7 +386,8 @@ function createIssuesStore() {
 
     async updateActivity(activityId, activityData) {
       try {
-        const body                 = activityData.body;
+        // Sanitise the body once, at the write boundary — see addActivity().
+        const body                 = sanitizeHtml(activityData.body);
         const activity_type        = activityData.activity_type ?? null;
         const historic             = activityData.historic ?? false;
         const fields               = activityData.fields !== undefined ? activityData.fields : null;

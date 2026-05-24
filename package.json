@@ -37,6 +37,7 @@
 		"browser-image-compression": "^2.0.2",
 		"debug": "^4.4.3",
 		"docx": "^9.5.1",
+		"dompurify": "^3.4.5",
 		"googleapis": "^171.4.0"
 	}
 }
