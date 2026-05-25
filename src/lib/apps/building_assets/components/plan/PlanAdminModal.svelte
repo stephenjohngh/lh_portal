@@ -34,6 +34,11 @@
   let errorMsg   = '';
   let confirming = false;  // delete confirm
 
+  // Count of components that will be removed alongside the plan
+  $: planComponentCount = plan
+    ? $buildingAssetsStore.components.filter(c => c.plan_id === plan.id).length
+    : 0;
+
   // Reset form state on every false → true transition of `show`, plus when
   // mode or selected plan changes while the modal is already open. This
   // ensures a fresh slate every time the user opens the modal — even if it's
@@ -385,6 +390,11 @@
       <!-- Delete button (edit mode only) -->
       {#if mode === 'edit' && plan}
         {#if confirming}
+          {#if planComponentCount > 0}
+            <p class="text-xs text-red-400 self-center">
+              ⚠ Also deletes {planComponentCount} component{planComponentCount !== 1 ? 's' : ''}
+            </p>
+          {/if}
           <button
             on:click={() => confirming = false}
             disabled={saving}

@@ -279,22 +279,44 @@ export function createPlanActions(update, supabase) {
   }
 
   // -- Delete a plan -----------------------------------------------------
-  // DB should cascade-delete spaces and annotations; local state is cleaned up too.
+  // Removes all components placed on the plan first (resolves FK constraint),
+  // then deletes spaces, annotations, and the plan row.
+  // component_attributes cascade at the DB level so only the component rows
+  // need to be deleted explicitly.
   async function deletePlan(planId) {
     requireUserId();
-    let beforePlan = null;
-    update(s => { beforePlan = s.plans.find(p => p.id === planId) ?? null; return s; });
+    let beforePlan   = null;
+    let componentIds = [];
+    update(s => {
+      beforePlan   = s.plans.find(p => p.id === planId) ?? null;
+      componentIds = s.components.filter(c => c.plan_id === planId).map(c => c.id);
+      return s;
+    });
+
+    // Delete components on this plan before the plan itself.
+    if (componentIds.length > 0) {
+      await api.deleteMany('components', { plan_id: planId });
+    }
+
     await api.delete('plans', planId);
+
     update(s => ({
       ...s,
       plans:       s.plans.filter(p => p.id !== planId),
       spaces:      s.spaces.filter(sp => sp.plan_id !== planId),
       annotations: s.annotations.filter(a => a.plan_id !== planId),
+      components:  s.components.filter(c => c.plan_id !== planId),
+      componentAttrs: Object.fromEntries(
+        Object.entries(s.componentAttrs).filter(([k]) => !componentIds.includes(k))
+      ),
     }));
-    logger('Deleted plan:', planId);
+
+    logger('Deleted plan:', planId,
+      componentIds.length > 0 ? `(${componentIds.length} components removed)` : '');
     logAudit('delete', 'plan', planId,
       beforePlan?.name || beforePlan?.building || planId,
-      { ...AUDIT_OPTS, beforeData: beforePlan });
+      { ...AUDIT_OPTS, beforeData: beforePlan,
+        afterData: { components_deleted: componentIds.length } });
   }
 
   return {
