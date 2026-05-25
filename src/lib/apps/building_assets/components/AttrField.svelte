@@ -15,6 +15,14 @@
 
   // For checkbox: value is stored as 'true' / 'false' string
   $: checked = value === 'true';
+
+  // Svelte's checked={expr} compiles to setAttribute('checked', ...) which only updates
+  // defaultChecked — not the current live checked state.  This action sets element.checked
+  // directly (the DOM property) so radio buttons update correctly when switching components.
+  function setChecked(node, isChecked) {
+    node.checked = isChecked;
+    return { update(v) { node.checked = v; } };
+  }
 </script>
 
 <div class="flex flex-col gap-1">
@@ -80,7 +88,7 @@
             type="radio"
             name={def.id}
             value={opt.value}
-            checked={value === opt.value}
+            use:setChecked={value === opt.value}
             on:change={() => emit(opt.value)}
             class="accent-purple-500"
           />

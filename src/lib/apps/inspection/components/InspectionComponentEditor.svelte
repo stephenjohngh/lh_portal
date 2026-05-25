@@ -50,6 +50,13 @@
     }
   }
 
+  // Svelte's checked={expr} uses setAttribute which only updates defaultChecked, not the
+  // live element.checked property.  This action bypasses that by setting the property directly.
+  function setChecked(node, isChecked) {
+    node.checked = isChecked;
+    return { update(v) { node.checked = v; } };
+  }
+
   async function handleSave() {
     saving = true; error = null;
     try {
@@ -152,7 +159,7 @@
                         type="radio"
                         name="attr-radio-{def.id}"
                         value={opt.value}
-                        checked={attrValues[def.id] === opt.value}
+                        use:setChecked={attrValues[def.id] === opt.value}
                         on:change={() => attrValues = { ...attrValues, [def.id]: opt.value }}
                         class="radio-cb"
                       />
