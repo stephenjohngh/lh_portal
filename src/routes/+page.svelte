@@ -10,9 +10,12 @@
   import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
   import { portalSettings } from '$lib/stores/portalSettings.js';
   import { DB_OVERRIDE_KEY, isDbOverride, activeDbUrl } from '$lib/supabaseClient';
+  import { version } from '$app/environment';
   // Optional var — import.meta.env returns undefined (not an error) when unset.
   // $env/static/public would throw if the variable isn't defined in .env.
   const PUBLIC_ENV_LABEL = import.meta.env.PUBLIC_ENV_LABEL ?? '';
+  // Injected by vite.config.js at build time — "25 May 2026" format.
+  const buildDate = __BUILD_DATE__;
   import Button from '$lib/components/common/Button.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import lhLogo from '$lib/assets/LH_services_logo.png';
@@ -246,7 +249,8 @@
     <main class="max-w-7xl mx-auto px-4 py-8">
       {#if activeApp === 'home'}
         <div>
-          <h1 class="text-4xl font-bold mb-4">LH Services Portal</h1>
+          <h1 class="text-4xl font-bold mb-1">LH Services Portal</h1>
+          <p class="text-xs text-slate-600 mb-4">v{version} · {buildDate}</p>
           <p class="text-gray-400 mb-8">
             {#if isAdmin}
               You're logged in as an administrator. Select an app from the menu to get started.
