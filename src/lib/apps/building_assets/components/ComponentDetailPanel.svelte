@@ -36,8 +36,9 @@
   let assetId            = component.asset_id       ?? '';
   let status             = component.status         ?? 'ok';
   let notes              = component.notes          ?? '';
-  let xPosition          = component.x_position     ?? 0.5;
-  let yPosition          = component.y_position     ?? 0.5;
+  let xPosition             = component.x_position           ?? 0.5;
+  let yPosition             = component.y_position           ?? 0.5;
+  let inspectionSortOrder   = component.inspection_sort_order ?? null;
 
   // Build initial attrValues map from loaded attrs
   let attrValues = Object.fromEntries(attrs.map(a => [a.type_attribute_id, a.value]));
@@ -61,9 +62,10 @@
     assetId            = component.asset_id             ?? '';
     status             = component.status               ?? 'ok';
     notes              = component.notes                ?? '';
-    xPosition          = component.x_position           ?? 0.5;
-    yPosition          = component.y_position           ?? 0.5;
-    attrValues         = Object.fromEntries(attrs.map(a => [a.type_attribute_id, a.value]));
+    xPosition             = component.x_position           ?? 0.5;
+    yPosition             = component.y_position           ?? 0.5;
+    inspectionSortOrder   = component.inspection_sort_order ?? null;
+    attrValues            = Object.fromEntries(attrs.map(a => [a.type_attribute_id, a.value]));
     dirty              = false;
     confirmDel         = false;
     errorMsg           = '';
@@ -138,8 +140,9 @@
         asset_id:             assetId.trim()  || null,
         status,
         notes:                notes.trim()    || null,
-        x_position:           planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : component.x_position,
-        y_position:           planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : component.y_position
+        x_position:             planId ? (Math.round((parseFloat(xPosition) || 0.5) * 1000) / 1000) : component.x_position,
+        y_position:             planId ? (Math.round((parseFloat(yPosition) || 0.5) * 1000) / 1000) : component.y_position,
+        inspection_sort_order:  (() => { const v = parseInt(inspectionSortOrder); return isNaN(v) ? null : v; })(),
       };
       await buildingAssetsStore.updateComponent(component.id, fields);
       await buildingAssetsStore.updateComponentAttrs(component.id, attrValues);
@@ -248,16 +251,22 @@
       </div>
 
       {#if planId}
-        <div class="grid grid-cols-2 gap-4 mt-3">
+        <div class="grid grid-cols-3 gap-2 mt-3">
           <div class="flex flex-col gap-1">
             <p class="text-xs text-slate-500">X Position</p>
             <input type="number" min="0" max="1" step="0.001"
-              bind:value={xPosition} on:input={markDirty} class="{inp} w-32" />
+              bind:value={xPosition} on:input={markDirty} class={inp} />
           </div>
           <div class="flex flex-col gap-1">
             <p class="text-xs text-slate-500">Y Position</p>
             <input type="number" min="0" max="1" step="0.001"
-              bind:value={yPosition} on:input={markDirty} class="{inp} w-32" />
+              bind:value={yPosition} on:input={markDirty} class={inp} />
+          </div>
+          <div class="flex flex-col gap-1">
+            <p class="text-xs text-slate-500">Walk Order</p>
+            <input type="number" min="1" step="1"
+              bind:value={inspectionSortOrder} on:input={markDirty}
+              placeholder="auto" class={inp} />
           </div>
         </div>
       {/if}

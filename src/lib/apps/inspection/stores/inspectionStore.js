@@ -91,9 +91,16 @@ function buildWalkComponents(floorComponents, typeFilter, emergencyOnly, allComp
     }
     return true;
   });
-  return list.sort((a, b) =>
-    (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true })
-  );
+  return list.sort((a, b) => {
+    const aO = a.inspection_sort_order ?? null;
+    const bO = b.inspection_sort_order ?? null;
+    // Explicit sort order first (nulls last)
+    if (aO !== null && bO !== null) return aO - bO;
+    if (aO !== null) return -1;
+    if (bO !== null) return 1;
+    // Both unset: fall back to asset_id
+    return (a.asset_id || '').localeCompare(b.asset_id || '', undefined, { numeric: true });
+  });
 }
 
 // -- First non-empty floor helper ----------------------------------------------
