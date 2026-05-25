@@ -30,10 +30,9 @@ import {
   hCell, dCell, run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
-  fmtShortDate,
 } from '$lib/server/docxHelpers.js';
 import { sortBySystemTypeAsset } from '$lib/utils/componentSorting.js';
-import { fmtGenerated }          from '$lib/utils/dates.js';
+import { fmtGenerated, fmtShortDate } from '$lib/utils/dates.js';
 
 const logger = getLogger('generateReport');
 
