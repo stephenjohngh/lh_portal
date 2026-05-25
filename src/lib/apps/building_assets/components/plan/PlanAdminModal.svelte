@@ -30,6 +30,14 @@
   // Copy progress: null = not started; { done, total } = in-progress / done
   let copyProgress = null;
 
+  // Import mode — target plan selection
+  let importTargetPlanId = '';
+
+  // Plans on the currently-selected floor (excluding the source plan itself)
+  $: plansOnEditFloor = editFloorId
+    ? $buildingAssetsStore.plans.filter(p => p.floor_id === editFloorId && p.id !== plan?.id)
+    : [];
+
   let saving     = false;
   let errorMsg   = '';
   let confirming = false;  // delete confirm
@@ -58,28 +66,38 @@
       copyProgress = null;
       clearImage();
       if (mode === 'edit' && plan) {
-        editName     = plan.name        ?? '';
-        editBuilding = plan.building    ?? '';
-        editFloorId  = plan.floor_id    ?? '';
-        editDesc     = plan.description ?? '';
+        editName           = plan.name        ?? '';
+        editBuilding       = plan.building    ?? '';
+        editFloorId        = plan.floor_id    ?? '';
+        editDesc           = plan.description ?? '';
+        importTargetPlanId = '';
       } else if (mode === 'copy' && plan) {
-        editName     = `Copy of ${plan.name ?? plan.building ?? 'Plan'}`;
-        editBuilding = plan.building ?? '';
-        editFloorId  = plan.floor_id ?? '';
-        editDesc     = '';
+        editName           = `Copy of ${plan.name ?? plan.building ?? 'Plan'}`;
+        editBuilding       = plan.building ?? '';
+        editFloorId        = plan.floor_id ?? '';
+        editDesc           = '';
+        importTargetPlanId = '';
+      } else if (mode === 'import' && plan) {
+        editName           = '';
+        editBuilding       = '';
+        editFloorId        = '';
+        editDesc           = '';
+        importTargetPlanId = '';
       } else {
-        editName     = '';
-        editBuilding = '';
-        editFloorId  = '';
-        editDesc     = '';
+        editName           = '';
+        editBuilding       = '';
+        editFloorId        = '';
+        editDesc           = '';
+        importTargetPlanId = '';
       }
     }
     lastShow = show;
   }
 
-  $: title = mode === 'new'  ? 'New Floor Plan'
-           : mode === 'edit' ? 'Edit Plan Info'
-           :                   'Copy Plan';
+  $: title = mode === 'new'    ? 'New Floor Plan'
+           : mode === 'edit'   ? 'Edit Plan Info'
+           : mode === 'import' ? 'Copy Components to Plan'
+           :                     'Copy Plan';
 
   // -- Image handling ------------------------------------------------
   function clearImage() {
@@ -177,6 +195,25 @@
     }
   }
 
+  async function handleImport() {
+    if (!importTargetPlanId) { errorMsg = 'Please select a target plan.'; return; }
+    saving = true; errorMsg = '';
+    copyProgress = { done: 0, total: null };
+    try {
+      const { plan: targetPlan, copied } = await buildingAssetsStore.importComponentsToExistingPlan(
+        plan.id, importTargetPlanId,
+        (done, total) => { copyProgress = { done, total }; }
+      );
+      dispatch('done', { plan: targetPlan, action: 'imported', copied });
+      show = false;
+    } catch (err) {
+      errorMsg     = err.message;
+      copyProgress = null;
+    } finally {
+      saving = false;
+    }
+  }
+
   async function handleDelete() {
     if (!confirming) { confirming = true; return; }
     saving = true; errorMsg = '';
@@ -215,7 +252,7 @@
       <div class="flex flex-col gap-1.5">
         <p class="text-xs text-slate-400">
           {#if copyProgress.total === null}
-            Creating plan…
+            {mode === 'import' ? 'Preparing…' : 'Creating plan…'}
           {:else if copyProgress.done < copyProgress.total}
             Copying components: {copyProgress.done} / {copyProgress.total}
           {:else}
@@ -233,10 +270,10 @@
       </div>
     {/if}
 
-    <!-- -- Source plan info (copy mode) ------------------------- -->
-    {#if mode === 'copy' && plan}
+    <!-- -- Source plan info (copy / import mode) ---------------- -->
+    {#if (mode === 'copy' || mode === 'import') && plan}
       <div class="rounded-lg bg-slate-700/50 border border-slate-600/50 px-3 py-2.5">
-        <p class="text-xs text-slate-500 mb-1">Copying from</p>
+        <p class="text-xs text-slate-500 mb-1">{mode === 'import' ? 'Copying components from' : 'Copying from'}</p>
         <p class="text-sm text-white font-medium">{plan.building}</p>
         {#if plan.name}
           <p class="text-xs text-slate-400">{plan.name}</p>
@@ -268,7 +305,48 @@
       </select>
     </div>
 
+    <!-- -- Target plan picker (import mode only) ---------------- -->
+    {#if mode === 'import'}
+      {#if editFloorId}
+        {#if plansOnEditFloor.length === 0}
+          <p class="text-xs text-amber-400 bg-amber-900/20 border border-amber-800/30 rounded px-3 py-2">
+            No existing plans on this floor. Select a different floor, or use Copy Plan to create one.
+          </p>
+        {:else}
+          <div class="flex flex-col gap-1">
+            <label for="pa-target-plan" class="text-xs text-slate-400">
+              Target plan <span class="text-red-400">*</span>
+            </label>
+            <select
+              id="pa-target-plan"
+              bind:value={importTargetPlanId}
+              class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
+                     focus:outline-none focus:border-purple-500"
+              disabled={saving}
+            >
+              <option value="">— select target plan —</option>
+              {#each plansOnEditFloor as p (p.id)}
+                <option value={p.id}>{p.building}{p.name ? ` — ${p.name}` : ''}</option>
+              {/each}
+            </select>
+          </div>
+          <!-- Preview of selected target plan image -->
+          {#if importTargetPlanId}
+            {@const targetPlan = plansOnEditFloor.find(p => p.id === importTargetPlanId)}
+            {#if targetPlan?.image_url}
+              <img
+                src={targetPlan.image_url}
+                alt="Target plan"
+                class="rounded h-16 object-cover opacity-60 border border-slate-600"
+              />
+            {/if}
+          {/if}
+        {/if}
+      {/if}
+    {/if}
+
     <!-- -- Building ---------------------------------------------- -->
+    {#if mode !== 'import'}
     <div class="flex flex-col gap-1">
       <label for="pa-building" class="text-xs text-slate-400">
         Building <span class="text-red-400">*</span>
@@ -301,8 +379,10 @@
       />
     </div>
 
+    {/if}<!-- /mode !== 'import' -->
+
     <!-- -- Description (new/edit only) -------------------------- -->
-    {#if mode !== 'copy'}
+    {#if mode !== 'copy' && mode !== 'import'}
       <div class="flex flex-col gap-1">
         <label for="pa-desc" class="text-xs text-slate-400">Description</label>
         <textarea
@@ -433,6 +513,11 @@
         {:else if mode === 'copy'}
           <Button variant="primary" on:click={handleCopy} disabled={saving || !editBuilding.trim()}>
             {saving ? 'Copying…' : 'Copy Plan'}
+          </Button>
+
+        {:else if mode === 'import'}
+          <Button variant="primary" on:click={handleImport} disabled={saving || !importTargetPlanId}>
+            {saving ? 'Copying…' : 'Copy Components'}
           </Button>
         {/if}
       </div>

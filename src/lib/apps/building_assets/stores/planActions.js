@@ -278,6 +278,130 @@ export function createPlanActions(update, supabase) {
     return { plan: newPlan, copied };
   }
 
+  // -- Import components to an existing plan ----------------------------
+  // Copies all components (and their attribute values + links) from
+  // sourcePlanId onto an already-existing target plan.  No plan row is
+  // created and no image is touched.  The target plan must already exist.
+  // Returns { plan: targetPlan, copied } where plan is the target plan row.
+  async function importComponentsToExistingPlan(sourcePlanId, targetPlanId, onProgress = null) {
+    const userId = requireUserId();
+
+    let targetPlan = null;
+    let floors     = [];
+    let types      = [];
+    update(s => {
+      targetPlan = s.plans.find(p => p.id === targetPlanId);
+      floors     = s.floors;
+      types      = s.types;
+      return s;
+    });
+    if (!targetPlan) throw new Error('Target plan not found');
+
+    const newFloorId    = targetPlan.floor_id ?? null;
+    const srcComponents = await api.get('components', { filters: { plan_id: sourcePlanId } });
+    const total         = srcComponents.length;
+    let copied          = 0;
+    const idMap         = {};   // oldId → newComp
+
+    if (onProgress) onProgress(0, total);
+
+    if (total > 0) {
+      const allAttrs = await api.get('component_attributes');
+
+      for (const c of srcComponents) {
+        if (onProgress) onProgress(copied, total);
+
+        const newComp = await api.create('components', {
+          plan_id:           targetPlanId,
+          floor_id:          newFloorId,
+          type_code:         c.type_code,
+          primary_attribute: c.primary_attribute,
+          label:             c.label,
+          asset_id:          c.asset_id,
+          x_position:        c.x_position,
+          y_position:        c.y_position,
+          status:            c.status ?? 'ok',
+          notes:             c.notes,
+          created_by:        userId,
+          updated_by:        userId,
+        });
+
+        idMap[c.id] = newComp;
+
+        const attrs = allAttrs.filter(a => a.component_id === c.id);
+        if (attrs.length > 0) {
+          await api.createMany('component_attributes', attrs.map(a => ({
+            component_id:      newComp.id,
+            type_attribute_id: a.type_attribute_id,
+            value:             a.value,
+          })), false);
+        }
+        copied++;
+      }
+      if (onProgress) onProgress(copied, total);
+    }
+
+    // -- Remap and copy component links ----------------------------------
+    const srcIds = srcComponents.map(c => c.id);
+    if (srcIds.length > 0) {
+      let allLinks = [];
+      try { allLinks = await api.get('component_links'); } catch { /* skip */ }
+
+      const srcLinks = allLinks.filter(l => srcIds.includes(l.from_component_id));
+      if (srcLinks.length > 0) {
+        const newFloor   = floors.find(f => f.id === newFloorId);
+        const newFloorSN = newFloor?.short_name ?? '?';
+
+        const refRemap = {};
+        for (const c of srcComponents) {
+          const srcFloor   = floors.find(f => f.id === c.floor_id);
+          const srcFloorSN = srcFloor?.short_name ?? '?';
+          const type       = types.find(t => t.code === c.type_code);
+          const initial    = type?.initial ?? '?';
+          const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
+          const oldRef     = `${srcFloorSN}/${initial}/${assetId}`;
+          const newRef     = `${newFloorSN}/${initial}/${assetId}`;
+          if (oldRef !== newRef) refRemap[oldRef] = newRef;
+        }
+
+        const linkRows = srcLinks
+          .map(link => {
+            const newFromId = idMap[link.from_component_id]?.id;
+            if (!newFromId) return null;
+            return {
+              from_component_id: newFromId,
+              to_component_ref:  refRemap[link.to_component_ref] ?? link.to_component_ref,
+              link_type:         link.link_type ?? null,
+              created_by:        userId,
+            };
+          })
+          .filter(Boolean);
+
+        if (linkRows.length > 0) {
+          await api.createMany('component_links', linkRows, false);
+          logger(`Imported ${linkRows.length} component link(s)`);
+        }
+      }
+    }
+
+    // Update local state — add new components (attrs already in DB; store
+    // will pick them up on next full reload, but we add the rows now so
+    // they appear immediately without a reload).
+    const newComponents = Object.values(idMap);
+    update(s => ({
+      ...s,
+      components: [...s.components, ...newComponents],
+    }));
+
+    logger(`Imported ${copied} components from plan ${sourcePlanId} → existing plan ${targetPlanId}`);
+    logAudit('create', 'plan', targetPlanId, targetPlan.name || targetPlan.building || targetPlanId, {
+      ...AUDIT_OPTS, eventAction: 'import_components_to_plan',
+      afterData: { source_plan_id: sourcePlanId, components_copied: copied }
+    });
+
+    return { plan: targetPlan, copied };
+  }
+
   // -- Delete a plan -----------------------------------------------------
   // Removes all components placed on the plan first (resolves FK constraint),
   // then deletes spaces, annotations, and the plan row.
@@ -326,6 +450,7 @@ export function createPlanActions(update, supabase) {
     updatePlanInfo,
     replacePlanImage,
     copyPlan,
+    importComponentsToExistingPlan,
     deletePlan,
   };
 }

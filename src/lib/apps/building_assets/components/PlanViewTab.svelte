@@ -427,7 +427,7 @@
 
   function handlePlanAdminDone({ detail: { plan, action } }) {
     planAdminOpen = false;
-    if (action === 'created' || action === 'copied') {
+    if (action === 'created' || action === 'copied' || action === 'imported') {
       if (plan.floor_id) { selectedFloorId = plan.floor_id; localStorage.setItem(PREF_FLOOR, plan.floor_id); }
       selectedPlanId = plan.id;
       localStorage.setItem(PREF_PLAN, plan.id);
