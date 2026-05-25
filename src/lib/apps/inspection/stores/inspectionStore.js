@@ -29,6 +29,7 @@ const INITIAL_STATE = {
   systems:          [],
   types:            [],
   attrDefs:         {},      // { typeId: type_attributes[] } — effective (inherited+own)
+  attrOptions:      {},      // { attrDefId: type_attribute_options[] }
   plans:            [],      // for PlanViewer
 
   // All components, indexed by floorId for fast access
@@ -151,20 +152,21 @@ function createInspectionStore() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
       // Load hierarchy + components in parallel
-      const [facilities, floors, systems, types, defs, plans, components, componentAttrs] =
+      const [facilities, floors, systems, types, defs, options, plans, components, componentAttrs] =
         await Promise.all([
           api.get('facilities'),
           api.get('floors', { orderBy: 'level_order', ascending: true }),
           api.get('building_systems',  { orderBy: 'presentation_order' }),
           api.get('component_types',   { orderBy: 'presentation_order' }),
           api.get('type_attributes',   { orderBy: 'presentation_order' }),
+          api.get('type_attribute_options', { orderBy: 'priority_override', ascending: true }),
           api.get('plans',             { orderBy: 'building', ascending: true }),
           api.get('components',        { orderBy: 'asset_id', ascending: true }),
           api.get('component_attributes'),
         ]);
 
-      // Build attrDefs: effective attribute set per type (no options/regime needed for walk)
-      const { attrDefs } = resolveHierarchy(systems, types, defs);
+      // Build attrDefs + attrOptions: effective attribute set per type with dropdown/radio options
+      const { attrDefs, attrOptions } = resolveHierarchy(systems, types, defs, options);
 
       // Build a map from type_attribute_id → name so we can enrich component_attributes
       // rows with attr_name (component_attributes has no name column — it's in type_attributes).
@@ -190,7 +192,7 @@ function createInspectionStore() {
 
       update(s => ({
         ...s,
-        facilities, floors, systems, types, attrDefs,
+        facilities, floors, systems, types, attrDefs, attrOptions,
         plans, allComponents, allComponentAttrs,
         loading: false,
       }));

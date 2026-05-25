@@ -16,7 +16,8 @@
 
   $: types    = $inspectionStore.types;
   $: systems  = $inspectionStore.systems;
-  $: attrDefs = $inspectionStore.attrDefs;
+  $: attrDefs    = $inspectionStore.attrDefs;
+  $: attrOptions = $inspectionStore.attrOptions ?? {};
 
   // Derive type and attribute definitions reactively
   $: typeObj   = types.find(t => t.code === component?.type_code);
@@ -123,22 +124,47 @@
         <div class="attr-list">
           {#each defs as def (def.id)}
             <div class="attr-row">
-              <label class="attr-lbl" for="attr-{def.id}">
-                {def.name}
-                {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
-              </label>
-              {#if def.data_type === 'boolean'}
-                <div class="bool-wrap">
+              {#if def.display_type === 'checkbox'}
+                <!-- label wraps control — a11y: no separate for/id needed -->
+                <label class="bool-wrap">
                   <input
-                    id="attr-{def.id}"
                     type="checkbox"
                     checked={attrValues[def.id] === 'true'}
                     on:change={e => attrValues = { ...attrValues, [def.id]: e.target.checked ? 'true' : 'false' }}
                     class="bool-cb"
                   />
-                  <span class="bool-lbl">{attrValues[def.id] === 'true' ? 'Yes' : 'No'}</span>
+                  <span class="bool-lbl">
+                    {def.name}
+                    {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
+                    <span class="bool-yn">&nbsp;— {attrValues[def.id] === 'true' ? 'Yes' : 'No'}</span>
+                  </span>
+                </label>
+              {:else if def.display_type === 'radio'}
+                <!-- p instead of label — no single associated control -->
+                <p class="attr-lbl">
+                  {def.name}
+                  {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
+                </p>
+                <div class="radio-group">
+                  {#each (attrOptions[def.id] ?? []).filter(o => o.visible) as opt}
+                    <label class="radio-opt">
+                      <input
+                        type="radio"
+                        name="attr-radio-{def.id}"
+                        value={opt.value}
+                        checked={attrValues[def.id] === opt.value}
+                        on:change={() => attrValues = { ...attrValues, [def.id]: opt.value }}
+                        class="radio-cb"
+                      />
+                      <span class="radio-lbl">{opt.value}</span>
+                    </label>
+                  {/each}
                 </div>
-              {:else if def.data_type === 'select' && def.options?.length > 0}
+              {:else if def.display_type === 'dropdown'}
+                <label class="attr-lbl" for="attr-{def.id}">
+                  {def.name}
+                  {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
+                </label>
                 <select
                   id="attr-{def.id}"
                   class="fs"
@@ -146,18 +172,49 @@
                   on:change={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
                 >
                   <option value="">— select —</option>
-                  {#each def.options as opt}
-                    <option value={opt}>{opt}</option>
+                  {#each (attrOptions[def.id] ?? []).filter(o => o.visible) as opt}
+                    <option value={opt.value}>{opt.value}</option>
                   {/each}
                 </select>
+              {:else if def.display_type === 'number'}
+                <label class="attr-lbl" for="attr-{def.id}">
+                  {def.name}
+                  {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
+                </label>
+                <input
+                  id="attr-{def.id}"
+                  type="number"
+                  class="fi"
+                  value={attrValues[def.id] ?? ''}
+                  on:input={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
+                  placeholder={def.required ? 'Required' : 'Optional'}
+                />
+              {:else if def.display_type === 'textarea'}
+                <label class="attr-lbl" for="attr-{def.id}">
+                  {def.name}
+                  {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
+                </label>
+                <textarea
+                  id="attr-{def.id}"
+                  class="fi ta"
+                  value={attrValues[def.id] ?? ''}
+                  rows="3"
+                  placeholder={def.required ? 'Required' : 'Optional'}
+                  on:input={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
+                ></textarea>
               {:else}
+                <!-- display_type === 'text' or unknown fallback -->
+                <label class="attr-lbl" for="attr-{def.id}">
+                  {def.name}
+                  {#if def._scope === 'system'}<span class="inherited-badge">system</span>{/if}
+                </label>
                 <input
                   id="attr-{def.id}"
                   type="text"
                   class="fi"
                   value={attrValues[def.id] ?? ''}
                   on:input={e => attrValues = { ...attrValues, [def.id]: e.target.value }}
-                  placeholder={def.name}
+                  placeholder={def.required ? 'Required' : 'Optional'}
                 />
               {/if}
             </div>
@@ -203,7 +260,13 @@
   .attr-lbl  { font-size:0.75rem; color:#ccc; display:flex; align-items:center; gap:0.5rem; }
   .inherited-badge { font-size:0.55rem; background:#1a0e30; color:#a78bfa; padding:0.1rem 0.35rem; border-radius:3px; border:1px solid #4c1d95; }
 
-  .bool-wrap { display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; }
-  .bool-cb   { width:1.2rem; height:1.2rem; accent-color:#fb923c; cursor:pointer; }
-  .bool-lbl  { font-size:0.85rem; color:#f0f0f0; }
+  .bool-wrap { display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; cursor:pointer; }
+  .bool-cb   { width:1.2rem; height:1.2rem; accent-color:#fb923c; cursor:pointer; flex-shrink:0; }
+  .bool-lbl  { font-size:0.85rem; color:#f0f0f0; display:flex; align-items:center; flex-wrap:wrap; gap:0.25rem; }
+  .bool-yn   { color:#aaa; font-size:0.8rem; }
+  .ta { resize:vertical; }
+  .radio-group { display:flex; flex-direction:column; gap:0.5rem; }
+  .radio-opt   { display:flex; align-items:center; gap:0.75rem; cursor:pointer; }
+  .radio-cb    { width:1.1rem; height:1.1rem; accent-color:#fb923c; cursor:pointer; flex-shrink:0; }
+  .radio-lbl   { font-size:0.875rem; color:#f0f0f0; }
 </style>
