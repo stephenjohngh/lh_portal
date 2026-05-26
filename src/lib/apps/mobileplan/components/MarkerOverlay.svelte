@@ -3,15 +3,17 @@
   // Absolutely-positioned markers + read-only SVG space overlays.
   // All positioned within the transformed plan container (inherits pan/zoom).
 
-  export let components    = [];
-  export let spaces        = [];
-  export let annotations   = [];
-  export let types         = [];
-  export let hiddenTypes   = new Set();
+  export let components     = [];
+  export let spaces         = [];
+  export let annotations    = [];
+  export let types          = [];
+  export let attrDefs       = {};   // { [typeId]: type_attributes[] }
+  export let componentAttrs = {};   // { [componentId]: component_attributes[] }
+  export let hiddenTypes    = new Set();
   export let hiddenStatuses = new Set();
-  export let showSpaces    = true;
-  export let selectedId    = null;
-  export let longPressId   = null;
+  export let showSpaces     = false;
+  export let selectedId     = null;
+  export let longPressId    = null;
 
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
@@ -60,6 +62,45 @@
     if (hiddenTypes.has(c.type_code)) return true;
     if (hiddenStatuses.size > 0 && hiddenStatuses.has(c.status)) return true;
     return false;
+  }
+
+  // Halo: replicate the building assets highlight logic locally.
+  // type.highlight_attribute names the checkbox attr; when its value is 'true' show a ring.
+  function complementaryColour(hex) {
+    if (!hex || hex.length < 6) return 'ff6b00';
+    const r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+    const l = (max + min) / 2;
+    let h = 0, s = 0;
+    if (d > 0) {
+      s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+      switch (max) {
+        case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+        case g: h = ((b-r)/d + 2)/6; break;
+        case b: h = ((r-g)/d + 4)/6; break;
+      }
+    }
+    const h2 = (h+0.5)%1, s2 = Math.max(0.7,s), l2 = l>0.5?0.35:0.65;
+    function hue2rgb(p,q,t) {
+      if (t<0) t+=1; if (t>1) t-=1;
+      if (t<1/6) return p+(q-p)*6*t;
+      if (t<1/2) return q;
+      if (t<2/3) return p+(q-p)*(2/3-t)*6;
+      return p;
+    }
+    const q2 = l2<0.5 ? l2*(1+s2) : l2+s2-l2*s2, p2 = 2*l2-q2;
+    const h2r = v => Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,'0');
+    return h2r(hue2rgb(p2,q2,h2+1/3)) + h2r(hue2rgb(p2,q2,h2)) + h2r(hue2rgb(p2,q2,h2-1/3));
+  }
+
+  function resolveHalo(component, type) {
+    if (!type?.highlight_attribute) return null;
+    const defs = attrDefs[type.id] ?? [];
+    const attrDef = defs.find(d => d.name === type.highlight_attribute);
+    if (!attrDef) return null;
+    const val = (componentAttrs[component.id] ?? []).find(a => a.type_attribute_id === attrDef.id)?.value;
+    if (val !== 'true') return null;
+    return type.highlight_colour || complementaryColour(type.colour ?? '888888');
   }
 
   // Placed = has a plan assignment
@@ -136,21 +177,22 @@
 
 <!-- Component markers -->
 {#each placedComponents as c (c.id)}
-  {@const type      = getType(c.type_code)}
-  {@const hex       = markerColor(type)}
-  {@const bg        = `#${hex}`}
-  {@const fg        = isLight(hex) ? '#0d0d14' : '#ffffff'}
-  {@const badge     = statusBadgeColor(c.status)}
-  {@const filtered  = isFiltered(c)}
-  {@const selected  = c.id === selectedId}
-  {@const ripple    = c.id === longPressId}
-  {@const shape     = type?.marker_shape ?? 'circle'}
-  {@const isCircle  = shape === 'circle' || shape === 'circle_inner'}
-  {@const isDiamond = shape === 'diamond'}
-  {@const hasInner  = shape === 'square_inner' || shape === 'circle_inner'}
+  {@const type       = getType(c.type_code)}
+  {@const hex        = markerColor(type)}
+  {@const bg         = `#${hex}`}
+  {@const fg         = isLight(hex) ? '#0d0d14' : '#ffffff'}
+  {@const badge      = statusBadgeColor(c.status)}
+  {@const filtered   = isFiltered(c)}
+  {@const selected   = c.id === selectedId}
+  {@const ripple     = c.id === longPressId}
+  {@const shape      = type?.marker_shape ?? 'circle'}
+  {@const isCircle   = shape === 'circle' || shape === 'circle_inner'}
+  {@const isDiamond  = shape === 'diamond'}
+  {@const hasInner   = shape === 'square_inner' || shape === 'circle_inner'}
   {@const innerRound = shape === 'circle_inner'}
-  {@const px        = markerPx(type?.marker_size)}
-  {@const fontSize  = px <= 22 ? '9px' : px <= 28 ? '11px' : '13px'}
+  {@const px         = markerPx(type?.marker_size)}
+  {@const fontSize   = px <= 22 ? '9px' : px <= 28 ? '11px' : '13px'}
+  {@const halo       = resolveHalo(c, type)}
 
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div
@@ -174,6 +216,7 @@
         border-radius:{isCircle ? '50%' : '4px'};
         transform:{isDiamond ? 'rotate(45deg)' : 'none'};
         font-size:{fontSize};
+        {halo ? `outline:3px solid #${halo}; outline-offset:0px;` : ''}
       "
       title="{c.asset_id ?? ''}{c.label ? ' — ' + c.label : ''}"
     >

@@ -15,7 +15,7 @@ const logger = getLogger('mobileplanStore');
 // -- Cache config --------------------------------------------------------------
 
 // Bump CACHE_VERSION whenever the shape of cached data changes (forces fresh fetch).
-const CACHE_VERSION         = 4;
+const CACHE_VERSION         = 5;
 const CACHE_KEY_HIERARCHY   = `mobileplan_cache_hierarchy_v${CACHE_VERSION}`;
 const CACHE_KEY_FLOOR       = id => `mobileplan_cache_floor_${id}_v${CACHE_VERSION}`;
 const CACHE_KEY_FILTER      = 'mobileplan_filter';
@@ -43,13 +43,13 @@ const INITIAL = {
   annotations:    [],   // plan_annotations[] for the current plan
   inspections:    {},   // { [componentId]: latest inspection row }
 
-  // On-demand (lazy, cached per session)
+  // Loaded per-floor alongside components
   componentAttrs: {},   // { [componentId]: component_attributes[] }
 
-  // Filter (persisted to localStorage)
+  // Filter (persisted to localStorage, except showSpaces which always starts false)
   hiddenTypes:    new Set(),
   hiddenStatuses: new Set(),
-  showSpaces:     true,
+  showSpaces:     false,
 
   // Offline
   usingCache:     false,
@@ -145,12 +145,12 @@ async function load() {
   try {
     const saved = localStorage.getItem(CACHE_KEY_FILTER);
     if (saved) {
-      const { hiddenTypes = [], hiddenStatuses = [], showSpaces = true } = JSON.parse(saved);
+      const { hiddenTypes = [], hiddenStatuses = [] } = JSON.parse(saved);
       update(s => ({
         ...s,
         hiddenTypes:    new Set(hiddenTypes),
         hiddenStatuses: new Set(hiddenStatuses),
-        showSpaces,
+        // showSpaces always starts false — not restored from cache
       }));
     }
   } catch { /* ignore */ }
@@ -214,6 +214,7 @@ async function selectFloor(floorId, forceRefresh = false) {
     spaces:        [],
     annotations:   [],
     inspections:   {},
+    componentAttrs: {},
     loadingFloor:  true,
     error:         null,
   }));
@@ -257,11 +258,12 @@ async function selectFloor(floorId, forceRefresh = false) {
 
   update(s => ({
     ...s,
-    components:   floorData.components,
-    spaces:       floorData.spaces,
-    annotations:  floorData.annotations,
-    inspections:  floorData.inspections,
-    loadingFloor: false,
+    components:     floorData.components,
+    spaces:         floorData.spaces,
+    annotations:    floorData.annotations,
+    inspections:    floorData.inspections,
+    componentAttrs: floorData.componentAttrs ?? {},
+    loadingFloor:   false,
     usingCache,
     cachedAt,
   }));
@@ -298,21 +300,29 @@ async function fetchFloorForPlan(planId, floorId) {
       : Promise.resolve([]),
   ]);
 
-  // Step 2: fetch inspections only if there are components on this floor.
-  // Load all inspections and filter client-side — api.js doesn't support .in() queries.
-  // component_inspections is typically small; we build a Set for the floor's IDs.
+  // Step 2: fetch inspections and component attributes for this floor's components.
+  // Load all rows and filter client-side — api.js doesn't support .in() queries.
   const floorCompIds = new Set(components.map(c => c.id));
   let rawInspections = [];
+  let rawAttrs       = [];
 
   if (floorCompIds.size > 0) {
-    rawInspections = await withTimeout(
-      api.get('component_inspections', {
-        select: 'id,component_id,inspection_result,inspector_notes,inspected_at',
-        orderBy: 'inspected_at',
-        ascending: false,
-      }),
-      FETCH_TIMEOUT_MS
-    ).catch(() => []);
+    [rawInspections, rawAttrs] = await Promise.all([
+      withTimeout(
+        api.get('component_inspections', {
+          select: 'id,component_id,inspection_result,inspector_notes,inspected_at',
+          orderBy: 'inspected_at',
+          ascending: false,
+        }),
+        FETCH_TIMEOUT_MS
+      ).catch(() => []),
+      withTimeout(
+        api.get('component_attributes', {
+          select: 'id,component_id,type_attribute_id,value',
+        }),
+        FETCH_TIMEOUT_MS
+      ).catch(() => []),
+    ]);
   }
 
   // Build latest-inspection map, keeping only this floor's components
@@ -323,7 +333,15 @@ async function fetchFloorForPlan(planId, floorId) {
     }
   }
 
-  return { components, spaces: spaces ?? [], annotations: annotations ?? [], inspections };
+  // Build component attributes map, keeping only this floor's components
+  const componentAttrs = {};
+  for (const attr of rawAttrs) {
+    if (!floorCompIds.has(attr.component_id)) continue;
+    if (!componentAttrs[attr.component_id]) componentAttrs[attr.component_id] = [];
+    componentAttrs[attr.component_id].push(attr);
+  }
+
+  return { components, spaces: spaces ?? [], annotations: annotations ?? [], inspections, componentAttrs };
 }
 
 async function loadComponentAttrs(componentId) {
@@ -394,7 +412,7 @@ function setFilter({ hiddenTypes, hiddenStatuses, showSpaces }) {
 }
 
 function clearFilter() {
-  setFilter({ hiddenTypes: new Set(), hiddenStatuses: new Set(), showSpaces: true });
+  setFilter({ hiddenTypes: new Set(), hiddenStatuses: new Set(), showSpaces: false });
 }
 
 async function refresh() {

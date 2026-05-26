@@ -11,7 +11,7 @@
   export let types         = [];
   export let hiddenTypes   = new Set();
   export let hiddenStatuses = new Set();
-  export let showSpaces    = true;
+  export let showSpaces    = false;
 
   const dispatch = createEventDispatcher();
 
@@ -44,18 +44,24 @@
     return types.filter(t => t.building_system_id === systemId);
   }
 
-  function systemCheckState(systemId) {
-    const sysTypes = typesForSystem(systemId);
-    if (sysTypes.length === 0) return 'all';
-    const hidden = sysTypes.filter(t => localHiddenTypes.has(t.code)).length;
-    if (hidden === 0)             return 'all';
-    if (hidden === sysTypes.length) return 'none';
-    return 'some';
-  }
+  // Reactive map so Svelte explicitly tracks localHiddenTypes as a dependency.
+  // 'all' = all types visible, 'none' = all hidden, 'some' = mixed.
+  $: systemCheckStates = (() => {
+    const map = {};
+    for (const sys of systems) {
+      const sysTypes = types.filter(t => t.building_system_id === sys.id);
+      if (sysTypes.length === 0) { map[sys.id] = 'all'; continue; }
+      const hidden = sysTypes.filter(t => localHiddenTypes.has(t.code)).length;
+      if (hidden === 0)                map[sys.id] = 'all';
+      else if (hidden === sysTypes.length) map[sys.id] = 'none';
+      else                             map[sys.id] = 'some';
+    }
+    return map;
+  })();
 
   function toggleSystem(systemId) {
     const sysTypes = typesForSystem(systemId);
-    const state    = systemCheckState(systemId);
+    const state    = systemCheckStates[systemId] ?? 'all';
     const next     = new Set(localHiddenTypes);
     if (state === 'all') {
       sysTypes.forEach(t => next.add(t.code));
@@ -73,11 +79,8 @@
 
   // -- Apply / Clear / Set All -----------------------------------------------
 
-  // Derive button label from current state:
-  // "Set All" when everything is hidden; "Clear" otherwise.
-  $: allHidden =
-    ALL_STATUSES.every(s => localHiddenStatuses.has(s)) &&
-    types.every(t => localHiddenTypes.has(t.code));
+  // Button label based on types only — status pills are not affected by this button.
+  $: allTypesHidden = types.every(t => localHiddenTypes.has(t.code));
 
   function apply() {
     mobileplanStore.setFilter({
@@ -89,14 +92,12 @@
   }
 
   function clearOrSetAll() {
-    if (allHidden) {
-      // Set All — show everything
-      localHiddenTypes    = new Set();
-      localHiddenStatuses = new Set();
+    if (allTypesHidden) {
+      // Set All — show all types (status pills unchanged)
+      localHiddenTypes = new Set();
     } else {
-      // Clear — hide everything
-      localHiddenTypes    = new Set(types.map(t => t.code));
-      localHiddenStatuses = new Set(ALL_STATUSES);
+      // Clear — hide all types (status pills unchanged)
+      localHiddenTypes = new Set(types.map(t => t.code));
     }
   }
 
@@ -113,7 +114,7 @@
   <!-- Header -->
   <div class="sheet-header">
     <span class="sheet-title">Filters</span>
-    <button class="clear-btn" on:click={clearOrSetAll}>{allHidden ? 'Set All' : 'Clear'}</button>
+    <button class="clear-btn" on:click={clearOrSetAll}>{allTypesHidden ? 'Set All' : 'Clear'}</button>
   </div>
 
   <div class="sheet-scroll">
@@ -153,15 +154,16 @@
         {#each systems as sys (sys.id)}
           {@const sysTypes = typesForSystem(sys.id)}
           {#if sysTypes.length > 0}
+            {@const sysState = systemCheckStates[sys.id] ?? 'all'}
             <div class="system-row">
               <button
                 class="system-check"
-                class:checked={systemCheckState(sys.id) === 'all'}
-                class:partial={systemCheckState(sys.id) === 'some'}
+                class:checked={sysState === 'all'}
+                class:partial={sysState === 'some'}
                 on:click={() => toggleSystem(sys.id)}
                 aria-label="Toggle {sys.name} system"
               >
-                {systemCheckState(sys.id) === 'all' ? '☑' : systemCheckState(sys.id) === 'some' ? '▣' : '☐'}
+                {sysState === 'all' ? '☑' : sysState === 'some' ? '▣' : '☐'}
               </button>
               <span class="system-name">
                 <span class="system-dot" style="background: #{sys.colour ?? '64748b'};"></span>

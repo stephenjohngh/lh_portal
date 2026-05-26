@@ -7,16 +7,18 @@
   import { createGestureHandlers } from '../utils/gestures.js';
   import MarkerOverlay from './MarkerOverlay.svelte';
 
-  export let plan          = null;   // { image_url, image_aspect_ratio } | null
-  export let components    = [];
-  export let spaces        = [];
-  export let annotations   = [];
-  export let types         = [];
-  export let hiddenTypes   = new Set();
+  export let plan           = null;   // { image_url, image_aspect_ratio } | null
+  export let components     = [];
+  export let spaces         = [];
+  export let annotations    = [];
+  export let types          = [];
+  export let attrDefs       = {};
+  export let componentAttrs = {};
+  export let hiddenTypes    = new Set();
   export let hiddenStatuses = new Set();
-  export let showSpaces    = true;
-  export let loadingFloor  = false;
-  export let selectedId    = null;
+  export let showSpaces     = false;
+  export let loadingFloor   = false;
+  export let selectedId     = null;
 
   const dispatch = createEventDispatcher();
 
@@ -221,6 +223,8 @@
           {spaces}
           {annotations}
           {types}
+          {attrDefs}
+          {componentAttrs}
           {hiddenTypes}
           {hiddenStatuses}
           {showSpaces}
