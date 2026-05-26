@@ -174,9 +174,6 @@
 
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
         <div class="comp-row" on:click={() => selectComponent(c)}>
-          <div class="comp-marker" style="background: #{type?.colour ?? '64748b'};">
-            {type?.initial ?? '?'}
-          </div>
           <p class="comp-line">
             <span class="seg-ref">{ref}</span><span class="sep"> | </span><span class="seg">{c.label || '—'}</span><span class="sep"> | </span><span class="seg">{type?.name ?? c.type_code ?? '—'}</span><span class="sep"> | </span><span class="seg {resultClass(c.status)}">{resultLabel(c.status)}</span>{#if attrsStr}<span class="sep"> | </span><span class="seg seg-attrs">{attrsStr}</span>{/if}
           </p>
@@ -292,20 +289,6 @@
 
   @media (hover: hover) {
     .comp-row:hover { background: #252540; }
-  }
-
-  .comp-marker {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
   }
 
   .comp-line {
