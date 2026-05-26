@@ -106,6 +106,13 @@
   // Placed = has a plan assignment
   $: placedComponents = components.filter(c => c.plan_id != null);
 
+  // Compute halos outside {#each} so Svelte tracks attrDefs/componentAttrs as
+  // explicit reactive dependencies. Inside a keyed {#each}, @const expressions
+  // only re-run when the item itself changes, not when external props change.
+  $: haloMap = Object.fromEntries(
+    placedComponents.map(c => [c.id, resolveHalo(c, getType(c.type_code))])
+  );
+
   // Space helpers
   function centroid(polygon) {
     if (!polygon || polygon.length === 0) return { x: 0.5, y: 0.5 };
@@ -192,7 +199,7 @@
   {@const innerRound = shape === 'circle_inner'}
   {@const px         = markerPx(type?.marker_size)}
   {@const fontSize   = px <= 22 ? '9px' : px <= 28 ? '11px' : '13px'}
-  {@const halo       = resolveHalo(c, type)}
+  {@const halo       = haloMap[c.id] ?? null}
 
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div
