@@ -201,6 +201,7 @@
     <ComponentSheet
       component={selectedComponent}
       types={state.types}
+      attrDefs={state.attrDefs}
       inspections={state.inspections}
       on:close={closeComponentSheet}
     />

@@ -12,6 +12,7 @@
 
   export let component   = null;   // component row
   export let types       = [];
+  export let attrDefs    = {};     // { [typeId]: type_attributes[] }
   export let inspections = {};     // { [componentId]: latest inspection }
 
   // -- Sheet state --------------------------------------------------------------
@@ -43,23 +44,6 @@
 
   $: attrs = component ? (componentAttrs[component.id] ?? []) : [];
 
-  // -- Attribute display (same rules as report) ---------------------------------
-
-  function fmtAttrs(attrValues) {
-    return attrValues
-      .filter(a => {
-        const v = a.value ?? '';
-        return v !== 'None' && v !== 'No' && v !== 'Unknown' && v !== '';
-      })
-      .map(a => {
-        if (a.display_type === 'number')   return `${a.attr_name}: ${a.value}`;
-        if (a.display_type === 'dropdown') return a.value;
-        return a.attr_name;
-      });
-  }
-
-  $: fmtAttrList = fmtAttrs(attrs);
-
   // -- Type lookup --------------------------------------------------------------
 
   function getType(typeCode) {
@@ -67,6 +51,27 @@
   }
 
   $: type = component ? getType(component.type_code) : null;
+
+  // -- Attribute display -------------------------------------------------------
+  // Iterate over definitions (like Building Assets) so default_value is shown
+  // when no component_attributes row exists for a given attribute.
+
+  // Stored values keyed by attribute-definition id
+  $: attrMap = Object.fromEntries(attrs.map(a => [a.type_attribute_id, a.value]));
+
+  // Non-checkable definitions for this component's type
+  $: fixedDefs = type ? (attrDefs[type.id] ?? []).filter(d => !d.checkable) : [];
+
+  $: fmtAttrList = fixedDefs
+    .map(def => {
+      const value = attrMap[def.id] ?? def.default_value ?? null;
+      const v = value ?? '';
+      if (v === '' || v === 'None' || v === 'No' || v === 'Unknown') return null;
+      if (def.display_type === 'checkbox') return v === 'true' ? def.name : null;
+      if (def.display_type === 'number')   return `${def.name}: ${v}`;
+      return v;   // dropdown, text, radio, textarea
+    })
+    .filter(Boolean);
 
   // -- Result display -----------------------------------------------------------
 
