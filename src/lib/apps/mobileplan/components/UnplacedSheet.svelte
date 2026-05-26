@@ -1,42 +1,41 @@
 <script>
   // src/lib/apps/mobileplan/components/UnplacedSheet.svelte
   // Searchable list of all components on the current floor.
-  // Tabs: Placed | Unplaced.
+  // Each row: marker | ref | label | type | status  (BA report columns 1–5).
   // Tapping a placed component → navigate to it on plan.
   // Tapping unplaced → open ComponentSheet.
 
   import { createEventDispatcher } from 'svelte';
 
-  export let components  = [];
+  export let components   = [];
   export let currentFloor = null;
   export let types        = [];
   export let inspections  = {};
 
   const dispatch = createEventDispatcher();
 
-  let query  = '';
-  let tab    = 'placed';  // 'placed' | 'unplaced'
+  let query = '';
 
   function getType(typeCode) {
     return types.find(t => t.code === typeCode) ?? null;
   }
 
-  // Placed = has a plan assignment; unplaced = floor-level only (plan_id null).
-  // x/y are NOT NULL in the DB but only meaningful when plan_id is set.
-  $: placed   = components.filter(c => c.plan_id != null);
-  $: unplaced = components.filter(c => c.plan_id == null);
-
-  $: activeList = tab === 'placed' ? placed : unplaced;
-
   $: filtered = query.trim()
-    ? activeList.filter(c => {
+    ? components.filter(c => {
         const q = query.toLowerCase();
-        return (c.asset_id ?? '').toLowerCase().includes(q)
-            || (c.label   ?? '').toLowerCase().includes(q)
-            || (c.notes   ?? '').toLowerCase().includes(q)
+        return (c.asset_id  ?? '').toLowerCase().includes(q)
+            || (c.label     ?? '').toLowerCase().includes(q)
+            || (c.notes     ?? '').toLowerCase().includes(q)
             || (c.type_code ?? '').toLowerCase().includes(q);
       })
-    : activeList;
+    : components;
+
+  function refStr(c, type) {
+    const fl  = currentFloor?.short_name ?? '?';
+    const ini = type?.initial ?? '?';
+    const id  = c.asset_id || '—';
+    return `${fl}/${ini}/${id}`;
+  }
 
   function resultLabel(r) {
     switch (r) {
@@ -59,7 +58,7 @@
   }
 
   function selectComponent(c) {
-    if (tab === 'placed') {
+    if (c.plan_id != null) {
       dispatch('navigateTo', c);
     } else {
       dispatch('openDetail', c);
@@ -100,28 +99,6 @@
     />
   </div>
 
-  <!-- Tabs -->
-  <div class="tabs" role="tablist">
-    <button
-      role="tab"
-      class="tab"
-      class:active={tab === 'placed'}
-      aria-selected={tab === 'placed'}
-      on:click={() => tab = 'placed'}
-    >
-      Placed ({placed.length})
-    </button>
-    <button
-      role="tab"
-      class="tab"
-      class:active={tab === 'unplaced'}
-      aria-selected={tab === 'unplaced'}
-      on:click={() => tab = 'unplaced'}
-    >
-      Unplaced ({unplaced.length})
-    </button>
-  </div>
-
   <!-- List -->
   <div class="list-scroll">
     {#if filtered.length === 0}
@@ -129,22 +106,16 @@
     {:else}
       {#each filtered as c (c.id)}
         {@const type = getType(c.type_code)}
-        {@const insp = inspections[c.id]}
+        {@const ref  = refStr(c, type)}
 
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
         <div class="comp-row" on:click={() => selectComponent(c)}>
           <div class="comp-marker" style="background: #{type?.colour ?? '64748b'};">
             {type?.initial ?? '?'}
           </div>
-          <div class="comp-info">
-            <span class="comp-asset">{c.asset_id ?? '—'}</span>
-            {#if c.label}
-              <span class="comp-label">{c.label}</span>
-            {/if}
-          </div>
-          <div class="comp-status {resultClass(c.status)}">
-            {resultLabel(c.status)}
-          </div>
+          <p class="comp-line">
+            <span class="seg-ref">{ref}</span><span class="sep"> | </span><span class="seg">{c.label || '—'}</span><span class="sep"> | </span><span class="seg">{type?.name ?? c.type_code ?? '—'}</span><span class="sep"> | </span><span class="seg {resultClass(c.status)}">{resultLabel(c.status)}</span>
+          </p>
         </div>
       {/each}
     {/if}
@@ -230,31 +201,6 @@
 
   .search-input::placeholder { color: #64748b; }
 
-  .tabs {
-    display: flex;
-    flex-shrink: 0;
-    border-bottom: 1px solid #252540;
-  }
-
-  .tab {
-    flex: 1;
-    min-height: 44px;
-    background: transparent;
-    border: none;
-    color: #64748b;
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
-    touch-action: manipulation;
-  }
-
-  .tab.active {
-    color: #2dd4bf;
-    border-bottom-color: #2dd4bf;
-  }
-
   .list-scroll {
     flex: 1;
     overflow-y: auto;
@@ -274,9 +220,9 @@
   .comp-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 0 16px;
-    min-height: 56px;
+    gap: 10px;
+    padding: 0 14px;
+    min-height: 48px;
     border-bottom: 1px solid #252540;
     cursor: pointer;
     transition: background 0.1s;
@@ -287,49 +233,34 @@
   }
 
   .comp-marker {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'DM Mono', monospace;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     color: #fff;
     flex-shrink: 0;
   }
 
-  .comp-info {
+  .comp-line {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: hidden;
-  }
-
-  .comp-asset {
+    min-width: 0;
+    margin: 0;
     font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 12px;
     color: #e2e8f0;
-  }
-
-  .comp-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: #64748b;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .comp-status {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    font-weight: 600;
-    flex-shrink: 0;
-  }
+  .seg-ref { font-weight: 600; }
+  .seg     { }
+  .sep     { color: #475569; }
 
   .ok       { color: #16a34a; }
   .failed   { color: #dc2626; }
