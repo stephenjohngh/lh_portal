@@ -102,6 +102,34 @@ function withTimeout(promise, ms) {
   ]);
 }
 
+// -- Helpers -------------------------------------------------------------------
+
+/**
+ * Enrich raw component_attributes rows with attr_name and display_type,
+ * matching the format produced by the lazy loadComponentAttrs().
+ * Called after every floor load (cache or fresh) so ComponentSheet always
+ * gets the same shape regardless of which path populated the data.
+ */
+function enrichComponentAttrs(rawAttrs, attrDefs) {
+  const allDefs = Object.values(attrDefs).flat();
+  const defById = {};
+  for (const d of allDefs) defById[d.id] = d;
+
+  const result = {};
+  for (const [compId, attrs] of Object.entries(rawAttrs)) {
+    result[compId] = attrs.map(attr => {
+      if (attr.attr_name !== undefined) return attr;   // already enriched
+      const def = defById[attr.type_attribute_id];
+      return {
+        ...attr,
+        attr_name:    def?.name         ?? '',
+        display_type: def?.display_type ?? 'text',
+      };
+    });
+  }
+  return result;
+}
+
 // -- Load type hierarchy (building / floors / types / plans) -------------------
 
 async function fetchHierarchy() {
@@ -256,13 +284,18 @@ async function selectFloor(floorId, forceRefresh = false) {
     return;
   }
 
+  // Enrich raw component_attributes with attr_name / display_type so
+  // ComponentSheet's fmtAttrs() works the same from cache or fresh fetch.
+  const currentState = get({ subscribe });
+  const enriched = enrichComponentAttrs(floorData.componentAttrs ?? {}, currentState.attrDefs);
+
   update(s => ({
     ...s,
     components:     floorData.components,
     spaces:         floorData.spaces,
     annotations:    floorData.annotations,
     inspections:    floorData.inspections,
-    componentAttrs: floorData.componentAttrs ?? {},
+    componentAttrs: enriched,
     loadingFloor:   false,
     usingCache,
     cachedAt,
@@ -346,7 +379,7 @@ async function fetchFloorForPlan(planId, floorId) {
 
 async function loadComponentAttrs(componentId) {
   const state = get({ subscribe });
-  if (state.componentAttrs[componentId]) return; // already cached for this session
+  if (state.componentAttrs[componentId] !== undefined) return; // already loaded (may be [])
 
   try {
     const rows = await api.get('component_attributes', {
