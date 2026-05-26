@@ -233,7 +233,12 @@
       components={state.components}
       currentFloor={state.currentFloor}
       types={state.types}
+      systems={state.systems}
+      attrDefs={state.attrDefs}
+      componentAttrs={state.componentAttrs}
       inspections={state.inspections}
+      hiddenTypes={state.hiddenTypes}
+      hiddenStatuses={state.hiddenStatuses}
       on:navigateTo={onNavigateTo}
       on:openDetail={onOpenDetail}
       on:close={() => showList = false}
