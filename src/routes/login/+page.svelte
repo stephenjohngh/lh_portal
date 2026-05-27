@@ -1,4 +1,5 @@
 <script>
+  import lhLogo from '$lib/assets/LH_services_logo.png';
   import { auth } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -34,12 +35,7 @@
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
   <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md border border-white/20 shadow-2xl">
     <div class="text-center mb-8">
-      <div class="inline-block p-3 bg-purple-500/20 rounded-full mb-4">
-        <svg class="w-8 h-8 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"/>
-        </svg>
-      </div>
-      <h1 class="text-3xl font-bold text-white mb-2">LH Portal</h1>
+      <img src={lhLogo} alt="LH Services" class="h-20 w-auto mx-auto mb-4" />
       <p class="text-gray-300">Sign in to access your apps</p>
     </div>
 
