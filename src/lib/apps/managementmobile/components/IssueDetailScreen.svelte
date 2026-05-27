@@ -290,7 +290,7 @@
   }
 
   .header-num {
-    color: #475569;
+    color: #818cf8;
     margin-right: 4px;
   }
 

@@ -394,7 +394,7 @@
   .issue-num {
     font-family: 'DM Mono', monospace;
     font-size: 11px;
-    color: #475569;
+    color: #818cf8;
     font-weight: 600;
     flex-shrink: 0;
   }
