@@ -29,6 +29,7 @@
   import BuildingAssetsApp from '$lib/apps/building_assets/BuildingAssetsApp.svelte';
   import InspectionApp from '$lib/apps/inspection/InspectionApp.svelte';
   import MobilePlanApp from '$lib/apps/mobileplan/MobilePlanApp.svelte';
+  import ManagementMobileApp from '$lib/apps/managementmobile/ManagementMobileApp.svelte';
   import MaintenanceApp from '$lib/apps/maintenance/MaintenanceApp.svelte';
   import InfoApp        from '$lib/apps/info/InfoApp.svelte';
 
@@ -116,7 +117,8 @@
       'settings': SettingsApp,
       'building_assets': BuildingAssetsApp,
       'inspection': InspectionApp,
-      'mobileplan':  MobilePlanApp,
+      'mobileplan':         MobilePlanApp,
+      'managementmobile':   ManagementMobileApp,
       'maintenance': MaintenanceApp,
       'info':        InfoApp
     };

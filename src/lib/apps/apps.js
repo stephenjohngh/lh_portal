@@ -41,6 +41,14 @@ export const AVAILABLE_APPS = [
     description: 'Track and manage building issues'
   },
   {
+    id: 'managementmobile',
+    name: 'Issues (Mobile)',
+    icon: 'clipboard',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Mobile-friendly read-only issues and activity viewer'
+  },
+  {
     id: 'demo2',
     name: 'Demo App 2',
     icon: 'lhlogo',
@@ -115,7 +123,8 @@ export const APP_IDS = {
   DEMO2:           'demo2',
   BUILDING_ASSETS: 'building_assets',
   INSPECTION:      'inspection',
-  MOBILEPLAN:      'mobileplan',
+  MOBILEPLAN:          'mobileplan',
+  MANAGEMENT_MOBILE:   'managementmobile',
   MAINTENANCE:     'maintenance',
   INFO:            'info',
   SETTINGS:        'settings'
