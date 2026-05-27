@@ -104,6 +104,14 @@
         {/if}
       </div>
 
+      <!-- Summary line — shown first when present -->
+      {#if activity.fields?.summary}
+        <div class="summary-row">
+          <span class="summary-label">Summary</span>
+          <span class="summary-text">{activity.fields.summary}</span>
+        </div>
+      {/if}
+
       <!-- Structured fields (email, letter, meeting etc.) -->
       {#if cfg.fields.length > 0}
         {@const f = activity.fields ?? {}}
@@ -115,7 +123,6 @@
             </div>
           {/if}
         {/each}
-        <!-- Summary shown below body -->
       {/if}
 
       <!-- Document attachment -->
@@ -147,14 +154,6 @@
           {:else}
             <p class="plain-body">{activity.body}</p>
           {/if}
-        </div>
-      {/if}
-
-      <!-- Summary line (notes/email/etc.) -->
-      {#if activity.fields?.summary}
-        <div class="summary-row">
-          <span class="summary-label">Summary</span>
-          <span class="summary-text">{activity.fields.summary}</span>
         </div>
       {/if}
 

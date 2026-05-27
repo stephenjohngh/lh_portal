@@ -170,7 +170,9 @@
               {/if}
               <span class="act-date">{fmtDateTime(activity.created_at, activity.created_by_profile?.full_name)}</span>
             </div>
-            {#if bodyPreview(activity.body)}
+            {#if activity.fields?.summary}
+              <p class="act-preview act-summary">{activity.fields.summary}</p>
+            {:else if bodyPreview(activity.body)}
               <p class="act-preview">{bodyPreview(activity.body)}</p>
             {:else if activity.activity_type === ACTIVITY_TYPE.DOCUMENT}
               <p class="act-preview act-doc">{activity.fields?.display_name || activity.fields?.filename || 'Document'}</p>
@@ -210,10 +212,10 @@
           ></div>
 
           <div class="action-body">
-            <p class="action-text">{action.text}</p>
+            <p class="action-text">{action.action_text}</p>
             <div class="action-chips">
-              {#if action.assignee_profile?.full_name}
-                <span class="chip chip-assignee">{action.assignee_profile.full_name}</span>
+              {#if action.name_text}
+                <span class="chip chip-assignee">{action.name_text}</span>
               {/if}
               {#if action.date_deadline}
                 <span class="chip {deadlineChipClass(action)}">
@@ -486,6 +488,7 @@
     white-space: nowrap;
   }
 
+  .act-preview.act-summary { color: #94a3b8; font-style: italic; }
   .act-preview.act-doc { color: #818cf8; }
   .act-preview.act-empty { color: #334155; font-style: italic; }
 
