@@ -170,8 +170,8 @@
               {/if}
               <span class="act-date">{fmtDateTime(activity.created_at, activity.created_by_profile?.full_name)}</span>
             </div>
-            {#if activity.fields?.summary}
-              <p class="act-preview act-summary">{activity.fields.summary}</p>
+            {#if activity.fields?.summary || activity.fields?.notes}
+              <p class="act-preview act-summary">{activity.fields.summary || activity.fields.notes}</p>
             {:else if bodyPreview(activity.body)}
               <p class="act-preview">{bodyPreview(activity.body)}</p>
             {:else if activity.activity_type === ACTIVITY_TYPE.DOCUMENT}

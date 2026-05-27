@@ -156,7 +156,7 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBorder:   'border-cyan-200',
     reportBadgeCls: 'bg-cyan-100 text-cyan-700 border-cyan-300',
     fields: [
-      { key: 'notes',      label: 'Email Notes', type: 'text', placeholder: 'Brief notes about this email…', span: 2 },
+      { key: 'summary',    label: 'Summary',     type: 'text', placeholder: 'One-line summary for reports…', span: 2 },
       { key: 'from',       label: 'From',        type: 'text', placeholder: 'Sender name or address',        span: 1 },
       { key: 'to',         label: 'To',          type: 'text', placeholder: 'Recipient name or address',     span: 1 },
       { key: 'subject',    label: 'Subject',     type: 'text', placeholder: 'Email subject line',            span: 2 },
@@ -177,6 +177,7 @@ export const ACTIVITY_TYPE_CONFIG = {
     reportBorder:   'border-gray-300',
     reportBadgeCls: 'bg-gray-200 text-gray-700 border-gray-300',
     fields: [
+      { key: 'summary',     label: 'Summary',   type: 'text', placeholder: 'One-line summary for reports…', span: 2 },
       { key: 'from',        label: 'From',      type: 'text', placeholder: 'Sender',             span: 1 },
       { key: 'to',          label: 'To',        type: 'text', placeholder: 'Recipient',          span: 1 },
       { key: 'reference',   label: 'Reference', type: 'text', placeholder: 'Ref no. or subject', span: 2 },

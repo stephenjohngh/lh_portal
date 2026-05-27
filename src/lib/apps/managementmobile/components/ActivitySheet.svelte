@@ -105,10 +105,10 @@
       </div>
 
       <!-- Summary line — shown first when present -->
-      {#if activity.fields?.summary}
+      {#if activity.fields?.summary || activity.fields?.notes}
         <div class="summary-row">
           <span class="summary-label">Summary</span>
-          <span class="summary-text">{activity.fields.summary}</span>
+          <span class="summary-text">{activity.fields.summary || activity.fields.notes}</span>
         </div>
       {/if}
 
