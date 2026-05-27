@@ -158,8 +158,8 @@
 <div class="app-container" bind:this={containerElement}>
 
   <!-- ─── Sticky header: tab bar + compact issues toolbar ──────────────── -->
-  <!-- -mx-8 px-8 bleeds edge-to-edge across the app-container's p-8 padding -->
-  <div class="sticky top-16 z-20 bg-slate-800 -mx-8 px-8 border-b border-slate-700/60 mb-4">
+  <!-- -mx-4 px-4 cancels exactly the px-4 on the outer <main> — no bleed on mobile -->
+  <div class="sticky top-16 z-20 bg-slate-800 -mx-4 px-4 border-b border-slate-700/60 mb-4">
 
     <!-- Tab row -->
     <div class="flex items-stretch">
@@ -196,14 +196,13 @@
       {/if}
     </div>
 
-    <!-- Compact single-line toolbar (issues tab only) -->
+    <!-- Toolbar (issues tab only) -->
     {#if activeTab === 'issues'}
-      <div class="flex items-center gap-2 py-2">
-        <!-- Issue count -->
+      <!-- Desktop: single row (sm and above) -->
+      <div class="hidden sm:flex items-center gap-2 py-2">
         <span class="text-xs text-slate-400 shrink-0 whitespace-nowrap">
           {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
         </span>
-        <!-- Status filter -->
         <select
           bind:value={statusFilter}
           class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
@@ -213,7 +212,6 @@
             <option value={f.value}>{f.label}</option>
           {/each}
         </select>
-        <!-- Jump to issue — retains chosen item -->
         <select
           bind:value={jumpToIssueId}
           on:change={handleJumpSelect}
@@ -225,7 +223,6 @@
             <option value={issue.id}>{#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}</option>
           {/each}
         </select>
-        <!-- Search -->
         <input
           type="text"
           bind:value={searchTerm}
@@ -234,9 +231,52 @@
                  placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500
                  flex-1 min-w-0"
         />
-        <!-- New Issue -->
         <Button variant="primary" size="small" icon="plus"
           on:click={() => showNewIssueModal = true}>New Issue</Button>
+      </div>
+
+      <!-- Mobile: two rows (below sm) -->
+      <div class="sm:hidden py-2 space-y-2">
+        <!-- Row 1: count · status filter · New Issue -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400 shrink-0 whitespace-nowrap">
+            {filteredIssues.length} {filteredIssues.length === 1 ? 'issue' : 'issues'}
+          </span>
+          <select
+            bind:value={statusFilter}
+            class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
+                   focus:outline-none focus:ring-1 focus:ring-purple-500 shrink-0"
+          >
+            {#each STATUS_FILTERS as f}
+              <option value={f.value}>{f.label}</option>
+            {/each}
+          </select>
+          <span class="flex-1"></span>
+          <Button variant="primary" size="small" icon="plus"
+            on:click={() => showNewIssueModal = true}>New Issue</Button>
+        </div>
+        <!-- Row 2: jump-to issue · search -->
+        <div class="flex items-center gap-2">
+          <select
+            bind:value={jumpToIssueId}
+            on:change={handleJumpSelect}
+            class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
+                   focus:outline-none focus:ring-1 focus:ring-purple-500 flex-1 min-w-0"
+          >
+            <option value="">Jump to issue…</option>
+            {#each jumpIssues as issue (issue.id)}
+              <option value={issue.id}>{#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}</option>
+            {/each}
+          </select>
+          <input
+            type="text"
+            bind:value={searchTerm}
+            placeholder="Search…"
+            class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
+                   placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500
+                   flex-1 min-w-0"
+          />
+        </div>
       </div>
     {/if}
   </div>
