@@ -42,7 +42,7 @@ export const AVAILABLE_APPS = [
   },
   {
     id: 'managementmobile',
-    name: 'Issues (Mobile)',
+    name: 'Issues (M)',
     icon: 'clipboard',
     alwaysVisible: false,
     requiresPermission: true,
@@ -68,7 +68,7 @@ export const AVAILABLE_APPS = [
 
   {
     id: 'inspection',
-    name: 'Inspection',
+    name: 'Inspections (M)',
     icon: 'walk',
     alwaysVisible: false,
     requiresPermission: true,
@@ -77,7 +77,7 @@ export const AVAILABLE_APPS = [
 
   {
     id: 'mobileplan',
-    name: 'Mobile Plan',
+    name: 'Plans (M)',
     icon: 'grid',
     alwaysVisible: false,
     requiresPermission: true,

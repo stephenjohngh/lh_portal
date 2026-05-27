@@ -41,14 +41,26 @@
 
   const allApps = AVAILABLE_APPS;
 
-  // All apps the user can access (home page grid)
-  $: displayedApps = userApps;
+  // All apps the user can access, sorted by admin-configured order (home page grid + nav)
+  $: displayedApps = (() => {
+    const order = $portalSettings.order;
+    if (!order || order.length === 0) return userApps;   // no config = AVAILABLE_APPS default order
+    return [...userApps].sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      // Apps not in the saved order (newly added) sort to the end
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  })();
 
   // Subset of displayedApps shown in the top bar, controlled by portal_settings
   $: topbarApps = (() => {
     const { loaded, ids } = $portalSettings;
     if (!loaded || ids === null) return displayedApps;   // no config = show all
-    // Preserve displayedApps order while filtering to pinned IDs
+    // Preserve displayedApps order (which already reflects app_order) while filtering
     return displayedApps.filter(a => ids.includes(a.id));
   })();
 

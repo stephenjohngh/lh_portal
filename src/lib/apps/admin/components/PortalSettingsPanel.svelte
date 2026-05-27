@@ -12,6 +12,7 @@
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import Icon         from '$lib/components/icons/Icon.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
 
   const logger = getLogger('PortalSettingsPanel');
 
@@ -23,6 +24,55 @@
 
   // All apps that can appear in the top bar
   const ALL_APPS = AVAILABLE_APPS;
+
+  // ── App order section ────────────────────────────────────────────────
+  // orderedApps is a working copy of AVAILABLE_APPS in admin-configured order.
+  // Initialised once from the store; up/down arrows mutate it; Save persists it.
+  const ORDER_KEY = 'app_order';
+
+  let orderedApps   = null;   // null = still loading
+  let orderSaving   = false;
+  let orderSaved    = false;
+  let orderError    = '';
+
+  function moveUp(i) {
+    if (i === 0 || !orderedApps) return;
+    const arr = [...orderedApps];
+    [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+    orderedApps = arr;
+    orderSaved = false;
+  }
+
+  function moveDown(i) {
+    if (!orderedApps || i === orderedApps.length - 1) return;
+    const arr = [...orderedApps];
+    [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+    orderedApps = arr;
+    orderSaved = false;
+  }
+
+  async function handleSaveOrder() {
+    if (!orderedApps) return;
+    orderSaving = true;
+    orderError  = '';
+    orderSaved  = false;
+    try {
+      const ids = orderedApps.map(a => a.id);
+      await portalSettings.saveOrder(ids);
+      orderSaved = true;
+      logAudit('update', 'portal_setting', ORDER_KEY, 'App display order', {
+        appId:         'admin',
+        eventCategory: 'system',
+        severity:      'info',
+        afterData:     { order: ids }
+      });
+    } catch (err) {
+      orderError = err.message;
+      logger('❌ Save order failed:', err.message);
+    } finally {
+      orderSaving = false;
+    }
+  }
 
   // ── AI assistant section ─────────────────────────────────────────────
   // Admins choose which Claude model the /api/management/suggest-action
@@ -111,14 +161,26 @@
     }
   }
 
-  // Initialise working copy from store whenever it transitions to loaded
+  // Initialise working copies from store whenever it transitions to loaded
   let prevLoaded = false;
   $: {
-    const { loaded, ids } = $portalSettings;
+    const { loaded, ids, order } = $portalSettings;
     if (loaded && !prevLoaded) {
       prevLoaded = true;
       // null ids means "no config saved yet" → default = all apps selected
       topbarIds = ids !== null ? [...ids] : ALL_APPS.map(a => a.id);
+      // null order means "no config saved yet" → default = AVAILABLE_APPS order
+      if (order !== null && order.length > 0) {
+        // Reconstruct sorted app definitions from the saved ID list; append
+        // any newly-added apps (not yet in saved order) at the end
+        const sorted = order
+          .map(id => ALL_APPS.find(a => a.id === id))
+          .filter(Boolean);
+        const unseen = ALL_APPS.filter(a => !order.includes(a.id));
+        orderedApps = [...sorted, ...unseen];
+      } else {
+        orderedApps = [...ALL_APPS];
+      }
     }
   }
 
@@ -220,6 +282,80 @@
     {/if}
   </div>
 
+  <!-- ── Section: app display order ───────────────────────────────────── -->
+  <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
+    <div class="mb-5">
+      <h3 class="text-base font-semibold text-slate-100">App display order</h3>
+      <p class="text-sm text-slate-400 mt-1">
+        Set the order in which apps appear on the home page grid and in the navigation bar.
+        Use the arrows to reorder, then save.
+      </p>
+    </div>
+
+    {#if orderedApps === null}
+      <p class="text-sm text-slate-500 italic animate-pulse">Loading…</p>
+
+    {:else}
+      <div class="space-y-1.5 mb-6">
+        {#each orderedApps as app, i}
+          <div class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-slate-700/40 border border-slate-700/60">
+            <!-- Up / Down arrows -->
+            <div class="flex flex-col gap-0.5 shrink-0">
+              <button
+                class="w-6 h-5 flex items-center justify-center rounded text-slate-400
+                       hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-25
+                       disabled:cursor-not-allowed text-xs leading-none"
+                disabled={i === 0}
+                on:click={() => moveUp(i)}
+                aria-label="Move {app.name} up"
+              >▲</button>
+              <button
+                class="w-6 h-5 flex items-center justify-center rounded text-slate-400
+                       hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-25
+                       disabled:cursor-not-allowed text-xs leading-none"
+                disabled={i === orderedApps.length - 1}
+                on:click={() => moveDown(i)}
+                aria-label="Move {app.name} down"
+              >▼</button>
+            </div>
+
+            <!-- Position number -->
+            <span class="text-xs text-slate-600 w-4 text-right shrink-0 tabular-nums">{i + 1}</span>
+
+            <!-- Icon + name -->
+            <Icon name={app.icon} size={4} className="text-purple-400 shrink-0" />
+            <p class="text-sm font-medium text-slate-200 flex-1 min-w-0 truncate">
+              {app.name}
+              {#if app.alwaysVisible}
+                <span class="ml-1.5 text-xs text-slate-500 font-normal">always visible</span>
+              {/if}
+            </p>
+          </div>
+        {/each}
+      </div>
+
+      <!-- Save row -->
+      <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-slate-700">
+        <p class="text-sm text-slate-400">
+          Drag not yet available — use arrows to reorder.
+        </p>
+        <div class="flex items-center gap-3">
+          {#if orderSaved}
+            <p class="text-sm text-green-400">✓ Saved — order updated</p>
+          {/if}
+          {#if orderError}
+            <p class="text-sm text-red-400">⚠ {orderError}</p>
+          {/if}
+          <Button variant="secondary" on:click={() => { orderedApps = [...ALL_APPS]; orderSaved = false; }}
+            disabled={orderSaving}>Reset to default</Button>
+          <Button variant="primary" on:click={handleSaveOrder} disabled={orderSaving}>
+            {orderSaving ? 'Saving…' : 'Save order'}
+          </Button>
+        </div>
+      </div>
+    {/if}
+  </div>
+
   <!-- ── Info box ─────────────────────────────────────────────────────── -->
   <div class="rounded-lg bg-slate-800/60 border border-slate-700/60 px-4 py-3 text-sm text-slate-400 flex gap-3">
     <Icon name="info" size={4} className="shrink-0 mt-0.5 text-slate-500" />
@@ -227,8 +363,9 @@
       <p class="font-medium text-slate-300 mb-1">How this works</p>
       <ul class="space-y-1 list-disc list-inside">
         <li>Changes apply immediately to all users without a page refresh.</li>
-        <li>Each user only sees apps they have permission for — this setting determines which of those appear in the top bar.</li>
+        <li>Each user only sees apps they have permission for — top-bar and order settings apply within that set.</li>
         <li>Apps not shown in the top bar remain fully accessible from the <strong class="text-slate-300">Home</strong> page.</li>
+        <li>App display order affects both the home page grid and the navigation bar.</li>
       </ul>
     </div>
   </div>
