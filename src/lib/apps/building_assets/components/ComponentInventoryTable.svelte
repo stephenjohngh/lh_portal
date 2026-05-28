@@ -110,7 +110,7 @@
   const statusCls = statusBadgeCls;
   const statusDot = statusDotCls;
 
-  // -- Sort: floor → system → type → asset_id -----------------------
+  // -- Sort: floor → system (presentation_order) → asset_id ----------
   $: sortedComponents = [...components].sort((a, b) => {
     const flA = floors.find(f => f.id === a.floor_id);
     const flB = floors.find(f => f.id === b.floor_id);
@@ -125,10 +125,6 @@
     const spA = sA?.presentation_order ?? 9999;
     const spB = sB?.presentation_order ?? 9999;
     if (spA !== spB) return spA - spB;
-
-    const tpA = tA?.presentation_order ?? 9999;
-    const tpB = tB?.presentation_order ?? 9999;
-    if (tpA !== tpB) return tpA - tpB;
 
     return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
   });
@@ -148,10 +144,12 @@
       if (s in r) r[s]++;
     }
     return [...rows.values()].sort((a, b) => {
-      const sa = a.system?.name ?? 'ZZZ';
-      const sb = b.system?.name ?? 'ZZZ';
-      if (sa !== sb) return sa.localeCompare(sb);
-      return (a.type?.name ?? '').localeCompare(b.type?.name ?? '');
+      const spA = a.system?.presentation_order ?? 9999;
+      const spB = b.system?.presentation_order ?? 9999;
+      if (spA !== spB) return spA - spB;
+      const tpA = a.type?.presentation_order ?? 9999;
+      const tpB = b.type?.presentation_order ?? 9999;
+      return tpA - tpB;
     });
   })();
 
