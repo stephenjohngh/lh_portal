@@ -3,7 +3,7 @@
 <script>
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
-  import { goto } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
   import { supabase } from '$lib/supabaseClient';
   import { isAdmin as checkIsAdmin } from '$lib/utils/auth';
   import { getLogger } from '$lib/utils/logger';
@@ -16,7 +16,8 @@
   const PUBLIC_ENV_LABEL = import.meta.env.PUBLIC_ENV_LABEL ?? '';
   // Injected by vite.config.js at build time — "25 May 2026" format.
   const buildDate = __BUILD_DATE__;
-  import Button from '$lib/components/common/Button.svelte';
+  import Button        from '$lib/components/common/Button.svelte';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
   import lhLogo from '$lib/assets/LH_services_logo.png';
 
@@ -140,6 +141,56 @@
   $: if (!loading && activeApp !== 'home' && !displayedApps.find(a => a.id === activeApp)) {
     activeApp = 'home';
   }
+
+  // -- Leave-page navigation guard ------------------------------------
+  // Warns if the user accidentally navigates away (e.g. browser back button).
+  //
+  // Two cases:
+  //   1. SvelteKit-managed navigation (e.g. back → /login) → cancel() + show
+  //      our own ConfirmDialog with a "Leave anyway" option.
+  //   2. External-URL navigation / tab close → beforeunload fires and the
+  //      browser shows its native "Leave site?" dialog (we cannot customise it).
+  //
+  // The !$auth.user guard means the programmatic goto('/login') that fires
+  // after a normal logout is never intercepted — the reactive block only runs
+  // once the auth store has already been cleared.
+
+  let showLeaveWarning = false;
+  let pendingLeaveUrl  = null;
+  let skipLeaveGuard   = false;
+
+  beforeNavigate(({ cancel, to, willUnload }) => {
+    // Allow: not authenticated (logout redirect), user already confirmed, or
+    // the browser is doing a full unload (beforeunload handles that case).
+    if (skipLeaveGuard || !$auth.user || willUnload) return;
+    cancel();
+    pendingLeaveUrl  = to?.url?.href ?? null;
+    showLeaveWarning = true;
+  });
+
+  function confirmLeave() {
+    showLeaveWarning = false;
+    skipLeaveGuard   = true;          // next navigation bypasses the guard once
+    if (pendingLeaveUrl) goto(pendingLeaveUrl);
+    pendingLeaveUrl  = null;
+  }
+
+  function cancelLeave() {
+    showLeaveWarning = false;
+    pendingLeaveUrl  = null;
+  }
+
+  // Handles external-URL navigation and tab / window close.
+  function handleBeforeUnload(e) {
+    if (!$auth.user) return;
+    e.preventDefault();
+    e.returnValue = '';   // required for Chrome to show the native dialog
+  }
+
+  onMount(() => {
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  });
 </script>
 
 {#if $auth.loading || loading}
@@ -313,4 +364,16 @@
       {/if}
     </main>
   </div>
+
+  <!-- Leave-page warning — shown when beforeNavigate is cancelled -->
+  <ConfirmDialog
+    show={showLeaveWarning}
+    title="Leave the portal?"
+    message="You're about to navigate away. Any unsaved work will be lost."
+    confirmText="Leave"
+    cancelText="Stay"
+    danger={true}
+    on:confirm={confirmLeave}
+    on:cancel={cancelLeave}
+  />
 {/if}
