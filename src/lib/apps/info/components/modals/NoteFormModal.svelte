@@ -123,17 +123,17 @@
       rows={8}
       disabled={saving}
     />
-    {#if body?.includes('\n')}
-      <div class="flex justify-end -mt-2">
-        <button
-          type="button"
-          on:click={reflowBody}
-          disabled={saving}
-          class="text-xs text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-40"
-          title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
-        >⟳ Reflow lines</button>
-      </div>
-    {/if}
+    <div class="flex justify-end">
+      <button
+        type="button"
+        on:click={reflowBody}
+        disabled={saving || !body}
+        class="px-2.5 py-1 text-xs rounded border border-slate-600 text-slate-400
+               hover:border-slate-400 hover:text-slate-200 transition-colors
+               disabled:opacity-30 disabled:cursor-not-allowed"
+        title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
+      >⟳ Reflow lines</button>
+    </div>
 
     <FormInput
       label="Tags"
