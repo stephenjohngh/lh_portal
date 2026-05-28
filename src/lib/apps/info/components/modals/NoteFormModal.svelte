@@ -65,6 +65,27 @@
   export function fail(e) { error = e; saving = false; }
 
   function handleClose() { show = false; dispatch('close'); }
+
+  // Reflow: join mid-paragraph line-breaks (common in text copied from
+  // narrow-column web pages) into spaces while preserving blank-line
+  // paragraph separators.
+  function reflowBody() {
+    if (!body) return;
+    body = body
+      .replace(/\r\n/g, '\n')     // normalise CRLF
+      .replace(/\r/g, '\n')       // normalise bare CR
+      .split(/\n{2,}/)            // split into paragraphs on blank lines
+      .map(para =>
+        para
+          .split('\n')
+          .map(l => l.trimEnd())
+          .join(' ')
+          .replace(/  +/g, ' ')
+          .trim()
+      )
+      .filter(Boolean)
+      .join('\n\n');
+  }
 </script>
 
 <Modal
@@ -102,6 +123,17 @@
       rows={8}
       disabled={saving}
     />
+    {#if body?.includes('\n')}
+      <div class="flex justify-end -mt-2">
+        <button
+          type="button"
+          on:click={reflowBody}
+          disabled={saving}
+          class="text-xs text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-40"
+          title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
+        >⟳ Reflow lines</button>
+      </div>
+    {/if}
 
     <FormInput
       label="Tags"
