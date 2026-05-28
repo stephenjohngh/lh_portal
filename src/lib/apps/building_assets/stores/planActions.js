@@ -270,10 +270,24 @@ export function createPlanActions(update, supabase) {
       }
     }
 
+    // Fetch newly created attrs so the store shows them immediately (no reload needed)
+    const newComponents  = Object.values(idMap);
+    const newCompIds     = newComponents.map(c => c.id);
+    const { data: newAttrRows = [] } = newCompIds.length > 0
+      ? await supabase.from('component_attributes').select('*').in('component_id', newCompIds)
+      : { data: [] };
+    const newComponentAttrs = {};
+    for (const a of newAttrRows) {
+      if (!newComponentAttrs[a.component_id]) newComponentAttrs[a.component_id] = [];
+      newComponentAttrs[a.component_id].push(a);
+    }
+
     update(s => ({
       ...s,
-      plans: [...s.plans, newPlan].sort((a, b) =>
-        (a.building ?? '').localeCompare(b.building ?? ''))
+      plans:          [...s.plans, newPlan].sort((a, b) =>
+        (a.building ?? '').localeCompare(b.building ?? '')),
+      components:     [...s.components, ...newComponents],
+      componentAttrs: { ...s.componentAttrs, ...newComponentAttrs },
     }));
     logger(`Copied plan ${sourcePlanId} → ${newPlan.id}, ${copied} components`);
     logAudit('create', 'plan', newPlan.id, newPlan.name || newPlan.building || newPlan.id, {
@@ -396,13 +410,22 @@ export function createPlanActions(update, supabase) {
       }
     }
 
-    // Update local state — add new components (attrs already in DB; store
-    // will pick them up on next full reload, but we add the rows now so
-    // they appear immediately without a reload).
-    const newComponents = Object.values(idMap);
+    // Fetch newly created attrs so the store shows them immediately (no reload needed)
+    const newComponents  = Object.values(idMap);
+    const newCompIds     = newComponents.map(c => c.id);
+    const { data: newAttrRows = [] } = newCompIds.length > 0
+      ? await supabase.from('component_attributes').select('*').in('component_id', newCompIds)
+      : { data: [] };
+    const newComponentAttrs = {};
+    for (const a of newAttrRows) {
+      if (!newComponentAttrs[a.component_id]) newComponentAttrs[a.component_id] = [];
+      newComponentAttrs[a.component_id].push(a);
+    }
+
     update(s => ({
       ...s,
-      components: [...s.components, ...newComponents],
+      components:     [...s.components, ...newComponents],
+      componentAttrs: { ...s.componentAttrs, ...newComponentAttrs },
     }));
 
     logger(`Imported ${copied} components from plan ${sourcePlanId} → existing plan ${targetPlanId}`);
