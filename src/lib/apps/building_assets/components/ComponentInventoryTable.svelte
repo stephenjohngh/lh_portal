@@ -208,6 +208,8 @@
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Ref</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-36">Label</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-28">Type</th>
+            <!-- TEMP: inspection sort order column — remove this <th> when done -->
+            <th class="px-2 py-1.5 text-slate-500 font-semibold uppercase tracking-wide w-12" title="inspection_sort_order">Ord</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Status</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-[260px]">Attributes</th>
             {#if showLinked}
@@ -268,6 +270,15 @@
               <!-- ④ Type name -->
               <td class="px-2 py-2 text-slate-400 overflow-hidden">
                 <span class="truncate block" title={t?.name ?? c.type_code}>{t?.name ?? c.type_code}</span>
+              </td>
+
+              <!-- TEMP ④½: inspection_sort_order — remove this <td> when done -->
+              <td class="px-2 py-2 text-center tabular-nums overflow-hidden">
+                {#if c.inspection_sort_order != null}
+                  <span class="text-amber-400/80 font-mono text-[11px]">{c.inspection_sort_order}</span>
+                {:else}
+                  <span class="text-slate-700">—</span>
+                {/if}
               </td>
 
               <!-- ⑤ Status -->
