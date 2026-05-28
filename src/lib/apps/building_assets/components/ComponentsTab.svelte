@@ -692,7 +692,7 @@
       <ComponentDetailView
         component={editingComponent}
         {types} {floors}
-        {attrDefs} {attrOptions} {components}
+        {attrDefs} {components}
         attrs={componentAttrs[editingComponent.id] ?? []}
         on:close={() => editingComponent = null}
       />

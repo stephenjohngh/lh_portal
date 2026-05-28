@@ -1,6 +1,7 @@
 <script context="module">
   // Persist search across open/close cycles without lifting state to parent.
-  let persistedQuery = '';
+  // Object wrapper avoids a vite-plugin-svelte "module-level reassignment" warning.
+  const _persist = { query: '' };
 </script>
 
 <script>
@@ -19,14 +20,13 @@
   export let systems        = [];
   export let attrDefs       = {};   // { [typeId]: type_attributes[] }
   export let componentAttrs = {};   // { [componentId]: component_attributes[] }
-  export let inspections    = {};
   export let hiddenTypes    = new Set();
   export let hiddenStatuses = new Set();
 
   const dispatch = createEventDispatcher();
 
-  let query = persistedQuery;
-  $: persistedQuery = query;
+  let query = _persist.query;
+  $: _persist.query = query;
 
   function getType(typeCode) {
     return types.find(t => t.code === typeCode) ?? null;

@@ -309,7 +309,6 @@
         floors={store.floors}
         facilities={store.facilities}
         attrDefs={store.attrDefs}
-        attrOptions={store.attrOptions}
         components={store.components}
         attrs={store.componentAttrs[viewingComponent.id] ?? []}
         on:close={() => viewingComponent = null}

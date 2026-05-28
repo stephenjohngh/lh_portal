@@ -1,7 +1,7 @@
 <script context="module">
-  // Persist status + search across open/close cycles
-  let persistedStatus = 'current';
-  let persistedQuery  = '';
+  // Persist status + search across open/close cycles.
+  // Object wrapper avoids a vite-plugin-svelte "module-level reassignment" warning.
+  const _persist = { status: 'current', query: '' };
 </script>
 
 <script>
@@ -19,10 +19,10 @@
   const dispatch = createEventDispatcher();
 
   // -- Filter state (module-level persistence) -------------------------
-  let statusFilter = persistedStatus;
-  let query        = persistedQuery;
+  let statusFilter = _persist.status;
+  let query        = _persist.query;
 
-  $: { persistedStatus = statusFilter; persistedQuery = query; }
+  $: { _persist.status = statusFilter; _persist.query = query; }
 
   // -- Priority colour map ---------------------------------------------
   const PRIORITY_COLOR = {

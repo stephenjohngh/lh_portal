@@ -570,7 +570,7 @@
         {#if readOnly || drawingMode === 'off'}
           <ComponentDetailView
             component={selectedComponent}
-            {types} {floors} {facilities} {attrDefs} {attrOptions}
+            {types} {floors} {facilities} {attrDefs}
             components={$buildingAssetsStore.components}
             attrs={componentAttrs[selectedComponent.id] ?? []}
             on:close={() => { selectedComponent = null; sidebarMode = 'none'; }}

@@ -236,7 +236,6 @@
       systems={state.systems}
       attrDefs={state.attrDefs}
       componentAttrs={state.componentAttrs}
-      inspections={state.inspections}
       hiddenTypes={state.hiddenTypes}
       hiddenStatuses={state.hiddenStatuses}
       on:navigateTo={onNavigateTo}
