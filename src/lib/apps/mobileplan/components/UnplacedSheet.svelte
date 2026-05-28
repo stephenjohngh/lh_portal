@@ -304,7 +304,6 @@
   }
 
   .seg-ref  { font-weight: 600; }
-  .seg      { }
   .seg-attrs { color: #94a3b8; }
   .sep      { color: #475569; }
 

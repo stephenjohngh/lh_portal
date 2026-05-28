@@ -114,6 +114,72 @@
   // Base toolbar button classes — kept as a const so they're not repeated 8×
   const TB  = 'flex items-center justify-center w-7 h-7 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors shrink-0';
   const TBO = 'bg-slate-600 text-white'; // active/on state extra classes
+
+  // ── Reflow ────────────────────────────────────────────────────────────
+  // Joins mid-paragraph hard line-breaks (common in text pasted from narrow
+  // web columns) into single paragraphs while preserving:
+  //   • blank-line paragraph separators
+  //   • bullet-glyph lines (•·–—) as new paragraph starts
+  //   • numbered-list lines (1. / 1) ) as new paragraph starts
+  //   • non-<p> blocks (ul, ol) passed through unchanged
+  //   • inline formatting (bold, italic, underline) — innerHTML is merged,
+  //     not stripped, so marks survive
+  function reflowContent() {
+    if (!editor || editor.isEmpty) return;
+
+    const html  = editor.getHTML();
+    const dom   = new DOMParser().parseFromString(html, 'text/html');
+    const nodes = [...dom.body.children];
+
+    const output = [];
+    let group = null;   // innerHTML of the current merged paragraph
+
+    function flush() {
+      if (group !== null) { output.push(`<p>${group}</p>`); group = null; }
+    }
+
+    for (const el of nodes) {
+      if (el.tagName !== 'P') {
+        // ul / ol / other blocks — flush current group and pass through intact
+        flush();
+        output.push(el.outerHTML);
+        continue;
+      }
+
+      const inner   = el.innerHTML.trim();
+      const isBlank = inner === '' || inner === '<br>';
+
+      if (isBlank) {
+        // Blank paragraph — flush and drop it (it was a soft line-break, not
+        // a real blank line; if the paste had genuine blank lines they would
+        // have been two consecutive empty <p> tags — still safe to drop one).
+        flush();
+        continue;
+      }
+
+      // Detect lines that should always start a new conceptual paragraph:
+      //   • bullet glyph at position 0 (•, ·, –, —)
+      //   • numbered-list marker (1. or 1) at position 0)
+      const text   = el.textContent.trimStart();
+      const isNew  = /^[•·–—]|^\d+[.)]\s/.test(text);
+
+      if (group === null || isNew) {
+        flush();
+        group = inner;
+      } else {
+        // Continuation — append with a single space
+        group += ' ' + inner;
+      }
+    }
+
+    flush();
+
+    const newHtml   = output.join('');
+    editor.commands.setContent(newHtml);
+    // Notify parent of the updated content (mirrors onUpdate)
+    const finalHtml = editor.getHTML();
+    dispatch('change', finalHtml === '<p></p>' ? '' : finalHtml);
+  }
 </script>
 
 <div class="rte-wrap rounded border border-slate-600 bg-slate-800 focus-within:ring-2 {ringClass} overflow-hidden">
@@ -181,6 +247,17 @@
         <path d="M13 6L10 3M13 6L10 9" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
+
+    <div class="w-px h-4 bg-slate-600 mx-1 shrink-0"></div>
+
+    <button type="button"
+      class="flex items-center gap-1 px-2 h-7 rounded text-xs text-slate-400
+             hover:bg-slate-700 hover:text-slate-200 transition-colors shrink-0
+             disabled:opacity-30 disabled:cursor-not-allowed"
+      on:click={reflowContent}
+      disabled={isEmpty}
+      title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
+    >⟳ Reflow</button>
 
   </div>
 
