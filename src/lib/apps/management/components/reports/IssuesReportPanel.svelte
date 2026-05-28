@@ -16,7 +16,7 @@
 
   // ── Filter persistence ────────────────────────────────────────────────────
   // Filters are saved to localStorage so they survive navigation and refresh.
-  // Meeting filter and issue-number drill-down are NOT persisted (context-specific).
+  // Meeting filter is NOT persisted (context-specific). Issue numbers ARE persisted.
   const FILTER_KEY = 'lh_issues_report_filters';
 
   function loadSaved() {
@@ -76,6 +76,7 @@
     localStorage.setItem(FILTER_KEY, JSON.stringify({
       includeCurrent, includeParked, includeCompleted,
       filterDate, includeHistoric, includeCompletedActions, summaryOnly, sortOrder,
+      issueNumberInput,
       typeFilter: {
         note: typeNote, decision: typeDecision, comment: typeComment,
         email: typeEmail, letter: typeLetter, document: typeDocument, meeting: typeMeeting
@@ -84,7 +85,7 @@
   } catch { /* private browsing / quota exceeded — ignore */ }
 
   // ── Issue number drill-down ───────────────────────────────────────────────
-  let issueNumberInput = '';
+  let issueNumberInput = _saved?.issueNumberInput ?? '';
   $: issueNumbers = issueNumberInput
     .split(',')
     .map(s => parseInt(s.trim(), 10))
