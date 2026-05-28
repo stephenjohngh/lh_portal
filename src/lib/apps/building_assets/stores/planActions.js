@@ -165,14 +165,18 @@ export function createPlanActions(update, supabase) {
     });
 
     const srcComponents = await api.get('components', { filters: { plan_id: sourcePlanId } });
-    const total = srcComponents.length;
-    let copied = 0;
+    const total  = srcComponents.length;
+    let copied   = 0;
+    const srcIds = srcComponents.map(c => c.id);
 
     // oldId → newComp — built during the component loop, used for link remapping
     const idMap = {};
 
     if (total > 0) {
-      const allAttrs = await api.get('component_attributes');
+      // Fetch attributes only for these components — avoids PostgREST 1000-row default cap
+      const { data: allAttrs = [] } = srcIds.length > 0
+        ? await supabase.from('component_attributes').select('*').in('component_id', srcIds)
+        : { data: [] };
 
       for (const c of srcComponents) {
         if (onProgress) onProgress(copied, total);
@@ -214,17 +218,18 @@ export function createPlanActions(update, supabase) {
     // point to another component in the source plan (internal link), so that
     // the new link resolves to the corresponding new-floor copy.
     // Links pointing outside the source plan are kept as-is.
-    const srcIds = srcComponents.map(c => c.id);
     if (srcIds.length > 0) {
       let allLinks = [];
       try {
-        allLinks = await api.get('component_links');
+        const { data = [], error } = await supabase
+          .from('component_links').select('*').in('from_component_id', srcIds);
+        if (!error) allLinks = data;
+        else logger('component_links query error — skipping link copy', error.message);
       } catch {
-        // component_links table may not exist in older deployments — skip silently
         logger('component_links not available — skipping link copy');
       }
 
-      const srcLinks = allLinks.filter(l => srcIds.includes(l.from_component_id));
+      const srcLinks = allLinks;
 
       if (srcLinks.length > 0) {
         // Pre-build a map: old to_component_ref → new to_component_ref.
@@ -301,12 +306,16 @@ export function createPlanActions(update, supabase) {
     const srcComponents = await api.get('components', { filters: { plan_id: sourcePlanId } });
     const total         = srcComponents.length;
     let copied          = 0;
+    const srcIds        = srcComponents.map(c => c.id);
     const idMap         = {};   // oldId → newComp
 
     if (onProgress) onProgress(0, total);
 
     if (total > 0) {
-      const allAttrs = await api.get('component_attributes');
+      // Fetch attributes only for these components — avoids PostgREST 1000-row default cap
+      const { data: allAttrs = [] } = srcIds.length > 0
+        ? await supabase.from('component_attributes').select('*').in('component_id', srcIds)
+        : { data: [] };
 
       for (const c of srcComponents) {
         if (onProgress) onProgress(copied, total);
@@ -342,12 +351,15 @@ export function createPlanActions(update, supabase) {
     }
 
     // -- Remap and copy component links ----------------------------------
-    const srcIds = srcComponents.map(c => c.id);
     if (srcIds.length > 0) {
       let allLinks = [];
-      try { allLinks = await api.get('component_links'); } catch { /* skip */ }
+      try {
+        const { data = [], error } = await supabase
+          .from('component_links').select('*').in('from_component_id', srcIds);
+        if (!error) allLinks = data;
+      } catch { /* skip if table absent */ }
 
-      const srcLinks = allLinks.filter(l => srcIds.includes(l.from_component_id));
+      const srcLinks = allLinks;
       if (srcLinks.length > 0) {
         const newFloor   = floors.find(f => f.id === newFloorId);
         const newFloorSN = newFloor?.short_name ?? '?';
