@@ -135,11 +135,7 @@
     let group = null;   // innerHTML of the current merged paragraph
 
     function flush() {
-      if (group !== null) {
-        output.push(`<p>${group}</p>`);
-        output.push('<p></p>');   // blank line after every merged paragraph
-        group = null;
-      }
+      if (group !== null) { output.push(`<p>${group}</p>`); group = null; }
     }
 
     for (const el of nodes) {
@@ -154,9 +150,8 @@
       const isBlank = inner === '' || inner === '<br>';
 
       if (isBlank) {
-        // Blank paragraph — flush and drop it (it was a soft line-break, not
-        // a real blank line; if the paste had genuine blank lines they would
-        // have been two consecutive empty <p> tags — still safe to drop one).
+        // Blank paragraph — just flush; the blank itself is dropped because
+        // spacing is handled uniformly by join('<p></p>') below.
         flush();
         continue;
       }
@@ -178,10 +173,10 @@
 
     flush();
 
-    // Drop the trailing blank paragraph that flush() always appends
-    if (output.at(-1) === '<p></p>') output.pop();
-
-    const newHtml   = output.join('');
+    // Join with exactly one blank paragraph between every output block —
+    // this guarantees one blank line per gap regardless of what blanks
+    // were (or weren't) in the original.
+    const newHtml   = output.join('<p></p>');
     editor.commands.setContent(newHtml);
     // Notify parent of the updated content (mirrors onUpdate)
     const finalHtml = editor.getHTML();
