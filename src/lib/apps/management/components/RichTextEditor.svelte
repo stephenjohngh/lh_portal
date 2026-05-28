@@ -135,7 +135,11 @@
     let group = null;   // innerHTML of the current merged paragraph
 
     function flush() {
-      if (group !== null) { output.push(`<p>${group}</p>`); group = null; }
+      if (group !== null) {
+        output.push(`<p>${group}</p>`);
+        output.push('<p></p>');   // blank line after every merged paragraph
+        group = null;
+      }
     }
 
     for (const el of nodes) {
@@ -173,6 +177,9 @@
     }
 
     flush();
+
+    // Drop the trailing blank paragraph that flush() always appends
+    if (output.at(-1) === '<p></p>') output.pop();
 
     const newHtml   = output.join('');
     editor.commands.setContent(newHtml);
