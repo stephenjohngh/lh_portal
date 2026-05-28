@@ -423,7 +423,7 @@ async function generateIssueContent(issue, number, sortOrder = 'desc', summaryOn
         new TextRun({ text: `[${meta.label}]`, bold: true, size: 20, color: meta.color })
       ];
       if (fieldsLine) {
-        badgeRuns.push(new TextRun({ text: `  ${fieldsLine}`, size: 20, color: '555555', italics: true }));
+        badgeRuns.push(new TextRun({ text: `  ${fieldsLine}`, size: 22, bold: true, color: '555555', italics: true }));
       }
       content.push(new Paragraph({
         children: badgeRuns,

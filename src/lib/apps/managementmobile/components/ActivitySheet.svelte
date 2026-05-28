@@ -348,16 +348,20 @@
     line-height: 1.6;
   }
 
+  /* Structural rules are safe globally (only affect spacing/layout) */
   :global(.rich-content p)          { margin: 0 0 0.6em; }
   :global(.rich-content p:last-child) { margin-bottom: 0; }
-  :global(.rich-content strong)     { color: #f1f5f9; font-weight: 700; }
-  :global(.rich-content em)         { color: #cbd5e1; font-style: italic; }
   :global(.rich-content ul)         { padding-left: 1.4em; margin: 0.4em 0; }
   :global(.rich-content ol)         { padding-left: 1.4em; margin: 0.4em 0; }
   :global(.rich-content li)         { margin-bottom: 0.2em; }
-  :global(.rich-content a)          { color: #818cf8; }
-  :global(.rich-content blockquote) { border-left: 3px solid #334155; padding-left: 10px; color: #94a3b8; margin: 6px 0; }
-  :global(.rich-content code)       { background: #1e2035; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+
+  /* Colour rules scoped to .sheet — dark theme only.
+     Without .sheet these would bleed onto light-background report previews. */
+  :global(.sheet .rich-content strong)     { color: #f1f5f9; font-weight: 700; }
+  :global(.sheet .rich-content em)         { color: #cbd5e1; font-style: italic; }
+  :global(.sheet .rich-content a)          { color: #818cf8; }
+  :global(.sheet .rich-content blockquote) { border-left: 3px solid #334155; padding-left: 10px; color: #94a3b8; margin: 6px 0; }
+  :global(.sheet .rich-content code)       { background: #1e2035; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
 
   /* ── Summary ── */
   .summary-row {
