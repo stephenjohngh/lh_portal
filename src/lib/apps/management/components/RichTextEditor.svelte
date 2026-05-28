@@ -118,69 +118,73 @@
   // ── Reflow ────────────────────────────────────────────────────────────
   // Joins mid-paragraph hard line-breaks (common in text pasted from narrow
   // web columns) into single paragraphs while preserving:
-  //   • blank-line paragraph separators
   //   • bullet-glyph lines (•·–—) as new paragraph starts
   //   • numbered-list lines (1. / 1) ) as new paragraph starts
-  //   • non-<p> blocks (ul, ol) passed through unchanged
-  //   • inline formatting (bold, italic, underline) — innerHTML is merged,
-  //     not stripped, so marks survive
+  //   • non-paragraph blocks (ul, ol) passed through unchanged
+  //   • inline formatting (bold, italic, underline) — marks array is merged,
+  //     not stripped, so Tiptap inline styles survive
+  //
+  // Works on the Tiptap JSON document model (getJSON/setContent) to avoid
+  // HTML-parser round-trip ambiguities with blank paragraphs.
   function reflowContent() {
     if (!editor || editor.isEmpty) return;
 
-    const html  = editor.getHTML();
-    const dom   = new DOMParser().parseFromString(html, 'text/html');
-    const nodes = [...dom.body.children];
-
+    const nodes = editor.getJSON().content ?? [];
     const output = [];
-    let group = null;   // innerHTML of the current merged paragraph
+    let group = null;   // content[] of the current merged paragraph
 
     function flush() {
-      if (group !== null) { output.push(`<p>${group}</p>`); group = null; }
+      if (group) { output.push({ type: 'paragraph', content: group }); group = null; }
     }
 
-    for (const el of nodes) {
-      if (el.tagName !== 'P') {
-        // ul / ol / other blocks — flush current group and pass through intact
+    for (const node of nodes) {
+      if (node.type !== 'paragraph') {
+        // ul / ol / other blocks — pass through unchanged
         flush();
-        output.push(el.outerHTML);
+        output.push(node);
         continue;
       }
 
-      const inner   = el.innerHTML.trim();
-      const isBlank = inner === '' || inner === '<br>';
+      const content = node.content ?? [];
+      // A paragraph is blank if it has no content nodes, or a single hard break
+      const isBlank = content.length === 0 ||
+                      (content.length === 1 && content[0].type === 'hardBreak');
 
       if (isBlank) {
-        // Blank paragraph — just flush; the blank itself is dropped because
-        // spacing is handled uniformly by join('<p></p>') below.
         flush();
         continue;
       }
 
       // Detect lines that should always start a new conceptual paragraph:
       //   • bullet glyph at position 0 (•, ·, –, —)
-      //   • numbered-list marker (1. or 1) at position 0)
-      const text   = el.textContent.trimStart();
-      const isNew  = /^[•·–—]|^\d+[.)]\s/.test(text);
+      //   • numbered-list marker (1. or 1) )
+      const firstText = content.find(n => n.type === 'text')?.text ?? '';
+      const isNew     = /^[•·–—]|^\d+[.)]\s/.test(firstText.trimStart());
 
-      if (group === null || isNew) {
+      if (!group || isNew) {
         flush();
-        group = inner;
+        group = [...content];
       } else {
-        // Continuation — append with a single space
-        group += ' ' + inner;
+        // Continuation — append a space then this paragraph's inline nodes
+        group.push({ type: 'text', text: ' ' });
+        group.push(...content);
       }
     }
 
     flush();
 
-    // Join with exactly one blank paragraph between every output block —
-    // this guarantees one blank line per gap regardless of what blanks
-    // were (or weren't) in the original.
-    const newHtml   = output.join('<p></p>');
-    editor.commands.setContent(newHtml);
-    // Notify parent of the updated content (mirrors onUpdate)
-    const finalHtml = editor.getHTML();
-    dispatch('change', finalHtml === '<p></p>' ? '' : finalHtml);
+    // Interleave exactly one blank paragraph between every output block.
+    // Using { type: 'paragraph' } (no content key) is the canonical Tiptap
+    // representation of a blank line — no HTML-parser ambiguity.
+    const finalContent = output.flatMap((node, i) =>
+      i < output.length - 1
+        ? [node, { type: 'paragraph' }]
+        : [node]
+    );
+
+    editor.commands.setContent({ type: 'doc', content: finalContent });
+    const html = editor.getHTML();
+    dispatch('change', html === '<p></p>' ? '' : html);
   }
 </script>
 
