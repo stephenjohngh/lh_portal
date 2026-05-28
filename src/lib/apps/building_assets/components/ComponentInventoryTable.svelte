@@ -110,7 +110,7 @@
   const statusCls = statusBadgeCls;
   const statusDot = statusDotCls;
 
-  // -- Sort: floor → system (presentation_order) → asset_id ----------
+  // -- Sort: floor → system (presentation_order) → inspection_sort_order (nulls last) → asset_id
   $: sortedComponents = [...components].sort((a, b) => {
     const flA = floors.find(f => f.id === a.floor_id);
     const flB = floors.find(f => f.id === b.floor_id);
@@ -125,6 +125,12 @@
     const spA = sA?.presentation_order ?? 9999;
     const spB = sB?.presentation_order ?? 9999;
     if (spA !== spB) return spA - spB;
+
+    const iA = a.inspection_sort_order ?? null;
+    const iB = b.inspection_sort_order ?? null;
+    if (iA !== null && iB !== null) return iA - iB;
+    if (iA !== null) return -1;
+    if (iB !== null) return 1;
 
     return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
   });
