@@ -116,23 +116,26 @@
       disabled={saving}
     />
 
-    <FormTextarea
-      label="Body"
-      bind:value={body}
-      placeholder="Note content…"
-      rows={8}
-      disabled={saving}
-    />
-    <div class="flex justify-end">
-      <button
-        type="button"
-        on:click={reflowBody}
-        disabled={saving || !body}
-        class="px-2.5 py-1 text-xs rounded border border-slate-600 text-slate-400
-               hover:border-slate-400 hover:text-slate-200 transition-colors
-               disabled:opacity-30 disabled:cursor-not-allowed"
-        title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
-      >⟳ Reflow lines</button>
+    <!-- Body field — label row contains the Reflow button so it's always visible -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-sm font-medium text-gray-200">Body</p>
+        <button
+          type="button"
+          on:click={reflowBody}
+          disabled={saving || !body}
+          class="px-2.5 py-1 text-xs rounded border border-slate-600 text-slate-400
+                 hover:border-slate-400 hover:text-slate-200 transition-colors
+                 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
+        >⟳ Reflow lines</button>
+      </div>
+      <FormTextarea
+        bind:value={body}
+        placeholder="Note content…"
+        rows={8}
+        disabled={saving}
+      />
     </div>
 
     <FormInput
