@@ -133,6 +133,77 @@ class ApiClient {
   }
 
   /**
+   * Get all rows where `column` is one of `ids`, transparently handling both
+   * limits that a plain get() can't: the id list is chunked (a long .in() list
+   * blows the request URL length) and each chunk is paginated with .range()
+   * (PostgREST's 1000-row cap). Use this to scope a fetch to a known set of
+   * parent ids instead of pulling the whole table and filtering client-side.
+   *
+   * get() only supports .eq() filters, so this drops to the supabase client
+   * directly for .in().
+   *
+   * @param {string} table - Table name
+   * @param {string} column - Column to match against the id list
+   * @param {Array<string>} ids - Values to match (chunked internally)
+   * @param {object} options - { select, orderBy, ascending, idChunk, pageSize }
+   * @returns {Promise<Array>} All matching rows
+   */
+  async getAllIn(table, column, ids, options = {}) {
+    if (!ids?.length) return [];
+    const select    = options.select   || '*';
+    const orderBy   = options.orderBy  || 'id';
+    const ascending = options.ascending !== false;
+    const idChunk   = options.idChunk  || 300;
+    const pageSize  = options.pageSize || 1000;
+
+    const out = [];
+    for (let i = 0; i < ids.length; i += idChunk) {
+      const chunk = ids.slice(i, i + idChunk);
+      let from = 0;
+      for (;;) {
+        const { data, error } = await supabase
+          .from(table)
+          .select(select)
+          .in(column, chunk)
+          .order(orderBy, { ascending })
+          .range(from, from + pageSize - 1);
+        if (error) throw this.handleError('GET_ALL_IN', table, error);
+        const rows = data ?? [];
+        out.push(...rows);
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Latest inspection row per component, computed server-side via the
+   * `latest_inspections_for_components` RPC (DISTINCT ON, migration 130).
+   * Returns one row per component that has at least one inspection — far
+   * smaller than pulling the full inspection history and deduping client-side.
+   *
+   * Component ids are chunked to <=1000 per call so each RPC result stays under
+   * PostgREST's max-rows cap (the result is one row per component in the chunk).
+   *
+   * @param {Array<string>} componentIds
+   * @returns {Promise<Array>} Latest component_inspections rows
+   */
+  async latestInspections(componentIds) {
+    if (!componentIds?.length) return [];
+    const CHUNK = 1000;
+    const out = [];
+    for (let i = 0; i < componentIds.length; i += CHUNK) {
+      const chunk = componentIds.slice(i, i + CHUNK);
+      const rows = await this.rpc('latest_inspections_for_components', {
+        p_component_ids: chunk
+      });
+      out.push(...(rows || []));
+    }
+    return out;
+  }
+
+  /**
    * Get a single record by ID
    * @param {string} table - Table name
    * @param {string} id - Record ID

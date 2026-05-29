@@ -333,25 +333,20 @@ async function fetchFloorForPlan(planId, floorId) {
       : Promise.resolve([]),
   ]);
 
-  // Step 2: fetch inspections and component attributes for this floor's components.
-  // Load all rows and filter client-side — api.js doesn't support .in() queries.
-  // Both tables can exceed PostgREST's 1000-row cap in production, so use the
-  // paginated getAll() — otherwise a floor's attributes/inspections beyond row
-  // 1000 would silently go missing.
-  const floorCompIds = new Set(components.map(c => c.id));
+  // Step 2: fetch inspections and component attributes scoped to *this floor's*
+  // components only (not the whole building). getAllIn chunks the id list and
+  // paginates each chunk past the 1000-row cap; latestInspections returns one
+  // row per component server-side (migration 130 RPC), so there's no full
+  // inspection history to pull down or dedupe on the client.
+  const compIds      = components.map(c => c.id);
   let rawInspections = [];
   let rawAttrs       = [];
 
-  if (floorCompIds.size > 0) {
+  if (compIds.length > 0) {
     [rawInspections, rawAttrs] = await Promise.all([
+      withTimeout(api.latestInspections(compIds), FETCH_TIMEOUT_MS).catch(() => []),
       withTimeout(
-        api.getAll('component_inspections', {
-          select: 'id,component_id,inspection_result,inspector_notes,inspected_at',
-        }),
-        FETCH_TIMEOUT_MS
-      ).catch(() => []),
-      withTimeout(
-        api.getAll('component_attributes', {
+        api.getAllIn('component_attributes', 'component_id', compIds, {
           select: 'id,component_id,type_attribute_id,value',
         }),
         FETCH_TIMEOUT_MS
@@ -359,20 +354,15 @@ async function fetchFloorForPlan(planId, floorId) {
     ]);
   }
 
-  // Build latest-inspection map, keeping only this floor's components.
-  // getAll paginates by id, so sort by inspected_at desc before deduping.
-  rawInspections.sort((a, b) => new Date(b.inspected_at) - new Date(a.inspected_at));
+  // One inspection row per component already — index directly.
   const inspections = {};
   for (const insp of rawInspections) {
-    if (floorCompIds.has(insp.component_id) && !inspections[insp.component_id]) {
-      inspections[insp.component_id] = insp;
-    }
+    inspections[insp.component_id] = insp;
   }
 
-  // Build component attributes map, keeping only this floor's components
+  // Build component attributes map (already scoped to this floor's components).
   const componentAttrs = {};
   for (const attr of rawAttrs) {
-    if (!floorCompIds.has(attr.component_id)) continue;
     if (!componentAttrs[attr.component_id]) componentAttrs[attr.component_id] = [];
     componentAttrs[attr.component_id].push(attr);
   }

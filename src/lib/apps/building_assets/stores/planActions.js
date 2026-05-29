@@ -15,35 +15,6 @@ const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' 
 // supabase: the supabase client (needed for Storage operations).
 export function createPlanActions(update, supabase) {
 
-  // Paginated .in() fetch. api.js only supports .eq() filters, and both the id
-  // list and the result set can blow past PostgREST limits in production: the
-  // id list is chunked (URL length) and each chunk is paged with .range()
-  // (1000-row cap). Ordered by id so pages are stable.
-  async function fetchAllIn(table, column, ids, select = '*') {
-    if (!ids?.length) return [];
-    const ID_CHUNK = 300;
-    const PAGE     = 1000;
-    const out = [];
-    for (let i = 0; i < ids.length; i += ID_CHUNK) {
-      const chunk = ids.slice(i, i + ID_CHUNK);
-      let from = 0;
-      for (;;) {
-        const { data, error } = await supabase
-          .from(table)
-          .select(select)
-          .in(column, chunk)
-          .order('id', { ascending: true })
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const rows = data ?? [];
-        out.push(...rows);
-        if (rows.length < PAGE) break;
-        from += PAGE;
-      }
-    }
-    return out;
-  }
-
   // -- Image upload ------------------------------------------------------
   // Uploads to the plan-images bucket and returns the public URL.
   async function uploadPlanImage(file) {
@@ -203,7 +174,7 @@ export function createPlanActions(update, supabase) {
 
     if (total > 0) {
       // Fetch attributes only for these components (paginated past the 1000-row cap)
-      const allAttrs = await fetchAllIn('component_attributes', 'component_id', srcIds);
+      const allAttrs = await api.getAllIn('component_attributes', 'component_id', srcIds);
 
       for (const c of srcComponents) {
         if (onProgress) onProgress(copied, total);
@@ -248,7 +219,7 @@ export function createPlanActions(update, supabase) {
     if (srcIds.length > 0) {
       let srcLinks = [];
       try {
-        srcLinks = await fetchAllIn('component_links', 'from_component_id', srcIds);
+        srcLinks = await api.getAllIn('component_links', 'from_component_id', srcIds);
       } catch (err) {
         logger('component_links not available — skipping link copy', err.message);
       }
@@ -295,7 +266,7 @@ export function createPlanActions(update, supabase) {
     // Fetch newly created attrs so the store shows them immediately (no reload needed)
     const newComponents  = Object.values(idMap);
     const newCompIds     = newComponents.map(c => c.id);
-    const newAttrRows    = await fetchAllIn('component_attributes', 'component_id', newCompIds);
+    const newAttrRows    = await api.getAllIn('component_attributes', 'component_id', newCompIds);
     const newComponentAttrs = {};
     for (const a of newAttrRows) {
       if (!newComponentAttrs[a.component_id]) newComponentAttrs[a.component_id] = [];
@@ -347,7 +318,7 @@ export function createPlanActions(update, supabase) {
 
     if (total > 0) {
       // Fetch attributes only for these components (paginated past the 1000-row cap)
-      const allAttrs = await fetchAllIn('component_attributes', 'component_id', srcIds);
+      const allAttrs = await api.getAllIn('component_attributes', 'component_id', srcIds);
 
       for (const c of srcComponents) {
         if (onProgress) onProgress(copied, total);
@@ -386,7 +357,7 @@ export function createPlanActions(update, supabase) {
     if (srcIds.length > 0) {
       let srcLinks = [];
       try {
-        srcLinks = await fetchAllIn('component_links', 'from_component_id', srcIds);
+        srcLinks = await api.getAllIn('component_links', 'from_component_id', srcIds);
       } catch { /* skip if table absent */ }
 
       if (srcLinks.length > 0) {
@@ -428,7 +399,7 @@ export function createPlanActions(update, supabase) {
     // Fetch newly created attrs so the store shows them immediately (no reload needed)
     const newComponents  = Object.values(idMap);
     const newCompIds     = newComponents.map(c => c.id);
-    const newAttrRows    = await fetchAllIn('component_attributes', 'component_id', newCompIds);
+    const newAttrRows    = await api.getAllIn('component_attributes', 'component_id', newCompIds);
     const newComponentAttrs = {};
     for (const a of newAttrRows) {
       if (!newComponentAttrs[a.component_id]) newComponentAttrs[a.component_id] = [];

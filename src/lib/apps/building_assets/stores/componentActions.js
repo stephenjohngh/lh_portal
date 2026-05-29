@@ -19,26 +19,30 @@ export function createComponentActions(update) {
   async function loadComponents(planId = null) {
     update(s => ({ ...s, loadingComponents: true }));
     try {
-      // All four tables can exceed PostgREST's 1000-row cap in production, so
-      // every fetch uses getAll() (paginated). They are independent of each
-      // other, so fetch them concurrently rather than in series.
+      // These tables can exceed PostgREST's 1000-row cap in production, so each
+      // fetch uses getAll() (paginated). components/attrs/links are independent,
+      // so fetch them concurrently.
       //
       // getAll paginates by the unique PK (id) for stable pages — bulk imports
-      // share created_at/inspected_at timestamps, so paging by those would
-      // skip/duplicate boundary rows. The desired display order is restored
-      // client-side below.
+      // share created_at timestamps, so paging by those would skip/duplicate
+      // boundary rows. The desired display order is restored client-side below.
       const compOpts = planId ? { filters: { plan_id: planId } } : {};
 
-      const [components, allAttrs, allInspections, allLinks] = await Promise.all([
+      const [components, allAttrs, allLinks] = await Promise.all([
         api.getAll('components', compOpts),
         api.getAll('component_attributes'),
-        api.getAll('component_inspections'),
         // Graceful degradation: component_links (migration 033) may not exist yet.
         api.getAll('component_links').catch(() => {
           logger('component_links table not available — run migration 033 to enable');
           return [];
         })
       ]);
+
+      // Latest inspection per component, deduped server-side (migration 130 RPC)
+      // and scoped to the components we just loaded — avoids dragging the whole
+      // inspection history into the browser. Depends on `components`, so it runs
+      // after the parallel batch above.
+      const allInspections = await api.latestInspections(components.map(c => c.id));
 
       // Restore created_at-desc order on the components list
       components.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -50,13 +54,10 @@ export function createComponentActions(update) {
         componentAttrs[a.component_id].push(a);
       }
 
-      // Keep only the latest inspection per component (sort desc by inspected_at first)
-      allInspections.sort((a, b) => new Date(b.inspected_at) - new Date(a.inspected_at));
+      // One row per component already — index directly.
       const inspections = {};
       for (const insp of allInspections) {
-        if (!inspections[insp.component_id]) {
-          inspections[insp.component_id] = insp;
-        }
+        inspections[insp.component_id] = insp;
       }
 
       // Index component_links by from_component_id (created_at asc within each)
