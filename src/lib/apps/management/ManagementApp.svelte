@@ -26,11 +26,16 @@
   let meetingTabTargetId  = null;
 
   // Saved scroll position for the Issues tab — restored when the user
-  // switches back from another tab.
+  // switches back from another tab (internal Management tab switch).
   let issuesScrollY = 0;
 
   function setTab(tab) {
-    if (activeTab === 'issues') issuesScrollY = window.scrollY;
+    if (activeTab === 'issues') {
+      issuesScrollY = window.scrollY;
+      // Flush the debounced scroll-state save immediately so we don't lose
+      // position if the user switches away before the debounce fires.
+      flushScrollState();
+    }
     activeTab = tab;
     if (tab === 'issues' && issuesScrollY > 0) {
       tick().then(() => window.scrollTo({ top: issuesScrollY, behavior: 'instant' }));
@@ -55,12 +60,31 @@
     .sort((a, b) => (a.issue_number ?? 0) - (b.issue_number ?? 0));
 
   // -- Scroll preservation ----------------------------------------------
-  // expandedSections and issuesScrollY are also persisted in issuesUiState
-  // (module-level store) so they survive the component being destroyed when
-  // the user switches to a different app and returns.
+  // issuesUiState (module-level singleton) persists scroll pos + expanded
+  // sections across app switches.  We cannot rely on onDestroy to save
+  // position: in Svelte 5 the DOM is removed *before* onDestroy fires, so
+  // window.scrollY is already 0 and querySelectorAll finds nothing.
+  // Solution: save on every scroll event (debounced 150ms) so the state is
+  // already up-to-date before the component is ever destroyed.
   let expandedSections    = {};
   let scrollPosition      = 0;   // used for scroll preservation during data refetches
   let containerElement;
+  let scrollSaveTimer     = null;
+
+  function flushScrollState() {
+    if (activeTab !== 'issues') return;
+    issuesUiState.update(s => ({
+      ...s,
+      scrollY:          window.scrollY,
+      topIssueId:       getTopIssueId(),
+      expandedSections,
+    }));
+  }
+
+  function onIssuesScroll() {
+    clearTimeout(scrollSaveTimer);
+    scrollSaveTimer = setTimeout(flushScrollState, 150);
+  }
 
   $: ({ issues, loading, error } = $issuesStore);
 
@@ -147,18 +171,19 @@
     issuesStore.initializeRealtime();
     meetingsStore.load();
     meetingsStore.initializeRealtime();
+
+    // Start tracking scroll position.  Must be added after the restore scroll
+    // above so the restore itself doesn't trigger a spurious save.
+    window.addEventListener('scroll', onIssuesScroll, { passive: true });
   });
 
   onDestroy(() => {
-    // Persist UI state so it survives switching to another app and back.
-    const topId = activeTab === 'issues' ? getTopIssueId() : null;
-    const sy    = activeTab === 'issues' ? window.scrollY : issuesScrollY;
-    logger(`💾 saving — topIssueId=${topId} scrollY=${sy} activeTab=${activeTab}`);
-    issuesUiState.set({
-      scrollY:          sy,
-      topIssueId:       topId,
-      expandedSections,
-    });
+    // Stop tracking scroll.
+    window.removeEventListener('scroll', onIssuesScroll);
+    clearTimeout(scrollSaveTimer);
+    // scrollY and topIssueId were saved continuously by the scroll listener.
+    // expandedSections is a local var — still valid here — merge it in.
+    issuesUiState.update(s => ({ ...s, expandedSections }));
     issuesStore.cleanup();
     meetingsStore.cleanup();
   });
