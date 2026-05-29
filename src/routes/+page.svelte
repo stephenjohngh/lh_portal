@@ -155,6 +155,9 @@
   // after a normal logout is never intercepted — the reactive block only runs
   // once the auth store has already been cleared.
 
+  // Disabled in dev — constant refreshing makes the prompt a nuisance.
+  const leaveGuardEnabled = !import.meta.env.DEV;
+
   let showLeaveWarning = false;
   let pendingLeaveUrl  = null;
   let skipLeaveGuard   = false;
@@ -162,7 +165,7 @@
   beforeNavigate(({ cancel, to, willUnload }) => {
     // Allow: not authenticated (logout redirect), user already confirmed, or
     // the browser is doing a full unload (beforeunload handles that case).
-    if (skipLeaveGuard || !$auth.user || willUnload) return;
+    if (!leaveGuardEnabled || skipLeaveGuard || !$auth.user || willUnload) return;
     cancel();
     pendingLeaveUrl  = to?.url?.href ?? null;
     showLeaveWarning = true;
@@ -182,7 +185,7 @@
 
   // Handles external-URL navigation and tab / window close.
   function handleBeforeUnload(e) {
-    if (!$auth.user) return;
+    if (!leaveGuardEnabled || !$auth.user) return;
     e.preventDefault();
     e.returnValue = '';   // required for Chrome to show the native dialog
   }
