@@ -60,7 +60,6 @@
   // the user switches to a different app and returns.
   let expandedSections    = {};
   let scrollPosition      = 0;   // used for scroll preservation during data refetches
-  let pendingMountScroll  = 0;   // consumed once after initial data load (app-switch restore)
   let containerElement;
 
   $: ({ issues, loading, error } = $issuesStore);
@@ -74,14 +73,6 @@
       scrollPosition = 0;
     });
   }
-  // Restores scroll position after returning from another app (set in onMount
-  // after fetchIssues starts, so it fires only once when loading first completes).
-  $: if (!loading && pendingMountScroll > 0) {
-    const target = pendingMountScroll;
-    pendingMountScroll = 0;
-    tick().then(() => window.scrollTo({ top: target, behavior: 'instant' }));
-  }
-
   // -- Filter issues (no meeting filter — that lives in the Meetings tab) -
   $: filteredIssues = issues.filter(issue => {
     const term = searchTerm.toLowerCase();
@@ -120,10 +111,11 @@
     if ($auth.user) {
       await permissions.init($auth.user.id, 'management');
     }
-    issuesStore.fetchIssues();
-    // Set pendingMountScroll AFTER fetchIssues (loading is now true), so the
-    // reactive scroll-restore only fires once loading next becomes false.
-    pendingMountScroll = saved.scrollY;
+    await issuesStore.fetchIssues();
+    if (saved.scrollY > 0) {
+      await tick();
+      window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
+    }
     issuesStore.initializeRealtime();
     meetingsStore.load();
     meetingsStore.initializeRealtime();
