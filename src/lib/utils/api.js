@@ -96,6 +96,43 @@ class ApiClient {
   }
 
   /**
+   * Get ALL records from a table, transparently paginating past PostgREST's
+   * max-rows cap (1000 on Supabase). Loops .range() in pages until a short
+   * page is returned.
+   *
+   * Use this instead of get() for unbounded tables that can exceed 1000 rows
+   * in production (component_attributes, components, component_inspections…).
+   * A plain .limit(5000) / .range(0, 4999) does NOT work — PostgREST still
+   * truncates the response to its server-side max-rows setting.
+   *
+   * Pagination needs a stable sort to avoid rows shifting between pages, so a
+   * deterministic order is always applied (caller's orderBy, else 'id').
+   *
+   * @param {string} table - Table name
+   * @param {object} options - Same as get(), minus limit/range (ignored)
+   * @returns {Promise<Array>} All matching records
+   */
+  async getAll(table, options = {}) {
+    const pageSize = options.pageSize || 1000;
+    // Strip paging-control keys; force a stable order for consistent pages.
+    const { limit, range, pageSize: _ps, orderBy, ...rest } = options;
+    const baseOpts = { ...rest, orderBy: orderBy || 'id' };
+
+    const all = [];
+    let from = 0;
+    for (;;) {
+      const page = await this.get(table, {
+        ...baseOpts,
+        range: { from, to: from + pageSize - 1 }
+      });
+      all.push(...page);
+      if (page.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  }
+
+  /**
    * Get a single record by ID
    * @param {string} table - Table name
    * @param {string} id - Record ID

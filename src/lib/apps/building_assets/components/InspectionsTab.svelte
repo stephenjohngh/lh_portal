@@ -117,12 +117,13 @@
     if (!inspections[session.id]) {
       loadingId = session.id;
       try {
-        const rows = await api.get('component_inspections', {
-          select:    '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
-          filters:   { walk_session_id: session.id },
-          orderBy:   'inspected_at',
-          ascending: true,
+        // getAll paginates past the 1000-row cap (building sessions can exceed
+        // it); it pages by id, so sort by inspected_at asc for display.
+        const rows = await api.getAll('component_inspections', {
+          select:  '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
+          filters: { walk_session_id: session.id },
         });
+        rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
         inspections = { ...inspections, [session.id]: flattenInspectionRows(rows) };
       } catch (err) {
         logger('❌ load inspections:', err.message);

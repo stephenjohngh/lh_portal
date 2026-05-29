@@ -19,22 +19,39 @@ export function createComponentActions(update) {
   async function loadComponents(planId = null) {
     update(s => ({ ...s, loadingComponents: true }));
     try {
-      const opts = { orderBy: 'created_at', ascending: false };
-      if (planId) opts.filters = { plan_id: planId };
+      // All four tables can exceed PostgREST's 1000-row cap in production, so
+      // every fetch uses getAll() (paginated). They are independent of each
+      // other, so fetch them concurrently rather than in series.
+      //
+      // getAll paginates by the unique PK (id) for stable pages — bulk imports
+      // share created_at/inspected_at timestamps, so paging by those would
+      // skip/duplicate boundary rows. The desired display order is restored
+      // client-side below.
+      const compOpts = planId ? { filters: { plan_id: planId } } : {};
 
-      const components = await api.get('components', opts);
+      const [components, allAttrs, allInspections, allLinks] = await Promise.all([
+        api.getAll('components', compOpts),
+        api.getAll('component_attributes'),
+        api.getAll('component_inspections'),
+        // Graceful degradation: component_links (migration 033) may not exist yet.
+        api.getAll('component_links').catch(() => {
+          logger('component_links table not available — run migration 033 to enable');
+          return [];
+        })
+      ]);
+
+      // Restore created_at-desc order on the components list
+      components.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       // Index component_attributes by component_id in one pass
-      const allAttrs = await api.get('component_attributes');
       const componentAttrs = {};
       for (const a of allAttrs) {
         if (!componentAttrs[a.component_id]) componentAttrs[a.component_id] = [];
         componentAttrs[a.component_id].push(a);
       }
 
-      // Keep only the latest inspection per component (desc by inspected_at)
-      const allInspections = await api.get('component_inspections',
-        { orderBy: 'inspected_at', ascending: false });
+      // Keep only the latest inspection per component (sort desc by inspected_at first)
+      allInspections.sort((a, b) => new Date(b.inspected_at) - new Date(a.inspected_at));
       const inspections = {};
       for (const insp of allInspections) {
         if (!inspections[insp.component_id]) {
@@ -42,16 +59,12 @@ export function createComponentActions(update) {
         }
       }
 
-      // Index component_links by from_component_id (graceful degradation if table missing)
-      let componentLinks = {};
-      try {
-        const allLinks = await api.get('component_links', { orderBy: 'created_at', ascending: true });
-        for (const link of allLinks) {
-          if (!componentLinks[link.from_component_id]) componentLinks[link.from_component_id] = [];
-          componentLinks[link.from_component_id].push(link);
-        }
-      } catch {
-        logger('component_links table not available — run migration 033 to enable');
+      // Index component_links by from_component_id (created_at asc within each)
+      allLinks.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const componentLinks = {};
+      for (const link of allLinks) {
+        if (!componentLinks[link.from_component_id]) componentLinks[link.from_component_id] = [];
+        componentLinks[link.from_component_id].push(link);
       }
 
       update(s => ({ ...s, components, componentAttrs, componentLinks, inspections, loadingComponents: false }));

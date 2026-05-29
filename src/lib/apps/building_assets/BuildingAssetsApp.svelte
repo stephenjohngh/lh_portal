@@ -28,8 +28,11 @@
     if ($auth.user) {
       await permissions.init($auth.user.id, 'building_assets');
     }
-    await buildingAssetsStore.load();
-    await buildingAssetsStore.loadComponents();
+    // Independent fetch chains — run concurrently to halve startup latency.
+    await Promise.all([
+      buildingAssetsStore.load(),
+      buildingAssetsStore.loadComponents()
+    ]);
     initialized = true;
   });
 

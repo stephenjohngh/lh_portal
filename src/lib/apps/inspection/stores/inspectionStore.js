@@ -168,9 +168,15 @@ function createInspectionStore() {
           api.get('type_attributes',   { orderBy: 'presentation_order' }),
           api.get('type_attribute_options', { orderBy: 'priority_override', ascending: true }),
           api.get('plans',             { orderBy: 'building', ascending: true }),
-          api.get('components',        { orderBy: 'asset_id', ascending: true }),
-          api.get('component_attributes'),
+          // components + component_attributes can exceed PostgREST's 1000-row
+          // cap in production — paginate via getAll (pages by id for stability).
+          api.getAll('components'),
+          api.getAll('component_attributes'),
         ]);
+
+      // Restore asset_id ordering (getAll pages by id, not asset_id)
+      components.sort((a, b) =>
+        (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true }));
 
       // Build attrDefs + attrOptions: effective attribute set per type with dropdown/radio options
       const { attrDefs, attrOptions } = resolveHierarchy(systems, types, defs, options);
@@ -366,12 +372,12 @@ function createInspectionStore() {
       : (JSON.parse(session.type_filter || '[]'));
     const emergencyOnly = session.emergency_only ?? false;
 
-    // Load existing inspections map
-    const inspRows = await api.get('component_inspections', {
-      filters:   { walk_session_id: session.id },
-      orderBy:   'inspected_at',
-      ascending: true,
+    // Load existing inspections map. A building-wide session can exceed the
+    // 1000-row cap, so paginate (getAll pages by id) and sort asc client-side.
+    const inspRows = await api.getAll('component_inspections', {
+      filters: { walk_session_id: session.id },
     });
+    inspRows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
     const inspections = {};
     for (const r of inspRows) {
       inspections[r.component_id] = r; // keep latest (rows are asc)

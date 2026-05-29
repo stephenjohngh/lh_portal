@@ -335,6 +335,9 @@ async function fetchFloorForPlan(planId, floorId) {
 
   // Step 2: fetch inspections and component attributes for this floor's components.
   // Load all rows and filter client-side — api.js doesn't support .in() queries.
+  // Both tables can exceed PostgREST's 1000-row cap in production, so use the
+  // paginated getAll() — otherwise a floor's attributes/inspections beyond row
+  // 1000 would silently go missing.
   const floorCompIds = new Set(components.map(c => c.id));
   let rawInspections = [];
   let rawAttrs       = [];
@@ -342,15 +345,13 @@ async function fetchFloorForPlan(planId, floorId) {
   if (floorCompIds.size > 0) {
     [rawInspections, rawAttrs] = await Promise.all([
       withTimeout(
-        api.get('component_inspections', {
+        api.getAll('component_inspections', {
           select: 'id,component_id,inspection_result,inspector_notes,inspected_at',
-          orderBy: 'inspected_at',
-          ascending: false,
         }),
         FETCH_TIMEOUT_MS
       ).catch(() => []),
       withTimeout(
-        api.get('component_attributes', {
+        api.getAll('component_attributes', {
           select: 'id,component_id,type_attribute_id,value',
         }),
         FETCH_TIMEOUT_MS
@@ -358,7 +359,9 @@ async function fetchFloorForPlan(planId, floorId) {
     ]);
   }
 
-  // Build latest-inspection map, keeping only this floor's components
+  // Build latest-inspection map, keeping only this floor's components.
+  // getAll paginates by id, so sort by inspected_at desc before deduping.
+  rawInspections.sort((a, b) => new Date(b.inspected_at) - new Date(a.inspected_at));
   const inspections = {};
   for (const insp of rawInspections) {
     if (floorCompIds.has(insp.component_id) && !inspections[insp.component_id]) {

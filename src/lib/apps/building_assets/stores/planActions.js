@@ -15,6 +15,35 @@ const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' 
 // supabase: the supabase client (needed for Storage operations).
 export function createPlanActions(update, supabase) {
 
+  // Paginated .in() fetch. api.js only supports .eq() filters, and both the id
+  // list and the result set can blow past PostgREST limits in production: the
+  // id list is chunked (URL length) and each chunk is paged with .range()
+  // (1000-row cap). Ordered by id so pages are stable.
+  async function fetchAllIn(table, column, ids, select = '*') {
+    if (!ids?.length) return [];
+    const ID_CHUNK = 300;
+    const PAGE     = 1000;
+    const out = [];
+    for (let i = 0; i < ids.length; i += ID_CHUNK) {
+      const chunk = ids.slice(i, i + ID_CHUNK);
+      let from = 0;
+      for (;;) {
+        const { data, error } = await supabase
+          .from(table)
+          .select(select)
+          .in(column, chunk)
+          .order('id', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        out.push(...rows);
+        if (rows.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+    return out;
+  }
+
   // -- Image upload ------------------------------------------------------
   // Uploads to the plan-images bucket and returns the public URL.
   async function uploadPlanImage(file) {
@@ -164,7 +193,7 @@ export function createPlanActions(update, supabase) {
       // scale_ref intentionally omitted (reset to null)
     });
 
-    const srcComponents = await api.get('components', { filters: { plan_id: sourcePlanId } });
+    const srcComponents = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
     const total  = srcComponents.length;
     let copied   = 0;
     const srcIds = srcComponents.map(c => c.id);
@@ -173,10 +202,8 @@ export function createPlanActions(update, supabase) {
     const idMap = {};
 
     if (total > 0) {
-      // Fetch attributes only for these components — avoids PostgREST 1000-row default cap
-      const { data: allAttrs = [] } = srcIds.length > 0
-        ? await supabase.from('component_attributes').select('*').in('component_id', srcIds)
-        : { data: [] };
+      // Fetch attributes only for these components (paginated past the 1000-row cap)
+      const allAttrs = await fetchAllIn('component_attributes', 'component_id', srcIds);
 
       for (const c of srcComponents) {
         if (onProgress) onProgress(copied, total);
@@ -219,17 +246,12 @@ export function createPlanActions(update, supabase) {
     // the new link resolves to the corresponding new-floor copy.
     // Links pointing outside the source plan are kept as-is.
     if (srcIds.length > 0) {
-      let allLinks = [];
+      let srcLinks = [];
       try {
-        const { data = [], error } = await supabase
-          .from('component_links').select('*').in('from_component_id', srcIds);
-        if (!error) allLinks = data;
-        else logger('component_links query error — skipping link copy', error.message);
-      } catch {
-        logger('component_links not available — skipping link copy');
+        srcLinks = await fetchAllIn('component_links', 'from_component_id', srcIds);
+      } catch (err) {
+        logger('component_links not available — skipping link copy', err.message);
       }
-
-      const srcLinks = allLinks;
 
       if (srcLinks.length > 0) {
         // Pre-build a map: old to_component_ref → new to_component_ref.
@@ -273,9 +295,7 @@ export function createPlanActions(update, supabase) {
     // Fetch newly created attrs so the store shows them immediately (no reload needed)
     const newComponents  = Object.values(idMap);
     const newCompIds     = newComponents.map(c => c.id);
-    const { data: newAttrRows = [] } = newCompIds.length > 0
-      ? await supabase.from('component_attributes').select('*').in('component_id', newCompIds)
-      : { data: [] };
+    const newAttrRows    = await fetchAllIn('component_attributes', 'component_id', newCompIds);
     const newComponentAttrs = {};
     for (const a of newAttrRows) {
       if (!newComponentAttrs[a.component_id]) newComponentAttrs[a.component_id] = [];
@@ -317,7 +337,7 @@ export function createPlanActions(update, supabase) {
     if (!targetPlan) throw new Error('Target plan not found');
 
     const newFloorId    = targetPlan.floor_id ?? null;
-    const srcComponents = await api.get('components', { filters: { plan_id: sourcePlanId } });
+    const srcComponents = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
     const total         = srcComponents.length;
     let copied          = 0;
     const srcIds        = srcComponents.map(c => c.id);
@@ -326,10 +346,8 @@ export function createPlanActions(update, supabase) {
     if (onProgress) onProgress(0, total);
 
     if (total > 0) {
-      // Fetch attributes only for these components — avoids PostgREST 1000-row default cap
-      const { data: allAttrs = [] } = srcIds.length > 0
-        ? await supabase.from('component_attributes').select('*').in('component_id', srcIds)
-        : { data: [] };
+      // Fetch attributes only for these components (paginated past the 1000-row cap)
+      const allAttrs = await fetchAllIn('component_attributes', 'component_id', srcIds);
 
       for (const c of srcComponents) {
         if (onProgress) onProgress(copied, total);
@@ -366,14 +384,11 @@ export function createPlanActions(update, supabase) {
 
     // -- Remap and copy component links ----------------------------------
     if (srcIds.length > 0) {
-      let allLinks = [];
+      let srcLinks = [];
       try {
-        const { data = [], error } = await supabase
-          .from('component_links').select('*').in('from_component_id', srcIds);
-        if (!error) allLinks = data;
+        srcLinks = await fetchAllIn('component_links', 'from_component_id', srcIds);
       } catch { /* skip if table absent */ }
 
-      const srcLinks = allLinks;
       if (srcLinks.length > 0) {
         const newFloor   = floors.find(f => f.id === newFloorId);
         const newFloorSN = newFloor?.short_name ?? '?';
@@ -413,9 +428,7 @@ export function createPlanActions(update, supabase) {
     // Fetch newly created attrs so the store shows them immediately (no reload needed)
     const newComponents  = Object.values(idMap);
     const newCompIds     = newComponents.map(c => c.id);
-    const { data: newAttrRows = [] } = newCompIds.length > 0
-      ? await supabase.from('component_attributes').select('*').in('component_id', newCompIds)
-      : { data: [] };
+    const newAttrRows    = await fetchAllIn('component_attributes', 'component_id', newCompIds);
     const newComponentAttrs = {};
     for (const a of newAttrRows) {
       if (!newComponentAttrs[a.component_id]) newComponentAttrs[a.component_id] = [];
