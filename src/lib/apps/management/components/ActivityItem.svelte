@@ -247,7 +247,7 @@
                   placeholder="#"
                   title="Optional sequence number"
                   on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                  class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
                 />
               </div>
               {#if summaryError}
@@ -271,7 +271,7 @@
                   placeholder="#"
                   title="Optional sequence number"
                   on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                  class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
                 />
               </div>
             {:else}

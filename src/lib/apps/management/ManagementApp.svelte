@@ -23,6 +23,18 @@
   // Meetings tab and auto-select that meeting.
   let meetingTabTargetId  = null;
 
+  // Saved scroll position for the Issues tab — restored when the user
+  // switches back from another tab.
+  let issuesScrollY = 0;
+
+  function setTab(tab) {
+    if (activeTab === 'issues') issuesScrollY = window.scrollY;
+    activeTab = tab;
+    if (tab === 'issues' && issuesScrollY > 0) {
+      tick().then(() => window.scrollTo({ top: issuesScrollY, behavior: 'instant' }));
+    }
+  }
+
   // -- Issues tab state -------------------------------------------------
   let searchTerm          = '';
   let statusFilter        = ISSUE_STATUS.CURRENT;
@@ -83,7 +95,7 @@
   // -- Meeting badge click: navigate to Meetings tab and select meeting --
   function handleMeetingBadgeClick(e) {
     meetingTabTargetId = e.detail;
-    activeTab          = 'meetings';
+    setTab('meetings');
   }
 
   onMount(async () => {
@@ -168,21 +180,21 @@
                {activeTab === 'issues'
                  ? 'text-white border-purple-500'
                  : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-        on:click={() => activeTab = 'issues'}
+        on:click={() => setTab('issues')}
       >Issues</button>
       <button
         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
                {activeTab === 'meetings'
                  ? 'text-white border-purple-500'
                  : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-        on:click={() => { meetingTabTargetId = null; activeTab = 'meetings'; }}
+        on:click={() => { meetingTabTargetId = null; setTab('meetings'); }}
       >Team Meetings</button>
       <button
         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
                {activeTab === 'reports'
                  ? 'text-white border-purple-500'
                  : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-        on:click={() => activeTab = 'reports'}
+        on:click={() => setTab('reports')}
       >Reports</button>
 
       <!-- Active meeting indicator — right-aligned in the tab row -->

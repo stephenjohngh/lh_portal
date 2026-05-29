@@ -17,6 +17,7 @@
   import { profilesStore }    from '$lib/stores/profiles';
   import { permissions }      from '$lib/stores/permissions';
   import { issuesStore }      from '../stores/issuesStore';
+  import { activitySort }     from '../stores/activitySortStore';
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import { parseEmailPaste } from '$lib/utils/emailParser';
@@ -64,8 +65,13 @@
   let pendingDeleteId   = null;
   let showHistoric      = false;
 
-  let sortField = 'updated_at';  // 'updated_at' | 'created_at' | 'sequence'
-  let sortDir   = 'desc';        // 'desc' | 'asc'
+  // Initialise from the persisted store so sort survives tab switches
+  // (the {#if activeTab} block destroys/recreates this component).
+  let sortField = $activitySort.field;  // 'updated_at' | 'created_at' | 'sequence'
+  let sortDir   = $activitySort.dir;    // 'desc' | 'asc'
+
+  // Keep the store in sync whenever either var changes.
+  $: activitySort.set({ field: sortField, dir: sortDir });
 
   // -- New activity state ----------------------------------------------
   // Keeps the last-used type selected so batch-logging (e.g. 3 emails)
@@ -687,7 +693,7 @@
                     placeholder="#"
                     title="Optional sequence number"
                     on:input={(e) => { const v = e.currentTarget.value; newActivity = { ...newActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
                   />
                 </div>
                 {#if newSummaryError}
@@ -711,7 +717,7 @@
                     placeholder="#"
                     title="Optional sequence number"
                     on:input={(e) => { const v = e.currentTarget.value; newActivity = { ...newActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
                   />
                 </div>
               {:else}
@@ -899,7 +905,7 @@
                     placeholder="#"
                     title="Optional sequence number"
                     on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
                   />
                 </div>
                 {#if modalSummaryError}
@@ -922,7 +928,7 @@
                     placeholder="#"
                     title="Optional sequence number"
                     on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
-                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    class="w-[4.375rem] shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
                   />
                 </div>
               {:else}
