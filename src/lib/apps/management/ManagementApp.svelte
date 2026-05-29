@@ -1,11 +1,13 @@
 <!-- src/lib/apps/management/ManagementApp.svelte -->
 <script>
   import { onMount, onDestroy, tick } from 'svelte';
+  import { get }            from 'svelte/store';
   import { permissions }    from '$lib/stores/permissions';
   import { auth }           from '$lib/stores/auth';
   import { getLogger }      from '$lib/utils/logger';
   import { issuesStore }    from './stores/issuesStore';
   import { meetingsStore }  from './stores/meetingsStore';
+  import { issuesUiState }  from './stores/issuesUiStore';
   import IssueCard          from './components/IssueCard.svelte';
   import IssueForm          from './components/IssueForm.svelte';
   import ReportsTab         from './components/reports/ReportsTab.svelte';
@@ -53,8 +55,12 @@
     .sort((a, b) => (a.issue_number ?? 0) - (b.issue_number ?? 0));
 
   // -- Scroll preservation ----------------------------------------------
+  // expandedSections and issuesScrollY are also persisted in issuesUiState
+  // (module-level store) so they survive the component being destroyed when
+  // the user switches to a different app and returns.
   let expandedSections    = {};
-  let scrollPosition      = 0;
+  let scrollPosition      = 0;   // used for scroll preservation during data refetches
+  let pendingMountScroll  = 0;   // consumed once after initial data load (app-switch restore)
   let containerElement;
 
   $: ({ issues, loading, error } = $issuesStore);
@@ -67,6 +73,13 @@
       window.scrollTo({ top: scrollPosition, behavior: 'instant' });
       scrollPosition = 0;
     });
+  }
+  // Restores scroll position after returning from another app (set in onMount
+  // after fetchIssues starts, so it fires only once when loading first completes).
+  $: if (!loading && pendingMountScroll > 0) {
+    const target = pendingMountScroll;
+    pendingMountScroll = 0;
+    tick().then(() => window.scrollTo({ top: target, behavior: 'instant' }));
   }
 
   // -- Filter issues (no meeting filter — that lives in the Meetings tab) -
@@ -99,16 +112,29 @@
   }
 
   onMount(async () => {
+    // Restore UI state persisted from the last visit (survives app switches).
+    const saved = get(issuesUiState);
+    expandedSections = saved.expandedSections;
+    issuesScrollY    = saved.scrollY;
+
     if ($auth.user) {
       await permissions.init($auth.user.id, 'management');
     }
     issuesStore.fetchIssues();
+    // Set pendingMountScroll AFTER fetchIssues (loading is now true), so the
+    // reactive scroll-restore only fires once loading next becomes false.
+    pendingMountScroll = saved.scrollY;
     issuesStore.initializeRealtime();
     meetingsStore.load();
     meetingsStore.initializeRealtime();
   });
 
   onDestroy(() => {
+    // Persist UI state so it survives switching to another app and back.
+    issuesUiState.set({
+      scrollY:          activeTab === 'issues' ? window.scrollY : issuesScrollY,
+      expandedSections,
+    });
     issuesStore.cleanup();
     meetingsStore.cleanup();
   });
