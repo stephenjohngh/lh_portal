@@ -146,24 +146,18 @@
       await tick();
       await new Promise(r => requestAnimationFrame(r));
 
-      logger(`🔄 restore scroll — topIssueId=${saved.topIssueId} scrollY=${saved.scrollY}`);
-
       if (saved.topIssueId) {
         const el = document.getElementById(`issue-${saved.topIssueId}`);
-        logger(`🔄 target element found: ${!!el}`);
         if (el) {
           const stickyBar = containerElement?.querySelector('.sticky');
           const stickyH   = stickyBar ? stickyBar.getBoundingClientRect().height : 76;
           const top = window.scrollY + el.getBoundingClientRect().top - 64 - stickyH - 8;
-          logger(`🔄 scrolling to ${top} (stickyH=${stickyH})`);
           window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
         } else if (saved.scrollY > 0) {
           // Issue no longer in filtered list — fall back to raw pixel position.
-          logger(`🔄 element not found, falling back to scrollY=${saved.scrollY}`);
           window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
         }
       } else {
-        logger(`🔄 no topIssueId, scrolling to scrollY=${saved.scrollY}`);
         window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
       }
     }
