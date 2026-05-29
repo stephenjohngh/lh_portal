@@ -51,7 +51,7 @@ function createIssuesStore() {
             created_by_profile:profiles!created_by(full_name),
             updated_by_profile:profiles!updated_by(full_name),
             activities (
-              id, body, activity_type, fields, historic, meeting_id, created_at, updated_at,
+              id, body, activity_type, fields, sequence, historic, meeting_id, created_at, updated_at,
               created_by_profile:profiles!created_by(full_name),
               updated_by_profile:profiles!updated_by(full_name)
             ),
@@ -319,7 +319,7 @@ function createIssuesStore() {
     // notes, and all future typed activity types.
     // ============================================
 
-    async addActivity(issueId, { body, activity_type = 'comment', fields = null }) {
+    async addActivity(issueId, { body, activity_type = 'comment', fields = null, sequence = null }) {
       try {
         logger('➕ Adding activity to issue:', issueId, '(type:', activity_type, ')');
         const now = new Date().toISOString();
@@ -347,6 +347,7 @@ function createIssuesStore() {
             body,
             activity_type,
             fields:        fields || null,
+            sequence:      sequence != null ? Math.trunc(Number(sequence)) : null,
             meeting_id:    activeMeetingId(),
             created_at:    now,
             updated_at:    now,
@@ -391,6 +392,7 @@ function createIssuesStore() {
         const activity_type        = activityData.activity_type ?? null;
         const historic             = activityData.historic ?? false;
         const fields               = activityData.fields !== undefined ? activityData.fields : null;
+        const sequence             = activityData.sequence != null ? Math.trunc(Number(activityData.sequence)) : null;
         const override_created_at  = activityData.override_created_at ?? null;
         const override_updated_at  = activityData.override_updated_at ?? null;
 
@@ -415,6 +417,7 @@ function createIssuesStore() {
           body,
           historic,
           fields,
+          sequence,
           updated_at: override_updated_at || new Date().toISOString(),
           updated_by: user?.id
         };

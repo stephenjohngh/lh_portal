@@ -64,13 +64,13 @@
   let pendingDeleteId   = null;
   let showHistoric      = false;
 
-  let sortField = 'updated_at';  // 'updated_at' | 'created_at'
+  let sortField = 'updated_at';  // 'updated_at' | 'created_at' | 'sequence'
   let sortDir   = 'desc';        // 'desc' | 'asc'
 
   // -- New activity state ----------------------------------------------
   // Keeps the last-used type selected so batch-logging (e.g. 3 emails)
   // doesn't require re-selecting the type each time.
-  let newActivity = { body: '', activity_type: ACTIVITY_TYPE.NOTE, fields: {} };
+  let newActivity = { body: '', activity_type: ACTIVITY_TYPE.NOTE, fields: {}, sequence: null };
   let mutationError = '';
   let saving        = false;
 
@@ -142,6 +142,17 @@
 
   // Interleaved sorted list for rendering
   $: visibleItems = [...filteredActivities].sort((a, b) => {
+    if (sortField === 'sequence') {
+      const aHas = a.sequence != null;
+      const bHas = b.sequence != null;
+      // Sequenced items first; unsequenced items fall back to modified-date sort at the end.
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      if (aHas) return sortDir === 'desc' ? b.sequence - a.sequence : a.sequence - b.sequence;
+      // Both unsequenced: sort by modified date (same direction as chosen).
+      const aDate = new Date(a.updated_at || a.created_at);
+      const bDate = new Date(b.updated_at || b.created_at);
+      return sortDir === 'desc' ? bDate - aDate : aDate - bDate;
+    }
     const aVal = new Date(sortField === 'updated_at' ? (a.updated_at || a.created_at) : a.created_at);
     const bVal = new Date(sortField === 'updated_at' ? (b.updated_at || b.created_at) : b.created_at);
     return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
@@ -155,8 +166,8 @@
 
   // -- Type selector ---------------------------------------------------
   function selectType(type) {
-    // Reset fields on type change; preserve body so user doesn't lose typed text.
-    newActivity = { body: newActivity.body, activity_type: type, fields: {} };
+    // Reset fields on type change; preserve body and sequence so user doesn't lose them.
+    newActivity = { body: newActivity.body, activity_type: type, fields: {}, sequence: newActivity.sequence };
   }
 
   // -- Add activity (unified for all types) ----------------------------
@@ -214,6 +225,7 @@
         body:          newActivity.body,
         activity_type: newActivity.activity_type,
         fields,
+        sequence:      newActivity.sequence ?? null,
       });
 
       if (!result.success) {
@@ -221,8 +233,8 @@
         return;
       }
 
-      // Keep same type selected for batch-logging; reset body, fields, and file.
-      newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} };
+      // Keep same type selected for batch-logging; reset body, fields, sequence, and file.
+      newActivity = { body: '', activity_type: newActivity.activity_type, fields: {}, sequence: null };
       docFile = null;
       docInputRef?.reset();
       showAddForm = false;
@@ -298,6 +310,7 @@
       activity_type:       editingActivity.activity_type,
       historic:            editingActivity.historic,
       fields:              hasFields ? editingActivity.fields : null,
+      sequence:            editingActivity.sequence ?? null,
       override_created_at: $permissions.isAdmin && editingActivity.override_created_at
                              ? new Date(editingActivity.override_created_at).toISOString()
                              : null,
@@ -584,6 +597,7 @@
         >
           <option value="updated_at">Modified</option>
           <option value="created_at">Created</option>
+          <option value="sequence">Sequence</option>
         </select>
         <button
           on:click={toggleSortDir}
@@ -649,7 +663,7 @@
                   {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
                 </select>
               {:else if field.key === 'summary' && (newActivity.activity_type === ACTIVITY_TYPE.NOTE || newActivity.activity_type === ACTIVITY_TYPE.COMMENT)}
-                <!-- Summary field with AI-generate button -->
+                <!-- Summary field with AI-generate button + optional sequence -->
                 <div class="flex gap-1">
                   <input
                     id="new-field-{field.key}"
@@ -666,10 +680,40 @@
                     title="Generate one-line summary with AI"
                     class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
                   >{newSummaryGenerating ? '…' : '✨'}</button>
+                  <input
+                    type="number"
+                    value={newActivity.sequence ?? ''}
+                    min="1"
+                    placeholder="#"
+                    title="Optional sequence number"
+                    on:input={(e) => { const v = e.currentTarget.value; newActivity = { ...newActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
+                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  />
                 </div>
                 {#if newSummaryError}
                   <p class="text-[10px] text-red-400 mt-0.5">{newSummaryError}</p>
                 {/if}
+              {:else if field.key === 'summary'}
+                <!-- Summary field (non-note/comment types) + optional sequence -->
+                <div class="flex gap-1">
+                  <input
+                    id="new-field-{field.key}"
+                    type="text"
+                    value={newActivity.fields[field.key] || ''}
+                    placeholder={field.placeholder || ''}
+                    on:input={(e) => setNewField(field.key, e.currentTarget.value)}
+                    class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {newTypeConfig.ringClass}"
+                  />
+                  <input
+                    type="number"
+                    value={newActivity.sequence ?? ''}
+                    min="1"
+                    placeholder="#"
+                    title="Optional sequence number"
+                    on:input={(e) => { const v = e.currentTarget.value; newActivity = { ...newActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
+                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  />
+                </div>
               {:else}
                 <input
                   id="new-field-{field.key}"
@@ -713,7 +757,7 @@
         <Button
           variant="secondary"
           size="small"
-          on:click={() => { showAddForm = false; newActivity = { body: '', activity_type: newActivity.activity_type, fields: {} }; docFile = null; docInputRef?.reset(); mutationError = ''; }}
+          on:click={() => { showAddForm = false; newActivity = { body: '', activity_type: newActivity.activity_type, fields: {}, sequence: null }; docFile = null; docInputRef?.reset(); mutationError = ''; }}
         >
           Cancel
         </Button>
@@ -848,10 +892,39 @@
                     title="Generate one-line summary with AI"
                     class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
                   >{modalSummaryGenerating ? '…' : '✨'}</button>
+                  <input
+                    type="number"
+                    value={editingActivity.sequence ?? ''}
+                    min="1"
+                    placeholder="#"
+                    title="Optional sequence number"
+                    on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
+                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  />
                 </div>
                 {#if modalSummaryError}
                   <p class="text-[10px] text-red-400 mt-0.5">{modalSummaryError}</p>
                 {/if}
+              {:else if field.key === 'summary'}
+                <div class="flex gap-1">
+                  <input
+                    id="modal-edit-{viewingItem.id}-{field.key}"
+                    type="text"
+                    value={editingActivity.fields?.[field.key] || ''}
+                    placeholder={field.placeholder || ''}
+                    on:input={(e) => setEditField(field.key, e.currentTarget.value)}
+                    class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+                  />
+                  <input
+                    type="number"
+                    value={editingActivity.sequence ?? ''}
+                    min="1"
+                    placeholder="#"
+                    title="Optional sequence number"
+                    on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
+                    class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  />
+                </div>
               {:else}
                 <input
                   id="modal-edit-{viewingItem.id}-{field.key}"

@@ -223,7 +223,7 @@
                 {#each (field.options || []) as opt}<option value={opt}>{opt}</option>{/each}
               </select>
             {:else if field.key === 'summary' && (editingActivity?.activity_type === ACTIVITY_TYPE.NOTE || editingActivity?.activity_type === ACTIVITY_TYPE.COMMENT)}
-              <!-- Summary field with AI-generate button -->
+              <!-- Summary field with AI-generate button + optional sequence -->
               <div class="flex gap-1">
                 <input
                   id="edit-field-{activity.id}-{field.key}"
@@ -240,10 +240,40 @@
                   title="Generate one-line summary with AI"
                   class="px-2 py-1 text-xs bg-slate-700 hover:bg-purple-800/60 text-slate-300 hover:text-purple-200 rounded border border-slate-600 hover:border-purple-600/50 shrink-0 transition-colors disabled:opacity-40"
                 >{summaryGenerating ? '…' : '✨'}</button>
+                <input
+                  type="number"
+                  value={editingActivity.sequence ?? ''}
+                  min="1"
+                  placeholder="#"
+                  title="Optional sequence number"
+                  on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
+                  class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                />
               </div>
               {#if summaryError}
                 <p class="text-[10px] text-red-400 mt-0.5">{summaryError}</p>
               {/if}
+            {:else if field.key === 'summary'}
+              <!-- Summary field (non-note/comment types) + optional sequence -->
+              <div class="flex gap-1">
+                <input
+                  id="edit-field-{activity.id}-{field.key}"
+                  type="text"
+                  value={editingActivity.fields?.[field.key] || ''}
+                  placeholder={field.placeholder || ''}
+                  on:input={(e) => setEditField(field.key, e.currentTarget.value)}
+                  class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 {editTypeConfig.ringClass}"
+                />
+                <input
+                  type="number"
+                  value={editingActivity.sequence ?? ''}
+                  min="1"
+                  placeholder="#"
+                  title="Optional sequence number"
+                  on:input={(e) => { const v = e.currentTarget.value; editingActivity = { ...editingActivity, sequence: v === '' ? null : (parseInt(v, 10) || null) }; }}
+                  class="w-14 shrink-0 px-2 py-1 text-xs bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                />
+              </div>
             {:else}
               <input
                 id="edit-field-{activity.id}-{field.key}"
@@ -358,12 +388,15 @@
         title="Click to view full {typeConfig.label.toLowerCase()}"
         on:click={() => dispatch('viewFull', activity)}
       >
-        <!-- Badge row: type badge + summary text side-by-side -->
+        <!-- Badge row: type badge + optional sequence + summary text -->
         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
           {#if typeConfig.badgeText}
             <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded {typeConfig.badgeClass} font-semibold uppercase tracking-wide">
               {typeConfig.icon} {typeConfig.badgeText}
             </span>
+          {/if}
+          {#if activity.sequence != null}
+            <span class="shrink-0 text-[10px] font-mono text-slate-400 bg-slate-700/70 px-1 rounded" title="Sequence #{activity.sequence}">#{activity.sequence}</span>
           {/if}
           {#if fieldSummary}
             <span class="text-slate-200 text-[11px]">{fieldSummary}</span>
