@@ -113,24 +113,35 @@
     }
     await issuesStore.fetchIssues();
 
-    if (saved.topIssueId) {
-      // Restore by element — two ticks ensure nested components have rendered,
-      // then getBoundingClientRect() forces a layout reflow for accurate position.
+    if (saved.topIssueId || saved.scrollY > 0) {
+      // Two ticks: first flushes Svelte's store-triggered DOM updates (renders
+      // the {#each} list); second flushes any child-component reactive updates.
+      // rAF then waits for the browser to finish layout so getBoundingClientRect
+      // and scrollTo operate on fully-laid-out content.
       await tick();
       await tick();
-      const el = document.getElementById(`issue-${saved.topIssueId}`);
-      if (el) {
-        const stickyBar = containerElement?.querySelector('.sticky');
-        const stickyH   = stickyBar ? stickyBar.getBoundingClientRect().height : 76;
-        const top = window.scrollY + el.getBoundingClientRect().top - 64 - stickyH - 8;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
-      } else if (saved.scrollY > 0) {
-        // Issue no longer in filtered list — fall back to raw pixel position.
+      await new Promise(r => requestAnimationFrame(r));
+
+      logger(`🔄 restore scroll — topIssueId=${saved.topIssueId} scrollY=${saved.scrollY}`);
+
+      if (saved.topIssueId) {
+        const el = document.getElementById(`issue-${saved.topIssueId}`);
+        logger(`🔄 target element found: ${!!el}`);
+        if (el) {
+          const stickyBar = containerElement?.querySelector('.sticky');
+          const stickyH   = stickyBar ? stickyBar.getBoundingClientRect().height : 76;
+          const top = window.scrollY + el.getBoundingClientRect().top - 64 - stickyH - 8;
+          logger(`🔄 scrolling to ${top} (stickyH=${stickyH})`);
+          window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+        } else if (saved.scrollY > 0) {
+          // Issue no longer in filtered list — fall back to raw pixel position.
+          logger(`🔄 element not found, falling back to scrollY=${saved.scrollY}`);
+          window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
+        }
+      } else {
+        logger(`🔄 no topIssueId, scrolling to scrollY=${saved.scrollY}`);
         window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
       }
-    } else if (saved.scrollY > 0) {
-      await tick();
-      window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
     }
 
     issuesStore.initializeRealtime();
@@ -140,9 +151,12 @@
 
   onDestroy(() => {
     // Persist UI state so it survives switching to another app and back.
+    const topId = activeTab === 'issues' ? getTopIssueId() : null;
+    const sy    = activeTab === 'issues' ? window.scrollY : issuesScrollY;
+    logger(`💾 saving — topIssueId=${topId} scrollY=${sy} activeTab=${activeTab}`);
     issuesUiState.set({
-      scrollY:          activeTab === 'issues' ? window.scrollY : issuesScrollY,
-      topIssueId:       activeTab === 'issues' ? getTopIssueId() : null,
+      scrollY:          sy,
+      topIssueId:       topId,
       expandedSections,
     });
     issuesStore.cleanup();
@@ -204,11 +218,12 @@
 
   // Returns the id of the first issue element whose bottom edge is below the
   // sticky toolbar — i.e. the issue that's currently at the top of the view.
+  // Uses document.querySelectorAll deliberately — containerElement may already
+  // be null in onDestroy (Svelte 5 clears bind:this before lifecycle hooks run).
   function getTopIssueId() {
-    if (!containerElement) return null;
-    const stickyBar = containerElement.querySelector('.sticky');
-    const threshold = stickyBar ? stickyBar.getBoundingClientRect().bottom + 8 : 148;
-    const els = containerElement.querySelectorAll('[id^="issue-"]');
+    // Fixed nav: 64px.  Sticky toolbar: ~76px.  Buffer: 8px.
+    const threshold = 148;
+    const els = document.querySelectorAll('[id^="issue-"]');
     for (const el of els) {
       if (el.getBoundingClientRect().bottom > threshold) {
         return el.id.replace('issue-', '');
