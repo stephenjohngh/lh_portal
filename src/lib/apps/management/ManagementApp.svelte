@@ -112,10 +112,27 @@
       await permissions.init($auth.user.id, 'management');
     }
     await issuesStore.fetchIssues();
-    if (saved.scrollY > 0) {
+
+    if (saved.topIssueId) {
+      // Restore by element — two ticks ensure nested components have rendered,
+      // then getBoundingClientRect() forces a layout reflow for accurate position.
+      await tick();
+      await tick();
+      const el = document.getElementById(`issue-${saved.topIssueId}`);
+      if (el) {
+        const stickyBar = containerElement?.querySelector('.sticky');
+        const stickyH   = stickyBar ? stickyBar.getBoundingClientRect().height : 76;
+        const top = window.scrollY + el.getBoundingClientRect().top - 64 - stickyH - 8;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+      } else if (saved.scrollY > 0) {
+        // Issue no longer in filtered list — fall back to raw pixel position.
+        window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
+      }
+    } else if (saved.scrollY > 0) {
       await tick();
       window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
     }
+
     issuesStore.initializeRealtime();
     meetingsStore.load();
     meetingsStore.initializeRealtime();
@@ -125,6 +142,7 @@
     // Persist UI state so it survives switching to another app and back.
     issuesUiState.set({
       scrollY:          activeTab === 'issues' ? window.scrollY : issuesScrollY,
+      topIssueId:       activeTab === 'issues' ? getTopIssueId() : null,
       expandedSections,
     });
     issuesStore.cleanup();
@@ -182,6 +200,21 @@
   async function handleJumpSelect() {
     if (!jumpToIssueId) return;
     await handleJumpToIssue(jumpToIssueId);
+  }
+
+  // Returns the id of the first issue element whose bottom edge is below the
+  // sticky toolbar — i.e. the issue that's currently at the top of the view.
+  function getTopIssueId() {
+    if (!containerElement) return null;
+    const stickyBar = containerElement.querySelector('.sticky');
+    const threshold = stickyBar ? stickyBar.getBoundingClientRect().bottom + 8 : 148;
+    const els = containerElement.querySelectorAll('[id^="issue-"]');
+    for (const el of els) {
+      if (el.getBoundingClientRect().bottom > threshold) {
+        return el.id.replace('issue-', '');
+      }
+    }
+    return null;
   }
 </script>
 

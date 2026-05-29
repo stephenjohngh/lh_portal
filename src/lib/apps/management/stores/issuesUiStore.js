@@ -4,6 +4,7 @@
 import { writable } from 'svelte/store';
 
 export const issuesUiState = writable({
-  scrollY:          0,    // scroll position when last on the Issues tab
+  scrollY:          0,    // scroll position when last on the Issues tab (px fallback)
+  topIssueId:       null, // id of the first issue visible below the sticky bar
   expandedSections: {},   // { [issueId]: { activities: bool, actions: bool } }
 });
