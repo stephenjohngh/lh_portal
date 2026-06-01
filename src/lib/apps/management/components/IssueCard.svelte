@@ -313,6 +313,7 @@
           actions={issue.actions || []}
           on:jumpToAction={handleJumpToAction}
           on:meetingFilter
+          on:moveRequest
         />
       </div>
     </div>

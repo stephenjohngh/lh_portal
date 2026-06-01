@@ -166,6 +166,19 @@
 
   $: historicCount = activities.filter(a => a.historic).length;
 
+  // When an activity disappears from this issue's list (e.g. after being moved
+  // to another issue), automatically close any open UI tied to it.
+  $: if (editingActivity && !activities.find(a => a.id === editingActivity.id)) {
+    viewingItem     = null;
+    editingActivity = null;
+  }
+  $: if (viewingItem && !activities.find(a => a.id === viewingItem.id)) {
+    viewingItem = null;
+  }
+  $: if (suggestionForId && !activities.find(a => a.id === suggestionForId)) {
+    dismissSuggestion();
+  }
+
   function toggleSortDir() {
     sortDir = sortDir === 'desc' ? 'asc' : 'desc';
   }
@@ -818,6 +831,7 @@
           on:viewLinked={(e) => viewLinkedAction(e.detail)}
           on:deleteLinkedRequest={(e) => requestDeleteLinked(e.detail)}
           on:meetingFilter
+          on:moveRequest={(e) => dispatch('moveRequest', { activityId: e.detail.id, sourceIssueId: issueId })}
         />
       {/each}
     </div>

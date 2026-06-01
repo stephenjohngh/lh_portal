@@ -13,6 +13,7 @@
   import ReportsTab         from './components/reports/ReportsTab.svelte';
   import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
   import Button             from '$lib/components/common/Button.svelte';
+  import Modal              from '$lib/components/common/Modal.svelte';
   import ErrorDisplay       from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
   import { ISSUE_STATUS, STATUS_FILTERS } from '$lib/utils/constants';
@@ -192,6 +193,25 @@
 
   async function handleDeleteIssue(event) {
     await issuesStore.deleteIssue(event.detail);
+  }
+
+  // -- Move activity to a different issue --------------------------------
+  let pendingMove       = null;  // { activityId, sourceIssueId }
+  let moveDestIssueId   = '';
+  let moveProcessing    = false;
+
+  function handleMoveRequest(e) {
+    pendingMove     = e.detail;   // { activityId, sourceIssueId }
+    moveDestIssueId = '';
+  }
+
+  async function confirmMove() {
+    if (!pendingMove || !moveDestIssueId) return;
+    moveProcessing = true;
+    await issuesStore.moveActivity(pendingMove.activityId, moveDestIssueId);
+    moveProcessing = false;
+    pendingMove     = null;
+    moveDestIssueId = '';
   }
 
   function toggleSection(issueId, section) {
@@ -402,6 +422,7 @@
             on:edit={(e) => editingIssue = e.detail}
             on:delete={handleDeleteIssue}
             on:meetingFilter={handleMeetingBadgeClick}
+            on:moveRequest={handleMoveRequest}
           />
           </div>
         {/each}
@@ -431,4 +452,43 @@
   on:submit={handleEditIssue}
   on:close={() => editingIssue = null}
 />
+
+<!-- ─── Move activity modal ──────────────────────────────────────────── -->
+<Modal
+  show={!!pendingMove}
+  title="Move Activity to Another Issue"
+  size="small"
+  on:close={() => { pendingMove = null; moveDestIssueId = ''; }}
+>
+  <p class="text-sm text-slate-400 mb-3">
+    Select the destination issue. Any action linked to this activity will also move.
+  </p>
+  <select
+    bind:value={moveDestIssueId}
+    class="w-full px-2 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded text-white
+           focus:outline-none focus:ring-1 focus:ring-purple-500"
+  >
+    <option value="">— Select destination issue —</option>
+    {#each issues
+      .filter(i => i.id !== pendingMove?.sourceIssueId)
+      .sort((a, b) => a.priority !== b.priority
+        ? a.priority - b.priority
+        : (a.issue_number || 0) - (b.issue_number || 0)) as issue (issue.id)}
+      <option value={issue.id}>
+        {#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}
+        {#if issue.status !== ISSUE_STATUS.CURRENT && issue.status} ({issue.status}){/if}
+      </option>
+    {/each}
+  </select>
+
+  <svelte:fragment slot="footer">
+    <div class="flex justify-end gap-2">
+      <Button variant="secondary" size="small"
+        on:click={() => { pendingMove = null; moveDestIssueId = ''; }}>Cancel</Button>
+      <Button variant="primary" size="small"
+        disabled={!moveDestIssueId || moveProcessing}
+        on:click={confirmMove}>{moveProcessing ? 'Moving…' : 'Move'}</Button>
+    </div>
+  </svelte:fragment>
+</Modal>
 

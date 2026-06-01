@@ -464,6 +464,15 @@
           action="modify"
           variant="secondary"
           size="small"
+          icon="move"
+          iconPosition="only"
+          on:click={() => dispatch('moveRequest', activity)}
+          title="Move to another issue"
+        />
+        <ProtectedButton
+          action="modify"
+          variant="secondary"
+          size="small"
           icon="edit"
           iconPosition="only"
           on:click={() => dispatch('editStart', activity)}

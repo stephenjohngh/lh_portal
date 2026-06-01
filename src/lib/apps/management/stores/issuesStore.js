@@ -734,6 +734,59 @@ function createIssuesStore() {
       }
     },
 
+    // Moves an activity (and any actions linked to it via source_activity_id)
+    // to a different issue.
+    async moveActivity(activityId, destinationIssueId) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const now = new Date().toISOString();
+
+        // Fetch context for the audit log
+        const { data: activity } = await supabase
+          .from('activities')
+          .select('activity_type, issue_id')
+          .eq('id', activityId)
+          .single();
+
+        const [{ data: srcIssue }, { data: dstIssue }] = await Promise.all([
+          supabase.from('issues').select('issue_number, name').eq('id', activity?.issue_id).single(),
+          supabase.from('issues').select('issue_number, name').eq('id', destinationIssueId).single(),
+        ]);
+
+        // Move the activity
+        await api.update('activities', activityId, {
+          issue_id:   destinationIssueId,
+          updated_at: now,
+          updated_by: user?.id,
+        });
+
+        // Move any actions whose source is this activity (may be 0 rows — fine)
+        await api.updateMany(
+          'actions',
+          { source_activity_id: activityId },
+          { issue_id: destinationIssueId, updated_at: now, updated_by: user?.id },
+          false
+        );
+
+        const aType = activity?.activity_type ?? 'activity';
+        audit(
+          'update', aType, activityId,
+          `${aType} moved from Issue #${srcIssue?.issue_number} to Issue #${dstIssue?.issue_number}`,
+          {
+            beforeData: { issue_id: activity?.issue_id,   issue_name: srcIssue?.name },
+            afterData:  { issue_id: destinationIssueId,   issue_name: dstIssue?.name },
+          }
+        );
+
+        await this.fetchIssues();
+        return { success: true };
+      } catch (err) {
+        logger('❌ Error moving activity:', err);
+        update(state => ({ ...state, error: err.message }));
+        return { success: false, error: err.message };
+      }
+    },
+
     clearError() {
       update(state => ({ ...state, error: '' }));
     }
