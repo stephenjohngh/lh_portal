@@ -172,6 +172,22 @@ export function createPlanActions(update, supabase) {
     // oldId → newComp — built during the component loop, used for link remapping
     const idMap = {};
 
+    // Pre-build floor-SN ref remap so it covers both linked_component_ref on
+    // each new component AND to_component_ref in component_links below.
+    const newFloor   = floors.find(f => f.id === newFloorId);
+    const newFloorSN = newFloor?.short_name ?? '?';
+    const refRemap   = {};
+    for (const c of srcComponents) {
+      const srcFloor   = floors.find(f => f.id === c.floor_id);
+      const srcFloorSN = srcFloor?.short_name ?? '?';
+      const type       = types.find(t => t.code === c.type_code);
+      const initial    = type?.initial ?? '?';
+      const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
+      const oldRef     = `${srcFloorSN}/${initial}/${assetId}`;
+      const newRef     = `${newFloorSN}/${initial}/${assetId}`;
+      if (oldRef !== newRef) refRemap[oldRef] = newRef;
+    }
+
     if (total > 0) {
       // Fetch attributes only for these components (paginated past the 1000-row cap)
       const allAttrs = await api.getAllIn('component_attributes', 'component_id', srcIds);
@@ -191,9 +207,11 @@ export function createPlanActions(update, supabase) {
           status:                c.status ?? 'ok',
           notes:                 c.notes,
           inspection_sort_order: c.inspection_sort_order ?? null,
+          linked_component_ref:  c.linked_component_ref
+            ? (refRemap[c.linked_component_ref] ?? c.linked_component_ref)
+            : null,
           created_by:            userId,
           updated_by:            userId,
-          // linked_component_ref omitted — stale after floor change
         });
 
         idMap[c.id] = newComp;
@@ -226,24 +244,7 @@ export function createPlanActions(update, supabase) {
       }
 
       if (srcLinks.length > 0) {
-        // Pre-build a map: old to_component_ref → new to_component_ref.
-        // Format: "{floorSN}/{initial}/{assetId}" — only the floor segment changes.
-        const newFloor   = floors.find(f => f.id === newFloorId);
-        const newFloorSN = newFloor?.short_name ?? '?';
-
-        const refRemap = {};
-        for (const c of srcComponents) {
-          const srcFloor   = floors.find(f => f.id === c.floor_id);
-          const srcFloorSN = srcFloor?.short_name ?? '?';
-          const type       = types.find(t => t.code === c.type_code);
-          const initial    = type?.initial ?? '?';
-          const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
-
-          const oldRef = `${srcFloorSN}/${initial}/${assetId}`;
-          const newRef = `${newFloorSN}/${initial}/${assetId}`;
-          if (oldRef !== newRef) refRemap[oldRef] = newRef;
-        }
-
+        // refRemap already computed above — reused here for to_component_ref
         const linkRows = srcLinks
           .map(link => {
             const newFromId = idMap[link.from_component_id]?.id;
@@ -315,6 +316,22 @@ export function createPlanActions(update, supabase) {
     const srcIds        = srcComponents.map(c => c.id);
     const idMap         = {};   // oldId → newComp
 
+    // Pre-build floor-SN ref remap so it covers both linked_component_ref on
+    // each new component AND to_component_ref in component_links below.
+    const newFloor   = floors.find(f => f.id === newFloorId);
+    const newFloorSN = newFloor?.short_name ?? '?';
+    const refRemap   = {};
+    for (const c of srcComponents) {
+      const srcFloor   = floors.find(f => f.id === c.floor_id);
+      const srcFloorSN = srcFloor?.short_name ?? '?';
+      const type       = types.find(t => t.code === c.type_code);
+      const initial    = type?.initial ?? '?';
+      const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
+      const oldRef     = `${srcFloorSN}/${initial}/${assetId}`;
+      const newRef     = `${newFloorSN}/${initial}/${assetId}`;
+      if (oldRef !== newRef) refRemap[oldRef] = newRef;
+    }
+
     if (onProgress) onProgress(0, total);
 
     if (total > 0) {
@@ -336,6 +353,9 @@ export function createPlanActions(update, supabase) {
           status:                c.status ?? 'ok',
           notes:                 c.notes,
           inspection_sort_order: c.inspection_sort_order ?? null,
+          linked_component_ref:  c.linked_component_ref
+            ? (refRemap[c.linked_component_ref] ?? c.linked_component_ref)
+            : null,
           created_by:            userId,
           updated_by:            userId,
         });
@@ -363,21 +383,7 @@ export function createPlanActions(update, supabase) {
       } catch { /* skip if table absent */ }
 
       if (srcLinks.length > 0) {
-        const newFloor   = floors.find(f => f.id === newFloorId);
-        const newFloorSN = newFloor?.short_name ?? '?';
-
-        const refRemap = {};
-        for (const c of srcComponents) {
-          const srcFloor   = floors.find(f => f.id === c.floor_id);
-          const srcFloorSN = srcFloor?.short_name ?? '?';
-          const type       = types.find(t => t.code === c.type_code);
-          const initial    = type?.initial ?? '?';
-          const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
-          const oldRef     = `${srcFloorSN}/${initial}/${assetId}`;
-          const newRef     = `${newFloorSN}/${initial}/${assetId}`;
-          if (oldRef !== newRef) refRemap[oldRef] = newRef;
-        }
-
+        // refRemap already computed above — reused here for to_component_ref
         const linkRows = srcLinks
           .map(link => {
             const newFromId = idMap[link.from_component_id]?.id;
