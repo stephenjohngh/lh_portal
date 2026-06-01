@@ -198,11 +198,13 @@
   // -- Move activity to a different issue --------------------------------
   let pendingMove       = null;  // { activityId, sourceIssueId }
   let moveDestIssueId   = '';
+  let moveStatusFilter  = ISSUE_STATUS.CURRENT;
   let moveProcessing    = false;
 
   function handleMoveRequest(e) {
-    pendingMove     = e.detail;   // { activityId, sourceIssueId }
-    moveDestIssueId = '';
+    pendingMove      = e.detail;   // { activityId, sourceIssueId }
+    moveDestIssueId  = '';
+    moveStatusFilter = ISSUE_STATUS.CURRENT;
   }
 
   async function confirmMove() {
@@ -463,6 +465,27 @@
   <p class="text-sm text-slate-400 mb-3">
     Select the destination issue. Any action linked to this activity will also move.
   </p>
+
+  <!-- Status filter pills (reuses STATUS_FILTERS from constants) -->
+  <div class="flex gap-1.5 mb-3">
+    {#each STATUS_FILTERS as f}
+      <label class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs cursor-pointer transition-colors
+                    {moveStatusFilter === f.value
+                      ? 'bg-purple-600/30 border-purple-500 text-purple-200'
+                      : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'}">
+        <input
+          type="radio"
+          name="move-status"
+          value={f.value}
+          bind:group={moveStatusFilter}
+          on:change={() => moveDestIssueId = ''}
+          class="sr-only"
+        />
+        {f.label}
+      </label>
+    {/each}
+  </div>
+
   <select
     bind:value={moveDestIssueId}
     class="w-full px-2 py-1.5 text-sm bg-slate-700 border border-slate-600 rounded text-white
@@ -470,13 +493,16 @@
   >
     <option value="">— Select destination issue —</option>
     {#each issues
-      .filter(i => i.id !== pendingMove?.sourceIssueId)
+      .filter(i => {
+        if (i.id === pendingMove?.sourceIssueId) return false;
+        if (moveStatusFilter === ISSUE_STATUS.CURRENT) return i.status === ISSUE_STATUS.CURRENT || !i.status;
+        return i.status === moveStatusFilter;
+      })
       .sort((a, b) => a.priority !== b.priority
         ? a.priority - b.priority
         : (a.issue_number || 0) - (b.issue_number || 0)) as issue (issue.id)}
       <option value={issue.id}>
         {#if issue.issue_number}#{issue.issue_number} — {/if}{issue.name}
-        {#if issue.status !== ISSUE_STATUS.CURRENT && issue.status} ({issue.status}){/if}
       </option>
     {/each}
   </select>
