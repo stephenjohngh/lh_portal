@@ -180,18 +180,19 @@ export function createPlanActions(update, supabase) {
         if (onProgress) onProgress(copied, total);
 
         const newComp = await api.create('components', {
-          plan_id:           newPlan.id,
-          floor_id:          newFloorId,   // all copies go to the new floor
-          type_code:         c.type_code,
-          primary_attribute: c.primary_attribute,
-          label:             c.label,
-          asset_id:          c.asset_id,
-          x_position:        c.x_position,
-          y_position:        c.y_position,
-          status:            c.status ?? 'ok',
-          notes:             c.notes,
-          created_by:        userId,
-          updated_by:        userId,
+          plan_id:               newPlan.id,
+          floor_id:              newFloorId,   // all copies go to the new floor
+          type_code:             c.type_code,
+          primary_attribute:     c.primary_attribute,
+          label:                 c.label,
+          asset_id:              c.asset_id,
+          x_position:            c.x_position,
+          y_position:            c.y_position,
+          status:                c.status ?? 'ok',
+          notes:                 c.notes,
+          inspection_sort_order: c.inspection_sort_order ?? null,
+          created_by:            userId,
+          updated_by:            userId,
           // linked_component_ref omitted — stale after floor change
         });
 
@@ -324,18 +325,19 @@ export function createPlanActions(update, supabase) {
         if (onProgress) onProgress(copied, total);
 
         const newComp = await api.create('components', {
-          plan_id:           targetPlanId,
-          floor_id:          newFloorId,
-          type_code:         c.type_code,
-          primary_attribute: c.primary_attribute,
-          label:             c.label,
-          asset_id:          c.asset_id,
-          x_position:        c.x_position,
-          y_position:        c.y_position,
-          status:            c.status ?? 'ok',
-          notes:             c.notes,
-          created_by:        userId,
-          updated_by:        userId,
+          plan_id:               targetPlanId,
+          floor_id:              newFloorId,
+          type_code:             c.type_code,
+          primary_attribute:     c.primary_attribute,
+          label:                 c.label,
+          asset_id:              c.asset_id,
+          x_position:            c.x_position,
+          y_position:            c.y_position,
+          status:                c.status ?? 'ok',
+          notes:                 c.notes,
+          inspection_sort_order: c.inspection_sort_order ?? null,
+          created_by:            userId,
+          updated_by:            userId,
         });
 
         idMap[c.id] = newComp;
