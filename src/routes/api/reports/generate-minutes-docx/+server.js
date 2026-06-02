@@ -164,7 +164,9 @@ function buildContent(meeting, issues, attendees) {
     minutes.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions, notes: meetingNotes, emails: meetingEmails, letters: meetingLetters, documents: meetingDocuments });
   }
   minutes.sort((a, b) => {
-    if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
+    const pa = a.issue.priority ?? 99;
+    const pb = b.issue.priority ?? 99;
+    if (pa !== pb) return pa - pb;
     return (a.issue.issue_number ?? 0) - (b.issue.issue_number ?? 0);
   });
 
