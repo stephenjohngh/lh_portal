@@ -70,6 +70,31 @@ const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 const fmt      = iso => iso ? fmtDateLong(iso)  : '';
 const fmtShort = iso => iso ? fmtShortDate(iso) : '';
 
+// Convert Tiptap/rich-text HTML to plain text for Word output.
+// Preserves paragraph breaks, list bullets, and line breaks.
+function htmlToText(html) {
+  if (!html || !html.startsWith('<')) return html ?? '';
+  return html
+    // Block-level closers → newline
+    .replace(/<\/p>/gi,   '\n')
+    .replace(/<\/li>/gi,  '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    // List items — prefix with bullet / number
+    .replace(/<li[^>]*>/gi, '• ')
+    // Strip all remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode common HTML entities
+    .replace(/&amp;/g,  '&')
+    .replace(/&lt;/g,   '<')
+    .replace(/&gt;/g,   '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g,  "'")
+    .replace(/&nbsp;/g, ' ')
+    // Collapse 3+ newlines → double newline; trim ends
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function p(text, opts = {}) {
   return new Paragraph({
     children: [new TextRun({ text: String(text ?? ''), ...opts })],
@@ -239,7 +264,7 @@ function buildContent(meeting, issues, attendees) {
         (a, b) => new Date(a.created_at) - new Date(b.created_at)
       );
       for (const c of sorted) {
-        content.push(p(c.body, {
+        content.push(p(htmlToText(c.body), {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
@@ -266,7 +291,7 @@ function buildContent(meeting, issues, attendees) {
         (a, b) => new Date(a.created_at) - new Date(b.created_at)
       );
       for (const d of sortedDecisions) {
-        content.push(p(d.body, {
+        content.push(p(htmlToText(d.body), {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
@@ -293,7 +318,7 @@ function buildContent(meeting, issues, attendees) {
         (a, b) => new Date(a.created_at) - new Date(b.created_at)
       );
       for (const n of sortedNotes) {
-        content.push(p(n.body, {
+        content.push(p(htmlToText(n.body), {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
@@ -321,7 +346,7 @@ function buildContent(meeting, issues, attendees) {
       );
       for (const e of sortedEmails) {
         if (e.body) {
-          content.push(p(e.body, {
+          content.push(p(htmlToText(e.body), {
             size: 22,
             _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
           }));
@@ -352,7 +377,7 @@ function buildContent(meeting, issues, attendees) {
       );
       for (const l of sortedLetters) {
         if (l.body) {
-          content.push(p(l.body, {
+          content.push(p(htmlToText(l.body), {
             size: 22,
             _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
           }));
@@ -383,7 +408,7 @@ function buildContent(meeting, issues, attendees) {
       );
       for (const d of sortedDocs) {
         const fieldLine = buildFieldSummary('document', d.fields);
-        content.push(p(d.body || fieldLine, {
+        content.push(p(htmlToText(d.body) || fieldLine, {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
