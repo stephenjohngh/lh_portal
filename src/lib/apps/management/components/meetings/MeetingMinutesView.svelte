@@ -15,6 +15,7 @@
   import { onMount }              from 'svelte';
   import { fmtDate, fmtDateLong, fmtDateTime } from '$lib/utils/dates';
   import { profiles, profilesStore }           from '$lib/stores/profiles';
+  import { buildFieldSummary }                 from '../reports/reportUtils.js';
 
   export let meeting = null;
   export let issues  = [];   // already filtered to this meeting's items
@@ -32,9 +33,13 @@
       const allActivities    = (issue.activities || []).filter(a => a.meeting_id === id);
       const meetingComments  = allActivities.filter(a => (a.activity_type ?? 'comment') === 'comment');
       const meetingDecisions = allActivities.filter(a => a.activity_type === 'decision');
+      const meetingNotes     = allActivities.filter(a => a.activity_type === 'note');
+      const meetingEmails    = allActivities.filter(a => a.activity_type === 'email');
+      const meetingLetters   = allActivities.filter(a => a.activity_type === 'letter');
+      const meetingDocuments = allActivities.filter(a => a.activity_type === 'document');
       const isNew            = issue.meeting_id === id;
       if (!isNew && meetingActions.length === 0 && allActivities.length === 0) continue;
-      out.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions });
+      out.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions, notes: meetingNotes, emails: meetingEmails, letters: meetingLetters, documents: meetingDocuments });
     }
     out.sort((a, b) => {
       if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
@@ -48,9 +53,13 @@
       issues:    acc.issues    + (m.isNew ? 1 : 0),
       actions:   acc.actions   + m.actions.length,
       comments:  acc.comments  + m.comments.length,
-      decisions: acc.decisions + m.decisions.length
+      decisions: acc.decisions + m.decisions.length,
+      notes:     acc.notes     + m.notes.length,
+      emails:    acc.emails    + m.emails.length,
+      letters:   acc.letters   + m.letters.length,
+      documents: acc.documents + m.documents.length,
     }),
-    { issues: 0, actions: 0, comments: 0, decisions: 0 }
+    { issues: 0, actions: 0, comments: 0, decisions: 0, notes: 0, emails: 0, letters: 0, documents: 0 }
   );
 
   // -- Resolve attendees to display names --------------------------------
@@ -112,6 +121,18 @@
           · {totals.comments} comment{totals.comments === 1 ? '' : 's'}
           {#if totals.decisions > 0}
             · {totals.decisions} decision{totals.decisions === 1 ? '' : 's'}
+          {/if}
+          {#if totals.notes > 0}
+            · {totals.notes} note{totals.notes === 1 ? '' : 's'}
+          {/if}
+          {#if totals.emails > 0}
+            · {totals.emails} email{totals.emails === 1 ? '' : 's'}
+          {/if}
+          {#if totals.letters > 0}
+            · {totals.letters} letter{totals.letters === 1 ? '' : 's'}
+          {/if}
+          {#if totals.documents > 0}
+            · {totals.documents} document{totals.documents === 1 ? '' : 's'}
           {/if}
         </p>
       </div>
@@ -178,6 +199,107 @@
                         <span class="text-violet-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
                           <p class="text-slate-200 whitespace-pre-wrap">{d.body}</p>
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
+                            {#if d.historic}
+                              · <span class="text-amber-400">historic</span>
+                            {/if}
+                          </p>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+
+              {#if m.notes.length > 0}
+                <div>
+                  <p class="text-[11px] uppercase tracking-wide text-teal-400/80 font-semibold mb-2">
+                    Notes
+                  </p>
+                  <ul class="space-y-2">
+                    {#each m.notes as n (n.id)}
+                      <li class="flex items-start gap-2 text-sm">
+                        <span class="text-teal-400 shrink-0 mt-0.5">📝</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-slate-200 whitespace-pre-wrap">{n.body}</p>
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            {fmtDateTime(n.created_at, n.created_by_profile?.full_name)}
+                            {#if n.historic}
+                              · <span class="text-amber-400">historic</span>
+                            {/if}
+                          </p>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+
+              {#if m.emails.length > 0}
+                <div>
+                  <p class="text-[11px] uppercase tracking-wide text-cyan-400/80 font-semibold mb-2">
+                    Emails
+                  </p>
+                  <ul class="space-y-2">
+                    {#each m.emails as e (e.id)}
+                      {@const fieldSummary = buildFieldSummary('email', e.fields)}
+                      <li class="flex items-start gap-2 text-sm">
+                        <span class="text-cyan-400 shrink-0 mt-0.5">📧</span>
+                        <div class="flex-1 min-w-0">
+                          {#if e.body}<p class="text-slate-200 whitespace-pre-wrap">{e.body}</p>{/if}
+                          {#if fieldSummary}<p class="text-xs text-cyan-300/70 mt-0.5">{fieldSummary}</p>{/if}
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            {fmtDateTime(e.created_at, e.created_by_profile?.full_name)}
+                            {#if e.historic}
+                              · <span class="text-amber-400">historic</span>
+                            {/if}
+                          </p>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+
+              {#if m.letters.length > 0}
+                <div>
+                  <p class="text-[11px] uppercase tracking-wide text-slate-300/80 font-semibold mb-2">
+                    Letters
+                  </p>
+                  <ul class="space-y-2">
+                    {#each m.letters as l (l.id)}
+                      {@const fieldSummary = buildFieldSummary('letter', l.fields)}
+                      <li class="flex items-start gap-2 text-sm">
+                        <span class="text-slate-300 shrink-0 mt-0.5">📄</span>
+                        <div class="flex-1 min-w-0">
+                          {#if l.body}<p class="text-slate-200 whitespace-pre-wrap">{l.body}</p>{/if}
+                          {#if fieldSummary}<p class="text-xs text-slate-400/70 mt-0.5">{fieldSummary}</p>{/if}
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            {fmtDateTime(l.created_at, l.created_by_profile?.full_name)}
+                            {#if l.historic}
+                              · <span class="text-amber-400">historic</span>
+                            {/if}
+                          </p>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+
+              {#if m.documents.length > 0}
+                <div>
+                  <p class="text-[11px] uppercase tracking-wide text-gray-300/80 font-semibold mb-2">
+                    Documents
+                  </p>
+                  <ul class="space-y-2">
+                    {#each m.documents as d (d.id)}
+                      {@const fieldSummary = buildFieldSummary('document', d.fields)}
+                      <li class="flex items-start gap-2 text-sm">
+                        <span class="text-gray-300 shrink-0 mt-0.5">📎</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-slate-200 whitespace-pre-wrap">{d.body || fieldSummary}</p>
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
                             {#if d.historic}

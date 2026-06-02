@@ -10,6 +10,7 @@ import {
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
 import { fmtDateLong, fmtShortDate } from '$lib/utils/dates';
+import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils.js';
 
 const logger = getLogger('GenerateMinutesDocx');
 
@@ -129,9 +130,13 @@ function buildContent(meeting, issues, attendees) {
     const allActivities    = (issue.activities || []).filter(a => a.meeting_id === id);
     const meetingComments  = allActivities.filter(a => (a.activity_type ?? 'comment') === 'comment');
     const meetingDecisions = allActivities.filter(a => a.activity_type === 'decision');
+    const meetingNotes     = allActivities.filter(a => a.activity_type === 'note');
+    const meetingEmails    = allActivities.filter(a => a.activity_type === 'email');
+    const meetingLetters   = allActivities.filter(a => a.activity_type === 'letter');
+    const meetingDocuments = allActivities.filter(a => a.activity_type === 'document');
     const isNew            = issue.meeting_id === id;
     if (!isNew && meetingActions.length === 0 && allActivities.length === 0) continue;
-    minutes.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions });
+    minutes.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions, notes: meetingNotes, emails: meetingEmails, letters: meetingLetters, documents: meetingDocuments });
   }
   minutes.sort((a, b) => {
     if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
@@ -145,16 +150,24 @@ function buildContent(meeting, issues, attendees) {
       issues:    acc.issues    + (m.isNew ? 1 : 0),
       actions:   acc.actions   + m.actions.length,
       comments:  acc.comments  + m.comments.length,
-      decisions: acc.decisions + m.decisions.length
+      decisions: acc.decisions + m.decisions.length,
+      notes:     acc.notes     + m.notes.length,
+      emails:    acc.emails    + m.emails.length,
+      letters:   acc.letters   + m.letters.length,
+      documents: acc.documents + m.documents.length,
     }),
-    { issues: 0, actions: 0, comments: 0, decisions: 0 }
+    { issues: 0, actions: 0, comments: 0, decisions: 0, notes: 0, emails: 0, letters: 0, documents: 0 }
   );
 
   const summaryParts = [
     `${totals.issues} new issue${totals.issues === 1 ? '' : 's'}`,
     `${totals.actions} action${totals.actions === 1 ? '' : 's'}`,
     `${totals.comments} comment${totals.comments === 1 ? '' : 's'}`,
-    ...(totals.decisions > 0 ? [`${totals.decisions} decision${totals.decisions === 1 ? '' : 's'}`] : [])
+    ...(totals.decisions > 0 ? [`${totals.decisions} decision${totals.decisions === 1 ? '' : 's'}`] : []),
+    ...(totals.notes     > 0 ? [`${totals.notes} note${totals.notes === 1 ? '' : 's'}`]             : []),
+    ...(totals.emails    > 0 ? [`${totals.emails} email${totals.emails === 1 ? '' : 's'}`]           : []),
+    ...(totals.letters   > 0 ? [`${totals.letters} letter${totals.letters === 1 ? '' : 's'}`]        : []),
+    ...(totals.documents > 0 ? [`${totals.documents} document${totals.documents === 1 ? '' : 's'}`]  : []),
   ];
   content.push(p(summaryParts.join('  ·  '), {
     size: 20, color: '888888',
@@ -179,7 +192,7 @@ function buildContent(meeting, issues, attendees) {
   // ── Per-issue sections ────────────────────────────────────────────────────
 
   for (const m of minutes) {
-    const { issue, isNew, comments, decisions, actions } = m;
+    const { issue, isNew, comments, decisions, notes, emails, letters, documents, actions } = m;
 
     // Issue header row (table for shading)
     const headerLabel = [
@@ -254,6 +267,123 @@ function buildContent(meeting, issues, attendees) {
       );
       for (const d of sortedDecisions) {
         content.push(p(d.body, {
+          size: 22,
+          _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
+        }));
+        const meta = [
+          fmtShort(d.created_at),
+          d.created_by_profile?.full_name,
+          d.historic ? 'historic' : null
+        ].filter(Boolean).join('  ·  ');
+        content.push(p(meta, {
+          size: 18, color: '999999', italics: true,
+          _para: { indent: { left: 360 }, spacing: { after: 120 } }
+        }));
+      }
+    }
+
+    // Notes
+    if (notes.length > 0) {
+      content.push(p('Notes', {
+        bold: true, size: 22, color: '0d9488',
+        _para: { spacing: { before: 180, after: 80 } }
+      }));
+
+      const sortedNotes = [...notes].sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      );
+      for (const n of sortedNotes) {
+        content.push(p(n.body, {
+          size: 22,
+          _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
+        }));
+        const meta = [
+          fmtShort(n.created_at),
+          n.created_by_profile?.full_name,
+          n.historic ? 'historic' : null
+        ].filter(Boolean).join('  ·  ');
+        content.push(p(meta, {
+          size: 18, color: '999999', italics: true,
+          _para: { indent: { left: 360 }, spacing: { after: 120 } }
+        }));
+      }
+    }
+
+    // Emails
+    if (emails.length > 0) {
+      content.push(p('Emails', {
+        bold: true, size: 22, color: '0891b2',
+        _para: { spacing: { before: 180, after: 80 } }
+      }));
+
+      const sortedEmails = [...emails].sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      );
+      for (const e of sortedEmails) {
+        if (e.body) {
+          content.push(p(e.body, {
+            size: 22,
+            _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
+          }));
+        }
+        const fieldLine = buildFieldSummary('email', e.fields);
+        const meta = [
+          fieldLine || null,
+          fmtShort(e.created_at),
+          e.created_by_profile?.full_name,
+          e.historic ? 'historic' : null
+        ].filter(Boolean).join('  ·  ');
+        content.push(p(meta, {
+          size: 18, color: '999999', italics: true,
+          _para: { indent: { left: 360 }, spacing: { after: 120 } }
+        }));
+      }
+    }
+
+    // Letters
+    if (letters.length > 0) {
+      content.push(p('Letters', {
+        bold: true, size: 22, color: '475569',
+        _para: { spacing: { before: 180, after: 80 } }
+      }));
+
+      const sortedLetters = [...letters].sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      );
+      for (const l of sortedLetters) {
+        if (l.body) {
+          content.push(p(l.body, {
+            size: 22,
+            _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
+          }));
+        }
+        const fieldLine = buildFieldSummary('letter', l.fields);
+        const meta = [
+          fieldLine || null,
+          fmtShort(l.created_at),
+          l.created_by_profile?.full_name,
+          l.historic ? 'historic' : null
+        ].filter(Boolean).join('  ·  ');
+        content.push(p(meta, {
+          size: 18, color: '999999', italics: true,
+          _para: { indent: { left: 360 }, spacing: { after: 120 } }
+        }));
+      }
+    }
+
+    // Documents
+    if (documents.length > 0) {
+      content.push(p('Documents', {
+        bold: true, size: 22, color: '4b5563',
+        _para: { spacing: { before: 180, after: 80 } }
+      }));
+
+      const sortedDocs = [...documents].sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      );
+      for (const d of sortedDocs) {
+        const fieldLine = buildFieldSummary('document', d.fields);
+        content.push(p(d.body || fieldLine, {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
