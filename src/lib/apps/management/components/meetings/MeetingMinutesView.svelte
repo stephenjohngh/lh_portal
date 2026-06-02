@@ -28,9 +28,17 @@
     const id  = meeting.id;
     const out = [];
     for (const issue of issues) {
-      const meetingActions   = (issue.actions    || []).filter(a => a.meeting_id === id);
       // Split activities by type for separate display sections
       const allActivities    = (issue.activities || []).filter(a => a.meeting_id === id);
+
+      // Include an action if it was directly tagged to this meeting (meeting_id),
+      // OR if its source_activity_id links it to a meeting-tagged activity (covers
+      // actions created from the suggestion panel when meeting_id wasn't propagated).
+      const meetingActivityIds = new Set(allActivities.map(a => a.id));
+      const meetingActions = (issue.actions || []).filter(
+        a => a.meeting_id === id ||
+             (a.source_activity_id && meetingActivityIds.has(a.source_activity_id))
+      );
       const meetingComments  = allActivities.filter(a => (a.activity_type ?? 'comment') === 'comment');
       const meetingDecisions = allActivities.filter(a => a.activity_type === 'decision');
       const meetingNotes     = allActivities.filter(a => a.activity_type === 'note');

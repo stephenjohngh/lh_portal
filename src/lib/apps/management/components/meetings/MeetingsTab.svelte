@@ -97,12 +97,22 @@
   })();
 
   // Issues that belong to the selected meeting (for MeetingMinutesView).
+  // An issue qualifies if: the issue itself was created in this meeting,
+  // OR any activity is tagged to it, OR any action is tagged to it directly
+  // OR is linked (via source_activity_id) to a meeting-tagged activity.
   $: meetingIssues = selectedMeeting
-    ? issues.filter(issue =>
-        issue.meeting_id === selectedMeeting.id ||
-        (issue.activities || []).some(a => a.meeting_id === selectedMeeting.id) ||
-        (issue.actions    || []).some(a => a.meeting_id === selectedMeeting.id)
-      )
+    ? issues.filter(issue => {
+        const mid = selectedMeeting.id;
+        if (issue.meeting_id === mid) return true;
+        const taggedActivityIds = new Set(
+          (issue.activities || []).filter(a => a.meeting_id === mid).map(a => a.id)
+        );
+        if (taggedActivityIds.size > 0) return true;
+        return (issue.actions || []).some(
+          a => a.meeting_id === mid ||
+               (a.source_activity_id && taggedActivityIds.has(a.source_activity_id))
+        );
+      })
     : [];
 
   // -- Helpers ----------------------------------------------------------

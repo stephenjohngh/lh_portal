@@ -151,8 +151,12 @@ function buildContent(meeting, issues, attendees) {
   const id  = meeting.id;
   const minutes = [];
   for (const issue of issues) {
-    const meetingActions   = (issue.actions    || []).filter(a => a.meeting_id === id);
     const allActivities    = (issue.activities || []).filter(a => a.meeting_id === id);
+    const meetingActivityIds = new Set(allActivities.map(a => a.id));
+    const meetingActions = (issue.actions || []).filter(
+      a => a.meeting_id === id ||
+           (a.source_activity_id && meetingActivityIds.has(a.source_activity_id))
+    );
     const meetingComments  = allActivities.filter(a => (a.activity_type ?? 'comment') === 'comment');
     const meetingDecisions = allActivities.filter(a => a.activity_type === 'decision');
     const meetingNotes     = allActivities.filter(a => a.activity_type === 'note');
