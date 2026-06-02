@@ -174,7 +174,11 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-blue-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
-                          <p class="text-slate-200 whitespace-pre-wrap">{c.body}</p>
+                          {#if c.body?.startsWith('<')}
+                            <div class="rich-content text-slate-200 text-sm">{@html c.body}</div>
+                          {:else}
+                            <p class="text-slate-200 text-sm whitespace-pre-wrap">{c.body}</p>
+                          {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(c.created_at, c.created_by_profile?.full_name)}
                             {#if c.historic}
@@ -198,7 +202,11 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-violet-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
-                          <p class="text-slate-200 whitespace-pre-wrap">{d.body}</p>
+                          {#if d.body?.startsWith('<')}
+                            <div class="rich-content text-slate-200 text-sm">{@html d.body}</div>
+                          {:else}
+                            <p class="text-slate-200 text-sm whitespace-pre-wrap">{d.body}</p>
+                          {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
                             {#if d.historic}
@@ -222,7 +230,11 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-teal-400 shrink-0 mt-0.5">📝</span>
                         <div class="flex-1 min-w-0">
-                          <p class="text-slate-200 whitespace-pre-wrap">{n.body}</p>
+                          {#if n.body?.startsWith('<')}
+                            <div class="rich-content text-slate-200 text-sm">{@html n.body}</div>
+                          {:else}
+                            <p class="text-slate-200 text-sm whitespace-pre-wrap">{n.body}</p>
+                          {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(n.created_at, n.created_by_profile?.full_name)}
                             {#if n.historic}
@@ -247,7 +259,13 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-cyan-400 shrink-0 mt-0.5">📧</span>
                         <div class="flex-1 min-w-0">
-                          {#if e.body}<p class="text-slate-200 whitespace-pre-wrap">{e.body}</p>{/if}
+                          {#if e.body}
+                            {#if e.body.startsWith('<')}
+                              <div class="rich-content text-slate-200 text-sm">{@html e.body}</div>
+                            {:else}
+                              <p class="text-slate-200 text-sm whitespace-pre-wrap">{e.body}</p>
+                            {/if}
+                          {/if}
                           {#if fieldSummary}<p class="text-xs text-cyan-300/70 mt-0.5">{fieldSummary}</p>{/if}
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(e.created_at, e.created_by_profile?.full_name)}
@@ -273,7 +291,13 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-slate-300 shrink-0 mt-0.5">📄</span>
                         <div class="flex-1 min-w-0">
-                          {#if l.body}<p class="text-slate-200 whitespace-pre-wrap">{l.body}</p>{/if}
+                          {#if l.body}
+                            {#if l.body.startsWith('<')}
+                              <div class="rich-content text-slate-200 text-sm">{@html l.body}</div>
+                            {:else}
+                              <p class="text-slate-200 text-sm whitespace-pre-wrap">{l.body}</p>
+                            {/if}
+                          {/if}
                           {#if fieldSummary}<p class="text-xs text-slate-400/70 mt-0.5">{fieldSummary}</p>{/if}
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(l.created_at, l.created_by_profile?.full_name)}
@@ -299,7 +323,11 @@
                       <li class="flex items-start gap-2 text-sm">
                         <span class="text-gray-300 shrink-0 mt-0.5">📎</span>
                         <div class="flex-1 min-w-0">
-                          <p class="text-slate-200 whitespace-pre-wrap">{d.body || fieldSummary}</p>
+                          {#if (d.body || fieldSummary)?.startsWith('<')}
+                            <div class="rich-content text-slate-200 text-sm">{@html d.body || fieldSummary}</div>
+                          {:else}
+                            <p class="text-slate-200 text-sm whitespace-pre-wrap">{d.body || fieldSummary}</p>
+                          {/if}
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
                             {#if d.historic}
