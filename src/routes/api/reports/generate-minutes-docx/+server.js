@@ -230,7 +230,7 @@ function buildContent(meeting, issues, attendees) {
       issue.issue_number ? `#${issue.issue_number}` : null,
       issue.name,
       isNew ? '  [New Issue]' : null
-    ].filter(Boolean).join('  —  ');
+    ].filter(Boolean).join('  ');
 
     content.push(
       new Table({
@@ -274,15 +274,12 @@ function buildContent(meeting, issues, attendees) {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
-        const meta = [
-          fmtShort(c.created_at),
-          c.created_by_profile?.full_name,
-          c.historic ? 'historic' : null
-        ].filter(Boolean).join('  ·  ');
-        content.push(p(meta, {
-          size: 18, color: '999999', italics: true,
-          _para: { indent: { left: 360 }, spacing: { after: 120 } }
-        }));
+        if (c.historic) {
+          content.push(p('historic', {
+            size: 18, color: '999999', italics: true,
+            _para: { indent: { left: 360 }, spacing: { after: 120 } }
+          }));
+        }
       }
     }
 
@@ -301,15 +298,12 @@ function buildContent(meeting, issues, attendees) {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
-        const meta = [
-          fmtShort(d.created_at),
-          d.created_by_profile?.full_name,
-          d.historic ? 'historic' : null
-        ].filter(Boolean).join('  ·  ');
-        content.push(p(meta, {
-          size: 18, color: '999999', italics: true,
-          _para: { indent: { left: 360 }, spacing: { after: 120 } }
-        }));
+        if (d.historic) {
+          content.push(p('historic', {
+            size: 18, color: '999999', italics: true,
+            _para: { indent: { left: 360 }, spacing: { after: 120 } }
+          }));
+        }
       }
     }
 
@@ -328,15 +322,12 @@ function buildContent(meeting, issues, attendees) {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
-        const meta = [
-          fmtShort(n.created_at),
-          n.created_by_profile?.full_name,
-          n.historic ? 'historic' : null
-        ].filter(Boolean).join('  ·  ');
-        content.push(p(meta, {
-          size: 18, color: '999999', italics: true,
-          _para: { indent: { left: 360 }, spacing: { after: 120 } }
-        }));
+        if (n.historic) {
+          content.push(p('historic', {
+            size: 18, color: '999999', italics: true,
+            _para: { indent: { left: 360 }, spacing: { after: 120 } }
+          }));
+        }
       }
     }
 
@@ -358,16 +349,13 @@ function buildContent(meeting, issues, attendees) {
           }));
         }
         const fieldLine = buildFieldSummary('email', e.fields);
-        const meta = [
-          fieldLine || null,
-          fmtShort(e.created_at),
-          e.created_by_profile?.full_name,
-          e.historic ? 'historic' : null
-        ].filter(Boolean).join('  ·  ');
-        content.push(p(meta, {
-          size: 18, color: '999999', italics: true,
-          _para: { indent: { left: 360 }, spacing: { after: 120 } }
-        }));
+        const meta = [fieldLine || null, e.historic ? 'historic' : null].filter(Boolean).join('  ·  ');
+        if (meta) {
+          content.push(p(meta, {
+            size: 18, color: '999999', italics: true,
+            _para: { indent: { left: 360 }, spacing: { after: 120 } }
+          }));
+        }
       }
     }
 
@@ -389,16 +377,13 @@ function buildContent(meeting, issues, attendees) {
           }));
         }
         const fieldLine = buildFieldSummary('letter', l.fields);
-        const meta = [
-          fieldLine || null,
-          fmtShort(l.created_at),
-          l.created_by_profile?.full_name,
-          l.historic ? 'historic' : null
-        ].filter(Boolean).join('  ·  ');
-        content.push(p(meta, {
-          size: 18, color: '999999', italics: true,
-          _para: { indent: { left: 360 }, spacing: { after: 120 } }
-        }));
+        const meta = [fieldLine || null, l.historic ? 'historic' : null].filter(Boolean).join('  ·  ');
+        if (meta) {
+          content.push(p(meta, {
+            size: 18, color: '999999', italics: true,
+            _para: { indent: { left: 360 }, spacing: { after: 120 } }
+          }));
+        }
       }
     }
 
@@ -418,15 +403,12 @@ function buildContent(meeting, issues, attendees) {
           size: 22,
           _para: { indent: { left: 360 }, spacing: { before: 60, after: 40 } }
         }));
-        const meta = [
-          fmtShort(d.created_at),
-          d.created_by_profile?.full_name,
-          d.historic ? 'historic' : null
-        ].filter(Boolean).join('  ·  ');
-        content.push(p(meta, {
-          size: 18, color: '999999', italics: true,
-          _para: { indent: { left: 360 }, spacing: { after: 120 } }
-        }));
+        if (d.historic) {
+          content.push(p('historic', {
+            size: 18, color: '999999', italics: true,
+            _para: { indent: { left: 360 }, spacing: { after: 120 } }
+          }));
+        }
       }
     }
 
@@ -448,9 +430,8 @@ function buildContent(meeting, issues, attendees) {
 
         const details = [
           a.status,
-          a.name_text  ? `👤 ${a.name_text}`              : null,
+          a.name_text     ? `👤 ${a.name_text}`                    : null,
           a.date_deadline ? `📅 due ${fmtShort(a.date_deadline)}` : null,
-          `added ${fmtShort(a.created_at)}${a.created_by_profile?.full_name ? ' by ' + a.created_by_profile.full_name : ''}`
         ].filter(Boolean).join('  ·  ');
 
         content.push(p(details, {
