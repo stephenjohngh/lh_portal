@@ -13,8 +13,11 @@
   import { onMount }            from 'svelte';
   import { meetingsStore }      from '../../stores/meetingsStore';
   import { permissions }        from '$lib/stores/permissions';
+  import { profiles, profilesStore } from '$lib/stores/profiles';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
-  import { ACTIVITY_TYPE } from '$lib/utils/constants';
+  import { ACTIVITY_TYPE }      from '$lib/utils/constants';
+  import { downloadResponse }   from '$lib/utils/download';
+  import { getLogger }          from '$lib/utils/logger';
   import Button                 from '$lib/components/common/Button.svelte';
   import ProtectedButton        from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog          from '$lib/components/common/ConfirmDialog.svelte';
@@ -22,6 +25,8 @@
   import MeetingForm            from './MeetingForm.svelte';
   import MeetingMinutesView     from './MeetingMinutesView.svelte';
   import MeetingAssignModal     from './MeetingAssignModal.svelte';
+
+  const logger = getLogger('MeetingsTab');
 
   // All issues (unfiltered by status/search) — used for item counts
   // and passed to MeetingMinutesView.
@@ -45,8 +50,13 @@
   let pendingDeleteMeeting = null;
   let showDeleteConfirm    = false;
 
+  // -- Download state ---------------------------------------------------
+  let isGenerating  = false;
+  let downloadError = '';
+
   // -- Auto-select on mount (badge click from Issues tab) ---------------
   onMount(() => {
+    profilesStore.load();
     if (initialMeetingId) {
       const m = $meetingsStore.list.find(m => m.id === initialMeetingId);
       if (m) selectedMeeting = m;
@@ -114,6 +124,46 @@
       names && `${names} user${names === 1 ? '' : 's'}`,
       ext   && `${ext} external`
     ].filter(Boolean).join(', ');
+  }
+
+  // Attendee display names for the selected meeting (used by downloadMinutes)
+  $: attendees = (() => {
+    const p = selectedMeeting?.participants;
+    if (!p) return [];
+    const profileNames = (p.profile_ids ?? [])
+      .map(id => $profiles.list.find(pr => pr.id === id)?.full_name)
+      .filter(Boolean);
+    return [...profileNames, ...(p.extras ?? [])];
+  })();
+
+  async function downloadMinutes() {
+    if (!selectedMeeting) return;
+    isGenerating  = true;
+    downloadError = '';
+    try {
+      const response = await fetch('/api/reports/generate-minutes-docx', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meeting: selectedMeeting, issues: meetingIssues, attendees })
+      });
+      if (!response.ok) {
+        const ct = response.headers.get('content-type');
+        if (ct?.includes('application/json')) {
+          const { error } = await response.json();
+          throw new Error(error || 'Failed to generate document');
+        }
+        throw new Error(`Server error: ${response.status}`);
+      }
+      const safe     = (selectedMeeting.title ?? 'Minutes').replace(/[^a-zA-Z0-9]+/g, '_');
+      const filename = `Minutes_${safe}_${new Date().toISOString().split('T')[0]}.docx`;
+      await downloadResponse(response, filename);
+      logger('✅ Downloaded:', filename);
+    } catch (err) {
+      logger('❌', err.message);
+      downloadError = err.message;
+    } finally {
+      isGenerating = false;
+    }
   }
 
   // -- Navigation -------------------------------------------------------
@@ -219,9 +269,21 @@
         Reopen
       </ProtectedButton>
     {/if}
+
+    <Button
+      variant="secondary"
+      size="small"
+      icon="download"
+      disabled={isGenerating || meetingIssues.length === 0}
+      title={meetingIssues.length === 0 ? 'No items tagged to this meeting' : 'Download minutes as Word document'}
+      on:click={downloadMinutes}
+    >
+      {isGenerating ? 'Generating…' : 'Word doc'}
+    </Button>
   </div>
 
-  <ErrorDisplay message={pageError} onDismiss={() => pageError = ''} />
+  <ErrorDisplay message={pageError}     onDismiss={() => pageError = ''} />
+  <ErrorDisplay message={downloadError} onDismiss={() => downloadError = ''} />
 
   <MeetingMinutesView meeting={selectedMeeting} issues={meetingIssues} />
 
