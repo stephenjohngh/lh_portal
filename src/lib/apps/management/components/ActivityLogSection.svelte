@@ -17,6 +17,7 @@
   import { profilesStore }    from '$lib/stores/profiles';
   import { permissions }      from '$lib/stores/permissions';
   import { issuesStore }      from '../stores/issuesStore';
+  import { meetingsStore }    from '../stores/meetingsStore';
   import { activitySort }     from '../stores/activitySortStore';
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
@@ -351,6 +352,18 @@
     if (!result.success) { mutationError = result.error ?? 'Failed to delete'; }
     pendingDeleteId   = null;
     showDeleteConfirm = false;
+  }
+
+  // Remove an activity's meeting tag (set meeting_id = null).
+  // Only available while the meeting is still open — the button is hidden
+  // once the meeting closes (currentMeeting becomes null in ActivityItem).
+  async function handleUntagMeeting({ detail: activity }) {
+    const result = await meetingsStore.untagItem('activities', activity.id);
+    if (!result.success) {
+      mutationError = result.error ?? 'Failed to remove from meeting';
+      return;
+    }
+    await issuesStore.fetchIssues();
   }
 
   function startEdit(activity) {
@@ -831,6 +844,7 @@
           on:viewLinked={(e) => viewLinkedAction(e.detail)}
           on:deleteLinkedRequest={(e) => requestDeleteLinked(e.detail)}
           on:meetingFilter
+          on:untagMeeting={handleUntagMeeting}
           on:moveRequest={(e) => dispatch('moveRequest', { activityId: e.detail.id, sourceIssueId: issueId })}
         />
       {/each}
