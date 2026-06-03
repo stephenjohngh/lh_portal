@@ -19,6 +19,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
+  import Link      from '@tiptap/extension-link';
 
   export let value       = '';
   export let placeholder = 'Enter your note…';
@@ -37,6 +38,43 @@
 
   let editorEl;
   let editor;
+
+  // ── Link toolbar state ─────────────────────────────────────────────
+  let linkInputVisible = false;
+  let pendingUrl       = '';
+  let linkInputEl;
+
+  function openLinkInput() {
+    // Pre-fill with the current link href if cursor is inside a link
+    pendingUrl = editor?.getAttributes('link').href ?? '';
+    linkInputVisible = true;
+    // Focus the input after Svelte renders it
+    setTimeout(() => linkInputEl?.focus(), 0);
+  }
+
+  function applyLink() {
+    const url = pendingUrl.trim();
+    if (!url) { removeLink(); return; }
+    // Prepend https:// if no protocol supplied
+    const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    editor?.chain().focus().extendMarkRange('link').setLink({ href, target: '_blank' }).run();
+    closeLinkInput();
+  }
+
+  function removeLink() {
+    editor?.chain().focus().extendMarkRange('link').unsetLink().run();
+    closeLinkInput();
+  }
+
+  function closeLinkInput() {
+    linkInputVisible = false;
+    pendingUrl       = '';
+  }
+
+  function onLinkKeydown(e) {
+    if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
+    if (e.key === 'Escape') closeLinkInput();
+  }
 
   /**
    * Tiptap parses its initial content as HTML, so raw newlines are collapsed.
@@ -63,7 +101,17 @@
           horizontalRule: false,
           strike:         false,
           code:           false,
-          link:           false,
+        }),
+        Link.configure({
+          // Auto-convert typed/pasted URLs to links
+          autolink:   true,
+          // Don't open in the editor on click (allows cursor placement)
+          openOnClick: false,
+          HTMLAttributes: {
+            target: '_blank',
+            rel:    'noopener noreferrer',
+            class:  'rte-link',
+          },
         }),
       ],
       content: initContent(value),
@@ -107,6 +155,7 @@
   $: underline   = editor?.isActive('underline')   ?? false;
   $: bulletList  = editor?.isActive('bulletList')  ?? false;
   $: orderedList = editor?.isActive('orderedList') ?? false;
+  $: isLink      = editor?.isActive('link')        ?? false;
   $: canUndo     = editor?.can().undo()            ?? false;
   $: canRedo     = editor?.can().redo()            ?? false;
   $: isEmpty     = editor?.isEmpty                 ?? true;
@@ -207,6 +256,36 @@
       on:click={() => toggle('toggleUnderline')} title="Underline (Ctrl+U)">
       <span style="text-decoration:underline">U</span>
     </button>
+
+    <!-- Link button + inline URL input -->
+    {#if linkInputVisible}
+      <div class="flex items-center gap-1 ml-1">
+        <input
+          bind:this={linkInputEl}
+          bind:value={pendingUrl}
+          type="text"
+          placeholder="https://…"
+          on:keydown={onLinkKeydown}
+          class="h-7 px-2 rounded bg-slate-900 border border-slate-500 text-xs text-white
+                 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500 w-48"
+        />
+        <button type="button" class="{TB} text-emerald-400 hover:text-emerald-300"
+          on:click={applyLink} title="Apply link">✓</button>
+        {#if isLink}
+          <button type="button" class="{TB} text-red-400 hover:text-red-300"
+            on:click={removeLink} title="Remove link">✕</button>
+        {/if}
+        <button type="button" class="{TB} text-slate-500"
+          on:click={closeLinkInput} title="Cancel">✕</button>
+      </div>
+    {:else}
+      <button type="button"
+        class="{TB} {isLink ? TBO + ' text-purple-300' : ''}"
+        on:click={isLink ? removeLink : openLinkInput}
+        title={isLink ? 'Remove link' : 'Insert / edit link'}>
+        🔗
+      </button>
+    {/if}
 
     <div class="w-px h-4 bg-slate-600 mx-1 shrink-0"></div>
 
@@ -337,6 +416,15 @@
   :global(.rte-prosemirror u) {
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+  :global(.rte-prosemirror a.rte-link) {
+    color: #7dd3cc;           /* teal-300 — visible on dark bg */
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: text;             /* editor cursor, not pointer — click places caret */
+  }
+  :global(.rte-prosemirror a.rte-link:hover) {
+    color: #5eead4;
   }
   /* ProseMirror selection highlight */
   :global(.rte-prosemirror ::selection) {
