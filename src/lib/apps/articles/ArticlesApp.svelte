@@ -38,11 +38,13 @@
   // -- Handlers --------------------------------------------------------
   function openCreate() {
     editingArticle = null;
+    mutationError  = '';
     showForm       = true;
   }
 
   function openEdit(article) {
     editingArticle = article;
+    mutationError  = '';
     showForm       = true;
   }
 
@@ -203,8 +205,10 @@
   show={showForm}
   article={editingArticle}
   {saving}
+  error={mutationError}
   on:submit={handleSubmit}
   on:close={closeForm}
+  on:clearError={() => mutationError = ''}
 />
 
 <!-- ─── Delete confirm ───────────────────────────────────────────── -->

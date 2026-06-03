@@ -3,10 +3,9 @@
      validated data object; parent owns the store call and error state. -->
 <script>
   import { createEventDispatcher, tick } from 'svelte';
-  import Modal       from '$lib/components/common/Modal.svelte';
-  import Button      from '$lib/components/common/Button.svelte';
-  import FormInput   from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
+  import Modal        from '$lib/components/common/Modal.svelte';
+  import Button       from '$lib/components/common/Button.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   // LazyRichTextEditor is in the management app but is a standalone Svelte
   // component with no management-specific dependencies — safe to import here.
   import RichTextEditor from '$lib/apps/management/components/LazyRichTextEditor.svelte';
@@ -14,6 +13,7 @@
   export let show    = false;
   export let article = null;   // null = create mode, object = edit mode
   export let saving  = false;
+  export let error   = '';     // error from parent store call, shown inside the modal
 
   const dispatch = createEventDispatcher();
 
@@ -94,6 +94,8 @@
   on:close={handleClose}
 >
   <div class="space-y-4">
+
+    <ErrorDisplay message={error} onDismiss={() => dispatch('clearError')} />
 
     <!-- Title -->
     <div>
