@@ -25,8 +25,7 @@
 
   import AdminApp from '$lib/apps/admin/AdminApp.svelte';
   import ManagementApp from '$lib/apps/management/ManagementApp.svelte';
-  import Demo from '$lib/apps/demo/Demo.svelte';
-  import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
+import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
   import BuildingAssetsApp from '$lib/apps/building_assets/BuildingAssetsApp.svelte';
   import InspectionApp from '$lib/apps/inspection/InspectionApp.svelte';
   import MobilePlanApp from '$lib/apps/mobileplan/MobilePlanApp.svelte';
@@ -127,7 +126,6 @@
     const components = {
       'admin': AdminApp,
       'management': ManagementApp,
-      'demo2': Demo,
       'settings': SettingsApp,
       'building_assets': BuildingAssetsApp,
       'inspection': InspectionApp,

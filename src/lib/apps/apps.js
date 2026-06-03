@@ -49,15 +49,6 @@ export const AVAILABLE_APPS = [
     description: 'Mobile-friendly read-only issues and activity viewer'
   },
   {
-    id: 'demo2',
-    name: 'Demo App 2',
-    icon: 'lhlogo',
-    alwaysVisible: false,
-    requiresPermission: true,
-    description: 'Explore app components'
-  },
-
-  {
     id: 'building_assets',
     name: 'Building Assets',
     icon: 'lhlogo',
@@ -129,7 +120,6 @@ export const APP_IDS = {
   HOME:            'home',
   ADMIN:           'admin',
   MANAGEMENT:      'management',
-  DEMO2:           'demo2',
   BUILDING_ASSETS: 'building_assets',
   INSPECTION:      'inspection',
   MOBILEPLAN:          'mobileplan',
