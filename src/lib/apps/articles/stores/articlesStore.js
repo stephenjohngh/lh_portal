@@ -1,7 +1,10 @@
 // src/lib/apps/articles/stores/articlesStore.js
 // CRUD store for portal_articles.
-// Admins see all articles (drafts + published) via RLS.
-// Public reads (anon) are handled directly in the public /info/ pages.
+// Visibility: 'draft' | 'registered' | 'public'
+//   draft      — admin eyes only
+//   registered — any authenticated portal user
+//   public     — everyone (anon key)
+// published_at is stamped the first time an article leaves draft state.
 
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
@@ -53,22 +56,24 @@ function createArticlesStore() {
     async createArticle(data) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        const now = new Date().toISOString();
+        const now    = new Date().toISOString();
+        const isLive = data.visibility !== 'draft';
         const row = await api.create('portal_articles', {
           slug:        data.slug?.trim(),
           title:       data.title?.trim(),
           summary:     data.summary?.trim() || null,
           content:     data.content         || null,
-          published:   data.published       ?? false,
-          published_at: data.published      ? now : null,
+          visibility:  data.visibility      ?? 'draft',
+          published_at: isLive              ? now : null,
           created_at:  now,
           updated_at:  now,
           created_by:  user?.id,
           updated_by:  user?.id
         });
-        // Re-fetch to get joined profile data
         await this.fetchArticles();
-        audit('create', row.id, row.title, { afterData: { slug: row.slug, published: row.published } });
+        audit('create', row.id, row.title, {
+          afterData: { slug: row.slug, visibility: row.visibility }
+        });
         return { success: true };
       } catch (err) {
         logger('❌ createArticle:', err.message);
@@ -81,11 +86,12 @@ function createArticlesStore() {
         const { data: { user } } = await supabase.auth.getUser();
         const now = new Date().toISOString();
 
-        // Stamp published_at the first time the article is published
-        const existing = await api.getById('portal_articles', id, 'published, published_at');
-        const wasPublished = existing?.published;
-        const publishedAt  = data.published
-          ? (wasPublished ? existing?.published_at : now)
+        // Stamp published_at the first time an article leaves draft
+        const existing   = await api.getById('portal_articles', id, 'visibility, published_at');
+        const wasDraft   = existing?.visibility === 'draft';
+        const isNowLive  = data.visibility !== 'draft';
+        const publishedAt = isNowLive
+          ? (wasDraft ? now : (existing?.published_at ?? now))
           : null;
 
         await api.update('portal_articles', id, {
@@ -93,13 +99,15 @@ function createArticlesStore() {
           title:       data.title?.trim(),
           summary:     data.summary?.trim() || null,
           content:     data.content         || null,
-          published:   data.published       ?? false,
+          visibility:  data.visibility      ?? 'draft',
           published_at: publishedAt,
           updated_at:  now,
           updated_by:  user?.id
         });
         await this.fetchArticles();
-        audit('update', id, data.title, { afterData: { slug: data.slug, published: data.published } });
+        audit('update', id, data.title, {
+          afterData: { slug: data.slug, visibility: data.visibility }
+        });
         return { success: true };
       } catch (err) {
         logger('❌ updateArticle:', err.message);

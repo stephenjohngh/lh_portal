@@ -18,11 +18,11 @@
   const dispatch = createEventDispatcher();
 
   // -- Form state -------------------------------------------------------
-  let title     = '';
-  let slug      = '';
-  let summary   = '';
-  let content   = '';
-  let published = false;
+  let title      = '';
+  let slug       = '';
+  let summary    = '';
+  let content    = '';
+  let visibility = 'draft';
   let slugManuallyEdited = false;
 
   let titleError = '';
@@ -30,11 +30,11 @@
 
   // Reset form whenever the modal opens
   $: if (show) {
-    title     = article?.title     ?? '';
-    slug      = article?.slug      ?? '';
-    summary   = article?.summary   ?? '';
-    content   = article?.content   ?? '';
-    published = article?.published ?? false;
+    title      = article?.title      ?? '';
+    slug       = article?.slug       ?? '';
+    summary    = article?.summary    ?? '';
+    content    = article?.content    ?? '';
+    visibility = article?.visibility ?? 'draft';
     slugManuallyEdited = !!article;   // in edit mode treat slug as manually set
     titleError = '';
     slugError  = '';
@@ -79,7 +79,7 @@
 
   function handleSubmit() {
     if (!validate()) return;
-    dispatch('submit', { title: title.trim(), slug, summary: summary.trim(), content, published });
+    dispatch('submit', { title: title.trim(), slug, summary: summary.trim(), content, visibility });
   }
 
   function handleClose() {
@@ -164,24 +164,27 @@
       />
     </div>
 
-    <!-- Published toggle -->
-    <label class="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-slate-600
-                  {published ? 'bg-emerald-900/20 border-emerald-700/50' : 'bg-slate-700/40'}
-                  transition-colors">
-      <input
-        type="checkbox"
-        bind:checked={published}
-        class="w-4 h-4 rounded accent-purple-500"
-      />
-      <div>
-        <span class="text-sm font-medium {published ? 'text-emerald-300' : 'text-slate-300'}">
-          {published ? 'Published — visible at /info/{slug || "…"}' : 'Draft — not publicly visible'}
-        </span>
-        {#if !published}
-          <p class="text-xs text-slate-500 mt-0.5">Toggle to make this article publicly accessible.</p>
-        {/if}
+    <!-- Visibility selector -->
+    <div>
+      <p class="text-sm font-medium text-slate-300 mb-2">Visibility</p>
+      <div class="grid grid-cols-3 gap-2">
+        {#each [
+          { value: 'draft',      label: 'Draft',      desc: 'Only visible to admins',              color: 'border-slate-600 bg-slate-700/40 text-slate-400' },
+          { value: 'registered', label: 'Registered', desc: 'Logged-in portal users only',         color: 'border-blue-600/50 bg-blue-900/20 text-blue-300' },
+          { value: 'public',     label: 'Public',     desc: 'Visible to everyone at /info/{slug}', color: 'border-emerald-600/50 bg-emerald-900/20 text-emerald-300' }
+        ] as opt}
+          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+          <div
+            class="p-3 rounded-lg border cursor-pointer transition-colors
+                   {visibility === opt.value ? opt.color + ' ring-2 ring-purple-500' : 'border-slate-600 bg-slate-800/40 text-slate-500 hover:border-slate-500'}"
+            on:click={() => visibility = opt.value}
+          >
+            <p class="text-sm font-semibold">{opt.label}</p>
+            <p class="text-xs mt-0.5 leading-snug">{opt.desc}</p>
+          </div>
+        {/each}
       </div>
-    </label>
+    </div>
 
   </div>
 

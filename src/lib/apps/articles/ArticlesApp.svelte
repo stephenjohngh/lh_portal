@@ -130,10 +130,12 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap mb-1">
                 <span class="font-semibold text-white text-base">{article.title}</span>
-                {#if article.published}
-                  <span class="badge-emerald">✓ Published</span>
+                {#if article.visibility === 'public'}
+                  <span class="badge-emerald">🌐 Public</span>
+                {:else if article.visibility === 'registered'}
+                  <span class="badge badge-blue text-blue-300 border border-blue-600/40 bg-blue-900/20">🔒 Registered</span>
                 {:else}
-                  <span class="badge badge-slate text-slate-400 border border-slate-600">Draft</span>
+                  <span class="badge text-slate-400 border border-slate-600">Draft</span>
                 {/if}
               </div>
 
@@ -145,9 +147,9 @@
 
               <div class="text-xs text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
                 <span>Created: {fmtDate(article.created_at, article.created_by_profile?.full_name)}</span>
-                {#if article.published && article.published_at}
+                {#if article.visibility !== 'draft' && article.published_at}
                   <span>·</span>
-                  <span>Published: {fmtDate(article.published_at)}</span>
+                  <span>First visible: {fmtDate(article.published_at)}</span>
                 {/if}
                 {#if article.updated_at && article.updated_at !== article.created_at}
                   <span>·</span>
@@ -158,13 +160,13 @@
 
             <!-- Actions -->
             <div class="btn-group shrink-0">
-              {#if article.published}
+              {#if article.visibility !== 'draft'}
                 <a
                   href={publicUrl(article.slug)}
                   target="_blank"
                   rel="noopener noreferrer"
                   class="btn btn-secondary btn-medium"
-                  title="View public article"
+                  title="View article at /info/{article.slug}"
                 >
                   <Icon name="map" size={4} />
                   View
