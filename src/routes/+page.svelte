@@ -33,6 +33,7 @@
   import ManagementMobileApp from '$lib/apps/managementmobile/ManagementMobileApp.svelte';
   import MaintenanceApp from '$lib/apps/maintenance/MaintenanceApp.svelte';
   import InfoApp        from '$lib/apps/info/InfoApp.svelte';
+  import ArticlesApp    from '$lib/apps/articles/ArticlesApp.svelte';
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -133,7 +134,8 @@
       'mobileplan':         MobilePlanApp,
       'managementmobile':   ManagementMobileApp,
       'maintenance': MaintenanceApp,
-      'info':        InfoApp
+      'info':        InfoApp,
+      'articles':    ArticlesApp
     };
     return components[appId];
   }

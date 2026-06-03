@@ -103,6 +103,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'articles',
+    name: 'Articles',
+    icon: 'newspaper',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Write and publish public-facing articles at /info/<slug>'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -127,6 +136,7 @@ export const APP_IDS = {
   MANAGEMENT_MOBILE:   'managementmobile',
   MAINTENANCE:     'maintenance',
   INFO:            'info',
+  ARTICLES:        'articles',
   SETTINGS:        'settings'
 };
 
