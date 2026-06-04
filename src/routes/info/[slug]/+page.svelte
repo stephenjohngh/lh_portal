@@ -38,7 +38,7 @@
 </script>
 
 <svelte:head>
-  <title>{article ? `${article.title} — Lonsdale House` : 'Lonsdale House'}</title>
+  <title>{article ? article.title : 'Article'}</title>
   {#if article?.summary}
     <meta name="description" content={article.summary} />
   {/if}

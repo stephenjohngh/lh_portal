@@ -32,8 +32,7 @@
 </script>
 
 <svelte:head>
-  <title>Articles — Lonsdale House</title>
-  <meta name="description" content="Articles and updates from Lonsdale House." />
+  <title>Articles</title>
 </svelte:head>
 
 <div class="public-shell">
