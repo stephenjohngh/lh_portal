@@ -12,7 +12,8 @@
   import TimelineEntry from '$lib/apps/mor/components/TimelineEntry.svelte';
   import TriageForm   from '$lib/apps/mor/components/TriageForm.svelte';
   import DecisionForm from '$lib/apps/mor/components/DecisionForm.svelte';
-  import BsrHelper    from '$lib/apps/mor/components/BsrHelper.svelte';
+  import BsrHelper       from '$lib/apps/mor/components/BsrHelper.svelte';
+  import MitigationForm  from '$lib/apps/mor/components/MitigationForm.svelte';
   import {
     STATUS_LABEL, STATUS_COLOUR,
     MECHANISM_LABEL, MECHANISM_COLOUR,
@@ -34,25 +35,33 @@
   $: userId   = $auth.user?.id;
 
   // ── modal visibility ──────────────────────────────────────────────────────
-  let showTriage    = false;
-  let showDecision  = false;
-  let showApproval  = false;
-  let showBsrNotice = false;
-  let showBsrReport = false;
-  let showNoteBox   = false;
-  let showAssessmentBox = false;
-  let showCloseBox  = false;
-  let showRejectionBox  = false;
+  let showTriage       = false;
+  let showDecision     = false;
+  let showApproval     = false;
+  let showBsrNotice    = false;
+  let showBsrReport    = false;
+  let showNoteBox      = false;
+  let showAssessmentBox= false;
+  let showCloseBox     = false;
+  let showRejectionBox = false;
+  let showReopenBox    = false;
+  let showPauseBox     = false;
+  let pendingPauseType = 'reporter'; // 'reporter' | 'bsr'
+  let showMitForm      = false;
+  let editingMit       = null;      // null = add, object = edit
 
-  // Note / close / assessment / rejection local inputs
-  let noteText       = '';
-  let noteError      = '';
-  let advisorName    = '';
-  let assessSummary  = '';
-  let assessError    = '';
-  let lessonsLearned = '';
+  // Note / close / assessment / rejection / pause / reopen inputs
+  let noteText        = '';
+  let noteError       = '';
+  let advisorName     = '';
+  let assessSummary   = '';
+  let assessError     = '';
+  let lessonsLearned  = '';
   let rejectionReason = '';
   let rejectionError  = '';
+  let reopenReason    = '';
+  let reopenError     = '';
+  let pauseReason     = '';
 
   // Local error (from store action)
   let actionError = '';
@@ -139,12 +148,55 @@
     else actionError = r.error;
   }
 
-  async function doMoveToRemediation() {
-    const r = await morStore.transitionStatus
-      ? null   // not exposed; use approve path
-      : null;
-    // This state is reached via approveDecision (internal track) — no separate action needed
+  async function doMarkRemediationComplete() {
+    const r = await morStore.markRemediationComplete(c.id);
+    if (!r.success) actionError = r.error;
   }
+
+  async function doPause() {
+    const r = await morStore.pauseCase(c.id, pendingPauseType, pauseReason.trim());
+    if (r.success) { showPauseBox = false; pauseReason = ''; }
+    else actionError = r.error;
+  }
+
+  async function doResume() {
+    const r = await morStore.resumeCase(c.id);
+    if (!r.success) actionError = r.error;
+  }
+
+  async function doReopen() {
+    reopenError = '';
+    if (!reopenReason.trim()) { reopenError = 'Please provide a reason for reopening.'; return; }
+    const r = await morStore.reopenCase(c.id, reopenReason.trim());
+    if (r.success) { showReopenBox = false; reopenReason = ''; }
+    else actionError = r.error;
+  }
+
+  async function handleAddMitigation({ detail }) {
+    const r = await morStore.addMitigation(c.id, detail);
+    if (r.success) { showMitForm = false; editingMit = null; }
+    else actionError = r.error;
+  }
+
+  async function handleEditMitigation({ detail }) {
+    const r = await morStore.updateMitigation(editingMit.id, c.id, detail);
+    if (r.success) { showMitForm = false; editingMit = null; }
+    else actionError = r.error;
+  }
+
+  async function doMarkMitComplete(mit) {
+    await morStore.updateMitigation(mit.id, c.id, { ...mit, status: 'complete' });
+  }
+
+  async function doDeleteMit(mit) {
+    if (!confirm(`Delete this mitigation? This cannot be undone.`)) return;
+    const r = await morStore.deleteMitigation(mit.id, c.id);
+    if (!r.success) actionError = r.error;
+  }
+
+  $: mitigations = $morStore.mitigations ?? [];
+  $: interimMits  = mitigations.filter(m => m.type === 'interim');
+  $: permanentMits = mitigations.filter(m => m.type === 'permanent');
 </script>
 
 {#if loading && !c}
@@ -376,39 +428,79 @@
         </p>
       </div>
 
-    {:else if c.status === 'in_remediation' || c.status === 'remediated'}
+    {:else if c.status === 'in_remediation'}
+      <div class="space-y-3">
+        <p class="text-sm text-slate-400">
+          <strong class="text-slate-200">Next:</strong> Carry out and evidence the permanent remediation.
+          Mark complete when the fix is in place and documented.
+        </p>
+        {#if canEdit}
+          <div class="flex flex-wrap gap-2">
+            <Button variant="primary" size="medium" disabled={saving} on:click={doMarkRemediationComplete}>
+              {saving ? '…' : '✓ Mark Remediation Complete'}
+            </Button>
+            <Button variant="secondary" size="medium"
+              on:click={() => { pendingPauseType = 'reporter'; showPauseBox = !showPauseBox; }}>
+              Pause — awaiting reporter
+            </Button>
+          </div>
+          {#if showPauseBox}
+            <div class="space-y-2 mt-2">
+              <textarea bind:value={pauseReason} rows="2"
+                class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
+                       placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                placeholder="Reason for pausing…"
+              ></textarea>
+              <div class="flex gap-2">
+                <Button variant="primary"   size="medium" disabled={saving} on:click={doPause}>Pause Case</Button>
+                <Button variant="secondary" size="medium" on:click={() => showPauseBox = false}>Cancel</Button>
+              </div>
+            </div>
+          {/if}
+        {/if}
+      </div>
+
+    {:else if c.status === 'remediated'}
       <p class="text-sm text-slate-400 mb-3">
-        {c.status === 'remediated'
-          ? 'Permanent remediation complete. Close the case and capture lessons learned.'
-          : 'Remediation in progress. Mark complete when permanent remediation is evidenced.'}
+        <strong class="text-slate-200">Permanent remediation complete.</strong>
+        Close the case and capture lessons learned.
       </p>
-      {#if canEdit && c.status === 'remediated' && !showCloseBox}
-        <Button variant="primary" size="medium" on:click={() => showCloseBox = true}>
-          Close Case
-        </Button>
-      {:else if c.status === 'remediated' && showCloseBox}
-        <div class="space-y-2">
-          <div>
-            <label for="lessons-learned" class="block text-xs text-slate-400 mb-1">
-              Lessons learned (recommended)
-            </label>
-            <textarea id="lessons-learned" bind:value={lessonsLearned} rows="3"
-              class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                     placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-              placeholder="What can be improved or applied to future cases?"
-            ></textarea>
+      {#if canEdit}
+        {#if !showCloseBox}
+          <Button variant="primary" size="medium" on:click={() => showCloseBox = true}>Close Case</Button>
+        {:else}
+          <div class="space-y-2">
+            <div>
+              <label for="lessons-learned" class="block text-xs text-slate-400 mb-1">
+                Lessons learned (recommended)
+              </label>
+              <textarea id="lessons-learned" bind:value={lessonsLearned} rows="3"
+                class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
+                       placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                placeholder="What can be improved or applied to future cases?"
+              ></textarea>
+            </div>
+            <div class="flex gap-2">
+              <Button variant="primary"   size="medium" disabled={saving} on:click={doClose}>Close Case</Button>
+              <Button variant="secondary" size="medium" on:click={() => showCloseBox = false}>Cancel</Button>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <Button variant="primary"   size="medium" disabled={saving} on:click={doClose}>Close Case</Button>
-            <Button variant="secondary" size="medium" on:click={() => showCloseBox = false}>Cancel</Button>
-          </div>
-        </div>
+        {/if}
       {/if}
 
     {:else if c.status === 'awaiting_reporter' || c.status === 'awaiting_bsr'}
-      <p class="text-sm text-slate-400">
-        Case on hold: {c.status === 'awaiting_reporter' ? 'awaiting information from the reporter' : 'awaiting BSR response'}.
-      </p>
+      <div class="space-y-3">
+        <p class="text-sm text-slate-400">
+          Case on hold: <strong class="text-slate-200">
+            {c.status === 'awaiting_reporter' ? 'awaiting information from the reporter' : 'awaiting BSR response'}
+          </strong>.
+        </p>
+        {#if canEdit}
+          <Button variant="primary" size="medium" disabled={saving} on:click={doResume}>
+            Resume Case
+          </Button>
+        {/if}
+      </div>
 
     {:else if c.status === 'reopened'}
       <p class="text-sm text-slate-400 mb-3">
@@ -433,13 +525,25 @@
       <p class="text-sm text-slate-400 mt-1"><strong class="text-slate-300">Lessons learned:</strong> {c.lessons_learned}</p>
     {/if}
     {#if isAdmin && c.status === 'closed'}
-      <button type="button"
-        class="text-xs text-slate-500 hover:text-slate-300 mt-2 underline"
-        on:click={async () => {
-          const r = await morStore.transitionStatus?.(c.id, 'reopened', 'Case reopened.');
-          // Note: transitionStatus is not directly exposed; use a note for now
-        }}
-      >Reopen case (admin)</button>
+      {#if !showReopenBox}
+        <button type="button"
+          class="text-xs text-slate-500 hover:text-slate-300 mt-2 underline"
+          on:click={() => showReopenBox = true}
+        >Reopen case (admin)</button>
+      {:else}
+        <div class="mt-3 space-y-2">
+          <textarea bind:value={reopenReason} rows="2"
+            class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
+                   placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+            placeholder="Reason for reopening (required)…"
+          ></textarea>
+          {#if reopenError}<p class="text-red-400 text-xs">{reopenError}</p>{/if}
+          <div class="flex gap-2">
+            <Button variant="primary"   size="medium" disabled={saving} on:click={doReopen}>Reopen</Button>
+            <Button variant="secondary" size="medium" on:click={() => { showReopenBox = false; reopenReason = ''; }}>Cancel</Button>
+          </div>
+        </div>
+      {/if}
     {/if}
   </div>
 {/if}
@@ -528,6 +632,79 @@
   </div>
 </div>
 
+<!-- ── Mitigations ────────────────────────────────────────────────── -->
+<div class="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-sm font-semibold text-slate-300">
+      Mitigations
+      {#if mitigations.length > 0}
+        <span class="text-slate-500 font-normal">({mitigations.length})</span>
+      {/if}
+    </h3>
+    {#if canEdit}
+      <Button variant="secondary" size="small" on:click={() => { editingMit = null; showMitForm = true; }}>
+        + Add
+      </Button>
+    {/if}
+  </div>
+
+  {#if mitigations.length === 0}
+    <p class="text-sm text-slate-500 italic">No mitigations recorded yet.</p>
+  {:else}
+    {@const mitGroups = [
+      { label: 'Interim', items: interimMits,   accent: 'text-amber-400',   badge: 'bg-amber-700' },
+      { label: 'Permanent', items: permanentMits, accent: 'text-emerald-400', badge: 'bg-emerald-700' },
+    ]}
+    {#each mitGroups as grp}
+      {#if grp.items.length > 0}
+        <div class="mb-3">
+          <p class="text-xs font-semibold {grp.accent} uppercase tracking-wide mb-2">{grp.label}</p>
+          <div class="space-y-2">
+            {#each grp.items as mit (mit.id)}
+              <div class="bg-slate-700/40 border border-slate-600/60 rounded-lg p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-slate-200">{mit.description}</p>
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-500">
+                      {#if mit.owner}<span>Owner: {mit.owner}</span>{/if}
+                      {#if mit.target_date}<span>Target: {mit.target_date}</span>{/if}
+                      <span class="
+                        {mit.status === 'complete'   ? 'text-emerald-400' :
+                         mit.status === 'in_progress' ? 'text-amber-400' : 'text-slate-400'}
+                        font-medium capitalize">{mit.status.replace('_', ' ')}</span>
+                    </div>
+                    {#if mit.notes}<p class="text-xs text-slate-500 mt-1 italic">{mit.notes}</p>{/if}
+                  </div>
+                  {#if canEdit && mit.status !== 'complete'}
+                    <div class="flex gap-1 shrink-0">
+                      <button type="button"
+                        class="text-xs text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded
+                               hover:bg-emerald-900/30 transition-colors"
+                        on:click={() => doMarkMitComplete(mit)}
+                      >✓ Complete</button>
+                      <button type="button"
+                        class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded
+                               hover:bg-slate-600 transition-colors"
+                        on:click={() => { editingMit = mit; showMitForm = true; }}
+                      >Edit</button>
+                    </div>
+                  {/if}
+                  {#if isAdmin}
+                    <button type="button"
+                      class="text-xs text-red-500 hover:text-red-400 px-1 py-1 ml-1"
+                      on:click={() => doDeleteMit(mit)}
+                    >✕</button>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    {/each}
+  {/if}
+</div>
+
 <!-- ── Timeline ──────────────────────────────────────────────────────── -->
 <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
   <div class="flex items-center justify-between mb-4">
@@ -609,5 +786,15 @@
   error={showBsrReport ? actionError : ''}
   on:submit={handleBsrReport}
   on:close={() => { showBsrReport = false; clearErr(); }}
+  on:clearError={clearErr}
+/>
+
+<MitigationForm
+  show={showMitForm}
+  {saving}
+  mitigation={editingMit}
+  error={showMitForm ? actionError : ''}
+  on:submit={editingMit ? handleEditMitigation : handleAddMitigation}
+  on:close={() => { showMitForm = false; editingMit = null; clearErr(); }}
   on:clearError={clearErr}
 />

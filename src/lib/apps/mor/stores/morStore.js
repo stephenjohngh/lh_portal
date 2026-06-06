@@ -618,6 +618,122 @@ function createMorStore() {
     update(s => ({ ...s, selectedCase: null, timelineEntries: [], mitigations: [] }));
   }
 
+  // ── Phase 1d — Mitigations, remediation, pause, reopen ────────────────────
+
+  async function markRemediationComplete(caseId) {
+    return transitionStatus(
+      caseId, 'remediated',
+      'Permanent remediation complete. Awaiting formal close-out.'
+    );
+  }
+
+  async function pauseCase(caseId, pauseType, reason) {
+    const toStatus = pauseType === 'bsr' ? 'awaiting_bsr' : 'awaiting_reporter';
+    const label    = pauseType === 'bsr' ? 'awaiting BSR response' : 'awaiting reporter information';
+    return transitionStatus(
+      caseId, toStatus,
+      `Case paused — ${label}.${reason ? ' ' + reason : ''}`
+    );
+  }
+
+  async function resumeCase(caseId) {
+    update(s => ({ ...s, saving: true, error: '' }));
+    try {
+      const current = await api.getById('mor_cases', caseId, 'status');
+      const toStatus = current.status === 'awaiting_bsr' ? 'bsr_report' : 'in_remediation';
+      update(s => ({ ...s, saving: false }));
+      return transitionStatus(caseId, toStatus, 'Case resumed.');
+    } catch (err) {
+      update(s => ({ ...s, saving: false, error: err.message }));
+      return { success: false, error: err.message };
+    }
+  }
+
+  async function reopenCase(caseId, reason) {
+    return transitionStatus(
+      caseId, 'reopened',
+      `Case reopened.${reason ? ' Reason: ' + reason : ''}`
+    );
+  }
+
+  async function addMitigation(caseId, data) {
+    update(s => ({ ...s, saving: true, error: '' }));
+    try {
+      const user    = await currentUser();
+      const profile = await currentUserProfile();
+      const now     = new Date().toISOString();
+
+      await api.create('mor_mitigations', {
+        case_id:     caseId,
+        type:        data.type,
+        description: data.description.trim(),
+        owner:       data.owner?.trim() || null,
+        target_date: data.target_date || null,
+        status:      'open',
+        notes:       data.notes?.trim() || null,
+        created_at:  now,
+        updated_at:  now,
+        created_by:  user?.id,
+        updated_by:  user?.id,
+      }, true);
+
+      await addTimelineEntry(
+        caseId, 'mitigation',
+        `${data.type === 'interim' ? 'Interim' : 'Permanent'} mitigation added: ${data.description.trim()}`,
+        user?.id, profile.full_name
+      );
+
+      await api.update('mor_cases', caseId, { updated_at: now, updated_by: user?.id });
+      await fetchCase(caseId);
+      update(s => ({ ...s, saving: false }));
+      return { success: true };
+    } catch (err) {
+      logger('❌ addMitigation:', err.message);
+      update(s => ({ ...s, saving: false, error: err.message }));
+      return { success: false, error: err.message };
+    }
+  }
+
+  async function updateMitigation(id, caseId, data) {
+    update(s => ({ ...s, saving: true, error: '' }));
+    try {
+      const user = await currentUser();
+      const now  = new Date().toISOString();
+      const updates = {
+        description: data.description?.trim(),
+        owner:       data.owner?.trim() || null,
+        target_date: data.target_date  || null,
+        status:      data.status,
+        notes:       data.notes?.trim() || null,
+        updated_at:  now,
+        updated_by:  user?.id,
+      };
+      if (data.status === 'complete' && !data.completed_at) updates.completed_at = now;
+      await api.update('mor_mitigations', id, updates);
+      await fetchCase(caseId);
+      update(s => ({ ...s, saving: false }));
+      return { success: true };
+    } catch (err) {
+      logger('❌ updateMitigation:', err.message);
+      update(s => ({ ...s, saving: false, error: err.message }));
+      return { success: false, error: err.message };
+    }
+  }
+
+  async function deleteMitigation(id, caseId) {
+    update(s => ({ ...s, saving: true, error: '' }));
+    try {
+      await api.delete('mor_mitigations', id);
+      await fetchCase(caseId);
+      update(s => ({ ...s, saving: false }));
+      return { success: true };
+    } catch (err) {
+      logger('❌ deleteMitigation:', err.message);
+      update(s => ({ ...s, saving: false, error: err.message }));
+      return { success: false, error: err.message };
+    }
+  }
+
   return {
     subscribe,
     fetchCases,
@@ -634,6 +750,13 @@ function createMorStore() {
     recordBsrReport,
     addNote,
     closeCase,
+    markRemediationComplete,
+    pauseCase,
+    resumeCase,
+    reopenCase,
+    addMitigation,
+    updateMitigation,
+    deleteMitigation,
     clearError,
     clearSelected,
   };
