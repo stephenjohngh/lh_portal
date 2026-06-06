@@ -16,8 +16,9 @@ const logger = getLogger('publicRateLimit');
 
 // Limits per action
 const LIMITS = {
-  photo_upload: { max: 10, windowMinutes: 15  }, // 10 photos per 15 min
-  case_submit:  { max:  3, windowMinutes: 60  }, // 3 submissions per hour
+  photo_upload:  { max: 10, windowMinutes: 15 }, // 10 photos per 15 min
+  case_submit:   { max:  3, windowMinutes: 60 }, // 3 submissions per hour
+  status_lookup: { max: 10, windowMinutes: 15 }, // 10 status checks per 15 min
 };
 
 // Module-level singleton for the service role client

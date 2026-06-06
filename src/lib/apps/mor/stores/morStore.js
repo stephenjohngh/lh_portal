@@ -6,6 +6,7 @@ import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
 import { generateMorReference } from '$lib/utils/morReference';
+import { generateVerificationCode } from '$lib/utils/morVerificationCode';
 
 const logger = getLogger('morStore');
 
@@ -136,6 +137,7 @@ function createMorStore() {
 
       const row = await api.create('mor_cases', {
         reference,
+        verification_code:   generateVerificationCode(),
         status:              'submitted',
         description:         data.description.trim(),
         location_text:       data.location_text?.trim() || null,

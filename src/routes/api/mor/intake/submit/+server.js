@@ -24,6 +24,8 @@ import { checkRateLimit }             from '$lib/server/publicRateLimit.js';
 import { isSameOrigin,
          isTrustedStorageUrl }        from '$lib/server/verifyOrigin.js';
 import { generateMorReference }       from '$lib/utils/morReference';
+import { generateVerificationCode,
+         formatVerificationCode }      from '$lib/utils/morVerificationCode';
 import { logAudit,
          getIpAddress,
          getUserAgent }                from '$lib/server/auditLogger';
@@ -116,6 +118,9 @@ export async function POST({ request, url }) {
     return json({ error: 'Could not create case. Please try again.' }, { status: 500 });
   }
 
+  // Verification code paired with the reference for the public status page.
+  const verificationCode = generateVerificationCode();
+
   // ── Insert case ──────────────────────────────────────────────────────────
   let caseRow;
   try {
@@ -123,6 +128,7 @@ export async function POST({ request, url }) {
       .from('mor_cases')
       .insert({
         reference,
+        verification_code:   verificationCode,
         status:              'submitted',
         mechanism:           'unknown',
         urgency:             urgency === true,
@@ -207,5 +213,9 @@ export async function POST({ request, url }) {
 
   logger('✅ Public MOR case created:', reference);
 
-  return json({ success: true, reference });
+  return json({
+    success:           true,
+    reference,
+    verificationCode:  formatVerificationCode(verificationCode), // pretty form for display
+  });
 }

@@ -30,6 +30,7 @@
     CHANNEL_LABEL, REPORTER_TYPE_LABEL,
     DECISION_LABEL, TRIAGE_LABEL, TRIAGE_COLOUR,
   } from '$lib/apps/mor/utils/morHelpers';
+  import { formatVerificationCode } from '$lib/utils/morVerificationCode';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
 
   const dispatch = createEventDispatcher();
@@ -515,6 +516,17 @@
       <p class="text-xs text-slate-500">Logged by</p>
       <p class="text-slate-200 mt-0.5">{c.created_by_profile?.full_name ?? 'Unknown'} · {fmtDate(c.created_at)}</p>
     </div>
+
+    {#if c.verification_code}
+      <div>
+        <p class="text-xs text-slate-500">Status lookup code</p>
+        <p class="text-slate-200 font-mono mt-0.5">{formatVerificationCode(c.verification_code)}</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Share with the reporter alongside the reference to give them access to
+          <span class="font-mono">/mor/status</span>.
+        </p>
+      </div>
+    {/if}
   </div>
 </div>
 

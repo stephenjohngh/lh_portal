@@ -25,6 +25,7 @@
   let submitting = false;
   let submitted  = false;
   let caseRef    = '';
+  let caseCode   = '';
   let submitError = '';
 
   // ── Validation errors ───────────────────────────────────────────────────
@@ -122,6 +123,7 @@
         submitError = data.error ?? 'Submission failed. Please try again.';
       } else {
         caseRef   = data.reference;
+        caseCode  = data.verificationCode ?? '';
         submitted = true;
         // Revoke preview object URLs
         photos.forEach(p => p.preview && URL.revokeObjectURL(p.preview));
@@ -153,11 +155,26 @@
     <div class="confirm-box">
       <div class="confirm-tick">✓</div>
       <h1 class="confirm-title">We've received your report</h1>
+
       <p class="confirm-ref">Your reference number</p>
       <p class="confirm-refnum">{caseRef}</p>
+
+      {#if caseCode}
+        <p class="confirm-ref">Your verification code</p>
+        <p class="confirm-code">{caseCode}</p>
+      {/if}
+
       <p class="confirm-note">
-        Please keep this reference number. You can quote it if you need to follow up.
+        Please keep <strong>both</strong> the reference and the verification code.
+        You'll need them together to check progress on your report.
       </p>
+
+      {#if caseCode}
+        <a class="confirm-status-link" href="/mor/status?ref={encodeURIComponent(caseRef)}">
+          Check the status of this report →
+        </a>
+      {/if}
+
       <div class="confirm-steps">
         <h2>What happens next</h2>
         <ol>
@@ -591,9 +608,22 @@
     color: #0f172a;
     margin: 0 0 1.25rem;
   }
-  .confirm-ref    { font-size: 0.8125rem; color: #64748b; margin: 0 0 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
-  .confirm-refnum { font-size: 1.5rem; font-weight: 700; font-family: monospace; color: #0f172a; margin: 0 0 0.75rem; }
-  .confirm-note   { font-size: 0.875rem; color: #475569; margin: 0 0 1.5rem; line-height: 1.6; }
+  .confirm-ref    { font-size: 0.8125rem; color: #64748b; margin: 0.75rem 0 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .confirm-ref:first-of-type { margin-top: 0; }
+  .confirm-refnum { font-size: 1.5rem; font-weight: 700; font-family: monospace; color: #0f172a; margin: 0; }
+  .confirm-code   { font-size: 1.5rem; font-weight: 700; font-family: monospace; color: #0f172a; margin: 0; letter-spacing: 0.1em; }
+  .confirm-note   { font-size: 0.875rem; color: #475569; margin: 1rem 0 1.25rem; line-height: 1.6; }
+  .confirm-status-link {
+    display: inline-block;
+    margin: 0 0 1.5rem;
+    color: #3c9683;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 1px;
+  }
+  .confirm-status-link:hover { color: #2d7a6a; }
   .confirm-steps  { text-align: left; background: #f8fafc; border-radius: 0.5rem; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
   .confirm-steps h2 { font-size: 0.9375rem; font-weight: 600; color: #1e293b; margin: 0 0 0.625rem; }
   .confirm-steps ol { margin: 0; padding-left: 1.25rem; }
