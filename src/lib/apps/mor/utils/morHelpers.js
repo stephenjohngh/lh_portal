@@ -43,6 +43,22 @@ export const BSR_TRACK_STATUSES = new Set([
   'bsr_notice', 'bsr_report', 'in_remediation', 'awaiting_bsr', 'remediated',
 ]);
 
+// All non-terminal statuses (i.e. the case is still being worked)
+export const OPEN_STATUSES = [
+  'submitted', 'acknowledged', 'in_triage', 'in_assessment',
+  'decision_pending', 'bsr_notice', 'bsr_report',
+  'in_remediation', 'awaiting_reporter', 'awaiting_bsr',
+  'remediated', 'reopened',
+];
+
+// Workflow display order for status breakdown
+export const STATUS_ORDER = [
+  'submitted', 'acknowledged', 'in_triage', 'in_assessment',
+  'decision_pending', 'bsr_notice', 'bsr_report',
+  'awaiting_bsr', 'in_remediation', 'awaiting_reporter',
+  'remediated', 'reopened', 'closed', 'reclassified',
+];
+
 // ── Mechanism ─────────────────────────────────────────────────────────────────
 
 export const MECHANISM_LABEL = {
