@@ -7,6 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
+  import { supabase }    from '$lib/supabaseClient';
   import { morStore }    from '$lib/apps/mor/stores/morStore';
   import Badge          from '$lib/components/common/Badge.svelte';
   import Button         from '$lib/components/common/Button.svelte';
@@ -169,6 +170,41 @@
       deletingMitId = null;
     }
   }
+
+  // ── Export case record (.docx) ───────────────────────────────────────────
+  let exporting = false;
+  let exportError = '';
+  async function exportCaseRecord() {
+    exporting = true;
+    exportError = '';
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { exportError = 'Not signed in.'; return; }
+      const r = await fetch(`/api/mor/${encodeURIComponent(c.id)}/case-report`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        exportError = j.error ?? 'Could not generate the report.';
+        return;
+      }
+      const blob = await r.blob();
+      const dispo = r.headers.get('Content-Disposition') ?? '';
+      const m = dispo.match(/filename="([^"]+)"/);
+      const filename = m ? m[1] : `${c.reference}-case-record.docx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      exportError = `Could not export: ${err.message}`;
+    } finally {
+      exporting = false;
+    }
+  }
 </script>
 
 {#if loading && !c}
@@ -177,8 +213,8 @@
   <p class="text-slate-500 text-sm">No case selected.</p>
 {:else}
 
-<!-- ── Back button ──────────────────────────────────────────────────────── -->
-<div class="mb-4">
+<!-- ── Back button + export ─────────────────────────────────────────────── -->
+<div class="mb-4 flex items-center justify-between gap-2">
   <button
     type="button"
     on:click={() => dispatch('back')}
@@ -186,7 +222,20 @@
   >
     ← Cases
   </button>
+  <button
+    type="button"
+    on:click={exportCaseRecord}
+    disabled={exporting}
+    class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50
+           disabled:cursor-not-allowed text-slate-200 transition-colors"
+    title="Download full case record as a Word document"
+  >
+    {exporting ? 'Generating…' : '📄 Export case record (.docx)'}
+  </button>
 </div>
+{#if exportError}
+  <p class="text-red-400 text-xs mb-3 text-right">{exportError}</p>
+{/if}
 
 <!-- ── Case header ──────────────────────────────────────────────────────── -->
 <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4">

@@ -25,13 +25,17 @@ const CASE_SELECT = `
 
 function createMorStore() {
   const { subscribe, update } = writable({
-    cases:          [],
-    selectedCase:   null,
-    timelineEntries:[],
-    mitigations:    [],
-    loading:        false,
-    saving:         false,
-    error:          '',
+    cases:                  [],
+    selectedCase:           null,
+    timelineEntries:        [],
+    mitigations:            [],
+    // Map<case_id, TimelineEntry[]> — reporter_contact entries for every
+    // currently-loaded case. Populated by fetchCases() and kept fresh by
+    // recordReporterContact(). Drives the dashboard backlog widgets.
+    reporterContactsByCase: {},
+    loading:                false,
+    saving:                 false,
+    error:                  '',
   });
 
   // ── Internal helpers ───────────────────────────────────────────────────────
@@ -88,17 +92,49 @@ function createMorStore() {
       const nextCases = idx >= 0
         ? s.cases.map((c, i) => i === idx ? caseData : c)
         : [caseData, ...s.cases]; // not yet in list — prepend
+      // Mirror the per-case reporter_contact entries into the dashboard map
+      // so the backlog widgets reflect the latest state without a refetch.
+      const contacts = (timeline ?? []).filter(t => t.entry_type === 'reporter_contact');
       return {
         ...s,
         cases:           nextCases,
         selectedCase:    s.selectedCase?.id === caseId ? caseData : s.selectedCase,
         timelineEntries: timeline ?? [],
         mitigations:     mits ?? [],
+        reporterContactsByCase: { ...s.reporterContactsByCase, [caseId]: contacts },
       };
     });
   }
 
   // ── Public API ─────────────────────────────────────────────────────────────
+
+  /**
+   * Batch-load reporter_contact timeline entries for the given case ids and
+   * splice them into `reporterContactsByCase`. Cheap because the partial
+   * index from migration 139 covers this exact predicate.
+   */
+  async function loadReporterContactsForCases(caseIds) {
+    if (!Array.isArray(caseIds) || caseIds.length === 0) {
+      update(s => ({ ...s, reporterContactsByCase: {} }));
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('mor_timeline_entries')
+        .select('id, case_id, entry_type, contact_kind, content, created_at')
+        .eq('entry_type', 'reporter_contact')
+        .in('case_id', caseIds)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const byCase = {};
+      for (const row of (data ?? [])) {
+        (byCase[row.case_id] ??= []).push(row);
+      }
+      update(s => ({ ...s, reporterContactsByCase: byCase }));
+    } catch (err) {
+      logger('⚠ loadReporterContactsForCases (non-fatal):', err.message);
+    }
+  }
 
   async function fetchCases() {
     update(s => ({ ...s, loading: true, error: '' }));
@@ -108,7 +144,11 @@ function createMorStore() {
         .select(CASE_SELECT)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      update(s => ({ ...s, cases: data ?? [], loading: false }));
+      const cases = data ?? [];
+      update(s => ({ ...s, cases, loading: false }));
+      // Reporter-contact map is dashboard-only; load it in the background
+      // and don't block the case list on it.
+      loadReporterContactsForCases(cases.map(c => c.id));
     } catch (err) {
       logger('❌ fetchCases:', err.message);
       update(s => ({ ...s, error: err.message, loading: false }));
@@ -712,6 +752,7 @@ function createMorStore() {
     updateMitigation,
     deleteMitigation,
     recordReporterContact,
+    loadReporterContactsForCases,
     clearError,
     clearSelected,
   };

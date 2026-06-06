@@ -241,6 +241,55 @@ export function allSlaClocks(c) {
   ];
 }
 
+// ── Aggregate helpers used by the dashboard widgets ──────────────────────────
+
+/**
+ * Summarise the SLA position of one case for dashboard aggregation.
+ * Returns { breached, critical, warning, worst } where each list is the
+ * SlaClocks entries currently in that state and `worst` is the highest-
+ * severity one (used to drive the chip colour).
+ */
+export function caseSlaSummary(c) {
+  const live = allSlaClocks(c).filter(cl => !cl.done && cl.clock);
+  const breached = live.filter(cl => cl.clock.status === 'breach');
+  const critical = live.filter(cl => cl.clock.status === 'critical');
+  const warning  = live.filter(cl => cl.clock.status === 'warning');
+  return {
+    breached, critical, warning,
+    worst: breached[0] ?? critical[0] ?? warning[0] ?? null,
+  };
+}
+
+const OPEN_SET_INTERNAL = new Set(OPEN_STATUSES);
+
+/** Returns true if the case is in any non-terminal status. */
+export function isOpenCase(c) {
+  return !!c && OPEN_SET_INTERNAL.has(c.status);
+}
+
+/**
+ * Personal-queue predicates. Each returns true if the named user should
+ * see this case in their "needs my attention" widget.
+ */
+export function isAwaitingMyApproval(c, userId, isAdmin) {
+  return !!isAdmin
+    && c?.status === 'decision_pending'
+    && !!c.decision_outcome
+    && c.decision_proposed_by !== userId
+    && c.decision_approved_by == null;
+}
+
+export function isMyProposalAwaitingApproval(c, userId) {
+  return c?.status === 'decision_pending'
+    && !!c.decision_outcome
+    && c.decision_proposed_by === userId
+    && c.decision_approved_by == null;
+}
+
+export function isMineAndOpen(c, userId) {
+  return isOpenCase(c) && c.created_by === userId;
+}
+
 // ── Timeline entry helpers ────────────────────────────────────────────────────
 
 export const ENTRY_TYPE_LABEL = {
