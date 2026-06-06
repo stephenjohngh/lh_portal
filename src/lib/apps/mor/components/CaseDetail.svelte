@@ -24,6 +24,7 @@
   import PauseForm      from '$lib/apps/mor/components/PauseForm.svelte';
   import BsrHelper      from '$lib/apps/mor/components/BsrHelper.svelte';
   import MitigationForm from '$lib/apps/mor/components/MitigationForm.svelte';
+  import ReporterContactPanel from '$lib/apps/mor/components/ReporterContactPanel.svelte';
   import {
     STATUS_LABEL, STATUS_COLOUR,
     MECHANISM_LABEL, MECHANISM_COLOUR,
@@ -216,6 +217,11 @@
   <div class="mb-4">
     <ErrorDisplay message={error} onDismiss={clearErr} />
   </div>
+{/if}
+
+<!-- ── Reporter-contact nudges (Phase 2c) ───────────────────────────────── -->
+{#if canEdit}
+  <ReporterContactPanel {c} timeline={tl} />
 {/if}
 
 <!-- ── Action panel ────────────────────────────────────────────────────── -->

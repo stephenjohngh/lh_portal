@@ -515,6 +515,43 @@ function createMorStore() {
     }
   }
 
+  /**
+   * Phase 2c — record a reporter-contact event.
+   * Writes an immutable timeline entry (entry_type='reporter_contact') with
+   * the canonical contact_kind. Touches the case row so updated_at advances.
+   */
+  async function recordReporterContact(caseId, { kind, content }) {
+    update(s => ({ ...s, saving: true, error: '' }));
+    try {
+      const user    = await currentUser();
+      const profile = await currentUserProfile();
+
+      await addTimelineEntry(
+        caseId,
+        'reporter_contact',
+        (content ?? '').trim() || null,
+        user?.id, profile.full_name,
+        { contact_kind: kind }
+      );
+
+      // Touch the case so updated_at advances (DB trigger stamps it).
+      await api.update('mor_cases', caseId, { updated_by: user?.id });
+
+      logAudit('update', 'mor_case', caseId, 'reporter_contact', {
+        appId: 'mor', eventCategory: 'mor', severity: 'info',
+        afterData: { contact_kind: kind },
+      });
+
+      await refreshCase(caseId);
+      update(s => ({ ...s, saving: false }));
+      return { success: true };
+    } catch (err) {
+      logger('❌ recordReporterContact:', err.message);
+      update(s => ({ ...s, saving: false, error: err.message }));
+      return { success: false, error: err.message };
+    }
+  }
+
   async function closeCase(caseId, { lessonsLearned }) {
     return transitionStatus(
       caseId, 'closed',
@@ -674,6 +711,7 @@ function createMorStore() {
     addMitigation,
     updateMitigation,
     deleteMitigation,
+    recordReporterContact,
     clearError,
     clearSelected,
   };

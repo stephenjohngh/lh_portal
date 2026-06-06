@@ -244,38 +244,135 @@ export function allSlaClocks(c) {
 // ── Timeline entry helpers ────────────────────────────────────────────────────
 
 export const ENTRY_TYPE_LABEL = {
-  status_change:  'Status changed',
-  note:           'Note added',
-  triage:         'Triage recorded',
-  decision:       'Decision proposed',
-  approval:       'Decision approved',
-  rejection:      'Decision rejected',
-  bsr_notice:     'BSR notice recorded',
-  bsr_report:     'BSR report recorded',
-  mitigation:     'Mitigation added',
-  assessment:     'Assessment recorded',
-  sla_pause:      'SLA paused',
-  sla_resume:     'SLA resumed',
-  reopened:       'Case reopened',
-  closure:        'Case closed',
+  status_change:    'Status changed',
+  note:             'Note added',
+  triage:           'Triage recorded',
+  decision:         'Decision proposed',
+  approval:         'Decision approved',
+  rejection:        'Decision rejected',
+  bsr_notice:       'BSR notice recorded',
+  bsr_report:       'BSR report recorded',
+  mitigation:       'Mitigation added',
+  assessment:       'Assessment recorded',
+  sla_pause:        'SLA paused',
+  sla_resume:       'SLA resumed',
+  reopened:         'Case reopened',
+  closure:          'Case closed',
+  reporter_contact: 'Reporter contact',
 };
 
 export const ENTRY_TYPE_ICON_COLOUR = {
-  status_change:  'text-blue-400',
-  note:           'text-slate-400',
-  triage:         'text-amber-400',
-  decision:       'text-purple-400',
-  approval:       'text-emerald-400',
-  rejection:      'text-red-400',
-  bsr_notice:     'text-orange-400',
-  bsr_report:     'text-orange-300',
-  mitigation:     'text-yellow-400',
-  assessment:     'text-purple-300',
-  closure:        'text-emerald-300',
-  reopened:       'text-red-400',
-  sla_pause:      'text-slate-500',
-  sla_resume:     'text-slate-400',
+  status_change:    'text-blue-400',
+  note:             'text-slate-400',
+  triage:           'text-amber-400',
+  decision:         'text-purple-400',
+  approval:         'text-emerald-400',
+  rejection:        'text-red-400',
+  bsr_notice:       'text-orange-400',
+  bsr_report:       'text-orange-300',
+  mitigation:       'text-yellow-400',
+  assessment:       'text-purple-300',
+  closure:          'text-emerald-300',
+  reopened:         'text-red-400',
+  sla_pause:        'text-slate-500',
+  sla_resume:       'text-slate-400',
+  reporter_contact: 'text-sky-400',
 };
+
+// ── Reporter-contact kinds (Phase 2c) ─────────────────────────────────────────
+
+/** Friendly label per contact_kind. */
+export const CONTACT_KIND_LABEL = {
+  bsr_notified:             'Reporter notified of BSR escalation',
+  bsr_notified_skipped:     'BSR-step contact skipped',
+  closure_reporter:         'Closure letter sent to reporter',
+  closure_reporter_skipped: 'Closure contact skipped',
+  closure_residents:        'Residents block notice issued',
+  holding:                  'Holding update sent to reporter',
+  holding_snooze:           'Holding nudge snoozed',
+  other:                    'Other contact recorded',
+};
+
+const HAS_REPORTER_CONTACT_INFO = (c) =>
+  !!c && !c.is_anonymous && typeof c.reporter_contact === 'string' && c.reporter_contact.trim().length > 0;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Latest timeline entry of entry_type='reporter_contact' matching `kind`. */
+export function latestReporterContact(timeline, kind) {
+  if (!Array.isArray(timeline)) return null;
+  for (let i = timeline.length - 1; i >= 0; i--) {
+    const t = timeline[i];
+    if (t.entry_type === 'reporter_contact' && (!kind || t.contact_kind === kind)) return t;
+  }
+  return null;
+}
+
+/**
+ * Nudge 1 — Reporter notification of BSR escalation.
+ * Fires after the case enters the BSR track and stays visible until the
+ * staff member records that the reporter has been notified (or chosen to
+ * skip the step with a reason).
+ */
+export function shouldShowBsrNotifyNudge(c, timeline) {
+  if (!HAS_REPORTER_CONTACT_INFO(c)) return false;
+  if (!['bsr_notice','bsr_report','awaiting_bsr','in_remediation','remediated'].includes(c.status)) return false;
+  if (latestReporterContact(timeline, 'bsr_notified'))         return false;
+  if (latestReporterContact(timeline, 'bsr_notified_skipped')) return false;
+  return true;
+}
+
+/**
+ * Nudge 2 — Closure letters.
+ * Reporter half hidden when there's no contact info or it's already
+ * actioned; residents half is independent.
+ */
+export function shouldShowClosureNudge(c, timeline) {
+  if (!c || c.status !== 'closed') return { reporter: false, residents: false };
+  const reporterDone =
+    !!latestReporterContact(timeline, 'closure_reporter') ||
+    !!latestReporterContact(timeline, 'closure_reporter_skipped');
+  const residentsDone = !!latestReporterContact(timeline, 'closure_residents');
+  return {
+    reporter:  HAS_REPORTER_CONTACT_INFO(c) && !reporterDone,
+    residents: !residentsDone,
+  };
+}
+
+/**
+ * Nudge 3 — Staleness (>14d without reporter contact).
+ * Respects a 7-day snooze. Suppressed when the case is itself awaiting the
+ * reporter (separate UI handles that conversation).
+ */
+export function shouldShowStalenessNudge(c, timeline, now = new Date()) {
+  if (!HAS_REPORTER_CONTACT_INFO(c)) return false;
+  if (!c.status || c.status === 'closed' || c.status === 'reclassified') return false;
+  if (c.status === 'awaiting_reporter') return false;
+
+  // Snooze check — most recent snooze within last 7 days suppresses.
+  const snooze = latestReporterContact(timeline, 'holding_snooze');
+  if (snooze && (now - new Date(snooze.created_at)) < 7 * DAY_MS) return false;
+
+  // Last reporter contact (any kind that represents actual outreach).
+  const OUTREACH_KINDS = new Set([
+    'bsr_notified', 'closure_reporter', 'holding', 'other',
+  ]);
+  let lastOutreach = null;
+  for (let i = timeline.length - 1; i >= 0; i--) {
+    const t = timeline[i];
+    if (t.entry_type === 'reporter_contact' && OUTREACH_KINDS.has(t.contact_kind)) {
+      lastOutreach = t;
+      break;
+    }
+  }
+
+  // If no outreach yet, fall back to acknowledged_at (or received_date) as
+  // the clock start. If the case was just acknowledged, the BSM may not yet
+  // be expected to have written a holding update.
+  const anchorIso = lastOutreach?.created_at ?? c.acknowledged_at ?? c.received_date;
+  if (!anchorIso) return false;
+  return (now - new Date(anchorIso)) > 14 * DAY_MS;
+}
 
 // ── Permitted transitions ─────────────────────────────────────────────────────
 // IMPORTANT: this map MUST match the mor_is_valid_transition() SQL function in
