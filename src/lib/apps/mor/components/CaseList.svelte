@@ -3,7 +3,7 @@
   import { createEventDispatcher } from 'svelte';
   import CaseCard from '$lib/apps/mor/components/CaseCard.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { STATUS_LABEL } from '$lib/apps/mor/utils/morHelpers';
+  import { STATUS_LABEL, OPEN_STATUSES } from '$lib/apps/mor/utils/morHelpers';
 
   export let cases   = [];
   export let loading = false;
@@ -16,14 +16,13 @@
   let filterUrgent    = false;
   let search          = '';
 
-  const OPEN_STATUSES = ['submitted','acknowledged','in_triage','in_assessment',
-    'decision_pending','bsr_notice','bsr_report','in_remediation',
-    'awaiting_reporter','awaiting_bsr','remediated','reopened'];
+  // Set-based lookup (single iteration of OPEN_STATUSES at module load).
+  const OPEN_SET = new Set(OPEN_STATUSES);
 
   let showFilter = 'open'; // 'all' | 'open' | 'closed'
 
   $: filtered = cases.filter(c => {
-    if (showFilter === 'open'   && !OPEN_STATUSES.includes(c.status)) return false;
+    if (showFilter === 'open'   && !OPEN_SET.has(c.status)) return false;
     if (showFilter === 'closed' && c.status !== 'closed' && c.status !== 'reclassified') return false;
     if (filterStatus    && c.status    !== filterStatus)    return false;
     if (filterMechanism && c.mechanism !== filterMechanism) return false;
@@ -37,19 +36,26 @@
     return true;
   });
 
-  // Stats
-  $: openCount    = cases.filter(c => OPEN_STATUSES.includes(c.status)).length;
-  $: urgentCount  = cases.filter(c => c.urgency && OPEN_STATUSES.includes(c.status)).length;
-  $: bsrCount     = cases.filter(c =>
-      ['bsr_notice','bsr_report'].includes(c.status) && !c.bsr_report_submitted_at).length;
+  // Stats (computed once per cases change)
+  $: stats = (() => {
+    let open = 0, urgent = 0, bsr = 0;
+    for (const c of cases) {
+      if (OPEN_SET.has(c.status)) {
+        open++;
+        if (c.urgency) urgent++;
+      }
+      if (['bsr_notice','bsr_report'].includes(c.status) && !c.bsr_report_submitted_at) bsr++;
+    }
+    return { open, urgent, bsr };
+  })();
 </script>
 
 <!-- Stats row -->
 <div class="grid grid-cols-3 gap-3 mb-4">
   {#each [
-    { label: 'Open cases',    value: openCount,   colour: 'text-blue-300' },
-    { label: 'Urgent',        value: urgentCount, colour: 'text-red-300'  },
-    { label: 'Awaiting BSR',  value: bsrCount,    colour: 'text-orange-300' },
+    { label: 'Open cases',    value: stats.open,   colour: 'text-blue-300' },
+    { label: 'Urgent',        value: stats.urgent, colour: 'text-red-300'  },
+    { label: 'Awaiting BSR',  value: stats.bsr,    colour: 'text-orange-300' },
   ] as stat}
     <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center">
       <p class="text-2xl font-bold {stat.colour}">{stat.value}</p>

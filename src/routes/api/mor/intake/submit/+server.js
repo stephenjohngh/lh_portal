@@ -12,39 +12,40 @@
 //   is_anonymous      boolean (optional, default false)
 //   reporter_name     string  (optional)
 //   reporter_contact  string  (optional)
-//   photo_urls        string[] (optional, URLs from /api/mor/intake/upload)
+//   photos            { url, mimeType }[]  (optional, from /api/mor/intake/upload)
 //
 // Returns: { success: true, reference: 'MOR-2026-000001' }
 
-import { json }               from '@sveltejs/kit';
-import { createClient }       from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL }      from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
-import { checkRateLimit }     from '$lib/server/publicRateLimit.js';
-import { getLogger }          from '$lib/utils/logger';
+import { json }                       from '@sveltejs/kit';
+import { createClient }               from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL }        from '$env/static/public';
+import { SUPABASE_SERVICE_ROLE_KEY }  from '$env/static/private';
+import { checkRateLimit }             from '$lib/server/publicRateLimit.js';
+import { isSameOrigin,
+         isTrustedStorageUrl }        from '$lib/server/verifyOrigin.js';
+import { generateMorReference }       from '$lib/utils/morReference';
+import { logAudit,
+         getIpAddress,
+         getUserAgent }                from '$lib/server/auditLogger';
+import { getLogger }                  from '$lib/utils/logger';
 
 const logger = getLogger('mor/intake/submit');
 
-// Service role client — bypasses RLS for case creation
+const MAX_PHOTOS = 5;
+
 let _svc = null;
 function getSvc() {
   _svc ??= createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   return _svc;
 }
 
-/** Generate the next MOR-YYYY-NNNNNN reference (same logic as morStore.js) */
-async function generateReference(svc) {
-  const year = new Date().getFullYear();
-  const { count, error } = await svc
-    .from('mor_cases')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', `${year}-01-01T00:00:00Z`)
-    .lt('created_at',  `${year + 1}-01-01T00:00:00Z`);
-  if (error) throw error;
-  return `MOR-${year}-${String((count ?? 0) + 1).padStart(6, '0')}`;
-}
+export async function POST({ request, url }) {
 
-export async function POST({ request }) {
+  // ── Same-origin / Referer check ─────────────────────────────────────────
+  if (!isSameOrigin(request, url)) {
+    logger('Cross-origin submit rejected');
+    return json({ error: 'Cross-origin requests are not permitted.' }, { status: 403 });
+  }
 
   // ── Rate limiting ────────────────────────────────────────────────────────
   const allowed = await checkRateLimit(request, 'case_submit');
@@ -65,59 +66,81 @@ export async function POST({ request }) {
 
   const {
     description,
-    location_text  = null,
-    urgency        = false,
-    is_anonymous   = false,
-    reporter_name  = null,
+    location_text    = null,
+    urgency          = false,
+    is_anonymous     = false,
+    reporter_name    = null,
     reporter_contact = null,
-    photo_urls     = [],
+    photos           = [],
   } = body ?? {};
 
-  // ── Validate ─────────────────────────────────────────────────────────────
+  // ── Validate description ─────────────────────────────────────────────────
   if (!description || typeof description !== 'string' || description.trim().length < 20) {
     return json(
       { error: 'Please provide a description of at least 20 characters.' },
       { status: 400 }
     );
   }
-  if (photo_urls.length > 5) {
-    return json({ error: 'Maximum 5 photos per report.' }, { status: 400 });
+
+  // ── Validate photos array shape and URLs ─────────────────────────────────
+  if (!Array.isArray(photos)) {
+    return json({ error: 'Invalid photos field.' }, { status: 400 });
+  }
+  if (photos.length > MAX_PHOTOS) {
+    return json({ error: `Maximum ${MAX_PHOTOS} photos per report.` }, { status: 400 });
+  }
+  const cleanPhotos = [];
+  for (const p of photos) {
+    if (!p || typeof p !== 'object') continue;
+    const photoUrl  = typeof p.url === 'string' ? p.url : '';
+    const mimeType  = typeof p.mimeType === 'string' ? p.mimeType : 'image/jpeg';
+    if (!isTrustedStorageUrl(photoUrl)) {
+      logger('⚠ Rejected untrusted photo URL on intake');
+      return json(
+        { error: 'One of the photo references could not be verified. Please re-upload.' },
+        { status: 400 }
+      );
+    }
+    cleanPhotos.push({ url: photoUrl, mimeType });
   }
 
   const svc = getSvc();
   const now = new Date().toISOString();
 
-  // ── Create case ───────────────────────────────────────────────────────────
+  // ── Generate reference ───────────────────────────────────────────────────
   let reference;
   try {
-    reference = await generateReference(svc);
+    reference = await generateMorReference(svc);
   } catch (err) {
     logger('❌ generateReference failed:', err.message);
     return json({ error: 'Could not create case. Please try again.' }, { status: 500 });
   }
 
+  // ── Insert case ──────────────────────────────────────────────────────────
   let caseRow;
   try {
     const { data, error } = await svc
       .from('mor_cases')
       .insert({
         reference,
-        status:             'submitted',
-        mechanism:          'unknown',
-        urgency:            urgency === true,
-        description:        description.trim(),
-        location_text:      location_text?.trim() || null,
-        channel:            'online',
-        reporter_type:      is_anonymous ? 'anonymous' : 'resident',
-        reporter_name:      is_anonymous ? null : (reporter_name?.trim() || null),
-        reporter_contact:   is_anonymous ? null : (reporter_contact?.trim() || null),
-        is_anonymous:       is_anonymous === true,
+        status:              'submitted',
+        mechanism:           'unknown',
+        urgency:             urgency === true,
+        description:         description.trim(),
+        location_text:       typeof location_text === 'string' ? (location_text.trim() || null) : null,
+        channel:             'online',
+        // Public submissions default to 'unknown' so triage staff can
+        // re-classify accurately — not every public reporter is a resident.
+        reporter_type:       is_anonymous ? 'anonymous' : 'unknown',
+        reporter_name:       is_anonymous ? null : (typeof reporter_name === 'string' ? (reporter_name.trim() || null) : null),
+        reporter_contact:    is_anonymous ? null : (typeof reporter_contact === 'string' ? (reporter_contact.trim() || null) : null),
+        is_anonymous:        is_anonymous === true,
         identification_date: now,
-        received_date:      now,
-        created_at:         now,
-        updated_at:         now,
-        created_by:         null, // anonymous public submission
-        updated_by:         null,
+        received_date:       now,
+        created_at:          now,
+        updated_at:          now,
+        created_by:          null,
+        updated_by:          null,
       })
       .select('id, reference')
       .single();
@@ -129,31 +152,57 @@ export async function POST({ request }) {
     return json({ error: 'Could not create case. Please try again.' }, { status: 500 });
   }
 
-  // ── Create media_attachments for photos ──────────────────────────────────
-  if (photo_urls.length > 0) {
-    const photoRows = photo_urls.map(url => ({
-      entity_type:      'mor_case',
-      entity_id:        caseRow.id,
-      storage_url:      url,
-      mime_type:        'image/jpeg',
-      created_at:       now,
-      created_by:       null,
+  // ── Attach photos (media_attachments) — best-effort ──────────────────────
+  if (cleanPhotos.length > 0) {
+    const photoRows = cleanPhotos.map(p => ({
+      entity_type: 'mor_case',
+      entity_id:   caseRow.id,
+      storage_url: p.url,
+      mime_type:   p.mimeType,
+      created_at:  now,
+      created_by:  null,
     }));
     const { error: pErr } = await svc.from('media_attachments').insert(photoRows);
     if (pErr) logger('⚠ media_attachments insert failed:', pErr.message);
-    // Non-fatal — case is already created; photos can be re-attached manually
+    // Non-fatal — the case row already exists.
   }
 
-  // ── Timeline entry ────────────────────────────────────────────────────────
-  await svc.from('mor_timeline_entries').insert({
-    case_id:     caseRow.id,
-    entry_type:  'status_change',
-    content:     `Case submitted via public intake form.${photo_urls.length > 0 ? ` ${photo_urls.length} photo(s) attached.` : ''}`,
-    author_id:   null,
-    author_name: 'Public submission',
-    from_status: null,
-    to_status:   'submitted',
-    created_at:  now,
+  // ── Append timeline entry ────────────────────────────────────────────────
+  try {
+    const { error: tErr } = await svc.from('mor_timeline_entries').insert({
+      case_id:     caseRow.id,
+      entry_type:  'status_change',
+      content:     `Case submitted via public intake form.${
+                     cleanPhotos.length > 0 ? ` ${cleanPhotos.length} photo(s) attached.` : ''
+                   }`,
+      author_id:   null,
+      author_name: 'Public submission',
+      from_status: null,
+      to_status:   'submitted',
+      created_at:  now,
+    });
+    if (tErr) logger('⚠ timeline insert failed:', tErr.message);
+  } catch (err) {
+    logger('⚠ timeline insert exception:', err.message);
+  }
+
+  // ── Server-side audit log entry ──────────────────────────────────────────
+  // userId is null (anonymous), but userEmail is required by logAudit so we
+  // pass a synthetic sentinel that the audit-log viewer can recognise.
+  await logAudit({
+    userId:        null,
+    userEmail:     'public-intake@mor.local',
+    ipAddress:     getIpAddress(request),
+    userAgent:     getUserAgent(request),
+    eventType:     'create',
+    eventCategory: 'mor',
+    eventAction:   'public_intake',
+    targetType:    'mor_case',
+    targetId:      caseRow.id,
+    targetName:    caseRow.reference,
+    appId:         'mor',
+    changes:       { after: { reference: caseRow.reference, channel: 'online', is_anonymous: !!is_anonymous } },
+    severity:      'info',
   });
 
   logger('✅ Public MOR case created:', reference);

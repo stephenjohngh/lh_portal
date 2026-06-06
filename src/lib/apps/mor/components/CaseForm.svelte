@@ -31,12 +31,12 @@
   // ── reactive ────────────────────────────────────────────────────────────────
   $: if (is_anonymous) { reporter_name = ''; reporter_contact = ''; }
 
-  // Default identification_date to now when form opens
-  $: if (show && !identification_date) {
-    const now = new Date();
-    // datetime-local needs 'YYYY-MM-DDTHH:mm'
-    identification_date = now.toISOString().slice(0, 16);
-  }
+  // Reset every time the modal transitions from closed to open. Closing via
+  // the Modal X button skips the explicit Cancel handler, so without this
+  // the previous attempt's values would persist on the next open.
+  let prevShow = false;
+  $: if (show && !prevShow) reset();
+  $: prevShow = show;
 
   function reset() {
     description = ''; location_text = ''; mechanism = 'unknown';

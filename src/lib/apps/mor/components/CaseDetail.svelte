@@ -1,19 +1,29 @@
 <!-- src/lib/apps/mor/components/CaseDetail.svelte -->
+<!-- Full case workflow view. Every action that writes to the store is
+     surfaced through a modal — no inline expanding boxes. The status of
+     the case drives which "next step" button(s) are shown in the action
+     panel; everything else (mitigations, timeline, header) is always-on. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { morStore }    from '$lib/apps/mor/stores/morStore';
-  import Badge        from '$lib/components/common/Badge.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import Badge          from '$lib/components/common/Badge.svelte';
+  import Button         from '$lib/components/common/Button.svelte';
+  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import SlaClocks    from '$lib/apps/mor/components/SlaClocks.svelte';
-  import TimelineEntry from '$lib/apps/mor/components/TimelineEntry.svelte';
-  import TriageForm   from '$lib/apps/mor/components/TriageForm.svelte';
-  import DecisionForm from '$lib/apps/mor/components/DecisionForm.svelte';
-  import BsrHelper       from '$lib/apps/mor/components/BsrHelper.svelte';
-  import MitigationForm  from '$lib/apps/mor/components/MitigationForm.svelte';
+  import ConfirmDialog  from '$lib/components/common/ConfirmDialog.svelte';
+  import SlaClocks      from '$lib/apps/mor/components/SlaClocks.svelte';
+  import TimelineEntry  from '$lib/apps/mor/components/TimelineEntry.svelte';
+  import TriageForm     from '$lib/apps/mor/components/TriageForm.svelte';
+  import DecisionForm   from '$lib/apps/mor/components/DecisionForm.svelte';
+  import RejectionForm  from '$lib/apps/mor/components/RejectionForm.svelte';
+  import AssessmentForm from '$lib/apps/mor/components/AssessmentForm.svelte';
+  import CloseForm      from '$lib/apps/mor/components/CloseForm.svelte';
+  import ReopenForm     from '$lib/apps/mor/components/ReopenForm.svelte';
+  import PauseForm      from '$lib/apps/mor/components/PauseForm.svelte';
+  import BsrHelper      from '$lib/apps/mor/components/BsrHelper.svelte';
+  import MitigationForm from '$lib/apps/mor/components/MitigationForm.svelte';
   import {
     STATUS_LABEL, STATUS_COLOUR,
     MECHANISM_LABEL, MECHANISM_COLOUR,
@@ -24,179 +34,139 @@
 
   const dispatch = createEventDispatcher();
 
-  $: c  = $morStore.selectedCase;
-  $: tl = $morStore.timelineEntries;
-  $: loading  = $morStore.loading;
-  $: saving   = $morStore.saving;
-  $: storeErr = $morStore.error;
+  $: c   = $morStore.selectedCase;
+  $: tl  = $morStore.timelineEntries;
+  $: loading = $morStore.loading;
+  $: saving  = $morStore.saving;
+  $: error   = $morStore.error;       // bound directly — no local mirror
 
-  $: isAdmin  = $permissions.isAdmin;
-  $: canEdit  = $permissions.isAdmin || $permissions.canModify;
-  $: userId   = $auth.user?.id;
+  $: isAdmin = $permissions.isAdmin;
+  $: canEdit = $permissions.isAdmin || $permissions.canModify;
+  $: userId  = $auth.user?.id;
 
-  // ── modal visibility ──────────────────────────────────────────────────────
-  let showTriage       = false;
-  let showDecision     = false;
-  let showApproval     = false;
-  let showBsrNotice    = false;
-  let showBsrReport    = false;
-  let showNoteBox      = false;
-  let showAssessmentBox= false;
-  let showCloseBox     = false;
-  let showRejectionBox = false;
-  let showReopenBox    = false;
-  let showPauseBox     = false;
-  let pendingPauseType = 'reporter'; // 'reporter' | 'bsr'
-  let showMitForm      = false;
-  let editingMit       = null;      // null = add, object = edit
+  $: mitigations   = $morStore.mitigations ?? [];
+  $: interimMits   = mitigations.filter(m => m.type === 'interim');
+  $: permanentMits = mitigations.filter(m => m.type === 'permanent');
 
-  // Note / close / assessment / rejection / pause / reopen inputs
-  let noteText        = '';
-  let noteError       = '';
-  let advisorName     = '';
-  let assessSummary   = '';
-  let assessError     = '';
-  let lessonsLearned  = '';
-  let rejectionReason = '';
-  let rejectionError  = '';
-  let reopenReason    = '';
-  let reopenError     = '';
-  let pauseReason     = '';
+  // ── Modal visibility ─────────────────────────────────────────────────────
+  let showTriage      = false;
+  let showAssessment  = false;
+  let showDecision    = false;
+  let showRejection   = false;
+  let showBsrNotice   = false;
+  let showBsrReport   = false;
+  let showClose       = false;
+  let showReopen      = false;
+  let showPause       = false;
+  let pendingPauseType = 'reporter';
+  let showNote        = false;
+  let showMitForm     = false;
+  let editingMit      = null;
+  let pendingDeleteMit = null;
 
-  // Local error (from store action)
-  let actionError = '';
+  // Note input
+  let noteText  = '';
+  let noteError = '';
 
-  $: if (storeErr) actionError = storeErr;
+  // Per-action delete-confirm processing flag
+  let deletingMitId = null;
 
-  function clearErr() {
-    actionError = '';
-    morStore.clearError();
-  }
-
-  // ── action handlers ──────────────────────────────────────────────────────
+  // ── Action handlers ──────────────────────────────────────────────────────
+  function clearErr() { morStore.clearError(); }
 
   async function doAcknowledge() {
-    const r = await morStore.acknowledge(c.id);
-    if (!r.success) actionError = r.error;
+    await morStore.acknowledge(c.id);
   }
-
   async function doStartTriage() {
-    const r = await morStore.startTriage(c.id);
-    if (!r.success) actionError = r.error;
+    await morStore.startTriage(c.id);
   }
 
   async function handleTriage({ detail }) {
     const r = await morStore.submitTriage(c.id, detail);
     if (r.success) showTriage = false;
-    else actionError = r.error;
   }
 
-  async function handleAssessment() {
-    assessError = '';
-    if (!assessSummary.trim()) { assessError = 'Assessment summary is required.'; return; }
-    const r = await morStore.recordAssessment(c.id, {
-      advisorName: advisorName.trim(),
-      summary:     assessSummary.trim(),
-    });
-    if (r.success) { showAssessmentBox = false; advisorName = ''; assessSummary = ''; }
-    else actionError = r.error;
+  async function handleAssessment({ detail }) {
+    const r = await morStore.recordAssessment(c.id, detail);
+    if (r.success) showAssessment = false;
   }
 
   async function handleDecision({ detail }) {
     const r = await morStore.proposeDecision(c.id, detail);
     if (r.success) showDecision = false;
-    else actionError = r.error;
   }
 
   async function doApprove() {
-    const r = await morStore.approveDecision(c.id, { approvalNote: '' });
-    if (!r.success) actionError = r.error;
-    showApproval = false;
+    await morStore.approveDecision(c.id);
   }
 
-  async function doReject() {
-    rejectionError = '';
-    if (!rejectionReason.trim()) { rejectionError = 'Provide a reason for rejection.'; return; }
-    const r = await morStore.rejectDecision(c.id, { rejectionReason: rejectionReason.trim() });
-    if (r.success) { showRejectionBox = false; rejectionReason = ''; }
-    else actionError = r.error;
+  async function handleReject({ detail }) {
+    const r = await morStore.rejectDecision(c.id, detail);
+    if (r.success) showRejection = false;
   }
 
   async function handleBsrNotice({ detail }) {
     const r = await morStore.recordBsrNotice(c.id, detail);
     if (r.success) showBsrNotice = false;
-    else actionError = r.error;
   }
-
   async function handleBsrReport({ detail }) {
     const r = await morStore.recordBsrReport(c.id, detail);
     if (r.success) showBsrReport = false;
-    else actionError = r.error;
   }
 
   async function doAddNote() {
     noteError = '';
     if (!noteText.trim()) { noteError = 'Note cannot be empty.'; return; }
     const r = await morStore.addNote(c.id, noteText.trim());
-    if (r.success) { showNoteBox = false; noteText = ''; }
-    else actionError = r.error;
+    if (r.success) { showNote = false; noteText = ''; }
   }
 
-  async function doClose() {
-    const r = await morStore.closeCase(c.id, { lessonsLearned });
-    if (r.success) { showCloseBox = false; lessonsLearned = ''; }
-    else actionError = r.error;
+  async function handleClose({ detail }) {
+    const r = await morStore.closeCase(c.id, detail);
+    if (r.success) showClose = false;
   }
 
   async function doMarkRemediationComplete() {
-    const r = await morStore.markRemediationComplete(c.id);
-    if (!r.success) actionError = r.error;
+    await morStore.markRemediationComplete(c.id);
   }
 
-  async function doPause() {
-    const r = await morStore.pauseCase(c.id, pendingPauseType, pauseReason.trim());
-    if (r.success) { showPauseBox = false; pauseReason = ''; }
-    else actionError = r.error;
+  async function handlePause({ detail }) {
+    const r = await morStore.pauseCase(c.id, detail.pauseType, detail.reason);
+    if (r.success) showPause = false;
   }
 
   async function doResume() {
-    const r = await morStore.resumeCase(c.id);
-    if (!r.success) actionError = r.error;
+    await morStore.resumeCase(c.id);
   }
 
-  async function doReopen() {
-    reopenError = '';
-    if (!reopenReason.trim()) { reopenError = 'Please provide a reason for reopening.'; return; }
-    const r = await morStore.reopenCase(c.id, reopenReason.trim());
-    if (r.success) { showReopenBox = false; reopenReason = ''; }
-    else actionError = r.error;
+  async function handleReopen({ detail }) {
+    const r = await morStore.reopenCase(c.id, detail.reason);
+    if (r.success) showReopen = false;
   }
 
+  // Mitigations
   async function handleAddMitigation({ detail }) {
     const r = await morStore.addMitigation(c.id, detail);
     if (r.success) { showMitForm = false; editingMit = null; }
-    else actionError = r.error;
   }
-
   async function handleEditMitigation({ detail }) {
     const r = await morStore.updateMitigation(editingMit.id, c.id, detail);
     if (r.success) { showMitForm = false; editingMit = null; }
-    else actionError = r.error;
   }
-
   async function doMarkMitComplete(mit) {
     await morStore.updateMitigation(mit.id, c.id, { ...mit, status: 'complete' });
   }
-
-  async function doDeleteMit(mit) {
-    if (!confirm(`Delete this mitigation? This cannot be undone.`)) return;
-    const r = await morStore.deleteMitigation(mit.id, c.id);
-    if (!r.success) actionError = r.error;
+  function requestDeleteMit(mit) { pendingDeleteMit = mit; }
+  async function confirmDeleteMit() {
+    if (!pendingDeleteMit) return;
+    deletingMitId = pendingDeleteMit.id;
+    try {
+      await morStore.deleteMitigation(pendingDeleteMit.id, c.id);
+    } finally {
+      pendingDeleteMit = null;
+      deletingMitId = null;
+    }
   }
-
-  $: mitigations = $morStore.mitigations ?? [];
-  $: interimMits  = mitigations.filter(m => m.type === 'interim');
-  $: permanentMits = mitigations.filter(m => m.type === 'permanent');
 </script>
 
 {#if loading && !c}
@@ -237,20 +207,17 @@
     </div>
   </div>
 
-  <!-- SLA clocks -->
   <SlaClocks {c} />
 </div>
 
 <!-- ── Error display ───────────────────────────────────────────────────── -->
-{#if actionError}
+{#if error}
   <div class="mb-4">
-    <ErrorDisplay message={actionError} onDismiss={clearErr} />
+    <ErrorDisplay message={error} onDismiss={clearErr} />
   </div>
 {/if}
 
-<!-- ── Action panel ──────────────────────────────────────────────────────
-     Shows what the next step is and the available action buttons.
-──────────────────────────────────────────────────────────────────────── -->
+<!-- ── Action panel ────────────────────────────────────────────────────── -->
 {#if c.status !== 'closed' && c.status !== 'reclassified'}
   <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-4">
 
@@ -290,44 +257,13 @@
         Record the outcome when received.
       </p>
       {#if canEdit}
-        {#if !showAssessmentBox}
-          <Button variant="primary" size="medium" on:click={() => showAssessmentBox = true}>
-            Record Assessment Complete
-          </Button>
-        {:else}
-          <div class="space-y-2 mt-2">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label for="advisor-name" class="block text-xs text-slate-400 mb-1">Advisor name / firm</label>
-                <input id="advisor-name" type="text" bind:value={advisorName}
-                  class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                         focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="e.g. J Smith, ABC Engineers" />
-              </div>
-              <div><!-- spacer --></div>
-            </div>
-            <div>
-              <label for="assess-summary" class="block text-xs text-slate-400 mb-1">Assessment summary <span class="text-red-400">*</span></label>
-              <textarea id="assess-summary" bind:value={assessSummary} rows="3"
-                class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                       placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                placeholder="Summarise the technical opinion — mechanism, severity, threshold conclusion…"
-              ></textarea>
-              {#if assessError}<p class="text-red-400 text-xs">{assessError}</p>{/if}
-            </div>
-            <div class="flex gap-2">
-              <Button variant="primary"   size="medium" disabled={saving} on:click={handleAssessment}>
-                {saving ? 'Saving…' : 'Record Assessment'}
-              </Button>
-              <Button variant="secondary" size="medium" on:click={() => showAssessmentBox = false}>Cancel</Button>
-            </div>
-          </div>
-        {/if}
+        <Button variant="primary" size="medium" on:click={() => showAssessment = true}>
+          Record Assessment Complete
+        </Button>
       {/if}
 
     {:else if c.status === 'decision_pending'}
       {#if !c.decision_outcome}
-        <!-- No decision proposed yet -->
         <p class="text-sm text-slate-400 mb-3">
           <strong class="text-slate-200">Next:</strong> AP to propose a decision (BSR / internal / no action).
           A different user (PAP/admin) must then approve.
@@ -338,7 +274,6 @@
           </Button>
         {/if}
       {:else}
-        <!-- Decision proposed — show summary + approval/rejection buttons -->
         <div class="space-y-3">
           <div class="bg-slate-700/50 rounded-lg p-3">
             <p class="text-xs text-slate-500 mb-1">Decision proposed</p>
@@ -350,31 +285,14 @@
           </div>
 
           {#if isAdmin && userId !== c.decision_proposed_by}
-            <!-- PAP can approve or reject -->
             <div class="flex gap-2">
               <Button variant="primary" size="medium" disabled={saving} on:click={doApprove}>
                 {saving ? '…' : '✓ Approve Decision'}
               </Button>
-              {#if !showRejectionBox}
-                <Button variant="danger" size="medium" on:click={() => showRejectionBox = true}>
-                  Reject
-                </Button>
-              {/if}
+              <Button variant="danger" size="medium" on:click={() => showRejection = true}>
+                Reject
+              </Button>
             </div>
-            {#if showRejectionBox}
-              <div class="space-y-2">
-                <textarea bind:value={rejectionReason} rows="2"
-                  class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                         placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                  placeholder="Reason for rejection…"
-                ></textarea>
-                {#if rejectionError}<p class="text-red-400 text-xs">{rejectionError}</p>{/if}
-                <div class="flex gap-2">
-                  <Button variant="danger"     size="medium" disabled={saving} on:click={doReject}>Reject</Button>
-                  <Button variant="secondary"  size="medium" on:click={() => showRejectionBox = false}>Cancel</Button>
-                </div>
-              </div>
-            {/if}
           {:else if userId === c.decision_proposed_by}
             <p class="text-xs text-amber-300">
               Awaiting PAP approval — you proposed this decision and cannot approve it yourself.
@@ -426,6 +344,17 @@
           <strong class="text-slate-200">Next:</strong> Proceed with permanent remediation,
           respond to any BSR queries, and close the case once remediation is complete.
         </p>
+        {#if canEdit}
+          <div class="flex flex-wrap gap-2 pt-1">
+            <Button variant="primary" size="medium" disabled={saving} on:click={doMarkRemediationComplete}>
+              Move to Remediation
+            </Button>
+            <Button variant="secondary" size="medium"
+              on:click={() => { pendingPauseType = 'bsr'; showPause = true; }}>
+              Pause — awaiting BSR
+            </Button>
+          </div>
+        {/if}
       </div>
 
     {:else if c.status === 'in_remediation'}
@@ -440,23 +369,10 @@
               {saving ? '…' : '✓ Mark Remediation Complete'}
             </Button>
             <Button variant="secondary" size="medium"
-              on:click={() => { pendingPauseType = 'reporter'; showPauseBox = !showPauseBox; }}>
+              on:click={() => { pendingPauseType = 'reporter'; showPause = true; }}>
               Pause — awaiting reporter
             </Button>
           </div>
-          {#if showPauseBox}
-            <div class="space-y-2 mt-2">
-              <textarea bind:value={pauseReason} rows="2"
-                class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                       placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                placeholder="Reason for pausing…"
-              ></textarea>
-              <div class="flex gap-2">
-                <Button variant="primary"   size="medium" disabled={saving} on:click={doPause}>Pause Case</Button>
-                <Button variant="secondary" size="medium" on:click={() => showPauseBox = false}>Cancel</Button>
-              </div>
-            </div>
-          {/if}
         {/if}
       </div>
 
@@ -466,26 +382,9 @@
         Close the case and capture lessons learned.
       </p>
       {#if canEdit}
-        {#if !showCloseBox}
-          <Button variant="primary" size="medium" on:click={() => showCloseBox = true}>Close Case</Button>
-        {:else}
-          <div class="space-y-2">
-            <div>
-              <label for="lessons-learned" class="block text-xs text-slate-400 mb-1">
-                Lessons learned (recommended)
-              </label>
-              <textarea id="lessons-learned" bind:value={lessonsLearned} rows="3"
-                class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                       placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                placeholder="What can be improved or applied to future cases?"
-              ></textarea>
-            </div>
-            <div class="flex gap-2">
-              <Button variant="primary"   size="medium" disabled={saving} on:click={doClose}>Close Case</Button>
-              <Button variant="secondary" size="medium" on:click={() => showCloseBox = false}>Cancel</Button>
-            </div>
-          </div>
-        {/if}
+        <Button variant="primary" size="medium" on:click={() => showClose = true}>
+          Close Case
+        </Button>
       {/if}
 
     {:else if c.status === 'awaiting_reporter' || c.status === 'awaiting_bsr'}
@@ -525,25 +424,10 @@
       <p class="text-sm text-slate-400 mt-1"><strong class="text-slate-300">Lessons learned:</strong> {c.lessons_learned}</p>
     {/if}
     {#if isAdmin && c.status === 'closed'}
-      {#if !showReopenBox}
-        <button type="button"
-          class="text-xs text-slate-500 hover:text-slate-300 mt-2 underline"
-          on:click={() => showReopenBox = true}
-        >Reopen case (admin)</button>
-      {:else}
-        <div class="mt-3 space-y-2">
-          <textarea bind:value={reopenReason} rows="2"
-            class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
-                   placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-            placeholder="Reason for reopening (required)…"
-          ></textarea>
-          {#if reopenError}<p class="text-red-400 text-xs">{reopenError}</p>{/if}
-          <div class="flex gap-2">
-            <Button variant="primary"   size="medium" disabled={saving} on:click={doReopen}>Reopen</Button>
-            <Button variant="secondary" size="medium" on:click={() => { showReopenBox = false; reopenReason = ''; }}>Cancel</Button>
-          </div>
-        </div>
-      {/if}
+      <button type="button"
+        class="text-xs text-slate-500 hover:text-slate-300 mt-2 underline"
+        on:click={() => showReopen = true}
+      >Reopen case (admin)</button>
     {/if}
   </div>
 {/if}
@@ -592,9 +476,11 @@
     {#if c.triage_outcome}
       <div>
         <p class="text-xs text-slate-500">Triage</p>
-        <Badge bgClass={TRIAGE_COLOUR[c.triage_outcome] ?? 'bg-slate-600'} class="mt-0.5">
-          {TRIAGE_LABEL[c.triage_outcome]}
-        </Badge>
+        <div class="mt-0.5">
+          <Badge bgClass={TRIAGE_COLOUR[c.triage_outcome] ?? 'bg-slate-600'}>
+            {TRIAGE_LABEL[c.triage_outcome]}
+          </Badge>
+        </div>
         {#if c.triage_rationale}
           <p class="text-slate-400 text-xs mt-1">{c.triage_rationale}</p>
         {/if}
@@ -652,8 +538,8 @@
     <p class="text-sm text-slate-500 italic">No mitigations recorded yet.</p>
   {:else}
     {@const mitGroups = [
-      { label: 'Interim', items: interimMits,   accent: 'text-amber-400',   badge: 'bg-amber-700' },
-      { label: 'Permanent', items: permanentMits, accent: 'text-emerald-400', badge: 'bg-emerald-700' },
+      { label: 'Interim',   items: interimMits,   accent: 'text-amber-400'   },
+      { label: 'Permanent', items: permanentMits, accent: 'text-emerald-400' },
     ]}
     {#each mitGroups as grp}
       {#if grp.items.length > 0}
@@ -669,7 +555,7 @@
                       {#if mit.owner}<span>Owner: {mit.owner}</span>{/if}
                       {#if mit.target_date}<span>Target: {mit.target_date}</span>{/if}
                       <span class="
-                        {mit.status === 'complete'   ? 'text-emerald-400' :
+                        {mit.status === 'complete'    ? 'text-emerald-400' :
                          mit.status === 'in_progress' ? 'text-amber-400' : 'text-slate-400'}
                         font-medium capitalize">{mit.status.replace('_', ' ')}</span>
                     </div>
@@ -692,7 +578,8 @@
                   {#if isAdmin}
                     <button type="button"
                       class="text-xs text-red-500 hover:text-red-400 px-1 py-1 ml-1"
-                      on:click={() => doDeleteMit(mit)}
+                      title="Delete mitigation"
+                      on:click={() => requestDeleteMit(mit)}
                     >✕</button>
                   {/if}
                 </div>
@@ -709,12 +596,12 @@
 <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-sm font-semibold text-slate-300">Timeline</h3>
-    {#if !showNoteBox}
-      <Button variant="secondary" size="small" on:click={() => showNoteBox = true}>+ Add Note</Button>
+    {#if !showNote}
+      <Button variant="secondary" size="small" on:click={() => showNote = true}>+ Add Note</Button>
     {/if}
   </div>
 
-  {#if showNoteBox}
+  {#if showNote}
     <div class="mb-4 space-y-2">
       <textarea bind:value={noteText} rows="3"
         class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm text-white
@@ -726,7 +613,7 @@
         <Button variant="primary"   size="medium" disabled={saving} on:click={doAddNote}>
           {saving ? 'Saving…' : 'Add Note'}
         </Button>
-        <Button variant="secondary" size="medium" on:click={() => { showNoteBox = false; noteText = ''; noteError = ''; }}>
+        <Button variant="secondary" size="medium" on:click={() => { showNote = false; noteText = ''; noteError = ''; }}>
           Cancel
         </Button>
       </div>
@@ -748,18 +635,21 @@
 
 <!-- ── Modals ─────────────────────────────────────────────────────────── -->
 <TriageForm
-  show={showTriage}
-  {saving}
-  error={showTriage ? actionError : ''}
+  show={showTriage} {saving} {error}
   on:submit={handleTriage}
   on:close={() => { showTriage = false; clearErr(); }}
   on:clearError={clearErr}
 />
 
+<AssessmentForm
+  show={showAssessment} {saving} {error}
+  on:submit={handleAssessment}
+  on:close={() => { showAssessment = false; clearErr(); }}
+  on:clearError={clearErr}
+/>
+
 <DecisionForm
-  show={showDecision}
-  {saving}
-  error={showDecision ? actionError : ''}
+  show={showDecision} {saving} {error}
   existingOutcome={c?.decision_outcome ?? ''}
   existingRationale={c?.decision_rationale ?? ''}
   on:submit={handleDecision}
@@ -767,34 +657,64 @@
   on:clearError={clearErr}
 />
 
+<RejectionForm
+  show={showRejection} {saving} {error}
+  on:submit={handleReject}
+  on:close={() => { showRejection = false; clearErr(); }}
+  on:clearError={clearErr}
+/>
+
 <BsrHelper
-  show={showBsrNotice}
-  mode="notice"
-  {saving}
-  {c}
-  error={showBsrNotice ? actionError : ''}
+  show={showBsrNotice} mode="notice" {saving} {c} {error}
   on:submit={handleBsrNotice}
   on:close={() => { showBsrNotice = false; clearErr(); }}
   on:clearError={clearErr}
 />
 
 <BsrHelper
-  show={showBsrReport}
-  mode="report"
-  {saving}
-  {c}
-  error={showBsrReport ? actionError : ''}
+  show={showBsrReport} mode="report" {saving} {c} {error}
   on:submit={handleBsrReport}
   on:close={() => { showBsrReport = false; clearErr(); }}
   on:clearError={clearErr}
 />
 
+<PauseForm
+  show={showPause} {saving} {error}
+  pauseType={pendingPauseType}
+  on:submit={handlePause}
+  on:close={() => { showPause = false; clearErr(); }}
+  on:clearError={clearErr}
+/>
+
+<CloseForm
+  show={showClose} {saving} {error}
+  on:submit={handleClose}
+  on:close={() => { showClose = false; clearErr(); }}
+  on:clearError={clearErr}
+/>
+
+<ReopenForm
+  show={showReopen} {saving} {error}
+  on:submit={handleReopen}
+  on:close={() => { showReopen = false; clearErr(); }}
+  on:clearError={clearErr}
+/>
+
 <MitigationForm
-  show={showMitForm}
-  {saving}
+  show={showMitForm} {saving} {error}
   mitigation={editingMit}
-  error={showMitForm ? actionError : ''}
   on:submit={editingMit ? handleEditMitigation : handleAddMitigation}
   on:close={() => { showMitForm = false; editingMit = null; clearErr(); }}
   on:clearError={clearErr}
+/>
+
+<ConfirmDialog
+  show={!!pendingDeleteMit}
+  title="Delete mitigation"
+  message="Delete this mitigation? This cannot be undone."
+  confirmText="Delete"
+  danger={true}
+  processing={!!deletingMitId}
+  on:confirm={confirmDeleteMit}
+  on:cancel={() => { pendingDeleteMit = null; }}
 />

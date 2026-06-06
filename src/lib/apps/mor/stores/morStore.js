@@ -5,6 +5,7 @@ import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
+import { generateMorReference } from '$lib/utils/morReference';
 
 const logger = getLogger('morStore');
 
@@ -22,7 +23,7 @@ const CASE_SELECT = `
 `.trim();
 
 function createMorStore() {
-  const { subscribe, update, set } = writable({
+  const { subscribe, update } = writable({
     cases:          [],
     selectedCase:   null,
     timelineEntries:[],
@@ -50,27 +51,49 @@ function createMorStore() {
     }
   }
 
-  /** Generate next reference in MOR-YYYY-NNNNNN format */
-  async function generateReference() {
-    const year = new Date().getFullYear();
-    const { count, error } = await supabase
-      .from('mor_cases')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', `${year}-01-01T00:00:00Z`)
-      .lt('created_at',  `${year + 1}-01-01T00:00:00Z`);
-    if (error) throw error;
-    return `MOR-${year}-${String((count ?? 0) + 1).padStart(6, '0')}`;
-  }
-
   /** Append an immutable timeline entry */
   async function addTimelineEntry(caseId, type, content, authorId, authorName, extra = {}) {
-    await api.create('mor_timeline_entries', {
+    return api.create('mor_timeline_entries', {
       case_id:     caseId,
       entry_type:  type,
       content:     content ?? '',
       author_id:   authorId,
       author_name: authorName,
       ...extra,
+    }, true);
+  }
+
+  /**
+   * Refresh a single case + its timeline + mitigations and splice the result
+   * into the store's in-memory list. Replaces the previous fetchCase + fetchCases
+   * double round-trip after every mutation.
+   */
+  async function refreshCase(caseId) {
+    const [{ data: caseData, error: cErr },
+           { data: timeline, error: tErr },
+           { data: mits, error: mErr }] = await Promise.all([
+      supabase.from('mor_cases').select(CASE_SELECT).eq('id', caseId).single(),
+      supabase.from('mor_timeline_entries').select('*').eq('case_id', caseId)
+              .order('created_at', { ascending: true }),
+      supabase.from('mor_mitigations').select('*').eq('case_id', caseId)
+              .order('created_at', { ascending: true }),
+    ]);
+    if (cErr) throw cErr;
+    if (tErr) throw tErr;
+    if (mErr) throw mErr;
+
+    update(s => {
+      const idx = s.cases.findIndex(c => c.id === caseId);
+      const nextCases = idx >= 0
+        ? s.cases.map((c, i) => i === idx ? caseData : c)
+        : [caseData, ...s.cases]; // not yet in list — prepend
+      return {
+        ...s,
+        cases:           nextCases,
+        selectedCase:    s.selectedCase?.id === caseId ? caseData : s.selectedCase,
+        timelineEntries: timeline ?? [],
+        mitigations:     mits ?? [],
+      };
     });
   }
 
@@ -94,34 +117,8 @@ function createMorStore() {
   async function fetchCase(id) {
     update(s => ({ ...s, loading: true, error: '' }));
     try {
-      const { data: caseData, error: cErr } = await supabase
-        .from('mor_cases')
-        .select(CASE_SELECT)
-        .eq('id', id)
-        .single();
-      if (cErr) throw cErr;
-
-      const { data: timeline, error: tErr } = await supabase
-        .from('mor_timeline_entries')
-        .select('*')
-        .eq('case_id', id)
-        .order('created_at', { ascending: true });
-      if (tErr) throw tErr;
-
-      const { data: mits, error: mErr } = await supabase
-        .from('mor_mitigations')
-        .select('*')
-        .eq('case_id', id)
-        .order('created_at', { ascending: true });
-      if (mErr) throw mErr;
-
-      update(s => ({
-        ...s,
-        selectedCase:    caseData,
-        timelineEntries: timeline ?? [],
-        mitigations:     mits ?? [],
-        loading: false,
-      }));
+      await refreshCase(id);
+      update(s => ({ ...s, loading: false }));
     } catch (err) {
       logger('❌ fetchCase:', err.message);
       update(s => ({ ...s, error: err.message, loading: false }));
@@ -133,7 +130,8 @@ function createMorStore() {
     try {
       const user = await currentUser();
       const profile = await currentUserProfile();
-      const reference = await generateReference();
+      // Use the user-token client so RLS still applies (vs service role).
+      const reference = await generateMorReference(supabase);
       const now = new Date().toISOString();
 
       const row = await api.create('mor_cases', {
@@ -150,10 +148,9 @@ function createMorStore() {
         is_anonymous:        data.is_anonymous ?? false,
         identification_date: data.identification_date ?? now,
         received_date:       now,
-        created_at:          now,
-        updated_at:          now,
         created_by:          user?.id ?? null,
         updated_by:          user?.id ?? null,
+        // updated_at/created_at stamped by DB defaults + trigger (mig 137)
       }, true);
 
       await addTimelineEntry(
@@ -168,7 +165,7 @@ function createMorStore() {
         afterData: { reference: row.reference, status: 'submitted', urgency: row.urgency },
       });
 
-      await fetchCases();
+      await refreshCase(row.id);
       update(s => ({ ...s, saving: false }));
       return { success: true, case: row };
     } catch (err) {
@@ -178,14 +175,23 @@ function createMorStore() {
     }
   }
 
-  /** Generic status transition — records timeline entry */
-  async function transitionStatus(caseId, newStatus, content, extra = {}) {
+  /**
+   * Generic status transition — validates, updates row, records timeline entry.
+   * @param {string}  caseId
+   * @param {string}  newStatus
+   * @param {string}  content                      Human-readable summary.
+   * @param {object} [options]
+   * @param {string} [options.entryType]           Timeline entry type override
+   *                                               (default 'status_change').
+   * @param {object} [options.extraFields]         Additional column updates.
+   */
+  async function transitionStatus(caseId, newStatus, content, options = {}) {
+    const { entryType = 'status_change', extraFields = {} } = options;
     update(s => ({ ...s, saving: true, error: '' }));
     try {
       const user = await currentUser();
       const profile = await currentUserProfile();
 
-      // Read current status to validate transition
       const current = await api.getById('mor_cases', caseId, 'status');
       if (!isValidTransition(current.status, newStatus)) {
         throw new Error(`Invalid transition: ${current.status} → ${newStatus}`);
@@ -194,20 +200,17 @@ function createMorStore() {
       const now = new Date().toISOString();
       const updates = {
         status:     newStatus,
-        updated_at: now,
         updated_by: user?.id,
-        ...extra,
+        ...extraFields,
       };
-      // Stamp timestamp fields on specific transitions
-      if (newStatus === 'acknowledged')     updates.acknowledged_at = now;
-      if (newStatus === 'in_triage')        { /* stamped by submitTriage */ }
-      if (newStatus === 'decision_pending') updates.decision_at = null; // clear on re-entry
-      if (newStatus === 'closed')           updates.closed_at   = now;
+      // Stamp workflow milestones (updated_at handled by DB trigger).
+      if (newStatus === 'acknowledged') updates.acknowledged_at = now;
+      if (newStatus === 'closed')       updates.closed_at       = now;
 
       await api.update('mor_cases', caseId, updates);
 
       await addTimelineEntry(
-        caseId, 'status_change', content,
+        caseId, entryType, content,
         user?.id, profile.full_name,
         { from_status: current.status, to_status: newStatus }
       );
@@ -217,8 +220,7 @@ function createMorStore() {
         afterData: { status: newStatus },
       });
 
-      await fetchCase(caseId);
-      await fetchCases();
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -243,7 +245,6 @@ function createMorStore() {
       const profile = await currentUserProfile();
       const now     = new Date().toISOString();
 
-      // Determine next status from triage outcome
       const nextStatus =
         outcome === 'clearly_reportable'  ? 'decision_pending' :
         outcome === 'possibly_reportable' ? 'in_assessment' :
@@ -260,7 +261,6 @@ function createMorStore() {
         triage_rationale: rationale,
         triage_by:        user?.id,
         triaged_at:       now,
-        updated_at:       now,
         updated_by:       user?.id,
       });
 
@@ -276,8 +276,7 @@ function createMorStore() {
         afterData: { triage_outcome: outcome },
       });
 
-      await fetchCase(caseId);
-      await fetchCases();
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -292,9 +291,7 @@ function createMorStore() {
     try {
       const user    = await currentUser();
       const profile = await currentUserProfile();
-      const now     = new Date().toISOString();
 
-      // Move to decision_pending
       const current = await api.getById('mor_cases', caseId, 'status');
       if (!isValidTransition(current.status, 'decision_pending')) {
         throw new Error('Cannot move to decision pending from current status');
@@ -302,7 +299,6 @@ function createMorStore() {
 
       await api.update('mor_cases', caseId, {
         status:     'decision_pending',
-        updated_at: now,
         updated_by: user?.id,
       });
 
@@ -313,8 +309,12 @@ function createMorStore() {
         { from_status: current.status, to_status: 'decision_pending' }
       );
 
-      await fetchCase(caseId);
-      await fetchCases();
+      logAudit('update', 'mor_case', caseId, 'assessment', {
+        appId: 'mor', eventCategory: 'mor', severity: 'info',
+        afterData: { assessment_advisor: advisorName },
+      });
+
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -329,14 +329,18 @@ function createMorStore() {
     try {
       const user    = await currentUser();
       const profile = await currentUserProfile();
-      const now     = new Date().toISOString();
+
+      // Validate that the case is in a state where a decision can be proposed.
+      const current = await api.getById('mor_cases', caseId, 'status');
+      if (current.status !== 'decision_pending') {
+        throw new Error('A decision can only be proposed when the case is in decision_pending.');
+      }
 
       await api.update('mor_cases', caseId, {
         decision_outcome:     outcome,
         decision_rationale:   rationale,
         decision_proposed_by: user?.id,
         decision_approved_by: null, // clear any previous approval
-        updated_at:           now,
         updated_by:           user?.id,
       });
 
@@ -351,8 +355,7 @@ function createMorStore() {
         afterData: { decision_outcome: outcome },
       });
 
-      await fetchCase(caseId);
-      await fetchCases();
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -362,14 +365,13 @@ function createMorStore() {
     }
   }
 
-  async function approveDecision(caseId, { approvalNote }) {
+  async function approveDecision(caseId) {
     update(s => ({ ...s, saving: true, error: '' }));
     try {
       const user    = await currentUser();
       const profile = await currentUserProfile();
       const now     = new Date().toISOString();
 
-      // Read case to get the decision outcome and enforce different-user check
       const current = await api.getById('mor_cases', caseId,
         'status, decision_outcome, decision_proposed_by');
 
@@ -390,7 +392,6 @@ function createMorStore() {
         status:               nextStatus,
         decision_approved_by: user?.id,
         decision_at:          now,
-        updated_at:           now,
         updated_by:           user?.id,
       };
       if (nextStatus === 'closed') updates.closed_at = now;
@@ -399,7 +400,7 @@ function createMorStore() {
 
       await addTimelineEntry(
         caseId, 'approval',
-        `Decision approved by ${profile.full_name}. Next: ${nextStatus.replace(/_/g, ' ')}.${approvalNote ? ' ' + approvalNote : ''}`,
+        `Decision approved by ${profile.full_name}. Next: ${nextStatus.replace(/_/g, ' ')}.`,
         user?.id, profile.full_name,
         { from_status: current.status, to_status: nextStatus }
       );
@@ -409,8 +410,7 @@ function createMorStore() {
         afterData: { status: nextStatus, approved_by: user?.id },
       });
 
-      await fetchCase(caseId);
-      await fetchCases();
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -421,42 +421,20 @@ function createMorStore() {
   }
 
   async function rejectDecision(caseId, { rejectionReason }) {
-    update(s => ({ ...s, saving: true, error: '' }));
-    try {
-      const user    = await currentUser();
-      const profile = await currentUserProfile();
-      const now     = new Date().toISOString();
-
-      const current = await api.getById('mor_cases', caseId, 'status');
-
-      // Send back to in_triage for re-evaluation
-      await api.update('mor_cases', caseId, {
-        status:               'in_triage',
-        decision_proposed_by: null,
-        decision_approved_by: null,
-        decision_outcome:     null,
-        decision_rationale:   null,
-        decision_at:          null,
-        updated_at:           now,
-        updated_by:           user?.id,
-      });
-
-      await addTimelineEntry(
-        caseId, 'rejection',
-        `Decision rejected and returned to triage. Reason: ${rejectionReason}`,
-        user?.id, profile.full_name,
-        { from_status: current.status, to_status: 'in_triage' }
-      );
-
-      await fetchCase(caseId);
-      await fetchCases();
-      update(s => ({ ...s, saving: false }));
-      return { success: true };
-    } catch (err) {
-      logger('❌ rejectDecision:', err.message);
-      update(s => ({ ...s, saving: false, error: err.message }));
-      return { success: false, error: err.message };
-    }
+    return transitionStatus(
+      caseId, 'in_triage',
+      `Decision rejected and returned to triage. Reason: ${rejectionReason}`,
+      {
+        entryType: 'rejection',
+        extraFields: {
+          decision_proposed_by: null,
+          decision_approved_by: null,
+          decision_outcome:     null,
+          decision_rationale:   null,
+          decision_at:          null,
+        },
+      }
+    );
   }
 
   async function recordBsrNotice(caseId, { noticeRef, submittedAt, notes }) {
@@ -466,12 +444,12 @@ function createMorStore() {
       const profile = await currentUserProfile();
       const now     = new Date().toISOString();
 
+      // Stays in bsr_notice — only the report submission advances to bsr_report.
       await api.update('mor_cases', caseId, {
         bsr_notice_ref:          noticeRef.trim(),
         bsr_notice_submitted_at: submittedAt || now,
         bsr_notice_submitted_by: user?.id,
         bsr_notice_notes:        notes?.trim() || null,
-        updated_at:              now,
         updated_by:              user?.id,
       });
 
@@ -486,8 +464,7 @@ function createMorStore() {
         afterData: { bsr_notice_ref: noticeRef },
       });
 
-      await fetchCase(caseId);
-      await fetchCases();
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -498,49 +475,20 @@ function createMorStore() {
   }
 
   async function recordBsrReport(caseId, { reportRef, submittedAt, notes }) {
-    update(s => ({ ...s, saving: true, error: '' }));
-    try {
-      const user    = await currentUser();
-      const profile = await currentUserProfile();
-      const now     = new Date().toISOString();
-
-      // Transition to bsr_report
-      const current = await api.getById('mor_cases', caseId, 'status');
-      if (!isValidTransition(current.status, 'bsr_report')) {
-        throw new Error(`Cannot record BSR report from status: ${current.status}`);
+    const user = await currentUser();
+    return transitionStatus(
+      caseId, 'bsr_report',
+      `BSR full report submitted within 10-day deadline. Ref: ${reportRef}${notes ? '. ' + notes : ''}`,
+      {
+        entryType: 'bsr_report',
+        extraFields: {
+          bsr_report_ref:           reportRef.trim(),
+          bsr_report_submitted_at:  submittedAt || new Date().toISOString(),
+          bsr_report_submitted_by:  user?.id,
+          bsr_report_notes:         notes?.trim() || null,
+        },
       }
-
-      await api.update('mor_cases', caseId, {
-        status:                   'bsr_report',
-        bsr_report_ref:           reportRef.trim(),
-        bsr_report_submitted_at:  submittedAt || now,
-        bsr_report_submitted_by:  user?.id,
-        bsr_report_notes:         notes?.trim() || null,
-        updated_at:               now,
-        updated_by:               user?.id,
-      });
-
-      await addTimelineEntry(
-        caseId, 'bsr_report',
-        `BSR full report submitted within 10-day deadline. Ref: ${reportRef}${notes ? '. ' + notes : ''}`,
-        user?.id, profile.full_name,
-        { from_status: current.status, to_status: 'bsr_report' }
-      );
-
-      logAudit('update', 'mor_case', caseId, 'bsr_report', {
-        appId: 'mor', eventCategory: 'mor', severity: 'info',
-        afterData: { bsr_report_ref: reportRef },
-      });
-
-      await fetchCase(caseId);
-      await fetchCases();
-      update(s => ({ ...s, saving: false }));
-      return { success: true };
-    } catch (err) {
-      logger('❌ recordBsrReport:', err.message);
-      update(s => ({ ...s, saving: false, error: err.message }));
-      return { success: false, error: err.message };
-    }
+    );
   }
 
   async function addNote(caseId, content) {
@@ -549,15 +497,13 @@ function createMorStore() {
     try {
       const user    = await currentUser();
       const profile = await currentUserProfile();
-      const now     = new Date().toISOString();
 
       await addTimelineEntry(caseId, 'note', content.trim(), user?.id, profile.full_name);
 
-      await api.update('mor_cases', caseId, {
-        updated_at: now, updated_by: user?.id,
-      });
+      // Touch the case row so updated_at reflects activity.
+      await api.update('mor_cases', caseId, { updated_by: user?.id });
 
-      await fetchCase(caseId);
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -568,46 +514,14 @@ function createMorStore() {
   }
 
   async function closeCase(caseId, { lessonsLearned }) {
-    update(s => ({ ...s, saving: true, error: '' }));
-    try {
-      const user    = await currentUser();
-      const profile = await currentUserProfile();
-      const now     = new Date().toISOString();
-
-      const current = await api.getById('mor_cases', caseId, 'status');
-      if (!isValidTransition(current.status, 'closed')) {
-        throw new Error(`Cannot close case from status: ${current.status}`);
+    return transitionStatus(
+      caseId, 'closed',
+      `Case closed.${lessonsLearned ? ' Lessons learned: ' + lessonsLearned : ''}`,
+      {
+        entryType: 'closure',
+        extraFields: { lessons_learned: lessonsLearned?.trim() || null },
       }
-
-      await api.update('mor_cases', caseId, {
-        status:          'closed',
-        closed_at:       now,
-        lessons_learned: lessonsLearned?.trim() || null,
-        updated_at:      now,
-        updated_by:      user?.id,
-      });
-
-      await addTimelineEntry(
-        caseId, 'closure',
-        `Case closed.${lessonsLearned ? ' Lessons learned: ' + lessonsLearned : ''}`,
-        user?.id, profile.full_name,
-        { from_status: current.status, to_status: 'closed' }
-      );
-
-      logAudit('update', 'mor_case', caseId, 'closed', {
-        appId: 'mor', eventCategory: 'mor', severity: 'info',
-        afterData: { status: 'closed' },
-      });
-
-      await fetchCase(caseId);
-      await fetchCases();
-      update(s => ({ ...s, saving: false }));
-      return { success: true };
-    } catch (err) {
-      logger('❌ closeCase:', err.message);
-      update(s => ({ ...s, saving: false, error: err.message }));
-      return { success: false, error: err.message };
-    }
+    );
   }
 
   function clearError() {
@@ -632,27 +546,32 @@ function createMorStore() {
     const label    = pauseType === 'bsr' ? 'awaiting BSR response' : 'awaiting reporter information';
     return transitionStatus(
       caseId, toStatus,
-      `Case paused — ${label}.${reason ? ' ' + reason : ''}`
+      `Case paused — ${label}.${reason ? ' ' + reason : ''}`,
+      { entryType: 'sla_pause' }
     );
   }
 
   async function resumeCase(caseId) {
-    update(s => ({ ...s, saving: true, error: '' }));
+    let toStatus;
     try {
       const current = await api.getById('mor_cases', caseId, 'status');
-      const toStatus = current.status === 'awaiting_bsr' ? 'bsr_report' : 'in_remediation';
-      update(s => ({ ...s, saving: false }));
-      return transitionStatus(caseId, toStatus, 'Case resumed.');
+      toStatus = current.status === 'awaiting_bsr' ? 'bsr_report' : 'in_remediation';
     } catch (err) {
-      update(s => ({ ...s, saving: false, error: err.message }));
+      update(s => ({ ...s, error: err.message }));
       return { success: false, error: err.message };
     }
+    return transitionStatus(
+      caseId, toStatus,
+      'Case resumed.',
+      { entryType: 'sla_resume' }
+    );
   }
 
   async function reopenCase(caseId, reason) {
     return transitionStatus(
       caseId, 'reopened',
-      `Case reopened.${reason ? ' Reason: ' + reason : ''}`
+      `Case reopened.${reason ? ' Reason: ' + reason : ''}`,
+      { entryType: 'reopened' }
     );
   }
 
@@ -661,7 +580,6 @@ function createMorStore() {
     try {
       const user    = await currentUser();
       const profile = await currentUserProfile();
-      const now     = new Date().toISOString();
 
       await api.create('mor_mitigations', {
         case_id:     caseId,
@@ -671,8 +589,6 @@ function createMorStore() {
         target_date: data.target_date || null,
         status:      'open',
         notes:       data.notes?.trim() || null,
-        created_at:  now,
-        updated_at:  now,
         created_by:  user?.id,
         updated_by:  user?.id,
       }, true);
@@ -683,8 +599,9 @@ function createMorStore() {
         user?.id, profile.full_name
       );
 
-      await api.update('mor_cases', caseId, { updated_at: now, updated_by: user?.id });
-      await fetchCase(caseId);
+      // Touch the case row so updated_at reflects activity (trigger stamps it).
+      await api.update('mor_cases', caseId, { updated_by: user?.id });
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -698,19 +615,17 @@ function createMorStore() {
     update(s => ({ ...s, saving: true, error: '' }));
     try {
       const user = await currentUser();
-      const now  = new Date().toISOString();
+      // completed_at is auto-set by the DB trigger when status flips to 'complete'.
       const updates = {
         description: data.description?.trim(),
         owner:       data.owner?.trim() || null,
         target_date: data.target_date  || null,
         status:      data.status,
         notes:       data.notes?.trim() || null,
-        updated_at:  now,
         updated_by:  user?.id,
       };
-      if (data.status === 'complete' && !data.completed_at) updates.completed_at = now;
       await api.update('mor_mitigations', id, updates);
-      await fetchCase(caseId);
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {
@@ -724,7 +639,7 @@ function createMorStore() {
     update(s => ({ ...s, saving: true, error: '' }));
     try {
       await api.delete('mor_mitigations', id);
-      await fetchCase(caseId);
+      await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
     } catch (err) {

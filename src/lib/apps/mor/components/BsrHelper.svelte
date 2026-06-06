@@ -3,7 +3,7 @@
      mode = 'notice' | 'report'
      Generates pre-filled content from the case for copy-paste into the BSR portal. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
@@ -30,10 +30,16 @@
     ? bsrReportClock(c.identification_date)
     : null;
 
-  // Pre-fill submittedAt to now on open
-  $: if (show && !submittedAt) {
+  // Reset and pre-fill every time the modal opens (so closing via the
+  // X button does not leak stale state into the next open).
+  let prevShow = false;
+  $: if (show && !prevShow) {
+    ref         = '';
+    notes       = '';
+    refError    = '';
     submittedAt = new Date().toISOString().slice(0, 16);
   }
+  $: prevShow = show;
 
   // ── Pre-filled content ────────────────────────────────────────────────────
 
@@ -115,13 +121,16 @@ INTERNAL CASE REF: ${c.reference}
   }
 
   let copied = false;
+  let copyTimer = null;
   async function copyContent() {
     try {
       await navigator.clipboard.writeText(content);
       copied = true;
-      setTimeout(() => copied = false, 2000);
+      if (copyTimer) clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => { copied = false; copyTimer = null; }, 2000);
     } catch { /* ignore */ }
   }
+  onDestroy(() => { if (copyTimer) clearTimeout(copyTimer); });
 </script>
 
 <Modal {show} {title} size="xlarge" on:close={handleClose}>

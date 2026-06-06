@@ -25,6 +25,25 @@ const REJECT_LIKELIHOODS = new Set(['LIKELY', 'VERY_LIKELY']);
 // We check adult content and violence; spoof/racy/medical are ignored.
 const CHECKED_CATEGORIES = ['adult', 'violence'];
 
+// Module-level singleton — avoid building a new JWT auth client per request.
+// Cleared if credentials are missing (so we recheck once they're added).
+let _authClient = null;
+async function getAuthClient() {
+  if (_authClient) return _authClient;
+
+  const clientEmail   = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
+  const privateKeyRaw = process.env.GOOGLE_DRIVE_PRIVATE_KEY;
+  if (!clientEmail || !privateKeyRaw) return null;
+
+  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+  const auth = new google.auth.GoogleAuth({
+    credentials: { client_email: clientEmail, private_key: privateKey },
+    scopes: ['https://www.googleapis.com/auth/cloud-vision'],
+  });
+  _authClient = await auth.getClient();
+  return _authClient;
+}
+
 /**
  * Run Google Cloud Vision SafeSearch on an image buffer.
  *
@@ -32,24 +51,14 @@ const CHECKED_CATEGORIES = ['adult', 'violence'];
  * @returns {Promise<{ safe: boolean, reason?: string, skipped?: boolean }>}
  */
 export async function safeSearchScan(buffer) {
-  const clientEmail  = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
-  const privateKeyRaw = process.env.GOOGLE_DRIVE_PRIVATE_KEY;
-
-  if (!clientEmail || !privateKeyRaw) {
-    logger('⚠ Vision scan skipped — GOOGLE_DRIVE credentials not configured');
-    return { safe: true, skipped: true };
-  }
-
-  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-
   try {
-    // Obtain an access token using the service account.
-    // The googleapis auth library handles JWT signing and token caching.
-    const auth = new google.auth.GoogleAuth({
-      credentials: { client_email: clientEmail, private_key: privateKey },
-      scopes: ['https://www.googleapis.com/auth/cloud-vision'],
-    });
-    const client      = await auth.getClient();
+    const client = await getAuthClient();
+    if (!client) {
+      logger('⚠ Vision scan skipped — GOOGLE_DRIVE credentials not configured');
+      return { safe: true, skipped: true };
+    }
+
+    // googleapis auth client caches access tokens internally.
     const tokenResult = await client.getAccessToken();
     const token       = tokenResult.token;
 

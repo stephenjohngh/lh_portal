@@ -2,64 +2,67 @@
 <!-- Phase 1e — KPI dashboard: stats, BSR deadline tracker, status
      breakdown, recent activity. Reads from the already-loaded store. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { morStore } from '$lib/apps/mor/stores/morStore';
   import Badge from '$lib/components/common/Badge.svelte';
   import {
     bsrReportClock,
     STATUS_LABEL, STATUS_COLOUR,
-    BSR_TRACK_STATUSES, OPEN_STATUSES, STATUS_ORDER,
+    OPEN_STATUSES, STATUS_ORDER,
+    clockBgClass, clockTextClass,
   } from '$lib/apps/mor/utils/morHelpers';
-  import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import { fmtDate } from '$lib/utils/dates';
 
   const dispatch = createEventDispatcher();
+
+  // Tick so BSR clocks stay current while the dashboard is open.
+  let tick = 0;
+  let intervalId = null;
+  onMount(() => { intervalId = setInterval(() => tick++, 60_000); });
+  onDestroy(() => { if (intervalId) clearInterval(intervalId); });
+
+  const OPEN_SET = new Set(OPEN_STATUSES);
 
   $: cases = $morStore.cases;
 
   // ── Computed stats ────────────────────────────────────────────────────────
 
-  $: openCases = cases.filter(c => OPEN_STATUSES.includes(c.status));
+  $: openCases = cases.filter(c => OPEN_SET.has(c.status));
 
   // Cases on the BSR track without a submitted report (10-day clock running)
   $: bsrActive = cases.filter(c =>
     ['bsr_notice', 'bsr_report'].includes(c.status) && !c.bsr_report_submitted_at
   );
 
-  // Attach clocks and sort most urgent first
-  $: bsrWithClocks = bsrActive
+  // Attach clocks and sort most urgent first. Use msRemaining (raw) rather than
+  // daysLeft (rounded) so cases inside the same day boundary stay ordered.
+  // `tick` is referenced so the reactive re-runs on the interval.
+  $: bsrWithClocks = (tick, bsrActive
     .map(c => ({ ...c, clock: bsrReportClock(c.identification_date) }))
-    .sort((a, b) => (a.clock?.daysLeft ?? 99) - (b.clock?.daysLeft ?? 99));
+    .sort((a, b) => (a.clock?.msRemaining ?? Infinity) - (b.clock?.msRemaining ?? Infinity)));
 
   $: breachedCount = bsrWithClocks.filter(c => c.clock?.status === 'breach').length;
 
-  // Cases closed in the last 30 days
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Cases closed in the last 30 days. Reactive so the window slides as the
+  // page stays open, not snapshotted at mount time.
+  $: thirtyDaysAgo = (tick, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
   $: recentlyClosed = [...cases]
     .filter(c => c.status === 'closed' && c.closed_at && c.closed_at >= thirtyDaysAgo)
     .sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at))
     .slice(0, 6);
 
-  // Open cases by status (workflow order, non-zero only)
-  $: statusBreakdown = STATUS_ORDER
-    .map(s => ({ status: s, count: openCases.filter(c => c.status === s).length }))
-    .filter(s => s.count > 0);
+  // Open cases by status (workflow order, non-zero only).
+  // Group with a single pass then look up by status.
+  $: statusBreakdown = (() => {
+    const counts = new Map();
+    for (const c of openCases) counts.set(c.status, (counts.get(c.status) ?? 0) + 1);
+    return STATUS_ORDER
+      .filter(s => counts.has(s))
+      .map(s => ({ status: s, count: counts.get(s) }));
+  })();
 
   // Urgency breakdown
   $: urgentOpen = openCases.filter(c => c.urgency).length;
-
-  // ── Clock colour helpers ──────────────────────────────────────────────────
-  function clockBg(status) {
-    if (status === 'breach')   return 'bg-red-900/50 border-red-700';
-    if (status === 'critical') return 'bg-red-900/30 border-red-600';
-    if (status === 'warning')  return 'bg-amber-900/30 border-amber-600';
-    return 'bg-slate-700/40 border-slate-600';
-  }
-  function clockText(status) {
-    if (status === 'breach')   return 'text-red-300 font-bold';
-    if (status === 'critical') return 'text-red-300 font-semibold';
-    if (status === 'warning')  return 'text-amber-300';
-    return 'text-slate-300';
-  }
 </script>
 
 <div class="space-y-6">
@@ -119,7 +122,7 @@
           <div
             class="flex items-center gap-4 p-3 rounded-lg border cursor-pointer
                    hover:border-slate-500 transition-colors
-                   {cl ? clockBg(cl.status) : 'bg-slate-700/40 border-slate-600'}"
+                   {cl ? clockBgClass(cl.status) : 'bg-slate-700/40 border-slate-600'}"
             on:click={() => dispatch('selectCase', c)}
           >
             <!-- Reference + description -->
@@ -139,7 +142,7 @@
             <!-- Clock display -->
             <div class="text-right shrink-0">
               {#if cl}
-                <p class="text-sm {clockText(cl.status)}">{cl.label}</p>
+                <p class="text-sm {clockTextClass(cl.status)}">{cl.label}</p>
                 <p class="text-xs text-slate-500">Deadline {fmtDate(cl.deadline.toISOString())}</p>
               {:else}
                 <p class="text-sm text-emerald-400">Report submitted</p>
@@ -171,7 +174,7 @@
           {#each statusBreakdown as row}
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full {(STATUS_COLOUR[row.status] ?? 'bg-slate-600').replace('bg-', 'bg-')}"></div>
+                <div class="w-2 h-2 rounded-full {STATUS_COLOUR[row.status] ?? 'bg-slate-600'}"></div>
                 <span class="text-sm text-slate-300">{STATUS_LABEL[row.status] ?? row.status}</span>
               </div>
               <span class="text-sm font-semibold text-slate-200 bg-slate-700 px-2 py-0.5 rounded">

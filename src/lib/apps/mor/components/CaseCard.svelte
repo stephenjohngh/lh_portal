@@ -28,7 +28,7 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div
-  class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600
+  class="bg-slate-800 hover:bg-slate-700/80 border border-slate-700 hover:border-slate-600
          rounded-lg p-4 cursor-pointer transition-colors"
   on:click={() => dispatch('select', c)}
 >
@@ -71,14 +71,3 @@
     {/if}
   </div>
 </div>
-
-<style>
-  .bg-slate-750 { background-color: #2a3344; }
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-</style>

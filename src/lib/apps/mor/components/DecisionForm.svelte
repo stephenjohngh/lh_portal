@@ -15,14 +15,22 @@
 
   const dispatch = createEventDispatcher();
 
-  let outcome   = existingOutcome   ?? '';
-  let rationale = existingRationale ?? '';
+  let outcome   = '';
+  let rationale = '';
 
   let outcomeError   = '';
   let rationaleError = '';
 
-  $: outcome   = existingOutcome   ?? '';
-  $: rationale = existingRationale ?? '';
+  // Reset internal state every time the modal is (re-)opened, populating
+  // from `existing*` props for revise flows. Outside of `show` toggles the
+  // user's selection is preserved (the prior reactive overwrote it on every
+  // prop change).
+  $: if (show) {
+    outcome      = existingOutcome   ?? '';
+    rationale    = existingRationale ?? '';
+    outcomeError = '';
+    rationaleError = '';
+  }
 
   function reset() {
     outcome = existingOutcome ?? ''; rationale = existingRationale ?? '';

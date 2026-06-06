@@ -116,6 +116,24 @@ export const TRIAGE_COLOUR = {
   not_reportable:       'bg-emerald-700',
 };
 
+// ── Clock UI helpers (shared by SlaClocks, MorDashboard, CaseCard) ────────────
+
+/** Tailwind border/background class for a clock card based on its status. */
+export function clockBgClass(status) {
+  if (status === 'breach')   return 'bg-red-900/60 border-red-700';
+  if (status === 'critical') return 'bg-red-900/40 border-red-600';
+  if (status === 'warning')  return 'bg-amber-900/40 border-amber-600';
+  return 'bg-slate-700/40 border-slate-600';
+}
+
+/** Tailwind text-colour class for clock numbers based on status. */
+export function clockTextClass(status) {
+  if (status === 'breach')   return 'text-red-300 font-bold';
+  if (status === 'critical') return 'text-red-300 font-semibold';
+  if (status === 'warning')  return 'text-amber-300';
+  return 'text-slate-300';
+}
+
 // ── SLA clock helpers ─────────────────────────────────────────────────────────
 
 /**
@@ -149,7 +167,16 @@ export function bsrReportClock(identificationDate) {
     label  = `${Math.ceil(daysLeft)}d remaining`;
   }
 
-  return { deadline, daysLeft: Math.ceil(daysLeft), hoursLeft, status, label };
+  // msRemaining is exposed for stable sorting (Math.ceil(daysLeft) collapses
+  // anything between two day boundaries into the same bucket).
+  return {
+    deadline,
+    msRemaining,
+    daysLeft: Math.ceil(daysLeft),
+    hoursLeft,
+    status,
+    label,
+  };
 }
 
 /**
@@ -251,13 +278,17 @@ export const ENTRY_TYPE_ICON_COLOUR = {
 };
 
 // ── Permitted transitions ─────────────────────────────────────────────────────
+// IMPORTANT: this map MUST match the mor_is_valid_transition() SQL function in
+// migration 137. If you change one, change both — the DB trigger will reject
+// any transition that doesn't appear here.
 
 const TRANSITIONS = {
   submitted:        ['acknowledged'],
   acknowledged:     ['in_triage'],
   in_triage:        ['in_assessment', 'decision_pending', 'reclassified', 'closed'],
   in_assessment:    ['decision_pending'],
-  decision_pending: ['bsr_notice', 'in_remediation', 'closed'],
+  // decision_pending → in_triage covers rejectDecision()
+  decision_pending: ['bsr_notice', 'in_remediation', 'closed', 'in_triage'],
   bsr_notice:       ['bsr_report'],
   bsr_report:       ['in_remediation', 'awaiting_bsr'],
   in_remediation:   ['remediated', 'awaiting_reporter'],

@@ -3,6 +3,7 @@
      Language is deliberately resident-friendly — residents report
      "a safety concern", not an "MOR". -->
 <script>
+  import { onDestroy } from 'svelte';
   import lhLogo from '$lib/assets/LH_services_logo.png';
 
   // ── Form state ─────────────────────────────────────────────────────────
@@ -14,7 +15,7 @@
   let reporter_contact = '';
 
   // ── Photo state ─────────────────────────────────────────────────────────
-  // Each photo: { id, file, blob, preview, status, url, error }
+  // Each photo: { id, file, preview, status, url, mimeType, error }
   // status: 'uploading' | 'done' | 'error'
   let photos = [];
   const MAX_PHOTOS = 5;
@@ -29,6 +30,11 @@
   // ── Validation errors ───────────────────────────────────────────────────
   let descError = '';
 
+  // Release preview blob URLs when the page unmounts (back button, etc.)
+  onDestroy(() => {
+    photos.forEach(p => p.preview && URL.revokeObjectURL(p.preview));
+  });
+
   // ── Photo upload ────────────────────────────────────────────────────────
   async function handleFileSelect(e) {
     const files = [...(e.target.files ?? [])];
@@ -40,7 +46,7 @@
     for (const file of toAdd) {
       const id      = crypto.randomUUID();
       const preview = URL.createObjectURL(file);
-      photos = [...photos, { id, file, preview, status: 'uploading', url: null, error: null }];
+      photos = [...photos, { id, file, preview, status: 'uploading', url: null, mimeType: null, error: null }];
       uploadPhoto(id, file);
     }
   }
@@ -60,17 +66,17 @@
       const data = await r.json();
 
       if (!r.ok) {
-        setPhotoState(id, 'error', null, data.error ?? 'Upload failed');
+        setPhotoState(id, { status: 'error', error: data.error ?? 'Upload failed' });
       } else {
-        setPhotoState(id, 'done', data.url, null);
+        setPhotoState(id, { status: 'done', url: data.url, mimeType: data.mimeType });
       }
     } catch {
-      setPhotoState(id, 'error', null, 'Upload failed — please try again');
+      setPhotoState(id, { status: 'error', error: 'Upload failed — please try again' });
     }
   }
 
-  function setPhotoState(id, status, url, error) {
-    photos = photos.map(p => p.id === id ? { ...p, status, url, error } : p);
+  function setPhotoState(id, patch) {
+    photos = photos.map(p => p.id === id ? { ...p, ...patch } : p);
   }
 
   function removePhoto(id) {
@@ -80,7 +86,10 @@
   }
 
   $: uploadingCount = photos.filter(p => p.status === 'uploading').length;
-  $: uploadedUrls   = photos.filter(p => p.status === 'done').map(p => p.url);
+  $: uploadedPhotos = photos
+       .filter(p => p.status === 'done')
+       .map(p => ({ url: p.url, mimeType: p.mimeType ?? 'image/jpeg' }));
+  $: canSubmit = !submitting && uploadingCount === 0;
 
   // ── Submit ──────────────────────────────────────────────────────────────
   async function handleSubmit() {
@@ -103,7 +112,7 @@
           is_anonymous,
           reporter_name:   is_anonymous ? null : reporter_name.trim() || null,
           reporter_contact: is_anonymous ? null : reporter_contact.trim() || null,
-          photo_urls:      uploadedUrls,
+          photos:          uploadedPhotos,
         }),
       });
 
@@ -312,9 +321,11 @@
       {/if}
 
       <!-- Submit button -->
-      <button type="submit" class="submit-btn" disabled={submitting}>
+      <button type="submit" class="submit-btn" disabled={!canSubmit}>
         {#if submitting}
           Sending…
+        {:else if uploadingCount > 0}
+          Waiting for {uploadingCount} photo{uploadingCount > 1 ? 's' : ''}…
         {:else}
           Send report
         {/if}
