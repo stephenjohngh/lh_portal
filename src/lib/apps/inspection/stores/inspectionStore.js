@@ -6,11 +6,37 @@ import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
-import { supabase }      from '$lib/supabaseClient';   // auth only
+import { supabase }      from '$lib/supabaseClient';   // auth + media_attachments IN queries
 import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
 import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
 
 const logger = getLogger('inspectionStore');
+
+// ── Shared photo helper ───────────────────────────────────────────────────────
+// Batch-loads media_attachments for a set of component_inspection rows and
+// injects a photo_urls string[] onto each row in-place.
+// Preserves the same interface that components expect (row.photo_urls).
+async function mergePhotosIntoRows(rows) {
+  if (!rows || rows.length === 0) return;
+  const ids = rows.map(r => r.id).filter(Boolean);
+  if (ids.length === 0) return;
+
+  const { data: photos, error } = await supabase
+    .from('media_attachments')
+    .select('entity_id, storage_url')
+    .eq('entity_type', 'component_inspection')
+    .in('entity_id', ids);
+
+  if (error) { logger('⚠ mergePhotos error:', error.message); return; }
+
+  const byId = {};
+  for (const p of (photos ?? [])) {
+    (byId[p.entity_id] ??= []).push(p.storage_url);
+  }
+  for (const row of rows) {
+    row.photo_urls = byId[row.id] ?? [];
+  }
+}
 
 function audit(eventType, targetType, targetId, targetName, data = {}) {
   logAudit(eventType, targetType, targetId, targetName, {
@@ -378,6 +404,8 @@ function createInspectionStore() {
       filters: { walk_session_id: session.id },
     });
     inspRows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
+    // Attach photo URLs from media_attachments (replaces JSONB photo_urls column)
+    await mergePhotosIntoRows(inspRows);
     const inspections = {};
     for (const r of inspRows) {
       inspections[r.component_id] = r; // keep latest (rows are asc)
@@ -549,11 +577,13 @@ function createInspectionStore() {
   // -- Inspections --------------------------------------------------------------
 
   // Upsert an inspection record.
-  // photo_urls: array of strings (already uploaded); checklist: { attrId: bool }
+  // photoUrls: array of storage URL strings (already uploaded via /api/media/upload).
+  // Photos are stored in media_attachments, NOT as a JSONB column.
   async function recordInspection({ componentId, result, notes, photoUrls = [], checklistResults = {} }) {
     logger('recordInspection:', componentId, result);
     const userId = await getCurrentUserId();
     const state  = getState();
+    const now    = new Date().toISOString();
 
     const existing = state.inspections[componentId];
 
@@ -562,26 +592,43 @@ function createInspectionStore() {
       inspection = await api.update('component_inspections', existing.id, {
         inspection_result: result,
         inspector_notes:   notes || null,
-        photo_urls:        photoUrls,
         checklist_results: checklistResults,
         inspected_by:      userId,
-        inspected_at:      new Date().toISOString(),
+        inspected_at:      now,
       });
+      // Replace all photos for this inspection (delete-then-insert)
+      await supabase.from('media_attachments').delete()
+        .eq('entity_type', 'component_inspection')
+        .eq('entity_id', existing.id);
     } else {
       inspection = await api.create('component_inspections', {
-        walk_session_id: state.activeSession.id,
-        component_id:       componentId,
+        walk_session_id:   state.activeSession.id,
+        component_id:      componentId,
         inspection_result: result,
         inspector_notes:   notes || null,
-        photo_urls:        photoUrls,
         checklist_results: checklistResults,
         inspected_by:      userId,
-        inspected_at:      new Date().toISOString(),
+        inspected_at:      now,
       });
 
       // Update component's last_inspection_id
       await api.update('components', componentId, { last_inspection_id: inspection.id }, false);
     }
+
+    // Persist photos to media_attachments (for both create and update paths)
+    if (photoUrls.length > 0) {
+      const photoRows = photoUrls.map(url => ({
+        entity_type:      'component_inspection',
+        entity_id:        inspection.id,
+        storage_url:      url,
+        mime_type:        'image/jpeg',
+        created_at:       now,
+        created_by:       userId,
+      }));
+      await supabase.from('media_attachments').insert(photoRows);
+    }
+    // Inject photo_urls onto the in-memory record so UI state stays consistent
+    inspection.photo_urls = photoUrls;
 
     // Also update component status to match result (ok→ok, problem, failed, inactive)
     await api.update('components', componentId, {
@@ -636,24 +683,28 @@ function createInspectionStore() {
 
   async function loadComponentInspectionHistory(componentId) {
     try {
-      return await api.get('component_inspections', {
+      const rows = await api.get('component_inspections', {
         select:    '*, inspector:profiles!inspected_by(full_name), session:walk_sessions!walk_session_id(session_name, building, started_at)',
         filters:   { component_id: componentId },
         orderBy:   'inspected_at',
         ascending: false,
       });
+      await mergePhotosIntoRows(rows);
+      return rows;
     } catch { return []; }
   }
 
   async function loadSessionInspections(sessionId) {
     // Note: type_code on components is NOT a FK so we cannot join to component_types here.
     // Type name/colour/initial are resolved client-side from $inspectionStore.types.
-    return api.get('component_inspections', {
+    const rows = await api.get('component_inspections', {
       select:    '*, component:components!component_id(asset_id, label, type_code, status, floor:floors!floor_id(short_name, level_order))',
       filters:   { walk_session_id: sessionId },
       orderBy:   'inspected_at',
       ascending: true,
     });
+    await mergePhotosIntoRows(rows);
+    return rows;
   }
 
   // -- Component editing (admin during walk) ------------------------------------
@@ -734,6 +785,15 @@ function createInspectionStore() {
   // -- Delete session -----------------------------------------------------------
 
   async function deleteSession(sessionId) {
+    // Must delete media_attachments before inspections (no FK cascade since the
+    // relationship is polymorphic and has no enforced FK).
+    const inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: sessionId } });
+    const inspIds  = inspRows.map(r => r.id);
+    if (inspIds.length > 0) {
+      await supabase.from('media_attachments').delete()
+        .eq('entity_type', 'component_inspection')
+        .in('entity_id', inspIds);
+    }
     await api.deleteMany('component_inspections', { walk_session_id: sessionId });
     await api.delete('walk_sessions', sessionId);
     await loadSessions();

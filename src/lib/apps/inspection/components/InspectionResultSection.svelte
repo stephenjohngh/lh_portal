@@ -6,8 +6,8 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
-  import { uploadToSupabase } from '$lib/apps/inspection/utils/supabaseUpload';
-  import { uploadToGoogleDrive } from '$lib/apps/inspection/utils/googleDriveUpload';
+  import { uploadMedia }  from '$lib/utils/mediaUpload';
+  import { supabase }     from '$lib/supabaseClient';
   import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
   import WalkError    from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkButton   from '$lib/apps/inspection/components/common/WalkButton.svelte';
@@ -73,21 +73,26 @@
   let pendingPhotos = [];   // { blob, preview, uploading, error }
 
   async function uploadAllPending() {
+    // Obtain the access token once for all uploads in this batch.
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    const token = authSession?.access_token;
+    if (!token) { logger('❌ No auth token — cannot upload photos'); return []; }
+
     const uploaded = [];
+    const sessionId   = session?.id ?? 'unknown';
+    const compName    = component?.asset_id || component?.id?.slice(0, 8) || 'comp';
+
     for (let i = 0; i < pendingPhotos.length; i++) {
       const p = pendingPhotos[i];
       pendingPhotos[i] = { ...p, uploading: true };
       pendingPhotos = [...pendingPhotos];
       try {
-        const sessionName = session?.session_name || session?.building || 'session';
-        const compName    = component?.asset_id || component?.id?.slice(0, 8) || 'comp';
-        const fileName    = `${compName}_${Date.now()}_${i}.jpg`;
-        let url;
-        try {
-          url = await uploadToSupabase(p.blob, fileName, session?.id);
-        } catch {
-          url = await uploadToGoogleDrive(p.blob, fileName, sessionName);
-        }
+        const fileName = `${compName}_${Date.now()}_${i}.jpg`;
+        const { url } = await uploadMedia(p.blob, {
+          filename:   fileName,
+          folderPath: ['inspection-sessions', sessionId],
+          token,
+        });
         uploaded.push(url);
         pendingPhotos[i] = { ...pendingPhotos[i], uploading: false };
         pendingPhotos = [...pendingPhotos];
