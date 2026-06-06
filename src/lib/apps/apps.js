@@ -103,6 +103,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'mor',
+    name: 'MOR',
+    icon: 'shield',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Mandatory Occurrence Reporting — BSA 2022 s.87 compliance'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -127,6 +136,7 @@ export const APP_IDS = {
   MAINTENANCE:     'maintenance',
   INFO:            'info',
   ARTICLES:        'articles',
+  MOR:             'mor',
   SETTINGS:        'settings'
 };
 

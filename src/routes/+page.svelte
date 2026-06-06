@@ -33,6 +33,7 @@ import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
   import MaintenanceApp from '$lib/apps/maintenance/MaintenanceApp.svelte';
   import InfoApp        from '$lib/apps/info/InfoApp.svelte';
   import ArticlesApp    from '$lib/apps/articles/ArticlesApp.svelte';
+  import MorApp         from '$lib/apps/mor/MorApp.svelte';
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -133,7 +134,8 @@ import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
       'managementmobile':   ManagementMobileApp,
       'maintenance': MaintenanceApp,
       'info':        InfoApp,
-      'articles':    ArticlesApp
+      'articles':    ArticlesApp,
+      'mor':         MorApp
     };
     return components[appId];
   }
