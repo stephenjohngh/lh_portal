@@ -13,20 +13,41 @@ import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('GoogleDriveProvider');
 
+// ── Module-level singletons ────────────────────────────────────────────────
+// GoogleAuth and the Drive client are created once at module load time.
+// Re-creating them on every request is expensive and wasteful; the auth
+// library handles token refresh internally so a long-lived instance is safe.
+//
+// We read env vars here so a missing variable produces a clear startup log
+// rather than an opaque mid-request 500.
+
+const _clientEmail  = process.env.GOOGLE_DRIVE_CLIENT_EMAIL ?? '';
+const _privateKey   = (process.env.GOOGLE_DRIVE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n');
+const _rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
+
+if (!_clientEmail || !_privateKey) {
+  logger('⚠️  GOOGLE_DRIVE_CLIENT_EMAIL / GOOGLE_DRIVE_PRIVATE_KEY not set — Drive uploads will fail');
+}
+if (!_rootFolderId) {
+  logger('⚠️  GOOGLE_DRIVE_ROOT_FOLDER_ID not set — ensurePath() will fail at runtime');
+}
+
+let _drive = null;
+
 /** @returns {import('googleapis').drive_v3.Drive} */
 function getDrive() {
-  const privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!process.env.GOOGLE_DRIVE_CLIENT_EMAIL || !privateKey) {
+  if (!_clientEmail || !_privateKey) {
     throw new Error('Google Drive credentials not configured. Set GOOGLE_DRIVE_CLIENT_EMAIL and GOOGLE_DRIVE_PRIVATE_KEY.');
   }
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_DRIVE_CLIENT_EMAIL,
-      private_key:  privateKey,
-    },
-    scopes: ['https://www.googleapis.com/auth/drive'],
-  });
-  return google.drive({ version: 'v3', auth });
+  if (!_drive) {
+    const auth = new google.auth.GoogleAuth({
+      credentials: { client_email: _clientEmail, private_key: _privateKey },
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+    _drive = google.drive({ version: 'v3', auth });
+    logger('Drive client initialised');
+  }
+  return _drive;
 }
 
 const FILE_FIELDS = 'id,name,mimeType,size,webViewLink,thumbnailLink,createdTime,modifiedTime';
@@ -137,9 +158,8 @@ export const googleDriveProvider = {
   },
 
   async ensurePath(segments) {
-    const root = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
-    if (!root) throw new Error('GOOGLE_DRIVE_ROOT_FOLDER_ID is not set.');
-    let current = root;
+    if (!_rootFolderId) throw new Error('GOOGLE_DRIVE_ROOT_FOLDER_ID is not set.');
+    let current = _rootFolderId;
     for (const segment of segments) {
       current = await this.getOrCreateFolder(segment, current);
     }

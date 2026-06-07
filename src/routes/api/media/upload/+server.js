@@ -49,12 +49,12 @@ export async function POST({ request }) {
   const folderPath  = JSON.parse(formData.get('folder_path') || '[]');
 
   // ── Resolve storage destination ─────────────────────────────────────────────
-  // ensurePath returns a folder ID (Google Drive) or a path prefix (Supabase/OneDrive)
+  // ensurePath returns a folder ID (Google Drive) or a path prefix (Supabase/OneDrive).
+  // When no folder_path is supplied, ensurePath([]) still returns the root, so we
+  // always go through the provider rather than reading process.env inline here.
   let destination;
   try {
-    destination = folderPath.length > 0
-      ? await storageProvider.ensurePath(folderPath)
-      : (process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '');
+    destination = await storageProvider.ensurePath(folderPath);
   } catch (err) {
     return json({ error: `Failed to resolve storage path: ${err.message}` }, { status: 500 });
   }
