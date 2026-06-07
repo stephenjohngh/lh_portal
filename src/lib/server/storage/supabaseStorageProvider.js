@@ -8,8 +8,10 @@
 //   PUBLIC_SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
 
-import { createClient } from '@supabase/supabase-js';
-import { getLogger }    from '$lib/utils/logger';
+import { createClient }          from '@supabase/supabase-js';
+import { getLogger }             from '$lib/utils/logger';
+import { PUBLIC_SUPABASE_URL }   from '$env/static/public';
+import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 
 const logger = getLogger('SupabaseStorageProvider');
 const BUCKET = 'documents';
@@ -19,8 +21,8 @@ let _client = null;
 function getClient() {
   if (!_client) {
     _client = createClient(
-      process.env.PUBLIC_SUPABASE_URL      ?? '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+      PUBLIC_SUPABASE_URL       ?? '',
+      SUPABASE_SERVICE_ROLE_KEY ?? '',
     );
   }
   return _client;

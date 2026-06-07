@@ -7,8 +7,9 @@
 import { googleDriveProvider }     from './googleDriveProvider.js';
 import { oneDriveProvider }        from './oneDriveProvider.js';
 import { supabaseStorageProvider } from './supabaseStorageProvider.js';
+import { STORAGE_PROVIDER }        from '$env/static/private';
 
-const PROVIDER_NAME = process.env.STORAGE_PROVIDER ?? 'google_drive';
+const PROVIDER_NAME = STORAGE_PROVIDER ?? 'google_drive';
 
 const PROVIDERS = {
   google_drive: googleDriveProvider,

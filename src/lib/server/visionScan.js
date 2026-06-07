@@ -14,6 +14,10 @@
 
 import { google }    from 'googleapis';
 import { getLogger } from '$lib/utils/logger';
+import {
+  GOOGLE_DRIVE_CLIENT_EMAIL,
+  GOOGLE_DRIVE_PRIVATE_KEY,
+} from '$env/static/private';
 
 const logger = getLogger('visionScan');
 
@@ -31,8 +35,8 @@ let _authClient = null;
 async function getAuthClient() {
   if (_authClient) return _authClient;
 
-  const clientEmail   = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
-  const privateKeyRaw = process.env.GOOGLE_DRIVE_PRIVATE_KEY;
+  const clientEmail   = GOOGLE_DRIVE_CLIENT_EMAIL;
+  const privateKeyRaw = GOOGLE_DRIVE_PRIVATE_KEY;
   if (!clientEmail || !privateKeyRaw) return null;
 
   const privateKey = privateKeyRaw.replace(/\\n/g, '\n');

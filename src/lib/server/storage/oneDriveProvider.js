@@ -19,6 +19,13 @@
 //      or /sites/{site-id}/drive (SharePoint) → copy 'id'
 
 import { getLogger } from '$lib/utils/logger';
+import {
+  ONEDRIVE_TENANT_ID,
+  ONEDRIVE_CLIENT_ID,
+  ONEDRIVE_CLIENT_SECRET,
+  ONEDRIVE_DRIVE_ID,
+  ONEDRIVE_ROOT_FOLDER_ID,
+} from '$env/static/private';
 
 const logger = getLogger('OneDriveProvider');
 const GRAPH  = 'https://graph.microsoft.com/v1.0';
@@ -28,10 +35,10 @@ let _token  = null;
 let _expiry = 0;
 
 function cfg() {
-  const t = process.env.ONEDRIVE_TENANT_ID;
-  const c = process.env.ONEDRIVE_CLIENT_ID;
-  const s = process.env.ONEDRIVE_CLIENT_SECRET;
-  const d = process.env.ONEDRIVE_DRIVE_ID;
+  const t = ONEDRIVE_TENANT_ID;
+  const c = ONEDRIVE_CLIENT_ID;
+  const s = ONEDRIVE_CLIENT_SECRET;
+  const d = ONEDRIVE_DRIVE_ID;
   if (!t || !c || !s || !d) {
     throw new Error(
       'OneDrive credentials not configured. Set ONEDRIVE_TENANT_ID, ONEDRIVE_CLIENT_ID, ' +
@@ -43,7 +50,7 @@ function cfg() {
     clientId:     c,
     clientSecret: s,
     driveId:      d,
-    rootFolderId: process.env.ONEDRIVE_ROOT_FOLDER_ID || 'root',
+    rootFolderId: ONEDRIVE_ROOT_FOLDER_ID || 'root',
   };
 }
 

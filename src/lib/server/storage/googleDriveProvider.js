@@ -10,6 +10,11 @@
 import { google }  from 'googleapis';
 import { Readable } from 'stream';
 import { getLogger } from '$lib/utils/logger';
+import {
+  GOOGLE_DRIVE_CLIENT_EMAIL,
+  GOOGLE_DRIVE_PRIVATE_KEY,
+  GOOGLE_DRIVE_ROOT_FOLDER_ID,
+} from '$env/static/private';
 
 const logger = getLogger('GoogleDriveProvider');
 
@@ -21,9 +26,9 @@ const logger = getLogger('GoogleDriveProvider');
 // We read env vars here so a missing variable produces a clear startup log
 // rather than an opaque mid-request 500.
 
-const _clientEmail  = process.env.GOOGLE_DRIVE_CLIENT_EMAIL ?? '';
-const _privateKey   = (process.env.GOOGLE_DRIVE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n');
-const _rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
+const _clientEmail  = GOOGLE_DRIVE_CLIENT_EMAIL  ?? '';
+const _privateKey   = (GOOGLE_DRIVE_PRIVATE_KEY  ?? '').replace(/\\n/g, '\n');
+const _rootFolderId = GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
 
 if (!_clientEmail || !_privateKey) {
   logger('⚠️  GOOGLE_DRIVE_CLIENT_EMAIL / GOOGLE_DRIVE_PRIVATE_KEY not set — Drive uploads will fail');
