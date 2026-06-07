@@ -235,6 +235,11 @@ export function createPlanActions(update, supabase) {
     // point to another component in the source plan (internal link), so that
     // the new link resolves to the corresponding new-floor copy.
     // Links pointing outside the source plan are kept as-is.
+    //
+    // The newly-created link rows are merged into the in-memory
+    // componentLinks map below so the UI reflects them immediately without
+    // a page reload (parallels the same fix made for componentAttrs).
+    const newComponentLinks = {};
     if (srcIds.length > 0) {
       let srcLinks = [];
       try {
@@ -259,8 +264,14 @@ export function createPlanActions(update, supabase) {
           .filter(Boolean);
 
         if (linkRows.length > 0) {
-          await api.createMany('component_links', linkRows, false);
-          logger(`Copied ${linkRows.length} component link(s)`);
+          // returnRecords=true so we can splice the new rows (with their
+          // server-assigned id / created_at) into the store map.
+          const createdLinks = await api.createMany('component_links', linkRows, true) ?? [];
+          logger(`Copied ${createdLinks.length} component link(s)`);
+          for (const link of createdLinks) {
+            if (!newComponentLinks[link.from_component_id]) newComponentLinks[link.from_component_id] = [];
+            newComponentLinks[link.from_component_id].push(link);
+          }
         }
       }
     }
@@ -281,6 +292,9 @@ export function createPlanActions(update, supabase) {
         (a.building ?? '').localeCompare(b.building ?? '')),
       components:     [...s.components, ...newComponents],
       componentAttrs: { ...s.componentAttrs, ...newComponentAttrs },
+      // Shallow-merge is safe: keys are the brand-new component ids so
+      // there's no collision with existing entries in s.componentLinks.
+      componentLinks: { ...s.componentLinks, ...newComponentLinks },
     }));
     logger(`Copied plan ${sourcePlanId} → ${newPlan.id}, ${copied} components`);
     logAudit('create', 'plan', newPlan.id, newPlan.name || newPlan.building || newPlan.id, {
@@ -376,6 +390,10 @@ export function createPlanActions(update, supabase) {
     }
 
     // -- Remap and copy component links ----------------------------------
+    // The newly-created link rows are merged into the in-memory
+    // componentLinks map below so the UI reflects them immediately
+    // without a page reload (parallels componentAttrs).
+    const newComponentLinks = {};
     if (srcIds.length > 0) {
       let srcLinks = [];
       try {
@@ -398,8 +416,12 @@ export function createPlanActions(update, supabase) {
           .filter(Boolean);
 
         if (linkRows.length > 0) {
-          await api.createMany('component_links', linkRows, false);
-          logger(`Imported ${linkRows.length} component link(s)`);
+          const createdLinks = await api.createMany('component_links', linkRows, true) ?? [];
+          logger(`Imported ${createdLinks.length} component link(s)`);
+          for (const link of createdLinks) {
+            if (!newComponentLinks[link.from_component_id]) newComponentLinks[link.from_component_id] = [];
+            newComponentLinks[link.from_component_id].push(link);
+          }
         }
       }
     }
@@ -418,6 +440,7 @@ export function createPlanActions(update, supabase) {
       ...s,
       components:     [...s.components, ...newComponents],
       componentAttrs: { ...s.componentAttrs, ...newComponentAttrs },
+      componentLinks: { ...s.componentLinks, ...newComponentLinks },
     }));
 
     logger(`Imported ${copied} components from plan ${sourcePlanId} → existing plan ${targetPlanId}`);
