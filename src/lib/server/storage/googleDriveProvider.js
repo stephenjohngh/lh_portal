@@ -81,13 +81,20 @@ export const googleDriveProvider = {
 
     logger('Uploading to Drive folder:', folderId, '—', filename);
     const res = await drive.files.create({
+      // supportsAllDrives is required when the target folder is inside a
+      // Shared Drive (Google Workspace Team Drive).  Service accounts do not
+      // have personal Drive storage quota and MUST use a Shared Drive.
+      supportsAllDrives: true,
       requestBody: { name: filename, parents: [folderId] },
       media:       { mimeType, body: stream },
       fields:      FILE_FIELDS,
     });
 
-    // Grant "anyone with the link can view" so web_view_url works without Google login
+    // Grant "anyone with the link can view" so web_view_url works without Google login.
+    // supportsAllDrives is required here too — permissions on Shared Drive files
+    // fail without it.
     await drive.permissions.create({
+      supportsAllDrives: true,
       fileId:      res.data.id,
       requestBody: { role: 'reader', type: 'anyone' },
     });
@@ -102,19 +109,19 @@ export const googleDriveProvider = {
 
   async getFileUrl(fileId) {
     const drive = getDrive();
-    const res   = await drive.files.get({ fileId, fields: 'webViewLink' });
+    const res   = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'webViewLink' });
     return res.data.webViewLink ?? '';
   },
 
   async getFileMetadata(fileId) {
     const drive = getDrive();
-    const res   = await drive.files.get({ fileId, fields: FILE_FIELDS });
+    const res   = await drive.files.get({ fileId, supportsAllDrives: true, fields: FILE_FIELDS });
     return mapFile(res.data);
   },
 
   async deleteFile(fileId) {
     const drive = getDrive();
-    await drive.files.delete({ fileId });
+    await drive.files.delete({ fileId, supportsAllDrives: true });
     logger('Deleted Drive file:', fileId);
   },
 
@@ -126,6 +133,8 @@ export const googleDriveProvider = {
     if (opts.query) clauses.push(`name contains '${opts.query}'`);
 
     const res = await drive.files.list({
+      supportsAllDrives:         true,
+      includeItemsFromAllDrives: true,
       q:       clauses.join(' and '),
       fields:  `files(${FILE_FIELDS})`,
       orderBy: 'createdTime desc',
@@ -137,6 +146,7 @@ export const googleDriveProvider = {
   async createFolder(name, parentId) {
     const drive = getDrive();
     const res   = await drive.files.create({
+      supportsAllDrives: true,
       requestBody: {
         name,
         mimeType: 'application/vnd.google-apps.folder',
@@ -157,7 +167,13 @@ export const googleDriveProvider = {
     ];
     if (parentId) clauses.push(`'${parentId}' in parents`);
 
-    const res = await drive.files.list({ q: clauses.join(' and '), fields: 'files(id)', pageSize: 1 });
+    const res = await drive.files.list({
+      supportsAllDrives:         true,
+      includeItemsFromAllDrives: true,
+      q:      clauses.join(' and '),
+      fields: 'files(id)',
+      pageSize: 1,
+    });
     if (res.data.files?.length) return res.data.files[0].id;
     return this.createFolder(name, parentId);
   },
@@ -173,10 +189,11 @@ export const googleDriveProvider = {
 
   async moveFile(fileId, newFolderId) {
     const drive = getDrive();
-    const meta  = await drive.files.get({ fileId, fields: 'parents' });
+    const meta  = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'parents' });
     const previousParents = (meta.data.parents ?? []).join(',');
     await drive.files.update({
       fileId,
+      supportsAllDrives: true,
       addParents:    newFolderId,
       removeParents: previousParents,
       fields:        'id,parents',
@@ -186,6 +203,8 @@ export const googleDriveProvider = {
   async searchFiles(query, _rootId) {
     const drive = getDrive();
     const res   = await drive.files.list({
+      supportsAllDrives:         true,
+      includeItemsFromAllDrives: true,
       q:       `fullText contains '${query.replace(/'/g, "\\'")}' and trashed = false`,
       fields:  `files(${FILE_FIELDS})`,
       orderBy: 'modifiedTime desc',
