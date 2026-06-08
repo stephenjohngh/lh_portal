@@ -22,24 +22,23 @@
 import { google }  from 'googleapis';
 import { Readable } from 'stream';
 import { getLogger } from '$lib/utils/logger';
-import {
-  GOOGLE_DRIVE_CLIENT_EMAIL,
-  GOOGLE_DRIVE_PRIVATE_KEY,
-  GOOGLE_DRIVE_ROOT_FOLDER_ID,
-  GOOGLE_OAUTH_CLIENT_ID,
-  GOOGLE_OAUTH_CLIENT_SECRET,
-  GOOGLE_OAUTH_REFRESH_TOKEN,
-} from '$env/static/private';
+// $env/dynamic/private reads from process.env at runtime — variables do not
+// need to be defined at build time.  This is intentional: service account
+// vars (GOOGLE_DRIVE_CLIENT_EMAIL / GOOGLE_DRIVE_PRIVATE_KEY) are optional
+// and only needed if OAuth2 vars are absent.  Using $env/static/private would
+// require all six to be set in every deployment environment, causing build
+// failures on installations that only use OAuth2 mode.
+import { env } from '$env/dynamic/private';
 
 const logger = getLogger('GoogleDriveProvider');
 
 // ── Resolved env values ────────────────────────────────────────────────────
-const _rootFolderId  = GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
-const _oauthId       = GOOGLE_OAUTH_CLIENT_ID      ?? '';
-const _oauthSecret   = GOOGLE_OAUTH_CLIENT_SECRET  ?? '';
-const _oauthRefresh  = GOOGLE_OAUTH_REFRESH_TOKEN  ?? '';
-const _saEmail       = GOOGLE_DRIVE_CLIENT_EMAIL   ?? '';
-const _saKey         = (GOOGLE_DRIVE_PRIVATE_KEY   ?? '').replace(/\\n/g, '\n');
+const _rootFolderId  = env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
+const _oauthId       = env.GOOGLE_OAUTH_CLIENT_ID      ?? '';
+const _oauthSecret   = env.GOOGLE_OAUTH_CLIENT_SECRET  ?? '';
+const _oauthRefresh  = env.GOOGLE_OAUTH_REFRESH_TOKEN  ?? '';
+const _saEmail       = env.GOOGLE_DRIVE_CLIENT_EMAIL   ?? '';
+const _saKey         = (env.GOOGLE_DRIVE_PRIVATE_KEY   ?? '').replace(/\\n/g, '\n');
 
 // Log warnings at startup so missing vars surface immediately.
 if (!_rootFolderId) {
