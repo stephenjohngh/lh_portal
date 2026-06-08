@@ -192,7 +192,45 @@
     confirmId  = null;
     deletingId = session.id;
     try {
+      // 1. Get all inspection IDs for this session so we can scope the cleanup.
+      const inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: session.id } });
+      const inspIds  = inspRows.map(r => r.id);
+
+      if (inspIds.length > 0) {
+        // 2. Fetch storage URLs BEFORE deleting DB rows — needed to clean up Drive.
+        const { data: attachments } = await supabase
+          .from('media_attachments')
+          .select('storage_url')
+          .eq('entity_type', 'component_inspection')
+          .in('entity_id', inspIds);
+
+        // 3. Best-effort Drive file deletion — failures are swallowed so DB cleanup always runs.
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (token) {
+          for (const { storage_url } of attachments ?? []) {
+            const m = storage_url?.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
+            const fileId = m?.[1] ?? null;
+            if (!fileId) continue;
+            try {
+              await fetch(`/api/media/file/${fileId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+            } catch { /* non-fatal */ }
+          }
+        }
+
+        // 4. Delete media_attachments rows, then the inspections.
+        await supabase.from('media_attachments').delete()
+          .eq('entity_type', 'component_inspection')
+          .in('entity_id', inspIds);
+        await api.deleteMany('component_inspections', { walk_session_id: session.id });
+      }
+
+      // 5. Delete the session row last (inspections must go first — FK constraint).
       await api.delete('walk_sessions', session.id);
+
       sessions   = sessions.filter(s => s.id !== session.id);
       if (expandedId === session.id) expandedId = null;
       const { [session.id]: _, ...rest } = inspections;

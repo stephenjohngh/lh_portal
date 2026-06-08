@@ -647,10 +647,10 @@ function createInspectionStore() {
         .select('storage_url')
         .eq('entity_type', 'component_inspection')
         .eq('entity_id', existing.id);
-      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       await deleteStorageFiles(
         (oldAttachments ?? []).map(a => a.storage_url),
-        authSession?.access_token,
+        sessionData?.session?.access_token,
       );
       await supabase.from('media_attachments').delete()
         .eq('entity_type', 'component_inspection')
@@ -852,10 +852,10 @@ function createInspectionStore() {
         .select('storage_url')
         .eq('entity_type', 'component_inspection')
         .in('entity_id', inspIds);
-      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       await deleteStorageFiles(
         (attachments ?? []).map(a => a.storage_url),
-        authSession?.access_token,
+        sessionData?.session?.access_token,
       );
       await supabase.from('media_attachments').delete()
         .eq('entity_type', 'component_inspection')
