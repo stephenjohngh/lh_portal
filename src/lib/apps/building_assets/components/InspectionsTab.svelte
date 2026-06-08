@@ -4,6 +4,7 @@
 <script>
   import { onMount }         from 'svelte';
   import { api }             from '$lib/utils/api';
+  import { supabase }        from '$lib/supabaseClient';
   import { getLogger }       from '$lib/utils/logger';
   import { buildingAssetsStore }    from '../stores/buildingAssetsStore.js';
   import {
@@ -18,6 +19,7 @@
   import { resultBadgeColor } from '$lib/utils/resultConstants.js';
   import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
   import Badge           from '$lib/components/common/Badge.svelte';
+  import Modal           from '$lib/components/common/Modal.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
@@ -44,6 +46,40 @@
   let expandedId  = null;
   let deletingId  = null;
   let confirmId   = null;
+
+  // -- Drive URL proxy ---------------------------------------------------------
+  // Drive direct URLs return 403 when used as <img src> cross-origin.
+  // Route through the portal's own proxy so the browser sees same-origin.
+  function normalisePhotoUrl(url) {
+    if (!url) return url;
+    const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
+    if (m) return `/api/media/file/${m[1]}`;
+    return url;
+  }
+
+  // -- Inspection detail modal ------------------------------------------------
+  // selectedInsp: the inspection row to show in the modal (includes photo_urls).
+  // selectedGrp:  the component group (has asset_id, label, type_code, floor_name).
+  // selectedSess: the session row (has inspector name, session_type etc.).
+  let selectedInsp = null;
+  let selectedGrp  = null;
+  let selectedSess = null;
+  let modalLightboxPhotos = [];
+  let modalLightboxIndex  = 0;
+
+  function openInspDetail(grp, row, session) {
+    selectedGrp  = grp;
+    selectedInsp = row;
+    selectedSess = session;
+  }
+  function closeInspDetail() {
+    selectedGrp  = null;
+    selectedInsp = null;
+    selectedSess = null;
+    modalLightboxPhotos = [];
+  }
+  function openModalLightbox(photos, i) { modalLightboxPhotos = photos; modalLightboxIndex = i; }
+  function closeModalLightbox()         { modalLightboxPhotos = []; }
 
   // Expanded component rows (one per session-component pair).
   // Key: `${sessionId}:${componentId}` — keeps state isolated per session.
@@ -124,6 +160,23 @@
           filters: { walk_session_id: session.id },
         });
         rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
+
+        // Batch-load photos from media_attachments (photo_urls was removed
+        // from component_inspections in migration 135).
+        const inspIds = rows.map(r => r.id);
+        if (inspIds.length > 0) {
+          const { data: attachments } = await supabase
+            .from('media_attachments')
+            .select('entity_id, storage_url')
+            .eq('entity_type', 'component_inspection')
+            .in('entity_id', inspIds);
+          const byId = {};
+          for (const a of attachments ?? []) {
+            (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
+          }
+          for (const r of rows) r.photo_urls = byId[r.id] ?? [];
+        }
+
         inspections = { ...inspections, [session.id]: flattenInspectionRows(rows) };
       } catch (err) {
         logger('❌ load inspections:', err.message);
@@ -415,13 +468,16 @@
                         {@const rowKey       = `${session.id}:${grp.component_id}`}
                         {@const isExpanded   = expandedRowKeys.has(rowKey)}
                         {@const items        = conditionChecklistDisplay(firstRow, condDefsFor(grp.type_code))}
-                        <tr class="insp-row insp-row-{worst}">
+                        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+                        <tr class="insp-row insp-row-{worst} row-clickable"
+                          on:click={() => openInspDetail(grp, firstRow, session)}
+                        >
                           <td class="caret-cell">
                             {#if items.length > 0}
                               <button
                                 type="button"
                                 class="expand-btn {isExpanded ? 'expanded' : ''}"
-                                on:click={() => toggleRow(session.id, grp.component_id)}
+                                on:click|stopPropagation={() => toggleRow(session.id, grp.component_id)}
                                 title={isExpanded ? 'Hide condition breakdown' : 'Show condition breakdown'}
                                 aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
                               >▸</button>
@@ -459,7 +515,7 @@
                                   {#each firstRow.photo_urls as url, i (url)}
                                     <button
                                       class="photo-thumb-btn"
-                                      on:click={() => openLightbox(firstRow.photo_urls, i)}
+                                      on:click|stopPropagation={() => openLightbox(firstRow.photo_urls, i)}
                                       title="View photo {i + 1}"
                                     >
                                       <img src={url} alt="Photo {i + 1}" />
@@ -504,6 +560,96 @@
     photos={lightboxPhotos}
     startIndex={lightboxIndex}
     on:close={closeLightbox}
+  />
+{/if}
+
+<!-- -- Inspection detail modal --------------------------------------------- -->
+{#if selectedInsp && selectedGrp}
+  {@const typeObj  = typeByCode(types, selectedGrp.type_code)}
+  {@const condDefs = condDefsFor(selectedGrp.type_code)}
+  {@const items    = conditionChecklistDisplay(selectedInsp, condDefs)}
+  {@const result   = selectedInsp.inspection_result ?? selectedInsp.result}
+
+  <Modal
+    show={true}
+    title="{selectedGrp.asset_id ?? '?'}{selectedGrp.label ? ' — ' + selectedGrp.label : ''}"
+    size="medium"
+    on:close={closeInspDetail}
+  >
+    <!-- Type + floor header -->
+    <div class="id-header">
+      {#if typeObj}
+        <span class="id-type-chip" style="background:#{typeObj.colour}22; border-color:#{typeObj.colour}66;">
+          <span class="id-type-dot" style="background:#{typeObj.colour};">{typeObj.initial}</span>
+          {typeObj.name}
+        </span>
+      {:else}
+        <span class="id-type-chip id-type-unknown">{selectedGrp.type_code ?? '—'}</span>
+      {/if}
+      {#if selectedGrp.floor_name}
+        <span class="id-floor">📍 {selectedGrp.floor_name}</span>
+      {/if}
+    </div>
+
+    <!-- Result + meta -->
+    <div class="id-result-row">
+      <Badge color={resultBadgeColor(result)} size="large">
+        {resultLabel(result)}
+      </Badge>
+      <div class="id-meta">
+        <span>{fmtDateTime(selectedInsp.inspected_at)}</span>
+        {#if selectedSess?.inspector_name}
+          <span class="id-inspector">by {selectedSess.inspector_name}</span>
+        {:else if selectedSess?.inspector?.full_name}
+          <span class="id-inspector">by {selectedSess.inspector.full_name}</span>
+        {/if}
+        {#if selectedSess?.session_type}
+          <span class="id-stype">{selectedSess.session_type}</span>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Condition checklist -->
+    {#if items.length > 0}
+      <div class="id-section">
+        <p class="id-section-lbl">Condition checks</p>
+        <ConditionChecklistChips {items} size="sm" />
+      </div>
+    {/if}
+
+    <!-- Notes -->
+    {#if selectedInsp.inspector_notes}
+      <div class="id-section">
+        <p class="id-section-lbl">Notes</p>
+        <p class="id-notes">{selectedInsp.inspector_notes}</p>
+      </div>
+    {/if}
+
+    <!-- Photos -->
+    {#if selectedInsp.photo_urls?.length > 0}
+      <div class="id-section">
+        <p class="id-section-lbl">Photos ({selectedInsp.photo_urls.length})</p>
+        <div class="id-photos">
+          {#each selectedInsp.photo_urls as url, i (url)}
+            <button
+              class="id-photo-btn"
+              on:click={() => openModalLightbox(selectedInsp.photo_urls, i)}
+              title="View photo {i + 1}"
+            >
+              <img src={url} alt="Photo {i + 1}" />
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </Modal>
+{/if}
+
+{#if modalLightboxPhotos.length > 0}
+  <PhotoLightbox
+    photos={modalLightboxPhotos}
+    startIndex={modalLightboxIndex}
+    on:close={closeModalLightbox}
   />
 {/if}
 
@@ -620,4 +766,29 @@
   /* States */
   .state-center { display: flex; align-items: center; justify-content: center; padding: 3rem; }
   .empty-state  { padding: 4rem 0; text-align: center; }
+
+  /* Clickable row */
+  .row-clickable        { cursor: pointer; }
+  .row-clickable:hover  { background: rgb(71 85 105 / 0.45) !important; }
+
+  /* Inspection detail modal */
+  .id-header     { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .id-type-chip  { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; padding: 0.2rem 0.55rem; border-radius: 4px; border: 1px solid; }
+  .id-type-unknown { background: rgb(71 85 105 / 0.3); border-color: rgb(71 85 105); color: rgb(156 163 175); }
+  .id-type-dot   { width: 1.1rem; height: 1.1rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .id-floor      { font-size: 0.82rem; color: rgb(148 163 184); }
+
+  .id-result-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .id-meta       { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.82rem; color: rgb(148 163 184); }
+  .id-inspector  { color: rgb(167 139 250); }
+  .id-stype      { text-transform: capitalize; color: rgb(107 114 128); font-size: 0.75rem; }
+
+  .id-section      { margin-top: 1rem; }
+  .id-section-lbl  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgb(100 116 139); font-weight: 600; margin-bottom: 0.5rem; }
+  .id-notes        { font-size: 0.875rem; color: rgb(226 232 240); white-space: pre-line; line-height: 1.6; background: rgb(15 23 42 / 0.4); border: 1px solid rgb(71 85 105 / 0.5); border-radius: 6px; padding: 0.75rem; }
+
+  .id-photos       { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .id-photo-btn    { display: block; width: 6rem; height: 6rem; padding: 0; border: 2px solid rgb(71 85 105 / 0.6); border-radius: 6px; overflow: hidden; cursor: zoom-in; background: none; transition: border-color 0.15s; flex-shrink: 0; }
+  .id-photo-btn:hover { border-color: rgb(148 163 184); }
+  .id-photo-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
 </style>
