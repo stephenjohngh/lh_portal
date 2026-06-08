@@ -12,6 +12,18 @@ import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
 
 const logger = getLogger('inspectionStore');
 
+// ── Google Drive URL normalisation ────────────────────────────────────────────
+// Drive's webViewLink (https://drive.google.com/file/d/ID/view) is an HTML
+// viewer page and cannot be used directly in <img src>.  Convert any such URLs
+// to the uc?export=view format which returns the raw image bytes.
+// Safe to call on non-Drive URLs — they are returned unchanged.
+function normalisePhotoUrl(url) {
+  if (!url) return url;
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
+  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+  return url;
+}
+
 // ── Shared photo helper ───────────────────────────────────────────────────────
 // Batch-loads media_attachments for a set of component_inspection rows and
 // injects a photo_urls string[] onto each row in-place.
@@ -31,7 +43,7 @@ async function mergePhotosIntoRows(rows) {
 
   const byId = {};
   for (const p of (photos ?? [])) {
-    (byId[p.entity_id] ??= []).push(p.storage_url);
+    (byId[p.entity_id] ??= []).push(normalisePhotoUrl(p.storage_url));
   }
   for (const row of rows) {
     row.photo_urls = byId[row.id] ?? [];
@@ -627,8 +639,9 @@ function createInspectionStore() {
       }));
       await supabase.from('media_attachments').insert(photoRows);
     }
-    // Inject photo_urls onto the in-memory record so UI state stays consistent
-    inspection.photo_urls = photoUrls;
+    // Inject photo_urls onto the in-memory record so UI state stays consistent.
+    // Normalise Drive viewer URLs in case any were captured before the fix.
+    inspection.photo_urls = photoUrls.map(normalisePhotoUrl);
 
     // Also update component status to match result (ok→ok, problem, failed, inactive)
     await api.update('components', componentId, {

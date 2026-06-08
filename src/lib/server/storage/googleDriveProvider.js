@@ -132,11 +132,16 @@ export const googleDriveProvider = {
       requestBody: { role: 'reader', type: 'anyone' },
     });
 
+    // Return a direct-view URL so <img src={url}> renders the image bytes,
+    // not Google Drive's HTML viewer page.
+    // webViewLink  = https://drive.google.com/file/d/ID/view  (HTML viewer — not embeddable)
+    // uc?export=view = https://drive.google.com/uc?export=view&id=ID  (raw image bytes — embeddable)
+    const fileId = res.data.id;
     return {
-      fileId:       res.data.id,
+      fileId,
       folderId,
-      webViewUrl:   res.data.webViewLink   ?? null,
-      thumbnailUrl: res.data.thumbnailLink ?? null,
+      webViewUrl:   `https://drive.google.com/uc?export=view&id=${fileId}`,
+      thumbnailUrl: `https://drive.google.com/uc?export=view&id=${fileId}`,
     };
   },
 
