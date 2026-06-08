@@ -17,6 +17,9 @@ import { getLogger } from '$lib/utils/logger';
 import {
   GOOGLE_DRIVE_CLIENT_EMAIL,
   GOOGLE_DRIVE_PRIVATE_KEY,
+  GOOGLE_OAUTH_CLIENT_ID,
+  GOOGLE_OAUTH_CLIENT_SECRET,
+  GOOGLE_OAUTH_REFRESH_TOKEN,
 } from '$env/static/private';
 
 const logger = getLogger('visionScan');
@@ -35,15 +38,22 @@ let _authClient = null;
 async function getAuthClient() {
   if (_authClient) return _authClient;
 
-  const clientEmail   = GOOGLE_DRIVE_CLIENT_EMAIL;
-  const privateKeyRaw = GOOGLE_DRIVE_PRIVATE_KEY;
-  if (!clientEmail || !privateKeyRaw) return null;
-
-  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-  const auth = new google.auth.GoogleAuth({
-    credentials: { client_email: clientEmail, private_key: privateKey },
-    scopes: ['https://www.googleapis.com/auth/cloud-vision'],
-  });
+  let auth;
+  if (GOOGLE_OAUTH_CLIENT_ID && GOOGLE_OAUTH_CLIENT_SECRET && GOOGLE_OAUTH_REFRESH_TOKEN) {
+    // OAuth2 mode — reuse the same credentials as the Drive provider
+    const oauth2 = new google.auth.OAuth2(GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET);
+    oauth2.setCredentials({ refresh_token: GOOGLE_OAUTH_REFRESH_TOKEN });
+    auth = oauth2;
+  } else {
+    const clientEmail   = GOOGLE_DRIVE_CLIENT_EMAIL;
+    const privateKeyRaw = GOOGLE_DRIVE_PRIVATE_KEY;
+    if (!clientEmail || !privateKeyRaw) return null;
+    const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+    auth = new google.auth.GoogleAuth({
+      credentials: { client_email: clientEmail, private_key: privateKey },
+      scopes: ['https://www.googleapis.com/auth/cloud-vision'],
+    });
+  }
   _authClient = await auth.getClient();
   return _authClient;
 }

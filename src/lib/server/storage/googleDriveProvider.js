@@ -1,11 +1,23 @@
 // src/lib/server/storage/googleDriveProvider.js
 // Google Drive storage provider implementation.
-// All Drive API calls use a service account — no user OAuth required.
 //
-// Required environment variables:
-//   GOOGLE_DRIVE_CLIENT_EMAIL   Service account email
-//   GOOGLE_DRIVE_PRIVATE_KEY    Service account private key (with literal \n line breaks)
-//   GOOGLE_DRIVE_ROOT_FOLDER_ID Root folder ID shared with the service account
+// Supports two authentication modes (auto-detected from env vars):
+//
+//   OAuth2 mode  (recommended for personal / basic Workspace accounts)
+//     GOOGLE_OAUTH_CLIENT_ID      OAuth2 client ID   (type: Web application)
+//     GOOGLE_OAUTH_CLIENT_SECRET  OAuth2 client secret
+//     GOOGLE_OAUTH_REFRESH_TOKEN  Offline refresh token (obtained once via OAuth Playground)
+//     GOOGLE_DRIVE_ROOT_FOLDER_ID Root folder ID in the authorising user's My Drive
+//
+//   Service account mode  (requires Google Workspace Business Standard+ for Shared Drives)
+//     GOOGLE_DRIVE_CLIENT_EMAIL   Service account email
+//     GOOGLE_DRIVE_PRIVATE_KEY    Service account private key (literal \n line breaks)
+//     GOOGLE_DRIVE_ROOT_FOLDER_ID Root folder ID inside a Shared Drive
+//
+// OAuth2 mode takes priority when GOOGLE_OAUTH_REFRESH_TOKEN is set.
+// Service account mode is used as fallback.
+//
+// See docs/google_drive_storage_setup.md for setup instructions.
 
 import { google }  from 'googleapis';
 import { Readable } from 'stream';
@@ -14,43 +26,64 @@ import {
   GOOGLE_DRIVE_CLIENT_EMAIL,
   GOOGLE_DRIVE_PRIVATE_KEY,
   GOOGLE_DRIVE_ROOT_FOLDER_ID,
+  GOOGLE_OAUTH_CLIENT_ID,
+  GOOGLE_OAUTH_CLIENT_SECRET,
+  GOOGLE_OAUTH_REFRESH_TOKEN,
 } from '$env/static/private';
 
 const logger = getLogger('GoogleDriveProvider');
 
-// ── Module-level singletons ────────────────────────────────────────────────
-// GoogleAuth and the Drive client are created once at module load time.
-// Re-creating them on every request is expensive and wasteful; the auth
-// library handles token refresh internally so a long-lived instance is safe.
-//
-// We read env vars here so a missing variable produces a clear startup log
-// rather than an opaque mid-request 500.
+// ── Resolved env values ────────────────────────────────────────────────────
+const _rootFolderId  = GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
+const _oauthId       = GOOGLE_OAUTH_CLIENT_ID      ?? '';
+const _oauthSecret   = GOOGLE_OAUTH_CLIENT_SECRET  ?? '';
+const _oauthRefresh  = GOOGLE_OAUTH_REFRESH_TOKEN  ?? '';
+const _saEmail       = GOOGLE_DRIVE_CLIENT_EMAIL   ?? '';
+const _saKey         = (GOOGLE_DRIVE_PRIVATE_KEY   ?? '').replace(/\\n/g, '\n');
 
-const _clientEmail  = GOOGLE_DRIVE_CLIENT_EMAIL  ?? '';
-const _privateKey   = (GOOGLE_DRIVE_PRIVATE_KEY  ?? '').replace(/\\n/g, '\n');
-const _rootFolderId = GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
-
-if (!_clientEmail || !_privateKey) {
-  logger('⚠️  GOOGLE_DRIVE_CLIENT_EMAIL / GOOGLE_DRIVE_PRIVATE_KEY not set — Drive uploads will fail');
-}
+// Log warnings at startup so missing vars surface immediately.
 if (!_rootFolderId) {
   logger('⚠️  GOOGLE_DRIVE_ROOT_FOLDER_ID not set — ensurePath() will fail at runtime');
 }
+if (!_oauthRefresh && (!_saEmail || !_saKey)) {
+  logger('⚠️  No Drive credentials found — set GOOGLE_OAUTH_REFRESH_TOKEN (OAuth2) or GOOGLE_DRIVE_CLIENT_EMAIL + GOOGLE_DRIVE_PRIVATE_KEY (service account)');
+}
 
+// ── Drive client singleton ─────────────────────────────────────────────────
 let _drive = null;
 
 /** @returns {import('googleapis').drive_v3.Drive} */
 function getDrive() {
-  if (!_clientEmail || !_privateKey) {
-    throw new Error('Google Drive credentials not configured. Set GOOGLE_DRIVE_CLIENT_EMAIL and GOOGLE_DRIVE_PRIVATE_KEY.');
-  }
-  if (!_drive) {
+  if (_drive) return _drive;
+
+  if (_oauthId && _oauthSecret && _oauthRefresh) {
+    // ── OAuth2 mode ──────────────────────────────────────────────────────
+    // Authenticates as a real Google user; files use that user's Drive quota
+    // and land in their My Drive. Works with personal accounts and basic
+    // Google Workspace (no Shared Drive / Business Standard required).
+    // The refresh token never expires unless revoked.
+    const oauth2 = new google.auth.OAuth2(_oauthId, _oauthSecret);
+    oauth2.setCredentials({ refresh_token: _oauthRefresh });
+    _drive = google.drive({ version: 'v3', auth: oauth2 });
+    logger('Drive client initialised (OAuth2 mode)');
+
+  } else if (_saEmail && _saKey) {
+    // ── Service account mode ─────────────────────────────────────────────
+    // Requires the root folder to be a Shared Drive (Google Workspace
+    // Business Standard+). Service accounts have no personal Drive quota.
     const auth = new google.auth.GoogleAuth({
-      credentials: { client_email: _clientEmail, private_key: _privateKey },
+      credentials: { client_email: _saEmail, private_key: _saKey },
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
     _drive = google.drive({ version: 'v3', auth });
-    logger('Drive client initialised');
+    logger('Drive client initialised (service account mode)');
+
+  } else {
+    throw new Error(
+      'Google Drive credentials not configured. ' +
+      'Set GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET + GOOGLE_OAUTH_REFRESH_TOKEN ' +
+      '(OAuth2 mode), or GOOGLE_DRIVE_CLIENT_EMAIL + GOOGLE_DRIVE_PRIVATE_KEY (service account mode).',
+    );
   }
   return _drive;
 }
