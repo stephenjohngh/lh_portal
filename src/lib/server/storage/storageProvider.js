@@ -75,6 +75,11 @@
  *
  * @property {(query: string, rootId?: string) => Promise<FileEntry[]>} searchFiles
  *   Full-text / name search within storage.
+ *
+ * @property {(fileId: string) => Promise<{ data: Buffer, mimeType: string }>} getFileStream
+ *   Download a file's raw bytes for server-side proxying.
+ *   Used by GET /api/media/file/[fileId] to serve images to the browser
+ *   without cross-origin restrictions.
  */
 
 // This file contains type definitions only — no runtime exports.

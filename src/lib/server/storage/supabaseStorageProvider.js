@@ -127,6 +127,14 @@ export const supabaseStorageProvider = {
     return segments.join('/');
   },
 
+  async getFileStream(filePath) {
+    const supabase = getClient();
+    const { data, error } = await supabase.storage.from(BUCKET).download(filePath);
+    if (error) throw error;
+    const buffer = Buffer.from(await data.arrayBuffer());
+    return { data: buffer, mimeType: data.type ?? 'application/octet-stream' };
+  },
+
   async moveFile(filePath, newFolderPath) {
     const supabase  = getClient();
     const name      = filePath.split('/').at(-1);

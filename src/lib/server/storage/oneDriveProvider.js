@@ -254,6 +254,17 @@ export const oneDriveProvider = {
     return current;
   },
 
+  async getFileStream(itemId) {
+    const { driveId } = cfg();
+    const token = await getToken();
+    const res = await fetch(`${GRAPH}/drives/${driveId}/items/${itemId}/content`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`OneDrive download failed: ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    return { data: buffer, mimeType: res.headers.get('content-type') ?? 'application/octet-stream' };
+  },
+
   async moveFile(itemId, newParentId) {
     const { driveId } = cfg();
     await graph('PATCH', `/drives/${driveId}/items/${itemId}`, {

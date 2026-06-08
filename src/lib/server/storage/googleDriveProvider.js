@@ -238,6 +238,20 @@ export const googleDriveProvider = {
     });
   },
 
+  async getFileStream(fileId) {
+    const drive = getDrive();
+    // responseType: 'arraybuffer' makes gaxios/axios return the raw bytes.
+    // The second argument is passed through to the underlying HTTP client.
+    const res = await drive.files.get(
+      { fileId, supportsAllDrives: true, alt: 'media' },
+      { responseType: 'arraybuffer' },
+    );
+    return {
+      data:     Buffer.from(res.data),
+      mimeType: res.headers?.['content-type'] ?? 'image/jpeg',
+    };
+  },
+
   async searchFiles(query, _rootId) {
     const drive = getDrive();
     const res   = await drive.files.list({

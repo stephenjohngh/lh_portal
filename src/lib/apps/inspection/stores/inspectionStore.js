@@ -13,14 +13,16 @@ import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
 const logger = getLogger('inspectionStore');
 
 // ── Google Drive URL normalisation ────────────────────────────────────────────
-// Drive's webViewLink (https://drive.google.com/file/d/ID/view) is an HTML
-// viewer page and cannot be used directly in <img src>.  Convert any such URLs
-// to the uc?export=view format which returns the raw image bytes.
-// Safe to call on non-Drive URLs — they are returned unchanged.
+// Drive URLs return 403 when fetched cross-origin by a browser <img> tag
+// (Sec-Fetch-Site: cross-site triggers Google's hotlink protection).
+// Route all Drive files through the portal's own proxy endpoint instead:
+//   /api/media/file/{fileId}  — same origin, no CORS issue
+// Handles both webViewLink (.../file/d/ID/view) and uc?export=view&id=ID formats.
+// Non-Drive URLs (e.g. Supabase public URLs) are returned unchanged.
 function normalisePhotoUrl(url) {
   if (!url) return url;
-  const m = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
-  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+  const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
+  if (m) return `/api/media/file/${m[1]}`;
   return url;
 }
 
