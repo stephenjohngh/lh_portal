@@ -218,7 +218,7 @@ function createInfoStore() {
     form.append('entity_id',    noteId);
     form.append('display_name', file.name);
     form.append('doc_type',     'other');
-    form.append('folder_path',  'info');
+    form.append('folder_path',  'Info Notes');
     if (description) form.append('description', description);
 
     const res  = await fetch('/api/documents/upload', {

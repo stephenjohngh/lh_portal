@@ -115,7 +115,7 @@
     <p class="text-sm font-medium text-slate-300 mb-3">Upload a document</p>
     <DocumentUploader
       extended={true}
-      folderPath="documents"
+      folderPath="Documents"
       on:uploaded={handleUploaded}
     />
   </div>

@@ -213,7 +213,7 @@
         form.append('file',         docFile);
         form.append('entity_type',  'issue');
         form.append('entity_id',    issueId);
-        form.append('folder_path',  'issues');
+        form.append('folder_path',  'Issues');
         form.append('display_name', docFile.name);
         form.append('doc_type',     'other');
 
