@@ -142,9 +142,7 @@ function createMaintenanceStore() {
       uploaded_by:  userId,
     }, true);
 
-    // Enrich with job context for allDocs
-    const s       = get({ subscribe });
-    const jobInfo = s.jobs.find(j => j.id === jobId);
+    // Enrich with job context for allDocs (s and jobInfo already resolved above)
     const enriched = {
       ...doc,
       job: jobInfo
