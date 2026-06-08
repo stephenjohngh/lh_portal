@@ -46,6 +46,7 @@
 
   // -- Props -----------------------------------------------------------
   export let issueId;
+  export let issueNumber = null;  // issues.issue_number — used for Drive subfolder name
   export let activities = [];  // all activities (all types)
   // Passed in by IssueCard so we can tell, per comment activity, whether
   // an action has already been created from it.
@@ -213,7 +214,7 @@
         form.append('file',         docFile);
         form.append('entity_type',  'issue');
         form.append('entity_id',    issueId);
-        form.append('folder_path',  'Issues');
+        form.append('folder_path',  issueNumber ? `Issues/Issue ${issueNumber}` : 'Issues');
         form.append('display_name', docFile.name);
         form.append('doc_type',     'other');
 

@@ -309,6 +309,7 @@
       <div class="border-l-4 border-blue-500 pl-3">
         <ActivityLogSection
           issueId={issue.id}
+          issueNumber={issue.issue_number ?? null}
           activities={issue.activities || []}
           actions={issue.actions || []}
           on:jumpToAction={handleJumpToAction}
