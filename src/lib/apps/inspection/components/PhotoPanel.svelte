@@ -18,12 +18,12 @@
   export let pendingPhotos = [];   // { blob, preview, uploading, error }
 
   // -- Camera state — local to this component ------------------------
-  let capturing       = false;
-  let videoElement    = null;
-  let cameraControls  = null;   // bound to .camera-controls — used for scroll-into-view
-  let stream          = null;
-  let captureError    = '';
-  let destroyed       = false;
+  let capturing    = false;
+  let videoElement = null;
+  let cameraView   = null;   // bound to .camera-view — scroll target
+  let stream       = null;
+  let captureError = '';
+  let destroyed    = false;
 
   // -- Derived -------------------------------------------------------
   $: totalPhotos = photoUrls.length + pendingPhotos.length;
@@ -35,15 +35,17 @@
     capturing    = true;
     captureError = '';
     // Wait for the {#if capturing} block to render, then scroll so the
-    // CAPTURE button sits at the bottom of the visible viewport with the
-    // camera preview filling the space above it.
-    // Use window.scrollTo rather than scrollIntoView — scrollIntoView can
-    // target the wrong ancestor on iOS Safari when all containers use
-    // min-height (no explicit scroll boundary).
+    // camera view fills the screen below the sticky nav (64 px = h-16).
+    // We scroll to the TOP of .camera-view rather than the bottom of the
+    // controls, because the video element has no height until the stream
+    // loads — measuring the controls bottom at tick() time gives the wrong
+    // position. .camera-view has an explicit CSS height (calc(100dvh-64px))
+    // so its top edge is the only stable anchor.
     await tick();
-    if (cameraControls) {
-      const rect   = cameraControls.getBoundingClientRect();
-      const target = window.scrollY + rect.bottom - window.innerHeight;
+    if (cameraView) {
+      const rect   = cameraView.getBoundingClientRect();
+      const NAV_H  = 64; // matches h-16 on the sticky <nav> in +page.svelte
+      const target = window.scrollY + rect.top - NAV_H;
       window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
     }
     try {
@@ -149,10 +151,10 @@
 
   <!-- Camera view -->
   {#if capturing}
-    <div class="camera-view">
+    <div class="camera-view" bind:this={cameraView}>
       <!-- svelte-ignore a11y-media-has-caption -->
       <video bind:this={videoElement} autoplay playsinline></video>
-      <div class="camera-controls" bind:this={cameraControls}>
+      <div class="camera-controls">
         <button class="capture-btn" on:click={capturePhoto}>CAPTURE</button>
         <button class="cancel-camera-btn" on:click={stopCamera}>CANCEL</button>
       </div>
@@ -176,9 +178,15 @@
   .thumb-overlay   { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); color:#fb923c; font-size:1.2rem; }
   .thumb-err       { color:#f87171; }
 
-  .camera-view          { display:flex; flex-direction:column; gap:1rem; background:#000; border-radius:10px; overflow:hidden; }
-  video                 { width:100%; display:block; }
-  .camera-controls      { display:flex; gap:0.75rem; padding:1rem; background:#111122; }
+  /* Camera view — explicit height so position is stable before the stream loads.
+     100dvh accounts for the iOS Safari address-bar resize; falls back to 100vh.
+     64px = the sticky nav bar (h-16 in +page.svelte). */
+  .camera-view          { display:flex; flex-direction:column; background:#000; border-radius:10px; overflow:hidden;
+                          height: calc(100vh  - 64px);
+                          height: calc(100dvh - 64px); }
+  /* Video fills all available space above the controls row */
+  video                 { flex:1; min-height:0; width:100%; display:block; object-fit:cover; }
+  .camera-controls      { flex-shrink:0; display:flex; gap:0.75rem; padding:1rem; background:#111122; }
   .capture-btn          { flex:1; padding:1rem; background:#22c55e; border:none; border-radius:8px; color:#0d0d14; font-family:inherit; font-size:0.875rem; font-weight:800; letter-spacing:0.15em; cursor:pointer; }
   .cancel-camera-btn    { padding:1rem 1.5rem; background:none; border:2px solid #3e3e58; border-radius:8px; color:#ccc; font-family:inherit; font-size:0.875rem; font-weight:700; cursor:pointer; }
 </style>
