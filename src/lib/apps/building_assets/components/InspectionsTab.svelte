@@ -29,6 +29,7 @@
   import ConditionChecklistChips from './ConditionChecklistChips.svelte';
   import PhotoLightbox           from '$lib/components/common/PhotoLightbox.svelte';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
+  import { normalisePhotoUrl, deleteStorageFiles } from '$lib/utils/driveUtils.js';
 
   const logger = getLogger('InspectionsTab');
 
@@ -46,16 +47,6 @@
   let expandedId  = null;
   let deletingId  = null;
   let confirmId   = null;
-
-  // -- Drive URL proxy ---------------------------------------------------------
-  // Drive direct URLs return 403 when used as <img src> cross-origin.
-  // Route through the portal's own proxy so the browser sees same-origin.
-  function normalisePhotoUrl(url) {
-    if (!url) return url;
-    const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
-    if (m) return `/api/media/file/${m[1]}`;
-    return url;
-  }
 
   // -- Inspection detail modal ------------------------------------------------
   // selectedInsp: the inspection row to show in the modal (includes photo_urls).
@@ -206,20 +197,10 @@
 
         // 3. Best-effort Drive file deletion — failures are swallowed so DB cleanup always runs.
         const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        if (token) {
-          for (const { storage_url } of attachments ?? []) {
-            const m = storage_url?.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
-            const fileId = m?.[1] ?? null;
-            if (!fileId) continue;
-            try {
-              await fetch(`/api/media/file/${fileId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-              });
-            } catch { /* non-fatal */ }
-          }
-        }
+        await deleteStorageFiles(
+          (attachments ?? []).map(a => a.storage_url),
+          sessionData?.session?.access_token,
+        );
 
         // 4. Delete media_attachments rows, then the inspections.
         await supabase.from('media_attachments').delete()

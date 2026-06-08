@@ -12,15 +12,7 @@
   import { api }  from '$lib/utils/api';
   import { supabase } from '$lib/supabaseClient';
   import { getLogger } from '$lib/utils/logger';
-
-  // Proxy Drive URLs through the portal's own endpoint so the server-side
-  // image fetcher receives a URL it can resolve with its own storage credentials.
-  function normalisePhotoUrl(url) {
-    if (!url) return url;
-    const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
-    if (m) return `/api/media/file/${m[1]}`;
-    return url;
-  }
+  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
   import {
     flattenInspectionRows,
     presetLabel,

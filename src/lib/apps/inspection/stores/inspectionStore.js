@@ -9,52 +9,12 @@ import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';   // auth + media_attachments IN queries
 import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
 import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
+import {
+  normalisePhotoUrl,
+  deleteStorageFiles,
+} from '$lib/utils/driveUtils.js';
 
 const logger = getLogger('inspectionStore');
-
-// ── Google Drive URL normalisation ────────────────────────────────────────────
-// Drive URLs return 403 when fetched cross-origin by a browser <img> tag
-// (Sec-Fetch-Site: cross-site triggers Google's hotlink protection).
-// Route all Drive files through the portal's own proxy endpoint instead:
-//   /api/media/file/{fileId}  — same origin, no CORS issue
-// Handles both webViewLink (.../file/d/ID/view) and uc?export=view&id=ID formats.
-// Non-Drive URLs (e.g. Supabase public URLs) are returned unchanged.
-function normalisePhotoUrl(url) {
-  if (!url) return url;
-  const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
-  if (m) return `/api/media/file/${m[1]}`;
-  return url;
-}
-
-// ── Storage file deletion ─────────────────────────────────────────────────────
-// Extract a storage file ID from a raw storage_url.
-// Currently handles Google Drive URLs; returns null for unrecognised formats
-// so callers can skip rather than fail.
-function extractDriveFileId(url) {
-  if (!url) return null;
-  const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
-  return m?.[1] ?? null;
-}
-
-// Best-effort deletion of storage files via the server proxy endpoint.
-// Failures are silently swallowed — storage cleanup must never block DB cleanup.
-// token  — Bearer token from supabase.auth.getSession()
-// urls   — raw storage_url values from media_attachments rows
-async function deleteStorageFiles(urls, token) {
-  if (!token || !urls?.length) return;
-  for (const url of urls) {
-    const fileId = extractDriveFileId(url);
-    if (!fileId) continue;    // unrecognised provider — skip
-    try {
-      await fetch(`/api/media/file/${fileId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch {
-      // Network error or storage error — ignore, DB cleanup proceeds
-    }
-  }
-}
 
 // ── Shared photo helper ───────────────────────────────────────────────────────
 // Batch-loads media_attachments for a set of component_inspection rows and
