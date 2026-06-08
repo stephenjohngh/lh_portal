@@ -114,6 +114,8 @@
       {error}
       {session}
       {component}
+      {floor}
+      {type}
       on:save={handleSave}
     />
 

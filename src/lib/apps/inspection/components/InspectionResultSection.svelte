@@ -28,6 +28,8 @@
   export let error         = null;
   export let session       = null;
   export let component     = null;
+  export let floor         = null;  // floors row — used for human-readable Drive folder names
+  export let type          = null;  // component_types row — used for human-readable Drive file names
   export let saveLabel     = 'RECORD INSPECTION';
 
   $: canSave = !!result;
@@ -79,18 +81,43 @@
     if (!token) { logger('❌ No auth token — cannot upload photos'); return []; }
 
     const uploaded = [];
-    const sessionId   = session?.id ?? 'unknown';
-    const compName    = component?.asset_id || component?.id?.slice(0, 8) || 'comp';
+
+    // Strip characters not valid in Drive folder/file names.
+    const sanitize = str => str.replace(/[/\\:*?"<>|]/g, '').trim();
+
+    // Folder: "Inspections / 2026-06-08 Inspection Ground Floor"
+    // Groups all photos from the same session into one readable Drive folder.
+    const sessionDate = session?.started_at
+      ? session.started_at.slice(0, 10)           // "YYYY-MM-DD"
+      : new Date().toISOString().slice(0, 10);
+    const sessionType = session?.session_type
+      ? session.session_type.charAt(0).toUpperCase() + session.session_type.slice(1)
+      : 'Inspection';
+    const floorLabel  = floor?.name ?? floor?.short_name ?? null;
+    const scopeLabel  = floorLabel
+      ? sanitize(floorLabel)
+      : (session?.session_scope === 'building' ? 'Building' : 'Unknown Floor');
+    const sessionFolder = `${sessionDate} ${sessionType} ${scopeLabel}`;
+
+    // File name: "Fire Door FD-042 - 1.jpg"
+    // Falls back gracefully if type or asset_id are missing.
+    const typeName  = type?.name  ?? null;
+    const assetId   = component?.asset_id ?? null;
+    const nameBase  = typeName && assetId
+      ? sanitize(`${typeName} ${assetId}`)
+      : assetId
+        ? sanitize(assetId)
+        : 'Photo';
 
     for (let i = 0; i < pendingPhotos.length; i++) {
       const p = pendingPhotos[i];
       pendingPhotos[i] = { ...p, uploading: true };
       pendingPhotos = [...pendingPhotos];
       try {
-        const fileName = `${compName}_${Date.now()}_${i}.jpg`;
+        const fileName = `${nameBase} - ${i + 1}.jpg`;
         const { url } = await uploadMedia(p.blob, {
           filename:   fileName,
-          folderPath: ['inspection-sessions', sessionId],
+          folderPath: ['Inspections', sessionFolder],
           token,
         });
         uploaded.push(url);
