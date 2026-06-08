@@ -34,11 +34,18 @@
     if (!canAddPhoto) return;
     capturing    = true;
     captureError = '';
-    // Wait for the {#if capturing} block to render, then scroll the
-    // CAPTURE button to the bottom of the visible area so the camera
-    // preview fills the space above it on a mobile screen.
+    // Wait for the {#if capturing} block to render, then scroll so the
+    // CAPTURE button sits at the bottom of the visible viewport with the
+    // camera preview filling the space above it.
+    // Use window.scrollTo rather than scrollIntoView — scrollIntoView can
+    // target the wrong ancestor on iOS Safari when all containers use
+    // min-height (no explicit scroll boundary).
     await tick();
-    cameraControls?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (cameraControls) {
+      const rect   = cameraControls.getBoundingClientRect();
+      const target = window.scrollY + rect.bottom - window.innerHeight;
+      window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+    }
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
