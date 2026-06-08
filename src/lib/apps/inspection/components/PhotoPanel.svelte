@@ -4,7 +4,7 @@
      Parent owns pendingPhotos and photoUrls via bind: so it can run
      uploadAllPending() as part of its own save flow. -->
 <script>
-  import { onDestroy }      from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { getLogger }      from '$lib/utils/logger';
   import { compressImage }  from '$lib/apps/inspection/utils/imageCompression';
   import WalkError          from '$lib/apps/inspection/components/common/WalkError.svelte';
@@ -18,11 +18,12 @@
   export let pendingPhotos = [];   // { blob, preview, uploading, error }
 
   // -- Camera state — local to this component ------------------------
-  let capturing    = false;
-  let videoElement = null;
-  let stream       = null;
-  let captureError = '';
-  let destroyed    = false;
+  let capturing       = false;
+  let videoElement    = null;
+  let cameraControls  = null;   // bound to .camera-controls — used for scroll-into-view
+  let stream          = null;
+  let captureError    = '';
+  let destroyed       = false;
 
   // -- Derived -------------------------------------------------------
   $: totalPhotos = photoUrls.length + pendingPhotos.length;
@@ -31,8 +32,13 @@
   // -- Camera --------------------------------------------------------
   async function startCamera() {
     if (!canAddPhoto) return;
-    capturing = true;
+    capturing    = true;
     captureError = '';
+    // Wait for the {#if capturing} block to render, then scroll the
+    // CAPTURE button to the bottom of the visible area so the camera
+    // preview fills the space above it on a mobile screen.
+    await tick();
+    cameraControls?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -139,7 +145,7 @@
     <div class="camera-view">
       <!-- svelte-ignore a11y-media-has-caption -->
       <video bind:this={videoElement} autoplay playsinline></video>
-      <div class="camera-controls">
+      <div class="camera-controls" bind:this={cameraControls}>
         <button class="capture-btn" on:click={capturePhoto}>CAPTURE</button>
         <button class="cancel-camera-btn" on:click={stopCamera}>CANCEL</button>
       </div>
