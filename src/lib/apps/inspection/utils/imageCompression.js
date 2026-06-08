@@ -18,11 +18,11 @@ const logger = getLogger('ImageCompression');
  */
 export async function compressImage(imageBlob, options = {}) {
   const compressionOptions = {
-    maxSizeMB:        0.5,
-    maxWidthOrHeight: 1024,
+    maxSizeMB:        2,
+    maxWidthOrHeight: 1920,
     useWebWorker:     true,
     fileType:         'image/jpeg',
-    initialQuality:   0.8,
+    initialQuality:   0.85,
     ...options,
   };
 

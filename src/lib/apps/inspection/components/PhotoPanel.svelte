@@ -67,9 +67,9 @@
     canvas.getContext('2d').drawImage(videoElement, 0, 0);
 
     try {
-      const blob       = await canvasToBlob(canvas, 'image/jpeg', 0.8);
+      const blob       = await canvasToBlob(canvas, 'image/jpeg', 0.92);
       if (destroyed) return;
-      const compressed = await compressImage(blob, { maxSizeMB: 0.5, maxWidthOrHeight: 1024 });
+      const compressed = await compressImage(blob, { maxSizeMB: 2, maxWidthOrHeight: 1920 });
       if (destroyed) { URL.revokeObjectURL(URL.createObjectURL(compressed)); return; }
       const preview    = URL.createObjectURL(compressed);
       pendingPhotos    = [...pendingPhotos, { blob: compressed, preview, uploading: false, error: null }];
