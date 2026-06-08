@@ -29,7 +29,8 @@ import { getLogger } from '$lib/utils/logger';
 import {
   hCell, dCell, run, para,
   makeHeader, makeFooter, DOC_STYLES, pageProps,
-  CONTENT_W, COLOURS, BORDERS, CELL_PAD,
+  CONTENT_W, CONTENT_W_L, PAGE_W_L, PAGE_H_L,
+  COLOURS, BORDERS, CELL_PAD,
 } from '$lib/server/docxHelpers.js';
 import { fmtGenerated, fmtDate, fmtDateTime, fmtTime, fmtDuration } from '$lib/utils/dates';
 
@@ -145,18 +146,26 @@ function buildCover(sessions, reportType, generatedAt) {
 }
 
 // -- Summary table --------------------------------------------------------------
+// Portrait column widths (fallback — summary now uses landscape by default)
 // Columns: Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Prob | N/A | Photos | Notes
 // DXA:      900 |   1100   |  700  |  1000  | 1000 |   1000   |   700    |  650  |550 | 550  |  650 | 650 |   400  |  616
 // Sum = 10466
 const SUM_COLS = [900, 1100, 700, 1000, 1000, 1000, 700, 650, 550, 550, 650, 650, 400, 616];
 
-function buildSummaryTable(sessionData) {
-  const headers = ['Date', 'Building', 'Floor', 'Preset', 'Name', 'Inspector',
-                   'Duration', 'Comps', 'OK', 'Fail', 'Prob', 'N/A', 'Photos', 'Notes'];
+// Landscape column widths — proportionally wider, total = CONTENT_W_L = 15398
+// Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Prob | N/A | Photos | Notes
+// 1200 |   1600   |  950  |  1500  | 1300 |   1500   |   950    |  850  |800 | 800  |  850 | 800 |   700  | 1598
+const SUM_COLS_L = [1200, 1600, 950, 1500, 1300, 1500, 950, 850, 800, 800, 850, 800, 700, 1598];
+
+// cols defaults to portrait; pass SUM_COLS_L for the landscape summary.
+function buildSummaryTable(sessionData, cols = SUM_COLS) {
+  const totalW   = cols.reduce((a, b) => a + b, 0);
+  const headers  = ['Date', 'Building', 'Floor', 'Preset', 'Name', 'Inspector',
+                    'Duration', 'Comps', 'OK', 'Fail', 'Prob', 'N/A', 'Photos', 'Notes'];
 
   const headerRow = new TableRow({
     tableHeader: true,
-    children:    headers.map((h, i) => hCell(h, SUM_COLS[i])),
+    children:    headers.map((h, i) => hCell(h, cols[i])),
   });
 
   const dataRows = sessionData.map(({ session: s, inspections }, idx) => {
@@ -169,27 +178,27 @@ function buildSummaryTable(sessionData) {
     );
     return new TableRow({
       children: [
-        dCell(fmtDate(s.started_at),        SUM_COLS[0],  { alt }),
-        dCell(s.building,                   SUM_COLS[1],  { alt }),
-        dCell(flr,                          SUM_COLS[2],  { alt }),
-        dCell(s.session_preset_label ?? s.session_preset ?? '—', SUM_COLS[3], { alt }),
-        dCell(s.session_name || '—',        SUM_COLS[4],  { alt }),
-        dCell(s.inspector_name || '—',      SUM_COLS[5],  { alt }),
-        dCell(dur,                          SUM_COLS[6],  { alt }),
-        dCell(String(st.components),        SUM_COLS[7],  { alt, bold: true }),
-        dCell(st.ok       || '—', SUM_COLS[8],  { alt, color: st.ok       ? COLOURS.passGreen : '9CA3AF' }),
-        dCell(st.failed   || '—', SUM_COLS[9],  { alt, color: st.failed   ? COLOURS.failRed   : '9CA3AF' }),
-        dCell(st.problem  || '—', SUM_COLS[10], { alt, color: st.problem  ? 'EA580C'           : '9CA3AF' }),
-        dCell(st.inactive || '—', SUM_COLS[11], { alt, color: st.inactive ? '6B7280'           : '9CA3AF' }),
-        dCell(photoCount  || '—', SUM_COLS[12], { alt, color: photoCount  ? '0369A1'            : '9CA3AF' }),
-        dCell(s.notes || '—',               SUM_COLS[13], { alt }),
+        dCell(fmtDate(s.started_at),        cols[0],  { alt }),
+        dCell(s.building,                   cols[1],  { alt }),
+        dCell(flr,                          cols[2],  { alt }),
+        dCell(s.session_preset_label ?? s.session_preset ?? '—', cols[3], { alt }),
+        dCell(s.session_name || '—',        cols[4],  { alt }),
+        dCell(s.inspector_name || '—',      cols[5],  { alt }),
+        dCell(dur,                          cols[6],  { alt }),
+        dCell(String(st.components),        cols[7],  { alt, bold: true }),
+        dCell(st.ok       || '—', cols[8],  { alt, color: st.ok       ? COLOURS.passGreen : '9CA3AF' }),
+        dCell(st.failed   || '—', cols[9],  { alt, color: st.failed   ? COLOURS.failRed   : '9CA3AF' }),
+        dCell(st.problem  || '—', cols[10], { alt, color: st.problem  ? 'EA580C'           : '9CA3AF' }),
+        dCell(st.inactive || '—', cols[11], { alt, color: st.inactive ? '6B7280'           : '9CA3AF' }),
+        dCell(photoCount  || '—', cols[12], { alt, color: photoCount  ? '0369A1'            : '9CA3AF' }),
+        dCell(s.notes || '—',     cols[13], { alt }),
       ],
     });
   });
 
   return new Table({
-    width:        { size: CONTENT_W, type: WidthType.DXA },
-    columnWidths: SUM_COLS,
+    width:        { size: totalW, type: WidthType.DXA },
+    columnWidths: cols,
     rows:         [headerRow, ...dataRows],
   });
 }
@@ -482,14 +491,18 @@ export async function POST({ request }) {
 
     if (!sessions?.length) return json({ error: 'No sessions supplied' }, { status: 400 });
 
-    const generatedAt = fmtGenerated();
-    const buildings   = [...new Set(sessions.map(d => d.session.building))].sort().join(', ');
-    const titleLabel  = reportType === 'summary' ? 'Inspection Summary' : 'Inspection Report';
+    const generatedAt  = fmtGenerated();
+    const buildings    = [...new Set(sessions.map(d => d.session.building))].sort().join(', ');
+    const titleLabel   = reportType === 'summary' ? 'Inspection Summary' : 'Inspection Report';
+    // Summary uses landscape so the 14-column table has room to breathe.
+    // Detailed stays portrait (multi-page narrative + photos).
+    const isLandscape  = reportType === 'summary';
+    const contentW     = isLandscape ? CONTENT_W_L : CONTENT_W;
 
     const children = [...buildCover(sessions.map(d => d.session), reportType, generatedAt)];
 
     if (reportType === 'summary') {
-      children.push(buildSummaryTable(sessions));
+      children.push(buildSummaryTable(sessions, SUM_COLS_L));
     } else {
       for (let i = 0; i < sessions.length; i++) {
         const sessionChildren = await buildDetailedSession(sessions[i], i === 0, includePhotos);
@@ -500,8 +513,8 @@ export async function POST({ request }) {
     const doc = new Document({
       styles:   DOC_STYLES,
       sections: [{
-        properties: pageProps(),
-        headers:    { default: makeHeader(`${buildings} — ${titleLabel}`, generatedAt) },
+        properties: pageProps(isLandscape ? { width: PAGE_W_L, height: PAGE_H_L } : {}),
+        headers:    { default: makeHeader(`${buildings} — ${titleLabel}`, generatedAt, contentW) },
         footers:    { default: makeFooter() },
         children,
       }],

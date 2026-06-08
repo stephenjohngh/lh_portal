@@ -14,6 +14,11 @@ export const PAGE_H    = 16838;
 export const MARGIN    = 720;                       // 0.5 inch all sides
 export const CONTENT_W = PAGE_W - 2 * MARGIN;      // 10466 DXA
 
+// -- A4 landscape page geometry -----------------------------------------------
+export const PAGE_W_L    = PAGE_H;                 // 16838 DXA
+export const PAGE_H_L    = PAGE_W;                 // 11906 DXA
+export const CONTENT_W_L = PAGE_W_L - 2 * MARGIN; // 15398 DXA
+
 // -- Shared colour tokens -----------------------------------------------------
 export const COLOURS = {
   headerFill:  '2C3E6B',   // dark navy — table header rows
@@ -121,12 +126,13 @@ export function dCell(text, widthDxa, opts = {}) {
 
 // -- Running page header -------------------------------------------------------
 // Renders: "Title  [tab]  generatedAt" with a bottom border line.
-export function makeHeader(title, generatedAt) {
+// Pass contentWidth = CONTENT_W_L for landscape sections.
+export function makeHeader(title, generatedAt, contentWidth = CONTENT_W) {
   return new Header({
     children: [new Paragraph({
       spacing:  { before: 0, after: 0 },
       border:   { bottom: { style: BorderStyle.SINGLE, size: 4, color: COLOURS.border, space: 4 } },
-      tabStops: [{ type: 'right', position: CONTENT_W }],
+      tabStops: [{ type: 'right', position: contentWidth }],
       children: [
         run(title,       { size: 16, color: '555555' }),
         new TextRun({ text: '\t', font: 'Arial' }),
