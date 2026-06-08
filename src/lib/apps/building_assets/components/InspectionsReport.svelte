@@ -10,7 +10,17 @@
   import Checkbox from '$lib/components/common/Checkbox.svelte';
   import Badge    from '$lib/components/common/Badge.svelte';
   import { api }  from '$lib/utils/api';
+  import { supabase } from '$lib/supabaseClient';
   import { getLogger } from '$lib/utils/logger';
+
+  // Proxy Drive URLs through the portal's own endpoint so the server-side
+  // image fetcher receives a URL it can resolve with its own storage credentials.
+  function normalisePhotoUrl(url) {
+    if (!url) return url;
+    const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
+    if (m) return `/api/media/file/${m[1]}`;
+    return url;
+  }
   import {
     flattenInspectionRows,
     presetLabel,
@@ -36,7 +46,8 @@
   export let inspectionsCache = {};   // { [sessionId]: flattened[] }
 
   // -- Report type -----------------------------------------------------------
-  let reportType = 'summary';   // 'summary' | 'detailed'
+  let reportType    = 'summary';   // 'summary' | 'detailed'
+  let includePhotos = true;        // only relevant for 'detailed'
 
   // -- Session selection (default: all) --------------------------------------
   let selectedIds = new Set(sessions.map(s => s.id));
@@ -137,6 +148,30 @@
           flatRows = flattenInspectionRows(rows);
         }
 
+        // Batch-load photos when generating a detailed report with photos.
+        // If the rows came from the tab's cache they already have photo_urls;
+        // fall through to the load if none are populated yet (session not
+        // expanded in the tab, or cache pre-dates the photo-loading fix).
+        if (reportType === 'detailed' && includePhotos) {
+          const alreadyLoaded = flatRows.some(r => r.photo_urls?.length > 0);
+          if (!alreadyLoaded) {
+            genProgress = `Loading photos for session ${i + 1}…`;
+            const inspIds = flatRows.map(r => r.id);
+            if (inspIds.length > 0) {
+              const { data: attachments } = await supabase
+                .from('media_attachments')
+                .select('entity_id, storage_url')
+                .eq('entity_type', 'component_inspection')
+                .in('entity_id', inspIds);
+              const byId = {};
+              for (const a of attachments ?? []) {
+                (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
+              }
+              flatRows = flatRows.map(r => ({ ...r, photo_urls: byId[r.id] ?? [] }));
+            }
+          }
+        }
+
         sessionsWithInspections.push({
           session:     enrichSession(session),
           inspections: enrichInspections(flatRows),
@@ -148,7 +183,7 @@
       const response = await fetch('/api/generate-inspections-report', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ sessions: sessionsWithInspections, reportType }),
+        body:    JSON.stringify({ sessions: sessionsWithInspections, reportType, includePhotos }),
       });
 
       if (!response.ok) {
@@ -203,6 +238,16 @@
           </div>
         </button>
       </div>
+
+      {#if reportType === 'detailed'}
+        <div class="mt-3 pl-1">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <Checkbox checked={includePhotos} on:change={() => includePhotos = !includePhotos} />
+            <span class="text-sm text-gray-300">Include photos</span>
+            <span class="text-xs text-gray-500">(may increase generation time for large sessions)</span>
+          </label>
+        </div>
+      {/if}
     </div>
 
     <!-- -- Session selector ------------------------------------------------- -->

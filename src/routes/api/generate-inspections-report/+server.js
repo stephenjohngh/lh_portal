@@ -15,7 +15,8 @@
 // Request body:
 //   { sessions: [{ session, inspections }], reportType: 'summary' | 'detailed' }
 
-import { json } from '@sveltejs/kit';
+import { json }             from '@sveltejs/kit';
+import { storageProvider }  from '$lib/server/storage/index.js';
 import {
   Document, Packer,
   Paragraph, TextRun,
@@ -68,8 +69,25 @@ function componentRef(ins) {
 }
 
 // -- Image fetch ----------------------------------------------------------------
+// Handles two URL forms:
+//   /api/media/file/{fileId}  — our own proxy URL; extract the ID and call
+//                               storageProvider directly (avoids an extra HTTP
+//                               round-trip and works server-side without an origin).
+//   https://…                 — any absolute URL (legacy Drive links, Supabase, etc.)
 async function fetchImageBuffer(url) {
+  if (!url) return null;
   try {
+    // Proxy URL: call storage provider directly with the extracted file ID.
+    const proxyMatch = url.match(/^\/api\/media\/file\/([A-Za-z0-9_-]+)$/);
+    if (proxyMatch) {
+      const { data } = await storageProvider.getFileStream(proxyMatch[1]);
+      return data;
+    }
+    // Absolute URL fallback (e.g. legacy Drive viewer links).
+    if (!url.startsWith('http')) {
+      logger('⚠️ Unresolvable image URL (not proxy, not absolute):', url);
+      return null;
+    }
     const response = await fetch(url);
     if (!response.ok) { logger('⚠️ Image fetch failed:', response.status, url); return null; }
     return Buffer.from(await response.arrayBuffer());
@@ -273,7 +291,7 @@ async function buildPhotoRows(photoUrls, alt) {
   return rows;
 }
 
-async function buildDetailedSession({ session: s, inspections }, isFirst) {
+async function buildDetailedSession({ session: s, inspections }, isFirst, includePhotos) {
   const children = [];
 
   if (!isFirst) children.push(new Paragraph({ children: [new PageBreak()] }));
@@ -398,24 +416,27 @@ async function buildDetailedSession({ session: s, inspections }, isFirst) {
       }));
     }
 
-    // Photos — side-by-side pairs, aspect-ratio aware, with captions
-    const photoUrls = Array.isArray(ins.photo_urls) ? ins.photo_urls : [];
-    if (photoUrls.length > 0) {
-      const photoRows = await buildPhotoRows(photoUrls, alt);
-      dataRows.push(...photoRows);
-    } else {
-      // Explicitly note absence of photos for compliance traceability
-      dataRows.push(new TableRow({
-        children: [new TableCell({
-          width:      { size: CONTENT_W, type: WidthType.DXA },
-          columnSpan: DET_N_COLS,
-          margins:    { top: convertInchesToTwip(0.04), bottom: convertInchesToTwip(0.04), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
-          shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
-          children:   [new Paragraph({ spacing: { before: 0, after: 0 }, children: [
-            new TextRun({ text: 'No photos recorded.', italics: true, color: 'C0C8D0', font: 'Arial', size: 16 }),
-          ]})],
-        })],
-      }));
+    // Photos — side-by-side pairs, aspect-ratio aware, with captions.
+    // Omitted entirely when includePhotos is false.
+    if (includePhotos) {
+      const photoUrls = Array.isArray(ins.photo_urls) ? ins.photo_urls : [];
+      if (photoUrls.length > 0) {
+        const photoRows = await buildPhotoRows(photoUrls, alt);
+        dataRows.push(...photoRows);
+      } else {
+        // Note the absence of photos for compliance traceability.
+        dataRows.push(new TableRow({
+          children: [new TableCell({
+            width:      { size: CONTENT_W, type: WidthType.DXA },
+            columnSpan: DET_N_COLS,
+            margins:    { top: convertInchesToTwip(0.04), bottom: convertInchesToTwip(0.04), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
+            shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
+            children:   [new Paragraph({ spacing: { before: 0, after: 0 }, children: [
+              new TextRun({ text: 'No photos recorded.', italics: true, color: 'C0C8D0', font: 'Arial', size: 16 }),
+            ]})],
+          })],
+        }));
+      }
     }
   }
 
@@ -433,7 +454,7 @@ export async function POST({ request }) {
   logger('📄 POST /api/generate-inspections-report');
 
   try {
-    const { sessions, reportType } = await request.json();
+    const { sessions, reportType, includePhotos = true } = await request.json();
 
     if (!sessions?.length) return json({ error: 'No sessions supplied' }, { status: 400 });
 
@@ -447,7 +468,7 @@ export async function POST({ request }) {
       children.push(buildSummaryTable(sessions));
     } else {
       for (let i = 0; i < sessions.length; i++) {
-        const sessionChildren = await buildDetailedSession(sessions[i], i === 0);
+        const sessionChildren = await buildDetailedSession(sessions[i], i === 0, includePhotos);
         children.push(...sessionChildren);
       }
     }
