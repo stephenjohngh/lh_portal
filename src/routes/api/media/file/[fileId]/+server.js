@@ -1,7 +1,8 @@
 // src/routes/api/media/file/[fileId]/+server.js
-// GET /api/media/file/:fileId
+// GET  /api/media/file/:fileId  — proxy file bytes to browser (unauthenticated)
+// DELETE /api/media/file/:fileId — delete file from storage (requires auth)
 //
-// Server-side image proxy — fetches a file from the configured storage
+// GET: Server-side image proxy — fetches a file from the configured storage
 // provider and re-serves the bytes to the browser.
 //
 // Why: Google Drive's drive.google.com URLs return 403 when requested as
@@ -9,17 +10,21 @@
 // the portal's own origin the browser sees a same-origin image request and
 // Drive never receives a cross-origin header.
 //
-// Auth: intentionally unauthenticated.  Drive file IDs are opaque ~33-char
-// random strings.  A caller would need authenticated DB access to learn any
-// valid ID, so obscurity provides adequate protection for inspection photos
-// and similar non-sensitive internal imagery.  If the payload is ever
-// genuinely sensitive, add requireAuth() and switch <img src> to a blob-URL
-// approach (fetch with Authorization header → URL.createObjectURL()).
+// Auth (GET): intentionally unauthenticated.  Drive file IDs are opaque
+// ~33-char random strings.  A caller would need authenticated DB access to
+// learn any valid ID, so obscurity provides adequate protection for inspection
+// photos and similar non-sensitive internal imagery.
+//
+// Auth (DELETE): requires a valid session.  Called by the inspection store
+// when cleaning up orphaned storage files during session or inspection delete.
+// Storage cleanup failures are non-fatal — the caller always proceeds with
+// DB cleanup regardless.
 //
 // Caching: private, 1-hour max-age.  Browsers re-validate on hard-refresh.
 
 import { json }            from '@sveltejs/kit';
 import { storageProvider } from '$lib/server/storage/index.js';
+import { requireAuth }     from '$lib/server/requireAuth.js';
 import { getLogger }       from '$lib/utils/logger';
 
 const logger = getLogger('MediaFileProxy');
@@ -44,5 +49,27 @@ export async function GET({ params }) {
   } catch (err) {
     logger('⚠ proxy fetch failed for', fileId, ':', err.message);
     return json({ error: 'File not found or inaccessible' }, { status: 404 });
+  }
+}
+
+export async function DELETE({ params, request }) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
+  const { fileId } = params;
+
+  if (!fileId || !/^[A-Za-z0-9_-]+$/.test(fileId)) {
+    return json({ error: 'Invalid file ID' }, { status: 400 });
+  }
+
+  try {
+    await storageProvider.deleteFile(fileId);
+    logger('Deleted storage file:', fileId);
+    return new Response(null, { status: 204 });
+  } catch (err) {
+    logger('⚠ deleteFile failed for', fileId, ':', err.message);
+    // Return 200 rather than 500 so the caller can treat this as non-fatal.
+    // The file may already have been deleted, or may not exist on this provider.
+    return json({ error: err.message }, { status: 200 });
   }
 }

@@ -26,6 +26,36 @@ function normalisePhotoUrl(url) {
   return url;
 }
 
+// ── Storage file deletion ─────────────────────────────────────────────────────
+// Extract a storage file ID from a raw storage_url.
+// Currently handles Google Drive URLs; returns null for unrecognised formats
+// so callers can skip rather than fail.
+function extractDriveFileId(url) {
+  if (!url) return null;
+  const m = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([A-Za-z0-9_-]+)/);
+  return m?.[1] ?? null;
+}
+
+// Best-effort deletion of storage files via the server proxy endpoint.
+// Failures are silently swallowed — storage cleanup must never block DB cleanup.
+// token  — Bearer token from supabase.auth.getSession()
+// urls   — raw storage_url values from media_attachments rows
+async function deleteStorageFiles(urls, token) {
+  if (!token || !urls?.length) return;
+  for (const url of urls) {
+    const fileId = extractDriveFileId(url);
+    if (!fileId) continue;    // unrecognised provider — skip
+    try {
+      await fetch(`/api/media/file/${fileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Network error or storage error — ignore, DB cleanup proceeds
+    }
+  }
+}
+
 // ── Shared photo helper ───────────────────────────────────────────────────────
 // Batch-loads media_attachments for a set of component_inspection rows and
 // injects a photo_urls string[] onto each row in-place.
@@ -610,7 +640,18 @@ function createInspectionStore() {
         inspected_by:      userId,
         inspected_at:      now,
       });
-      // Replace all photos for this inspection (delete-then-insert)
+      // Replace all photos for this inspection (delete-then-insert).
+      // Fetch the old URLs first so we can clean up the storage files.
+      const { data: oldAttachments } = await supabase
+        .from('media_attachments')
+        .select('storage_url')
+        .eq('entity_type', 'component_inspection')
+        .eq('entity_id', existing.id);
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      await deleteStorageFiles(
+        (oldAttachments ?? []).map(a => a.storage_url),
+        authSession?.access_token,
+      );
       await supabase.from('media_attachments').delete()
         .eq('entity_type', 'component_inspection')
         .eq('entity_id', existing.id);
@@ -805,6 +846,17 @@ function createInspectionStore() {
     const inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: sessionId } });
     const inspIds  = inspRows.map(r => r.id);
     if (inspIds.length > 0) {
+      // Fetch storage URLs before deleting DB rows so we can clean up Drive.
+      const { data: attachments } = await supabase
+        .from('media_attachments')
+        .select('storage_url')
+        .eq('entity_type', 'component_inspection')
+        .in('entity_id', inspIds);
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      await deleteStorageFiles(
+        (attachments ?? []).map(a => a.storage_url),
+        authSession?.access_token,
+      );
       await supabase.from('media_attachments').delete()
         .eq('entity_type', 'component_inspection')
         .in('entity_id', inspIds);
