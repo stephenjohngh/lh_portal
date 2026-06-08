@@ -200,17 +200,39 @@ function buildSummaryTable(sessionData) {
 // Sum = 10466
 const DET_COLS    = [1600, 1700, 900, 1200, 5066];
 const DET_N_COLS  = DET_COLS.length;
-const PHOTO_HALF_W = Math.floor(CONTENT_W / 2);   // ~5233 DXA — half of content width
+const PHOTO_HALF_W = Math.floor(CONTENT_W / 2);   // 5233 DXA — half of content width
 
-// Max pixel dimensions for images in the Word doc.
-// Side-by-side (pair): PHOTO_PAIR_PX  × PHOTO_PAIR_PX
-// Alone in a row:      PHOTO_SOLO_PX  × PHOTO_SOLO_PX
+// Max pixel dimensions for images in the Word doc (at 96 DPI via docx library).
+// Cell margins consume 2 × convertInchesToTwip(0.1) = 288 DXA per cell.
+//
+// Paired (side-by-side): cell content = PHOTO_HALF_W − 288 = 4945 DXA ≈ 329 px
+//   → PHOTO_PAIR_PX = 280  (85 % of cell — safe with margin)
+//
+// Solo (single photo in full-width cell): cell content = CONTENT_W − 288 = 10178 DXA ≈ 678 px
+//   → PHOTO_SOLO_PX = 460  (68 % of cell — safe with generous margin)
+//
+// KEY: solo photos MUST use the full-width layout (1-column inner table).
+// Using the half-width cell for a solo photo with a larger maxPx overflows the
+// cell (e.g. 380px > 329px max) and causes ~13 % right-side clipping in Word.
 const PHOTO_PAIR_PX = 280;
-const PHOTO_SOLO_PX = 380;
+const PHOTO_SOLO_PX = 460;
+
+// Detect image type from buffer magic bytes so docx v9 gets the correct file
+// extension in the ZIP (otherwise images land as ".undefined" which some Word
+// builds render at native dimensions, ignoring the explicit EMU sizing).
+function getImageType(buf) {
+  if (!buf || buf.length < 4) return 'jpg';
+  if (buf[0] === 0x89 && buf[1] === 0x50) return 'png';   // PNG magic: 89 50 4E 47
+  if (buf[0] === 0xFF && buf[1] === 0xD8) return 'jpg';   // JPEG magic: FF D8
+  return 'jpg';   // default — Drive serves JPEGs for phone photos
+}
 
 // Build photo TableRows for one inspection.
-// Photos are laid out two-per-row (side by side in a nested inner table).
-// An odd final photo occupies the left cell with an empty right cell.
+//
+// Layout:
+//   Paired (i and i+1 both have photos) → 2-column inner table, PHOTO_PAIR_PX max each.
+//   Solo   (last photo in an odd sequence) → 1-column full-width inner table, PHOTO_SOLO_PX max.
+//
 // Each photo has a caption ("Photo N of M") below it.
 // Returns an array of TableRow objects (may be empty).
 async function buildPhotoRows(photoUrls, alt) {
@@ -239,7 +261,7 @@ async function buildPhotoRows(photoUrls, alt) {
       const dims   = buf ? getImageDimensions(buf) : null;
       const { width, height } = fitDimensions(dims?.width, dims?.height, maxPx, maxPx);
       const imgChild = buf
-        ? new ImageRun({ data: buf, transformation: { width, height } })
+        ? new ImageRun({ data: buf, type: getImageType(buf), transformation: { width, height } })
         : new TextRun({ text: '[Photo unavailable]', italics: true, color: '9CA3AF', font: 'Arial', size: 18 });
       return [
         new Paragraph({ spacing: { before: 0, after: 40 },  children: [imgChild] }),
@@ -252,30 +274,32 @@ async function buildPhotoRows(photoUrls, alt) {
       ];
     }
 
-    // Build inner 2-column table so photos sit side by side within one spanning outer cell
-    const innerCells = [
-      new TableCell({
-        width:    { size: PHOTO_HALF_W, type: WidthType.DXA },
-        margins,
-        shading,
-        children: photoChildren(buffers[i], i + 1),
-      }),
-      new TableCell({
-        width:    { size: CONTENT_W - PHOTO_HALF_W, type: WidthType.DXA },
-        margins,
-        shading,
-        children: isPair
-          ? photoChildren(buffers[i + 1], i + 2)
-          : [new Paragraph({ children: [] })],   // empty right cell for odd photo
-      }),
-    ];
+    let innerTable;
 
-    const innerTable = new Table({
-      width:        { size: CONTENT_W,  type: WidthType.DXA },
-      layout:       TableLayoutType.FIXED,
-      columnWidths: [PHOTO_HALF_W, CONTENT_W - PHOTO_HALF_W],
-      rows:         [new TableRow({ children: innerCells })],
-    });
+    if (isPair) {
+      // Two photos side by side in a 2-column inner table.
+      // Each cell is PHOTO_HALF_W wide; content after margins ≈ 329 px — fits PHOTO_PAIR_PX = 280.
+      innerTable = new Table({
+        width:        { size: CONTENT_W,  type: WidthType.DXA },
+        layout:       TableLayoutType.FIXED,
+        columnWidths: [PHOTO_HALF_W, CONTENT_W - PHOTO_HALF_W],
+        rows: [new TableRow({ children: [
+          new TableCell({ width: { size: PHOTO_HALF_W,             type: WidthType.DXA }, margins, shading, children: photoChildren(buffers[i],     i + 1) }),
+          new TableCell({ width: { size: CONTENT_W - PHOTO_HALF_W, type: WidthType.DXA }, margins, shading, children: photoChildren(buffers[i + 1], i + 2) }),
+        ]})],
+      });
+    } else {
+      // Solo photo: use the full inner table width so the image is not crammed into
+      // a half-width cell.  Cell content after margins ≈ 678 px — fits PHOTO_SOLO_PX = 460.
+      innerTable = new Table({
+        width:        { size: CONTENT_W, type: WidthType.DXA },
+        layout:       TableLayoutType.FIXED,
+        columnWidths: [CONTENT_W],
+        rows: [new TableRow({ children: [
+          new TableCell({ width: { size: CONTENT_W, type: WidthType.DXA }, margins, shading, children: photoChildren(buffers[i], i + 1) }),
+        ]})],
+      });
+    }
 
     rows.push(new TableRow({
       children: [new TableCell({
