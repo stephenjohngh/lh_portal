@@ -8,10 +8,12 @@
 //   PUBLIC_SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
 
-import { createClient }          from '@supabase/supabase-js';
-import { getLogger }             from '$lib/utils/logger';
-import { PUBLIC_SUPABASE_URL }   from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { createClient }        from '@supabase/supabase-js';
+import { getLogger }           from '$lib/utils/logger';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+// $env/dynamic/private — consistent with other storage providers; avoids
+// build failures when this provider is not the active one.
+import { env } from '$env/dynamic/private';
 
 const logger = getLogger('SupabaseStorageProvider');
 const BUCKET = 'documents';
@@ -21,8 +23,8 @@ let _client = null;
 function getClient() {
   if (!_client) {
     _client = createClient(
-      PUBLIC_SUPABASE_URL       ?? '',
-      SUPABASE_SERVICE_ROLE_KEY ?? '',
+      PUBLIC_SUPABASE_URL                  ?? '',
+      env.SUPABASE_SERVICE_ROLE_KEY        ?? '',
     );
   }
   return _client;
