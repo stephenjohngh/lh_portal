@@ -25,14 +25,14 @@
 import { json }                                       from '@sveltejs/kit';
 import { createClient }                               from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY }                  from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { logLogin, logFailedLogin, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
 import { getLogger }                                  from '$lib/utils/logger';
 
 const logger = getLogger('AuthLogin');
 
 const supabaseAnon  = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 const MAX_FAILED_ATTEMPTS = 5;
 const WINDOW_MINUTES      = 15;

@@ -15,7 +15,7 @@
 import { Packer } from 'docx';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }       from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { requireAuth }   from '$lib/server/requireAuth';
 import { getLogger }     from '$lib/utils/logger';
 import {
@@ -27,7 +27,7 @@ const logger = getLogger('mor/draft-letter');
 
 let _svc = null;
 function getSvc() {
-  _svc ??= createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  _svc ??= createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
   return _svc;
 }
 

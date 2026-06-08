@@ -10,14 +10,13 @@ import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { env as privateEnv } from '$env/dynamic/private';
 import { logAudit } from '$lib/server/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('SuggestSummaryAPI');
 
-const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, privateEnv.SUPABASE_SERVICE_ROLE_KEY);
 
 // ── Rate limit ─────────────────────────────────────────────────────────────
 const RATE_LIMIT_PER_HOUR = 60;

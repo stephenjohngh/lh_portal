@@ -3,7 +3,7 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { logPasswordReset } from '$lib/server/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 
@@ -43,7 +43,7 @@ export async function POST({ request }) {
     // Create Supabase admin client
     const supabaseAdmin = createClient(
       PUBLIC_SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY,
+      env.SUPABASE_SERVICE_ROLE_KEY,
       {
         auth: {
           autoRefreshToken: false,

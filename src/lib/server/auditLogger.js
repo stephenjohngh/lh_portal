@@ -3,12 +3,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getLogger } from '$lib/utils/logger';
-import { 
-  PUBLIC_SUPABASE_URL 
-} from '$env/static/public';
-import { 
-  SUPABASE_SERVICE_ROLE_KEY 
-} from '$env/static/private';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { env }                 from '$env/dynamic/private';
 
 const logger = getLogger('auditLogger');
 
@@ -20,7 +16,7 @@ function getSupabaseAdmin() {
     logger('Initializing Supabase admin client');
     
     const supabaseUrl = PUBLIC_SUPABASE_URL;
-    const supabaseKey = SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
     
     if (!supabaseUrl || !supabaseKey) {
       logger('❌ Missing Supabase credentials');

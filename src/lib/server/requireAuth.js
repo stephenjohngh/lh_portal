@@ -13,13 +13,13 @@
 
 import { json }                       from '@sveltejs/kit';
 import { createClient }               from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL }        from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY }  from '$env/static/private';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { env }                 from '$env/dynamic/private';
 import { getLogger }                  from '$lib/utils/logger';
 
 const logger = getLogger('RequireAuth');
 
-const adminClient = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const adminClient = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
 
 /**
  * Verify the caller's Supabase access token from the Authorization header.
