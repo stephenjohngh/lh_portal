@@ -4,8 +4,9 @@
   import { createEventDispatcher } from 'svelte';
   import { maintenanceStore }      from '../stores/maintenanceStore.js';
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
-  import { fmtDate } from '$lib/utils/dates.js';
-  import Button       from '$lib/components/common/Button.svelte';
+  import { fmtDate }             from '$lib/utils/dates.js';
+  import { normalisePhotoUrl }   from '$lib/utils/driveUtils.js';
+  import Button                  from '$lib/components/common/Button.svelte';
 
   export let jobId;
   export let docs = [];    // already-loaded documents for this job
@@ -54,11 +55,6 @@
       delete next[doc.id];
       deleting = next;
     }
-  }
-
-  function publicUrl(storagePath) {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    return `${url}/storage/v1/object/public/maintenance-docs/${storagePath}`;
   }
 
   function expiryClass(dateStr) {
@@ -115,7 +111,7 @@
         <div class="flex items-center gap-3 py-2">
           <span class="text-base flex-shrink-0">{docTypeIcon(doc.doc_type)}</span>
           <div class="flex-1 min-w-0">
-            <a href={publicUrl(doc.storage_path)} target="_blank" rel="noreferrer"
+            <a href={normalisePhotoUrl(doc.storage_path)} target="_blank" rel="noreferrer"
                class="text-sm text-purple-300 hover:text-purple-200 truncate block">
               {doc.filename}
             </a>

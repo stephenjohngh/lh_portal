@@ -8,6 +8,8 @@ import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';
+import { uploadMedia }   from '$lib/utils/mediaUpload.js';
+import { deleteStorageFiles } from '$lib/utils/driveUtils.js';
 import { jobRag, addDays, toDateString } from '../utils/maintenanceHelpers.js';
 
 const logger = getLogger('maintenanceStore');
@@ -110,21 +112,30 @@ function createMaintenanceStore() {
 
   async function uploadDocument(jobId, file, docType, expiryDate = null) {
     const userId  = requireUserId();
-    const ts      = Date.now();
-    const safeName    = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `${jobId}/${docType}/${ts}_${safeName}`;
 
-    const { error: uploadErr } = await supabase.storage
-      .from('maintenance-docs')
-      .upload(storagePath, file, { contentType: file.type, upsert: false });
+    // Resolve auth token for the upload endpoint.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Upload failed: not authenticated');
 
-    if (uploadErr) throw new Error('Upload failed: ' + uploadErr.message);
+    // Build a human-readable Drive folder path: Maintenance / Job Title
+    const s       = get({ subscribe });
+    const jobInfo = s.jobs.find(j => j.id === jobId);
+    const sanitize = str => str?.replace(/[/\\:*?"<>|]/g, '').trim() ?? '';
+    const jobLabel = sanitize(jobInfo?.title ?? '');
+    const folderPath = jobLabel ? ['Maintenance', jobLabel] : ['Maintenance'];
+
+    const { url } = await uploadMedia(file, {
+      filename:   file.name,
+      folderPath,
+      token,
+    });
 
     const doc = await api.create('maintenance_documents', {
       job_id:       jobId,
       doc_type:     docType,
       filename:     file.name,
-      storage_path: storagePath,
+      storage_path: url,          // Drive webViewUrl stored here (column repurposed)
       file_size:    file.size,
       mime_type:    file.type,
       expiry_date:  expiryDate || null,
@@ -157,7 +168,10 @@ function createMaintenanceStore() {
   }
 
   async function deleteDocument(docId, storagePath) {
-    await supabase.storage.from('maintenance-docs').remove([storagePath]);
+    // storagePath is now a Drive URL (storage_path column repurposed).
+    // Best-effort file deletion — swallowed so DB row is always cleaned up.
+    const { data: sessionData } = await supabase.auth.getSession();
+    await deleteStorageFiles([storagePath], sessionData?.session?.access_token);
     await api.delete('maintenance_documents', docId);
 
     update(s => {

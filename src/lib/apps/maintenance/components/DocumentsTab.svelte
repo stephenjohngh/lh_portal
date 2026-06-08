@@ -3,7 +3,8 @@
 <script>
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
-  import { fmtDate } from '$lib/utils/dates.js';
+  import { fmtDate }           from '$lib/utils/dates.js';
+  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
 
   export let docs = [];   // store.allDocs — passed from parent
 
@@ -51,11 +52,6 @@
     }
     return true;
   });
-
-  function publicUrl(storagePath) {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    return `${url}/storage/v1/object/public/maintenance-docs/${storagePath}`;
-  }
 
   function expiryClass(dateStr) {
     const r = expiryRag(dateStr);
@@ -141,7 +137,7 @@
           <span class="text-xl flex-shrink-0">{docTypeIcon(doc.doc_type)}</span>
 
           <div class="flex-1 min-w-0">
-            <a href={publicUrl(doc.storage_path)} target="_blank" rel="noreferrer"
+            <a href={normalisePhotoUrl(doc.storage_path)} target="_blank" rel="noreferrer"
                class="text-sm text-purple-300 hover:text-purple-200 truncate block font-medium">
               {doc.filename}
             </a>
@@ -166,7 +162,7 @@
           </div>
 
           <a
-            href={publicUrl(doc.storage_path)}
+            href={normalisePhotoUrl(doc.storage_path)}
             target="_blank"
             rel="noreferrer"
             class="flex-shrink-0 text-slate-500 hover:text-purple-400 transition-colors text-sm px-1"

@@ -4,6 +4,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { maintenanceStore }  from '../stores/maintenanceStore.js';
   import { permissions }       from '$lib/stores/permissions';
+  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
   import {
     ragConfig, resultConfig, scopeTypeLabel, docTypeLabel,
     docTypeIcon, fmtBytes, frequencyLabel, daysRelative, expiryRag,
@@ -60,10 +61,6 @@
     }
   });
 
-  function publicUrl(storagePath) {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    return `${url}/storage/v1/object/public/maintenance-docs/${storagePath}`;
-  }
 
   function expiryClass(dateStr) {
     const r = expiryRag(dateStr);
@@ -307,7 +304,7 @@
                 <div class="flex items-center gap-3 py-2">
                   <span class="text-base">{docTypeIcon(doc.doc_type)}</span>
                   <div class="flex-1 min-w-0">
-                    <a href={publicUrl(doc.storage_path)} target="_blank" rel="noreferrer"
+                    <a href={normalisePhotoUrl(doc.storage_path)} target="_blank" rel="noreferrer"
                        class="text-sm text-purple-300 hover:text-purple-200 truncate block">
                       {doc.filename}
                     </a>
