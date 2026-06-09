@@ -16,6 +16,15 @@
 
   $: types    = $inspectionStore.types;
   $: systems  = $inspectionStore.systems;
+
+  // Group types by system for the type selector — matches Building Assets ComponentForm order.
+  // Both arrays arrive pre-sorted by presentation_order from the store.
+  $: typesBySystem = systems
+    .map(sys => ({
+      system: sys,
+      types:  types.filter(t => t.building_system_id === sys.id && t.visible !== false)
+    }))
+    .filter(g => g.types.length > 0);
   $: attrDefs    = $inspectionStore.attrDefs;
   $: attrOptions = $inspectionStore.attrOptions ?? {};
 
@@ -107,8 +116,12 @@
     <div class="sec">
       <label class="sec-lbl" for="ed-type">COMPONENT TYPE</label>
       <select id="ed-type" class="fs" bind:value={form.type_code}>
-        {#each types as t}
-          <option value={t.code}>{t.name}</option>
+        {#each typesBySystem as group}
+          <optgroup label={group.system.name}>
+            {#each group.types as t}
+              <option value={t.code}>{t.name}</option>
+            {/each}
+          </optgroup>
         {/each}
       </select>
     </div>
