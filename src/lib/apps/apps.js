@@ -44,6 +44,7 @@ export const AVAILABLE_APPS = [
     id: 'managementmobile',
     name: 'Issues (M)',
     icon: 'clipboard',
+    mobile: true,
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Mobile-friendly read-only issues and activity viewer'
@@ -61,6 +62,7 @@ export const AVAILABLE_APPS = [
     id: 'inspection',
     name: 'Inspections (M)',
     icon: 'walk',
+    mobile: true,
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Mobile-first inspection walk — record results, photos and notes per component'
@@ -70,6 +72,7 @@ export const AVAILABLE_APPS = [
     id: 'mobileplan',
     name: 'Plans (M)',
     icon: 'grid',
+    mobile: true,
     alwaysVisible: false,
     requiresPermission: true,
     description: 'Mobile-first read-only floor plan viewer'

@@ -41,21 +41,43 @@ import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
   let isAdmin = false;
   let loading = true;
 
+  // Track viewport width so mobile-flagged apps can be sorted first on small screens.
+  // Uses matchMedia so it reacts to orientation changes / window resize without polling.
+  let isMobile = false;
+  onMount(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    isMobile = mq.matches;
+    const handleMq = (e) => { isMobile = e.matches; };
+    mq.addEventListener('change', handleMq);
+    return () => mq.removeEventListener('change', handleMq);
+  });
+
   const allApps = AVAILABLE_APPS;
 
-  // All apps the user can access, sorted by admin-configured order (home page grid + nav)
+  // All apps the user can access, sorted by admin-configured order (home page grid + nav).
+  // On mobile viewports, apps flagged mobile:true in apps.js are promoted to the front
+  // (preserving their relative order among themselves and among non-mobile apps).
   $: displayedApps = (() => {
     const order = $portalSettings.order;
-    if (!order || order.length === 0) return userApps;   // no config = AVAILABLE_APPS default order
-    return [...userApps].sort((a, b) => {
-      const ia = order.indexOf(a.id);
-      const ib = order.indexOf(b.id);
-      // Apps not in the saved order (newly added) sort to the end
-      if (ia === -1 && ib === -1) return 0;
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
-      return ia - ib;
-    });
+    let sorted;
+    if (!order || order.length === 0) {
+      sorted = userApps;
+    } else {
+      sorted = [...userApps].sort((a, b) => {
+        const ia = order.indexOf(a.id);
+        const ib = order.indexOf(b.id);
+        // Apps not in the saved order (newly added) sort to the end
+        if (ia === -1 && ib === -1) return 0;
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+    }
+    if (isMobile) {
+      // Float mobile-first apps to the front; everything else follows in existing order
+      return [...sorted.filter(a => a.mobile), ...sorted.filter(a => !a.mobile)];
+    }
+    return sorted;
   })();
 
   // Subset of displayedApps shown in the top bar, controlled by portal_settings
