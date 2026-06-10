@@ -139,13 +139,17 @@ export function createPlanActions(update, supabase) {
   async function copyPlan(sourcePlanId, data, onProgress = null) {
     const userId = requireUserId();
 
-    let sourcePlan = null;
-    let floors     = [];
-    let types      = [];
+    let sourcePlan     = null;
+    let floors         = [];
+    let types          = [];
+    let srcSpaces      = [];
+    let srcAnnotations = [];
     update(s => {
-      sourcePlan = s.plans.find(p => p.id === sourcePlanId);
-      floors     = s.floors;
-      types      = s.types;
+      sourcePlan     = s.plans.find(p => p.id === sourcePlanId);
+      floors         = s.floors;
+      types          = s.types;
+      srcSpaces      = s.spaces.filter(sp => sp.plan_id === sourcePlanId);
+      srcAnnotations = s.annotations.filter(a => a.plan_id === sourcePlanId);
       return s;
     });
     if (!sourcePlan) throw new Error('Source plan not found');
@@ -159,9 +163,9 @@ export function createPlanActions(update, supabase) {
       description:        sourcePlan.description                         || null,
       image_url:          sourcePlan.image_url,
       image_aspect_ratio: sourcePlan.image_aspect_ratio                  || null,
+      scale_ref:          sourcePlan.scale_ref                           || null,
       created_by:         userId,
       updated_by:         userId
-      // scale_ref intentionally omitted (reset to null)
     });
 
     const srcComponents = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
@@ -286,6 +290,42 @@ export function createPlanActions(update, supabase) {
       newComponentAttrs[a.component_id].push(a);
     }
 
+    // -- Copy spaces -------------------------------------------------------
+    let newSpaces = [];
+    if (srcSpaces.length > 0) {
+      newSpaces = await api.createMany('spaces', srcSpaces.map(sp => ({
+        plan_id:    newPlan.id,
+        floor_id:   newFloorId,
+        name:       sp.name,
+        space_type: sp.space_type ?? null,
+        polygon:    sp.polygon,
+        colour:     sp.colour,
+        height_m:   sp.height_m   ?? null,
+        show_label: sp.show_label ?? true,
+        notes:      sp.notes      ?? null,
+        created_by: userId,
+        updated_by: userId,
+      })), true) ?? [];
+      logger(`Copied ${newSpaces.length} space(s)`);
+    }
+
+    // -- Copy annotations --------------------------------------------------
+    let newAnnotations = [];
+    if (srcAnnotations.length > 0) {
+      newAnnotations = await api.createMany('plan_annotations', srcAnnotations.map(ann => ({
+        plan_id:    newPlan.id,
+        floor_id:   newFloorId,
+        text:       ann.text,
+        x_position: ann.x_position,
+        y_position: ann.y_position,
+        font_size:  ann.font_size ?? null,
+        colour:     ann.colour    ?? null,
+        bold:       ann.bold      ?? false,
+        created_by: userId,
+      })), true) ?? [];
+      logger(`Copied ${newAnnotations.length} annotation(s)`);
+    }
+
     update(s => ({
       ...s,
       plans:          [...s.plans, newPlan].sort((a, b) =>
@@ -295,11 +335,18 @@ export function createPlanActions(update, supabase) {
       // Shallow-merge is safe: keys are the brand-new component ids so
       // there's no collision with existing entries in s.componentLinks.
       componentLinks: { ...s.componentLinks, ...newComponentLinks },
+      spaces:         [...s.spaces, ...newSpaces],
+      annotations:    [...s.annotations, ...newAnnotations],
     }));
-    logger(`Copied plan ${sourcePlanId} → ${newPlan.id}, ${copied} components`);
+    logger(`Copied plan ${sourcePlanId} → ${newPlan.id}: ${copied} components, ${newSpaces.length} spaces, ${newAnnotations.length} annotations`);
     logAudit('create', 'plan', newPlan.id, newPlan.name || newPlan.building || newPlan.id, {
       ...AUDIT_OPTS, eventAction: 'copy_plan',
-      afterData: { source_plan_id: sourcePlanId, components_copied: copied }
+      afterData: {
+        source_plan_id:      sourcePlanId,
+        components_copied:   copied,
+        spaces_copied:       newSpaces.length,
+        annotations_copied:  newAnnotations.length,
+      }
     });
     return { plan: newPlan, copied };
   }
