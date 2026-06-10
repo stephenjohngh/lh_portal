@@ -217,9 +217,14 @@
   async function handleDelete() {
     if (!confirming) { confirming = true; return; }
     saving = true; errorMsg = '';
+    // Capture plan.id before the await — after deletePlan resolves Svelte 5
+    // flushes reactive effects synchronously, which causes selectedPlan in the
+    // parent to become null and the plan prop here to go null before we can
+    // read plan.id again.
+    const planId = plan.id;
     try {
-      await buildingAssetsStore.deletePlan(plan.id);
-      dispatch('deleted', { planId: plan.id });
+      await buildingAssetsStore.deletePlan(planId);
+      dispatch('deleted', { planId });
       show = false;
     } catch (err) {
       errorMsg   = err.message;
