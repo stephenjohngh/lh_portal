@@ -205,7 +205,7 @@
       <dl class="space-y-2">
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Name</dt>
-          <dd class="text-sm text-slate-200">{space.name || '—'}</dd>
+          <dd class="text-sm text-slate-200 whitespace-pre-wrap">{space.name || '—'}</dd>
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Type</dt>
@@ -248,13 +248,15 @@
       <div class="flex flex-col gap-1">
         <label class="text-xs text-slate-400" for="sp-name">
           Name <span class="text-red-400">*</span>
+          <span class="text-slate-600 font-normal ml-1">— use Enter for line breaks on the plan</span>
         </label>
-        <input
+        <textarea
           id="sp-name"
-          type="text"
+          rows="2"
           bind:value={editName}
-          class={inp}
-        />
+          class="{inp} resize-none"
+          placeholder="Space name…"
+        ></textarea>
       </div>
 
       <!-- -- Space type ---------------------------------------------- -->

@@ -217,7 +217,7 @@
           style="left:{c.x * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8"
         >
           <div
-            class="px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shadow-sm"
+            class="px-1.5 py-0.5 rounded text-xs font-medium whitespace-pre-wrap text-center shadow-sm"
             style="background-color:{isNone ? '#1e293b' : `#${space.colour}33`};
                    color:{isNone ? '#94a3b8' : `#${space.colour}`};
                    border:1px solid {isNone ? '#475569' : `#${space.colour}88`}"
