@@ -28,16 +28,50 @@ export const SPACE_COLOURS = [
 ];
 
 /**
- * Centroid of a polygon (average of vertices) — used for label placement.
+ * Area-weighted centroid of a polygon — used for space label placement.
+ * Uses the shoelace formula, which gives the correct visual centre for both
+ * convex and concave (simple) polygons.  Falls back to vertex average for
+ * degenerate inputs (< 3 vertices or near-zero area).
  * @param {Array<{x:number, y:number}>} polygon
  * @returns {{x:number, y:number}}
  */
 export function centroid(polygon) {
   if (!polygon?.length) return { x: 0.5, y: 0.5 };
-  return {
-    x: polygon.reduce((s, v) => s + v.x, 0) / polygon.length,
-    y: polygon.reduce((s, v) => s + v.y, 0) / polygon.length,
-  };
+  const n = polygon.length;
+  if (n < 3) {
+    // Not a real polygon — average whatever vertices exist
+    return {
+      x: polygon.reduce((s, v) => s + v.x, 0) / n,
+      y: polygon.reduce((s, v) => s + v.y, 0) / n,
+    };
+  }
+
+  // Polygon area centroid (shoelace formula).
+  // The vertex average used previously breaks for concave shapes such as
+  // rectangles with corners cut out: extra vertices near the cutouts pull
+  // the mean toward that region. The area centroid is independent of how
+  // many vertices are placed along each edge.
+  let area = 0;
+  let cx   = 0;
+  let cy   = 0;
+  for (let i = 0; i < n; i++) {
+    const j     = (i + 1) % n;
+    const cross = polygon[i].x * polygon[j].y - polygon[j].x * polygon[i].y;
+    area += cross;
+    cx   += (polygon[i].x + polygon[j].x) * cross;
+    cy   += (polygon[i].y + polygon[j].y) * cross;
+  }
+  area /= 2;
+
+  if (Math.abs(area) < 1e-10) {
+    // Degenerate / collinear — fall back to vertex average
+    return {
+      x: polygon.reduce((s, v) => s + v.x, 0) / n,
+      y: polygon.reduce((s, v) => s + v.y, 0) / n,
+    };
+  }
+
+  return { x: cx / (6 * area), y: cy / (6 * area) };
 }
 
 /**
