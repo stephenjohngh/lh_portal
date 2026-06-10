@@ -24,7 +24,7 @@ export function createSpaceActions(update) {
     const space = await api.create('spaces', {
       plan_id:    data.plan_id,
       floor_id:   data.floor_id   || null,
-      name:       data.name.trim(),
+      name:       data.name,      // preserve leading whitespace — users may indent plan labels
       space_type: data.space_type?.trim() || null,
       polygon:    roundPoly(data.polygon),
       colour:     normaliseColour(data.colour),
@@ -45,7 +45,7 @@ export function createSpaceActions(update) {
   async function updateSpace(id, data) {
     const userId = requireUserId();
     const updated = await api.update('spaces', id, {
-      name:       data.name.trim(),
+      name:       data.name,      // preserve leading whitespace — users may indent plan labels
       space_type: data.space_type?.trim() || null,
       colour:     normaliseColour(data.colour),
       height_m:   data.height_m          ?? null,
