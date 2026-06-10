@@ -213,7 +213,7 @@
         {@const c = centroid(space.polygon)}
         {@const isNone = space.colour === 'none'}
         <div
-          class="absolute pointer-events-none select-none"
+          class="absolute pointer-events-none select-none w-max"
           style="left:{c.x * 100}%; top:{c.y * 100}%; transform:translate(-50%,-50%); z-index:8"
         >
           <div
