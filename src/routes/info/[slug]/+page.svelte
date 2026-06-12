@@ -3,11 +3,12 @@
 <!-- RLS returns the article only if visibility = 'public', or
      visibility = 'registered' AND caller is authenticated, or admin. -->
 <script>
-  import { onMount }     from 'svelte';
-  import { page }        from '$app/stores';
-  import { supabase }    from '$lib/supabaseClient';
-  import { fmtDateLong } from '$lib/utils/dates';
-  import lhLogo          from '$lib/assets/LH_services_logo.png';
+  import { onMount }      from 'svelte';
+  import { page }         from '$app/stores';
+  import { supabase }     from '$lib/supabaseClient';
+  import { fmtDateLong }  from '$lib/utils/dates';
+  import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
+  import lhLogo           from '$lib/assets/LH_services_logo.png';
 
   let article  = null;
   let loading  = true;
@@ -76,8 +77,10 @@
         <p class="article-standfirst">{article.summary}</p>
       {/if}
       <hr class="article-divider" />
+      <!-- Sanitised again at render as defence-in-depth: this page is public
+           and older rows predate write-side sanitisation in articlesStore. -->
       <div class="article-body">
-        {@html article.content ?? ''}
+        {@html sanitizeHtml(article.content ?? '')}
       </div>
     {/if}
   </main>

@@ -10,6 +10,7 @@ import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
+import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('articlesStore');
@@ -62,7 +63,9 @@ function createArticlesStore() {
           slug:        data.slug?.trim(),
           title:       data.title?.trim(),
           summary:     data.summary?.trim() || null,
-          content:     data.content         || null,
+          // Sanitise at the write boundary — content is rendered with
+          // {@html} on the public /info/<slug> page.
+          content:     sanitizeHtml(data.content) || null,
           visibility:  data.visibility      ?? 'draft',
           published_at: isLive              ? now : null,
           created_at:  now,
@@ -98,7 +101,8 @@ function createArticlesStore() {
           slug:        data.slug?.trim(),
           title:       data.title?.trim(),
           summary:     data.summary?.trim() || null,
-          content:     data.content         || null,
+          // Sanitise at the write boundary — see createArticle.
+          content:     sanitizeHtml(data.content) || null,
           visibility:  data.visibility      ?? 'draft',
           published_at: publishedAt,
           updated_at:  now,
