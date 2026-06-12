@@ -23,7 +23,8 @@ export async function handle({ event, resolve }) {
   // <input type="file" capture>, which is not gated by Permissions-Policy.
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-  // The site is HTTPS-only on Netlify; pin that for a year.
+  // The site is HTTPS-only on both deploy targets (Netlify and Northflank);
+  // pin that for a year.
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
   return response;
