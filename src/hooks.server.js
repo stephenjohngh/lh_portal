@@ -1,12 +1,27 @@
 // src/hooks.server.js
-// Global server hook — attaches security headers to every response.
+// Global server hooks: Sentry error tracking + security headers on every
+// response.
 //
 // The Content-Security-Policy is NOT set here: it lives in svelte.config.js
-// (kit.csp) so SvelteKit can nonce its own inline hydration scripts. This
-// hook carries everything else.
+// (kit.csp) so SvelteKit can nonce its own inline hydration scripts. The
+// Sentry ingest origin is allowed there under connect-src.
+
+import { sequence } from '@sveltejs/kit/hooks';
+import * as Sentry from '@sentry/sveltekit';
+
+const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN ?? '';
+
+Sentry.init({
+  dsn: SENTRY_DSN,
+  enabled: !!SENTRY_DSN,
+  environment: import.meta.env.PUBLIC_ENV_LABEL || 'development',
+  // Light performance tracing server-side only — enough to spot slow
+  // endpoints without meaningful quota cost.
+  tracesSampleRate: 0.1,
+});
 
 /** @type {import('@sveltejs/kit').Handle} */
-export async function handle({ event, resolve }) {
+async function securityHeaders({ event, resolve }) {
   const response = await resolve(event);
 
   // Stop MIME-sniffing of responses (e.g. uploaded files served via the
@@ -29,3 +44,6 @@ export async function handle({ event, resolve }) {
 
   return response;
 }
+
+export const handle = sequence(Sentry.sentryHandle(), securityHeaders);
+export const handleError = Sentry.handleErrorWithSentry();
