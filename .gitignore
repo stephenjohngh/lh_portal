@@ -12,9 +12,11 @@ node_modules
 .DS_Store
 Thumbs.db
 
-# Env
+# Env — cover both .env.* names and anything ending in .env
+# (e.g. stray copies like "service Copy.env" that hold live keys)
 .env
 .env.*
+*.env
 !.env.example
 !.env.test
 
