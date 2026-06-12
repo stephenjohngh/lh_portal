@@ -100,29 +100,24 @@ function createAuthStore() {
       try {
         // Get user info BEFORE logging out
         const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
-        const userEmail = session?.user?.email;
+        const userId      = session?.user?.id;
+        const userEmail   = session?.user?.email;
+        const accessToken = session?.access_token;
 
         logger('Logout request for:', userEmail);
 
-        // Sign out from Supabase FIRST
-        const { error } = await supabase.auth.signOut();
-        
-        if (error) {
-          logger('❌ Logout error:', error.message);
-        }
-
-        // Clear local state immediately
-        set({ user: null, loading: false });
-
-        // Log logout — fire-and-forget, do not block the redirect
-        if (userId && userEmail) {
+        // Log logout BEFORE signing out — the endpoint authenticates via
+        // bearer token, which must still be valid when the request lands.
+        // Fire-and-forget with keepalive so it survives the redirect below.
+        if (userId && userEmail && accessToken) {
           fetch('/api/audit/log', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            headers: {
+              'Content-Type':  'application/json',
+              'Authorization': `Bearer ${accessToken}`
+            },
             body: JSON.stringify({
-              userId,
-              userEmail,
               eventType:  'logout',
               targetType: 'user',
               targetId:   userId,
@@ -131,6 +126,16 @@ function createAuthStore() {
             })
           }).catch(err => logger('Failed to log logout:', err.message));
         }
+
+        // Sign out from Supabase
+        const { error } = await supabase.auth.signOut();
+
+        if (error) {
+          logger('❌ Logout error:', error.message);
+        }
+
+        // Clear local state immediately
+        set({ user: null, loading: false });
 
         window.location.href = '/login';
 

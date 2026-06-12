@@ -1,20 +1,25 @@
 // src/routes/api/audit/log/+server.js
 // General audit logging API endpoint - handles ALL audit events
-// UPDATED: passes appId and eventCategory through to server-side logging functions
+//
+// Identity is taken from the verified bearer token (requireAuth), never from
+// the request body — otherwise anyone could forge audit entries attributing
+// actions to arbitrary users, or flood the table anonymously.
 
 import { json } from '@sveltejs/kit';
-import { logCreate, logUpdate, logDelete, logAudit, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
+import { requireAuth } from '$lib/server/requireAuth';
+import { logAudit, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('AuditAPI');
 
 export async function POST({ request }) {
   try {
+    const auth = await requireAuth(request);
+    if (auth.error) return auth.error;
+
     const auditData = await request.json();
-    
-    const { 
-      userId,
-      userEmail,
+
+    const {
       eventType,
       targetType,
       targetId,
@@ -30,10 +35,10 @@ export async function POST({ request }) {
       eventAction
     } = auditData;
 
-    if (!userId || !userEmail) {
-      logger('❌ Missing userId or userEmail');
-      return json({ error: 'Missing user information' }, { status: 400 });
-    }
+    // userId / userEmail come from the verified token; any values in the
+    // body are ignored.
+    const userId    = auth.user.id;
+    const userEmail = auth.user.email;
 
     logger('Audit log request:', eventType, 'for', targetType, 'by', userEmail, '| app:', appId);
 

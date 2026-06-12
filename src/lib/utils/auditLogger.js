@@ -2,10 +2,14 @@
 // Shared audit logging utility — extracted from issuesStore.
 // Posts to /api/audit/log and never throws (fire-and-forget safe).
 //
-// Usage:
+// Usage (never await — fire-and-forget):
 //   import { logAudit } from '$lib/utils/auditLogger';
-//   await logAudit('create', 'plan', plan.id, plan.name, { appId: 'plans' });
-//   await logAudit('update', 'issue', issue.id, issue.name, { beforeData: {...}, afterData: {...} });
+//   logAudit('create', 'plan', plan.id, plan.name, { appId: 'plans' });
+//   logAudit('update', 'issue', issue.id, issue.name, { beforeData: {...}, afterData: {...} });
+//
+// The caller's identity is established server-side from the bearer token
+// sent in the Authorization header — the endpoint ignores any user fields
+// in the body, so audit entries cannot be forged.
 
 import { supabase } from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
@@ -30,28 +34,21 @@ const logger = getLogger('auditLogger');
  */
 export async function logAudit(eventType, targetType, targetId, targetName, data = {}) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      logger('⚠️ No user found, skipping audit log');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      logger('⚠️ No session found, skipping audit log');
       return;
     }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('id', user.id)
-      .single();
-
-    const userEmail = profile?.email || user.email;
 
     logger('📝 Logging audit event:', { eventType, targetType, targetId, targetName });
 
     const response = await fetch('/api/audit/log', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
       body: JSON.stringify({
-        userId:     user.id,
-        userEmail,
         eventType,
         targetType,
         targetId,
