@@ -3,6 +3,7 @@
 // Accepts grouped data: { groups: [{ issue, actions }], selectedUser, userName, sortMode }
 
 import { json } from '@sveltejs/kit';
+import { requireAuth } from '$lib/server/requireAuth';
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, BorderStyle, WidthType, ShadingType
@@ -27,6 +28,11 @@ function p(text, opts = {}) {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST({ request }) {
+  // Authenticated users only — these endpoints render caller-supplied data
+  // into official-looking documents and burn server compute; neither should
+  // be reachable anonymously.
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
   logger('Actions DOCX generation request received');
   try {
     const { groups, selectedUser, userName, sortMode } = await request.json();

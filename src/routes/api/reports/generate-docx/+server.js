@@ -1,5 +1,6 @@
 // src/routes/api/reports/generate-docx/+server.js
 import { json } from '@sveltejs/kit';
+import { requireAuth } from '$lib/server/requireAuth';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
          VerticalAlign, PageBreak } from 'docx';
@@ -17,6 +18,11 @@ function wasModified(createdAt, updatedAt) {
 }
 
 export async function POST({ request }) {
+  // Authenticated users only — these endpoints render caller-supplied data
+  // into official-looking documents and burn server compute; neither should
+  // be reachable anonymously.
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
   logger('DOCX generation request received');
 
   try {

@@ -37,6 +37,7 @@
 // Throws on validation failure or network error.
 
 import { drawAnnotatedPlanImage } from './planImageRenderer.js';
+import { authHeaders }            from '$lib/utils/authHeaders';
 import { downloadResponse }       from '$lib/utils/download.js';
 
 export async function generateReportDocument(params) {
@@ -143,7 +144,7 @@ export async function generateReportDocument(params) {
   // -- POST to API -------------------------------------------------------
   const res = await fetch('/api/generate-report', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body:    JSON.stringify({
       options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes },
       floors:        floorsPayload,

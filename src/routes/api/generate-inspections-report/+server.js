@@ -16,6 +16,7 @@
 //   { sessions: [{ session, inspections }], reportType: 'summary' | 'detailed' }
 
 import { json }             from '@sveltejs/kit';
+import { requireAuth } from '$lib/server/requireAuth';
 import { storageProvider }  from '$lib/server/storage/index.js';
 import {
   Document, Packer,
@@ -484,6 +485,11 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
 
 // -- POST handler ---------------------------------------------------------------
 export async function POST({ request }) {
+  // Authenticated users only — these endpoints render caller-supplied data
+  // into official-looking documents and burn server compute; neither should
+  // be reachable anonymously.
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
   logger('📄 POST /api/generate-inspections-report');
 
   try {

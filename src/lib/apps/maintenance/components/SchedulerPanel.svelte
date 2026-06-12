@@ -2,6 +2,7 @@
 <!-- Admin-only: bulk job generator from regime tasks, plus schedule report download. -->
 <script>
   import { maintenanceStore } from '../stores/maintenanceStore.js';
+  import { authHeaders } from '$lib/utils/authHeaders';
   import { frequencyLabel, scopeTypeLabel, toDateString, addDays, today } from '../utils/maintenanceHelpers.js';
   import { fmtDate, fmtToday } from '$lib/utils/dates.js';
   import { downloadResponse } from '$lib/utils/download.js';
@@ -126,7 +127,7 @@
       };
       const res = await fetch('/api/maintenance/generate-schedule', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body:    JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

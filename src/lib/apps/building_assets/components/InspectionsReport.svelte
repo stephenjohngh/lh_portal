@@ -5,6 +5,7 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { authHeaders } from '$lib/utils/authHeaders';
   import Modal    from '$lib/components/common/Modal.svelte';
   import Button   from '$lib/components/common/Button.svelte';
   import Checkbox from '$lib/components/common/Checkbox.svelte';
@@ -174,7 +175,7 @@
 
       const response = await fetch('/api/generate-inspections-report', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body:    JSON.stringify({ sessions: sessionsWithInspections, reportType, includePhotos }),
       });
 

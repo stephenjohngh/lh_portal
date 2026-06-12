@@ -1,6 +1,7 @@
 <!-- src/lib/apps/management/components/reports/IssuesReportPanel.svelte -->
 <script>
   import Checkbox        from '$lib/components/common/Checkbox.svelte';
+  import { authHeaders } from '$lib/utils/authHeaders';
   import Button          from '$lib/components/common/Button.svelte';
   import ReportIssueCard from './ReportIssueCard.svelte';
   import {
@@ -120,7 +121,7 @@
     try {
       const response = await fetch('/api/reports/generate-docx', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           issues: displayedIssues,
           filterDate,

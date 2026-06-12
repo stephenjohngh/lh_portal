@@ -1,6 +1,7 @@
 <!-- src/lib/apps/management/components/reports/MeetingMinutesReportPanel.svelte -->
 <script>
   import { onMount }     from 'svelte';
+  import { authHeaders } from '$lib/utils/authHeaders';
   import Button          from '$lib/components/common/Button.svelte';
   import MeetingMinutesView from '../meetings/MeetingMinutesView.svelte';
   import { meetingsStore }  from '../../stores/meetingsStore';
@@ -60,7 +61,7 @@
     try {
       const response = await fetch('/api/reports/generate-minutes-docx', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ meeting: selectedMeeting, issues: meetingIssues, attendees })
       });
       if (!response.ok) {

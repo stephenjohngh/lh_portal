@@ -2,6 +2,7 @@
 <!-- Modal showing full job detail, documents, component results, history chain and actions. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
+  import { authHeaders } from '$lib/utils/authHeaders';
   import { maintenanceStore }  from '../stores/maintenanceStore.js';
   import { permissions }       from '$lib/stores/permissions';
   import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
@@ -109,7 +110,7 @@
       };
       const res = await fetch('/api/maintenance/generate-certificate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

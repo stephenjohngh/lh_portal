@@ -3,6 +3,7 @@
 // Mirrors the layout of MeetingMinutesView.svelte.
 
 import { json } from '@sveltejs/kit';
+import { requireAuth } from '$lib/server/requireAuth';
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
@@ -15,6 +16,11 @@ import { buildFieldSummary } from '$lib/apps/management/components/reports/repor
 const logger = getLogger('GenerateMinutesDocx');
 
 export async function POST({ request }) {
+  // Authenticated users only — these endpoints render caller-supplied data
+  // into official-looking documents and burn server compute; neither should
+  // be reachable anonymously.
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
   logger('Minutes DOCX generation request received');
   try {
     const { meeting, issues, attendees } = await request.json();

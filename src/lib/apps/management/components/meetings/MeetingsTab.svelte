@@ -11,6 +11,7 @@
 -->
 <script>
   import { onMount }            from 'svelte';
+  import { authHeaders } from '$lib/utils/authHeaders';
   import { meetingsStore }      from '../../stores/meetingsStore';
   import { permissions }        from '$lib/stores/permissions';
   import { profiles, profilesStore } from '$lib/stores/profiles';
@@ -153,7 +154,7 @@
     try {
       const response = await fetch('/api/reports/generate-minutes-docx', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ meeting: selectedMeeting, issues: meetingIssues, attendees })
       });
       if (!response.ok) {

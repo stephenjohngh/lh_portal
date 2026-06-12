@@ -1,6 +1,7 @@
 <!-- src/lib/apps/management/components/reports/ActionsReportPanel.svelte -->
 <script>
   import { onMount }      from 'svelte';
+  import { authHeaders } from '$lib/utils/authHeaders';
   import Button           from '$lib/components/common/Button.svelte';
   import Badge            from '$lib/components/common/Badge.svelte';
   import { profiles, profilesStore } from '$lib/stores/profiles';
@@ -137,7 +138,7 @@
     try {
       const response = await fetch('/api/reports/generate-actions-docx', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           groups:   sortedGroups,
           sortMode,
