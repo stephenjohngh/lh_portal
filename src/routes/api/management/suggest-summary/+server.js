@@ -11,25 +11,14 @@ import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env as privateEnv } from '$env/dynamic/private';
+import { requireAuth } from '$lib/server/requireAuth';
+import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
 import { logAudit } from '$lib/server/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('SuggestSummaryAPI');
 
 const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, privateEnv.SUPABASE_SERVICE_ROLE_KEY);
-
-// ── Rate limit ─────────────────────────────────────────────────────────────
-const RATE_LIMIT_PER_HOUR = 60;
-const rateBuckets = new Map();
-
-function checkRateLimit(userId) {
-  const now = Date.now();
-  const oneHourAgo = now - 3_600_000;
-  const recent = (rateBuckets.get(userId) || []).filter(t => t > oneHourAgo);
-  recent.push(now);
-  rateBuckets.set(userId, recent);
-  return recent.length <= RATE_LIMIT_PER_HOUR;
-}
 
 // ── Prompt + tool ──────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are an assistant for a property-management portal. Property managers write notes and comments about building issues. Your job is to produce a single concise one-line summary of a note or comment so it can be used as a heading in printed reports.
@@ -107,12 +96,14 @@ export async function POST({ request }) {
   }
 
   try {
-    const { requesting_user_id, body, activity_type } = await request.json();
+    // ── Auth: verified bearer token, never a body-supplied id ────────
+    const auth = await requireAuth(request);
+    if (auth.error) return auth.error;
+    profile = auth.user;
+
+    const { body, activity_type } = await request.json();
 
     // ── Validate ─────────────────────────────────────────────────────
-    if (!requesting_user_id) {
-      return json({ error: 'No user ID provided' }, { status: 400 });
-    }
     if (!body || typeof body !== 'string' || body.trim().length === 0) {
       return json({ error: 'body is required' }, { status: 400 });
     }
@@ -120,23 +111,11 @@ export async function POST({ request }) {
       return json({ error: 'body must be under 4000 characters' }, { status: 400 });
     }
 
-    // ── Auth ─────────────────────────────────────────────────────────
-    const { data: loadedProfile, error: profileErr } = await supabaseAdmin
-      .from('profiles')
-      .select('id, email')
-      .eq('id', requesting_user_id)
-      .single();
-    if (profileErr || !loadedProfile) {
-      logger('❌ Unknown user:', requesting_user_id);
-      return json({ error: 'Unauthorized' }, { status: 403 });
-    }
-    profile = loadedProfile;
-
-    // ── Rate limit ────────────────────────────────────────────────────
-    if (!checkRateLimit(requesting_user_id)) {
+    // ── Rate limit per user (table-backed) ───────────────────────────
+    if (!(await checkKeyRateLimit(`user:${profile.id}`, 'ai_summary'))) {
       recordAudit('rate_limited', 'warning');
       return json(
-        { error: `Rate limit exceeded (${RATE_LIMIT_PER_HOUR} summaries/hour). Try again later.` },
+        { error: `Rate limit exceeded (${LIMITS.ai_summary.max} summaries/hour). Try again later.` },
         { status: 429 }
       );
     }

@@ -25,6 +25,7 @@
   import MeetingBadge         from './meetings/MeetingBadge.svelte';
   import { getLogger }        from '$lib/utils/logger';
   import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
+  import { authHeaders }      from '$lib/utils/authHeaders';
   import { supabase }         from '$lib/supabaseClient';
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import DocAttachInput       from '$lib/components/common/DocAttachInput.svelte';
@@ -97,11 +98,10 @@
     try {
       const res = await fetch('/api/management/suggest-summary', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
-          requesting_user_id: $auth.user?.id,
-          body:               newActivity.body,
-          activity_type:      newActivity.activity_type
+          body:          newActivity.body,
+          activity_type: newActivity.activity_type
         })
       });
       const data = await res.json().catch(() => ({}));
@@ -426,12 +426,11 @@
     try {
       const res = await fetch('/api/management/suggest-action', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
-          requesting_user_id: $auth.user?.id,
-          activity_id:        activity.id,
-          issue_id:           issueId,
-          body:               activity.body
+          activity_id: activity.id,
+          issue_id:    issueId,
+          body:        activity.body
         })
       });
       const data = await res.json().catch(() => ({}));
@@ -577,11 +576,10 @@
     try {
       const res = await fetch('/api/management/suggest-summary', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
-          requesting_user_id: $auth.user?.id,
-          body:               editingActivity.body,
-          activity_type:      editingActivity.activity_type
+          body:          editingActivity.body,
+          activity_type: editingActivity.activity_type
         })
       });
       const data = await res.json().catch(() => ({}));

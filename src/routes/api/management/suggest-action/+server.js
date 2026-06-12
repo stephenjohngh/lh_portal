@@ -11,13 +11,13 @@
 // ANTHROPIC_API_KEY is unset the route returns 503 and the client falls
 // back to the Day 0.5 verbatim-comment-text path.
 //
-// Auth: caller posts { requesting_user_id }; the route verifies that the
-// id maps to a real profile before calling the LLM. We don't gate by
-// is_admin — every authenticated user can use this when their permissions
-// allow them to add comments.
+// Auth: bearer token in the Authorization header, verified by requireAuth.
+// We don't gate by is_admin — every authenticated user can use this when
+// their permissions allow them to add comments.
 //
-// Rate limit: 60 calls / user / hour. In-memory bucket; resets on server
-// restart, which is fine for this scale.
+// Rate limit: 60 calls / user / hour, table-backed via checkKeyRateLimit
+// (an in-memory Map doesn't survive Netlify cold starts and isn't shared
+// across function instances).
 //
 // Audit: every call (success or refusal) writes an audit_logs row with
 // app_id='management', event_type='ai_suggest', so usage is traceable.
@@ -27,25 +27,14 @@ import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env as privateEnv } from '$env/dynamic/private';
+import { requireAuth } from '$lib/server/requireAuth';
+import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
 import { logAudit } from '$lib/server/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('SuggestActionAPI');
 
 const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, privateEnv.SUPABASE_SERVICE_ROLE_KEY);
-
-// ── Rate limit ────────────────────────────────────────────────────────────
-const RATE_LIMIT_PER_HOUR = 60;
-const rateBuckets = new Map(); // userId -> [timestamps]
-
-function checkRateLimit(userId) {
-  const now = Date.now();
-  const oneHourAgo = now - 3_600_000;
-  const recent = (rateBuckets.get(userId) || []).filter(t => t > oneHourAgo);
-  recent.push(now);
-  rateBuckets.set(userId, recent);
-  return recent.length <= RATE_LIMIT_PER_HOUR;
-}
 
 // ── Prompt + tool definition ──────────────────────────────────────────────
 // Static prefix — wrapped in cache_control so subsequent calls within the
@@ -195,16 +184,17 @@ export async function POST({ request }) {
   }
 
   try {
+    // ── Auth: verified bearer token, never a body-supplied id ────────
+    const auth = await requireAuth(request);
+    if (auth.error) return auth.error;
+    profile = auth.user;
+
     const reqBody = await request.json();
-    const requesting_user_id = reqBody.requesting_user_id;
     issue_id     = reqBody.issue_id    ?? null;
     activity_id  = reqBody.activity_id ?? null;
     const activity_text = reqBody.body;
 
     // ── Validate input ────────────────────────────────────────────────
-    if (!requesting_user_id) {
-      return json({ error: 'No user ID provided' }, { status: 400 });
-    }
     if (!issue_id || !activity_text) {
       return json({ error: 'issue_id and body are required' }, { status: 400 });
     }
@@ -212,24 +202,12 @@ export async function POST({ request }) {
       return json({ error: 'body must be a string under 4000 characters' }, { status: 400 });
     }
 
-    // ── Auth: must be a real profile ─────────────────────────────────
-    const { data: loadedProfile, error: profileErr } = await supabaseAdmin
-      .from('profiles')
-      .select('id, email')
-      .eq('id', requesting_user_id)
-      .single();
-    if (profileErr || !loadedProfile) {
-      logger('❌ Unknown user:', requesting_user_id, profileErr?.message);
-      return json({ error: 'Unauthorized' }, { status: 403 });
-    }
-    profile = loadedProfile;
-
-    // ── Rate limit per user ──────────────────────────────────────────
-    if (!checkRateLimit(requesting_user_id)) {
+    // ── Rate limit per user (table-backed) ───────────────────────────
+    if (!(await checkKeyRateLimit(`user:${profile.id}`, 'ai_suggest'))) {
       logger('⚠️ Rate limited:', profile.email);
       recordAudit('rate_limited', 'warning', { reason: 'per_user_hourly_cap' });
       return json(
-        { error: `Rate limit exceeded (${RATE_LIMIT_PER_HOUR} suggestions/hour). Try again later.` },
+        { error: `Rate limit exceeded (${LIMITS.ai_suggest.max} suggestions/hour). Try again later.` },
         { status: 429 }
       );
     }

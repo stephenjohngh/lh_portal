@@ -14,11 +14,14 @@ import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('publicRateLimit');
 
-// Limits per action
-const LIMITS = {
-  photo_upload:  { max: 10, windowMinutes: 15 }, // 10 photos per 15 min
-  case_submit:   { max:  3, windowMinutes: 60 }, // 3 submissions per hour
-  status_lookup: { max: 10, windowMinutes: 15 }, // 10 status checks per 15 min
+// Limits per action. Exported so endpoints can quote the numbers in
+// user-facing 429 messages without duplicating them.
+export const LIMITS = {
+  photo_upload:  { max: 10, windowMinutes: 15 }, // 10 photos per 15 min (per IP)
+  case_submit:   { max:  3, windowMinutes: 60 }, // 3 submissions per hour (per IP)
+  status_lookup: { max: 10, windowMinutes: 15 }, // 10 status checks per 15 min (per IP)
+  ai_suggest:    { max: 60, windowMinutes: 60 }, // 60 action suggestions per hour (per user)
+  ai_summary:    { max: 60, windowMinutes: 60 }, // 60 summaries per hour (per user)
 };
 
 // Module-level singleton for the service role client
@@ -59,11 +62,25 @@ function hashIp(ip) {
  * @returns {Promise<boolean>} true = under limit (allowed), false = over limit (reject)
  */
 export async function checkRateLimit(request, action) {
+  const ip = getClientIp(request);
+  return checkKeyRateLimit(ip, action);
+}
+
+/**
+ * Rate-limit by an arbitrary caller key instead of the request IP — used by
+ * authenticated endpoints that limit per user id (e.g. `user:<uuid>` for the
+ * AI-assist routes). The key is hashed with the same salt as IPs before
+ * storage; the ip_hash column name is historical.
+ *
+ * @param {string} key     Stable caller identity (raw IP, or 'user:<uuid>')
+ * @param {keyof LIMITS} action
+ * @returns {Promise<boolean>} true = under limit (allowed), false = over limit (reject)
+ */
+export async function checkKeyRateLimit(key, action) {
   const limit  = LIMITS[action];
   if (!limit)  { logger('⚠ Unknown action:', action); return true; }
 
-  const ip     = getClientIp(request);
-  const ipHash = hashIp(ip);
+  const ipHash = hashIp(key);
   const svc    = getSvc();
   const since  = new Date(Date.now() - limit.windowMinutes * 60 * 1000).toISOString();
 
@@ -82,9 +99,13 @@ export async function checkRateLimit(request, action) {
     // Record this attempt
     await svc.from('public_upload_attempts').insert({ ip_hash: ipHash, action });
 
-    // Cleanup stale rows (fire-and-forget — don't block the response)
+    // Cleanup stale rows (fire-and-forget — don't block the response).
+    // Scoped to this action: windows differ per action, so an unscoped
+    // delete from a short-window action would drop rows other actions'
+    // longer windows still need.
     const cutoff = new Date(Date.now() - limit.windowMinutes * 2 * 60 * 1000).toISOString();
-    svc.from('public_upload_attempts').delete().lt('created_at', cutoff)
+    svc.from('public_upload_attempts').delete()
+      .eq('action', action).lt('created_at', cutoff)
       .then(() => {}).catch(() => {});
 
     return true;

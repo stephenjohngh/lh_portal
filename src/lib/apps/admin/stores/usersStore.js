@@ -6,19 +6,10 @@
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { api } from '$lib/utils/api';
+import { authHeaders } from '$lib/utils/authHeaders';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger("usersStore");
-
-/** Bearer-token headers for the /api/admin/* endpoints. Throws if signed out. */
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('Not authenticated');
-  return {
-    'Content-Type':  'application/json',
-    'Authorization': `Bearer ${session.access_token}`
-  };
-}
 
 function createUsersStore() {
   const { subscribe, update } = writable({

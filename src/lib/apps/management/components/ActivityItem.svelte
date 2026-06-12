@@ -25,6 +25,7 @@
   import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
   import { parseEmailPaste }   from '$lib/utils/emailParser';
   import { canDeleteOwn }      from '$lib/utils/permissions';
+  import { authHeaders }       from '$lib/utils/authHeaders';
   import { buildFieldSummary } from './reports/reportUtils';
   import { permissions }    from '$lib/stores/permissions';
   import { auth }           from '$lib/stores/auth';
@@ -155,11 +156,10 @@
     try {
       const res = await fetch('/api/management/suggest-summary', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
-          requesting_user_id: $auth.user?.id,
-          body:               editingActivity.body,
-          activity_type:      editingActivity.activity_type
+          body:          editingActivity.body,
+          activity_type: editingActivity.activity_type
         })
       });
       const data = await res.json().catch(() => ({}));
