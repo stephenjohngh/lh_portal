@@ -10,6 +10,7 @@
 		"prepare": "svelte-kit sync",
 		"start": "node build",
 		"check": "svelte-check --tsconfig ./jsconfig.json",
+		"test": "vitest run",
 		"db:push:test": "supabase db push --db-url \"$TEST_DB_URL\"",
 		"db:push:prod": "supabase db push --db-url \"$PROD_DB_URL\"",
 		"db:push:all": "npm run db:push:test && npm run db:push:prod"
@@ -25,7 +26,8 @@
 		"svelte-check": "^4.4.6",
 		"tailwindcss": "^4.1.18",
 		"typescript": "^6.0.3",
-		"vite": "^7.2.6"
+		"vite": "^7.2.6",
+		"vitest": "^4.1.8"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.91.1",
