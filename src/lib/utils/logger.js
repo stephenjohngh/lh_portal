@@ -17,7 +17,15 @@ import createDebug from "debug";
 import { browser } from "$app/environment";
 
 if (browser) {
-  localStorage.setItem("debug", "app:*");
+  if (import.meta.env.DEV) {
+    // Dev builds: log everything by default.
+    localStorage.setItem("debug", "app:*");
+  } else if (localStorage.getItem("debug") === "app:*") {
+    // Production: earlier builds force-set "app:*" on every visit, leaking
+    // internal logs to every user's console. Remove that exact value once;
+    // a deliberately set narrower filter (e.g. "app:auth") is left alone.
+    localStorage.removeItem("debug");
+  }
 }
 
 const cache = new Map();
