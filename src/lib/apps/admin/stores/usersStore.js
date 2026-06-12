@@ -1,5 +1,7 @@
 // src/lib/apps/admin/stores/usersStore.js
-// FIXED: Added requesting_user_id to resetPassword function
+// Admin endpoints (/api/admin/*) authenticate via the caller's Supabase
+// access token in the Authorization header — requireAdmin() on the server
+// verifies it. Never send a user id in the body to identify the caller.
 
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
@@ -7,6 +9,16 @@ import { api } from '$lib/utils/api';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger("usersStore");
+
+/** Bearer-token headers for the /api/admin/* endpoints. Throws if signed out. */
+async function authHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+  return {
+    'Content-Type':  'application/json',
+    'Authorization': `Bearer ${session.access_token}`
+  };
+}
 
 function createUsersStore() {
   const { subscribe, update } = writable({
@@ -55,17 +67,13 @@ function createUsersStore() {
       logger('Creating user:', userData.email);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
         const response = await fetch('/api/admin/create-user', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authHeaders(),
           body: JSON.stringify({
             email: userData.email,
             password: userData.password,
-            full_name: userData.fullName,
-            requesting_user_id: user.id
+            full_name: userData.fullName
           })
         });
 
@@ -85,21 +93,16 @@ function createUsersStore() {
       }
     },
 
-    // ✨ FIXED: Now includes requesting_user_id
     async resetPassword(userId, newPassword) {
       logger('Resetting password for user:', userId);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
         const response = await fetch('/api/admin/reset-password', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authHeaders(),
           body: JSON.stringify({
             user_id: userId,
-            new_password: newPassword,
-            requesting_user_id: user.id  // ✨ ADDED THIS
+            new_password: newPassword
           })
         });
 
@@ -122,15 +125,11 @@ function createUsersStore() {
       logger('Deleting user:', userId);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
         const response = await fetch('/api/admin/delete-user', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authHeaders(),
           body: JSON.stringify({
-            user_id: userId,
-            requesting_user_id: user.id
+            user_id: userId
           })
         });
 

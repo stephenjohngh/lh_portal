@@ -4,6 +4,7 @@ import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
+import { requireAdmin } from '$lib/server/requireAuth';
 import { logCreate } from '$lib/server/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 
@@ -16,34 +17,17 @@ const supabaseAdmin = createClient(
 
 export async function POST({ request }) {
   try {
+    // Caller identity comes from the verified bearer token — never from the
+    // request body (a body-supplied id is spoofable by anyone who knows it).
+    const auth = await requireAdmin(request);
+    if (auth.error) return auth.error;
+    const adminId    = auth.user.id;
+    const adminEmail = auth.user.email;
+
     const body = await request.json();
-    const { email, password, full_name, requesting_user_id } = body;
-    
-    logger('Create user request for:', email, 'by:', requesting_user_id);
+    const { email, password, full_name } = body;
 
-    if (!requesting_user_id) {
-      logger('❌ No requesting_user_id provided');
-      return json({ error: 'No user ID provided' }, { status: 400 });
-    }
-
-    // Check if requesting user is admin
-    const { data: adminProfile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('is_admin, email')
-      .eq('id', requesting_user_id)
-      .single();
-
-    if (profileError || !adminProfile) {
-      logger('❌ Profile lookup error:', profileError?.message);
-      return json({ error: 'Could not verify admin status' }, { status: 500 });
-    }
-
-    if (!adminProfile.is_admin) {
-      logger('❌ User is not admin:', requesting_user_id);
-      return json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
-    }
-
-    logger('✅ Admin verified, proceeding with user creation');
+    logger('Create user request for:', email, 'by:', adminEmail);
 
     // Validate input
     if (!email || !password) {
@@ -53,7 +37,7 @@ export async function POST({ request }) {
 
     // Create new user
     logger('Creating user:', email);
-    
+
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -63,11 +47,11 @@ export async function POST({ request }) {
 
     if (createError) {
       logger('❌ Create user error:', createError.message);
-      
+
       // Log failed user creation
       await logCreate(
-        requesting_user_id,
-        adminProfile.email,
+        adminId,
+        adminEmail,
         'user',
         null,
         email,
@@ -76,7 +60,7 @@ export async function POST({ request }) {
           attempted_email: email
         }
       );
-      
+
       return json({ error: createError.message }, { status: 400 });
     }
 
@@ -88,7 +72,7 @@ export async function POST({ request }) {
         .from('profiles')
         .update({ full_name })
         .eq('id', newUser.user.id);
-      
+
       if (updateError) {
         logger('⚠️ Could not update profile:', updateError.message);
       } else {
@@ -98,8 +82,8 @@ export async function POST({ request }) {
 
     // Log successful user creation
     await logCreate(
-      requesting_user_id,
-      adminProfile.email,
+      adminId,
+      adminEmail,
       'user',
       newUser.user.id,
       newUser.user.email,
@@ -111,9 +95,9 @@ export async function POST({ request }) {
     );
 
     logger('✅ User creation logged to audit trail');
-    
-    return json({ 
-      success: true, 
+
+    return json({
+      success: true,
       user: {
         id: newUser.user.id,
         email: newUser.user.email,

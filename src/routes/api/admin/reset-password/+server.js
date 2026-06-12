@@ -4,6 +4,7 @@ import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
+import { requireAdmin } from '$lib/server/requireAuth';
 import { logPasswordReset } from '$lib/server/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 
@@ -11,23 +12,22 @@ const logger = getLogger('ResetPasswordAPI');
 
 export async function POST({ request }) {
   try {
-    const { user_id, new_password, requesting_user_id } = await request.json();
+    // Caller identity comes from the verified bearer token — never from the
+    // request body (a body-supplied id is spoofable by anyone who knows it).
+    const auth = await requireAdmin(request);
+    if (auth.error) return auth.error;
+    const adminId    = auth.user.id;
+    const adminEmail = auth.user.email;
 
-    logger('Password reset request for:', user_id, 'by:', requesting_user_id);
+    const { user_id, new_password } = await request.json();
+
+    logger('Password reset request for:', user_id, 'by:', adminEmail);
 
     // Validate input
     if (!user_id || !new_password) {
       logger('❌ Missing user_id or new_password');
       return json(
         { error: 'User ID and new password are required' },
-        { status: 400 }
-      );
-    }
-
-    if (!requesting_user_id) {
-      logger('❌ Missing requesting_user_id');
-      return json(
-        { error: 'Requesting user ID is required' },
         { status: 400 }
       );
     }
@@ -51,23 +51,6 @@ export async function POST({ request }) {
         }
       }
     );
-
-    // Verify requesting user is admin
-    const { data: adminProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('is_admin, email')
-      .eq('id', requesting_user_id)
-      .single();
-
-    if (!adminProfile?.is_admin) {
-      logger('❌ Unauthorized - user is not admin');
-      return json(
-        { error: 'Unauthorized - admin access required' },
-        { status: 403 }
-      );
-    }
-
-    logger('✅ Admin verified');
 
     // Get target user email for audit log
     const { data: targetProfile } = await supabaseAdmin
@@ -104,8 +87,8 @@ export async function POST({ request }) {
 
     // Log password reset
     await logPasswordReset(
-      requesting_user_id,
-      adminProfile.email,
+      adminId,
+      adminEmail,
       user_id,
       targetProfile.email
     );
