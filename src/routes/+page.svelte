@@ -23,17 +23,38 @@
 
   const logger = getLogger('MainApp');
 
-  import AdminApp from '$lib/apps/admin/AdminApp.svelte';
-  import ManagementApp from '$lib/apps/management/ManagementApp.svelte';
-import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
-  import BuildingAssetsApp from '$lib/apps/building_assets/BuildingAssetsApp.svelte';
-  import InspectionApp from '$lib/apps/inspection/InspectionApp.svelte';
-  import MobilePlanApp from '$lib/apps/mobileplan/MobilePlanApp.svelte';
-  import ManagementMobileApp from '$lib/apps/managementmobile/ManagementMobileApp.svelte';
-  import MaintenanceApp from '$lib/apps/maintenance/MaintenanceApp.svelte';
-  import InfoApp        from '$lib/apps/info/InfoApp.svelte';
-  import ArticlesApp    from '$lib/apps/articles/ArticlesApp.svelte';
-  import MorApp         from '$lib/apps/mor/MorApp.svelte';
+  // Per-app code-splitting: each sub-app is its own dynamic chunk, loaded on
+  // first open instead of in the initial bundle (Management alone pulls in
+  // Tiptap). Loaded constructors are cached in appComponents below.
+  const APP_LOADERS = {
+    'admin':            () => import('$lib/apps/admin/AdminApp.svelte'),
+    'management':       () => import('$lib/apps/management/ManagementApp.svelte'),
+    'settings':         () => import('$lib/apps/settings/SettingsApp.svelte'),
+    'building_assets':  () => import('$lib/apps/building_assets/BuildingAssetsApp.svelte'),
+    'inspection':       () => import('$lib/apps/inspection/InspectionApp.svelte'),
+    'mobileplan':       () => import('$lib/apps/mobileplan/MobilePlanApp.svelte'),
+    'managementmobile': () => import('$lib/apps/managementmobile/ManagementMobileApp.svelte'),
+    'maintenance':      () => import('$lib/apps/maintenance/MaintenanceApp.svelte'),
+    'info':             () => import('$lib/apps/info/InfoApp.svelte'),
+    'articles':         () => import('$lib/apps/articles/ArticlesApp.svelte'),
+    'mor':              () => import('$lib/apps/mor/MorApp.svelte'),
+  };
+
+  let appComponents = {};   // appId -> component constructor (loaded chunks)
+  let appLoadFailed = {};   // appId -> true when the chunk failed to load
+
+  $: ensureAppLoaded(activeApp);
+
+  async function ensureAppLoaded(appId) {
+    if (!appId || appComponents[appId] || !APP_LOADERS[appId]) return;
+    try {
+      const mod = await APP_LOADERS[appId]();
+      appComponents = { ...appComponents, [appId]: mod.default };
+    } catch (err) {
+      logger('❌ Failed to load app chunk:', appId, err);
+      appLoadFailed = { ...appLoadFailed, [appId]: true };
+    }
+  }
 
   let activeApp = 'home';
   let menuOpen = false;
@@ -143,23 +164,6 @@ import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
 
   function handleLogout() {
     auth.logout();
-  }
-
-  function getAppComponent(appId) {
-    const components = {
-      'admin': AdminApp,
-      'management': ManagementApp,
-      'settings': SettingsApp,
-      'building_assets': BuildingAssetsApp,
-      'inspection': InspectionApp,
-      'mobileplan':         MobilePlanApp,
-      'managementmobile':   ManagementMobileApp,
-      'maintenance': MaintenanceApp,
-      'info':        InfoApp,
-      'articles':    ArticlesApp,
-      'mor':         MorApp
-    };
-    return components[appId];
   }
 
   $: if (!loading && activeApp !== 'home' && !displayedApps.find(a => a.id === activeApp)) {
@@ -378,8 +382,17 @@ import SettingsApp from '$lib/apps/settings/SettingsApp.svelte';
           {/if}
         </div>
       {:else}
-        {#if getAppComponent(activeApp)}
-          <svelte:component this={getAppComponent(activeApp)} on:navigate={e => activeApp = e.detail} />
+        {#if appComponents[activeApp]}
+          <svelte:component this={appComponents[activeApp]} on:navigate={e => activeApp = e.detail} />
+        {:else if appLoadFailed[activeApp]}
+          <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
+            <h2 class="text-3xl font-bold mb-4">
+              {displayedApps.find(a => a.id === activeApp)?.name || 'App'}
+            </h2>
+            <p class="text-gray-400">Failed to load this app — check your connection and refresh the page.</p>
+          </div>
+        {:else if APP_LOADERS[activeApp]}
+          <div class="flex items-center justify-center py-16 text-gray-400">Loading…</div>
         {:else}
           <div class="bg-slate-800 rounded-xl p-8 border border-slate-700">
             <h2 class="text-3xl font-bold mb-4">
