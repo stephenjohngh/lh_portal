@@ -15,9 +15,11 @@ Sentry.init({
   dsn: SENTRY_DSN,
   enabled: !!SENTRY_DSN,
   environment: import.meta.env.PUBLIC_ENV_LABEL || 'development',
-  // Light performance tracing server-side only — enough to spot slow
-  // endpoints without meaningful quota cost.
-  tracesSampleRate: 0.1,
+  // Errors-only: no performance tracing. tracesSampleRate 0 means no
+  // per-request transactions are sent (no transaction-quota use, no idle
+  // overhead) — this is a low-traffic app where errors are the only signal
+  // worth capturing.
+  tracesSampleRate: 0,
 });
 
 /** @type {import('@sveltejs/kit').Handle} */
