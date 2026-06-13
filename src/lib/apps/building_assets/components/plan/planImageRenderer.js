@@ -136,6 +136,9 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
       canvas.width  = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
+      // getContext can return null (context unavailable / already taken with a
+      // different type). Bail consistently with the onerror path below.
+      if (!ctx) { resolve(null); return; }
       ctx.drawImage(img, 0, 0);
 
       // Scale marker sizes relative to image width so they remain legible
