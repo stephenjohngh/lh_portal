@@ -22,6 +22,7 @@
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import { parseEmailPaste } from '$lib/utils/emailParser';
+  import { linkedActionsByActivityId, filterActivities, sortActivities } from '../utils/activityList.js';
   import MeetingBadge         from './meetings/MeetingBadge.svelte';
   import { getLogger }        from '$lib/utils/logger';
   import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
@@ -54,11 +55,7 @@
   export let actions    = [];
 
   // -- Derived: linked actions keyed by source_activity_id -------------
-  $: linkedActionByActivityId = Object.fromEntries(
-    actions
-      .filter(a => a?.source_activity_id)
-      .map(a => [a.source_activity_id, a])
-  );
+  $: linkedActionByActivityId = linkedActionsByActivityId(actions);
 
   // -- List / sort / filter state -------------------------------------
   let showAddForm       = false;
@@ -144,27 +141,8 @@
   const assigneeOptionsStore = profilesStore.assigneeOptions();
 
   // -- Filter + sort ---------------------------------------------------
-  $: filteredActivities = showHistoric
-    ? activities
-    : activities.filter(a => !a.historic);
-
-  // Interleaved sorted list for rendering
-  $: visibleItems = [...filteredActivities].sort((a, b) => {
-    if (sortField === 'sequence') {
-      const aHas = a.sequence != null;
-      const bHas = b.sequence != null;
-      // Sequenced items first; unsequenced items fall back to modified-date sort at the end.
-      if (aHas !== bHas) return aHas ? -1 : 1;
-      if (aHas) return sortDir === 'desc' ? b.sequence - a.sequence : a.sequence - b.sequence;
-      // Both unsequenced: sort by modified date (same direction as chosen).
-      const aDate = new Date(a.updated_at || a.created_at);
-      const bDate = new Date(b.updated_at || b.created_at);
-      return sortDir === 'desc' ? bDate - aDate : aDate - bDate;
-    }
-    const aVal = new Date(sortField === 'updated_at' ? (a.updated_at || a.created_at) : a.created_at);
-    const bVal = new Date(sortField === 'updated_at' ? (b.updated_at || b.created_at) : b.created_at);
-    return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
-  });
+  $: filteredActivities = filterActivities(activities, showHistoric);
+  $: visibleItems       = sortActivities(filteredActivities, sortField, sortDir);
 
   $: historicCount = activities.filter(a => a.historic).length;
 
