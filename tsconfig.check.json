@@ -1,0 +1,18 @@
+{
+	// CI gate config (npm run check). Mirrors jsconfig but with checkJs OFF,
+	// so the green gate covers .svelte templates, a11y and .ts — the same
+	// scope it had before checkJs was enabled in jsconfig.json.
+	//
+	// jsconfig.json keeps checkJs: true so editors and `npm run check:js`
+	// type-check the .js files too. That strict pass currently reports a
+	// known legacy backlog (~1.5k, mostly Date-math, e.target casts, untyped
+	// Supabase/SDK results — not bugs); it is a gradual burn-down, not a gate,
+	// until it reaches zero. See CLAUDE.md "Type checking".
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": false,
+		"skipLibCheck": true,
+		"moduleResolution": "bundler"
+	}
+}

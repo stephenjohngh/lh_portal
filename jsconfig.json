@@ -1,0 +1,17 @@
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		// noImplicitAny is off deliberately: with it on, checkJs produced ~3,100
+		// pure-annotation errors (untyped params/vars) with near-zero bug-catching
+		// value. Off, the strict null/property/assignability checks still run,
+		// which is where real bugs surface. Editors read this file, so opened JS
+		// is type-checked live. `npm run check:js` runs this config in CI-style.
+		"noImplicitAny": false,
+		"skipLibCheck": true,
+		"moduleResolution": "bundler"
+	}
+	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
+	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
+}

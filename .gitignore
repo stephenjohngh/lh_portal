@@ -26,13 +26,14 @@ vite.config.ts.timestamp-*
 cmds.txt
 
 # ─────────────────────────────────────────────────────────────────────────────
-# GitHub holds ONLY the minimum needed to build/deploy the app to Netlify and
-# Northflank. Everything below stays on local disk but is NOT tracked:
-#   - docs, dev guides, scripts/tooling
+# GitHub holds the app source + the dev/test tooling needed to build, check and
+# test it. The exclusions below are for files that were dumped into the tree but
+# are NOT app source — they stay on local disk only:
+#   - docs & dev guides
 #   - SQL / Supabase (migrations are produced here but applied as a separate
 #     manual activity — the build process must never touch the database)
 #   - CI / GitHub Actions automation
-#   - tests and type-check configs (run locally before pushing)
+# (Tests, vitest.config and the type-check configs ARE source and are tracked.)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # DB / Supabase — never on GitHub
@@ -49,13 +50,6 @@ CLAUDE_general_dev_rules.md
 
 # CI / automation
 /.github/
-
-# Tests & type-check configs (local-only; not needed to deploy)
-*.test.js
-*.spec.js
-vitest.config.js
-jsconfig.json
-tsconfig.check.json
 
 # Env example / reference
 .env.example
