@@ -24,11 +24,12 @@
   import AttrFilterPopover       from './AttrFilterPopover.svelte';
   import AttrFilterChip          from './AttrFilterChip.svelte';
   import {
-    availableFixedDefs, availableConditionDefs, matchesAllAttrFilters,
+    availableFixedDefs, availableConditionDefs,
   } from '../utils/attrFilters.js';
   import {
     resolveFixedAttrs, buildInventoryCsvRows, buildConditionAuditCsvRows,
   } from '../utils/componentsCsv.js';
+  import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
   import { fmtGenerated } from '$lib/utils/dates.js';
 
   // -- Store bindings ------------------------------------------------
@@ -235,28 +236,10 @@
   })();
 
   // Human-readable filter description for the report document header
-  $: reportFilterSummary = (() => {
-    const parts = [];
-    if (floorPreset === 'residential') parts.push('Floors: Residential');
-    else if (floorPreset === 'basement') parts.push('Floors: Basement');
-    else if (floorPreset === 'custom' && filterFloorIds.size > 0) {
-      const names = floors.filter(f => filterFloorIds.has(f.id)).map(f => f.short_name).join(', ');
-      parts.push(`Floors: ${names}`);
-    }
-    if (filterSystemIds.size > 0) {
-      const names = systems.filter(s => filterSystemIds.has(s.id)).map(s => s.name).join(', ');
-      parts.push(`Systems: ${names}`);
-    }
-    if (filterTypeCodes.size > 0) {
-      const names = types.filter(t => filterTypeCodes.has(t.code)).map(t => t.name).join(', ');
-      parts.push(`Types: ${names}`);
-    }
-    if (filterStatuses.size > 0 && filterStatuses.size < 4) {
-      parts.push(`Status: ${[...filterStatuses].join(', ')}`);
-    }
-    if (searchQuery.trim()) parts.push(`Search: "${searchQuery.trim()}"`);
-    return parts.join(' · ') || 'All components';
-  })();
+  $: reportFilterSummary = describeComponentFilters(
+    { floorPreset, filterFloorIds, filterSystemIds, filterTypeCodes, filterStatuses, searchQuery },
+    { floors, systems, types },
+  );
 
   async function generateReport() {
     if (reportNoneSelected || filteredComponents.length === 0) return;
@@ -365,56 +348,15 @@
   $: basementFloorIds    = new Set(floors.filter(f => BASEMENT_SHORT.has(f.short_name)).map(f => f.id));
 
   // -- Filtered component list ---------------------------------------
-  $: filteredComponents = (() => {
-    let list = components;
-
-    // Floor
-    if (floorPreset === 'residential') {
-      list = list.filter(c => residentialFloorIds.has(c.floor_id));
-    } else if (floorPreset === 'basement') {
-      list = list.filter(c => basementFloorIds.has(c.floor_id));
-    } else if (floorPreset === 'custom' && filterFloorIds.size > 0) {
-      list = list.filter(c => filterFloorIds.has(c.floor_id));
-    }
-
-    // System (filter via type's building_system_id)
-    if (filterSystemIds.size > 0) {
-      const systemTypeCodes = new Set(
-        types.filter(t => filterSystemIds.has(t.building_system_id)).map(t => t.code)
-      );
-      list = list.filter(c => systemTypeCodes.has(c.type_code));
-    }
-
-    // Type
-    if (filterTypeCodes.size > 0) list = list.filter(c => filterTypeCodes.has(c.type_code));
-
-    // Status
-    if (filterStatuses.size > 0) list = list.filter(c => filterStatuses.has((c.status || 'ok').toLowerCase()));
-
-    // Search (asset_id, label, linked_component_ref)
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      list = list.filter(c =>
-        (c.asset_id  ?? '').toLowerCase().includes(q) ||
-        (c.label     ?? '').toLowerCase().includes(q) ||
-        (c.linked_component_ref ?? '').toLowerCase().includes(q)
-      );
-    }
-
-    // Attribute filters — fixed (componentAttrs) and condition (inspections).
-    // Both arrays apply with AND semantics across filters; OR within a single
-    // 'in' filter's value list (handled inside matchesAttrFilter).
-    if (fixedAttrFilters.length > 0 || conditionAttrFilters.length > 0) {
-      const allFilters = [...fixedAttrFilters, ...conditionAttrFilters];
-      list = list.filter(c => {
-        const type = types.find(t => t.code === c.type_code);
-        const defs = type ? (attrDefs[type.id] ?? []) : [];
-        return matchesAllAttrFilters(c, defs, componentAttrs, inspections, allFilters);
-      });
-    }
-
-    return list;
-  })();
+  $: filteredComponents = filterComponents(
+    components,
+    {
+      floorPreset, residentialFloorIds, basementFloorIds, filterFloorIds,
+      filterSystemIds, filterTypeCodes, filterStatuses, searchQuery,
+      fixedAttrFilters, conditionAttrFilters,
+    },
+    { types, attrDefs, componentAttrs, inspections },
+  );
 
   // -- Active filter label (for table title) -------------------------
   $: floorLabel = (() => {
