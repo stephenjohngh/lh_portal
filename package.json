@@ -9,7 +9,7 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync",
 		"start": "node build",
-		"check": "svelte-check --tsconfig ./tsconfig.check.json",
+		"check": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./tsconfig.check.json",
 		"check:js": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./jsconfig.json",
 		"test": "vitest run",
 		"db:push:test": "supabase db push --db-url \"$TEST_DB_URL\"",
