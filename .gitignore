@@ -17,20 +17,49 @@ Thumbs.db
 .env
 .env.*
 *.env
-!.env.example
-!.env.test
 
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .claude/
 
-
 cmds.txt
 
-# DB backups (contains credentials / large sql dumps)
-# Use /scripts/* (not /scripts/) so individual tooling files can be re-included.
-/scripts/*
+# ─────────────────────────────────────────────────────────────────────────────
+# GitHub holds ONLY the minimum needed to build/deploy the app to Netlify and
+# Northflank. Everything below stays on local disk but is NOT tracked:
+#   - docs, dev guides, scripts/tooling
+#   - SQL / Supabase (migrations are produced here but applied as a separate
+#     manual activity — the build process must never touch the database)
+#   - CI / GitHub Actions automation
+#   - tests and type-check configs (run locally before pushing)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# DB / Supabase — never on GitHub
+/supabase/
 /backups/
-# …but track committed dev tooling that lives under scripts/ (no secrets)
-!/scripts/gen-db-types.mjs
+
+# Docs & dev guides
+/docs/
+CLAUDE.md
+CLAUDE_general_dev_rules.md
+
+# Dev tooling / scripts
+/scripts/
+
+# CI / automation
+/.github/
+
+# Tests & type-check configs (local-only; not needed to deploy)
+*.test.js
+*.spec.js
+vitest.config.js
+jsconfig.json
+tsconfig.check.json
+
+# Env example / reference
+.env.example
+.env.example_with_debug
+
+# Misc
+.gitmodules
