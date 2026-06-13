@@ -23,6 +23,7 @@
   import InspectionPanel         from './InspectionPanel.svelte';
   import AttrFilterPopover       from './AttrFilterPopover.svelte';
   import AttrFilterChip          from './AttrFilterChip.svelte';
+  import ReportActionButtons     from './ReportActionButtons.svelte';
   import {
     availableFixedDefs, availableConditionDefs,
   } from '../utils/attrFilters.js';
@@ -969,28 +970,14 @@
             {#if reportNoneSelected}
               <span class="text-[10px] text-amber-500/80">Select at least one section</span>
             {/if}
-            <div class="ml-auto flex items-center gap-2">
-              <button
-                on:click={generateReport}
-                disabled={generatingReport || filteredComponents.length === 0 || reportNoneSelected}
-                class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
-                       disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >{generatingReport ? 'Generating…' : '⬇ Document'}</button>
-              <button
-                on:click={generateCSV}
-                disabled={filteredComponents.length === 0}
-                class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
-                       disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                title="Inventory CSV — one row per component, attributes pipe-joined"
-              >⬇ CSV</button>
-              <button
-                on:click={generateConditionAuditCSV}
-                disabled={filteredComponents.length === 0}
-                class="px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white
-                       disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                title="Condition Audit CSV — one column per condition attribute, ✓/✗ per component (Excel-filterable)"
-              >⬇ Condition Audit</button>
-            </div>
+            <ReportActionButtons
+              count={filteredComponents.length}
+              generating={generatingReport}
+              documentDisabled={reportNoneSelected}
+              on:document={generateReport}
+              on:csv={generateCSV}
+              on:conditionaudit={generateConditionAuditCSV}
+            />
           {/if}
         </div>
 
