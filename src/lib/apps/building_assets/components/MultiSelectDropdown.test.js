@@ -44,6 +44,34 @@ describe('MultiSelectDropdown open/options', () => {
   });
 });
 
+describe('MultiSelectDropdown grouped mode', () => {
+  const groups = [
+    { label: 'Fire',       options: [{ value: 'door', label: 'Door' }, { value: 'alarm', label: 'Alarm' }] },
+    { label: 'Electrical', options: [{ value: 'lamp', label: 'Lamp' }] },
+  ];
+  const flat = [{ value: 'door', label: 'Door' }, { value: 'alarm', label: 'Alarm' }, { value: 'lamp', label: 'Lamp' }];
+
+  it('renders group headers + each group’s options when groups are provided', () => {
+    render(MultiSelectDropdown, { props: { options: flat, groups, open: true } });
+    expect(screen.getByText('Fire')).toBeInTheDocument();
+    expect(screen.getByText('Electrical')).toBeInTheDocument();
+    for (const name of ['Door', 'Alarm', 'Lamp']) {
+      expect(screen.getByRole('checkbox', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('still summarises from the flat options (single selection shows its label)', () => {
+    render(MultiSelectDropdown, { props: { options: flat, groups, selected: new Set(['lamp']), noun: 'types' } });
+    expect(screen.getByRole('button')).toHaveTextContent('Lamp');
+  });
+
+  it('falls back to the flat list when groups is empty', () => {
+    render(MultiSelectDropdown, { props: { options: flat, groups: [], open: true } });
+    expect(screen.queryByText('Fire')).not.toBeInTheDocument();   // no group header
+    expect(screen.getByRole('checkbox', { name: 'Door' })).toBeInTheDocument();
+  });
+});
+
 describe('MultiSelectDropdown interaction', () => {
   it('dispatches "toggle" when the summary button is clicked', async () => {
     const onToggle = vi.fn();
@@ -58,5 +86,23 @@ describe('MultiSelectDropdown interaction', () => {
     expect(cb).not.toBeChecked();
     await fireEvent.click(cb);
     expect(cb).toBeChecked();
+  });
+
+  it('uses an option’s `short` label in the single-select summary (e.g. floor short_name)', () => {
+    render(MultiSelectDropdown, {
+      props: {
+        options: [{ value: 'fG', label: 'Ground (G)', short: 'G' }],
+        selected: new Set(['fG']), placeholder: 'Floors…', noun: 'floors',
+      },
+    });
+    expect(screen.getByRole('button')).toHaveTextContent('G');
+    expect(screen.getByRole('button')).not.toHaveTextContent('Ground');
+  });
+
+  it('dispatches "change" when a selection is toggled (for side-effects like floorPreset)', async () => {
+    const onChange = vi.fn();
+    render(MultiSelectDropdown, { props: { options: opts, open: true }, events: { change: onChange } });
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'Fire' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });

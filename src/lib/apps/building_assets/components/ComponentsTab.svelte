@@ -179,17 +179,6 @@
   // -- Multi-select dropdown state -----------------------------------
   let openDropdown = null;   // 'system' | 'type' | 'status' | null
 
-  function toggleFloor(id) {
-    filterFloorIds = new Set(filterFloorIds);
-    if (filterFloorIds.has(id)) filterFloorIds.delete(id);
-    else filterFloorIds.add(id);
-    floorPreset = filterFloorIds.size > 0 ? 'custom' : 'all';
-  }
-  function toggleType(code) {
-    filterTypeCodes = new Set(filterTypeCodes);
-    if (filterTypeCodes.has(code)) filterTypeCodes.delete(code);
-    else filterTypeCodes.add(code);
-  }
 
   // -- Report state --------------------------------------------------
   let showReportPanel      = false;
@@ -419,6 +408,20 @@
         return (typeOrderIndex[a.code] ?? 999) - (typeOrderIndex[b.code] ?? 999);
       });
 
+  // Options for the Type MultiSelectDropdown: flat list (always, for the
+  // summary) + grouped-by-system (only when no system filter is active).
+  $: typeOptions = typesForSystem.map(t => ({ value: t.code, label: t.name }));
+  $: typeGroups  = filterSystemIds.size > 0
+    ? []
+    : systems
+        .map(s => ({
+          label:   s.name,
+          options: typesForSystem
+            .filter(t => t.building_system_id === s.id)
+            .map(t => ({ value: t.code, label: t.name })),
+        }))
+        .filter(g => g.options.length > 0);
+
   function clearFilters() {
     floorPreset    = 'all';
     filterFloorIds = new Set();
@@ -611,37 +614,14 @@
               {/each}
             </div>
             <!-- Individual floor multi-select -->
-            <div class="relative">
-              <button
-                on:click={() => openDropdown = openDropdown === 'floor' ? null : 'floor'}
-                class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
-                       focus:outline-none flex items-center gap-1.5
-                       {filterFloorIds.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
-                title="Select individual floors"
-              >
-                <span>
-                  {#if filterFloorIds.size === 0}Floors…
-                  {:else if filterFloorIds.size === 1}{floors.find(f => filterFloorIds.has(f.id))?.short_name ?? '1'}
-                  {:else}{filterFloorIds.size} floors{/if}
-                </span>
-                <span class="text-slate-500 text-[10px]">▾</span>
-              </button>
-              {#if openDropdown === 'floor'}
-                <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
-                            rounded-lg shadow-xl min-w-max py-1 max-h-72 overflow-y-auto">
-                  {#each floors as f (f.id)}
-                    <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
-                      <input type="checkbox" checked={filterFloorIds.has(f.id)}
-                             on:change={() => toggleFloor(f.id)}
-                             class="rounded accent-purple-500 shrink-0" />
-                      <span class="text-xs text-slate-300 whitespace-nowrap">
-                        {f.name} <span class="text-slate-500">({f.short_name})</span>
-                      </span>
-                    </label>
-                  {/each}
-                </div>
-              {/if}
-            </div>
+            <MultiSelectDropdown
+              placeholder="Floors…" noun="floors" title="Select individual floors"
+              options={floors.map(f => ({ value: f.id, label: `${f.name} (${f.short_name})`, short: f.short_name }))}
+              bind:selected={filterFloorIds}
+              open={openDropdown === 'floor'}
+              on:toggle={() => openDropdown = openDropdown === 'floor' ? null : 'floor'}
+              on:change={() => floorPreset = filterFloorIds.size > 0 ? 'custom' : 'all'}
+            />
           </div>
         </div>
 
@@ -655,57 +635,14 @@
         />
 
         <!-- Type filter — multi-select dropdown, grouped by system when unfiltered -->
-        <div class="flex flex-col gap-1 relative">
-          <p class="text-[10px] text-slate-300 uppercase tracking-wide font-semibold">Type</p>
-          <button
-            on:click={() => openDropdown = openDropdown === 'type' ? null : 'type'}
-            class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
-                   focus:outline-none min-w-[130px] flex items-center justify-between gap-2 text-left
-                   {filterTypeCodes.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
-          >
-            <span class="truncate">
-              {#if filterTypeCodes.size === 0}All types
-              {:else if filterTypeCodes.size === 1}{types.find(t => filterTypeCodes.has(t.code))?.name ?? '1 selected'}
-              {:else}{filterTypeCodes.size} types{/if}
-            </span>
-            <span class="text-slate-500 shrink-0 text-[10px]">▾</span>
-          </button>
-          {#if openDropdown === 'type'}
-            <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
-                        rounded-lg shadow-xl min-w-max py-1 max-h-72 overflow-y-auto">
-              {#if filterSystemIds.size > 0}
-                <!-- Flat list scoped to selected systems -->
-                {#each typesForSystem as t (t.code)}
-                  <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
-                    <input type="checkbox" checked={filterTypeCodes.has(t.code)}
-                           on:change={() => toggleType(t.code)}
-                           class="rounded accent-purple-500 shrink-0" />
-                    <span class="text-xs text-slate-300 whitespace-nowrap">{t.name}</span>
-                  </label>
-                {/each}
-              {:else}
-                <!-- Grouped by system -->
-                {#each systems as s (s.id)}
-                  {@const sysTypes = typesForSystem.filter(t => t.building_system_id === s.id)}
-                  {#if sysTypes.length > 0}
-                    <div class="px-3 pt-2 pb-0.5 text-[10px] text-slate-500 uppercase tracking-wider font-medium
-                                border-b border-slate-700/60 first:pt-1">
-                      {s.name}
-                    </div>
-                    {#each sysTypes as t (t.code)}
-                      <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
-                        <input type="checkbox" checked={filterTypeCodes.has(t.code)}
-                               on:change={() => toggleType(t.code)}
-                               class="rounded accent-purple-500 shrink-0" />
-                        <span class="text-xs text-slate-300 whitespace-nowrap">{t.name}</span>
-                      </label>
-                    {/each}
-                  {/if}
-                {/each}
-              {/if}
-            </div>
-          {/if}
-        </div>
+        <MultiSelectDropdown
+          label="Type" placeholder="All types" noun="types"
+          options={typeOptions}
+          groups={typeGroups}
+          bind:selected={filterTypeCodes}
+          open={openDropdown === 'type'}
+          on:toggle={() => openDropdown = openDropdown === 'type' ? null : 'type'}
+        />
 
         <!-- Status filter — multi-select dropdown -->
         <MultiSelectDropdown
