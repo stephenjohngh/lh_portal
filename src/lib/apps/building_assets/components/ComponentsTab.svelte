@@ -21,11 +21,12 @@
   import ComponentDetailPanel    from './ComponentDetailPanel.svelte';
   import ComponentDetailView     from './ComponentDetailView.svelte';
   import InspectionPanel         from './InspectionPanel.svelte';
-  import AttrFilterPopover       from './AttrFilterPopover.svelte';
-  import AttrFilterChip          from './AttrFilterChip.svelte';
+  import AttrFilterStrip         from './AttrFilterStrip.svelte';
   import ReportActionButtons     from './ReportActionButtons.svelte';
   import ReportSectionToggles    from './ReportSectionToggles.svelte';
   import MultiSelectDropdown     from './MultiSelectDropdown.svelte';
+  import ColumnToggles           from './ColumnToggles.svelte';
+  import ActiveFilterSummary     from './ActiveFilterSummary.svelte';
   import {
     availableFixedDefs, availableConditionDefs,
   } from '../utils/attrFilters.js';
@@ -464,6 +465,13 @@
   }
   function closePopover() { popoverState = null; }
 
+  // Add-button toggle: open the add-popover for this strip, or close it if it's
+  // already open in add mode (matches the old inline toggle behaviour).
+  function toggleAddPopover(kind) {
+    if (popoverState?.kind === kind && popoverState.editIndex == null) closePopover();
+    else openAddPopover(kind);
+  }
+
   function handlePopoverApply(e) {
     if (!popoverState) return;
     const filter = e.detail;
@@ -666,32 +674,7 @@
         </div>
 
         <!-- Column toggles -->
-        <div class="flex flex-col gap-1 self-end pb-1.5">
-          <p class="text-[10px] text-slate-300 uppercase tracking-wide font-semibold">Columns</p>
-          <div class="flex items-center gap-3">
-            <label class="flex items-center gap-1.5 cursor-pointer
-                           text-xs text-slate-400 hover:text-slate-300 transition-colors">
-              <input type="checkbox" bind:checked={showLinked}
-                     class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-700
-                            accent-purple-500 cursor-pointer" />
-              Linked
-            </label>
-            <label class="flex items-center gap-1.5 cursor-pointer
-                           text-xs text-slate-400 hover:text-slate-300 transition-colors">
-              <input type="checkbox" bind:checked={showNotes}
-                     class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-700
-                            accent-purple-500 cursor-pointer" />
-              Notes
-            </label>
-            <label class="flex items-center gap-1.5 cursor-pointer
-                           text-xs text-slate-400 hover:text-slate-300 transition-colors">
-              <input type="checkbox" bind:checked={showInspectionNotes}
-                     class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-700
-                            accent-purple-500 cursor-pointer" />
-              Insp. Notes
-            </label>
-          </div>
-        </div>
+        <ColumnToggles bind:showLinked bind:showNotes bind:showInspectionNotes />
 
         <!-- Clear filters -->
         {#if hasFilters}
@@ -702,40 +685,11 @@
         {/if}
 
         <!-- Active filter summary -->
-        <div class="w-full flex flex-wrap gap-1.5 mt-0.5">
-          {#if floorPreset !== 'all'}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
-                         bg-purple-900/40 text-purple-300 border border-purple-700/40">
-              {floorLabel}
-            </span>
-          {/if}
-          {#if filterSystemIds.size > 0}
-            {@const names = systems.filter(s => filterSystemIds.has(s.id)).map(s => s.name)}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
-                         bg-slate-700 text-slate-300 border border-slate-600">
-              System: {names.join(', ')}
-            </span>
-          {/if}
-          {#if filterTypeCodes.size > 0}
-            {@const names = types.filter(t => filterTypeCodes.has(t.code)).map(t => t.name)}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
-                         bg-slate-700 text-slate-300 border border-slate-600">
-              Type: {names.join(', ')}
-            </span>
-          {/if}
-          {#if filterStatuses.size > 0}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
-                         bg-slate-700 text-slate-300 border border-slate-600">
-              Status: {[...filterStatuses].join(', ')}
-            </span>
-          {/if}
-          {#if searchQuery.trim()}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
-                         bg-slate-700 text-slate-300 border border-slate-600">
-              "{searchQuery.trim()}"
-            </span>
-          {/if}
-        </div>
+        <ActiveFilterSummary
+          {floorPreset} {floorLabel}
+          {filterSystemIds} {filterTypeCodes} {filterStatuses}
+          {searchQuery} {systems} {types}
+        />
 
       </div>
 
@@ -753,82 +707,35 @@
            When chips overflow, the scroller scrolls horizontally (capped
            at max-w-full inside its parent); the button stays anchored
            right after the visible scroll viewport. -->
-      <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 bg-slate-800/40">
-        <span class="text-[10px] uppercase tracking-wide text-slate-300 font-semibold shrink-0 w-20">Fixed</span>
-        <div class="min-w-0 overflow-x-auto flex items-center gap-1.5 py-0.5 max-w-full">
-          {#each fixedAttrFilters as f, i (i + ':' + f.defId)}
-            <AttrFilterChip
-              filter={f}
-              def={defById.get(f.defId)}
-              on:edit={() => openEditPopover('fixed', i)}
-              on:remove={() => removeFilter('fixed', i)}
-            />
-          {/each}
-        </div>
-        <!-- Button + popover wrapper sits OUTSIDE the overflow-x-auto
-             scroller so the dropdown isn't clipped. -->
-        <div class="relative shrink-0">
-          <button
-            on:click={() => popoverState?.kind === 'fixed' && popoverState.editIndex == null ? closePopover() : openAddPopover('fixed')}
-            class="px-2 py-0.5 text-xs rounded-full border border-dashed border-slate-600 text-slate-400
-                   hover:text-white hover:border-purple-500 whitespace-nowrap transition-colors"
-            disabled={availFixedDefs.length === 0}
-            title={availFixedDefs.length === 0 ? 'No fixed attributes available' : 'Add a fixed-attribute filter'}
-          >+ Add filter</button>
-          {#if popoverState?.kind === 'fixed'}
-            <div class="absolute top-full left-0 mt-1 z-50">
-              <AttrFilterPopover
-                availableDefs={availFixedDefs}
-                {attrOptions}
-                {systems}
-                {types}
-                existing={popoverState.editIndex == null ? null : fixedAttrFilters[popoverState.editIndex]}
-                className="Fixed attribute"
-                on:apply={handlePopoverApply}
-                on:cancel={closePopover}
-              />
-            </div>
-          {/if}
-        </div>
-      </div>
+      <AttrFilterStrip
+        label="Fixed"
+        filters={fixedAttrFilters}
+        {defById}
+        availableDefs={availFixedDefs}
+        {attrOptions} {systems} {types}
+        popoverOpen={popoverState?.kind === 'fixed'}
+        editIndex={popoverState?.kind === 'fixed' ? popoverState.editIndex : null}
+        on:add={() => toggleAddPopover('fixed')}
+        on:edit={e => openEditPopover('fixed', e.detail.index)}
+        on:remove={e => removeFilter('fixed', e.detail.index)}
+        on:apply={handlePopoverApply}
+        on:cancel={closePopover}
+      />
 
-      <!-- Condition -->
-      <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 bg-slate-800/40">
-        <span class="text-[10px] uppercase tracking-wide text-slate-300 font-semibold shrink-0 w-20">Condition</span>
-        <div class="min-w-0 overflow-x-auto flex items-center gap-1.5 py-0.5 max-w-full">
-          {#each conditionAttrFilters as f, i (i + ':' + f.defId)}
-            <AttrFilterChip
-              filter={f}
-              def={defById.get(f.defId)}
-              on:edit={() => openEditPopover('condition', i)}
-              on:remove={() => removeFilter('condition', i)}
-            />
-          {/each}
-        </div>
-        <div class="relative shrink-0">
-          <button
-            on:click={() => popoverState?.kind === 'condition' && popoverState.editIndex == null ? closePopover() : openAddPopover('condition')}
-            class="px-2 py-0.5 text-xs rounded-full border border-dashed border-slate-600 text-slate-400
-                   hover:text-white hover:border-purple-500 whitespace-nowrap transition-colors"
-            disabled={availConditionDefs.length === 0}
-            title={availConditionDefs.length === 0 ? 'No condition attributes available' : 'Add a condition-attribute filter'}
-          >+ Add filter</button>
-          {#if popoverState?.kind === 'condition'}
-            <div class="absolute top-full left-0 mt-1 z-50">
-              <AttrFilterPopover
-                availableDefs={availConditionDefs}
-                {attrOptions}
-                {systems}
-                {types}
-                existing={popoverState.editIndex == null ? null : conditionAttrFilters[popoverState.editIndex]}
-                className="Condition attribute"
-                on:apply={handlePopoverApply}
-                on:cancel={closePopover}
-              />
-            </div>
-          {/if}
-        </div>
-      </div>
+      <AttrFilterStrip
+        label="Condition"
+        filters={conditionAttrFilters}
+        {defById}
+        availableDefs={availConditionDefs}
+        {attrOptions} {systems} {types}
+        popoverOpen={popoverState?.kind === 'condition'}
+        editIndex={popoverState?.kind === 'condition' ? popoverState.editIndex : null}
+        on:add={() => toggleAddPopover('condition')}
+        on:edit={e => openEditPopover('condition', e.detail.index)}
+        on:remove={e => removeFilter('condition', e.detail.index)}
+        on:apply={handlePopoverApply}
+        on:cancel={closePopover}
+      />
 
       <!-- Popover backdrop — clicking outside the popover closes it -->
       {#if popoverState}
