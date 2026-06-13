@@ -34,8 +34,9 @@ const config = {
         // Photos may be served from Supabase storage or other provider URLs
         // stored in media_attachments; Drive goes via the same-origin proxy.
         'img-src':         ['self', 'data:', 'blob:', 'https:'],
-        // Sentry: EU-region ingest (DSN host oXXXX.ingest.de.sentry.io)
-        'connect-src':     ['self', 'https://*.supabase.co', 'wss://*.supabase.co', 'https://*.ingest.de.sentry.io'],
+        // Sentry events go same-origin to /api/monitoring (the tunnel), which
+        // relays to ingest server-side — so no ingest host is needed here.
+        'connect-src':     ['self', 'https://*.supabase.co', 'wss://*.supabase.co'],
         'worker-src':      ['self'],
         'object-src':      ['none'],
         'base-uri':        ['self'],
