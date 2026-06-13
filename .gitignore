@@ -63,3 +63,6 @@ tsconfig.check.json
 
 # Misc
 .gitmodules
+
+# Local history backup (contains pre-purge history — must never be committed)
+/_history_backup/
