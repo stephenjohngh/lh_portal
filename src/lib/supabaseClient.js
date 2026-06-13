@@ -31,6 +31,13 @@ if (!creds.url || !creds.key) {
   console.error('Missing Supabase credentials!');
 }
 
+/**
+ * Typed Supabase client. The `<Database>` generic (from the generated
+ * database.types) makes direct `supabase.from('table')…` calls return typed
+ * Row/Insert/Update shapes, so destructured query results are checked instead
+ * of `any`. Regenerate types with `node scripts/gen-db-types.mjs`.
+ * @type {import('@supabase/supabase-js').SupabaseClient<import('$lib/database.types').Database>}
+ */
 export const supabase     = createClient(creds.url, creds.key);
 export const activeDbUrl  = creds.url;
 export const isDbOverride = creds.isOverride;

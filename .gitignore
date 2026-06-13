@@ -29,5 +29,8 @@ vite.config.ts.timestamp-*
 cmds.txt
 
 # DB backups (contains credentials / large sql dumps)
-/scripts/
+# Use /scripts/* (not /scripts/) so individual tooling files can be re-included.
+/scripts/*
 /backups/
+# …but track committed dev tooling that lives under scripts/ (no secrets)
+!/scripts/gen-db-types.mjs

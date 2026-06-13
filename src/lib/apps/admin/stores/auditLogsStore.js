@@ -8,15 +8,27 @@ import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('auditLogsStore');
 
+/**
+ * @typedef {import('$lib/database.types').Tables<'audit_logs'>} AuditLog
+ * @typedef {{
+ *   logs: AuditLog[],
+ *   loading: boolean,
+ *   error: string | null,
+ *   totalCount: number,
+ *   hasMore: boolean,
+ *   currentFilters: Record<string, any> | null
+ * }} AuditLogsState
+ */
+
 function createAuditLogsStore() {
-  const { subscribe, set, update } = writable({
+  const { subscribe, set, update } = writable(/** @type {AuditLogsState} */ ({
     logs: [],
     loading: false,
     error: null,
     totalCount: 0,
     hasMore: false,
     currentFilters: null
-  });
+  }));
 
   return {
     subscribe,
