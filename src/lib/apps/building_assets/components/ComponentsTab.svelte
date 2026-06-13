@@ -26,6 +26,9 @@
   import {
     availableFixedDefs, availableConditionDefs, matchesAllAttrFilters,
   } from '../utils/attrFilters.js';
+  import {
+    resolveFixedAttrs, buildInventoryCsvRows, buildConditionAuditCsvRows,
+  } from '../utils/componentsCsv.js';
   import { fmtGenerated } from '$lib/utils/dates.js';
 
   // -- Store bindings ------------------------------------------------
@@ -211,26 +214,10 @@
   function typeOf(c)   { return types.find(t => t.code === c.type_code); }
   function systemOf(t) { return t ? systems.find(s => s.id === t.building_system_id) : null; }
 
+  // Thin wrapper over the pure helper so existing call sites (and the report
+  // generator's resolveAttrsFn) keep working unchanged.
   function resolveAttrs(c) {
-    const t = typeOf(c);
-    if (!t) return [];
-    const defs      = attrDefs[t.id] ?? [];
-    const stored    = componentAttrs[c.id] ?? [];
-    const storedMap = {};
-    for (const a of stored) storedMap[a.type_attribute_id] = a.value;
-    return defs
-      .filter(d => d.visible !== false && !d.checkable)
-      .map(d => {
-        const raw = storedMap[d.id] ?? d.default_value ?? null;
-        if (raw == null || raw === '') return null;
-        if (d.display_type === 'checkbox') {
-          return raw === 'true' ? { name: d.name, value: 'Yes', display_type: 'checkbox' } : null;
-        }
-        const value = String(raw);
-        if (value === 'None' || value === 'No' || value === 'Unknown') return null;
-        return { name: d.name, value, display_type: d.display_type ?? 'text' };
-      })
-      .filter(Boolean);
+    return resolveFixedAttrs(c, types, attrDefs, componentAttrs);
   }
 
   // Group filteredComponents by floor (preserves floor level_order).
@@ -329,26 +316,6 @@
   //                                  Excel sort/filter on individual
   //                                  conditions.
 
-  /** RFC 4180 cell escaping — quotes any value containing , " \n \r */
-  function csvEsc(val) {
-    const s = String(val ?? '');
-    return (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r'))
-      ? '"' + s.replace(/"/g, '""') + '"'
-      : s;
-  }
-
-  /** Sort components within each floor: System → Type → Asset ID */
-  function sortCompsForCSV(comps) {
-    return [...comps].sort((a, b) => {
-      const ta = typeOf(a), tb = typeOf(b);
-      const sa = systemOf(ta)?.name ?? '', sb = systemOf(tb)?.name ?? '';
-      return sa.localeCompare(sb) ||
-             (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
-             (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined,
-               { numeric: true, sensitivity: 'base' });
-    });
-  }
-
   /** Trigger a CSV file download from an array of rows (rows already strings). */
   function downloadCsv(filename, rows) {
     // UTF-8 BOM (﻿) tells Excel to open as UTF-8 without an import wizard
@@ -364,54 +331,10 @@
 
   function generateCSV() {
     if (filteredComponents.length === 0) return;
-
-    const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label', 'Attributes'];
-    if (showLinked)          headers.push('Linked');
-    if (showNotes)           headers.push('Notes');
-    if (showInspectionNotes) headers.push('Insp. Notes');
-    // Condition columns — always emitted. Empty cells if the component
-    // has no condition attrs or has never been inspected.
-    headers.push('Last Inspected', 'Condition (last)');
-    headers.push('Status');
-
-    const rows = [headers.map(csvEsc).join(',')];
-
-    for (const { floor, components: comps } of filteredByFloor) {
-      for (const c of sortCompsForCSV(comps)) {
-        const t     = typeOf(c);
-        const sys   = systemOf(t);
-        // Attributes: always "Name: Value" format, pipe-separated so Excel
-        // doesn't mistake the separator for a column delimiter on import.
-        const attrs = resolveAttrs(c).map(a => `${a.name}: ${a.value}`).join(' | ');
-        const insp  = inspections[c.id] ?? null;
-        const defs  = t ? (attrDefs[t.id] ?? []) : [];
-        const cond  = conditionChecklistDisplay(insp, defs)
-          .map(({ def, passed }) => {
-            const g = passed === true ? '✓' : passed === false ? '✗' : '—';
-            return `${def.name}: ${g}`;
-          })
-          .join(' | ');
-
-        const row = [
-          floor.short_name,
-          sys?.name    ?? '',
-          t?.name      ?? c.type_code,
-          c.asset_id   ?? '',
-          c.label      ?? '',
-          attrs,
-        ];
-        if (showLinked)          row.push((componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '));
-        if (showNotes)           row.push(c.notes ?? '');
-        if (showInspectionNotes) row.push(insp?.inspector_notes ?? '');
-        // Last inspected as ISO yyyy-mm-dd (Excel parses cleanly) + condition string
-        row.push(insp?.inspected_at ? insp.inspected_at.slice(0, 10) : '');
-        row.push(cond);
-        row.push(c.status ?? '');
-
-        rows.push(row.map(csvEsc).join(','));
-      }
-    }
-
+    const rows = buildInventoryCsvRows(filteredByFloor, {
+      types, systems, attrDefs, componentAttrs, componentLinks, inspections,
+      showLinked, showNotes, showInspectionNotes,
+    });
     downloadCsv(`components-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
@@ -429,52 +352,11 @@
    */
   function generateConditionAuditCSV() {
     if (filteredComponents.length === 0) return;
-
-    // Union of condition defs across the types present in the filtered set.
-    const presentCodes = new Set(filteredComponents.map(c => c.type_code));
-    const condDefs     = availableConditionDefs(types, systems, attrDefs, presentCodes);
-    if (condDefs.length === 0) {
-      reportError = 'No condition attributes for the filtered components \u2014 nothing to audit.';
-      return;
-    }
+    const { rows, error } = buildConditionAuditCsvRows(filteredComponents, filteredByFloor, {
+      types, systems, attrDefs, inspections,
+    });
+    if (error) { reportError = error; return; }
     reportError = '';
-
-    const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label', 'Last Inspected', 'Overall'];
-    for (const d of condDefs) headers.push(d.name);
-
-    const rows = [headers.map(csvEsc).join(',')];
-
-    for (const { floor, components: comps } of filteredByFloor) {
-      for (const c of sortCompsForCSV(comps)) {
-        const t          = typeOf(c);
-        const sys        = systemOf(t);
-        const insp       = inspections[c.id] ?? null;
-        // Which condition defs apply to *this* component's type \u2014 used to
-        // distinguish "doesn't apply" (blank) from "applies but not recorded" (\u2014).
-        const typeDefIds = new Set((t ? attrDefs[t.id] ?? [] : []).map(d => d.id));
-        const checklist  = insp?.checklist_results ?? {};
-
-        const row = [
-          floor.short_name,
-          sys?.name    ?? '',
-          t?.name      ?? c.type_code,
-          c.asset_id   ?? '',
-          c.label      ?? '',
-          insp?.inspected_at ? insp.inspected_at.slice(0, 10) : '',
-          insp?.inspection_result ?? '',
-        ];
-        for (const d of condDefs) {
-          if (!typeDefIds.has(d.id)) {
-            row.push('');                               // attribute doesn't apply
-          } else {
-            const v = checklist[d.id];
-            row.push(v === true ? '\u2713' : v === false ? '\u2717' : '\u2014');
-          }
-        }
-        rows.push(row.map(csvEsc).join(','));
-      }
-    }
-
     downloadCsv(`condition-audit-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
