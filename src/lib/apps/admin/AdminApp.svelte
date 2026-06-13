@@ -27,7 +27,6 @@
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { maintenanceGroupsStore } from './stores/maintenanceGroupsStore.js';
 
-
   let searchTerm = '';
   let activeTab = 'users';
   let assetsStoreLoaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
