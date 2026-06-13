@@ -2,6 +2,7 @@
 <!-- Button that automatically hides for read-only users based on action type -->
 <script>
   import { permissions } from '$lib/stores/permissions';
+  import { determineVisibility, getTooltipText } from './protectedButtonVisibility.js';
   import Button from './Button.svelte';
 
   // Button props (pass through to Button component)
@@ -20,45 +21,10 @@
   export let requireAdmin = false; // If true, only admins see this
   export let tooltip = ''; // Optional tooltip
 
-  // Determine if button should show based on permissions
+  // Visibility + tooltip logic lives in a pure module so it can be unit-tested
+  // without rendering (see protectedButtonVisibility.js).
   $: canShow = determineVisibility($permissions, action, requireAdmin);
   $: tooltipText = getTooltipText($permissions, action, requireAdmin, tooltip);
-
-  function determineVisibility(perms, actionType, adminRequired) {
-    // Still loading permissions
-    if (perms.loading) return false;
-
-    // Admin can see everything
-    if (perms.isAdmin) return true;
-
-    // If admin required, hide from non-admins
-    if (adminRequired) return false;
-
-    // View actions are always visible
-    if (actionType === 'view') return true;
-
-    // Modify actions require modify permission
-    if (actionType === 'modify') return perms.canModify;
-
-    // Default to showing (fail open)
-    return true;
-  }
-
-  function getTooltipText(perms, actionType, adminRequired, customTooltip) {
-    // Use custom tooltip if provided
-    if (customTooltip) return customTooltip;
-
-    // If can show, no tooltip needed
-    if (determineVisibility(perms, actionType, adminRequired)) return '';
-
-    // Generate helpful tooltip
-    if (adminRequired) return 'Admin access required';
-    if (actionType === 'modify' && perms.isReadOnly) {
-      return 'You have read-only access';
-    }
-
-    return '';
-  }
 </script>
 
 {#if canShow}
