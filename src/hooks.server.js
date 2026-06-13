@@ -8,13 +8,16 @@
 
 import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
+// Public env via $env/dynamic/public — NOT import.meta.env, which doesn't
+// expose PUBLIC_* vars in SvelteKit (Vite envPrefix is VITE_).
+import { env } from '$env/dynamic/public';
 
-const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN ?? '';
+const SENTRY_DSN = env.PUBLIC_SENTRY_DSN ?? '';
 
 Sentry.init({
   dsn: SENTRY_DSN,
   enabled: !!SENTRY_DSN,
-  environment: import.meta.env.PUBLIC_ENV_LABEL || 'development',
+  environment: env.PUBLIC_ENV_LABEL || 'development',
   // Errors-only: no performance tracing. tracesSampleRate 0 means no
   // per-request transactions are sent (no transaction-quota use, no idle
   // overhead) — this is a low-traffic app where errors are the only signal
