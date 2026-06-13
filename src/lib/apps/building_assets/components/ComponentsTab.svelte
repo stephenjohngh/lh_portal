@@ -25,6 +25,7 @@
   import AttrFilterChip          from './AttrFilterChip.svelte';
   import ReportActionButtons     from './ReportActionButtons.svelte';
   import ReportSectionToggles    from './ReportSectionToggles.svelte';
+  import MultiSelectDropdown     from './MultiSelectDropdown.svelte';
   import {
     availableFixedDefs, availableConditionDefs,
   } from '../utils/attrFilters.js';
@@ -184,20 +185,10 @@
     else filterFloorIds.add(id);
     floorPreset = filterFloorIds.size > 0 ? 'custom' : 'all';
   }
-  function toggleSystem(id) {
-    filterSystemIds = new Set(filterSystemIds);
-    if (filterSystemIds.has(id)) filterSystemIds.delete(id);
-    else filterSystemIds.add(id);
-  }
   function toggleType(code) {
     filterTypeCodes = new Set(filterTypeCodes);
     if (filterTypeCodes.has(code)) filterTypeCodes.delete(code);
     else filterTypeCodes.add(code);
-  }
-  function toggleStatus(s) {
-    filterStatuses = new Set(filterStatuses);
-    if (filterStatuses.has(s)) filterStatuses.delete(s);
-    else filterStatuses.add(s);
   }
 
   // -- Report state --------------------------------------------------
@@ -655,35 +646,13 @@
         </div>
 
         <!-- System filter — multi-select dropdown -->
-        <div class="flex flex-col gap-1 relative">
-          <p class="text-[10px] text-slate-300 uppercase tracking-wide font-semibold">System</p>
-          <button
-            on:click={() => openDropdown = openDropdown === 'system' ? null : 'system'}
-            class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
-                   focus:outline-none min-w-[130px] flex items-center justify-between gap-2 text-left
-                   {filterSystemIds.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
-          >
-            <span class="truncate">
-              {#if filterSystemIds.size === 0}All systems
-              {:else if filterSystemIds.size === 1}{systems.find(s => filterSystemIds.has(s.id))?.name ?? '1 selected'}
-              {:else}{filterSystemIds.size} systems{/if}
-            </span>
-            <span class="text-slate-500 shrink-0 text-[10px]">▾</span>
-          </button>
-          {#if openDropdown === 'system'}
-            <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
-                        rounded-lg shadow-xl min-w-max py-1 max-h-64 overflow-y-auto">
-              {#each systems as s (s.id)}
-                <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
-                  <input type="checkbox" checked={filterSystemIds.has(s.id)}
-                         on:change={() => toggleSystem(s.id)}
-                         class="rounded accent-purple-500 shrink-0" />
-                  <span class="text-xs text-slate-300 whitespace-nowrap">{s.name}</span>
-                </label>
-              {/each}
-            </div>
-          {/if}
-        </div>
+        <MultiSelectDropdown
+          label="System" placeholder="All systems" noun="systems"
+          options={systems.map(s => ({ value: s.id, label: s.name }))}
+          bind:selected={filterSystemIds}
+          open={openDropdown === 'system'}
+          on:toggle={() => openDropdown = openDropdown === 'system' ? null : 'system'}
+        />
 
         <!-- Type filter — multi-select dropdown, grouped by system when unfiltered -->
         <div class="flex flex-col gap-1 relative">
@@ -739,35 +708,13 @@
         </div>
 
         <!-- Status filter — multi-select dropdown -->
-        <div class="flex flex-col gap-1 relative">
-          <p class="text-[10px] text-slate-300 uppercase tracking-wide font-semibold">Status</p>
-          <button
-            on:click={() => openDropdown = openDropdown === 'status' ? null : 'status'}
-            class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
-                   focus:outline-none min-w-[100px] flex items-center justify-between gap-2 text-left
-                   {filterStatuses.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
-          >
-            <span class="truncate">
-              {#if filterStatuses.size === 0}All statuses
-              {:else if filterStatuses.size === 1}{[...filterStatuses][0]}
-              {:else}{filterStatuses.size} statuses{/if}
-            </span>
-            <span class="text-slate-500 shrink-0 text-[10px]">▾</span>
-          </button>
-          {#if openDropdown === 'status'}
-            <div class="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600
-                        rounded-lg shadow-xl min-w-max py-1">
-              {#each ALL_STATUSES as s}
-                <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/80 cursor-pointer">
-                  <input type="checkbox" checked={filterStatuses.has(s)}
-                         on:change={() => toggleStatus(s)}
-                         class="rounded accent-purple-500 shrink-0" />
-                  <span class="text-xs text-slate-300 whitespace-nowrap">{s}</span>
-                </label>
-              {/each}
-            </div>
-          {/if}
-        </div>
+        <MultiSelectDropdown
+          label="Status" placeholder="All statuses" noun="statuses" minWidth="100px"
+          options={ALL_STATUSES.map(s => ({ value: s, label: s }))}
+          bind:selected={filterStatuses}
+          open={openDropdown === 'status'}
+          on:toggle={() => openDropdown = openDropdown === 'status' ? null : 'status'}
+        />
 
         <!-- Search -->
         <div class="flex flex-col gap-1 w-28">
