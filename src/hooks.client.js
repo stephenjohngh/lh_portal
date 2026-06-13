@@ -6,6 +6,7 @@
 // simply run with Sentry disabled. Errors-only on the client: no tracing
 // or replay integrations, keeping the bundle cost minimal.
 
+
 import * as Sentry from '@sentry/sveltekit';
 
 const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN ?? '';
