@@ -10,6 +10,9 @@
   export let includeFloorSummary     = false;
   export let includeFullSummary      = false;
   export let includeFullComponentList = false;
+  // Plan-graphic marker captions — only meaningful when includePlan is true.
+  export let planShowId              = true;
+  export let planShowLabel           = false;
   export let reportError             = '';
 </script>
 
@@ -22,6 +25,19 @@
         <input type="checkbox" bind:checked={includePlan} class="accent-purple-500" />
         🗺 Plan Graphic
       </label>
+      {#if includePlan}
+        <!-- Marker caption options — indented under Plan Graphic -->
+        <div class="flex flex-wrap gap-x-4 gap-y-1 pl-5">
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+            <input type="checkbox" bind:checked={planShowId} class="accent-purple-500" />
+            Asset ID
+          </label>
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
+            <input type="checkbox" bind:checked={planShowLabel} class="accent-purple-500" />
+            Label
+          </label>
+        </div>
+      {/if}
       <label class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 cursor-pointer">
         <input type="checkbox" bind:checked={includeList} class="accent-purple-500" />
         📋 Component Table

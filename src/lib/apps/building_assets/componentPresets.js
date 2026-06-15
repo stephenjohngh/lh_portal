@@ -36,6 +36,8 @@ export const DEFAULT_CONFIG = {
     includeFloorSummary:      true,
     includeFullSummary:       false,
     includeFullComponentList: false,
+    planShowId:               true,
+    planShowLabel:            false,
   },
 };
 
@@ -116,6 +118,8 @@ export function configMatches(preset, config) {
     (pr.includeList              ?? true)  === (cr.includeList              ?? true)  &&
     (pr.includeFloorSummary      ?? true)  === (cr.includeFloorSummary      ?? true)  &&
     (pr.includeFullSummary       ?? false) === (cr.includeFullSummary       ?? false) &&
-    (pr.includeFullComponentList ?? false) === (cr.includeFullComponentList ?? false)
+    (pr.includeFullComponentList ?? false) === (cr.includeFullComponentList ?? false) &&
+    (pr.planShowId    ?? true)  === (cr.planShowId    ?? true)  &&
+    (pr.planShowLabel ?? false) === (cr.planShowLabel ?? false)
   );
 }

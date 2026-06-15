@@ -17,6 +17,9 @@
 //   floorComps - components[] to annotate (already filtered to this floor)
 //   plans      - all plans[] (to find the one matching this floor)
 //   typeOfFn   - (component) => type_row | undefined  (passed in to avoid store import)
+//   opts       - { showId = true, showLabel = false }
+//                showId    draws the asset_id below the marker (white, outlined)
+//                showLabel draws the component label beneath that (plain black)
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -139,7 +142,8 @@ function drawStatusBadge(ctx, x, y, r, status, scale) {
 
 // -- Main export --------------------------------------------------------------
 
-export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn) {
+export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn, opts = {}) {
+  const { showId = true, showLabel = false } = opts;
   const plan = plans.find(p => p.floor_id === floor.id);
   if (!plan?.image_url) return null;
 
@@ -224,22 +228,26 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
         // Status badge — top-right corner (yellow = problem, red = failed)
         drawStatusBadge(ctx, x, y, r, c.status, scale);
 
-        // Asset ID below the marker, then the label on a line beneath it —
-        // both white with a thick dark outline for legibility over the plan.
-        const assetId   = c.asset_id ?? '';
-        const labelText = c.label    ?? '';
-        const gap       = Math.round(3 * scale);
-        let   lineY     = y + r + gap;
+        // Captions below the marker (each optional, controlled by the report):
+        //   asset ID  — white text with a thick dark outline (legible over busy
+        //               plans; suits the short, code-like ID)
+        //   label     — plain black text on a line beneath (the outlined white
+        //               style reads poorly for longer free-text labels)
+        const assetId   = showId    ? (c.asset_id ?? '') : '';
+        const labelText = showLabel ? (c.label    ?? '') : '';
+        let   lineY     = y + r + Math.round(3 * scale);
 
         if (assetId) {
           drawOutlinedText(ctx, assetId, x, lineY, `900 ${idSize}px Arial`, outlineW);
           lineY += idSize + Math.round(2 * scale);
         }
         if (labelText) {
-          // Slightly smaller + lighter weight so the label reads as secondary
-          // to the asset ID. When there's no asset ID it takes the id's slot.
-          const labelSize = Math.max(8, Math.round(idSize * 0.8));
-          drawOutlinedText(ctx, labelText, x, lineY, `700 ${labelSize}px Arial`, Math.max(2, Math.round(3 * scale)));
+          const labelSize  = Math.max(8, Math.round(idSize * 0.8));
+          ctx.font         = `${labelSize}px Arial`;
+          ctx.textAlign    = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle    = '#000000';
+          ctx.fillText(labelText, x, lineY);
         }
       }
 

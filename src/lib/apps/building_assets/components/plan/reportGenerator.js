@@ -44,6 +44,7 @@ export async function generateReportDocument(params) {
   const {
     reportTypes, building, filterSummary, generatedAt,
     includePlan, includeFullComponentList,
+    planShowId = true, planShowLabel = false,
     showNotes = false, showLinked = false, showInspectionNotes = false,
     filteredByFloor, plans, inspections,
     typeOfFn, systemOfFn, resolveAttrsFn,
@@ -68,7 +69,7 @@ export async function generateReportDocument(params) {
   const floorsPayload = await Promise.all(
     filteredByFloor.map(async ({ floor, components: comps }) => {
       const imageData = includePlan
-        ? await drawAnnotatedPlanImage(floor, comps, plans, typeOfFn)
+        ? await drawAnnotatedPlanImage(floor, comps, plans, typeOfFn, { showId: planShowId, showLabel: planShowLabel })
         : null;
 
       const sortedComps = sortComponents(comps);

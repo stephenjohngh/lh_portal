@@ -50,6 +50,16 @@ describe('ReportSectionToggles', () => {
     expect(cb).toBeChecked();
   });
 
+  it('shows the plan caption options (Asset ID / Label) only when Plan Graphic is on', () => {
+    const { unmount } = render(ReportSectionToggles, { props: { includePlan: false } });
+    expect(screen.queryByRole('checkbox', { name: /Asset ID/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /^Label$/ })).not.toBeInTheDocument();
+    unmount();
+    render(ReportSectionToggles, { props: { includePlan: true, planShowId: true, planShowLabel: false } });
+    expect(box(/Asset ID/)).toBeChecked();
+    expect(box(/^Label$/)).not.toBeChecked();
+  });
+
   it('shows the report error when provided, and nothing when blank', () => {
     const { unmount } = render(ReportSectionToggles, { props: { reportError: 'Nothing to audit' } });
     expect(screen.getByText('Nothing to audit')).toBeInTheDocument();

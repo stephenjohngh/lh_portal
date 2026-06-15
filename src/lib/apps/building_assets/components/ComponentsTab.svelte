@@ -111,6 +111,8 @@
       includeFloorSummary,
       includeFullSummary,
       includeFullComponentList,
+      planShowId,
+      planShowLabel,
     },
   };
 
@@ -139,6 +141,8 @@
     includeFloorSummary      = r.includeFloorSummary      ?? true;
     includeFullSummary       = r.includeFullSummary       ?? false;
     includeFullComponentList = r.includeFullComponentList ?? false;
+    planShowId               = r.planShowId               ?? true;
+    planShowLabel            = r.planShowLabel            ?? false;
   }
 
   async function handleSavePreset(e) {
@@ -188,6 +192,9 @@
   let includeFloorSummary      = true;
   let includeFullSummary       = false;
   let includeFullComponentList = false;
+  // Plan-graphic marker captions (only relevant when includePlan is true)
+  let planShowId               = true;
+  let planShowLabel            = false;
   let generatingReport = false;
   let reportError      = '';
 
@@ -243,6 +250,7 @@
         filterSummary: reportFilterSummary,
         generatedAt,
         includePlan, includeFullComponentList,
+        planShowId, planShowLabel,
         showNotes, showLinked, showInspectionNotes,
         filteredByFloor,
         plans,
@@ -781,6 +789,8 @@
             bind:includeFloorSummary
             bind:includeFullSummary
             bind:includeFullComponentList
+            bind:planShowId
+            bind:planShowLabel
             {reportError}
           />
         {/if}
