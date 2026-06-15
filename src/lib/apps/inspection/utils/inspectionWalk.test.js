@@ -32,6 +32,18 @@ describe('buildWalkComponents', () => {
     expect(buildWalkComponents(comps, ['lamp'], true, {})).toEqual([]);
   });
 
+  it('excludes components with walk order 0 (internal/off-walk) but keeps null/unset', () => {
+    const comps = [
+      c('keep-null', 't', { inspection_sort_order: null }),
+      c('keep-unset', 't'),                                  // undefined
+      c('keep-1', 't', { inspection_sort_order: 1 }),
+      c('skip-zero', 't', { inspection_sort_order: 0 }),
+    ];
+    const out = buildWalkComponents(comps, ['t'], false);
+    expect(out.map(x => x.id)).not.toContain('skip-zero');
+    expect(out.map(x => x.id).sort()).toEqual(['keep-1', 'keep-null', 'keep-unset']);
+  });
+
   it('sorts by inspection_sort_order with nulls last', () => {
     const comps = [
       c('x', 't', { inspection_sort_order: null }),

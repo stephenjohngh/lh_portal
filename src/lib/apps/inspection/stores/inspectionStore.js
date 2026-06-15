@@ -234,9 +234,13 @@ function createInspectionStore() {
     let walkComponents  = buildWalkComponents(
       floorComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
     );
-    // Repair sessions target a single specific component — limit the walk list to it.
+    // Repair sessions target a single specific component — limit the walk list
+    // to it. Source it directly from the floor's components so a targeted repair
+    // can still reach an "internal" component (walk order 0) that buildWalkComponents
+    // excludes from normal walks.
     if (sessionType === 'repair' && targetComponentId) {
-      walkComponents = walkComponents.filter(c => c.id === targetComponentId);
+      const target = floorComponents.find(c => c.id === targetComponentId);
+      walkComponents = target ? [target] : [];
     }
 
     const session = await createSession({

@@ -8,6 +8,12 @@
 // emergency_only, returns the filtered and sorted component list for walking.
 export function buildWalkComponents(floorComponents, typeFilter, emergencyOnly, allComponentAttrs = {}) {
   let list = floorComponents.filter(c => {
+    // Walk order 0 marks an "internal / not on the walk" component (e.g. inside
+    // a riser or ceiling void) — exclude it from every inspection walk and from
+    // the progress counts. An unset/blank order (null) stays walkable and just
+    // sorts to the end below, so components without an assigned order aren't
+    // accidentally hidden.
+    if (c.inspection_sort_order != null && Number(c.inspection_sort_order) === 0) return false;
     // Type filter: must be in the selected type_codes array
     if (!typeFilter.includes(c.type_code)) return false;
     // Emergency-only: check component_attributes for attr_name='Emergency' (case-insensitive), value='true'

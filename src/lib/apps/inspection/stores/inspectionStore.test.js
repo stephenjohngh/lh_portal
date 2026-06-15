@@ -129,6 +129,31 @@ describe('startSession', () => {
     });
     expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['comp2']);
   });
+
+  it('excludes a walk-order-0 (internal) component from a normal walk, but a targeted repair still reaches it', async () => {
+    h.setTables({
+      ...FIXTURE,
+      components: [
+        { id: 'comp1',    floor_id: 'f1', type_code: 'FD', asset_id: 'A1',  status: 'ok', inspection_sort_order: 1 },
+        { id: 'internal', floor_id: 'f1', type_code: 'FD', asset_id: 'INT', status: 'ok', inspection_sort_order: 0 },
+      ],
+    });
+    await inspectionStore.load();
+
+    // Normal inspection walk: the order-0 internal component is excluded.
+    await inspectionStore.startSession({
+      building: 'BLDG', floor: FLOOR, typeFilter: ['FD'], emergencyOnly: false,
+      sessionName: 'S', sessionType: 'inspection', preset: 'all',
+    });
+    expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['comp1']);
+
+    // Targeted repair: the internal component is still reachable.
+    await inspectionStore.startSession({
+      building: 'BLDG', floor: FLOOR, typeFilter: ['FD'], emergencyOnly: false,
+      sessionName: 'R', sessionType: 'repair', preset: 'all', targetComponentId: 'internal',
+    });
+    expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['internal']);
+  });
 });
 
 describe('navigation', () => {
