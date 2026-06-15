@@ -140,7 +140,7 @@ async function fetchHierarchy() {
       withTimeout(api.get('building_systems', { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
       withTimeout(api.get('component_types',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
       withTimeout(api.get('type_attributes',  { orderBy: 'presentation_order' }),                          FETCH_TIMEOUT_MS),
-      withTimeout(api.get('plans',            { select: 'id,floor_id,image_url,image_aspect_ratio,floor_level,scale_ref' }), FETCH_TIMEOUT_MS),
+      withTimeout(api.get('plans',            { select: 'id,floor_id,image_url,image_aspect_ratio,scale_ref' }), FETCH_TIMEOUT_MS),
     ]);
 
   const { attrDefs } = resolveHierarchy(systemsRes, typesRes, defsRes);
