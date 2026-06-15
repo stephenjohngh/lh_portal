@@ -168,7 +168,10 @@ export function createPlanActions(update, supabase) {
       updated_by:         userId
     });
 
-    const srcComponents = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
+    // Optional single component-type filter — copy only this type_code when set.
+    const typeCode = data.typeCode || null;
+    const allSrc = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
+    const srcComponents = typeCode ? allSrc.filter(c => c.type_code === typeCode) : allSrc;
     const total  = srcComponents.length;
     let copied   = 0;
     const srcIds = srcComponents.map(c => c.id);
@@ -356,7 +359,7 @@ export function createPlanActions(update, supabase) {
   // sourcePlanId onto an already-existing target plan.  No plan row is
   // created and no image is touched.  The target plan must already exist.
   // Returns { plan: targetPlan, copied } where plan is the target plan row.
-  async function importComponentsToExistingPlan(sourcePlanId, targetPlanId, onProgress = null) {
+  async function importComponentsToExistingPlan(sourcePlanId, targetPlanId, onProgress = null, opts = {}) {
     const userId = requireUserId();
 
     let targetPlan = null;
@@ -371,7 +374,10 @@ export function createPlanActions(update, supabase) {
     if (!targetPlan) throw new Error('Target plan not found');
 
     const newFloorId    = targetPlan.floor_id ?? null;
-    const srcComponents = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
+    // Optional single component-type filter — copy only this type_code when set.
+    const typeCode      = opts.typeCode || null;
+    const allSrc        = await api.getAll('components', { filters: { plan_id: sourcePlanId } });
+    const srcComponents = typeCode ? allSrc.filter(c => c.type_code === typeCode) : allSrc;
     const total         = srcComponents.length;
     let copied          = 0;
     const srcIds        = srcComponents.map(c => c.id);

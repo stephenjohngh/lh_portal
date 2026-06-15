@@ -33,10 +33,26 @@
   // Import mode — target plan selection
   let importTargetPlanId = '';
 
+  // Copy/import — optional single component-type filter ('' = all types)
+  let copyTypeCode = '';
+
   // Plans on the currently-selected floor (excluding the source plan itself)
   $: plansOnEditFloor = editFloorId
     ? $buildingAssetsStore.plans.filter(p => p.floor_id === editFloorId && p.id !== plan?.id)
     : [];
+
+  // Components on the source plan, and the distinct types among them (with
+  // counts) — drives the "component type to copy" dropdown in copy/import modes.
+  $: sourcePlanComponents = (mode === 'copy' || mode === 'import') && plan
+    ? $buildingAssetsStore.components.filter(c => c.plan_id === plan.id)
+    : [];
+  $: sourceTypeOptions = [...new Set(sourcePlanComponents.map(c => c.type_code))]
+    .map(code => ({
+      code,
+      name:  $buildingAssetsStore.types.find(t => t.code === code)?.name ?? code,
+      count: sourcePlanComponents.filter(c => c.type_code === code).length,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   let saving     = false;
   let errorMsg   = '';
@@ -90,6 +106,7 @@
         editDesc           = '';
         importTargetPlanId = '';
       }
+      copyTypeCode = '';   // default to "all types" every open
     }
     lastShow = show;
   }
@@ -182,6 +199,7 @@
           name:     editName.trim()    || null,
           building: editBuilding.trim(),
           floor_id: editFloorId        || null,
+          typeCode: copyTypeCode       || null,
         },
         (done, total) => { copyProgress = { done, total }; }
       );
@@ -202,7 +220,8 @@
     try {
       const { plan: targetPlan, copied } = await buildingAssetsStore.importComponentsToExistingPlan(
         plan.id, importTargetPlanId,
-        (done, total) => { copyProgress = { done, total }; }
+        (done, total) => { copyProgress = { done, total }; },
+        { typeCode: copyTypeCode || null }
       );
       dispatch('done', { plan: targetPlan, action: 'imported', copied });
       show = false;
@@ -290,6 +309,25 @@
             class="mt-2 rounded h-16 object-cover opacity-70"
           />
         {/if}
+      </div>
+    {/if}
+
+    <!-- -- Component type filter (copy / import) ---------------- -->
+    {#if (mode === 'copy' || mode === 'import') && plan}
+      <div class="flex flex-col gap-1">
+        <label for="pa-copy-type" class="text-xs text-slate-400">Component type to copy</label>
+        <select
+          id="pa-copy-type"
+          bind:value={copyTypeCode}
+          class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
+                 focus:outline-none focus:border-purple-500 disabled:opacity-50"
+          disabled={saving}
+        >
+          <option value="">All types ({sourcePlanComponents.length})</option>
+          {#each sourceTypeOptions as t (t.code)}
+            <option value={t.code}>{t.name} ({t.count})</option>
+          {/each}
+        </select>
       </div>
     {/if}
 

@@ -334,6 +334,23 @@ describe('planActions', () => {
     const compCreate = h.api.create.mock.calls.find(c => c[0] === 'components')[1];
     expect(compCreate).toMatchObject({ plan_id: plan.id, floor_id: 'f2', type_code: 'FD' });
   });
+
+  it('copyPlan with a typeCode copies only components of that type', async () => {
+    h.setTables({
+      plans:  [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src' }],
+      floors: [{ id: 'f1', short_name: 'L1' }, { id: 'f2', short_name: 'L2' }],
+      components: [
+        { id: 'sc1', type_code: 'FD', asset_id: 'A1', floor_id: 'f1' },
+        { id: 'sc2', type_code: 'LT', asset_id: 'L1', floor_id: 'f1' },
+        { id: 'sc3', type_code: 'FD', asset_id: 'A2', floor_id: 'f1' },
+      ],
+    });
+    await store.load();
+    const { copied } = await store.copyPlan('p1', { name: 'Copy', floor_id: 'f2', typeCode: 'FD' });
+    expect(copied).toBe(2);   // only the two FD components, not the LT
+    const createdTypes = h.api.create.mock.calls.filter(c => c[0] === 'components').map(c => c[1].type_code);
+    expect(createdTypes).toEqual(['FD', 'FD']);
+  });
 });
 
 // Helper: seed plans into state via load (used by plan-update tests).
