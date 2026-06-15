@@ -177,8 +177,13 @@ export const DOC_STYLES = {
 
 // -- Page section properties helper -------------------------------------------
 // Returns the properties object used in document sections[].properties.
-// opts.landscape swaps to A4 landscape geometry (and stamps the orientation
-// flag so Word lays the page out correctly, not just a wide portrait page).
+// opts.landscape stamps the orientation flag so Word renders a true landscape
+// page (wider than tall), not a portrait page with overflowing content.
+//
+// IMPORTANT: docx's createPageSize SWAPS width/height when orientation is
+// LANDSCAPE. So we always pass PORTRAIT width/height here and let it flip them —
+// passing the already-swapped landscape dims would double-swap back to portrait
+// (the classic "landscape flag but page still A4-portrait-width" bug).
 export function pageProps(opts = {}) {
   const m  = opts.margin ?? MARGIN;
   const ls = !!opts.landscape;
@@ -186,8 +191,8 @@ export function pageProps(opts = {}) {
     page: {
       size: {
         orientation: ls ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT,
-        width:  opts.width  ?? (ls ? PAGE_W_L : PAGE_W),
-        height: opts.height ?? (ls ? PAGE_H_L : PAGE_H),
+        width:  opts.width  ?? PAGE_W,
+        height: opts.height ?? PAGE_H,
       },
       margin: { top: m, right: m, bottom: m, left: m },
     },
