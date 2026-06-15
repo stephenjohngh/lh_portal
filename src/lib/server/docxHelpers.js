@@ -5,7 +5,7 @@
 import {
   Paragraph, TextRun, TableCell,
   Header, Footer, PageNumber, AlignmentType,
-  WidthType, BorderStyle, ShadingType, VerticalAlign
+  WidthType, BorderStyle, ShadingType, VerticalAlign, PageOrientation
 } from 'docx';
 
 // -- A4 portrait page geometry ------------------------------------------------
@@ -176,12 +176,19 @@ export const DOC_STYLES = {
 };
 
 // -- Page section properties helper -------------------------------------------
-// Returns the properties object used in document sections[].properties
+// Returns the properties object used in document sections[].properties.
+// opts.landscape swaps to A4 landscape geometry (and stamps the orientation
+// flag so Word lays the page out correctly, not just a wide portrait page).
 export function pageProps(opts = {}) {
-  const m = opts.margin ?? MARGIN;
+  const m  = opts.margin ?? MARGIN;
+  const ls = !!opts.landscape;
   return {
     page: {
-      size:   { width: opts.width ?? PAGE_W, height: opts.height ?? PAGE_H },
+      size: {
+        orientation: ls ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT,
+        width:  opts.width  ?? (ls ? PAGE_W_L : PAGE_W),
+        height: opts.height ?? (ls ? PAGE_H_L : PAGE_H),
+      },
       margin: { top: m, right: m, bottom: m, left: m },
     },
   };

@@ -27,7 +27,7 @@ import {
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
 import {
-  CONTENT_W, COLOURS, BORDERS, CELL_PAD,
+  CONTENT_W, CONTENT_W_L, COLOURS, BORDERS, CELL_PAD,
   hCell, dCell, run, para,
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
@@ -539,6 +539,10 @@ export async function POST({ request }) {
     const wantFullSummary       = reportTypes.includes('full_summary');
     const wantFullComponentList = reportTypes.includes('full_component_list');
 
+    // Plan-only report → one landscape page per floor, plan filling the page.
+    const planOnly = wantPlan && !wantList && !wantFloorSummary
+                  && !wantFullSummary && !wantFullComponentList;
+
     logger('Report types:', reportTypes.join(', '), '| Floors:', floors.length, '| Building:', building);
 
     const docTitle = `${building} — Component Report`;
@@ -547,18 +551,22 @@ export async function POST({ request }) {
     // -- Assemble document -----------------------------------------------------
     const children = [];
 
-    // Document title + filter summary
-    children.push(new Paragraph({
-      heading:  HeadingLevel.HEADING_1,
-      spacing:  { before: 0, after: 200 },
-      children: [run(docTitle, { size: 36, bold: true, color: COLOURS.textDark })],
-    }));
+    // Document title + filter summary.
+    // Skipped for plan-only reports so the first floor's plan starts at the top
+    // of the page (the title still appears in the running header).
+    if (!planOnly) {
+      children.push(new Paragraph({
+        heading:  HeadingLevel.HEADING_1,
+        spacing:  { before: 0, after: 200 },
+        children: [run(docTitle, { size: 36, bold: true, color: COLOURS.textDark })],
+      }));
 
-    if (filterSummary && filterSummary !== 'All components') {
-      children.push(para([
-        run('Filters: ', { bold: true, size: 18 }),
-        run(filterSummary, { italics: true, size: 18, color: COLOURS.textMuted }),
-      ], { after: 240 }));
+      if (filterSummary && filterSummary !== 'All components') {
+        children.push(para([
+          run('Filters: ', { bold: true, size: 18 }),
+          run(filterSummary, { italics: true, size: 18, color: COLOURS.textMuted }),
+        ], { after: 240 }));
+      }
     }
 
     // -- Per-floor content -----------------------------------------------------
@@ -587,10 +595,21 @@ export async function POST({ request }) {
       // -- Plan graphic ------------------------------------------------------
       if (wantPlan) {
         if (imageBase64 && imageWidth && imageHeight) {
-          const maxPts = 520;
-          const scale  = Math.min(1, maxPts / imageWidth);
-          const dW     = Math.round(imageWidth  * scale);
-          const dH     = Math.round(imageHeight * scale);
+          // Display size in px @96dpi. Plan-only reports fill the A4 landscape
+          // content box (minus a little for the floor heading); otherwise the
+          // image is capped to a portrait-friendly width and never enlarged.
+          let dW, dH;
+          if (planOnly) {
+            const MAX_W = 1020, MAX_H = 645;
+            const s = Math.min(MAX_W / imageWidth, MAX_H / imageHeight);
+            dW = Math.round(imageWidth  * s);
+            dH = Math.round(imageHeight * s);
+          } else {
+            const maxPts = 520;
+            const scale  = Math.min(1, maxPts / imageWidth);
+            dW = Math.round(imageWidth  * scale);
+            dH = Math.round(imageHeight * scale);
+          }
 
           children.push(new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -651,8 +670,8 @@ export async function POST({ request }) {
     const doc = new Document({
       styles:   DOC_STYLES,
       sections: [{
-        properties: pageProps(),
-        headers:    { default: makeHeader(docTitle, genAt) },
+        properties: pageProps({ landscape: planOnly }),
+        headers:    { default: makeHeader(docTitle, genAt, planOnly ? CONTENT_W_L : CONTENT_W) },
         footers:    { default: makeFooter() },
         children,
       }],
