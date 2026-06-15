@@ -45,12 +45,13 @@ export const DEFAULT_CONFIG = {
 
 function rowToPreset(row) {
   return {
-    id:         row.id,
-    name:       row.name,
-    sort_order: row.sort_order ?? null,
-    filters:    row.config?.filters ?? {},
-    columns:    row.config?.columns ?? {},
-    report:     row.config?.report  ?? {},
+    id:          row.id,
+    name:        row.name,
+    description: row.config?.description ?? '',
+    sort_order:  row.sort_order ?? null,
+    filters:     row.config?.filters ?? {},
+    columns:     row.config?.columns ?? {},
+    report:      row.config?.report  ?? {},
   };
 }
 
@@ -64,11 +65,13 @@ export async function loadPresets() {
 }
 
 /** Save a new named preset.
- *  sortOrder: integer or null (null = personal; integer = shared standard report). */
-export async function createPreset(name, filters, columns, report, userId, sortOrder = null) {
+ *  sortOrder:   integer or null (null = personal; integer = shared standard report).
+ *  description: optional free text shown as a tooltip on the preset chip.
+ *               Stored inside the config JSONB (no dedicated DB column). */
+export async function createPreset(name, filters, columns, report, userId, sortOrder = null, description = '') {
   const row = await api.create('component_presets', {
     name,
-    config:     { filters, columns, report },
+    config:     { filters, columns, report, description: description?.trim() || '' },
     sort_order: sortOrder,
     created_by: userId,
   });

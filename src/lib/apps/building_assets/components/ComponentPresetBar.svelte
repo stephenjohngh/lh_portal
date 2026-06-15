@@ -16,7 +16,7 @@
 
      Events:
        apply        — { filters, columns, report }
-       savepreset   — { name, filters, columns, report, sortOrder: int|null }
+       savepreset   — { name, description, filters, columns, report, sortOrder: int|null }
        deletepreset — { id } -->
 
 <script>
@@ -53,12 +53,14 @@
   // -- Save-as flow --------------------------------------------------
   let showSaveInput  = false;
   let savingName     = '';
+  let savingDesc     = '';   // optional description → tooltip on the preset chip
   let sortOrderInput = '';   // admin-only field; '' = null (personal)
   let nameInput;
 
   async function startSave() {
     showSaveInput  = true;
     savingName     = '';
+    savingDesc     = '';
     sortOrderInput = '';
     await tick();
     nameInput?.focus();
@@ -80,6 +82,7 @@
 
     dispatch('savepreset', {
       name,
+      description: savingDesc.trim(),
       filters:   { ...currentConfig.filters },
       columns:   { ...currentConfig.columns },
       report:    { ...(currentConfig.report ?? {}) },
@@ -87,12 +90,14 @@
     });
     showSaveInput  = false;
     savingName     = '';
+    savingDesc     = '';
     sortOrderInput = '';
   }
 
   function cancelSave() {
     showSaveInput  = false;
     savingName     = '';
+    savingDesc     = '';
     sortOrderInput = '';
   }
 
@@ -145,6 +150,7 @@
                     : 'border-slate-600/40 bg-slate-700/50 hover:border-slate-500/60'}">
       <button
         on:click={() => apply(p)}
+        title={p.description || undefined}
         class="px-2.5 py-0.5 text-[11px] font-medium transition-colors
                {confirming ? 'text-red-300/70' : active ? 'text-purple-200' : 'text-slate-300 hover:text-white'}"
       >{p.name}</button>
@@ -196,6 +202,7 @@
                     : 'border-slate-600/50 bg-slate-700/60 hover:border-slate-500/60'}">
       <button
         on:click={() => apply(p)}
+        title={p.description || undefined}
         class="px-2.5 py-0.5 text-[11px] transition-colors
                {confirming ? 'text-red-300/70' : active ? 'text-purple-200 font-medium' : 'text-slate-300 hover:text-white'}"
       >{p.name}</button>
@@ -233,6 +240,17 @@
         class="bg-slate-700 border border-purple-500/60 rounded px-2 py-0.5 text-[11px]
                text-white placeholder:text-slate-500
                focus:outline-none focus:border-purple-400 w-32"
+      />
+      <!-- Description (optional) → tooltip on the saved preset chip -->
+      <input
+        type="text"
+        bind:value={savingDesc}
+        on:keydown={onKeydown}
+        placeholder="Description (optional)…"
+        title="Shown when hovering over the preset name"
+        class="bg-slate-700 border border-slate-600 rounded px-2 py-0.5 text-[11px]
+               text-white placeholder:text-slate-500
+               focus:outline-none focus:border-purple-400 w-48"
       />
       <!-- Order # (admin only) -->
       {#if $permissions.isAdmin}

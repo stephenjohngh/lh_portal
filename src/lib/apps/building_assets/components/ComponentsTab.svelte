@@ -146,10 +146,10 @@
   }
 
   async function handleSavePreset(e) {
-    const { name, filters, columns, report, sortOrder } = e.detail;
+    const { name, description, filters, columns, report, sortOrder } = e.detail;
     savingPreset = true;
     try {
-      const preset = await createPreset(name, filters, columns, report, $auth.user.id, sortOrder);
+      const preset = await createPreset(name, filters, columns, report, $auth.user.id, sortOrder, description);
       presets = [...presets, preset];
     } catch (err) {
       errorMsg = `Could not save preset: ${err.message}`;
