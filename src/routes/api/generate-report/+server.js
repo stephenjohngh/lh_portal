@@ -596,11 +596,15 @@ export async function POST({ request }) {
       if (wantPlan) {
         if (imageBase64 && imageWidth && imageHeight) {
           // Display size in px @96dpi. Plan-only reports fill the A4 landscape
-          // content box (minus a little for the floor heading); otherwise the
-          // image is capped to a portrait-friendly width and never enlarged.
+          // content box, leaving headroom for the floor heading so the heading
+          // and image stay on the SAME page (an image can't be split, so an
+          // over-tall one gets bumped to the next page on its own). Landscape
+          // content is ~1026 x 698 px; reserve ~95 px of height for the
+          // heading + paragraph spacing. Otherwise: portrait-friendly cap,
+          // never enlarged.
           let dW, dH;
           if (planOnly) {
-            const MAX_W = 1020, MAX_H = 645;
+            const MAX_W = 1000, MAX_H = 600;
             const s = Math.min(MAX_W / imageWidth, MAX_H / imageHeight);
             dW = Math.round(imageWidth  * s);
             dH = Math.round(imageHeight * s);
