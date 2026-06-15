@@ -106,6 +106,22 @@ function drawShape(ctx, x, y, r, colour, shape, scale) {
   ctx.shadowBlur = 0;
 }
 
+/**
+ * Draw a single line of centred white text with a thick dark outline, so it
+ * stays legible over any plan background. Baseline is 'top' (y is the top edge).
+ */
+function drawOutlinedText(ctx, text, x, y, font, outlineW) {
+  ctx.font         = font;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'top';
+  ctx.lineWidth    = outlineW;
+  ctx.strokeStyle  = 'rgba(0,0,0,0.9)';
+  ctx.lineJoin     = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle    = '#ffffff';
+  ctx.fillText(text, x, y);
+}
+
 /** Draw a small status badge dot at the top-right of a marker. */
 function drawStatusBadge(ctx, x, y, r, status, scale) {
   if (status !== 'problem' && status !== 'failed') return;
@@ -208,18 +224,22 @@ export async function drawAnnotatedPlanImage(floor, floorComps, plans, typeOfFn)
         // Status badge — top-right corner (yellow = problem, red = failed)
         drawStatusBadge(ctx, x, y, r, c.status, scale);
 
-        // Asset ID below the marker — white text with thick dark outline for legibility
-        const assetId = c.asset_id ?? '';
+        // Asset ID below the marker, then the label on a line beneath it —
+        // both white with a thick dark outline for legibility over the plan.
+        const assetId   = c.asset_id ?? '';
+        const labelText = c.label    ?? '';
+        const gap       = Math.round(3 * scale);
+        let   lineY     = y + r + gap;
+
         if (assetId) {
-          ctx.font         = `900 ${idSize}px Arial`;
-          ctx.textAlign    = 'center';
-          ctx.textBaseline = 'top';
-          ctx.lineWidth    = outlineW;
-          ctx.strokeStyle  = 'rgba(0,0,0,0.9)';
-          ctx.lineJoin     = 'round';
-          ctx.strokeText(assetId, x, y + r + Math.round(3 * scale));
-          ctx.fillStyle    = '#ffffff';
-          ctx.fillText(assetId, x, y + r + Math.round(3 * scale));
+          drawOutlinedText(ctx, assetId, x, lineY, `900 ${idSize}px Arial`, outlineW);
+          lineY += idSize + Math.round(2 * scale);
+        }
+        if (labelText) {
+          // Slightly smaller + lighter weight so the label reads as secondary
+          // to the asset ID. When there's no asset ID it takes the id's slot.
+          const labelSize = Math.max(8, Math.round(idSize * 0.8));
+          drawOutlinedText(ctx, labelText, x, lineY, `700 ${labelSize}px Arial`, Math.max(2, Math.round(3 * scale)));
         }
       }
 
