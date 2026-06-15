@@ -263,10 +263,13 @@
               bind:value={yPosition} on:input={markDirty} class={inp} />
           </div>
           <div class="flex flex-col gap-1">
-            <p class="text-xs text-slate-500">Walk Order</p>
-            <input type="number" min="1" step="1"
+            <p class="text-xs text-slate-500"
+              title="Order this component appears in the walk (low to high). 0 = internal — ignored in walk inspections. Blank = auto (sorted last).">Walk Order</p>
+            <input type="number" min="0" step="1"
               bind:value={inspectionSortOrder} on:input={markDirty}
-              placeholder="auto" class={inp} />
+              placeholder="auto"
+              title="Order this component appears in the walk (low to high). 0 = internal — ignored in walk inspections. Blank = auto (sorted last)."
+              class={inp} />
           </div>
         </div>
       {/if}
