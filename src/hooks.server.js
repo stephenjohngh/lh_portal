@@ -51,4 +51,21 @@ async function securityHeaders({ event, resolve }) {
 }
 
 export const handle = sequence(Sentry.sentryHandle(), securityHeaders);
-export const handleError = Sentry.handleErrorWithSentry();
+
+/**
+ * Custom error handler for Sentry's wrapper. Sentry already skips *capturing*
+ * 4xx errors, but its built-in default handler still `console.error`s every
+ * error's stack — including expected 404s for non-existent routes (e.g. a user
+ * or bot hitting /api/media/ when only /api/media/file/[id] exists). Log only
+ * genuine server errors (5xx / unknown status); the client still receives the
+ * correct status code either way.
+ *
+ * @type {import('@sveltejs/kit').HandleServerError}
+ */
+function logServerErrors({ error, status }) {
+  if (!status || status >= 500) {
+    console.error(error);
+  }
+}
+
+export const handleError = Sentry.handleErrorWithSentry(logServerErrors);
