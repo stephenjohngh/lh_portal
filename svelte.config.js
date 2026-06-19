@@ -2,9 +2,21 @@ import adapterNetlify from '@sveltejs/adapter-netlify';
 import adapterNode from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
+// Two deploy targets from the same `main`, chosen at build time:
+//   • Netlify (default)        → adapter-netlify (serverless functions)
+//   • Northflank (env=northflank) → adapter-node, run as `node build` (npm start)
+//
+// ⚠️ @sveltejs/adapter-node is pinned to EXACT 5.5.4 in package.json (not a
+// caret). 5.5.5 is broken: its generated entry hangs in `await server.init()`,
+// so `node build` exits with code 13 ("Detected unsettled top-level await") —
+// this breaks the Northflank deploy only (Netlify never runs that bootstrap).
+// 5.5.5 is not even tagged `latest` in the registry. A plain `npm install`
+// re-resolves a caret to 5.5.5, so keep the exact pin until a version newer
+// than 5.5.5 ships, then bump to ^5.5.6. Fixed in commit a357566.
+
 // 1. Select the function (do NOT add () here)
-const selectedAdapter = process.env.DEPLOYMENT_TARGET === 'northflank' 
-  ? adapterNode 
+const selectedAdapter = process.env.DEPLOYMENT_TARGET === 'northflank'
+  ? adapterNode
   : adapterNetlify;
 
 /** @type {import('@sveltejs/kit').Config} */
