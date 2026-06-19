@@ -20,6 +20,7 @@
 import { json }              from '@sveltejs/kit';
 import { requireAuth }       from '$lib/server/requireAuth';
 import { storageProvider, storageProviderName } from '$lib/server/storage/index.js';
+import { friendlyStorageError } from '$lib/server/storage/storageErrors';
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB per photo
 
@@ -56,7 +57,7 @@ export async function POST({ request }) {
   try {
     destination = await storageProvider.ensurePath(folderPath);
   } catch (err) {
-    return json({ error: `Failed to resolve storage path: ${err.message}` }, { status: 500 });
+    return json({ error: friendlyStorageError(err) }, { status: 500 });
   }
 
   // ── Upload ──────────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ export async function POST({ request }) {
   try {
     result = await storageProvider.uploadFile(buffer, filename, mimeType, destination);
   } catch (err) {
-    return json({ error: `Storage upload failed: ${err.message}` }, { status: 500 });
+    return json({ error: friendlyStorageError(err) }, { status: 500 });
   }
 
   const url = result.webViewUrl ?? result.publicUrl ?? result.fileId ?? '';

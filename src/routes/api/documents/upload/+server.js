@@ -1,7 +1,8 @@
 // POST /api/documents/upload — upload a file to storage + index it
-import { json }            from '@sveltejs/kit';
-import { uploadDocument }  from '$lib/server/documentLibrary';
-import { requireAuth }     from '$lib/server/requireAuth';
+import { json }                 from '@sveltejs/kit';
+import { uploadDocument }       from '$lib/server/documentLibrary';
+import { requireAuth }          from '$lib/server/requireAuth';
+import { friendlyStorageError } from '$lib/server/storage/storageErrors';
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -45,6 +46,6 @@ export async function POST({ request }) {
     const doc = await uploadDocument(buffer, filename, mimeType, meta, auth.user.id);
     return json(doc, { status: 201 });
   } catch (err) {
-    return json({ error: err.message }, { status: 500 });
+    return json({ error: friendlyStorageError(err) }, { status: 500 });
   }
 }
