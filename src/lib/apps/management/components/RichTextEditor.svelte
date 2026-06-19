@@ -19,7 +19,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
-  import Link      from '@tiptap/extension-link';
+  // Link is bundled into StarterKit v3 — configured via its `link` option below.
 
   export let value       = '';
   export let placeholder = 'Enter your note…';
@@ -101,16 +101,18 @@
           horizontalRule: false,
           strike:         false,
           code:           false,
-        }),
-        Link.configure({
-          // Auto-convert typed/pasted URLs to links
-          autolink:   true,
-          // Don't open in the editor on click (allows cursor placement)
-          openOnClick: false,
-          HTMLAttributes: {
-            target: '_blank',
-            rel:    'noopener noreferrer',
-            class:  'rte-link',
+          // Link ships inside StarterKit v3 — configure it here rather than
+          // registering @tiptap/extension-link separately (which duplicates it).
+          link: {
+            // Auto-convert typed/pasted URLs to links
+            autolink:   true,
+            // Don't open in the editor on click (allows cursor placement)
+            openOnClick: false,
+            HTMLAttributes: {
+              target: '_blank',
+              rel:    'noopener noreferrer',
+              class:  'rte-link',
+            },
           },
         }),
       ],
