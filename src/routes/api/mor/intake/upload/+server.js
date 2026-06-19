@@ -19,6 +19,7 @@
 import { json }                  from '@sveltejs/kit';
 import { storageProvider,
          storageProviderName }   from '$lib/server/storage/index.js';
+import { friendlyStorageError }  from '$lib/server/storage/storageErrors.js';
 import { checkRateLimit }        from '$lib/server/publicRateLimit.js';
 import { safeSearchScan }        from '$lib/server/visionScan.js';
 import { isSameOrigin }          from '$lib/server/verifyOrigin.js';
@@ -168,7 +169,7 @@ export async function POST({ request, url }) {
   try {
     destination = await storageProvider.ensurePath(safePath);
   } catch (err) {
-    logger('❌ ensurePath failed:', err.message);
+    logger('❌ ensurePath failed:', friendlyStorageError(err));
     return json({ error: 'Storage unavailable. Please try again.' }, { status: 500 });
   }
 
@@ -176,7 +177,7 @@ export async function POST({ request, url }) {
   try {
     result = await storageProvider.uploadFile(buffer, filename, detectedMime, destination);
   } catch (err) {
-    logger('❌ Upload failed:', err.message);
+    logger('❌ Upload failed:', friendlyStorageError(err));
     return json({ error: 'Upload failed. Please try again.' }, { status: 500 });
   }
 
