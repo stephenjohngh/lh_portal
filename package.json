@@ -18,7 +18,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-netlify": "^5.2.4",
-		"@sveltejs/adapter-node": "^5.5.4",
+		"@sveltejs/adapter-node": "5.5.4",
 		"@sveltejs/kit": "^2.49.1",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@testing-library/jest-dom": "^6.9.1",
