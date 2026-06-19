@@ -22,10 +22,11 @@
 //
 // Caching: private, 1-hour max-age.  Browsers re-validate on hard-refresh.
 
-import { json }            from '@sveltejs/kit';
-import { storageProvider } from '$lib/server/storage/index.js';
-import { requireAuth }     from '$lib/server/requireAuth.js';
-import { getLogger }       from '$lib/utils/logger';
+import { json }                 from '@sveltejs/kit';
+import { storageProvider }      from '$lib/server/storage/index.js';
+import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
+import { requireAuth }          from '$lib/server/requireAuth.js';
+import { getLogger }            from '$lib/utils/logger';
 
 const logger = getLogger('MediaFileProxy');
 
@@ -47,7 +48,7 @@ export async function GET({ params }) {
       },
     });
   } catch (err) {
-    logger('⚠ proxy fetch failed for', fileId, ':', err.message);
+    logger('⚠ proxy fetch failed for', fileId, ':', friendlyStorageError(err));
     return json({ error: 'File not found or inaccessible' }, { status: 404 });
   }
 }
@@ -67,9 +68,9 @@ export async function DELETE({ params, request }) {
     logger('Deleted storage file:', fileId);
     return new Response(null, { status: 204 });
   } catch (err) {
-    logger('⚠ deleteFile failed for', fileId, ':', err.message);
+    logger('⚠ deleteFile failed for', fileId, ':', friendlyStorageError(err));
     // Return 200 rather than 500 so the caller can treat this as non-fatal.
     // The file may already have been deleted, or may not exist on this provider.
-    return json({ error: err.message }, { status: 200 });
+    return json({ error: friendlyStorageError(err) }, { status: 200 });
   }
 }
