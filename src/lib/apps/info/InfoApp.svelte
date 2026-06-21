@@ -63,17 +63,18 @@
     }
   });
 
-  // Reload notes when selected section changes
-  async function selectSection(sectionId) {
+  // Section selection is a client-side filter — all notes stay loaded so the
+  // sidebar counts (derived from the full `notes` array) remain correct.
+  function selectSection(sectionId) {
     selectedSectionId = sectionId;
     viewingNoteId     = null;
     infoStore.clearNote();
-    try {
-      await infoStore.loadNotes(sectionId);
-    } catch (err) {
-      appError = err.message;
-    }
   }
+
+  // Notes shown in the list: filtered to the selected section (or all).
+  $: visibleNotes = selectedSectionId
+    ? notes.filter(n => n.section_id === selectedSectionId)
+    : notes;
 
   // ── Note selection ────────────────────────────────────────────────────────
 
@@ -114,9 +115,9 @@
   async function handleSectionDelete(section) {
     try {
       await infoStore.deleteSection(section.id, section.name);
-      if (selectedSectionId === section.id) {
-        await selectSection(null);
-      }
+      if (selectedSectionId === section.id) selectSection(null);
+      // The section's notes were cascade-deleted in the DB — refresh the full set.
+      await infoStore.loadNotes(null);
     } catch (err) {
       appError = err.message;
     }
@@ -138,8 +139,9 @@
         }
       } else {
         const note = await infoStore.createNote(data, $auth.user.id);
-        // Reload notes list so the new note appears with joins
-        await infoStore.loadNotes(selectedSectionId);
+        // Reload the full notes list so the new note appears with joins (and
+        // section counts stay correct — we always hold all notes).
+        await infoStore.loadNotes(null);
         // Navigate to the new note
         await selectNote(note);
       }
@@ -250,7 +252,7 @@
           />
         {:else}
           <NoteList
-            {notes}
+            notes={visibleNotes}
             loading={$infoStore.loadingNotes}
             showSection={selectedSectionId === null}
             section={selectedSection}
