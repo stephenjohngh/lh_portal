@@ -79,6 +79,14 @@
         </a>
       {/if}
 
+      <!-- Publish (admin only — internal notes get an explicit publish action;
+           published notes change visibility via Edit) -->
+      {#if $permissions.isAdmin && !isPublished}
+        <Button variant="primary" size="small" icon="upload"
+                on:click={() => dispatch('edit', note)}
+                title="Publish this note to /info">Publish</Button>
+      {/if}
+
       <!-- Pin -->
       <button
         class="p-1.5 rounded transition-colors
@@ -123,8 +131,9 @@
           <span class="text-amber-400 mt-1" title="Pinned">★</span>
         {/if}
         <h1 class="text-xl font-bold text-white flex-1">{note.title}</h1>
-        {#if isPublished && visBadge}
-          <span class="shrink-0 text-xs border rounded px-2 py-0.5 mt-1 {visBadge.className}">
+        {#if visBadge}
+          <span class="shrink-0 text-xs border rounded px-2 py-0.5 mt-1 {visBadge.className}"
+                title="Visibility: {visBadge.label}">
             {visBadge.icon} {visBadge.label}
           </span>
         {/if}

@@ -184,7 +184,15 @@
                      {visibility === opt.value
                        ? 'border-purple-500 bg-purple-900/20 text-purple-200 ring-1 ring-purple-500'
                        : 'border-slate-600 bg-slate-800/40 text-slate-400 hover:border-slate-500'}"
-              on:click={() => { if (!saving) visibility = opt.value; }}
+              on:click={() => {
+                if (saving) return;
+                visibility = opt.value;
+                // When publishing an existing internal note, seed the slug from
+                // the title so the field isn't empty (until manually edited).
+                if (visibility !== 'internal' && !slug && !slugManuallyEdited) {
+                  slug = slugify(title);
+                }
+              }}
             >
               <p class="text-sm font-semibold">{opt.label}</p>
               <p class="text-xs mt-0.5 leading-snug">{opt.desc}</p>
