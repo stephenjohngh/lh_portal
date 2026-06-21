@@ -6,6 +6,7 @@
   import Button          from '$lib/components/common/Button.svelte';
   import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
   import { fmtDate }     from '$lib/utils/dates.js';
+  import { stripHtml, VISIBILITY_BADGES } from '../utils/infoHelpers.js';
 
   export let notes       = [];
   export let loading     = false;
@@ -23,7 +24,7 @@
     const q = search.toLowerCase();
     return (
       n.title.toLowerCase().includes(q) ||
-      (n.body  ?? '').toLowerCase().includes(q) ||
+      stripHtml(n.body).toLowerCase().includes(q) ||
       (n.tags  ?? []).some(t => t.toLowerCase().includes(q))
     );
   });
@@ -114,6 +115,12 @@
               <!-- Title row -->
               <div class="flex items-center gap-2 mb-0.5">
                 <span class="font-semibold text-white text-sm truncate">{note.title}</span>
+                {#if note.visibility && note.visibility !== 'internal' && VISIBILITY_BADGES[note.visibility]}
+                  <span class="shrink-0 text-[10px] border rounded px-1 py-px
+                               {VISIBILITY_BADGES[note.visibility].className}">
+                    {VISIBILITY_BADGES[note.visibility].icon}
+                  </span>
+                {/if}
                 {#if note.status === 'archived'}
                   <span class="shrink-0 text-xs text-slate-500 border border-slate-600
                                rounded px-1 py-px">archived</span>
@@ -122,7 +129,7 @@
 
               <!-- Body preview -->
               {#if note.body}
-                <p class="text-xs text-slate-400 line-clamp-2 mb-1">{note.body}</p>
+                <p class="text-xs text-slate-400 line-clamp-2 mb-1">{stripHtml(note.body)}</p>
               {/if}
 
               <!-- Meta row -->

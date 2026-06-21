@@ -1,13 +1,15 @@
 <!-- src/lib/apps/info/components/modals/NoteFormModal.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { permissions } from '$lib/stores/permissions';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import FormInput    from '$lib/components/common/FormInput.svelte';
-  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import FormSelect   from '$lib/components/common/FormSelect.svelte';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  // Shared rich-text editor (lives in the management app; standalone component).
+  import RichTextEditor from '$lib/apps/management/components/LazyRichTextEditor.svelte';
   import { parseTags, tagsToString } from '../../utils/infoHelpers.js';
 
   export let show       = false;
@@ -22,11 +24,19 @@
   let tagInput   = '';
   let is_pinned  = false;
   let section_id = '';
-  let saving     = false;
-  let error      = '';
-  let titleError = '';
-  let sectionError = '';
+  // Publishing
+  let slug       = '';
+  let summary    = '';
+  let visibility = 'internal';
+  let slugManuallyEdited = false;
 
+  let saving       = false;
+  let error        = '';
+  let titleError   = '';
+  let sectionError = '';
+  let slugError    = '';
+
+  $: isAdmin       = $permissions.isAdmin;
   $: sectionOptions = sections.map(s => ({ value: s.id, label: s.name }));
 
   $: if (show) {
@@ -35,25 +45,69 @@
     tagInput   = tagsToString(note?.tags);
     is_pinned  = note?.is_pinned  ?? false;
     section_id = note?.section_id ?? sectionId ?? (sections[0]?.id ?? '');
-    error      = ''; titleError = ''; sectionError = '';
+    slug       = note?.slug       ?? '';
+    summary    = note?.summary    ?? '';
+    visibility = note?.visibility ?? 'internal';
+    slugManuallyEdited = !!note?.slug;
+    error = ''; titleError = ''; sectionError = ''; slugError = '';
   }
+
+  function slugify(text) {
+    return text.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  function onTitleInput(e) {
+    title = e.target.value;
+    titleError = '';
+    // Auto-fill slug from title until the user edits it manually.
+    if (!slugManuallyEdited) slug = slugify(title);
+  }
+
+  function onSlugInput(e) {
+    slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+    slugManuallyEdited = true;
+    slugError = '';
+  }
+
+  const VIS_OPTS = [
+    { value: 'internal',   label: 'Internal',   desc: 'In-app only — not published' },
+    { value: 'registered', label: 'Registered', desc: 'Logged-in users with Info access' },
+    { value: 'public',     label: 'Public',     desc: 'Anyone, at /info/<slug>' },
+  ];
 
   function validate() {
-    titleError   = title.trim()    ? '' : 'Title is required';
-    sectionError = section_id      ? '' : 'Select a section';
-    return !titleError && !sectionError;
+    titleError   = title.trim() ? '' : 'Title is required';
+    sectionError = section_id   ? '' : 'Select a section';
+    slugError    = '';
+    if (isAdmin && visibility !== 'internal') {
+      if (!slug.trim()) {
+        slugError = 'A URL slug is required to publish';
+      } else if (slug.length > 1 && !/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(slug)) {
+        slugError = 'Lowercase letters, numbers and hyphens only';
+      }
+    }
+    return !titleError && !sectionError && !slugError;
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (!validate()) return;
     saving = true; error = '';
     try {
       dispatch('save', {
         title:      title.trim(),
-        body:       body.trim() || null,
+        body:       body || null,
         tags:       parseTags(tagInput),
         is_pinned,
         section_id,
+        // Non-admins can't change these (controls hidden) — existing values
+        // are preserved so an edit doesn't unpublish a note.
+        slug:       slug.trim() || null,
+        summary:    summary.trim() || null,
+        visibility,
       });
     } catch (err) {
       error = err.message;
@@ -65,33 +119,12 @@
   export function fail(e) { error = e; saving = false; }
 
   function handleClose() { show = false; dispatch('close'); }
-
-  // Reflow: join mid-paragraph line-breaks (common in text copied from
-  // narrow-column web pages) into spaces while preserving blank-line
-  // paragraph separators.
-  function reflowBody() {
-    if (!body) return;
-    body = body
-      .replace(/\r\n/g, '\n')     // normalise CRLF
-      .replace(/\r/g, '\n')       // normalise bare CR
-      .split(/\n{2,}/)            // split into paragraphs on blank lines
-      .map(para =>
-        para
-          .split('\n')
-          .map(l => l.trimEnd())
-          .join(' ')
-          .replace(/  +/g, ' ')
-          .trim()
-      )
-      .filter(Boolean)
-      .join('\n\n');
-  }
 </script>
 
 <Modal
   bind:show
   title={note ? 'Edit Note' : 'New Note'}
-  size="large"
+  size="xlarge"
   on:close={handleClose}
 >
   <div class="space-y-4">
@@ -99,11 +132,11 @@
 
     <FormInput
       label="Title"
-      bind:value={title}
+      value={title}
+      on:input={onTitleInput}
       placeholder="Note title…"
       required={true}
       error={titleError}
-      on:input={() => titleError = ''}
       disabled={saving}
     />
 
@@ -116,25 +149,13 @@
       disabled={saving}
     />
 
-    <!-- Body field — label row contains the Reflow button so it's always visible -->
+    <!-- Body (rich text) -->
     <div>
-      <div class="flex items-center justify-between mb-2">
-        <p class="text-sm font-medium text-gray-200">Body</p>
-        <button
-          type="button"
-          on:click={reflowBody}
-          disabled={saving || !body}
-          class="px-2.5 py-1 text-xs rounded border border-slate-600 text-slate-400
-                 hover:border-slate-400 hover:text-slate-200 transition-colors
-                 disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
-        >⟳ Reflow lines</button>
-      </div>
-      <FormTextarea
-        bind:value={body}
+      <p class="text-sm font-medium text-gray-200 mb-2">Body</p>
+      <RichTextEditor
+        value={body}
         placeholder="Note content…"
-        rows={8}
-        disabled={saving}
+        on:change={(e) => { body = e.detail; }}
       />
     </div>
 
@@ -149,6 +170,61 @@
       <Checkbox bind:checked={is_pinned} disabled={saving} />
       <span class="text-sm text-slate-300">Pin this note (keeps it at the top)</span>
     </label>
+
+    <!-- Publishing (admin only — decision C) -->
+    {#if isAdmin}
+      <div class="pt-3 mt-1 border-t border-slate-700 space-y-3">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Publishing</p>
+
+        <div class="grid grid-cols-3 gap-2">
+          {#each VIS_OPTS as opt}
+            <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+            <div
+              class="p-3 rounded-lg border cursor-pointer transition-colors text-center
+                     {visibility === opt.value
+                       ? 'border-purple-500 bg-purple-900/20 text-purple-200 ring-1 ring-purple-500'
+                       : 'border-slate-600 bg-slate-800/40 text-slate-400 hover:border-slate-500'}"
+              on:click={() => { if (!saving) visibility = opt.value; }}
+            >
+              <p class="text-sm font-semibold">{opt.label}</p>
+              <p class="text-xs mt-0.5 leading-snug">{opt.desc}</p>
+            </div>
+          {/each}
+        </div>
+
+        {#if visibility !== 'internal'}
+          <FormInput
+            label="URL slug"
+            value={slug}
+            on:input={onSlugInput}
+            placeholder="fire-safety-update-2026"
+            error={slugError}
+            disabled={saving}
+          />
+          {#if slug && !slugError}
+            <p class="text-xs text-slate-500 -mt-2">
+              Public URL: <span class="text-purple-300 font-mono">/info/{slug}</span>
+            </p>
+          {/if}
+
+          <FormInput
+            label="Summary"
+            bind:value={summary}
+            placeholder="Short blurb shown in the public list"
+            disabled={saving}
+          />
+
+          <p class="text-xs text-amber-400/80 flex items-start gap-1.5">
+            <span>⚠</span>
+            <span>
+              {visibility === 'public'
+                ? 'This makes the note visible to anyone outside the portal.'
+                : 'This publishes the note to logged-in users with Info access.'}
+            </span>
+          </p>
+        {/if}
+      </div>
+    {/if}
   </div>
 
   <div slot="footer" class="flex gap-3">

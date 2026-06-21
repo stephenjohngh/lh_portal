@@ -36,7 +36,6 @@
     'managementmobile': () => import('$lib/apps/managementmobile/ManagementMobileApp.svelte'),
     'maintenance':      () => import('$lib/apps/maintenance/MaintenanceApp.svelte'),
     'info':             () => import('$lib/apps/info/InfoApp.svelte'),
-    'articles':         () => import('$lib/apps/articles/ArticlesApp.svelte'),
     'mor':              () => import('$lib/apps/mor/MorApp.svelte'),
   };
 

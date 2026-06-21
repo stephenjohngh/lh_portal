@@ -9,7 +9,8 @@
   import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
-  import { fmtBytes, mimeIcon } from '../utils/infoHelpers.js';
+  import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
+  import { fmtBytes, mimeIcon, VISIBILITY_BADGES } from '../utils/infoHelpers.js';
 
   export let note    = null;  // full note with documents + creator
   export let loading = false;
@@ -25,6 +26,8 @@
   let deletingDoc        = false;
 
   $: docs = note?.documents ?? [];
+  $: visBadge = VISIBILITY_BADGES[note?.visibility ?? 'internal'];
+  $: isPublished = note && note.visibility !== 'internal';
 
   function requestDeleteNote()    { pendingDeleteNote = true; }
   function requestDeleteDoc(doc)  { pendingDeleteDoc  = doc;  }
@@ -61,6 +64,20 @@
               on:click={() => dispatch('back')}>← Back</Button>
 
       <div class="flex-1"></div>
+
+      <!-- View public (published notes only) -->
+      {#if isPublished && note.slug}
+        <a
+          href="/info/{note.slug}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-1 px-2 py-1 text-xs rounded text-slate-400
+                 hover:text-purple-300 transition-colors"
+          title="View public page at /info/{note.slug}"
+        >
+          <Icon name="map" size={4} /> View
+        </a>
+      {/if}
 
       <!-- Pin -->
       <button
@@ -106,6 +123,11 @@
           <span class="text-amber-400 mt-1" title="Pinned">★</span>
         {/if}
         <h1 class="text-xl font-bold text-white flex-1">{note.title}</h1>
+        {#if isPublished && visBadge}
+          <span class="shrink-0 text-xs border rounded px-2 py-0.5 mt-1 {visBadge.className}">
+            {visBadge.icon} {visBadge.label}
+          </span>
+        {/if}
         {#if note.status === 'archived'}
           <span class="shrink-0 text-xs text-slate-500 border border-slate-600
                        rounded px-2 py-0.5 mt-1">archived</span>
@@ -144,11 +166,11 @@
         </div>
       {/if}
 
-      <!-- Body -->
+      <!-- Body (rich HTML — sanitised at render) -->
       {#if note.body}
-        <div class="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed
+        <div class="info-body text-sm text-slate-200 leading-relaxed
                     bg-slate-800/40 rounded-lg p-4 border border-slate-700">
-          {note.body}
+          {@html sanitizeHtml(note.body)}
         </div>
       {:else}
         <p class="text-sm text-slate-600 italic">No body text.</p>
@@ -247,3 +269,19 @@
   on:confirm={confirmDeleteDoc}
   on:cancel={() => pendingDeleteDoc = null}
 />
+
+<style>
+  /* Prose styling for the rich-text note body (Tiptap HTML). */
+  .info-body :global(p)          { margin: 0 0 0.75rem; line-height: 1.7; }
+  .info-body :global(p:last-child) { margin-bottom: 0; }
+  .info-body :global(h2)         { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 1.25rem 0 0.5rem; }
+  .info-body :global(h3)         { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; margin: 1rem 0 0.4rem; }
+  .info-body :global(ul)         { list-style: disc;    padding-left: 1.4rem; margin: 0 0 0.75rem; }
+  .info-body :global(ol)         { list-style: decimal; padding-left: 1.4rem; margin: 0 0 0.75rem; }
+  .info-body :global(li)         { margin-bottom: 0.2rem; line-height: 1.6; }
+  .info-body :global(strong)     { font-weight: 700; color: #fff; }
+  .info-body :global(em)         { font-style: italic; }
+  .info-body :global(u)          { text-decoration: underline; text-underline-offset: 2px; }
+  .info-body :global(a)          { color: #93c5fd; text-decoration: underline; }
+  .info-body :global(blockquote) { border-left: 3px solid #475569; padding-left: 0.85rem; color: #94a3b8; margin: 0.75rem 0; }
+</style>

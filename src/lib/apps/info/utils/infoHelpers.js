@@ -18,6 +18,30 @@ export function tagsToString(tags) {
   return (tags ?? []).join(', ');
 }
 
+/**
+ * Strip HTML tags to plain text — for list previews and search now that note
+ * bodies are rich HTML. Collapses whitespace; not a security boundary (use
+ * sanitizeHtml for rendering).
+ */
+export function stripHtml(html) {
+  if (!html) return '';
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Visibility badge metadata for a note. */
+export const VISIBILITY_BADGES = {
+  internal:   { label: 'Internal',   icon: '',   className: 'text-slate-400 border-slate-600' },
+  registered: { label: 'Registered', icon: '🔒', className: 'text-blue-300 border-blue-600/40 bg-blue-900/20' },
+  public:     { label: 'Public',     icon: '🌐', className: 'text-emerald-300 border-emerald-600/40 bg-emerald-900/20' },
+};
+
 /** Section colour palette for the colour picker. */
 export const SECTION_COLOURS = [
   { hex: '#6366f1', label: 'Indigo'  },

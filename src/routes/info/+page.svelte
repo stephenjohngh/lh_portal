@@ -17,7 +17,7 @@
       // No explicit visibility filter — RLS returns only what the caller
       // is permitted to see based on their auth state.
       const { data, error: err } = await supabase
-        .from('portal_articles')
+        .from('info_notes')
         .select('id, slug, title, summary, published_at')
         .not('published_at', 'is', null)
         .order('published_at', { ascending: false });

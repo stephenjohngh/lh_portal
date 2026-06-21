@@ -6,6 +6,7 @@ import { writable }    from 'svelte/store';
 import { api }         from '$lib/utils/api';
 import { supabase }    from '$lib/supabaseClient';
 import { logAudit }    from '$lib/utils/auditLogger';
+import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
 import { getLogger }   from '$lib/utils/logger';
 
 const logger = getLogger('infoStore');
@@ -143,22 +144,50 @@ function createInfoStore() {
   }
 
   async function createNote(data, userId) {
+    const visibility = data.visibility ?? 'internal';
     const note = await api.create('info_notes', {
-      ...data,
-      tags:      data.tags      ?? [],
-      is_pinned: data.is_pinned ?? false,
-      status:    'active',
+      section_id:   data.section_id,
+      title:        data.title,
+      // Body is rich HTML — sanitise at the write boundary (it is rendered
+      // with {@html} both in-app and on the public /info pages).
+      body:         data.body ? sanitizeHtml(data.body) : null,
+      tags:         data.tags      ?? [],
+      is_pinned:    data.is_pinned ?? false,
+      status:       'active',
+      // Publishing fields (only admins ever send non-internal — see RLS).
+      slug:         data.slug?.trim()    || null,
+      summary:      data.summary?.trim() || null,
+      visibility,
+      published_at: visibility === 'internal' ? null : new Date().toISOString(),
       created_by: userId, updated_by: userId,
     }, true);
     logAudit('create', 'info_note', note.id, note.title,
       { appId: 'info', eventCategory: 'info', severity: 'info',
-        afterData: { title: note.title, section_id: note.section_id } });
+        afterData: { title: note.title, section_id: note.section_id, visibility } });
     return note;
   }
 
   async function updateNote(id, data, userId) {
-    const note = await api.update('info_notes', id,
-      { ...data, updated_by: userId }, true);
+    const visibility = data.visibility ?? 'internal';
+    // Stamp published_at the first time a note becomes visible; clear it when
+    // returned to internal. Preserve the original timestamp on re-saves.
+    let published_at = null;
+    if (visibility !== 'internal') {
+      const existing = await api.getById('info_notes', id, 'published_at');
+      published_at = existing?.published_at ?? new Date().toISOString();
+    }
+    const note = await api.update('info_notes', id, {
+      section_id:   data.section_id,
+      title:        data.title,
+      body:         data.body ? sanitizeHtml(data.body) : null,
+      tags:         data.tags ?? [],
+      is_pinned:    data.is_pinned ?? false,
+      slug:         data.slug?.trim()    || null,
+      summary:      data.summary?.trim() || null,
+      visibility,
+      published_at,
+      updated_by: userId,
+    }, true);
     // Patch in-list and selectedNote without a full reload
     update(s => ({
       ...s,

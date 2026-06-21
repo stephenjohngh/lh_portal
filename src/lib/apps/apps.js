@@ -93,16 +93,7 @@ export const AVAILABLE_APPS = [
     icon: 'book',
     alwaysVisible: false,
     requiresPermission: true,
-    description: 'Building information repository — sections, notes and documents'
-  },
-
-  {
-    id: 'articles',
-    name: 'Articles',
-    icon: 'newspaper',
-    alwaysVisible: false,
-    requiresPermission: true,
-    description: 'Write and publish public-facing articles at /info/<slug>'
+    description: 'Building information — notes & documents; publish any to /info/<slug>'
   },
 
   {
@@ -138,7 +129,6 @@ export const APP_IDS = {
   MANAGEMENT_MOBILE:   'managementmobile',
   MAINTENANCE:     'maintenance',
   INFO:            'info',
-  ARTICLES:        'articles',
   MOR:             'mor',
   SETTINGS:        'settings'
 };

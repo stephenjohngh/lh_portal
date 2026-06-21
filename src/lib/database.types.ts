@@ -968,6 +968,10 @@ export type Database = {
           is_pinned: boolean
           tags: string[]
           status: string
+          slug: string | null
+          summary: string | null
+          visibility: string
+          published_at: string | null
           created_at: string | null
           updated_at: string | null
           created_by: string | null
@@ -981,6 +985,10 @@ export type Database = {
           is_pinned?: boolean
           tags?: string[]
           status?: string
+          slug?: string | null
+          summary?: string | null
+          visibility?: string
+          published_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           created_by?: string | null
@@ -994,6 +1002,10 @@ export type Database = {
           is_pinned?: boolean
           tags?: string[]
           status?: string
+          slug?: string | null
+          summary?: string | null
+          visibility?: string
+          published_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           created_by?: string | null
@@ -2039,63 +2051,6 @@ export type Database = {
               columns: ["floor_id"]
               isOneToOne: false
               referencedRelation: "floors"
-              referencedColumns: ["id"]
-            }
-          ]
-      }
-      portal_articles: {
-        Row: {
-          id: string
-          slug: string
-          title: string
-          summary: string | null
-          content: string | null
-          published_at: string | null
-          created_at: string | null
-          updated_at: string | null
-          created_by: string | null
-          updated_by: string | null
-          visibility: string
-        }
-        Insert: {
-          id?: string
-          slug?: string
-          title?: string
-          summary?: string | null
-          content?: string | null
-          published_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-          created_by?: string | null
-          updated_by?: string | null
-          visibility?: string
-        }
-        Update: {
-          id?: string
-          slug?: string
-          title?: string
-          summary?: string | null
-          content?: string | null
-          published_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-          created_by?: string | null
-          updated_by?: string | null
-          visibility?: string
-        }
-        Relationships: [
-            {
-              foreignKeyName: "portal_articles_created_by_fkey"
-              columns: ["created_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "portal_articles_updated_by_fkey"
-              columns: ["updated_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
               referencedColumns: ["id"]
             }
           ]

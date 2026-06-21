@@ -1,7 +1,7 @@
 <!-- src/routes/info/[slug]/+page.svelte -->
-<!-- Public single-article view — no auth required. -->
-<!-- RLS returns the article only if visibility = 'public', or
-     visibility = 'registered' AND caller is authenticated, or admin. -->
+<!-- Public single published-note view — no auth required. -->
+<!-- RLS returns the note only if visibility = 'public', or visibility =
+     'registered' AND the caller is authenticated with Info app access, or admin. -->
 <script>
   import { onMount }      from 'svelte';
   import { page }         from '$app/stores';
@@ -20,8 +20,8 @@
   onMount(async () => {
     try {
       const { data, error: err } = await supabase
-        .from('portal_articles')
-        .select('id, slug, title, summary, content, published_at')
+        .from('info_notes')
+        .select('id, slug, title, summary, body, published_at')
         .eq('slug', slug)
         .single();
       if (err) {
@@ -78,9 +78,9 @@
       {/if}
       <hr class="article-divider" />
       <!-- Sanitised again at render as defence-in-depth: this page is public
-           and older rows predate write-side sanitisation in articlesStore. -->
+           and older rows predate write-side sanitisation in infoStore. -->
       <div class="article-body">
-        {@html sanitizeHtml(article.content ?? '')}
+        {@html sanitizeHtml(article.body ?? '')}
       </div>
     {/if}
   </main>
