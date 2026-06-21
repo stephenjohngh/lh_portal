@@ -63,6 +63,7 @@
              {selectedId === section.id
                ? 'bg-purple-600/20 text-purple-300 border-r-2 border-purple-500'
                : 'text-slate-300 hover:bg-slate-700/50'}"
+      title={section.description || section.name}
       on:click={() => dispatch('select', section.id)}
     >
       <span class="w-2.5 h-2.5 rounded-full shrink-0"

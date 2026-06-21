@@ -39,6 +39,9 @@
   $: sections     = $infoStore.sections;
   $: notes        = $infoStore.notes;
   $: selectedNote = $infoStore.selectedNote;
+  $: selectedSection = selectedSectionId
+    ? (sections.find(s => s.id === selectedSectionId) ?? null)
+    : null;
 
   // Note counts per section (for sidebar badges)
   $: noteCounts = notes.reduce((acc, n) => {
@@ -250,8 +253,10 @@
             {notes}
             loading={$infoStore.loadingNotes}
             showSection={selectedSectionId === null}
+            section={selectedSection}
             on:select={(e) => selectNote(e.detail)}
             on:new={openNewNote}
+            on:editSection={(e) => openEditSection(e.detail)}
           />
         {/if}
       </div>

@@ -11,6 +11,7 @@
   export let notes       = [];
   export let loading     = false;
   export let showSection = true;  // show section dot+name when viewing All Notes
+  export let section     = null;  // selected info_section (null = All Notes)
 
   const dispatch = createEventDispatcher();
 
@@ -34,6 +35,29 @@
 </script>
 
 <div class="flex flex-col h-full">
+
+  <!-- Section header (shown when a specific section is selected) -->
+  {#if section}
+    <div class="px-4 pt-3 pb-2 border-b border-slate-700/50">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full shrink-0" style="background:{section.colour}"></span>
+        <h2 class="text-sm font-semibold text-white flex-1 truncate">{section.name}</h2>
+        {#if $permissions.isAdmin}
+          <button
+            class="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded text-slate-500
+                   hover:text-purple-300 transition-colors"
+            title="Edit this section"
+            on:click={() => dispatch('editSection', section)}
+          >
+            <Icon name="edit" size={3} /> Edit section
+          </button>
+        {/if}
+      </div>
+      {#if section.description}
+        <p class="text-xs text-slate-400 mt-1">{section.description}</p>
+      {/if}
+    </div>
+  {/if}
 
   <!-- Toolbar -->
   <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-700 bg-slate-800/30">
