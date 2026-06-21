@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/supabase_lhportal_schema6.csv
+// Source: docs/supabase_lhportal_schema7.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -968,14 +968,14 @@ export type Database = {
           is_pinned: boolean
           tags: string[]
           status: string
-          slug: string | null
-          summary: string | null
-          visibility: string
-          published_at: string | null
           created_at: string | null
           updated_at: string | null
           created_by: string | null
           updated_by: string | null
+          slug: string | null
+          summary: string | null
+          visibility: string
+          published_at: string | null
         }
         Insert: {
           id?: string
@@ -985,14 +985,14 @@ export type Database = {
           is_pinned?: boolean
           tags?: string[]
           status?: string
-          slug?: string | null
-          summary?: string | null
-          visibility?: string
-          published_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           created_by?: string | null
           updated_by?: string | null
+          slug?: string | null
+          summary?: string | null
+          visibility?: string
+          published_at?: string | null
         }
         Update: {
           id?: string
@@ -1002,14 +1002,14 @@ export type Database = {
           is_pinned?: boolean
           tags?: string[]
           status?: string
-          slug?: string | null
-          summary?: string | null
-          visibility?: string
-          published_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           created_by?: string | null
           updated_by?: string | null
+          slug?: string | null
+          summary?: string | null
+          visibility?: string
+          published_at?: string | null
         }
         Relationships: [
             {
