@@ -15,9 +15,9 @@
   let pendingDelete   = null;
   let deleting        = false;
 
-  function allCount() {
-    return Object.values(noteCounts).reduce((s, n) => s + n, 0);
-  }
+  // Reactive (not a function call in markup — that wouldn't re-run when
+  // noteCounts changes, since Svelte can't see the dependency inside it).
+  $: totalCount = Object.values(noteCounts).reduce((s, n) => s + n, 0);
 
   function requestDelete(section, e) {
     e.stopPropagation();
@@ -49,7 +49,7 @@
   >
     <Icon name="book" size={4} className="shrink-0" />
     <span class="flex-1 font-medium">All Notes</span>
-    <span class="text-xs text-slate-500 tabular-nums">{allCount()}</span>
+    <span class="text-xs text-slate-500 tabular-nums">{totalCount}</span>
   </div>
 
   <div class="px-3 pt-3 pb-1">
