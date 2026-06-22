@@ -9,7 +9,7 @@
   import { createEventDispatcher } from 'svelte';
   import { issuesStore }      from '../stores/issuesStore';
   import { uploadDocument }   from '$lib/utils/documentApi';
-  import { authHeaders }      from '$lib/utils/authHeaders';
+  import { postJson }         from '$lib/utils/request';
   import { parseEmailPaste }  from '$lib/utils/emailParser';
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import Button          from '$lib/components/common/Button.svelte';
@@ -50,22 +50,13 @@
     newSummaryGenerating = true;
     newSummaryError      = '';
     try {
-      const res = await fetch('/api/management/suggest-summary', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          body:          newActivity.body,
-          activity_type: newActivity.activity_type
-        })
+      const data = await postJson('/api/management/suggest-summary', {
+        body:          newActivity.body,
+        activity_type: newActivity.activity_type,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        newSummaryError = data.error || 'Could not generate summary';
-      } else {
-        setNewField('summary', data.summary || '');
-      }
-    } catch {
-      newSummaryError = 'Could not generate summary';
+      setNewField('summary', data.summary || '');
+    } catch (e) {
+      newSummaryError = e.message || 'Could not generate summary';
     } finally {
       newSummaryGenerating = false;
     }

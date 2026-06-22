@@ -25,7 +25,7 @@
   import MeetingBadge         from './meetings/MeetingBadge.svelte';
   import { getLogger }        from '$lib/utils/logger';
   import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
-  import { authHeaders }      from '$lib/utils/authHeaders';
+  import { postJson }         from '$lib/utils/request';
   import Icon                 from '$lib/components/icons/Icon.svelte';
   import Button               from '$lib/components/common/Button.svelte';
   import Modal                from '$lib/components/common/Modal.svelte';
@@ -227,23 +227,13 @@
     suggestionInfo    = '';
 
     try {
-      const res = await fetch('/api/management/suggest-action', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          activity_id: activity.id,
-          issue_id:    issueId,
-          body:        activity.body
-        })
+      const data = await postJson('/api/management/suggest-action', {
+        activity_id: activity.id,
+        issue_id:    issueId,
+        body:        activity.body,
       });
-      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        logger('⚠️ AI suggestion failed:', res.status, data?.error);
-        suggestionDraft  = activity.body;
-        suggestionSource = 'ai_failed';
-        suggestionInfo   = 'AI suggestion unavailable. Using the activity text — edit as needed.';
-      } else if (!data.shouldSuggest) {
+      if (!data.shouldSuggest) {
         suggestionDraft  = '';
         suggestionSource = 'ai_declined';
         suggestionInfo   = data.reasoning
@@ -255,7 +245,7 @@
         suggestionInfo   = data.reasoning ? `Reasoning: ${data.reasoning}` : '';
       }
     } catch (err) {
-      logger('❌ AI suggestion fetch error:', err);
+      logger('❌ AI suggestion failed:', err);
       suggestionDraft  = activity.body;
       suggestionSource = 'ai_failed';
       suggestionInfo   = 'AI suggestion unavailable. Using the activity text — edit as needed.';
@@ -377,22 +367,13 @@
     modalSummaryGenerating = true;
     modalSummaryError = '';
     try {
-      const res = await fetch('/api/management/suggest-summary', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          body:          editingActivity.body,
-          activity_type: editingActivity.activity_type
-        })
+      const data = await postJson('/api/management/suggest-summary', {
+        body:          editingActivity.body,
+        activity_type: editingActivity.activity_type,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        modalSummaryError = data.error || 'Could not generate summary';
-      } else {
-        setEditField('summary', data.summary || '');
-      }
-    } catch {
-      modalSummaryError = 'Could not generate summary';
+      setEditField('summary', data.summary || '');
+    } catch (e) {
+      modalSummaryError = e.message || 'Could not generate summary';
     } finally {
       modalSummaryGenerating = false;
     }

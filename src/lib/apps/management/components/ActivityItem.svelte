@@ -25,7 +25,7 @@
   import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
   import { parseEmailPaste }   from '$lib/utils/emailParser';
   import { canDeleteOwn }      from '$lib/utils/permissions';
-  import { authHeaders }       from '$lib/utils/authHeaders';
+  import { postJson }          from '$lib/utils/request';
   import { buildFieldSummary } from './reports/reportUtils';
   import { permissions }    from '$lib/stores/permissions';
   import { auth }           from '$lib/stores/auth';
@@ -154,22 +154,13 @@
     summaryGenerating = true;
     summaryError      = '';
     try {
-      const res = await fetch('/api/management/suggest-summary', {
-        method:  'POST',
-        headers: await authHeaders(),
-        body: JSON.stringify({
-          body:          editingActivity.body,
-          activity_type: editingActivity.activity_type
-        })
+      const data = await postJson('/api/management/suggest-summary', {
+        body:          editingActivity.body,
+        activity_type: editingActivity.activity_type,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        summaryError = data.error || 'Could not generate summary';
-      } else {
-        setEditField('summary', data.summary || '');
-      }
-    } catch {
-      summaryError = 'Could not generate summary';
+      setEditField('summary', data.summary || '');
+    } catch (e) {
+      summaryError = e.message || 'Could not generate summary';
     } finally {
       summaryGenerating = false;
     }

@@ -6,7 +6,7 @@
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { api } from '$lib/utils/api';
-import { authHeaders } from '$lib/utils/authHeaders';
+import { postJson } from '$lib/utils/request';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger("usersStore");
@@ -58,21 +58,11 @@ function createUsersStore() {
       logger('Creating user:', userData.email);
 
       try {
-        const response = await fetch('/api/admin/create-user', {
-          method: 'POST',
-          headers: await authHeaders(),
-          body: JSON.stringify({
-            email: userData.email,
-            password: userData.password,
-            full_name: userData.fullName
-          })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to create user');
-        }
+        const result = await postJson('/api/admin/create-user', {
+          email:     userData.email,
+          password:  userData.password,
+          full_name: userData.fullName,
+        }, 'Failed to create user');
 
         logger('User created successfully:', result);
         setTimeout(() => this.fetchUsers(), 500);
@@ -88,20 +78,10 @@ function createUsersStore() {
       logger('Resetting password for user:', userId);
 
       try {
-        const response = await fetch('/api/admin/reset-password', {
-          method: 'POST',
-          headers: await authHeaders(),
-          body: JSON.stringify({
-            user_id: userId,
-            new_password: newPassword
-          })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to reset password');
-        }
+        const result = await postJson('/api/admin/reset-password', {
+          user_id:      userId,
+          new_password: newPassword,
+        }, 'Failed to reset password');
 
         logger('Password reset successfully');
         return result;
@@ -116,19 +96,9 @@ function createUsersStore() {
       logger('Deleting user:', userId);
 
       try {
-        const response = await fetch('/api/admin/delete-user', {
-          method: 'POST',
-          headers: await authHeaders(),
-          body: JSON.stringify({
-            user_id: userId
-          })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to delete user');
-        }
+        const result = await postJson('/api/admin/delete-user', {
+          user_id: userId,
+        }, 'Failed to delete user');
 
         logger('User deleted successfully:', result);
         setTimeout(() => this.fetchUsers(), 500);
