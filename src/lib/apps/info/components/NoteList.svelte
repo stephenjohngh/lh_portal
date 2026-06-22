@@ -17,10 +17,12 @@
 
   let search       = '';
   let showArchived = false;
+  let visFilter    = 'all';   // 'all' | 'internal' | 'registered' | 'public'
 
   $: filtered = notes.filter(n => {
     if (!showArchived && n.status === 'archived') return false;
     if (showArchived  && n.status !== 'archived') return false;
+    if (visFilter !== 'all' && (n.visibility ?? 'internal') !== visFilter) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -75,6 +77,19 @@
       />
     </div>
 
+    <!-- Visibility filter -->
+    <select
+      bind:value={visFilter}
+      title="Filter by visibility"
+      class="px-2 py-1.5 text-sm bg-slate-700/50 border border-slate-600 rounded-lg
+             text-slate-300 focus:outline-none focus:border-purple-500"
+    >
+      <option value="all">All</option>
+      <option value="internal">Internal</option>
+      <option value="registered">🔒 Registered</option>
+      <option value="public">🌐 Public</option>
+    </select>
+
     <!-- Archive toggle -->
     <button
       class="px-2.5 py-1.5 text-xs rounded-lg border transition-colors
@@ -111,6 +126,11 @@
       {:else if showArchived}
         <Icon name="archive" size={8} />
         <p class="text-sm">No archived notes in this section</p>
+      {:else if visFilter !== 'all'}
+        <Icon name="book" size={8} />
+        <p class="text-sm">No {visFilter} notes</p>
+        <button class="text-xs text-purple-400 hover:text-purple-300"
+                on:click={() => visFilter = 'all'}>Show all</button>
       {:else}
         <Icon name="book" size={8} />
         <p class="text-sm">No notes yet</p>
