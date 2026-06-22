@@ -2,6 +2,7 @@
 <!-- Info repository: section-organised notes with document attachments. -->
 <script>
   import { onMount }      from 'svelte';
+  import { get }          from 'svelte/store';
   import { auth }         from '$lib/stores/auth';
   import { permissions }  from '$lib/stores/permissions';
   import { getLogger }    from '$lib/utils/logger';
@@ -17,6 +18,13 @@
   import UploadDocModal   from './components/modals/UploadDocModal.svelte';
 
   const logger = getLogger('InfoApp');
+
+  // Remember the last-viewed section + note per browser, restored on re-entry
+  // (same pattern as Building Assets' Plan View floor/plan memory).
+  const LS_SECTION = 'info:lastSectionId';
+  const LS_NOTE    = 'info:lastNoteId';
+  function lsGet(k)    { try { return localStorage.getItem(k); } catch { return null; } }
+  function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* ignore */ } }
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -59,6 +67,19 @@
     try {
       await infoStore.loadSections();
       await infoStore.loadNotes(null);
+
+      // Restore last-viewed section + note (read from the store directly — the
+      // reactive `sections`/`notes` may not have flushed yet post-await).
+      const state = get(infoStore);
+      const savedSection = lsGet(LS_SECTION);
+      if (savedSection && state.sections.some(s => s.id === savedSection)) {
+        selectedSectionId = savedSection;
+      }
+      const savedNote = lsGet(LS_NOTE);
+      if (savedNote) {
+        const n = state.notes.find(x => x.id === savedNote);
+        if (n) await selectNote(n);
+      }
     } catch (err) {
       appError = err.message;
     }
@@ -70,6 +91,8 @@
     selectedSectionId = sectionId;
     viewingNoteId     = null;
     infoStore.clearNote();
+    lsSet(LS_SECTION, sectionId);
+    lsSet(LS_NOTE, null);
   }
 
   // Notes shown in the list: filtered to the selected section (or all).
@@ -81,6 +104,7 @@
 
   async function selectNote(note) {
     viewingNoteId = note.id;
+    lsSet(LS_NOTE, note.id);
     try {
       await infoStore.loadNote(note.id);
     } catch (err) {
@@ -90,6 +114,7 @@
 
   function backToList() {
     viewingNoteId = null;
+    lsSet(LS_NOTE, null);
     infoStore.clearNote();
   }
 
@@ -157,6 +182,7 @@
     try {
       await infoStore.deleteNote(note.id, note.title);
       viewingNoteId = null;
+      lsSet(LS_NOTE, null);
     } catch (err) {
       appError = err.message;
     }

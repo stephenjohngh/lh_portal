@@ -1,38 +1,28 @@
 <!-- src/lib/apps/info/components/modals/UploadDocModal.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Modal        from '$lib/components/common/Modal.svelte';
-  import Button       from '$lib/components/common/Button.svelte';
-  import FormInput    from '$lib/components/common/FormInput.svelte';
-  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import { fmtBytes } from '../../utils/infoHelpers.js';
+  import Modal          from '$lib/components/common/Modal.svelte';
+  import Button         from '$lib/components/common/Button.svelte';
+  import FormInput      from '$lib/components/common/FormInput.svelte';
+  import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
+  // Shared file picker — supports both click-to-choose and drag-and-drop
+  // (same component the Management activity-document upload uses).
+  import DocAttachInput from '$lib/components/common/DocAttachInput.svelte';
 
   export let show = false;
 
   const dispatch = createEventDispatcher();
-  const MAX_MB   = 50;
 
+  /** @type {File|null} */
   let file        = null;
   let description = '';
   let uploading   = false;
   let error       = '';
-  let fileInput;
+  let docInput;     // DocAttachInput instance — for reset()
 
   $: if (show) {
     file = null; description = ''; error = '';
-  }
-
-  function handleFileChange(e) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > MAX_MB * 1024 * 1024) {
-      error = `File exceeds ${MAX_MB} MB limit.`;
-      fileInput.value = '';
-      file = null;
-      return;
-    }
-    file  = f;
-    error = '';
+    docInput?.reset?.();
   }
 
   async function handleUpload() {
@@ -56,29 +46,10 @@
   <div class="space-y-4">
     <ErrorDisplay message={error} onDismiss={() => error = ''} />
 
-    <!-- File picker -->
-    <div>
+    <!-- File picker (click or drag-and-drop) -->
+    <div class={uploading ? 'opacity-50 pointer-events-none' : ''}>
       <p class="text-xs text-slate-400 mb-2">File <span class="text-red-400">*</span></p>
-      <label class="flex flex-col items-center gap-2 border-2 border-dashed border-slate-600
-                    rounded-lg p-6 cursor-pointer hover:border-purple-500 transition-colors
-                    {uploading ? 'opacity-50 pointer-events-none' : ''}">
-        {#if file}
-          <span class="text-2xl">📎</span>
-          <span class="text-sm text-white font-medium text-center break-all">{file.name}</span>
-          <span class="text-xs text-slate-500">{fmtBytes(file.size)}</span>
-        {:else}
-          <span class="text-2xl text-slate-500">↑</span>
-          <span class="text-sm text-slate-400">Click to select a file</span>
-          <span class="text-xs text-slate-600">Max {MAX_MB} MB</span>
-        {/if}
-        <input
-          bind:this={fileInput}
-          type="file"
-          class="hidden"
-          disabled={uploading}
-          on:change={handleFileChange}
-        />
-      </label>
+      <DocAttachInput bind:this={docInput} bind:file />
     </div>
 
     <FormInput
