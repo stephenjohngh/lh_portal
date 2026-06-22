@@ -183,8 +183,13 @@
 
   async function handleUpload(e) {
     const { file, description } = e.detail;
+    const noteId = viewingNoteId;   // capture before awaits (Svelte 5 flush)
     try {
-      await infoStore.uploadDocument(viewingNoteId, file, description);
+      await infoStore.uploadDocument(noteId, file, description);
+      // Authoritative refresh: re-read the note + its documents from the DB so
+      // the Documents list reflects what was actually saved (not just an
+      // optimistic prepend).
+      if (viewingNoteId === noteId) await infoStore.loadNote(noteId);
       showUploadModal = false;
       uploadModalRef?.done();
     } catch (err) {
