@@ -6,6 +6,7 @@
   import Button          from '$lib/components/common/Button.svelte';
   import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
   import { fmtDate }     from '$lib/utils/dates.js';
+  import { getPref, setPref } from '$lib/utils/prefs';
   import { stripHtml, VISIBILITY_BADGES } from '../utils/infoHelpers.js';
 
   export let notes       = [];
@@ -22,12 +23,8 @@
   // per browser so it survives list remounts and app re-entry.
   const LS_VIS      = 'info:visFilter';
   const VIS_OPTIONS = ['all', 'internal', 'registered', 'public'];
-  function loadVis() {
-    try { const v = localStorage.getItem(LS_VIS); return VIS_OPTIONS.includes(v) ? v : 'all'; }
-    catch { return 'all'; }
-  }
-  let visFilter = loadVis();
-  $: { try { localStorage.setItem(LS_VIS, visFilter); } catch { /* ignore */ } }
+  let visFilter = (() => { const v = getPref(LS_VIS, 'all'); return VIS_OPTIONS.includes(v) ? v : 'all'; })();
+  $: setPref(LS_VIS, visFilter);
 
   $: filtered = notes.filter(n => {
     if (!showArchived && n.status === 'archived') return false;
