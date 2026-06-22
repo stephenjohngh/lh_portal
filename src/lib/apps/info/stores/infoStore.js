@@ -104,20 +104,13 @@ function createInfoStore() {
     }
   }
 
-  async function loadNoteDocuments(noteId) {
-    return docApi.listDocuments({ entity_type: 'info_note', entity_id: noteId });
-  }
-
   async function loadNote(noteId) {
     update(s => ({ ...s, loadingNote: true, error: null }));
     try {
-      const [note, documents] = await Promise.all([
-        api.getById('info_notes', noteId, NOTE_DETAIL_SELECT),
-        loadNoteDocuments(noteId),
-      ]);
-      const full = { ...note, documents };
-      update(s => ({ ...s, selectedNote: full, loadingNote: false }));
-      return full;
+      // Documents are loaded by the AttachedDocuments panel itself.
+      const note = await api.getById('info_notes', noteId, NOTE_DETAIL_SELECT);
+      update(s => ({ ...s, selectedNote: note, loadingNote: false }));
+      return note;
     } catch (err) {
       update(s => ({ ...s, error: err.message, loadingNote: false }));
       throw err;
@@ -195,7 +188,7 @@ function createInfoStore() {
     // deleting the note.
     let docs = [];
     try {
-      docs = await loadNoteDocuments(id);
+      docs = await docApi.listDocuments({ entity_type: 'info_note', entity_id: id });
     } catch (err) {
       logger('⚠ could not list attachments before note delete:', err.message);
     }
@@ -240,45 +233,9 @@ function createInfoStore() {
     }));
   }
 
-  // ── Documents (via document_library / /api/documents/*) ───────────────────
-  // entity_type = 'info_note', entity_id = noteId
-
-  async function uploadDocument(noteId, file, description) {
-    const doc = await docApi.uploadDocument(file, {
-      entity_type:  'info_note',
-      entity_id:    noteId,
-      display_name: file.name,
-      doc_type:     'other',
-      folder_path:  'Info Notes',
-      description:  description || undefined,
-    });
-
-    // Append to selectedNote.documents if we're viewing this note
-    update(s => ({
-      ...s,
-      selectedNote: s.selectedNote?.id === noteId
-        ? { ...s.selectedNote, documents: [doc, ...(s.selectedNote.documents ?? [])] }
-        : s.selectedNote,
-    }));
-
-    logAudit('create', 'info_document', doc.id, file.name,
-      { appId: 'info', eventCategory: 'info', severity: 'info',
-        afterData: { note_id: noteId, filename: file.name } });
-    return doc;
-  }
-
-  async function deleteDocument(docId, noteId) {
-    await docApi.deleteDocument(docId);
-    update(s => ({
-      ...s,
-      selectedNote: s.selectedNote?.id === noteId
-        ? { ...s.selectedNote,
-            documents: (s.selectedNote.documents ?? []).filter(d => d.id !== docId) }
-        : s.selectedNote,
-    }));
-    logAudit('delete', 'info_document', docId, docId,
-      { appId: 'info', eventCategory: 'info', severity: 'info' });
-  }
+  // Note attachments are managed by the shared AttachedDocuments panel
+  // (entity_type='info_note'); the panel does the document_library I/O via
+  // documentApi and the host audits via its uploaded/deleted events.
 
   return {
     subscribe,
@@ -286,7 +243,6 @@ function createInfoStore() {
     loadNotes,     createNote,     updateNote,     deleteNote,
     loadNote,      clearNote,
     togglePin,     setArchived,
-    uploadDocument, deleteDocument,
   };
 }
 

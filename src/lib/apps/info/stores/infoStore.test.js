@@ -114,38 +114,13 @@ describe('notes mutations', () => {
   });
 });
 
-describe('documents (via /api/documents/*)', () => {
-  it('loadNote fetches the note + its documents and stores them', async () => {
+describe('loadNote', () => {
+  // Attachments are now owned by the shared AttachedDocuments panel (which uses
+  // documentApi directly) — loadNote just fetches the note itself.
+  it('fetches the note and stores it as selectedNote', async () => {
     h.api.getById.mockResolvedValueOnce({ id: 'n1', title: 'Note' });
-    mockFetch([{ id: 'doc1' }]);
-    const full = await infoStore.loadNote('n1');
-    expect(full.documents).toEqual([{ id: 'doc1' }]);
+    const note = await infoStore.loadNote('n1');
+    expect(note.id).toBe('n1');
     expect(get(infoStore).selectedNote.id).toBe('n1');
-  });
-
-  it('uploadDocument POSTs to /api/documents/upload and prepends to selectedNote.documents', async () => {
-    h.api.getById.mockResolvedValueOnce({ id: 'n1', title: 'Note' });
-    mockFetch([]);                       // loadNote → no docs yet
-    await infoStore.loadNote('n1');
-    mockFetch({ id: 'doc9', filename: 'spec.pdf' });   // upload response
-    await infoStore.uploadDocument('n1', { name: 'spec.pdf' }, 'a spec');
-    const [url, opts] = globalThis.fetch.mock.calls.at(-1);
-    expect(url).toBe('/api/documents/upload');
-    expect(opts.method).toBe('POST');
-    expect(get(infoStore).selectedNote.documents[0].id).toBe('doc9');
-  });
-
-  it('uploadDocument throws when the endpoint returns an error', async () => {
-    mockFetch({ error: 'too big' }, false);
-    await expect(infoStore.uploadDocument('n1', { name: 'x' })).rejects.toThrow('too big');
-  });
-
-  it('deleteDocument DELETEs and removes it from selectedNote.documents', async () => {
-    h.api.getById.mockResolvedValueOnce({ id: 'n1', title: 'Note' });
-    mockFetch([{ id: 'doc1' }, { id: 'doc2' }]);
-    await infoStore.loadNote('n1');
-    mockFetch({ success: true });
-    await infoStore.deleteDocument('doc1', 'n1');
-    expect(get(infoStore).selectedNote.documents.map(d => d.id)).toEqual(['doc2']);
   });
 });

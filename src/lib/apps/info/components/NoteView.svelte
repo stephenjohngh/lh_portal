@@ -7,10 +7,10 @@
   import ProtectedButton  from '$lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner   from '$lib/components/common/LoadingSpinner.svelte';
   import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
-  import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
   import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
-  import { fmtBytes, mimeIcon, VISIBILITY_BADGES } from '../utils/infoHelpers.js';
+  import { VISIBILITY_BADGES } from '../utils/infoHelpers.js';
+  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
 
   export let note    = null;  // full note with documents + creator
   export let loading = false;
@@ -21,30 +21,14 @@
   let pendingDeleteNote  = false;
   let deletingNote       = false;
 
-  // Delete document confirm
-  let pendingDeleteDoc   = null;  // document object
-  let deletingDoc        = false;
-
-  $: docs = note?.documents ?? [];
   $: visBadge = VISIBILITY_BADGES[note?.visibility ?? 'internal'];
   $: isPublished = note && note.visibility !== 'internal';
 
-  function requestDeleteNote()    { pendingDeleteNote = true; }
-  function requestDeleteDoc(doc)  { pendingDeleteDoc  = doc;  }
+  function requestDeleteNote() { pendingDeleteNote = true; }
 
   async function confirmDeleteNote() {
     deletingNote = true;
     dispatch('delete', note);
-  }
-
-  async function confirmDeleteDoc() {
-    deletingDoc = true;
-    dispatch('deleteDoc', pendingDeleteDoc);
-  }
-
-  export function docDeleted() {
-    deletingDoc     = false;
-    pendingDeleteDoc = null;
   }
 </script>
 
@@ -185,70 +169,16 @@
         <p class="text-sm text-slate-600 italic">No body text.</p>
       {/if}
 
-      <!-- Documents section -->
-      <div>
-        <div class="flex items-center gap-2 mb-3">
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex-1">
-            Documents
-            {#if docs.length > 0}
-              <span class="ml-1 text-slate-500 font-normal normal-case tracking-normal">
-                ({docs.length})
-              </span>
-            {/if}
-          </p>
-          {#if $permissions.canModify}
-            <button
-              class="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
-              on:click={() => dispatch('uploadDoc')}
-            >
-              <Icon name="upload" size={3} />
-              Upload
-            </button>
-          {/if}
-        </div>
-
-        {#if docs.length === 0}
-          <p class="text-xs text-slate-600 italic py-2">No documents attached.</p>
-        {:else}
-          <div class="space-y-1.5">
-            {#each docs as doc (doc.id)}
-              <div class="flex items-center gap-3 rounded-lg border border-slate-700
-                          bg-slate-800/40 px-3 py-2 group">
-                <span class="text-lg shrink-0">{mimeIcon(doc.mime_type)}</span>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm text-slate-200 truncate">{doc.display_name || doc.filename}</p>
-                  <p class="text-xs text-slate-500">
-                    {#if doc.description}<span class="text-slate-400">{doc.description} · </span>{/if}
-                    {#if doc.file_size}{fmtBytes(doc.file_size)} · {/if}
-                    {fmtDate(doc.created_at)}
-                  </p>
-                </div>
-                <!-- Download -->
-                <a
-                  href={doc.web_view_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="p-1.5 rounded text-slate-500 hover:text-purple-300 transition-colors shrink-0"
-                  title="Open / download"
-                >
-                  <Icon name="download" size={4} />
-                </a>
-                <!-- Delete (admin only) -->
-                {#if $permissions.isAdmin}
-                  <button
-                    class="p-1.5 rounded text-slate-600 hover:text-red-400 transition-colors
-                           shrink-0 opacity-0 group-hover:opacity-100"
-                    title="Delete document"
-                    on:click={() => requestDeleteDoc(doc)}
-                  >
-                    <Icon name="delete" size={4} />
-                  </button>
-                {/if}
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
+      <!-- Documents -->
+      <AttachedDocuments
+        entityType="info_note"
+        entityId={note.id}
+        canEdit={$permissions.canModify}
+        canDelete={$permissions.isAdmin}
+        folderPath="Info Notes"
+        on:uploaded={(e) => dispatch('docUploaded', e.detail)}
+        on:deleted={(e) => dispatch('docDeleted', e.detail)}
+      />
 
     </div>
 
@@ -265,18 +195,6 @@
   confirmLabel="Delete Note"
   on:confirm={confirmDeleteNote}
   on:cancel={() => pendingDeleteNote = false}
-/>
-
-<!-- Delete document confirm -->
-<ConfirmDialog
-  show={!!pendingDeleteDoc}
-  danger={true}
-  processing={deletingDoc}
-  title="Delete Document"
-  message="Delete '{pendingDeleteDoc?.filename}'? This cannot be undone."
-  confirmLabel="Delete Document"
-  on:confirm={confirmDeleteDoc}
-  on:cancel={() => pendingDeleteDoc = null}
 />
 
 <style>

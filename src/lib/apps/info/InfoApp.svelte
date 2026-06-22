@@ -7,6 +7,7 @@
   import { auth }         from '$lib/stores/auth';
   import { permissions }  from '$lib/stores/permissions';
   import { getLogger }    from '$lib/utils/logger';
+  import { logAudit }     from '$lib/utils/auditLogger';
   import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner   from '$lib/components/common/LoadingSpinner.svelte';
 
@@ -16,7 +17,6 @@
   import NoteView         from './components/NoteView.svelte';
   import SectionFormModal from './components/modals/SectionFormModal.svelte';
   import NoteFormModal    from './components/modals/NoteFormModal.svelte';
-  import UploadDocModal   from './components/modals/UploadDocModal.svelte';
 
   const logger = getLogger('InfoApp');
 
@@ -35,14 +35,11 @@
   let editingSection    = null;
   let showNoteModal     = false;
   let editingNote       = null;
-  let showUploadModal   = false;
   let appError          = '';
 
   // Refs to modal instances for done/fail callbacks
   let sectionModalRef;
   let noteModalRef;
-  let uploadModalRef;
-  let noteViewRef;     // to reset its doc-delete confirm state after deletion
 
   $: sections     = $infoStore.sections;
   $: notes        = $infoStore.notes;
@@ -203,36 +200,21 @@
     }
   }
 
-  // ── Document upload ────────────────────────────────────────────────────────
+  // ── Document attachments ────────────────────────────────────────────────────
+  // The AttachedDocuments panel (in NoteView) owns the document I/O; here we
+  // just audit-log its uploaded/deleted events.
 
-  function openUpload() { showUploadModal = true; }
-
-  async function handleUpload(e) {
-    const { file, description } = e.detail;
-    const noteId = viewingNoteId;   // capture before awaits (Svelte 5 flush)
-    try {
-      await infoStore.uploadDocument(noteId, file, description);
-      // Authoritative refresh: re-read the note + its documents from the DB so
-      // the Documents list reflects what was actually saved (not just an
-      // optimistic prepend).
-      if (viewingNoteId === noteId) await infoStore.loadNote(noteId);
-      showUploadModal = false;
-      uploadModalRef?.done();
-    } catch (err) {
-      uploadModalRef?.fail(err.message);
-    }
+  function handleDocUploaded(e) {
+    const doc = e.detail;
+    logAudit('create', 'info_document', doc.id, doc.display_name || doc.filename,
+      { appId: 'info', eventCategory: 'info', severity: 'info',
+        afterData: { note_id: viewingNoteId, filename: doc.filename } });
   }
 
-  async function handleDeleteDoc(doc) {
-    try {
-      await infoStore.deleteDocument(doc.id, viewingNoteId);
-    } catch (err) {
-      appError = err.message;
-    } finally {
-      // Always clear NoteView's delete-confirm state so the dialog doesn't
-      // hang on "Processing…".
-      noteViewRef?.docDeleted();
-    }
+  function handleDocDeleted(e) {
+    const doc = e.detail;
+    logAudit('delete', 'info_document', doc.id, doc.display_name || doc.filename,
+      { appId: 'info', eventCategory: 'info', severity: 'info' });
   }
 </script>
 
@@ -275,7 +257,6 @@
       <div class="flex-1 min-w-0 flex flex-col">
         {#if viewingNoteId}
           <NoteView
-            bind:this={noteViewRef}
             note={selectedNote}
             loading={$infoStore.loadingNote}
             on:back={backToList}
@@ -283,8 +264,8 @@
             on:delete={(e)     => handleNoteDelete(e.detail)}
             on:togglePin={(e)  => handleTogglePin(e.detail)}
             on:archive={(e)    => handleArchive(e.detail)}
-            on:uploadDoc={openUpload}
-            on:deleteDoc={(e)  => handleDeleteDoc(e.detail)}
+            on:docUploaded={handleDocUploaded}
+            on:docDeleted={handleDocDeleted}
           />
         {:else}
           <NoteList
@@ -321,11 +302,4 @@
   sectionId={selectedSectionId}
   on:save={handleNoteSave}
   on:close={() => showNoteModal = false}
-/>
-
-<UploadDocModal
-  bind:this={uploadModalRef}
-  bind:show={showUploadModal}
-  on:upload={handleUpload}
-  on:close={() => showUploadModal = false}
 />
