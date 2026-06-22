@@ -283,6 +283,9 @@
   /* Prose styling for the rich-text note body (Tiptap HTML). */
   .info-body :global(p)          { margin: 0 0 0.75rem; line-height: 1.7; }
   .info-body :global(p:last-child) { margin-bottom: 0; }
+  /* Preserve intentional blank lines (Tiptap emits empty <p></p>, which would
+     otherwise collapse to no height on render). */
+  .info-body :global(p:empty)::before { content: '\00a0'; }
   .info-body :global(h2)         { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 1.25rem 0 0.5rem; }
   .info-body :global(h3)         { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; margin: 1rem 0 0.4rem; }
   .info-body :global(ul)         { list-style: disc;    padding-left: 1.4rem; margin: 0 0 0.75rem; }

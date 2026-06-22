@@ -178,6 +178,8 @@
 
   /* Prose styles for Tiptap HTML */
   .article-body :global(p)          { margin: 0 0 1rem; color: #334155; line-height: 1.7; font-size: 1rem; }
+  /* Preserve intentional blank lines (empty Tiptap <p></p> would collapse). */
+  .article-body :global(p:empty)::before { content: '\00a0'; }
   .article-body :global(h2)         { font-size: 1.375rem; font-weight: 700; color: #0f172a; margin: 1.75rem 0 0.6rem; }
   .article-body :global(h3)         { font-size: 1.125rem; font-weight: 600; color: #1e293b; margin: 1.5rem 0 0.5rem; }
   .article-body :global(ul)         { list-style: disc;    padding-left: 1.5rem; margin: 0 0 1rem; }
