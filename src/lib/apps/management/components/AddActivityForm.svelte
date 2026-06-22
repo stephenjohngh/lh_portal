@@ -8,7 +8,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { issuesStore }      from '../stores/issuesStore';
-  import { supabase }         from '$lib/supabaseClient';
+  import { uploadDocument }   from '$lib/utils/documentApi';
   import { authHeaders }      from '$lib/utils/authHeaders';
   import { parseEmailPaste }  from '$lib/utils/emailParser';
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
@@ -125,25 +125,14 @@
       let fields = null;
 
       if (isDocType) {
-        // Step 1: upload file via the document_library API
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) throw new Error('Not authenticated');
-
-        const form = new FormData();
-        form.append('file',         docFile);
-        form.append('entity_type',  'issue');
-        form.append('entity_id',    issueId);
-        form.append('folder_path',  issueNumber ? `Issues/Issue ${issueNumber}` : 'Issues');
-        form.append('display_name', docFile.name);
-        form.append('doc_type',     'other');
-
-        const uploadRes = await fetch('/api/documents/upload', {
-          method:  'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          body:    form,
+        // Step 1: upload file via the shared document_library client
+        const doc = await uploadDocument(docFile, {
+          entity_type:  'issue',
+          entity_id:    issueId,
+          folder_path:  issueNumber ? `Issues/Issue ${issueNumber}` : 'Issues',
+          display_name: docFile.name,
+          doc_type:     'other',
         });
-        const doc = await uploadRes.json();
-        if (!uploadRes.ok) throw new Error(doc.error ?? 'Upload failed');
 
         fields = {
           doc_id:       doc.id,

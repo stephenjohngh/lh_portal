@@ -4,7 +4,7 @@
 
 import { writable }    from 'svelte/store';
 import { api }         from '$lib/utils/api';
-import { supabase }    from '$lib/supabaseClient';
+import * as docApi     from '$lib/utils/documentApi';
 import { logAudit }    from '$lib/utils/auditLogger';
 import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
 import { getLogger }   from '$lib/utils/logger';
@@ -16,14 +16,6 @@ const NOTE_SELECT =
 
 const NOTE_DETAIL_SELECT =
   '*, section:info_sections(id,name,colour), creator:profiles!created_by(full_name,email)';
-
-/** @returns {Promise<Record<string,string>>} bearer-auth headers */
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token
-    ? { Authorization: `Bearer ${session.access_token}` }
-    : {};
-}
 
 function sortNotes(notes) {
   return [...notes].sort((a, b) => {
@@ -113,14 +105,7 @@ function createInfoStore() {
   }
 
   async function loadNoteDocuments(noteId) {
-    const params = new URLSearchParams({
-      entity_type: 'info_note',
-      entity_id:   noteId,
-    });
-    const res  = await fetch(`/api/documents?${params}`, { headers: await authHeaders() });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Failed to load documents');
-    return data; // array of document_library rows
+    return docApi.listDocuments({ entity_type: 'info_note', entity_id: noteId });
   }
 
   async function loadNote(noteId) {
@@ -215,11 +200,8 @@ function createInfoStore() {
       logger('⚠ could not list attachments before note delete:', err.message);
     }
     if (docs.length) {
-      const headers = await authHeaders();
-      const results = await Promise.allSettled(
-        docs.map(d => fetch(`/api/documents/${d.id}`, { method: 'DELETE', headers }))
-      );
-      const failed = results.filter(r => r.status === 'rejected' || !r.value?.ok).length;
+      const results = await Promise.allSettled(docs.map(d => docApi.deleteDocument(d.id)));
+      const failed  = results.filter(r => r.status === 'rejected').length;
       if (failed) logger(`⚠ ${failed}/${docs.length} attachment(s) may not have been deleted for note ${id}`);
     }
 
@@ -262,22 +244,14 @@ function createInfoStore() {
   // entity_type = 'info_note', entity_id = noteId
 
   async function uploadDocument(noteId, file, description) {
-    const form = new FormData();
-    form.append('file',         file);
-    form.append('entity_type',  'info_note');
-    form.append('entity_id',    noteId);
-    form.append('display_name', file.name);
-    form.append('doc_type',     'other');
-    form.append('folder_path',  'Info Notes');
-    if (description) form.append('description', description);
-
-    const res  = await fetch('/api/documents/upload', {
-      method:  'POST',
-      headers: await authHeaders(),
-      body:    form,
+    const doc = await docApi.uploadDocument(file, {
+      entity_type:  'info_note',
+      entity_id:    noteId,
+      display_name: file.name,
+      doc_type:     'other',
+      folder_path:  'Info Notes',
+      description:  description || undefined,
     });
-    const doc = await res.json();
-    if (!res.ok) throw new Error(doc.error ?? 'Upload failed');
 
     // Append to selectedNote.documents if we're viewing this note
     update(s => ({
@@ -294,13 +268,7 @@ function createInfoStore() {
   }
 
   async function deleteDocument(docId, noteId) {
-    const res  = await fetch(`/api/documents/${docId}`, {
-      method:  'DELETE',
-      headers: await authHeaders(),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-
+    await docApi.deleteDocument(docId);
     update(s => ({
       ...s,
       selectedNote: s.selectedNote?.id === noteId
