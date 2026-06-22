@@ -203,6 +203,26 @@ function createInfoStore() {
   }
 
   async function deleteNote(id, title) {
+    // document_library is polymorphic (no FK to info_notes), so deleting the
+    // note does NOT cascade to its attachments. Delete them first — Drive
+    // files + index rows — via the same endpoint single-delete uses, so they
+    // aren't orphaned. Best-effort: a failed attachment delete must not block
+    // deleting the note.
+    let docs = [];
+    try {
+      docs = await loadNoteDocuments(id);
+    } catch (err) {
+      logger('⚠ could not list attachments before note delete:', err.message);
+    }
+    if (docs.length) {
+      const headers = await authHeaders();
+      const results = await Promise.allSettled(
+        docs.map(d => fetch(`/api/documents/${d.id}`, { method: 'DELETE', headers }))
+      );
+      const failed = results.filter(r => r.status === 'rejected' || !r.value?.ok).length;
+      if (failed) logger(`⚠ ${failed}/${docs.length} attachment(s) may not have been deleted for note ${id}`);
+    }
+
     await api.delete('info_notes', id);
     update(s => ({
       ...s,
@@ -210,7 +230,8 @@ function createInfoStore() {
       selectedNote: s.selectedNote?.id === id ? null : s.selectedNote,
     }));
     logAudit('delete', 'info_note', id, title,
-      { appId: 'info', eventCategory: 'info', severity: 'info' });
+      { appId: 'info', eventCategory: 'info', severity: 'info',
+        metadata: { deleted_attachments: docs.length } });
   }
 
   async function togglePin(id, currentPinned) {
