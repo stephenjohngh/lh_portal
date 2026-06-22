@@ -8,8 +8,8 @@
   import FormSelect   from '$lib/components/common/FormSelect.svelte';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  // Shared rich-text editor (lives in the management app; standalone component).
-  import RichTextEditor from '$lib/apps/management/components/LazyRichTextEditor.svelte';
+  // Shared rich-text editor (common component).
+  import RichTextEditor from '$lib/components/common/LazyRichTextEditor.svelte';
   import { parseTags, tagsToString } from '../../utils/infoHelpers.js';
 
   export let show       = false;

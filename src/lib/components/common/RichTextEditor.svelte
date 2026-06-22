@@ -1,4 +1,4 @@
-<!-- src/lib/apps/management/components/RichTextEditor.svelte -->
+<!-- src/lib/components/common/RichTextEditor.svelte -->
 <!--
   Lightweight WYSIWYG editor for note-type activities.
   Built on Tiptap (headless ProseMirror wrapper).

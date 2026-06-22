@@ -34,7 +34,7 @@
   import MeetingBadge       from './meetings/MeetingBadge.svelte';
   import { currentMeeting } from '../stores/meetingsStore';
   import CommentSuggestionPanel from './CommentSuggestionPanel.svelte';
-  import RichTextEditor         from './LazyRichTextEditor.svelte';
+  import RichTextEditor         from '$lib/components/common/LazyRichTextEditor.svelte';
 
   // -- Props -----------------------------------------------------------
   export let activity;

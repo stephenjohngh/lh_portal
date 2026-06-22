@@ -35,7 +35,7 @@
   import ActivityItem         from './ActivityItem.svelte';
   import ActivityLogToolbar    from './ActivityLogToolbar.svelte';
   import AddActivityForm       from './AddActivityForm.svelte';
-  import RichTextEditor       from './LazyRichTextEditor.svelte';
+  import RichTextEditor       from '$lib/components/common/LazyRichTextEditor.svelte';
 
   const logger = getLogger('ActivityLogSection');
 

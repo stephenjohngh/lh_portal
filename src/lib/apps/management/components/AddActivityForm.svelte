@@ -15,7 +15,7 @@
   import Button          from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import DocAttachInput  from '$lib/components/common/DocAttachInput.svelte';
-  import RichTextEditor  from './LazyRichTextEditor.svelte';
+  import RichTextEditor  from '$lib/components/common/LazyRichTextEditor.svelte';
 
   const dispatch = createEventDispatcher();
 

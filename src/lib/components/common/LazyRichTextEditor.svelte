@@ -1,11 +1,10 @@
-<!-- src/lib/apps/management/components/LazyRichTextEditor.svelte -->
+<!-- src/lib/components/common/LazyRichTextEditor.svelte -->
 <!--
   Lazy wrapper around RichTextEditor.svelte. The real editor pulls in tiptap
   (~500 KB minified) which is only ever needed when the user is actively
-  editing or composing an activity. By dynamic-importing it here, tiptap is
-  excluded from the management app's initial bundle and only fetched the
-  first time an editor instance is mounted (across the whole app — Vite
-  dedupes the chunk).
+  editing or composing. By dynamic-importing it here, tiptap is excluded from
+  the importing app's initial bundle and only fetched the first time an editor
+  instance is mounted (across the whole app — Vite dedupes the chunk).
 
   Forwards the same props and `change` event as RichTextEditor; no `bind:`
   is supported by callers, so <svelte:component> is sufficient.
