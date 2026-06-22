@@ -17,7 +17,17 @@
 
   let search       = '';
   let showArchived = false;
-  let visFilter    = 'all';   // 'all' | 'internal' | 'registered' | 'public'
+
+  // Visibility filter ('all' | 'internal' | 'registered' | 'public') — persisted
+  // per browser so it survives list remounts and app re-entry.
+  const LS_VIS      = 'info:visFilter';
+  const VIS_OPTIONS = ['all', 'internal', 'registered', 'public'];
+  function loadVis() {
+    try { const v = localStorage.getItem(LS_VIS); return VIS_OPTIONS.includes(v) ? v : 'all'; }
+    catch { return 'all'; }
+  }
+  let visFilter = loadVis();
+  $: { try { localStorage.setItem(LS_VIS, visFilter); } catch { /* ignore */ } }
 
   $: filtered = notes.filter(n => {
     if (!showArchived && n.status === 'archived') return false;
