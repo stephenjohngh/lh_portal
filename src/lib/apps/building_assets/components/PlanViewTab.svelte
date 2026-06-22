@@ -10,6 +10,7 @@
   import { typeByCode, checkableDefs, resolveComponentHalo } from '../lookups.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
   import { ACCENT }                       from '$lib/theme.js';
+  import { getPref, setPref }             from '$lib/utils/prefs';
   import { permissions }                  from '$lib/stores/permissions';
   import { createComponentDragController }  from './plan/componentDragController.js';
   import { createAnnotationDragController } from './plan/annotationDragController.js';
@@ -178,8 +179,8 @@
   // -- Auto-select: restore saved floor/plan preference -------------
   let autoSelected = false;
   $: if (!autoSelected && floors.length > 0 && plans.length > 0) {
-    const savedFloor = localStorage.getItem(PREF_FLOOR);
-    const savedPlan  = localStorage.getItem(PREF_PLAN);
+    const savedFloor = getPref(PREF_FLOOR);
+    const savedPlan  = getPref(PREF_PLAN);
     const floorOk    = savedFloor && floors.some(f => f.id === savedFloor) && plans.some(p => p.floor_id === savedFloor);
     if (floorOk) {
       selectedFloorId = savedFloor;
@@ -226,8 +227,8 @@
     clearScaleDrawing();
     const p = plans.find(pl => pl.floor_id === floorId);
     if (p) selectedPlanId = p.id;
-    localStorage.setItem(PREF_FLOOR, floorId);
-    if (selectedPlanId) localStorage.setItem(PREF_PLAN, selectedPlanId);
+    setPref(PREF_FLOOR, floorId);
+    if (selectedPlanId) setPref(PREF_PLAN, selectedPlanId);
   }
 
   function onPlanChange({ detail: { planId } }) {
@@ -235,7 +236,7 @@
     resetSelection();
     cancelSpaceDrawing();
     clearScaleDrawing();
-    localStorage.setItem(PREF_PLAN, planId);
+    setPref(PREF_PLAN, planId);
   }
 
   // -- Mode toggle ---------------------------------------------------
@@ -428,9 +429,9 @@
   function handlePlanAdminDone({ detail: { plan, action } }) {
     planAdminOpen = false;
     if (action === 'created' || action === 'copied' || action === 'imported') {
-      if (plan.floor_id) { selectedFloorId = plan.floor_id; localStorage.setItem(PREF_FLOOR, plan.floor_id); }
+      if (plan.floor_id) { selectedFloorId = plan.floor_id; setPref(PREF_FLOOR, plan.floor_id); }
       selectedPlanId = plan.id;
-      localStorage.setItem(PREF_PLAN, plan.id);
+      setPref(PREF_PLAN, plan.id);
       resetSelection(); cancelSpaceDrawing(); clearScaleDrawing();
     }
   }
@@ -441,8 +442,8 @@
       selectedPlanId = '';
       resetSelection(); cancelSpaceDrawing(); clearScaleDrawing();
       const fallback = plans.find(p => p.floor_id === selectedFloorId && p.id !== planId);
-      if (fallback) { selectedPlanId = fallback.id; localStorage.setItem(PREF_PLAN, fallback.id); }
-      else          { localStorage.removeItem(PREF_PLAN); }
+      if (fallback) { selectedPlanId = fallback.id; setPref(PREF_PLAN, fallback.id); }
+      else          { setPref(PREF_PLAN, null); }
     }
   }
 </script>

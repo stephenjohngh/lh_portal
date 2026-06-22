@@ -6,6 +6,7 @@
   import { createEventDispatcher }    from 'svelte';
   import { buildingAssetsStore }      from '../stores/buildingAssetsStore.js';
   import { inp }                      from '../ui.js';
+  import { getJSON, setJSON }         from '$lib/utils/prefs';
   import AttrField                    from './AttrField.svelte';
 
   // Reference data comes from the store — no prop drilling needed.
@@ -33,41 +34,36 @@
   // Restore last used type + all attribute values once type list is available
   let formRestored = false;
   $: if (!formRestored && types.length > 0) {
-    try {
-      const raw = localStorage.getItem(QUICKADD_PREF_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        if (saved.typeId && types.some(t => t.id === saved.typeId)) {
-          selectedTypeId = saved.typeId;
-          // Restore values directly (primaryDef/secondaryDefs haven't updated yet — Svelte
-          // will render correctly once reactives run after this block)
-          primaryValue = saved.primaryValue ?? '';
-          // Validate restored attrValues against known defs; fill in defaults for any new attrs
-          const currentDefs = attrDefs[saved.typeId] ?? [];
-          const validDefIds = new Set(currentDefs.map(d => d.id));
-          const restored = {};
-          for (const [id, val] of Object.entries(saved.attrValues ?? {})) {
-            if (validDefIds.has(id)) restored[id] = val;
-          }
-          for (const d of currentDefs.filter(d => !d.is_primary && !d.checkable)) {
-            if (!(d.id in restored) && d.default_value != null && d.default_value !== '') {
-              restored[d.id] = d.default_value;
-            }
-          }
-          secondaryAttrValues = restored;
+    const saved = getJSON(QUICKADD_PREF_KEY);
+    if (saved && saved.typeId && types.some(t => t.id === saved.typeId)) {
+      selectedTypeId = saved.typeId;
+      // Restore values directly (primaryDef/secondaryDefs haven't updated yet — Svelte
+      // will render correctly once reactives run after this block)
+      primaryValue = saved.primaryValue ?? '';
+      // Validate restored attrValues against known defs; fill in defaults for any new attrs
+      const currentDefs = attrDefs[saved.typeId] ?? [];
+      const validDefIds = new Set(currentDefs.map(d => d.id));
+      const restored = {};
+      for (const [id, val] of Object.entries(saved.attrValues ?? {})) {
+        if (validDefIds.has(id)) restored[id] = val;
+      }
+      for (const d of currentDefs.filter(d => !d.is_primary && !d.checkable)) {
+        if (!(d.id in restored) && d.default_value != null && d.default_value !== '') {
+          restored[d.id] = d.default_value;
         }
       }
-    } catch { /* ignore corrupt data */ }
+      secondaryAttrValues = restored;
+    }
     formRestored = true;
   }
 
   // Auto-save whenever type or any attribute value changes (after initial restore)
   $: if (formRestored && selectedTypeId) {
-    localStorage.setItem(QUICKADD_PREF_KEY, JSON.stringify({
+    setJSON(QUICKADD_PREF_KEY, {
       typeId:       selectedTypeId,
       primaryValue,
       attrValues:   secondaryAttrValues,
-    }));
+    });
   }
 
   function onTypeChange() {

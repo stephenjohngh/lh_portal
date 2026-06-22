@@ -8,6 +8,7 @@
     filterIssues, groupIssuesByStatus, getDefaultFilterDate, getTodayDate
   } from './reportUtils';
   import { downloadResponse } from '$lib/utils/download';
+  import { getJSON, setJSON } from '$lib/utils/prefs';
   import { getLogger }        from '$lib/utils/logger';
   import { fmtDate }          from '$lib/utils/dates';
 
@@ -20,14 +21,7 @@
   // Meeting filter is NOT persisted (context-specific). Issue numbers ARE persisted.
   const FILTER_KEY = 'lh_issues_report_filters';
 
-  function loadSaved() {
-    try {
-      const raw = localStorage.getItem(FILTER_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  }
-
-  const _saved = loadSaved();
+  const _saved = getJSON(FILTER_KEY);
 
   // ── Status checkboxes ─────────────────────────────────────────────────────
   let includeCurrent   = _saved?.includeCurrent   ?? true;
@@ -73,17 +67,15 @@
   let sortOrder = _saved?.sortOrder ?? 'desc';
 
   // Write filters to localStorage whenever any filter value changes.
-  $: try {
-    localStorage.setItem(FILTER_KEY, JSON.stringify({
-      includeCurrent, includeParked, includeCompleted,
-      filterDate, includeHistoric, includeCompletedActions, summaryOnly, sortOrder,
-      issueNumberInput,
-      typeFilter: {
-        note: typeNote, decision: typeDecision, comment: typeComment,
-        email: typeEmail, letter: typeLetter, document: typeDocument, meeting: typeMeeting
-      }
-    }));
-  } catch { /* private browsing / quota exceeded — ignore */ }
+  $: setJSON(FILTER_KEY, {
+    includeCurrent, includeParked, includeCompleted,
+    filterDate, includeHistoric, includeCompletedActions, summaryOnly, sortOrder,
+    issueNumberInput,
+    typeFilter: {
+      note: typeNote, decision: typeDecision, comment: typeComment,
+      email: typeEmail, letter: typeLetter, document: typeDocument, meeting: typeMeeting
+    }
+  });
 
   // ── Issue number drill-down ───────────────────────────────────────────────
   let issueNumberInput = _saved?.issueNumberInput ?? '';
