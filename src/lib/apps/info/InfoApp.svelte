@@ -35,6 +35,7 @@
   let sectionModalRef;
   let noteModalRef;
   let uploadModalRef;
+  let noteViewRef;     // to reset its doc-delete confirm state after deletion
 
   $: sections     = $infoStore.sections;
   $: notes        = $infoStore.notes;
@@ -202,6 +203,10 @@
       await infoStore.deleteDocument(doc.id, viewingNoteId);
     } catch (err) {
       appError = err.message;
+    } finally {
+      // Always clear NoteView's delete-confirm state so the dialog doesn't
+      // hang on "Processing…".
+      noteViewRef?.docDeleted();
     }
   }
 </script>
@@ -245,6 +250,7 @@
       <div class="flex-1 min-w-0 flex flex-col">
         {#if viewingNoteId}
           <NoteView
+            bind:this={noteViewRef}
             note={selectedNote}
             loading={$infoStore.loadingNote}
             on:back={backToList}
