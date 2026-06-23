@@ -7,11 +7,13 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-vi.mock('$lib/utils/authHeaders', () => ({
-  authHeaders: () => Promise.resolve({ Authorization: 'Bearer tok', 'Content-Type': 'application/json' }),
+const h = vi.hoisted(() => ({
+  authHeaders: vi.fn(() => Promise.resolve({ Authorization: 'Bearer tok', 'Content-Type': 'application/json' })),
 }));
 
-const { getJson, postJson, patchJson, del } = await import('./request.js');
+vi.mock('$lib/utils/authHeaders', () => ({ authHeaders: h.authHeaders }));
+
+const { getJson, postJson, patchJson, del, SESSION_EXPIRED } = await import('./request.js');
 
 function mockFetch(body, { ok = true, status = 200, jsonThrows = false } = {}) {
   globalThis.fetch = vi.fn(() => Promise.resolve({
@@ -21,7 +23,10 @@ function mockFetch(body, { ok = true, status = 200, jsonThrows = false } = {}) {
   }));
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  h.authHeaders.mockResolvedValue({ Authorization: 'Bearer tok', 'Content-Type': 'application/json' });
+});
 
 describe('postJson', () => {
   it('POSTs a JSON body with the bearer header and returns the parsed response', async () => {
@@ -97,5 +102,19 @@ describe('del', () => {
   it('throws the server error on a non-2xx delete', async () => {
     mockFetch({ error: 'in use' }, { ok: false, status: 409 });
     await expect(del('/api/x/1')).rejects.toThrow('in use');
+  });
+});
+
+describe('session expiry', () => {
+  it('maps a 401 to the friendly SESSION_EXPIRED message, ignoring the terse body', async () => {
+    mockFetch({ error: 'Unauthorized' }, { ok: false, status: 401 });
+    await expect(postJson('/api/x', {})).rejects.toThrow(SESSION_EXPIRED);
+  });
+
+  it('surfaces SESSION_EXPIRED (and never fetches) when there is no client session', async () => {
+    h.authHeaders.mockRejectedValueOnce(new Error('Not authenticated'));
+    globalThis.fetch = vi.fn();
+    await expect(getJson('/api/list')).rejects.toThrow(SESSION_EXPIRED);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });

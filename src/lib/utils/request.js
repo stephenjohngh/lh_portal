@@ -2,7 +2,7 @@
 // Thin wrapper for authenticated JSON calls to the portal's own API routes.
 //
 // Collapses the pattern repeated across many components:
-//     const res  = await fetch(url, { headers: await authHeaders() });
+//     const res  = await fetch(url, { headers: await headers() });
 //     const data = await res.json();
 //     if (!res.ok) throw new Error(data.error ?? '…');
 // into getJson/postJson/patchJson/del. Every call carries the Supabase bearer
@@ -19,7 +19,24 @@
 
 import { authHeaders } from '$lib/utils/authHeaders';
 
+// Shown when there is no valid session client-side (authHeaders throws) or the
+// server rejects the token (HTTP 401). Friendlier and more actionable than the
+// raw 'Not authenticated' / 'Unauthorized' strings these paths produce.
+export const SESSION_EXPIRED = 'Your session has expired — please log in again.';
+
+/** authHeaders(), but a missing session surfaces as SESSION_EXPIRED. */
+async function headers() {
+  try {
+    return await authHeaders();
+  } catch {
+    throw new Error(SESSION_EXPIRED);
+  }
+}
+
 async function parse(res, fallback) {
+  // A 401 means the token was missing/expired/invalid — map it to a clear,
+  // actionable message regardless of the server's terse body ('Unauthorized').
+  if (res.status === 401) throw new Error(SESSION_EXPIRED);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error ?? fallback ?? `Request failed (${res.status})`);
   return data;
@@ -32,7 +49,7 @@ async function parse(res, fallback) {
  * @returns {Promise<any>}
  */
 export async function getJson(url, errorFallback) {
-  const res = await fetch(url, { headers: await authHeaders() });
+  const res = await fetch(url, { headers: await headers() });
   return parse(res, errorFallback);
 }
 
@@ -46,7 +63,7 @@ export async function getJson(url, errorFallback) {
 export async function postJson(url, body, errorFallback) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: await authHeaders(),
+    headers: await headers(),
     body: JSON.stringify(body ?? {}),
   });
   return parse(res, errorFallback);
@@ -62,7 +79,7 @@ export async function postJson(url, body, errorFallback) {
 export async function patchJson(url, body, errorFallback) {
   const res = await fetch(url, {
     method: 'PATCH',
-    headers: await authHeaders(),
+    headers: await headers(),
     body: JSON.stringify(body ?? {}),
   });
   return parse(res, errorFallback);
@@ -75,6 +92,6 @@ export async function patchJson(url, body, errorFallback) {
  * @returns {Promise<any>}
  */
 export async function del(url, errorFallback) {
-  const res = await fetch(url, { method: 'DELETE', headers: await authHeaders() });
+  const res = await fetch(url, { method: 'DELETE', headers: await headers() });
   return parse(res, errorFallback);
 }
