@@ -14,7 +14,10 @@ function logAuthDiag(event, session) {
   const now   = Date.now();
   const expMs = session?.expires_at ? session.expires_at * 1000 : null;
   const inSec = expMs != null ? Math.round((expMs - now) / 1000) : null;
-  logger(
+  // console.info (not the debug-level logger) so it's visible in the browser
+  // console without enabling "Debug" log level. Temporary — remove with the
+  // rest of this diagnostic block.
+  console.info(
     `🔐 [${new Date(now).toISOString()}] event=${event} ` +
     `session=${session ? 'yes' : 'NO'} ` +
     `expires_at=${expMs != null ? new Date(expMs).toISOString() : 'n/a'} ` +

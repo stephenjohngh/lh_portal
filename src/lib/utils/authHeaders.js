@@ -5,9 +5,6 @@
 // identity always travels in the Authorization header, never in the body.
 
 import { supabase } from '$lib/supabaseClient';
-import { getLogger } from '$lib/utils/logger';
-
-const logger = getLogger('authHeaders');
 
 /**
  * Build fetch headers carrying the current session's access token.
@@ -19,8 +16,9 @@ export async function authHeaders() {
   if (!session?.access_token) {
     // DIAGNOSTIC (temporary): getSession() returned no session at request time —
     // this is the exact point an authed call (AI / admin) fails. Correlate the
-    // timestamp with the authStore event trace. Remove once cause is identified.
-    logger(`🔐 no session at request time — [${new Date().toISOString()}]`);
+    // timestamp with the authStore event trace. console.info so it's visible
+    // without enabling "Debug" log level. Remove once cause is identified.
+    console.info(`🔐 no session at request time — [${new Date().toISOString()}]`);
     throw new Error('Not authenticated');
   }
   return {
