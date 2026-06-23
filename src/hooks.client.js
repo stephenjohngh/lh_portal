@@ -21,6 +21,12 @@ Sentry.init({
   // them. The relay (src/routes/api/monitoring/+server.js) forwards to Sentry
   // server-side. Path avoids the word "sentry" on purpose (some lists match it).
   tunnel: '/api/monitoring',
+  // @sentry/sveltekit adds BrowserTracing by default, which patches
+  // history.pushState/replaceState for navigation spans. We set no
+  // tracesSampleRate, so it produces nothing — but the history patch makes
+  // SvelteKit's client router log "Avoid using history.pushState(...)" on every
+  // load. Drop it (errors-only client SDK); keep all other default integrations.
+  integrations: (defaults) => defaults.filter((i) => i.name !== 'BrowserTracing'),
 });
 
 export const handleError = Sentry.handleErrorWithSentry();
