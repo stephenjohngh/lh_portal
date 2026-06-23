@@ -27,6 +27,24 @@ Sentry.init({
   // SvelteKit's client router log "Avoid using history.pushState(...)" on every
   // load. Drop it (errors-only client SDK); keep all other default integrations.
   integrations: (defaults) => defaults.filter((i) => i.name !== 'BrowserTracing'),
+  // Drop benign, non-actionable noise so real errors aren't buried. These are
+  // dominated by user-side conditions, not app bugs:
+  //   • transient connectivity — laptops waking from sleep, Wi-Fi reconnects,
+  //     and tab-resume token refreshes (Supabase /auth/v1/token) that fail once
+  //     then self-heal on retry. One message per browser engine.
+  //   • fetches cancelled by a navigation (AbortError).
+  //   • the harmless ResizeObserver loop notice browsers emit under layout churn.
+  // Trade-off: a genuine backend outage that surfaces only as "Failed to fetch"
+  // won't reach Sentry — acceptable for an internal portal, and our own /api
+  // errors still report via their JSON error paths. Dial back here if needed.
+  ignoreErrors: [
+    'NetworkError when attempting to fetch resource', // Firefox
+    'Failed to fetch',                                // Chromium
+    'Load failed',                                    // Safari/WebKit
+    'AbortError',
+    'The operation was aborted',
+    /ResizeObserver loop (limit exceeded|completed)/,
+  ],
 });
 
 export const handleError = Sentry.handleErrorWithSentry();
