@@ -30,14 +30,17 @@ async function securityHeaders({ event, resolve }) {
   const response = await resolve(event, {
     // SvelteKit's default preloads js + css. The shell (src/routes/+page.svelte)
     // dynamically imports all ~10 sub-apps, so every page's dependency set pulls
-    // in each app's scoped stylesheet (…/InspectionApp.<hash>.css). The browser
-    // then preloads CSS for apps that aren't shown, which Firefox flags as
-    // "preloaded … was not used within a few seconds" on the deployed builds.
-    // Skip preload hints for the per-app stylesheets (named *App.<hash>.css per
-    // the one-entry-per-app convention) — the <link rel="stylesheet"> still
-    // loads them when the app actually mounts. Everything else keeps the default.
-    preload: ({ type, path }) =>
-      type === 'css' ? !/App\.[\w-]+\.css$/.test(path) : type === 'js',
+    // in the scoped CSS of every app AND every shared component (Modal,
+    // ProtectedButton, LoadingSpinner, …). On the initial home view almost none
+    // of that CSS is used immediately, so the browser preloads stylesheets it
+    // won't apply for a while — surfaced on the deployed builds as Firefox's
+    // "preloaded … was not used within a few seconds" warnings.
+    //
+    // Drop CSS preload hints (keep js modulepreload, which has real value and
+    // doesn't warn). Each <link rel="stylesheet"> is still emitted in <head> and
+    // is render-blocking, so the CSS still loads with no flash-of-unstyled
+    // content — we only remove the redundant parallel preload hint.
+    preload: ({ type }) => type === 'js',
   });
 
   // Stop MIME-sniffing of responses (e.g. uploaded files served via the
