@@ -27,7 +27,18 @@ Sentry.init({
 
 /** @type {import('@sveltejs/kit').Handle} */
 async function securityHeaders({ event, resolve }) {
-  const response = await resolve(event);
+  const response = await resolve(event, {
+    // SvelteKit's default preloads js + css. The shell (src/routes/+page.svelte)
+    // dynamically imports all ~10 sub-apps, so every page's dependency set pulls
+    // in each app's scoped stylesheet (…/InspectionApp.<hash>.css). The browser
+    // then preloads CSS for apps that aren't shown, which Firefox flags as
+    // "preloaded … was not used within a few seconds" on the deployed builds.
+    // Skip preload hints for the per-app stylesheets (named *App.<hash>.css per
+    // the one-entry-per-app convention) — the <link rel="stylesheet"> still
+    // loads them when the app actually mounts. Everything else keeps the default.
+    preload: ({ type, path }) =>
+      type === 'css' ? !/App\.[\w-]+\.css$/.test(path) : type === 'js',
+  });
 
   // Stop MIME-sniffing of responses (e.g. uploaded files served via the
   // media proxy being interpreted as HTML).
