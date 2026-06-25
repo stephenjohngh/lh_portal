@@ -4,7 +4,6 @@
 <script>
   import { onMount }         from 'svelte';
   import { api }             from '$lib/utils/api';
-  import { supabase }        from '$lib/supabaseClient';
   import { getLogger }       from '$lib/utils/logger';
   import { buildingAssetsStore }    from '../stores/buildingAssetsStore.js';
   import {
@@ -29,7 +28,10 @@
   import ConditionChecklistChips from './ConditionChecklistChips.svelte';
   import PhotoLightbox           from '$lib/components/common/PhotoLightbox.svelte';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
-  import { normalisePhotoUrl, deleteStorageFiles } from '$lib/utils/driveUtils.js';
+  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
+  import { listAttachments }   from '$lib/utils/mediaAttachments.js';
+  // walk_sessions belong to the Inspection app — delete through its interface.
+  import { deleteWalkSession } from '$lib/apps/inspection/public.js';
 
   const logger = getLogger('InspectionsTab');
 
@@ -156,13 +158,9 @@
         // from component_inspections in migration 135).
         const inspIds = rows.map(r => r.id);
         if (inspIds.length > 0) {
-          const { data: attachments } = await supabase
-            .from('media_attachments')
-            .select('entity_id, storage_url')
-            .eq('entity_type', 'component_inspection')
-            .in('entity_id', inspIds);
+          const attachments = await listAttachments('component_inspection', inspIds);
           const byId = {};
-          for (const a of attachments ?? []) {
+          for (const a of attachments) {
             (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
           }
           for (const r of rows) r.photo_urls = byId[r.id] ?? [];
@@ -183,34 +181,9 @@
     confirmId  = null;
     deletingId = session.id;
     try {
-      // 1. Get all inspection IDs for this session so we can scope the cleanup.
-      const inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: session.id } });
-      const inspIds  = inspRows.map(r => r.id);
-
-      if (inspIds.length > 0) {
-        // 2. Fetch storage URLs BEFORE deleting DB rows — needed to clean up Drive.
-        const { data: attachments } = await supabase
-          .from('media_attachments')
-          .select('storage_url')
-          .eq('entity_type', 'component_inspection')
-          .in('entity_id', inspIds);
-
-        // 3. Best-effort Drive file deletion — failures are swallowed so DB cleanup always runs.
-        const { data: sessionData } = await supabase.auth.getSession();
-        await deleteStorageFiles(
-          (attachments ?? []).map(a => a.storage_url),
-          sessionData?.session?.access_token,
-        );
-
-        // 4. Delete media_attachments rows, then the inspections.
-        await supabase.from('media_attachments').delete()
-          .eq('entity_type', 'component_inspection')
-          .in('entity_id', inspIds);
-        await api.deleteMany('component_inspections', { walk_session_id: session.id });
-      }
-
-      // 5. Delete the session row last (inspections must go first — FK constraint).
-      await api.delete('walk_sessions', session.id);
+      // Delete the session and everything under it (photos → inspections →
+      // session, FK-safe order) via the Inspection app's interface.
+      await deleteWalkSession(session.id);
 
       sessions   = sessions.filter(s => s.id !== session.id);
       if (expandedId === session.id) expandedId = null;

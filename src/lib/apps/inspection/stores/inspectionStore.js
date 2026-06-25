@@ -6,7 +6,7 @@ import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
-import { supabase }      from '$lib/supabaseClient';   // auth + media_attachments IN queries
+import { supabase }      from '$lib/supabaseClient';   // auth (getUser) only
 // Components belong to the Building Assets app — reach them only through its
 // public interface, so the write rules live in one place (../building_assets/public.js).
 import {
@@ -18,10 +18,15 @@ import {
 } from '$lib/apps/building_assets/public.js';
 import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
 import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
+import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
+// Polymorphic photo storage (media_attachments) goes through the shared module,
+// not raw supabase queries.
 import {
-  normalisePhotoUrl,
-  deleteStorageFiles,
-} from '$lib/utils/driveUtils.js';
+  listAttachments,
+  addAttachments,
+  purgeAttachments,
+} from '$lib/utils/mediaAttachments.js';
+import { deleteWalkSession } from '../public.js';   // session-delete cascade (shared)
 import {
   buildWalkComponents,
   firstNonEmptyFloor,
@@ -40,13 +45,10 @@ async function mergePhotosIntoRows(rows) {
   const ids = rows.map(r => r.id).filter(Boolean);
   if (ids.length === 0) return;
 
-  const { data: photos, error } = await supabase
-    .from('media_attachments')
-    .select('entity_id, storage_url')
-    .eq('entity_type', 'component_inspection')
-    .in('entity_id', ids);
-
-  if (error) { logger('⚠ mergePhotos error:', error.message); return; }
+  let photos;
+  try {
+    photos = await listAttachments('component_inspection', ids);
+  } catch (e) { logger('⚠ mergePhotos error:', e.message); return; }
 
   const byId = {};
   for (const p of (photos ?? [])) {
@@ -548,21 +550,9 @@ function createInspectionStore() {
         inspected_by:      userId,
         inspected_at:      now,
       });
-      // Replace all photos for this inspection (delete-then-insert).
-      // Fetch the old URLs first so we can clean up the storage files.
-      const { data: oldAttachments } = await supabase
-        .from('media_attachments')
-        .select('storage_url')
-        .eq('entity_type', 'component_inspection')
-        .eq('entity_id', existing.id);
-      const { data: sessionData } = await supabase.auth.getSession();
-      await deleteStorageFiles(
-        (oldAttachments ?? []).map(a => a.storage_url),
-        sessionData?.session?.access_token,
-      );
-      await supabase.from('media_attachments').delete()
-        .eq('entity_type', 'component_inspection')
-        .eq('entity_id', existing.id);
+      // Replace all photos for this inspection: purge the old ones (storage
+      // files + rows) before the new set is inserted below.
+      await purgeAttachments('component_inspection', existing.id);
     } else {
       inspection = await createComponentInspection({   // shared (building_assets/public.js)
         walk_session_id:   state.activeSession.id,
@@ -576,17 +566,7 @@ function createInspectionStore() {
     }
 
     // Persist photos to media_attachments (for both create and update paths)
-    if (photoUrls.length > 0) {
-      const photoRows = photoUrls.map(url => ({
-        entity_type:      'component_inspection',
-        entity_id:        inspection.id,
-        storage_url:      url,
-        mime_type:        'image/jpeg',
-        created_at:       now,
-        created_by:       userId,
-      }));
-      await supabase.from('media_attachments').insert(photoRows);
-    }
+    await addAttachments('component_inspection', inspection.id, photoUrls, userId);
     // Inject photo_urls onto the in-memory record so UI state stays consistent.
     // Normalise Drive viewer URLs in case any were captured before the fix.
     inspection.photo_urls = photoUrls.map(normalisePhotoUrl);
@@ -732,28 +712,7 @@ function createInspectionStore() {
   // -- Delete session -----------------------------------------------------------
 
   async function deleteSession(sessionId) {
-    // Must delete media_attachments before inspections (no FK cascade since the
-    // relationship is polymorphic and has no enforced FK).
-    const inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: sessionId } });
-    const inspIds  = inspRows.map(r => r.id);
-    if (inspIds.length > 0) {
-      // Fetch storage URLs before deleting DB rows so we can clean up Drive.
-      const { data: attachments } = await supabase
-        .from('media_attachments')
-        .select('storage_url')
-        .eq('entity_type', 'component_inspection')
-        .in('entity_id', inspIds);
-      const { data: sessionData } = await supabase.auth.getSession();
-      await deleteStorageFiles(
-        (attachments ?? []).map(a => a.storage_url),
-        sessionData?.session?.access_token,
-      );
-      await supabase.from('media_attachments').delete()
-        .eq('entity_type', 'component_inspection')
-        .in('entity_id', inspIds);
-    }
-    await api.deleteMany('component_inspections', { walk_session_id: sessionId });
-    await api.delete('walk_sessions', sessionId);
+    await deleteWalkSession(sessionId);   // shared cascade: photos → inspections → session (../public.js)
     await loadSessions();
   }
 
