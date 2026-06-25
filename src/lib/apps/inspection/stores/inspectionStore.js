@@ -7,6 +7,13 @@ import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';   // auth + media_attachments IN queries
+// Components belong to the Building Assets app — reach them only through its
+// public interface, so the write rules live in one place (../building_assets/public.js).
+import {
+  applyInspectionResult,
+  updateComponent          as writeComponent,
+  replaceComponentAttributes,
+} from '$lib/apps/building_assets/public.js';
 import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
 import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
 import {
@@ -564,9 +571,6 @@ function createInspectionStore() {
         inspected_by:      userId,
         inspected_at:      now,
       });
-
-      // Update component's last_inspection_id
-      await api.update('components', componentId, { last_inspection_id: inspection.id }, false);
     }
 
     // Persist photos to media_attachments (for both create and update paths)
@@ -585,11 +589,10 @@ function createInspectionStore() {
     // Normalise Drive viewer URLs in case any were captured before the fix.
     inspection.photo_urls = photoUrls.map(normalisePhotoUrl);
 
-    // Also update component status to match result (ok→ok, problem, failed, inactive)
-    await api.update('components', componentId, {
-      status:     result,
-      updated_by: userId,
-    }, false);
+    // Apply the inspection result to the component (status + last_inspection_id +
+    // status_set_by/at) through the Building Assets public interface — the single
+    // place that "inspection result → component status" rule lives.
+    await applyInspectionResult(componentId, { result, inspectionId: inspection.id, userId });
 
     update(s => {
       const newInsp = { ...s.inspections, [componentId]: inspection };
@@ -665,25 +668,12 @@ function createInspectionStore() {
   // -- Component editing (admin during walk) ------------------------------------
 
   async function updateComponent(componentId, fields, attrValues = null) {
-    const userId = await getCurrentUserId();
-    const updated = await api.update('components', componentId, { ...fields, updated_by: userId });
-
+    const userId  = await getCurrentUserId();
+    // Shared writes (../building_assets/public.js) — one implementation, no
+    // duplicated delete-then-insert.
+    const updated = await writeComponent(componentId, fields, userId);
     if (attrValues !== null) {
-      // Delete-all + re-insert pattern — same shape as buildingAssetsStore
-      await api.deleteMany('component_attributes', { component_id: componentId });
-
-      if (Object.keys(attrValues).length > 0) {
-        const rows = Object.entries(attrValues)
-          .filter(([, v]) => v !== '' && v !== null && v !== undefined)
-          .map(([type_attribute_id, value]) => ({
-            component_id: componentId,
-            type_attribute_id,
-            value: String(value),
-          }));
-        if (rows.length > 0) {
-          await api.createMany('component_attributes', rows, false);
-        }
-      }
+      await replaceComponentAttributes(componentId, attrValues);
     }
 
     update(s => {

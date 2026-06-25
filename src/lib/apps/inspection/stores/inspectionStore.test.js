@@ -181,10 +181,17 @@ describe('recordInspection', () => {
 
     const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
     expect(inspArg).toMatchObject({ component_id: 'comp1', inspection_result: 'failed', inspected_by: 'u1' });
-    // last_inspection_id back-reference
-    expect(h.api.update).toHaveBeenCalledWith('components', 'comp1', { last_inspection_id: insp.id }, false);
-    // component status mirrors the result
-    expect(h.api.update).toHaveBeenCalledWith('components', 'comp1', expect.objectContaining({ status: 'failed' }), false);
+    // The "inspection result → component status" rule now runs as ONE write via
+    // the Building Assets public interface (applyInspectionResult): status +
+    // last_inspection_id + status_set_by/at + updated_by — no longer two
+    // separate api.update calls, and status_set_by/at are no longer omitted.
+    expect(h.api.update).toHaveBeenCalledWith('components', 'comp1', expect.objectContaining({
+      status:             'failed',
+      last_inspection_id: insp.id,
+      status_set_by:      'u1',
+      status_set_at:      expect.any(String),
+      updated_by:         'u1',
+    }));
     // photos persisted to media_attachments
     const insertedRows = h.supabase.from.mock.results.map(r => r.value)
       .flatMap(b => b.insert.mock.calls).map(c => c[0]);

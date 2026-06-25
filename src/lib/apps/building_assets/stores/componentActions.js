@@ -6,6 +6,13 @@ import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { requireUserId } from './helpers.js';
+// The component write rules live in the app's public interface (../public.js),
+// so they are shared verbatim with the Inspection app rather than duplicated.
+import {
+  updateComponent          as writeComponent,
+  replaceComponentAttributes,
+  applyInspectionResult,
+} from '../public.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -111,12 +118,8 @@ export function createComponentActions(update) {
 
   // -- Update a component ------------------------------------------------
   async function updateComponent(id, fields) {
-    const userId = requireUserId();
-
-    const updated = await api.update('components', id, {
-      ...fields,
-      updated_by: userId
-    });
+    const userId  = requireUserId();
+    const updated = await writeComponent(id, fields, userId);   // shared write (../public.js)
 
     update(s => ({
       ...s,
@@ -133,20 +136,7 @@ export function createComponentActions(update) {
   // Deletes all existing rows then inserts the new set.
   // attrValues: { [type_attribute_id]: string }
   async function updateComponentAttrs(componentId, attrValues) {
-    await api.deleteMany('component_attributes', { component_id: componentId });
-
-    const rows = Object.entries(attrValues)
-      .filter(([, v]) => v !== '' && v !== null && v !== undefined)
-      .map(([type_attribute_id, value]) => ({
-        component_id:      componentId,
-        type_attribute_id,
-        value:             String(value)
-      }));
-
-    if (rows.length > 0) {
-      await api.createMany('component_attributes', rows, false);
-    }
-
+    const rows = await replaceComponentAttributes(componentId, attrValues);   // shared write (../public.js)
     update(s => ({
       ...s,
       componentAttrs: { ...s.componentAttrs, [componentId]: rows }
@@ -210,13 +200,9 @@ export function createComponentActions(update) {
       // walk_session_id intentionally omitted (null) in prototype context
     });
 
-    await api.update('components', componentId, {
-      status:             result,
-      last_inspection_id: inspection.id,
-      status_set_by:      userId,
-      status_set_at:      new Date().toISOString(),
-      updated_by:         userId
-    });
+    // "inspection result → component status" rule lives in ../public.js, shared
+    // verbatim with the Inspection app.
+    await applyInspectionResult(componentId, { result, inspectionId: inspection.id, userId });
 
     update(s => ({
       ...s,
