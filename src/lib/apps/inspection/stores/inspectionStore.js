@@ -13,6 +13,8 @@ import {
   applyInspectionResult,
   updateComponent          as writeComponent,
   replaceComponentAttributes,
+  createComponentInspection,
+  updateComponentInspection,
 } from '$lib/apps/building_assets/public.js';
 import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
 import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
@@ -539,7 +541,7 @@ function createInspectionStore() {
 
     let inspection;
     if (existing) {
-      inspection = await api.update('component_inspections', existing.id, {
+      inspection = await updateComponentInspection(existing.id, {   // shared (building_assets/public.js)
         inspection_result: result,
         inspector_notes:   notes || null,
         checklist_results: checklistResults,
@@ -562,7 +564,7 @@ function createInspectionStore() {
         .eq('entity_type', 'component_inspection')
         .eq('entity_id', existing.id);
     } else {
-      inspection = await api.create('component_inspections', {
+      inspection = await createComponentInspection({   // shared (building_assets/public.js)
         walk_session_id:   state.activeSession.id,
         component_id:      componentId,
         inspection_result: result,

@@ -10,17 +10,23 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   api: {
-    getById:    vi.fn(() => Promise.resolve({ id: 'c1' })),
-    update:     vi.fn((_t, id, fields) => Promise.resolve({ id, ...fields })),
-    deleteMany: vi.fn(() => Promise.resolve()),
-    createMany: vi.fn(() => Promise.resolve()),
+    getById:           vi.fn(() => Promise.resolve({ id: 'c1' })),
+    get:               vi.fn(() => Promise.resolve([])),
+    update:            vi.fn((_t, id, fields) => Promise.resolve({ id, ...fields })),
+    create:            vi.fn((_t, fields) => Promise.resolve({ id: 'new', ...fields })),
+    deleteMany:        vi.fn(() => Promise.resolve()),
+    createMany:        vi.fn(() => Promise.resolve()),
+    latestInspections: vi.fn(() => Promise.resolve([])),
   },
 }));
 
 vi.mock('$lib/utils/api', () => ({ api: h.api }));
 
-const { getComponent, updateComponent, applyInspectionResult, replaceComponentAttributes } =
-  await import('./public.js');
+const {
+  getComponent, updateComponent, applyInspectionResult, replaceComponentAttributes,
+  getLatestInspections, createComponentInspection, updateComponentInspection,
+  listFloors, updateFloor,
+} = await import('./public.js');
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -95,5 +101,49 @@ describe('replaceComponentAttributes', () => {
     expect(h.api.deleteMany).toHaveBeenCalledOnce();
     expect(h.api.createMany).not.toHaveBeenCalled();
     expect(rows).toEqual([]);
+  });
+});
+
+describe('component inspections', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-06-24T12:00:00.000Z')); });
+  afterEach(() => vi.useRealTimers());
+
+  it('getLatestInspections delegates to the dedupe RPC', async () => {
+    h.api.latestInspections.mockResolvedValueOnce([{ component_id: 'c1' }]);
+    const out = await getLatestInspections(['c1', 'c2']);
+    expect(h.api.latestInspections).toHaveBeenCalledWith(['c1', 'c2']);
+    expect(out).toEqual([{ component_id: 'c1' }]);
+  });
+
+  it('createComponentInspection stamps inspected_at when not supplied', async () => {
+    await createComponentInspection({ component_id: 'c1', inspection_result: 'ok', inspected_by: 'u1' });
+    expect(h.api.create).toHaveBeenCalledWith('component_inspections', expect.objectContaining({
+      component_id: 'c1', inspection_result: 'ok', inspected_by: 'u1',
+      inspected_at: '2026-06-24T12:00:00.000Z',
+    }));
+  });
+
+  it('createComponentInspection lets the caller override inspected_at / pass walk_session_id', async () => {
+    await createComponentInspection({ component_id: 'c1', walk_session_id: 's1', inspected_at: '2020-01-01T00:00:00.000Z' });
+    const fields = h.api.create.mock.calls[0][1];
+    expect(fields.walk_session_id).toBe('s1');
+    expect(fields.inspected_at).toBe('2020-01-01T00:00:00.000Z');
+  });
+
+  it('updateComponentInspection updates the row by id', async () => {
+    await updateComponentInspection('insp-1', { inspection_result: 'failed' });
+    expect(h.api.update).toHaveBeenCalledWith('component_inspections', 'insp-1', { inspection_result: 'failed' });
+  });
+});
+
+describe('floors', () => {
+  it('listFloors reads in display order', async () => {
+    await listFloors();
+    expect(h.api.get).toHaveBeenCalledWith('floors', { orderBy: 'level_order', ascending: true });
+  });
+
+  it('updateFloor writes the given fields', async () => {
+    await updateFloor('f1', { walk_order: 3 });
+    expect(h.api.update).toHaveBeenCalledWith('floors', 'f1', { walk_order: 3 });
   });
 });

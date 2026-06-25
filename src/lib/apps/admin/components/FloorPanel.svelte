@@ -2,7 +2,8 @@
 <!-- Configure walk_order per floor. NULL = excluded from building-wide walk sessions. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { api }     from '$lib/utils/api';
+  // Floors belong to Building Assets — reach them through its public interface.
+  import { updateFloor } from '$lib/apps/building_assets/public.js';
   import { getLogger } from '$lib/utils/logger';
   import Button      from '$lib/components/common/Button.svelte';
 
@@ -34,7 +35,7 @@
     }
     rows = rows.map(r => r.id === row.id ? { ...r, _saving: true, _error: null } : r);
     try {
-      await api.update('floors', row.id, { walk_order: walkOrderVal });
+      await updateFloor(row.id, { walk_order: walkOrderVal });
       rows = rows.map(r => r.id === row.id
         ? { ...r, walk_order: walkOrderVal, _walkOrder: walkOrderVal == null ? '' : String(walkOrderVal), _dirty: false, _saving: false }
         : r

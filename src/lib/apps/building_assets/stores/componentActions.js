@@ -12,6 +12,7 @@ import {
   updateComponent          as writeComponent,
   replaceComponentAttributes,
   applyInspectionResult,
+  createComponentInspection,
 } from '../public.js';
 
 const logger = getLogger('BuildingAssets');
@@ -188,7 +189,7 @@ export function createComponentActions(update) {
   async function saveInspection(componentId, { result, notes, checklistResults }) {
     const userId = requireUserId();
 
-    const inspection = await api.create('component_inspections', {
+    const inspection = await createComponentInspection({   // shared row shape (../public.js)
       component_id:      componentId,
       inspection_result: result,
       inspector_notes:   notes?.trim() || null,
@@ -196,8 +197,8 @@ export function createComponentActions(update) {
         ? checklistResults
         : null,
       inspected_by: userId,
-      inspected_at: new Date().toISOString()
-      // walk_session_id intentionally omitted (null) in prototype context
+      // walk_session_id intentionally omitted (null) in prototype context;
+      // inspected_at is stamped by the public interface.
     });
 
     // "inspection result → component status" rule lives in ../public.js, shared

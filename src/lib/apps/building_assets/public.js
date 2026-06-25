@@ -97,3 +97,60 @@ export async function replaceComponentAttributes(componentId, attrValues) {
   }
   return rows;
 }
+
+// ── Component inspections ───────────────────────────────────────────────────
+// An inspection record belongs to the component domain (its result drives the
+// component's status — see applyInspectionResult). Both the Building Assets
+// inline panel and the Inspection app create inspections, so the row shape lives
+// here once rather than in each app. Applying the result to the component is a
+// SEPARATE step (applyInspectionResult) so callers can do session/photo work in
+// between.
+
+/**
+ * Latest inspection per component (deduped server-side RPC).
+ * @param {string[]} componentIds
+ */
+export function getLatestInspections(componentIds) {
+  return api.latestInspections(componentIds);
+}
+
+/**
+ * Create a component_inspection row. `inspected_at` is stamped (now) unless the
+ * caller supplies one. Returns the created row.
+ * @param {object} fields  component_id, inspection_result, inspector_notes,
+ *   checklist_results, inspected_by, and optionally walk_session_id / inspected_at
+ */
+export function createComponentInspection(fields) {
+  return api.create('component_inspections', {
+    inspected_at: new Date().toISOString(),
+    ...fields,
+  });
+}
+
+/**
+ * Update an existing component_inspection (e.g. re-inspecting the same component
+ * in a walk). Returns the updated row.
+ * @param {string} id
+ * @param {object} fields
+ */
+export function updateComponentInspection(id, fields) {
+  return api.update('component_inspections', id, fields);
+}
+
+// ── Floors ──────────────────────────────────────────────────────────────────
+// Building Assets owns the floor model; the Admin app provides a management UI
+// over it. Admin reaches floors through these functions rather than the table.
+
+/** List floors in display order. */
+export function listFloors() {
+  return api.get('floors', { orderBy: 'level_order', ascending: true });
+}
+
+/**
+ * Update floor fields (e.g. walk_order from the Admin Floors panel).
+ * @param {string} id
+ * @param {object} fields
+ */
+export function updateFloor(id, fields) {
+  return api.update('floors', id, fields);
+}
