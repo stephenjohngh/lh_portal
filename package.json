@@ -12,9 +12,9 @@
 		"check": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./tsconfig.check.json",
 		"check:js": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./jsconfig.json",
 		"test": "vitest run",
-		"db:push:test": "supabase db push --db-url \"$TEST_DB_URL\"",
-		"db:push:prod": "supabase db push --db-url \"$PROD_DB_URL\"",
-		"db:push:all": "npm run db:push:test && npm run db:push:prod"
+		"db:push:dev": "node scripts/db-push.mjs dev",
+		"db:push:test": "node scripts/db-push.mjs test",
+		"db:push:prod": "node scripts/db-push.mjs prod"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-netlify": "^5.2.4",
