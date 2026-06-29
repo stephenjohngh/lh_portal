@@ -1,14 +1,15 @@
 <!-- src/lib/apps/building_assets/components/ReportActionButtons.svelte -->
-<!-- The Document / CSV export buttons for the Components-tab report panel.
+<!-- The Word / Excel / CSV export buttons for the Components-tab report panel.
      Presentational: props in (count + flags drive disabled state), events out
-     (document | csv). The single CSV now carries attribute/condition columns
-     per the Columns toggles (the old Condition-Audit button merged in). -->
+     (document | xlsx | csv). All three share the report data model — the CSV and
+     Excel detail use the same column matrix; Word/Excel summaries the same pivot. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
 
   export let count = 0;                // filtered component count
   export let generating = false;       // a Word doc is currently generating
+  export let generatingXlsx = false;   // an Excel doc is currently generating
   export let documentDisabled = false; // no report section selected (reportNoneSelected)
 
   const BTN = 'px-3 py-1 text-xs rounded bg-purple-600 hover:bg-purple-500 text-white'
@@ -20,7 +21,13 @@
     on:click={() => dispatch('document')}
     disabled={generating || count === 0 || documentDisabled}
     class={BTN}
-  >{generating ? 'Generating…' : '⬇ Document'}</button>
+  >{generating ? 'Generating…' : '⬇ Word'}</button>
+  <button
+    on:click={() => dispatch('xlsx')}
+    disabled={generatingXlsx || count === 0}
+    class={BTN}
+    title="Excel (.xlsx) — Components sheet + Full Summary / By Floor sheets (filterable, styled)"
+  >{generatingXlsx ? 'Generating…' : '⬇ Excel'}</button>
   <button
     on:click={() => dispatch('csv')}
     disabled={count === 0}

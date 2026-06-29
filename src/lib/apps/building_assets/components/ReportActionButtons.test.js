@@ -15,46 +15,52 @@ const btn = (re) => screen.getByRole('button', { name: re });
 beforeEach(cleanup);
 
 describe('ReportActionButtons', () => {
-  it('renders the two export actions (Document + the merged CSV)', () => {
+  it('renders the three export actions (Word + Excel + CSV)', () => {
     render(ReportActionButtons, { props: { count: 5 } });
-    expect(btn(/Document/)).toBeInTheDocument();
+    expect(btn(/^⬇ Word/)).toBeInTheDocument();
+    expect(btn(/^⬇ Excel/)).toBeInTheDocument();
     expect(btn(/^⬇ CSV/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Condition Audit/ })).not.toBeInTheDocument();
   });
 
   it('disables every action when there are no components', () => {
     render(ReportActionButtons, { props: { count: 0 } });
-    expect(btn(/Document/)).toBeDisabled();
+    expect(btn(/^⬇ Word/)).toBeDisabled();
+    expect(btn(/^⬇ Excel/)).toBeDisabled();
     expect(btn(/^⬇ CSV/)).toBeDisabled();
   });
 
   it('enables all actions when components exist and a section is selected', () => {
     render(ReportActionButtons, { props: { count: 5, documentDisabled: false, generating: false } });
-    expect(btn(/Document/)).toBeEnabled();
+    expect(btn(/^⬇ Word/)).toBeEnabled();
+    expect(btn(/^⬇ Excel/)).toBeEnabled();
     expect(btn(/^⬇ CSV/)).toBeEnabled();
   });
 
-  it('disables only Document when no report section is selected (CSV stays available)', () => {
+  it('disables only Word when no report section is selected (Excel + CSV stay available)', () => {
     render(ReportActionButtons, { props: { count: 5, documentDisabled: true } });
-    expect(btn(/Document/)).toBeDisabled();
+    expect(btn(/^⬇ Word/)).toBeDisabled();
+    expect(btn(/^⬇ Excel/)).toBeEnabled();
     expect(btn(/^⬇ CSV/)).toBeEnabled();
   });
 
-  it('shows a Generating… label and disables Document while generating', () => {
+  it('shows a Generating… label and disables Word while it generates', () => {
     render(ReportActionButtons, { props: { count: 5, generating: true } });
+    expect(screen.queryByRole('button', { name: /⬇ Word/ })).not.toBeInTheDocument();
     expect(btn(/Generating…/)).toBeDisabled();
-    expect(screen.queryByRole('button', { name: /⬇ Document/ })).not.toBeInTheDocument();
   });
 
   it('dispatches the matching event when each button is clicked', async () => {
-    const onDoc = vi.fn(), onCsv = vi.fn();
+    const onDoc = vi.fn(), onXlsx = vi.fn(), onCsv = vi.fn();
     render(ReportActionButtons, {
       props: { count: 5 },
-      events: { document: onDoc, csv: onCsv },
+      events: { document: onDoc, xlsx: onXlsx, csv: onCsv },
     });
-    await fireEvent.click(btn(/Document/));
+    await fireEvent.click(btn(/^⬇ Word/));
+    await fireEvent.click(btn(/^⬇ Excel/));
     await fireEvent.click(btn(/^⬇ CSV/));
     expect(onDoc).toHaveBeenCalledTimes(1);
+    expect(onXlsx).toHaveBeenCalledTimes(1);
     expect(onCsv).toHaveBeenCalledTimes(1);
   });
 });

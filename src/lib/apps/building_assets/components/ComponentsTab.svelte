@@ -30,9 +30,9 @@
   import {
     availableFixedDefs, availableConditionDefs,
   } from '../utils/attrFilters.js';
-  import {
-    resolveFixedAttrs, buildComponentsCsvRows,
-  } from '../utils/componentsCsv.js';
+  import { resolveFixedAttrs } from '../utils/componentsCsv.js';
+  import { buildComponentsCsvRows } from '../utils/reportModel.js';
+  import { generateXlsxDocument } from './plan/xlsxReportGenerator.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
   import { fmtGenerated } from '$lib/utils/dates.js';
 
@@ -304,13 +304,43 @@
     URL.revokeObjectURL(url);
   }
 
+  // Column context shared by the CSV and XLSX detail matrix (same shape, so the
+  // two exports can never drift).
+  $: matrixCtx = {
+    types, systems, attrDefs, componentAttrs, componentLinks, inspections,
+    showLinked, showNotes, showInspectionNotes, showAttributes, showConditions,
+  };
+
   function generateCSV() {
     if (filteredComponents.length === 0) return;
-    const rows = buildComponentsCsvRows(filteredComponents, filteredByFloor, {
-      types, systems, attrDefs, componentAttrs, componentLinks, inspections,
-      showLinked, showNotes, showInspectionNotes, showAttributes, showConditions,
-    });
+    const rows = buildComponentsCsvRows(filteredComponents, filteredByFloor, matrixCtx);
     downloadCsv(`components-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  }
+
+  // -- XLSX export (server-styled, multi-sheet) ----------------------
+  // Detail sheet = the same matrix as the CSV; Full Summary / By Floor sheets
+  // are gated by the report-section toggles and use the shared status pivot.
+  let generatingXlsx = false;
+  async function generateXLSX() {
+    if (filteredComponents.length === 0) return;
+    generatingXlsx = true;
+    reportError    = '';
+    try {
+      await generateXlsxDocument({
+        building:      facilities[0]?.name ?? 'Lancaster House',
+        filterSummary: reportFilterSummary,
+        generatedAt:   fmtGenerated(),
+        filteredComponents, filteredByFloor,
+        includeFloorSummary, includeFullSummary,
+        matrixCtx,
+        typeOfFn:   typeOf,
+        systemOfFn: systemOf,
+      });
+    } catch (err) {
+      reportError = err.message;
+    } finally {
+      generatingXlsx = false;
+    }
   }
 
   // -- Floor sets for presets ----------------------------------------
@@ -757,8 +787,10 @@
             <ReportActionButtons
               count={filteredComponents.length}
               generating={generatingReport}
+              generatingXlsx={generatingXlsx}
               documentDisabled={reportNoneSelected}
               on:document={generateReport}
+              on:xlsx={generateXLSX}
               on:csv={generateCSV}
             />
           {/if}

@@ -4,8 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  csvEsc, resolveFixedAttrs, sortComponentsForCsv,
-  fixedAttrValuesByDef, buildComponentsCsvRows,
+  csvEsc, resolveFixedAttrs, sortComponentsForCsv, fixedAttrValuesByDef,
 } from './componentsCsv.js';
 
 // ── Shared fixture ───────────────────────────────────────────────────────────
@@ -82,49 +81,3 @@ describe('fixedAttrValuesByDef', () => {
   });
 });
 
-describe('buildComponentsCsvRows', () => {
-  const allOn = { showLinked: true, showNotes: true, showInspectionNotes: true, showAttributes: true, showConditions: true };
-  const ctx = (over) => ({ types, systems, attrDefs, componentAttrs, componentLinks, inspections, ...allOn, ...over });
-
-  it('all columns on — fixed attr + condition attr each get their own column', () => {
-    const rows = buildComponentsCsvRows([comp], filteredByFloor, ctx());
-    expect(rows[0]).toBe('Floor,System,Type,Asset ID,Label,Linked,Notes,Insp. Notes,Last Inspected,Fire rating,Gap OK,Status');
-    expect(rows[1]).toBe('G,Fire,Door,D1,Main,D2,a note,looks fine,2026-02-23,FD30,✓,ok');
-  });
-
-  it('attributes + conditions on, single-column flags off', () => {
-    const rows = buildComponentsCsvRows([comp], filteredByFloor,
-      ctx({ showLinked: false, showNotes: false, showInspectionNotes: false }));
-    expect(rows[0]).toBe('Floor,System,Type,Asset ID,Label,Last Inspected,Fire rating,Gap OK,Status');
-    expect(rows[1]).toBe('G,Fire,Door,D1,Main,2026-02-23,FD30,✓,ok');
-  });
-
-  it('attributes off → no per-attribute columns', () => {
-    const rows = buildComponentsCsvRows([comp], filteredByFloor,
-      ctx({ showLinked: false, showNotes: false, showInspectionNotes: false, showAttributes: false }));
-    expect(rows[0]).toBe('Floor,System,Type,Asset ID,Label,Last Inspected,Gap OK,Status');
-    expect(rows[1]).toBe('G,Fire,Door,D1,Main,2026-02-23,✓,ok');
-  });
-
-  it('conditions off → no per-condition columns', () => {
-    const rows = buildComponentsCsvRows([comp], filteredByFloor,
-      ctx({ showLinked: false, showNotes: false, showInspectionNotes: false, showConditions: false }));
-    expect(rows[0]).toBe('Floor,System,Type,Asset ID,Label,Last Inspected,Fire rating,Status');
-    expect(rows[1]).toBe('G,Fire,Door,D1,Main,2026-02-23,FD30,ok');
-  });
-
-  it('condition cell is ✗ for fail and — for applies-but-never-inspected', () => {
-    const condOnly = { showLinked: false, showNotes: false, showInspectionNotes: false, showAttributes: false, showConditions: true };
-    const failed = { c1: { ...inspections.c1, checklist_results: { a2: false } } };
-    expect(buildComponentsCsvRows([comp], filteredByFloor, ctx({ ...condOnly, inspections: failed }))[1])
-      .toBe('G,Fire,Door,D1,Main,2026-02-23,✗,ok');
-    // never inspected: blank date, condition unrecorded (—)
-    expect(buildComponentsCsvRows([comp], filteredByFloor, ctx({ ...condOnly, inspections: {} }))[1])
-      .toBe('G,Fire,Door,D1,Main,,—,ok');
-  });
-
-  it('emits header only when there are no components', () => {
-    const rows = buildComponentsCsvRows([], [], ctx());
-    expect(rows).toHaveLength(1);
-  });
-});

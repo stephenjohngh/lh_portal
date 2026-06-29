@@ -33,6 +33,7 @@ import {
   DOC_STYLES, pageProps,
 } from '$lib/server/docxHelpers.js';
 import { sortBySystemTypeAsset } from '$lib/utils/componentSorting.js';
+import { buildStatusPivot } from '$lib/apps/building_assets/utils/reportModel.js';
 import { fmtGenerated, fmtShortDate } from '$lib/utils/dates.js';
 
 const logger = getLogger('generateReport');
@@ -345,25 +346,8 @@ function buildComponentTable(components, colOpts = {}) {
 const FS_COLS = [2000, 2200, 1050, 1200, 1050, 1200, 1766];
 
 function buildFloorSummaryTable(components) {
-  const pivotMap = {};
-  for (const c of components) {
-    const key = `${c.system_name ?? ''}|${c.type_name ?? c.type_code ?? ''}`;
-    if (!pivotMap[key]) {
-      pivotMap[key] = {
-        system_name: c.system_name ?? 'Other',
-        type_name:   c.type_name ?? c.type_code ?? '?',
-        ok: 0, problem: 0, failed: 0, inactive: 0,
-      };
-    }
-    const s = (c.status ?? '').toLowerCase();
-    if (s in pivotMap[key]) pivotMap[key][s]++;
-  }
-
-  const pivot = Object.values(pivotMap).sort((a, b) =>
-    a.system_name.localeCompare(b.system_name) ||
-    a.type_name.localeCompare(b.type_name)
-  );
-
+  // Pivot computed by the shared report model (same source as the XLSX summaries).
+  const { pivot } = buildStatusPivot(components);
   if (pivot.length === 0) return null;
 
   const headerRow = new TableRow({
@@ -431,25 +415,8 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
     return children;
   }
 
-  // Pivot by system + type
-  const pivotMap = {};
-  for (const c of allComponents) {
-    const key = `${c.system_name ?? ''}|${c.type_name ?? c.type_code ?? ''}`;
-    if (!pivotMap[key]) {
-      pivotMap[key] = {
-        system_name: c.system_name ?? 'Other',
-        type_name:   c.type_name ?? c.type_code ?? '?',
-        ok: 0, problem: 0, failed: 0, inactive: 0,
-      };
-    }
-    const s = (c.status ?? '').toLowerCase();
-    if (s in pivotMap[key]) pivotMap[key][s]++;
-  }
-
-  const pivot = Object.values(pivotMap).sort((a, b) =>
-    a.system_name.localeCompare(b.system_name) ||
-    a.type_name.localeCompare(b.type_name)
-  );
+  // Pivot by system + type — shared report model (same source as the XLSX summaries).
+  const { pivot, totals } = buildStatusPivot(allComponents);
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -479,21 +446,15 @@ function buildFullSummarySection(allFloors, building, filterSummary) {
     });
   });
 
-  // Grand total footer row
-  const grandOk       = pivot.reduce((s, r) => s + r.ok,       0);
-  const grandProblem  = pivot.reduce((s, r) => s + r.problem,   0);
-  const grandFailed   = pivot.reduce((s, r) => s + r.failed,    0);
-  const grandInactive = pivot.reduce((s, r) => s + r.inactive,  0);
-  const grandTotal    = grandOk + grandProblem + grandFailed + grandInactive;
-
+  // Grand total footer row (from the shared pivot's totals).
   const totalRow = new TableRow({
     children: [
       hCell('TOTAL', SM_COLS[0] + SM_COLS[1], { fill: COLOURS.headerFill }),
-      numCellHeader(grandOk,       SM_COLS[2]),
-      numCellHeader(grandProblem,  SM_COLS[3]),
-      numCellHeader(grandFailed,   SM_COLS[4]),
-      numCellHeader(grandInactive, SM_COLS[5]),
-      numCellHeader(grandTotal,    SM_COLS[6]),
+      numCellHeader(totals.ok,       SM_COLS[2]),
+      numCellHeader(totals.problem,  SM_COLS[3]),
+      numCellHeader(totals.failed,   SM_COLS[4]),
+      numCellHeader(totals.inactive, SM_COLS[5]),
+      numCellHeader(totals.total,    SM_COLS[6]),
     ],
   });
 
