@@ -1,9 +1,9 @@
 <!-- src/lib/apps/golden_thread/GoldenThreadApp.svelte -->
 <!--
   Golden Thread — L2 Common Data Environment (document register) app shell.
-  MVP scaffold (build step 2): Register list + Completeness dashboard wired to
-  gtStore. Document detail, ingest, lifecycle action UI and the review-tick dev
-  harness land in build steps 3–9.
+  Tabs: Register (list → document detail with lifecycle actions) · Ingest ·
+  Completeness. Build steps 2–4 done; links/citations UI + review-tick harness
+  (steps 6–7) still to come.
 -->
 <script>
   import { onMount } from 'svelte';
@@ -15,13 +15,16 @@
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import GtIngestForm  from '$lib/apps/golden_thread/components/GtIngestForm.svelte';
+  import GtDocumentDetail from '$lib/apps/golden_thread/components/GtDocumentDetail.svelte';
   import { fmtDate }   from '$lib/utils/dates';
 
   $: userId  = $auth.user?.id;
 
   let activeTab = 'register'; // 'register' | 'ingest' | 'completeness'
+  let viewingDetail = false;
 
   $: documents    = $gtStore.documents;
+  $: selectedDoc  = $gtStore.selectedDocument;
   $: completeness = $gtStore.completeness;
   $: categories   = $gtStore.categories;
   $: loading      = $gtStore.loading;
@@ -57,6 +60,21 @@
       activeTab = 'register';
     }
   }
+
+  async function selectDoc(doc) {
+    await gtStore.loadDocument(doc.id);
+    viewingDetail = true;
+  }
+
+  function backToRegister() {
+    viewingDetail = false;
+  }
+
+  // A lifecycle action changed status — refresh completeness (accept changes
+  // the current-count) and the register list so badges stay in sync.
+  async function handleChanged() {
+    await Promise.all([gtStore.loadCompleteness(), gtStore.load()]);
+  }
 </script>
 
 <div>
@@ -69,6 +87,20 @@
     </div>
   </div>
 
+  {#if error}
+    <div class="mb-4">
+      <ErrorDisplay message={error} onDismiss={() => gtStore.clearError()} />
+    </div>
+  {/if}
+
+  {#if viewingDetail && selectedDoc}
+    <GtDocumentDetail
+      doc={selectedDoc}
+      {saving}
+      on:back={backToRegister}
+      on:changed={handleChanged}
+    />
+  {:else}
   <!-- Tab bar -->
   <div class="flex gap-1 border-b border-slate-700 mb-5">
     {#each tabs as [tab, label]}
@@ -82,12 +114,6 @@
       >{label}</button>
     {/each}
   </div>
-
-  {#if error}
-    <div class="mb-4">
-      <ErrorDisplay message={error} onDismiss={() => gtStore.clearError()} />
-    </div>
-  {/if}
 
   {#if loading}
     <LoadingSpinner />
@@ -112,7 +138,8 @@
           </thead>
           <tbody>
             {#each documents as doc (doc.id)}
-              <tr class="border-t border-slate-700 hover:bg-slate-800/50">
+              <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+              <tr class="border-t border-slate-700 hover:bg-slate-800/50 cursor-pointer" on:click={() => selectDoc(doc)}>
                 <td class="px-3 py-2 font-mono text-xs text-slate-300">{doc.reference}</td>
                 <td class="px-3 py-2 text-white">{doc.title}</td>
                 <td class="px-3 py-2 text-slate-400">{doc.document_type}</td>
@@ -160,5 +187,6 @@
         {/each}
       </div>
     {/if}
+  {/if}
   {/if}
 </div>
