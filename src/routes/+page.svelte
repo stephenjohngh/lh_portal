@@ -37,6 +37,7 @@
     'maintenance':      () => import('$lib/apps/maintenance/MaintenanceApp.svelte'),
     'info':             () => import('$lib/apps/info/InfoApp.svelte'),
     'mor':              () => import('$lib/apps/mor/MorApp.svelte'),
+    'golden_thread':    () => import('$lib/apps/golden_thread/GoldenThreadApp.svelte'),
   };
 
   let appComponents = {};   // appId -> component constructor (loaded chunks)

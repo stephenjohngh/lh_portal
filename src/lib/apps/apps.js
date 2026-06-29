@@ -106,6 +106,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'golden_thread',
+    name: 'Golden Thread',
+    icon: 'newspaper',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'BSA 2022 s.88 controlled document register — the building information CDE (ISO 19650)'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -130,6 +139,7 @@ export const APP_IDS = {
   MAINTENANCE:     'maintenance',
   INFO:            'info',
   MOR:             'mor',
+  GOLDEN_THREAD:   'golden_thread',
   SETTINGS:        'settings'
 };
 
