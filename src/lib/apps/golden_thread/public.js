@@ -166,6 +166,37 @@ export function removeLink(linkId) {
   return api.delete('gt_links', linkId);
 }
 
+// ── Author/reviewer registry (gt_persons) ────────────────────────────────────
+
+/** List the people registry (authors/reviewers), name order. */
+export function listPersons() {
+  return api.get('gt_persons', { orderBy: 'full_name', ascending: true });
+}
+
+/**
+ * Add a person to the registry.
+ * @param {{ full_name: string, organisation?: string, role?: string }} data
+ * @param {string} userId
+ */
+export function createPerson(data, userId) {
+  return api.create('gt_persons', { ...data, created_by: userId }, true);
+}
+
+// ── Audit history (read; admin-gated by RLS) ─────────────────────────────────
+
+/**
+ * The immutable audit rows for a single document, oldest first. RLS restricts
+ * gt_audit reads to admins — a non-admin gets an empty list.
+ * @param {string} documentId
+ */
+export function listAuditHistory(documentId) {
+  return api.get('gt_audit', {
+    filters: { target_table: 'gt_documents', target_id: documentId },
+    orderBy: 'seq',
+    ascending: true
+  });
+}
+
 // ── Producer ingest (L1: Maintenance/Inspection register a certificate) ───────
 
 /** gt_documents columns a caller may set at draft creation (others are DB defaults). */
@@ -173,7 +204,7 @@ const DRAFT_FIELDS = [
   'schedule1_category', 'document_type', 'title', 'summary', 'scope_description',
   'building_location', 'uniclass_code', 'container_id', 'author_id', 'reviewer_id',
   'effective_from', 'review_cycle_days', 'safety_critical', 'access_scope',
-  'contains_pii', 'security_classification', 'tags', 'taxonomy_version'
+  'contains_pii', 'security_classification', 'tags', 'taxonomy_version', 'supersedes'
 ];
 
 /**

@@ -21,7 +21,10 @@ const { api, getUser, logAudit, pub } = vi.hoisted(() => ({
     listCitations: vi.fn(async () => []),
     listDocumentLinks: vi.fn(async () => []),
     cite: vi.fn(),
-    removeLink: vi.fn()
+    removeLink: vi.fn(),
+    listPersons: vi.fn(async () => []),
+    createPerson: vi.fn(),
+    listAuditHistory: vi.fn(async () => [])
   }
 }));
 
@@ -116,6 +119,24 @@ describe('gtStore links', () => {
     expect(pub.cite).toHaveBeenCalledWith('doc-1', payload, 'user-1');
     expect(logAudit).toHaveBeenCalledWith('create', 'gt_link', 'doc-1', 'evidences', expect.any(Object));
     expect(pub.listCitations).toHaveBeenCalledWith('doc-1'); // reloaded
+  });
+});
+
+describe('gtStore people & audit', () => {
+  it('addPerson creates with the actor and refreshes the registry', async () => {
+    pub.createPerson.mockResolvedValueOnce({ id: 'p1', full_name: 'Jo Bloggs' });
+    pub.listPersons.mockResolvedValueOnce([{ id: 'p1', full_name: 'Jo Bloggs', role: 'author' }]);
+    const res = await gtStore.addPerson({ full_name: 'Jo Bloggs', role: 'author' });
+    expect(res.success).toBe(true);
+    expect(pub.createPerson).toHaveBeenCalledWith({ full_name: 'Jo Bloggs', role: 'author' }, 'user-1');
+    expect(get(gtStore).persons).toHaveLength(1);
+  });
+
+  it('loadAuditHistory falls back to empty when RLS blocks a non-admin', async () => {
+    pub.listAuditHistory.mockRejectedValueOnce(new Error('permission denied'));
+    // Resolves (does not throw) and yields an empty list rather than surfacing an error.
+    await expect(gtStore.loadAuditHistory('doc-1')).resolves.toBeUndefined();
+    expect(get(gtStore).auditHistory).toEqual([]);
   });
 });
 

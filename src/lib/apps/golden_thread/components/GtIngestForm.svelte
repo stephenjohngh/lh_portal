@@ -12,9 +12,14 @@
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import DocAttachInput from '$lib/components/common/DocAttachInput.svelte';
   import Button       from '$lib/components/common/Button.svelte';
+  import { DOCUMENT_TYPES } from '$lib/apps/golden_thread/utils/gtConstants.js';
 
   /** @type {Array<{code:number,name:string}>} */
   export let categories = [];
+  /** Current documents this draft could supersede. */
+  export let currentDocs = [];
+  /** gt_persons registry for author/reviewer selection. */
+  export let persons = [];
   export let saving = false;
 
   const dispatch = createEventDispatcher();
@@ -28,11 +33,19 @@
   let security_classification = 'official';
   let review_cycle_days = '';
   let tagsText = '';
+  let supersedes = '';
+  let author_id = '';
+  let reviewer_id = '';
   /** @type {File|null} */
   let file = null;
   let formError = '';
 
   $: categoryOptions = categories.map((c) => ({ value: String(c.code), label: `${c.code} — ${c.name}` }));
+  const docTypeOptions = DOCUMENT_TYPES.map((t) => ({ value: t, label: t }));
+  $: supersedesOptions = currentDocs.map((d) => ({ value: d.id, label: `${d.reference} — ${d.title}` }));
+  const personLabel = (p) => (p.organisation ? `${p.full_name} (${p.organisation})` : p.full_name);
+  $: authorOptions   = persons.filter((p) => ['author', 'both'].includes(p.role)).map((p) => ({ value: p.id, label: personLabel(p) }));
+  $: reviewerOptions = persons.filter((p) => ['reviewer', 'both'].includes(p.role)).map((p) => ({ value: p.id, label: personLabel(p) }));
 
   const ACCESS_OPTIONS = [
     { value: 'internal',   label: 'Internal (in-app only)' },
@@ -47,7 +60,7 @@
   function submit() {
     formError = '';
     if (!schedule1_category) return (formError = 'Select a Schedule-1 category.');
-    if (!document_type.trim()) return (formError = 'Document type is required.');
+    if (!document_type) return (formError = 'Select a document type.');
     if (!title.trim()) return (formError = 'Title is required.');
     if (!file) return (formError = 'Attach a file.');
     if (safety_critical && !summary.trim()) {
@@ -59,7 +72,7 @@
 
     dispatch('submit', {
       schedule1_category: Number(schedule1_category),
-      document_type: document_type.trim(),
+      document_type,
       title: title.trim(),
       summary: summary.trim(),
       safety_critical,
@@ -67,6 +80,9 @@
       security_classification,
       review_cycle_days: Number.isFinite(days) ? days : null,
       tags,
+      supersedes: supersedes || null,
+      author_id: author_id || null,
+      reviewer_id: reviewer_id || null,
       file
     });
   }
@@ -82,13 +98,24 @@
   />
 
   <div class="grid gap-4 sm:grid-cols-2">
-    <FormInput label="Document type" bind:value={document_type} required
-      placeholder="e.g. Fire strategy" helpText="BSA Master Document List type" />
+    <FormSelect label="Document type" bind:value={document_type} options={docTypeOptions} required
+      helpText="Master Document List type." />
     <FormInput label="Title" bind:value={title} required />
   </div>
 
   <FormTextarea label="Summary" bind:value={summary} rows={3}
     helpText="Plain-English summary. Required when safety-critical." />
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <FormSelect label="Author" bind:value={author_id} options={authorOptions}
+      placeholder="— None —" helpText="From the People registry." />
+    <FormSelect label="Reviewer" bind:value={reviewer_id} options={reviewerOptions}
+      placeholder="— None —" />
+  </div>
+
+  <FormSelect label="Supersedes (optional)" bind:value={supersedes} options={supersedesOptions}
+    placeholder="— None (new document) —"
+    helpText="Pick the current document this replaces; it is auto-superseded when this one is accepted." />
 
   <div class="grid gap-4 sm:grid-cols-2">
     <FormSelect label="Access scope" bind:value={access_scope} options={ACCESS_OPTIONS} />

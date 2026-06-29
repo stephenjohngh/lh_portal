@@ -19,6 +19,7 @@
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import GtIngestForm  from '$lib/apps/golden_thread/components/GtIngestForm.svelte';
   import GtDocumentDetail from '$lib/apps/golden_thread/components/GtDocumentDetail.svelte';
+  import GtPeople      from '$lib/apps/golden_thread/components/GtPeople.svelte';
   import { fmtDate }   from '$lib/utils/dates';
 
   $: userId  = $auth.user?.id;
@@ -42,15 +43,18 @@
   $: selectedDoc  = $gtStore.selectedDocument;
   $: completeness = $gtStore.completeness;
   $: categories   = $gtStore.categories;
+  $: persons      = $gtStore.persons;
   $: loading      = $gtStore.loading;
   $: saving       = $gtStore.saving;
   $: error        = $gtStore.error;
   $: canEdit      = $permissions.isAdmin || $permissions.canModify;
   $: isAdmin      = $permissions.isAdmin;
+  $: currentDocs  = documents.filter((d) => d.status === 'current');
   $: tabs = [
     ['register', 'Register'],
     ...(canEdit ? [['ingest', 'Ingest']] : []),
     ['completeness', 'Completeness'],
+    ...(canEdit ? [['people', 'People']] : []),
     ...(isAdmin ? [['review', 'Review']] : [])
   ];
 
@@ -92,8 +96,12 @@
     if (tab === 'completeness' && completeness.length === 0) {
       await gtStore.loadCompleteness();
     }
-    if (tab === 'ingest' && categories.length === 0) {
-      await gtStore.loadCategories();
+    if (tab === 'ingest') {
+      if (categories.length === 0) await gtStore.loadCategories();
+      if (persons.length === 0) await gtStore.loadPersons();
+    }
+    if (tab === 'people' && persons.length === 0) {
+      await gtStore.loadPersons();
     }
   }
 
@@ -240,6 +248,8 @@
     {#if canEdit}
       <GtIngestForm
         {categories}
+        {currentDocs}
+        {persons}
         {saving}
         on:submit={handleIngest}
         on:cancel={() => (activeTab = 'register')}
@@ -265,6 +275,13 @@
           </div>
         {/each}
       </div>
+    {/if}
+  {:else if activeTab === 'people'}
+    <!-- ── Author / reviewer registry ────────────────────────────────────── -->
+    {#if canEdit}
+      <GtPeople {saving} />
+    {:else}
+      <p class="text-sm text-slate-400 py-8 text-center">You don't have permission to manage people.</p>
     {/if}
   {:else if activeTab === 'review'}
     <!-- ── Review-tick dev harness (admin) ───────────────────────────────── -->

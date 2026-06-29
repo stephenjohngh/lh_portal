@@ -19,7 +19,8 @@ import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
 import {
   scheduleOneCompleteness, registerDocument,
-  listCitations, listDocumentLinks, cite, removeLink
+  listCitations, listDocumentLinks, cite, removeLink,
+  listPersons, createPerson, listAuditHistory
 } from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('gtStore');
@@ -43,7 +44,9 @@ function createGtStore() {
     selectedDocument: /** @type {any|null} */ (null),
     completeness:     /** @type {any[]} */ ([]),
     categories:       /** @type {any[]} */ ([]),   // applicable Schedule-1 categories (for the ingest form)
+    persons:          /** @type {any[]} */ ([]),   // gt_persons registry (authors/reviewers)
     links:            /** @type {{ outgoing: any[], incoming: any[] }} */ ({ outgoing: [], incoming: [] }),
+    auditHistory:     /** @type {any[]} */ ([]),   // gt_audit rows for the selected document (admin-readable)
     loading:          false,
     saving:           false,
     error:            ''
@@ -144,6 +147,44 @@ function createGtStore() {
     } catch (err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
+    }
+  }
+
+  // ── People registry (gt_persons) ─────────────────────────────────────────────
+
+  /** Load the author/reviewer registry. */
+  async function loadPersons() {
+    try {
+      const persons = await listPersons();
+      update((s) => ({ ...s, persons }));
+      return persons;
+    } catch (err) {
+      update((s) => ({ ...s, error: err.message }));
+      throw err;
+    }
+  }
+
+  /** Add a person, then refresh the registry. */
+  async function addPerson(data) {
+    return run(async (userId) => {
+      const person = await createPerson(data, userId);
+      logAudit('create', 'gt_person', person.id, person.full_name, {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
+      });
+      await loadPersons();
+    });
+  }
+
+  // ── Audit history ────────────────────────────────────────────────────────────
+
+  /** Load the immutable audit trail for a document (admin-only via RLS). */
+  async function loadAuditHistory(documentId) {
+    try {
+      const auditHistory = await listAuditHistory(documentId);
+      update((s) => ({ ...s, auditHistory }));
+    } catch (err) {
+      // Non-admins are blocked by RLS — treat as "no history visible", not an error.
+      update((s) => ({ ...s, auditHistory: [] }));
     }
   }
 
@@ -310,6 +351,9 @@ function createGtStore() {
     loadDocument,
     loadCategories,
     loadCompleteness,
+    loadPersons,
+    addPerson,
+    loadAuditHistory,
     loadLinks,
     addLink,
     removeDocumentLink,

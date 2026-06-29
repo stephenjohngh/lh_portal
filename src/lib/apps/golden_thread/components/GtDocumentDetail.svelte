@@ -10,6 +10,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { gtStore } from '$lib/apps/golden_thread/stores/gtStore';
+  import { permissions } from '$lib/stores/permissions';
   import { nextStates, statusLabel, GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
   import Badge           from '$lib/components/common/Badge.svelte';
   import Button          from '$lib/components/common/Button.svelte';
@@ -34,6 +35,17 @@
   $: if (doc?.id && doc.id !== loadedLinksFor) {
     loadedLinksFor = doc.id;
     gtStore.loadLinks(doc.id);
+  }
+
+  // ── Audit history (admin-only; RLS blocks non-admins) ───────────────────────
+  // Keyed on id+status so it reloads when the document changes AND after a
+  // lifecycle action (which appends an audit row and flips status).
+  $: isAdmin = $permissions.isAdmin;
+  $: auditHistory = $gtStore.auditHistory;
+  let loadedAuditKey = null;
+  $: if (isAdmin && doc?.id && `${doc.id}:${doc.status}` !== loadedAuditKey) {
+    loadedAuditKey = `${doc.id}:${doc.status}`;
+    gtStore.loadAuditHistory(doc.id);
   }
 
   const TARGET_TYPES = ['mor_case', 'maintenance_job', 'component_inspection', 'action', 'plan', 'component', 'gt_document']
@@ -244,6 +256,30 @@
       {/if}
     </div>
   </div>
+
+  <!-- Audit history (admin only) -->
+  {#if isAdmin}
+    <div class="rounded-lg border border-slate-700 p-3 space-y-2">
+      <p class="text-sm font-medium text-slate-200">Audit history</p>
+      {#if auditHistory.length === 0}
+        <p class="text-xs text-slate-600">No audit entries.</p>
+      {:else}
+        <ol class="space-y-1">
+          {#each auditHistory as a (a.seq)}
+            <li class="text-xs text-slate-300 flex flex-wrap gap-x-2">
+              <span class="font-mono text-slate-500">#{a.seq}</span>
+              <span class="uppercase text-slate-400">{a.action}</span>
+              {#if a.before_data?.status && a.after_data?.status && a.before_data.status !== a.after_data.status}
+                <span class="text-slate-200">{a.before_data.status} → {a.after_data.status}</span>
+              {/if}
+              <span class="text-slate-500">{fmtDateTime(a.occurred_at)}</span>
+            </li>
+          {/each}
+        </ol>
+        <p class="text-[11px] text-slate-600">Immutable, hash-chained record — {auditHistory.length} entr{auditHistory.length === 1 ? 'y' : 'ies'}.</p>
+      {/if}
+    </div>
+  {/if}
 
   <p class="text-xs text-slate-600">Created {fmtDateTime(doc.created_at)} · last updated {fmtDateTime(doc.updated_at)}</p>
 </div>
