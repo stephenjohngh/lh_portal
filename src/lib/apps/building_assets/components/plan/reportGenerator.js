@@ -46,6 +46,7 @@ export async function generateReportDocument(params) {
     includePlan, includeFullComponentList,
     planShowId = true, planShowLabel = false,
     showNotes = false, showLinked = false, showInspectionNotes = false,
+    showAttributes = true, showConditions = true,
     filteredByFloor, plans, inspections,
     typeOfFn, systemOfFn, resolveAttrsFn,
     linkedRefsFn = () => '',
@@ -147,7 +148,7 @@ export async function generateReportDocument(params) {
     method:  'POST',
     headers: await authHeaders(),
     body:    JSON.stringify({
-      options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes },
+      options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions },
       floors:        floorsPayload,
       allComponents: allComponentsPayload,
     }),

@@ -31,7 +31,7 @@
     availableFixedDefs, availableConditionDefs,
   } from '../utils/attrFilters.js';
   import {
-    resolveFixedAttrs, buildInventoryCsvRows, buildConditionAuditCsvRows,
+    resolveFixedAttrs, buildComponentsCsvRows,
   } from '../utils/componentsCsv.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
   import { fmtGenerated } from '$lib/utils/dates.js';
@@ -104,7 +104,7 @@
       fixedAttrFilters,
       conditionAttrFilters,
     },
-    columns: { showNotes, showLinked, showInspectionNotes, view },
+    columns: { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, view },
     report: {
       includePlan,
       includeList,
@@ -134,6 +134,10 @@
     showNotes           = c.showNotes;
     showLinked          = c.showLinked;
     showInspectionNotes = c.showInspectionNotes;
+    // Default to true for presets saved before these toggles existed (matches
+    // the prior always-shown behaviour).
+    showAttributes      = c.showAttributes ?? true;
+    showConditions      = c.showConditions ?? true;
     view                = c.view ?? 'list';
     // Restore report options (use defaults for presets saved before report was tracked)
     includePlan              = r.includePlan              ?? false;
@@ -176,6 +180,8 @@
   let showNotes           = true;
   let showLinked          = true;
   let showInspectionNotes = false;
+  let showAttributes      = true;      // attributes column (Word) / one col per attr (CSV)
+  let showConditions      = true;      // condition sub-row (Word) / one col per condition (CSV)
   let view                = 'list';   // 'list' | 'summary' — owned here so presets can restore it
 
   // -- All canonical component status values (always shown in full) --
@@ -251,7 +257,7 @@
         generatedAt,
         includePlan, includeFullComponentList,
         planShowId, planShowLabel,
-        showNotes, showLinked, showInspectionNotes,
+        showNotes, showLinked, showInspectionNotes, showAttributes, showConditions,
         filteredByFloor,
         plans,
         inspections,
@@ -278,17 +284,12 @@
     }
   }
 
-  // -- CSV exports (client-side, no server round-trip) ---------------
+  // -- CSV export (client-side, no server round-trip) ----------------
   //
-  // Two flavours:
-  //   generateCSV()                — inventory CSV (one row per component,
-  //                                  attributes pipe-joined in one cell,
-  //                                  condition summary string)
-  //   generateConditionAuditCSV()  — UNPIVOTED, one column per condition
-  //                                  attribute across the types present
-  //                                  in filteredComponents. Designed for
-  //                                  Excel sort/filter on individual
-  //                                  conditions.
+  // One CSV: one row per component. The Columns toggles decide the optional
+  // columns — Linked/Notes/Insp.Notes (single columns) and Attributes/Conditions
+  // (one column PER attribute / condition, ✓·✗·— for conditions). This merges the
+  // old inventory + condition-audit exports into a single configurable button.
 
   /** Trigger a CSV file download from an array of rows (rows already strings). */
   function downloadCsv(filename, rows) {
@@ -305,33 +306,11 @@
 
   function generateCSV() {
     if (filteredComponents.length === 0) return;
-    const rows = buildInventoryCsvRows(filteredByFloor, {
+    const rows = buildComponentsCsvRows(filteredComponents, filteredByFloor, {
       types, systems, attrDefs, componentAttrs, componentLinks, inspections,
-      showLinked, showNotes, showInspectionNotes,
+      showLinked, showNotes, showInspectionNotes, showAttributes, showConditions,
     });
     downloadCsv(`components-${new Date().toISOString().slice(0, 10)}.csv`, rows);
-  }
-
-  /**
-   * Condition Audit CSV \u2014 unpivoted, one column per condition attribute
-   * across the types present in filteredComponents. Each cell:
-   *   \u2713 = passed in latest inspection
-   *   \u2717 = failed in latest inspection
-   *   \u2014 = applies to this type but has no recorded value (e.g. inspector
-   *       didn't tick it, attr added after inspection, never inspected)
-   *   (blank) = the attribute doesn't apply to this component's type
-   *
-   * Dynamic condition columns are sorted system \u2192 type \u2192 presentation_order
-   * (same shape as the filter popover, via availableConditionDefs).
-   */
-  function generateConditionAuditCSV() {
-    if (filteredComponents.length === 0) return;
-    const { rows, error } = buildConditionAuditCsvRows(filteredComponents, filteredByFloor, {
-      types, systems, attrDefs, inspections,
-    });
-    if (error) { reportError = error; return; }
-    reportError = '';
-    downloadCsv(`condition-audit-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
   // -- Floor sets for presets ----------------------------------------
@@ -681,9 +660,6 @@
           />
         </div>
 
-        <!-- Column toggles -->
-        <ColumnToggles bind:showLinked bind:showNotes bind:showInspectionNotes />
-
         <!-- Clear filters -->
         {#if hasFilters}
           <button
@@ -699,6 +675,14 @@
           {searchQuery} {systems} {types}
         />
 
+      </div>
+
+      <!-- Report/export column toggles — own row -->
+      <div class="px-4 py-2 border-b border-slate-700 bg-slate-800/40">
+        <ColumnToggles
+          bind:showLinked bind:showNotes bind:showInspectionNotes
+          bind:showAttributes bind:showConditions
+        />
       </div>
 
       <!-- ─── Attribute filter strips (Fixed / Condition) ──────────────
@@ -776,7 +760,6 @@
               documentDisabled={reportNoneSelected}
               on:document={generateReport}
               on:csv={generateCSV}
-              on:conditionaudit={generateConditionAuditCSV}
             />
           {/if}
         </div>

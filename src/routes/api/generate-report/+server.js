@@ -167,7 +167,8 @@ function sortComponents(comps) {
 // Total content width: 10466 DXA. Label/Attrs share remaining space ~60/40.
 
 function buildFullComponentListTable(components, colOpts = {}) {
-  const { showNotes = false, showLinked = false, showInspectionNotes = false } = colOpts;
+  const { showNotes = false, showLinked = false, showInspectionNotes = false,
+          showAttributes = true, showConditions = true } = colOpts;
 
   const FLOOR_W = 400;
   const TYPE_W  = 1600;
@@ -177,10 +178,12 @@ function buildFullComponentListTable(components, colOpts = {}) {
   const NOTE_W  = showNotes           ? 1400 : 0;
   const INSP_W  = showInspectionNotes ? 1200 : 0;
   const remain  = CONTENT_W - FLOOR_W - TYPE_W - ID_W - STAT_W - LINK_W - NOTE_W - INSP_W;
-  const LABEL_W = Math.round(remain * 0.60);
-  const ATTR_W  = remain - LABEL_W;
+  // When the Attributes column is hidden, Label takes the freed width.
+  const LABEL_W = showAttributes ? Math.round(remain * 0.60) : remain;
+  const ATTR_W  = showAttributes ? remain - LABEL_W : 0;
 
-  const colWidths = [FLOOR_W, TYPE_W, ID_W, LABEL_W, ATTR_W,
+  const colWidths = [FLOOR_W, TYPE_W, ID_W, LABEL_W,
+    ...(showAttributes      ? [ATTR_W] : []),
     ...(showLinked          ? [LINK_W] : []),
     ...(showNotes           ? [NOTE_W] : []),
     ...(showInspectionNotes ? [INSP_W] : []),
@@ -193,7 +196,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
       hCell('Type',        TYPE_W),
       hCell('Id',          ID_W),
       hCell('Label',       LABEL_W),
-      hCell('Attributes',  ATTR_W),
+      ...(showAttributes      ? [hCell('Attributes',  ATTR_W)] : []),
       ...(showLinked          ? [hCell('Linked',      LINK_W)] : []),
       ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
       ...(showInspectionNotes ? [hCell('Insp. Notes', INSP_W)] : []),
@@ -211,7 +214,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
         dCell(c.type_name    ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id     ?? '—', ID_W,    { alt }),
         dCell(c.label        ?? '—', LABEL_W, { alt }),
-        dCell(attrs || '—',          ATTR_W,  { alt }),
+        ...(showAttributes      ? [dCell(attrs || '—',                   ATTR_W, { alt })] : []),
         ...(showLinked          ? [dCell(c.linked_component_ref ?? '', LINK_W, { alt })] : []),
         ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
         ...(showInspectionNotes ? [dCell(c.last_notes ?? '',           INSP_W, { alt })] : []),
@@ -219,8 +222,8 @@ function buildFullComponentListTable(components, colOpts = {}) {
       ],
     });
     // Sub-row with condition checklist; null when the component has no
-    // condition attrs or no inspection.
-    const sub = buildConditionSubRow(c, colWidths.length, alt);
+    // condition attrs or no inspection, or when conditions are toggled off.
+    const sub = showConditions ? buildConditionSubRow(c, colWidths.length, alt) : null;
     return sub ? [main, sub] : [main];
   });
 
@@ -271,7 +274,8 @@ function buildFullComponentListSection(allComponents, building, filterSummary, c
 // Total content width: 10466 DXA. Label/Attrs share remaining space ~55/45.
 
 function buildComponentTable(components, colOpts = {}) {
-  const { showNotes = false, showLinked = false, showInspectionNotes = false } = colOpts;
+  const { showNotes = false, showLinked = false, showInspectionNotes = false,
+          showAttributes = true, showConditions = true } = colOpts;
 
   const TYPE_W  = 1800;
   const ID_W    = 560;
@@ -280,10 +284,12 @@ function buildComponentTable(components, colOpts = {}) {
   const NOTE_W  = showNotes           ? 1500 : 0;
   const INSP_W  = showInspectionNotes ? 1400 : 0;
   const remain  = CONTENT_W - TYPE_W - ID_W - STAT_W - LINK_W - NOTE_W - INSP_W;
-  const LABEL_W = Math.round(remain * 0.55);
-  const ATTR_W  = remain - LABEL_W;
+  // When the Attributes column is hidden, Label takes the freed width.
+  const LABEL_W = showAttributes ? Math.round(remain * 0.55) : remain;
+  const ATTR_W  = showAttributes ? remain - LABEL_W : 0;
 
-  const colWidths = [TYPE_W, ID_W, LABEL_W, ATTR_W,
+  const colWidths = [TYPE_W, ID_W, LABEL_W,
+    ...(showAttributes      ? [ATTR_W] : []),
     ...(showLinked          ? [LINK_W] : []),
     ...(showNotes           ? [NOTE_W] : []),
     ...(showInspectionNotes ? [INSP_W] : []),
@@ -297,7 +303,7 @@ function buildComponentTable(components, colOpts = {}) {
       hCell('Type',        TYPE_W),
       hCell('Id',          ID_W),
       hCell('Label',       LABEL_W),
-      hCell('Attributes',  ATTR_W),
+      ...(showAttributes      ? [hCell('Attributes',  ATTR_W)] : []),
       ...(showLinked          ? [hCell('Linked',      LINK_W)] : []),
       ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
       ...(showInspectionNotes ? [hCell('Insp. Notes', INSP_W)] : []),
@@ -313,14 +319,14 @@ function buildComponentTable(components, colOpts = {}) {
         dCell(c.type_name  ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id   ?? '—', ID_W,    { alt }),
         dCell(c.label      ?? '—', LABEL_W, { alt }),
-        dCell(attrs || '—',        ATTR_W,  { alt }),
+        ...(showAttributes      ? [dCell(attrs || '—',                   ATTR_W, { alt })] : []),
         ...(showLinked          ? [dCell(c.linked_component_ref ?? '', LINK_W, { alt })] : []),
         ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
         ...(showInspectionNotes ? [dCell(c.last_notes ?? '',           INSP_W, { alt })] : []),
         statusCell(c.status, STAT_W, alt),
       ],
     });
-    const sub = buildConditionSubRow(c, colWidths.length, alt);
+    const sub = showConditions ? buildConditionSubRow(c, colWidths.length, alt) : null;
     return sub ? [main, sub] : [main];
   });
 
@@ -523,8 +529,10 @@ export async function POST({ request }) {
       showNotes            = false,
       showLinked           = false,
       showInspectionNotes  = false,
+      showAttributes       = true,
+      showConditions       = true,
     } = options;
-    const colOpts = { showNotes, showLinked, showInspectionNotes };
+    const colOpts = { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions };
 
     if (!reportTypes.length) {
       return json({ error: 'No report sections requested.' }, { status: 400 });

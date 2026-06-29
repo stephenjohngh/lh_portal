@@ -1,9 +1,8 @@
 <!-- src/lib/apps/building_assets/components/ReportActionButtons.svelte -->
-<!-- The Document / CSV / Condition-Audit export buttons for the Components-tab
-     report panel. Presentational: props in (count + flags drive disabled
-     state), events out (document | csv | conditionaudit). Extracted from
-     ComponentsTab as a worked example of Phase-2 sub-component extraction —
-     see CLAUDE.md "Testing". -->
+<!-- The Document / CSV export buttons for the Components-tab report panel.
+     Presentational: props in (count + flags drive disabled state), events out
+     (document | csv). The single CSV now carries attribute/condition columns
+     per the Columns toggles (the old Condition-Audit button merged in). -->
 <script>
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
@@ -26,12 +25,6 @@
     on:click={() => dispatch('csv')}
     disabled={count === 0}
     class={BTN}
-    title="Inventory CSV — one row per component, attributes pipe-joined"
+    title="CSV — one row per component; attribute & condition columns follow the Columns toggles (Excel-filterable)"
   >⬇ CSV</button>
-  <button
-    on:click={() => dispatch('conditionaudit')}
-    disabled={count === 0}
-    class={BTN}
-    title="Condition Audit CSV — one column per condition attribute, ✓/✗ per component (Excel-filterable)"
-  >⬇ Condition Audit</button>
 </div>

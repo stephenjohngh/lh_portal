@@ -4,8 +4,7 @@
 // transforms can be unit-tested without rendering (Type-1 in the testing
 // blueprint; see CLAUDE.md "Testing"). No store/DOM access — everything is
 // passed in.
-import { conditionChecklistDisplay } from '../lookups.js';
-import { availableConditionDefs }    from './attrFilters.js';
+import { availableFixedDefs, availableConditionDefs } from './attrFilters.js';
 
 const findType   = (types, c)   => types.find(t => t.code === c.type_code);
 const findSystem = (systems, t) => (t ? systems.find(s => s.id === t.building_system_id) : null);
@@ -58,77 +57,64 @@ export function sortComponentsForCsv(comps, types, systems) {
 }
 
 /**
- * Inventory CSV: one row per component, attributes pipe-joined, condition
- * summary string. Returns the CSV lines as string[] (header first).
- * ctx: { types, systems, attrDefs, componentAttrs, componentLinks, inspections,
- *        showLinked, showNotes, showInspectionNotes }
+ * Per-def map of a component's resolved FIXED attribute values: { [defId]: value }.
+ * Same resolution as resolveFixedAttrs (drops empty-equivalent values + unticked
+ * checkboxes) but keyed by def id, so each value can land in its own CSV column.
  */
-export function buildInventoryCsvRows(filteredByFloor, ctx) {
-  const { types, systems, attrDefs, componentAttrs, componentLinks, inspections,
-          showLinked, showNotes, showInspectionNotes } = ctx;
-
-  const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label', 'Attributes'];
-  if (showLinked)          headers.push('Linked');
-  if (showNotes)           headers.push('Notes');
-  if (showInspectionNotes) headers.push('Insp. Notes');
-  headers.push('Last Inspected', 'Condition (last)', 'Status');
-
-  const rows = [headers.map(csvEsc).join(',')];
-
-  for (const { floor, components: comps } of filteredByFloor) {
-    for (const c of sortComponentsForCsv(comps, types, systems)) {
-      const t     = findType(types, c);
-      const sys   = findSystem(systems, t);
-      const attrs = resolveFixedAttrs(c, types, attrDefs, componentAttrs)
-        .map(a => `${a.name}: ${a.value}`).join(' | ');
-      const insp  = inspections[c.id] ?? null;
-      const defs  = t ? (attrDefs[t.id] ?? []) : [];
-      const cond  = conditionChecklistDisplay(insp, defs)
-        .map(({ def, passed }) => {
-          const g = passed === true ? '✓' : passed === false ? '✗' : '—';
-          return `${def.name}: ${g}`;
-        })
-        .join(' | ');
-
-      const row = [
-        floor.short_name,
-        sys?.name  ?? '',
-        t?.name    ?? c.type_code,
-        c.asset_id ?? '',
-        c.label    ?? '',
-        attrs,
-      ];
-      if (showLinked)          row.push((componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '));
-      if (showNotes)           row.push(c.notes ?? '');
-      if (showInspectionNotes) row.push(insp?.inspector_notes ?? '');
-      row.push(insp?.inspected_at ? insp.inspected_at.slice(0, 10) : '');
-      row.push(cond);
-      row.push(c.status ?? '');
-
-      rows.push(row.map(csvEsc).join(','));
-    }
+export function fixedAttrValuesByDef(component, types, attrDefs, componentAttrs) {
+  const t = findType(types, component);
+  if (!t) return {};
+  const defs   = attrDefs[t.id] ?? [];
+  const stored = componentAttrs[component.id] ?? [];
+  const storedMap = {};
+  for (const a of stored) storedMap[a.type_attribute_id] = a.value;
+  const out = {};
+  for (const d of defs) {
+    if (d.visible === false || d.checkable) continue;
+    const raw = storedMap[d.id] ?? d.default_value ?? null;
+    if (raw == null || raw === '') continue;
+    if (d.display_type === 'checkbox') { if (raw === 'true') out[d.id] = 'Yes'; continue; }
+    const value = String(raw);
+    if (value === 'None' || value === 'No' || value === 'Unknown') continue;
+    out[d.id] = value;
   }
-  return rows;
+  return out;
 }
 
 /**
- * Condition-audit CSV: unpivoted, one column per condition attribute across
- * the types present. Cells: ✓ passed · ✗ failed · — applies-but-unrecorded ·
- * (blank) doesn't-apply-to-this-type.
- * Returns { rows } or { error } when there are no condition attributes.
- * ctx: { types, systems, attrDefs, inspections }
+ * Components CSV — one row per component. Replaces the old split inventory +
+ * condition-audit exports (now a single button). Each optional block is gated by
+ * a flag:
+ *   showLinked / showNotes / showInspectionNotes — single columns (as before)
+ *   showAttributes — one column per FIXED attribute present across the filtered
+ *                    components' types; cell = value, or blank if unset / N/A
+ *   showConditions — one column per CONDITION attribute present; cell =
+ *                    ✓ passed · ✗ failed · — applies-but-unrecorded ·
+ *                    (blank) doesn't-apply-to-this-type
+ * Attribute/condition columns are sorted system → type → presentation_order
+ * (via availableFixedDefs / availableConditionDefs — same shape as the filters).
+ * Returns the CSV lines as string[] (header first).
+ * ctx: { types, systems, attrDefs, componentAttrs, componentLinks, inspections,
+ *        showLinked, showNotes, showInspectionNotes, showAttributes, showConditions }
  */
-export function buildConditionAuditCsvRows(filteredComponents, filteredByFloor, ctx) {
-  const { types, systems, attrDefs, inspections } = ctx;
+export function buildComponentsCsvRows(filteredComponents, filteredByFloor, ctx) {
+  const {
+    types, systems, attrDefs, componentAttrs, componentLinks, inspections,
+    showLinked, showNotes, showInspectionNotes, showAttributes, showConditions,
+  } = ctx;
 
   const presentCodes = new Set(filteredComponents.map(c => c.type_code));
-  const condDefs     = availableConditionDefs(types, systems, attrDefs, presentCodes);
-  if (condDefs.length === 0) {
-    return { error: 'No condition attributes for the filtered components — nothing to audit.' };
-  }
+  const fixedDefs = showAttributes ? availableFixedDefs(types, systems, attrDefs, presentCodes) : [];
+  const condDefs  = showConditions ? availableConditionDefs(types, systems, attrDefs, presentCodes) : [];
 
-  const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label', 'Last Inspected', 'Overall'];
-  for (const d of condDefs) headers.push(d.name);
+  const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label'];
+  if (showLinked)          headers.push('Linked');
+  if (showNotes)           headers.push('Notes');
+  if (showInspectionNotes) headers.push('Insp. Notes');
+  headers.push('Last Inspected');
+  for (const d of fixedDefs) headers.push(d.name);
+  for (const d of condDefs)  headers.push(d.name);
+  headers.push('Status');
 
   const rows = [headers.map(csvEsc).join(',')];
 
@@ -138,6 +124,7 @@ export function buildConditionAuditCsvRows(filteredComponents, filteredByFloor, 
       const sys        = findSystem(systems, t);
       const insp       = inspections[c.id] ?? null;
       const typeDefIds = new Set((t ? attrDefs[t.id] ?? [] : []).map(d => d.id));
+      const fixedVals  = showAttributes ? fixedAttrValuesByDef(c, types, attrDefs, componentAttrs) : {};
       const checklist  = insp?.checklist_results ?? {};
 
       const row = [
@@ -146,19 +133,21 @@ export function buildConditionAuditCsvRows(filteredComponents, filteredByFloor, 
         t?.name    ?? c.type_code,
         c.asset_id ?? '',
         c.label    ?? '',
-        insp?.inspected_at ? insp.inspected_at.slice(0, 10) : '',
-        insp?.inspection_result ?? '',
       ];
+      if (showLinked)          row.push((componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '));
+      if (showNotes)           row.push(c.notes ?? '');
+      if (showInspectionNotes) row.push(insp?.inspector_notes ?? '');
+      row.push(insp?.inspected_at ? insp.inspected_at.slice(0, 10) : '');
+      for (const d of fixedDefs) row.push(fixedVals[d.id] ?? '');
       for (const d of condDefs) {
-        if (!typeDefIds.has(d.id)) {
-          row.push('');                                   // attribute doesn't apply
-        } else {
-          const v = checklist[d.id];
-          row.push(v === true ? '✓' : v === false ? '✗' : '—');
-        }
+        if (!typeDefIds.has(d.id)) { row.push(''); continue; } // attribute doesn't apply
+        const v = checklist[d.id];
+        row.push(v === true ? '✓' : v === false ? '✗' : '—');
       }
+      row.push(c.status ?? '');
+
       rows.push(row.map(csvEsc).join(','));
     }
   }
-  return { rows };
+  return rows;
 }
