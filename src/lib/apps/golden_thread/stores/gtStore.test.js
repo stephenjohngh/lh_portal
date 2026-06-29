@@ -11,19 +11,26 @@ import { get } from 'svelte/store';
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 // vi.mock factories hoist above imports, so the mock objects must live in
 // vi.hoisted() (CLAUDE.md testing blueprint).
-const { api, getUser, logAudit, registerDocument, scheduleOneCompleteness } = vi.hoisted(() => ({
+const { api, getUser, logAudit, pub } = vi.hoisted(() => ({
   api: { getAll: vi.fn(), get: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn() },
   getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
   logAudit: vi.fn(),
-  registerDocument: vi.fn(),
-  scheduleOneCompleteness: vi.fn(async () => [])
+  pub: {
+    registerDocument: vi.fn(),
+    scheduleOneCompleteness: vi.fn(async () => []),
+    listCitations: vi.fn(async () => []),
+    listDocumentLinks: vi.fn(async () => []),
+    cite: vi.fn(),
+    removeLink: vi.fn()
+  }
 }));
 
 vi.mock('$lib/utils/api', () => ({ api }));
 vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getUser } } }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/apps/golden_thread/public.js', () => ({ registerDocument, scheduleOneCompleteness }));
+vi.mock('$lib/apps/golden_thread/public.js', () => pub);
+const { registerDocument } = pub;
 
 import { gtStore } from './gtStore.js';
 
@@ -83,6 +90,32 @@ describe('gtStore.accept — supersession rule', () => {
     expect(res.success).toBe(false);
     expect(res.error).toMatch(/Invalid GT status transition/);
     expect(api.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('gtStore links', () => {
+  it('loadLinks splits outgoing (source) and incoming (citations)', async () => {
+    pub.listDocumentLinks.mockResolvedValueOnce([{ id: 'out-1', relation: 'produced_by' }]);
+    pub.listCitations.mockResolvedValueOnce([{ id: 'in-1', relation: 'evidences' }]);
+    await gtStore.loadLinks('doc-1');
+    expect(pub.listDocumentLinks).toHaveBeenCalledWith('doc-1');
+    expect(pub.listCitations).toHaveBeenCalledWith('doc-1');
+    expect(get(gtStore).links).toEqual({
+      outgoing: [{ id: 'out-1', relation: 'produced_by' }],
+      incoming: [{ id: 'in-1', relation: 'evidences' }]
+    });
+  });
+
+  it('addLink cites with the actor and reloads links', async () => {
+    pub.cite.mockResolvedValueOnce({ id: 'link-1' });
+    pub.listDocumentLinks.mockResolvedValueOnce([]);
+    pub.listCitations.mockResolvedValueOnce([]);
+    const payload = { targetType: 'mor_case', targetId: 'case-9', relation: 'evidences', note: '' };
+    const res = await gtStore.addLink('doc-1', payload);
+    expect(res.success).toBe(true);
+    expect(pub.cite).toHaveBeenCalledWith('doc-1', payload, 'user-1');
+    expect(logAudit).toHaveBeenCalledWith('create', 'gt_link', 'doc-1', 'evidences', expect.any(Object));
+    expect(pub.listCitations).toHaveBeenCalledWith('doc-1'); // reloaded
   });
 });
 

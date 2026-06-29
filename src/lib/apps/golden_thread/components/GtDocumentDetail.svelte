@@ -16,6 +16,8 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog   from '$lib/components/common/ConfirmDialog.svelte';
   import Modal           from '$lib/components/common/Modal.svelte';
+  import FormInput       from '$lib/components/common/FormInput.svelte';
+  import FormSelect      from '$lib/components/common/FormSelect.svelte';
   import FormTextarea    from '$lib/components/common/FormTextarea.svelte';
   import AttachedDocuments from '$lib/components/documents/AttachedDocuments.svelte';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
@@ -25,6 +27,44 @@
   export let saving = false;
 
   const dispatch = createEventDispatcher();
+
+  // ── Links / citations ──────────────────────────────────────────────────────
+  $: links = $gtStore.links;
+  let loadedLinksFor = null;
+  $: if (doc?.id && doc.id !== loadedLinksFor) {
+    loadedLinksFor = doc.id;
+    gtStore.loadLinks(doc.id);
+  }
+
+  const TARGET_TYPES = ['mor_case', 'maintenance_job', 'component_inspection', 'action', 'plan', 'component', 'gt_document']
+    .map((v) => ({ value: v, label: v }));
+  const RELATIONS = ['evidences', 'cites', 'produced_by', 'action_register', 'drill_down']
+    .map((v) => ({ value: v, label: v }));
+
+  let showAddLink = false;
+  let linkTargetType = 'mor_case';
+  let linkTargetId = '';
+  let linkRelation = 'evidences';
+  let linkNote = '';
+  let linkError = '';
+
+  async function addLink() {
+    linkError = '';
+    if (!linkTargetId.trim()) return (linkError = 'Target id is required.');
+    const r = await gtStore.addLink(doc.id, {
+      targetType: linkTargetType, targetId: linkTargetId.trim(), relation: linkRelation, note: linkNote.trim()
+    });
+    if (r.success) {
+      showAddLink = false;
+      linkTargetId = ''; linkNote = '';
+    } else {
+      linkError = r.error ?? 'Failed to add link.';
+    }
+  }
+
+  function removeLink(linkId) {
+    gtStore.removeDocumentLink(linkId, doc.id);
+  }
 
   // Action config per *target* status. nextStates() gives the valid targets for
   // the current status; 'superseded' is excluded because you never supersede a
@@ -154,8 +194,74 @@
     <AttachedDocuments entityType="gt_document" entityId={doc.id} canEdit={false} canDelete={false} />
   </div>
 
+  <!-- Links / citations -->
+  <div class="rounded-lg border border-slate-700 p-3 space-y-3">
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-medium text-slate-200">Links &amp; citations</p>
+      <ProtectedButton action="modify" variant="secondary" size="small" on:click={() => (showAddLink = true)}>
+        + Add reference
+      </ProtectedButton>
+    </div>
+
+    <!-- Outgoing: this document references / was produced by -->
+    <div>
+      <p class="text-xs text-slate-500 mb-1">References from this document</p>
+      {#if links.outgoing.length === 0}
+        <p class="text-xs text-slate-600">None.</p>
+      {:else}
+        <ul class="space-y-1">
+          {#each links.outgoing as l (l.id)}
+            <li class="flex items-center justify-between gap-2 text-xs">
+              <span class="text-slate-300">
+                <span class="text-slate-500">{l.relation}</span> → {l.target_type}
+                <span class="font-mono text-slate-400">{l.target_id}</span>
+                {#if l.note}<span class="text-slate-500">· {l.note}</span>{/if}
+              </span>
+              <ProtectedButton action="modify" variant="danger" size="small" on:click={() => removeLink(l.id)}>
+                Remove
+              </ProtectedButton>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
+
+    <!-- Incoming: who cites this document (L3 evidence references) -->
+    <div>
+      <p class="text-xs text-slate-500 mb-1">Cited by</p>
+      {#if links.incoming.length === 0}
+        <p class="text-xs text-slate-600">Not cited yet.</p>
+      {:else}
+        <ul class="space-y-1">
+          {#each links.incoming as l (l.id)}
+            <li class="text-xs text-slate-300">
+              {l.source_type} <span class="font-mono text-slate-400">{l.source_id}</span>
+              <span class="text-slate-500">({l.relation})</span>
+              {#if l.note}<span class="text-slate-500">· {l.note}</span>{/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
+  </div>
+
   <p class="text-xs text-slate-600">Created {fmtDateTime(doc.created_at)} · last updated {fmtDateTime(doc.updated_at)}</p>
 </div>
+
+<!-- Add-link modal -->
+<Modal show={showAddLink} title="Add reference" size="small" on:close={() => (showAddLink = false)}>
+  <div class="space-y-4">
+    <FormSelect label="Target type" bind:value={linkTargetType} options={TARGET_TYPES} />
+    <FormInput label="Target id" bind:value={linkTargetId} placeholder="UUID of the linked entity" required />
+    <FormSelect label="Relation" bind:value={linkRelation} options={RELATIONS} />
+    <FormTextarea label="Note" bind:value={linkNote} rows={2} />
+    {#if linkError}<p class="text-sm text-red-400">{linkError}</p>{/if}
+    <div class="flex justify-end gap-2">
+      <Button variant="secondary" disabled={saving} on:click={() => (showAddLink = false)}>Cancel</Button>
+      <Button variant="primary" loading={saving} disabled={saving} on:click={addLink}>Add</Button>
+    </div>
+  </div>
+</Modal>
 
 <!-- Simple confirm (no reason) -->
 <ConfirmDialog

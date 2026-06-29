@@ -102,6 +102,20 @@ export function listCitations(documentId) {
 }
 
 /**
+ * Links OUT of this document — gt_links whose SOURCE is this document (e.g. the
+ * 'produced_by' link to the job/inspection it came from, or an evidences/cites
+ * link this document asserts).
+ * @param {string} documentId
+ */
+export function listDocumentLinks(documentId) {
+  return api.get('gt_links', {
+    filters: { source_type: GT_DOCUMENT_TYPE, source_id: documentId },
+    orderBy: 'created_at',
+    ascending: false
+  });
+}
+
+/**
  * Schedule-1 completeness: for every APPLICABLE category, how many current
  * documents satisfy it. Counts applicable categories only (PB-4) — non-applicable
  * slots are excluded, not reported "missing". Drives the completeness dashboard.

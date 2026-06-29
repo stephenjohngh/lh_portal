@@ -10,8 +10,11 @@
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { gtStore }     from '$lib/apps/golden_thread/stores/gtStore';
-  import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { GT_STATUS_LABELS, GT_STATUS_BADGE, GT_STATUSES } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { documentsCurrentOn } from '$lib/apps/golden_thread/public.js';
+  import { postJson }   from '$lib/utils/request';
   import Badge         from '$lib/components/common/Badge.svelte';
+  import Button        from '$lib/components/common/Button.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import GtIngestForm  from '$lib/apps/golden_thread/components/GtIngestForm.svelte';
@@ -20,8 +23,20 @@
 
   $: userId  = $auth.user?.id;
 
-  let activeTab = 'register'; // 'register' | 'ingest' | 'completeness'
+  let activeTab = 'register'; // 'register' | 'ingest' | 'completeness' | 'review'
   let viewingDetail = false;
+
+  // Register filters / time-travel
+  let filterStatus = 'all';
+  let timeTravelDate = '';
+  /** @type {any[]|null} */
+  let timeTravelDocs = null;
+
+  // Review-tick dev harness
+  let reviewRunning = false;
+  /** @type {any|null} */
+  let reviewSummary = null;
+  let reviewError = '';
 
   $: documents    = $gtStore.documents;
   $: selectedDoc  = $gtStore.selectedDocument;
@@ -31,9 +46,38 @@
   $: saving       = $gtStore.saving;
   $: error        = $gtStore.error;
   $: canEdit      = $permissions.isAdmin || $permissions.canModify;
-  $: tabs = canEdit
-    ? [['register', 'Register'], ['ingest', 'Ingest'], ['completeness', 'Completeness']]
-    : [['register', 'Register'], ['completeness', 'Completeness']];
+  $: isAdmin      = $permissions.isAdmin;
+  $: tabs = [
+    ['register', 'Register'],
+    ...(canEdit ? [['ingest', 'Ingest']] : []),
+    ['completeness', 'Completeness'],
+    ...(isAdmin ? [['review', 'Review']] : [])
+  ];
+
+  // What the register table shows: time-travel snapshot if a date is set,
+  // otherwise the full list filtered by status.
+  $: displayedDocs = (timeTravelDate && timeTravelDocs)
+    ? timeTravelDocs
+    : (filterStatus === 'all' ? documents : documents.filter((d) => d.status === filterStatus));
+
+  const statusFilterOptions = ['all', ...GT_STATUSES];
+
+  async function applyTimeTravel() {
+    if (!timeTravelDate) { timeTravelDocs = null; return; }
+    timeTravelDocs = await documentsCurrentOn(timeTravelDate);
+  }
+
+  async function runReviewTick() {
+    reviewRunning = true;
+    reviewError = '';
+    try {
+      reviewSummary = await postJson('/api/cron/review-tick', {}, 'Review tick failed');
+    } catch (e) {
+      reviewError = e.message;
+    } finally {
+      reviewRunning = false;
+    }
+  }
 
   onMount(async () => {
     if (userId) {
@@ -51,6 +95,11 @@
     if (tab === 'ingest' && categories.length === 0) {
       await gtStore.loadCategories();
     }
+  }
+
+  function clearTimeTravel() {
+    timeTravelDate = '';
+    timeTravelDocs = null;
   }
 
   async function handleIngest({ detail }) {
@@ -119,9 +168,39 @@
     <LoadingSpinner />
   {:else if activeTab === 'register'}
     <!-- ── Register list ─────────────────────────────────────────────────── -->
-    {#if documents.length === 0}
+    <!-- Filter bar: status filter + time-travel ("current on" a date) -->
+    <div class="flex flex-wrap items-end gap-3 mb-3">
+      <label class="text-xs text-slate-400">
+        Status
+        <select bind:value={filterStatus} disabled={!!timeTravelDate}
+          class="mt-1 block bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-slate-200 disabled:opacity-50">
+          {#each statusFilterOptions as s}
+            <option value={s}>{s === 'all' ? 'All' : (GT_STATUS_LABELS[s] ?? s)}</option>
+          {/each}
+        </select>
+      </label>
+      <label class="text-xs text-slate-400">
+        Current on (time-travel)
+        <input type="date" bind:value={timeTravelDate} on:change={applyTimeTravel}
+          class="mt-1 block bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-slate-200" />
+      </label>
+      {#if timeTravelDate}
+        <button type="button" class="text-xs text-purple-400 hover:text-purple-300 pb-1.5" on:click={clearTimeTravel}>
+          Clear — show all
+        </button>
+        <span class="text-xs text-slate-500 pb-1.5">Showing documents current on {fmtDate(timeTravelDate)}</span>
+      {/if}
+    </div>
+
+    {#if displayedDocs.length === 0}
       <p class="text-sm text-slate-400 py-8 text-center">
-        No documents in the register yet. Ingest (producer upload) lands in the next build step.
+        {#if timeTravelDate}
+          No documents were current on {fmtDate(timeTravelDate)}.
+        {:else if documents.length === 0}
+          No documents in the register yet. Use the Ingest tab to add one.
+        {:else}
+          No documents match this filter.
+        {/if}
       </p>
     {:else}
       <div class="overflow-x-auto rounded-lg border border-slate-700">
@@ -137,7 +216,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each documents as doc (doc.id)}
+            {#each displayedDocs as doc (doc.id)}
               <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
               <tr class="border-t border-slate-700 hover:bg-slate-800/50 cursor-pointer" on:click={() => selectDoc(doc)}>
                 <td class="px-3 py-2 font-mono text-xs text-slate-300">{doc.reference}</td>
@@ -187,6 +266,42 @@
         {/each}
       </div>
     {/if}
+  {:else if activeTab === 'review'}
+    <!-- ── Review-tick dev harness (admin) ───────────────────────────────── -->
+    <div class="max-w-xl space-y-4">
+      <div>
+        <p class="text-sm text-slate-200 font-medium">Review tick</p>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Read-only scan of current documents — counts how many are due-soon / overdue by band
+          (90/60/30/0/+30). Writes nothing; exercises the scheduler engine before a live trigger
+          or notification channel exists.
+        </p>
+      </div>
+
+      <Button variant="primary" loading={reviewRunning} disabled={reviewRunning} on:click={runReviewTick}>
+        Run review tick now
+      </Button>
+
+      {#if reviewError}
+        <ErrorDisplay message={reviewError} onDismiss={() => (reviewError = '')} />
+      {/if}
+
+      {#if reviewSummary}
+        <div class="rounded-lg border border-slate-700 p-3 text-sm space-y-2">
+          <div class="flex gap-4 text-slate-200">
+            <span>Checked: <strong>{reviewSummary.checked}</strong></span>
+            <span>Due soon: <strong class="text-amber-400">{reviewSummary.dueSoon}</strong></span>
+            <span>Overdue: <strong class="text-red-400">{reviewSummary.overdue}</strong></span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            {#each Object.entries(reviewSummary.byBand) as [band, n]}
+              <span class="text-xs px-2 py-1 rounded bg-slate-800 text-slate-300">{band}: {n}</span>
+            {/each}
+          </div>
+          <p class="text-xs text-slate-600">Ran at {reviewSummary.ranAt}</p>
+        </div>
+      {/if}
+    </div>
   {/if}
   {/if}
 </div>

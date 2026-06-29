@@ -17,7 +17,10 @@ import { api }       from '$lib/utils/api';
 import { logAudit }  from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
-import { scheduleOneCompleteness, registerDocument } from '$lib/apps/golden_thread/public.js';
+import {
+  scheduleOneCompleteness, registerDocument,
+  listCitations, listDocumentLinks, cite, removeLink
+} from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('gtStore');
 
@@ -40,6 +43,7 @@ function createGtStore() {
     selectedDocument: /** @type {any|null} */ (null),
     completeness:     /** @type {any[]} */ ([]),
     categories:       /** @type {any[]} */ ([]),   // applicable Schedule-1 categories (for the ingest form)
+    links:            /** @type {{ outgoing: any[], incoming: any[] }} */ ({ outgoing: [], incoming: [] }),
     loading:          false,
     saving:           false,
     error:            ''
@@ -141,6 +145,45 @@ function createGtStore() {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
+  }
+
+  // ── Links / citations ────────────────────────────────────────────────────────
+
+  /** Load a document's links: outgoing (it as source) + incoming citations. */
+  async function loadLinks(documentId) {
+    try {
+      const [outgoing, incoming] = await Promise.all([
+        listDocumentLinks(documentId),
+        listCitations(documentId)
+      ]);
+      update((s) => ({ ...s, links: { outgoing, incoming } }));
+    } catch (err) {
+      update((s) => ({ ...s, error: err.message }));
+      throw err;
+    }
+  }
+
+  /** Add a citation FROM this document to another entity, then reload links. */
+  async function addLink(documentId, payload) {
+    return run(async (userId) => {
+      await cite(documentId, payload, userId);
+      logAudit('create', 'gt_link', documentId, payload.relation, {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info',
+        afterData: payload
+      });
+      await loadLinks(documentId);
+    });
+  }
+
+  /** Remove a link, then reload the document's links. */
+  async function removeDocumentLink(linkId, documentId) {
+    return run(async (userId) => {
+      await removeLink(linkId);
+      logAudit('delete', 'gt_link', linkId, '', {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
+      });
+      await loadLinks(documentId);
+    });
   }
 
   // ── Ingest ───────────────────────────────────────────────────────────────────
@@ -267,6 +310,9 @@ function createGtStore() {
     loadDocument,
     loadCategories,
     loadCompleteness,
+    loadLinks,
+    addLink,
+    removeDocumentLink,
     createDraft,
     submitForReview,
     accept,
