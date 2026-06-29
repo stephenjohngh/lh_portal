@@ -17,7 +17,7 @@ import { api }       from '$lib/utils/api';
 import { logAudit }  from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
-import { scheduleOneCompleteness } from '$lib/apps/golden_thread/public.js';
+import { scheduleOneCompleteness, registerDocument } from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('gtStore');
 
@@ -39,6 +39,7 @@ function createGtStore() {
     documents:        /** @type {any[]} */ ([]),
     selectedDocument: /** @type {any|null} */ (null),
     completeness:     /** @type {any[]} */ ([]),
+    categories:       /** @type {any[]} */ ([]),   // applicable Schedule-1 categories (for the ingest form)
     loading:          false,
     saving:           false,
     error:            ''
@@ -117,6 +118,20 @@ function createGtStore() {
     }
   }
 
+  /** Load the applicable Schedule-1 categories (drives the ingest category picker). */
+  async function loadCategories() {
+    try {
+      const categories = await api.get('gt_schedule1_categories', {
+        filters: { applicable: true }, orderBy: 'code', ascending: true
+      });
+      update((s) => ({ ...s, categories }));
+      return categories;
+    } catch (err) {
+      update((s) => ({ ...s, error: err.message }));
+      throw err;
+    }
+  }
+
   /** Compute Schedule-1 completeness for the dashboard. */
   async function loadCompleteness() {
     try {
@@ -126,6 +141,27 @@ function createGtStore() {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
+  }
+
+  // ── Ingest ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Ingest a new document as a DRAFT (uploads the file + creates the metadata
+   * via the L2 public interface), then splice it into the register and audit.
+   * @param {object} meta    draft fields + `file`
+   * @param {{ producedBy?: { type: string, id: string } } | null} [source]
+   */
+  async function createDraft(meta, source = null) {
+    return run(async (userId) => {
+      const draft = await registerDocument(meta, source, userId);
+      spliceDoc(draft);
+      logAudit('create', 'gt_document', draft.id, draft.title, {
+        appId: 'golden_thread',
+        eventCategory: 'golden_thread',
+        severity: 'info',
+        afterData: { reference: draft.reference, schedule1_category: draft.schedule1_category, document_type: draft.document_type }
+      });
+    });
   }
 
   // ── Lifecycle mutators (admin/editor-gated in the UI) ────────────────────────
@@ -229,7 +265,9 @@ function createGtStore() {
     subscribe,
     load,
     loadDocument,
+    loadCategories,
     loadCompleteness,
+    createDraft,
     submitForReview,
     accept,
     returnToAuthor,

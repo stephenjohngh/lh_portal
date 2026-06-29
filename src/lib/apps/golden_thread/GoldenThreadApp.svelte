@@ -14,16 +14,23 @@
   import Badge         from '$lib/components/common/Badge.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import GtIngestForm  from '$lib/apps/golden_thread/components/GtIngestForm.svelte';
   import { fmtDate }   from '$lib/utils/dates';
 
   $: userId  = $auth.user?.id;
 
-  let activeTab = 'register'; // 'register' | 'completeness'
+  let activeTab = 'register'; // 'register' | 'ingest' | 'completeness'
 
   $: documents    = $gtStore.documents;
   $: completeness = $gtStore.completeness;
+  $: categories   = $gtStore.categories;
   $: loading      = $gtStore.loading;
+  $: saving       = $gtStore.saving;
   $: error        = $gtStore.error;
+  $: canEdit      = $permissions.isAdmin || $permissions.canModify;
+  $: tabs = canEdit
+    ? [['register', 'Register'], ['ingest', 'Ingest'], ['completeness', 'Completeness']]
+    : [['register', 'Register'], ['completeness', 'Completeness']];
 
   onMount(async () => {
     if (userId) {
@@ -37,6 +44,17 @@
     activeTab = tab;
     if (tab === 'completeness' && completeness.length === 0) {
       await gtStore.loadCompleteness();
+    }
+    if (tab === 'ingest' && categories.length === 0) {
+      await gtStore.loadCategories();
+    }
+  }
+
+  async function handleIngest({ detail }) {
+    const r = await gtStore.createDraft(detail);
+    if (r.success) {
+      await gtStore.loadCompleteness();
+      activeTab = 'register';
     }
   }
 </script>
@@ -53,7 +71,7 @@
 
   <!-- Tab bar -->
   <div class="flex gap-1 border-b border-slate-700 mb-5">
-    {#each [['register', 'Register'], ['completeness', 'Completeness']] as [tab, label]}
+    {#each tabs as [tab, label]}
       <button
         type="button"
         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
@@ -110,6 +128,18 @@
           </tbody>
         </table>
       </div>
+    {/if}
+  {:else if activeTab === 'ingest'}
+    <!-- ── Ingest (create a draft) ───────────────────────────────────────── -->
+    {#if canEdit}
+      <GtIngestForm
+        {categories}
+        {saving}
+        on:submit={handleIngest}
+        on:cancel={() => (activeTab = 'register')}
+      />
+    {:else}
+      <p class="text-sm text-slate-400 py-8 text-center">You don't have permission to ingest documents.</p>
     {/if}
   {:else if activeTab === 'completeness'}
     <!-- ── Schedule-1 completeness dashboard ─────────────────────────────── -->
