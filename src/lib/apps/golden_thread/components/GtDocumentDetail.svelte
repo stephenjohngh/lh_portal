@@ -20,7 +20,7 @@
   import FormInput       from '$lib/components/common/FormInput.svelte';
   import FormSelect      from '$lib/components/common/FormSelect.svelte';
   import FormTextarea    from '$lib/components/common/FormTextarea.svelte';
-  import AttachedDocuments from '$lib/components/documents/AttachedDocuments.svelte';
+  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
 
   /** @type {any} */
