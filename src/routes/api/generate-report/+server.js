@@ -32,7 +32,7 @@ import {
   makeHeader, makeFooter,
   DOC_STYLES, pageProps,
 } from '$lib/server/docxHelpers.js';
-import { sortBySystemTypeAsset } from '$lib/utils/componentSorting.js';
+import { sortBySystemTypeOrderAsset } from '$lib/utils/componentSorting.js';
 import { buildStatusPivot } from '$lib/apps/building_assets/utils/reportModel.js';
 import { fmtGenerated, fmtShortDate } from '$lib/utils/dates.js';
 
@@ -159,7 +159,7 @@ function fmtAttrs(attributes) {
 
 // -- Sort helper ---------------------------------------------------------------
 function sortComponents(comps) {
-  return [...comps].sort(sortBySystemTypeAsset);
+  return [...comps].sort(sortBySystemTypeOrderAsset);
 }
 
 // -- Full component list table (all floors combined) ---------------------------

@@ -53,13 +53,15 @@ export async function generateReportDocument(params) {
     conditionResultsFn = () => [],
   } = params;
 
-  // -- Sort helper (System → Type → Asset ID) ----------------------------
+  // -- Sort helper (System → Type → Asset ID, by presentation_order) ------
+  // Uses the store's presentation_order (same as the filters), not names.
   function sortComponents(comps) {
     return [...comps].sort((a, b) => {
       const ta = typeOfFn(a), tb = typeOfFn(b);
-      const sa = systemOfFn(ta)?.name ?? '';
-      const sb = systemOfFn(tb)?.name ?? '';
-      return sa.localeCompare(sb) ||
+      const sa = systemOfFn(ta), sb = systemOfFn(tb);
+      return ((sa?.presentation_order ?? 9999) - (sb?.presentation_order ?? 9999)) ||
+             ((ta?.presentation_order ?? 9999) - (tb?.presentation_order ?? 9999)) ||
+             (sa?.name ?? '').localeCompare(sb?.name ?? '') ||
              (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
              (a.asset_id ?? '').localeCompare(b.asset_id ?? '',
                undefined, { numeric: true, sensitivity: 'base' });
@@ -91,6 +93,8 @@ export async function generateReportDocument(params) {
           type_initial:          t?.initial ?? '?',
           type_colour:           t?.colour  ?? '888888',
           system_name:           sys?.name  ?? '',
+          system_order:          sys?.presentation_order,
+          type_order:            t?.presentation_order,
           status:                c.status,
           primary_attribute:     c.primary_attribute,
           attributes:            resolveAttrsFn(c),
@@ -128,6 +132,8 @@ export async function generateReportDocument(params) {
             floor_short:          floor.short_name,
             floor_order:          floor.level_order ?? 9999,
             system_name:          sys?.name ?? '',
+            system_order:         sys?.presentation_order,
+            type_order:           t?.presentation_order,
             type_name:            t?.name   ?? c.type_code,
             asset_id:             c.asset_id,
             label:                c.label,

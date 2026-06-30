@@ -44,12 +44,18 @@ export function resolveFixedAttrs(component, types, attrDefs, componentAttrs) {
     .filter(Boolean);
 }
 
-/** Sort components within a floor: System → Type → Asset ID (numeric-aware). */
+/**
+ * Sort components within a floor by System → Type → Asset ID, using the store's
+ * presentation_order (the same order the Components-tab filters use), NOT
+ * alphabetical names. asset_id is the numeric-aware tiebreak.
+ */
 export function sortComponentsForCsv(comps, types, systems) {
   return [...comps].sort((a, b) => {
-    const ta = findType(types, a), tb = findType(types, b);
-    const sa = findSystem(systems, ta)?.name ?? '', sb = findSystem(systems, tb)?.name ?? '';
-    return sa.localeCompare(sb) ||
+    const ta = findType(types, a),   tb = findType(types, b);
+    const sa = findSystem(systems, ta), sb = findSystem(systems, tb);
+    return ((sa?.presentation_order ?? 9999) - (sb?.presentation_order ?? 9999)) ||
+           ((ta?.presentation_order ?? 9999) - (tb?.presentation_order ?? 9999)) ||
+           (sa?.name ?? '').localeCompare(sb?.name ?? '') ||
            (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
            (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
   });

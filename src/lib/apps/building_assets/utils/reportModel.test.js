@@ -87,6 +87,15 @@ describe('buildStatusPivot', () => {
     expect(pivot[0].system_name).toBe('Fire');                 // 'Fire' < 'Other'
     expect(pivot[1]).toMatchObject({ system_name: 'Other', type_name: 'x' });
   });
+
+  it('orders by presentation_order (system_order/type_order) over name', () => {
+    const { pivot } = buildStatusPivot([
+      { system_name: 'Alpha', system_order: 2, type_name: 'A', type_order: 1, status: 'ok' },
+      { system_name: 'Zeta',  system_order: 1, type_name: 'B', type_order: 1, status: 'ok' },
+    ]);
+    // Zeta's system_order (1) wins despite 'Alpha' < 'Zeta' alphabetically.
+    expect(pivot.map(r => r.system_name)).toEqual(['Zeta', 'Alpha']);
+  });
   it('ignores unknown status values', () => {
     const { totals } = buildStatusPivot([{ system_name: 'S', type_name: 'T', status: 'weird' }]);
     expect(totals.total).toBe(0);

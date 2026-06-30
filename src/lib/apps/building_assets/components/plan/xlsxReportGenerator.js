@@ -28,11 +28,18 @@ export async function generateXlsxDocument(params) {
   // Detail matrix — identical to the CSV.
   const detail = buildComponentsMatrix(filteredComponents, filteredByFloor, matrixCtx);
 
-  // Map components to the pivot input shape {system_name, type_name, status}.
+  // Map components to the pivot input shape — carries presentation_order so the
+  // summaries sort like the filters (not alphabetically).
   const pivotRows = (comps) => comps.map((c) => {
     const t   = typeOfFn(c);
     const sys = systemOfFn(t);
-    return { system_name: sys?.name ?? 'Other', type_name: t?.name ?? c.type_code, status: c.status };
+    return {
+      system_name:  sys?.name ?? 'Other',
+      type_name:    t?.name ?? c.type_code,
+      status:       c.status,
+      system_order: sys?.presentation_order,
+      type_order:   t?.presentation_order,
+    };
   });
 
   const floorSummaries = includeFloorSummary

@@ -100,9 +100,13 @@ export function buildComponentsCsvRows(filteredComponents, filteredByFloor, ctx)
  * grand total. The single source of the report summaries: the DOCX endpoint and
  * the XLSX summary sheets both use it.
  *
- * @param {Array<{ system_name?: string, type_name?: string, type_code?: string, status?: string }>} rows
- * @returns {{ pivot: Array<{ system_name, type_name, ok, problem, failed, inactive, total }>,
- *             totals: { ok, problem, failed, inactive, total } }}
+ * Rows ordered by presentation_order (system_order, then type_order) when the
+ * input carries it — matching the filters and the detail rows — falling back to
+ * the system/type name. (Callers stamp system_order/type_order from the store's
+ * presentation_order.)
+ *
+ * @param {Array<{ system_name?, type_name?, type_code?, status?, system_order?, type_order? }>} rows
+ * @returns {{ pivot: Array<object>, totals: { ok, problem, failed, inactive, total } }}
  */
 export function buildStatusPivot(rows) {
   const map = {};
@@ -112,7 +116,12 @@ export function buildStatusPivot(rows) {
     const system_name = c.system_name ?? 'Other';
     const type_name   = c.type_name ?? c.type_code ?? '?';
     const key = `${system_name}|${type_name}`;
-    if (!map[key]) map[key] = { system_name, type_name, ok: 0, problem: 0, failed: 0, inactive: 0 };
+    if (!map[key]) map[key] = {
+      system_name, type_name,
+      system_order: c.system_order ?? 9999,
+      type_order:   c.type_order ?? 9999,
+      ok: 0, problem: 0, failed: 0, inactive: 0,
+    };
     const s = (c.status ?? '').toLowerCase();
     if (s === 'ok' || s === 'problem' || s === 'failed' || s === 'inactive') {
       map[key][s]++;
@@ -123,7 +132,11 @@ export function buildStatusPivot(rows) {
 
   const pivot = Object.values(map)
     .map(r => ({ ...r, total: r.ok + r.problem + r.failed + r.inactive }))
-    .sort((a, b) => a.system_name.localeCompare(b.system_name) || a.type_name.localeCompare(b.type_name));
+    .sort((a, b) =>
+      (a.system_order - b.system_order) ||
+      (a.type_order - b.type_order) ||
+      a.system_name.localeCompare(b.system_name) ||
+      a.type_name.localeCompare(b.type_name));
 
   return { pivot, totals };
 }

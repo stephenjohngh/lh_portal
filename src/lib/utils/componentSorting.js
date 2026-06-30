@@ -34,3 +34,16 @@ export function sortBySystemTypeAsset(a, b) {
          (a.type_name   ?? '').localeCompare(b.type_name   ?? '') ||
          (a.asset_id    ?? '').localeCompare(b.asset_id    ?? '', undefined, { numeric: true, sensitivity: 'base' });
 }
+
+// -- Sort by system presentation_order → type presentation_order → asset_id ----
+// The canonical report order — matches the Components-tab filters (which use the
+// store's presentation_order, NOT alphabetical names). For pre-resolved
+// components carrying system_order / type_order (numbers); missing orders sort
+// last, then fall back to the system/type name.
+export function sortBySystemTypeOrderAsset(a, b) {
+  return ((a.system_order ?? 9999) - (b.system_order ?? 9999)) ||
+         ((a.type_order   ?? 9999) - (b.type_order   ?? 9999)) ||
+         (a.system_name ?? '').localeCompare(b.system_name ?? '') ||
+         (a.type_name   ?? '').localeCompare(b.type_name   ?? '') ||
+         (a.asset_id    ?? '').localeCompare(b.asset_id    ?? '', undefined, { numeric: true, sensitivity: 'base' });
+}

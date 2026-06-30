@@ -1,7 +1,8 @@
 // src/lib/utils/componentSorting.test.js
 import { describe, it, expect } from 'vitest';
 import {
-  resultRankSort, sortByFloorAsset, sortByResultFloorAsset, sortBySystemTypeAsset,
+  resultRankSort, sortByFloorAsset, sortByResultFloorAsset,
+  sortBySystemTypeAsset, sortBySystemTypeOrderAsset,
 } from './componentSorting.js';
 
 describe('resultRankSort', () => {
@@ -81,5 +82,27 @@ describe('sortBySystemTypeAsset', () => {
       { system_name: 'Fire', type_name: 'Door', asset_id: 'FD1' },
     ];
     expect(() => rows.sort(sortBySystemTypeAsset)).not.toThrow();
+  });
+});
+
+describe('sortBySystemTypeOrderAsset', () => {
+  it('sorts by system_order, then type_order, then numeric asset id — not by name', () => {
+    const rows = [
+      // 'Alpha' < 'Zeta' alphabetically, but Zeta has the lower system_order.
+      { system_name: 'Alpha', system_order: 2, type_name: 'A', type_order: 1, asset_id: 'A1' },
+      { system_name: 'Zeta',  system_order: 1, type_name: 'B', type_order: 2, asset_id: 'B2' },
+      { system_name: 'Zeta',  system_order: 1, type_name: 'C', type_order: 1, asset_id: 'C10' },
+      { system_name: 'Zeta',  system_order: 1, type_name: 'C', type_order: 1, asset_id: 'C2' },
+    ];
+    rows.sort(sortBySystemTypeOrderAsset);
+    expect(rows.map(r => r.asset_id)).toEqual(['C2', 'C10', 'B2', 'A1']);
+  });
+  it('missing orders sort last, then fall back to name', () => {
+    const rows = [
+      { system_name: 'B', asset_id: 'b' },                       // no order
+      { system_name: 'A', system_order: 1, type_order: 1, asset_id: 'a' },
+    ];
+    rows.sort(sortBySystemTypeOrderAsset);
+    expect(rows.map(r => r.asset_id)).toEqual(['a', 'b']);
   });
 });
