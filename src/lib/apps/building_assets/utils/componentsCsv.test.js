@@ -58,31 +58,34 @@ describe('resolveFixedAttrs', () => {
 });
 
 describe('sortComponentsForCsv', () => {
-  it('orders by type presentation_order (not name), then numeric asset id', () => {
-    // 'Alarm' sorts before 'Door' alphabetically, but Door has the lower
-    // presentation_order, so Door must come first.
+  it('orders by inspection_sort_order (nulls last) within a system — not by type', () => {
+    // 'door' has the lower type presentation_order, but type is NOT a sort key:
+    // the alarm wins because its inspection_sort_order is lower.
     const t = [
       { id: 't1', code: 'door',  name: 'Door',  building_system_id: 'sys1', presentation_order: 1 },
       { id: 't2', code: 'alarm', name: 'Alarm', building_system_id: 'sys1', presentation_order: 2 },
     ];
     const comps = [
-      { type_code: 'alarm', asset_id: 'A1'  },
-      { type_code: 'door',  asset_id: 'D10' },
-      { type_code: 'door',  asset_id: 'D2'  },
+      { type_code: 'door',  asset_id: 'D2', inspection_sort_order: 3 },
+      { type_code: 'alarm', asset_id: 'A1', inspection_sort_order: 1 },
+      { type_code: 'door',  asset_id: 'D1', inspection_sort_order: null }, // null → last, then asset_id
     ];
-    expect(sortComponentsForCsv(comps, t, systems).map(c => c.asset_id)).toEqual(['D2', 'D10', 'A1']);
+    expect(sortComponentsForCsv(comps, t, systems).map(c => c.asset_id)).toEqual(['A1', 'D2', 'D1']);
   });
 
-  it('orders by system presentation_order before type', () => {
+  it('orders by system presentation_order first', () => {
     const sys = [
       { id: 's1', name: 'Zeta',  presentation_order: 1 },
       { id: 's2', name: 'Alpha', presentation_order: 2 },
     ];
     const t = [
-      { id: 't1', code: 'z', name: 'Z', building_system_id: 's1', presentation_order: 1 },
-      { id: 't2', code: 'a', name: 'A', building_system_id: 's2', presentation_order: 1 },
+      { id: 't1', code: 'z', name: 'Z', building_system_id: 's1' },
+      { id: 't2', code: 'a', name: 'A', building_system_id: 's2' },
     ];
-    const comps = [{ type_code: 'a', asset_id: 'A1' }, { type_code: 'z', asset_id: 'Z1' }];
+    const comps = [
+      { type_code: 'a', asset_id: 'A1', inspection_sort_order: 1 },
+      { type_code: 'z', asset_id: 'Z1', inspection_sort_order: 1 },
+    ];
     // Zeta system (order 1) first despite 'Alpha' < 'Zeta' alphabetically.
     expect(sortComponentsForCsv(comps, t, sys).map(c => c.asset_id)).toEqual(['Z1', 'A1']);
   });

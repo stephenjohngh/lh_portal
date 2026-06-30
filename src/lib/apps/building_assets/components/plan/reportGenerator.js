@@ -53,18 +53,22 @@ export async function generateReportDocument(params) {
     conditionResultsFn = () => [],
   } = params;
 
-  // -- Sort helper (System → Type → Asset ID, by presentation_order) ------
-  // Uses the store's presentation_order (same as the filters), not names.
+  // -- Sort helper — matches the online inventory table -------------------
+  // system presentation_order → inspection_sort_order (nulls last) → asset_id.
   function sortComponents(comps) {
     return [...comps].sort((a, b) => {
-      const ta = typeOfFn(a), tb = typeOfFn(b);
-      const sa = systemOfFn(ta), sb = systemOfFn(tb);
-      return ((sa?.presentation_order ?? 9999) - (sb?.presentation_order ?? 9999)) ||
-             ((ta?.presentation_order ?? 9999) - (tb?.presentation_order ?? 9999)) ||
-             (sa?.name ?? '').localeCompare(sb?.name ?? '') ||
-             (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
-             (a.asset_id ?? '').localeCompare(b.asset_id ?? '',
-               undefined, { numeric: true, sensitivity: 'base' });
+      const sa = systemOfFn(typeOfFn(a)), sb = systemOfFn(typeOfFn(b));
+      const so = (sa?.presentation_order ?? 9999) - (sb?.presentation_order ?? 9999);
+      if (so !== 0) return so;
+
+      const iA = a.inspection_sort_order ?? null;
+      const iB = b.inspection_sort_order ?? null;
+      if (iA !== null && iB !== null && iA !== iB) return iA - iB;
+      if (iA !== null && iB === null) return -1;
+      if (iA === null && iB !== null) return 1;
+
+      return (a.asset_id ?? '').localeCompare(b.asset_id ?? '',
+        undefined, { numeric: true });
     });
   }
 
@@ -95,6 +99,7 @@ export async function generateReportDocument(params) {
           system_name:           sys?.name  ?? '',
           system_order:          sys?.presentation_order,
           type_order:            t?.presentation_order,
+          inspection_sort_order: c.inspection_sort_order ?? null,
           status:                c.status,
           primary_attribute:     c.primary_attribute,
           attributes:            resolveAttrsFn(c),
@@ -134,6 +139,7 @@ export async function generateReportDocument(params) {
             system_name:          sys?.name ?? '',
             system_order:         sys?.presentation_order,
             type_order:           t?.presentation_order,
+            inspection_sort_order: c.inspection_sort_order ?? null,
             type_name:            t?.name   ?? c.type_code,
             asset_id:             c.asset_id,
             label:                c.label,

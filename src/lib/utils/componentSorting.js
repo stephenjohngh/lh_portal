@@ -35,15 +35,22 @@ export function sortBySystemTypeAsset(a, b) {
          (a.asset_id    ?? '').localeCompare(b.asset_id    ?? '', undefined, { numeric: true, sensitivity: 'base' });
 }
 
-// -- Sort by system presentation_order → type presentation_order → asset_id ----
-// The canonical report order — matches the Components-tab filters (which use the
-// store's presentation_order, NOT alphabetical names). For pre-resolved
-// components carrying system_order / type_order (numbers); missing orders sort
-// last, then fall back to the system/type name.
-export function sortBySystemTypeOrderAsset(a, b) {
-  return ((a.system_order ?? 9999) - (b.system_order ?? 9999)) ||
-         ((a.type_order   ?? 9999) - (b.type_order   ?? 9999)) ||
-         (a.system_name ?? '').localeCompare(b.system_name ?? '') ||
-         (a.type_name   ?? '').localeCompare(b.type_name   ?? '') ||
-         (a.asset_id    ?? '').localeCompare(b.asset_id    ?? '', undefined, { numeric: true, sensitivity: 'base' });
+// -- Sort by system presentation_order → inspection_sort_order → asset_id ------
+// The canonical report ROW order — matches the online Components inventory table
+// (ComponentInventoryTable): system presentation_order, then the manual
+// inspection_sort_order (nulls last), then numeric asset_id. Floor is handled by
+// grouping, so it is not a key here. For pre-resolved components carrying
+// system_order (number) + inspection_sort_order (number|null) + asset_id.
+export function sortBySystemInspectionAsset(a, b) {
+  const so = (a.system_order ?? 9999) - (b.system_order ?? 9999);
+  if (so !== 0) return so;
+
+  // inspection_sort_order, nulls last
+  const iA = a.inspection_sort_order ?? null;
+  const iB = b.inspection_sort_order ?? null;
+  if (iA !== null && iB !== null && iA !== iB) return iA - iB;
+  if (iA !== null && iB === null) return -1;
+  if (iA === null && iB !== null) return 1;
+
+  return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
 }

@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resultRankSort, sortByFloorAsset, sortByResultFloorAsset,
-  sortBySystemTypeAsset, sortBySystemTypeOrderAsset,
+  sortBySystemTypeAsset, sortBySystemInspectionAsset,
 } from './componentSorting.js';
 
 describe('resultRankSort', () => {
@@ -85,24 +85,20 @@ describe('sortBySystemTypeAsset', () => {
   });
 });
 
-describe('sortBySystemTypeOrderAsset', () => {
-  it('sorts by system_order, then type_order, then numeric asset id — not by name', () => {
+describe('sortBySystemInspectionAsset', () => {
+  it('sorts by system_order → inspection_sort_order (nulls last) → numeric asset id', () => {
     const rows = [
-      // 'Alpha' < 'Zeta' alphabetically, but Zeta has the lower system_order.
-      { system_name: 'Alpha', system_order: 2, type_name: 'A', type_order: 1, asset_id: 'A1' },
-      { system_name: 'Zeta',  system_order: 1, type_name: 'B', type_order: 2, asset_id: 'B2' },
-      { system_name: 'Zeta',  system_order: 1, type_name: 'C', type_order: 1, asset_id: 'C10' },
-      { system_name: 'Zeta',  system_order: 1, type_name: 'C', type_order: 1, asset_id: 'C2' },
+      { system_order: 2, inspection_sort_order: 1,    asset_id: 'X'  }, // other system, last
+      { system_order: 1, inspection_sort_order: null, asset_id: 'A2' }, // null order → after non-null
+      { system_order: 1, inspection_sort_order: 5,    asset_id: 'B'  },
+      { system_order: 1, inspection_sort_order: 3,    asset_id: 'C'  },
+      { system_order: 1, inspection_sort_order: null, asset_id: 'A1' }, // null → ordered by asset_id
     ];
-    rows.sort(sortBySystemTypeOrderAsset);
-    expect(rows.map(r => r.asset_id)).toEqual(['C2', 'C10', 'B2', 'A1']);
+    rows.sort(sortBySystemInspectionAsset);
+    expect(rows.map(r => r.asset_id)).toEqual(['C', 'B', 'A1', 'A2', 'X']);
   });
-  it('missing orders sort last, then fall back to name', () => {
-    const rows = [
-      { system_name: 'B', asset_id: 'b' },                       // no order
-      { system_name: 'A', system_order: 1, type_order: 1, asset_id: 'a' },
-    ];
-    rows.sort(sortBySystemTypeOrderAsset);
-    expect(rows.map(r => r.asset_id)).toEqual(['a', 'b']);
+  it('tolerates missing fields', () => {
+    const rows = [{ asset_id: null }, { system_order: 1, inspection_sort_order: 1, asset_id: 'a' }];
+    expect(() => rows.sort(sortBySystemInspectionAsset)).not.toThrow();
   });
 });

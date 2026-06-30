@@ -45,19 +45,25 @@ export function resolveFixedAttrs(component, types, attrDefs, componentAttrs) {
 }
 
 /**
- * Sort components within a floor by System → Type → Asset ID, using the store's
- * presentation_order (the same order the Components-tab filters use), NOT
- * alphabetical names. asset_id is the numeric-aware tiebreak.
+ * Sort components within a floor to MATCH THE ONLINE inventory table:
+ * system presentation_order → inspection_sort_order (nulls last) → asset_id.
+ * (Type is intentionally not a key — the online display doesn't sort by it.)
  */
 export function sortComponentsForCsv(comps, types, systems) {
   return [...comps].sort((a, b) => {
-    const ta = findType(types, a),   tb = findType(types, b);
-    const sa = findSystem(systems, ta), sb = findSystem(systems, tb);
-    return ((sa?.presentation_order ?? 9999) - (sb?.presentation_order ?? 9999)) ||
-           ((ta?.presentation_order ?? 9999) - (tb?.presentation_order ?? 9999)) ||
-           (sa?.name ?? '').localeCompare(sb?.name ?? '') ||
-           (ta?.name ?? '').localeCompare(tb?.name ?? '') ||
-           (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true, sensitivity: 'base' });
+    const sa = findSystem(systems, findType(types, a));
+    const sb = findSystem(systems, findType(types, b));
+    const so = (sa?.presentation_order ?? 9999) - (sb?.presentation_order ?? 9999);
+    if (so !== 0) return so;
+
+    // inspection_sort_order, nulls last
+    const iA = a.inspection_sort_order ?? null;
+    const iB = b.inspection_sort_order ?? null;
+    if (iA !== null && iB !== null && iA !== iB) return iA - iB;
+    if (iA !== null && iB === null) return -1;
+    if (iA === null && iB !== null) return 1;
+
+    return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
   });
 }
 
