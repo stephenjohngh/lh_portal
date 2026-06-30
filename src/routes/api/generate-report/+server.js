@@ -174,7 +174,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
   const FLOOR_W = 400;
   const TYPE_W  = 1600;
   const ID_W    = 560;
-  const STAT_W  = 1000;
+  const STAT_W  = 1100;   // fits 'Problem' / 'Inactive' on one line
   const LINK_W  = showLinked          ? 1000 : 0;
   const NOTE_W  = showNotes           ? 1400 : 0;
   const INSP_W  = showInspectionNotes ? 1200 : 0;
@@ -280,7 +280,7 @@ function buildComponentTable(components, colOpts = {}) {
 
   const TYPE_W  = 1800;
   const ID_W    = 560;
-  const STAT_W  = 790;
+  const STAT_W  = 1100;   // fits 'Problem' / 'Inactive' on one line
   const LINK_W  = showLinked          ? 1100 : 0;
   const NOTE_W  = showNotes           ? 1500 : 0;
   const INSP_W  = showInspectionNotes ? 1400 : 0;
