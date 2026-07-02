@@ -12,6 +12,7 @@
   import {
     registerSessionReportToGoldenThread, findRegisteredSessionReport,
   } from '$lib/apps/inspection/public.js';
+  import { findDocumentsBySources } from '$lib/apps/golden_thread/public.js';
   import Modal    from '$lib/components/common/Modal.svelte';
   import Button   from '$lib/components/common/Button.svelte';
   import Checkbox from '$lib/components/common/Checkbox.svelte';
@@ -159,14 +160,15 @@
   let registeringId = null;
 
   onMount(async () => {
-    // Pre-check which sessions are already registered (one query per session —
-    // the tab list is modest). Failures are non-fatal.
-    for (const s of sessions) {
-      try {
-        const existing = await findRegisteredSessionReport(s.id);
-        if (existing) registered = { ...registered, [s.id]: { reference: existing.reference } };
-      } catch { /* ignore */ }
-    }
+    // Pre-check which sessions are already registered — ONE batched query for
+    // the whole list (was one per session). Failure is non-fatal: the register
+    // action itself re-checks before creating anything.
+    try {
+      const bySession = await findDocumentsBySources('walk_session', sessions.map((s) => s.id));
+      registered = Object.fromEntries(
+        Object.entries(bySession).map(([id, doc]) => [id, { reference: doc.reference }]),
+      );
+    } catch { /* ignore */ }
   });
 
   async function registerSession(session) {

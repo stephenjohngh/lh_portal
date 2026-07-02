@@ -96,6 +96,28 @@ describe('gtStore.accept — supersession rule', () => {
   });
 });
 
+describe('gtStore.withdraw', () => {
+  it('stamps effective_to when withdrawing a current doc (S3 — time-travel fix)', async () => {
+    api.getById.mockResolvedValueOnce({ id: 'd', title: 'X', status: 'current', effective_from: '2026-01-01', effective_to: null });
+    api.update.mockImplementation(async (_t, id, data) => ({ id, ...data }));
+    const res = await gtStore.withdraw('d', 'wrong file');
+    expect(res.success).toBe(true);
+    const call = api.update.mock.calls.find((c) => c[1] === 'd');
+    expect(call[2]).toMatchObject({ status: 'withdrawn', supersession_reason: 'wrong file' });
+    expect(call[2].effective_to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('does not stamp effective_to on a draft (no open window)', async () => {
+    api.getById.mockResolvedValueOnce({ id: 'd2', title: 'Y', status: 'draft', effective_from: null, effective_to: null });
+    api.update.mockImplementation(async (_t, id, data) => ({ id, ...data }));
+    const res = await gtStore.withdraw('d2', 'orphan draft');   // draft→withdrawn legal since mig 149
+    expect(res.success).toBe(true);
+    const call = api.update.mock.calls.find((c) => c[1] === 'd2');
+    expect(call[2].status).toBe('withdrawn');
+    expect(call[2].effective_to).toBeUndefined();
+  });
+});
+
 describe('gtStore links', () => {
   it('loadLinks splits outgoing (source) and incoming (citations)', async () => {
     pub.listDocumentLinks.mockResolvedValueOnce([{ id: 'out-1', relation: 'produced_by' }]);

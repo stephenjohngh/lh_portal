@@ -12,9 +12,6 @@
 // DB work through api.js and returns; each caller refreshes its own view.
 // Lifecycle MUTATORS (submit/accept/supersede/withdraw) are NOT here — they are
 // admin/editor-gated store methods on gtStore, not a cross-app surface.
-//
-// Build status: read + link surface implemented (steps 5–6). registerDocument
-// (producer ingest, step 3) is a documented stub — see its body.
 
 import { api } from '$lib/utils/api';
 import { uploadDocument } from '$lib/utils/documentApi';
@@ -245,6 +242,34 @@ export async function findDocumentBySource(targetType, targetId) {
 }
 
 /**
+ * Batched findDocumentBySource — one query for a whole list instead of one per
+ * row (the maintenance Documents tab / inspection report modal pre-check).
+ * @param {string} targetType   e.g. 'maintenance_document' | 'walk_session'
+ * @param {string[]} targetIds
+ * @returns {Promise<Record<string, { id: string, reference: string, status: string }>>}
+ *          map of targetId → register document (absent = not registered)
+ */
+export async function findDocumentsBySources(targetType, targetIds) {
+  if (!targetIds?.length) return {};
+  // getAllIn chunks the .in() but takes no equality filters — the extra link
+  // rows are filtered here (produced_by volume is tiny).
+  const links = (await api.getAllIn('gt_links', 'target_id', targetIds))
+    .filter((l) => l.source_type === GT_DOCUMENT_TYPE && l.target_type === targetType && l.relation === 'produced_by');
+  if (!links.length) return {};
+
+  const docIds  = [...new Set(links.map((l) => l.source_id))];
+  const docs    = await api.getAllIn('gt_documents', 'id', docIds, { select: 'id, reference, status' });
+  const docById = new Map(docs.map((d) => [d.id, d]));
+
+  const out = {};
+  for (const l of links) {
+    const doc = docById.get(l.source_id);
+    if (doc && !out[l.target_id]) out[l.target_id] = doc;
+  }
+  return out;
+}
+
+/**
  * Register a document into the L2 register as a DRAFT, optionally linking it back
  * to its producing entity (a maintenance job, an inspection). Used both by L1
  * producers (cross-app) and by the Golden Thread app's own Ingest screen.
@@ -282,6 +307,10 @@ export async function registerDocument(meta, source, userId) {
 
   const updated = await api.update('gt_documents', draft.id, {
     storage_uri: uploaded?.id ? `document_library:${uploaded.id}` : null,
+    // The upload endpoint hashes the received bytes server-side; that value is
+    // authoritative over the browser-computed one (S4 — a tampered client could
+    // otherwise pin a checksum that doesn't match the stored file).
+    ...(uploaded?.file_checksum ? { file_checksum: uploaded.file_checksum } : {}),
     updated_by:  userId
   }, true);
 

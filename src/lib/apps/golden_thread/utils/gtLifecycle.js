@@ -11,7 +11,8 @@
 // discipline as MOR (migration 137 / morHelpers). A pure-logic test pins this.
 //
 // States (lowercase, matching the gt_documents.status CHECK constraint):
-//   draft → under_review → { current | returned_to_author }
+//   draft → { under_review | withdrawn }   (withdrawn = admin exit for mistaken drafts, mig 149)
+//   under_review → { current | returned_to_author }
 //   current → { superseded | withdrawn }
 //   superseded → current            (reactivation)
 //   returned_to_author              (terminal — author produces a NEW draft)
@@ -55,7 +56,7 @@ export const GT_STATUS_BADGE = /** @type {Record<GtStatus, string>} */ ({
  * @type {Record<GtStatus, GtStatus[]>}
  */
 export const TRANSITIONS = {
-  draft:              ['under_review'],
+  draft:              ['under_review', 'withdrawn'],   // withdrawn = admin-only (DB trigger)
   under_review:       ['current', 'returned_to_author'],
   returned_to_author: [],                       // terminal — a new draft is created instead
   current:            ['superseded', 'withdrawn'],

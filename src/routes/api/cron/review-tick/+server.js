@@ -15,6 +15,7 @@
 //   • an authenticated ADMIN session (the in-app "Run review tick now" dev harness).
 // Anything else gets 401/403.
 
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { json }                 from '@sveltejs/kit';
 import { createClient }         from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }  from '$env/static/public';
@@ -30,11 +31,22 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Constant-time string compare (S6). Hashing both sides first makes the buffers
+ * equal-length, so timingSafeEqual never throws and the comparison leaks nothing
+ * about where the strings diverge.
+ */
+function secretsMatch(supplied, expected) {
+  if (!supplied || !expected) return false;
+  const a = createHash('sha256').update(String(supplied)).digest();
+  const b = createHash('sha256').update(String(expected)).digest();
+  return timingSafeEqual(a, b);
+}
+
 /** @type {import('./$types').RequestHandler} */
 export async function POST({ request }) {
   // 1. Authorise: cron secret first, else an admin session.
-  const secret = request.headers.get('x-cron-secret');
-  const cronOk = !!env.GT_CRON_SECRET && secret === env.GT_CRON_SECRET;
+  const cronOk = secretsMatch(request.headers.get('x-cron-secret'), env.GT_CRON_SECRET);
 
   if (!cronOk) {
     const auth = await requireAdmin(request);

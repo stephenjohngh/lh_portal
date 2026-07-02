@@ -6,10 +6,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   api: {
-    get:     vi.fn(),
-    getById: vi.fn(),
-    create:  vi.fn(),
-    update:  vi.fn(),
+    get:      vi.fn(),
+    getById:  vi.fn(),
+    getAllIn: vi.fn(),
+    create:   vi.fn(),
+    update:   vi.fn(),
   },
   postJson: vi.fn(),
   uploadDocument: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock('$lib/utils/api',         () => ({ api: h.api }));
 vi.mock('$lib/utils/request',     () => ({ postJson: h.postJson }));
 vi.mock('$lib/utils/documentApi', () => ({ uploadDocument: h.uploadDocument }));
 
-const { registerExistingArtifact, findDocumentBySource } = await import('./public.js');
+const { registerExistingArtifact, findDocumentBySource, findDocumentsBySources } = await import('./public.js');
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -38,6 +39,26 @@ describe('findDocumentBySource', () => {
     h.api.get.mockResolvedValueOnce([]);
     expect(await findDocumentBySource('walk_session', 's1')).toBeNull();
     expect(h.api.getById).not.toHaveBeenCalled();
+  });
+});
+
+describe('findDocumentsBySources', () => {
+  it('batches: one links query + one docs query, keyed by target id', async () => {
+    h.api.getAllIn
+      .mockResolvedValueOnce([   // gt_links rows (client-side filtered)
+        { source_type: 'gt_document', target_type: 'walk_session', relation: 'produced_by', source_id: 'gt-1', target_id: 's1' },
+        { source_type: 'gt_document', target_type: 'walk_session', relation: 'evidences',   source_id: 'gt-2', target_id: 's2' }, // wrong relation → dropped
+      ])
+      .mockResolvedValueOnce([{ id: 'gt-1', reference: 'GT-000001', status: 'draft' }]);
+
+    const map = await findDocumentsBySources('walk_session', ['s1', 's2']);
+    expect(h.api.getAllIn).toHaveBeenCalledTimes(2);
+    expect(map).toEqual({ s1: { id: 'gt-1', reference: 'GT-000001', status: 'draft' } });
+  });
+
+  it('returns {} for empty input without querying', async () => {
+    expect(await findDocumentsBySources('walk_session', [])).toEqual({});
+    expect(h.api.getAllIn).not.toHaveBeenCalled();
   });
 });
 

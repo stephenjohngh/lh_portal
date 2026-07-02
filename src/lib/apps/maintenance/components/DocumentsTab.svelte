@@ -5,9 +5,22 @@
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
   import { fmtDate }           from '$lib/utils/dates.js';
   import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
+  import { findDocumentsBySources } from '$lib/apps/golden_thread/public.js';
   import GtRegisterButton      from './GtRegisterButton.svelte';
 
   export let docs = [];   // store.allDocs — passed from parent
+
+  // Batched Golden Thread registered-state for every row (one query, not one
+  // per document — R2). null map = still loading; buttons wait via preloaded.
+  /** @type {Record<string, object> | null} */
+  let gtByDoc   = null;
+  let gtChecked = false;
+  $: if (docs.length > 0 && !gtChecked) {
+    gtChecked = true;
+    findDocumentsBySources('maintenance_document', docs.map(d => d.id))
+      .then((map) => { gtByDoc = map; })
+      .catch(() => { gtByDoc = {}; });   // non-fatal — buttons just show nothing
+  }
 
   const DOC_TYPE_OPTS = [
     { value: 'all',         label: 'All types' },
@@ -162,7 +175,8 @@
             {/if}
           </div>
 
-          <GtRegisterButton {doc} />
+          <GtRegisterButton {doc} selfCheck={false}
+            preloaded={gtByDoc ? (gtByDoc[doc.id] ?? null) : undefined} />
 
           <a
             href={normalisePhotoUrl(doc.storage_path)}

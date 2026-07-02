@@ -177,14 +177,18 @@ function createGtStore() {
 
   // ── Audit history ────────────────────────────────────────────────────────────
 
-  /** Load the immutable audit trail for a document (admin-only via RLS). */
+  /**
+   * Load the immutable audit trail for a document. RLS restricts gt_audit reads
+   * to admins, but that path does NOT throw — non-admins simply get an empty
+   * list. So anything that *does* throw here is a genuine failure (network, DB)
+   * and is surfaced, rather than being disguised as "no history" (R5 fix).
+   */
   async function loadAuditHistory(documentId) {
     try {
       const auditHistory = await listAuditHistory(documentId);
       update((s) => ({ ...s, auditHistory }));
     } catch (err) {
-      // Non-admins are blocked by RLS — treat as "no history visible", not an error.
-      update((s) => ({ ...s, auditHistory: [] }));
+      update((s) => ({ ...s, auditHistory: [], error: `Audit history failed to load: ${err.message}` }));
     }
   }
 
@@ -264,6 +268,12 @@ function createGtStore() {
    * the accepted doc current with effective_from=today and a computed review_due;
    * if it supersedes a prior, mark the prior superseded (effective_to=today,
    * superseded_by=this). Two updates — the trigger validates each.
+   *
+   * KNOWN LIMITATION (R4): the two updates are not atomic. If the second fails,
+   * both versions are briefly 'current' until the prior is re-superseded (rerun
+   * accept’s tail or fix manually). Low-volume register + single-operator use
+   * makes this acceptable for MVP; the durable fix is a SECURITY INVOKER RPC
+   * doing both updates in one transaction.
    */
   async function accept(id) {
     return run(async (userId) => {
@@ -296,12 +306,20 @@ function createGtStore() {
     });
   }
 
-  /** current → withdrawn (admin only — also enforced by the DB trigger) */
+  /**
+   * current → withdrawn, or draft → withdrawn (admin only — also enforced by the
+   * DB trigger; migration 149 added the draft exit for mistaken/orphan drafts).
+   * Stamps effective_to so time-travel stops treating the document as current
+   * from today (S3 fix — without it a withdrawn doc looked current forever).
+   */
   async function withdraw(id, reason) {
     return run(async (userId) => {
       const doc = await api.getById('gt_documents', id);
-      const row = await transition(doc, 'withdrawn',
-        { supersession_reason: reason ?? null }, userId, 'withdraw');
+      const row = await transition(doc, 'withdrawn', {
+        supersession_reason: reason ?? null,
+        // Only close the effective window if one was open (drafts have neither).
+        ...(doc.effective_from && !doc.effective_to ? { effective_to: todayISO() } : {})
+      }, userId, 'withdraw');
       spliceDoc(row);
     });
   }
@@ -324,6 +342,11 @@ function createGtStore() {
   /**
    * Wrap a mutator: resolve the user, flip saving, normalise errors to
    * { success } and surface the message in store.error.
+   *
+   * ERROR CONVENTION (R6): MUTATORS go through run() and resolve to
+   * { success, error } — components branch on the result. LOADERS (load,
+   * loadDocument, …) throw — callers/onMount let the error state surface.
+   * New methods should pick the side that matches their kind.
    * @param {(userId: string) => Promise<void>} fn
    */
   async function run(fn) {

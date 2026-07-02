@@ -11,7 +11,8 @@
   import { createEventDispatcher } from 'svelte';
   import { gtStore } from '$lib/apps/golden_thread/stores/gtStore';
   import { permissions } from '$lib/stores/permissions';
-  import { nextStates, statusLabel, GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { nextStates, GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { LINK_TARGET_TYPES, LINK_RELATIONS } from '$lib/apps/golden_thread/utils/gtConstants.js';
   import Badge           from '$lib/components/common/Badge.svelte';
   import Button          from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -48,10 +49,9 @@
     gtStore.loadAuditHistory(doc.id);
   }
 
-  const TARGET_TYPES = ['mor_case', 'maintenance_job', 'component_inspection', 'action', 'plan', 'component', 'gt_document']
-    .map((v) => ({ value: v, label: v }));
-  const RELATIONS = ['evidences', 'cites', 'produced_by', 'action_register', 'drill_down']
-    .map((v) => ({ value: v, label: v }));
+  // Controlled vocabularies from gtConstants (was a local duplicate — R1).
+  const TARGET_TYPES = LINK_TARGET_TYPES.map((v) => ({ value: v, label: v }));
+  const RELATIONS    = LINK_RELATIONS.map((v) => ({ value: v, label: v }));
 
   let showAddLink = false;
   let linkTargetType = 'mor_case';

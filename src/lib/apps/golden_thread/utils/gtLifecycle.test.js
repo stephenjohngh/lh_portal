@@ -19,6 +19,7 @@ describe('gtLifecycle — transition truth table', () => {
   // Mirrors gt_is_valid_transition exactly.
   const VALID = new Set([
     'draft->under_review',
+    'draft->withdrawn',            // admin exit for mistaken/orphan drafts (mig 149)
     'under_review->current',
     'under_review->returned_to_author',
     'current->superseded',
@@ -51,7 +52,7 @@ describe('gtLifecycle — transition truth table', () => {
 
 describe('gtLifecycle — helpers', () => {
   it('nextStates lists exactly the reachable statuses', () => {
-    expect(nextStates('draft')).toEqual(['under_review']);
+    expect(nextStates('draft').sort()).toEqual(['under_review', 'withdrawn']);
     expect(nextStates('under_review').sort()).toEqual(['current', 'returned_to_author']);
     expect(nextStates('current').sort()).toEqual(['superseded', 'withdrawn']);
     expect(nextStates('superseded')).toEqual(['current']);

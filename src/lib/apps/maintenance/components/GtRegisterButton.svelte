@@ -14,6 +14,15 @@
 
   export let doc; // maintenance_document row
 
+  /**
+   * Batching mode (R2): a parent rendering many rows does ONE
+   * findDocumentsBySources query and passes each row's result here
+   * (object = registered, null = not registered, undefined = still loading).
+   * selfCheck=false disables this component's own per-row query.
+   */
+  export let selfCheck = true;
+  export let preloaded = undefined;
+
   /** @type {{ id: string, reference: string } | null} */
   let registered = null;
   let checking    = true;
@@ -22,7 +31,13 @@
 
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
+  $: if (!selfCheck && preloaded !== undefined) {
+    registered = preloaded;
+    checking   = false;
+  }
+
   onMount(async () => {
+    if (!selfCheck) return;   // parent supplies the registered state
     try { registered = await findRegisteredCertificate(doc.id); }
     catch { /* treat as not registered */ }
     finally { checking = false; }
