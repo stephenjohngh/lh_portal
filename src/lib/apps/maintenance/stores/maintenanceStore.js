@@ -10,6 +10,7 @@ import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';
 import { uploadMedia }   from '$lib/utils/mediaUpload.js';
 import { deleteStorageFiles } from '$lib/utils/driveUtils.js';
+import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary } from '$lib/utils/documentApi.js';
 import { jobRag, addDays, toDateString } from '../utils/maintenanceHelpers.js';
 
 const logger = getLogger('maintenanceStore');
@@ -113,33 +114,34 @@ function createMaintenanceStore() {
   async function uploadDocument(jobId, file, docType, expiryDate = null) {
     const userId  = requireUserId();
 
-    // Resolve auth token for the upload endpoint.
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) throw new Error('Upload failed: not authenticated');
-
-    // Build a human-readable Drive folder path: Maintenance / Job Title
+    // Build a human-readable folder path: Maintenance / Job Title
     const s       = get({ subscribe });
     const jobInfo = s.jobs.find(j => j.id === jobId);
     const sanitize = str => str?.replace(/[/\\:*?"<>|]/g, '').trim() ?? '';
     const jobLabel = sanitize(jobInfo?.title ?? '');
-    const folderPath = jobLabel ? ['Maintenance', jobLabel] : ['Maintenance'];
 
-    const { url } = await uploadMedia(file, {
-      filename:   file.name,
-      folderPath,
-      token,
+    // Store the file in the shared document_library (unified storage). The
+    // returned row carries a web_view_url (for display) + a SHA-256 checksum,
+    // and its id is what Golden Thread producer ingest copies from.
+    const libDoc = await uploadToLibrary(file, {
+      entity_type:  'maintenance_document',
+      entity_id:    jobId,
+      display_name: file.name,
+      doc_type:     docType,
+      expiry_date:  expiryDate || null,
+      folder_path:  jobLabel ? `Maintenance/${jobLabel}` : 'Maintenance',
     });
 
     const doc = await api.create('maintenance_documents', {
-      job_id:       jobId,
-      doc_type:     docType,
-      filename:     file.name,
-      storage_path: url,          // Drive webViewUrl stored here (column repurposed)
-      file_size:    file.size,
-      mime_type:    file.type,
-      expiry_date:  expiryDate || null,
-      uploaded_by:  userId,
+      job_id:         jobId,
+      doc_type:       docType,
+      filename:       file.name,
+      storage_path:   libDoc.web_view_url,   // viewable URL (existing links unchanged)
+      library_doc_id: libDoc.id,             // document_library reference (GT ingest source)
+      file_size:      file.size,
+      mime_type:      file.type,
+      expiry_date:    expiryDate || null,
+      uploaded_by:    userId,
     }, true);
 
     // Enrich with job context for allDocs (s and jobInfo already resolved above)
@@ -166,10 +168,21 @@ function createMaintenanceStore() {
   }
 
   async function deleteDocument(docId, storagePath) {
-    // storagePath is now a Drive URL (storage_path column repurposed).
-    // Best-effort file deletion — swallowed so DB row is always cleaned up.
-    const { data: sessionData } = await supabase.auth.getSession();
-    await deleteStorageFiles([storagePath], sessionData?.session?.access_token);
+    // Newer docs live in document_library (library_doc_id); older ones are the
+    // repurposed Drive URL. Delete the file best-effort, then the index row.
+    const s   = get({ subscribe });
+    const row = s.allDocs.find(d => d.id === docId)
+             ?? Object.values(s.docsByJob).flat().find(d => d.id === docId);
+    try {
+      if (row?.library_doc_id) {
+        await deleteFromLibrary(row.library_doc_id);   // storage file + library row
+      } else {
+        const { data: sessionData } = await supabase.auth.getSession();
+        await deleteStorageFiles([storagePath], sessionData?.session?.access_token);
+      }
+    } catch (err) {
+      logger('⚠ file delete (non-fatal):', err.message);
+    }
     await api.delete('maintenance_documents', docId);
 
     update(s => {
