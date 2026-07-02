@@ -17,6 +17,10 @@ const h = vi.hoisted(() => ({
 
 vi.mock('$lib/utils/api',                () => ({ api: h.api }));
 vi.mock('$lib/utils/mediaAttachments.js', () => ({ purgeAttachments: h.purgeAttachments }));
+// public.js now also imports the GT register path — stub the seams so importing
+// the module doesn't pull $env/$app (this test only covers deleteWalkSession).
+vi.mock('$lib/utils/authHeaders',        () => ({ authHeaders: vi.fn(async () => ({})) }));
+vi.mock('$lib/apps/golden_thread/public.js', () => ({ registerDocument: vi.fn(), findDocumentBySource: vi.fn() }));
 
 const { deleteWalkSession } = await import('./public.js');
 

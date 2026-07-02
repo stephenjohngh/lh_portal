@@ -4,8 +4,14 @@
      inspection per component with photos, notes, result, and checklist.
 -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { authHeaders } from '$lib/utils/authHeaders';
+  import { auth }        from '$lib/stores/auth';
+  import { permissions } from '$lib/stores/permissions';
+  import { logAudit }    from '$lib/utils/auditLogger';
+  import {
+    registerSessionReportToGoldenThread, findRegisteredSessionReport,
+  } from '$lib/apps/inspection/public.js';
   import Modal    from '$lib/components/common/Modal.svelte';
   import Button   from '$lib/components/common/Button.svelte';
   import Checkbox from '$lib/components/common/Checkbox.svelte';
@@ -113,6 +119,78 @@
     });
   }
 
+  /**
+   * Resolve one session into the server payload shape { session, inspections }
+   * (load rows if not cached, optionally batch-load photos, enrich). Shared by
+   * report generation and Golden Thread registration.
+   */
+  async function resolveSessionPayload(session, { withPhotos = false } = {}) {
+    let flatRows = inspectionsCache[session.id];
+    if (!flatRows) {
+      const rows = await api.getAll('component_inspections', {
+        select:  '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
+        filters: { walk_session_id: session.id },
+      });
+      rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
+      flatRows = flattenInspectionRows(rows);
+    }
+    if (withPhotos && !flatRows.some(r => r.photo_urls?.length > 0)) {
+      const inspIds = flatRows.map(r => r.id);
+      if (inspIds.length > 0) {
+        const { data: attachments } = await supabase
+          .from('media_attachments')
+          .select('entity_id, storage_url')
+          .eq('entity_type', 'component_inspection')
+          .in('entity_id', inspIds);
+        const byId = {};
+        for (const a of attachments ?? []) {
+          (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
+        }
+        flatRows = flatRows.map(r => ({ ...r, photo_urls: byId[r.id] ?? [] }));
+      }
+    }
+    return { session: enrichSession(session), inspections: enrichInspections(flatRows) };
+  }
+
+  // -- Golden Thread registration (per session) ------------------------------
+  $: canEdit = $permissions.isAdmin || $permissions.canModify;
+  /** @type {Record<string, { reference: string }>} */
+  let registered   = {};
+  let registeringId = null;
+
+  onMount(async () => {
+    // Pre-check which sessions are already registered (one query per session —
+    // the tab list is modest). Failures are non-fatal.
+    for (const s of sessions) {
+      try {
+        const existing = await findRegisteredSessionReport(s.id);
+        if (existing) registered = { ...registered, [s.id]: { reference: existing.reference } };
+      } catch { /* ignore */ }
+    }
+  });
+
+  async function registerSession(session) {
+    registeringId = session.id;
+    genError = null;
+    try {
+      const existing = await findRegisteredSessionReport(session.id);
+      if (existing) { registered = { ...registered, [session.id]: { reference: existing.reference } }; return; }
+
+      const { session: es, inspections: ei } = await resolveSessionPayload(session, { withPhotos: true });
+      const title = `Inspection report — ${es.building ?? ''} · ${sessionFloorDisplay(session)} · ${fmtDateTime(session.started_at)}`.trim();
+      const gt = await registerSessionReportToGoldenThread(es, ei, { title }, $auth.user?.id);
+      registered = { ...registered, [session.id]: { reference: gt.reference } };
+      logAudit('create', 'gt_document', gt.id, gt.title, {
+        appId: 'building_assets', eventCategory: 'golden_thread', severity: 'info',
+        afterData: { producedBy: 'walk_session', walk_session_id: session.id },
+      });
+    } catch (e) {
+      genError = e.message;
+    } finally {
+      registeringId = null;
+    }
+  }
+
   // -- Report generation -----------------------------------------------------
   let generating  = false;
   let genProgress = '';
@@ -128,47 +206,9 @@
       for (let i = 0; i < selectedSessions.length; i++) {
         const session = selectedSessions[i];
         genProgress = `Loading session ${i + 1} of ${selectedSessions.length}…`;
-
-        let flatRows = inspectionsCache[session.id];
-        if (!flatRows) {
-          // getAll paginates past the 1000-row cap (building sessions can
-          // exceed it); it pages by id, so sort by inspected_at asc for display.
-          const rows = await api.getAll('component_inspections', {
-            select:  '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
-            filters: { walk_session_id: session.id },
-          });
-          rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
-          flatRows = flattenInspectionRows(rows);
-        }
-
-        // Batch-load photos when generating a detailed report with photos.
-        // If the rows came from the tab's cache they already have photo_urls;
-        // fall through to the load if none are populated yet (session not
-        // expanded in the tab, or cache pre-dates the photo-loading fix).
-        if (reportType === 'detailed' && includePhotos) {
-          const alreadyLoaded = flatRows.some(r => r.photo_urls?.length > 0);
-          if (!alreadyLoaded) {
-            genProgress = `Loading photos for session ${i + 1}…`;
-            const inspIds = flatRows.map(r => r.id);
-            if (inspIds.length > 0) {
-              const { data: attachments } = await supabase
-                .from('media_attachments')
-                .select('entity_id, storage_url')
-                .eq('entity_type', 'component_inspection')
-                .in('entity_id', inspIds);
-              const byId = {};
-              for (const a of attachments ?? []) {
-                (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
-              }
-              flatRows = flatRows.map(r => ({ ...r, photo_urls: byId[r.id] ?? [] }));
-            }
-          }
-        }
-
-        sessionsWithInspections.push({
-          session:     enrichSession(session),
-          inspections: enrichInspections(flatRows),
-        });
+        sessionsWithInspections.push(
+          await resolveSessionPayload(session, { withPhotos: reportType === 'detailed' && includePhotos }),
+        );
       }
 
       genProgress = 'Generating document…';
@@ -287,6 +327,18 @@
               class:status-closed={session.status === 'closed'}>
               {session.status}
             </span>
+            {#if registered[session.id]}
+              <span class="gt-reg gt-done" title="Registered in the Golden Thread">
+                ✓ {registered[session.id].reference}
+              </span>
+            {:else if canEdit && session.status === 'closed'}
+              <button type="button" class="gt-reg gt-btn"
+                on:click|preventDefault|stopPropagation={() => registerSession(session)}
+                disabled={registeringId === session.id}
+                title="Register this session's report in the Golden Thread">
+                {registeringId === session.id ? '…' : '↗ GT'}
+              </button>
+            {/if}
           </label>
         {/each}
       </div>
@@ -352,4 +404,11 @@
   }
   .status-open   { background: rgb(217 119 6 / 0.2);  color: rgb(251 191 36);  border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.4);  color: rgb(156 163 175); border-color: rgb(71 85 105); }
+
+  .gt-reg   { flex-shrink: 0; font-size: 0.68rem; white-space: nowrap; }
+  .gt-done  { color: rgb(52 211 153); }
+  .gt-btn   { padding: 0.15rem 0.45rem; border-radius: 9999px; border: 1px solid rgb(var(--lh-accent-rgb) / 0.4);
+              color: rgb(var(--lh-accent-rgb)); background: rgb(var(--lh-accent-rgb) / 0.08); cursor: pointer; }
+  .gt-btn:hover:not(:disabled) { background: rgb(var(--lh-accent-rgb) / 0.18); }
+  .gt-btn:disabled { opacity: 0.5; cursor: default; }
 </style>
