@@ -23,6 +23,7 @@ import { friendlyStorageError }  from '$lib/server/storage/storageErrors.js';
 import { checkRateLimit }        from '$lib/server/publicRateLimit.js';
 import { safeSearchScan }        from '$lib/server/visionScan.js';
 import { isSameOrigin }          from '$lib/server/verifyOrigin.js';
+import { signUrl }               from '$lib/server/urlSignature.js';
 import { getLogger }             from '$lib/utils/logger';
 
 const logger = getLogger('mor/intake/upload');
@@ -185,6 +186,10 @@ export async function POST({ request, url }) {
 
   return json({
     url:       uploadUrl,
+    // HMAC over the URL (M4): the submit endpoint only accepts photo URLs that
+    // carry this signature, i.e. files that really went through this pipeline
+    // (size cap + magic bytes + SafeSearch) — not merely Google-hosted ones.
+    sig:       signUrl(uploadUrl),
     provider:  storageProviderName,
     sizeBytes: buffer.length,
     mimeType:  detectedMime,

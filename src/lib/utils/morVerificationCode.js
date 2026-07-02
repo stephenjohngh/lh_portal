@@ -20,12 +20,19 @@ const LEN      = 6;
 
 /** Generate a fresh 6-character verification code, e.g. "R7PQK2". */
 export function generateVerificationCode() {
-  const bytes = new Uint8Array(LEN);
-  // crypto.getRandomValues is the same API in browsers and Node 19+.
-  globalThis.crypto.getRandomValues(bytes);
+  // Rejection sampling (M6): 256 % 31 = 8, so a plain `byte % 31` makes the
+  // first 8 symbols slightly more likely (9/256 vs 8/256). Discarding bytes
+  // above the largest multiple of 31 (248..255) keeps the draw uniform.
+  const LIMIT = 256 - (256 % ALPHABET.length); // 248
   let code = '';
-  for (let i = 0; i < LEN; i++) {
-    code += ALPHABET[bytes[i] % ALPHABET.length];
+  while (code.length < LEN) {
+    const bytes = new Uint8Array(LEN * 2); // over-draw to avoid repeat loops
+    globalThis.crypto.getRandomValues(bytes);
+    for (const b of bytes) {
+      if (b >= LIMIT) continue;            // reject biased tail
+      code += ALPHABET[b % ALPHABET.length];
+      if (code.length === LEN) break;
+    }
   }
   return code;
 }

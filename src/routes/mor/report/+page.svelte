@@ -47,7 +47,7 @@
     for (const file of toAdd) {
       const id      = crypto.randomUUID();
       const preview = URL.createObjectURL(file);
-      photos = [...photos, { id, file, preview, status: 'uploading', url: null, mimeType: null, error: null }];
+      photos = [...photos, { id, file, preview, status: 'uploading', url: null, sig: null, mimeType: null, error: null }];
       uploadPhoto(id, file);
     }
   }
@@ -69,7 +69,9 @@
       if (!r.ok) {
         setPhotoState(id, { status: 'error', error: data.error ?? 'Upload failed' });
       } else {
-        setPhotoState(id, { status: 'done', url: data.url, mimeType: data.mimeType });
+        // sig = server HMAC over the URL; the submit endpoint requires it, so
+        // only photos that went through this upload pipeline can be attached.
+        setPhotoState(id, { status: 'done', url: data.url, sig: data.sig, mimeType: data.mimeType });
       }
     } catch {
       setPhotoState(id, { status: 'error', error: 'Upload failed — please try again' });
@@ -89,7 +91,7 @@
   $: uploadingCount = photos.filter(p => p.status === 'uploading').length;
   $: uploadedPhotos = photos
        .filter(p => p.status === 'done')
-       .map(p => ({ url: p.url, mimeType: p.mimeType ?? 'image/jpeg' }));
+       .map(p => ({ url: p.url, sig: p.sig, mimeType: p.mimeType ?? 'image/jpeg' }));
   $: canSubmit = !submitting && uploadingCount === 0;
 
   // ── Submit ──────────────────────────────────────────────────────────────

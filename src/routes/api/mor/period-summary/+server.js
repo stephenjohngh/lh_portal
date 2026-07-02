@@ -8,8 +8,10 @@
 // POST /api/mor/period-summary
 // Body: { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' }
 //
-// Auth: requireAuth + MOR app access (any signed-in MOR user can pull a
-// summary report; the data they see is already what they can see in the UI).
+// Auth: requireAuth — any authenticated portal user (M7: there is NO per-app
+// permission check; matches the MOR tables' coarse any-authenticated RLS,
+// deferred alongside GT's S5). The data returned is the same the user could
+// already read via the UI/PostgREST under that RLS.
 
 import { json } from '@sveltejs/kit';
 import {

@@ -25,6 +25,7 @@ vi.mock('$lib/server/verifyOrigin.js', () => ({ isSameOrigin: h.isSameOrigin }))
 vi.mock('$lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
 vi.mock('$lib/server/visionScan.js', () => ({ safeSearchScan: h.safeSearchScan }));
 vi.mock('$lib/server/storage/index.js', () => ({ storageProvider: { ensurePath: h.ensurePath }, storageProviderName: 'supabase' }));
+vi.mock('$lib/server/urlSignature.js', () => ({ signUrl: () => 'test-sig' }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');

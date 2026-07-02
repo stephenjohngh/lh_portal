@@ -5,8 +5,10 @@
 // lessons learned. Designed to be the canonical "send this to the regulator
 // / auditor / solicitor" document.
 //
-// Auth: requireAuth + MOR app access. Service role bypasses RLS so the
-// endpoint can fetch joined profiles without per-row permission shuffling.
+// Auth: requireAuth — any authenticated portal user (M7: there is NO per-app
+// permission check; matches the MOR tables' coarse any-authenticated RLS,
+// deferred alongside GT's S5). Service role bypasses RLS so the endpoint can
+// fetch joined profiles without per-row permission shuffling.
 //
 // POST /api/mor/<caseId>/case-report
 // Body: ignored (kept POST for parity with the rest of the docx endpoints).

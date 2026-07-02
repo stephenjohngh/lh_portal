@@ -8,14 +8,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => {
-  let sameOrigin = true, allowed = true, urlTrusted = true;
+  let sameOrigin = true, allowed = true, urlTrusted = true, sigValid = true;
   return {
     isSameOrigin: () => sameOrigin,
     checkRateLimit: () => Promise.resolve(allowed),
     isTrustedStorageUrl: () => urlTrusted,
+    verifyUrlSignature: () => sigValid,
     setOrigin: (v) => { sameOrigin = v; },
     setAllowed: (v) => { allowed = v; },
     setUrlTrusted: (v) => { urlTrusted = v; },
+    setSigValid: (v) => { sigValid = v; },
   };
 });
 
@@ -25,7 +27,7 @@ vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://proj.supaba
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
 vi.mock('$lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
 vi.mock('$lib/server/verifyOrigin.js', () => ({ isSameOrigin: h.isSameOrigin, isTrustedStorageUrl: h.isTrustedStorageUrl }));
-vi.mock('$lib/utils/morReference', () => ({ generateMorReference: vi.fn(() => Promise.resolve('MOR-2026-001')) }));
+vi.mock('$lib/server/urlSignature.js', () => ({ verifyUrlSignature: h.verifyUrlSignature }));
 vi.mock('$lib/utils/morVerificationCode', () => ({ generateVerificationCode: () => 'R7PQK2', formatVerificationCode: (c) => c }));
 vi.mock('$lib/server/auditLogger', () => ({ logAudit: vi.fn(), getIpAddress: () => '1.2.3.4', getUserAgent: () => 'ua' }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
@@ -38,7 +40,7 @@ const call = (body) => POST({
 });
 const okDescription = 'A genuine hazard report that is at least twenty characters long.';
 
-beforeEach(() => { vi.clearAllMocks(); h.setOrigin(true); h.setAllowed(true); h.setUrlTrusted(true); });
+beforeEach(() => { vi.clearAllMocks(); h.setOrigin(true); h.setAllowed(true); h.setUrlTrusted(true); h.setSigValid(true); });
 
 describe('POST /api/mor/intake/submit (security rejections)', () => {
   it('rejects cross-origin (403)', async () => {
@@ -59,7 +61,15 @@ describe('POST /api/mor/intake/submit (security rejections)', () => {
 
   it('rejects an untrusted photo URL (400) — the whitelist guard', async () => {
     h.setUrlTrusted(false);
-    const res = await call({ description: okDescription, photos: [{ url: 'https://evil.example/x.jpg' }] });
+    const res = await call({ description: okDescription, photos: [{ url: 'https://evil.example/x.jpg', sig: 'a'.repeat(64) }] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/could not be verified/i);
+  });
+
+  it('rejects a photo URL with a bad/missing HMAC signature (400) — the M4 guard', async () => {
+    // Host is trusted, but the URL never went through our upload pipeline.
+    h.setSigValid(false);
+    const res = await call({ description: okDescription, photos: [{ url: 'https://drive.google.com/real-looking.jpg' }] });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/could not be verified/i);
   });

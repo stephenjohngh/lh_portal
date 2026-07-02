@@ -23,7 +23,7 @@ import { env } from '$env/dynamic/private';
 import { checkRateLimit }             from '$lib/server/publicRateLimit.js';
 import { isSameOrigin,
          isTrustedStorageUrl }        from '$lib/server/verifyOrigin.js';
-import { generateMorReference }       from '$lib/utils/morReference';
+import { verifyUrlSignature }         from '$lib/server/urlSignature.js';
 import { generateVerificationCode,
          formatVerificationCode }      from '$lib/utils/morVerificationCode';
 import { logAudit,
@@ -96,8 +96,12 @@ export async function POST({ request, url }) {
     if (!p || typeof p !== 'object') continue;
     const photoUrl  = typeof p.url === 'string' ? p.url : '';
     const mimeType  = typeof p.mimeType === 'string' ? p.mimeType : 'image/jpeg';
-    if (!isTrustedStorageUrl(photoUrl)) {
-      logger('⚠ Rejected untrusted photo URL on intake');
+    // Two gates (M4): the host must belong to a storage provider, AND the URL
+    // must carry the HMAC our upload endpoint issued — so only files that went
+    // through the upload pipeline (size cap, magic bytes, SafeSearch) can be
+    // attached, not merely anything Google-hosted.
+    if (!isTrustedStorageUrl(photoUrl) || !verifyUrlSignature(photoUrl, p.sig)) {
+      logger('⚠ Rejected unverified photo URL on intake');
       return json(
         { error: 'One of the photo references could not be verified. Please re-upload.' },
         { status: 400 }
@@ -109,25 +113,18 @@ export async function POST({ request, url }) {
   const svc = getSvc();
   const now = new Date().toISOString();
 
-  // ── Generate reference ───────────────────────────────────────────────────
-  let reference;
-  try {
-    reference = await generateMorReference(svc);
-  } catch (err) {
-    logger('❌ generateReference failed:', err.message);
-    return json({ error: 'Could not create case. Please try again.' }, { status: 500 });
-  }
-
   // Verification code paired with the reference for the public status page.
   const verificationCode = generateVerificationCode();
 
   // ── Insert case ──────────────────────────────────────────────────────────
+  // `reference` is omitted — the DB DEFAULT (mor_next_reference(), migration
+  // 150) stamps MOR-YYYY-NNNNNN atomically, GT-style; the old client-side
+  // count(*)+1 raced under concurrent submissions (M3).
   let caseRow;
   try {
     const { data, error } = await svc
       .from('mor_cases')
       .insert({
-        reference,
         verification_code:   verificationCode,
         status:              'submitted',
         mechanism:           'unknown',
@@ -211,11 +208,11 @@ export async function POST({ request, url }) {
     severity:      'info',
   });
 
-  logger('✅ Public MOR case created:', reference);
+  logger('✅ Public MOR case created:', caseRow.reference);
 
   return json({
     success:           true,
-    reference,
+    reference:         caseRow.reference,   // stamped by the DB DEFAULT
     verificationCode:  formatVerificationCode(verificationCode), // pretty form for display
   });
 }

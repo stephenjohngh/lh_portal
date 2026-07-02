@@ -8,9 +8,11 @@
 //
 // Returns: streamed .docx with Content-Disposition: attachment.
 //
-// Auth: requireAuth + MOR app access (no admin requirement — any editor on
-// the MOR app can draft a letter). The endpoint never *sends* anything; it
-// produces a draft document for the staff member to edit and send manually.
+// Auth: requireAuth — any authenticated portal user (M7: there is NO per-app
+// permission check here; this matches the MOR tables' coarse any-authenticated
+// RLS posture, deferred alongside GT's S5). The endpoint never *sends*
+// anything; it produces a draft document for the staff member to edit and send
+// manually.
 
 import { Packer } from 'docx';
 import { createClient } from '@supabase/supabase-js';

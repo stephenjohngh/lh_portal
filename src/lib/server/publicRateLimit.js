@@ -32,15 +32,29 @@ function getSvc() {
 }
 
 /**
- * Extract the caller's IP from request headers.
- * Netlify Functions set x-forwarded-for; fall back to x-real-ip.
+ * Extract the caller's IP from request headers — TRUSTED sources only (M1,
+ * 2026-07-02 security review). The FIRST x-forwarded-for entry is client-
+ * controlled (proxies APPEND; attackers prepend), so keying the limiter on it
+ * let a scripted caller mint a fresh identity per request and bypass every
+ * public rate limit — including the status-lookup limit that the verification
+ * code's brute-force resistance depends on.
+ *
+ * Order of trust:
+ *   1. x-nf-client-connection-ip — set by Netlify itself, not spoofable.
+ *   2. LAST x-forwarded-for entry — appended by the closest (platform) proxy.
+ *   3. x-real-ip — set by some reverse proxies (Northflank/nginx).
  */
 function getClientIp(request) {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    request.headers.get('x-real-ip') ??
-    '0.0.0.0'
-  );
+  const netlify = request.headers.get('x-nf-client-connection-ip');
+  if (netlify) return netlify.trim();
+
+  const xff = request.headers.get('x-forwarded-for');
+  if (xff) {
+    const parts = xff.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+
+  return request.headers.get('x-real-ip') ?? '0.0.0.0';
 }
 
 /**

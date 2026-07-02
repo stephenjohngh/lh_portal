@@ -55,7 +55,6 @@ vi.mock('$lib/supabaseClient',            () => ({ supabase: h.supabase }));
 vi.mock('$lib/utils/api',                 () => ({ api: h.api }));
 vi.mock('$lib/utils/auditLogger',         () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',              () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/utils/morReference',        () => ({ generateMorReference: vi.fn(() => Promise.resolve('MOR-2026-001')) }));
 vi.mock('$lib/utils/morVerificationCode', () => ({ generateVerificationCode: () => 'R7PQK2' }));
 
 const { morStore } = await import('./morStore.js');
@@ -93,17 +92,18 @@ describe('fetchCases', () => {
 });
 
 describe('createCase', () => {
-  it('stamps a reference + verification code, status submitted, and writes the opening timeline entry', async () => {
+  it('stamps a verification code + status, omits reference (DB DEFAULT stamps it — mig 150), and writes the opening timeline entry', async () => {
     const r = await morStore.createCase({ description: 'Cracked beam in the car park ceiling.' });
     expect(r.success).toBe(true);
 
     const arg = h.api.create.mock.calls.find(c => c[0] === 'mor_cases')[1];
     expect(arg).toMatchObject({
-      reference: 'MOR-2026-001',
       verification_code: 'R7PQK2',
       status: 'submitted',
       created_by: 'u1',
     });
+    // reference is DB-stamped via mor_next_reference() — the client must NOT send one
+    expect(arg.reference).toBeUndefined();
     // opening timeline entry: status_change null → submitted
     const tl = h.api.create.mock.calls.find(c => c[0] === 'mor_timeline_entries')[1];
     expect(tl).toMatchObject({ entry_type: 'status_change', from_status: null, to_status: 'submitted' });

@@ -5,7 +5,6 @@ import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
-import { generateMorReference } from '$lib/utils/morReference';
 import { generateVerificationCode } from '$lib/utils/morVerificationCode';
 
 const logger = getLogger('morStore');
@@ -171,12 +170,11 @@ function createMorStore() {
     try {
       const user = await currentUser();
       const profile = await currentUserProfile();
-      // Use the user-token client so RLS still applies (vs service role).
-      const reference = await generateMorReference(supabase);
       const now = new Date().toISOString();
 
+      // `reference` is omitted — the DB DEFAULT (mor_next_reference(), migration
+      // 150) stamps it atomically, GT-style (the old count(*)+1 raced).
       const row = await api.create('mor_cases', {
-        reference,
         verification_code:   generateVerificationCode(),
         status:              'submitted',
         description:         data.description.trim(),
