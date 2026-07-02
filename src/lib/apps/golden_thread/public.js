@@ -18,6 +18,7 @@
 
 import { api } from '$lib/utils/api';
 import { uploadDocument } from '$lib/utils/documentApi';
+import { postJson } from '$lib/utils/request';
 
 /** Discriminator stored in gt_links.*_type for a register document. */
 export const GT_DOCUMENT_TYPE = 'gt_document';
@@ -207,6 +208,42 @@ const DRAFT_FIELDS = [
   'contains_pii', 'security_classification', 'tags', 'taxonomy_version', 'supersedes'
 ];
 
+/** Build the DRAFT insert payload from caller meta (DB defaults fill the rest). */
+function draftInsert(meta, userId, extra = {}) {
+  const data = { created_by: userId, ...extra };
+  for (const k of DRAFT_FIELDS) {
+    if (meta[k] !== undefined && meta[k] !== null && meta[k] !== '') data[k] = meta[k];
+  }
+  return data;
+}
+
+/** Create the 'produced_by' gt_link back to a producing entity, when supplied. */
+async function linkProducedBy(draftId, source, userId) {
+  if (source?.producedBy?.type && source.producedBy.id) {
+    await api.create('gt_links', {
+      source_type: GT_DOCUMENT_TYPE, source_id: draftId,
+      target_type: source.producedBy.type, target_id: source.producedBy.id,
+      relation: 'produced_by', created_by: userId,
+    });
+  }
+}
+
+/**
+ * The register document produced from a given source entity, or null — prevents
+ * double-registration and drives the producer "Registered (GT-…)" state.
+ * @param {string} targetType  e.g. 'maintenance_job' | 'walk_session'
+ * @param {string} targetId
+ * @returns {Promise<{ id: string, reference: string, status: string } | null>}
+ */
+export async function findDocumentBySource(targetType, targetId) {
+  const links = await api.get('gt_links', {
+    filters: { source_type: GT_DOCUMENT_TYPE, target_type: targetType, target_id: targetId, relation: 'produced_by' },
+    limit: 1,
+  });
+  if (!links.length) return null;
+  return (await api.getById('gt_documents', links[0].source_id, 'id, reference, status')) ?? null;
+}
+
 /**
  * Register a document into the L2 register as a DRAFT, optionally linking it back
  * to its producing entity (a maintenance job, an inspection). Used both by L1
@@ -234,12 +271,7 @@ export async function registerDocument(meta, source, userId) {
   if (!file) throw new Error('registerDocument: a file is required');
 
   const file_checksum = await sha256Hex(file);
-
-  const draftData = { created_by: userId, file_checksum };
-  for (const k of DRAFT_FIELDS) {
-    if (meta[k] !== undefined && meta[k] !== null && meta[k] !== '') draftData[k] = meta[k];
-  }
-  const draft = await api.create('gt_documents', draftData, true);
+  const draft = await api.create('gt_documents', draftInsert(meta, userId, { file_checksum }), true);
 
   const uploaded = await uploadDocument(file, {
     entity_type:  GT_DOCUMENT_TYPE,
@@ -253,16 +285,38 @@ export async function registerDocument(meta, source, userId) {
     updated_by:  userId
   }, true);
 
-  if (source?.producedBy?.type && source.producedBy.id) {
-    await api.create('gt_links', {
-      source_type: GT_DOCUMENT_TYPE,
-      source_id:   draft.id,
-      target_type: source.producedBy.type,
-      target_id:   source.producedBy.id,
-      relation:    'produced_by',
-      created_by:  userId
-    });
-  }
+  await linkProducedBy(draft.id, source, userId);
+  return updated;
+}
 
+/**
+ * Register a document that ALREADY lives in document_library (a maintenance
+ * certificate, an inspection report) into the register as a DRAFT — the Stage-B
+ * producer path. The server copies the library file into a register-owned copy
+ * (checksum pinned, independent of the producer); the DRAFT metadata write stays
+ * client-side (PB-2). Then a 'produced_by' link back to the producing entity.
+ *
+ * @param {object} meta  draft fields (see DRAFT_FIELDS) + `sourceDocId` (document_library id)
+ * @param {{ producedBy?: { type: string, id: string } } | null} source
+ * @param {string} userId
+ * @returns {Promise<object>} the created draft (storage_uri + file_checksum set)
+ */
+export async function registerExistingArtifact(meta, source, userId) {
+  const { sourceDocId } = meta;
+  if (!sourceDocId) throw new Error('registerExistingArtifact: sourceDocId is required');
+
+  const draft = await api.create('gt_documents', draftInsert(meta, userId), true);
+
+  const { storage_uri, file_checksum } = await postJson(
+    '/api/golden-thread/ingest-artifact',
+    { sourceDocId, entityId: draft.id },
+    'Failed to copy the source file into the register',
+  );
+
+  const updated = await api.update('gt_documents', draft.id, {
+    storage_uri, file_checksum, updated_by: userId,
+  }, true);
+
+  await linkProducedBy(draft.id, source, userId);
   return updated;
 }

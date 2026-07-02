@@ -3,6 +3,7 @@
 // All storage operations go through the active storageProvider.
 // All DB index operations use the service-role Supabase client.
 
+import { createHash }                from 'node:crypto';
 import { createClient }              from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
@@ -37,6 +38,9 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
   logger('Uploading:', filename, 'to', folderId);
   const result = await storageProvider.uploadFile(buffer, filename, mimeType, folderId);
 
+  // SHA-256 of the bytes — file integrity (FR-STO-003); pinned by GT ingest.
+  const file_checksum = createHash('sha256').update(buffer).digest('hex');
+
   const db = getDb();
   const { data, error } = await db
     .from('document_library')
@@ -48,6 +52,7 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
       display_name:       meta.display_name      ?? filename,
       mime_type:          mimeType,
       file_size:          buffer.byteLength,
+      file_checksum,
       web_view_url:       result.webViewUrl,
       thumbnail_url:      result.thumbnailUrl,
       doc_type:           meta.doc_type          ?? 'other',
@@ -70,6 +75,33 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
   if (error) throw error;
   logger('Indexed:', data.id);
   return data;
+}
+
+/**
+ * Copy an existing document_library file into a NEW, independent document_library
+ * entry (its own stored file + row) under a different entity. Used by Golden
+ * Thread producer ingest: a maintenance certificate / inspection report already
+ * in the library is copied into a gt_document-owned entry, so the register holds
+ * its own immutable copy (survives the producer deleting theirs). The checksum is
+ * recomputed on the copy by uploadDocument and will match the source.
+ *
+ * @param {string} sourceId  document_library row to copy
+ * @param {Object} meta       overrides for the new row (entity_type, entity_id, display_name, …)
+ * @param {string} userId
+ * @returns {Promise<Object>} the new document_library row (with file_checksum)
+ */
+export async function copyDocument(sourceId, meta = {}, userId) {
+  const src = await getDocument(sourceId);
+  const { data: buffer } = await storageProvider.getFileStream(src.provider_file_id);
+  return uploadDocument(buffer, src.filename, src.mime_type, {
+    display_name:     src.display_name,
+    doc_type:         src.doc_type,
+    document_date:    src.document_date,
+    expiry_date:      src.expiry_date,
+    reference_number: src.reference_number,
+    issuer:           src.issuer,
+    ...meta,
+  }, userId);
 }
 
 /**
