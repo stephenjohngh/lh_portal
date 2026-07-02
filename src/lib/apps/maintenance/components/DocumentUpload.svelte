@@ -7,6 +7,7 @@
   import { fmtDate }             from '$lib/utils/dates.js';
   import { normalisePhotoUrl }   from '$lib/utils/driveUtils.js';
   import Button                  from '$lib/components/common/Button.svelte';
+  import GtRegisterButton        from './GtRegisterButton.svelte';
 
   export let jobId;
   export let docs = [];    // already-loaded documents for this job
@@ -123,6 +124,7 @@
               {/if}
             </div>
           </div>
+          <GtRegisterButton {doc} />
           <button
             class="text-slate-600 hover:text-red-400 transition-colors text-sm px-1"
             disabled={deleting[doc.id]}

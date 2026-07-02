@@ -5,6 +5,7 @@
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
   import { fmtDate }           from '$lib/utils/dates.js';
   import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
+  import GtRegisterButton      from './GtRegisterButton.svelte';
 
   export let docs = [];   // store.allDocs — passed from parent
 
@@ -160,6 +161,8 @@
               </div>
             {/if}
           </div>
+
+          <GtRegisterButton {doc} />
 
           <a
             href={normalisePhotoUrl(doc.storage_path)}
