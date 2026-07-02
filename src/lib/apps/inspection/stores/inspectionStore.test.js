@@ -225,10 +225,10 @@ describe('completeSession', () => {
 });
 
 describe('deleteSession', () => {
-  it('deletes the session inspections then the session and reloads', async () => {
+  it('deletes the session (FK cascade removes inspections) and reloads', async () => {
     await inspectionStore.deleteSession('sess9');
-    expect(h.api.deleteMany).toHaveBeenCalledWith('component_inspections', { walk_session_id: 'sess9' });
     expect(h.api.delete).toHaveBeenCalledWith('walk_sessions', 'sess9');
+    expect(h.api.deleteMany).not.toHaveBeenCalled(); // cascade handles component_inspections
     expect(h.api.get).toHaveBeenCalledWith('walk_sessions', expect.any(Object)); // loadSessions
   });
 });

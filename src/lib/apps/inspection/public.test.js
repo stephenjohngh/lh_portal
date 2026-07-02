@@ -27,21 +27,21 @@ const { deleteWalkSession } = await import('./public.js');
 beforeEach(() => vi.clearAllMocks());
 
 describe('deleteWalkSession', () => {
-  it('purges photos, deletes the inspections, then the session', async () => {
+  it('purges photos (polymorphic, no FK) then deletes the session (cascade removes inspections)', async () => {
     await deleteWalkSession('sess9');
 
     expect(h.api.getAll).toHaveBeenCalledWith('component_inspections', { filters: { walk_session_id: 'sess9' } });
     expect(h.purgeAttachments).toHaveBeenCalledWith('component_inspection', ['insp-1', 'insp-2']);
-    expect(h.api.deleteMany).toHaveBeenCalledWith('component_inspections', { walk_session_id: 'sess9' });
     expect(h.api.delete).toHaveBeenCalledWith('walk_sessions', 'sess9');
+    // component_inspections is NOT deleted directly — the FK cascade handles it
+    // (the old deleteMany was a silent no-op under RLS).
+    expect(h.api.deleteMany).not.toHaveBeenCalled();
   });
 
-  it('runs in FK-safe order: purge photos → inspections → session', async () => {
+  it('purges photos BEFORE deleting the session (cascade would otherwise orphan the storage files)', async () => {
     await deleteWalkSession('sess9');
     const purge   = h.purgeAttachments.mock.invocationCallOrder[0];
-    const delInsp = h.api.deleteMany.mock.invocationCallOrder[0];
     const delSess = h.api.delete.mock.invocationCallOrder[0];
-    expect(purge).toBeLessThan(delInsp);
-    expect(delInsp).toBeLessThan(delSess);
+    expect(purge).toBeLessThan(delSess);
   });
 });

@@ -14,20 +14,25 @@ import { authHeaders }       from '$lib/utils/authHeaders';
 import { registerDocument, findDocumentBySource } from '$lib/apps/golden_thread/public.js';
 
 /**
- * Delete a walk session and everything under it, in FK-safe order: purge the
- * inspection photos (storage files + media_attachments rows), delete the
- * component_inspections, then the walk_sessions row.
+ * Delete a walk session and everything under it.
+ *
+ * The component_inspections rows are removed by the DB when the session goes:
+ * component_inspections.walk_session_id is FK ON DELETE CASCADE. But the
+ * inspection PHOTOS in media_attachments are POLYMORPHIC (no FK — see
+ * database_reference), so the cascade doesn't touch them: we must purge them
+ * (storage files + rows) FIRST, while we can still read the inspection ids.
+ * (A previous api.deleteMany('component_inspections', …) here was dead code —
+ * component_inspections has no DELETE RLS policy, so it was a silent 0-row
+ * no-op; the cascade is what actually deletes those rows.)
  *
  * This is the single definition of "delete a session" — shared by the Inspection
- * app's own store and the Building Assets inspections tab, so the cascade order
- * can't drift between them.
+ * app's own store and the Building Assets inspections tab.
  * @param {string} sessionId
  */
 export async function deleteWalkSession(sessionId) {
   const inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: sessionId } });
   await purgeAttachments('component_inspection', inspRows.map((r) => r.id));
-  await api.deleteMany('component_inspections', { walk_session_id: sessionId });
-  await api.delete('walk_sessions', sessionId);
+  await api.delete('walk_sessions', sessionId);   // FK cascade removes the component_inspections rows
 }
 
 // ── Golden Thread producer ingest (Stage B) ─────────────────────────────────

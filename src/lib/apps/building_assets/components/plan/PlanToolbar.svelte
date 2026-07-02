@@ -35,6 +35,16 @@
     { mode: 'annotation', label: '🏷 Annotate',      title: 'Place text annotations on the plan',  activeClass: 'bg-sky-700'    },
   ];
 
+  // Spaces, scale and annotations write admin-only tables (spaces / plan_scale /
+  // plan_annotations RLS). Only offer those modes to admins — editors get view +
+  // component placement. Previously all five showed to editors, whose draws then
+  // failed silently at RLS.
+  const ADMIN_ONLY_MODES = new Set(['space', 'scale', 'annotation']);
+  $: availableModes =
+       readOnly            ? MODES.filter(m => m.mode === 'off')
+     : $permissions.isAdmin ? MODES
+     :                        MODES.filter(m => !ADMIN_ONLY_MODES.has(m.mode));
+
 </script>
 
 <!-- -- Row 1: Navigation + modes + stats ----------------------------- -->
@@ -75,7 +85,7 @@
 
   <!-- 4-way mode toggle -->
   <div class="flex rounded-lg overflow-hidden border border-slate-600 text-sm shrink-0">
-    {#each (readOnly ? MODES.filter(m => m.mode === 'off') : MODES) as btn, i (btn.mode)}
+    {#each availableModes as btn, i (btn.mode)}
       <button
         on:click={() => dispatch('modechange', { mode: btn.mode })}
         title={btn.title}
