@@ -4,6 +4,7 @@
   // Drag down >30% to dismiss; tap backdrop to dismiss.
 
   import { createEventDispatcher, onDestroy } from 'svelte';
+  import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
   import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE } from '$lib/utils/constants.js';
   import { fmtDateTime, wasModified } from '$lib/utils/dates.js';
   import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
@@ -150,7 +151,7 @@
       {#if activity.body}
         <div class="body-content">
           {#if isHtml(activity.body)}
-            <div class="rich-content">{@html activity.body}</div>
+            <div class="rich-content">{@html sanitizeHtml(activity.body)}</div>
           {:else}
             <p class="plain-body">{activity.body}</p>
           {/if}

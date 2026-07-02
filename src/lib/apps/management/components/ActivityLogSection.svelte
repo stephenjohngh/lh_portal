@@ -19,6 +19,7 @@
   import { issuesStore }      from '../stores/issuesStore';
   import { meetingsStore }    from '../stores/meetingsStore';
   import { activitySort }     from '../stores/activitySortStore';
+  import { sanitizeHtml }     from '$lib/utils/sanitizeHtml';
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDateTime, wasModified, toDateTimeLocal } from '$lib/utils/dates';
   import { linkedActionsByActivityId, filterActivities, sortActivities } from '../utils/activityList.js';
@@ -672,7 +673,7 @@
 
       {#if viewingItem.body}
         {#if viewingItem.body.startsWith('<')}
-          <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html viewingItem.body}</div>
+          <div class="rich-content text-gray-200 text-sm leading-relaxed">{@html sanitizeHtml(viewingItem.body)}</div>
         {:else}
           <p class="text-gray-200 text-sm whitespace-pre-wrap leading-relaxed">{viewingItem.body}</p>
         {/if}

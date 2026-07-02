@@ -20,6 +20,7 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { sanitizeHtml }         from '$lib/utils/sanitizeHtml';
   import { fmtBytes, mimeIcon }   from '$lib/utils/files.js';
   import { fmtDateTime, fmtDate, wasModified } from '$lib/utils/dates';
   import { ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPES } from '$lib/utils/constants';
@@ -397,7 +398,7 @@
 
         {#if !hasSummary || bodyExpanded}
           {#if activity.body?.startsWith('<')}
-            <div class="rich-content text-gray-200 text-sm">{@html activity.body}</div>
+            <div class="rich-content text-gray-200 text-sm">{@html sanitizeHtml(activity.body)}</div>
           {:else}
             <p class="text-gray-200 text-sm whitespace-pre-wrap">{activity.body}</p>
           {/if}

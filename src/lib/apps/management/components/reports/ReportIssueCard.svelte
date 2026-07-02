@@ -1,5 +1,6 @@
 <!-- src/lib/apps/management/components/reports/ReportIssueCard.svelte -->
 <script>
+  import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
   import { getPriorityLabel, ACTION_STATUS, ACTIVITY_TYPE, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
   import { fmtDate, isOverdue, wasModified } from '$lib/utils/dates';
   import { buildFieldSummary, formatTimestamp, STATUS_COLORS } from './reportUtils';
@@ -118,7 +119,7 @@
               </div>
               {#if showBody}
                 {#if activity.body?.startsWith('<')}
-                  <div class="rich-content text-gray-500 text-sm italic">{@html activity.body}</div>
+                  <div class="rich-content text-gray-500 text-sm italic">{@html sanitizeHtml(activity.body)}</div>
                 {:else}
                   <p class="text-gray-500 text-sm italic whitespace-pre-wrap">{activity.body}</p>
                 {/if}
@@ -148,7 +149,7 @@
               </div>
               {#if showBody}
                 {#if activity.body?.startsWith('<')}
-                  <div class="rich-content text-gray-900 text-sm">{@html activity.body}</div>
+                  <div class="rich-content text-gray-900 text-sm">{@html sanitizeHtml(activity.body)}</div>
                 {:else}
                   <p class="text-gray-900 text-sm whitespace-pre-wrap">{activity.body}</p>
                 {/if}

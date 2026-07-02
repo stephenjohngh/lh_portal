@@ -16,6 +16,7 @@
   import { fmtDate, fmtDateLong, fmtDateTime } from '$lib/utils/dates';
   import { profiles, profilesStore }           from '$lib/stores/profiles';
   import { buildFieldSummary }                 from '../reports/reportUtils.js';
+  import { sanitizeHtml }                       from '$lib/utils/sanitizeHtml';
 
   export let meeting = null;
   export let issues  = [];   // already filtered to this meeting's items
@@ -185,7 +186,7 @@
                         <span class="text-blue-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
                           {#if c.body?.startsWith('<')}
-                            <div class="rich-content text-slate-200 text-sm">{@html c.body}</div>
+                            <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(c.body)}</div>
                           {:else}
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{c.body}</p>
                           {/if}
@@ -213,7 +214,7 @@
                         <span class="text-violet-400 shrink-0 mt-0.5">•</span>
                         <div class="flex-1 min-w-0">
                           {#if d.body?.startsWith('<')}
-                            <div class="rich-content text-slate-200 text-sm">{@html d.body}</div>
+                            <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(d.body)}</div>
                           {:else}
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{d.body}</p>
                           {/if}
@@ -241,7 +242,7 @@
                         <span class="text-teal-400 shrink-0 mt-0.5">📝</span>
                         <div class="flex-1 min-w-0">
                           {#if n.body?.startsWith('<')}
-                            <div class="rich-content text-slate-200 text-sm">{@html n.body}</div>
+                            <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(n.body)}</div>
                           {:else}
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{n.body}</p>
                           {/if}
@@ -271,7 +272,7 @@
                         <div class="flex-1 min-w-0">
                           {#if e.body}
                             {#if e.body.startsWith('<')}
-                              <div class="rich-content text-slate-200 text-sm">{@html e.body}</div>
+                              <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(e.body)}</div>
                             {:else}
                               <p class="text-slate-200 text-sm whitespace-pre-wrap">{e.body}</p>
                             {/if}
@@ -303,7 +304,7 @@
                         <div class="flex-1 min-w-0">
                           {#if l.body}
                             {#if l.body.startsWith('<')}
-                              <div class="rich-content text-slate-200 text-sm">{@html l.body}</div>
+                              <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(l.body)}</div>
                             {:else}
                               <p class="text-slate-200 text-sm whitespace-pre-wrap">{l.body}</p>
                             {/if}
@@ -334,7 +335,7 @@
                         <span class="text-gray-300 shrink-0 mt-0.5">📎</span>
                         <div class="flex-1 min-w-0">
                           {#if (d.body || fieldSummary)?.startsWith('<')}
-                            <div class="rich-content text-slate-200 text-sm">{@html d.body || fieldSummary}</div>
+                            <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(d.body || fieldSummary)}</div>
                           {:else}
                             <p class="text-slate-200 text-sm whitespace-pre-wrap">{d.body || fieldSummary}</p>
                           {/if}
