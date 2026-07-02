@@ -54,8 +54,15 @@ describe('POST /api/admin/create-user', () => {
     expect(h.admin.auth.admin.createUser).not.toHaveBeenCalled();
   });
 
+  it('400s a password under 6 characters, before calling Supabase (A2)', async () => {
+    const res = await POST({ request: req({ email: 'new@x', password: 'pw' }) });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/at least 6/i);
+    expect(h.admin.auth.admin.createUser).not.toHaveBeenCalled();
+  });
+
   it('creates the user (email_confirm) and returns success for an admin', async () => {
-    const res = await POST({ request: req({ email: 'new@x', password: 'pw', full_name: 'New User' }) });
+    const res = await POST({ request: req({ email: 'new@x', password: 'secret1', full_name: 'New User' }) });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(h.admin.auth.admin.createUser).toHaveBeenCalledWith(
@@ -65,7 +72,7 @@ describe('POST /api/admin/create-user', () => {
 
   it('400s with the Supabase error message when creation fails', async () => {
     h.admin.auth.admin.createUser.mockResolvedValue({ data: null, error: { message: 'Email exists' } });
-    const res = await POST({ request: req({ email: 'dup@x', password: 'pw' }) });
+    const res = await POST({ request: req({ email: 'dup@x', password: 'secret1' }) });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Email exists');
   });
