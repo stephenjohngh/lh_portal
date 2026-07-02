@@ -8,9 +8,19 @@
 export const findType   = (types, c)   => types.find(t => t.code === c.type_code);
 export const findSystem = (systems, t) => (t ? systems.find(s => s.id === t.building_system_id) : null);
 
-/** RFC 4180 cell escaping — quotes any value containing , " \n \r */
+/**
+ * RFC 4180 cell escaping — quotes any value containing , " \n \r — plus a
+ * formula-injection guard (CWE-1236): spreadsheet apps evaluate a CSV cell that
+ * begins with = + - @ (or a leading tab/CR), so a component label/note/attribute
+ * of "=…" would run as a formula (DDE / data exfil) when a victim opens the file.
+ * Prefix a single quote so the cell is treated as literal text. (CSV only — the
+ * .xlsx export writes typed string cells, which Excel never evaluates. A leading
+ * quote is also prepended to genuine negatives like "-5"; acceptable for these
+ * mostly-text inventory exports.)
+ */
 export function csvEsc(val) {
-  const s = String(val ?? '');
+  let s = String(val ?? '');
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r'))
     ? '"' + s.replace(/"/g, '""') + '"'
     : s;

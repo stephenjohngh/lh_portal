@@ -35,6 +35,16 @@ describe('csvEsc', () => {
   it('doubles and quotes embedded quotes', () => expect(csvEsc('say "hi"')).toBe('"say ""hi"""'));
   it('quotes newlines', () => expect(csvEsc('a\nb')).toBe('"a\nb"'));
   it('renders null/undefined as empty', () => { expect(csvEsc(null)).toBe(''); expect(csvEsc(undefined)).toBe(''); });
+  it('neutralises formula-injection leads (= + - @) with a leading quote', () => {
+    expect(csvEsc('=1+1')).toBe("'=1+1");
+    expect(csvEsc('+cmd')).toBe("'+cmd");
+    expect(csvEsc('-2+3')).toBe("'-2+3");
+    expect(csvEsc('@SUM(A1)')).toBe("'@SUM(A1)");
+    // still applies escaping after neutralising when the value also needs quoting
+    expect(csvEsc('=HYPERLINK("x","y")')).toBe('"\'=HYPERLINK(""x"",""y"")"');
+    // a normal value that merely contains a symbol later is untouched
+    expect(csvEsc('a=b')).toBe('a=b');
+  });
 });
 
 describe('resolveFixedAttrs', () => {
