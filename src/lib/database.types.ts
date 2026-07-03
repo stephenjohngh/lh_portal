@@ -1086,6 +1086,81 @@ export type Database = {
             }
           ]
       }
+      inspection_definitions: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          active: boolean
+          mode: string
+          scope: Json
+          checklist_mode: string
+          checklist_attr_ids: string[]
+          pass_fail_rule: string
+          frequency_days: number | null
+          link_source: string
+          link_type_filter: string | null
+          presentation_order: number
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          name?: string
+          description?: string | null
+          active?: boolean
+          mode?: string
+          scope?: Json
+          checklist_mode?: string
+          checklist_attr_ids?: string[]
+          pass_fail_rule?: string
+          frequency_days?: number | null
+          link_source?: string
+          link_type_filter?: string | null
+          presentation_order?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          active?: boolean
+          mode?: string
+          scope?: Json
+          checklist_mode?: string
+          checklist_attr_ids?: string[]
+          pass_fail_rule?: string
+          frequency_days?: number | null
+          link_source?: string
+          link_type_filter?: string | null
+          presentation_order?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "inspection_definitions_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "inspection_definitions_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       issues: {
         Row: {
           id: string
@@ -2349,6 +2424,7 @@ export type Database = {
           updated_by: string | null
           created_at: string
           updated_at: string
+          definition_id: string | null
         }
         Insert: {
           id?: string
@@ -2371,6 +2447,7 @@ export type Database = {
           updated_by?: string | null
           created_at?: string
           updated_at?: string
+          definition_id?: string | null
         }
         Update: {
           id?: string
@@ -2393,6 +2470,7 @@ export type Database = {
           updated_by?: string | null
           created_at?: string
           updated_at?: string
+          definition_id?: string | null
         }
         Relationships: [
             {
@@ -2414,6 +2492,13 @@ export type Database = {
               columns: ["updated_by"]
               isOneToOne: false
               referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "walk_sessions_definition_id_fkey"
+              columns: ["definition_id"]
+              isOneToOne: false
+              referencedRelation: "inspection_definitions"
               referencedColumns: ["id"]
             }
           ]
