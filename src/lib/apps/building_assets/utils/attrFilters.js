@@ -35,7 +35,9 @@
 
 /**
  * @typedef {object} AttrFilter
- * @property {string}   defId
+ * @property {string}   [defId]     target by exact type_attributes.id (Components tab)
+ * @property {string}   [defName]   OR target by attribute name (inspection definitions, cross-type)
+ * @property {boolean}  [checkable] class disambiguator when using defName
  * @property {string}   op
  * @property {string[]|number|string} values
  * @property {boolean}  [includeUnset]
@@ -208,6 +210,29 @@ export function lookupAttrValue(def, componentId, componentAttrs, inspections) {
 }
 
 /**
+ * Resolve which attribute definition a filter targets on this component's type.
+ *
+ *   - defId (Components tab): exact type_attributes.id — per-type, interactive.
+ *   - defName (+ optional checkable class): match by name among the component's
+ *     effective defs. Used by inspection *definitions*, which are cross-type by
+ *     nature: one "Emergency = true" scope must match every type that has an
+ *     Emergency attribute, even though each type owns its own def row. When
+ *     several defs share the name, `checkable` disambiguates fixed vs condition.
+ *
+ * @param {Array}  defs
+ * @param {object} filter  { defId? , defName? , checkable? }
+ */
+export function findFilterDef(defs, filter) {
+  if (filter.defId) return defs.find(d => d.id === filter.defId);
+  if (filter.defName != null) {
+    return defs.find(d =>
+      d.name === filter.defName &&
+      (filter.checkable == null || d.checkable === filter.checkable));
+  }
+  return undefined;
+}
+
+/**
  * Does this component pass this filter?
  *
  * @param {object}      component
@@ -217,7 +242,7 @@ export function lookupAttrValue(def, componentId, componentAttrs, inspections) {
  * @param {AttrFilter}  filter
  */
 export function matchesAttrFilter(component, defs, componentAttrs, inspections, filter) {
-  const def = defs.find(d => d.id === filter.defId);
+  const def = findFilterDef(defs, filter);
   if (!def) {
     // The filter's attribute isn't defined on this component's type at
     // all — treat it the same as "has no value". The user's

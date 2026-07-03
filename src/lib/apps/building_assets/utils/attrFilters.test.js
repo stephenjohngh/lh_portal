@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   matchesAttrFilter, matchesAllAttrFilters, lookupAttrValue, defaultFilterFor,
+  findFilterDef,
 } from './attrFilters.js';
 
 const comp = { id: 'c1' };
@@ -94,6 +95,38 @@ describe('matchesAllAttrFilters', () => {
     const fail = [{ defId: 'd1', op: 'in', values: ['Mechanical'] }, { defId: 'd4', op: 'gt',  values: 30 }];
     expect(matchesAllAttrFilters(comp, defs, a, {}, pass)).toBe(true);
     expect(matchesAllAttrFilters(comp, defs, a, {}, fail)).toBe(false);
+  });
+});
+
+describe('findFilterDef / defName matching (inspection definitions, cross-type)', () => {
+  // Same attribute NAME owned by two different types → two def rows with
+  // distinct ids. A definition scope must match either via the name.
+  const emgA = { id: 'e1', name: 'Emergency', checkable: false, display_type: 'checkbox' };
+  const emgB = { id: 'e2', name: 'Emergency', checkable: false, display_type: 'checkbox' };
+  const emgCond = { id: 'e3', name: 'Emergency', checkable: true, display_type: 'checkbox' };
+
+  it('resolves by defId when present', () => {
+    expect(findFilterDef([emgA], { defId: 'e1' })).toBe(emgA);
+  });
+
+  it('resolves by defName across differing def ids', () => {
+    expect(findFilterDef([emgA], { defName: 'Emergency', checkable: false })).toBe(emgA);
+    expect(findFilterDef([emgB], { defName: 'Emergency', checkable: false })).toBe(emgB);
+  });
+
+  it('checkable class disambiguates same-named fixed vs condition defs', () => {
+    expect(findFilterDef([emgCond], { defName: 'Emergency', checkable: false })).toBeUndefined();
+    expect(findFilterDef([emgCond], { defName: 'Emergency', checkable: true })).toBe(emgCond);
+  });
+
+  it('a defName is_true filter matches the emergency component on either type', () => {
+    const f = { defName: 'Emergency', checkable: false, op: 'is_true', values: '' };
+    // component of type A, Emergency=true
+    expect(matchesAttrFilter(comp, [emgA], attrs({ e1: 'true' }), {}, f)).toBe(true);
+    // component of type B, Emergency=true
+    expect(matchesAttrFilter(comp, [emgB], attrs({ e2: 'true' }), {}, f)).toBe(true);
+    // component of type A, Emergency unset (fixed checkbox unset → treated "No")
+    expect(matchesAttrFilter(comp, [emgA], {}, {}, f)).toBe(false);
   });
 });
 
