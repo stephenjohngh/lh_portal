@@ -21,6 +21,7 @@
   import TenYearPlanTab from './components/TenYearPlanTab.svelte';
   import DatabasePanel   from './components/DatabasePanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
+  import InspectionDefinitionsTab from './components/InspectionDefinitionsTab.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -31,6 +32,7 @@
   let searchTerm = '';
   let activeTab = 'users';
   let assetsStoreLoaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
+  let componentsLoaded = false;    // lazy — components/attrs/inspections (for the Inspections scope preview)
   
   // Modal states
   let showCreateModal = false;
@@ -88,12 +90,17 @@
 
   async function activateTab(id) {
     activeTab = id;
-    if ((id === 'types' || id === 'floors' || id === 'maint-groups' || id === 'ten-year') && !assetsStoreLoaded) {
+    if ((id === 'types' || id === 'floors' || id === 'maint-groups' || id === 'ten-year' || id === 'inspections') && !assetsStoreLoaded) {
       assetsStoreLoaded = true;
       await buildingAssetsStore.load();
     }
     if ((id === 'maint-groups' || id === 'ten-year') && $maintenanceGroupsStore.groups.length === 0) {
       await maintenanceGroupsStore.load();
+    }
+    // Inspections scope preview needs the component set (attrs + latest inspections).
+    if (id === 'inspections' && !componentsLoaded) {
+      componentsLoaded = true;
+      await buildingAssetsStore.loadComponents();
     }
   }
 
@@ -229,6 +236,17 @@
           </span>
         </button>
         <button
+          class="px-4 py-2 transition-colors {activeTab === 'inspections'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('inspections')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>🔎</span>
+            <span>Inspections</span>
+          </span>
+        </button>
+        <button
           class="px-4 py-2 transition-colors {activeTab === 'database'
             ? 'border-b-2 border-purple-500 text-white font-semibold'
             : 'text-gray-400 hover:text-white'}"
@@ -344,6 +362,13 @@
       <LoadingSpinner />
     {:else}
       <TenYearPlanTab />
+    {/if}
+
+  {:else if activeTab === 'inspections'}
+    {#if $buildingAssetsStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <InspectionDefinitionsTab />
     {/if}
 
   {:else if activeTab === 'database'}
