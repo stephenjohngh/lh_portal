@@ -10,17 +10,14 @@
   import { permissions } from '$lib/stores/permissions';
   import { logAudit }    from '$lib/utils/auditLogger';
   import {
-    registerSessionReportToGoldenThread, findRegisteredSessionReport,
+    registerSessionReportToGoldenThread, findRegisteredSessionReport, loadSessionInspections,
   } from '$lib/apps/inspection/public.js';
   import { findDocumentsBySources } from '$lib/apps/golden_thread/public.js';
   import Modal    from '$lib/components/common/Modal.svelte';
   import Button   from '$lib/components/common/Button.svelte';
   import Checkbox from '$lib/components/common/Checkbox.svelte';
   import Badge    from '$lib/components/common/Badge.svelte';
-  import { api }  from '$lib/utils/api';
-  import { supabase } from '$lib/supabaseClient';
   import { getLogger } from '$lib/utils/logger';
-  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
   import {
     flattenInspectionRows,
     presetLabel,
@@ -127,28 +124,11 @@
    */
   async function resolveSessionPayload(session, { withPhotos = false } = {}) {
     let flatRows = inspectionsCache[session.id];
-    if (!flatRows) {
-      const rows = await api.getAll('component_inspections', {
-        select:  '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
-        filters: { walk_session_id: session.id },
-      });
-      rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
+    // Load (or, for a detailed report, reload with photos) via the Inspection
+    // app's accessor — same query shape the tab uses, in one place.
+    if (!flatRows || (withPhotos && !flatRows.some(r => r.photo_urls?.length > 0))) {
+      const rows = await loadSessionInspections(session.id, { withPhotos });
       flatRows = flattenInspectionRows(rows);
-    }
-    if (withPhotos && !flatRows.some(r => r.photo_urls?.length > 0)) {
-      const inspIds = flatRows.map(r => r.id);
-      if (inspIds.length > 0) {
-        const { data: attachments } = await supabase
-          .from('media_attachments')
-          .select('entity_id, storage_url')
-          .eq('entity_type', 'component_inspection')
-          .in('entity_id', inspIds);
-        const byId = {};
-        for (const a of attachments ?? []) {
-          (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
-        }
-        flatRows = flatRows.map(r => ({ ...r, photo_urls: byId[r.id] ?? [] }));
-      }
     }
     return { session: enrichSession(session), inspections: enrichInspections(flatRows) };
   }

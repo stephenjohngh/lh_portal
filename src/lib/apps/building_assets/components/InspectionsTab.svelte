@@ -3,7 +3,6 @@
      Backed by walk_sessions; expand a row to see per-component detail. -->
 <script>
   import { onMount }         from 'svelte';
-  import { api }             from '$lib/utils/api';
   import { getLogger }       from '$lib/utils/logger';
   import { buildingAssetsStore }    from '../stores/buildingAssetsStore.js';
   import {
@@ -28,10 +27,9 @@
   import ConditionChecklistChips from './ConditionChecklistChips.svelte';
   import PhotoLightbox           from '$lib/components/common/PhotoLightbox.svelte';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
-  import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
-  import { listAttachments }   from '$lib/utils/mediaAttachments.js';
-  // walk_sessions belong to the Inspection app — delete through its interface.
-  import { deleteWalkSession } from '$lib/apps/inspection/public.js';
+  // walk_sessions + component_inspections belong to the Inspection app — read
+  // and delete them through its public interface (one owner of the query shape).
+  import { deleteWalkSession, listWalkSessions, loadSessionInspections } from '$lib/apps/inspection/public.js';
 
   const logger = getLogger('InspectionsTab');
 
@@ -126,11 +124,7 @@
   async function loadSessions() {
     loading = true; error = null;
     try {
-      sessions = await api.get('walk_sessions', {
-        select:    '*, inspector:profiles!created_by(full_name)',
-        orderBy:   'started_at',
-        ascending: false,
-      });
+      sessions = await listWalkSessions();
       logger('✅ Loaded', sessions.length, 'sessions');
     } catch (err) {
       logger('❌ loadSessions:', err.message);
@@ -146,26 +140,7 @@
     if (!inspections[session.id]) {
       loadingId = session.id;
       try {
-        // getAll paginates past the 1000-row cap (building sessions can exceed
-        // it); it pages by id, so sort by inspected_at asc for display.
-        const rows = await api.getAll('component_inspections', {
-          select:  '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))',
-          filters: { walk_session_id: session.id },
-        });
-        rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
-
-        // Batch-load photos from media_attachments (photo_urls was removed
-        // from component_inspections in migration 135).
-        const inspIds = rows.map(r => r.id);
-        if (inspIds.length > 0) {
-          const attachments = await listAttachments('component_inspection', inspIds);
-          const byId = {};
-          for (const a of attachments) {
-            (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
-          }
-          for (const r of rows) r.photo_urls = byId[r.id] ?? [];
-        }
-
+        const rows = await loadSessionInspections(session.id, { withPhotos: true });
         inspections = { ...inspections, [session.id]: flattenInspectionRows(rows) };
       } catch (err) {
         logger('❌ load inspections:', err.message);

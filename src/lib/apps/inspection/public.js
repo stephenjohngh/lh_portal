@@ -8,10 +8,55 @@
 // Stateless, like building_assets/public.js: it does the DB work and returns;
 // each caller refreshes its own view.
 
-import { api }               from '$lib/utils/api';
-import { purgeAttachments }  from '$lib/utils/mediaAttachments.js';
-import { authHeaders }       from '$lib/utils/authHeaders';
+import { api }                          from '$lib/utils/api';
+import { purgeAttachments, listAttachments } from '$lib/utils/mediaAttachments.js';
+import { normalisePhotoUrl }             from '$lib/utils/driveUtils.js';
+import { authHeaders }                   from '$lib/utils/authHeaders';
 import { registerDocument, findDocumentBySource } from '$lib/apps/golden_thread/public.js';
+
+// One place owns the shape of a session's inspection rows: each row joined to its
+// component + floor. Was duplicated verbatim in the Building Assets InspectionsTab
+// and InspectionsReport before this accessor existed.
+const SESSION_INSPECTION_SELECT =
+  '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))';
+
+/**
+ * All walk sessions, newest first, with the inspector's name joined. The
+ * cross-app read for the Building Assets Inspections tab (the Inspection app's
+ * own store reads its own, user-scoped, subset directly).
+ */
+export function listWalkSessions() {
+  return api.get('walk_sessions', {
+    select:    '*, inspector:profiles!created_by(full_name)',
+    orderBy:   'started_at',
+    ascending: false,
+  });
+}
+
+/**
+ * A walk session's component_inspections (oldest first), each joined to its
+ * component + floor. With `withPhotos`, merges photo_urls from media_attachments
+ * (photos moved out of the JSONB column in migration 135). Returns raw rows —
+ * callers apply flattenInspectionRows / enrichment.
+ * @param {string} sessionId
+ * @param {{ withPhotos?: boolean }} [opts]
+ */
+export async function loadSessionInspections(sessionId, { withPhotos = true } = {}) {
+  // getAll paginates past the 1000-row cap (building-wide sessions can exceed it).
+  const rows = await api.getAll('component_inspections', {
+    select:  SESSION_INSPECTION_SELECT,
+    filters: { walk_session_id: sessionId },
+  });
+  rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
+
+  if (withPhotos && rows.length > 0) {
+    const attachments = await listAttachments('component_inspection', rows.map((r) => r.id));
+    const byId = {};
+    for (const a of attachments) (byId[a.entity_id] ??= []).push(normalisePhotoUrl(a.storage_url));
+    for (const r of rows) r.photo_urls = byId[r.id] ?? [];
+  }
+  return rows;
+}
 
 /**
  * Delete a walk session and everything under it.
