@@ -27,31 +27,41 @@ export function csvEsc(val) {
 }
 
 /**
- * Visible FIXED (non-condition) attributes for a component, resolved to
- * { name, value, display_type }. Mirrors ComponentsTab's resolveAttrs.
- * Empty-equivalent values ('None'/'No'/'Unknown'/blank) and unchecked
- * checkboxes are dropped.
+ * CORE fixed-attribute resolution (the single source both public shapes derive
+ * from). Returns [{ def, value }] for each visible, non-condition attribute that
+ * resolves to a meaningful value — empty-equivalent values ('None'/'No'/'Unknown'/
+ * blank) and unchecked checkboxes are dropped; a ticked checkbox becomes 'Yes'.
  */
-export function resolveFixedAttrs(component, types, attrDefs, componentAttrs) {
+function resolveFixedAttrEntries(component, types, attrDefs, componentAttrs) {
   const t = findType(types, component);
   if (!t) return [];
-  const defs   = attrDefs[t.id] ?? [];
   const stored = componentAttrs[component.id] ?? [];
   const storedMap = {};
   for (const a of stored) storedMap[a.type_attribute_id] = a.value;
-  return defs
-    .filter(d => d.visible !== false && !d.checkable)
-    .map(d => {
-      const raw = storedMap[d.id] ?? d.default_value ?? null;
-      if (raw == null || raw === '') return null;
-      if (d.display_type === 'checkbox') {
-        return raw === 'true' ? { name: d.name, value: 'Yes', display_type: 'checkbox' } : null;
-      }
-      const value = String(raw);
-      if (value === 'None' || value === 'No' || value === 'Unknown') return null;
-      return { name: d.name, value, display_type: d.display_type ?? 'text' };
-    })
-    .filter(Boolean);
+
+  const out = [];
+  for (const def of (attrDefs[t.id] ?? [])) {
+    if (def.visible === false || def.checkable) continue;
+    const raw = storedMap[def.id] ?? def.default_value ?? null;
+    if (raw == null || raw === '') continue;
+    if (def.display_type === 'checkbox') {
+      if (raw === 'true') out.push({ def, value: 'Yes' });
+      continue;
+    }
+    const value = String(raw);
+    if (value === 'None' || value === 'No' || value === 'Unknown') continue;
+    out.push({ def, value });
+  }
+  return out;
+}
+
+/**
+ * Visible FIXED (non-condition) attributes for a component, resolved to
+ * { name, value, display_type }. Mirrors ComponentsTab's resolveAttrs.
+ */
+export function resolveFixedAttrs(component, types, attrDefs, componentAttrs) {
+  return resolveFixedAttrEntries(component, types, attrDefs, componentAttrs)
+    .map(({ def, value }) => ({ name: def.name, value, display_type: def.display_type ?? 'text' }));
 }
 
 /**
@@ -78,27 +88,13 @@ export function sortComponentsForCsv(comps, types, systems) {
 }
 
 /**
- * Per-def map of a component's resolved FIXED attribute values: { [defId]: value }.
- * Same resolution as resolveFixedAttrs (drops empty-equivalent values + unticked
- * checkboxes) but keyed by def id, so each value can land in its own CSV column.
+ * Per-def map of a component's resolved FIXED attribute values: { [defId]: value }
+ * — same resolution as resolveFixedAttrs, keyed by def id so each value can land
+ * in its own CSV column.
  */
 export function fixedAttrValuesByDef(component, types, attrDefs, componentAttrs) {
-  const t = findType(types, component);
-  if (!t) return {};
-  const defs   = attrDefs[t.id] ?? [];
-  const stored = componentAttrs[component.id] ?? [];
-  const storedMap = {};
-  for (const a of stored) storedMap[a.type_attribute_id] = a.value;
-  const out = {};
-  for (const d of defs) {
-    if (d.visible === false || d.checkable) continue;
-    const raw = storedMap[d.id] ?? d.default_value ?? null;
-    if (raw == null || raw === '') continue;
-    if (d.display_type === 'checkbox') { if (raw === 'true') out[d.id] = 'Yes'; continue; }
-    const value = String(raw);
-    if (value === 'None' || value === 'No' || value === 'Unknown') continue;
-    out[d.id] = value;
-  }
-  return out;
+  return Object.fromEntries(
+    resolveFixedAttrEntries(component, types, attrDefs, componentAttrs).map(({ def, value }) => [def.id, value]),
+  );
 }
 

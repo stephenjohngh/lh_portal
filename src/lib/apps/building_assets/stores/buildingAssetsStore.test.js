@@ -92,13 +92,9 @@ describe('load', () => {
     expect(s.loading).toBe(false);
   });
 
-  it('degrades gracefully when the spaces table is unavailable', async () => {
-    h.setTables({ plan_annotations: [] });
-    h.setThrow(['spaces']);                 // migration 018 not applied
-    await store.load();
-    expect(get(store).spaces).toEqual([]);  // swallowed, not fatal
-    expect(get(store).error).toBeNull();
-  });
+  // (The old "degrades gracefully when the spaces table is unavailable" test was
+  // removed: spaces/plan_annotations migrations are applied on every environment,
+  // so those fetches now load in the main Promise.all rather than a try/catch.)
 });
 
 // ── componentActions ────────────────────────────────────────────────────────────

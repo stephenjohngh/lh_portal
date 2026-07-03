@@ -62,7 +62,7 @@ function createBuildingAssetsStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [facilities, floors, systems, types, defs, options, regime, plans] =
+      const [facilities, floors, systems, types, defs, options, regime, plans, spaces, annotations] =
         await Promise.all([
           api.get('facilities'),
           api.get('floors',              { orderBy: 'level_order',        ascending: true }),
@@ -71,27 +71,13 @@ function createBuildingAssetsStore() {
           api.get('type_attributes',     { orderBy: 'presentation_order' }),
           api.get('type_attribute_options', { orderBy: 'presentation_order' }),
           api.get('maintenance_regime'),
-          api.get('plans',              { orderBy: 'building',           ascending: true })
+          api.get('plans',              { orderBy: 'building',           ascending: true }),
+          api.get('spaces',             { orderBy: 'created_at',         ascending: false }),
+          api.get('plan_annotations',   { orderBy: 'created_at',         ascending: false })
         ]);
 
       const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
         resolveHierarchy(systems, types, defs, options, regime);
-
-      // Graceful degradation: spaces (migration 018) and annotations (021)
-      // may not yet exist in the DB.
-      let spaces = [];
-      try {
-        spaces = await api.get('spaces', { orderBy: 'created_at', ascending: false });
-      } catch {
-        logger('Spaces table not available — run migration 018 to enable');
-      }
-
-      let annotations = [];
-      try {
-        annotations = await api.get('plan_annotations', { orderBy: 'created_at', ascending: false });
-      } catch {
-        logger('plan_annotations table not available — run migration 021 to enable');
-      }
 
       update(s => ({
         ...s,
