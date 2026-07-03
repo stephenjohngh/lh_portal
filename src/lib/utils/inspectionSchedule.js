@@ -94,6 +94,18 @@ export function computeInspectionSchedule(definitions, sessions, opts = {}) {
 }
 
 /**
+ * Human label for a frequency_days value. Mirrors the preset chips in the
+ * Admin definition editor; null = on-demand (no cadence).
+ * @param {number|null|undefined} days
+ * @returns {string}
+ */
+export function frequencyLabel(days) {
+  if (days == null) return 'On demand';
+  return { 7: 'Weekly', 30: 'Monthly', 90: 'Quarterly', 365: 'Annual' }[days]
+    ?? `Every ${days} days`;
+}
+
+/**
  * Order schedule states most-urgent first: never-run and overdue at the top
  * (by due time), then due-soon / ok by due date, on-demand last, name as tiebreak.
  * Returns a new array; does not mutate the input.

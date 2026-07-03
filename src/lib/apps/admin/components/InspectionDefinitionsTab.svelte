@@ -7,6 +7,7 @@
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
+  import { frequencyLabel } from '$lib/utils/inspectionSchedule';
   import Button        from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
@@ -29,11 +30,6 @@
   function matchCount(def) {
     if (!bas.components?.length) return null;
     return applyInspectionScope(bas.components, def.scope ?? {}, ctx).length;
-  }
-
-  function freqLabel(days) {
-    if (days == null) return 'On demand';
-    return ({ 7: 'Weekly', 30: 'Monthly', 90: 'Quarterly', 365: 'Annual' })[days] ?? `Every ${days}d`;
   }
 
   function openNew()  { editing = null; showModal = true; }
@@ -94,7 +90,7 @@
             </div>
             {#if d.description}<p class="desc">{d.description}</p>{/if}
             <div class="meta">
-              <span class="freq">{freqLabel(d.frequency_days)}</span>
+              <span class="freq">{frequencyLabel(d.frequency_days)}</span>
               {#if n != null}<span class="dot">·</span><span>{n} component{n === 1 ? '' : 's'}</span>{/if}
             </div>
           </div>

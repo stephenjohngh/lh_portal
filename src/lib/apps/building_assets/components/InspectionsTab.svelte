@@ -27,9 +27,10 @@
   import ConditionChecklistChips from './ConditionChecklistChips.svelte';
   import PhotoLightbox           from '$lib/components/common/PhotoLightbox.svelte';
   import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
+  import UpcomingInspections from './inspections/UpcomingInspections.svelte';
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
-  import { deleteWalkSession, listWalkSessions, loadSessionInspections } from '$lib/apps/inspection/public.js';
+  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listInspectionDefinitions } from '$lib/apps/inspection/public.js';
 
   const logger = getLogger('InspectionsTab');
 
@@ -39,6 +40,7 @@
 
   // -- State ----------------------------------------------------------------
   let sessions    = [];
+  let definitions = [];      // inspection_definitions (all; due list uses active only)
   let inspections = {};      // { [sessionId]: flattened inspection[] }
   let showReport  = false;
   let loading     = true;
@@ -111,7 +113,12 @@
   $: closedCount = filtered.filter(s => s.status === 'closed').length;
   $: hasFilters  = filterSessionType || filterPreset || filterDateFrom || filterDateTo;
 
-  onMount(loadSessions);
+  onMount(() => { loadSessions(); loadDefinitions(); });
+
+  // Active definitions drive the Upcoming/Due panel; the full list resolves a
+  // session's definition name (inactive definitions still label past sessions).
+  $: activeDefs = definitions.filter(d => d.active);
+  $: defById    = new Map(definitions.map(d => [d.id, d]));
 
   // -- Data loading ---------------------------------------------------------
   async function loadSessions() {
@@ -124,6 +131,15 @@
       error = err.message;
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadDefinitions() {
+    try {
+      definitions = await listInspectionDefinitions();
+    } catch (err) {
+      // Non-fatal: the due panel just stays hidden.
+      logger('❌ loadDefinitions:', err.message);
     }
   }
 
@@ -190,6 +206,9 @@
 </script>
 
 <div class="insp-tab">
+
+  <!-- -- Upcoming / Due ------------------------------------------------------ -->
+  <UpcomingInspections definitions={activeDefs} {sessions} />
 
   <!-- -- Toolbar ------------------------------------------------------------ -->
   <div class="toolbar">
@@ -301,6 +320,12 @@
                   {#if session.session_preset && session.session_preset !== 'custom'}
                     <Badge color={presetBadge(session.session_preset)} size="small">
                       {presetLabel(session.session_preset)}
+                    </Badge>
+                  {/if}
+
+                  {#if session.definition_id && defById.get(session.definition_id)}
+                    <Badge color="bg-purple-700" size="small">
+                      {defById.get(session.definition_id).name}
                     </Badge>
                   {/if}
 

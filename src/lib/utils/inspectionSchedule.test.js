@@ -1,6 +1,6 @@
 // src/lib/utils/inspectionSchedule.test.js
 import { describe, it, expect } from 'vitest';
-import { computeInspectionSchedule, sortBySchedule } from './inspectionSchedule.js';
+import { computeInspectionSchedule, sortBySchedule, frequencyLabel } from './inspectionSchedule.js';
 
 const NOW = new Date('2026-07-03T12:00:00Z');
 
@@ -113,5 +113,20 @@ describe('sortBySchedule', () => {
     const copy = [...states];
     sortBySchedule(states);
     expect(states).toEqual(copy);
+  });
+});
+
+describe('frequencyLabel', () => {
+  it('names the preset cadences', () => {
+    expect(frequencyLabel(7)).toBe('Weekly');
+    expect(frequencyLabel(30)).toBe('Monthly');
+    expect(frequencyLabel(90)).toBe('Quarterly');
+    expect(frequencyLabel(365)).toBe('Annual');
+  });
+
+  it('falls back to "Every N days" and handles null as on-demand', () => {
+    expect(frequencyLabel(14)).toBe('Every 14 days');
+    expect(frequencyLabel(null)).toBe('On demand');
+    expect(frequencyLabel(undefined)).toBe('On demand');
   });
 });

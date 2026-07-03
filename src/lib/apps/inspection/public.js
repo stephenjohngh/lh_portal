@@ -21,6 +21,19 @@ const SESSION_INSPECTION_SELECT =
   '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))';
 
 /**
+ * All inspection definitions (portal config, admin-maintained CRUD lives in the
+ * Admin app), presentation order. Read by the Building Assets Inspections tab
+ * and the mobile app's session-start list; due/overdue state is derived
+ * client-side from these + closed sessions via computeInspectionSchedule.
+ * @param {{ activeOnly?: boolean }} [opts]
+ */
+export function listInspectionDefinitions({ activeOnly = false } = {}) {
+  const options = { orderBy: 'presentation_order' };
+  if (activeOnly) options.filters = { active: true };
+  return api.get('inspection_definitions', options);
+}
+
+/**
  * All walk sessions, newest first, with the inspector's name joined. The
  * cross-app read for the Building Assets Inspections tab (the Inspection app's
  * own store reads its own, user-scoped, subset directly).
