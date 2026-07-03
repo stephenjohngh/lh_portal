@@ -34,7 +34,8 @@
   import { buildComponentsCsvRows } from '../utils/reportModel.js';
   import { generateXlsxDocument } from './plan/xlsxReportGenerator.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
-  import { fmtGenerated } from '$lib/utils/dates.js';
+  import { fmtGenerated }   from '$lib/utils/dates.js';
+  import { downloadCsvRows } from '$lib/utils/download.js';
 
   // -- Store bindings ------------------------------------------------
   $: store          = $buildingAssetsStore;
@@ -291,19 +292,6 @@
   // (one column PER attribute / condition, ✓·✗·— for conditions). This merges the
   // old inventory + condition-audit exports into a single configurable button.
 
-  /** Trigger a CSV file download from an array of rows (rows already strings). */
-  function downloadCsv(filename, rows) {
-    // UTF-8 BOM (﻿) tells Excel to open as UTF-8 without an import wizard
-    const csv  = '﻿' + rows.join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   // Column context shared by the CSV and XLSX detail matrix (same shape, so the
   // two exports can never drift).
   $: matrixCtx = {
@@ -314,7 +302,7 @@
   function generateCSV() {
     if (filteredComponents.length === 0) return;
     const rows = buildComponentsCsvRows(filteredComponents, filteredByFloor, matrixCtx);
-    downloadCsv(`components-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    downloadCsvRows(`components-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
   // -- XLSX export (server-styled, multi-sheet) ----------------------

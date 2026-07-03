@@ -23,3 +23,20 @@ export async function downloadResponse(response, filename) {
   URL.revokeObjectURL(url);
   document.body.removeChild(a);
 }
+
+/**
+ * Trigger a CSV download from already-serialised rows. Prepends a UTF-8 BOM so
+ * Excel opens it as UTF-8 without the import wizard.
+ * @param {string}   filename
+ * @param {string[]} rows      CSV lines (already escaped + column-joined)
+ */
+export function downloadCsvRows(filename, rows) {
+  const csv  = '﻿' + rows.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
