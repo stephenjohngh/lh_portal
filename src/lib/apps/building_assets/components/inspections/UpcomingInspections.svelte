@@ -4,7 +4,7 @@
      (the same util the mobile app and Admin config use, so the surfaces cannot
      diverge). Read-only: walks are started from the mobile Inspection app. -->
 <script>
-  import { computeInspectionSchedule, sortBySchedule, frequencyLabel } from '$lib/utils/inspectionSchedule';
+  import { computeInspectionSchedule, sortBySchedule, frequencyLabel, scheduleDueText } from '$lib/utils/inspectionSchedule';
   import { fmtDate } from '$lib/utils/dates';
 
   export let definitions = [];   // active inspection_definitions rows
@@ -21,19 +21,6 @@
     on_demand: { label: 'On demand', cls: 'b-od' },
   };
 
-  function dueText(st) {
-    switch (st.band) {
-      case 'on_demand': return 'Run any time';
-      case 'never_run': return 'Never run — due now';
-      case 'overdue': {
-        const d = -st.daysUntilDue;
-        return `Due ${fmtDate(st.nextDue)} · ${d} day${d === 1 ? '' : 's'} overdue`;
-      }
-      default:
-        if (st.daysUntilDue === 0) return `Due today`;
-        return `Due ${fmtDate(st.nextDue)} · in ${st.daysUntilDue} day${st.daysUntilDue === 1 ? '' : 's'}`;
-    }
-  }
 </script>
 
 {#if definitions.length > 0}
@@ -52,7 +39,7 @@
           <span class="up-name">{st.definition.name}</span>
           {#if st.definition.mode === 'rotating'}<span class="up-rot">Rotating</span>{/if}
           <span class="up-freq">{frequencyLabel(st.definition.frequency_days)}</span>
-          <span class="up-due">{dueText(st)}</span>
+          <span class="up-due">{scheduleDueText(st)}</span>
           <span class="up-last">{st.lastRun ? `Last: ${fmtDate(st.lastRun)}` : 'No completed runs'}</span>
         </div>
       {/each}

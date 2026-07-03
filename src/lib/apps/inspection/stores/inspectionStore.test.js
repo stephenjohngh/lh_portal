@@ -39,11 +39,13 @@ const h = vi.hoisted(() => {
   const api = {
     get:        vi.fn((table) => Promise.resolve(tables[table] ?? [])),
     getAll:     vi.fn((table) => Promise.resolve(tables[table] ?? [])),
+    getById:    vi.fn((table, id) => Promise.resolve((tables[table] ?? []).find(r => r.id === id) ?? null)),
     create:     vi.fn((table, data) => Promise.resolve({ id: `${table}-new`, ...data })),
     update:     vi.fn((table, id, data) => Promise.resolve({ id, ...data })),
     delete:     vi.fn(() => Promise.resolve()),
     deleteMany: vi.fn(() => Promise.resolve()),
     createMany: vi.fn(() => Promise.resolve([])),
+    latestInspections: vi.fn(() => Promise.resolve([])),
   };
 
   return {
@@ -153,6 +155,52 @@ describe('startSession', () => {
       sessionName: 'R', sessionType: 'repair', preset: 'all', targetComponentId: 'internal',
     });
     expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['internal']);
+  });
+});
+
+describe('definition sessions (configurable inspections)', () => {
+  const DEFINITION = {
+    id: 'def1', name: 'Fire Doors', active: true, mode: 'standard',
+    scope: { typeCodes: ['FD'] }, frequency_days: 7,
+  };
+
+  it('startSession with a definition applies its scope, stamps definition_id + resolved type_filter', async () => {
+    await inspectionStore.load();
+    await inspectionStore.startSession({
+      building: 'BLDG', floor: FLOOR, sessionName: 'D1', sessionType: 'test',
+      definition: DEFINITION,
+    });
+
+    const createArg = h.api.create.mock.calls.find(c => c[0] === 'walk_sessions')[1];
+    expect(createArg).toMatchObject({
+      definition_id: 'def1', session_preset: 'custom', emergency_only: false,
+      session_scope: 'single_floor', total_components_count: 2,
+    });
+    expect(JSON.parse(createArg.type_filter)).toEqual(['FD']);   // resolved from matched components
+    expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['comp1', 'comp2']);
+    expect(get(inspectionStore).activeSession._walk.definition.id).toBe('def1');
+  });
+
+  it('a definition scope that matches nothing yields an empty walk (not the full floor)', async () => {
+    await inspectionStore.load();
+    await inspectionStore.startSession({
+      building: 'BLDG', floor: FLOOR, sessionName: 'D0', sessionType: 'test',
+      definition: { ...DEFINITION, scope: { typeCodes: ['nope'] } },
+    });
+    expect(get(inspectionStore).walkComponents).toEqual([]);
+  });
+
+  it('resumeSession on a definition session rebuilds the walk from the definition scope', async () => {
+    h.setTables({ ...FIXTURE, inspection_definitions: [DEFINITION] });
+    await inspectionStore.load();
+    await inspectionStore.resumeSession({
+      id: 'sess1', session_scope: 'single_floor', floor_id: 'f1', status: 'open',
+      definition_id: 'def1', type_filter: '[]', emergency_only: false,
+    });
+    // type_filter is '[]' — an empty legacy filter would produce an empty walk,
+    // so a populated walk proves the definition scope drove it.
+    expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['comp1', 'comp2']);
+    expect(get(inspectionStore).activeSession._walk.definition.id).toBe('def1');
   });
 });
 

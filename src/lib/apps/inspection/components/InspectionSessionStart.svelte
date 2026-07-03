@@ -1,11 +1,15 @@
 ﻿<!-- src/lib/apps/inspection/components/InspectionSessionStart.svelte -->
 <!-- Configure and start a new test or inspection session.
-     Presets: Emergency Lighting, Fire Doors, Apartment Doors, Custom (full tree). -->
+     Scheduled (configurable) inspection definitions list first, due-ordered;
+     legacy presets (Emergency Lighting, Fire Doors, Apartment Doors, Custom)
+     remain below until Phase-2 seed definitions retire them. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { generateSessionName } from '../utils/sessionNaming.js';
+  import { buildWalkComponentsFromScope } from '../utils/inspectionWalk.js';
+  import { computeInspectionSchedule, sortBySchedule, scheduleDueText } from '$lib/utils/inspectionSchedule';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkInput  from '$lib/apps/inspection/components/common/WalkInput.svelte';
   import WalkSelect from '$lib/apps/inspection/components/common/WalkSelect.svelte';
@@ -27,6 +31,7 @@
   // -- Form state ----------------------------------------------------------------
   let scope      = 'single_floor';   // 'single_floor' | 'building'
   let preset     = 'emergency_lighting';
+  let selectedDefinitionId = '';     // an inspection_definitions id, or '' (preset mode)
   let showCustom = false;
   let selectedFacilityId = '';
   let selectedFloorId    = '';
@@ -36,6 +41,36 @@
 
   // Custom tree: set of hidden type codes (same exclusive model as plan filter)
   let hiddenTypeCodes = new Set();
+
+  // -- Scheduled inspection definitions -------------------------------------------
+  $: definitions = ($inspectionStore.definitions ?? []).filter(d => d.active);
+  $: schedStates = sortBySchedule(computeInspectionSchedule(definitions, $inspectionStore.scheduleSessions ?? []));
+  $: selectedDefinition = definitions.find(d => d.id === selectedDefinitionId) ?? null;
+  // ctx for the shared scope filter engine — same shape the walk builder uses,
+  // so the preview count always equals the real walk length.
+  $: scopeCtx = {
+    types,
+    attrDefs:       $inspectionStore.attrDefs ?? {},
+    componentAttrs: allComponentAttrs,
+    inspections:    $inspectionStore.latestInspections ?? {},
+  };
+
+  const BAND_LABEL = {
+    never_run: 'DUE',
+    overdue:   'OVERDUE',
+    due_soon:  'DUE SOON',
+    ok:        'OK',
+    on_demand: 'ANY TIME',
+  };
+
+  function selectDefinition(d) {
+    selectedDefinitionId = d.id;
+    preset = '';
+    showCustom = false;
+    // Condition-attribute scopes match against latest inspections — load the
+    // map now so the count preview (and the walk) sees it.
+    if (d.scope?.conditionAttrFilters?.length) inspectionStore.ensureLatestInspections();
+  }
 
   // -- Derived -------------------------------------------------------------------
   $: selectedFacility  = facilities.find(f => f.id === selectedFacilityId) ?? facilities[0];
@@ -68,9 +103,18 @@
   $: emergencyOnly = preset === 'emergency_lighting';
 
   // Component count preview.
+  // Definitions: exact walk builder (scope engine + walk exclusions), so the
+  // count always equals the session's real walk length.
   // Emergency: check component_attributes for attr_name='emergency', value='true'
   // (attr_name is enriched into allComponentAttrs during store load()).
   $: componentCount = (() => {
+    if (selectedDefinition) {
+      const count = (comps) => buildWalkComponentsFromScope(comps, selectedDefinition.scope, scopeCtx).length;
+      if (scope === 'single_floor') {
+        return selectedFloor?.id ? count(allComponents[selectedFloor.id] ?? []) : 0;
+      }
+      return buildingFloors.reduce((n, f) => n + count(allComponents[f.id] ?? []), 0);
+    }
     const tf = presetTypeFilter;
     if (scope === 'single_floor') {
       const fid = selectedFloor?.id;
@@ -94,7 +138,7 @@
   // Auto-generate name when inputs change
   $: {
     const floor = scope === 'single_floor' ? selectedFloor : null;
-    sessionName = generateSessionName({ preset, building, floor, scope });
+    sessionName = generateSessionName({ preset, definition: selectedDefinition, building, floor, scope });
   }
 
 
@@ -147,14 +191,9 @@
     if (componentCount === 0) { error = 'No components match this selection.'; return; }
     saving = true; error = null;
     try {
-      const opts = {
-        building,
-        typeFilter:   presetTypeFilter,
-        emergencyOnly,
-        sessionName,
-        sessionType,
-        preset,
-      };
+      const opts = selectedDefinition
+        ? { building, sessionName, sessionType, definition: selectedDefinition }
+        : { building, typeFilter: presetTypeFilter, emergencyOnly, sessionName, sessionType, preset };
       if (scope === 'single_floor') {
         await inspectionStore.startSession({ ...opts, floor: selectedFloor });
       } else {
@@ -213,15 +252,37 @@
       </section>
     {/if}
 
+    <!-- -- Scheduled inspection definitions (due-ordered) ------------------------ -->
+    {#if schedStates.length > 0}
+      <section class="grp">
+        <div class="grp-lbl">SCHEDULED INSPECTIONS</div>
+        <div class="preset-list">
+          {#each schedStates as st (st.definition.id)}
+            <button
+              class="preset-btn"
+              class:sel={selectedDefinitionId === st.definition.id}
+              on:click={() => selectDefinition(st.definition)}
+            >
+              <div class="def-row">
+                <div class="preset-label">{st.definition.name}</div>
+                <span class="def-band band-{st.band}">{BAND_LABEL[st.band]}</span>
+              </div>
+              <div class="preset-sub">{scheduleDueText(st)}</div>
+            </button>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
     <!-- -- Preset --------------------------------------------------------------- -->
     <section class="grp">
-      <div class="grp-lbl">INSPECTION TYPE</div>
+      <div class="grp-lbl">{schedStates.length > 0 ? 'AD-HOC INSPECTION' : 'INSPECTION TYPE'}</div>
       <div class="preset-list">
         {#each PRESETS as p (p.id)}
           <button
             class="preset-btn"
             class:sel={preset === p.id}
-            on:click={() => { preset = p.id; showCustom = p.id === 'custom'; }}
+            on:click={() => { preset = p.id; showCustom = p.id === 'custom'; selectedDefinitionId = ''; }}
           >
             <div class="preset-label">{p.label}</div>
             <div class="preset-sub">{p.sub}</div>
@@ -310,6 +371,12 @@
   .preset-btn:hover:not(.sel) { border-color:#5e5e78; }
   .preset-label { font-size:0.82rem; font-weight:700; color:#f0f0f0; }
   .preset-sub   { font-size:0.68rem; color:#aaa; margin-top:0.2rem; }
+  .def-row  { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
+  .def-band { font-size:0.58rem; font-weight:800; letter-spacing:0.1em; padding:0.15rem 0.45rem; border-radius:4px; border:1px solid transparent; flex-shrink:0; }
+  .band-overdue, .band-never_run { background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.4); }
+  .band-due_soon { background:rgba(251,191,36,0.12); color:#fbbf24; border-color:rgba(251,191,36,0.35); }
+  .band-ok       { background:rgba(74,222,128,0.1);  color:#4ade80; border-color:rgba(74,222,128,0.3); }
+  .band-on_demand{ background:rgba(94,94,120,0.2);   color:#aaa;    border-color:#3e3e58; }
   .type-tree { display:flex; flex-direction:column; gap:0.25rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; padding:0.75rem; }
   .tree-sys { display:flex; align-items:center; gap:0.625rem; cursor:pointer; padding:0.35rem 0; }
   .tree-sys-name { font-size:0.82rem; font-weight:700; color:#f0f0f0; }

@@ -28,7 +28,7 @@ import {
 } from '$lib/utils/mediaAttachments.js';
 import { deleteWalkSession } from '../public.js';   // session-delete cascade (shared)
 import {
-  buildWalkComponents,
+  makeWalkBuilder,
   firstNonEmptyFloor,
   initFloorProgress,
   calcFloorProgress,
@@ -82,6 +82,13 @@ const INITIAL_STATE = {
   // All components, indexed by floorId for fast access
   allComponents:    {},      // { floorId: components[] }
   allComponentAttrs: {},     // { componentId: component_attributes[] }
+
+  // Configurable inspection definitions (admin-maintained config) + the closed
+  // sessions that drive their due/overdue state (computeInspectionSchedule).
+  definitions:      [],      // inspection_definitions rows
+  scheduleSessions: [],      // closed walk_sessions (lite rows: id, definition_id, status, closed_at)
+  latestInspections: {},     // { componentId: latest component_inspections row } — lazy, for
+                             // definition scopes with condition-attribute filters
 
   // Session state
   sessions:         [],
@@ -203,6 +210,66 @@ function createInspectionStore() {
       update(s => ({ ...s, loading: false, error: err.message }));
       throw err;
     }
+
+    // Inspection definitions + their schedule inputs — non-fatal, so the app
+    // still works (ad-hoc + repair) if the definitions table is unavailable.
+    // Closed sessions come newest-first: only the most recent closed session per
+    // definition matters for the schedule, so the 1000-row page is plenty.
+    try {
+      const [definitions, scheduleSessions] = await Promise.all([
+        api.get('inspection_definitions', { orderBy: 'presentation_order' }),
+        api.get('walk_sessions', {
+          select:    'id, definition_id, status, closed_at',
+          filters:   { status: 'closed' },
+          orderBy:   'closed_at',
+          ascending: false,
+        }),
+      ]);
+      update(s => ({ ...s, definitions, scheduleSessions }));
+      logger('✅ definitions loaded:', definitions.length);
+    } catch (err) {
+      logger('⚠ definitions load (non-fatal):', err.message);
+    }
+  }
+
+  // -- Walk building -------------------------------------------------------------
+
+  // ctx consumed by the shared scope filter engine (see inspectionWalk.js).
+  function walkCtx(state) {
+    return {
+      types:          state.types,
+      attrDefs:       state.attrDefs,
+      componentAttrs: state.allComponentAttrs ?? {},
+      inspections:    state.latestInspections ?? {},
+    };
+  }
+
+  // Condition-attribute scope filters match against each component's LATEST
+  // inspection — load that map once, on demand (definition sessions only).
+  let latestInspectionsLoaded = false;
+  async function ensureLatestInspections() {
+    if (latestInspectionsLoaded) return;
+    const state = getState();
+    const ids = Object.values(state.allComponents).flat().map(c => c.id);
+    try {
+      const rows = await api.latestInspections(ids);
+      const map = {};
+      for (const r of rows ?? []) map[r.component_id] = r;
+      latestInspectionsLoaded = true;
+      update(s => ({ ...s, latestInspections: map }));
+    } catch (err) {
+      logger('⚠ latestInspections load:', err.message);
+    }
+  }
+
+  // Resolve a session's walk config ({ definition } or { typeFilter, emergencyOnly })
+  // into a buildFn, loading the latest-inspections map first when the scope
+  // filters on condition attributes.
+  async function prepareWalkBuilder(walk) {
+    if (walk.definition?.scope?.conditionAttrFilters?.length) {
+      await ensureLatestInspections();
+    }
+    return makeWalkBuilder(walk, walkCtx(getState()));
   }
 
   // -- Sessions ----------------------------------------------------------------
@@ -238,13 +305,17 @@ function createInspectionStore() {
 
   // -- Start single-floor session -----------------------------------------------
 
-  async function startSession({ building, floor, typeFilter, emergencyOnly, sessionName, sessionType, preset, targetComponentId }) {
-    logger('startSession:', { building, floor: floor?.short_name, typeFilter, targetComponentId });
-    const state = getState();
+  // `definition` (an inspection_definitions row) supersedes typeFilter +
+  // emergencyOnly when present: the walk is the definition's scope, and the
+  // session is stamped with definition_id so the read-time schedule can key
+  // off its closed sessions.
+  async function startSession({ building, floor, typeFilter, emergencyOnly, sessionName, sessionType, preset, targetComponentId, definition }) {
+    logger('startSession:', { building, floor: floor?.short_name, typeFilter, targetComponentId, definition: definition?.name });
+    const walk    = definition ? { definition } : { typeFilter, emergencyOnly };
+    const buildFn = await prepareWalkBuilder(walk);
+    const state   = getState();
     const floorComponents = state.allComponents[floor.id] ?? [];
-    let walkComponents  = buildWalkComponents(
-      floorComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
-    );
+    let walkComponents = buildFn(floorComponents);
     // Repair sessions target a single specific component — limit the walk list
     // to it. Source it directly from the floor's components so a targeted repair
     // can still reach an "internal" component (walk order 0) that buildWalkComponents
@@ -257,9 +328,12 @@ function createInspectionStore() {
     const session = await createSession({
       session_type:              sessionType,
       session_scope:             'single_floor',
-      session_preset:            preset,
-      type_filter:               JSON.stringify(typeFilter),
-      emergency_only:            emergencyOnly,
+      session_preset:            definition ? 'custom' : preset,
+      // Definition sessions record the RESOLVED type codes for the historic
+      // record; scheduling keys off definition_id (plan §4.2).
+      type_filter:               JSON.stringify(definition ? [...new Set(walkComponents.map(c => c.type_code))] : typeFilter),
+      emergency_only:            definition ? false : emergencyOnly,
+      definition_id:             definition?.id ?? null,
       building,
       floor_id:                  floor.id,
       session_name:              sessionName,
@@ -269,7 +343,7 @@ function createInspectionStore() {
 
     update(s => ({
       ...s,
-      activeSession:  { ...session, _floorObj: floor },
+      activeSession:  { ...session, _floorObj: floor, _walk: walk },
       walkComponents,
       currentIndex:   0,
       inspections:    {},
@@ -283,9 +357,11 @@ function createInspectionStore() {
 
   // -- Start building-wide session ----------------------------------------------
 
-  async function startBuildingWideSession({ building, typeFilter, emergencyOnly, sessionName, sessionType, preset }) {
-    logger('startBuildingWideSession:', { building, typeFilter });
-    const state = getState();
+  async function startBuildingWideSession({ building, typeFilter, emergencyOnly, sessionName, sessionType, preset, definition }) {
+    logger('startBuildingWideSession:', { building, typeFilter, definition: definition?.name });
+    const walk    = definition ? { definition } : { typeFilter, emergencyOnly };
+    const buildFn = await prepareWalkBuilder(walk);
+    const state   = getState();
 
     // Get floors for this building (via facilities→floors, but floors have facility_id)
     // We rely on the facility whose short_name or name matches building
@@ -300,37 +376,31 @@ function createInspectionStore() {
 
     if (buildingFloors.length === 0) throw new Error(`No walkable floors found for building: ${building}. Set walk_order on floors in Admin.`);
 
-    const total = buildingFloors.reduce((n, floor) =>
-      n + buildWalkComponents(
-        state.allComponents[floor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
-      ).length, 0
-    );
+    const allWalkComponents = buildingFloors.flatMap(floor => buildFn(state.allComponents[floor.id] ?? []));
 
     const session = await createSession({
       session_type:              sessionType,
       session_scope:             'building',
-      session_preset:            preset,
-      type_filter:               JSON.stringify(typeFilter),
-      emergency_only:            emergencyOnly,
+      session_preset:            definition ? 'custom' : preset,
+      type_filter:               JSON.stringify(definition ? [...new Set(allWalkComponents.map(c => c.type_code))] : typeFilter),
+      emergency_only:            definition ? false : emergencyOnly,
+      definition_id:             definition?.id ?? null,
       building,
       floor_id:                  null,
       session_name:              sessionName,
-      total_components_count:    total,
+      total_components_count:    allWalkComponents.length,
       inspected_components_count: 0,
     });
 
-    const attrs         = state.allComponentAttrs ?? {};
-    const floorProgress = initFloorProgress(
-      buildingFloors, state.allComponents, typeFilter, emergencyOnly, attrs
-    );
+    const floorProgress = initFloorProgress(buildingFloors, state.allComponents, buildFn);
     // Start on the first floor that actually has matching components
-    const firstResult   = firstNonEmptyFloor(buildingFloors, state.allComponents, typeFilter, emergencyOnly, attrs, 0, 1);
+    const firstResult   = firstNonEmptyFloor(buildingFloors, state.allComponents, buildFn, 0, 1);
     const firstFloor    = firstResult?.floor    ?? buildingFloors[0];
     const walkComponents = firstResult?.components ?? [];
 
     update(s => ({
       ...s,
-      activeSession:  { ...session, _typeFilter: typeFilter, _emergencyOnly: emergencyOnly },
+      activeSession:  { ...session, _walk: walk },
       buildingFloors,
       currentFloor:   firstFloor,
       floorProgress,
@@ -351,6 +421,21 @@ function createInspectionStore() {
       ? session.type_filter
       : (JSON.parse(session.type_filter || '[]'));
     const emergencyOnly = session.emergency_only ?? false;
+
+    // Definition-driven session: rebuild the walk from the definition's scope.
+    // If the definition can't be fetched, fall back to the resolved type_filter
+    // stamped at start — the walk membership may drift slightly but stays usable.
+    let walk = { typeFilter, emergencyOnly };
+    if (session.definition_id) {
+      try {
+        const definition = getState().definitions.find(d => d.id === session.definition_id)
+          ?? await api.getById('inspection_definitions', session.definition_id);
+        if (definition) walk = { definition };
+      } catch (err) {
+        logger('⚠ resume: definition fetch failed, using stored type_filter:', err.message);
+      }
+    }
+    const buildFn = await prepareWalkBuilder(walk);
 
     // Load existing inspections map. A building-wide session can exceed the
     // 1000-row cap, so paginate (getAll pages by id) and sort asc client-side.
@@ -373,21 +458,17 @@ function createInspectionStore() {
         .filter(f => f.facility_id === (facility?.id ?? null) && f.walk_order != null)
         .sort((a, b) => a.walk_order - b.walk_order);
 
-      const floorProgress = calcFloorProgress(
-        buildingFloors, state.allComponents, typeFilter, emergencyOnly, state.allComponentAttrs ?? {}, inspections
-      );
+      const floorProgress = calcFloorProgress(buildingFloors, state.allComponents, buildFn, inspections);
 
       const currentFloor = buildingFloors.find(f =>
         floorProgress[f.id].inspected < floorProgress[f.id].total
       ) ?? buildingFloors[0];
 
-      const walkComponents = buildWalkComponents(
-        state.allComponents[currentFloor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
-      );
+      const walkComponents = buildFn(state.allComponents[currentFloor.id] ?? []);
 
       update(s => ({
         ...s,
-        activeSession:  { ...session, _typeFilter: typeFilter, _emergencyOnly: emergencyOnly },
+        activeSession:  { ...session, _walk: walk },
         buildingFloors,
         currentFloor,
         floorProgress,
@@ -398,12 +479,10 @@ function createInspectionStore() {
     } else {
       const floor = state.floors.find(f => f.id === session.floor_id);
       if (!floor) throw new Error('Floor not found for session');
-      const walkComponents = buildWalkComponents(
-        state.allComponents[floor.id] ?? [], typeFilter, emergencyOnly, state.allComponentAttrs ?? {}
-      );
+      const walkComponents = buildFn(state.allComponents[floor.id] ?? []);
       update(s => ({
         ...s,
-        activeSession:  { ...session, _floorObj: floor },
+        activeSession:  { ...session, _floorObj: floor, _walk: walk },
         walkComponents,
         currentIndex:   0,
         inspections,
@@ -447,18 +526,20 @@ function createInspectionStore() {
     }));
   }
 
+  // Rebuild the active session's walk builder from the stashed _walk config.
+  // Sync (no fetch): any latest-inspections load already happened at start/resume.
+  function activeBuildFn(s) {
+    return makeWalkBuilder(s.activeSession?._walk ?? { typeFilter: [], emergencyOnly: false }, walkCtx(s));
+  }
+
   function goNext() {
     update(s => {
       const next = s.currentIndex + 1;
       if (next >= s.walkComponents.length) {
         // End of floor — advance to next non-empty floor for building-wide
         if (s.activeSession?.session_scope === 'building' && s.buildingFloors.length > 0) {
-          const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-          const typeFilter    = s.activeSession._typeFilter ?? [];
-          const emergencyOnly = s.activeSession._emergencyOnly ?? false;
-          const result        = firstNonEmptyFloor(
-            s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci + 1, 1
-          );
+          const ci     = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+          const result = firstNonEmptyFloor(s.buildingFloors, s.allComponents, activeBuildFn(s), ci + 1, 1);
           if (result) {
             return { ...s, currentFloor: result.floor, walkComponents: result.components, currentIndex: 0 };
           }
@@ -475,12 +556,8 @@ function createInspectionStore() {
       if (prev < 0) {
         // Start of floor — go back to previous non-empty floor for building-wide
         if (s.activeSession?.session_scope === 'building' && s.buildingFloors.length > 0) {
-          const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-          const typeFilter    = s.activeSession._typeFilter ?? [];
-          const emergencyOnly = s.activeSession._emergencyOnly ?? false;
-          const result        = firstNonEmptyFloor(
-            s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci - 1, -1
-          );
+          const ci     = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+          const result = firstNonEmptyFloor(s.buildingFloors, s.allComponents, activeBuildFn(s), ci - 1, -1);
           if (result) {
             return { ...s, currentFloor: result.floor, walkComponents: result.components, currentIndex: result.components.length - 1 };
           }
@@ -496,12 +573,8 @@ function createInspectionStore() {
     if (s.activeSession?.session_scope !== 'building') return false;
     if (s.currentIndex < s.walkComponents.length - 1) return false;
     // True only if there is no non-empty floor after the current one
-    const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-    const typeFilter    = s.activeSession?._typeFilter    ?? [];
-    const emergencyOnly = s.activeSession?._emergencyOnly ?? false;
-    return !firstNonEmptyFloor(
-      s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci + 1, 1
-    );
+    const ci = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+    return !firstNonEmptyFloor(s.buildingFloors, s.allComponents, activeBuildFn(s), ci + 1, 1);
   }
 
   function isAtStartOfBuilding() {
@@ -509,12 +582,8 @@ function createInspectionStore() {
     if (s.activeSession?.session_scope !== 'building') return false;
     if (s.currentIndex > 0) return false;
     // True only if there is no non-empty floor before the current one
-    const ci            = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
-    const typeFilter    = s.activeSession?._typeFilter    ?? [];
-    const emergencyOnly = s.activeSession?._emergencyOnly ?? false;
-    return !firstNonEmptyFloor(
-      s.buildingFloors, s.allComponents, typeFilter, emergencyOnly, s.allComponentAttrs ?? {}, ci - 1, -1
-    );
+    const ci = s.buildingFloors.findIndex(f => f.id === s.currentFloor?.id);
+    return !firstNonEmptyFloor(s.buildingFloors, s.allComponents, activeBuildFn(s), ci - 1, -1);
   }
 
   function getCurrentFloorProgress() {
@@ -722,6 +791,7 @@ function createInspectionStore() {
     subscribe,
     load,
     loadSessions,
+    ensureLatestInspections,
     startSession,
     startBuildingWideSession,
     resumeSession,

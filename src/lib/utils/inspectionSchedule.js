@@ -9,6 +9,8 @@
 //
 // See docs/requirements/Configurable_Inspections_Build_Plan.md §5.
 
+import { fmtDate } from '$lib/utils/dates';
+
 const DAY_MS = 86_400_000;
 
 /**
@@ -103,6 +105,27 @@ export function frequencyLabel(days) {
   if (days == null) return 'On demand';
   return { 7: 'Weekly', 30: 'Monthly', 90: 'Quarterly', 365: 'Annual' }[days]
     ?? `Every ${days} days`;
+}
+
+/**
+ * One-line human description of a schedule state's due status. Shared by the
+ * Building Assets Upcoming/Due panel and the mobile session-start list so the
+ * wording never diverges.
+ * @param {ScheduleState} st
+ * @returns {string}
+ */
+export function scheduleDueText(st) {
+  switch (st.band) {
+    case 'on_demand': return 'Run any time';
+    case 'never_run': return 'Never run — due now';
+    case 'overdue': {
+      const d = -st.daysUntilDue;
+      return `Due ${fmtDate(st.nextDue)} · ${d} day${d === 1 ? '' : 's'} overdue`;
+    }
+    default:
+      if (st.daysUntilDue === 0) return 'Due today';
+      return `Due ${fmtDate(st.nextDue)} · in ${st.daysUntilDue} day${st.daysUntilDue === 1 ? '' : 's'}`;
+  }
 }
 
 /**
