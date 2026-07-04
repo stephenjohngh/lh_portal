@@ -26,13 +26,14 @@ import {
   addAttachments,
   purgeAttachments,
 } from '$lib/utils/mediaAttachments.js';
-import { deleteWalkSession } from '../public.js';   // session-delete cascade (shared)
+import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   // session-delete cascade + rotation inputs (shared)
 import {
   makeWalkBuilder,
   firstNonEmptyFloor,
   initFloorProgress,
   calcFloorProgress,
 } from '../utils/inspectionWalk.js';
+import { buildRotatingWalk, resolveLinkedSet } from '../utils/inspectionRotation.js';
 
 const logger = getLogger('inspectionStore');
 
@@ -82,6 +83,7 @@ const INITIAL_STATE = {
   // All components, indexed by floorId for fast access
   allComponents:    {},      // { floorId: components[] }
   allComponentAttrs: {},     // { componentId: component_attributes[] }
+  componentLinks:   {},      // { [fromComponentId]: component_links[] } — rotating linked sets
 
   // Configurable inspection definitions (admin-maintained config) + the closed
   // sessions that drive their due/overdue state (computeInspectionSchedule).
@@ -142,7 +144,7 @@ function createInspectionStore() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
       // Load hierarchy + components in parallel
-      const [facilities, floors, systems, types, defs, options, plans, components, componentAttrs] =
+      const [facilities, floors, systems, types, defs, options, plans, components, componentAttrs, links] =
         await Promise.all([
           api.get('facilities'),
           api.get('floors', { orderBy: 'level_order', ascending: true }),
@@ -155,6 +157,8 @@ function createInspectionStore() {
           // cap in production — paginate via getAll (pages by id for stability).
           api.getAll('components'),
           api.getAll('component_attributes'),
+          // Rotating definitions resolve their linked set from component_links.
+          api.getAll('component_links').catch(() => []),
         ]);
 
       // Restore asset_id ordering (getAll pages by id, not asset_id)
@@ -186,10 +190,16 @@ function createInspectionStore() {
         allComponents[c.floor_id].push(c);
       }
 
+      // Index component_links by from_component_id
+      const componentLinks = {};
+      for (const link of links) {
+        (componentLinks[link.from_component_id] ??= []).push(link);
+      }
+
       update(s => ({
         ...s,
         facilities, floors, systems, types, attrDefs, attrOptions,
-        plans, allComponents, allComponentAttrs,
+        plans, allComponents, allComponentAttrs, componentLinks,
         loading: false,
       }));
 
@@ -412,6 +422,60 @@ function createInspectionStore() {
     return session;
   }
 
+  // -- Start rotating (trigger-based) session -------------------------------------
+
+  // A rotating definition's session exercises ONE trigger (the least recently
+  // tested pool member) plus its linked components — a flat pinned list, no
+  // floor navigation. The trigger is stamped on the session
+  // (trigger_component_id, migration 154) so resume never re-derives it.
+  async function startRotatingSession({ building, definition, sessionName, sessionType }) {
+    logger('startRotatingSession:', { building, definition: definition?.name });
+    if (definition.scope?.conditionAttrFilters?.length) await ensureLatestInspections();
+    const lastTested = await lastDefinitionInspections(definition.id);
+    const state      = getState();
+    const allComps   = Object.values(state.allComponents).flat();
+
+    const { trigger, linked, unresolved, walkComponents } = buildRotatingWalk(definition, {
+      components:     allComps,
+      floors:         state.floors,
+      componentLinks: state.componentLinks,
+      ctx:            walkCtx(state),
+      lastTested,
+    });
+    if (!trigger) throw new Error('No trigger component matches this inspection’s scope.');
+    if (unresolved.length > 0) logger('⚠ unresolved link refs:', unresolved.join(', '));
+
+    const floor = state.floors.find(f => f.id === trigger.floor_id) ?? null;
+
+    const session = await createSession({
+      session_type:              sessionType,
+      session_scope:             'single_floor',
+      session_preset:            'custom',
+      type_filter:               JSON.stringify([...new Set(walkComponents.map(c => c.type_code))]),
+      emergency_only:            false,
+      definition_id:             definition.id,
+      trigger_component_id:      trigger.id,
+      building,
+      floor_id:                  trigger.floor_id ?? null,
+      session_name:              sessionName,
+      total_components_count:    walkComponents.length,
+      inspected_components_count: 0,
+    });
+
+    update(s => ({
+      ...s,
+      activeSession:  { ...session, _floorObj: floor, _walk: { definition } },
+      walkComponents,
+      currentIndex:   0,
+      inspections:    {},
+      buildingFloors: [],
+      currentFloor:   floor,
+      floorProgress:  {},
+    }));
+
+    return session;
+  }
+
   // -- Resume -------------------------------------------------------------------
 
   async function resumeSession(session) {
@@ -448,6 +512,39 @@ function createInspectionStore() {
     const inspections = {};
     for (const r of inspRows) {
       inspections[r.component_id] = r; // keep latest (rows are asc)
+    }
+
+    // Rotating session: the walk is its stamped trigger + linked set — never
+    // re-derived (mid-walk re-derivation could pin a different trigger).
+    if (walk.definition?.mode === 'rotating') {
+      const s2       = getState();
+      const allComps = Object.values(s2.allComponents).flat();
+      let trigger    = allComps.find(c => c.id === session.trigger_component_id) ?? null;
+      if (!trigger) {
+        // No stored trigger (pre-154 session) or trigger deleted — re-derive.
+        const lastTested = await lastDefinitionInspections(walk.definition.id).catch(() => ({}));
+        trigger = buildRotatingWalk(walk.definition, {
+          components: allComps, floors: s2.floors,
+          componentLinks: s2.componentLinks, ctx: walkCtx(s2), lastTested,
+        }).trigger;
+      }
+      const { linked } = resolveLinkedSet(trigger, walk.definition, s2.componentLinks, {
+        components: allComps, floors: s2.floors, types: s2.types,
+      });
+      const walkComponents = trigger ? [trigger, ...linked] : [];
+      const floor = s2.floors.find(f => f.id === session.floor_id)
+        ?? s2.floors.find(f => f.id === trigger?.floor_id) ?? null;
+      update(s => ({
+        ...s,
+        activeSession:  { ...session, _floorObj: floor, _walk: walk },
+        walkComponents,
+        currentIndex:   0,
+        inspections,
+        buildingFloors: [],
+        currentFloor:   floor,
+        floorProgress:  {},
+      }));
+      return;
     }
 
     if (session.session_scope === 'building') {
@@ -794,6 +891,7 @@ function createInspectionStore() {
     ensureLatestInspections,
     startSession,
     startBuildingWideSession,
+    startRotatingSession,
     resumeSession,
     pauseSession,
     completeSession,

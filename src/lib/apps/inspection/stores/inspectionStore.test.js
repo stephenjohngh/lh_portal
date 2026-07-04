@@ -45,6 +45,7 @@ const h = vi.hoisted(() => {
     delete:     vi.fn(() => Promise.resolve()),
     deleteMany: vi.fn(() => Promise.resolve()),
     createMany: vi.fn(() => Promise.resolve([])),
+    getAllIn:   vi.fn((table) => Promise.resolve(tables[table] ?? [])),
     latestInspections: vi.fn(() => Promise.resolve([])),
   };
 
@@ -201,6 +202,60 @@ describe('definition sessions (configurable inspections)', () => {
     // so a populated walk proves the definition scope drove it.
     expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['comp1', 'comp2']);
     expect(get(inspectionStore).activeSession._walk.definition.id).toBe('def1');
+  });
+});
+
+describe('rotating sessions', () => {
+  // Two call points (cp1 walks first) + a bell linked from each; the ref format
+  // is "{floorSN}/{typeInitial}/{assetId}" and FIXTURE's floor is L1.
+  const ROT_FIXTURE = {
+    ...FIXTURE,
+    component_types: [
+      { id: 't-cp', code: 'CP',   initial: 'CP' },
+      { id: 't-b',  code: 'bell', initial: 'B' },
+    ],
+    components: [
+      { id: 'cp1',   floor_id: 'f1', type_code: 'CP',   asset_id: 'CP1', status: 'ok' },
+      { id: 'cp2',   floor_id: 'f1', type_code: 'CP',   asset_id: 'CP2', status: 'ok' },
+      { id: 'bell1', floor_id: 'f1', type_code: 'bell', asset_id: 'B1',  status: 'ok' },
+    ],
+    component_links: [
+      { id: 'l1', from_component_id: 'cp1', to_component_ref: 'L1/B/B1', link_type: 'fire' },
+    ],
+  };
+  const ROT_DEF = {
+    id: 'rot1', name: 'Weekly Call Point', active: true, mode: 'rotating',
+    scope: { typeCodes: ['CP'] }, frequency_days: 7,
+    link_source: 'component_links', link_type_filter: null,
+  };
+
+  it('startRotatingSession pins the next trigger + linked set and stamps trigger_component_id', async () => {
+    h.setTables({ ...ROT_FIXTURE });
+    await inspectionStore.load();
+    await inspectionStore.startRotatingSession({
+      building: 'BLDG', definition: ROT_DEF, sessionName: 'R1', sessionType: 'test',
+    });
+
+    const createArg = h.api.create.mock.calls.find(c => c[0] === 'walk_sessions')[1];
+    expect(createArg).toMatchObject({
+      definition_id: 'rot1', trigger_component_id: 'cp1',
+      session_scope: 'single_floor', floor_id: 'f1', total_components_count: 2,
+    });
+    // Trigger pinned first, then its resolved linked set.
+    expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['cp1', 'bell1']);
+  });
+
+  it('resumeSession rebuilds the walk from the STAMPED trigger, not a fresh derivation', async () => {
+    h.setTables({ ...ROT_FIXTURE, inspection_definitions: [ROT_DEF] });
+    await inspectionStore.load();
+    // cp2 has no links → walk is just cp2. A fresh derivation (nothing tested)
+    // would pick cp1, so cp2 proves the stored trigger drove it.
+    await inspectionStore.resumeSession({
+      id: 'sessR', session_scope: 'single_floor', floor_id: 'f1', status: 'open',
+      definition_id: 'rot1', trigger_component_id: 'cp2',
+      type_filter: '[]', emergency_only: false,
+    });
+    expect(get(inspectionStore).walkComponents.map(c => c.id)).toEqual(['cp2']);
   });
 });
 

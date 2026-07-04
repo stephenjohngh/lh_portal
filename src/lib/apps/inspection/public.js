@@ -34,6 +34,32 @@ export function listInspectionDefinitions({ activeOnly = false } = {}) {
 }
 
 /**
+ * Rotating definitions: the most recent inspected_at per component across ALL
+ * of this definition's sessions (open included — an in-progress trigger test
+ * must not be re-picked). Feeds deriveNextTrigger.
+ * @param {string} definitionId
+ * @returns {Promise<Record<string, string>>} { componentId: ISO inspected_at }
+ */
+export async function lastDefinitionInspections(definitionId) {
+  const sessions = await api.get('walk_sessions', {
+    select:  'id',
+    filters: { definition_id: definitionId },
+  });
+  if (sessions.length === 0) return {};
+  const rows = await api.getAllIn('component_inspections', 'walk_session_id',
+    sessions.map((s) => s.id), { select: 'component_id, inspected_at' });
+  /** @type {Record<string, string>} */
+  const last = {};
+  for (const r of rows) {
+    if (!r.inspected_at) continue;
+    if (!last[r.component_id] || r.inspected_at > last[r.component_id]) {
+      last[r.component_id] = r.inspected_at;
+    }
+  }
+  return last;
+}
+
+/**
  * All walk sessions, newest first, with the inspector's name joined. The
  * cross-app read for the Building Assets Inspections tab (the Inspection app's
  * own store reads its own, user-scoped, subset directly).

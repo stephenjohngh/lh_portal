@@ -9,6 +9,9 @@
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { generateSessionName } from '../utils/sessionNaming.js';
   import { buildWalkComponentsFromScope } from '../utils/inspectionWalk.js';
+  import { buildRotatingWalk } from '../utils/inspectionRotation.js';
+  import { lastDefinitionInspections } from '../public.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { computeInspectionSchedule, sortBySchedule, scheduleDueText } from '$lib/utils/inspectionSchedule';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkInput  from '$lib/apps/inspection/components/common/WalkInput.svelte';
@@ -70,7 +73,35 @@
     // Condition-attribute scopes match against latest inspections — load the
     // map now so the count preview (and the walk) sees it.
     if (d.scope?.conditionAttrFilters?.length) inspectionStore.ensureLatestInspections();
+    // Rotating: the trigger preview needs the last-test map for this definition.
+    if (d.mode === 'rotating' && !(d.id in rotLastTested)) loadRotLastTested(d.id);
   }
+
+  // -- Rotating preview -------------------------------------------------------
+  let rotLastTested = {};   // { [definitionId]: { componentId: ISO } }
+  async function loadRotLastTested(defId) {
+    try {
+      const map = await lastDefinitionInspections(defId);
+      rotLastTested = { ...rotLastTested, [defId]: map };
+    } catch {
+      rotLastTested = { ...rotLastTested, [defId]: {} };
+    }
+  }
+
+  $: isRotating = selectedDefinition?.mode === 'rotating';
+  $: allComponentsFlat = Object.values(allComponents).flat();
+  $: rotWalk = isRotating && selectedDefinition.id in rotLastTested
+    ? buildRotatingWalk(selectedDefinition, {
+        components:     allComponentsFlat,
+        floors,
+        componentLinks: $inspectionStore.componentLinks ?? {},
+        ctx:            scopeCtx,
+        lastTested:     rotLastTested[selectedDefinition.id],
+      })
+    : null;
+  $: rotTriggerFloor = rotWalk?.trigger
+    ? floors.find(f => f.id === rotWalk.trigger.floor_id) ?? null
+    : null;
 
   // -- Derived -------------------------------------------------------------------
   $: selectedFacility  = facilities.find(f => f.id === selectedFacilityId) ?? facilities[0];
@@ -108,6 +139,7 @@
   // Emergency: check component_attributes for attr_name='emergency', value='true'
   // (attr_name is enriched into allComponentAttrs during store load()).
   $: componentCount = (() => {
+    if (isRotating) return rotWalk?.walkComponents.length ?? 0;
     if (selectedDefinition) {
       const count = (comps) => buildWalkComponentsFromScope(comps, selectedDefinition.scope, scopeCtx).length;
       if (scope === 'single_floor') {
@@ -137,8 +169,13 @@
 
   // Auto-generate name when inputs change
   $: {
-    const floor = scope === 'single_floor' ? selectedFloor : null;
-    sessionName = generateSessionName({ preset, definition: selectedDefinition, building, floor, scope });
+    const floor = isRotating
+      ? rotTriggerFloor
+      : (scope === 'single_floor' ? selectedFloor : null);
+    sessionName = generateSessionName({
+      preset, definition: selectedDefinition, building, floor,
+      scope: isRotating ? (rotTriggerFloor ? 'single_floor' : 'building') : scope,
+    });
   }
 
 
@@ -194,7 +231,9 @@
       const opts = selectedDefinition
         ? { building, sessionName, sessionType, definition: selectedDefinition }
         : { building, typeFilter: presetTypeFilter, emergencyOnly, sessionName, sessionType, preset };
-      if (scope === 'single_floor') {
+      if (isRotating) {
+        await inspectionStore.startRotatingSession(opts);
+      } else if (scope === 'single_floor') {
         await inspectionStore.startSession({ ...opts, floor: selectedFloor });
       } else {
         await inspectionStore.startBuildingWideSession(opts);
@@ -217,18 +256,20 @@
 
   <div class="ss-body">
 
-    <!-- -- Scope --------------------------------------------------------------- -->
-    <section class="grp">
-      <div class="grp-lbl">SCOPE</div>
-      <div class="scope-row">
-        <button class="scope-btn" class:sel={scope === 'single_floor'} on:click={() => scope = 'single_floor'}>
-          Single Floor
-        </button>
-        <button class="scope-btn" class:sel={scope === 'building'} on:click={() => scope = 'building'}>
-          Whole Building
-        </button>
-      </div>
-    </section>
+    <!-- -- Scope (a rotating inspection derives its own target) ------------------ -->
+    {#if !isRotating}
+      <section class="grp">
+        <div class="grp-lbl">SCOPE</div>
+        <div class="scope-row">
+          <button class="scope-btn" class:sel={scope === 'single_floor'} on:click={() => scope = 'single_floor'}>
+            Single Floor
+          </button>
+          <button class="scope-btn" class:sel={scope === 'building'} on:click={() => scope = 'building'}>
+            Whole Building
+          </button>
+        </div>
+      </section>
+    {/if}
 
     <!-- -- Building / floor ----------------------------------------------------- -->
     {#if facilities.length > 1}
@@ -241,7 +282,7 @@
       </section>
     {/if}
 
-    {#if scope === 'single_floor'}
+    {#if !isRotating && scope === 'single_floor'}
       <section class="grp">
         <div class="grp-lbl">FLOOR</div>
         <WalkSelect
@@ -264,7 +305,10 @@
               on:click={() => selectDefinition(st.definition)}
             >
               <div class="def-row">
-                <div class="preset-label">{st.definition.name}</div>
+                <div class="preset-label">
+                  {st.definition.name}
+                  {#if st.definition.mode === 'rotating'}<span class="rot-mark">⟳</span>{/if}
+                </div>
                 <span class="def-band band-{st.band}">{BAND_LABEL[st.band]}</span>
               </div>
               <div class="preset-sub">{scheduleDueText(st)}</div>
@@ -325,6 +369,32 @@
       </section>
     {/if}
 
+    <!-- -- Rotating trigger preview ---------------------------------------------- -->
+    {#if isRotating}
+      <div class="summary-box rot-box">
+        {#if !rotWalk}
+          <div class="rot-line">Deriving next trigger…</div>
+        {:else if !rotWalk.trigger}
+          <div class="rot-line rot-warn">No component matches this inspection’s scope.</div>
+        {:else}
+          <div class="sum-row">
+            <span class="sum-k">NEXT TRIGGER</span>
+            <span class="sum-v">{buildComponentRef(rotWalk.trigger, floors, types)}</span>
+          </div>
+          <div class="rot-line">
+            {rotTriggerFloor?.name ?? '?'}{rotWalk.trigger.label ? ` · ${rotWalk.trigger.label}` : ''}
+            · checks {rotWalk.linked.length} linked component{rotWalk.linked.length === 1 ? '' : 's'}
+          </div>
+          {#if rotWalk.linked.length === 0}
+            <div class="rot-line rot-warn">⚠ 0 linked components — add component_links to this trigger in Building Assets.</div>
+          {/if}
+          {#if rotWalk.unresolved.length > 0}
+            <div class="rot-line rot-warn">⚠ Unresolved link refs: {rotWalk.unresolved.join(', ')}</div>
+          {/if}
+        {/if}
+      </div>
+    {/if}
+
     <!-- -- Summary box ---------------------------------------------------------- -->
     <div class="summary-box">
       <div class="sum-row">
@@ -333,7 +403,13 @@
       </div>
       <div class="sum-row">
         <span class="sum-k">SCOPE</span>
-        <span class="sum-v">{scope === 'building' ? `${building} — all floors` : `${building} · ${selectedFloor?.name ?? '?'}`}</span>
+        <span class="sum-v">
+          {#if isRotating}
+            {building} · trigger + linked
+          {:else}
+            {scope === 'building' ? `${building} — all floors` : `${building} · ${selectedFloor?.name ?? '?'}`}
+          {/if}
+        </span>
       </div>
     </div>
 
@@ -377,6 +453,10 @@
   .band-due_soon { background:rgba(251,191,36,0.12); color:#fbbf24; border-color:rgba(251,191,36,0.35); }
   .band-ok       { background:rgba(74,222,128,0.1);  color:#4ade80; border-color:rgba(74,222,128,0.3); }
   .band-on_demand{ background:rgba(94,94,120,0.2);   color:#aaa;    border-color:#3e3e58; }
+  .rot-mark { color:#fb923c; margin-left:0.3rem; font-weight:400; }
+  .rot-box  { border-color:rgba(251,146,60,0.4); }
+  .rot-line { font-size:0.7rem; color:#aaa; }
+  .rot-warn { color:#fbbf24; }
   .type-tree { display:flex; flex-direction:column; gap:0.25rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; padding:0.75rem; }
   .tree-sys { display:flex; align-items:center; gap:0.625rem; cursor:pointer; padding:0.35rem 0; }
   .tree-sys-name { font-size:0.82rem; font-weight:700; color:#f0f0f0; }

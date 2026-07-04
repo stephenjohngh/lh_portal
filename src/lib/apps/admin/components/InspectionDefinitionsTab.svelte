@@ -109,6 +109,7 @@
     definition={editing}
     types={bas.types} systems={bas.systems} floors={bas.floors} attrDefs={bas.attrDefs}
     components={bas.components} componentAttrs={bas.componentAttrs} inspections={bas.inspections}
+    componentLinks={bas.componentLinks}
     {saving}
     on:save={handleSave}
     on:close={closeModal}

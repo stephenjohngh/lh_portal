@@ -19,6 +19,24 @@ export function fmtComponentRef(ref, types = []) {
 }
 
 /**
+ * Build the canonical ref for a component: "{floorShortName}/{typeInitial}/{assetId}".
+ * The asset_id → label → truncated-id fallback mirrors what findComponentByRef
+ * matches against and what the plan-copy remap has always written, so refs
+ * built here resolve refs already stored.
+ *
+ * @param {object}   component
+ * @param {object[]} floors
+ * @param {object[]} types
+ * @returns {string} e.g. "G/CP/03"
+ */
+export function buildComponentRef(component, floors, types) {
+  const floor   = floors.find(f => f.id === component.floor_id);
+  const type    = types.find(t => t.code === component.type_code);
+  const assetId = component.asset_id || component.label || component.id?.slice(0, 8) || '?';
+  return `${floor?.short_name ?? '?'}/${type?.initial ?? '?'}/${assetId}`;
+}
+
+/**
  * Find the component whose ref matches the given stored ref string.
  * Format: "{floorShortName}/{typeInitial}/{assetId}"  e.g. "G/FD/FD-042"
  *

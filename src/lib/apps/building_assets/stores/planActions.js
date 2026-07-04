@@ -5,6 +5,7 @@
 import { api }        from '$lib/utils/api';
 import { getLogger }  from '$lib/utils/logger';
 import { logAudit }   from '$lib/utils/auditLogger';
+import { buildComponentRef } from '$lib/utils/componentRef.js';
 import { requireUserId } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
@@ -181,17 +182,10 @@ export function createPlanActions(update, supabase) {
 
     // Pre-build floor-SN ref remap so it covers both linked_component_ref on
     // each new component AND to_component_ref in component_links below.
-    const newFloor   = floors.find(f => f.id === newFloorId);
-    const newFloorSN = newFloor?.short_name ?? '?';
-    const refRemap   = {};
+    const refRemap = {};
     for (const c of srcComponents) {
-      const srcFloor   = floors.find(f => f.id === c.floor_id);
-      const srcFloorSN = srcFloor?.short_name ?? '?';
-      const type       = types.find(t => t.code === c.type_code);
-      const initial    = type?.initial ?? '?';
-      const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
-      const oldRef     = `${srcFloorSN}/${initial}/${assetId}`;
-      const newRef     = `${newFloorSN}/${initial}/${assetId}`;
+      const oldRef = buildComponentRef(c, floors, types);
+      const newRef = buildComponentRef({ ...c, floor_id: newFloorId }, floors, types);
       if (oldRef !== newRef) refRemap[oldRef] = newRef;
     }
 
@@ -385,17 +379,10 @@ export function createPlanActions(update, supabase) {
 
     // Pre-build floor-SN ref remap so it covers both linked_component_ref on
     // each new component AND to_component_ref in component_links below.
-    const newFloor   = floors.find(f => f.id === newFloorId);
-    const newFloorSN = newFloor?.short_name ?? '?';
-    const refRemap   = {};
+    const refRemap = {};
     for (const c of srcComponents) {
-      const srcFloor   = floors.find(f => f.id === c.floor_id);
-      const srcFloorSN = srcFloor?.short_name ?? '?';
-      const type       = types.find(t => t.code === c.type_code);
-      const initial    = type?.initial ?? '?';
-      const assetId    = c.asset_id || c.label || c.id?.slice(0, 8) || '?';
-      const oldRef     = `${srcFloorSN}/${initial}/${assetId}`;
-      const newRef     = `${newFloorSN}/${initial}/${assetId}`;
+      const oldRef = buildComponentRef(c, floors, types);
+      const newRef = buildComponentRef({ ...c, floor_id: newFloorId }, floors, types);
       if (oldRef !== newRef) refRemap[oldRef] = newRef;
     }
 

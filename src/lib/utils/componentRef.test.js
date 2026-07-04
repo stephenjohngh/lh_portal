@@ -3,7 +3,7 @@
 // These helpers resolve a ref back to a component and follow component links.
 
 import { describe, it, expect } from 'vitest';
-import { fmtComponentRef, findComponentByRef, resolveLinkedComponents } from './componentRef.js';
+import { fmtComponentRef, buildComponentRef, findComponentByRef, resolveLinkedComponents } from './componentRef.js';
 
 const floors = [{ id: 'f1', short_name: 'G' }, { id: 'f2', short_name: '1' }];
 const types  = [{ code: 'fd', initial: 'FD' }, { code: 'lt', initial: 'L' }];
@@ -17,6 +17,20 @@ describe('fmtComponentRef', () => {
     expect(fmtComponentRef('G/FD/FD-042')).toBe('G/FD/FD-042');
     expect(fmtComponentRef('')).toBe('—');
     expect(fmtComponentRef(null)).toBe('—');
+  });
+});
+
+describe('buildComponentRef', () => {
+  it('builds the canonical ref, round-tripping through findComponentByRef', () => {
+    const ref = buildComponentRef(components[0], floors, types);
+    expect(ref).toBe('G/FD/FD-042');
+    expect(findComponentByRef(ref, components, floors, [], types)?.id).toBe('c1');
+  });
+  it('falls back asset_id → label → truncated id, and "?" for unknown floor/type', () => {
+    expect(buildComponentRef({ id: 'abcdef123456', floor_id: 'f1', type_code: 'fd', label: 'Lobby door' }, floors, types))
+      .toBe('G/FD/Lobby door');
+    expect(buildComponentRef({ id: 'abcdef123456', floor_id: 'nope', type_code: 'zz' }, floors, types))
+      .toBe('?/?/abcdef12');
   });
 });
 

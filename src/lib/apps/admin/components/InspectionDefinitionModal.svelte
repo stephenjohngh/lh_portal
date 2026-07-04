@@ -1,8 +1,9 @@
 <!-- src/lib/apps/admin/components/InspectionDefinitionModal.svelte -->
 <!-- Create / edit an inspection_definitions row. Composes the shared ScopeEditor
-     and shows a live "matches N" count via applyInspectionScope. Phase 1 is
-     standard mode only (rotating is scaffolded but disabled). checklist_mode and
-     pass_fail_rule are fixed to their Phase-1 defaults (shown, disabled). -->
+     and shows a live "matches N" count via applyInspectionScope. Rotating mode
+     shows a live next-trigger + linked-set preview (buildRotatingWalk — the
+     same derivation the mobile app runs). checklist_mode and pass_fail_rule
+     are fixed to their Phase-1 defaults (shown, disabled). -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Modal        from '$lib/components/common/Modal.svelte';
@@ -12,6 +13,9 @@
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import ScopeEditor  from '$lib/apps/building_assets/components/inspections/ScopeEditor.svelte';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
+  import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
+  import { lastDefinitionInspections } from '$lib/apps/inspection/public.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
 
   export let definition = null;   // row or null (create)
   export let types    = [];
@@ -20,6 +24,7 @@
   export let attrDefs = {};
   export let components     = [];
   export let componentAttrs = {};
+  export let componentLinks = {};
   export let inspections    = {};
   export let saving = false;
 
@@ -48,6 +53,32 @@
   $: matchCount = applyInspectionScope(components, scope, ctx).length;
 
   function onScopeChange(e) { scope = e.detail; }
+
+  // -- Rotating preview: next trigger + linked set (same derivation as the walk).
+  // The last-test map only exists for a saved definition; a new one has no
+  // sessions yet, so {} (every pool member "never tested") is exact.
+  let rotLastTested = null;   // null = not loaded yet
+  $: if (mode === 'rotating' && rotLastTested === null) {
+    rotLastTested = {};
+    if (definition?.id) {
+      lastDefinitionInspections(definition.id)
+        .then((map) => { rotLastTested = map; })
+        .catch(() => {});
+    }
+  }
+  $: rotWalk = mode === 'rotating'
+    ? buildRotatingWalk(
+        { scope, link_source: linkSource, link_type_filter: linkTypeFilter.trim() || null },
+        { components, floors, componentLinks, ctx, lastTested: rotLastTested ?? {} },
+      )
+    : null;
+
+  // Condition attributes a linked component will be checked against (its own
+  // type's checkable attrs — decision 2: checklists stay type-driven).
+  function condAttrNames(comp) {
+    const type = types.find(t => t.code === comp.type_code);
+    return (type ? (attrDefs[type.id] ?? []) : []).filter(d => d.checkable).map(d => d.name);
+  }
 
   $: nameValid = name.trim().length > 0;
 
@@ -95,15 +126,15 @@
       {/if}
     </div>
 
-    <!-- Mode (rotating scaffolded, disabled in Phase 1) -->
+    <!-- Mode -->
     <div class="block">
       <p class="block-lbl">Type of inspection</p>
       <div class="mode-row">
         <button type="button" class="mode-chip" class:on={mode === 'standard'} on:click={() => mode = 'standard'}>
           Standard <span class="mode-sub">check all matched components</span>
         </button>
-        <button type="button" class="mode-chip" class:on={mode === 'rotating'} disabled title="Coming in Phase 2">
-          Rotating / trigger <span class="mode-sub">Phase 2</span>
+        <button type="button" class="mode-chip" class:on={mode === 'rotating'} on:click={() => mode = 'rotating'}>
+          Rotating / trigger <span class="mode-sub">one trigger per period + its linked components</span>
         </button>
       </div>
     </div>
@@ -114,6 +145,38 @@
         <label class="rot-row"><input type="radio" bind:group={linkSource} value="component_links" /> The trigger’s linked components (component_links)</label>
         <label class="rot-row"><input type="radio" bind:group={linkSource} value="self_only" /> Only the trigger itself</label>
         <FormInput label="Restrict to link_type (optional)" bind:value={linkTypeFilter} placeholder="e.g. fire_trigger" />
+
+        <!-- Live preview: pool → next trigger → linked set -->
+        {#if rotWalk}
+          <div class="rot-preview">
+            <p class="rp-head">Preview — the scope below is the <strong>trigger pool</strong> ({rotWalk.pool.length} component{rotWalk.pool.length === 1 ? '' : 's'}, cycled one per period)</p>
+            {#if !rotWalk.trigger}
+              <p class="rp-warn">No component matches the scope — the rotation has nothing to trigger.</p>
+            {:else}
+              <p class="rp-line">Next trigger: <strong>{buildComponentRef(rotWalk.trigger, floors, types)}</strong>{rotWalk.trigger.label ? ` — ${rotWalk.trigger.label}` : ''}</p>
+              {#if linkSource === 'self_only'}
+                <p class="rp-line">Checks the trigger only.</p>
+              {:else if rotWalk.linked.length === 0}
+                <p class="rp-warn">⚠ 0 linked components — this trigger has no {linkTypeFilter.trim() ? `'${linkTypeFilter.trim()}' ` : ''}component_links. Add links in Building Assets or the walk will only check the trigger.</p>
+              {:else}
+                <p class="rp-line">Checks {rotWalk.linked.length} linked component{rotWalk.linked.length === 1 ? '' : 's'}:</p>
+                <ul class="rp-list">
+                  {#each rotWalk.linked as comp (comp.id)}
+                    {@const checks = condAttrNames(comp)}
+                    <li>
+                      <span class="rp-ref">{buildComponentRef(comp, floors, types)}</span>
+                      {#if checks.length > 0}<span class="rp-checks">{checks.join(' · ')}</span>
+                      {:else}<span class="rp-checks rp-none">no condition attributes</span>{/if}
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if rotWalk.unresolved.length > 0}
+                <p class="rp-warn">⚠ Unresolved link refs (renamed floor/asset?): {rotWalk.unresolved.join(', ')}</p>
+              {/if}
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -165,6 +228,15 @@
 
   .rot { border-left: 2px solid rgb(251 146 60 / 0.5); padding-left: 0.75rem; }
   .rot-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: rgb(203 213 225); margin-bottom: 0.3rem; cursor: pointer; }
+  .rot-preview { margin-top: 0.6rem; padding: 0.6rem 0.75rem; border-radius: 6px; background: rgb(15 23 42 / 0.5); border: 1px solid rgb(71 85 105 / 0.5); display: flex; flex-direction: column; gap: 0.3rem; }
+  .rp-head  { font-size: 0.72rem; color: rgb(148 163 184); }
+  .rp-line  { font-size: 0.78rem; color: rgb(203 213 225); }
+  .rp-warn  { font-size: 0.75rem; color: rgb(251 191 36); }
+  .rp-list  { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.15rem; }
+  .rp-list li { font-size: 0.75rem; color: rgb(203 213 225); }
+  .rp-ref   { font-family: ui-monospace, monospace; color: rgb(226 232 240); }
+  .rp-checks { color: rgb(148 163 184); margin-left: 0.4rem; }
+  .rp-none  { font-style: italic; }
 
   .advanced { font-size: 0.8rem; color: rgb(148 163 184); }
   .advanced summary { cursor: pointer; color: rgb(100 116 139); }
