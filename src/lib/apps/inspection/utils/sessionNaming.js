@@ -1,6 +1,5 @@
 // src/lib/apps/inspection/utils/sessionNaming.js
 
-import { presetLabel } from './inspectionHelpers.js';
 import { fmtMonthYearCompact } from '$lib/utils/dates';
 
 /**
@@ -14,24 +13,21 @@ export function buildingInitials(name) {
 
 /**
  * Generates a session name.
- * Format: {PresetShort}_{BuildingInitials}_{Floor|Bldg}_{MonthYear}
- * e.g. "EL_LH_Bldg_Apr26", "FD_LH_FG_Apr26", "Custom_LH_F1_Apr26"
- * A definition (configurable inspection) supersedes the preset and contributes
- * its name's initials, e.g. definition "Fire Doors" → "FD_LH_Bldg_Apr26".
+ * Format: {Short}_{BuildingInitials}_{Floor|Bldg}_{MonthYear}
+ * e.g. "FD_LH_Bldg_Apr26", "Custom_LH_F1_Apr26"
+ * A definition (configurable inspection) contributes its name's initials,
+ * e.g. definition "Fire Doors" → "FD_LH_Bldg_Apr26"; otherwise the walk is
+ * the ad-hoc Custom flow. (The retired preset shorts EL/FD/AD live on only
+ * in historic session names.)
  */
 export function generateSessionName({ preset, definition, building, floor, scope }) {
   const dateStr     = fmtMonthYearCompact();
   const buildingStr = buildingInitials(building);
   const scopeStr    = scope === 'building' ? 'Bldg' : `F${floor?.short_name ?? '?'}`;
 
-  const presetShort = definition
+  const short = definition
     ? buildingInitials(definition.name)
-    : ({
-        custom:             'Custom',
-        emergency_lighting: 'EL',
-        fire_doors:         'FD',
-        apartment_doors:    'AD',
-      }[preset] ?? 'Walk');
+    : (preset === 'custom' ? 'Custom' : 'Walk');
 
-  return `${presetShort}_${buildingStr}_${scopeStr}_${dateStr}`;
+  return `${short}_${buildingStr}_${scopeStr}_${dateStr}`;
 }

@@ -14,7 +14,9 @@
   export let systems  = [];
   export let floors   = [];
   export let attrDefs = {};
+  /** @type {number|null} */
   export let matchCount = null;   // computed by parent (applyInspectionScope)
+  /** @type {number|null} */
   export let totalCount = null;
 
   const dispatch = createEventDispatcher();

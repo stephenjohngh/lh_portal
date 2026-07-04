@@ -2,8 +2,9 @@
 <!-- Create / edit an inspection_definitions row. Composes the shared ScopeEditor
      and shows a live "matches N" count via applyInspectionScope. Rotating mode
      shows a live next-trigger + linked-set preview (buildRotatingWalk — the
-     same derivation the mobile app runs). checklist_mode and pass_fail_rule
-     are fixed to their Phase-1 defaults (shown, disabled). -->
+     same derivation the mobile app runs). checklist_mode ('explicit' narrows
+     each component's checks to the selected attrs) and pass_fail_rule
+     ('all_checks_pass' makes the derived result binding) are editable. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import Modal        from '$lib/components/common/Modal.svelte';
@@ -14,14 +15,23 @@
   import ScopeEditor  from '$lib/apps/building_assets/components/inspections/ScopeEditor.svelte';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
   import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
+  import { applyChecklistMode } from '$lib/apps/inspection/utils/checklistRules.js';
   import { lastDefinitionInspections } from '$lib/apps/inspection/public.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
 
+  /**
+   * @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition
+   * @typedef {import('$lib/database.types').Tables<'type_attributes'>} TypeAttribute
+   */
+  /** @type {InspectionDefinition|null} */
   export let definition = null;   // row or null (create)
+  /** @type {import('$lib/database.types').Tables<'component_types'>[]} */
   export let types    = [];
   export let systems  = [];
   export let floors   = [];
+  /** @type {Record<string, TypeAttribute[]>} */
   export let attrDefs = {};
+  /** @type {import('$lib/database.types').Tables<'components'>[]} */
   export let components     = [];
   export let componentAttrs = {};
   export let componentLinks = {};
@@ -40,6 +50,9 @@
   let frequencyDays = definition?.frequency_days ?? null;
   let linkSource    = definition?.link_source ?? 'component_links';
   let linkTypeFilter = definition?.link_type_filter ?? '';
+  let checklistMode    = definition?.checklist_mode ?? 'type_driven';
+  let checklistAttrIds = new Set(definition?.checklist_attr_ids ?? []);
+  let passFailRule     = definition?.pass_fail_rule ?? 'manual';
 
   const FREQ_PRESETS = [
     { label: 'Weekly',    days: 7 },
@@ -73,11 +86,26 @@
       )
     : null;
 
-  // Condition attributes a linked component will be checked against (its own
-  // type's checkable attrs — decision 2: checklists stay type-driven).
-  function condAttrNames(comp) {
+  // Checkable attrs grouped by type — the pick list for checklist_mode='explicit'.
+  $: attrGroups = types
+    .map(t => ({ type: t, defs: (attrDefs[t.id] ?? []).filter(d => d.checkable) }))
+    .filter(g => g.defs.length > 0);
+
+  function toggleChecklistAttr(id) {
+    const next = new Set(checklistAttrIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    checklistAttrIds = next;
+  }
+
+  // The definition-as-edited, for previews that must match the walk's derivation.
+  $: previewDef = { checklist_mode: checklistMode, checklist_attr_ids: [...checklistAttrIds] };
+
+  // Condition attributes a linked component will be checked against — its own
+  // type's checkable attrs, narrowed by the checklist mode being edited.
+  function condAttrNames(comp, def) {
     const type = types.find(t => t.code === comp.type_code);
-    return (type ? (attrDefs[type.id] ?? []) : []).filter(d => d.checkable).map(d => d.name);
+    const checkable = (type ? (attrDefs[type.id] ?? []) : []).filter(d => d.checkable);
+    return applyChecklistMode(checkable, def).map(d => d.name);
   }
 
   $: nameValid = name.trim().length > 0;
@@ -91,6 +119,9 @@
         frequency_days: frequencyDays,
         link_source: linkSource,
         link_type_filter: linkTypeFilter,
+        checklist_mode: checklistMode,
+        checklist_attr_ids: [...checklistAttrIds],
+        pass_fail_rule: passFailRule,
         presentation_order: definition?.presentation_order ?? 0,
       },
     });
@@ -162,7 +193,7 @@
                 <p class="rp-line">Checks {rotWalk.linked.length} linked component{rotWalk.linked.length === 1 ? '' : 's'}:</p>
                 <ul class="rp-list">
                   {#each rotWalk.linked as comp (comp.id)}
-                    {@const checks = condAttrNames(comp)}
+                    {@const checks = condAttrNames(comp, previewDef)}
                     <li>
                       <span class="rp-ref">{buildComponentRef(comp, floors, types)}</span>
                       {#if checks.length > 0}<span class="rp-checks">{checks.join(' · ')}</span>
@@ -190,11 +221,54 @@
       />
     </div>
 
-    <!-- Phase-1 fixed settings (shown for transparency) -->
-    <details class="advanced">
-      <summary>Advanced (Phase 1 defaults)</summary>
-      <p class="hint">Checklist: <strong>type-driven</strong> — each component checks its own type’s condition attributes. Pass/fail: <strong>manual</strong> — the inspector sets the result. Configurable in a later phase.</p>
-    </details>
+    <!-- Checklist mode -->
+    <div class="block">
+      <p class="block-lbl">Checklist</p>
+      <label class="rule-row">
+        <input type="radio" bind:group={checklistMode} value="type_driven" />
+        Type-driven — each component checks all of its type’s condition attributes
+      </label>
+      <label class="rule-row">
+        <input type="radio" bind:group={checklistMode} value="explicit" />
+        Explicit — only the checks selected below
+      </label>
+      {#if checklistMode === 'explicit'}
+        {#if attrGroups.length === 0}
+          <p class="hint">No condition attributes exist yet — add checkable attributes to component types first.</p>
+        {:else}
+          <div class="attr-pick">
+            {#each attrGroups as g (g.type.id)}
+              <p class="attr-type">{g.type.name}</p>
+              {#each g.defs as d (d.id)}
+                <label class="attr-row">
+                  <input type="checkbox" checked={checklistAttrIds.has(d.id)} on:change={() => toggleChecklistAttr(d.id)} />
+                  {d.name}
+                </label>
+              {/each}
+            {/each}
+          </div>
+          {#if checklistAttrIds.size === 0}
+            <p class="hint warn-hint">⚠ No checks selected — every component in this inspection will have an empty checklist.</p>
+          {/if}
+        {/if}
+      {/if}
+    </div>
+
+    <!-- Pass / fail rule -->
+    <div class="block">
+      <p class="block-lbl">Pass / fail</p>
+      <label class="rule-row">
+        <input type="radio" bind:group={passFailRule} value="manual" />
+        Manual — the inspector sets the result (checks suggest it)
+      </label>
+      <label class="rule-row">
+        <input type="radio" bind:group={passFailRule} value="all_checks_pass" />
+        All checks pass — the result is set from the checks (any fail → FAIL, all pass → PASS)
+      </label>
+      {#if passFailRule === 'all_checks_pass'}
+        <p class="hint">Components with no pass/fail checks fall back to a manual result.</p>
+      {/if}
+    </div>
   </div>
 
   <svelte:fragment slot="footer">
@@ -238,6 +312,10 @@
   .rp-checks { color: rgb(148 163 184); margin-left: 0.4rem; }
   .rp-none  { font-style: italic; }
 
-  .advanced { font-size: 0.8rem; color: rgb(148 163 184); }
-  .advanced summary { cursor: pointer; color: rgb(100 116 139); }
+  .rule-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: rgb(203 213 225); margin-bottom: 0.3rem; cursor: pointer; }
+  .attr-pick { margin-top: 0.5rem; padding: 0.6rem 0.75rem; border-radius: 6px; background: rgb(15 23 42 / 0.5); border: 1px solid rgb(71 85 105 / 0.5); max-height: 14rem; overflow-y: auto; }
+  .attr-type { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgb(100 116 139); font-weight: 600; margin: 0.4rem 0 0.2rem; }
+  .attr-type:first-child { margin-top: 0; }
+  .attr-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: rgb(203 213 225); padding: 0.15rem 0; cursor: pointer; }
+  .warn-hint { color: rgb(251 191 36); }
 </style>

@@ -2425,6 +2425,7 @@ export type Database = {
           created_at: string
           updated_at: string
           definition_id: string | null
+          trigger_component_id: string | null
         }
         Insert: {
           id?: string
@@ -2448,6 +2449,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           definition_id?: string | null
+          trigger_component_id?: string | null
         }
         Update: {
           id?: string
@@ -2471,6 +2473,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           definition_id?: string | null
+          trigger_component_id?: string | null
         }
         Relationships: [
             {
@@ -2499,6 +2502,13 @@ export type Database = {
               columns: ["definition_id"]
               isOneToOne: false
               referencedRelation: "inspection_definitions"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "walk_sessions_trigger_component_id_fkey"
+              columns: ["trigger_component_id"]
+              isOneToOne: false
+              referencedRelation: "components"
               referencedColumns: ["id"]
             }
           ]

@@ -699,6 +699,14 @@ function createInspectionStore() {
   // Upsert an inspection record.
   // photoUrls: array of storage URL strings (already uploaded via /api/media/upload).
   // Photos are stored in media_attachments, NOT as a JSONB column.
+  /**
+   * @param {object} args
+   * @param {string} args.componentId
+   * @param {string} args.result
+   * @param {string} [args.notes]
+   * @param {string[]} [args.photoUrls]
+   * @param {Record<string, boolean|undefined>} [args.checklistResults]
+   */
   async function recordInspection({ componentId, result, notes, photoUrls = [], checklistResults = {} }) {
     logger('recordInspection:', componentId, result);
     const userId = await getCurrentUserId();

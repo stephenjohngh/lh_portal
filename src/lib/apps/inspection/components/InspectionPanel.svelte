@@ -8,6 +8,7 @@
   import { getLogger }    from '$lib/utils/logger';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { resultLabel }  from '../utils/inspectionHelpers.js';
+  import { applyChecklistMode } from '../utils/checklistRules.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import InspectionResultSection from './InspectionResultSection.svelte';
   import WalkButton         from '$lib/apps/inspection/components/common/WalkButton.svelte';
@@ -26,19 +27,32 @@
   $: attrDefs      = $inspectionStore.attrDefs;
   $: allTypes      = $inspectionStore.types;
 
-  // Checkable attrs for this component's type
+  // The definition driving this session (null for ad-hoc / repair sessions) —
+  // its checklist_mode narrows the checklist, its pass_fail_rule may make the
+  // derived result binding.
+  $: definition   = session?._walk?.definition ?? null;
+  $: passFailRule = definition?.pass_fail_rule ?? 'manual';
+
+  // Checkable attrs for this component's type, narrowed by the definition's
+  // checklist_mode ('explicit' keeps only its checklist_attr_ids).
   $: typeId         = allTypes.find(t => t.code === component?.type_code)?.id ?? null;
-  $: checklistDefs  = typeId ? (attrDefs[typeId] ?? []).filter(d => d.checkable) : [];
+  $: checklistDefs  = applyChecklistMode(
+    typeId ? (attrDefs[typeId] ?? []).filter(d => d.checkable) : [],
+    definition,
+  );
 
   // Form state
   let result           = '';
   let notes            = '';
+  /** @type {Record<string, boolean|undefined>} */
   let checklistResults = {};
+  /** @type {string[]} */
   let photoUrls        = [];
   let saving           = false;
   let error            = null;
 
   // History
+  /** @type {any[]} */
   let history     = [];
   let histLoading = true;
 
@@ -73,8 +87,9 @@
       });
       dispatch('saved');
     } catch (err) {
-      logger('❌ recordInspection:', err.message);
-      error = err.message;
+      const msg = err instanceof Error ? err.message : String(err);
+      logger('❌ recordInspection:', msg);
+      error = msg;
     } finally {
       saving = false;
     }
@@ -110,6 +125,7 @@
       bind:checklistResults
       bind:photoUrls
       {checklistDefs}
+      {passFailRule}
       {saving}
       {error}
       {session}

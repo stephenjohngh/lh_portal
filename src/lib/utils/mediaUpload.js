@@ -17,13 +17,14 @@
 // The caller is responsible for persisting the returned URL into the
 // media_attachments table (or wherever the URL is stored).
 //
-// @param {Blob|File}  blob
-// @param {object}     opts
-// @param {string}     opts.filename    - desired filename in storage
-// @param {string[]}  [opts.folderPath] - path segments for folder hierarchy
-// @param {string}     opts.token       - Supabase access token (Bearer)
-// @returns {Promise<{ url: string, provider: string, sizeBytes: number, mimeType: string }>}
-
+/**
+ * @param {Blob|File} blob
+ * @param {object}   opts
+ * @param {string}   opts.filename     desired filename in storage
+ * @param {string[]} [opts.folderPath] path segments for folder hierarchy
+ * @param {string}   opts.token        Supabase access token (Bearer)
+ * @returns {Promise<{ url: string, provider: string, sizeBytes: number, mimeType: string }>}
+ */
 export async function uploadMedia(blob, { filename, folderPath = [], token }) {
   if (!token) throw new Error('uploadMedia: access token is required');
 

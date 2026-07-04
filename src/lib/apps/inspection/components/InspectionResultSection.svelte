@@ -8,6 +8,7 @@
   import { getLogger }    from '$lib/utils/logger';
   import { uploadMedia }  from '$lib/utils/mediaUpload';
   import { supabase }     from '$lib/supabaseClient';
+  import { deriveChecklistOutcome } from '../utils/checklistRules.js';
   import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
   import WalkError    from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkButton   from '$lib/apps/inspection/components/common/WalkButton.svelte';
@@ -19,11 +20,14 @@
   // Two-way bindable
   export let result           = '';
   export let notes            = '';
+  /** @type {Record<string, boolean|undefined>} */
   export let checklistResults = {};   // { type_attribute_id: boolean }
+  /** @type {string[]} */
   export let photoUrls        = [];   // already-uploaded URLs (array)
 
   // One-way from parent
   export let checklistDefs = [];   // type_attributes with checkable=true for this component's type
+  export let passFailRule  = 'manual';  // definition's pass_fail_rule: 'manual' | 'all_checks_pass'
   export let saving        = false;
   export let error         = null;
   export let session       = null;
@@ -51,22 +55,18 @@
   // in autoFailNote (never written into the notes textarea) so that user-typed
   // notes and text/number readings are never overwritten by reactive changes.
   // All parts are assembled into the final notes only inside handleSaveClick.
+  //
+  // pass_fail_rule='manual': the derived result is a suggestion the inspector
+  // can override with the result buttons. 'all_checks_pass': it is binding —
+  // the buttons are replaced by a read-out and save waits for a determined
+  // result (any fail → failed; all pass → ok).
   let autoFailNote = '';
+  $: outcome  = deriveChecklistOutcome(passFailDefs, checklistResults, passFailRule);
+  $: enforced = outcome.enforced;
   $: if (passFailDefs.length > 0) {
-    const anyFail = passFailDefs.some(d => checklistResults[d.id] === false);
-    const allPass = passFailDefs.every(d => checklistResults[d.id] === true);
-    if (anyFail) {
-      result = 'failed';
-      const failedNames = passFailDefs
-        .filter(d => checklistResults[d.id] === false)
-        .map(d => d.name);
-      autoFailNote = 'Failed: ' + failedNames.join(', ');
-    } else if (allPass) {
-      result = 'ok';
-      autoFailNote = '';
-    } else {
-      autoFailNote = '';
-    }
+    if (outcome.result)  result = outcome.result;
+    else if (enforced)   result = '';
+    autoFailNote = outcome.anyFail ? 'Failed: ' + outcome.failedNames.join(', ') : '';
   }
 
   // -- Photo state --------------------------------------------------------------
@@ -80,6 +80,7 @@
     const token = authSession?.access_token;
     if (!token) { logger('❌ No auth token — cannot upload photos'); return []; }
 
+    /** @type {string[]} */
     const uploaded = [];
 
     // Strip characters not valid in Drive folder/file names.
@@ -226,9 +227,20 @@
   </div>
 {/if}
 
-<!-- -- Result buttons ----------------------------------------------------------- -->
+<!-- -- Result — derived read-out (all_checks_pass) or manual buttons ------------ -->
 <div class="sec">
   <div class="sec-lbl">INSPECTION RESULT</div>
+  {#if enforced}
+    <div class="derived" class:d-pass={result === 'ok'} class:d-fail={result === 'failed'}>
+      {#if result === 'ok'}
+        <span class="ri">✓</span><span class="rl">PASS — all checks passed</span>
+      {:else if result === 'failed'}
+        <span class="ri">✗</span><span class="rl">FAIL — {outcome.failedNames.length} check{outcome.failedNames.length === 1 ? '' : 's'} failed</span>
+      {:else}
+        <span class="rl">Answer every check above — the result is set from the checks.</span>
+      {/if}
+    </div>
+  {:else}
   <div class="result-grid">
     <button class="rb r-pass"   class:sel={result === 'ok'}       on:click={() => result = 'ok'}>
       <span class="ri">✓</span><span class="rl">PASS</span>
@@ -243,6 +255,7 @@
       <span class="ri">—</span><span class="rl">INACTIVE</span>
     </button>
   </div>
+  {/if}
 </div>
 
 <!-- -- Photos ------------------------------------------------------------------- -->
@@ -305,5 +318,12 @@
   .r-fail        { color:#f87171; } .r-fail:hover  { border-color:#ef4444; } .r-fail.sel  { border-color:#ef4444; background:#1f0a0a; }
   .r-repair      { color:#fb923c; } .r-repair:hover{ border-color:#ea580c; } .r-repair.sel{ border-color:#ea580c; background:#2a1000; }
   .r-na          { color:#ccc;    } .r-na:hover    { border-color:#5e5e78; } .r-na.sel    { border-color:#5e5e78; background:#181828; }
+
+  /* Derived read-out (pass_fail_rule='all_checks_pass') */
+  .derived { display:flex; align-items:center; gap:0.6rem; padding:1rem; border-radius:10px; border:2px solid #2e2e42; background:#1a1a2e; color:#aaa; }
+  .derived .ri { font-size:1.3rem; }
+  .derived .rl { font-size:0.72rem; font-weight:700; letter-spacing:0.1em; }
+  .d-pass { border-color:#22c55e; background:#0a1f0a; color:#4ade80; }
+  .d-fail { border-color:#ef4444; background:#1f0a0a; color:#f87171; }
 
 </style>

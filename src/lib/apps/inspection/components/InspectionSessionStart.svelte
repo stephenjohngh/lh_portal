@@ -1,8 +1,9 @@
 ﻿<!-- src/lib/apps/inspection/components/InspectionSessionStart.svelte -->
 <!-- Configure and start a new test or inspection session.
      Scheduled (configurable) inspection definitions list first, due-ordered;
-     legacy presets (Emergency Lighting, Fire Doors, Apartment Doors, Custom)
-     remain below until Phase-2 seed definitions retire them. -->
+     below them, Custom picks component types manually for an ad-hoc walk.
+     (The legacy Emergency Lighting / Fire Doors / Apartment Doors presets were
+     retired in favour of the seeded definitions — migration 155.) -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
@@ -33,8 +34,8 @@
 
   // -- Form state ----------------------------------------------------------------
   let scope      = 'single_floor';   // 'single_floor' | 'building'
-  let preset     = 'emergency_lighting';
-  let selectedDefinitionId = '';     // an inspection_definitions id, or '' (preset mode)
+  let preset     = '';               // '' (nothing picked yet) | 'custom' (ad-hoc walk)
+  let selectedDefinitionId = '';     // an inspection_definitions id, or '' (ad-hoc mode)
   let showCustom = false;
   let selectedFacilityId = '';
   let selectedFloorId    = '';
@@ -46,7 +47,8 @@
   let hiddenTypeCodes = new Set();
 
   // -- Scheduled inspection definitions -------------------------------------------
-  $: definitions = ($inspectionStore.definitions ?? []).filter(d => d.active);
+  /** @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition */
+  $: definitions = /** @type {InspectionDefinition[]} */ ($inspectionStore.definitions ?? []).filter(d => d.active);
   $: schedStates = sortBySchedule(computeInspectionSchedule(definitions, $inspectionStore.scheduleSessions ?? []));
   $: selectedDefinition = definitions.find(d => d.id === selectedDefinitionId) ?? null;
   // ctx for the shared scope filter engine — same shape the walk builder uses,
@@ -117,27 +119,13 @@
   $: { if (facilities.length > 0 && !selectedFacilityId) selectedFacilityId = facilities[0]?.id ?? ''; }
   $: { if (buildingFloors.length > 0 && !selectedFloorId) selectedFloorId = buildingFloors[0]?.id ?? ''; }
 
-  // Derive type_filter + emergencyOnly from preset (or custom selection).
-  // Emergency lighting: include ALL types — the emergencyOnly flag filters at component
-  // attribute level (attr_name='emergency', value='true'), not by type code.
-  // Fire doors / Apartment doors: filter by specific stable type codes.
-  $: allTypeCodes = types.map(t => t.code);
-
-  $: presetTypeFilter = (() => {
-    if (preset === 'emergency_lighting') return allTypeCodes;
-    if (preset === 'fire_doors')         return types.filter(t => t.code === 'door_fire_door').map(t => t.code);
-    if (preset === 'apartment_doors')    return types.filter(t => t.code === 'door_apartment_door').map(t => t.code);
-    // custom: exclude hidden types
-    return types.filter(t => !hiddenTypeCodes.has(t.code)).map(t => t.code);
-  })();
-
-  $: emergencyOnly = preset === 'emergency_lighting';
+  // Custom (ad-hoc) walk: every type except the ones unticked in the tree.
+  $: customTypeFilter = types.filter(t => !hiddenTypeCodes.has(t.code)).map(t => t.code);
 
   // Component count preview.
   // Definitions: exact walk builder (scope engine + walk exclusions), so the
-  // count always equals the session's real walk length.
-  // Emergency: check component_attributes for attr_name='emergency', value='true'
-  // (attr_name is enriched into allComponentAttrs during store load()).
+  // count always equals the session's real walk length. Nothing selected → 0
+  // (the begin button stays disabled until an inspection is picked).
   $: componentCount = (() => {
     if (isRotating) return rotWalk?.walkComponents.length ?? 0;
     if (selectedDefinition) {
@@ -147,24 +135,16 @@
       }
       return buildingFloors.reduce((n, f) => n + count(allComponents[f.id] ?? []), 0);
     }
-    const tf = presetTypeFilter;
+    if (preset !== 'custom') return 0;
+    const tf = customTypeFilter;
     if (scope === 'single_floor') {
       const fid = selectedFloor?.id;
       if (!fid) return 0;
-      const comps = (allComponents[fid] ?? []).filter(c => tf.includes(c.type_code));
-      if (emergencyOnly) {
-        return comps.filter(c => (allComponentAttrs[c.id] ?? []).some(a => a.attr_name?.toLowerCase() === 'emergency' && a.value === 'true')).length;
-      }
-      return comps.length;
-    } else {
-      return buildingFloors.reduce((n, f) => {
-        const comps = (allComponents[f.id] ?? []).filter(c => tf.includes(c.type_code));
-        if (emergencyOnly) {
-          return n + comps.filter(c => (allComponentAttrs[c.id] ?? []).some(a => a.attr_name?.toLowerCase() === 'emergency' && a.value === 'true')).length;
-        }
-        return n + comps.length;
-      }, 0);
+      return (allComponents[fid] ?? []).filter(c => tf.includes(c.type_code)).length;
     }
+    return buildingFloors.reduce(
+      (n, f) => n + (allComponents[f.id] ?? []).filter(c => tf.includes(c.type_code)).length, 0,
+    );
   })();
 
   // Auto-generate name when inputs change
@@ -217,31 +197,31 @@
     hiddenTypeCodes = next;
   }
 
-  const PRESETS = [
-    { id: 'emergency_lighting', label: '🔦 Emergency Lighting', sub: 'Components with emergency attribute' },
-    { id: 'fire_doors',         label: '🚪 Fire Doors',          sub: 'Communal door components' },
-    { id: 'apartment_doors',    label: '🔑 Apartment Doors',     sub: 'Apartment door components' },
-    { id: 'custom',             label: '⚙ Custom…',              sub: 'Select component types manually' },
-  ];
-
   async function handleBegin() {
     if (componentCount === 0) { error = 'No components match this selection.'; return; }
     saving = true; error = null;
     try {
-      const opts = selectedDefinition
-        ? { building, sessionName, sessionType, definition: selectedDefinition }
-        : { building, typeFilter: presetTypeFilter, emergencyOnly, sessionName, sessionType, preset };
+      // One options shape for all three start methods: a selected definition
+      // supersedes typeFilter/emergencyOnly inside the store, so passing both
+      // is safe (definition is null in the ad-hoc Custom flow).
+      const opts = {
+        building, sessionName, sessionType, preset,
+        definition:    selectedDefinition,
+        typeFilter:    customTypeFilter,
+        emergencyOnly: false,
+      };
       if (isRotating) {
         await inspectionStore.startRotatingSession(opts);
       } else if (scope === 'single_floor') {
-        await inspectionStore.startSession({ ...opts, floor: selectedFloor });
+        await inspectionStore.startSession({ ...opts, floor: selectedFloor, targetComponentId: null });
       } else {
         await inspectionStore.startBuildingWideSession(opts);
       }
       dispatch('started');
     } catch (err) {
-      logger('❌ Start session:', err.message);
-      error = err.message;
+      const msg = err instanceof Error ? err.message : String(err);
+      logger('❌ Start session:', msg);
+      error = msg;
     } finally {
       saving = false;
     }
@@ -318,20 +298,18 @@
       </section>
     {/if}
 
-    <!-- -- Preset --------------------------------------------------------------- -->
+    <!-- -- Ad-hoc (custom type selection) ----------------------------------------- -->
     <section class="grp">
-      <div class="grp-lbl">{schedStates.length > 0 ? 'AD-HOC INSPECTION' : 'INSPECTION TYPE'}</div>
+      <div class="grp-lbl">AD-HOC INSPECTION</div>
       <div class="preset-list">
-        {#each PRESETS as p (p.id)}
-          <button
-            class="preset-btn"
-            class:sel={preset === p.id}
-            on:click={() => { preset = p.id; showCustom = p.id === 'custom'; selectedDefinitionId = ''; }}
-          >
-            <div class="preset-label">{p.label}</div>
-            <div class="preset-sub">{p.sub}</div>
-          </button>
-        {/each}
+        <button
+          class="preset-btn"
+          class:sel={preset === 'custom'}
+          on:click={() => { preset = 'custom'; showCustom = true; selectedDefinitionId = ''; }}
+        >
+          <div class="preset-label">⚙ Custom…</div>
+          <div class="preset-sub">Select component types manually</div>
+        </button>
       </div>
     </section>
 
