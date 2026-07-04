@@ -1,6 +1,11 @@
 <!-- src/lib/apps/admin/components/DocumentsTab.svelte -->
-<!-- Document library demo/management tab in the Admin app.            -->
-<!-- Demonstrates upload, browse, filter, and deletion of documents.   -->
+<!-- "Document Demo" tab in the Admin app — a global, admin-only browser over
+     the shared document_library INDEX table. Lists every indexed document
+     across all apps/entities (newest first, capped at 200), reading the DB
+     index rather than the storage provider directly. Demo + admin cleanup
+     view: everyday document handling lives in each entity's own
+     AttachedDocuments panel, not here. Uploads made here are "loose" (no
+     entity_type/entity_id) and land in a Documents folder. -->
 <script>
   import { onMount }        from 'svelte';
   import { documentsStore } from '$lib/stores/documentsStore';
@@ -85,9 +90,9 @@
   <!-- Header -->
   <div class="flex items-start justify-between gap-4">
     <div>
-      <h3 class="text-lg font-semibold text-slate-100">Document Library</h3>
+      <h3 class="text-lg font-semibold text-slate-100">Document Demo</h3>
       <p class="text-sm text-slate-400">
-        Upload and index documents stored in external storage.
+        A global, admin-only view of the shared document library index.
       </p>
     </div>
     <div class="flex gap-4 text-center flex-shrink-0">
@@ -110,9 +115,30 @@
     </div>
   </div>
 
+  <!-- What this tab is -->
+  <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 space-y-2">
+    <p class="font-medium text-slate-200">What this tab shows</p>
+    <p>
+      Every document indexed in the
+      <code class="px-1 py-0.5 rounded bg-slate-700/70 text-slate-200 text-xs">document_library</code>
+      table — the portal's shared document index — listed newest-first across all apps and entities.
+      It reads the database index, <strong>not</strong> Google Drive directly: you're seeing files
+      that have a library record (Info-note attachments, Golden Thread ingested copies, per-entity
+      uploads, plus loose files uploaded here). Maintenance documents and inspection photos live in
+      separate tables and won't appear.
+    </p>
+    <p>
+      It exists as a demo and admin cleanup view. Everyday document handling happens in each entity's
+      own attachments panel, not here — and files uploaded below are <em>loose</em> (not attached to
+      any record), landing in a
+      <code class="px-1 py-0.5 rounded bg-slate-700/70 text-slate-200 text-xs">Documents</code> folder.
+    </p>
+  </div>
+
   <!-- Upload area -->
   <div class="bg-slate-850 border border-slate-700 rounded-lg p-4">
-    <p class="text-sm font-medium text-slate-300 mb-3">Upload a document</p>
+    <p class="text-sm font-medium text-slate-300 mb-1">Upload a loose document</p>
+    <p class="text-xs text-slate-400 mb-3">Added to the library unattached to any entity.</p>
     <DocumentUploader
       extended={true}
       folderPath="Documents"
