@@ -3,7 +3,7 @@
      Scheduled (configurable) inspection definitions list first, due-ordered;
      below them, Custom picks component types manually for an ad-hoc walk.
      (The legacy Emergency Lighting / Fire Doors / Apartment Doors presets were
-     retired in favour of the seeded definitions — migration 155.) -->
+     retired in favour of the definitions migration 153 seeds.) -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
