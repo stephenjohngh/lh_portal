@@ -108,6 +108,7 @@
   <InspectionDefinitionModal
     definition={editing}
     types={bas.types} systems={bas.systems} floors={bas.floors} attrDefs={bas.attrDefs}
+    attrOptions={bas.attrOptions}
     components={bas.components} componentAttrs={bas.componentAttrs} inspections={bas.inspections}
     componentLinks={bas.componentLinks}
     {saving}

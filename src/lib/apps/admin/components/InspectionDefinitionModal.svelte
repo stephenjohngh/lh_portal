@@ -31,6 +31,8 @@
   export let floors   = [];
   /** @type {Record<string, TypeAttribute[]>} */
   export let attrDefs = {};
+  /** @type {Record<string, import('$lib/database.types').Tables<'type_attribute_options'>[]>} */
+  export let attrOptions = {};
   /** @type {import('$lib/database.types').Tables<'components'>[]} */
   export let components     = [];
   export let componentAttrs = {};
@@ -215,7 +217,7 @@
     <div class="block">
       <p class="block-lbl">What is inspected</p>
       <ScopeEditor
-        {scope} {types} {systems} {floors} {attrDefs}
+        {scope} {types} {systems} {floors} {attrDefs} {attrOptions}
         matchCount={matchCount} totalCount={components.length}
         on:change={onScopeChange}
       />
