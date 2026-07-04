@@ -22,6 +22,7 @@
   import DatabasePanel   from './components/DatabasePanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import InspectionDefinitionsTab from './components/InspectionDefinitionsTab.svelte';
+  import TabDropdown     from './components/TabDropdown.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -33,6 +34,19 @@
   let activeTab = 'users';
   let assetsStoreLoaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
   let componentsLoaded = false;    // lazy — components/attrs/inspections (for the Inspections scope preview)
+
+  // Grouped tabs — collapsed into dropdowns so the top bar stays short.
+  // The ids match the activeTab values handled in the content section below.
+  const longTermTabs = [
+    { id: 'maint-groups', icon: '🗃', label: 'Maint. Groups' },
+    { id: 'ten-year',     icon: '📅', label: '10-Yr Plan' },
+  ];
+  const otherConfigTabs = [
+    { id: 'floors',    icon: '🏢', label: 'Floors' },
+    { id: 'portal',    icon: '⚙',  label: 'Portal' },
+    { id: 'database',  icon: '🔌', label: 'Database' },
+    { id: 'documents', icon: '📁', label: 'Document Demo' },
+  ];
   
   // Modal states
   let showCreateModal = false;
@@ -192,50 +206,6 @@
           </span>
         </button>
         <button
-          class="px-4 py-2 transition-colors {activeTab === 'floors'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('floors')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>🏢</span>
-            <span>Floors</span>
-          </span>
-        </button>
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'portal'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('portal')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>⚙</span>
-            <span>Portal</span>
-          </span>
-        </button>
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'maint-groups'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('maint-groups')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>🗃</span>
-            <span>Maint. Groups</span>
-          </span>
-        </button>
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'ten-year'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('ten-year')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>📅</span>
-            <span>10-Yr Plan</span>
-          </span>
-        </button>
-        <button
           class="px-4 py-2 transition-colors {activeTab === 'inspections'
             ? 'border-b-2 border-purple-500 text-white font-semibold'
             : 'text-gray-400 hover:text-white'}"
@@ -246,28 +216,20 @@
             <span>Inspections</span>
           </span>
         </button>
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'database'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('database')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>🔌</span>
-            <span>Database</span>
-          </span>
-        </button>
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'documents'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('documents')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>📁</span>
-            <span>Documents</span>
-          </span>
-        </button>
+        <TabDropdown
+          label="Long Term"
+          icon="⏳"
+          items={longTermTabs}
+          {activeTab}
+          on:select={(e) => activateTab(e.detail)}
+        />
+        <TabDropdown
+          label="Other Config"
+          icon="🛠"
+          items={otherConfigTabs}
+          {activeTab}
+          on:select={(e) => activateTab(e.detail)}
+        />
       {/if}
     </div>
   </div>
