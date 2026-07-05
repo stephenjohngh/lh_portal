@@ -161,7 +161,7 @@
   <!-- Match count -->
   {#if matchCount != null}
     <div class="match-count" class:zero={matchCount === 0}>
-      Matches <strong>{matchCount}</strong>{#if totalCount != null} of {totalCount}{/if} component{matchCount === 1 ? '' : 's'}
+      Matches <strong>{matchCount}</strong>{totalCount != null ? ` of ${totalCount}` : ''} component{matchCount === 1 ? '' : 's'}
       {#if matchCount === 0}<span class="warn">— this scope selects nothing</span>{/if}
     </div>
   {/if}
