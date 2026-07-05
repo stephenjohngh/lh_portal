@@ -48,7 +48,8 @@
   let description = definition?.description ?? '';
   let active      = definition?.active ?? true;
   let mode        = definition?.mode ?? 'standard';
-  let scope       = definition?.scope ? structuredClone(definition.scope) : {};
+  /** @typedef {{ typeCodes?: string[], systemIds?: string[], floorIds?: string[], statuses?: string[], fixedAttrFilters?: any[], conditionAttrFilters?: any[] }} ScopeShape */
+  let scope = /** @type {ScopeShape} */ (definition?.scope ? structuredClone(definition.scope) : {});
   let frequencyDays = definition?.frequency_days ?? null;
   let linkSource    = definition?.link_source ?? 'component_links';
   let linkTypeFilter = definition?.link_type_filter ?? '';
@@ -88,8 +89,23 @@
       )
     : null;
 
-  // Checkable attrs grouped by type — the pick list for checklist_mode='explicit'.
-  $: attrGroups = types
+  // Types the scope actually covers — the explicit checklist only makes sense
+  // for these, since a component is walked only if it matches the scope, and a
+  // checklist attr on any other type would never apply. typeCodes wins; else the
+  // types in the selected systems; else null = no restriction (all types).
+  $: scopeTypeCodes = (() => {
+    const codes = new Set(scope.typeCodes ?? []);
+    if (codes.size > 0) return codes;
+    const sysIds = new Set(scope.systemIds ?? []);
+    if (sysIds.size > 0) return new Set(types.filter(t => sysIds.has(t.building_system_id)).map(t => t.code));
+    return null;
+  })();
+  $: checklistScoped = scopeTypeCodes != null;
+  $: scopedTypes = scopeTypeCodes ? types.filter(t => scopeTypeCodes.has(t.code)) : types;
+
+  // Checkable attrs grouped by type — the pick list for checklist_mode='explicit',
+  // scoped to the types this inspection covers.
+  $: attrGroups = scopedTypes
     .map(t => ({ type: t, defs: (attrDefs[t.id] ?? []).filter(d => d.checkable) }))
     .filter(g => g.defs.length > 0);
 
@@ -236,8 +252,15 @@
       </label>
       {#if checklistMode === 'explicit'}
         {#if attrGroups.length === 0}
-          <p class="hint">No condition attributes exist yet — add checkable attributes to component types first.</p>
+          <p class="hint">
+            {checklistScoped
+              ? 'The types in this inspection’s scope have no condition attributes to check.'
+              : 'No condition attributes exist yet — add checkable attributes to component types first.'}
+          </p>
         {:else}
+          {#if checklistScoped}
+            <p class="hint">Showing condition attributes for the types in this inspection’s scope.</p>
+          {/if}
           <div class="attr-pick">
             {#each attrGroups as g (g.type.id)}
               <p class="attr-type">{g.type.name}</p>
