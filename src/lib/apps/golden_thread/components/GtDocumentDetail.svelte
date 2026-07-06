@@ -12,7 +12,8 @@
   import { gtStore } from '$lib/apps/golden_thread/stores/gtStore';
   import { permissions } from '$lib/stores/permissions';
   import { nextStates, GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
-  import { LINK_TARGET_TYPES, LINK_RELATIONS } from '$lib/apps/golden_thread/utils/gtConstants.js';
+  import { LINK_TARGET_TYPES, LINK_RELATIONS, REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
+  import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
   import Badge           from '$lib/components/common/Badge.svelte';
   import Button          from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -29,6 +30,11 @@
   export let saving = false;
 
   const dispatch = createEventDispatcher();
+
+  // Review band — only for a current document with a review date (else null).
+  $: reviewBadge = (doc?.status === 'current' && doc?.review_due)
+    ? reviewBand(daysToReview(doc, new Date().toISOString().slice(0, 10)))
+    : null;
 
   // ── Links / citations ──────────────────────────────────────────────────────
   $: links = $gtStore.links;
@@ -180,7 +186,13 @@
     <div><dt class="text-xs text-slate-500">Tags</dt><dd class="text-slate-200">{doc.tags?.length ? doc.tags.join(', ') : '—'}</dd></div>
     <div><dt class="text-xs text-slate-500">Effective from</dt><dd class="text-slate-200">{doc.effective_from ? fmtDate(doc.effective_from) : '—'}</dd></div>
     <div><dt class="text-xs text-slate-500">Effective to</dt><dd class="text-slate-200">{doc.effective_to ? fmtDate(doc.effective_to) : '— (open)'}</dd></div>
-    <div><dt class="text-xs text-slate-500">Review due</dt><dd class="text-slate-200">{doc.review_due ? fmtDate(doc.review_due) : '—'}</dd></div>
+    <div>
+      <dt class="text-xs text-slate-500">Review due</dt>
+      <dd class="text-slate-200 flex items-center gap-2">
+        {doc.review_due ? fmtDate(doc.review_due) : '—'}
+        {#if reviewBadge}<Badge color={REVIEW_BAND_BADGE[reviewBadge]}>{REVIEW_BAND_LABEL[reviewBadge]}</Badge>{/if}
+      </dd>
+    </div>
     <div><dt class="text-xs text-slate-500">Review cycle (days)</dt><dd class="text-slate-200">{doc.review_cycle_days ?? '—'}</dd></div>
   </dl>
 

@@ -11,6 +11,8 @@
   import { permissions } from '$lib/stores/permissions';
   import { gtStore }     from '$lib/apps/golden_thread/stores/gtStore';
   import { GT_STATUS_LABELS, GT_STATUS_BADGE, GT_STATUSES } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
+  import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
+  import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
   import { documentsCurrentOn } from '$lib/apps/golden_thread/public.js';
   import { postJson }   from '$lib/utils/request';
   import Badge         from '$lib/components/common/Badge.svelte';
@@ -23,6 +25,14 @@
   import { fmtDate }   from '$lib/utils/dates';
 
   $: userId  = $auth.user?.id;
+
+  const todayISO = new Date().toISOString().slice(0, 10);
+  // Review band for a document — only meaningful for current documents with a
+  // review date; null (no badge) otherwise. Uses the pure gtReview logic.
+  function docReviewBand(doc) {
+    if (doc.status !== 'current' || !doc.review_due) return null;
+    return reviewBand(daysToReview(doc, todayISO));
+  }
 
   let activeTab = 'register'; // 'register' | 'ingest' | 'completeness' | 'review'
   let viewingDetail = false;
@@ -102,6 +112,11 @@
     }
     if (tab === 'people' && persons.length === 0) {
       await gtStore.loadPersons();
+    }
+    // Auto-run the read-only tick on first open so the admin sees the current
+    // summary without a click; the button remains for a manual refresh.
+    if (tab === 'review' && !reviewSummary && !reviewRunning) {
+      await runReviewTick();
     }
   }
 
@@ -236,7 +251,15 @@
                   </Badge>
                 </td>
                 <td class="px-3 py-2 text-slate-400">{doc.effective_from ? fmtDate(doc.effective_from) : '—'}</td>
-                <td class="px-3 py-2 text-slate-400">{doc.review_due ? fmtDate(doc.review_due) : '—'}</td>
+                <td class="px-3 py-2 text-slate-400">
+                  <span class="inline-flex items-center gap-2">
+                    {doc.review_due ? fmtDate(doc.review_due) : '—'}
+                    {#if docReviewBand(doc)}
+                      {@const band = docReviewBand(doc)}
+                      <Badge color={REVIEW_BAND_BADGE[band]}>{REVIEW_BAND_LABEL[band]}</Badge>
+                    {/if}
+                  </span>
+                </td>
               </tr>
             {/each}
           </tbody>
@@ -284,19 +307,20 @@
       <p class="text-sm text-slate-400 py-8 text-center">You don't have permission to manage people.</p>
     {/if}
   {:else if activeTab === 'review'}
-    <!-- ── Review-tick dev harness (admin) ───────────────────────────────── -->
+    <!-- ── Review-tick summary (admin) ───────────────────────────────────── -->
     <div class="max-w-xl space-y-4">
       <div>
-        <p class="text-sm text-slate-200 font-medium">Review tick</p>
+        <p class="text-sm text-slate-200 font-medium">Review status</p>
         <p class="text-xs text-slate-500 mt-0.5">
-          Read-only scan of current documents — counts how many are due-soon / overdue by band
-          (90/60/30/0/+30). Writes nothing; exercises the scheduler engine before a live trigger
-          or notification channel exists.
+          Read-only scan of current documents — how many are due-soon / overdue by band
+          (≤90/60/30/overdue). The same logic drives the per-document badges in the register.
+          Runs on open; use the button to refresh. Writes nothing — a live scheduled trigger /
+          notification channel is a later, separately-scoped step.
         </p>
       </div>
 
       <Button variant="primary" loading={reviewRunning} disabled={reviewRunning} on:click={runReviewTick}>
-        Run review tick now
+        Refresh
       </Button>
 
       {#if reviewError}

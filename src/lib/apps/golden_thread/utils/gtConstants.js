@@ -30,6 +30,24 @@ export const DOCUMENT_TYPES = [
   'Other (unspecified)'
 ];
 
+/**
+ * Review-band display vocabulary — maps the pure reviewBand() output
+ * (gtReview.js) to a user label + a Badge background class. Keyed by band;
+ * null bands (not due soon / no review date) render no badge.
+ */
+export const REVIEW_BAND_LABEL = {
+  overdue: 'Review overdue',
+  due_30:  'Review due ≤30d',
+  due_60:  'Review due ≤60d',
+  due_90:  'Review due ≤90d',
+};
+export const REVIEW_BAND_BADGE = {
+  overdue: 'bg-red-700',
+  due_30:  'bg-amber-600',
+  due_60:  'bg-yellow-700',
+  due_90:  'bg-slate-600',
+};
+
 /** gt_persons.role options. */
 export const PERSON_ROLES = ['author', 'reviewer', 'both'];
 
