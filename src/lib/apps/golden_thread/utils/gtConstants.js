@@ -6,16 +6,39 @@
 // document set is catalogued; values are stored verbatim in
 // gt_documents.document_type (plain text, no DB constraint).
 
-/** Master Document List — document_type options (label === stored value). */
+/**
+ * Master Document List — document_type options (label === stored value).
+ * A starter set covering the common controlled documents for a residential
+ * higher-risk building; extend as the building's real document set is
+ * catalogued. Grouped only for readability — stored as a flat vocabulary.
+ */
 export const DOCUMENT_TYPES = [
+  // Fire safety — strategy & assessment
   'Fire strategy',
   'Evacuation strategy',
   'Personal emergency evacuation plan (PEEP)',
   'Fire risk assessment',
   'Fire door inspection report',
   'Compartmentation survey',
+  'External wall system (EWS1) assessment',
+  'Cladding / external wall survey',
+  // Fire safety — active systems (periodic test/maintenance)
+  'Fire alarm test / maintenance certificate',
+  'Emergency lighting test certificate',
+  'Sprinkler / suppression system certificate',
+  'Smoke control / AOV maintenance certificate',
+  'Dry / wet riser test certificate',
+  // Structure
   'Structural design statement',
   'Structural assessment',
+  // Building services compliance
+  'Electrical installation condition report (EICR)',
+  'Gas safety record',
+  'Lift inspection report (LOLER)',
+  'Lightning protection test certificate',
+  'Legionella / water hygiene risk assessment',
+  'Asbestos survey / register',
+  // Operation, commissioning & general
   'Operation & maintenance (O&M) manual',
   'Commissioning certificate',
   'Test / inspection certificate',
@@ -24,6 +47,7 @@ export const DOCUMENT_TYPES = [
   'As-built drawing',
   'Key Building Information (KBI)',
   'Building assessment certificate',
+  // Residents & occurrences
   'Resident engagement strategy',
   'Complaints procedure',
   'Mandatory occurrence report',
