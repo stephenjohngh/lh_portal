@@ -173,6 +173,10 @@
     <div><dt class="text-xs text-slate-500">Access scope</dt><dd class="text-slate-200">{doc.access_scope}</dd></div>
     <div><dt class="text-xs text-slate-500">Security classification</dt><dd class="text-slate-200">{doc.security_classification}</dd></div>
     <div><dt class="text-xs text-slate-500">Safety-critical</dt><dd class="text-slate-200">{doc.safety_critical ? 'Yes' : 'No'}</dd></div>
+    <div><dt class="text-xs text-slate-500">Contains PII</dt><dd class="text-slate-200">{doc.contains_pii ? 'Yes' : 'No'}</dd></div>
+    <div><dt class="text-xs text-slate-500">Building location</dt><dd class="text-slate-200">{doc.building_location || '—'}</dd></div>
+    <div><dt class="text-xs text-slate-500">Uniclass code</dt><dd class="text-slate-200">{doc.uniclass_code || '—'}</dd></div>
+    <div><dt class="text-xs text-slate-500">Information container ID</dt><dd class="text-slate-200">{doc.container_id || '—'}</dd></div>
     <div><dt class="text-xs text-slate-500">Tags</dt><dd class="text-slate-200">{doc.tags?.length ? doc.tags.join(', ') : '—'}</dd></div>
     <div><dt class="text-xs text-slate-500">Effective from</dt><dd class="text-slate-200">{doc.effective_from ? fmtDate(doc.effective_from) : '—'}</dd></div>
     <div><dt class="text-xs text-slate-500">Effective to</dt><dd class="text-slate-200">{doc.effective_to ? fmtDate(doc.effective_to) : '— (open)'}</dd></div>
@@ -184,6 +188,13 @@
     <div>
       <p class="text-xs text-slate-500 mb-1">Summary</p>
       <p class="text-sm text-slate-200 whitespace-pre-wrap">{doc.summary}</p>
+    </div>
+  {/if}
+
+  {#if doc.scope_description}
+    <div>
+      <p class="text-xs text-slate-500 mb-1">Scope / applicability</p>
+      <p class="text-sm text-slate-200 whitespace-pre-wrap">{doc.scope_description}</p>
     </div>
   {/if}
 

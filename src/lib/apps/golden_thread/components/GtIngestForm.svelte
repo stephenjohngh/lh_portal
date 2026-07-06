@@ -28,7 +28,12 @@
   let document_type = '';
   let title = '';
   let summary = '';
+  let scope_description = '';
+  let building_location = '';
+  let uniclass_code = '';
+  let container_id = '';
   let safety_critical = false;
+  let contains_pii = false;
   let access_scope = 'internal';
   let security_classification = 'official';
   let review_cycle_days = '';
@@ -75,7 +80,12 @@
       document_type,
       title: title.trim(),
       summary: summary.trim(),
+      scope_description: scope_description.trim() || null,
+      building_location: building_location.trim() || null,
+      uniclass_code: uniclass_code.trim() || null,
+      container_id: container_id.trim() || null,
       safety_critical,
+      contains_pii,
       access_scope,
       security_classification,
       review_cycle_days: Number.isFinite(days) ? days : null,
@@ -106,6 +116,19 @@
   <FormTextarea label="Summary" bind:value={summary} rows={3}
     helpText="Plain-English summary. Required when safety-critical." />
 
+  <FormTextarea label="Scope / applicability" bind:value={scope_description} rows={2}
+    helpText="What the document covers — systems, areas, or the extent of the building it applies to." />
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <FormInput label="Building location" bind:value={building_location}
+      placeholder="e.g. Whole building, Core A stair" helpText="Where in the building this applies." />
+    <FormInput label="Uniclass code" bind:value={uniclass_code}
+      placeholder="e.g. Pr_35_31_—" helpText="Optional classification code." />
+  </div>
+
+  <FormInput label="Information container ID" bind:value={container_id}
+    placeholder="ISO 19650 container reference" helpText="Optional CDE container identifier for this information." />
+
   <div class="grid gap-4 sm:grid-cols-2">
     <FormSelect label="Author" bind:value={author_id} options={authorOptions}
       placeholder="— None —" helpText="From the People registry." />
@@ -128,7 +151,10 @@
     <FormInput label="Tags" bind:value={tagsText} placeholder="comma, separated" />
   </div>
 
-  <Checkbox bind:checked={safety_critical} label="Safety-critical document" />
+  <div class="flex flex-wrap gap-x-6 gap-y-2">
+    <Checkbox bind:checked={safety_critical} label="Safety-critical document" />
+    <Checkbox bind:checked={contains_pii} label="Contains personal data (PII)" />
+  </div>
 
   <div>
     <p class="text-xs text-slate-400 mb-1.5">File</p>
