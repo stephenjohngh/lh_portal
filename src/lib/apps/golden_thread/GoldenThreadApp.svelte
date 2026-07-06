@@ -24,6 +24,9 @@
   import GtIngestForm  from '$lib/apps/golden_thread/components/GtIngestForm.svelte';
   import GtDocumentDetail from '$lib/apps/golden_thread/components/GtDocumentDetail.svelte';
   import GtPeople      from '$lib/apps/golden_thread/components/GtPeople.svelte';
+  import GtSafetyCase  from '$lib/apps/golden_thread/components/GtSafetyCase.svelte';
+  import { buildSafetyCaseModel } from '$lib/apps/golden_thread/utils/gtSafetyCase.js';
+  import { listCases as listMorCases } from '$lib/apps/mor/public.js';
   import { fmtDate }   from '$lib/utils/dates';
 
   $: userId  = $auth.user?.id;
@@ -66,9 +69,47 @@
     ['register', 'Register'],
     ...(canEdit ? [['ingest', 'Ingest']] : []),
     ['completeness', 'Completeness'],
+    ['safety-case', 'Safety Case'],
     ...(canEdit ? [['people', 'People']] : []),
     ...(isAdmin ? [['review', 'Review']] : [])
   ];
+
+  // Safety Case — reads register + completeness + MOR occurrences into one model
+  // (the same shape as the Word export). MOR cases are loaded lazily on open.
+  /** @type {any[]} */
+  let morCases = [];
+  let morCasesLoaded = false;
+  let safetyCaseAt = '';   // frozen "generated at" for the current view/export
+  $: safetyCaseModel = buildSafetyCaseModel({
+    documents: documents,
+    completeness,
+    morCases,
+    generatedAt: safetyCaseAt || new Date().toISOString(),
+  });
+
+  let scExporting = false;
+  let scExportError = '';
+  async function exportSafetyCase() {
+    scExporting = true;
+    scExportError = '';
+    try {
+      const res = await fetch('/api/golden-thread/safety-case', {
+        method: 'POST',
+        headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify(safetyCaseModel),
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const j = await res.json(); msg = j.error ?? msg; } catch { /* non-JSON */ }
+        throw new Error(msg);
+      }
+      await downloadResponse(res, `golden-thread-safety-case-${new Date().toISOString().slice(0, 10)}.docx`);
+    } catch (e) {
+      scExportError = e instanceof Error ? e.message : String(e);
+    } finally {
+      scExporting = false;
+    }
+  }
 
   // What the register table shows: time-travel snapshot if a date is set,
   // otherwise the full list filtered by status.
@@ -135,6 +176,14 @@
     }
     if (tab === 'people' && persons.length === 0) {
       await gtStore.loadPersons();
+    }
+    if (tab === 'safety-case') {
+      safetyCaseAt = new Date().toISOString();   // freeze the snapshot time
+      if (completeness.length === 0) await gtStore.loadCompleteness();
+      if (!morCasesLoaded) {
+        morCasesLoaded = true;
+        try { morCases = await listMorCases(); } catch { morCases = []; }
+      }
     }
     // Auto-run the read-only tick on first open so the admin sees the current
     // summary without a click; the button remains for a manual refresh.
@@ -330,6 +379,14 @@
         {/each}
       </div>
     {/if}
+  {:else if activeTab === 'safety-case'}
+    <GtSafetyCase
+      model={safetyCaseModel}
+      exporting={scExporting}
+      exportError={scExportError}
+      on:export={exportSafetyCase}
+    />
+
   {:else if activeTab === 'people'}
     <!-- ── Author / reviewer registry ────────────────────────────────────── -->
     {#if canEdit}
