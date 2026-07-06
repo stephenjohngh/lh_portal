@@ -15,6 +15,8 @@
   import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
   import { documentsCurrentOn } from '$lib/apps/golden_thread/public.js';
   import { postJson }   from '$lib/utils/request';
+  import { authHeaders } from '$lib/utils/authHeaders';
+  import { downloadResponse } from '$lib/utils/download';
   import Badge         from '$lib/components/common/Badge.svelte';
   import Button        from '$lib/components/common/Button.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
@@ -79,6 +81,27 @@
   async function applyTimeTravel() {
     if (!timeTravelDate) { timeTravelDocs = null; return; }
     timeTravelDocs = await documentsCurrentOn(timeTravelDate);
+  }
+
+  // BSR share pack — admin-only whole-register ZIP export (POST returns a zip).
+  let packRunning = false;
+  let packError = '';
+  async function downloadSharePack() {
+    packRunning = true;
+    packError = '';
+    try {
+      const res = await fetch('/api/golden-thread/share-pack', { method: 'POST', headers: await authHeaders() });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const j = await res.json(); msg = j.error ?? msg; } catch { /* non-JSON */ }
+        throw new Error(msg);
+      }
+      await downloadResponse(res, `golden-thread-share-pack-${new Date().toISOString().slice(0, 10)}.zip`);
+    } catch (e) {
+      packError = e instanceof Error ? e.message : String(e);
+    } finally {
+      packRunning = false;
+    }
   }
 
   async function runReviewTick() {
@@ -157,6 +180,14 @@
         BSA 2022 s.88 · the building's controlled document register (L2 / ISO 19650 CDE)
       </p>
     </div>
+    {#if isAdmin}
+      <div class="flex flex-col items-end gap-1">
+        <Button variant="secondary" loading={packRunning} disabled={packRunning} on:click={downloadSharePack}>
+          ⬇ BSR share pack
+        </Button>
+        {#if packError}<p class="text-xs text-red-400 max-w-xs text-right">{packError}</p>{/if}
+      </div>
+    {/if}
   </div>
 
   {#if error}
