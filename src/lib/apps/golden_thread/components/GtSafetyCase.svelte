@@ -8,7 +8,7 @@
   import { createEventDispatcher } from 'svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Badge  from '$lib/components/common/Badge.svelte';
-  import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
+  import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE, AP_ROLE_LABEL, AP_ROLE_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
 
   /** @type {any} */
@@ -56,6 +56,24 @@
       </div>
     {/each}
   </div>
+
+  <!-- Accountability -->
+  <section>
+    <h3 class="text-sm font-semibold text-slate-300 mb-2">Accountability</h3>
+    {#if (model?.accountability ?? []).length === 0}
+      <p class="text-sm text-slate-500 italic">No current accountable persons recorded.</p>
+    {:else}
+      <ul class="space-y-1">
+        {#each model.accountability as p (p.role + p.name)}
+          <li class="flex flex-wrap items-center gap-2 text-sm">
+            <Badge color={AP_ROLE_BADGE[p.role] ?? 'bg-slate-500'}>{AP_ROLE_LABEL[p.role] ?? p.role}</Badge>
+            <span class="text-white">{p.name}</span>
+            {#if p.organisation}<span class="text-xs text-slate-500">· {p.organisation}</span>{/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
 
   <!-- Completeness -->
   <section>

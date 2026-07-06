@@ -24,6 +24,7 @@
   import GtIngestForm  from '$lib/apps/golden_thread/components/GtIngestForm.svelte';
   import GtDocumentDetail from '$lib/apps/golden_thread/components/GtDocumentDetail.svelte';
   import GtPeople      from '$lib/apps/golden_thread/components/GtPeople.svelte';
+  import GtAccountability from '$lib/apps/golden_thread/components/GtAccountability.svelte';
   import GtSafetyCase  from '$lib/apps/golden_thread/components/GtSafetyCase.svelte';
   import { buildSafetyCaseModel } from '$lib/apps/golden_thread/utils/gtSafetyCase.js';
   import { listCases as listMorCases } from '$lib/apps/mor/public.js';
@@ -71,8 +72,11 @@
     ['completeness', 'Completeness'],
     ['safety-case', 'Safety Case'],
     ...(canEdit ? [['people', 'People']] : []),
+    ...(canEdit ? [['accountability', 'Accountability']] : []),
     ...(isAdmin ? [['review', 'Review']] : [])
   ];
+
+  $: accountablePersons = $gtStore.accountablePersons;
 
   // Safety Case — reads register + completeness + MOR occurrences into one model
   // (the same shape as the Word export). MOR cases are loaded lazily on open.
@@ -84,6 +88,7 @@
     documents: documents,
     completeness,
     morCases,
+    accountablePersons,
     generatedAt: safetyCaseAt || new Date().toISOString(),
   });
 
@@ -177,9 +182,13 @@
     if (tab === 'people' && persons.length === 0) {
       await gtStore.loadPersons();
     }
+    if (tab === 'accountability' && accountablePersons.length === 0) {
+      await gtStore.loadAccountablePersons();
+    }
     if (tab === 'safety-case') {
       safetyCaseAt = new Date().toISOString();   // freeze the snapshot time
       if (completeness.length === 0) await gtStore.loadCompleteness();
+      if (accountablePersons.length === 0) await gtStore.loadAccountablePersons();
       if (!morCasesLoaded) {
         morCasesLoaded = true;
         try { morCases = await listMorCases(); } catch { morCases = []; }
@@ -393,6 +402,14 @@
       <GtPeople {saving} />
     {:else}
       <p class="text-sm text-slate-400 py-8 text-center">You don't have permission to manage people.</p>
+    {/if}
+
+  {:else if activeTab === 'accountability'}
+    <!-- ── AP / PAP register ─────────────────────────────────────────────── -->
+    {#if canEdit}
+      <GtAccountability {saving} />
+    {:else}
+      <p class="text-sm text-slate-400 py-8 text-center">You don't have permission to manage accountability.</p>
     {/if}
   {:else if activeTab === 'review'}
     <!-- ── Review-tick summary (admin) ───────────────────────────────────── -->

@@ -75,6 +75,11 @@ export const REVIEW_BAND_BADGE = {
 /** gt_persons.role options. */
 export const PERSON_ROLES = ['author', 'reviewer', 'both'];
 
+/** gt_accountable_persons.role options (BSA accountability register). */
+export const AP_ROLES = ['pap', 'ap'];
+export const AP_ROLE_LABEL = { pap: 'Principal Accountable Person', ap: 'Accountable Person' };
+export const AP_ROLE_BADGE = { pap: 'bg-teal-600', ap: 'bg-blue-600' };
+
 /** Relations for gt_links (citations between the register and other records). */
 export const LINK_RELATIONS = ['evidences', 'cites', 'produced_by', 'action_register', 'drill_down'];
 

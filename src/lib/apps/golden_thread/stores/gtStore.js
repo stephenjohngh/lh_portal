@@ -20,7 +20,8 @@ import { isValidTransition } from '$lib/apps/golden_thread/utils/gtLifecycle.js'
 import {
   scheduleOneCompleteness, registerDocument,
   listCitations, listDocumentLinks, cite, removeLink,
-  listPersons, createPerson, listAuditHistory
+  listPersons, createPerson, listAuditHistory,
+  listAccountablePersons, createAccountablePerson, updateAccountablePerson
 } from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('gtStore');
@@ -45,6 +46,7 @@ function createGtStore() {
     completeness:     /** @type {any[]} */ ([]),
     categories:       /** @type {any[]} */ ([]),   // applicable Schedule-1 categories (for the ingest form)
     persons:          /** @type {any[]} */ ([]),   // gt_persons registry (authors/reviewers)
+    accountablePersons: /** @type {any[]} */ ([]), // gt_accountable_persons (AP/PAP register)
     links:            /** @type {{ outgoing: any[], incoming: any[] }} */ ({ outgoing: [], incoming: [] }),
     auditHistory:     /** @type {any[]} */ ([]),   // gt_audit rows for the selected document (admin-readable)
     loading:          false,
@@ -172,6 +174,42 @@ function createGtStore() {
         appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
       });
       await loadPersons();
+    });
+  }
+
+  // ── Accountable Person / PAP register ────────────────────────────────────────
+
+  /** Load the AP/PAP register. */
+  async function loadAccountablePersons() {
+    try {
+      const accountablePersons = await listAccountablePersons();
+      update((s) => ({ ...s, accountablePersons }));
+      return accountablePersons;
+    } catch (err) {
+      update((s) => ({ ...s, error: err.message }));
+      throw err;
+    }
+  }
+
+  /** Add an accountable person, then refresh the register. */
+  async function addAccountablePerson(data) {
+    return run(async (userId) => {
+      const person = await createAccountablePerson(data, userId);
+      logAudit('create', 'gt_accountable_person', person.id, person.name, {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
+      });
+      await loadAccountablePersons();
+    });
+  }
+
+  /** Update an accountable person (edit / close a tenure), then refresh. */
+  async function editAccountablePerson(id, patch) {
+    return run(async (userId) => {
+      await updateAccountablePerson(id, patch, userId);
+      logAudit('update', 'gt_accountable_person', id, patch.name ?? '', {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info', afterData: patch
+      });
+      await loadAccountablePersons();
     });
   }
 
@@ -376,6 +414,9 @@ function createGtStore() {
     loadCompleteness,
     loadPersons,
     addPerson,
+    loadAccountablePersons,
+    addAccountablePerson,
+    editAccountablePerson,
     loadAuditHistory,
     loadLinks,
     addLink,

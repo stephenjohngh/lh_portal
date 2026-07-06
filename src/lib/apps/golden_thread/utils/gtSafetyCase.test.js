@@ -64,4 +64,21 @@ describe('buildSafetyCaseModel', () => {
     expect(m.building).toBe('Lonsdale House');
     expect(m.generatedAt).toBe(TODAY);
   });
+
+  it('defaults accountability to empty', () => {
+    expect(m.accountability).toEqual([]);
+  });
+});
+
+describe('buildSafetyCaseModel — accountability', () => {
+  it('lists only current tenures (no ended_on), PAP before AP', () => {
+    const accountablePersons = [
+      { role: 'ap',  name: 'Ann AP',  ended_on: null },
+      { role: 'pap', name: 'Pat PAP', ended_on: null },
+      { role: 'ap',  name: 'Old AP',  ended_on: '2025-01-01' },   // closed → excluded
+    ];
+    const m = buildSafetyCaseModel({ documents, completeness, morCases, accountablePersons, generatedAt: TODAY });
+    expect(m.accountability.map((p) => p.name)).toEqual(['Pat PAP', 'Ann AP']);
+    expect(m.accountability[0].role).toBe('pap');
+  });
 });

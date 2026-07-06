@@ -204,6 +204,34 @@ export function createPerson(data, userId) {
   return api.create('gt_persons', { ...data, created_by: userId }, true);
 }
 
+// ── Accountable Person / PAP register (gt_accountable_persons) ───────────────
+
+/** List the AP/PAP register, oldest first (tenure order). */
+export function listAccountablePersons() {
+  return api.get('gt_accountable_persons', { orderBy: 'created_at', ascending: true });
+}
+
+/**
+ * Add an accountable person.
+ * @param {{ role: string, name: string, organisation?: string, duties?: string, contact?: string, appointed_on?: string|null, notes?: string }} data
+ * @param {string} userId
+ */
+export function createAccountablePerson(data, userId) {
+  return api.create('gt_accountable_persons', { ...data, created_by: userId }, true);
+}
+
+/**
+ * Update an accountable person (edit details or close a tenure via ended_on).
+ * @param {string} id
+ * @param {object} patch
+ * @param {string} userId
+ */
+export function updateAccountablePerson(id, patch, userId) {
+  return api.update('gt_accountable_persons', id, {
+    ...patch, updated_by: userId, updated_at: new Date().toISOString()
+  }, true);
+}
+
 // ── Audit history (read; admin-gated by RLS) ─────────────────────────────────
 
 /**

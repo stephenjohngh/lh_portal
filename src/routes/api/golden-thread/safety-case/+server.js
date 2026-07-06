@@ -11,7 +11,7 @@ import {
   para, hCell, dCell, makeHeader, makeFooter, DOC_STYLES, pageProps,
   CONTENT_W, COLOURS, BORDERS,
 } from '$lib/server/docxHelpers.js';
-import { REVIEW_BAND_LABEL } from '$lib/apps/golden_thread/utils/gtConstants.js';
+import { REVIEW_BAND_LABEL, AP_ROLE_LABEL } from '$lib/apps/golden_thread/utils/gtConstants.js';
 import { getLogger } from '$lib/utils/logger';
 import { fmtDate, fmtDateTime } from '$lib/utils/dates';
 
@@ -55,6 +55,20 @@ function buildContent(m) {
       `${s.categoriesSatisfied} / ${s.categoriesApplicable}`, String(s.occurrences),
     ]],
   ));
+
+  // Accountability
+  c.push(para('Accountability', { heading: 'Heading2' }));
+  if ((m.accountability ?? []).length === 0) {
+    c.push(para('No current accountable persons recorded.', { italics: true, color: COLOURS.textMuted }));
+  } else {
+    c.push(docTable(
+      ['Role', 'Name', 'Organisation', 'Duties / scope'],
+      [2600, 2600, 2400, 2866],
+      m.accountability.map((p) => [
+        AP_ROLE_LABEL[p.role] ?? p.role, p.name, p.organisation ?? '—', p.duties ?? '—',
+      ]),
+    ));
+  }
 
   // Schedule-1 completeness
   c.push(para('Schedule-1 completeness', { heading: 'Heading2' }));

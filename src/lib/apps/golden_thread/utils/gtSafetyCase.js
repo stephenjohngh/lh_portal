@@ -29,10 +29,11 @@ function pickDoc(d, todayISO) {
  * @param {Array} args.documents     register documents (any status; only 'current' is summarised)
  * @param {Array} args.completeness  scheduleOneCompleteness() output ({code,name,currentCount,satisfied})
  * @param {Array} args.morCases      MOR cases (mor/public.js listCases) — {reference,status,...}
+ * @param {Array} args.accountablePersons  gt_accountable_persons rows
  * @param {string} args.generatedAt  ISO timestamp
  * @param {string} [args.building]
  */
-export function buildSafetyCaseModel({ documents = [], completeness = [], morCases = [], generatedAt, building = '' }) {
+export function buildSafetyCaseModel({ documents = [], completeness = [], morCases = [], accountablePersons = [], generatedAt, building = '' }) {
   const todayISO = (generatedAt ?? new Date().toISOString()).slice(0, 10);
   const current  = documents.filter((d) => d.status === 'current').map((d) => pickDoc(d, todayISO));
 
@@ -56,6 +57,12 @@ export function buildSafetyCaseModel({ documents = [], completeness = [], morCas
 
   const safetyCritical = current.filter((d) => d.safety_critical);
 
+  // Current accountability (open tenures), PAP before AP.
+  const accountability = accountablePersons
+    .filter((p) => !p.ended_on)
+    .map((p) => ({ role: p.role, name: p.name, organisation: p.organisation ?? null, duties: p.duties ?? null }))
+    .sort((a, b) => (a.role === 'pap' ? -1 : 0) - (b.role === 'pap' ? -1 : 0));
+
   // Occurrences (MOR) — total + a status breakdown, most-common first.
   const byStatus = {};
   for (const c of morCases) byStatus[c.status] = (byStatus[c.status] ?? 0) + 1;
@@ -76,6 +83,7 @@ export function buildSafetyCaseModel({ documents = [], completeness = [], morCas
       occurrences: morCases.length,
     },
     completeness,
+    accountability,
     byCategory,
     safetyCritical,
     occurrences: { total: morCases.length, byStatus: statusBreakdown },
