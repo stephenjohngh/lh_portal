@@ -14,6 +14,7 @@
   import { nextStates, GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
   import { LINK_TARGET_TYPES, LINK_RELATIONS, REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
   import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
+  import { listCases as listMorCases, morCaseLabel } from '$lib/apps/mor/public.js';
   import Badge           from '$lib/components/common/Badge.svelte';
   import Button          from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -65,6 +66,25 @@
   let linkRelation = 'evidences';
   let linkNote = '';
   let linkError = '';
+
+  // MOR cases for the picker + label resolution. Lazy-loaded when the add-link
+  // modal opens or when an existing outgoing link targets a mor_case (so bare
+  // UUIDs resolve to "MOR-xxxx — …" without opening the modal).
+  /** @type {any[]} */
+  let morCases = [];
+  let morCasesLoaded = false;
+  $: morCaseOptions = morCases.map((c) => ({ value: c.id, label: morCaseLabel(c) }));
+  $: morCaseById    = new Map(morCases.map((c) => [c.id, c]));
+  $: hasMorLinks    = links.outgoing?.some((l) => l.target_type === 'mor_case');
+  $: if ((showAddLink || hasMorLinks) && !morCasesLoaded) loadMorCases();
+  async function loadMorCases() {
+    morCasesLoaded = true;
+    try { morCases = await listMorCases(); } catch { morCases = []; }
+  }
+  // Clear the chosen target when the type changes (a mor_case id must not carry
+  // over into a free-text target type, and vice versa).
+  let prevLinkTargetType = linkTargetType;
+  $: if (linkTargetType !== prevLinkTargetType) { prevLinkTargetType = linkTargetType; linkTargetId = ''; }
 
   async function addLink() {
     linkError = '';
@@ -249,7 +269,11 @@
             <li class="flex items-center justify-between gap-2 text-xs">
               <span class="text-slate-300">
                 <span class="text-slate-500">{l.relation}</span> → {l.target_type}
-                <span class="font-mono text-slate-400">{l.target_id}</span>
+                {#if l.target_type === 'mor_case' && morCaseById.get(l.target_id)}
+                  {morCaseLabel(morCaseById.get(l.target_id))}
+                {:else}
+                  <span class="font-mono text-slate-400">{l.target_id}</span>
+                {/if}
                 {#if l.note}<span class="text-slate-500">· {l.note}</span>{/if}
               </span>
               <ProtectedButton action="modify" variant="danger" size="small" on:click={() => removeLink(l.id)}>
@@ -311,7 +335,13 @@
 <Modal show={showAddLink} title="Add reference" size="small" on:close={() => (showAddLink = false)}>
   <div class="space-y-4">
     <FormSelect label="Target type" bind:value={linkTargetType} options={TARGET_TYPES} />
-    <FormInput label="Target id" bind:value={linkTargetId} placeholder="UUID of the linked entity" required />
+    {#if linkTargetType === 'mor_case'}
+      <FormSelect label="MOR case" bind:value={linkTargetId} options={morCaseOptions}
+        placeholder="— Select a case —" required
+        helpText={morCasesLoaded && morCaseOptions.length === 0 ? 'No MOR cases found.' : ''} />
+    {:else}
+      <FormInput label="Target id" bind:value={linkTargetId} placeholder="UUID of the linked entity" required />
+    {/if}
     <FormSelect label="Relation" bind:value={linkRelation} options={RELATIONS} />
     <FormTextarea label="Note" bind:value={linkNote} rows={2} />
     {#if linkError}<p class="text-sm text-red-400">{linkError}</p>{/if}

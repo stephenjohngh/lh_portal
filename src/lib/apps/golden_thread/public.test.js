@@ -20,7 +20,7 @@ vi.mock('$lib/utils/api',         () => ({ api: h.api }));
 vi.mock('$lib/utils/request',     () => ({ postJson: h.postJson }));
 vi.mock('$lib/utils/documentApi', () => ({ uploadDocument: h.uploadDocument }));
 
-const { registerExistingArtifact, findDocumentBySource, findDocumentsBySources } = await import('./public.js');
+const { registerExistingArtifact, findDocumentBySource, findDocumentsBySources, listDocumentsCiting } = await import('./public.js');
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -39,6 +39,39 @@ describe('findDocumentBySource', () => {
     h.api.get.mockResolvedValueOnce([]);
     expect(await findDocumentBySource('walk_session', 's1')).toBeNull();
     expect(h.api.getById).not.toHaveBeenCalled();
+  });
+});
+
+describe('listDocumentsCiting', () => {
+  it('resolves citing gt_documents for a target entity (one links + one docs query)', async () => {
+    h.api.get.mockResolvedValueOnce([
+      { id: 'l1', source_id: 'gt-1', source_type: 'gt_document', target_type: 'mor_case', target_id: 'm1', relation: 'cites' },
+      { id: 'l2', source_id: 'gt-2', source_type: 'gt_document', target_type: 'mor_case', target_id: 'm1', relation: 'evidences' },
+    ]);
+    h.api.getAllIn.mockResolvedValueOnce([
+      { id: 'gt-1', reference: 'GT-000001', title: 'Fire strategy', status: 'current' },
+      { id: 'gt-2', reference: 'GT-000002', title: 'FRA', status: 'draft' },
+    ]);
+    const res = await listDocumentsCiting('mor_case', 'm1');
+    expect(h.api.get).toHaveBeenCalledWith('gt_links', expect.objectContaining({
+      filters: expect.objectContaining({ target_type: 'mor_case', target_id: 'm1', source_type: 'gt_document' }),
+    }));
+    expect(res).toHaveLength(2);
+    expect(res[0]).toMatchObject({ id: 'l1', document: { reference: 'GT-000001', status: 'current' } });
+    expect(res[1].document).toMatchObject({ reference: 'GT-000002' });
+  });
+
+  it('returns [] when nothing cites the entity (no docs query)', async () => {
+    h.api.get.mockResolvedValueOnce([]);
+    expect(await listDocumentsCiting('mor_case', 'm1')).toEqual([]);
+    expect(h.api.getAllIn).not.toHaveBeenCalled();
+  });
+
+  it('attaches null document when the citing doc row is missing', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'l1', source_id: 'gt-x', target_type: 'mor_case', target_id: 'm1', relation: 'cites' }]);
+    h.api.getAllIn.mockResolvedValueOnce([]);
+    const res = await listDocumentsCiting('mor_case', 'm1');
+    expect(res[0].document).toBeNull();
   });
 });
 

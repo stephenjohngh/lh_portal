@@ -6,6 +6,7 @@ import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
 import { generateVerificationCode } from '$lib/utils/morVerificationCode';
+import { listDocumentsCiting } from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('morStore');
 
@@ -28,6 +29,9 @@ function createMorStore() {
     selectedCase:           null,
     timelineEntries:        [],
     mitigations:            [],
+    // Golden Thread register documents citing the selected case (cross-app read
+    // via golden_thread/public.js). Non-fatal — empty if GT is unavailable.
+    gtCitations:            [],
     // Map<case_id, TimelineEntry[]> — reporter_contact entries for every
     // currently-loaded case. Populated by fetchCases() and kept fresh by
     // recordReporterContact(). Drives the dashboard backlog widgets.
@@ -605,8 +609,21 @@ function createMorStore() {
     update(s => ({ ...s, error: '' }));
   }
 
+  // Golden Thread register documents citing this case — cross-app read through
+  // golden_thread/public.js. Non-fatal: empty on error / no GT permission.
+  async function loadGtCitations(caseId) {
+    if (!caseId) { update(s => ({ ...s, gtCitations: [] })); return; }
+    try {
+      const gtCitations = await listDocumentsCiting('mor_case', caseId);
+      update(s => ({ ...s, gtCitations }));
+    } catch (err) {
+      logger('gtCitations load failed (non-fatal):', err instanceof Error ? err.message : String(err));
+      update(s => ({ ...s, gtCitations: [] }));
+    }
+  }
+
   function clearSelected() {
-    update(s => ({ ...s, selectedCase: null, timelineEntries: [], mitigations: [] }));
+    update(s => ({ ...s, selectedCase: null, timelineEntries: [], mitigations: [], gtCitations: [] }));
   }
 
   // ── Phase 1d — Mitigations, remediation, pause, reopen ────────────────────
@@ -751,6 +768,7 @@ function createMorStore() {
     deleteMitigation,
     recordReporterContact,
     loadReporterContactsForCases,
+    loadGtCitations,
     clearError,
     clearSelected,
   };

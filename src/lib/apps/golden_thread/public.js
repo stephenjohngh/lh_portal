@@ -134,6 +134,30 @@ export async function scheduleOneCompleteness() {
   });
 }
 
+/**
+ * Which register documents cite a given external entity — the cross-app read
+ * for the cited side (e.g. a MOR case showing "referenced in the Golden Thread").
+ * gt_links where TARGET is the entity and SOURCE is a gt_document, resolved to
+ * the citing documents (reference/title/status) so callers needn't join.
+ * @param {string} targetType  gt_links.target_type (e.g. 'mor_case')
+ * @param {string} targetId    the entity's id
+ * @returns {Promise<Array<object & { document: object|null }>>}  links with `.document`
+ */
+export async function listDocumentsCiting(targetType, targetId) {
+  const links = await api.get('gt_links', {
+    filters: { target_type: targetType, target_id: targetId, source_type: GT_DOCUMENT_TYPE },
+    orderBy: 'created_at',
+    ascending: false
+  });
+  if (links.length === 0) return [];
+  const ids  = [...new Set(links.map((l) => l.source_id))];
+  const docs = await api.getAllIn('gt_documents', 'id', ids, {
+    select: 'id, reference, title, status, document_type'
+  });
+  const byId = new Map(docs.map((d) => [d.id, d]));
+  return links.map((l) => ({ ...l, document: byId.get(l.source_id) ?? null }));
+}
+
 // ── Links (L3 governance creates citations) ──────────────────────────────────
 
 /**

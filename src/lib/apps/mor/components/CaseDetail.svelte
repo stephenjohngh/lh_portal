@@ -33,6 +33,7 @@
     DECISION_LABEL, TRIAGE_LABEL, TRIAGE_COLOUR,
   } from '$lib/apps/mor/utils/morHelpers';
   import { formatVerificationCode } from '$lib/utils/morVerificationCode';
+  import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
 
   const dispatch = createEventDispatcher();
@@ -50,6 +51,14 @@
   $: mitigations   = $morStore.mitigations ?? [];
   $: interimMits   = mitigations.filter(m => m.type === 'interim');
   $: permanentMits = mitigations.filter(m => m.type === 'permanent');
+
+  // Golden Thread register documents citing this case (cross-app, read-only).
+  $: gtCitations = $morStore.gtCitations ?? [];
+  let loadedGtFor = null;
+  $: if (c?.id && c.id !== loadedGtFor) {
+    loadedGtFor = c.id;
+    morStore.loadGtCitations(c.id);
+  }
 
   // ── Modal visibility ─────────────────────────────────────────────────────
   let showTriage      = false;
@@ -584,6 +593,34 @@
     {/if}
   </div>
 </div>
+
+<!-- ── Golden Thread references ──────────────────────────────────────── -->
+{#if gtCitations.length > 0}
+  <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4">
+    <h3 class="text-sm font-semibold text-slate-300 mb-1">
+      Golden Thread
+      <span class="text-slate-500 font-normal">({gtCitations.length})</span>
+    </h3>
+    <p class="text-xs text-slate-500 mb-3">Register documents that cite this occurrence report.</p>
+    <ul class="space-y-2">
+      {#each gtCitations as l (l.id)}
+        <li class="flex flex-wrap items-center gap-2 text-sm">
+          {#if l.document}
+            <span class="font-mono text-xs text-slate-400">{l.document.reference}</span>
+            <span class="text-slate-200">{l.document.title}</span>
+            <Badge color={GT_STATUS_BADGE[l.document.status] ?? 'bg-slate-500'}>
+              {GT_STATUS_LABELS[l.document.status] ?? l.document.status}
+            </Badge>
+          {:else}
+            <span class="font-mono text-xs text-slate-500">{l.source_id}</span>
+          {/if}
+          <span class="text-xs text-slate-500">({l.relation})</span>
+          {#if l.note}<span class="text-xs text-slate-500">· {l.note}</span>{/if}
+        </li>
+      {/each}
+    </ul>
+  </div>
+{/if}
 
 <!-- ── Mitigations ────────────────────────────────────────────────── -->
 <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4">
