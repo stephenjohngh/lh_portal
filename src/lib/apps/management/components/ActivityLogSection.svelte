@@ -65,6 +65,44 @@
   let pendingDeleteId   = null;
   let showHistoric      = false;
 
+  // -- Edit dirty-tracking (standard editor behaviour) -----------------
+  // The editor stays open after Update; Update is disabled until a change is
+  // made; Cancel reads "Close" until then, and prompts to discard when dirty.
+  let editBaseline      = '';     // snapshot of the editable fields at open / last save
+  let showDiscardConfirm = false;
+  let pendingCloseFn    = null;   // the close action to run once discard is confirmed
+
+  /** Stable snapshot of the fields the edit form can change (order-fixed). */
+  function editSnapshot(a) {
+    if (!a) return '';
+    return JSON.stringify([
+      a.body ?? '',
+      a.activity_type ?? null,
+      !!a.historic,
+      a.fields ?? {},
+      a.sequence ?? null,
+      a.override_created_at ?? '',
+      a.override_updated_at ?? '',
+    ]);
+  }
+  $: editDirty = !!editingActivity && editSnapshot(editingActivity) !== editBaseline;
+
+  // Cancel/close: prompt to discard only when there are unsaved changes.
+  function requestClose(closeFn) {
+    if (editDirty) { pendingCloseFn = closeFn; showDiscardConfirm = true; }
+    else           { closeFn(); }
+  }
+  function confirmDiscard() {
+    showDiscardConfirm = false;
+    const fn = pendingCloseFn;
+    pendingCloseFn = null;
+    if (fn) fn();
+  }
+  function cancelDiscard() {
+    showDiscardConfirm = false;
+    pendingCloseFn = null;
+  }
+
   // Initialise from the persisted store so sort survives tab switches
   // (the {#if activeTab} block destroys/recreates this component).
   let sortField = $activitySort.field;  // 'updated_at' | 'created_at' | 'sequence'
@@ -148,7 +186,9 @@
       mutationError = result.error ?? 'Failed to update';
       return;
     }
-    editingActivity = null;
+    // Standard editor behaviour: the change is saved but the editor stays open;
+    // reset the dirty baseline so Update greys out and Cancel reverts to "Close".
+    editBaseline = editSnapshot(editingActivity);
   }
 
   async function deleteActivity() {
@@ -179,6 +219,7 @@
       override_created_at: toDateTimeLocal(activity.created_at),
       override_updated_at: ''   // blank = server sets updated_at to now on save
     };
+    editBaseline = editSnapshot(editingActivity);
     viewingItem = null;
   }
 
@@ -349,6 +390,7 @@
       override_created_at: toDateTimeLocal(activity.created_at),
       override_updated_at: ''   // blank = server sets updated_at to now on save
     };
+    editBaseline = editSnapshot(editingActivity);
     viewingItem = activity;
   }
 
@@ -380,9 +422,10 @@
     }
   }
 
-  async function updateActivityAndClose() {
-    await updateActivity();
-    if (!editingActivity) viewingItem = null;
+  // Close the modal editor entirely (exit edit + view).
+  function closeModalEditor() {
+    editingActivity = null;
+    viewingItem = null;
   }
 </script>
 
@@ -440,6 +483,7 @@
           {activity}
           bind:editingActivity
           {saving}
+          dirty={editDirty}
           panelOpen={suggestionForId === activity.id}
           panelMode={suggestionSource}
           linkedAction={linkedActionByActivityId[activity.id] ?? null}
@@ -451,7 +495,7 @@
           {linkedDeleteError}
           on:togglePanel={(e) => toggleSuggestion(e.detail)}
           on:editStart={(e) => startEdit(e.detail)}
-          on:editCancel={() => editingActivity = null}
+          on:editCancel={() => requestClose(() => (editingActivity = null))}
           on:editSave={updateActivity}
           on:deleteRequest={(e) => { pendingDeleteId = e.detail.id; showDeleteConfirm = true; }}
           on:viewFull={(e) => {
@@ -730,15 +774,17 @@
   <svelte:fragment slot="footer">
     {#if isEditingInModal}
       <div class="flex justify-end gap-2">
-        <Button variant="secondary" size="small" on:click={() => { editingActivity = null; viewingItem = null; }}>Cancel</Button>
+        <Button variant="secondary" size="small" on:click={() => requestClose(closeModalEditor)}>
+          {editDirty ? 'Cancel' : 'Close'}
+        </Button>
         <ProtectedButton
           action="modify"
           variant="blue"
           size="small"
           icon="edit"
           loading={saving}
-          disabled={saving || (editingActivity?.activity_type !== ACTIVITY_TYPE.DOCUMENT && !editingActivity?.body?.trim())}
-          on:click={updateActivityAndClose}
+          disabled={saving || !editDirty || (editingActivity?.activity_type !== ACTIVITY_TYPE.DOCUMENT && !editingActivity?.body?.trim())}
+          on:click={updateActivity}
         >
           {saving ? 'Saving…' : 'Update'}
         </ProtectedButton>
@@ -770,6 +816,18 @@
   danger={true}
   on:confirm={deleteActivity}
   on:cancel={() => { showDeleteConfirm = false; pendingDeleteId = null; }}
+/>
+
+<!-- ─── Discard-changes confirmation (unsaved edit) ───────────── -->
+<ConfirmDialog
+  show={showDiscardConfirm}
+  title="Discard changes?"
+  message="This entry has unsaved changes. Close the editor and discard them?"
+  confirmText="Discard"
+  cancelText="Keep editing"
+  danger={true}
+  on:confirm={confirmDiscard}
+  on:cancel={cancelDiscard}
 />
 
 <!-- ─── Action form (opened from suggestion panel) ─────────── -->

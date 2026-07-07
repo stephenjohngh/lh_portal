@@ -41,6 +41,7 @@
   export let activity;
   export let editingActivity   = null;   // bindable — when .id matches, edit mode
   export let saving            = false;  // edit-form save flag from parent
+  export let dirty             = false;  // parent-computed: edit form has unsaved changes
 
   // Suggestion panel props (only used for comment-type activities)
   export let panelOpen         = false;
@@ -99,6 +100,10 @@
   function cancelEdit() {
     dispatch('editCancel');
   }
+
+  // Update is enabled only when there's an unsaved change and a body (non-doc).
+  $: editIsDoc   = editingActivity?.activity_type === ACTIVITY_TYPE.DOCUMENT;
+  $: canSaveEdit = dirty && !saving && (editIsDoc || !!editingActivity?.body?.trim());
 
   // -- Email paste parsing (edit mode) ---------------------------------
   // Passed as onPaste to RichTextEditor; returns HTML for the editor to
@@ -351,13 +356,13 @@
     {/if}
 
     <div class="flex justify-end gap-2 mt-2">
-      <Button variant="secondary" size="small" on:click={cancelEdit}>Cancel</Button>
+      <Button variant="secondary" size="small" on:click={cancelEdit}>{dirty ? 'Cancel' : 'Close'}</Button>
       <ProtectedButton
         action="modify"
         variant="blue"
         size="small"
         icon="edit"
-        disabled={saving}
+        disabled={!canSaveEdit}
         on:click={() => dispatch('editSave')}
       >
         {saving ? 'Saving…' : 'Update'}
