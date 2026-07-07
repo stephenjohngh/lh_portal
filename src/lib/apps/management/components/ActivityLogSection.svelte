@@ -152,15 +152,18 @@
   $: historicCount = activities.filter(a => a.historic).length;
 
   // When an activity disappears from this issue's list (e.g. after being moved
-  // to another issue), automatically close any open UI tied to it.
-  $: if (editingActivity && !activities.find(a => a.id === editingActivity.id)) {
+  // to another issue), automatically close any open UI tied to it. Only judge
+  // this once the store is SETTLED — during a save/refresh the list is briefly
+  // reloading, and firing then would wrongly close the editor we just saved in
+  // (the previous version cleared editingActivity on save, which masked this).
+  $: if (!$issuesStore.loading && editingActivity && !activities.find(a => a.id === editingActivity.id)) {
     viewingItem     = null;
     editingActivity = null;
   }
-  $: if (viewingItem && !activities.find(a => a.id === viewingItem.id)) {
+  $: if (!$issuesStore.loading && viewingItem && !activities.find(a => a.id === viewingItem.id)) {
     viewingItem = null;
   }
-  $: if (suggestionForId && !activities.find(a => a.id === suggestionForId)) {
+  $: if (!$issuesStore.loading && suggestionForId && !activities.find(a => a.id === suggestionForId)) {
     dismissSuggestion();
   }
 
