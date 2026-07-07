@@ -405,7 +405,11 @@
 
     <ErrorDisplay message={error} onDismiss={() => issuesStore.clearError()} />
 
-    {#if loading}
+    {#if loading && issues.length === 0}
+      <!-- Spinner only on the FIRST load. On background refreshes (save →
+           fetchIssues sets loading:true with issues already present) we must NOT
+           swap the list for the spinner: doing so tears down and rebuilds every
+           IssueCard, remounting open activity editors and losing their state. -->
       <LoadingSpinner />
     {:else if filteredIssues.length === 0}
       <div class="empty-state">
