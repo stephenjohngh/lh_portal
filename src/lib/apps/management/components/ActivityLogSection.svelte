@@ -61,6 +61,11 @@
   let showAddForm       = false;
   let editingActivity   = null;   // { ...activityRow } being edited
   let viewingItem       = null;   // { ...activityRow } for modal
+  // The view/edit modal's open flag is parent-controlled (bound) so a close
+  // request (X / Esc / backdrop) can be vetoed when there are unsaved edits.
+  // It mirrors viewingItem, and re-opens if the Modal self-hides while an item
+  // is still being viewed (i.e. we chose to show the discard prompt instead).
+  let viewModalShow     = false;
   let showDeleteConfirm = false;
   let pendingDeleteId   = null;
   let showHistoric      = false;
@@ -157,6 +162,20 @@
   }
   $: if (suggestionForId && !activities.find(a => a.id === suggestionForId)) {
     dismissSuggestion();
+  }
+
+  // Keep the modal open flag in step with viewingItem. The second clause
+  // re-opens the modal if it self-hid (X/Esc/backdrop) while an item is still
+  // being viewed — the close is only honoured once viewingItem is cleared,
+  // which the close handler does (directly, or after the discard prompt).
+  $: if (viewingItem && !viewModalShow) viewModalShow = true;
+  $: if (!viewingItem && viewModalShow) viewModalShow = false;
+
+  // A close request from the modal chrome (X / Esc / backdrop). While editing,
+  // route through the same discard guard as the footer Cancel button.
+  function handleModalCloseRequest() {
+    if (isEditingInModal) requestClose(closeModalEditor);
+    else                  viewingItem = null;
   }
 
   // -- Unified update/delete ------------------------------------------
@@ -524,15 +543,12 @@
 
 <!-- ─── Full item view / edit modal ──────────────────────────── -->
 <Modal
-  show={!!viewingItem}
+  bind:show={viewModalShow}
   title={isEditingInModal
     ? `Edit ${editTypeConfig?.label ?? 'Activity'}`
     : (viewingTypeConfig?.label ?? 'Activity')}
   size="large"
-  on:close={() => {
-    if (isEditingInModal) editingActivity = null;
-    viewingItem = null;
-  }}
+  on:close={handleModalCloseRequest}
 >
   {#if viewingItem}
 
