@@ -26,6 +26,7 @@
   import GtPeople      from '$lib/apps/golden_thread/components/GtPeople.svelte';
   import GtAccountability from '$lib/apps/golden_thread/components/GtAccountability.svelte';
   import GtSafetyCase  from '$lib/apps/golden_thread/components/GtSafetyCase.svelte';
+  import GtRisks       from '$lib/apps/golden_thread/components/GtRisks.svelte';
   import { buildSafetyCaseModel } from '$lib/apps/golden_thread/utils/gtSafetyCase.js';
   import { listCases as listMorCases } from '$lib/apps/mor/public.js';
   import { fmtDate }   from '$lib/utils/dates';
@@ -71,6 +72,7 @@
     ...(canEdit ? [['ingest', 'Ingest']] : []),
     ['completeness', 'Completeness'],
     ['safety-case', 'Safety Case'],
+    ['risks', 'Risks'],
     ...(canEdit ? [['people', 'People']] : []),
     ...(canEdit ? [['accountability', 'Accountability']] : []),
     ...(isAdmin ? [['review', 'Review']] : [])
@@ -395,6 +397,10 @@
       exportError={scExportError}
       on:export={exportSafetyCase}
     />
+
+  {:else if activeTab === 'risks'}
+    <!-- ── Risk register (Stage D) ───────────────────────────────────────── -->
+    <GtRisks />
 
   {:else if activeTab === 'people'}
     <!-- ── Author / reviewer registry ────────────────────────────────────── -->
