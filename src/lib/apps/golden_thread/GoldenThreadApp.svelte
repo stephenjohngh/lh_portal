@@ -164,6 +164,24 @@
     }
   }
 
+  // Stage E — tamper-evidence verification of the hash-chained gt_audit ledger.
+  let verifyRunning = false;
+  /** @type {any|null} */
+  let verifyResult = null;
+  let verifyError = '';
+  async function verifyAuditChain() {
+    verifyRunning = true;
+    verifyError = '';
+    verifyResult = null;
+    try {
+      verifyResult = await postJson('/api/golden-thread/verify-audit', {}, 'Verification failed');
+    } catch (e) {
+      verifyError = e instanceof Error ? e.message : String(e);
+    } finally {
+      verifyRunning = false;
+    }
+  }
+
   onMount(async () => {
     if (userId) {
       await permissions.init(userId, 'golden_thread');
@@ -453,6 +471,29 @@
           <p class="text-xs text-slate-600">Ran at {reviewSummary.ranAt}</p>
         </div>
       {/if}
+
+      <!-- Stage E — audit-chain tamper-evidence verification -->
+      <div class="pt-4 mt-2 border-t border-slate-700">
+        <p class="text-sm text-slate-200 font-medium">Audit-chain integrity</p>
+        <p class="text-xs text-slate-500 mt-0.5 mb-2">
+          Recomputes the hash chain over the immutable <span class="font-mono">gt_audit</span> ledger and
+          confirms no historical record has been altered — the tamper-evidence behind the golden thread.
+        </p>
+        <Button variant="secondary" loading={verifyRunning} disabled={verifyRunning} on:click={verifyAuditChain}>
+          Verify audit chain
+        </Button>
+        {#if verifyError}<ErrorDisplay message={verifyError} onDismiss={() => (verifyError = '')} />{/if}
+        {#if verifyResult}
+          <div class="mt-2 rounded-lg border p-3 text-sm
+                      {verifyResult.ok ? 'border-green-800 bg-green-900/20 text-green-300' : 'border-red-800 bg-red-900/20 text-red-300'}">
+            {#if verifyResult.ok}
+              ✓ Chain intact — {verifyResult.checked} audit entr{verifyResult.checked === 1 ? 'y' : 'ies'} verified.
+            {:else}
+              ✗ Chain broken at seq <strong>{verifyResult.first_broken_seq}</strong> (after {verifyResult.checked} verified) — {verifyResult.reason}
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
   {/if}
