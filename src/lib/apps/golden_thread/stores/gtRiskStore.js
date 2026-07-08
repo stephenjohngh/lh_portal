@@ -8,10 +8,10 @@
 // unavailable, so the register still loads.
 
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabaseClient';
 import { api } from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
+import { makeRun } from './gtStoreHelpers.js';
 import { isValidRiskTransition } from '$lib/apps/golden_thread/utils/gtRiskLifecycle.js';
 import { riskAlertSignals } from '$lib/apps/golden_thread/utils/gtRiskScoring.js';
 import {
@@ -32,26 +32,7 @@ function createGtRiskStore() {
     error:        '',
   });
 
-  async function currentUserId() {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id ?? null;
-  }
-
-  async function run(fn) {
-    update((s) => ({ ...s, saving: true, error: '' }));
-    try {
-      const userId = await currentUserId();
-      if (!userId) throw new Error('Not authenticated');
-      const r = await fn(userId);
-      update((s) => ({ ...s, saving: false }));
-      return { success: true, ...(r ?? {}) };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger('❌ ' + msg);
-      update((s) => ({ ...s, saving: false, error: msg }));
-      return { success: false, error: msg };
-    }
-  }
+  const run = makeRun(update, logger);
 
   // -- Live alert resolution --------------------------------------------------
   const toMap = (rows) => new Map((rows ?? []).map((r) => [r.id, r]));

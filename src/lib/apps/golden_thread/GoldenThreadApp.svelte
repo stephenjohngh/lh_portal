@@ -1,9 +1,10 @@
 <!-- src/lib/apps/golden_thread/GoldenThreadApp.svelte -->
 <!--
-  Golden Thread — L2 Common Data Environment (document register) app shell.
-  Tabs: Register (list → document detail with lifecycle actions) · Ingest ·
-  Completeness. Build steps 2–4 done; links/citations UI + review-tick harness
-  (steps 6–7) still to come.
+  Golden Thread app shell (BSA 2022 s.88 · ISO 19650 CDE). Tabs: Register
+  (list → document detail: lifecycle, citations, audit) · Ingest · Completeness
+  · Safety Case · Risks (Stage D register + heat-map) · People · Accountability ·
+  Review (admin: review-tick + audit-chain verification). L2 register + Stage
+  B–E all built.
 -->
 <script>
   import { onMount } from 'svelte';
@@ -15,8 +16,7 @@
   import { reviewBand, daysToReview } from '$lib/apps/golden_thread/utils/gtReview.js';
   import { documentsCurrentOn } from '$lib/apps/golden_thread/public.js';
   import { postJson }   from '$lib/utils/request';
-  import { authHeaders } from '$lib/utils/authHeaders';
-  import { downloadResponse } from '$lib/utils/download';
+  import { downloadAuthedPost } from '$lib/utils/download';
   import Badge         from '$lib/components/common/Badge.svelte';
   import Button        from '$lib/components/common/Button.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
@@ -41,7 +41,7 @@
     return reviewBand(daysToReview(doc, todayISO));
   }
 
-  let activeTab = 'register'; // 'register' | 'ingest' | 'completeness' | 'review'
+  let activeTab = 'register'; // see `tabs` below for the full set
   let viewingDetail = false;
 
   // Register filters / time-travel
@@ -50,7 +50,7 @@
   /** @type {any[]|null} */
   let timeTravelDocs = null;
 
-  // Review-tick dev harness
+  // Review-tick (read-only scan; admin Review tab)
   let reviewRunning = false;
   /** @type {any|null} */
   let reviewSummary = null;
@@ -100,17 +100,8 @@
     scExporting = true;
     scExportError = '';
     try {
-      const res = await fetch('/api/golden-thread/safety-case', {
-        method: 'POST',
-        headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
-        body: JSON.stringify(safetyCaseModel),
-      });
-      if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try { const j = await res.json(); msg = j.error ?? msg; } catch { /* non-JSON */ }
-        throw new Error(msg);
-      }
-      await downloadResponse(res, `golden-thread-safety-case-${new Date().toISOString().slice(0, 10)}.docx`);
+      await downloadAuthedPost('/api/golden-thread/safety-case',
+        `golden-thread-safety-case-${new Date().toISOString().slice(0, 10)}.docx`, safetyCaseModel);
     } catch (e) {
       scExportError = e instanceof Error ? e.message : String(e);
     } finally {
@@ -138,13 +129,8 @@
     packRunning = true;
     packError = '';
     try {
-      const res = await fetch('/api/golden-thread/share-pack', { method: 'POST', headers: await authHeaders() });
-      if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try { const j = await res.json(); msg = j.error ?? msg; } catch { /* non-JSON */ }
-        throw new Error(msg);
-      }
-      await downloadResponse(res, `golden-thread-share-pack-${new Date().toISOString().slice(0, 10)}.zip`);
+      await downloadAuthedPost('/api/golden-thread/share-pack',
+        `golden-thread-share-pack-${new Date().toISOString().slice(0, 10)}.zip`);
     } catch (e) {
       packError = e instanceof Error ? e.message : String(e);
     } finally {

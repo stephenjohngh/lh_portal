@@ -12,11 +12,11 @@
 // registerDocument (step 3).
 
 import { writable }  from 'svelte/store';
-import { supabase }  from '$lib/supabaseClient';
 import { api }       from '$lib/utils/api';
 import { logAudit }  from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
+import { makeRun } from './gtStoreHelpers.js';
 import {
   scheduleOneCompleteness, registerDocument,
   listCitations, listDocumentLinks, cite, removeLink,
@@ -55,11 +55,6 @@ function createGtStore() {
   });
 
   // ── Internal helpers ────────────────────────────────────────────────────────
-
-  async function currentUserId() {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id ?? null;
-  }
 
   /**
    * Apply a status transition to a document, guarded client-side by the same
@@ -398,20 +393,7 @@ function createGtStore() {
    * New methods should pick the side that matches their kind.
    * @param {(userId: string) => Promise<void>} fn
    */
-  async function run(fn) {
-    update((s) => ({ ...s, saving: true, error: '' }));
-    try {
-      const userId = await currentUserId();
-      if (!userId) throw new Error('Not authenticated');
-      await fn(userId);
-      update((s) => ({ ...s, saving: false }));
-      return { success: true };
-    } catch (err) {
-      logger('❌ ' + err.message);
-      update((s) => ({ ...s, saving: false, error: err.message }));
-      return { success: false, error: err.message };
-    }
-  }
+  const run = makeRun(update, logger);
 
   function clearError() {
     update((s) => ({ ...s, error: '' }));
