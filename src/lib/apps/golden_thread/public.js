@@ -188,6 +188,68 @@ export function removeLink(linkId) {
   return api.delete('gt_links', linkId);
 }
 
+// ── Risk register (gt_risks, gt_risk_links) — Stage D (ISO 19650-6) ──────────
+
+/** List risks (optionally filtered), reference order. */
+export function listRisks(filters = {}) {
+  return api.get('gt_risks', { filters, orderBy: 'reference', ascending: true });
+}
+
+/** One risk by id. */
+export function getRisk(id) {
+  return api.getById('gt_risks', id);
+}
+
+/** Create a risk (reference stamped by DB default). */
+export function createRisk(data, userId) {
+  return api.create('gt_risks', { ...data, created_by: userId }, true);
+}
+
+/** Update a risk (edit fields or drive a lifecycle transition). */
+export function updateRisk(id, patch, userId) {
+  return api.update('gt_risks', id, { ...patch, updated_by: userId }, true);
+}
+
+/** Typed links out of a risk (to documents / objects / operational records). */
+export function listRiskLinks(riskId) {
+  return api.get('gt_risk_links', { filters: { risk_id: riskId }, orderBy: 'created_at', ascending: false });
+}
+
+/** All risk links (for the batched dashboard alert computation). */
+export function listAllRiskLinks() {
+  return api.getAll('gt_risk_links', {});
+}
+
+/** Add a typed link from a risk to another entity. */
+export function addRiskLink(riskId, { targetType, targetId, relation, note = null }, userId) {
+  return api.create('gt_risk_links', {
+    risk_id: riskId, target_type: targetType, target_id: targetId, relation, note, created_by: userId,
+  }, true);
+}
+
+/** Remove a risk link. */
+export function removeRiskLink(linkId) {
+  return api.delete('gt_risk_links', linkId);
+}
+
+/**
+ * Cross-app read: which risks reference a given entity (e.g. a component or a
+ * MOR case), resolved to lightweight risk refs. Lets other apps show "risks
+ * affecting this".
+ * @param {string} targetType  gt_risk_links.target_type
+ * @param {string} targetId
+ */
+export async function listRisksAffecting(targetType, targetId) {
+  const links = await api.get('gt_risk_links', { filters: { target_type: targetType, target_id: targetId } });
+  if (links.length === 0) return [];
+  const ids = [...new Set(links.map((l) => l.risk_id))];
+  const risks = await api.getAllIn('gt_risks', 'id', ids, {
+    select: 'id, reference, title, domain, status, likelihood, impact, inherent_score, residual_score',
+  });
+  const byId = new Map(risks.map((r) => [r.id, r]));
+  return links.map((l) => ({ ...l, risk: byId.get(l.risk_id) ?? null }));
+}
+
 // ── Author/reviewer registry (gt_persons) ────────────────────────────────────
 
 /** List the people registry (authors/reviewers), name order. */
