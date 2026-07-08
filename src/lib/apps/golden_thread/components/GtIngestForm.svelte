@@ -13,6 +13,7 @@
   import DocAttachInput from '$lib/components/common/DocAttachInput.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import { DOCUMENT_TYPES } from '$lib/apps/golden_thread/utils/gtConstants.js';
+  import { assessCompetence, COMPETENCE_LABELS } from '$lib/apps/golden_thread/utils/gtCompetence.js';
 
   /** @type {Array<{code:number,name:string}>} */
   export let categories = [];
@@ -51,6 +52,17 @@
   const personLabel = (p) => (p.organisation ? `${p.full_name} (${p.organisation})` : p.full_name);
   $: authorOptions   = persons.filter((p) => ['author', 'both'].includes(p.role)).map((p) => ({ value: p.id, label: personLabel(p) }));
   $: reviewerOptions = persons.filter((p) => ['reviewer', 'both'].includes(p.role)).map((p) => ({ value: p.id, label: personLabel(p) }));
+
+  // Competence gate (Stage E, soft) — warn if the chosen reviewer/author is not
+  // competent for this document's domain, or their competence has lapsed.
+  $: reviewerAssess = assessCompetence(persons.find((p) => p.id === reviewer_id) ?? null, document_type);
+  $: authorAssess   = assessCompetence(persons.find((p) => p.id === author_id) ?? null, document_type);
+  function competenceWarning(a) {
+    if (!a || a.ok) return '';
+    if (a.expired) return 'competence has lapsed';
+    if (a.missing) return `not recorded as competent for ${COMPETENCE_LABELS[a.required] ?? a.required}`;
+    return '';
+  }
 
   const ACCESS_OPTIONS = [
     { value: 'internal',   label: 'Internal (in-app only)' },
@@ -130,10 +142,20 @@
     placeholder="ISO 19650 container reference" helpText="Optional CDE container identifier for this information." />
 
   <div class="grid gap-4 sm:grid-cols-2">
-    <FormSelect label="Author" bind:value={author_id} options={authorOptions}
-      placeholder="— None —" helpText="From the People registry." />
-    <FormSelect label="Reviewer" bind:value={reviewer_id} options={reviewerOptions}
-      placeholder="— None —" />
+    <div>
+      <FormSelect label="Author" bind:value={author_id} options={authorOptions}
+        placeholder="— None —" helpText="From the People registry." />
+      {#if competenceWarning(authorAssess)}
+        <p class="text-[11px] text-amber-400 mt-0.5">⚠ Author {competenceWarning(authorAssess)}.</p>
+      {/if}
+    </div>
+    <div>
+      <FormSelect label="Reviewer" bind:value={reviewer_id} options={reviewerOptions}
+        placeholder="— None —" />
+      {#if competenceWarning(reviewerAssess)}
+        <p class="text-[11px] text-amber-400 mt-0.5">⚠ Reviewer {competenceWarning(reviewerAssess)}.</p>
+      {/if}
+    </div>
   </div>
 
   <FormSelect label="Supersedes (optional)" bind:value={supersedes} options={supersedesOptions}

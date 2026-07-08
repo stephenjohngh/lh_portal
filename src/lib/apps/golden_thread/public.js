@@ -266,6 +266,11 @@ export function createPerson(data, userId) {
   return api.create('gt_persons', { ...data, created_by: userId }, true);
 }
 
+/** Update a person (e.g. competencies / expiry — Stage E). */
+export function updatePerson(id, patch, userId) {
+  return api.update('gt_persons', id, { ...patch, updated_by: userId }, true);
+}
+
 // ── Accountable Person / PAP register (gt_accountable_persons) ───────────────
 
 /** List the AP/PAP register, oldest first (tenure order). */

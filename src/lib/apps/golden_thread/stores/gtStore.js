@@ -20,7 +20,7 @@ import { isValidTransition } from '$lib/apps/golden_thread/utils/gtLifecycle.js'
 import {
   scheduleOneCompleteness, registerDocument,
   listCitations, listDocumentLinks, cite, removeLink,
-  listPersons, createPerson, listAuditHistory,
+  listPersons, createPerson, updatePerson, listAuditHistory,
   listAccountablePersons, createAccountablePerson, updateAccountablePerson
 } from '$lib/apps/golden_thread/public.js';
 
@@ -171,6 +171,17 @@ function createGtStore() {
     return run(async (userId) => {
       const person = await createPerson(data, userId);
       logAudit('create', 'gt_person', person.id, person.full_name, {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
+      });
+      await loadPersons();
+    });
+  }
+
+  /** Update a person (competencies / expiry — Stage E), then refresh. */
+  async function editPerson(id, patch) {
+    return run(async (userId) => {
+      await updatePerson(id, patch, userId);
+      logAudit('update', 'gt_person', id, patch.full_name ?? '', {
         appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
       });
       await loadPersons();
