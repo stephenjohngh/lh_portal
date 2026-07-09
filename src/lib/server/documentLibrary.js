@@ -8,6 +8,7 @@ import { createClient }              from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
 import { storageProvider }            from './storage/index.js';
+import { sanitizeIlikeTerm }          from '$lib/utils/pgFilter.js';
 import { getLogger }                  from '$lib/utils/logger';
 
 const logger = getLogger('DocumentLibrary');
@@ -131,7 +132,10 @@ export async function listDocuments(opts = {}) {
   if (opts.category)    q = q.eq('category',     opts.category);
   if (opts.folder_path) q = q.eq('folder_path',  opts.folder_path);
   if (opts.search) {
-    q = q.or(`display_name.ilike.%${opts.search}%,title.ilike.%${opts.search}%`);
+    // Strip PostgREST filter-grammar chars so a search term can't inject
+    // additional conditions into the .or() string (see pgFilter.js).
+    const s = sanitizeIlikeTerm(opts.search);
+    if (s) q = q.or(`display_name.ilike.%${s}%,title.ilike.%${s}%`);
   }
 
   const { data, error } = await q;

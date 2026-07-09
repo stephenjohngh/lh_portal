@@ -4,6 +4,7 @@
 
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
+import { sanitizeIlikeTerm } from '$lib/utils/pgFilter.js';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('auditLogsStore');
@@ -62,7 +63,11 @@ function createAuditLogsStore() {
         if (severity)           query = query.eq('severity', severity);
         if (startDate)          query = query.gte('created_at', `${startDate}T00:00:00.000Z`);
         if (endDate)            query = query.lte('created_at', `${endDate}T23:59:59.999Z`);
-        if (search)             query = query.or(`user_email.ilike.%${search}%,target_name.ilike.%${search}%`);
+        if (search) {
+          // Strip PostgREST filter-grammar chars to prevent .or() injection (pgFilter.js).
+          const s = sanitizeIlikeTerm(search);
+          if (s) query = query.or(`user_email.ilike.%${s}%,target_name.ilike.%${s}%`);
+        }
         if (flaggedOnly)        query = query.eq('flagged', true);
 
         const { data, error, count } = await query
