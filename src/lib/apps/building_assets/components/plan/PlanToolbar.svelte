@@ -166,6 +166,13 @@
             >
               <span class="w-4 text-center">⇶</span> Copy Components to Plan
             </button>
+            <button
+              on:click={() => adminAction('importSpaces')}
+              class="flex items-center gap-2 px-3 py-2 text-left text-slate-300
+                     hover:bg-slate-700 transition-colors"
+            >
+              <span class="w-4 text-center">⬡</span> Copy Spaces to Plan
+            </button>
           {/if}
         </div>
       {/if}

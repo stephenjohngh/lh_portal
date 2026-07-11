@@ -54,6 +54,11 @@
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // Spaces on the source plan — drives the count hint in "Copy Spaces to Plan".
+  $: sourcePlanSpaces = mode === 'importSpaces' && plan
+    ? $buildingAssetsStore.spaces.filter(sp => sp.plan_id === plan.id)
+    : [];
+
   let saving     = false;
   let errorMsg   = '';
   let confirming = false;  // delete confirm
@@ -111,10 +116,11 @@
     lastShow = show;
   }
 
-  $: title = mode === 'new'    ? 'New Floor Plan'
-           : mode === 'edit'   ? 'Edit Plan Info'
-           : mode === 'import' ? 'Copy Components to Plan'
-           :                     'Copy Plan';
+  $: title = mode === 'new'          ? 'New Floor Plan'
+           : mode === 'edit'         ? 'Edit Plan Info'
+           : mode === 'import'       ? 'Copy Components to Plan'
+           : mode === 'importSpaces' ? 'Copy Spaces to Plan'
+           :                           'Copy Plan';
 
   // -- Image handling ------------------------------------------------
   function clearImage() {
@@ -233,6 +239,24 @@
     }
   }
 
+  async function handleImportSpaces() {
+    if (!importTargetPlanId) { errorMsg = 'Please select a target plan.'; return; }
+    // Capture the source id before the await (Svelte 5 flushes synchronously).
+    const sourceId = plan.id;
+    saving = true; errorMsg = '';
+    try {
+      const { plan: targetPlan, copied } = await buildingAssetsStore.importSpacesToExistingPlan(
+        sourceId, importTargetPlanId
+      );
+      dispatch('done', { plan: targetPlan, action: 'imported', copied });
+      show = false;
+    } catch (err) {
+      errorMsg = err.message;
+    } finally {
+      saving = false;
+    }
+  }
+
   async function handleDelete() {
     if (!confirming) { confirming = true; return; }
     saving = true; errorMsg = '';
@@ -295,9 +319,9 @@
     {/if}
 
     <!-- -- Source plan info (copy / import mode) ---------------- -->
-    {#if (mode === 'copy' || mode === 'import') && plan}
+    {#if (mode === 'copy' || mode === 'import' || mode === 'importSpaces') && plan}
       <div class="rounded-lg bg-slate-700/50 border border-slate-600/50 px-3 py-2.5">
-        <p class="text-xs text-slate-500 mb-1">{mode === 'import' ? 'Copying components from' : 'Copying from'}</p>
+        <p class="text-xs text-slate-500 mb-1">{mode === 'import' ? 'Copying components from' : mode === 'importSpaces' ? 'Copying spaces from' : 'Copying from'}</p>
         <p class="text-sm text-white font-medium">{plan.building}</p>
         {#if plan.name}
           <p class="text-xs text-slate-400">{plan.name}</p>
@@ -310,6 +334,14 @@
           />
         {/if}
       </div>
+    {/if}
+
+    <!-- -- Space count hint (Copy Spaces) ----------------------- -->
+    {#if mode === 'importSpaces' && plan}
+      <p class="text-xs text-slate-500">
+        {sourcePlanSpaces.length} space{sourcePlanSpaces.length !== 1 ? 's' : ''} on the source plan will be copied
+        onto the target (identical layout assumed; spaces already on the target are skipped).
+      </p>
     {/if}
 
     <!-- -- Component type filter (copy / import) ---------------- -->
@@ -348,8 +380,8 @@
       </select>
     </div>
 
-    <!-- -- Target plan picker (import mode only) ---------------- -->
-    {#if mode === 'import'}
+    <!-- -- Target plan picker (import modes) -------------------- -->
+    {#if mode === 'import' || mode === 'importSpaces'}
       {#if editFloorId}
         {#if plansOnEditFloor.length === 0}
           <p class="text-xs text-amber-400 bg-amber-900/20 border border-amber-800/30 rounded px-3 py-2">
@@ -389,7 +421,7 @@
     {/if}
 
     <!-- -- Building ---------------------------------------------- -->
-    {#if mode !== 'import'}
+    {#if mode !== 'import' && mode !== 'importSpaces'}
     <div class="flex flex-col gap-1">
       <label for="pa-building" class="text-xs text-slate-400">
         Building <span class="text-red-400">*</span>
@@ -425,7 +457,7 @@
     {/if}<!-- /mode !== 'import' -->
 
     <!-- -- Description (new/edit only) -------------------------- -->
-    {#if mode !== 'copy' && mode !== 'import'}
+    {#if mode !== 'copy' && mode !== 'import' && mode !== 'importSpaces'}
       <div class="flex flex-col gap-1">
         <label for="pa-desc" class="text-xs text-slate-400">Description</label>
         <textarea
@@ -561,6 +593,11 @@
         {:else if mode === 'import'}
           <Button variant="primary" on:click={handleImport} disabled={saving || !importTargetPlanId}>
             {saving ? 'Copying…' : 'Copy Components'}
+          </Button>
+
+        {:else if mode === 'importSpaces'}
+          <Button variant="primary" on:click={handleImportSpaces} disabled={saving || !importTargetPlanId}>
+            {saving ? 'Copying…' : 'Copy Spaces'}
           </Button>
         {/if}
       </div>

@@ -6,6 +6,7 @@ import { api }        from '$lib/utils/api';
 import { getLogger }  from '$lib/utils/logger';
 import { logAudit }   from '$lib/utils/auditLogger';
 import { buildComponentRef } from '$lib/utils/componentRef.js';
+import { buildSpaceCopyRows, targetSpaceGuards } from '../utils/spaceCopy.js';
 import { requireUserId } from './helpers.js';
 
 const logger = getLogger('BuildingAssets');
@@ -145,12 +146,14 @@ export function createPlanActions(update, supabase) {
     let types          = [];
     let srcSpaces      = [];
     let srcAnnotations = [];
+    let allSpaces      = [];
     update(s => {
       sourcePlan     = s.plans.find(p => p.id === sourcePlanId);
       floors         = s.floors;
       types          = s.types;
       srcSpaces      = s.spaces.filter(sp => sp.plan_id === sourcePlanId);
       srcAnnotations = s.annotations.filter(a => a.plan_id === sourcePlanId);
+      allSpaces      = s.spaces;
       return s;
     });
     if (!sourcePlan) throw new Error('Source plan not found');
@@ -288,21 +291,15 @@ export function createPlanActions(update, supabase) {
     }
 
     // -- Copy spaces -------------------------------------------------------
+    // Carries kind + assigned_id (assigned_id blanked if it clashes with an
+    // existing space on the target floor). The new plan is empty so no polygon
+    // dedupe fires here — see buildSpaceCopyRows.
     let newSpaces = [];
     if (srcSpaces.length > 0) {
-      newSpaces = await api.createMany('spaces', srcSpaces.map(sp => ({
-        plan_id:    newPlan.id,
-        floor_id:   newFloorId,
-        name:       sp.name,
-        usage: sp.usage ?? null,
-        polygon:    sp.polygon,
-        colour:     sp.colour,
-        height_m:   sp.height_m   ?? null,
-        show_label: sp.show_label ?? true,
-        notes:      sp.notes      ?? null,
-        created_by: userId,
-        updated_by: userId,
-      })), true) ?? [];
+      const { takenRefs, existingSig } = targetSpaceGuards(allSpaces, newPlan.id, newFloorId);
+      const spaceRows = buildSpaceCopyRows(srcSpaces,
+        { planId: newPlan.id, floorId: newFloorId, userId, takenRefs, existingSig });
+      if (spaceRows.length > 0) newSpaces = await api.createMany('spaces', spaceRows, true) ?? [];
       logger(`Copied ${newSpaces.length} space(s)`);
     }
 
@@ -492,6 +489,50 @@ export function createPlanActions(update, supabase) {
     return { plan: targetPlan, copied };
   }
 
+  // -- Import spaces to an existing plan --------------------------------
+  // Copies all spaces from sourcePlanId onto an already-existing target plan
+  // (no new plan / image). Only sensible when the two plans share the same
+  // layout. Copied spaces take the target plan's floor; assigned_id is kept
+  // where free on that floor (blanked on clash); spaces whose polygon already
+  // exists on the target plan are skipped, so a re-run adds nothing.
+  // Returns { plan: targetPlan, copied }.
+  async function importSpacesToExistingPlan(sourcePlanId, targetPlanId) {
+    const userId = requireUserId();
+
+    let targetPlan = null;
+    let srcSpaces  = [];
+    let allSpaces  = [];
+    update(s => {
+      targetPlan = s.plans.find(p => p.id === targetPlanId) ?? null;
+      srcSpaces  = s.spaces.filter(sp => sp.plan_id === sourcePlanId);
+      allSpaces  = s.spaces;
+      return s;
+    });
+    if (!targetPlan) throw new Error('Target plan not found');
+
+    const newFloorId = targetPlan.floor_id ?? null;
+    const { takenRefs, existingSig } = targetSpaceGuards(allSpaces, targetPlanId, newFloorId);
+    const spaceRows = buildSpaceCopyRows(srcSpaces,
+      { planId: targetPlanId, floorId: newFloorId, userId, takenRefs, existingSig });
+
+    let newSpaces = [];
+    if (spaceRows.length > 0) {
+      newSpaces = await api.createMany('spaces', spaceRows, true) ?? [];
+      update(s => ({ ...s, spaces: [...s.spaces, ...newSpaces] }));
+    }
+
+    logger(`Imported ${newSpaces.length} space(s): plan ${sourcePlanId} → existing plan ${targetPlanId}`);
+    logAudit('create', 'plan', targetPlanId, targetPlan.name || targetPlan.building || targetPlanId, {
+      ...AUDIT_OPTS, eventAction: 'import_spaces_to_plan',
+      afterData: {
+        source_plan_id: sourcePlanId,
+        spaces_copied:  newSpaces.length,
+        skipped:        srcSpaces.length - spaceRows.length,
+      }
+    });
+    return { plan: targetPlan, copied: newSpaces.length };
+  }
+
   // -- Delete a plan -----------------------------------------------------
   // Removes all components placed on the plan first (resolves FK constraint),
   // then deletes spaces, annotations, and the plan row.
@@ -541,6 +582,7 @@ export function createPlanActions(update, supabase) {
     replacePlanImage,
     copyPlan,
     importComponentsToExistingPlan,
+    importSpacesToExistingPlan,
     deletePlan,
   };
 }
