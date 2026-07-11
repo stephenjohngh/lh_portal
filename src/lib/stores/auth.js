@@ -6,25 +6,6 @@ import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('authStore');
 
-// DIAGNOSTIC (temporary): one-line trace of an auth event with session
-// presence and token expiry, so unexpected sign-outs can be correlated with
-// JWT expiry / refresh cadence. Visible in dev (logger force-enables 'app:*').
-// Remove once the logout cause is identified.
-function logAuthDiag(event, session) {
-  const now   = Date.now();
-  const expMs = session?.expires_at ? session.expires_at * 1000 : null;
-  const inSec = expMs != null ? Math.round((expMs - now) / 1000) : null;
-  // console.info (not the debug-level logger) so it's visible in the browser
-  // console without enabling "Debug" log level. Temporary — remove with the
-  // rest of this diagnostic block.
-  console.info(
-    `🔐 [${new Date(now).toISOString()}] event=${event} ` +
-    `session=${session ? 'yes' : 'NO'} ` +
-    `expires_at=${expMs != null ? new Date(expMs).toISOString() : 'n/a'} ` +
-    `(in ${inSec != null ? inSec + 's' : 'n/a'})`
-  );
-}
-
 function createAuthStore() {
   const { subscribe, set, update } = writable({
     user: null,
@@ -35,16 +16,9 @@ function createAuthStore() {
     subscribe,
     initialize: async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      logAuthDiag('initialize/getSession', session);
       set({ user: session?.user ?? null, loading: false });
 
       supabase.auth.onAuthStateChange((event, session) => {
-        // DIAGNOSTIC: trace every auth event so unexpected sign-outs can be
-        // correlated with token expiry / refresh cadence. Logged before the
-        // TOKEN_REFRESHED early-return below so refreshes are visible too.
-        // (Temporary — remove once the logout cause is identified.)
-        logAuthDiag(event, session);
-
         // TOKEN_REFRESHED only rotates the JWT — the user identity is unchanged.
         // Updating the store on that event causes reactive statements in +page.svelte
         // to re-run loadUserPermissions() every ~60 min, which the user sees as a reload.
