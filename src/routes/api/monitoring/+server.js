@@ -18,6 +18,13 @@
 
 import { env } from '$env/dynamic/public';
 
+// Cap the relayed envelope size. This app sends errors-only envelopes (no
+// performance traces, no attachments), which are a few KB each; 1 MB is
+// generous headroom and closes the only abuse vector — POSTing large bodies
+// through the tunnel to burn our Sentry quota. (The deploy platform also caps
+// request bodies upstream, so this is defence-in-depth.)
+const MAX_ENVELOPE_BYTES = 1_000_000;
+
 /** Parse the configured DSN into the host + project id we're allowed to forward to. */
 function allowedTarget() {
   const dsn = env.PUBLIC_SENTRY_DSN;
@@ -34,7 +41,18 @@ export async function POST({ request }) {
   const allowed = allowedTarget();
   if (!allowed) return new Response('Sentry not configured', { status: 503 });
 
+  // Reject oversized payloads early when the client declares its length…
+  const declaredLen = Number(request.headers?.get?.('content-length'));
+  if (Number.isFinite(declaredLen) && declaredLen > MAX_ENVELOPE_BYTES) {
+    return new Response('Payload too large', { status: 413 });
+  }
+
   const body = await request.arrayBuffer();
+
+  // …and again after reading, in case Content-Length was absent or understated.
+  if (body.byteLength > MAX_ENVELOPE_BYTES) {
+    return new Response('Payload too large', { status: 413 });
+  }
 
   // The first newline-delimited line of a Sentry envelope is a JSON header
   // that carries the DSN the SDK intended to send to.

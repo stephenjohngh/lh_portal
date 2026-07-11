@@ -52,6 +52,20 @@ describe('POST /api/monitoring (Sentry tunnel)', () => {
     expect(res.status).toBe(400);
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
+
+  it('rejects an oversized body with 413 and never fetches', async () => {
+    const res = await POST({ request: { arrayBuffer: () => Promise.resolve(new ArrayBuffer(1_000_001)) } });
+    expect(res.status).toBe(413);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects early on an oversized Content-Length without reading the body', async () => {
+    const arrayBuffer = vi.fn(() => Promise.resolve(new ArrayBuffer(8)));
+    const res = await POST({ request: { headers: { get: () => '2000000' }, arrayBuffer } });
+    expect(res.status).toBe(413);
+    expect(arrayBuffer).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /api/monitoring when Sentry is not configured', () => {
