@@ -30,6 +30,7 @@ import { env as privateEnv } from '$env/dynamic/private';
 import { requireAuth } from '$lib/server/requireAuth';
 import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
 import { logAudit } from '$lib/server/auditLogger';
+import { escapeForPrompt } from '$lib/server/promptEscape';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('SuggestActionAPI');
@@ -251,16 +252,20 @@ export async function POST({ request }) {
     }
     issueName = issue.name;
 
-    // Pick up to 3 prior activities, excluding the new one
+    // Pick up to 3 prior activities, excluding the new one. All user-supplied
+    // text is XML-escaped (escapeForPrompt) before it enters the prompt so a
+    // body containing a literal `</comment>` can't break out of its delimiter
+    // and be read as instructions (prompt injection). Filter on the RAW body
+    // first, so the "exclude the new comment" match still works.
     const priorCommentLines = (recentActivities || [])
       .filter(a => a.body !== activity_text)
       .slice(0, 3)
-      .map(a => `- ${a.body}`);
+      .map(a => `- ${escapeForPrompt(a.body)}`);
     const priorCommentsBlock = priorCommentLines.length > 0
       ? priorCommentLines.join('\n')
       : '(none)';
 
-    const openActionsList = (openActions || []).map(a => a.action_text);
+    const openActionsList = (openActions || []).map(a => escapeForPrompt(a.action_text));
     const openActionsLine = openActionsList.length > 0
       ? openActionsList.join('; ')
       : 'none';
@@ -268,8 +273,8 @@ export async function POST({ request }) {
       ? openActionsList.map(t => `- ${t}`).join('\n')
       : '(none)';
 
-    const userMessage = `Issue: ${issue.name}
-${issue.description ? `Description: ${issue.description}` : ''}
+    const userMessage = `Issue: ${escapeForPrompt(issue.name)}
+${issue.description ? `Description: ${escapeForPrompt(issue.description)}` : ''}
 
 Recent prior comments on this issue:
 ${priorCommentsBlock}
@@ -277,7 +282,7 @@ ${priorCommentsBlock}
 Currently open actions on this issue:
 ${openActionsBlock}
 
-<comment>${activity_text}</comment>
+<comment>${escapeForPrompt(activity_text)}</comment>
 <existing_actions>${openActionsLine}</existing_actions>
 
 Use the suggest_action tool.`;

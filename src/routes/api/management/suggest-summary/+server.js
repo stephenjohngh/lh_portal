@@ -14,6 +14,7 @@ import { env as privateEnv } from '$env/dynamic/private';
 import { requireAuth } from '$lib/server/requireAuth';
 import { checkKeyRateLimit, LIMITS } from '$lib/server/publicRateLimit';
 import { logAudit } from '$lib/server/auditLogger';
+import { escapeForPrompt } from '$lib/server/promptEscape';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('SuggestSummaryAPI');
@@ -143,8 +144,11 @@ export async function POST({ request }) {
         ],
         messages: [
           {
+            // User content is XML-escaped and wrapped in <content> tags so it
+            // can't be read as instructions (prompt injection) — the model
+            // summarises only what's inside the tags.
             role: 'user',
-            content: `Activity type: ${activity_type || 'note'}\n\n${body}`
+            content: `Activity type: ${escapeForPrompt(activity_type || 'note')}\n\nSummarise the note or comment inside the <content> tags:\n<content>\n${escapeForPrompt(body)}\n</content>`
           }
         ]
       });
