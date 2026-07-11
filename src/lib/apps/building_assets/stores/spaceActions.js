@@ -31,6 +31,8 @@ export function createSpaceActions(update) {
       height_m:   data.height_m          ?? null,
       show_label: data.show_label        ?? true,
       notes:      data.notes?.trim()     || null,
+      kind:        data.kind === 'slot' ? 'slot' : 'space',
+      assigned_id: data.assigned_id?.trim() || null,
       created_by: userId,
       updated_by: userId
     });
@@ -44,7 +46,7 @@ export function createSpaceActions(update) {
   // Polygon is intentionally excluded — use updateSpacePolygon for geometry changes.
   async function updateSpace(id, data) {
     const userId = requireUserId();
-    const updated = await api.update('spaces', id, {
+    const patch = {
       name:       data.name,      // preserve leading whitespace — users may indent plan labels
       space_type: data.space_type?.trim() || null,
       colour:     normaliseColour(data.colour),
@@ -52,7 +54,12 @@ export function createSpaceActions(update) {
       show_label: data.show_label        ?? true,
       notes:      data.notes?.trim()     || null,
       updated_by: userId
-    });
+    };
+    // kind / assigned_id are managed by the detail sidebar; only patch them when
+    // provided so other callers can't inadvertently reset them.
+    if (data.kind        !== undefined) patch.kind        = data.kind === 'slot' ? 'slot' : 'space';
+    if (data.assigned_id !== undefined) patch.assigned_id = data.assigned_id?.trim() || null;
+    const updated = await api.update('spaces', id, patch);
     update(s => ({
       ...s,
       spaces: s.spaces.map(sp => sp.id === id ? { ...sp, ...updated } : sp)

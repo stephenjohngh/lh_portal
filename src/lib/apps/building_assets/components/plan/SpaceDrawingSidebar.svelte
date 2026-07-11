@@ -49,9 +49,9 @@
     />
   </div>
 
-  <!-- Type -->
+  <!-- Usage -->
   <div class="flex flex-col gap-1 mb-2">
-    <p class="text-xs text-slate-400">Type</p>
+    <p class="text-xs text-slate-400">Usage</p>
     <select bind:value={spaceType} class={inp}>
       <option value="">— select —</option>
       {#each SPACE_TYPES as st}

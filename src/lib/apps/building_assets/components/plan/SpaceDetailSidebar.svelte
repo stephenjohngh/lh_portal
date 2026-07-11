@@ -10,6 +10,10 @@
   import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
   import { ACCENT } from '$lib/theme.js';
+  import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
+  import { componentsInSpace } from '../../utils/spaceMembership.js';
+  import { statusDotCls, statusCfg } from '$lib/utils/resultConstants.js';
 
   export let space;
   export let floors               = [];
@@ -27,6 +31,8 @@
   let editHeightM   = '';   // string for input; converted to float on save
   let editNotes     = '';
   let editShowLabel = true;
+  let editKind       = 'space';   // 'space' | 'slot' (§4.1)
+  let editAssignedId = '';        // stored segment of the composed reference
 
   let saving     = false;
   let errorMsg   = '';
@@ -46,6 +52,8 @@
     editHeightM   = space?.height_m != null ? String(space.height_m) : '';
     editNotes     = space?.notes      ?? '';
     editShowLabel = space?.show_label ?? true;
+    editKind       = space?.kind        ?? 'space';
+    editAssignedId = space?.assigned_id ?? '';
     saving        = false;
     errorMsg      = '';
     confirming    = false;
@@ -67,7 +75,9 @@
     editColourHex !== (space.colour === 'none' ? 'none' : `#${space.colour}`) ||
     editNotes     !== (space.notes       ?? '')  ||
     editShowLabel !== (space.show_label  ?? true) ||
-    parsedHeight  !== (space.height_m    ?? null)
+    parsedHeight  !== (space.height_m    ?? null) ||
+    editKind       !== (space.kind        ?? 'space') ||
+    editAssignedId !== (space.assigned_id ?? '')
   );
 
   // -- Measurements -------------------------------------------------
@@ -85,18 +95,30 @@
 
   $: floor = floors.find(f => f.id === space?.floor_id) ?? null;
 
+  // -- Reference + derived membership --------------------------------
+  // Live reference preview reflects the in-progress kind / assigned_id edits.
+  $: refPreview = space
+    ? buildSpaceRef({ ...space, kind: editKind, assigned_id: editAssignedId.trim() || null }, floors)
+    : '—';
+  // Components whose marker falls within this space (derive-at-read, §4.3).
+  $: members = space
+    ? componentsInSpace(space, $buildingAssetsStore.components, [], { AR: planAR ?? 1 })
+    : [];
+
 
   async function handleSave() {
     if (!editName.trim()) { errorMsg = 'Name is required.'; return; }
     saving = true; errorMsg = '';
     try {
       const updated = await buildingAssetsStore.updateSpace(space.id, {
-        name:       editName,
-        space_type: editType,
-        colour:     editColourHex === 'none' ? 'none' : editColourHex.replace('#', ''),
-        height_m:   parsedHeight,
-        notes:      editNotes,
-        show_label: editShowLabel,
+        name:        editName,
+        space_type:  editType,
+        colour:      editColourHex === 'none' ? 'none' : editColourHex.replace('#', ''),
+        height_m:    parsedHeight,
+        notes:       editNotes,
+        show_label:  editShowLabel,
+        kind:        editKind,
+        assigned_id: editAssignedId,
       });
       // Dispatch the updated object so PlanViewTab can refresh selectedSpace.
       // Without this, the space prop stays as the pre-save object and dirty
@@ -199,6 +221,27 @@
       </div>
     {/if}
 
+    <!-- -- Components in this space (derived membership) ------------- -->
+    <div class="flex flex-col gap-1.5">
+      <p class="text-xs text-slate-400">
+        Components in this space
+        <span class="text-slate-600 font-normal">({members.length})</span>
+      </p>
+      {#if members.length > 0}
+        <div class="flex flex-col gap-1 max-h-48 overflow-y-auto">
+          {#each members as c (c.id)}
+            <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-700/40 border border-slate-700/60">
+              <span class="w-2 h-2 rounded-full shrink-0 {statusDotCls(c.status)}" title={statusCfg(c.status).label}></span>
+              <span class="text-xs font-mono text-slate-300 truncate">{buildComponentRef(c, floors, $buildingAssetsStore.types)}</span>
+              {#if c.label}<span class="text-xs text-slate-500 truncate">{c.label}</span>{/if}
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="text-xs text-slate-600 italic">No components fall within this space's outline.</p>
+      {/if}
+    </div>
+
       {#if readOnly}
 
       <!-- -- Read-only fields ----------------------------------------- -->
@@ -208,7 +251,11 @@
           <dd class="text-sm text-slate-200 whitespace-pre-wrap">{space.name || '—'}</dd>
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-          <dt class="text-xs text-slate-500 shrink-0 w-24">Type</dt>
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Reference</dt>
+          <dd class="text-sm font-mono text-slate-200">{refPreview}</dd>
+        </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Usage</dt>
           <dd class="text-sm text-slate-200">{#if space.space_type}{space.space_type}{:else}<span class="text-slate-600">—</span>{/if}</dd>
         </div>
         <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
@@ -259,9 +306,9 @@
         ></textarea>
       </div>
 
-      <!-- -- Space type ---------------------------------------------- -->
+      <!-- -- Usage (category) ---------------------------------------- -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs text-slate-400" for="sp-type">Type</label>
+        <label class="text-xs text-slate-400" for="sp-type">Usage</label>
         <select id="sp-type" bind:value={editType} class={inp}>
           <option value="">— none —</option>
           {#each SPACE_TYPES as st}
@@ -269,6 +316,25 @@
           {/each}
         </select>
       </div>
+
+      <!-- -- Kind + reference ---------------------------------------- -->
+      <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-400" for="sp-kind">Kind</label>
+          <select id="sp-kind" bind:value={editKind} class={inp}>
+            <option value="space">{KIND_LABEL.space}</option>
+            <option value="slot">{KIND_LABEL.slot}</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-400" for="sp-assigned">Assigned ID</label>
+          <input id="sp-assigned" type="text" bind:value={editAssignedId}
+            placeholder="e.g. 12" class={inp} />
+        </div>
+      </div>
+      <p class="text-xs text-slate-600 -mt-1">
+        Reference: <span class="font-mono text-slate-400">{refPreview}</span>
+      </p>
 
       <!-- -- Colour -------------------------------------------------- -->
       <div>

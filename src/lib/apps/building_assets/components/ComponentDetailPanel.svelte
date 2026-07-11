@@ -14,6 +14,8 @@
   import ConditionChecklistChips     from './ConditionChecklistChips.svelte';
   import { inp, sec, STATUSES }      from '../ui.js';
   import { fmtDate, fmtDateTime }    from '$lib/utils/dates.js';
+  import { buildSpaceRef }           from '$lib/utils/spaceRef.js';
+  import { spacesForComponent }      from '../utils/spaceMembership.js';
 
   export let component;          // components row
   export let types       = [];
@@ -94,6 +96,14 @@
 
   // Type badge for the original (unedited) type
   $: origType = typeByCode(types, component.type_code);
+
+  // Spaces this component falls within (derive-at-read reverse lookup, §4.3).
+  // Reflects the SAVED position — edits show after Save.
+  $: componentSpaces = component?.plan_id
+    ? spacesForComponent(component, $buildingAssetsStore.spaces ?? [], [], {
+        AR: plans.find(p => p.id === component.plan_id)?.image_aspect_ratio ?? 1,
+      })
+    : [];
 
   const STATUS_OPTS = STATUSES;
 
@@ -406,6 +416,27 @@
                resize-y transition-colors"
       ></textarea>
     </section>
+
+    <!-- -- Spaces (derived membership) ----------------------------- -->
+    {#if component.plan_id}
+      <section>
+        <p class={sec}>Spaces</p>
+        {#if componentSpaces.length > 0}
+          <div class="flex flex-wrap gap-1.5">
+            {#each componentSpaces as sp (sp.id)}
+              <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-700/50 border border-slate-600/50 text-xs">
+                <span class="w-2.5 h-2.5 rounded-sm shrink-0 {sp.colour && sp.colour !== 'none' ? '' : 'border border-slate-500'}"
+                  style={sp.colour && sp.colour !== 'none' ? `background-color:#${sp.colour}` : ''}></span>
+                <span class="font-mono text-slate-400">{buildSpaceRef(sp, floors)}</span>
+                <span class="text-slate-300">{sp.name}</span>
+              </span>
+            {/each}
+          </div>
+        {:else}
+          <p class="text-xs text-slate-600 italic">Not within any drawn space on this plan.</p>
+        {/if}
+      </section>
+    {/if}
 
     <!-- -- Linked components --------------------------------------- -->
     <ComponentLinks
