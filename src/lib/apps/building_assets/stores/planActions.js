@@ -294,7 +294,7 @@ export function createPlanActions(update, supabase) {
         plan_id:    newPlan.id,
         floor_id:   newFloorId,
         name:       sp.name,
-        space_type: sp.space_type ?? null,
+        usage: sp.usage ?? null,
         polygon:    sp.polygon,
         colour:     sp.colour,
         height_m:   sp.height_m   ?? null,

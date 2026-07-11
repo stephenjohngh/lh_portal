@@ -2227,7 +2227,7 @@ export type Database = {
           plan_id: string
           floor_id: string | null
           name: string
-          space_type: string | null
+          usage: string | null
           polygon: Json
           colour: string
           notes: string | null
@@ -2243,7 +2243,7 @@ export type Database = {
           plan_id?: string
           floor_id?: string | null
           name?: string
-          space_type?: string | null
+          usage?: string | null
           polygon?: Json
           colour?: string
           notes?: string | null
@@ -2259,7 +2259,7 @@ export type Database = {
           plan_id?: string
           floor_id?: string | null
           name?: string
-          space_type?: string | null
+          usage?: string | null
           polygon?: Json
           colour?: string
           notes?: string | null

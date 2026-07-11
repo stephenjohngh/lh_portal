@@ -28,7 +28,7 @@ export function createSpaceActions(update) {
       plan_id:    data.plan_id,
       floor_id:   data.floor_id   || null,
       name:       data.name,      // preserve leading whitespace — users may indent plan labels
-      space_type: data.space_type?.trim() || null,
+      usage:      data.usage?.trim() || null,
       polygon:    roundPoly(data.polygon),
       colour:     normaliseColour(data.colour),
       height_m:   data.height_m          ?? null,
@@ -45,13 +45,13 @@ export function createSpaceActions(update) {
     return space;
   }
 
-  // Updates editable metadata fields (name, space_type, colour, height_m, notes).
+  // Updates editable metadata fields (name, usage, colour, height_m, notes).
   // Polygon is intentionally excluded — use updateSpacePolygon for geometry changes.
   async function updateSpace(id, data) {
     const userId = requireUserId();
     const patch = {
       name:       data.name,      // preserve leading whitespace — users may indent plan labels
-      space_type: data.space_type?.trim() || null,
+      usage:      data.usage?.trim() || null,
       colour:     normaliseColour(data.colour),
       height_m:   data.height_m          ?? null,
       show_label: data.show_label        ?? true,

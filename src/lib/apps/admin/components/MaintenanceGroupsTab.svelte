@@ -52,7 +52,7 @@
     ? labelledSpaces.filter(sp =>
         sp.name.toLowerCase().includes(spaceSearch.toLowerCase()) ||
         sp.floorName.toLowerCase().includes(spaceSearch.toLowerCase()) ||
-        (sp.space_type ?? '').toLowerCase().includes(spaceSearch.toLowerCase()))
+        (sp.usage ?? '').toLowerCase().includes(spaceSearch.toLowerCase()))
     : labelledSpaces;
 
   // ── Helpers ─────────────────────────────────────────────────────────────

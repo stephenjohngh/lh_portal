@@ -356,7 +356,7 @@
         plan_id:    selectedPlanId,
         floor_id:   selectedFloorId || null,
         name:       drawingSpaceName.trim(),
-        space_type: drawingSpaceType || null,
+        usage: drawingSpaceType || null,
         colour:     drawingColourHex === 'none' ? 'none' : drawingColourHex.replace('#', ''),
         polygon:    $drawingVertices,
         show_label: drawingShowLabel,
@@ -593,7 +593,7 @@
         <SpaceDrawingSidebar
           vertices={$drawingVertices} {saving}
           bind:spaceName={drawingSpaceName}
-          bind:spaceType={drawingSpaceType}
+          bind:spaceUsage={drawingSpaceType}
           bind:colourHex={drawingColourHex}
           bind:showLabel={drawingShowLabel}
           on:finish={handleFinishDrawing}

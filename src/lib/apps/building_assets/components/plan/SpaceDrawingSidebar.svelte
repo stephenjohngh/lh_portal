@@ -4,7 +4,7 @@
      parent can also call finish when the user closes the polygon on the canvas. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { SPACE_TYPES, SPACE_COLOURS } from './planMeasure.js';
+  import { SPACE_USAGES, SPACE_COLOURS } from './planMeasure.js';
   import { inp } from '../../ui.js';
   import { ACCENT } from '$lib/theme.js';
 
@@ -12,7 +12,7 @@
   export let saving      = false;
   // Two-way bound from PlanViewTab so it shares the same state
   export let spaceName   = '';
-  export let spaceType   = '';
+  export let spaceUsage  = '';
   export let colourHex   = ACCENT;
   export let showLabel   = true;
 
@@ -52,9 +52,9 @@
   <!-- Usage -->
   <div class="flex flex-col gap-1 mb-2">
     <p class="text-xs text-slate-400">Usage</p>
-    <select bind:value={spaceType} class={inp}>
+    <select bind:value={spaceUsage} class={inp}>
       <option value="">— select —</option>
-      {#each SPACE_TYPES as st}
+      {#each SPACE_USAGES as st}
         <option value={st}>{st}</option>
       {/each}
     </select>

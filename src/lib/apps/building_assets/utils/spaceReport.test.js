@@ -6,7 +6,7 @@ import {
 
 const floors = [{ id: 'f1', short_name: 'G' }];
 const types  = [{ code: 'fd', initial: 'FD', name: 'Fire Door' }];
-const space  = { id: 's1', kind: 'space', floor_id: 'f1', assigned_id: '12', name: 'Plant Room', space_type: 'Plant Room' };
+const space  = { id: 's1', kind: 'space', floor_id: 'f1', assigned_id: '12', name: 'Plant Room', usage: 'Plant Room' };
 const members = [
   { id: 'c1', floor_id: 'f1', type_code: 'fd', asset_id: 'FD-1', status: 'ok',      label: 'Door A' },
   { id: 'c2', floor_id: 'f1', type_code: 'fd', asset_id: 'FD-2', status: 'failed',  label: null },
@@ -44,7 +44,7 @@ describe('buildRegisterRow / spacesRegisterCsvRows', () => {
   it('serialises register rows to CSV (area rounded, blank when null)', () => {
     const rows = spacesRegisterCsvRows([
       buildRegisterRow(space, members, floors, { area_m2: 42.35 }),
-      buildRegisterRow({ ...space, id: 's2', assigned_id: '13', name: 'Lobby', space_type: '' }, [], floors, {}),
+      buildRegisterRow({ ...space, id: 's2', assigned_id: '13', name: 'Lobby', usage: '' }, [], floors, {}),
     ]);
     expect(rows[0]).toBe('Reference,Name,Kind,Usage,Floor,Area m2,Components,OK,Problem,Failed,Inactive');
     expect(rows[1]).toBe('G/S/12,Plant Room,space,Plant Room,G,42.4,3,2,0,1,0');

@@ -1,13 +1,13 @@
 ﻿<!-- plan/SpaceDetailSidebar.svelte -->
 <!-- Full detail and edit panel for a selected space.
-     Fields: name, space_type, colour, height_m, notes.
+     Fields: name, usage, colour, height_m, notes.
      Measurements (perimeter, area, volume) shown when plan is scaled.
      Save / Cancel / Delete footer. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore }          from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
-  import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
+  import { SPACE_USAGES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
   import { ACCENT } from '$lib/theme.js';
   import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
@@ -48,7 +48,7 @@
   $: if (space?.id !== loadedId) {
     loadedId      = space?.id ?? null;
     editName      = space?.name        ?? '';
-    editType      = space?.space_type  ?? '';
+    editType      = space?.usage       ?? '';
     editColourHex = space
       ? (space.colour === 'none' ? 'none' : `#${space.colour}`)
       : ACCENT;
@@ -74,7 +74,7 @@
   // Colour comparison handles 'none' (transparent) correctly.
   $: dirty = !!space && (
     editName      !== (space.name       ?? '')  ||
-    editType      !== (space.space_type  ?? '')  ||
+    editType      !== (space.usage       ?? '')  ||
     editColourHex !== (space.colour === 'none' ? 'none' : `#${space.colour}`) ||
     editNotes     !== (space.notes       ?? '')  ||
     editShowLabel !== (space.show_label  ?? true) ||
@@ -164,7 +164,7 @@
     try {
       const updated = await buildingAssetsStore.updateSpace(space.id, {
         name:        editName,
-        space_type:  editType,
+        usage:       editType,
         colour:      editColourHex === 'none' ? 'none' : editColourHex.replace('#', ''),
         height_m:    parsedHeight,
         notes:       editNotes,
@@ -365,7 +365,7 @@
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Usage</dt>
-          <dd class="text-sm text-slate-200">{#if space.space_type}{space.space_type}{:else}<span class="text-slate-600">—</span>{/if}</dd>
+          <dd class="text-sm text-slate-200">{#if space.usage}{space.usage}{:else}<span class="text-slate-600">—</span>{/if}</dd>
         </div>
         <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Colour</dt>
@@ -420,7 +420,7 @@
         <label class="text-xs text-slate-400" for="sp-type">Usage</label>
         <select id="sp-type" bind:value={editType} class={inp}>
           <option value="">— none —</option>
-          {#each SPACE_TYPES as st}
+          {#each SPACE_USAGES as st}
             <option value={st}>{st}</option>
           {/each}
         </select>

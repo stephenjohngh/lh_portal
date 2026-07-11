@@ -55,7 +55,7 @@ export function buildRegisterRow(space, members = [], floors = [], opts = {}) {
     reference: buildSpaceRef(space, floors),
     name:      space?.name ?? '',
     kind:      space?.kind ?? 'space',
-    usage:     space?.space_type ?? '',
+    usage:     space?.usage ?? '',
     floor:     floors.find(f => f.id === space?.floor_id)?.short_name ?? '',
     area_m2:   opts.area_m2 ?? null,
     total,
