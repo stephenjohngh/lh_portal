@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/supabase_lhportal_schema7.csv
+// Source: docs/supabase_lhportal_schema8.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -767,6 +767,7 @@ export type Database = {
           created_at: string
           updated_at: string | null
           updated_by: string | null
+          file_checksum: string | null
         }
         Insert: {
           id?: string
@@ -795,6 +796,7 @@ export type Database = {
           created_at?: string
           updated_at?: string | null
           updated_by?: string | null
+          file_checksum?: string | null
         }
         Update: {
           id?: string
@@ -823,6 +825,7 @@ export type Database = {
           created_at?: string
           updated_at?: string | null
           updated_by?: string | null
+          file_checksum?: string | null
         }
         Relationships: [
             {
@@ -958,6 +961,577 @@ export type Database = {
               referencedColumns: ["id"]
             }
           ]
+      }
+      gt_accountable_persons: {
+        Row: {
+          id: string
+          role: string
+          name: string
+          organisation: string | null
+          duties: string | null
+          contact: string | null
+          appointed_on: string | null
+          ended_on: string | null
+          notes: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          role?: string
+          name?: string
+          organisation?: string | null
+          duties?: string | null
+          contact?: string | null
+          appointed_on?: string | null
+          ended_on?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          role?: string
+          name?: string
+          organisation?: string | null
+          duties?: string | null
+          contact?: string | null
+          appointed_on?: string | null
+          ended_on?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "gt_accountable_persons_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_accountable_persons_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      gt_audit: {
+        Row: {
+          seq: number
+          actor: string | null
+          action: string
+          target_table: string
+          target_id: string
+          before_data: Json | null
+          after_data: Json | null
+          occurred_at: string
+          prev_hash: string | null
+          curr_hash: string
+        }
+        Insert: {
+          seq?: number
+          actor?: string | null
+          action?: string
+          target_table?: string
+          target_id?: string
+          before_data?: Json | null
+          after_data?: Json | null
+          occurred_at?: string
+          prev_hash?: string | null
+          curr_hash?: string
+        }
+        Update: {
+          seq?: number
+          actor?: string | null
+          action?: string
+          target_table?: string
+          target_id?: string
+          before_data?: Json | null
+          after_data?: Json | null
+          occurred_at?: string
+          prev_hash?: string | null
+          curr_hash?: string
+        }
+        Relationships: []
+      }
+      gt_documents: {
+        Row: {
+          id: string
+          reference: string
+          schedule1_category: number
+          document_type: string
+          uniclass_code: string | null
+          container_id: string | null
+          title: string
+          summary: string | null
+          scope_description: string | null
+          building_location: string | null
+          author_id: string | null
+          reviewer_id: string | null
+          status: string
+          effective_from: string | null
+          effective_to: string | null
+          review_due: string | null
+          review_cycle_days: number | null
+          supersedes: string | null
+          superseded_by: string | null
+          supersession_reason: string | null
+          storage_uri: string | null
+          file_checksum: string | null
+          safety_critical: boolean
+          access_scope: string
+          contains_pii: boolean
+          security_classification: string
+          tags: string[]
+          taxonomy_version: string | null
+          created_at: string
+          created_by: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          reference?: string
+          schedule1_category?: number
+          document_type?: string
+          uniclass_code?: string | null
+          container_id?: string | null
+          title?: string
+          summary?: string | null
+          scope_description?: string | null
+          building_location?: string | null
+          author_id?: string | null
+          reviewer_id?: string | null
+          status?: string
+          effective_from?: string | null
+          effective_to?: string | null
+          review_due?: string | null
+          review_cycle_days?: number | null
+          supersedes?: string | null
+          superseded_by?: string | null
+          supersession_reason?: string | null
+          storage_uri?: string | null
+          file_checksum?: string | null
+          safety_critical?: boolean
+          access_scope?: string
+          contains_pii?: boolean
+          security_classification?: string
+          tags?: string[]
+          taxonomy_version?: string | null
+          created_at?: string
+          created_by?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          reference?: string
+          schedule1_category?: number
+          document_type?: string
+          uniclass_code?: string | null
+          container_id?: string | null
+          title?: string
+          summary?: string | null
+          scope_description?: string | null
+          building_location?: string | null
+          author_id?: string | null
+          reviewer_id?: string | null
+          status?: string
+          effective_from?: string | null
+          effective_to?: string | null
+          review_due?: string | null
+          review_cycle_days?: number | null
+          supersedes?: string | null
+          superseded_by?: string | null
+          supersession_reason?: string | null
+          storage_uri?: string | null
+          file_checksum?: string | null
+          safety_critical?: boolean
+          access_scope?: string
+          contains_pii?: boolean
+          security_classification?: string
+          tags?: string[]
+          taxonomy_version?: string | null
+          created_at?: string
+          created_by?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "gt_documents_schedule1_category_fkey"
+              columns: ["schedule1_category"]
+              isOneToOne: false
+              referencedRelation: "gt_schedule1_categories"
+              referencedColumns: ["code"]
+            },
+            {
+              foreignKeyName: "gt_documents_author_id_fkey"
+              columns: ["author_id"]
+              isOneToOne: false
+              referencedRelation: "gt_persons"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_documents_reviewer_id_fkey"
+              columns: ["reviewer_id"]
+              isOneToOne: false
+              referencedRelation: "gt_persons"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_documents_supersedes_fkey"
+              columns: ["supersedes"]
+              isOneToOne: false
+              referencedRelation: "gt_documents"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_documents_superseded_by_fkey"
+              columns: ["superseded_by"]
+              isOneToOne: false
+              referencedRelation: "gt_documents"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_documents_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_documents_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      gt_links: {
+        Row: {
+          id: string
+          source_type: string
+          source_id: string
+          target_type: string
+          target_id: string
+          relation: string
+          note: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          source_type?: string
+          source_id?: string
+          target_type?: string
+          target_id?: string
+          relation?: string
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          source_type?: string
+          source_id?: string
+          target_type?: string
+          target_id?: string
+          relation?: string
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "gt_links_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      gt_persons: {
+        Row: {
+          id: string
+          full_name: string
+          organisation: string | null
+          role: string | null
+          profile_id: string | null
+          qualifications: string | null
+          professional_body: string | null
+          scheme_registrations: string | null
+          last_review: string | null
+          next_review_due: string | null
+          status: string
+          created_at: string
+          created_by: string | null
+          competencies: string[]
+          competence_expiry: string | null
+          competence_notes: string | null
+        }
+        Insert: {
+          id?: string
+          full_name?: string
+          organisation?: string | null
+          role?: string | null
+          profile_id?: string | null
+          qualifications?: string | null
+          professional_body?: string | null
+          scheme_registrations?: string | null
+          last_review?: string | null
+          next_review_due?: string | null
+          status?: string
+          created_at?: string
+          created_by?: string | null
+          competencies?: string[]
+          competence_expiry?: string | null
+          competence_notes?: string | null
+        }
+        Update: {
+          id?: string
+          full_name?: string
+          organisation?: string | null
+          role?: string | null
+          profile_id?: string | null
+          qualifications?: string | null
+          professional_body?: string | null
+          scheme_registrations?: string | null
+          last_review?: string | null
+          next_review_due?: string | null
+          status?: string
+          created_at?: string
+          created_by?: string | null
+          competencies?: string[]
+          competence_expiry?: string | null
+          competence_notes?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "gt_persons_profile_id_fkey"
+              columns: ["profile_id"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_persons_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      gt_risk_links: {
+        Row: {
+          id: string
+          risk_id: string
+          target_type: string
+          target_id: string
+          relation: string
+          note: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          risk_id?: string
+          target_type?: string
+          target_id?: string
+          relation?: string
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          risk_id?: string
+          target_type?: string
+          target_id?: string
+          relation?: string
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "gt_risk_links_risk_id_fkey"
+              columns: ["risk_id"]
+              isOneToOne: false
+              referencedRelation: "gt_risks"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_risk_links_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      gt_risks: {
+        Row: {
+          id: string
+          reference: string
+          title: string
+          description: string | null
+          domain: string
+          hazard: string | null
+          cause: string | null
+          consequence: string | null
+          likelihood: number
+          impact: number
+          inherent_score: number | null
+          residual_score: number | null
+          building_location: string | null
+          status: string
+          owner_id: string | null
+          source: string | null
+          identified_at: string | null
+          last_reviewed: string | null
+          review_due: string | null
+          review_cycle_days: number | null
+          supersedes: string | null
+          superseded_by: string | null
+          supersession_reason: string | null
+          closure_reason: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          reference?: string
+          title?: string
+          description?: string | null
+          domain?: string
+          hazard?: string | null
+          cause?: string | null
+          consequence?: string | null
+          likelihood?: number
+          impact?: number
+          inherent_score?: number | null
+          residual_score?: number | null
+          building_location?: string | null
+          status?: string
+          owner_id?: string | null
+          source?: string | null
+          identified_at?: string | null
+          last_reviewed?: string | null
+          review_due?: string | null
+          review_cycle_days?: number | null
+          supersedes?: string | null
+          superseded_by?: string | null
+          supersession_reason?: string | null
+          closure_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          reference?: string
+          title?: string
+          description?: string | null
+          domain?: string
+          hazard?: string | null
+          cause?: string | null
+          consequence?: string | null
+          likelihood?: number
+          impact?: number
+          inherent_score?: number | null
+          residual_score?: number | null
+          building_location?: string | null
+          status?: string
+          owner_id?: string | null
+          source?: string | null
+          identified_at?: string | null
+          last_reviewed?: string | null
+          review_due?: string | null
+          review_cycle_days?: number | null
+          supersedes?: string | null
+          superseded_by?: string | null
+          supersession_reason?: string | null
+          closure_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "gt_risks_owner_id_fkey"
+              columns: ["owner_id"]
+              isOneToOne: false
+              referencedRelation: "gt_persons"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_risks_supersedes_fkey"
+              columns: ["supersedes"]
+              isOneToOne: false
+              referencedRelation: "gt_risks"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_risks_superseded_by_fkey"
+              columns: ["superseded_by"]
+              isOneToOne: false
+              referencedRelation: "gt_risks"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_risks_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_risks_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      gt_schedule1_categories: {
+        Row: {
+          code: number
+          name: string
+          applicable: boolean
+          notes: string | null
+        }
+        Insert: {
+          code?: number
+          name?: string
+          applicable?: boolean
+          notes?: string | null
+        }
+        Update: {
+          code?: number
+          name?: string
+          applicable?: boolean
+          notes?: string | null
+        }
+        Relationships: []
       }
       info_notes: {
         Row: {
@@ -1264,6 +1838,7 @@ export type Database = {
           expiry_date: string | null
           created_at: string
           uploaded_by: string | null
+          library_doc_id: string | null
         }
         Insert: {
           id?: string
@@ -1276,6 +1851,7 @@ export type Database = {
           expiry_date?: string | null
           created_at?: string
           uploaded_by?: string | null
+          library_doc_id?: string | null
         }
         Update: {
           id?: string
@@ -1288,6 +1864,7 @@ export type Database = {
           expiry_date?: string | null
           created_at?: string
           uploaded_by?: string | null
+          library_doc_id?: string | null
         }
         Relationships: [
             {
@@ -2221,6 +2798,58 @@ export type Database = {
         }
         Relationships: []
       }
+      space_component_overrides: {
+        Row: {
+          id: string
+          space_id: string
+          component_id: string
+          mode: string
+          note: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          space_id?: string
+          component_id?: string
+          mode?: string
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          space_id?: string
+          component_id?: string
+          mode?: string
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "space_component_overrides_space_id_fkey"
+              columns: ["space_id"]
+              isOneToOne: false
+              referencedRelation: "spaces"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "space_component_overrides_component_id_fkey"
+              columns: ["component_id"]
+              isOneToOne: false
+              referencedRelation: "components"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "space_component_overrides_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       spaces: {
         Row: {
           id: string
@@ -2237,6 +2866,8 @@ export type Database = {
           updated_by: string | null
           height_m: number | null
           show_label: boolean
+          kind: string
+          assigned_id: string | null
         }
         Insert: {
           id?: string
@@ -2253,6 +2884,8 @@ export type Database = {
           updated_by?: string | null
           height_m?: number | null
           show_label?: boolean
+          kind?: string
+          assigned_id?: string | null
         }
         Update: {
           id?: string
@@ -2269,6 +2902,8 @@ export type Database = {
           updated_by?: string | null
           height_m?: number | null
           show_label?: boolean
+          kind?: string
+          assigned_id?: string | null
         }
         Relationships: [
             {
