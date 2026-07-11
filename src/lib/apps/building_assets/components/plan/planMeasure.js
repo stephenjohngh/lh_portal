@@ -75,6 +75,63 @@ export function centroid(polygon) {
 }
 
 /**
+ * Ray-casting point-in-polygon test. Affine-invariant, so it needs no aspect
+ * ratio (scaling x doesn't change inside/outside). Point and vertices are {x,y}
+ * in the 0–1 plan frame. A point exactly on an edge/vertex is indeterminate
+ * (either result may be returned) — use distanceToPolygon for edge tolerance.
+ * @param {{x:number,y:number}} pt
+ * @param {Array<{x:number,y:number}>} polygon
+ * @returns {boolean}
+ */
+export function pointInPolygon(pt, polygon) {
+  if (!pt || !polygon || polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    const intersect = (yi > pt.y) !== (yj > pt.y)
+      && pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Point-to-segment distance in AR-corrected space (x scaled by AR). Private.
+function distToSegment(p, a, b, AR) {
+  const px = p.x * AR, ax = a.x * AR, bx = b.x * AR;
+  const py = p.y,      ay = a.y,      by = b.y;
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 === 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t * dx, cy = ay + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
+/**
+ * Minimum distance from a point to a polygon's edges, in AR-corrected
+ * normalised-height space (x scaled by AR) so it matches measurePerimeter /
+ * measureSides. The polygon is treated as closed. Returns Infinity for a
+ * degenerate polygon (< 2 vertices). Note: a point *inside* still returns its
+ * distance to the nearest edge — membership tests combine this with
+ * pointInPolygon (see spaceMembership.js).
+ * @param {{x:number,y:number}} pt
+ * @param {Array<{x:number,y:number}>} polygon
+ * @param {number} AR  image aspect ratio (width / height); defaults to 1
+ * @returns {number}
+ */
+export function distanceToPolygon(pt, polygon, AR = 1) {
+  if (!pt || !polygon || polygon.length < 2) return Infinity;
+  let min = Infinity;
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i];
+    const b = polygon[(i + 1) % polygon.length];
+    min = Math.min(min, distToSegment(pt, a, b, AR));
+  }
+  return min;
+}
+
+/**
  * Derive metres_per_unit from a stored scale reference.
  * @param {{ x1:number, y1:number, x2:number, y2:number, metres:number }|null} scaleRef
  * @param {number|null} AR  image aspect ratio (width / height)
