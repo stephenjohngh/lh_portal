@@ -42,6 +42,7 @@ function createBuildingAssetsStore() {
     // Plan / spatial data
     plans:             [],   // plans[]
     spaces:            [],   // spaces[] — named polygon areas on floor plans
+    spaceOverrides:    [],   // space_component_overrides[] — manual membership include/exclude
     annotations:       [],   // plan_annotations[] — free-form text labels on plans
     // UI state
     loading:           false,
@@ -62,7 +63,7 @@ function createBuildingAssetsStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [facilities, floors, systems, types, defs, options, regime, plans, spaces, annotations] =
+      const [facilities, floors, systems, types, defs, options, regime, plans, spaces, spaceOverrides, annotations] =
         await Promise.all([
           api.get('facilities'),
           api.get('floors',              { orderBy: 'level_order',        ascending: true }),
@@ -73,6 +74,7 @@ function createBuildingAssetsStore() {
           api.get('maintenance_regime'),
           api.get('plans',              { orderBy: 'building',           ascending: true }),
           api.get('spaces',             { orderBy: 'created_at',         ascending: false }),
+          api.get('space_component_overrides'),
           api.get('plan_annotations',   { orderBy: 'created_at',         ascending: false })
         ]);
 
@@ -84,7 +86,7 @@ function createBuildingAssetsStore() {
         facilities, floors,
         systems, types, attrDefs, systemAttrDefs, attrOptions,
         regime: regimeMap,
-        plans, spaces, annotations,
+        plans, spaces, spaceOverrides, annotations,
         loading: false
       }));
       logger('Loaded hierarchy, plans, spaces and annotations');

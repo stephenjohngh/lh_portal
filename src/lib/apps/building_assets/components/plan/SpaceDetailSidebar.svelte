@@ -14,6 +14,7 @@
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { componentsInSpace } from '../../utils/spaceMembership.js';
   import { statusDotCls, statusCfg } from '$lib/utils/resultConstants.js';
+  import { permissions } from '$lib/stores/permissions';
 
   export let space;
   export let floors               = [];
@@ -100,10 +101,45 @@
   $: refPreview = space
     ? buildSpaceRef({ ...space, kind: editKind, assigned_id: editAssignedId.trim() || null }, floors)
     : '—';
-  // Components whose marker falls within this space (derive-at-read, §4.3).
+  // Components whose marker falls within this space (derive-at-read, §4.3),
+  // with manual include/exclude overrides applied.
   $: members = space
-    ? componentsInSpace(space, $buildingAssetsStore.components, [], { AR: planAR ?? 1 })
+    ? componentsInSpace(space, $buildingAssetsStore.components, $buildingAssetsStore.spaceOverrides ?? [], { AR: planAR ?? 1 })
     : [];
+
+  // -- Membership overrides (admin) ----------------------------------
+  $: canManage = !readOnly && $permissions.isAdmin;
+  $: overridesForSpace = space
+    ? ($buildingAssetsStore.spaceOverrides ?? []).filter(o => o.space_id === space.id)
+    : [];
+  function overrideModeFor(cid) {
+    return overridesForSpace.find(o => o.component_id === cid)?.mode ?? null;
+  }
+  $: excludedIds        = overridesForSpace.filter(o => o.mode === 'exclude').map(o => o.component_id);
+  $: excludedComponents = $buildingAssetsStore.components.filter(c => excludedIds.includes(c.id));
+  $: memberIds          = new Set(members.map(m => m.id));
+  // Components eligible to pin: on this plan (or unplaced), not already a member.
+  $: pinCandidates = space
+    ? $buildingAssetsStore.components
+        .filter(c => (c.plan_id === space.plan_id || c.plan_id == null)
+                  && !memberIds.has(c.id) && !excludedIds.includes(c.id))
+        .slice(0, 200)
+    : [];
+
+  async function setOverride(cid, mode) {
+    const sid = space.id;                       // capture before await (Svelte 5)
+    try { await buildingAssetsStore.setMemberOverride(sid, cid, mode); }
+    catch (err) { errorMsg = err.message; }
+  }
+  async function clearOverride(cid) {
+    const sid = space.id;
+    try { await buildingAssetsStore.removeMemberOverride(sid, cid); }
+    catch (err) { errorMsg = err.message; }
+  }
+  function onPinSelect(e) {
+    const cid = e.currentTarget.value;
+    if (cid) { setOverride(cid, 'include'); e.currentTarget.value = ''; }
+  }
 
 
   async function handleSave() {
@@ -221,7 +257,7 @@
       </div>
     {/if}
 
-    <!-- -- Components in this space (derived membership) ------------- -->
+    <!-- -- Components in this space (derived membership + overrides) - -->
     <div class="flex flex-col gap-1.5">
       <p class="text-xs text-slate-400">
         Components in this space
@@ -233,12 +269,51 @@
             <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-700/40 border border-slate-700/60">
               <span class="w-2 h-2 rounded-full shrink-0 {statusDotCls(c.status)}" title={statusCfg(c.status).label}></span>
               <span class="text-xs font-mono text-slate-300 truncate">{buildComponentRef(c, floors, $buildingAssetsStore.types)}</span>
-              {#if c.label}<span class="text-xs text-slate-500 truncate">{c.label}</span>{/if}
+              <span class="text-xs text-slate-500 truncate flex-1">{c.label ?? ''}</span>
+              {#if overrideModeFor(c.id) === 'include'}
+                <span class="text-[10px] px-1 py-0.5 rounded bg-purple-600/30 text-purple-300 shrink-0" title="Manually pinned">pinned</span>
+              {/if}
+              {#if canManage}
+                {#if overrideModeFor(c.id) === 'include'}
+                  <button on:click={() => clearOverride(c.id)} title="Unpin from this space"
+                    class="text-slate-500 hover:text-white shrink-0 text-xs">unpin</button>
+                {:else}
+                  <button on:click={() => setOverride(c.id, 'exclude')} title="Exclude from this space"
+                    class="text-slate-500 hover:text-red-400 shrink-0 text-xs">✕</button>
+                {/if}
+              {/if}
             </div>
           {/each}
         </div>
       {:else}
         <p class="text-xs text-slate-600 italic">No components fall within this space's outline.</p>
+      {/if}
+
+      <!-- Excluded (admin) -->
+      {#if canManage && excludedComponents.length > 0}
+        <div class="mt-1 flex flex-col gap-1">
+          <p class="text-[11px] text-slate-500">Excluded ({excludedComponents.length})</p>
+          {#each excludedComponents as c (c.id)}
+            <div class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/40">
+              <span class="text-xs font-mono text-slate-500 line-through truncate flex-1">{buildComponentRef(c, floors, $buildingAssetsStore.types)}</span>
+              <button on:click={() => clearOverride(c.id)} title="Restore to this space"
+                class="text-slate-500 hover:text-green-400 shrink-0 text-xs">restore</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      <!-- Pin a component (admin) -->
+      {#if canManage}
+        <div class="flex flex-col gap-1 mt-1">
+          <label class="text-[11px] text-slate-500" for="sp-pin">Pin a component (unplaced, cross-floor, or a near-miss)</label>
+          <select id="sp-pin" class={inp} on:change={onPinSelect}>
+            <option value="">＋ add a component…</option>
+            {#each pinCandidates as c (c.id)}
+              <option value={c.id}>{buildComponentRef(c, floors, $buildingAssetsStore.types)}{c.label ? ' — ' + c.label : ''}</option>
+            {/each}
+          </select>
+        </div>
       {/if}
     </div>
 

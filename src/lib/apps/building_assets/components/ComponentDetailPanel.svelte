@@ -97,10 +97,10 @@
   // Type badge for the original (unedited) type
   $: origType = typeByCode(types, component.type_code);
 
-  // Spaces this component falls within (derive-at-read reverse lookup, §4.3).
-  // Reflects the SAVED position — edits show after Save.
-  $: componentSpaces = component?.plan_id
-    ? spacesForComponent(component, $buildingAssetsStore.spaces ?? [], [], {
+  // Spaces this component falls within (derive-at-read reverse lookup, §4.3),
+  // including manual pins. Reflects the SAVED position — edits show after Save.
+  $: componentSpaces = component
+    ? spacesForComponent(component, $buildingAssetsStore.spaces ?? [], $buildingAssetsStore.spaceOverrides ?? [], {
         AR: plans.find(p => p.id === component.plan_id)?.image_aspect_ratio ?? 1,
       })
     : [];
@@ -418,7 +418,7 @@
     </section>
 
     <!-- -- Spaces (derived membership) ----------------------------- -->
-    {#if component.plan_id}
+    {#if component.plan_id || componentSpaces.length > 0}
       <section>
         <p class={sec}>Spaces</p>
         {#if componentSpaces.length > 0}

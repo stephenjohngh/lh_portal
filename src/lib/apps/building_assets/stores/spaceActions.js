@@ -90,5 +90,41 @@ export function createSpaceActions(update) {
       { ...AUDIT_OPTS, beforeData: before });
   }
 
-  return { createSpace, updateSpace, updateSpacePolygon, deleteSpace };
+  // -- Membership overrides (space_component_overrides) --------------------
+  // Manual include/exclude that layer over derived geometric membership (§4.3).
+  // Upsert on the (space_id, component_id) unique key so toggling mode replaces.
+
+  async function setMemberOverride(spaceId, componentId, mode, note = null) {
+    const userId = requireUserId();
+    const row = await api.upsert('space_component_overrides',
+      { space_id: spaceId, component_id: componentId, mode, note, created_by: userId },
+      { onConflict: 'space_id,component_id' });
+    update(s => {
+      const others = s.spaceOverrides.filter(
+        o => !(o.space_id === spaceId && o.component_id === componentId));
+      return { ...s, spaceOverrides: [...others, row] };
+    });
+    logger('Set member override:', mode, spaceId, componentId);
+    logAudit('update', 'space_member_override', row.id, mode,
+      { ...AUDIT_OPTS, afterData: row });
+    return row;
+  }
+
+  async function removeMemberOverride(spaceId, componentId) {
+    await api.deleteMany('space_component_overrides',
+      { space_id: spaceId, component_id: componentId });
+    update(s => ({
+      ...s,
+      spaceOverrides: s.spaceOverrides.filter(
+        o => !(o.space_id === spaceId && o.component_id === componentId)),
+    }));
+    logger('Removed member override:', spaceId, componentId);
+    logAudit('delete', 'space_member_override', `${spaceId}:${componentId}`, 'override cleared',
+      { ...AUDIT_OPTS });
+  }
+
+  return {
+    createSpace, updateSpace, updateSpacePolygon, deleteSpace,
+    setMemberOverride, removeMemberOverride,
+  };
 }
