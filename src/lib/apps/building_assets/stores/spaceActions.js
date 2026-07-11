@@ -7,6 +7,9 @@ import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { requireUserId } from './helpers.js';
+import { componentsInSpace } from '../utils/spaceMembership.js';
+import { buildRegisterRow }  from '../utils/spaceReport.js';
+import { computeMetresPerUnit, measureArea } from '../components/plan/planMeasure.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -123,8 +126,32 @@ export function createSpaceActions(update) {
       { ...AUDIT_OPTS });
   }
 
+  // -- Reporting (P3) -----------------------------------------------------
+  // Building-wide spaces register: one row per space with member counts (by
+  // status) and floor area. Resolves membership + area per space from current
+  // in-memory state (derive-at-read). Returns plain row objects; the caller
+  // serialises to CSV via spaceReport.spacesRegisterCsvRows.
+  function buildSpacesRegister() {
+    let rows = [];
+    update(s => {
+      rows = s.spaces.map(space => {
+        const plan = s.plans.find(p => p.id === space.plan_id);
+        const AR   = plan?.image_aspect_ratio
+          ?? (plan?.image_width && plan?.image_height ? plan.image_width / plan.image_height : 1);
+        const mpu  = computeMetresPerUnit(plan?.scale_ref, AR);
+        const members = componentsInSpace(space, s.components, s.spaceOverrides, { AR });
+        const area_m2 = (space.polygon?.length >= 3 && mpu)
+          ? measureArea(space.polygon, AR, mpu) : null;
+        return buildRegisterRow(space, members, s.floors, { area_m2 });
+      });
+      return s;
+    });
+    return rows;
+  }
+
   return {
     createSpace, updateSpace, updateSpacePolygon, deleteSpace,
     setMemberOverride, removeMemberOverride,
+    buildSpacesRegister,
   };
 }

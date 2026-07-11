@@ -13,7 +13,9 @@
   import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { componentsInSpace } from '../../utils/spaceMembership.js';
+  import { spaceRollup, spaceMembersCsvRows, spacesRegisterCsvRows } from '../../utils/spaceReport.js';
   import { statusDotCls, statusCfg } from '$lib/utils/resultConstants.js';
+  import { downloadCsvRows } from '$lib/utils/download.js';
   import { permissions } from '$lib/stores/permissions';
 
   export let space;
@@ -141,6 +143,20 @@
     if (cid) { setOverride(cid, 'include'); e.currentTarget.value = ''; }
   }
 
+  // -- Reporting (P3) ------------------------------------------------
+  $: rollup = spaceRollup(members);
+  function exportMembers() {
+    const safeRef = (refPreview || 'space').replace(/[\\/]/g, '-');
+    downloadCsvRows(`space-${safeRef}-components.csv`,
+      spaceMembersCsvRows(space, members, floors, $buildingAssetsStore.types));
+  }
+  function exportRegister() {
+    try {
+      const rows = buildingAssetsStore.buildSpacesRegister();
+      downloadCsvRows('spaces-register.csv', spacesRegisterCsvRows(rows));
+    } catch (err) { errorMsg = err.message; }
+  }
+
 
   async function handleSave() {
     if (!editName.trim()) { errorMsg = 'Name is required.'; return; }
@@ -259,10 +275,24 @@
 
     <!-- -- Components in this space (derived membership + overrides) - -->
     <div class="flex flex-col gap-1.5">
-      <p class="text-xs text-slate-400">
-        Components in this space
-        <span class="text-slate-600 font-normal">({members.length})</span>
-      </p>
+      <div class="flex items-center justify-between gap-2">
+        <p class="text-xs text-slate-400">
+          Components in this space
+          <span class="text-slate-600 font-normal">({members.length})</span>
+        </p>
+        {#if members.length > 0}
+          <button on:click={exportMembers} title="Export these components to CSV"
+            class="text-xs text-slate-500 hover:text-teal-400 transition-colors shrink-0">⬇ CSV</button>
+        {/if}
+      </div>
+      {#if rollup.total > 0}
+        <div class="flex flex-wrap gap-1 text-[10px]">
+          {#if rollup.byStatus.ok}<span class="px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">{rollup.byStatus.ok} OK</span>{/if}
+          {#if rollup.byStatus.problem}<span class="px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-400">{rollup.byStatus.problem} Problem</span>{/if}
+          {#if rollup.byStatus.failed}<span class="px-1.5 py-0.5 rounded bg-red-900/40 text-red-400">{rollup.byStatus.failed} Failed</span>{/if}
+          {#if rollup.byStatus.inactive}<span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">{rollup.byStatus.inactive} Inactive</span>{/if}
+        </div>
+      {/if}
       {#if members.length > 0}
         <div class="flex flex-col gap-1 max-h-48 overflow-y-auto">
           {#each members as c (c.id)}
@@ -315,6 +345,10 @@
           </select>
         </div>
       {/if}
+
+      <!-- Whole-building register export -->
+      <button on:click={exportRegister} title="Export the whole-building spaces register to CSV"
+        class="text-[11px] text-slate-500 hover:text-teal-400 transition-colors self-start mt-1">⬇ Spaces register (all spaces)</button>
     </div>
 
       {#if readOnly}
