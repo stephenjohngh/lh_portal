@@ -75,6 +75,14 @@
   // Colour comparison handles 'none' (transparent) correctly.
   $: derivedName = deriveSpaceName(editLabel);
 
+  // Configured usage list (admin-managed); fall back to the hardcoded set when
+  // the table is empty/absent. Keep the current value selectable even if it was
+  // since removed from the list.
+  $: usageList    = $buildingAssetsStore.spaceUsages?.length
+    ? $buildingAssetsStore.spaceUsages.map(u => u.value)
+    : SPACE_USAGES;
+  $: usageOptions = editType && !usageList.includes(editType) ? [editType, ...usageList] : usageList;
+
   $: dirty = !!space && (
     editLabel     !== (space.label ?? space.name ?? '')  ||
     editName      !== (space.name       ?? '')  ||
@@ -432,7 +440,7 @@
         <label class="text-xs text-slate-400" for="sp-type">Usage</label>
         <select id="sp-type" bind:value={editType} class={inp}>
           <option value="">— none —</option>
-          {#each SPACE_USAGES as st}
+          {#each usageOptions as st}
             <option value={st}>{st}</option>
           {/each}
         </select>

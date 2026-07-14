@@ -16,6 +16,7 @@
   import AuditLogsView from './components/AuditLogsView.svelte';
   import ComponentTypesTab from './components/ComponentTypesTab.svelte';
   import FloorPanel from './components/FloorPanel.svelte';
+  import SpaceUsagesPanel from './components/SpaceUsagesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
   import TenYearPlanTab from './components/TenYearPlanTab.svelte';
@@ -43,6 +44,7 @@
   ];
   const otherConfigTabs = [
     { id: 'floors',    icon: '🏢', label: 'Floors' },
+    { id: 'usages',    icon: '🏷', label: 'Space Usages' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
     { id: 'database',  icon: '🔌', label: 'Database' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
@@ -104,7 +106,7 @@
 
   async function activateTab(id) {
     activeTab = id;
-    if ((id === 'types' || id === 'floors' || id === 'maint-groups' || id === 'ten-year' || id === 'inspections') && !assetsStoreLoaded) {
+    if ((id === 'types' || id === 'floors' || id === 'usages' || id === 'maint-groups' || id === 'ten-year' || id === 'inspections') && !assetsStoreLoaded) {
       assetsStoreLoaded = true;
       await buildingAssetsStore.load();
     }
@@ -301,6 +303,16 @@
         floors={$buildingAssetsStore.floors}
         facilities={$buildingAssetsStore.facilities}
         on:saved={() => buildingAssetsStore.load()}
+      />
+    {/if}
+
+  {:else if activeTab === 'usages'}
+    {#if $buildingAssetsStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <SpaceUsagesPanel
+        usages={$buildingAssetsStore.spaceUsages}
+        on:saved={() => buildingAssetsStore.loadSpaceUsages()}
       />
     {/if}
 

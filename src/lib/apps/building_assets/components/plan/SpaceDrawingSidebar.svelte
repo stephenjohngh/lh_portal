@@ -18,9 +18,11 @@
   export let spaceUsage  = '';
   export let colourHex   = ACCENT;
   export let showLabel   = true;
+  export let usages      = [];   // configured usage values; falls back to SPACE_USAGES
 
   const dispatch = createEventDispatcher();
 
+  $: usageOptions = usages.length ? usages : SPACE_USAGES;
   // Report name defaults to the label stripped to alphanumerics (shown as a hint).
   $: derivedName = deriveSpaceName(spaceLabel);
   $: canFinish   = vertices.length >= 3 && spaceLabel.trim().length > 0;
@@ -77,7 +79,7 @@
     <p class="text-xs text-slate-400">Usage</p>
     <select bind:value={spaceUsage} class={inp}>
       <option value="">— select —</option>
-      {#each SPACE_USAGES as st}
+      {#each usageOptions as st}
         <option value={st}>{st}</option>
       {/each}
     </select>

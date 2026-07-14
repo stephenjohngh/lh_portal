@@ -43,6 +43,7 @@ function createBuildingAssetsStore() {
     plans:             [],   // plans[]
     spaces:            [],   // spaces[] — named polygon areas on floor plans
     spaceOverrides:    [],   // space_component_overrides[] — manual membership include/exclude
+    spaceUsages:       [],   // space_usages[] — admin-configurable usage list (value, presentation_order)
     annotations:       [],   // plan_annotations[] — free-form text labels on plans
     // UI state
     loading:           false,
@@ -81,12 +82,21 @@ function createBuildingAssetsStore() {
       const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
         resolveHierarchy(systems, types, defs, options, regime);
 
+      // space_usages is loaded separately + gracefully — the table may not
+      // exist yet (migration 163), and the UI falls back to the hardcoded list.
+      let spaceUsages = [];
+      try {
+        spaceUsages = await api.get('space_usages', { orderBy: 'presentation_order', ascending: true });
+      } catch (e) {
+        logger('space_usages unavailable (pre-migration?) — using fallback list:', e.message);
+      }
+
       update(s => ({
         ...s,
         facilities, floors,
         systems, types, attrDefs, systemAttrDefs, attrOptions,
         regime: regimeMap,
-        plans, spaces, spaceOverrides, annotations,
+        plans, spaces, spaceOverrides, spaceUsages, annotations,
         loading: false
       }));
       logger('Loaded hierarchy, plans, spaces and annotations');
@@ -96,9 +106,21 @@ function createBuildingAssetsStore() {
     }
   }
 
+  // Refresh just the configurable space-usage list (after admin CRUD) —
+  // lighter than a full load(). Degrades gracefully if the table is absent.
+  async function loadSpaceUsages() {
+    try {
+      const spaceUsages = await api.get('space_usages', { orderBy: 'presentation_order', ascending: true });
+      update(s => ({ ...s, spaceUsages }));
+    } catch (e) {
+      logger('loadSpaceUsages failed:', e.message);
+    }
+  }
+
   return {
     subscribe,
     load,
+    loadSpaceUsages,
     ...typeActions,
     ...compActions,
     ...planActions,

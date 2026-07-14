@@ -636,6 +636,7 @@
       {:else if sidebarMode === 'space-drawing'}
         <SpaceDrawingSidebar
           vertices={$drawingVertices} {saving}
+          usages={(store.spaceUsages ?? []).map(u => u.value)}
           bind:spaceLabel={drawingSpaceLabel}
           bind:spaceName={drawingSpaceName}
           bind:spaceUsage={drawingSpaceType}

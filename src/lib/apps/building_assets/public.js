@@ -154,3 +154,27 @@ export function listFloors() {
 export function updateFloor(id, fields) {
   return api.update('floors', id, fields);
 }
+
+// -- Space usages (admin-configurable list driving the space usage pickers) ----
+// `spaces.usage` is free text; this list just supplies the options + the register
+// filter. Managed from the Admin app (Other Config → Space Usages).
+
+/** List configured space usages in display order. */
+export function listSpaceUsages() {
+  return api.get('space_usages', { orderBy: 'presentation_order', ascending: true });
+}
+
+/** Create a usage. @param {{value:string, presentation_order?:number, userId?:string|null}} data */
+export function createSpaceUsage({ value, presentation_order = 0, userId = null }) {
+  return api.create('space_usages', { value: value.trim(), presentation_order, created_by: userId }, true);
+}
+
+/** Update a usage (value / presentation_order). */
+export function updateSpaceUsage(id, fields) {
+  return api.update('space_usages', id, fields, true);
+}
+
+/** Delete a usage. Existing spaces keep their (free-text) usage value. */
+export function deleteSpaceUsage(id) {
+  return api.delete('space_usages', id);
+}
