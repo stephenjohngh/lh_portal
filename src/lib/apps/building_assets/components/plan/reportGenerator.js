@@ -46,11 +46,12 @@ export async function generateReportDocument(params) {
     includePlan, includeFullComponentList,
     planShowId = true, planShowLabel = false,
     showNotes = false, showLinked = false, showInspectionNotes = false,
-    showAttributes = true, showConditions = true,
+    showAttributes = true, showConditions = true, showSpaces = false,
     filteredByFloor, plans, inspections,
     typeOfFn, systemOfFn, resolveAttrsFn,
     linkedRefsFn = () => '',
     conditionResultsFn = () => [],
+    spacesFn = () => '',
   } = params;
 
   // -- Sort helper — matches the online inventory table -------------------
@@ -106,6 +107,7 @@ export async function generateReportDocument(params) {
           condition_results:     conditionResultsFn(c),
           notes:                 c.notes           ?? null,
           linked_component_ref:  linkedRefsFn(c),
+          spaces:                spacesFn(c),
           last_inspected:        insp?.inspected_at ?? null,
           last_notes:            showInspectionNotes ? (insp?.inspector_notes ?? null) : null,
         };
@@ -148,6 +150,7 @@ export async function generateReportDocument(params) {
             condition_results:    conditionResultsFn(c),
             notes:                c.notes              ?? null,
             linked_component_ref: linkedRefsFn(c),
+            spaces:               spacesFn(c),
             last_inspected:       insp?.inspected_at   ?? null,
             last_notes:           showInspectionNotes ? (insp?.inspector_notes ?? null) : null,
           };
@@ -160,7 +163,7 @@ export async function generateReportDocument(params) {
     method:  'POST',
     headers: await authHeaders(),
     body:    JSON.stringify({
-      options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions },
+      options:       { reportTypes, building, filterSummary, generatedAt, showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces },
       floors:        floorsPayload,
       allComponents: allComponentsPayload,
     }),

@@ -270,7 +270,7 @@
         generatedAt,
         includePlan, includeFullComponentList,
         planShowId, planShowLabel,
-        showNotes, showLinked, showInspectionNotes, showAttributes, showConditions,
+        showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces,
         filteredByFloor,
         plans,
         inspections,
@@ -278,6 +278,7 @@
         systemOfFn:     systemOf,
         resolveAttrsFn: resolveAttrs,
         linkedRefsFn:   c => (componentLinks[c.id] ?? []).map(l => l.to_component_ref).join('\n'),
+        spacesFn:       c => (spacesByComponent.get(c.id) ?? []).join('\n'),
         // Condition results from the latest inspection — used by the Word
         // generator to draw a per-component sub-row showing checklist outcomes.
         conditionResultsFn: c => {

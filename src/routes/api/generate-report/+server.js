@@ -169,21 +169,23 @@ function sortComponents(comps) {
 
 function buildFullComponentListTable(components, colOpts = {}) {
   const { showNotes = false, showLinked = false, showInspectionNotes = false,
-          showAttributes = true, showConditions = true } = colOpts;
+          showAttributes = true, showConditions = true, showSpaces = false } = colOpts;
 
   const FLOOR_W = 400;
   const TYPE_W  = 1600;
   const ID_W    = 560;
   const STAT_W  = 1100;   // fits 'Problem' / 'Inactive' on one line
+  const SPACE_W = showSpaces          ? 1300 : 0;
   const LINK_W  = showLinked          ? 1000 : 0;
   const NOTE_W  = showNotes           ? 1400 : 0;
   const INSP_W  = showInspectionNotes ? 1200 : 0;
-  const remain  = CONTENT_W - FLOOR_W - TYPE_W - ID_W - STAT_W - LINK_W - NOTE_W - INSP_W;
+  const remain  = CONTENT_W - FLOOR_W - TYPE_W - ID_W - STAT_W - SPACE_W - LINK_W - NOTE_W - INSP_W;
   // When the Attributes column is hidden, Label takes the freed width.
   const LABEL_W = showAttributes ? Math.round(remain * 0.60) : remain;
   const ATTR_W  = showAttributes ? remain - LABEL_W : 0;
 
   const colWidths = [FLOOR_W, TYPE_W, ID_W, LABEL_W,
+    ...(showSpaces          ? [SPACE_W] : []),
     ...(showAttributes      ? [ATTR_W] : []),
     ...(showLinked          ? [LINK_W] : []),
     ...(showNotes           ? [NOTE_W] : []),
@@ -197,6 +199,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
       hCell('Type',        TYPE_W),
       hCell('Id',          ID_W),
       hCell('Label',       LABEL_W),
+      ...(showSpaces          ? [hCell('Space(s)',    SPACE_W)] : []),
       ...(showAttributes      ? [hCell('Attributes',  ATTR_W)] : []),
       ...(showLinked          ? [hCell('Linked',      LINK_W)] : []),
       ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
@@ -215,6 +218,7 @@ function buildFullComponentListTable(components, colOpts = {}) {
         dCell(c.type_name    ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id     ?? '—', ID_W,    { alt }),
         dCell(c.label        ?? '—', LABEL_W, { alt }),
+        ...(showSpaces          ? [dCell(c.spaces ?? '',              SPACE_W, { alt })] : []),
         ...(showAttributes      ? [dCell(attrs || '—',                   ATTR_W, { alt })] : []),
         ...(showLinked          ? [dCell(c.linked_component_ref ?? '', LINK_W, { alt })] : []),
         ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
@@ -276,20 +280,22 @@ function buildFullComponentListSection(allComponents, building, filterSummary, c
 
 function buildComponentTable(components, colOpts = {}) {
   const { showNotes = false, showLinked = false, showInspectionNotes = false,
-          showAttributes = true, showConditions = true } = colOpts;
+          showAttributes = true, showConditions = true, showSpaces = false } = colOpts;
 
   const TYPE_W  = 1800;
   const ID_W    = 560;
   const STAT_W  = 1100;   // fits 'Problem' / 'Inactive' on one line
+  const SPACE_W = showSpaces          ? 1300 : 0;
   const LINK_W  = showLinked          ? 1100 : 0;
   const NOTE_W  = showNotes           ? 1500 : 0;
   const INSP_W  = showInspectionNotes ? 1400 : 0;
-  const remain  = CONTENT_W - TYPE_W - ID_W - STAT_W - LINK_W - NOTE_W - INSP_W;
+  const remain  = CONTENT_W - TYPE_W - ID_W - STAT_W - SPACE_W - LINK_W - NOTE_W - INSP_W;
   // When the Attributes column is hidden, Label takes the freed width.
   const LABEL_W = showAttributes ? Math.round(remain * 0.55) : remain;
   const ATTR_W  = showAttributes ? remain - LABEL_W : 0;
 
   const colWidths = [TYPE_W, ID_W, LABEL_W,
+    ...(showSpaces          ? [SPACE_W] : []),
     ...(showAttributes      ? [ATTR_W] : []),
     ...(showLinked          ? [LINK_W] : []),
     ...(showNotes           ? [NOTE_W] : []),
@@ -304,6 +310,7 @@ function buildComponentTable(components, colOpts = {}) {
       hCell('Type',        TYPE_W),
       hCell('Id',          ID_W),
       hCell('Label',       LABEL_W),
+      ...(showSpaces          ? [hCell('Space(s)',    SPACE_W)] : []),
       ...(showAttributes      ? [hCell('Attributes',  ATTR_W)] : []),
       ...(showLinked          ? [hCell('Linked',      LINK_W)] : []),
       ...(showNotes           ? [hCell('Notes',       NOTE_W)] : []),
@@ -320,6 +327,7 @@ function buildComponentTable(components, colOpts = {}) {
         dCell(c.type_name  ?? '—', TYPE_W,  { alt }),
         dCell(c.asset_id   ?? '—', ID_W,    { alt }),
         dCell(c.label      ?? '—', LABEL_W, { alt }),
+        ...(showSpaces          ? [dCell(c.spaces ?? '',              SPACE_W, { alt })] : []),
         ...(showAttributes      ? [dCell(attrs || '—',                   ATTR_W, { alt })] : []),
         ...(showLinked          ? [dCell(c.linked_component_ref ?? '', LINK_W, { alt })] : []),
         ...(showNotes           ? [dCell(c.notes      ?? '',           NOTE_W, { alt })] : []),
@@ -492,8 +500,9 @@ export async function POST({ request }) {
       showInspectionNotes  = false,
       showAttributes       = true,
       showConditions       = true,
+      showSpaces           = false,
     } = options;
-    const colOpts = { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions };
+    const colOpts = { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces };
 
     if (!reportTypes.length) {
       return json({ error: 'No report sections requested.' }, { status: 400 });

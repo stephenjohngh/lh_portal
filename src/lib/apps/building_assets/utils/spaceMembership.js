@@ -75,11 +75,12 @@ export function spacesForComponent(component, spaces = [], overrides = [], opts 
 }
 
 /**
- * Building-wide map of componentId → sorted space-reference strings, resolved
- * once with each space's own plan aspect ratio (membership is plan-scoped and
- * AR-sensitive, so we can't use a single AR building-wide). Reverse of
- * componentsInSpace — drives the Components-tab "Space(s)" column + exports.
- * Derive-at-read; call from the store's in-memory state.
+ * Building-wide map of componentId → sorted space labels ("Reference name",
+ * e.g. "G/S/12 PlantRoom2"), resolved once with each space's own plan aspect
+ * ratio (membership is plan-scoped and AR-sensitive, so we can't use a single
+ * AR building-wide). Reverse of componentsInSpace — drives the Components-tab
+ * "Space(s)" column + exports. Derive-at-read; call from the store's in-memory
+ * state.
  * @param {object[]} components
  * @param {object[]} spaces
  * @param {Array<{space_id:string,component_id:string,mode:'include'|'exclude'}>} [overrides]
@@ -94,11 +95,12 @@ export function componentSpaceRefs(components = [], spaces = [], overrides = [],
   ]));
   const byId = new Map();
   for (const space of spaces) {
-    const AR  = planAR.get(space.plan_id) ?? 1;
-    const ref = buildSpaceRef(space, floors);
+    const AR    = planAR.get(space.plan_id) ?? 1;
+    const ref   = buildSpaceRef(space, floors);
+    const entry = space.name ? `${ref} ${space.name}` : ref;   // "Reference + name" for reports
     for (const c of componentsInSpace(space, components, overrides, { AR, tolerance: opts.tolerance })) {
       const arr = byId.get(c.id);
-      if (arr) arr.push(ref); else byId.set(c.id, [ref]);
+      if (arr) arr.push(entry); else byId.set(c.id, [entry]);
     }
   }
   for (const arr of byId.values()) arr.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
