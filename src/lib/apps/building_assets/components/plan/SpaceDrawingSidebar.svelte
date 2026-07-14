@@ -4,7 +4,7 @@
      parent can also call finish when the user closes the polygon on the canvas. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { SPACE_USAGES, SPACE_COLOURS } from './planMeasure.js';
+  import { SPACE_TYPES, SPACE_COLOURS } from './planMeasure.js';
   import { inp } from '../../ui.js';
   import { ACCENT } from '$lib/theme.js';
   import { deriveSpaceName } from '$lib/utils/spaceRef.js';
@@ -15,14 +15,14 @@
   // label = multi-line plan-view display; name = single-line report name.
   export let spaceLabel  = '';
   export let spaceName   = '';
-  export let spaceUsage  = '';
+  export let spaceType   = '';
   export let colourHex   = ACCENT;
   export let showLabel   = true;
-  export let usages      = [];   // configured usage values; falls back to SPACE_USAGES
+  export let types       = [];   // configured type values; falls back to SPACE_TYPES
 
   const dispatch = createEventDispatcher();
 
-  $: usageOptions = usages.length ? usages : SPACE_USAGES;
+  $: typeOptions = types.length ? types : SPACE_TYPES;
   // Report name defaults to the label stripped to alphanumerics (shown as a hint).
   $: derivedName = deriveSpaceName(spaceLabel);
   $: canFinish   = vertices.length >= 3 && spaceLabel.trim().length > 0;
@@ -74,12 +74,12 @@
     {/if}
   </div>
 
-  <!-- Usage -->
+  <!-- Type -->
   <div class="flex flex-col gap-1 mb-2">
-    <p class="text-xs text-slate-400">Usage</p>
-    <select bind:value={spaceUsage} class={inp}>
+    <p class="text-xs text-slate-400">Type</p>
+    <select bind:value={spaceType} class={inp}>
       <option value="">— select —</option>
-      {#each usageOptions as st}
+      {#each typeOptions as st}
         <option value={st}>{st}</option>
       {/each}
     </select>

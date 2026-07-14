@@ -155,26 +155,26 @@ export function updateFloor(id, fields) {
   return api.update('floors', id, fields);
 }
 
-// -- Space usages (admin-configurable list driving the space usage pickers) ----
-// `spaces.usage` is free text; this list just supplies the options + the register
-// filter. Managed from the Admin app (Other Config → Space Usages).
+// -- Space types (admin-configurable list driving the space type pickers) ------
+// `spaces.type` is free text; this list just supplies the options + the register
+// filter. Managed from the Admin app (Other Config → Space Types).
 
-/** List configured space usages in display order. */
-export function listSpaceUsages() {
-  return api.get('space_usages', { orderBy: 'presentation_order', ascending: true });
+/** List configured space types in display order. */
+export function listSpaceTypes() {
+  return api.get('space_types', { orderBy: 'presentation_order', ascending: true });
 }
 
-/** Create a usage. @param {{value:string, presentation_order?:number, userId?:string|null}} data */
-export function createSpaceUsage({ value, presentation_order = 0, userId = null }) {
-  return api.create('space_usages', { value: value.trim(), presentation_order, created_by: userId }, true);
+/** Create a type. @param {{value:string, presentation_order?:number, userId?:string|null}} data */
+export function createSpaceType({ value, presentation_order = 0, userId = null }) {
+  return api.create('space_types', { value: value.trim(), presentation_order, created_by: userId }, true);
 }
 
-/** Update a usage (value / presentation_order). */
-export function updateSpaceUsage(id, fields) {
-  return api.update('space_usages', id, fields, true);
+/** Update a type (value / presentation_order). */
+export function updateSpaceType(id, fields) {
+  return api.update('space_types', id, fields, true);
 }
 
-/** Delete a usage. Existing spaces keep their (free-text) usage value. */
-export function deleteSpaceUsage(id) {
-  return api.delete('space_usages', id);
+/** Delete a type. Existing spaces keep their (free-text) type value. */
+export function deleteSpaceType(id) {
+  return api.delete('space_types', id);
 }

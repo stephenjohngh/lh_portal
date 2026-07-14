@@ -5,9 +5,9 @@ import { buildSpaceCopyRows, targetSpaceGuards } from './spaceCopy.js';
 const poly = n => [{ x: n, y: 0 }, { x: n + 0.1, y: 0 }, { x: n + 0.1, y: 0.1 }, { x: n, y: 0.1 }];
 
 const src = [
-  { id: 'a', plan_id: 'src', floor_id: 'fG', kind: 'space', assigned_id: '12', name: 'Plant', usage: 'Plant Room', polygon: poly(0.1), colour: '3c9683', height_m: 2.8, show_label: true, notes: 'n' },
-  { id: 'b', plan_id: 'src', floor_id: 'fG', kind: 'slot',  assigned_id: '01', name: 'Bay',   usage: 'Car Park',   polygon: poly(0.3), colour: 'none' },
-  { id: 'c', plan_id: 'src', floor_id: 'fG', kind: 'space', assigned_id: null, name: 'Lobby', usage: null,          polygon: poly(0.5), colour: 'blue' },
+  { id: 'a', plan_id: 'src', floor_id: 'fG', kind: 'space', assigned_id: '12', name: 'Plant', type: 'Plant Room', polygon: poly(0.1), colour: '3c9683', height_m: 2.8, show_label: true, notes: 'n' },
+  { id: 'b', plan_id: 'src', floor_id: 'fG', kind: 'slot',  assigned_id: '01', name: 'Bay',   type: 'Car Park',   polygon: poly(0.3), colour: 'none' },
+  { id: 'c', plan_id: 'src', floor_id: 'fG', kind: 'space', assigned_id: null, name: 'Lobby', type: null,          polygon: poly(0.5), colour: 'blue' },
 ];
 
 describe('targetSpaceGuards', () => {
@@ -25,11 +25,11 @@ describe('targetSpaceGuards', () => {
 });
 
 describe('buildSpaceCopyRows', () => {
-  it('copies to the target plan/floor, preserving fields incl. kind + usage', () => {
+  it('copies to the target plan/floor, preserving fields incl. kind + type', () => {
     const rows = buildSpaceCopyRows(src, { planId: 'tgt', floorId: 'f1', userId: 'u1' });
     expect(rows).toHaveLength(3);
     expect(rows[0]).toMatchObject({
-      plan_id: 'tgt', floor_id: 'f1', name: 'Plant', usage: 'Plant Room',
+      plan_id: 'tgt', floor_id: 'f1', name: 'Plant', type: 'Plant Room',
       kind: 'space', assigned_id: '12', height_m: 2.8, created_by: 'u1', updated_by: 'u1',
     });
     expect(rows[1]).toMatchObject({ kind: 'slot', assigned_id: '01', colour: 'none' });

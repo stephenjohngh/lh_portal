@@ -1,13 +1,13 @@
 ﻿<!-- plan/SpaceDetailSidebar.svelte -->
 <!-- Full detail and edit panel for a selected space.
-     Fields: name, usage, colour, height_m, notes.
+     Fields: name, type, colour, height_m, notes.
      Measurements (perimeter, area, volume) shown when plan is scaled.
      Save / Cancel / Delete footer. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore }          from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
-  import { SPACE_USAGES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
+  import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
   import { ACCENT } from '$lib/theme.js';
   import { buildSpaceRef, KIND_LABEL, deriveSpaceName } from '$lib/utils/spaceRef.js';
@@ -50,7 +50,7 @@
     loadedId      = space?.id ?? null;
     editLabel     = space?.label ?? space?.name ?? '';   // fall back for pre-split rows
     editName      = space?.name        ?? '';
-    editType      = space?.usage       ?? '';
+    editType      = space?.type        ?? '';
     editColourHex = space
       ? (space.colour === 'none' ? 'none' : `#${space.colour}`)
       : ACCENT;
@@ -76,18 +76,18 @@
   // Colour comparison handles 'none' (transparent) correctly.
   $: derivedName = deriveSpaceName(editLabel);
 
-  // Configured usage list (admin-managed); fall back to the hardcoded set when
+  // Configured type list (admin-managed); fall back to the hardcoded set when
   // the table is empty/absent. Keep the current value selectable even if it was
   // since removed from the list.
-  $: usageList    = $buildingAssetsStore.spaceUsages?.length
-    ? $buildingAssetsStore.spaceUsages.map(u => u.value)
-    : SPACE_USAGES;
-  $: usageOptions = editType && !usageList.includes(editType) ? [editType, ...usageList] : usageList;
+  $: typeList    = $buildingAssetsStore.spaceTypes?.length
+    ? $buildingAssetsStore.spaceTypes.map(u => u.value)
+    : SPACE_TYPES;
+  $: typeOptions = editType && !typeList.includes(editType) ? [editType, ...typeList] : typeList;
 
   $: dirty = !!space && (
     editLabel     !== (space.label ?? space.name ?? '')  ||
     editName      !== (space.name       ?? '')  ||
-    editType      !== (space.usage       ?? '')  ||
+    editType      !== (space.type        ?? '')  ||
     editColourHex !== (space.colour === 'none' ? 'none' : `#${space.colour}`) ||
     editNotes     !== (space.notes       ?? '')  ||
     editShowLabel !== (space.show_label  ?? true) ||
@@ -171,7 +171,7 @@
       const updated = await buildingAssetsStore.updateSpace(space.id, {
         label:       editLabel,
         name:        editName,   // store derives from label when blank
-        usage:       editType,
+        type:        editType,
         colour:      editColourHex === 'none' ? 'none' : editColourHex.replace('#', ''),
         height_m:    parsedHeight,
         notes:       editNotes,
@@ -235,7 +235,7 @@
       </p>
     {/if}
 
-    <!-- ===== Identity (component-style: Reference · ID · Type · Name · Usage · Label) ===== -->
+    <!-- ===== Identity (component-style: Reference · ID · Kind · Name · Type · Label) ===== -->
     {#if readOnly}
       <dl class="space-y-2">
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
@@ -247,7 +247,7 @@
           <dd class="text-sm text-slate-200">{space.assigned_id || '—'}</dd>
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-          <dt class="text-xs text-slate-500 shrink-0 w-24">Type</dt>
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Kind</dt>
           <dd class="text-sm text-slate-200">{KIND_LABEL[space.kind] ?? KIND_LABEL.space}</dd>
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
@@ -255,8 +255,8 @@
           <dd class="text-sm text-slate-200">{space.name || '—'}</dd>
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-          <dt class="text-xs text-slate-500 shrink-0 w-24">Usage</dt>
-          <dd class="text-sm text-slate-200">{#if space.usage}{space.usage}{:else}<span class="text-slate-600">—</span>{/if}</dd>
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Type</dt>
+          <dd class="text-sm text-slate-200">{#if space.type}{space.type}{:else}<span class="text-slate-600">—</span>{/if}</dd>
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Label</dt>
@@ -270,14 +270,14 @@
         <p class="text-sm font-mono text-slate-300">{refPreview}</p>
       </div>
 
-      <!-- ID (assigned) + Type (kind) -->
+      <!-- ID (assigned) + Kind (space/slot) -->
       <div class="grid grid-cols-2 gap-2">
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-400" for="sp-assigned">ID</label>
           <input id="sp-assigned" type="text" bind:value={editAssignedId} placeholder="e.g. 12" class={inp} />
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-400" for="sp-kind">Type</label>
+          <label class="text-xs text-slate-400" for="sp-kind">Kind</label>
           <select id="sp-kind" bind:value={editKind} class={inp}>
             <option value="space">{KIND_LABEL.space}</option>
             <option value="slot">{KIND_LABEL.slot}</option>
@@ -296,12 +296,12 @@
         {/if}
       </div>
 
-      <!-- Usage (category) -->
+      <!-- Type (category) -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs text-slate-400" for="sp-type">Usage</label>
+        <label class="text-xs text-slate-400" for="sp-type">Type</label>
         <select id="sp-type" bind:value={editType} class={inp}>
           <option value="">— none —</option>
-          {#each usageOptions as st}
+          {#each typeOptions as st}
             <option value={st}>{st}</option>
           {/each}
         </select>

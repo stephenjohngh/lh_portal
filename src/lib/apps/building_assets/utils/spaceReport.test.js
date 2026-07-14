@@ -7,7 +7,7 @@ import {
 
 const floors = [{ id: 'f1', short_name: 'G' }];
 const types  = [{ code: 'fd', initial: 'FD', name: 'Fire Door' }];
-const space  = { id: 's1', kind: 'space', floor_id: 'f1', assigned_id: '12', name: 'Plant Room', usage: 'Plant Room' };
+const space  = { id: 's1', kind: 'space', floor_id: 'f1', assigned_id: '12', name: 'Plant Room', type: 'Plant Room' };
 const members = [
   { id: 'c1', floor_id: 'f1', type_code: 'fd', asset_id: 'FD-1', status: 'ok',      label: 'Door A' },
   { id: 'c2', floor_id: 'f1', type_code: 'fd', asset_id: 'FD-2', status: 'failed',  label: null },
@@ -38,16 +38,16 @@ describe('buildRegisterRow / spacesRegisterCsvRows', () => {
   it('assembles a register row with rollup + supplied area', () => {
     const row = buildRegisterRow(space, members, floors, { area_m2: 42.35 });
     expect(row).toMatchObject({
-      reference: 'G/S/12', name: 'Plant Room', kind: 'space', usage: 'Plant Room',
+      reference: 'G/S/12', name: 'Plant Room', kind: 'space', type: 'Plant Room',
       floor: 'G', area_m2: 42.35, total: 3, ok: 2, failed: 1, problem: 0, inactive: 0,
     });
   });
   it('serialises register rows to CSV (area rounded, blank when null)', () => {
     const rows = spacesRegisterCsvRows([
       buildRegisterRow(space, members, floors, { area_m2: 42.35 }),
-      buildRegisterRow({ ...space, id: 's2', assigned_id: '13', name: 'Lobby', usage: '' }, [], floors, {}),
+      buildRegisterRow({ ...space, id: 's2', assigned_id: '13', name: 'Lobby', type: '' }, [], floors, {}),
     ]);
-    expect(rows[0]).toBe('Reference,Name,Kind,Usage,Floor,Area m2,Components,OK,Problem,Failed,Inactive');
+    expect(rows[0]).toBe('Reference,Name,Kind,Type,Floor,Area m2,Components,OK,Problem,Failed,Inactive');
     expect(rows[1]).toBe('G/S/12,Plant Room,space,Plant Room,G,42.4,3,2,0,1,0');
     expect(rows[2]).toBe('G/S/13,Lobby,space,,G,,0,0,0,0,0');
   });
@@ -57,7 +57,7 @@ describe('buildSpacesRegisterRows (pure, whole-building)', () => {
   // s1 covers the left half of plan p1; c1 is inside, c2 is outside.
   const s1 = {
     id: 's1', plan_id: 'p1', kind: 'space', assigned_id: '12', floor_id: 'f1',
-    name: 'Plant Room', usage: 'Plant Room',
+    name: 'Plant Room', type: 'Plant Room',
     polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 1 }, { x: 0, y: 1 }],
   };
   const state = {

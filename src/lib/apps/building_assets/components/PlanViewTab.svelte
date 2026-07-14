@@ -400,7 +400,7 @@
         floor_id:   selectedFloorId || null,
         label:      drawingSpaceLabel,        // multi-line plan display
         name:       drawingSpaceName,         // store derives from label when blank
-        usage: drawingSpaceType || null,
+        type: drawingSpaceType || null,
         colour:     drawingColourHex === 'none' ? 'none' : drawingColourHex.replace('#', ''),
         polygon:    $drawingVertices,
         show_label: drawingShowLabel,
@@ -636,10 +636,10 @@
       {:else if sidebarMode === 'space-drawing'}
         <SpaceDrawingSidebar
           vertices={$drawingVertices} {saving}
-          usages={(store.spaceUsages ?? []).map(u => u.value)}
+          types={(store.spaceTypes ?? []).map(u => u.value)}
           bind:spaceLabel={drawingSpaceLabel}
           bind:spaceName={drawingSpaceName}
-          bind:spaceUsage={drawingSpaceType}
+          bind:spaceType={drawingSpaceType}
           bind:colourHex={drawingColourHex}
           bind:showLabel={drawingShowLabel}
           on:finish={handleFinishDrawing}

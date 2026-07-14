@@ -1,25 +1,25 @@
-<!-- src/lib/apps/admin/components/SpaceUsagesPanel.svelte -->
-<!-- Admin CRUD for the configurable space-usage list (space_usages). Drives the
-     usage pickers in Building Assets and the Spaces-register filter. `spaces.usage`
-     is free text, so deleting a usage never breaks existing spaces — they keep
+<!-- src/lib/apps/admin/components/SpaceTypesPanel.svelte -->
+<!-- Admin CRUD for the configurable space-type list (space_types). Drives the
+     type pickers in Building Assets and the Spaces-register filter. `spaces.type`
+     is free text, so deleting a type never breaks existing spaces — they keep
      their value. Writes go through building_assets/public.js; the parent reloads
-     the list on `saved`. Usages are shown in presentation_order. -->
+     the list on `saved`. Types are shown in presentation_order. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { createSpaceUsage, updateSpaceUsage, deleteSpaceUsage } from '$lib/apps/building_assets/public.js';
+  import { createSpaceType, updateSpaceType, deleteSpaceType } from '$lib/apps/building_assets/public.js';
   import { auth } from '$lib/stores/auth';
   import { getLogger } from '$lib/utils/logger';
   import Button        from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
-  export let usages = [];   // [{ id, value, presentation_order }]
+  export let types = [];   // [{ id, value, presentation_order }]
 
   const dispatch = createEventDispatcher();
-  const logger   = getLogger('SpaceUsagesPanel');
+  const logger   = getLogger('SpaceTypesPanel');
 
   // Editable copy of each row.
   let rows = [];
-  $: rows = usages.map(u => ({
+  $: rows = types.map(u => ({
     ...u,
     _value: u.value,
     _order: String(u.presentation_order ?? 0),
@@ -37,23 +37,23 @@
   const inp = 'px-2 py-1 text-sm bg-slate-700 border rounded text-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500';
 
   function nextOrder() {
-    return usages.reduce((m, u) => Math.max(m, u.presentation_order ?? 0), 0) + 10;
+    return types.reduce((m, u) => Math.max(m, u.presentation_order ?? 0), 0) + 10;
   }
 
-  async function addUsage() {
+  async function addType() {
     const value = newValue.trim();
-    if (!value) { errorMsg = 'Enter a usage value.'; return; }
-    if (usages.some(u => u.value.toLowerCase() === value.toLowerCase())) {
-      errorMsg = 'That usage already exists.'; return;
+    if (!value) { errorMsg = 'Enter a type value.'; return; }
+    if (types.some(u => u.value.toLowerCase() === value.toLowerCase())) {
+      errorMsg = 'That type already exists.'; return;
     }
     adding = true; errorMsg = '';
     try {
       const order = newOrder.trim() === '' ? nextOrder() : (parseInt(newOrder, 10) || 0);
-      await createSpaceUsage({ value, presentation_order: order, userId: $auth.user?.id ?? null });
+      await createSpaceType({ value, presentation_order: order, userId: $auth.user?.id ?? null });
       newValue = ''; newOrder = '';
       dispatch('saved');
     } catch (e) {
-      logger('❌ add usage:', e.message); errorMsg = e.message;
+      logger('❌ add type:', e.message); errorMsg = e.message;
     } finally { adding = false; }
   }
 
@@ -70,10 +70,10 @@
     }
     rows = rows.map(r => r.id === row.id ? { ...r, _saving: true, _error: null } : r);
     try {
-      await updateSpaceUsage(row.id, { value, presentation_order: order });
+      await updateSpaceType(row.id, { value, presentation_order: order });
       dispatch('saved');
     } catch (e) {
-      logger('❌ save usage:', e.message);
+      logger('❌ save type:', e.message);
       rows = rows.map(r => r.id === row.id ? { ...r, _saving: false, _error: e.message } : r);
     }
   }
@@ -85,10 +85,10 @@
     const id = pendingDelete.id;
     deletingId = id;
     try {
-      await deleteSpaceUsage(id);
+      await deleteSpaceType(id);
       dispatch('saved');
     } catch (e) {
-      logger('❌ delete usage:', e.message); errorMsg = e.message;
+      logger('❌ delete type:', e.message); errorMsg = e.message;
     } finally {
       deletingId = null; pendingDelete = null;
     }
@@ -98,10 +98,10 @@
 <div class="mt-4 bg-slate-800/50 border border-slate-700 rounded-xl p-4">
 
   <div class="mb-3">
-    <h3 class="text-sm font-semibold text-slate-200">Space Usages</h3>
+    <h3 class="text-sm font-semibold text-slate-200">Space Types</h3>
     <p class="text-xs text-slate-500 mt-0.5">
-      The usage categories offered when drawing/editing a space and used to filter
-      the Spaces register. Shown in order. Deleting a usage does not change spaces
+      The type categories offered when drawing/editing a space and used to filter
+      the Spaces register. Shown in order. Deleting a type does not change spaces
       that already use it.
     </p>
   </div>
@@ -113,27 +113,27 @@
   <!-- Add row -->
   <div class="flex items-end gap-2 mb-4">
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-slate-400" for="new-usage">New usage</label>
-      <input id="new-usage" type="text" bind:value={newValue} placeholder="e.g. Protected escape route"
-        class="{inp} border-slate-600 w-56" on:keydown={(e) => e.key === 'Enter' && addUsage()} />
+      <label class="text-xs text-slate-400" for="new-type">New type</label>
+      <input id="new-type" type="text" bind:value={newValue} placeholder="e.g. Protected escape route"
+        class="{inp} border-slate-600 w-56" on:keydown={(e) => e.key === 'Enter' && addType()} />
     </div>
     <div class="flex flex-col gap-1">
       <label class="text-xs text-slate-400" for="new-order">Order</label>
       <input id="new-order" type="text" inputmode="numeric" bind:value={newOrder} placeholder="auto"
         class="{inp} border-slate-600 w-20" />
     </div>
-    <Button variant="primary" size="sm" loading={adding} disabled={adding} on:click={addUsage}>Add</Button>
+    <Button variant="primary" size="sm" loading={adding} disabled={adding} on:click={addType}>Add</Button>
   </div>
 
   <!-- List -->
   {#if rows.length === 0}
-    <p class="text-xs text-slate-600 italic">No usages configured yet.</p>
+    <p class="text-xs text-slate-600 italic">No types configured yet.</p>
   {:else}
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-slate-700">
-            <th class="text-left text-xs font-medium text-slate-400 pb-2 pr-4">Usage</th>
+            <th class="text-left text-xs font-medium text-slate-400 pb-2 pr-4">Type</th>
             <th class="text-left text-xs font-medium text-slate-400 pb-2 pr-4 w-24">Order</th>
             <th class="pb-2 w-32"></th>
           </tr>
@@ -159,7 +159,7 @@
                   on:click={() => requestDelete(row)}
                   class="ml-2 px-2 py-1 text-xs rounded bg-red-900/40 hover:bg-red-800/50
                          text-red-400 border border-red-800/40 transition-colors"
-                  title="Delete usage"
+                  title="Delete type"
                 >Delete</button>
               </td>
             </tr>
@@ -173,8 +173,8 @@
 
 <ConfirmDialog
   show={!!pendingDelete}
-  title="Delete space usage"
-  message={pendingDelete ? `Delete the usage "${pendingDelete.value}"? Spaces already set to it keep the value; it just won't be offered in the pickers.` : ''}
+  title="Delete space type"
+  message={pendingDelete ? `Delete the type "${pendingDelete.value}"? Spaces already set to it keep the value; it just won't be offered in the pickers.` : ''}
   confirmText="Delete"
   danger={true}
   processing={!!deletingId}

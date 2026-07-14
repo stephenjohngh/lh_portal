@@ -9,7 +9,7 @@
 // and x is multiplied by AR, so diagonal distances are correct regardless
 // of the image's aspect ratio.
 
-export const SPACE_USAGES = [
+export const SPACE_TYPES = [
   'Plant Room', 'Office', 'Corridor', 'Lobby', 'Stairwell',
   'Riser', 'Car Park', 'External', 'WC', 'Store', 'Other',
 ];

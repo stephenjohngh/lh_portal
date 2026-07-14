@@ -67,23 +67,23 @@
   let filterTypeCodes = new Set();
   let filterStatuses  = new Set();
   let filterSpaceIds  = new Set();   // specific spaces (by id)
-  let filterUsages    = new Set();   // space usages (category)
+  let filterTypes     = new Set();   // space types (category)
   let filterKinds     = new Set();   // space kinds ('space' | 'slot')
   let searchQuery     = '';
 
   // -- Space filter resolution ---------------------------------------
-  // The three space controls (specific spaces / usages / kinds) AND together
+  // The three space controls (specific spaces / types / kinds) AND together
   // into a target set of space ids; a component matches if it's in any of them.
   const KIND_OPTIONS = [
     { value: 'space', label: KIND_LABEL.space },
     { value: 'slot',  label: KIND_LABEL.slot },
   ];
   const EMPTY_ID_MAP = new Map();
-  $: spaceFilterActive = filterSpaceIds.size > 0 || filterUsages.size > 0 || filterKinds.size > 0;
+  $: spaceFilterActive = filterSpaceIds.size > 0 || filterTypes.size > 0 || filterKinds.size > 0;
   $: targetSpaceIds = spaceFilterActive
     ? new Set(spaces.filter(sp =>
         (filterSpaceIds.size === 0 || filterSpaceIds.has(sp.id)) &&
-        (filterUsages.size === 0   || filterUsages.has(sp.usage ?? '')) &&
+        (filterTypes.size === 0    || filterTypes.has(sp.type ?? '')) &&
         (filterKinds.size === 0    || filterKinds.has(sp.kind ?? 'space'))
       ).map(sp => sp.id))
     : null;
@@ -91,7 +91,7 @@
   $: componentSpaceIds = spaceFilterActive
     ? componentSpaceIdMap(components, spaces, spaceOverrides, plans)
     : EMPTY_ID_MAP;
-  // Dropdown options: spaces grouped by floor (ref + name), plus usages present.
+  // Dropdown options: spaces grouped by floor (ref + name), plus space types present.
   $: spaceGroups = floors
     .map(f => ({
       label: f.short_name || f.name,
@@ -100,7 +100,7 @@
     }))
     .filter(g => g.options.length > 0);
   $: spaceOptions = spaceGroups.flatMap(g => g.options);   // flat source for the summary
-  $: usageOptions = [...new Set(spaces.map(sp => sp.usage).filter(Boolean))]
+  $: spaceTypeOptions = [...new Set(spaces.map(sp => sp.type).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b))
     .map(u => ({ value: u, label: u }));
 
@@ -142,7 +142,7 @@
       filterTypeCodes: [...filterTypeCodes],
       filterStatuses:  [...filterStatuses],
       filterSpaceIds:  [...filterSpaceIds],
-      filterUsages:    [...filterUsages],
+      filterTypes:     [...filterTypes],
       filterKinds:     [...filterKinds],
       searchQuery,
       fixedAttrFilters,
@@ -174,7 +174,7 @@
     filterStatuses  = new Set(f.filterStatuses  ?? (f.filterStatus  ? [f.filterStatus]  : []));
     // Space filters — default to empty for presets saved before they existed.
     filterSpaceIds  = new Set(f.filterSpaceIds ?? []);
-    filterUsages    = new Set(f.filterUsages   ?? []);
+    filterTypes     = new Set(f.filterTypes    ?? []);
     filterKinds     = new Set(f.filterKinds    ?? []);
     // Default to empty for presets saved before attribute filtering existed
     fixedAttrFilters     = Array.isArray(f.fixedAttrFilters)     ? f.fixedAttrFilters     : [];
@@ -300,7 +300,7 @@
       const names = spaces.filter(sp => filterSpaceIds.has(sp.id)).map(sp => buildSpaceRef(sp, floors)).join(', ');
       parts.push(`Spaces: ${names}`);
     }
-    if (filterUsages.size > 0) parts.push(`Space usage: ${[...filterUsages].join(', ')}`);
+    if (filterTypes.size > 0) parts.push(`Space type: ${[...filterTypes].join(', ')}`);
     if (filterKinds.size > 0)  parts.push(`Space kind: ${[...filterKinds].map(k => KIND_LABEL[k] ?? k).join(', ')}`);
     if (parts.length === 0) return base;
     return base === 'All components' ? parts.join(' · ') : `${base} · ${parts.join(' · ')}`;
@@ -505,7 +505,7 @@
     filterTypeCodes = new Set();
     filterStatuses  = new Set();
     filterSpaceIds  = new Set();
-    filterUsages    = new Set();
+    filterTypes     = new Set();
     filterKinds     = new Set();
     searchQuery     = '';
     fixedAttrFilters     = [];
@@ -754,14 +754,14 @@
           />
         {/if}
 
-        <!-- Usage filter — space category -->
-        {#if usageOptions.length > 0}
+        <!-- Space Type filter — space category (distinct from the component Type filter) -->
+        {#if spaceTypeOptions.length > 0}
           <MultiSelectDropdown
-            label="Usage" placeholder="All usages" noun="usages"
-            options={usageOptions}
-            bind:selected={filterUsages}
-            open={openDropdown === 'usage'}
-            on:toggle={() => openDropdown = openDropdown === 'usage' ? null : 'usage'}
+            label="Space Type" placeholder="All types" noun="types"
+            options={spaceTypeOptions}
+            bind:selected={filterTypes}
+            open={openDropdown === 'spacetype'}
+            on:toggle={() => openDropdown = openDropdown === 'spacetype' ? null : 'spacetype'}
           />
         {/if}
 

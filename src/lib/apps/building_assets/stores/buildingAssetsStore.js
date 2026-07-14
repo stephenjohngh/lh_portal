@@ -43,7 +43,7 @@ function createBuildingAssetsStore() {
     plans:             [],   // plans[]
     spaces:            [],   // spaces[] — named polygon areas on floor plans
     spaceOverrides:    [],   // space_component_overrides[] — manual membership include/exclude
-    spaceUsages:       [],   // space_usages[] — admin-configurable usage list (value, presentation_order)
+    spaceTypes:        [],   // space_types[] — admin-configurable space type list (value, presentation_order)
     annotations:       [],   // plan_annotations[] — free-form text labels on plans
     // UI state
     loading:           false,
@@ -82,13 +82,13 @@ function createBuildingAssetsStore() {
       const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
         resolveHierarchy(systems, types, defs, options, regime);
 
-      // space_usages is loaded separately + gracefully — the table may not
-      // exist yet (migration 163), and the UI falls back to the hardcoded list.
-      let spaceUsages = [];
+      // space_types is loaded separately + gracefully — the table may not
+      // exist yet (migrations 163/164), and the UI falls back to the hardcoded list.
+      let spaceTypes = [];
       try {
-        spaceUsages = await api.get('space_usages', { orderBy: 'presentation_order', ascending: true });
+        spaceTypes = await api.get('space_types', { orderBy: 'presentation_order', ascending: true });
       } catch (e) {
-        logger('space_usages unavailable (pre-migration?) — using fallback list:', e.message);
+        logger('space_types unavailable (pre-migration?) — using fallback list:', e.message);
       }
 
       update(s => ({
@@ -96,7 +96,7 @@ function createBuildingAssetsStore() {
         facilities, floors,
         systems, types, attrDefs, systemAttrDefs, attrOptions,
         regime: regimeMap,
-        plans, spaces, spaceOverrides, spaceUsages, annotations,
+        plans, spaces, spaceOverrides, spaceTypes, annotations,
         loading: false
       }));
       logger('Loaded hierarchy, plans, spaces and annotations');
@@ -106,21 +106,21 @@ function createBuildingAssetsStore() {
     }
   }
 
-  // Refresh just the configurable space-usage list (after admin CRUD) —
+  // Refresh just the configurable space-type list (after admin CRUD) —
   // lighter than a full load(). Degrades gracefully if the table is absent.
-  async function loadSpaceUsages() {
+  async function loadSpaceTypes() {
     try {
-      const spaceUsages = await api.get('space_usages', { orderBy: 'presentation_order', ascending: true });
-      update(s => ({ ...s, spaceUsages }));
+      const spaceTypes = await api.get('space_types', { orderBy: 'presentation_order', ascending: true });
+      update(s => ({ ...s, spaceTypes }));
     } catch (e) {
-      logger('loadSpaceUsages failed:', e.message);
+      logger('loadSpaceTypes failed:', e.message);
     }
   }
 
   return {
     subscribe,
     load,
-    loadSpaceUsages,
+    loadSpaceTypes,
     ...typeActions,
     ...compActions,
     ...planActions,

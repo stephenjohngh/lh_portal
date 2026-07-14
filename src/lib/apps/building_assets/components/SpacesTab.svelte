@@ -1,6 +1,6 @@
 <!-- src/lib/apps/building_assets/components/SpacesTab.svelte -->
 <!-- Building-wide Spaces register: one row per space with reference, kind,
-     usage, floor, area, component count and a status breakdown. Read-only
+     type, floor, area, component count and a status breakdown. Read-only
      report view (all authenticated users); filterable + CSV export. The
      space-grain counterpart to the Components tab. Rows are derived at read
      time from the store (membership + area), reusing buildSpacesRegister() +
@@ -36,25 +36,25 @@
   let search      = '';
   let kindFilter  = 'all';   // 'all' | 'space' | 'slot'
   let floorFilter = 'all';   // 'all' | floor short_name
-  let usageFilter = 'all';   // 'all' | usage value
+  let typeFilter  = 'all';   // 'all' | type value
 
   // Floor options present in the register (short_name), floor order preserved.
   $: floorOptions = store.floors
     .map(f => f.short_name)
     .filter(sn => registerRows.some(r => r.floor === sn));
-  // Usage options: the configured list, restricted to usages actually present.
-  $: usageFilterOptions = (store.spaceUsages?.length
-      ? store.spaceUsages.map(u => u.value)
-      : [...new Set(registerRows.map(r => r.usage).filter(Boolean))])
-    .filter(v => registerRows.some(r => r.usage === v));
+  // Type options: the configured list, restricted to types actually present.
+  $: typeFilterOptions = (store.spaceTypes?.length
+      ? store.spaceTypes.map(u => u.value)
+      : [...new Set(registerRows.map(r => r.type).filter(Boolean))])
+    .filter(v => registerRows.some(r => r.type === v));
 
   $: filteredRows = registerRows.filter(r => {
     if (kindFilter !== 'all'  && r.kind  !== kindFilter)  return false;
     if (floorFilter !== 'all' && r.floor !== floorFilter) return false;
-    if (usageFilter !== 'all' && (r.usage ?? '') !== usageFilter) return false;
+    if (typeFilter !== 'all' && (r.type ?? '') !== typeFilter) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      if (!`${r.reference} ${r.name} ${r.usage}`.toLowerCase().includes(q)) return false;
+      if (!`${r.reference} ${r.name} ${r.type}`.toLowerCase().includes(q)) return false;
     }
     return true;
   });
@@ -143,7 +143,7 @@
                    select-none pointer-events-none">🔍</span>
       <input
         type="search"
-        placeholder="reference / name / usage…"
+        placeholder="reference / name / type…"
         bind:value={search}
         class="{inp} pl-8 w-56"
       />
@@ -162,10 +162,10 @@
       {/each}
     </select>
 
-    {#if usageFilterOptions.length > 0}
-      <select bind:value={usageFilter} class={inp} aria-label="Filter by usage">
-        <option value="all">All usages</option>
-        {#each usageFilterOptions as u}
+    {#if typeFilterOptions.length > 0}
+      <select bind:value={typeFilter} class={inp} aria-label="Filter by type">
+        <option value="all">All types</option>
+        {#each typeFilterOptions as u}
           <option value={u}>{u}</option>
         {/each}
       </select>
@@ -193,7 +193,7 @@
             <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">Reference</th>
             <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">Name</th>
             <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">Kind</th>
-            <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">Usage</th>
+            <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">Type</th>
             <th class="px-3 py-2 text-slate-300 font-semibold uppercase tracking-wide">Floor</th>
             <th class="px-3 py-2 text-right text-slate-300 font-semibold uppercase tracking-wide">Area m²</th>
             <th class="px-3 py-2 text-right text-slate-300 font-semibold uppercase tracking-wide">Cmp</th>
@@ -215,7 +215,7 @@
               <td class="px-3 py-2 font-mono text-teal-400/90 whitespace-nowrap">{r.reference}</td>
               <td class="px-3 py-2 text-slate-300">{r.name || '—'}</td>
               <td class="px-3 py-2 text-slate-400">{kindLabel(r.kind)}</td>
-              <td class="px-3 py-2 text-slate-400">{r.usage || '—'}</td>
+              <td class="px-3 py-2 text-slate-400">{r.type || '—'}</td>
               <td class="px-3 py-2 text-slate-400 whitespace-nowrap">{r.floor || '—'}</td>
               <td class="px-3 py-2 text-right tabular-nums text-slate-300">
                 {r.area_m2 != null ? r.area_m2.toFixed(1) : '—'}

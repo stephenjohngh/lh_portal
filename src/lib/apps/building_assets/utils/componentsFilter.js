@@ -37,7 +37,7 @@ export function filterComponents(components, criteria, ctx) {
     list = list.filter(c => filterFloorIds.has(c.floor_id));
   }
 
-  // Space — the caller resolves the Space/Usage/Kind controls into a set of
+  // Space — the caller resolves the Space/Type/Kind controls into a set of
   // target space ids (null = inactive). A component matches if it belongs to
   // any target space (membership map supplied in ctx).
   if (spaceFilterIds) {

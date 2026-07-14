@@ -30,7 +30,7 @@ export function createSpaceActions(update) {
       // name = single-line report name (derived from the label when blank).
       label:      data.label ?? null,
       name:       data.name?.trim() || deriveSpaceName(data.label ?? ''),
-      usage:      data.usage?.trim() || null,
+      type:       data.type?.trim() || null,
       polygon:    roundPoly(data.polygon),
       colour:     normaliseColour(data.colour),
       height_m:   data.height_m          ?? null,
@@ -47,12 +47,12 @@ export function createSpaceActions(update) {
     return space;
   }
 
-  // Updates editable metadata fields (name, usage, colour, height_m, notes).
+  // Updates editable metadata fields (name, type, colour, height_m, notes).
   // Polygon is intentionally excluded — use updateSpacePolygon for geometry changes.
   async function updateSpace(id, data) {
     const userId = requireUserId();
     const patch = {
-      usage:      data.usage?.trim() || null,
+      type:       data.type?.trim() || null,
       colour:     normaliseColour(data.colour),
       height_m:   data.height_m          ?? null,
       show_label: data.show_label        ?? true,

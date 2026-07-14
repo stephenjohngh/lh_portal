@@ -49,7 +49,7 @@ export function spaceMembersCsvRows(space, members = [], floors = [], types = []
 /**
  * Assemble one building-wide register row from a space + its resolved members.
  * `area_m2` is supplied by the caller (needs per-plan scale), null when unscaled.
- * @returns {{reference,name,kind,usage,floor,area_m2,total,ok,problem,failed,inactive}}
+ * @returns {{reference,name,kind,type,floor,area_m2,total,ok,problem,failed,inactive}}
  */
 export function buildRegisterRow(space, members = [], floors = [], opts = {}) {
   const { byStatus, total } = spaceRollup(members);
@@ -58,7 +58,7 @@ export function buildRegisterRow(space, members = [], floors = [], opts = {}) {
     reference: buildSpaceRef(space, floors),
     name:      space?.name ?? '',
     kind:      space?.kind ?? 'space',
-    usage:     space?.usage ?? '',
+    type:      space?.type ?? '',
     floor:     floors.find(f => f.id === space?.floor_id)?.short_name ?? '',
     area_m2:   opts.area_m2 ?? null,
     total,
@@ -94,10 +94,10 @@ export function buildSpacesRegisterRows(state = {}) {
  * @returns {string[]}
  */
 export function spacesRegisterCsvRows(rows = []) {
-  const header = ['Reference', 'Name', 'Kind', 'Usage', 'Floor', 'Area m2',
+  const header = ['Reference', 'Name', 'Kind', 'Type', 'Floor', 'Area m2',
     'Components', 'OK', 'Problem', 'Failed', 'Inactive'];
   const lines = rows.map(r => [
-    r.reference, r.name, r.kind, r.usage, r.floor,
+    r.reference, r.name, r.kind, r.type, r.floor,
     r.area_m2 != null ? r.area_m2.toFixed(1) : '',
     r.total, r.ok, r.problem, r.failed, r.inactive,
   ].map(csvEsc).join(','));
