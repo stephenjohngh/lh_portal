@@ -32,6 +32,7 @@
   } from '../utils/attrFilters.js';
   import { resolveFixedAttrs } from '../utils/componentsCsv.js';
   import { buildComponentsCsvRows } from '../utils/reportModel.js';
+  import { componentSpaceRefs } from '../utils/spaceMembership.js';
   import { generateXlsxDocument } from './plan/xlsxReportGenerator.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
   import { fmtGenerated }   from '$lib/utils/dates.js';
@@ -50,6 +51,8 @@
   $: componentAttrs = store.componentAttrs;
   $: componentLinks = store.componentLinks;
   $: inspections    = store.inspections;
+  $: spaces         = store.spaces;
+  $: spaceOverrides = store.spaceOverrides ?? [];
 
   // -- Floor presets -------------------------------------------------
   // short_name sets that define each preset
@@ -105,7 +108,7 @@
       fixedAttrFilters,
       conditionAttrFilters,
     },
-    columns: { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, view },
+    columns: { showNotes, showLinked, showInspectionNotes, showAttributes, showConditions, showSpaces, view },
     report: {
       includePlan,
       includeList,
@@ -139,6 +142,7 @@
     // the prior always-shown behaviour).
     showAttributes      = c.showAttributes ?? true;
     showConditions      = c.showConditions ?? true;
+    showSpaces          = c.showSpaces ?? false;
     view                = c.view ?? 'list';
     // Restore report options (use defaults for presets saved before report was tracked)
     includePlan              = r.includePlan              ?? false;
@@ -183,7 +187,15 @@
   let showInspectionNotes = false;
   let showAttributes      = true;      // attributes column (Word) / one col per attr (CSV)
   let showConditions      = true;      // condition sub-row (Word) / one col per condition (CSV)
+  let showSpaces          = false;     // Space(s) column (display + CSV/XLSX) — reverse membership
   let view                = 'list';   // 'list' | 'summary' — owned here so presets can restore it
+
+  // Reverse component→space membership, computed once building-wide (per-plan AR)
+  // and only when the column is enabled. Feeds the table + CSV/XLSX matrix.
+  const EMPTY_SPACE_MAP = new Map();
+  $: spacesByComponent = showSpaces
+    ? componentSpaceRefs(components, spaces, spaceOverrides, plans, floors)
+    : EMPTY_SPACE_MAP;
 
   // -- All canonical component status values (always shown in full) --
   const ALL_STATUSES = ['ok', 'failed', 'problem', 'inactive'];
@@ -297,6 +309,7 @@
   $: matrixCtx = {
     types, systems, attrDefs, componentAttrs, componentLinks, inspections,
     showLinked, showNotes, showInspectionNotes, showAttributes, showConditions,
+    showSpaces, spacesByComponent,
   };
 
   function generateCSV() {
@@ -583,6 +596,8 @@
       {showNotes}
       {showLinked}
       {showInspectionNotes}
+      {showSpaces}
+      {spacesByComponent}
       bind:view
       title="Components"
       {readOnly}
@@ -699,7 +714,7 @@
       <div class="px-4 py-2 border-b border-slate-700 bg-slate-800/40">
         <ColumnToggles
           bind:showLinked bind:showNotes bind:showInspectionNotes
-          bind:showAttributes bind:showConditions
+          bind:showAttributes bind:showConditions bind:showSpaces
         />
       </div>
 

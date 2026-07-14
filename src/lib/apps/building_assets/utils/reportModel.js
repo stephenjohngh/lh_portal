@@ -35,6 +35,7 @@ export function buildComponentsMatrix(filteredComponents, filteredByFloor, ctx) 
   const {
     types, systems, attrDefs, componentAttrs, componentLinks, inspections,
     showLinked, showNotes, showInspectionNotes, showAttributes, showConditions,
+    showSpaces, spacesByComponent = new Map(),
   } = ctx;
 
   const presentCodes = new Set(filteredComponents.map(c => c.type_code));
@@ -42,6 +43,7 @@ export function buildComponentsMatrix(filteredComponents, filteredByFloor, ctx) 
   const condDefs  = showConditions ? availableConditionDefs(types, systems, attrDefs, presentCodes) : [];
 
   const headers = ['Floor', 'System', 'Type', 'Asset ID', 'Label'];
+  if (showSpaces)          headers.push('Space(s)');
   if (showLinked)          headers.push('Linked');
   if (showNotes)           headers.push('Notes');
   if (showInspectionNotes) headers.push('Insp. Notes');
@@ -67,6 +69,7 @@ export function buildComponentsMatrix(filteredComponents, filteredByFloor, ctx) 
         c.asset_id ?? '',
         c.label    ?? '',
       ];
+      if (showSpaces)          row.push((spacesByComponent.get(c.id) ?? []).join(' | '));
       if (showLinked)          row.push((componentLinks[c.id] ?? []).map(l => l.to_component_ref).join(' | '));
       if (showNotes)           row.push(c.notes ?? '');
       if (showInspectionNotes) row.push(insp?.inspector_notes ?? '');

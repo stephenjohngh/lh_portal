@@ -9,6 +9,7 @@
   export let showInspectionNotes = false;
   export let showAttributes      = true;
   export let showConditions      = true;
+  export let showSpaces          = false;
 
   const CB = 'w-3.5 h-3.5 rounded border-slate-600 bg-slate-700 accent-purple-500 cursor-pointer';
   const LB = 'flex items-center gap-1.5 cursor-pointer text-xs text-slate-400 hover:text-slate-300 transition-colors';
@@ -23,6 +24,10 @@
   <label class={LB}>
     <input type="checkbox" bind:checked={showConditions} class={CB} />
     Conditions
+  </label>
+  <label class={LB}>
+    <input type="checkbox" bind:checked={showSpaces} class={CB} />
+    Space(s)
   </label>
   <label class={LB}>
     <input type="checkbox" bind:checked={showLinked} class={CB} />

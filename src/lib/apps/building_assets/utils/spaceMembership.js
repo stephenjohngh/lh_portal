@@ -15,6 +15,7 @@
 // planMeasure.js). ~0.01 = 1% of plan height. Tunable; refine against real plans.
 
 import { pointInPolygon, distanceToPolygon } from '../components/plan/planMeasure.js';
+import { buildSpaceRef } from '$lib/utils/spaceRef.js';
 
 export const DEFAULT_TOLERANCE = 0.01;
 
@@ -71,4 +72,35 @@ export function spacesForComponent(component, spaces = [], overrides = [], opts 
   const AR  = opts.AR ?? 1;
   const tol = opts.tolerance ?? DEFAULT_TOLERANCE;
   return spaces.filter(sp => isMember(component, sp, overrides, AR, tol));
+}
+
+/**
+ * Building-wide map of componentId → sorted space-reference strings, resolved
+ * once with each space's own plan aspect ratio (membership is plan-scoped and
+ * AR-sensitive, so we can't use a single AR building-wide). Reverse of
+ * componentsInSpace — drives the Components-tab "Space(s)" column + exports.
+ * Derive-at-read; call from the store's in-memory state.
+ * @param {object[]} components
+ * @param {object[]} spaces
+ * @param {Array<{space_id:string,component_id:string,mode:'include'|'exclude'}>} [overrides]
+ * @param {object[]} [plans]   — for per-plan aspect ratio
+ * @param {object[]} [floors]  — for buildSpaceRef
+ * @returns {Map<string, string[]>}
+ */
+export function componentSpaceRefs(components = [], spaces = [], overrides = [], plans = [], floors = [], opts = {}) {
+  const planAR = new Map(plans.map(p => [
+    p.id,
+    p.image_aspect_ratio ?? (p.image_width && p.image_height ? p.image_width / p.image_height : 1),
+  ]));
+  const byId = new Map();
+  for (const space of spaces) {
+    const AR  = planAR.get(space.plan_id) ?? 1;
+    const ref = buildSpaceRef(space, floors);
+    for (const c of componentsInSpace(space, components, overrides, { AR, tolerance: opts.tolerance })) {
+      const arr = byId.get(c.id);
+      if (arr) arr.push(ref); else byId.set(c.id, [ref]);
+    }
+  }
+  for (const arr of byId.values()) arr.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return byId;
 }

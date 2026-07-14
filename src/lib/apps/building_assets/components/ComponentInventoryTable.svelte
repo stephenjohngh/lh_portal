@@ -35,6 +35,8 @@
   export let showNotes           = true;
   export let showLinked          = true;
   export let showInspectionNotes = false;
+  export let showSpaces          = false;
+  export let spacesByComponent   = new Map();   // Map<componentId, string[] space refs>
 
   export let view = 'list';   // 'list' | 'summary' — lifted to parent so presets can restore it
 
@@ -208,6 +210,9 @@
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Ref</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-36">Label</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-28">Type</th>
+            {#if showSpaces}
+              <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-24">Space(s)</th>
+            {/if}
             <!-- TEMP: inspection sort order column — remove this <th> when done -->
             <th class="px-2 py-1.5 text-slate-500 font-semibold uppercase tracking-wide w-12" title="inspection_sort_order">Ord</th>
             <th class="px-2 py-1.5 text-slate-300 font-semibold uppercase tracking-wide w-20">Status</th>
@@ -271,6 +276,18 @@
               <td class="px-2 py-2 text-slate-400 overflow-hidden">
                 <span class="truncate block" title={t?.name ?? c.type_code}>{t?.name ?? c.type_code}</span>
               </td>
+
+              <!-- ④a Space(s) — reverse membership (optional column) -->
+              {#if showSpaces}
+                {@const sps = spacesByComponent.get(c.id) ?? []}
+                <td class="px-2 py-2 text-slate-400 overflow-hidden">
+                  {#if sps.length > 0}
+                    <span class="truncate block font-mono text-[10px] text-teal-400/80" title={sps.join(', ')}>{sps.join(', ')}</span>
+                  {:else}
+                    <span class="text-slate-700">—</span>
+                  {/if}
+                </td>
+              {/if}
 
               <!-- TEMP ④½: inspection_sort_order — remove this <td> when done -->
               <td class="px-2 py-2 text-center tabular-nums overflow-hidden">
