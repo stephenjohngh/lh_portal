@@ -13,9 +13,8 @@
   import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { componentsInSpace } from '../../utils/spaceMembership.js';
-  import { spaceRollup, spaceMembersCsvRows, spacesRegisterCsvRows } from '../../utils/spaceReport.js';
+  import { spaceRollup } from '../../utils/spaceReport.js';
   import { statusDotCls, statusCfg } from '$lib/utils/resultConstants.js';
-  import { downloadCsvRows } from '$lib/utils/download.js';
   import { permissions } from '$lib/stores/permissions';
 
   export let space;
@@ -147,20 +146,9 @@
   $: typesByCode = new Map(($buildingAssetsStore.types ?? []).map(t => [t.code, t]));
   const typeName = c => typesByCode.get(c.type_code)?.name ?? c.type_code ?? '';
 
-  // -- Reporting (P3) ------------------------------------------------
+  // Status roll-up chips (at-a-glance context; full reports live in the
+  // Components tab and the Spaces register tab, not here).
   $: rollup = spaceRollup(members);
-  function exportMembers() {
-    const safeRef = (refPreview || 'space').replace(/[\\/]/g, '-');
-    downloadCsvRows(`space-${safeRef}-components.csv`,
-      spaceMembersCsvRows(space, members, floors, $buildingAssetsStore.types));
-  }
-  function exportRegister() {
-    try {
-      const rows = buildingAssetsStore.buildSpacesRegister();
-      downloadCsvRows('spaces-register.csv', spacesRegisterCsvRows(rows));
-    } catch (err) { errorMsg = err.message; }
-  }
-
 
   async function handleSave() {
     if (!editName.trim()) { errorMsg = 'Name is required.'; return; }
@@ -284,10 +272,6 @@
           Components in this space
           <span class="text-slate-600 font-normal">({members.length})</span>
         </p>
-        {#if members.length > 0}
-          <button on:click={exportMembers} title="Export these components to CSV"
-            class="text-xs text-slate-500 hover:text-teal-400 transition-colors shrink-0">⬇ CSV</button>
-        {/if}
       </div>
       {#if rollup.total > 0}
         <div class="flex flex-wrap gap-1 text-[10px]">
@@ -350,10 +334,6 @@
           </select>
         </div>
       {/if}
-
-      <!-- Whole-building register export -->
-      <button on:click={exportRegister} title="Export the whole-building spaces register to CSV"
-        class="text-[11px] text-slate-500 hover:text-teal-400 transition-colors self-start mt-1">⬇ Spaces register (all spaces)</button>
     </div>
 
       {#if readOnly}
