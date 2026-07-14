@@ -143,6 +143,10 @@
     if (cid) { setOverride(cid, 'include'); e.currentTarget.value = ''; }
   }
 
+  // -- Type name lookup (components store type_code, not the type name) --
+  $: typesByCode = new Map(($buildingAssetsStore.types ?? []).map(t => [t.code, t]));
+  const typeName = c => typesByCode.get(c.type_code)?.name ?? c.type_code ?? '';
+
   // -- Reporting (P3) ------------------------------------------------
   $: rollup = spaceRollup(members);
   function exportMembers() {
@@ -298,8 +302,9 @@
           {#each members as c (c.id)}
             <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-700/40 border border-slate-700/60">
               <span class="w-2 h-2 rounded-full shrink-0 {statusDotCls(c.status)}" title={statusCfg(c.status).label}></span>
-              <span class="text-xs font-mono text-slate-300 truncate">{buildComponentRef(c, floors, $buildingAssetsStore.types)}</span>
-              <span class="text-xs text-slate-500 truncate flex-1">{c.label ?? ''}</span>
+              <span class="text-xs font-mono text-slate-300 shrink-0">{buildComponentRef(c, floors, $buildingAssetsStore.types)}</span>
+              <span class="text-xs text-slate-400 truncate flex-1 min-w-0">{typeName(c)}</span>
+              <span class="text-xs text-slate-500 truncate flex-1 min-w-0">{c.label ?? ''}</span>
               {#if overrideModeFor(c.id) === 'include'}
                 <span class="text-[10px] px-1 py-0.5 rounded bg-purple-600/30 text-purple-300 shrink-0" title="Manually pinned">pinned</span>
               {/if}
