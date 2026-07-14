@@ -200,7 +200,7 @@
                    style:background-color="#{group.system.colour}"></div>
             {/if}
             <span class="text-sm font-medium flex-1 truncate transition-colors
-                         {!isChecked && !isPartial ? 'text-slate-600' : 'text-slate-200'}
+                         {!isChecked && !isPartial ? 'text-slate-500' : 'text-slate-200'}
                          group-hover/sys:text-white">
               {group.system?.name ?? 'Other'}
             </span>
@@ -238,7 +238,7 @@
                 >{t.initial}</div>
 
                 <span class="text-xs flex-1 truncate transition-colors
-                             {typeHidden ? 'text-slate-600'
+                             {typeHidden ? 'text-slate-500'
                                         : 'text-slate-300 group-hover/type:text-white'}"
                 >{t.name}</span>
 
@@ -281,7 +281,7 @@
                           {!isVisible ? 'opacity-30' : ''}"></div>
 
               <span class="text-xs flex-1 transition-colors
-                           {!isVisible ? 'text-slate-600 line-through'
+                           {!isVisible ? 'text-slate-500'
                                        : 'text-slate-300 group-hover/status:text-white'}"
               >{s.label}</span>
 
