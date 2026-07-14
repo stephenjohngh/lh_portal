@@ -3,6 +3,7 @@
      and delegates to the active tab component. -->
 <script>
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { buildingAssetsStore } from './stores/buildingAssetsStore.js';
@@ -26,14 +27,28 @@
   $: components = store.components;
 
   onMount(async () => {
+    // The store is a module singleton, but this component is destroyed and
+    // recreated every time the app is re-selected (the shell swaps it via
+    // <svelte:component>). Only load what's missing so re-entry shows the
+    // already-loaded data instantly instead of re-fetching + flashing.
+    const snapshot      = get(buildingAssetsStore);
+    const needsHierarchy = snapshot.systems.length === 0;
+    const needsComponents = snapshot.components.length === 0;
+
+    // Data already present from a previous mount → render it immediately.
+    if (!needsHierarchy && !needsComponents) initialized = true;
+
     if ($auth.user) {
       await permissions.init($auth.user.id, 'building_assets');
     }
-    // Independent fetch chains — run concurrently to halve startup latency.
-    await Promise.all([
-      buildingAssetsStore.load(),
-      buildingAssetsStore.loadComponents()
-    ]);
+
+    if (needsHierarchy || needsComponents) {
+      // Independent fetch chains — run concurrently to halve startup latency.
+      await Promise.all([
+        needsHierarchy  ? buildingAssetsStore.load()           : Promise.resolve(),
+        needsComponents ? buildingAssetsStore.loadComponents() : Promise.resolve(),
+      ]);
+    }
     initialized = true;
   });
 
