@@ -51,10 +51,15 @@
       group.types.sort((a, b) => (a.presentation_order ?? 0) - (b.presentation_order ?? 0));
     }
 
+    // Sort systems by presentation_order (the canonical order used in the
+    // store load + admin/type browser), name as tiebreak; no-system last.
     return [...map.values()].sort((a, b) => {
       if (!a.system && !b.system) return 0;
       if (!a.system) return 1;
       if (!b.system) return -1;
+      const ao = a.system.presentation_order ?? 0;
+      const bo = b.system.presentation_order ?? 0;
+      if (ao !== bo) return ao - bo;
       return (a.system.name ?? '').localeCompare(b.system.name ?? '');
     });
   })();
@@ -195,7 +200,7 @@
                    style:background-color="#{group.system.colour}"></div>
             {/if}
             <span class="text-sm font-medium flex-1 truncate transition-colors
-                         {!isChecked && !isPartial ? 'text-slate-600 line-through' : 'text-slate-200'}
+                         {!isChecked && !isPartial ? 'text-slate-600' : 'text-slate-200'}
                          group-hover/sys:text-white">
               {group.system?.name ?? 'Other'}
             </span>
@@ -233,7 +238,7 @@
                 >{t.initial}</div>
 
                 <span class="text-xs flex-1 truncate transition-colors
-                             {typeHidden ? 'text-slate-600 line-through'
+                             {typeHidden ? 'text-slate-600'
                                         : 'text-slate-300 group-hover/type:text-white'}"
                 >{t.name}</span>
 
