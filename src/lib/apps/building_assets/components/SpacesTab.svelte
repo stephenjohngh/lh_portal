@@ -10,6 +10,8 @@
   import { buildSpacesRegisterRows, spacesRegisterCsvRows } from '../utils/spaceReport.js';
   import { KIND_LABEL } from '$lib/utils/spaceRef.js';
   import { downloadCsvRows } from '$lib/utils/download.js';
+  import { permissions } from '$lib/stores/permissions';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
   $: store = $buildingAssetsStore;
 
@@ -21,15 +23,22 @@
   let search      = '';
   let kindFilter  = 'all';   // 'all' | 'space' | 'slot'
   let floorFilter = 'all';   // 'all' | floor short_name
+  let usageFilter = 'all';   // 'all' | usage value
 
   // Floor options present in the register (short_name), floor order preserved.
   $: floorOptions = store.floors
     .map(f => f.short_name)
     .filter(sn => registerRows.some(r => r.floor === sn));
+  // Usage options: the configured list, restricted to usages actually present.
+  $: usageFilterOptions = (store.spaceUsages?.length
+      ? store.spaceUsages.map(u => u.value)
+      : [...new Set(registerRows.map(r => r.usage).filter(Boolean))])
+    .filter(v => registerRows.some(r => r.usage === v));
 
   $: filteredRows = registerRows.filter(r => {
     if (kindFilter !== 'all'  && r.kind  !== kindFilter)  return false;
     if (floorFilter !== 'all' && r.floor !== floorFilter) return false;
+    if (usageFilter !== 'all' && (r.usage ?? '') !== usageFilter) return false;
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       if (!`${r.reference} ${r.name} ${r.usage}`.toLowerCase().includes(q)) return false;
@@ -52,6 +61,25 @@
   function exportCsv() {
     downloadCsvRows(`spaces-register-${new Date().toISOString().slice(0, 10)}.csv`,
       spacesRegisterCsvRows(filteredRows));
+  }
+
+  // -- Delete a space (admin only, confirmed) ------------------------
+  let errorMsg      = '';
+  let pendingDelete = null;   // register row awaiting confirmation
+  let deletingId    = null;
+
+  function requestDelete(row) { pendingDelete = row; }
+  async function confirmDelete() {
+    if (!pendingDelete?.id) { pendingDelete = null; return; }
+    const id = pendingDelete.id;
+    deletingId = id;
+    try {
+      await buildingAssetsStore.deleteSpace(id);
+    } catch (e) {
+      errorMsg = e.message;
+    } finally {
+      deletingId = null; pendingDelete = null;
+    }
   }
 
   const kindLabel = k => KIND_LABEL[k] ?? k ?? '';
@@ -100,7 +128,20 @@
         <option value={sn}>{sn}</option>
       {/each}
     </select>
+
+    {#if usageFilterOptions.length > 0}
+      <select bind:value={usageFilter} class={inp} aria-label="Filter by usage">
+        <option value="all">All usages</option>
+        {#each usageFilterOptions as u}
+          <option value={u}>{u}</option>
+        {/each}
+      </select>
+    {/if}
   </div>
+
+  {#if errorMsg}
+    <p class="mx-4 mt-3 text-xs text-red-400 bg-red-900/20 border border-red-800/40 rounded px-2 py-1.5">{errorMsg}</p>
+  {/if}
 
   <!-- Table -->
   {#if registerRows.length === 0}
@@ -127,6 +168,7 @@
             <th class="px-3 py-2 text-right text-amber-600 font-medium uppercase tracking-wide">Problem</th>
             <th class="px-3 py-2 text-right text-red-600 font-medium uppercase tracking-wide">Failed</th>
             <th class="px-3 py-2 text-right text-slate-600 font-medium uppercase tracking-wide">Inactive</th>
+            {#if $permissions.isAdmin}<th class="px-3 py-2 w-16"></th>{/if}
           </tr>
         </thead>
         <tbody>
@@ -145,6 +187,16 @@
               <td class="px-3 py-2 text-right {r.problem  > 0 ? 'text-amber-400' : 'text-slate-800'}">{r.problem  || '—'}</td>
               <td class="px-3 py-2 text-right {r.failed   > 0 ? 'text-red-400'   : 'text-slate-800'}">{r.failed   || '—'}</td>
               <td class="px-3 py-2 text-right {r.inactive > 0 ? 'text-slate-400' : 'text-slate-800'}">{r.inactive || '—'}</td>
+              {#if $permissions.isAdmin}
+                <td class="px-3 py-2 text-right whitespace-nowrap">
+                  <button
+                    on:click={() => requestDelete(r)}
+                    class="px-2 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
+                           text-red-400 border border-red-800/40 transition-colors text-[11px]"
+                    title="Delete space (admin)"
+                  >🗑</button>
+                </td>
+              {/if}
             </tr>
           {/each}
         </tbody>
@@ -156,6 +208,7 @@
             <td class="px-3 py-2 text-right font-semibold {totals.problem  > 0 ? 'text-amber-400' : 'text-slate-700'}">{totals.problem  || '—'}</td>
             <td class="px-3 py-2 text-right font-semibold {totals.failed   > 0 ? 'text-red-400'   : 'text-slate-700'}">{totals.failed   || '—'}</td>
             <td class="px-3 py-2 text-right font-semibold {totals.inactive > 0 ? 'text-slate-400' : 'text-slate-700'}">{totals.inactive || '—'}</td>
+            {#if $permissions.isAdmin}<td></td>{/if}
           </tr>
         </tfoot>
       </table>
@@ -163,3 +216,14 @@
   {/if}
 
 </div>
+
+<ConfirmDialog
+  show={!!pendingDelete}
+  title="Delete space"
+  message={pendingDelete ? `Delete space ${pendingDelete.reference}${pendingDelete.name ? ` (${pendingDelete.name})` : ''}? This removes the outline and its overrides. Components are not deleted.` : ''}
+  confirmText="Delete"
+  danger={true}
+  processing={!!deletingId}
+  on:confirm={confirmDelete}
+  on:cancel={() => pendingDelete = null}
+/>

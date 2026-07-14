@@ -54,6 +54,7 @@ export function spaceMembersCsvRows(space, members = [], floors = [], types = []
 export function buildRegisterRow(space, members = [], floors = [], opts = {}) {
   const { byStatus, total } = spaceRollup(members);
   return {
+    id:        space?.id ?? null,   // for row actions (delete); not serialised to CSV
     reference: buildSpaceRef(space, floors),
     name:      space?.name ?? '',
     kind:      space?.kind ?? 'space',
