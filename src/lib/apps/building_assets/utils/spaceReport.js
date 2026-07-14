@@ -7,6 +7,8 @@ import { csvEsc } from './componentsCsv.js';
 import { buildSpaceRef } from '$lib/utils/spaceRef.js';
 import { buildComponentRef } from '$lib/utils/componentRef.js';
 import { statusCfg } from '$lib/utils/resultConstants.js';
+import { componentsInSpace } from './spaceMembership.js';
+import { computeMetresPerUnit, measureArea } from '../components/plan/planMeasure.js';
 
 const STATUS_KEYS = ['ok', 'problem', 'failed', 'inactive'];
 
@@ -61,6 +63,28 @@ export function buildRegisterRow(space, members = [], floors = [], opts = {}) {
     total,
     ...byStatus,
   };
+}
+
+/**
+ * Building-wide spaces register — one row per space, resolving membership +
+ * floor area per space with that space's own plan aspect ratio/scale. PURE
+ * (takes a plain state bag, no store), so it can be called reactively without
+ * writing the store. The store's buildSpacesRegister() delegates here.
+ * @param {{spaces?:object[], components?:object[], spaceOverrides?:object[], plans?:object[], floors?:object[]}} state
+ * @returns {ReturnType<typeof buildRegisterRow>[]}
+ */
+export function buildSpacesRegisterRows(state = {}) {
+  const { spaces = [], components = [], spaceOverrides = [], plans = [], floors = [] } = state;
+  return spaces.map(space => {
+    const plan = plans.find(p => p.id === space.plan_id);
+    const AR   = plan?.image_aspect_ratio
+      ?? (plan?.image_width && plan?.image_height ? plan.image_width / plan.image_height : 1);
+    const mpu  = computeMetresPerUnit(plan?.scale_ref, AR);
+    const members = componentsInSpace(space, components, spaceOverrides, { AR });
+    const area_m2 = (space.polygon?.length >= 3 && mpu)
+      ? measureArea(space.polygon, AR, mpu) : null;
+    return buildRegisterRow(space, members, floors, { area_m2 });
+  });
 }
 
 /**
