@@ -8,6 +8,8 @@
   import { createEventDispatcher }   from 'svelte';
   import { buildingAssetsStore }     from '../stores/buildingAssetsStore.js';
   import { typeByCode, floorById, conditionChecklistDisplay } from '../lookups.js';
+  import { buildSpaceRef }             from '$lib/utils/spaceRef.js';
+  import { spacesForComponent }        from '../utils/spaceMembership.js';
   import ComponentLinks              from './ComponentLinks.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
   import ComponentMaintenanceHistory from './ComponentMaintenanceHistory.svelte';
@@ -40,6 +42,14 @@
 
   // Build a { defId → value } map from the loaded attrs array
   $: attrMap = Object.fromEntries(attrs.map(a => [a.type_attribute_id, a.value]));
+
+  // Spaces this component falls within (derive-at-read reverse lookup, §4.3),
+  // including manual pins. Plans/AR come from the store.
+  $: componentSpaces = component
+    ? spacesForComponent(component, $buildingAssetsStore.spaces ?? [], $buildingAssetsStore.spaceOverrides ?? [], {
+        AR: ($buildingAssetsStore.plans ?? []).find(p => p.id === component.plan_id)?.image_aspect_ratio ?? 1,
+      })
+    : [];
 
   // Status config lookup
   const STATUS_CFG = Object.fromEntries(STATUSES.map(s => [s.value, s]));
@@ -97,6 +107,27 @@
 
   <!-- -- Scrollable body ----------------------------------------------- -->
   <div class="flex-1 overflow-y-auto p-5 space-y-6">
+
+    <!-- -- Spaces (derived membership) --------------------------------- -->
+    {#if component.plan_id || componentSpaces.length > 0}
+      <section>
+        <p class={sec}>Spaces</p>
+        {#if componentSpaces.length > 0}
+          <div class="flex flex-wrap gap-1.5">
+            {#each componentSpaces as sp (sp.id)}
+              <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-700/50 border border-slate-600/50 text-xs">
+                <span class="w-2.5 h-2.5 rounded-sm shrink-0 {sp.colour && sp.colour !== 'none' ? '' : 'border border-slate-500'}"
+                  style={sp.colour && sp.colour !== 'none' ? `background-color:#${sp.colour}` : ''}></span>
+                <span class="font-mono text-slate-400">{buildSpaceRef(sp, floors)}</span>
+                <span class="text-slate-300">{sp.name}</span>
+              </span>
+            {/each}
+          </div>
+        {:else}
+          <p class="text-xs text-slate-600 italic">Not within any drawn space on this plan.</p>
+        {/if}
+      </section>
+    {/if}
 
     <!-- -- Status ------------------------------------------------------ -->
     <section>
