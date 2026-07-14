@@ -71,12 +71,23 @@ export function buildRegisterRow(space, members = [], floors = [], opts = {}) {
  * floor area per space with that space's own plan aspect ratio/scale. PURE
  * (takes a plain state bag, no store), so it can be called reactively without
  * writing the store. The store's buildSpacesRegister() delegates here.
+ * Rows are ordered by floor (standard level_order) then by assigned_id
+ * (numeric-aware, blanks last) — the on-screen table and the CSV share it.
  * @param {{spaces?:object[], components?:object[], spaceOverrides?:object[], plans?:object[], floors?:object[]}} state
  * @returns {ReturnType<typeof buildRegisterRow>[]}
  */
 export function buildSpacesRegisterRows(state = {}) {
   const { spaces = [], components = [], spaceOverrides = [], plans = [], floors = [] } = state;
-  return spaces.map(space => {
+  const floorOrder = new Map(floors.map(f => [f.id, f.level_order ?? 9999]));
+  const ordered = [...spaces].sort((a, b) => {
+    const fo = (floorOrder.get(a.floor_id) ?? 9999) - (floorOrder.get(b.floor_id) ?? 9999);
+    if (fo !== 0) return fo;
+    const aid = a.assigned_id ?? '';
+    const bid = b.assigned_id ?? '';
+    if (!aid !== !bid) return aid ? -1 : 1;     // blanks last
+    return aid.localeCompare(bid, undefined, { numeric: true });
+  });
+  return ordered.map(space => {
     const plan = plans.find(p => p.id === space.plan_id);
     const AR   = plan?.image_aspect_ratio
       ?? (plan?.image_width && plan?.image_height ? plan.image_width / plan.image_height : 1);

@@ -90,4 +90,21 @@ describe('buildSpacesRegisterRows (pure, whole-building)', () => {
   it('returns [] when there are no spaces', () => {
     expect(buildSpacesRegisterRows({ ...state, spaces: [] })).toEqual([]);
   });
+
+  it('orders rows by floor (level_order) then by assigned_id (numeric, blanks last)', () => {
+    const flrs = [
+      { id: 'fB', short_name: 'B1', level_order: 10 },
+      { id: 'fG', short_name: 'G',  level_order: 20 },
+    ];
+    const sp = (id, floor_id, assigned_id) => ({ id, plan_id: null, kind: 'space', floor_id, assigned_id, name: id, type: '' });
+    const rows = buildSpacesRegisterRows({
+      floors: flrs, plans: [], components: [], spaceOverrides: [],
+      // deliberately unsorted input
+      spaces: [ sp('a', 'fG', '10'), sp('b', 'fB', '2'), sp('c', 'fG', null), sp('d', 'fB', '10'), sp('e', 'fG', '2') ],
+    });
+    // B1 first (level 10): '2' then '10' (numeric); then G (level 20): '2','10', blank last
+    expect(rows.map(r => r.reference)).toEqual([
+      'B1/S/2', 'B1/S/10', 'G/S/2', 'G/S/10', 'G/S/c',   // blank assigned_id → ref falls back to id slice ('c')
+    ]);
+  });
 });
