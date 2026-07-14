@@ -114,3 +114,24 @@ describe('describeComponentFilters', () => {
     expect(s).toBe('All components');
   });
 });
+
+describe('filterComponents — space filter', () => {
+  // c1 belongs to space s1; c2 to s2; c3 to no space.
+  const spaceCtx = { ...ctx, componentSpaceIds: new Map([['c1', new Set(['s1'])], ['c2', new Set(['s2'])]]) };
+
+  it('is inactive when spaceFilterIds is null (default)', () => {
+    expect(ids(filterComponents(comps, emptyCriteria(), spaceCtx))).toEqual(['c1', 'c2', 'c3']);
+  });
+  it('keeps only components in a target space', () => {
+    const r = filterComponents(comps, emptyCriteria({ spaceFilterIds: new Set(['s1']) }), spaceCtx);
+    expect(ids(r)).toEqual(['c1']);
+  });
+  it('matches a component in any of several target spaces', () => {
+    const r = filterComponents(comps, emptyCriteria({ spaceFilterIds: new Set(['s1', 's2']) }), spaceCtx);
+    expect(ids(r)).toEqual(['c1', 'c2']);
+  });
+  it('an active filter with an empty target set (no matching spaces) yields nothing', () => {
+    const r = filterComponents(comps, emptyCriteria({ spaceFilterIds: new Set() }), spaceCtx);
+    expect(ids(r)).toEqual([]);
+  });
+});

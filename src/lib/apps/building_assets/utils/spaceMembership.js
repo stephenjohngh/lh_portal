@@ -106,3 +106,30 @@ export function componentSpaceRefs(components = [], spaces = [], overrides = [],
   for (const arr of byId.values()) arr.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   return byId;
 }
+
+/**
+ * Building-wide map of componentId → Set of space ids it belongs to (per-plan
+ * AR). Drives the Components-tab Space filter (a component matches if its set
+ * intersects the selected/target space ids). Derive-at-read.
+ * @param {object[]} components
+ * @param {object[]} spaces
+ * @param {Array<{space_id:string,component_id:string,mode:'include'|'exclude'}>} [overrides]
+ * @param {object[]} [plans]
+ * @returns {Map<string, Set<string>>}
+ */
+export function componentSpaceIdMap(components = [], spaces = [], overrides = [], plans = [], opts = {}) {
+  const planAR = new Map(plans.map(p => [
+    p.id,
+    p.image_aspect_ratio ?? (p.image_width && p.image_height ? p.image_width / p.image_height : 1),
+  ]));
+  const byId = new Map();
+  for (const space of spaces) {
+    const AR = planAR.get(space.plan_id) ?? 1;
+    for (const c of componentsInSpace(space, components, overrides, { AR, tolerance: opts.tolerance })) {
+      let set = byId.get(c.id);
+      if (!set) { set = new Set(); byId.set(c.id, set); }
+      set.add(space.id);
+    }
+  }
+  return byId;
+}

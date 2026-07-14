@@ -32,7 +32,8 @@
   } from '../utils/attrFilters.js';
   import { resolveFixedAttrs } from '../utils/componentsCsv.js';
   import { buildComponentsCsvRows } from '../utils/reportModel.js';
-  import { componentSpaceRefs } from '../utils/spaceMembership.js';
+  import { componentSpaceRefs, componentSpaceIdMap } from '../utils/spaceMembership.js';
+  import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
   import { generateXlsxDocument } from './plan/xlsxReportGenerator.js';
   import { filterComponents, describeComponentFilters } from '../utils/componentsFilter.js';
   import { fmtGenerated }   from '$lib/utils/dates.js';
@@ -65,7 +66,43 @@
   let filterSystemIds = new Set();   // empty = all systems
   let filterTypeCodes = new Set();
   let filterStatuses  = new Set();
+  let filterSpaceIds  = new Set();   // specific spaces (by id)
+  let filterUsages    = new Set();   // space usages (category)
+  let filterKinds     = new Set();   // space kinds ('space' | 'slot')
   let searchQuery     = '';
+
+  // -- Space filter resolution ---------------------------------------
+  // The three space controls (specific spaces / usages / kinds) AND together
+  // into a target set of space ids; a component matches if it's in any of them.
+  const KIND_OPTIONS = [
+    { value: 'space', label: KIND_LABEL.space },
+    { value: 'slot',  label: KIND_LABEL.slot },
+  ];
+  const EMPTY_ID_MAP = new Map();
+  $: spaceFilterActive = filterSpaceIds.size > 0 || filterUsages.size > 0 || filterKinds.size > 0;
+  $: targetSpaceIds = spaceFilterActive
+    ? new Set(spaces.filter(sp =>
+        (filterSpaceIds.size === 0 || filterSpaceIds.has(sp.id)) &&
+        (filterUsages.size === 0   || filterUsages.has(sp.usage ?? '')) &&
+        (filterKinds.size === 0    || filterKinds.has(sp.kind ?? 'space'))
+      ).map(sp => sp.id))
+    : null;
+  // Membership map only when the filter is active (avoids the pass otherwise).
+  $: componentSpaceIds = spaceFilterActive
+    ? componentSpaceIdMap(components, spaces, spaceOverrides, plans)
+    : EMPTY_ID_MAP;
+  // Dropdown options: spaces grouped by floor (ref + name), plus usages present.
+  $: spaceGroups = floors
+    .map(f => ({
+      label: f.short_name || f.name,
+      options: spaces.filter(sp => sp.floor_id === f.id)
+        .map(sp => ({ value: sp.id, label: `${buildSpaceRef(sp, floors)}${sp.name ? ' ' + sp.name : ''}` })),
+    }))
+    .filter(g => g.options.length > 0);
+  $: spaceOptions = spaceGroups.flatMap(g => g.options);   // flat source for the summary
+  $: usageOptions = [...new Set(spaces.map(sp => sp.usage).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b))
+    .map(u => ({ value: u, label: u }));
 
   // Attribute filters — arrays of { defId, op, values, includeUnset }.
   // Fixed values come from componentAttrs; condition values come from
@@ -104,6 +141,9 @@
       filterSystemIds: [...filterSystemIds],
       filterTypeCodes: [...filterTypeCodes],
       filterStatuses:  [...filterStatuses],
+      filterSpaceIds:  [...filterSpaceIds],
+      filterUsages:    [...filterUsages],
+      filterKinds:     [...filterKinds],
       searchQuery,
       fixedAttrFilters,
       conditionAttrFilters,
@@ -132,6 +172,10 @@
     filterSystemIds = new Set(f.filterSystemIds ?? (f.filterSystemId ? [f.filterSystemId] : []));
     filterTypeCodes = new Set(f.filterTypeCodes ?? (f.filterTypeCode ? [f.filterTypeCode] : []));
     filterStatuses  = new Set(f.filterStatuses  ?? (f.filterStatus  ? [f.filterStatus]  : []));
+    // Space filters — default to empty for presets saved before they existed.
+    filterSpaceIds  = new Set(f.filterSpaceIds ?? []);
+    filterUsages    = new Set(f.filterUsages   ?? []);
+    filterKinds     = new Set(f.filterKinds    ?? []);
     // Default to empty for presets saved before attribute filtering existed
     fixedAttrFilters     = Array.isArray(f.fixedAttrFilters)     ? f.fixedAttrFilters     : [];
     conditionAttrFilters = Array.isArray(f.conditionAttrFilters) ? f.conditionAttrFilters : [];
@@ -245,10 +289,22 @@
   })();
 
   // Human-readable filter description for the report document header
-  $: reportFilterSummary = describeComponentFilters(
-    { floorPreset, filterFloorIds, filterSystemIds, filterTypeCodes, filterStatuses, searchQuery },
-    { floors, systems, types },
-  );
+  $: reportFilterSummary = (() => {
+    const base = describeComponentFilters(
+      { floorPreset, filterFloorIds, filterSystemIds, filterTypeCodes, filterStatuses, searchQuery },
+      { floors, systems, types },
+    );
+    // Append the space-side filters (not covered by describeComponentFilters).
+    const parts = [];
+    if (filterSpaceIds.size > 0) {
+      const names = spaces.filter(sp => filterSpaceIds.has(sp.id)).map(sp => buildSpaceRef(sp, floors)).join(', ');
+      parts.push(`Spaces: ${names}`);
+    }
+    if (filterUsages.size > 0) parts.push(`Space usage: ${[...filterUsages].join(', ')}`);
+    if (filterKinds.size > 0)  parts.push(`Space kind: ${[...filterKinds].map(k => KIND_LABEL[k] ?? k).join(', ')}`);
+    if (parts.length === 0) return base;
+    return base === 'All components' ? parts.join(' · ') : `${base} · ${parts.join(' · ')}`;
+  })();
 
   async function generateReport() {
     if (reportNoneSelected || filteredComponents.length === 0) return;
@@ -355,9 +411,9 @@
     {
       floorPreset, residentialFloorIds, basementFloorIds, filterFloorIds,
       filterSystemIds, filterTypeCodes, filterStatuses, searchQuery,
-      fixedAttrFilters, conditionAttrFilters,
+      fixedAttrFilters, conditionAttrFilters, spaceFilterIds: targetSpaceIds,
     },
-    { types, attrDefs, componentAttrs, inspections },
+    { types, attrDefs, componentAttrs, inspections, componentSpaceIds },
   );
 
   // -- Active filter label (for table title) -------------------------
@@ -448,6 +504,9 @@
     filterSystemIds = new Set();
     filterTypeCodes = new Set();
     filterStatuses  = new Set();
+    filterSpaceIds  = new Set();
+    filterUsages    = new Set();
+    filterKinds     = new Set();
     searchQuery     = '';
     fixedAttrFilters     = [];
     conditionAttrFilters = [];
@@ -457,6 +516,7 @@
               || filterSystemIds.size > 0
               || filterTypeCodes.size > 0
               || filterStatuses.size > 0
+              || spaceFilterActive
               || searchQuery.trim()
               || fixedAttrFilters.length > 0
               || conditionAttrFilters.length > 0;
@@ -681,6 +741,40 @@
           open={openDropdown === 'status'}
           on:toggle={() => openDropdown = openDropdown === 'status' ? null : 'status'}
         />
+
+        <!-- Space filter — specific spaces, grouped by floor (ref + name) -->
+        {#if spaceOptions.length > 0}
+          <MultiSelectDropdown
+            label="Space" placeholder="All spaces" noun="spaces"
+            options={spaceOptions}
+            groups={spaceGroups}
+            bind:selected={filterSpaceIds}
+            open={openDropdown === 'space'}
+            on:toggle={() => openDropdown = openDropdown === 'space' ? null : 'space'}
+          />
+        {/if}
+
+        <!-- Usage filter — space category -->
+        {#if usageOptions.length > 0}
+          <MultiSelectDropdown
+            label="Usage" placeholder="All usages" noun="usages"
+            options={usageOptions}
+            bind:selected={filterUsages}
+            open={openDropdown === 'usage'}
+            on:toggle={() => openDropdown = openDropdown === 'usage' ? null : 'usage'}
+          />
+        {/if}
+
+        <!-- Kind filter — Space / Slot -->
+        {#if spaceOptions.length > 0}
+          <MultiSelectDropdown
+            label="Kind" placeholder="All kinds" noun="kinds" minWidth="90px"
+            options={KIND_OPTIONS}
+            bind:selected={filterKinds}
+            open={openDropdown === 'kind'}
+            on:toggle={() => openDropdown = openDropdown === 'kind' ? null : 'kind'}
+          />
+        {/if}
 
         <!-- Search -->
         <div class="flex flex-col gap-1 w-28">

@@ -199,14 +199,15 @@ describe('component links', () => {
 
 // ── spaceActions ─────────────────────────────────────────────────────────────────
 describe('spaceActions', () => {
-  it('createSpace rounds the polygon, strips the colour hash, preserves the name', async () => {
+  it('createSpace rounds the polygon, strips the colour hash, keeps the label whitespace + derives the name', async () => {
     const space = await store.createSpace({
-      plan_id: 'p1', name: '  Indented Room', colour: '#3c9683',
+      plan_id: 'p1', label: '  Indented\nRoom', colour: '#3c9683',
       polygon: [{ x: 0.111111, y: 0.999999 }, { x: 0.5, y: 0.5 }],
     });
     const arg = h.api.create.mock.calls.find(c => c[0] === 'spaces')[1];
     expect(arg.colour).toBe('3c9683');                       // hash stripped
-    expect(arg.name).toBe('  Indented Room');                // whitespace preserved
+    expect(arg.label).toBe('  Indented\nRoom');              // label preserves whitespace/newlines
+    expect(arg.name).toBe('IndentedRoom');                   // name derived from label (alphanumeric only)
     expect(arg.polygon).toEqual([{ x: 0.111, y: 1 }, { x: 0.5, y: 0.5 }]);
     expect(get(store).spaces).toContainEqual(space);
   });

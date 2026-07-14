@@ -12,17 +12,19 @@ import { matchesAllAttrFilters } from './attrFilters.js';
  *   { floorPreset:'all'|'residential'|'basement'|'custom',
  *     residentialFloorIds:Set, basementFloorIds:Set, filterFloorIds:Set,
  *     filterSystemIds:Set, filterTypeCodes:Set, filterStatuses:Set,
- *     searchQuery:string, fixedAttrFilters:Array, conditionAttrFilters:Array }
- * @param {object} ctx  { types, attrDefs, componentAttrs, inspections }
+ *     searchQuery:string, fixedAttrFilters:Array, conditionAttrFilters:Array,
+ *     spaceFilterIds:Set|null }   // null/absent = space filter inactive
+ * @param {object} ctx  { types, attrDefs, componentAttrs, inspections,
+ *     componentSpaceIds?:Map<string,Set<string>> }
  * @returns {Array} filtered components
  */
 export function filterComponents(components, criteria, ctx) {
   const {
     floorPreset, residentialFloorIds, basementFloorIds, filterFloorIds,
     filterSystemIds, filterTypeCodes, filterStatuses, searchQuery = '',
-    fixedAttrFilters = [], conditionAttrFilters = [],
+    fixedAttrFilters = [], conditionAttrFilters = [], spaceFilterIds = null,
   } = criteria;
-  const { types, attrDefs, componentAttrs, inspections } = ctx;
+  const { types, attrDefs, componentAttrs, inspections, componentSpaceIds } = ctx;
 
   let list = components;
 
@@ -33,6 +35,19 @@ export function filterComponents(components, criteria, ctx) {
     list = list.filter(c => basementFloorIds.has(c.floor_id));
   } else if (floorPreset === 'custom' && filterFloorIds.size > 0) {
     list = list.filter(c => filterFloorIds.has(c.floor_id));
+  }
+
+  // Space — the caller resolves the Space/Usage/Kind controls into a set of
+  // target space ids (null = inactive). A component matches if it belongs to
+  // any target space (membership map supplied in ctx).
+  if (spaceFilterIds) {
+    const map = componentSpaceIds ?? new Map();
+    list = list.filter(c => {
+      const ids = map.get(c.id);
+      if (!ids) return false;
+      for (const id of ids) if (spaceFilterIds.has(id)) return true;
+      return false;
+    });
   }
 
   // System (via type's building_system_id)

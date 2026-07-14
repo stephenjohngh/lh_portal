@@ -3,7 +3,7 @@
 // boundary-door-in-two-spaces case, plan scoping, and include/exclude overrides.
 
 import { describe, it, expect } from 'vitest';
-import { componentsInSpace, spacesForComponent, componentSpaceRefs, DEFAULT_TOLERANCE } from './spaceMembership.js';
+import { componentsInSpace, spacesForComponent, componentSpaceRefs, componentSpaceIdMap, DEFAULT_TOLERANCE } from './spaceMembership.js';
 
 // Two adjacent spaces on plan p1 sharing the wall at x = 0.5.
 const A = { id: 'A', plan_id: 'p1', polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 1 }, { x: 0, y: 1 }] };
@@ -100,5 +100,22 @@ describe('componentSpaceRefs', () => {
     const overrides = [{ space_id: 'A', component_id: 'u', mode: 'include' }];
     const map = componentSpaceRefs([unplaced], [Ar, Br], overrides, plans, floors);
     expect(map.get('u')).toEqual(['G/S/12 PlantRoom2']);
+  });
+});
+
+describe('componentSpaceIdMap', () => {
+  const plans = [{ id: 'p1', image_aspect_ratio: 1 }];
+
+  it('maps each component to the set of space ids it belongs to', () => {
+    const inA  = comp('c1', 0.25, 0.5);
+    const door = comp('d', 0.5, 0.5);   // boundary → both A and B
+    const map = componentSpaceIdMap([inA, door], [A, B], [], plans);
+    expect([...map.get('c1')]).toEqual(['A']);
+    expect([...map.get('d')].sort()).toEqual(['A', 'B']);
+  });
+
+  it('omits components in no space', () => {
+    const map = componentSpaceIdMap([comp('x', 0.25, 0.5, 'p2')], [A, B], [], plans);
+    expect(map.has('x')).toBe(false);
   });
 });
