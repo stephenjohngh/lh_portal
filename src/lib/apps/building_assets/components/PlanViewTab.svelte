@@ -10,7 +10,7 @@
   import { typeByCode, checkableDefs, resolveComponentHalo } from '../lookups.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
   import { ACCENT }                       from '$lib/theme.js';
-  import { getPref, setPref }             from '$lib/utils/prefs';
+  import { getPref, setPref, getJSON, setJSON } from '$lib/utils/prefs';
   import { permissions }                  from '$lib/stores/permissions';
   import { createComponentDragController }  from './plan/componentDragController.js';
   import { createAnnotationDragController } from './plan/annotationDragController.js';
@@ -67,12 +67,18 @@
   let saving            = false;
   let errorMsg          = '';
 
-  // -- Filter state -------------------------------------------------
-  let hiddenTypes    = new Set();
-  let hiddenStatuses = new Set();
-  let searchQuery    = '';
-  let showSpaces       = false;
-  let showAnnotations  = true;
+  // -- Filter + selection state (restored from per-browser prefs) ----
+  // Floor/plan persist above; this restores the type/status/search
+  // filters and the sidebar selection so switching away from Plan View
+  // and back keeps the same view (localStorage, per-browser).
+  const PREF_VIEW = 'lh_building_assets_planViewState';
+  const savedView = getJSON(PREF_VIEW, null);
+
+  let hiddenTypes     = new Set(savedView?.hiddenTypes ?? []);
+  let hiddenStatuses  = new Set(savedView?.hiddenStatuses ?? []);
+  let searchQuery     = savedView?.searchQuery ?? '';
+  let showSpaces      = savedView?.showSpaces ?? false;
+  let showAnnotations = savedView?.showAnnotations ?? true;
 
   // -- Space drawing form state (bind: targets in SpaceDrawingSidebar) -
   let drawingSpaceName = '';
@@ -191,6 +197,41 @@
       if (f) { selectedFloorId = f.id; selectedPlanId = plans.find(p => p.floor_id === f.id)?.id ?? ''; }
     }
     autoSelected = true;
+  }
+
+  // -- Restore the saved sidebar selection (once, after the store has
+  //    finished loading and a plan is resolved). Only the two "resting"
+  //    selections are restored — never a transient drawing/form state —
+  //    and only if the entity still exists on the current plan. --------
+  let viewRestored = false;
+  $: if (!viewRestored && autoSelected && !store.loading && !store.loadingComponents) {
+    if (savedView && selectedPlanId) {
+      if (savedView.selMode === 'detail' && savedView.selComponentId) {
+        const c = components.find(x => x.id === savedView.selComponentId && x.plan_id === selectedPlanId);
+        if (c) { selectedComponent = c; selectedSpace = null; sidebarMode = 'detail'; }
+      } else if (savedView.selMode === 'space-detail' && savedView.selSpaceId) {
+        const sp = spaces.find(x => x.id === savedView.selSpaceId && x.plan_id === selectedPlanId);
+        if (sp) { selectedSpace = sp; selectedComponent = null; sidebarMode = 'space-detail'; }
+      }
+    }
+    viewRestored = true;
+  }
+
+  // -- Persist filters + selection whenever they change. Gated on
+  //    viewRestored so the initial restore isn't clobbered before it runs.
+  $: if (viewRestored) {
+    const inDetail = sidebarMode === 'detail'       && !!selectedComponent;
+    const inSpace  = sidebarMode === 'space-detail' && !!selectedSpace;
+    setJSON(PREF_VIEW, {
+      hiddenTypes:    [...hiddenTypes],
+      hiddenStatuses: [...hiddenStatuses],
+      searchQuery,
+      showSpaces,
+      showAnnotations,
+      selMode:        inDetail ? 'detail' : inSpace ? 'space-detail' : null,
+      selComponentId: inDetail ? selectedComponent.id : null,
+      selSpaceId:     inSpace  ? selectedSpace.id      : null,
+    });
   }
 
   // -- Helpers -------------------------------------------------------
