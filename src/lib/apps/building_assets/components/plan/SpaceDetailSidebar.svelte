@@ -234,48 +234,85 @@
       </p>
     {/if}
 
-    <!-- -- Measurements (read-only, scale-dependent) --------------- -->
-    {#if metresPerUnit && poly.length >= 3}
-      <div class="p-2.5 rounded-lg bg-teal-900/30 border border-teal-700/40">
-        <p class="text-xs text-teal-500/70 uppercase tracking-wide mb-2">Measurements</p>
-        <div class="grid grid-cols-3 gap-x-3 gap-y-1">
-          <div>
-            <p class="text-xs text-teal-500/70">Perimeter</p>
-            <p class="text-sm font-semibold text-teal-300">{fmt1(perim)} m</p>
-          </div>
-          <div>
-            <p class="text-xs text-teal-500/70">Area</p>
-            <p class="text-sm font-semibold text-teal-300">{fmt1(area)} m²</p>
-          </div>
-          <div>
-            <p class="text-xs text-teal-500/70">Volume</p>
-            {#if previewVol != null}
-              <p class="text-sm font-semibold text-teal-300">{fmt1(previewVol)} m³</p>
-            {:else}
-              <p class="text-sm text-teal-700">— m³</p>
-            {/if}
-          </div>
+    <!-- ===== Identity (component-style: Reference · ID · Type · Name · Usage · Label) ===== -->
+    {#if readOnly}
+      <dl class="space-y-2">
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Reference</dt>
+          <dd class="text-sm font-mono text-slate-200">{refPreview}</dd>
         </div>
-        <div class="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 pt-2 border-t border-teal-800/40">
-          <div>
-            <p class="text-xs text-teal-500/70">Longest side</p>
-            <p class="text-sm font-semibold text-teal-300">{fmt1(longest)} m</p>
-          </div>
-          <div>
-            <p class="text-xs text-teal-500/70">Shortest side</p>
-            <p class="text-sm font-semibold text-teal-300">{fmt1(shortest)} m</p>
-          </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">ID</dt>
+          <dd class="text-sm text-slate-200">{space.assigned_id || '—'}</dd>
         </div>
-        {#if previewVol == null && !editHeightM}
-          <p class="text-xs text-teal-700/80 mt-1.5">Set height below to enable volume.</p>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Type</dt>
+          <dd class="text-sm text-slate-200">{KIND_LABEL[space.kind] ?? KIND_LABEL.space}</dd>
+        </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Name</dt>
+          <dd class="text-sm text-slate-200">{space.name || '—'}</dd>
+        </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Usage</dt>
+          <dd class="text-sm text-slate-200">{#if space.usage}{space.usage}{:else}<span class="text-slate-600">—</span>{/if}</dd>
+        </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Label</dt>
+          <dd class="text-sm text-slate-200 whitespace-pre-wrap">{space.label ?? space.name ?? '—'}</dd>
+        </div>
+      </dl>
+    {:else}
+      <!-- Reference (computed from Type + ID + floor) -->
+      <div class="flex items-baseline gap-2">
+        <p class="text-xs text-slate-400 w-24 shrink-0">Reference</p>
+        <p class="text-sm font-mono text-slate-300">{refPreview}</p>
+      </div>
+
+      <!-- ID (assigned) + Type (kind) -->
+      <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-400" for="sp-assigned">ID</label>
+          <input id="sp-assigned" type="text" bind:value={editAssignedId} placeholder="e.g. 12" class={inp} />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-400" for="sp-kind">Type</label>
+          <select id="sp-kind" bind:value={editKind} class={inp}>
+            <option value="space">{KIND_LABEL.space}</option>
+            <option value="slot">{KIND_LABEL.slot}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Name (single-line — used in reports) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-name">
+          Name <span class="text-slate-600 font-normal ml-1">— single line, for reports</span>
+        </label>
+        <input id="sp-name" type="text" bind:value={editName} class={inp} placeholder={derivedName || 'PlantRoom2'} />
+        {#if !editName.trim() && derivedName}
+          <p class="text-[11px] text-slate-600">Defaults to <span class="font-mono text-slate-500">{derivedName}</span></p>
         {/if}
       </div>
-    {:else if !metresPerUnit}
-      <div class="px-2.5 py-2 rounded-lg bg-slate-700/40 border border-slate-600/40">
-        <p class="text-xs text-slate-600 italic">
-          No scale set — switch to <span class="text-teal-600 font-medium">📏 Scale</span> mode
-          to enable measurements.
-        </p>
+
+      <!-- Usage (category) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-type">Usage</label>
+        <select id="sp-type" bind:value={editType} class={inp}>
+          <option value="">— none —</option>
+          {#each usageOptions as st}
+            <option value={st}>{st}</option>
+          {/each}
+        </select>
+      </div>
+
+      <!-- Label (multi-line — shown on the plan) -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-label">
+          Label <span class="text-red-400">*</span>
+          <span class="text-slate-600 font-normal ml-1">— shown on the plan; Enter for line breaks</span>
+        </label>
+        <textarea id="sp-label" rows="2" bind:value={editLabel} class="{inp} resize-none" placeholder="Plant&#10;Room 2"></textarea>
       </div>
     {/if}
 
@@ -350,26 +387,54 @@
       {/if}
     </div>
 
-      {#if readOnly}
+    <!-- ===== Measurements + appearance ===== -->
+    {#if metresPerUnit && poly.length >= 3}
+      <div class="p-2.5 rounded-lg bg-teal-900/30 border border-teal-700/40">
+        <p class="text-xs text-teal-500/70 uppercase tracking-wide mb-2">Measurements</p>
+        <div class="grid grid-cols-3 gap-x-3 gap-y-1">
+          <div>
+            <p class="text-xs text-teal-500/70">Perimeter</p>
+            <p class="text-sm font-semibold text-teal-300">{fmt1(perim)} m</p>
+          </div>
+          <div>
+            <p class="text-xs text-teal-500/70">Area</p>
+            <p class="text-sm font-semibold text-teal-300">{fmt1(area)} m²</p>
+          </div>
+          <div>
+            <p class="text-xs text-teal-500/70">Volume</p>
+            {#if previewVol != null}
+              <p class="text-sm font-semibold text-teal-300">{fmt1(previewVol)} m³</p>
+            {:else}
+              <p class="text-sm text-teal-700">— m³</p>
+            {/if}
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 pt-2 border-t border-teal-800/40">
+          <div>
+            <p class="text-xs text-teal-500/70">Longest side</p>
+            <p class="text-sm font-semibold text-teal-300">{fmt1(longest)} m</p>
+          </div>
+          <div>
+            <p class="text-xs text-teal-500/70">Shortest side</p>
+            <p class="text-sm font-semibold text-teal-300">{fmt1(shortest)} m</p>
+          </div>
+        </div>
+        {#if previewVol == null && !editHeightM}
+          <p class="text-xs text-teal-700/80 mt-1.5">Set height below to enable volume.</p>
+        {/if}
+      </div>
+    {:else if !metresPerUnit}
+      <div class="px-2.5 py-2 rounded-lg bg-slate-700/40 border border-slate-600/40">
+        <p class="text-xs text-slate-600 italic">
+          No scale set — switch to <span class="text-teal-600 font-medium">📏 Scale</span> mode
+          to enable measurements.
+        </p>
+      </div>
+    {/if}
 
-      <!-- -- Read-only fields ----------------------------------------- -->
+    {#if readOnly}
+
       <dl class="space-y-2">
-        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-          <dt class="text-xs text-slate-500 shrink-0 w-24">Label</dt>
-          <dd class="text-sm text-slate-200 whitespace-pre-wrap">{space.label ?? space.name ?? '—'}</dd>
-        </div>
-        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-          <dt class="text-xs text-slate-500 shrink-0 w-24">Name</dt>
-          <dd class="text-sm text-slate-200">{space.name || '—'}</dd>
-        </div>
-        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-          <dt class="text-xs text-slate-500 shrink-0 w-24">Reference</dt>
-          <dd class="text-sm font-mono text-slate-200">{refPreview}</dd>
-        </div>
-        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
-          <dt class="text-xs text-slate-500 shrink-0 w-24">Usage</dt>
-          <dd class="text-sm text-slate-200">{#if space.usage}{space.usage}{:else}<span class="text-slate-600">—</span>{/if}</dd>
-        </div>
         <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Colour</dt>
           <dd class="flex items-center gap-2">
@@ -402,68 +467,6 @@
       </dl>
 
     {:else}
-
-      <!-- -- Label (multi-line — shown on the plan) ------------------ -->
-      <div class="flex flex-col gap-1">
-        <label class="text-xs text-slate-400" for="sp-label">
-          Label <span class="text-red-400">*</span>
-          <span class="text-slate-600 font-normal ml-1">— shown on the plan; Enter for line breaks</span>
-        </label>
-        <textarea
-          id="sp-label"
-          rows="2"
-          bind:value={editLabel}
-          class="{inp} resize-none"
-          placeholder="Plant&#10;Room 2"
-        ></textarea>
-      </div>
-
-      <!-- -- Name (single-line — used in reports) -------------------- -->
-      <div class="flex flex-col gap-1">
-        <label class="text-xs text-slate-400" for="sp-name">
-          Name <span class="text-slate-600 font-normal ml-1">— single line, for reports</span>
-        </label>
-        <input
-          id="sp-name"
-          type="text"
-          bind:value={editName}
-          class={inp}
-          placeholder={derivedName || 'PlantRoom2'}
-        />
-        {#if !editName.trim() && derivedName}
-          <p class="text-[11px] text-slate-600">Defaults to <span class="font-mono text-slate-500">{derivedName}</span></p>
-        {/if}
-      </div>
-
-      <!-- -- Usage (category) ---------------------------------------- -->
-      <div class="flex flex-col gap-1">
-        <label class="text-xs text-slate-400" for="sp-type">Usage</label>
-        <select id="sp-type" bind:value={editType} class={inp}>
-          <option value="">— none —</option>
-          {#each usageOptions as st}
-            <option value={st}>{st}</option>
-          {/each}
-        </select>
-      </div>
-
-      <!-- -- Kind + reference ---------------------------------------- -->
-      <div class="grid grid-cols-2 gap-2">
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-400" for="sp-kind">Kind</label>
-          <select id="sp-kind" bind:value={editKind} class={inp}>
-            <option value="space">{KIND_LABEL.space}</option>
-            <option value="slot">{KIND_LABEL.slot}</option>
-          </select>
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-400" for="sp-assigned">Assigned ID</label>
-          <input id="sp-assigned" type="text" bind:value={editAssignedId}
-            placeholder="e.g. 12" class={inp} />
-        </div>
-      </div>
-      <p class="text-xs text-slate-600 -mt-1">
-        Reference: <span class="font-mono text-slate-400">{refPreview}</span>
-      </p>
 
       <!-- -- Colour -------------------------------------------------- -->
       <div>
@@ -517,7 +520,7 @@
       <!-- -- Show label ----------------------------------------------- -->
       <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
         <input type="checkbox" bind:checked={editShowLabel} class="rounded accent-purple-500" />
-        Show name label on plan
+        Show label on plan
       </label>
 
     {/if}
