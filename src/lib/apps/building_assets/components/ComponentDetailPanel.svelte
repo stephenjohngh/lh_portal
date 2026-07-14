@@ -322,6 +322,27 @@
       </div>
     </section>
 
+    <!-- -- Spaces (derived membership) ----------------------------- -->
+    {#if component.plan_id || componentSpaces.length > 0}
+      <section>
+        <p class={sec}>Spaces</p>
+        {#if componentSpaces.length > 0}
+          <div class="flex flex-wrap gap-1.5">
+            {#each componentSpaces as sp (sp.id)}
+              <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-700/50 border border-slate-600/50 text-xs">
+                <span class="w-2.5 h-2.5 rounded-sm shrink-0 {sp.colour && sp.colour !== 'none' ? '' : 'border border-slate-500'}"
+                  style={sp.colour && sp.colour !== 'none' ? `background-color:#${sp.colour}` : ''}></span>
+                <span class="font-mono text-slate-400">{buildSpaceRef(sp, floors)}</span>
+                <span class="text-slate-300">{sp.name}</span>
+              </span>
+            {/each}
+          </div>
+        {:else}
+          <p class="text-xs text-slate-600 italic">Not within any drawn space on this plan.</p>
+        {/if}
+      </section>
+    {/if}
+
     <!-- -- Status -------------------------------------------------- -->
     <section>
       <p class={sec}>Status</p>
@@ -417,26 +438,6 @@
       ></textarea>
     </section>
 
-    <!-- -- Spaces (derived membership) ----------------------------- -->
-    {#if component.plan_id || componentSpaces.length > 0}
-      <section>
-        <p class={sec}>Spaces</p>
-        {#if componentSpaces.length > 0}
-          <div class="flex flex-wrap gap-1.5">
-            {#each componentSpaces as sp (sp.id)}
-              <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-700/50 border border-slate-600/50 text-xs">
-                <span class="w-2.5 h-2.5 rounded-sm shrink-0 {sp.colour && sp.colour !== 'none' ? '' : 'border border-slate-500'}"
-                  style={sp.colour && sp.colour !== 'none' ? `background-color:#${sp.colour}` : ''}></span>
-                <span class="font-mono text-slate-400">{buildSpaceRef(sp, floors)}</span>
-                <span class="text-slate-300">{sp.name}</span>
-              </span>
-            {/each}
-          </div>
-        {:else}
-          <p class="text-xs text-slate-600 italic">Not within any drawn space on this plan.</p>
-        {/if}
-      </section>
-    {/if}
 
     <!-- -- Linked components --------------------------------------- -->
     <ComponentLinks
