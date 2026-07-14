@@ -81,7 +81,8 @@
   let showAnnotations = savedView?.showAnnotations ?? true;
 
   // -- Space drawing form state (bind: targets in SpaceDrawingSidebar) -
-  let drawingSpaceName = '';
+  let drawingSpaceLabel = '';   // multi-line plan-view display label
+  let drawingSpaceName  = '';   // single-line report name (derived when blank)
   let drawingSpaceType = '';
   let drawingColourHex = ACCENT;
   let drawingShowLabel = true;
@@ -246,6 +247,7 @@
 
   function cancelSpaceDrawing() {
     spaceCtrl.cancelDrawing();   // resets drawingVertices store
+    drawingSpaceLabel = '';
     drawingSpaceName = '';
     drawingSpaceType = '';
     drawingColourHex = ACCENT;
@@ -390,13 +392,14 @@
 
   // -- Space drawing finish ------------------------------------------
   async function handleFinishDrawing() {
-    if ($drawingVertices.length < 3 || !drawingSpaceName.trim()) return;
+    if ($drawingVertices.length < 3 || !drawingSpaceLabel.trim()) return;
     saving = true; errorMsg = '';
     try {
       const newSpace = await buildingAssetsStore.createSpace({
         plan_id:    selectedPlanId,
         floor_id:   selectedFloorId || null,
-        name:       drawingSpaceName.trim(),
+        label:      drawingSpaceLabel,        // multi-line plan display
+        name:       drawingSpaceName,         // store derives from label when blank
         usage: drawingSpaceType || null,
         colour:     drawingColourHex === 'none' ? 'none' : drawingColourHex.replace('#', ''),
         polygon:    $drawingVertices,
@@ -633,6 +636,7 @@
       {:else if sidebarMode === 'space-drawing'}
         <SpaceDrawingSidebar
           vertices={$drawingVertices} {saving}
+          bind:spaceLabel={drawingSpaceLabel}
           bind:spaceName={drawingSpaceName}
           bind:spaceUsage={drawingSpaceType}
           bind:colourHex={drawingColourHex}

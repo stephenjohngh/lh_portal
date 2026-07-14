@@ -10,7 +10,7 @@
   import { SPACE_USAGES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
   import { ACCENT } from '$lib/theme.js';
-  import { buildSpaceRef, KIND_LABEL } from '$lib/utils/spaceRef.js';
+  import { buildSpaceRef, KIND_LABEL, deriveSpaceName } from '$lib/utils/spaceRef.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { componentsInSpace } from '../../utils/spaceMembership.js';
   import { spaceRollup } from '../../utils/spaceReport.js';
@@ -27,7 +27,8 @@
   const dispatch = createEventDispatcher();
 
   // -- Editable fields -----------------------------------------------
-  let editName      = '';
+  let editLabel     = '';   // multi-line plan-view display label
+  let editName      = '';   // single-line report name
   let editType      = '';
   let editColourHex = '';
   let editHeightM   = '';   // string for input; converted to float on save
@@ -46,6 +47,7 @@
 
   $: if (space?.id !== loadedId) {
     loadedId      = space?.id ?? null;
+    editLabel     = space?.label ?? space?.name ?? '';   // fall back for pre-split rows
     editName      = space?.name        ?? '';
     editType      = space?.usage       ?? '';
     editColourHex = space
@@ -71,7 +73,10 @@
   // Uses parsedHeight (float|null) vs space.height_m (float|null) so that
   // "2.8" in the input correctly matches a stored 2.8.
   // Colour comparison handles 'none' (transparent) correctly.
+  $: derivedName = deriveSpaceName(editLabel);
+
   $: dirty = !!space && (
+    editLabel     !== (space.label ?? space.name ?? '')  ||
     editName      !== (space.name       ?? '')  ||
     editType      !== (space.usage       ?? '')  ||
     editColourHex !== (space.colour === 'none' ? 'none' : `#${space.colour}`) ||
@@ -151,11 +156,12 @@
   $: rollup = spaceRollup(members);
 
   async function handleSave() {
-    if (!editName.trim()) { errorMsg = 'Name is required.'; return; }
+    if (!editLabel.trim()) { errorMsg = 'Label is required.'; return; }
     saving = true; errorMsg = '';
     try {
       const updated = await buildingAssetsStore.updateSpace(space.id, {
-        name:        editName,
+        label:       editLabel,
+        name:        editName,   // store derives from label when blank
         usage:       editType,
         colour:      editColourHex === 'none' ? 'none' : editColourHex.replace('#', ''),
         height_m:    parsedHeight,
@@ -196,7 +202,7 @@
         class="w-4 h-4 rounded-sm shrink-0 {editColourHex === 'none' ? 'border border-slate-500' : ''}"
         style={editColourHex !== 'none' ? `background-color:${editColourHex}` : ''}
       ></div>
-      <p class="font-semibold text-white text-sm truncate">{space.name}</p>
+      <p class="font-semibold text-white text-sm truncate">{space.name || space.label}</p>
       {#if dirty}
         <span class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
           unsaved
@@ -341,8 +347,12 @@
       <!-- -- Read-only fields ----------------------------------------- -->
       <dl class="space-y-2">
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
+          <dt class="text-xs text-slate-500 shrink-0 w-24">Label</dt>
+          <dd class="text-sm text-slate-200 whitespace-pre-wrap">{space.label ?? space.name ?? '—'}</dd>
+        </div>
+        <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Name</dt>
-          <dd class="text-sm text-slate-200 whitespace-pre-wrap">{space.name || '—'}</dd>
+          <dd class="text-sm text-slate-200">{space.name || '—'}</dd>
         </div>
         <div class="flex items-baseline gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-700/60">
           <dt class="text-xs text-slate-500 shrink-0 w-24">Reference</dt>
@@ -385,19 +395,36 @@
 
     {:else}
 
-      <!-- -- Name ---------------------------------------------------- -->
+      <!-- -- Label (multi-line — shown on the plan) ------------------ -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs text-slate-400" for="sp-name">
-          Name <span class="text-red-400">*</span>
-          <span class="text-slate-600 font-normal ml-1">— use Enter for line breaks on the plan</span>
+        <label class="text-xs text-slate-400" for="sp-label">
+          Label <span class="text-red-400">*</span>
+          <span class="text-slate-600 font-normal ml-1">— shown on the plan; Enter for line breaks</span>
         </label>
         <textarea
-          id="sp-name"
+          id="sp-label"
           rows="2"
-          bind:value={editName}
+          bind:value={editLabel}
           class="{inp} resize-none"
-          placeholder="Space name…"
+          placeholder="Plant&#10;Room 2"
         ></textarea>
+      </div>
+
+      <!-- -- Name (single-line — used in reports) -------------------- -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-slate-400" for="sp-name">
+          Name <span class="text-slate-600 font-normal ml-1">— single line, for reports</span>
+        </label>
+        <input
+          id="sp-name"
+          type="text"
+          bind:value={editName}
+          class={inp}
+          placeholder={derivedName || 'PlantRoom2'}
+        />
+        {#if !editName.trim() && derivedName}
+          <p class="text-[11px] text-slate-600">Defaults to <span class="font-mono text-slate-500">{derivedName}</span></p>
+        {/if}
       </div>
 
       <!-- -- Usage (category) ---------------------------------------- -->

@@ -221,7 +221,7 @@
             style="background-color:{isNone ? '#1e293b' : `#${space.colour}33`};
                    color:{isNone ? '#94a3b8' : `#${space.colour}`};
                    border:1px solid {isNone ? '#475569' : `#${space.colour}88`}"
-          >{space.name}</div>
+          >{space.label ?? space.name}</div>
         </div>
       {/if}
     {/each}

@@ -47,6 +47,7 @@ export function buildSpaceCopyRows(srcSpaces = [], opts) {
         plan_id:     planId,
         floor_id:    floorId,
         name:        sp.name,
+        label:       sp.label ?? sp.name ?? null,
         usage:       sp.usage ?? null,
         polygon:     sp.polygon,
         colour:      sp.colour,

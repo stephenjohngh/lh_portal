@@ -3,7 +3,7 @@
 // mirroring componentRef.js. These build/find helpers must round-trip.
 
 import { describe, it, expect } from 'vitest';
-import { buildSpaceRef, findSpaceByRef, fmtSpaceRef, spaceKindInitial, KIND_LABEL } from './spaceRef.js';
+import { buildSpaceRef, findSpaceByRef, fmtSpaceRef, spaceKindInitial, KIND_LABEL, deriveSpaceName } from './spaceRef.js';
 
 const floors = [{ id: 'f1', short_name: 'G' }, { id: 'b1', short_name: 'B1' }];
 const spaces = [
@@ -53,5 +53,20 @@ describe('fmtSpaceRef', () => {
     expect(fmtSpaceRef('G/S/12')).toBe('G/S/12');
     expect(fmtSpaceRef('')).toBe('—');
     expect(fmtSpaceRef(null)).toBe('—');
+  });
+});
+
+describe('deriveSpaceName', () => {
+  it('strips whitespace, newlines and non-alphanumerics from a label', () => {
+    expect(deriveSpaceName('Plant\nRoom 2')).toBe('PlantRoom2');
+    expect(deriveSpaceName('Stair B — West')).toBe('StairBWest');
+  });
+  it('handles empty / nullish input', () => {
+    expect(deriveSpaceName('')).toBe('');
+    expect(deriveSpaceName(null)).toBe('');
+    expect(deriveSpaceName(undefined)).toBe('');
+  });
+  it('leaves an already-single-word alphanumeric name unchanged (idempotent)', () => {
+    expect(deriveSpaceName('PlantRoom2')).toBe('PlantRoom2');
   });
 });

@@ -20,6 +20,18 @@ export function spaceKindInitial(kind) {
   return KIND_INITIAL[kind] ?? KIND_INITIAL.space;
 }
 
+/**
+ * Derive a single-line report `name` from a (possibly multi-line) `label`:
+ * strip every whitespace / newline / non-alphanumeric character. Mirrors the
+ * seeding in migration 162 so create/edit stay consistent with the backfill.
+ * e.g. "Plant\nRoom 2" -> "PlantRoom2".
+ * @param {string} label
+ * @returns {string}
+ */
+export function deriveSpaceName(label) {
+  return (label ?? '').replace(/[^a-zA-Z0-9]/g, '');
+}
+
 // The stored assigned-id segment, with a stable fallback (mirrors componentRef's
 // asset_id -> truncated-id fallback so build/find round-trip on the same value).
 function assignedSegment(space) {

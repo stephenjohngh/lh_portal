@@ -8,6 +8,7 @@ import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { requireUserId } from './helpers.js';
 import { buildSpacesRegisterRows } from '../utils/spaceReport.js';
+import { deriveSpaceName } from '$lib/utils/spaceRef.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -25,7 +26,10 @@ export function createSpaceActions(update) {
     const space = await api.create('spaces', {
       plan_id:    data.plan_id,
       floor_id:   data.floor_id   || null,
-      name:       data.name,      // preserve leading whitespace — users may indent plan labels
+      // label = multi-line plan-view display (preserve whitespace/newlines);
+      // name = single-line report name (derived from the label when blank).
+      label:      data.label ?? null,
+      name:       data.name?.trim() || deriveSpaceName(data.label ?? ''),
       usage:      data.usage?.trim() || null,
       polygon:    roundPoly(data.polygon),
       colour:     normaliseColour(data.colour),
@@ -48,7 +52,6 @@ export function createSpaceActions(update) {
   async function updateSpace(id, data) {
     const userId = requireUserId();
     const patch = {
-      name:       data.name,      // preserve leading whitespace — users may indent plan labels
       usage:      data.usage?.trim() || null,
       colour:     normaliseColour(data.colour),
       height_m:   data.height_m          ?? null,
@@ -56,8 +59,11 @@ export function createSpaceActions(update) {
       notes:      data.notes?.trim()     || null,
       updated_by: userId
     };
-    // kind / assigned_id are managed by the detail sidebar; only patch them when
-    // provided so other callers can't inadvertently reset them.
+    // label / name / kind / assigned_id are managed by the detail sidebar; only
+    // patch them when provided so other callers can't inadvertently reset them.
+    // label = multi-line plan display; name = single-line report (derived when blank).
+    if (data.label       !== undefined) patch.label       = data.label ?? null;
+    if (data.name        !== undefined) patch.name        = data.name?.trim() || deriveSpaceName(data.label ?? '');
     if (data.kind        !== undefined) patch.kind        = data.kind === 'slot' ? 'slot' : 'space';
     if (data.assigned_id !== undefined) patch.assigned_id = data.assigned_id?.trim() || null;
     const updated = await api.update('spaces', id, patch);

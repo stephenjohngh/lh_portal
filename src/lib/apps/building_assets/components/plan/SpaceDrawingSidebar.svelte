@@ -7,10 +7,13 @@
   import { SPACE_USAGES, SPACE_COLOURS } from './planMeasure.js';
   import { inp } from '../../ui.js';
   import { ACCENT } from '$lib/theme.js';
+  import { deriveSpaceName } from '$lib/utils/spaceRef.js';
 
   export let vertices    = [];
   export let saving      = false;
-  // Two-way bound from PlanViewTab so it shares the same state
+  // Two-way bound from PlanViewTab so it shares the same state.
+  // label = multi-line plan-view display; name = single-line report name.
+  export let spaceLabel  = '';
   export let spaceName   = '';
   export let spaceUsage  = '';
   export let colourHex   = ACCENT;
@@ -18,8 +21,9 @@
 
   const dispatch = createEventDispatcher();
 
-
-  $: canFinish = vertices.length >= 3 && spaceName.trim().length > 0;
+  // Report name defaults to the label stripped to alphanumerics (shown as a hint).
+  $: derivedName = deriveSpaceName(spaceLabel);
+  $: canFinish   = vertices.length >= 3 && spaceLabel.trim().length > 0;
 </script>
 
 <div class="bg-slate-800 rounded-xl border border-purple-700/50 p-4">
@@ -38,15 +42,34 @@
     >✕</button>
   </div>
 
-  <!-- Name -->
+  <!-- Label (multi-line — shown on the plan) -->
   <div class="flex flex-col gap-1 mb-2">
-    <p class="text-xs text-slate-400">Name <span class="text-red-400">*</span></p>
+    <p class="text-xs text-slate-400">
+      Label <span class="text-red-400">*</span>
+      <span class="text-slate-600 font-normal ml-1">— shown on the plan; Enter for line breaks</span>
+    </p>
+    <textarea
+      rows="2"
+      bind:value={spaceLabel}
+      placeholder="e.g. Plant&#10;Room 2"
+      class="{inp} resize-none"
+    ></textarea>
+  </div>
+
+  <!-- Name (single-line — used in reports) -->
+  <div class="flex flex-col gap-1 mb-2">
+    <p class="text-xs text-slate-400">
+      Name <span class="text-slate-600 font-normal ml-1">— single line, for reports</span>
+    </p>
     <input
       type="text"
       bind:value={spaceName}
-      placeholder="e.g. Plant Room"
+      placeholder={derivedName || 'e.g. PlantRoom2'}
       class={inp}
     />
+    {#if !spaceName.trim() && derivedName}
+      <p class="text-[11px] text-slate-600">Defaults to <span class="font-mono text-slate-500">{derivedName}</span></p>
+    {/if}
   </div>
 
   <!-- Usage -->
@@ -82,7 +105,7 @@
   <!-- Show label -->
   <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none mb-3">
     <input type="checkbox" bind:checked={showLabel} class="rounded accent-purple-500" />
-    Show name label on plan
+    Show label on plan
   </label>
 
   <!-- Hint -->

@@ -2856,6 +2856,7 @@ export type Database = {
           plan_id: string
           floor_id: string | null
           name: string
+          label: string | null
           usage: string | null
           polygon: Json
           colour: string
@@ -2874,6 +2875,7 @@ export type Database = {
           plan_id?: string
           floor_id?: string | null
           name?: string
+          label?: string | null
           usage?: string | null
           polygon?: Json
           colour?: string
@@ -2892,6 +2894,7 @@ export type Database = {
           plan_id?: string
           floor_id?: string | null
           name?: string
+          label?: string | null
           usage?: string | null
           polygon?: Json
           colour?: string
