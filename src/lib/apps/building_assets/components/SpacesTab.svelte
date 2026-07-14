@@ -12,8 +12,21 @@
   import { downloadCsvRows } from '$lib/utils/download.js';
   import { permissions } from '$lib/stores/permissions';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import SpaceDetailSidebar from './plan/SpaceDetailSidebar.svelte';
+  import { computeMetresPerUnit } from './plan/planMeasure.js';
 
   $: store = $buildingAssetsStore;
+
+  // -- Selected space (click a row → detail/edit panel, like the Components tab) --
+  let selectedSpace = null;
+  function openSpace(row) {
+    selectedSpace = store.spaces.find(s => s.id === row.id) ?? null;
+  }
+  // Scale/AR for the selected space's plan (drives measurements in the panel).
+  $: selPlan   = selectedSpace ? store.plans.find(p => p.id === selectedSpace.plan_id) : null;
+  $: selPlanAR = selPlan?.image_aspect_ratio
+    ?? (selPlan?.image_width && selPlan?.image_height ? selPlan.image_width / selPlan.image_height : 1);
+  $: selMPU    = computeMetresPerUnit(selPlan?.scale_ref, selPlanAR);
 
   // Register rows — derived at read time via the PURE builder (not the store's
   // buildSpacesRegister(), whose update() would loop when called reactively).
@@ -86,6 +99,26 @@
   const inp = 'bg-slate-700 border border-slate-600 rounded text-sm text-white px-2 py-1.5 focus:outline-none focus:border-purple-500';
 </script>
 
+{#if selectedSpace}
+  <!-- Detail / edit panel (click a register row) — mirrors the Components tab -->
+  <div class="max-w-md">
+    <button
+      on:click={() => selectedSpace = null}
+      class="mb-3 text-xs text-slate-400 hover:text-white transition-colors"
+    >← Back to register</button>
+    <SpaceDetailSidebar
+      space={selectedSpace}
+      floors={store.floors}
+      metresPerUnit={selMPU}
+      planAR={selPlanAR}
+      readOnly={!$permissions.isAdmin}
+      allowShapeEdit={false}
+      on:saved={({ detail }) => { selectedSpace = detail.space; }}
+      on:deleted={() => { selectedSpace = null; }}
+      on:close={() => { selectedSpace = null; }}
+    />
+  </div>
+{:else}
 <div class="bg-slate-800 rounded-xl border border-slate-700">
 
   <!-- Header -->
@@ -173,7 +206,12 @@
         </thead>
         <tbody>
           {#each filteredRows as r (r.reference)}
-            <tr class="border-b border-slate-700/40 hover:bg-slate-700/20 transition-colors">
+            <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+            <tr
+              class="border-b border-slate-700/40 hover:bg-slate-700/20 transition-colors cursor-pointer"
+              on:click={() => openSpace(r)}
+              title="Open space detail"
+            >
               <td class="px-3 py-2 font-mono text-teal-400/90 whitespace-nowrap">{r.reference}</td>
               <td class="px-3 py-2 text-slate-300">{r.name || '—'}</td>
               <td class="px-3 py-2 text-slate-400">{kindLabel(r.kind)}</td>
@@ -188,9 +226,9 @@
               <td class="px-3 py-2 text-right {r.failed   > 0 ? 'text-red-400'   : 'text-slate-800'}">{r.failed   || '—'}</td>
               <td class="px-3 py-2 text-right {r.inactive > 0 ? 'text-slate-400' : 'text-slate-800'}">{r.inactive || '—'}</td>
               {#if $permissions.isAdmin}
-                <td class="px-3 py-2 text-right whitespace-nowrap">
+                <td class="px-3 py-2 text-right whitespace-nowrap" on:click|stopPropagation>
                   <button
-                    on:click={() => requestDelete(r)}
+                    on:click|stopPropagation={() => requestDelete(r)}
                     class="px-2 py-0.5 rounded bg-red-900/40 hover:bg-red-800/50
                            text-red-400 border border-red-800/40 transition-colors text-[11px]"
                     title="Delete space (admin)"
@@ -216,6 +254,7 @@
   {/if}
 
 </div>
+{/if}
 
 <ConfirmDialog
   show={!!pendingDelete}

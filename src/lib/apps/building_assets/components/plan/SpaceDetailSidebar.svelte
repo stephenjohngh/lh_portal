@@ -23,6 +23,7 @@
   export let planAR               = null;   // image aspect ratio
   export let vertexEditingActive  = false;  // true while editing polygon corners
   export let readOnly             = false;  // hide mutating actions (View mode)
+  export let allowShapeEdit       = true;   // false when there's no plan canvas (e.g. Spaces tab)
 
   const dispatch = createEventDispatcher();
 
@@ -529,7 +530,7 @@
     <div class="flex flex-col gap-0.5 pt-1 border-t border-slate-700/60">
       <div class="flex items-center justify-between">
         <p class="text-xs text-slate-600">{poly.length} polygon vertices</p>
-        {#if !readOnly}
+        {#if !readOnly && allowShapeEdit}
           <button
             on:click={() => dispatch(vertexEditingActive ? 'doneeditshape' : 'editshape')}
             class="text-xs px-2 py-0.5 rounded transition-colors
