@@ -92,8 +92,27 @@
     return { ok: 'st-ok', failed: 'st-fail', problem: 'st-problem', inactive: 'st-inactive' }[s] ?? 'st-inactive';
   }
 
+  // -- Reverse walk direction (within the current floor) -----------------
+  // When ON, NEXT steps to the next-LOWEST component and wraps lowest→highest
+  // (stays on this floor — no floor change). Reset whenever the floor changes.
+  let reversed    = false;
+  let lastFloorId = null;
+  $: {
+    const fid = currentFloor?.id ?? null;
+    if (fid !== lastFloorId) { reversed = false; lastFloorId = fid; }
+  }
+  function toggleReverse() { reversed = !reversed; }
+
   function handlePrev() { view = 'card'; inspectionStore.goPrev(); }
-  function handleNext() { view = 'card'; inspectionStore.goNext(); }
+  function handleNext() {
+    view = 'card';
+    if (reversed) {
+      const n = components.length;
+      if (n > 1) inspectionStore.goToIndex(currentIndex > 0 ? currentIndex - 1 : n - 1);
+    } else {
+      inspectionStore.goNext();
+    }
+  }
   function handleJumpTo(e) { view = 'card'; inspectionStore.goToIndex(e.detail.index); }
   function handleEditSaved() { view = 'card'; }
 
@@ -303,7 +322,7 @@
             </button>
           </div>
           <button class="nav-btn" on:click={handleNext}
-            disabled={inspectionStore.isAtEndOfBuilding() || (!isBuilding && currentIndex >= components.length - 1)}>
+            disabled={!reversed && (inspectionStore.isAtEndOfBuilding() || (!isBuilding && currentIndex >= components.length - 1))}>
             NEXT ›
           </button>
         </div>
@@ -313,9 +332,17 @@
           {#if canEdit}
             <WalkButton variant="secondary" size="sm" on:click={() => view = 'edit'}>✎ EDIT</WalkButton>
           {/if}
-          <WalkButton variant="primary" size="full" on:click={() => view = 'inspect'}>
-            {currentInspection ? '✎ RE-INSPECT' : '✓ INSPECT'}
-          </WalkButton>
+          {#if !isRepair && components.length > 1}
+            <button class="rev-btn" class:rev-on={reversed} on:click={toggleReverse}
+              title="Reverse the walk direction on this floor — NEXT steps to the next-lowest, wrapping. Resets when the floor changes.">
+              ⇅ REVERSE
+            </button>
+          {/if}
+          <div class="act-main">
+            <WalkButton variant="primary" size="full" on:click={() => view = 'inspect'}>
+              {currentInspection ? '✎ RE-INSPECT' : '✓ INSPECT'}
+            </WalkButton>
+          </div>
         </div>
 
       </div>
@@ -406,7 +433,11 @@
   .plan-btn:disabled { opacity:0.3; cursor:not-allowed; }
 
   /* -- Action buttons -------------------------------------------------------- */
-  .act-row { display:flex; gap:0.75rem; padding:1rem; }
+  .act-row { display:flex; align-items:stretch; gap:0.75rem; padding:1rem; }
+  .act-main { flex:1; min-width:0; }
+  .rev-btn { flex-shrink:0; height:52px; padding:0 1rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; font-weight:700; letter-spacing:0.06em; cursor:pointer; transition:all 0.15s; }
+  .rev-btn:hover { border-color:#fb923c; color:#fb923c; }
+  .rev-on { background:#1a0e00; border-color:#fb923c; color:#fb923c; }
 
   /* -- Building floor strip -------------------------------------------------- */
   .floor-strip { display:flex; gap:0; border-top:2px solid #2e2e42; background:#0a0a18; overflow-x:auto; }
