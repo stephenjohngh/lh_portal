@@ -103,7 +103,15 @@
   }
   function toggleReverse() { reversed = !reversed; }
 
-  function handlePrev() { view = 'card'; inspectionStore.goPrev(); }
+  function handlePrev() {
+    view = 'card';
+    if (reversed) {
+      const n = components.length;
+      if (n > 1) inspectionStore.goToIndex(currentIndex < n - 1 ? currentIndex + 1 : 0);
+    } else {
+      inspectionStore.goPrev();
+    }
+  }
   function handleNext() {
     view = 'card';
     if (reversed) {
@@ -309,7 +317,7 @@
 
         <!-- Navigation row -->
         <div class="nav-row">
-          <button class="nav-btn" on:click={handlePrev} disabled={currentIndex === 0 && inspectionStore.isAtStartOfBuilding()}>
+          <button class="nav-btn" on:click={handlePrev} disabled={!reversed && currentIndex === 0 && inspectionStore.isAtStartOfBuilding()}>
             ‹ PREV
           </button>
           <div class="nav-ctr">
