@@ -92,35 +92,33 @@
     return { ok: 'st-ok', failed: 'st-fail', problem: 'st-problem', inactive: 'st-inactive' }[s] ?? 'st-inactive';
   }
 
-  // -- Reverse walk direction (within the current floor) -----------------
-  // When ON, NEXT steps to the next-LOWEST component and wraps lowest→highest
-  // (stays on this floor — no floor change). Reset whenever the floor changes.
-  let reversed    = false;
-  let lastFloorId = null;
+  // -- Per-floor walk direction (building-wide walks) ---------------------
+  // Walk order is defined left-to-right, so a floor is naturally walked in the
+  // opposite direction to the one below it. On arriving at a floor the walk
+  // pauses and asks which way this floor runs; REVERSE flips the floor's list so
+  // the walk starts at the highest walk-order component. Asked on every arrival,
+  // including the first floor and when stepping back with PREV.
+  let reversedFloor = false;
+  let lastFloorId   = null;
   $: {
     const fid = currentFloor?.id ?? null;
-    if (fid !== lastFloorId) { reversed = false; lastFloorId = fid; }
+    if (fid !== lastFloorId) {
+      lastFloorId   = fid;
+      reversedFloor = false;
+      // Nothing to choose on a single-component floor — don't interrupt.
+      if (isBuilding && !isRepair && fid && components.length > 1) view = 'floordir';
+    }
   }
-  function toggleReverse() { reversed = !reversed; }
+  function chooseFloorOrder(reverse) {
+    if (reverse) {
+      inspectionStore.reverseFloorOrder();
+      reversedFloor = true;
+    }
+    view = 'card';
+  }
 
-  function handlePrev() {
-    view = 'card';
-    if (reversed) {
-      const n = components.length;
-      if (n > 1) inspectionStore.goToIndex(currentIndex < n - 1 ? currentIndex + 1 : 0);
-    } else {
-      inspectionStore.goPrev();
-    }
-  }
-  function handleNext() {
-    view = 'card';
-    if (reversed) {
-      const n = components.length;
-      if (n > 1) inspectionStore.goToIndex(currentIndex > 0 ? currentIndex - 1 : n - 1);
-    } else {
-      inspectionStore.goNext();
-    }
-  }
+  function handlePrev() { view = 'card'; inspectionStore.goPrev(); }
+  function handleNext() { view = 'card'; inspectionStore.goNext(); }
   function handleJumpTo(e) { view = 'card'; inspectionStore.goToIndex(e.detail.index); }
   function handleEditSaved() { view = 'card'; }
 
@@ -162,6 +160,9 @@
         {/if}
         {#if isBuilding && currentFloor}
           <span class="floor-pill">Floor {currentFloor.short_name}</span>
+        {/if}
+        {#if reversedFloor}
+          <span class="rev-pill" title="This floor is being walked in reverse walk order — highest first">R</span>
         {/if}
       </div>
     </div>
@@ -275,6 +276,24 @@
       </div>
     </div>
 
+  {:else if view === 'floordir' && currentFloor}
+    <!-- -- Floor arrival: which direction is this floor walked? ----------- -->
+    <div class="fd-sheet">
+      <div class="fd-hdr"><span class="fd-title">WALK DIRECTION</span></div>
+      <div class="fd-body">
+        <div class="fd-floor">FLOOR {currentFloor.short_name}</div>
+        <div class="fd-ask">Which way are you walking this floor?</div>
+        <button class="fd-opt" on:click={() => chooseFloorOrder(false)}>
+          <span class="fd-opt-lbl">NORMAL</span>
+          <span class="fd-opt-sub">Walk order low → high · start at {components[0]?.asset_id ?? '?'}</span>
+        </button>
+        <button class="fd-opt fd-opt-rev" on:click={() => chooseFloorOrder(true)}>
+          <span class="fd-opt-lbl">⇅ REVERSE</span>
+          <span class="fd-opt-sub">Walk order high → low · start at {components[components.length - 1]?.asset_id ?? '?'}</span>
+        </button>
+      </div>
+    </div>
+
   {:else if view === 'card'}
     <!-- -- Component card ------------------------------------------------- -->
     {#if currentComponent}
@@ -317,7 +336,7 @@
 
         <!-- Navigation row -->
         <div class="nav-row">
-          <button class="nav-btn" on:click={handlePrev} disabled={!reversed && currentIndex === 0 && inspectionStore.isAtStartOfBuilding()}>
+          <button class="nav-btn" on:click={handlePrev} disabled={currentIndex === 0 && inspectionStore.isAtStartOfBuilding()}>
             ‹ PREV
           </button>
           <div class="nav-ctr">
@@ -330,7 +349,7 @@
             </button>
           </div>
           <button class="nav-btn" on:click={handleNext}
-            disabled={!reversed && (inspectionStore.isAtEndOfBuilding() || (!isBuilding && currentIndex >= components.length - 1))}>
+            disabled={inspectionStore.isAtEndOfBuilding() || (!isBuilding && currentIndex >= components.length - 1)}>
             NEXT ›
           </button>
         </div>
@@ -340,17 +359,9 @@
           {#if canEdit}
             <WalkButton variant="secondary" size="sm" on:click={() => view = 'edit'}>✎ EDIT</WalkButton>
           {/if}
-          {#if !isRepair && components.length > 1}
-            <button class="rev-btn" class:rev-on={reversed} on:click={toggleReverse}
-              title="Reverse the walk direction on this floor — NEXT steps to the next-lowest, wrapping. Resets when the floor changes.">
-              ⇅ REVERSE
-            </button>
-          {/if}
-          <div class="act-main">
-            <WalkButton variant="primary" size="full" on:click={() => view = 'inspect'}>
-              {currentInspection ? '✎ RE-INSPECT' : '✓ INSPECT'}
-            </WalkButton>
-          </div>
+          <WalkButton variant="primary" size="full" on:click={() => view = 'inspect'}>
+            {currentInspection ? '✎ RE-INSPECT' : '✓ INSPECT'}
+          </WalkButton>
         </div>
 
       </div>
@@ -386,6 +397,7 @@
   .sbar-name { font-size:0.82rem; font-weight:700; color:#f0f0f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sbar-meta { display:flex; align-items:center; gap:0.5rem; margin-top:0.15rem; font-size:0.68rem; color:#aaa; }
   .floor-pill { background:#1a1a30; color:#93c5fd; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:700; border:1px solid #334155; }
+  .rev-pill   { background:#1a0e00; color:#fb923c; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:800; border:1px solid #fb923c; }
   .sbar-r { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; }
   .sbar-floors { font-size:0.65rem; color:#888; }
   .sbar-count { font-size:0.78rem; font-weight:700; color:#ccc; }
@@ -441,11 +453,21 @@
   .plan-btn:disabled { opacity:0.3; cursor:not-allowed; }
 
   /* -- Action buttons -------------------------------------------------------- */
-  .act-row { display:flex; align-items:stretch; gap:0.75rem; padding:1rem; }
-  .act-main { flex:1; min-width:0; }
-  .rev-btn { flex-shrink:0; height:52px; padding:0 1rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; font-weight:700; letter-spacing:0.06em; cursor:pointer; transition:all 0.15s; }
-  .rev-btn:hover { border-color:#fb923c; color:#fb923c; }
-  .rev-on { background:#1a0e00; border-color:#fb923c; color:#fb923c; }
+  .act-row { display:flex; gap:0.75rem; padding:1rem; }
+
+  /* -- Floor-direction prompt ------------------------------------------------ */
+  .fd-sheet { display:flex; flex-direction:column; flex:1; }
+  .fd-hdr   { display:flex; align-items:center; padding:1rem 1.25rem; background:#111122; border-bottom:1px solid #2e2e42; }
+  .fd-title { font-size:0.65rem; letter-spacing:0.25em; color:#fb923c; flex:1; text-align:center; }
+  .fd-body  { display:flex; flex-direction:column; gap:1rem; padding:1.5rem; flex:1; }
+  .fd-floor { font-size:1.5rem; font-weight:700; color:#f0f0f0; text-align:center; }
+  .fd-ask   { font-size:0.78rem; color:#888; text-align:center; margin-bottom:0.5rem; }
+  .fd-opt   { display:flex; flex-direction:column; align-items:flex-start; gap:0.3rem; min-height:64px; padding:1rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; font-family:inherit; text-align:left; cursor:pointer; transition:all 0.15s; }
+  .fd-opt:hover { border-color:#fb923c; }
+  .fd-opt-lbl { font-size:0.9rem; font-weight:700; letter-spacing:0.06em; color:#f0f0f0; }
+  .fd-opt-sub { font-size:0.68rem; color:#888; }
+  .fd-opt:hover .fd-opt-lbl { color:#fb923c; }
+  .fd-opt-rev { background:#100a00; }
 
   /* -- Building floor strip -------------------------------------------------- */
   .floor-strip { display:flex; gap:0; border-top:2px solid #2e2e42; background:#0a0a18; overflow-x:auto; }

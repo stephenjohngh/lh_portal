@@ -623,6 +623,22 @@ function createInspectionStore() {
     }));
   }
 
+  // Reverse the current floor's walk order, in place.
+  //
+  // Walk order is defined left-to-right, so a building-wide walk naturally
+  // alternates: a floor walked low→high ends at the far end, and the floor above
+  // is then walked high→low. The walk screen asks which order on every floor
+  // arrival and calls this for the reverse answer.
+  //
+  // currentIndex is deliberately NOT translated. The prompt fires on arrival,
+  // where the index is either 0 (entered forwards — the start of this floor's
+  // walk) or the last index (entered backwards — its end). Both still mean
+  // start/end after the reversal, so keeping the index lands the inspector on
+  // the highest walk-order component when the floor runs in reverse.
+  function reverseFloorOrder() {
+    update(s => ({ ...s, walkComponents: [...s.walkComponents].reverse() }));
+  }
+
   // Rebuild the active session's walk builder from the stashed _walk config.
   // Sync (no fetch): any latest-inspections load already happened at start/resume.
   function activeBuildFn(s) {
@@ -908,6 +924,7 @@ function createInspectionStore() {
     goToIndex,
     goNext,
     goPrev,
+    reverseFloorOrder,
     isAtEndOfBuilding,
     isAtStartOfBuilding,
     getCurrentFloorProgress,

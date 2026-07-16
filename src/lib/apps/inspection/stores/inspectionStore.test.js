@@ -275,6 +275,28 @@ describe('navigation', () => {
   });
 });
 
+describe('reverseFloorOrder', () => {
+  it('reverses the floor walk list and leaves currentIndex alone', async () => {
+    await startWalk(); // currentIndex 0, [comp1, comp2] in walk order
+    inspectionStore.reverseFloorOrder();
+    const s = get(inspectionStore);
+    // Index is NOT translated: the walk screen asks on floor arrival, where
+    // index 0 means "start of this floor's walk" either way — so after the flip
+    // it lands on the highest walk-order component, not back on comp1.
+    expect(s.walkComponents.map(c => c.id)).toEqual(['comp2', 'comp1']);
+    expect(s.currentIndex).toBe(0);
+  });
+
+  it('entering a floor backwards (index at the end) still lands on that end after reversing', async () => {
+    await startWalk();
+    inspectionStore.goToIndex(1);        // as goPrev leaves it on arrival from above
+    inspectionStore.reverseFloorOrder();
+    const s = get(inspectionStore);
+    expect(s.currentIndex).toBe(1);
+    expect(s.walkComponents[s.currentIndex].id).toBe('comp1');  // the reversed floor's last stop
+  });
+});
+
 describe('recordInspection', () => {
   it('CREATE path: inserts the inspection, stamps last_inspection_id + status, saves photos, audits create', async () => {
     await startWalk();
