@@ -230,7 +230,6 @@
   {:else if view === 'edit' && currentComponent}
     <InspectionComponentEditor
       component={currentComponent}
-      floor={currentFloor}
       on:saved={handleEditSaved}
       on:cancel={() => view = 'card'}
     />
@@ -240,7 +239,7 @@
       {components}
       {currentIndex}
       {inspections}
-      floor={currentFloor}
+      {floors}
       {types}
       on:jump={handleJumpTo}
       on:close={() => view = 'card'}

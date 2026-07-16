@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { getLogger }   from '$lib/utils/logger';
   import { inspectionStore } from '../stores/inspectionStore.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
   import WalkButton   from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkError    from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
@@ -12,10 +13,12 @@
   const dispatch = createEventDispatcher();
 
   export let component;  // components row
-  export let floor;      // floors row
 
   $: types    = $inspectionStore.types;
   $: systems  = $inspectionStore.systems;
+  $: componentRef = component
+    ? buildComponentRef(component, $inspectionStore.floors, types)
+    : '?';
 
   // Group types by system for the type selector — matches Building Assets ComponentForm order.
   // Both arrays arrive pre-sorted by presentation_order from the store.
@@ -90,7 +93,7 @@
   <div class="ed-hdr">
     <WalkButton variant="ghost" size="sm" on:click={() => dispatch('cancel')}>← Back</WalkButton>
     <div class="ed-title">
-      <div class="ed-ref">{floor?.short_name ?? '?'} / {component?.asset_id ?? '?'}</div>
+      <div class="ed-ref">{componentRef}</div>
       {#if component?.label}<div class="ed-label">{component.label}</div>{/if}
     </div>
     {#if typeObj}

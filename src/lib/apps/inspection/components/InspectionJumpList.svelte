@@ -3,6 +3,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { resultLabel, worstResult } from '../utils/inspectionHelpers.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
 
   const dispatch = createEventDispatcher();
@@ -10,7 +11,7 @@
   export let components    = [];    // walkComponents array
   export let currentIndex  = 0;
   export let inspections   = {};    // { componentId: inspection row }
-  export let floor         = null;  // current floor object
+  export let floors        = [];    // all floors — for the canonical component ref
   export let types         = [];
 
   function getType(c) { return types.find(t => t.code === c.type_code); }
@@ -52,7 +53,7 @@
           <div class="jl-dot">?</div>
         {/if}
         <div class="jl-body">
-          <div class="jl-ref">{floor?.short_name ?? '?'} / {c.asset_id ?? '?'}</div>
+          <div class="jl-ref">{buildComponentRef(c, floors, types)}</div>
           {#if c.label}<div class="jl-label">{c.label}</div>{/if}
         </div>
         {#if isCurrent}

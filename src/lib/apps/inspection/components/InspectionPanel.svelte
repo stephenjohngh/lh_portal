@@ -8,6 +8,7 @@
   import { getLogger }    from '$lib/utils/logger';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { resultLabel }  from '../utils/inspectionHelpers.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { applyChecklistMode } from '../utils/checklistRules.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import InspectionResultSection from './InspectionResultSection.svelte';
@@ -26,6 +27,9 @@
 
   $: attrDefs      = $inspectionStore.attrDefs;
   $: allTypes      = $inspectionStore.types;
+  $: componentRef  = component
+    ? buildComponentRef(component, $inspectionStore.floors, allTypes)
+    : '?';
 
   // The definition driving this session (null for ad-hoc / repair sessions) —
   // its checklist_mode narrows the checklist, its pass_fail_rule may make the
@@ -110,7 +114,7 @@
   <div class="ip-hdr">
     <WalkButton variant="ghost" size="sm" on:click={() => dispatch('cancel')}>← Back</WalkButton>
     <div class="ip-title">
-      <div class="ip-ref">{floor?.short_name ?? '?'} / {component?.asset_id ?? '?'}</div>
+      <div class="ip-ref">{componentRef}</div>
       {#if component?.label}<div class="ip-label">{component.label}</div>{/if}
     </div>
     {#if type}

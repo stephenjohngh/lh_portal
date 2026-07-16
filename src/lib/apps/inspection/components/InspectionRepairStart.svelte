@@ -5,6 +5,7 @@
   import { getLogger }   from '$lib/utils/logger';
   import { inspectionStore } from '../stores/inspectionStore.js';
   import { buildingInitials } from '../utils/sessionNaming.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { fmtMonthYearCompact } from '$lib/utils/dates';
   import WalkError  from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
@@ -109,7 +110,7 @@
                 <div class="el-dot">?</div>
               {/if}
               <div class="el-body">
-                <div class="el-ref">{floor?.short_name ?? '?'} / {component.asset_id ?? component.label ?? '?'}</div>
+                <div class="el-ref">{buildComponentRef(component, floors, types)}</div>
                 <div class="el-type">{type?.name ?? component.type_code}</div>
                 {#if component.label}<div class="el-label">{component.label}</div>{/if}
                 <div class="el-meta">Floor {floor?.name ?? floor?.short_name ?? '?'}</div>

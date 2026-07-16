@@ -116,13 +116,11 @@ export function statusBeforeSession(historyRows, startedAt) {
   return status;
 }
 
-// -- Component display name ----------------------------------------------------
-// Returns e.g. "G / FD-042" (floor short_name / asset_id)
-export function componentDisplayName(component, floor) {
-  const floorName = floor?.short_name ?? component?.floor?.short_name ?? '?';
-  const id        = component?.asset_id || component?.label || '?';
-  return `${floorName} / ${id}`;
-}
+// NOTE: there is deliberately no component-display-name helper here. The portal
+// has ONE component ref format — buildComponentRef() in $lib/utils/componentRef.js
+// ("{floor}/{typeInitial}/{assetId}"), the same string component_links stores.
+// A local "{floor} / {assetId}" variant used to live here; it dropped the type
+// initial and drifted from every other surface. Use the shared builder.
 
 // -- Session floor label -------------------------------------------------------
 export function sessionFloorLabel(session, floors) {
