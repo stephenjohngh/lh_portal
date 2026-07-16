@@ -3,8 +3,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { resultLabel, presetLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
+  import { presetLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
   import InspectionPanel             from './InspectionPanel.svelte';
   import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
   import InspectionJumpList          from './InspectionJumpList.svelte';
@@ -41,6 +42,23 @@
   $: currentComponent  = components[currentIndex];
   $: currentType       = currentComponent ? types.find(t => t.code === currentComponent.type_code) : null;
   $: currentInspection = currentComponent ? (inspections[currentComponent.id] ?? null) : null;
+  // Canonical portal ref — "{floor}/{typeInitial}/{assetId}", the same string
+  // component_links stores and the Building Assets tables show.
+  $: componentRef = currentComponent ? buildComponentRef(currentComponent, floors, types) : '?';
+
+  // The status each component had BEFORE this session touched it. recordInspection
+  // overwrites component.status with the new result, so the "was → now" line has
+  // to capture the prior value on arrival — which is safe, because the card always
+  // shows a component before it can be inspected. (On resume, a component already
+  // inspected in an earlier sitting captures its post-inspection status: the walk
+  // has no memory of what it was before that.)
+  let statusBefore = {};
+  $: if (currentComponent && !(currentComponent.id in statusBefore)) {
+    statusBefore[currentComponent.id] = currentComponent.status;
+  }
+  $: priorStatus = currentComponent
+    ? (statusBefore[currentComponent.id] ?? currentComponent.status)
+    : null;
   // Plan for the component-plan view — only set when component is placed on a plan
   $: currentPlan = currentComponent?.plan_id
     ? (plans.find(p => p.id === currentComponent.plan_id) ?? null)
@@ -191,6 +209,7 @@
   <!-- -- Stats bars -------------------------------------------------------- -->
   {#if !isRepair && view === 'card'}
     <WalkStatsBars
+      compact
       total={totalComponents}
       inspected={inspectedCount}
       passCount={statsOk}
@@ -299,39 +318,37 @@
     {#if currentComponent}
       <div class="ccard" class:ccard-repair={isRepair}>
 
-        <!-- Component identity -->
+        <!-- Component identity: canonical ref, then type and label -->
         <div class="cid">
-          <div class="cid-top">
-            {#if currentType}
-              <div class="ctype-dot" style="background:#{currentType.colour}">{currentType.initial}</div>
-            {:else}
-              <div class="ctype-dot">?</div>
-            {/if}
-            <div class="cid-info">
-              <div class="cref">{currentFloor?.short_name ?? '?'} / {currentComponent.asset_id ?? '?'}</div>
-              {#if currentComponent.label}
-                <div class="clabel">{currentComponent.label}</div>
-              {/if}
-            </div>
-            <div class="cstatus-pill {statusCls(currentComponent.status)}">
-              {currentComponent.status?.toUpperCase() ?? '–'}
+          {#if currentType}
+            <div class="ctype-dot" style="background:#{currentType.colour}">{currentType.initial}</div>
+          {:else}
+            <div class="ctype-dot">?</div>
+          {/if}
+          <div class="cid-info">
+            <div class="cref">{componentRef}</div>
+            <div class="cmeta">
+              {#if currentType}<span class="ctype-name">{currentType.name}</span>{/if}
+              {#if currentComponent.label}<span class="clabel">{currentComponent.label}</span>{/if}
             </div>
           </div>
-          {#if currentType}
-            <div class="ctype-name">{currentType.name}</div>
-          {/if}
         </div>
 
-        <!-- Last inspection result for this session (if any) -->
-        {#if currentInspection}
-          <div class="cinsp cinsp-{currentInspection.inspection_result}">
-            <span class="cinsp-label">{resultLabel(currentInspection.inspection_result)}</span>
-            {#if currentInspection.inspector_notes}
-              <span class="cinsp-notes">{currentInspection.inspector_notes}</span>
-            {/if}
-          </div>
-        {:else}
-          <div class="cinsp-none">Not yet inspected</div>
+        <!-- Status: what it was on arrival → what this session set it to -->
+        <div class="cstat">
+          <span class="cstat-k">STATUS</span>
+          <span class="cpill {statusCls(priorStatus)}">{priorStatus?.toUpperCase() ?? '–'}</span>
+          <span class="cstat-arr">→</span>
+          {#if currentInspection}
+            <span class="cpill {statusCls(currentInspection.inspection_result)}">
+              {currentInspection.inspection_result?.toUpperCase()}
+            </span>
+          {:else}
+            <span class="cpill cpill-na">N/A</span>
+          {/if}
+        </div>
+        {#if currentInspection?.inspector_notes}
+          <div class="cnotes">{currentInspection.inspector_notes}</div>
         {/if}
 
         <!-- Navigation row -->
@@ -414,33 +431,26 @@
   .ccard { display:flex; flex-direction:column; gap:0; }
   .ccard-repair { background:#0d0a00; }
 
-  .cid { padding:1.25rem 1rem 1rem; border-bottom:1px solid #1a1a2e; }
-  .cid-top { display:flex; align-items:center; gap:0.875rem; }
+  .cid { display:flex; align-items:center; gap:0.875rem; padding:1rem; }
   .ctype-dot { width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; color:#fff; flex-shrink:0; background:#444; }
   .cid-info { flex:1; min-width:0; }
-  .cref   { font-size:1.1rem; font-weight:700; color:#f0f0f0; font-variant-numeric:tabular-nums; }
-  .clabel { font-size:0.72rem; color:#fb923c; margin-top:0.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ctype-name { font-size:0.72rem; color:#888; margin-top:0.5rem; }
+  .cref   { font-size:1.25rem; font-weight:700; color:#f0f0f0; font-variant-numeric:tabular-nums; letter-spacing:0.02em; }
+  .cmeta  { display:flex; align-items:baseline; gap:0.5rem; margin-top:0.15rem; min-width:0; }
+  .ctype-name { font-size:0.72rem; color:#888; flex-shrink:0; }
+  .clabel { font-size:0.72rem; color:#fb923c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  .cstatus-pill { font-size:0.58rem; font-weight:700; letter-spacing:0.1em; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid; flex-shrink:0; }
+  /* -- Status: was → now ----------------------------------------------------- */
+  .cstat { display:flex; align-items:center; gap:0.5rem; padding:0.625rem 1rem; background:#0a0a18; border-top:1px solid #1a1a2e; border-bottom:1px solid #1a1a2e; }
+  .cstat-k   { font-size:0.5rem; letter-spacing:0.15em; color:#666; font-weight:700; }
+  .cstat-arr { font-size:0.8rem; color:#666; }
+  .cnotes { padding:0.5rem 1rem; font-size:0.72rem; color:#ccc; font-style:italic; border-bottom:1px solid #1a1a2e; }
+
+  .cpill { font-size:0.62rem; font-weight:700; letter-spacing:0.1em; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid; flex-shrink:0; }
+  .cpill-na    { color:#555;    border-color:#2e2e42; background:#111122; }
   .st-ok       { color:#4ade80; border-color:#166534; background:#0a1f0a; }
   .st-fail     { color:#f87171; border-color:#7f1d1d; background:#1f0a0a; }
   .st-problem  { color:#fbbf24; border-color:#713f12; background:#1a1200; }
   .st-inactive { color:#888;    border-color:#3e3e58; background:#1a1a2e; }
-
-  /* -- Inspection result badge ----------------------------------------------- */
-  .cinsp { display:flex; align-items:baseline; gap:0.75rem; padding:0.875rem 1rem; border-left:3px solid; }
-  .cinsp-ok       { border-color:#22c55e; background:#071207; }
-  .cinsp-failed   { border-color:#ef4444; background:#120707; }
-  .cinsp-problem  { border-color:#fb923c; background:#100a00; }
-  .cinsp-inactive { border-color:#4b5563; background:#111122; }
-  .cinsp-label { font-size:0.8rem; font-weight:700; }
-  .cinsp-ok     .cinsp-label { color:#4ade80; }
-  .cinsp-failed .cinsp-label { color:#f87171; }
-  .cinsp-problem .cinsp-label { color:#fb923c; }
-  .cinsp-inactive .cinsp-label { color:#888; }
-  .cinsp-notes { font-size:0.72rem; color:#ccc; font-style:italic; flex:1; }
-  .cinsp-none { padding:0.875rem 1rem; font-size:0.78rem; color:#555; font-style:italic; }
 
   /* -- Navigation ------------------------------------------------------------ */
   .nav-row { display:flex; align-items:center; padding:0.875rem 1rem; gap:0.5rem; border-bottom:1px solid #1a1a2e; }
