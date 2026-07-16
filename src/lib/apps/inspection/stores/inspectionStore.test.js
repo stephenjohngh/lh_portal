@@ -275,6 +275,54 @@ describe('navigation', () => {
   });
 });
 
+describe('statusBefore (the walk card\'s "was → now" line)', () => {
+  it('recordInspection captures the status held before the write, and a re-inspect keeps it', async () => {
+    await startWalk();                                    // comp1 starts 'ok'
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'failed' });
+    expect(get(inspectionStore).statusBefore.comp1).toBe('ok');
+
+    // Re-inspecting must not overwrite the original prior status with the
+    // previous attempt's result ('failed') — "was" is still 'ok'.
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'problem' });
+    expect(get(inspectionStore).statusBefore.comp1).toBe('ok');
+  });
+
+  it('resumeSession rebuilds it from inspections recorded BEFORE started_at', async () => {
+    h.setTables({
+      ...FIXTURE,
+      component_inspections: [
+        // comp1's prior state — the last inspection before this session began.
+        { id: 'i0', component_id: 'comp1', inspection_result: 'failed', inspected_at: '2026-01-01T00:00:00.000Z' },
+        // this session's own inspection, which already overwrote components.status
+        { id: 'i1', component_id: 'comp1', inspection_result: 'ok',     inspected_at: '2026-07-15T11:00:00.000Z' },
+      ],
+    });
+    await inspectionStore.load();
+    await inspectionStore.resumeSession({
+      id: 'sess1', session_scope: 'single_floor', floor_id: 'f1', status: 'open',
+      type_filter: '["FD"]', emergency_only: false, started_at: '2026-07-15T10:00:00.000Z',
+    });
+    // 'failed', NOT the 'ok' this session set — the line stays truthful across a reload.
+    expect(get(inspectionStore).statusBefore.comp1).toBe('failed');
+  });
+
+  it('resumeSession omits a component whose only inspection is this session\'s', async () => {
+    h.setTables({
+      ...FIXTURE,
+      component_inspections: [
+        { id: 'i1', component_id: 'comp1', inspection_result: 'ok', inspected_at: '2026-07-15T11:00:00.000Z' },
+      ],
+    });
+    await inspectionStore.load();
+    await inspectionStore.resumeSession({
+      id: 'sess1', session_scope: 'single_floor', floor_id: 'f1', status: 'open',
+      type_filter: '["FD"]', emergency_only: false, started_at: '2026-07-15T10:00:00.000Z',
+    });
+    // Unknown, so absent → the card shows "–" rather than echoing the new status.
+    expect(get(inspectionStore).statusBefore).not.toHaveProperty('comp1');
+  });
+});
+
 describe('reverseFloorOrder', () => {
   it('reverses the floor walk list and leaves currentIndex alone', async () => {
     await startWalk(); // currentIndex 0, [comp1, comp2] in walk order

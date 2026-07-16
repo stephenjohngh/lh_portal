@@ -82,6 +82,40 @@ export function worstResult(rows) {
   return 'inactive';
 }
 
+// -- Status before a session ---------------------------------------------------
+// The status each component had BEFORE a session touched it — the "was" side of
+// the walk card's status line.
+//
+// Needed only on RESUME. During a live walk recordInspection captures the prior
+// status exactly, at the moment it overwrites components.status; once the walk
+// is reloaded that value is gone, so it has to be reconstructed from inspection
+// history: the result of the latest inspection recorded before the session
+// started (an inspection result IS the status it set — applyInspectionResult
+// writes them together).
+//
+// A component with no inspection before startedAt is deliberately ABSENT from
+// the map rather than defaulting to its current status: its prior status is
+// genuinely unknown (it predates any inspection), and the card shows "–" instead
+// of asserting something false.
+//
+// @param {Array<{component_id: string, inspection_result: string, inspected_at: string}>} historyRows
+// @param {string} startedAt - the session's started_at (ISO)
+// @returns {Record<string, string>} { componentId: status }
+export function statusBeforeSession(historyRows, startedAt) {
+  const status = {};
+  const at     = {};
+  for (const r of historyRows ?? []) {
+    if (!r.component_id || !r.inspection_result || !r.inspected_at) continue;
+    // ISO-8601 UTC strings compare correctly lexicographically.
+    if (startedAt && r.inspected_at >= startedAt) continue;   // this session's own rows
+    if (!at[r.component_id] || r.inspected_at > at[r.component_id]) {
+      at[r.component_id]     = r.inspected_at;
+      status[r.component_id] = r.inspection_result;
+    }
+  }
+  return status;
+}
+
 // -- Component display name ----------------------------------------------------
 // Returns e.g. "G / FD-042" (floor short_name / asset_id)
 export function componentDisplayName(component, floor) {

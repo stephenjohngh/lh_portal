@@ -46,19 +46,15 @@
   // component_links stores and the Building Assets tables show.
   $: componentRef = currentComponent ? buildComponentRef(currentComponent, floors, types) : '?';
 
-  // The status each component had BEFORE this session touched it. recordInspection
-  // overwrites component.status with the new result, so the "was → now" line has
-  // to capture the prior value on arrival — which is safe, because the card always
-  // shows a component before it can be inspected. (On resume, a component already
-  // inspected in an earlier sitting captures its post-inspection status: the walk
-  // has no memory of what it was before that.)
-  let statusBefore = {};
-  $: if (currentComponent && !(currentComponent.id in statusBefore)) {
-    statusBefore[currentComponent.id] = currentComponent.status;
-  }
-  $: priorStatus = currentComponent
-    ? (statusBefore[currentComponent.id] ?? currentComponent.status)
-    : null;
+  // The "was" side of the status line. Until this session inspects a component
+  // its live status IS the truth; once it has, components.status holds the NEW
+  // result, so the prior value comes from the store (captured at record time, or
+  // rebuilt from inspection history on resume). Null renders as "–" — the prior
+  // status is genuinely unknown, which beats asserting a wrong one.
+  $: statusBefore = $inspectionStore.statusBefore;
+  $: priorStatus  = !currentComponent
+    ? null
+    : (currentInspection ? (statusBefore[currentComponent.id] ?? null) : currentComponent.status);
   // Plan for the component-plan view — only set when component is placed on a plan
   $: currentPlan = currentComponent?.plan_id
     ? (plans.find(p => p.id === currentComponent.plan_id) ?? null)

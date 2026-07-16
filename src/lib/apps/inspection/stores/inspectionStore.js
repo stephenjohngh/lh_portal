@@ -27,6 +27,7 @@ import {
   purgeAttachments,
 } from '$lib/utils/mediaAttachments.js';
 import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   // session-delete cascade + rotation inputs (shared)
+import { statusBeforeSession } from '../utils/inspectionHelpers.js';
 import {
   makeWalkBuilder,
   firstNonEmptyFloor,
@@ -98,6 +99,7 @@ const INITIAL_STATE = {
   walkComponents:   [],      // components in current walk scope (filtered + ordered)
   currentIndex:     0,
   inspections:      {},      // { componentId: inspection } — latest per component for this session
+  statusBefore:     {},      // { componentId: status } — status before THIS session changed it
   buildingFloors:   [],      // ordered floor objects for building-wide sessions
   currentFloor:     null,    // active floor object (building-wide)
   floorProgress:    {},      // { floorId: { inspected, total } }
@@ -111,6 +113,7 @@ const RESET_SESSION_STATE = {
   walkComponents: [],
   currentIndex:   0,
   inspections:    {},
+  statusBefore:   {},
   buildingFloors: [],
   currentFloor:   null,
   floorProgress:  {},
@@ -357,6 +360,7 @@ function createInspectionStore() {
       walkComponents,
       currentIndex:   0,
       inspections:    {},
+      statusBefore:   {},
       buildingFloors: [],
       currentFloor:   floor,
       floorProgress:  {},
@@ -417,6 +421,7 @@ function createInspectionStore() {
       walkComponents,
       currentIndex:   0,
       inspections:    {},
+      statusBefore:   {},
     }));
 
     return session;
@@ -468,6 +473,7 @@ function createInspectionStore() {
       walkComponents,
       currentIndex:   0,
       inspections:    {},
+      statusBefore:   {},
       buildingFloors: [],
       currentFloor:   floor,
       floorProgress:  {},
@@ -514,6 +520,24 @@ function createInspectionStore() {
       inspections[r.component_id] = r; // keep latest (rows are asc)
     }
 
+    // The status each already-inspected component had BEFORE this session — the
+    // "was" side of the walk card's status line. recordInspection captured it
+    // exactly during the original sitting, but that state died with the reload,
+    // so rebuild it from history (latest result recorded before started_at).
+    // Non-fatal: without it the card shows "–" rather than a wrong status.
+    let statusBefore = {};
+    const inspectedIds = Object.keys(inspections);
+    if (inspectedIds.length > 0) {
+      try {
+        const history = await api.getAllIn('component_inspections', 'component_id', inspectedIds, {
+          select: 'component_id, inspection_result, inspected_at',
+        });
+        statusBefore = statusBeforeSession(history, session.started_at);
+      } catch (err) {
+        logger('⚠ resume: statusBefore history load (non-fatal):', err.message);
+      }
+    }
+
     // Rotating session: the walk is its stamped trigger + linked set — never
     // re-derived (mid-walk re-derivation could pin a different trigger).
     if (walk.definition?.mode === 'rotating') {
@@ -540,6 +564,7 @@ function createInspectionStore() {
         walkComponents,
         currentIndex:   0,
         inspections,
+        statusBefore,
         buildingFloors: [],
         currentFloor:   floor,
         floorProgress:  {},
@@ -572,6 +597,7 @@ function createInspectionStore() {
         walkComponents,
         currentIndex:   0,
         inspections,
+        statusBefore,
       }));
     } else {
       const floor = state.floors.find(f => f.id === session.floor_id);
@@ -583,6 +609,7 @@ function createInspectionStore() {
         walkComponents,
         currentIndex:   0,
         inspections,
+        statusBefore,
         buildingFloors: [],
         currentFloor:   floor,
         floorProgress:  {},
@@ -731,6 +758,15 @@ function createInspectionStore() {
 
     const existing = state.inspections[componentId];
 
+    // The status this component holds right now — i.e. before the write below
+    // overwrites it. This is the only moment the prior status is known for free;
+    // capture it for the walk card's "was → now" line. Only on the FIRST
+    // inspection of the component in this session: a re-inspect must not
+    // overwrite the original prior status with the previous attempt's result.
+    const priorStatus = existing
+      ? null
+      : (state.walkComponents.find(c => c.id === componentId)?.status ?? null);
+
     let inspection;
     if (existing) {
       inspection = await updateComponentInspection(existing.id, {   // shared (building_assets/public.js)
@@ -793,6 +829,9 @@ function createInspectionStore() {
       return {
         ...s,
         inspections:    newInsp,
+        statusBefore:   existing
+          ? s.statusBefore
+          : { ...s.statusBefore, [componentId]: priorStatus },
         floorProgress:  newFloorProgress,
         allComponents:  updatedAllComponents,
         walkComponents: s.walkComponents.map(c =>
