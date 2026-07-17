@@ -309,11 +309,11 @@
   .cl-input:focus { outline:none; border-color:#fb923c; }
   .cl-input::placeholder { color:#555; }
 
-  /* Result grid */
-  .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
-  .rb { display:flex; flex-direction:column; align-items:center; gap:0.4rem; padding:1.25rem 0.5rem; border-radius:10px; border:2px solid transparent; font-family:'DM Mono','Courier New',monospace; cursor:pointer; transition:all 0.15s; background:#1a1a2e; }
-  .ri { font-size:1.6rem; }
-  .rl { font-size:0.7rem; font-weight:700; letter-spacing:0.12em; }
+  /* Result — all four on one line */
+  .result-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:0.4rem; }
+  .rb { display:flex; flex-direction:column; align-items:center; gap:0.3rem; padding:0.75rem 0.2rem; border-radius:10px; border:2px solid transparent; font-family:'DM Mono','Courier New',monospace; cursor:pointer; transition:all 0.15s; background:#1a1a2e; min-height:44px; }
+  .ri { font-size:1.3rem; line-height:1; }
+  .rl { font-size:0.58rem; font-weight:700; letter-spacing:0.03em; }
   .r-pass        { color:#4ade80; } .r-pass:hover  { border-color:#22c55e; } .r-pass.sel  { border-color:#22c55e; background:#0a1f0a; }
   .r-fail        { color:#f87171; } .r-fail:hover  { border-color:#ef4444; } .r-fail.sel  { border-color:#ef4444; background:#1f0a0a; }
   .r-repair      { color:#fb923c; } .r-repair:hover{ border-color:#ea580c; } .r-repair.sel{ border-color:#ea580c; background:#2a1000; }

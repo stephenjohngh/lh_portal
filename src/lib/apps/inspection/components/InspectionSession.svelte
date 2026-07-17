@@ -23,6 +23,10 @@
 
   // View states: 'card' | 'inspect' | 'edit' | 'jump' | 'close' | 'component-plan' | 'floordir'
   let view       = 'card';
+  // Full-screen editing sub-views own their whole screen: their own header,
+  // back button and component ref. The session bar (with PAUSE/FINISH) and the
+  // progress bar are hidden for them — to pause/finish you go back to the card.
+  $: focusedView = view === 'inspect' || view === 'edit';
   let closeNotes = '';
   let closing    = false;
   let closeError = null;
@@ -162,7 +166,8 @@
 
 <div class="ws">
 
-  <!-- -- Session bar -------------------------------------------------------- -->
+  <!-- -- Session bar (hidden on the focused inspect/edit sub-views) --------- -->
+  {#if !focusedView}
   <div class="sbar">
     <div class="sbar-l">
       <div class="sbar-name">{headerLabel}</div>
@@ -196,9 +201,10 @@
       {/if}
     </div>
   </div>
+  {/if}
 
-  <!-- Progress bar (hidden for repair sessions) -->
-  {#if !isRepair}
+  <!-- Progress bar (hidden for repair sessions and focused sub-views) -->
+  {#if !isRepair && !focusedView}
     <div class="prog-track"><div class="prog-fill" style="width:{progress*100}%"></div></div>
   {/if}
 
