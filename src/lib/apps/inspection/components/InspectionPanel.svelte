@@ -23,6 +23,7 @@
   export let component;   // current components row
   export let floor;       // current floors row
   export let type;        // component_types row for this component
+  export let plan  = null; // component's plan (if placed) — for the 📍 button
   export let session;     // active walk_sessions row
 
   $: attrDefs      = $inspectionStore.attrDefs;
@@ -116,14 +117,21 @@
     <WalkButton variant="ghost" size="sm" on:click={() => dispatch('cancel')}>← Back</WalkButton>
   </div>
 
-  <!-- Component block — same shape as the walk card (ref, then type + label);
-       no coloured dot, since the ref already carries the type initial. -->
+  <!-- Component block — same shape as the walk card (ref, then type + label,
+       📍 on the right); no coloured dot, since the ref carries the type initial. -->
   <div class="ip-cid">
-    <div class="cref">{componentRef}</div>
-    <div class="cmeta">
-      {#if type}<span class="ctype-name">{type.name}</span>{/if}
-      {#if component?.label}<span class="clabel">{component.label}</span>{/if}
+    <div class="cid-info">
+      <div class="cref">{componentRef}</div>
+      <div class="cmeta">
+        {#if type}<span class="ctype-name">{type.name}</span>{/if}
+        {#if component?.label}<span class="clabel">{component.label}</span>{/if}
+      </div>
     </div>
+    <button class="plan-btn" on:click={() => dispatch('showplan')}
+      disabled={!plan}
+      title={plan ? 'Show on floor plan' : 'Component not placed on a plan'}>
+      📍
+    </button>
   </div>
 
   <div class="ip-body">
@@ -190,12 +198,16 @@
 <style>
   .ip { display:flex; flex-direction:column; min-height:calc(100vh - 64px); background:#0d0d14; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; }
   .ip-back { padding:0.75rem 1rem; background:#111122; border-bottom:1px solid #1a1a2e; }
-  /* Mirrors the walk card's .cid/.cref/.cmeta block */
-  .ip-cid { padding:0.875rem 1.25rem 1rem; background:#111122; border-bottom:1px solid #2e2e42; }
+  /* Mirrors the walk card's .cid/.cref/.cmeta block + 📍 on the right */
+  .ip-cid { display:flex; align-items:center; gap:0.875rem; padding:0.875rem 1.25rem 1rem; background:#111122; border-bottom:1px solid #2e2e42; }
+  .cid-info { flex:1; min-width:0; }
   .cref   { font-size:1.25rem; font-weight:700; color:#f0f0f0; font-variant-numeric:tabular-nums; letter-spacing:0.02em; }
   .cmeta  { display:flex; align-items:baseline; gap:0.5rem; margin-top:0.15rem; min-width:0; }
   .ctype-name { font-size:0.72rem; color:#888; flex-shrink:0; }
   .clabel { font-size:0.72rem; color:#fb923c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .plan-btn { padding:0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+  .plan-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
+  .plan-btn:disabled { opacity:0.3; cursor:not-allowed; }
   .ip-body { padding:1.25rem; display:flex; flex-direction:column; gap:1.5rem; flex:1; }
   .hist-sec   { margin-top:0.5rem; }
   .hist-title { font-size:0.62rem; letter-spacing:0.2em; color:#888; margin-bottom:0.75rem; }

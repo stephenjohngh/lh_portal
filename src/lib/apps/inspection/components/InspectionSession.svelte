@@ -21,12 +21,20 @@
 
   export let canEdit = false;
 
-  // View states: 'card' | 'inspect' | 'edit' | 'jump' | 'close' | 'component-plan' | 'floordir'
+  // View states: 'card' | 'inspect' | 'edit' | 'jump' | 'close' | 'floordir'
+  // (the floor-plan viewer is an overlay controlled by `showPlan`, not a view)
   let view       = 'card';
   // Full-screen editing sub-views own their whole screen: their own header,
   // back button and component ref. The session bar (with PAUSE/FINISH) and the
   // progress bar are hidden for them — to pause/finish you go back to the card.
   $: focusedView = view === 'inspect' || view === 'edit';
+
+  // The floor-plan viewer is a fixed-position modal, so it OVERLAYS the current
+  // screen rather than being a `view` (which would unmount it and lose any
+  // inspect-form input). Both the card's 📍 and the inspect screen's 📍 set this.
+  let showPlan = false;
+  // Never leave the overlay open across a component change.
+  $: currentComponent, showPlan = false;
   let closeNotes = '';
   let closing    = false;
   let closeError = null;
@@ -58,7 +66,7 @@
   $: priorStatus  = !currentComponent
     ? null
     : (currentInspection ? (statusBefore[currentComponent.id] ?? null) : currentComponent.status);
-  // Plan for the component-plan view — only set when component is placed on a plan
+  // Plan for the floor-plan overlay — only set when the component is placed on a plan
   $: currentPlan = currentComponent?.plan_id
     ? (plans.find(p => p.id === currentComponent.plan_id) ?? null)
     : null;
@@ -228,8 +236,10 @@
       component={currentComponent}
       floor={currentFloor}
       type={currentType}
+      plan={currentPlan}
       session={session}
       on:saved={handleInspectionSaved}
+      on:showplan={() => showPlan = true}
       on:cancel={() => view = 'card'}
     />
 
@@ -248,14 +258,6 @@
       {floors}
       {types}
       on:jump={handleJumpTo}
-      on:close={() => view = 'card'}
-    />
-
-  {:else if view === 'component-plan' && currentComponent && currentPlan}
-    <InspectionComponentPlanViewer
-      component={currentComponent}
-      plan={currentPlan}
-      floor={currentFloor}
       on:close={() => view = 'card'}
     />
 
@@ -319,7 +321,7 @@
               {#if currentComponent.label}<span class="clabel">{currentComponent.label}</span>{/if}
             </div>
           </div>
-          <button class="plan-btn" on:click={() => view = 'component-plan'}
+          <button class="plan-btn" on:click={() => showPlan = true}
             disabled={!currentPlan}
             title={currentPlan ? 'Show on floor plan' : 'Component not placed on a plan'}>
             📍
@@ -393,6 +395,17 @@
   {/if}
 
 </div>
+
+<!-- Floor-plan viewer — a modal OVERLAY (not a view), so it layers over the card
+     or the inspect screen without unmounting them. -->
+{#if showPlan && currentComponent && currentPlan}
+  <InspectionComponentPlanViewer
+    component={currentComponent}
+    plan={currentPlan}
+    floor={currentFloor}
+    on:close={() => showPlan = false}
+  />
+{/if}
 
 <style>
   .ws { display:flex; flex-direction:column; min-height:calc(100vh - 64px); background:#0d0d14; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; }
