@@ -20,7 +20,6 @@
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
   import TenYearPlanTab from './components/TenYearPlanTab.svelte';
-  import DatabasePanel   from './components/DatabasePanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import InspectionDefinitionsTab from './components/InspectionDefinitionsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
@@ -46,7 +45,6 @@
     { id: 'floors',    icon: '🏢', label: 'Floors' },
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
-    { id: 'database',  icon: '🔌', label: 'Database' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
   ];
   
@@ -344,9 +342,6 @@
     {:else}
       <InspectionDefinitionsTab />
     {/if}
-
-  {:else if activeTab === 'database'}
-    <DatabasePanel />
 
   {:else if activeTab === 'documents'}
     <DocumentsTab />

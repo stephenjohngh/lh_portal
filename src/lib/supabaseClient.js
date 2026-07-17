@@ -1,33 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public'
 
-export const DB_OVERRIDE_KEY = 'lh_db_override';
-
-/**
- * Resolve Supabase credentials.
- * On the client, check localStorage for an admin-configured override first.
- * Falls back to the build-time env vars (the normal production config).
- */
-function resolveCredentials() {
-  if (typeof localStorage !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(DB_OVERRIDE_KEY);
-      if (stored) {
-        const { url, key } = JSON.parse(stored);
-        if (url && key) {
-          return { url, key, isOverride: true };
-        }
-      }
-    } catch {
-      // Ignore parse errors — fall through to env vars
-    }
-  }
-  return { url: PUBLIC_SUPABASE_URL, key: PUBLIC_SUPABASE_ANON_KEY, isOverride: false };
+// The DB is fixed by the server's env — one server, one database.
+// (A localStorage "lh_db_override" mechanism used to live here, letting an admin
+// repoint the BROWSER at another Supabase project. Removed 2026-07-17: it only
+// swapped the client side, so /api/* routes kept talking to the env DB — reads
+// and writes could hit different databases. Run a second server in its own env
+// instead: `npm run dev:devdb`, docs/dev_db_refresh.md §5.7.)
+if (typeof localStorage !== 'undefined') {
+  try { localStorage.removeItem('lh_db_override'); } catch { /* private mode etc. */ }
 }
 
-const creds = resolveCredentials();
-
-if (!creds.url || !creds.key) {
+if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
   console.error('Missing Supabase credentials!');
 }
 
@@ -38,6 +22,7 @@ if (!creds.url || !creds.key) {
  * of `any`. Regenerate types with `node scripts/gen-db-types.mjs`.
  * @type {import('@supabase/supabase-js').SupabaseClient<import('$lib/database.types').Database>}
  */
-export const supabase     = createClient(creds.url, creds.key);
-export const activeDbUrl  = creds.url;
-export const isDbOverride = creds.isOverride;
+export const supabase    = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+// The project this build talks to — shown in the env banner and the home page's
+// config line.
+export const activeDbUrl = PUBLIC_SUPABASE_URL;

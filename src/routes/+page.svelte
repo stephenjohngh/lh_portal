@@ -9,7 +9,7 @@
   import { getLogger } from '$lib/utils/logger';
   import { AVAILABLE_APPS, getAppsForUser } from '$lib/apps/apps';
   import { portalSettings } from '$lib/stores/portalSettings.js';
-  import { DB_OVERRIDE_KEY, isDbOverride, activeDbUrl } from '$lib/supabaseClient';
+  import { activeDbUrl } from '$lib/supabaseClient';
   import { version } from '$app/environment';
   // Optional var — import.meta.env returns undefined (not an error) when unset.
   // $env/static/public would throw if the variable isn't defined in .env.
@@ -17,9 +17,8 @@
   // Injected by vite.config.js at build time — "25 May 2026" format.
   const buildDate = __BUILD_DATE__;
 
-  // Config-in-use line under the version. Derived from the ACTIVE client state
-  // (activeDbUrl reflects a localStorage override too), not from intent — so it
-  // shows the truth even when the admin DB override is on.
+  // Config-in-use line under the version. The DB is fixed per server (5173 =
+  // prod env, 5174 = devdb mode) — there is no runtime DB switching.
   /** @type {Record<string, string>} */
   const KNOWN_DBS = {
     wldtmqwuigswuzaxjxuu: 'PROD',   // "lh1"
@@ -320,31 +319,6 @@
       {/if}
     </nav>
 
-    <!-- DB override banner — only shown when localStorage override is active -->
-    {#if isDbOverride}
-      <div class="bg-amber-500/15 border-b border-amber-500/40 px-4 py-2">
-        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
-          <div class="flex items-center gap-2 text-amber-300 text-sm">
-            <span class="text-base">⚠</span>
-            <span>
-              <strong>Override database active</strong> — connected to
-              <code class="text-xs bg-amber-900/40 px-1.5 py-0.5 rounded font-mono">{activeDbUrl}</code>
-              instead of the production config.
-            </span>
-          </div>
-          <button
-            class="text-xs text-amber-300 hover:text-white border border-amber-500/50 hover:border-amber-400 px-3 py-1 rounded transition-colors whitespace-nowrap"
-            on:click={() => {
-              localStorage.removeItem(DB_OVERRIDE_KEY);
-              window.location.href = '/';
-            }}
-          >
-            Reset to Default
-          </button>
-        </div>
-      </div>
-    {/if}
-
     <!-- Test environment banner — baked at build time via PUBLIC_ENV_LABEL -->
     {#if PUBLIC_ENV_LABEL && PUBLIC_ENV_LABEL !== 'production'}
       <div class="bg-teal-500/10 border-b border-teal-500/30 px-4 py-1.5">
@@ -361,11 +335,6 @@
           <p class="text-xs text-slate-600 mb-4">
             v{version} · {buildDate} · {viteMode} · DB:
             <span class={dbName === 'PROD' ? 'text-slate-500' : 'text-teal-400 font-semibold'}>{dbName}</span>
-            {#if isDbOverride}
-              <span class="text-amber-400 font-semibold"
-                title="Browser-only DB override (Admin → Database). /api/* routes on this server still use its env DB — reads and writes can hit DIFFERENT databases.">
-                · OVERRIDE</span>
-            {/if}
           </p>
           <p class="text-gray-400 mb-8">
             {#if isAdmin}
