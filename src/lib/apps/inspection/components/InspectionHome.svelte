@@ -3,7 +3,7 @@
   import { createEventDispatcher } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { fmtDate, fmtTime, fmtDuration } from '$lib/utils/dates';
-  import { presetLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
+  import { presetLabel, sessionFloorLabel, sessionDefinitionName } from '../utils/inspectionHelpers.js';
   import WalkBadge from '$lib/apps/inspection/components/common/WalkBadge.svelte';
 
   const dispatch = createEventDispatcher();
@@ -11,6 +11,13 @@
 
   $: sessions       = $inspectionStore.sessions;
   $: floors         = $inspectionStore.floors;
+  $: definitions    = $inspectionStore.definitions;
+
+  // "LH Fire Doors · All Floors" — building, definition name (if any), scope.
+  function sessionLoc(s) {
+    const name = sessionDefinitionName(s, definitions);
+    return `${s.building}${name ? ' ' + name : ''} · ${sessionFloorLabel(s, floors)}`;
+  }
   $: openSessions   = sessions.filter(s => s.status === 'open');
   $: closedSessions = sessions.filter(s => s.status === 'closed').slice(0, 6);
 
@@ -70,7 +77,7 @@
                 <span class="scard-name">{sessionTitle(s)}</span>
                 <WalkBadge color={typeColor(s)}>{typeLabel(s)}</WalkBadge>
               </div>
-              <div class="scard-loc">{s.building} · {sessionFloorLabel(s, floors)}</div>
+              <div class="scard-loc">{sessionLoc(s)}</div>
               <div class="scard-meta">
                 Started {fmtDate(s.started_at)} at {fmtTime(s.started_at)}
                 {#if s.inspector_name}<span class="scard-who">· {s.inspector_name}</span>{/if}
@@ -95,7 +102,7 @@
                 <WalkBadge color={typeColor(s)}>{typeLabel(s)}</WalkBadge>
                 <WalkBadge color="green">✓ CLOSED</WalkBadge>
               </div>
-              <div class="scard-loc">{s.building} · {sessionFloorLabel(s, floors)}</div>
+              <div class="scard-loc">{sessionLoc(s)}</div>
               <div class="scard-meta">
                 {fmtDate(s.started_at)}
                 {#if s.closed_at}

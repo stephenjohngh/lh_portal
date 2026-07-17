@@ -308,6 +308,9 @@
                 <!-- Header line -->
                 <div class="sess-hdr">
                   <span class="sess-building">{session.building}</span>
+                  {#if defById.get(session.definition_id)}
+                    <span class="sess-def">{defById.get(session.definition_id).name}</span>
+                  {/if}
                   <span class="sep-dot">·</span>
                   <span class="sess-floor">{floorLabel}</span>
 
@@ -320,12 +323,6 @@
                   {#if session.session_preset && session.session_preset !== 'custom'}
                     <Badge color={presetBadge(session.session_preset)} size="small">
                       {presetLabel(session.session_preset)}
-                    </Badge>
-                  {/if}
-
-                  {#if session.definition_id && defById.get(session.definition_id)}
-                    <Badge color="bg-purple-700" size="small">
-                      {defById.get(session.definition_id).name}
                     </Badge>
                   {/if}
 
@@ -605,6 +602,7 @@
   .sess-main    { flex: 1; min-width: 0; }
   .sess-hdr     { display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
   .sess-building{ font-weight: 600; color: #fff; }
+  .sess-def     { font-weight: 600; color: #fff; }
   .sess-floor   { color: rgb(156 163 175); font-size: 0.875rem; }
   .sep-dot      { color: rgb(107 114 128); }
   .em-badge     { font-size: 0.72rem; padding: 0.1rem 0.35rem; background: rgba(234,179,8,0.15); color: rgb(251 191 36); border-radius: 3px; }

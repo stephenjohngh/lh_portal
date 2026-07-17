@@ -129,6 +129,17 @@ export function sessionFloorLabel(session, floors) {
   return floor ? `Floor ${floor.short_name}` : 'Floor ?';
 }
 
+// -- Session definition name ---------------------------------------------------
+// The inspection_definitions name driving this session (e.g. "Fire Doors"), or
+// null for ad-hoc / repair sessions with no definition. Used to build the
+// "{building} {definition} · {scope}" line — e.g. "LH Fire Doors · All Floors".
+// @param {{ definition_id?: string|null }} session
+// @param {Array<{ id: string, name: string }>} definitions
+export function sessionDefinitionName(session, definitions) {
+  if (!session?.definition_id) return null;
+  return definitions?.find(d => d.id === session.definition_id)?.name ?? null;
+}
+
 // -- Preset label -------------------------------------------------------------
 export function presetLabel(preset) {
   return {
