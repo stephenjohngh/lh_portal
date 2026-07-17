@@ -182,7 +182,8 @@
     </div>
     <div class="sbar-r">
       {#if isBuilding && buildingFloors.length > 0}
-        <div class="sbar-floors">{currentFloorIndex}/{buildingFloors.length} floors</div>
+        <!-- &nbsp; not a plain space: Svelte trims leading whitespace inside the span -->
+        <div class="sbar-floors">{currentFloorIndex}/{buildingFloors.length}<span class="floors-word">&nbsp;floors</span></div>
       {/if}
       <div class="sbar-count">{currentIndex + 1}/{components.length}</div>
       {#if isRepair}
@@ -404,13 +405,13 @@
   .ws { display:flex; flex-direction:column; min-height:calc(100vh - 64px); background:#0d0d14; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; }
 
   /* -- Session bar ----------------------------------------------------------- */
-  .sbar { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; background:#111122; border-bottom:1px solid #2e2e42; gap:0.5rem; min-height:56px; }
+  .sbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:0.75rem 1rem; background:#111122; border-bottom:1px solid #2e2e42; gap:0.5rem; min-height:56px; }
   .sbar-l { flex:1; min-width:0; }
   .sbar-name { font-size:0.82rem; font-weight:700; color:#f0f0f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sbar-meta { display:flex; align-items:center; gap:0.5rem; margin-top:0.15rem; font-size:0.68rem; color:#aaa; }
-  .floor-pill { background:#1a1a30; color:#93c5fd; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:700; border:1px solid #334155; }
-  .rev-pill   { background:#1a0e00; color:#fb923c; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:800; border:1px solid #fb923c; }
-  .sbar-r { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; }
+  .floor-pill { background:#1a1a30; color:#93c5fd; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:700; border:1px solid #334155; white-space:nowrap; }
+  .rev-pill   { background:#1a0e00; color:#fb923c; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:800; border:1px solid #fb923c; white-space:nowrap; }
+  .sbar-r { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; margin-left:auto; }
   .sbar-floors { font-size:0.65rem; color:#888; }
   .sbar-count { font-size:0.78rem; font-weight:700; color:#ccc; }
   .ctrl-btn { background:none; border:1px solid #3e3e58; border-radius:5px; color:#ccc; font-family:inherit; font-size:0.65rem; font-weight:700; letter-spacing:0.08em; padding:0.35rem 0.65rem; cursor:pointer; }
@@ -449,11 +450,11 @@
 
   /* -- Navigation ------------------------------------------------------------ */
   .nav-row { display:flex; align-items:center; padding:0.875rem 1rem; gap:0.5rem; border-bottom:1px solid #1a1a2e; }
-  .nav-btn { flex:1; padding:0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#f0f0f0; font-family:inherit; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.15s; }
+  .nav-btn { flex:1; padding:0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#f0f0f0; font-family:inherit; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
   .nav-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
   .nav-btn:disabled { opacity:0.3; cursor:not-allowed; }
   .nav-ctr { display:flex; gap:0.4rem; flex-shrink:0; }
-  .jump-btn, .map-btn, .plan-btn { padding:0.875rem 0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.15s; }
+  .jump-btn, .map-btn, .plan-btn { padding:0.875rem 0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
   .jump-btn:hover, .map-btn:hover, .plan-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
   .plan-btn:disabled { opacity:0.3; cursor:not-allowed; }
 
@@ -500,4 +501,24 @@
   .r-fail     { color:#f87171; }
   .r-problem  { color:#fb923c; }
   .r-inactive { color:#888; }
+
+  /* -- Narrow phones (≤430px) ------------------------------------------------
+     The app column is max-width:480px, so this only ever fires on real phones
+     (375–412 logical px) — the desktop layout never matches it.
+     Two rows must compress rather than break:
+       session bar — stacks: name+meta on line 1, counts+PAUSE/FINISH on line 2
+       (sbar-l goes full-width; sbar's flex-wrap + sbar-r's margin-left:auto do
+       the rest). Fixes the truncated name and the pill colliding with counts.
+       nav row — its min-content (~460px) exceeds the viewport, which is what
+       wrapped PREV/NEXT internally and clipped NEXT off-screen. Tighter padding
+       + smaller font bring it to ~340px; min-height keeps the 44px targets. */
+  @media (max-width: 430px) {
+    .sbar-l { flex:1 1 100%; }
+    .floors-word { display:none; }
+    .sbar-r { gap:0.4rem; }
+    .nav-row { padding:0.75rem 0.5rem; gap:0.35rem; }
+    .nav-btn { padding:0.75rem 0.4rem; font-size:0.72rem; min-height:44px; }
+    .nav-ctr { gap:0.3rem; }
+    .jump-btn, .map-btn, .plan-btn { padding:0.75rem 0.5rem; font-size:0.7rem; min-height:44px; }
+  }
 </style>
