@@ -16,6 +16,18 @@
   const PUBLIC_ENV_LABEL = import.meta.env.PUBLIC_ENV_LABEL ?? '';
   // Injected by vite.config.js at build time — "25 May 2026" format.
   const buildDate = __BUILD_DATE__;
+
+  // Config-in-use line under the version. Derived from the ACTIVE client state
+  // (activeDbUrl reflects a localStorage override too), not from intent — so it
+  // shows the truth even when the admin DB override is on.
+  /** @type {Record<string, string>} */
+  const KNOWN_DBS = {
+    wldtmqwuigswuzaxjxuu: 'PROD',   // "lh1"
+    shpovnjeafuqykttlpzh: 'DEV',    // "BACKUP"
+  };
+  const dbRef    = activeDbUrl?.split('//')[1]?.split('.')[0] ?? '?';
+  const dbName   = KNOWN_DBS[dbRef] ?? dbRef;
+  const viteMode = import.meta.env.MODE;   // development | devdb | production
   import Button        from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import Icon from '$lib/components/icons/Icon.svelte';
@@ -346,7 +358,15 @@
       {#if activeApp === 'home'}
         <div>
           <h1 class="text-4xl font-bold mb-1">LH Services Portal</h1>
-          <p class="text-xs text-slate-600 mb-4">v{version} · {buildDate}</p>
+          <p class="text-xs text-slate-600 mb-4">
+            v{version} · {buildDate} · {viteMode} · DB:
+            <span class={dbName === 'PROD' ? 'text-slate-500' : 'text-teal-400 font-semibold'}>{dbName}</span>
+            {#if isDbOverride}
+              <span class="text-amber-400 font-semibold"
+                title="Browser-only DB override (Admin → Database). /api/* routes on this server still use its env DB — reads and writes can hit DIFFERENT databases.">
+                · OVERRIDE</span>
+            {/if}
+          </p>
           <p class="text-gray-400 mb-8">
             {#if isAdmin}
               You're logged in as an administrator. Select an app from the menu to get started.
