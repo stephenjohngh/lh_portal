@@ -690,6 +690,22 @@ function createInspectionStore() {
     });
   }
 
+  // Jump straight to a floor (building-wide walks — the tappable floor strip).
+  // Rebuilds the walk list for that floor and lands on its first component;
+  // the walk screen's floor-change watcher then asks the direction question,
+  // same as any other arrival. No-op for single-floor sessions, unknown floors,
+  // or the floor already being walked.
+  function goToFloor(floorId) {
+    update(s => {
+      if (s.activeSession?.session_scope !== 'building') return s;
+      if (!floorId || floorId === s.currentFloor?.id) return s;
+      const floor = s.buildingFloors.find(f => f.id === floorId);
+      if (!floor) return s;
+      const walkComponents = activeBuildFn(s)(s.allComponents[floor.id] ?? []);
+      return { ...s, currentFloor: floor, walkComponents, currentIndex: 0 };
+    });
+  }
+
   function goPrev() {
     update(s => {
       const prev = s.currentIndex - 1;
@@ -961,6 +977,7 @@ function createInspectionStore() {
     closeSession,
     deleteSession,
     goToIndex,
+    goToFloor,
     goNext,
     goPrev,
     reverseFloorOrder,

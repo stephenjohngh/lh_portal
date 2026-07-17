@@ -1,5 +1,9 @@
 <!-- src/lib/apps/inspection/components/InspectionJumpList.svelte -->
-<!-- Full scrollable component list for jumping to any item in the session. -->
+<!-- The JUMP screen: every component in the current floor's walk, tap to jump.
+     Two groupings of the SAME list — walk order (the default), or by type
+     ("which fire doors are left"). This replaced the separate ⊞ STATUS screen
+     (InspectionPlanViewer), which was this list grouped by type as its own
+     view + button. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { resultLabel, worstResult } from '../utils/inspectionHelpers.js';
@@ -22,11 +26,31 @@
   $: failCount     = components.filter(c => getResult(c) === 'failed').length;
   $: problemCount  = components.filter(c => getResult(c) === 'problem').length;
   $: inspectedCount = components.filter(c => getInsp(c) !== null).length;
+
+  let grouping = 'walk';   // 'walk' | 'type'
+
+  // Rows carry their ORIGINAL walk index — a jump must land on the component's
+  // position in walk order, whatever grouping the list is displayed in.
+  $: entries = components.map((c, i) => ({ c, i }));
+  // One row template serves both groupings: walk order is a single unlabelled
+  // section; by-type sections keep first-encounter order (i.e. the walk order
+  // of each type's first member) and rows stay in walk order within a section.
+  $: sections = grouping === 'walk'
+    ? [{ label: null, entries }]
+    : Object.values(entries.reduce((map, e) => {
+        const k = e.c.type_code ?? '?';
+        (map[k] ??= { label: getType(e.c)?.name ?? e.c.type_code ?? '?', entries: [] }).entries.push(e);
+        return map;
+      }, {}));
 </script>
 
 <div class="jl">
   <div class="jl-hdr">
     <WalkButton variant="ghost" size="sm" on:click={() => dispatch('close')}>✕ CLOSE</WalkButton>
+    <div class="jl-toggle">
+      <button class="tgl" class:tgl-on={grouping === 'walk'} on:click={() => grouping = 'walk'}>WALK ORDER</button>
+      <button class="tgl" class:tgl-on={grouping === 'type'} on:click={() => grouping = 'type'}>BY TYPE</button>
+    </div>
     <div class="jl-stats">
       <span class="stat-pass">✓ {passCount}</span>
       <span class="stat-fail">✗ {failCount}</span>
@@ -36,39 +60,49 @@
   </div>
 
   <div class="jl-list">
-    {#each components as c, i (c.id)}
-      {@const t      = getType(c)}
-      {@const result = getResult(c)}
-      {@const isCurrent = i === currentIndex}
-      <button
-        class="jl-row"
-        class:jl-current={isCurrent}
-        class:jl-done={result !== null}
-        on:click={() => dispatch('jump', { index: i })}
-      >
-        <div class="jl-bar bar-{result ?? 'none'}"></div>
-        {#if t}
-          <div class="jl-dot" style="background:#{t.colour}">{t.initial}</div>
-        {:else}
-          <div class="jl-dot">?</div>
-        {/if}
-        <div class="jl-body">
-          <div class="jl-ref">{buildComponentRef(c, floors, types)}</div>
-          {#if c.label}<div class="jl-label">{c.label}</div>{/if}
-        </div>
-        {#if isCurrent}
-          <span class="here-badge">HERE</span>
-        {:else if result}
-          <span class="res-badge res-{result}">{resultLabel(result)}</span>
-        {/if}
-      </button>
+    {#each sections as sec (sec.label ?? '__walk__')}
+      {#if sec.label}
+        <div class="jl-sec">{sec.label}<span class="jl-sec-n">{sec.entries.length}</span></div>
+      {/if}
+      {#each sec.entries as { c, i } (c.id)}
+        {@const t      = getType(c)}
+        {@const result = getResult(c)}
+        {@const isCurrent = i === currentIndex}
+        <button
+          class="jl-row"
+          class:jl-current={isCurrent}
+          class:jl-done={result !== null}
+          on:click={() => dispatch('jump', { index: i })}
+        >
+          <div class="jl-bar bar-{result ?? 'none'}"></div>
+          {#if t}
+            <div class="jl-dot" style="background:#{t.colour}">{t.initial}</div>
+          {:else}
+            <div class="jl-dot">?</div>
+          {/if}
+          <div class="jl-body">
+            <div class="jl-ref">{buildComponentRef(c, floors, types)}</div>
+            {#if c.label}<div class="jl-label">{c.label}</div>{/if}
+          </div>
+          {#if isCurrent}
+            <span class="here-badge">HERE</span>
+          {:else if result}
+            <span class="res-badge res-{result}">{resultLabel(result)}</span>
+          {/if}
+        </button>
+      {/each}
     {/each}
   </div>
 </div>
 
 <style>
   .jl { display:flex; flex-direction:column; min-height:calc(100vh - 64px); background:#0d0d14; color:#f0f0f0; font-family:'DM Mono','Courier New',monospace; }
-  .jl-hdr { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.25rem; background:#111122; border-bottom:1px solid #2e2e42; }
+  .jl-hdr { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap; padding:1rem 1.25rem; background:#111122; border-bottom:1px solid #2e2e42; }
+  .jl-toggle { display:flex; border:1px solid #2e2e42; border-radius:6px; overflow:hidden; }
+  .tgl { background:none; border:none; padding:0.45rem 0.6rem; font-family:inherit; font-size:0.6rem; font-weight:700; letter-spacing:0.08em; color:#888; cursor:pointer; }
+  .tgl-on { background:#1a0e00; color:#fb923c; }
+  .jl-sec { display:flex; align-items:baseline; gap:0.5rem; padding:0.6rem 1rem 0.35rem; font-size:0.62rem; font-weight:800; letter-spacing:0.15em; color:#fb923c; text-transform:uppercase; background:#0a0a18; border-bottom:1px solid #1a1a2e; position:sticky; top:0; }
+  .jl-sec-n { color:#666; font-weight:700; letter-spacing:0; }
   .jl-stats { display:flex; gap:0.75rem; font-size:0.78rem; font-weight:700; }
   .stat-pass { color:#4ade80; }
   .stat-fail { color:#f87171; }

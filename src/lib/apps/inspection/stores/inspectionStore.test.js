@@ -323,6 +323,52 @@ describe('statusBefore (the walk card\'s "was → now" line)', () => {
   });
 });
 
+describe('goToFloor (tappable floor strip)', () => {
+  const TWO_FLOOR_FIXTURE = {
+    ...FIXTURE,
+    floors: [
+      { id: 'f1', facility_id: 'fac1', level_order: 1, short_name: 'L1', walk_order: 1 },
+      { id: 'f2', facility_id: 'fac1', level_order: 2, short_name: 'L2', walk_order: 2 },
+    ],
+    components: [
+      { id: 'comp1', floor_id: 'f1', type_code: 'FD', asset_id: 'A1', status: 'ok' },
+      { id: 'comp2', floor_id: 'f2', type_code: 'FD', asset_id: 'B1', status: 'ok' },
+      { id: 'comp3', floor_id: 'f2', type_code: 'FD', asset_id: 'B2', status: 'ok' },
+    ],
+  };
+
+  it('jumps a building session to the floor, rebuilds the walk list, resets the index', async () => {
+    h.setTables({ ...TWO_FLOOR_FIXTURE });
+    await inspectionStore.load();
+    await inspectionStore.startBuildingWideSession({
+      building: 'BLDG', typeFilter: ['FD'], emergencyOnly: false,
+      sessionName: 'B', sessionType: 'inspection', preset: 'all',
+    });
+    expect(get(inspectionStore).currentFloor.id).toBe('f1');
+
+    inspectionStore.goToFloor('f2');
+    const s = get(inspectionStore);
+    expect(s.currentFloor.id).toBe('f2');
+    expect(s.walkComponents.map(c => c.id)).toEqual(['comp2', 'comp3']);
+    expect(s.currentIndex).toBe(0);
+  });
+
+  it('is a no-op for single-floor sessions and unknown floors', async () => {
+    await startWalk();   // single_floor on f1
+    inspectionStore.goToFloor('f2');
+    expect(get(inspectionStore).currentFloor.id).toBe('f1');
+
+    h.setTables({ ...TWO_FLOOR_FIXTURE });
+    await inspectionStore.load();
+    await inspectionStore.startBuildingWideSession({
+      building: 'BLDG', typeFilter: ['FD'], emergencyOnly: false,
+      sessionName: 'B', sessionType: 'inspection', preset: 'all',
+    });
+    inspectionStore.goToFloor('nope');
+    expect(get(inspectionStore).currentFloor.id).toBe('f1');
+  });
+});
+
 describe('reverseFloorOrder', () => {
   it('reverses the floor walk list and leaves currentIndex alone', async () => {
     await startWalk(); // currentIndex 0, [comp1, comp2] in walk order

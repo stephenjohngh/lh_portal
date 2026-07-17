@@ -9,7 +9,6 @@
   import InspectionPanel             from './InspectionPanel.svelte';
   import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
   import InspectionJumpList          from './InspectionJumpList.svelte';
-  import InspectionPlanViewer        from './InspectionPlanViewer.svelte';
   import InspectionComponentPlanViewer from './InspectionComponentPlanViewer.svelte';
   import WalkStatsBars from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
   import WalkBadge     from '$lib/apps/inspection/components/common/WalkBadge.svelte';
@@ -22,7 +21,7 @@
 
   export let canEdit = false;
 
-  // View states: 'card' | 'inspect' | 'edit' | 'jump' | 'close' | 'plan' | 'component-plan'
+  // View states: 'card' | 'inspect' | 'edit' | 'jump' | 'close' | 'component-plan' | 'floordir'
   let view       = 'card';
   let closeNotes = '';
   let closing    = false;
@@ -246,17 +245,6 @@
       on:close={() => view = 'card'}
     />
 
-  {:else if view === 'plan'}
-    <InspectionPlanViewer
-      {components}
-      {currentIndex}
-      {inspections}
-      floor={currentFloor}
-      {types}
-      on:select={handleJumpTo}
-      on:close={() => view = 'card'}
-    />
-
   {:else if view === 'component-plan' && currentComponent && currentPlan}
     <InspectionComponentPlanViewer
       component={currentComponent}
@@ -314,13 +302,10 @@
     {#if currentComponent}
       <div class="ccard" class:ccard-repair={isRepair}>
 
-        <!-- Component identity: canonical ref, then type and label -->
+        <!-- Component identity: canonical ref, then type and label. The 📍 sits
+             here (not in the nav row) because it shows THIS component's position
+             on the floor plan — it belongs to the component, not to navigation. -->
         <div class="cid">
-          {#if currentType}
-            <div class="ctype-dot" style="background:#{currentType.colour}">{currentType.initial}</div>
-          {:else}
-            <div class="ctype-dot">?</div>
-          {/if}
           <div class="cid-info">
             <div class="cref">{componentRef}</div>
             <div class="cmeta">
@@ -328,6 +313,11 @@
               {#if currentComponent.label}<span class="clabel">{currentComponent.label}</span>{/if}
             </div>
           </div>
+          <button class="plan-btn" on:click={() => view = 'component-plan'}
+            disabled={!currentPlan}
+            title={currentPlan ? 'Show on floor plan' : 'Component not placed on a plan'}>
+            📍
+          </button>
         </div>
 
         <!-- Status: what it was on arrival → what this session set it to -->
@@ -347,27 +337,7 @@
           <div class="cnotes">{currentInspection.inspector_notes}</div>
         {/if}
 
-        <!-- Navigation row -->
-        <div class="nav-row">
-          <button class="nav-btn" on:click={handlePrev} disabled={currentIndex === 0 && inspectionStore.isAtStartOfBuilding()}>
-            ‹ PREV
-          </button>
-          <div class="nav-ctr">
-            <button class="jump-btn" on:click={() => view = 'jump'}>☰ LIST</button>
-            <button class="map-btn"  on:click={() => view = 'plan'}>⊞ STATUS</button>
-            <button class="plan-btn" on:click={() => view = 'component-plan'}
-              disabled={!currentPlan}
-              title={currentPlan ? 'Show on floor plan' : 'Component not placed on a plan'}>
-              📍
-            </button>
-          </div>
-          <button class="nav-btn" on:click={handleNext}
-            disabled={inspectionStore.isAtEndOfBuilding() || (!isBuilding && currentIndex >= components.length - 1)}>
-            NEXT ›
-          </button>
-        </div>
-
-        <!-- Action buttons -->
+        <!-- Actions on this component -->
         <div class="act-row">
           {#if canEdit}
             <WalkButton variant="secondary" size="sm" on:click={() => view = 'edit'}>✎ EDIT</WalkButton>
@@ -377,17 +347,34 @@
           </WalkButton>
         </div>
 
+        <!-- Walk position: step, or jump to any component -->
+        <div class="nav-row">
+          <button class="nav-btn" on:click={handlePrev} disabled={currentIndex === 0 && inspectionStore.isAtStartOfBuilding()}>
+            ‹ PREV
+          </button>
+          <button class="nav-btn" on:click={() => view = 'jump'}>☰ JUMP</button>
+          <button class="nav-btn" on:click={handleNext}
+            disabled={inspectionStore.isAtEndOfBuilding() || (!isBuilding && currentIndex >= components.length - 1)}>
+            NEXT ›
+          </button>
+        </div>
+
       </div>
 
-      <!-- Building-wide floor progress strip -->
+      <!-- Building-wide floor strip: progress AND navigation — tap a floor to
+           jump there. The floor-change watcher then asks the walk direction,
+           same as arriving by NEXT/PREV. Floors with nothing in scope are
+           disabled rather than hidden, so the building shape stays visible. -->
       {#if isBuilding && currentFloor && buildingFloors.length > 0}
         <div class="floor-strip">
           {#each buildingFloors as fl}
             {@const fp = floorProgress[fl.id] ?? { inspected: 0, total: 0 }}
-            <div class="fl-cell" class:fl-active={fl.id === currentFloor.id}>
+            <button class="fl-cell" class:fl-active={fl.id === currentFloor.id}
+              disabled={fp.total === 0}
+              on:click={() => { view = 'card'; inspectionStore.goToFloor(fl.id); }}>
               <div class="fl-name">{fl.short_name}</div>
               <div class="fl-prog">{fp.inspected}/{fp.total}</div>
-            </div>
+            </button>
           {/each}
         </div>
       {/if}
@@ -428,7 +415,6 @@
   .ccard-repair { background:#0d0a00; }
 
   .cid { display:flex; align-items:center; gap:0.875rem; padding:1rem; }
-  .ctype-dot { width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; color:#fff; flex-shrink:0; background:#444; }
   .cid-info { flex:1; min-width:0; }
   .cref   { font-size:1.25rem; font-weight:700; color:#f0f0f0; font-variant-numeric:tabular-nums; letter-spacing:0.02em; }
   .cmeta  { display:flex; align-items:baseline; gap:0.5rem; margin-top:0.15rem; min-width:0; }
@@ -453,9 +439,8 @@
   .nav-btn { flex:1; padding:0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#f0f0f0; font-family:inherit; font-size:0.8rem; font-weight:700; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
   .nav-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
   .nav-btn:disabled { opacity:0.3; cursor:not-allowed; }
-  .nav-ctr { display:flex; gap:0.4rem; flex-shrink:0; }
-  .jump-btn, .map-btn, .plan-btn { padding:0.875rem 0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
-  .jump-btn:hover, .map-btn:hover, .plan-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
+  .plan-btn { padding:0.875rem 0.875rem; background:#111122; border:1px solid #2e2e42; border-radius:8px; color:#aaa; font-family:inherit; font-size:0.78rem; cursor:pointer; transition:all 0.15s; white-space:nowrap; flex-shrink:0; }
+  .plan-btn:hover:not(:disabled) { border-color:#fb923c; color:#fb923c; }
   .plan-btn:disabled { opacity:0.3; cursor:not-allowed; }
 
   /* -- Action buttons -------------------------------------------------------- */
@@ -477,8 +462,10 @@
 
   /* -- Building floor strip -------------------------------------------------- */
   .floor-strip { display:flex; gap:0; border-top:2px solid #2e2e42; background:#0a0a18; overflow-x:auto; }
-  .fl-cell { flex:1; min-width:3.5rem; display:flex; flex-direction:column; align-items:center; padding:0.5rem 0.25rem; border-right:1px solid #1a1a2e; }
+  .fl-cell { flex:1; min-width:3.5rem; min-height:44px; display:flex; flex-direction:column; align-items:center; padding:0.5rem 0.25rem; background:none; border:none; border-right:1px solid #1a1a2e; font-family:inherit; cursor:pointer; }
   .fl-cell:last-child { border-right:none; }
+  .fl-cell:disabled { opacity:0.35; cursor:default; }
+  .fl-cell:hover:not(:disabled):not(.fl-active) .fl-name { color:#fb923c; }
   .fl-active { background:#1a0e00; border-top:2px solid #fb923c; }
   .fl-name { font-size:0.65rem; font-weight:700; color:#ccc; }
   .fl-prog { font-size:0.6rem; color:#888; margin-top:0.2rem; }
@@ -518,7 +505,6 @@
     .sbar-r { gap:0.4rem; }
     .nav-row { padding:0.75rem 0.5rem; gap:0.35rem; }
     .nav-btn { padding:0.75rem 0.4rem; font-size:0.72rem; min-height:44px; }
-    .nav-ctr { gap:0.3rem; }
-    .jump-btn, .map-btn, .plan-btn { padding:0.75rem 0.5rem; font-size:0.7rem; min-height:44px; }
+    .plan-btn { padding:0.75rem 0.5rem; font-size:0.7rem; min-height:44px; }
   }
 </style>
