@@ -74,6 +74,11 @@
           {/if}
           <span class="up-freq">{frequencyLabel(st.definition.frequency_days)}</span>
           <span class="up-due">{scheduleDueText(st)}</span>
+          {#if st.unfinishedAttempt}
+            <span class="up-unfinished" title="A session was closed before all components were inspected — it does not count as a completed run.">
+              ⚠ Unfinished {fmtDate(st.lastAttempt)}
+            </span>
+          {/if}
           <span class="up-last">{st.lastRun ? `Last: ${fmtDate(st.lastRun)}` : 'No completed runs'}</span>
         </div>
       {/each}
@@ -103,5 +108,6 @@
   .up-next strong { color: rgb(226 232 240); }
   .up-freq { font-size: 0.78rem; color: rgb(203 213 225); }
   .up-due  { font-size: 0.78rem; color: rgb(148 163 184); }
+  .up-unfinished { font-size: 0.72rem; font-weight: 600; color: rgb(252 165 165); background: rgb(220 38 38 / 0.12); border: 1px solid rgb(220 38 38 / 0.35); border-radius: 4px; padding: 0.05rem 0.4rem; }
   .up-last { font-size: 0.72rem; color: rgb(100 116 139); margin-left: auto; }
 </style>

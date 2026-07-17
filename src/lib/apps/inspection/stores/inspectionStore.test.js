@@ -46,6 +46,7 @@ const h = vi.hoisted(() => {
     deleteMany: vi.fn(() => Promise.resolve()),
     createMany: vi.fn(() => Promise.resolve([])),
     getAllIn:   vi.fn((table) => Promise.resolve(tables[table] ?? [])),
+    count:      vi.fn(() => Promise.resolve(0)),
     latestInspections: vi.fn(() => Promise.resolve([])),
   };
 
@@ -433,11 +434,15 @@ describe('recordInspection', () => {
 });
 
 describe('completeSession', () => {
-  it('closes the session and resets the active-session state', async () => {
+  it('closes the session, stamps the true inspected count, and resets state', async () => {
     const session = await startWalk();
+    h.api.count.mockResolvedValueOnce(2);   // 2 components inspected this session
     await inspectionStore.completeSession(session.id, 'all good');
+    // The count is queried for THIS session and written to the row so the
+    // schedule can tell a completed run from a finished-early one.
+    expect(h.api.count).toHaveBeenCalledWith('component_inspections', { walk_session_id: session.id });
     expect(h.api.update).toHaveBeenCalledWith('walk_sessions', session.id,
-      expect.objectContaining({ status: 'closed', notes: 'all good' }), false);
+      expect.objectContaining({ status: 'closed', notes: 'all good', inspected_components_count: 2 }), false);
     expect(get(inspectionStore).activeSession).toBeNull();
     expect(get(inspectionStore).walkComponents).toEqual([]);
   });

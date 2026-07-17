@@ -232,7 +232,9 @@ function createInspectionStore() {
       const [definitions, scheduleSessions] = await Promise.all([
         api.get('inspection_definitions', { orderBy: 'presentation_order' }),
         api.get('walk_sessions', {
-          select:    'id, definition_id, status, closed_at',
+          // counts drive completeness in computeInspectionSchedule (a finished-early
+          // session must not reset the clock).
+          select:    'id, definition_id, status, closed_at, inspected_components_count, total_components_count',
           filters:   { status: 'closed' },
           orderBy:   'closed_at',
           ascending: false,
@@ -626,11 +628,22 @@ function createInspectionStore() {
 
   async function completeSession(sessionId, notes = '') {
     const userId = await getCurrentUserId();
+    // Stamp the TRUE inspected count at close. This is the single source of
+    // completeness: total_components_count (set at start) vs this. It was never
+    // maintained before (always 0), so a finished-early session looked the same
+    // as a full one — which broke the schedule (see inspectionSchedule.js).
+    let inspectedCount = 0;
+    try {
+      inspectedCount = await api.count('component_inspections', { walk_session_id: sessionId });
+    } catch (e) {
+      logger('⚠ completeSession: inspected count failed, leaving as-is:', e.message);
+    }
     await api.update('walk_sessions', sessionId, {
-      status:     'closed',
-      closed_at:  new Date().toISOString(),
-      notes:      notes || null,
-      updated_by: userId,
+      status:                     'closed',
+      closed_at:                  new Date().toISOString(),
+      inspected_components_count: inspectedCount,
+      notes:                      notes || null,
+      updated_by:                 userId,
     }, false);
     update(s => ({ ...s, ...RESET_SESSION_STATE }));
     await loadSessions();

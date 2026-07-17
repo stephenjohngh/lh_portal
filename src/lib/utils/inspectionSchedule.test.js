@@ -10,14 +10,21 @@ const def = (o) => ({
   frequency_days: 7, ...o,
 });
 
-/** closed session for a definition, closed_at N days before NOW */
-const closed = (definitionId, daysAgo, extra = {}) => ({
-  id: `s-${definitionId}-${daysAgo}`,
-  definition_id: definitionId,
-  status: 'closed',
-  closed_at: new Date(NOW.getTime() - daysAgo * 86_400_000).toISOString(),
-  ...extra,
-});
+/** closed session for a definition, closed_at N days before NOW.
+ *  Defaults to a COMPLETED run (10/10) so existing tests read as before;
+ *  pass { inspected, total } to make it finished-early. */
+const closed = (definitionId, daysAgo, extra = {}) => {
+  const { inspected = 10, total = 10, ...rest } = extra;
+  return {
+    id: `s-${definitionId}-${daysAgo}`,
+    definition_id: definitionId,
+    status: 'closed',
+    closed_at: new Date(NOW.getTime() - daysAgo * 86_400_000).toISOString(),
+    inspected_components_count: inspected,
+    total_components_count: total,
+    ...rest,
+  };
+};
 
 describe('computeInspectionSchedule', () => {
   it('on-demand (no frequency) is never due', () => {
@@ -77,6 +84,54 @@ describe('computeInspectionSchedule', () => {
     ];
     const [s] = computeInspectionSchedule([def({ id: 'd1', frequency_days: 7 })], sessions, { now: NOW });
     expect(s.band).toBe('never_run'); // no valid closed session for d1
+  });
+
+  it('a finished-early (incomplete) session does NOT count as a completed run', () => {
+    // Only session is 3/14, closed 1 day ago. Without completeness it would read
+    // "ok / due in 29 days"; it must instead stay never_run (due now).
+    const [s] = computeInspectionSchedule(
+      [def({ id: 'd1', frequency_days: 30 })],
+      [closed('d1', 1, { inspected: 3, total: 14 })],
+      { now: NOW },
+    );
+    expect(s.band).toBe('never_run');
+    expect(s.lastRun).toBeNull();
+    expect(s.unfinishedAttempt).toBe(true);
+    expect(s.lastAttempt).toBe(new Date(NOW.getTime() - 1 * 86_400_000).toISOString());
+  });
+
+  it('the clock resets on the last COMPLETE run, ignoring a later incomplete one', () => {
+    // complete 20 days ago (freq 30 → due in 10 days), then a later incomplete
+    // attempt 2 days ago. The incomplete one must not move the clock.
+    const [s] = computeInspectionSchedule(
+      [def({ id: 'd1', frequency_days: 30 })],
+      [closed('d1', 20), closed('d1', 2, { inspected: 1, total: 14 })],
+      { now: NOW },
+    );
+    expect(s.band).toBe('due_soon');            // due in 10 days, within 14d window
+    expect(s.daysUntilDue).toBe(10);
+    expect(s.lastRun).toBe(new Date(NOW.getTime() - 20 * 86_400_000).toISOString());
+    expect(s.unfinishedAttempt).toBe(true);     // most recent attempt was incomplete
+  });
+
+  it('a completed run after an incomplete attempt clears unfinishedAttempt', () => {
+    const [s] = computeInspectionSchedule(
+      [def({ id: 'd1', frequency_days: 30 })],
+      [closed('d1', 5, { inspected: 2, total: 14 }), closed('d1', 1)],  // incomplete then complete
+      { now: NOW },
+    );
+    expect(s.unfinishedAttempt).toBe(false);
+    expect(s.lastRun).toBe(new Date(NOW.getTime() - 1 * 86_400_000).toISOString());
+  });
+
+  it('total_components_count of 0 is never "complete" (guards a zero-scope session)', () => {
+    const [s] = computeInspectionSchedule(
+      [def({ id: 'd1', frequency_days: 30 })],
+      [closed('d1', 1, { inspected: 0, total: 0 })],
+      { now: NOW },
+    );
+    expect(s.band).toBe('never_run');
+    expect(s.unfinishedAttempt).toBe(true);
   });
 
   it('respects a custom dueSoonDays window', () => {

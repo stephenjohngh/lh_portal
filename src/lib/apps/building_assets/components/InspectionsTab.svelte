@@ -296,6 +296,12 @@
         {@const rowInspections = inspections[session.id]}
         {@const st = rowInspections?.length ? sessionStats(rowInspections) : null}
         {@const floorLabel = sessionFloorLabel(session, floors)}
+        <!-- Closed but not all in-scope components inspected = finished early.
+             inspected_components_count is stamped at close (migration 165
+             backfills history), so this is reliable for closed sessions. -->
+        {@const unfinished = session.status === 'closed'
+          && session.total_components_count > 0
+          && session.inspected_components_count < session.total_components_count}
 
         <div class="sess-card" class:sess-open={session.status === 'open'}>
 
@@ -358,26 +364,21 @@
                   {#if st.failed   > 0}<span class="qs-fail">✗ {st.failed}</span>{/if}
                   {#if st.problem  > 0}<span class="qs-repair">⚙ {st.problem}</span>{/if}
                   {#if st.ok       > 0}<span class="qs-pass">✓ {st.ok}</span>{/if}
-                  <span class="qs-el">{st.components} comp.</span>
+                  <span class="qs-el">{st.components}/{session.total_components_count} comp.</span>
                 {:else}
-                  {@const done = session.inspected_components_count >= session.total_components_count && session.total_components_count > 0}
-                  {#if session.session_type === 'test'}
-                    <span class="{done ? 'qs-complete' : 'qs-el'}">
-                      {done ? 'Completed' : 'Incomplete'}
-                      {session.inspected_components_count}/{session.total_components_count}
-                    </span>
-                  {:else}
-                    <span class="qs-el">
-                      {session.inspected_components_count}/{session.total_components_count}
-                    </span>
-                  {/if}
+                  {@const done = session.status === 'closed' && !unfinished && session.total_components_count > 0}
+                  <span class="{done ? 'qs-complete' : 'qs-el'}">
+                    {done ? 'Completed' : unfinished ? 'Unfinished' : 'In progress'}
+                    {session.inspected_components_count}/{session.total_components_count}
+                  </span>
                 {/if}
               </div>
 
               <span class="status-badge"
                 class:status-open={session.status === 'open'}
-                class:status-closed={session.status === 'closed'}>
-                {session.status}
+                class:status-closed={session.status === 'closed' && !unfinished}
+                class:status-unfinished={unfinished}>
+                {unfinished ? 'unfinished' : session.status}
               </span>
             </button>
 
@@ -623,6 +624,7 @@
   .status-badge  { flex-shrink: 0; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid transparent; }
   .status-open   { background: rgb(217 119 6 / 0.2);  color: rgb(251 191 36);  border-color: rgb(217 119 6 / 0.3); }
   .status-closed { background: rgb(71 85 105 / 0.5);  color: rgb(156 163 175); border-color: rgb(71 85 105); }
+  .status-unfinished { background: rgb(220 38 38 / 0.15); color: rgb(252 165 165); border-color: rgb(220 38 38 / 0.4); font-weight: 600; }
 
   /* Expanded detail */
   .sess-detail  { border-top: 1px solid rgb(71 85 105); padding: 0.875rem 1rem 1rem; background: rgb(30 41 59 / 0.4); }

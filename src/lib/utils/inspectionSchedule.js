@@ -19,13 +19,30 @@ const DAY_MS = 86_400_000;
  *
  * @typedef {Object} ScheduleState
  * @property {InspectionDefinition} definition
- * @property {string|null} lastRun        ISO timestamp of the last closed session, or null
+ * @property {string|null} lastRun        ISO of the last COMPLETED closed session, or null
+ * @property {string|null} lastAttempt    ISO of the last closed session of any completeness, or null
+ * @property {boolean}     unfinishedAttempt  the most recent closed session was left incomplete
+ *                                            (finished early) and no complete run has happened since
  * @property {string|null} nextDue        ISO timestamp the definition is next due, or null
  * @property {boolean}     overdue        true when past due (or has a cadence but never run)
  * @property {number|null} daysUntilDue   whole days until due (negative = overdue); null when N/A
  * @property {'overdue'|'due_soon'|'ok'|'never_run'|'on_demand'} band
  * @property {number}      sortKey        due-time in ms for ordering (-Infinity sorts most-urgent first)
  */
+
+/**
+ * A closed session counts as a COMPLETED run only when every in-scope component
+ * was inspected. `inspected_components_count` is stamped at close time (and
+ * backfilled for historic rows — migration 165); `total_components_count` is set
+ * at start. A session finished early (fewer inspected than the scope) is NOT a
+ * completed run and must not reset the schedule clock.
+ * @param {{ inspected_components_count?: number|null, total_components_count?: number|null }} s
+ */
+function isCompletedRun(s) {
+  const total     = s.total_components_count ?? 0;
+  const inspected = s.inspected_components_count ?? 0;
+  return total > 0 && inspected >= total;
+}
 
 /**
  * Compute the schedule state for each definition.
@@ -43,36 +60,48 @@ export function computeInspectionSchedule(definitions, sessions, opts = {}) {
   const nowMs       = now.getTime();
   const dueSoonDays = opts.dueSoonDays ?? 14;
 
-  // Most recent closed_at per definition_id.
+  // Per definition_id: the most recent COMPLETED run (drives the clock) and the
+  // most recent closed session of any completeness (to spot an unfinished attempt).
   /** @type {Record<string, number>} */
-  const lastRunMs = {};
+  const lastCompleteMs = {};
+  /** @type {Record<string, number>} */
+  const lastAttemptMs  = {};
   for (const s of sessions ?? []) {
     if (!s || s.status !== 'closed' || !s.definition_id || !s.closed_at) continue;
     const t = new Date(s.closed_at).getTime();
     if (Number.isNaN(t)) continue;
-    if (lastRunMs[s.definition_id] === undefined || t > lastRunMs[s.definition_id]) {
-      lastRunMs[s.definition_id] = t;
+    const id = s.definition_id;
+    if (lastAttemptMs[id] === undefined || t > lastAttemptMs[id]) lastAttemptMs[id] = t;
+    if (isCompletedRun(s) && (lastCompleteMs[id] === undefined || t > lastCompleteMs[id])) {
+      lastCompleteMs[id] = t;
     }
   }
 
   return (definitions ?? []).map((definition) => {
-    const freq  = definition.frequency_days;
-    const lastT = lastRunMs[definition.id];
-    const lastRun = lastT !== undefined ? new Date(lastT).toISOString() : null;
+    const freq      = definition.frequency_days;
+    const lastT     = lastCompleteMs[definition.id];               // completed → the clock
+    const attemptT  = lastAttemptMs[definition.id];               // any closed session
+    const lastRun     = lastT    !== undefined ? new Date(lastT).toISOString()    : null;
+    const lastAttempt = attemptT !== undefined ? new Date(attemptT).toISOString() : null;
+    // The latest attempt was left incomplete when there is a closed session more
+    // recent than the last completed one (or no completed one at all).
+    const unfinishedAttempt = attemptT !== undefined && (lastT === undefined || attemptT > lastT);
+    const common = { lastRun, lastAttempt, unfinishedAttempt };
 
     // On-demand: no cadence → never "due".
     if (freq == null) {
       return {
-        definition, lastRun, nextDue: null, overdue: false,
+        definition, ...common, nextDue: null, overdue: false,
         daysUntilDue: null, band: /** @type {const} */ ('on_demand'),
         sortKey: Infinity,
       };
     }
 
-    // Has a cadence but never run → due now, most urgent.
+    // Has a cadence but no COMPLETED run → due now, most urgent. (An unfinished
+    // attempt does not satisfy this — it stays never_run, which is the fix.)
     if (lastT === undefined) {
       return {
-        definition, lastRun: null, nextDue: null, overdue: true,
+        definition, ...common, nextDue: null, overdue: true,
         daysUntilDue: null, band: /** @type {const} */ ('never_run'),
         sortKey: -Infinity,
       };
@@ -86,7 +115,7 @@ export function computeInspectionSchedule(definitions, sessions, opts = {}) {
       : (daysUntilDue <= dueSoonDays ? 'due_soon' : 'ok');
 
     return {
-      definition, lastRun,
+      definition, ...common,
       nextDue: new Date(nextDueMs).toISOString(),
       overdue, daysUntilDue,
       band: /** @type {'overdue'|'due_soon'|'ok'} */ (band),
