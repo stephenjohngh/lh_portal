@@ -8,7 +8,8 @@
 
   export let component;   // Current component — needs plan_id, x_position, y_position, asset_id
   export let plan;        // Plan object with image_url
-  export let floor;       // Floor object with short_name
+  export let componentRef = '';   // canonical ref "7/L/02" (same as the card/inspect)
+  export let type         = null; // component_types row — for the type name
 
   let canvas;
   let imageLoaded = false;
@@ -83,8 +84,11 @@
 
     <div class="mhdr">
       <div class="mhdr-info">
-        <span class="floor-badge">{floor?.short_name ?? '?'}</span>
-        <span class="comp-id">{component.asset_id ?? 'Component'}</span>
+        <div class="mhdr-ref">{componentRef || component.asset_id || 'Component'}</div>
+        <div class="mhdr-meta">
+          {#if type}<span class="mhdr-type">{type.name}</span>{/if}
+          {#if component.label}<span class="mhdr-label">{component.label}</span>{/if}
+        </div>
       </div>
       <button class="close-btn" on:click={() => dispatch('close')}>✕</button>
     </div>
@@ -136,12 +140,11 @@
     display:flex; align-items:center; justify-content:space-between;
     padding:1rem 1.25rem; border-bottom:1px solid #2e2e42;
   }
-  .mhdr-info { display:flex; align-items:center; gap:0.75rem; }
-  .floor-badge {
-    font-size:0.7rem; letter-spacing:0.1em; padding:0.25rem 0.6rem;
-    background:#2a1800; color:#fb923c; border-radius:4px; font-weight:700;
-  }
-  .comp-id { font-size:0.875rem; color:#f0f0f0; font-weight:600; }
+  .mhdr-info  { min-width:0; }
+  .mhdr-ref   { font-size:1rem; font-weight:700; color:#f0f0f0; font-variant-numeric:tabular-nums; letter-spacing:0.02em; }
+  .mhdr-meta  { display:flex; align-items:baseline; gap:0.5rem; margin-top:0.1rem; min-width:0; }
+  .mhdr-type  { font-size:0.68rem; color:#888; flex-shrink:0; }
+  .mhdr-label { font-size:0.68rem; color:#fb923c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .close-btn {
     background:none; border:none; color:#aaa; font-size:1rem;
     cursor:pointer; padding:0.25rem; line-height:1; transition:color 0.15s;

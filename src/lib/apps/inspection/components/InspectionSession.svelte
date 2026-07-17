@@ -402,7 +402,8 @@
   <InspectionComponentPlanViewer
     component={currentComponent}
     plan={currentPlan}
-    floor={currentFloor}
+    componentRef={componentRef}
+    type={currentType}
     on:close={() => showPlan = false}
   />
 {/if}
