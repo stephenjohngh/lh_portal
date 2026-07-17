@@ -7,8 +7,9 @@
 <script>
   import { createEventDispatcher }   from 'svelte';
   import { buildingAssetsStore }     from '../stores/buildingAssetsStore.js';
-  import { typeByCode, floorById, conditionChecklistDisplay } from '../lookups.js';
+  import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
   import { buildSpaceRef }             from '$lib/utils/spaceRef.js';
+  import { buildComponentRef }         from '$lib/utils/componentRef.js';
   import { spacesForComponent }        from '../utils/spaceMembership.js';
   import ComponentLinks              from './ComponentLinks.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
@@ -33,7 +34,6 @@
 
   // -- Derived ----------------------------------------------------------
   $: type        = typeByCode(types, component.type_code);
-  $: floor       = floorById(floors, component.floor_id);
   $: typeId      = type?.id ?? null;
   $: defs        = typeId ? (attrDefs[typeId] ?? []) : [];
   $: fixedDefs = defs.filter(d => !d.checkable);
@@ -89,7 +89,7 @@
     <div class="flex-1 min-w-0">
       <div class="flex items-baseline gap-2 flex-wrap">
         <span class="font-bold font-mono text-white text-base leading-tight tracking-wide">
-          {floor?.short_name ?? '?'}/{type?.initial ?? '?'}/{component.asset_id ?? '?'}
+          {buildComponentRef(component, floors, types)}
         </span>
         {#if component.label}
           <span class="text-slate-300 text-base leading-tight">{component.label}</span>

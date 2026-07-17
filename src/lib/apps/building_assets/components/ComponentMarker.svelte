@@ -5,6 +5,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { statusTextCls } from '$lib/utils/resultConstants.js';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
 
   export let component;           // components row (x_position, y_position, status)
   export let type     = null;     // component_types row (colour, initial, marker_shape)
@@ -39,8 +40,11 @@
   $: label      = component.label || '';
   $: haloColour = component._haloColour ?? null;
 
-  // Hover popup content
-  $: refStr     = `${floor?.short_name ?? '?'}/${type?.initial ?? '?'}/${component.asset_id ?? '—'}`;
+  // Hover popup content.
+  // The marker takes its floor/type as single objects (the parent already
+  // resolved them for this component), so they're wrapped for the shared
+  // builder, which looks them up by component.floor_id / type_code.
+  $: refStr     = buildComponentRef(component, floor ? [floor] : [], type ? [type] : []);
   $: typeName   = type?.name ?? component.type_code;
   $: statusText = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' }[component.status] ?? component.status;
   $: statusClass = statusTextCls(component.status);

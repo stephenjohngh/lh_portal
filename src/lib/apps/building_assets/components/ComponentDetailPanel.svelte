@@ -5,7 +5,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
-  import { typeByCode, floorById, conditionChecklistDisplay } from '../lookups.js';
+  import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
   import { permissions }             from '$lib/stores/permissions';
   import AttrField                   from './AttrField.svelte';
   import ComponentInspectionHistory  from './ComponentInspectionHistory.svelte';
@@ -15,6 +15,7 @@
   import { inp, sec, STATUSES }      from '../ui.js';
   import { fmtDate, fmtDateTime }    from '$lib/utils/dates.js';
   import { buildSpaceRef }           from '$lib/utils/spaceRef.js';
+  import { buildComponentRef }       from '$lib/utils/componentRef.js';
   import { spacesForComponent }      from '../utils/spaceMembership.js';
 
   export let component;          // components row
@@ -77,7 +78,6 @@
 
   // -- Derived ----------------------------------------------------------
   $: selectedType   = types.find(t => t.id === selectedTypeId) ?? null;
-  $: floor          = floorById(floors, selectedFloorId);
   $: defs           = selectedTypeId ? (attrDefs[selectedTypeId] ?? []) : [];
   $: primaryDef     = defs.find(d => d.is_primary) ?? null;
   // Fixed attributes (checkable=false) are intrinsic to the component;
@@ -96,6 +96,14 @@
 
   // Type badge for the original (unedited) type
   $: origType = typeByCode(types, component.type_code);
+
+  // Header ref. Deliberately mixed, and unchanged from before this used the
+  // shared builder: the floor is the SELECTED one, so an unsaved floor change
+  // previews live, while the type stays the component's ORIGINAL (a type change
+  // is surfaced separately by typeWarning, so the ref keeps the stored
+  // identity). The synthetic floor_id is what buys the live floor — plain
+  // buildComponentRef(component, …) would read the saved floor_id.
+  $: headerRef = buildComponentRef({ ...component, floor_id: selectedFloorId }, floors, types);
 
   // Spaces this component falls within (derive-at-read reverse lookup, §4.3),
   // including manual pins. Reflects the SAVED position — edits show after Save.
@@ -204,7 +212,7 @@
       <!-- Line 1: floor/type/id  ·  label -->
       <div class="flex items-baseline gap-2 flex-wrap">
         <span class="font-bold font-mono text-white text-base leading-tight tracking-wide">
-          {floor?.short_name ?? '?'}/{origType?.initial ?? '?'}/{component.asset_id ?? '?'}
+          {headerRef}
         </span>
         {#if component.label}
           <span class="text-slate-300 text-base leading-tight">{component.label}</span>
