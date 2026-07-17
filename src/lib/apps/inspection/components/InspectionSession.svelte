@@ -340,7 +340,7 @@
         <!-- Actions on this component -->
         <div class="act-row">
           {#if canEdit}
-            <WalkButton variant="secondary" size="sm" on:click={() => view = 'edit'}>✎ EDIT</WalkButton>
+            <WalkButton variant="secondary" size="lg" on:click={() => view = 'edit'}>✎ EDIT</WalkButton>
           {/if}
           <WalkButton variant="primary" size="full" on:click={() => view = 'inspect'}>
             {currentInspection ? '✎ RE-INSPECT' : '✓ INSPECT'}
