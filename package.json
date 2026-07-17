@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
+		"dev:devdb": "vite dev --port 5174 --mode devdb",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync",
