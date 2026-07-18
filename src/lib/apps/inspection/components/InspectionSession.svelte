@@ -321,6 +321,18 @@
               Finishing now leaves it <strong>unfinished</strong>: it will not count
               as a completed inspection and the schedule will stay due.
             </div>
+            <!-- Zero progress: explain the delete option sitting below, and why
+                 it is offered here and not on a part-done session. -->
+            {#if noneInspected}
+              <div class="warn-text">
+                Because no results were recorded, you can instead
+                <strong>delete</strong> this session — it is removed completely, as
+                if it had never been started. Useful if you started the wrong
+                inspection. (Once anything has been inspected it can no longer be
+                deleted, because recording a result already changes that
+                component's status.)
+              </div>
+            {/if}
           </div>
         {/if}
 
