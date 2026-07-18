@@ -131,6 +131,14 @@
   $: activeDefs = definitions.filter(d => d.active);
   $: defById    = new Map(definitions.map(d => [d.id, d]));
 
+  // The Inspection filter is a lookup control — you scan it for a known name —
+  // so it is sorted alphabetically. listInspectionDefinitions orders by
+  // presentation_order, but that column is not editable anywhere in the UI:
+  // only the migration-153 seed set 1/2/3, and everything created since
+  // defaults to 0, so entries tie and their order is effectively arbitrary.
+  $: definitionsByName = [...definitions]
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+
   // -- Data loading ---------------------------------------------------------
   async function loadSessions() {
     loading = true; error = null;
@@ -255,7 +263,7 @@
         <label for="insp-def" class="flbl">Inspection</label>
         <select id="insp-def" class="select text-sm" bind:value={filterDefinition}>
           <option value="">All inspections</option>
-          {#each definitions as d (d.id)}
+          {#each definitionsByName as d (d.id)}
             <option value={d.id}>{d.name}{d.active ? '' : ' (inactive)'}</option>
           {/each}
         </select>
