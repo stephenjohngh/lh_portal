@@ -170,6 +170,36 @@
       closeError = err.message;
     } finally { closing = false; }
   }
+
+  // -- Finish-sheet completeness ------------------------------------------------
+  // Every in-scope component must have a recorded result for the session to count
+  // as a completed run (see inspectionSchedule.js). The sheet reacts to three cases:
+  //   all done  → straight CONFIRM FINISH
+  //   partial   → go back, or knowingly leave it unfinished
+  //   none      → the above, plus delete (nothing was written, so it's a clean undo)
+  $: allInspected  = totalComponents > 0 && inspectedCount >= totalComponents;
+  $: noneInspected = inspectedCount === 0;
+
+  // Delete is offered ONLY at zero progress: recording an inspection writes
+  // components.status via applyInspectionResult, and deleting the session does
+  // NOT revert that — a part-done delete would strand real status changes.
+  // Migration 166 makes this a DB invariant too (creator may delete own EMPTY
+  // session; anything with inspections stays admin-only).
+  let confirmDelete = false;
+  $: view, confirmDelete = false;   // never carry the armed state across screens
+
+  async function handleDeleteSession() {
+    if (!confirmDelete) { confirmDelete = true; return; }
+    closing = true; closeError = null;
+    try {
+      await inspectionStore.deleteSession(session.id);
+      dispatch('closed');
+    } catch (err) {
+      logger('Delete failed:', err.message);
+      closeError = err.message;
+      confirmDelete = false;
+    } finally { closing = false; }
+  }
 </script>
 
 <div class="ws">
@@ -276,14 +306,52 @@
           problemCount={statsProblem}
           inactiveCount={statsInactive}
         />
+        <!-- Not everything checked — make the choice explicit rather than
+             silently closing an incomplete run (it will not count as done). -->
+        {#if !allInspected}
+          <div class="warn-box">
+            <div class="warn-title">⚠ NOT ALL COMPONENTS CHECKED</div>
+            <div class="warn-text">
+              {#if noneInspected}
+                Nothing has been inspected in this session.
+              {:else}
+                {inspectedCount} of {totalComponents} inspected —
+                {totalComponents - inspectedCount} still to check.
+              {/if}
+              Finishing now leaves it <strong>unfinished</strong>: it will not count
+              as a completed inspection and the schedule will stay due.
+            </div>
+          </div>
+        {/if}
+
         <div class="close-sec">
           <div class="close-sec-lbl">CLOSING NOTES (optional)</div>
           <WalkTextarea bind:value={closeNotes} placeholder="Any final notes for this session…" rows={4} />
         </div>
         <WalkError message={closeError || ''} />
-        <WalkButton variant="success" size="full" loading={closing} on:click={handleCloseSession}>
-          {closing ? 'CLOSING…' : 'CONFIRM FINISH ✓'}
-        </WalkButton>
+
+        {#if allInspected}
+          <WalkButton variant="success" size="full" loading={closing} on:click={handleCloseSession}>
+            {closing ? 'CLOSING…' : 'CONFIRM FINISH ✓'}
+          </WalkButton>
+        {:else}
+          <WalkButton variant="primary" size="full" disabled={closing} on:click={() => view = 'card'}>
+            ‹ GO BACK — KEEP CHECKING
+          </WalkButton>
+          <WalkButton variant="secondary" size="full" loading={closing} on:click={handleCloseSession}>
+            {closing ? 'CLOSING…' : 'LEAVE AS UNFINISHED'}
+          </WalkButton>
+          <!-- Zero progress only: nothing was written, so this is a true "never
+               started" undo — most useful when the wrong inspection was started. -->
+          {#if noneInspected}
+            <WalkButton variant="danger" size="full" loading={closing} on:click={handleDeleteSession}>
+              {confirmDelete ? 'TAP AGAIN TO DELETE' : '🗑 DELETE INSPECTION'}
+            </WalkButton>
+            {#if confirmDelete}
+              <div class="del-note">Deletes this session as if it was never started.</div>
+            {/if}
+          {/if}
+        {/if}
       </div>
     </div>
 
@@ -498,6 +566,12 @@
   .close-body { display:flex; flex-direction:column; gap:1.5rem; padding:1.5rem; flex:1; }
   .close-sec { display:flex; flex-direction:column; gap:0.5rem; }
   .close-sec-lbl { font-size:0.62rem; letter-spacing:0.2em; color:#fb923c; font-weight:700; }
+  /* Incomplete-session warning on the finish sheet */
+  .warn-box   { background:#1f0a0a; border:1px solid #7f1d1d; border-radius:8px; padding:0.75rem 0.875rem; display:flex; flex-direction:column; gap:0.4rem; }
+  .warn-title { font-size:0.66rem; letter-spacing:0.15em; font-weight:800; color:#f87171; }
+  .warn-text  { font-size:0.76rem; line-height:1.55; color:#ddd; }
+  .warn-text strong { color:#f87171; }
+  .del-note   { font-size:0.7rem; color:#f87171; text-align:center; }
 
   /* -- Empty state ----------------------------------------------------------- */
   .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:1rem; color:#555; font-size:0.85rem; padding:4rem 2rem; }

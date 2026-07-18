@@ -971,6 +971,10 @@ function createInspectionStore() {
 
   async function deleteSession(sessionId) {
     await deleteWalkSession(sessionId);   // shared cascade: photos → inspections → session (../public.js)
+    // If the deleted session is the one being walked, drop the walk state too —
+    // otherwise activeSession keeps pointing at a row that no longer exists.
+    // (Used by the finish sheet's "delete inspection" for a zero-progress walk.)
+    update(s => (s.activeSession?.id === sessionId ? { ...s, ...RESET_SESSION_STATE } : s));
     await loadSessions();
   }
 

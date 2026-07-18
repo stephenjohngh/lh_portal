@@ -449,6 +449,22 @@ describe('completeSession', () => {
 });
 
 describe('deleteSession', () => {
+  it('clears the walk state when the ACTIVE session is deleted', async () => {
+    const session = await startWalk();
+    expect(get(inspectionStore).activeSession).not.toBeNull();
+    // The finish sheet's "delete inspection" (zero-progress undo) deletes the
+    // session being walked — the store must not keep pointing at a dead row.
+    await inspectionStore.deleteSession(session.id);
+    expect(get(inspectionStore).activeSession).toBeNull();
+    expect(get(inspectionStore).walkComponents).toEqual([]);
+  });
+
+  it('leaves an unrelated active session alone', async () => {
+    const session = await startWalk();
+    await inspectionStore.deleteSession('some-other-session');
+    expect(get(inspectionStore).activeSession?.id).toBe(session.id);
+  });
+
   it('deletes the session (FK cascade removes inspections) and reloads', async () => {
     await inspectionStore.deleteSession('sess9');
     expect(h.api.delete).toHaveBeenCalledWith('walk_sessions', 'sess9');
