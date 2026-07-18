@@ -12,7 +12,6 @@
     worstResult,
     resultLabel,
     sessionFloorLabel,
-    presetLabel,
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { resultBadgeColor } from '$lib/utils/resultConstants.js';
   import { fmtDate, fmtTime, fmtDateTime, fmtDuration } from '$lib/utils/dates';
@@ -85,9 +84,20 @@
   // -- Filters --------------------------------------------------------------
   let filterStatus      = '';
   let filterSessionType = '';
-  let filterPreset      = '';
+  let filterDefinition  = '';
   let filterDateFrom    = '';
   let filterDateTo      = '';
+
+  // The state a USER sees: 'open' | 'unfinished' | 'closed'. `status` in the DB
+  // is only open/closed — "unfinished" is derived (closed, but not every
+  // in-scope component got a result). ONE definition, used by the row badge,
+  // the Status filter and the summary counts so they cannot disagree.
+  function sessionState(s) {
+    if (s.status !== 'closed') return s.status;              // 'open'
+    const total     = s.total_components_count ?? 0;
+    const inspected = s.inspected_components_count ?? 0;
+    return total > 0 && inspected < total ? 'unfinished' : 'closed';
+  }
 
   // -- Derived: sort then filter --------------------------------------------
   // Open sessions always float to top; within each status group, latest first.
@@ -97,9 +107,9 @@
   });
 
   $: filtered = sorted.filter(s => {
-    if (filterStatus      && s.status !== filterStatus)            return false;
+    if (filterStatus      && sessionState(s) !== filterStatus)     return false;
     if (filterSessionType && s.session_type !== filterSessionType) return false;
-    if (filterPreset      && s.session_preset !== filterPreset)    return false;
+    if (filterDefinition  && s.definition_id !== filterDefinition) return false;
     if (filterDateFrom && new Date(s.started_at) < new Date(filterDateFrom)) return false;
     if (filterDateTo) {
       const to = new Date(filterDateTo);
@@ -109,9 +119,10 @@
     return true;
   });
 
-  $: openCount   = filtered.filter(s => s.status === 'open').length;
-  $: closedCount = filtered.filter(s => s.status === 'closed').length;
-  $: hasFilters  = filterSessionType || filterPreset || filterDateFrom || filterDateTo;
+  $: openCount       = filtered.filter(s => sessionState(s) === 'open').length;
+  $: unfinishedCount = filtered.filter(s => sessionState(s) === 'unfinished').length;
+  $: closedCount     = filtered.filter(s => sessionState(s) === 'closed').length;
+  $: hasFilters  = filterSessionType || filterDefinition || filterDateFrom || filterDateTo;
 
   onMount(() => { loadSessions(); loadDefinitions(); });
 
@@ -184,7 +195,7 @@
 
   function clearFilters() {
     filterSessionType = '';
-    filterPreset      = '';
+    filterDefinition  = '';
     filterDateFrom    = '';
     filterDateTo      = '';
   }
@@ -200,9 +211,9 @@
   function sessionTypeBadge(t) {
     return { inspection: 'bg-blue-600', test: 'bg-amber-600', repair: 'bg-orange-700' }[t] ?? 'bg-slate-600';
   }
-  function presetBadge(p) {
-    return { emergency_lighting: 'bg-amber-600', fire_doors: 'bg-red-700', apartment_doors: 'bg-purple-700', custom: 'bg-slate-600' }[p] ?? 'bg-slate-600';
-  }
+  // presetBadge() removed with the preset badge — presets are retired, so every
+  // session is 'custom' and the badge could never render. The definition name
+  // (sess-def) is what identifies an inspection now.
 </script>
 
 <div class="insp-tab">
@@ -219,6 +230,7 @@
         <select id="insp-status" class="select text-sm" bind:value={filterStatus}>
           <option value="">All</option>
           <option value="open">Open</option>
+          <option value="unfinished">Unfinished</option>
           <option value="closed">Closed</option>
         </select>
       </div>
@@ -233,14 +245,19 @@
         </select>
       </div>
 
+      <!-- Was a "Preset" filter listing the RETIRED hardcoded presets
+           (emergency_lighting / fire_doors / …). Sessions became
+           definition-driven, so every one is written with session_preset
+           'custom': the named options matched nothing and "Custom" matched
+           everything. Filter by the inspection definition instead — that is
+           what those names mean now. -->
       <div class="fld">
-        <label for="insp-preset" class="flbl">Preset</label>
-        <select id="insp-preset" class="select text-sm" bind:value={filterPreset}>
-          <option value="">All presets</option>
-          <option value="emergency_lighting">Emergency Lighting</option>
-          <option value="fire_doors">Fire Doors</option>
-          <option value="apartment_doors">Apartment Doors</option>
-          <option value="custom">Custom</option>
+        <label for="insp-def" class="flbl">Inspection</label>
+        <select id="insp-def" class="select text-sm" bind:value={filterDefinition}>
+          <option value="">All inspections</option>
+          {#each definitions as d (d.id)}
+            <option value={d.id}>{d.name}{d.active ? '' : ' (inactive)'}</option>
+          {/each}
         </select>
       </div>
 
@@ -261,8 +278,9 @@
 
     <div class="toolbar-summary">
       <span class="ts-count">{filtered.length} session{filtered.length !== 1 ? 's' : ''}</span>
-      {#if openCount   > 0}<span class="ts-open">{openCount} open</span>{/if}
-      {#if closedCount > 0}<span class="ts-closed">{closedCount} closed</span>{/if}
+      {#if openCount       > 0}<span class="ts-open">{openCount} open</span>{/if}
+      {#if unfinishedCount > 0}<span class="ts-unfinished">{unfinishedCount} unfinished</span>{/if}
+      {#if closedCount     > 0}<span class="ts-closed">{closedCount} closed</span>{/if}
       <Button variant="secondary" size="small" icon="download"
         disabled={filtered.length === 0}
         on:click={() => showReport = true}>
@@ -296,12 +314,10 @@
         {@const rowInspections = inspections[session.id]}
         {@const st = rowInspections?.length ? sessionStats(rowInspections) : null}
         {@const floorLabel = sessionFloorLabel(session, floors)}
-        <!-- Closed but not all in-scope components inspected = finished early.
-             inspected_components_count is stamped at close (migration 165
-             backfills history), so this is reliable for closed sessions. -->
-        {@const unfinished = session.status === 'closed'
-          && session.total_components_count > 0
-          && session.inspected_components_count < session.total_components_count}
+        <!-- 'open' | 'unfinished' | 'closed' — the same helper the Status filter
+             and the summary counts use, so the three never disagree. -->
+        {@const state      = sessionState(session)}
+        {@const unfinished = state === 'unfinished'}
 
         <div class="sess-card" class:sess-open={session.status === 'open'}>
 
@@ -323,12 +339,6 @@
                   {#if session.session_type}
                     <Badge color={sessionTypeBadge(session.session_type)} size="small">
                       {session.session_type.toUpperCase()}
-                    </Badge>
-                  {/if}
-
-                  {#if session.session_preset && session.session_preset !== 'custom'}
-                    <Badge color={presetBadge(session.session_preset)} size="small">
-                      {presetLabel(session.session_preset)}
                     </Badge>
                   {/if}
 
@@ -375,10 +385,10 @@
               </div>
 
               <span class="status-badge"
-                class:status-open={session.status === 'open'}
-                class:status-closed={session.status === 'closed' && !unfinished}
+                class:status-open={state === 'open'}
+                class:status-closed={state === 'closed'}
                 class:status-unfinished={unfinished}>
-                {unfinished ? 'unfinished' : session.status}
+                {state}
               </span>
             </button>
 
@@ -581,8 +591,9 @@
   .clear-btn:hover { color: #fff; }
   .toolbar-summary { margin-left: auto; display: flex; align-items: center; gap: 1rem; font-size: 0.875rem; }
   .ts-count  { color: rgb(156 163 175); }
-  .ts-open   { color: rgb(251 191 36); }
-  .ts-closed { color: rgb(107 114 128); }
+  .ts-open       { color: rgb(251 191 36); }
+  .ts-unfinished { color: rgb(252 165 165); }
+  .ts-closed     { color: rgb(107 114 128); }
 
   /* Session list */
   .session-list  { display: flex; flex-direction: column; gap: 0.5rem; }
