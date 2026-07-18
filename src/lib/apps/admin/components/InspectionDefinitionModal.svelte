@@ -167,9 +167,9 @@
       </label>
     </div>
     <p class="order-hint">
-      Lowest first. Orders the admin list here; the Upcoming/Due panel and the
-      mobile start list sort by what is due soonest, and the Building Assets
-      Inspection filter is alphabetical.
+      Lowest first. Orders this admin list and the Building Assets Inspection
+      filter. The Upcoming/Due panel and the mobile start list ignore it — they
+      sort by what is due soonest.
     </p>
 
     <!-- Frequency -->
