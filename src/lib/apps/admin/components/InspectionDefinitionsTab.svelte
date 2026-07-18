@@ -111,6 +111,7 @@
     attrOptions={bas.attrOptions}
     components={bas.components} componentAttrs={bas.componentAttrs} inspections={bas.inspections}
     componentLinks={bas.componentLinks}
+    {definitions}
     {saving}
     on:save={handleSave}
     on:close={closeModal}

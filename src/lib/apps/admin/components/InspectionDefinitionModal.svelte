@@ -38,6 +38,9 @@
   export let componentAttrs = {};
   export let componentLinks = {};
   export let inspections    = {};
+  /** Existing definitions — only used to default a NEW one's display order to
+   *  the end of the list (same (n+1)*10 convention as the attribute/option panels). */
+  export let definitions    = [];
   export let saving = false;
 
   const dispatch = createEventDispatcher();
@@ -56,6 +59,11 @@
   let checklistMode    = definition?.checklist_mode ?? 'type_driven';
   let checklistAttrIds = new Set(definition?.checklist_attr_ids ?? []);
   let passFailRule     = definition?.pass_fail_rule ?? 'manual';
+  // Display order. A new definition goes to the END of the list rather than
+  // defaulting to 0 — previously every new definition landed on 0, so they all
+  // tied and their order was whatever the DB happened to return.
+  let presentationOrder = definition?.presentation_order
+    ?? (definitions.length + 1) * 10;
 
   const FREQ_PRESETS = [
     { label: 'Weekly',    days: 7 },
@@ -140,7 +148,7 @@
         checklist_mode: checklistMode,
         checklist_attr_ids: [...checklistAttrIds],
         pass_fail_rule: passFailRule,
-        presentation_order: definition?.presentation_order ?? 0,
+        presentation_order: Number(presentationOrder) || 0,
       },
     });
   }
@@ -153,7 +161,16 @@
 
     <div class="active-row">
       <Checkbox bind:checked={active} label="Active (shown in the mobile app and due list)" />
+      <label class="order-fld">
+        Display order
+        <input type="number" step="10" bind:value={presentationOrder} />
+      </label>
     </div>
+    <p class="order-hint">
+      Lowest first. Orders the admin list here; the Upcoming/Due panel and the
+      mobile start list sort by what is due soonest, and the Building Assets
+      Inspection filter is alphabetical.
+    </p>
 
     <!-- Frequency -->
     <div class="block">
@@ -306,7 +323,11 @@
 
 <style>
   .def-form { display: flex; flex-direction: column; gap: 1rem; }
-  .active-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: rgb(203 213 225); cursor: pointer; }
+  .active-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: rgb(203 213 225); cursor: pointer; flex-wrap: wrap; }
+  .order-fld  { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; font-size: 0.8rem; color: rgb(148 163 184); cursor: pointer; }
+  .order-fld input { width: 5rem; padding: 0.3rem 0.5rem; background: rgb(15 23 42); border: 1px solid rgb(71 85 105); border-radius: 6px; color: rgb(226 232 240); font-size: 0.85rem; }
+  .order-fld input:focus { outline: none; border-color: rgb(60 150 131); }
+  .order-hint { font-size: 0.72rem; color: rgb(100 116 139); line-height: 1.5; margin-top: -0.25rem; }
   .block-lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(100 116 139); font-weight: 600; margin-bottom: 0.5rem; }
   .hint { font-size: 0.75rem; color: rgb(100 116 139); margin-top: 0.4rem; }
 
