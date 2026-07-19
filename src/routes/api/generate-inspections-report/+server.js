@@ -49,6 +49,14 @@ function resultColor(result) {
        : '6B7280';
 }
 
+const NO_ACCESS_REASON_LABELS = {
+  locked: 'Locked / no key', refused: 'Resident refused', obstructed: 'Obstructed',
+  unsafe: 'Unsafe to access', other: 'Other',
+};
+function noAccessReasonLabel(v) {
+  return NO_ACCESS_REASON_LABELS[v] ?? v ?? 'reason not given';
+}
+
 function resultLabel(result) {
   return { ok: 'PASS', failed: 'FAIL', problem: 'PROBLEM', inactive: 'INACTIVE', no_access: 'NO ACCESS' }[result]
       ?? (result ?? '—').toUpperCase();
@@ -422,7 +430,15 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
         dCell(ins.label || '—',         DET_COLS[1], { alt }),
         dCell(resultLabel(res),         DET_COLS[2], { alt, bold: true, color: resultColor(res) }),
         dCell(fmtTime(ins.inspected_at),DET_COLS[3], { alt }),
-        dCell(ins.inspector_notes,      DET_COLS[4], { alt }),
+        // A no-access row has no notes of its own; show WHY it could not be
+        // assessed so the report evidences the "best endeavours" attempt.
+        dCell(
+          res === 'no_access'
+            ? ['Not assessed — ' + noAccessReasonLabel(ins.no_access_reason), ins.inspector_notes]
+                .filter(Boolean).join(' · ')
+            : ins.inspector_notes,
+          DET_COLS[4], { alt },
+        ),
       ],
     }));
 

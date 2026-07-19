@@ -9,6 +9,7 @@
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { resultLabel }  from '../utils/inspectionHelpers.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
+  import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
   import { applyChecklistMode } from '../utils/checklistRules.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import InspectionResultSection from './InspectionResultSection.svelte';
@@ -169,6 +170,9 @@
               <div class="hist-body">
                 <div class="hist-date">{fmtDate(h.inspected_at)} {fmtTime(h.inspected_at)}</div>
                 {#if h.session?.session_name}<div class="hist-sess">{h.session.session_name}</div>{/if}
+                {#if h.inspection_result === 'no_access'}
+                  <div class="hist-noacc">⊘ Not assessed — {noAccessReasonLabel(h.no_access_reason)}</div>
+                {/if}
                 {#if h.inspector_notes}<div class="hist-notes">{h.inspector_notes}</div>{/if}
                 {#if h.photo_urls?.length > 0}
                   <div class="hist-photos">
@@ -222,6 +226,7 @@
   .hist-date  { font-size:0.7rem; color:#ccc; }
   .hist-sess  { font-size:0.68rem; color:#888; }
   .hist-notes { font-size:0.75rem; color:#ddd; font-style:italic; margin-top:0.2rem; }
+  .hist-noacc { font-size:0.72rem; color:#c4b5fd; margin-top:0.15rem; }
   .hist-photos    { display:flex; gap:0.3rem; margin-top:0.35rem; flex-wrap:wrap; }
   .hist-photo-btn { display:block; width:3rem; height:3rem; padding:0; border:1px solid #2e2e42; border-radius:4px; overflow:hidden; cursor:zoom-in; background:none; transition:border-color 0.15s; }
   .hist-photo-btn:hover { border-color:#fb923c; }

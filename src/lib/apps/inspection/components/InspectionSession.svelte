@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
+  import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { presetLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
   import InspectionPanel             from './InspectionPanel.svelte';
@@ -420,7 +421,11 @@
             <span class="cpill {statusCls(currentComponent.status)}">
               {currentComponent.status?.toUpperCase() ?? '–'}
             </span>
-            <span class="cpill cpill-noacc">⊘ NOT ASSESSED</span>
+            <span class="cpill cpill-noacc">
+              ⊘ NOT ASSESSED{currentInspection.no_access_reason
+                ? ` · ${noAccessReasonLabel(currentInspection.no_access_reason)}`
+                : ''}
+            </span>
           {:else}
             <span class="cpill {statusCls(priorStatus)}">{priorStatus?.toUpperCase() ?? '–'}</span>
             <span class="cstat-arr">→</span>

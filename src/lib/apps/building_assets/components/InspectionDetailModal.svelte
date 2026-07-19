@@ -6,7 +6,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, conditionChecklistDisplay } from '../lookups.js';
-  import { resultBadgeColor } from '$lib/utils/resultConstants.js';
+  import { resultBadgeColor, noAccessReasonLabel } from '$lib/utils/resultConstants.js';
   import { resultLabel }      from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime }      from '$lib/utils/dates';
   import Modal    from '$lib/components/common/Modal.svelte';
@@ -71,6 +71,16 @@
     </div>
   </div>
 
+  <!-- Why it could not be assessed -->
+  {#if result === 'no_access'}
+    <div class="id-section">
+      <p class="id-section-lbl">Not assessed</p>
+      <p class="id-noacc">⊘ {noAccessReasonLabel(inspection.no_access_reason)}
+        <span class="id-noacc-note">— attended but could not assess; the component's status is unchanged.</span>
+      </p>
+    </div>
+  {/if}
+
   <!-- Condition checklist -->
   {#if items.length > 0}
     <div class="id-section">
@@ -124,6 +134,8 @@
 
   .id-section      { margin-top: 1rem; }
   .id-section-lbl  { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgb(100 116 139); font-weight: 600; margin-bottom: 0.5rem; }
+  .id-noacc { color: rgb(196 181 253); font-size: 0.875rem; }
+  .id-noacc-note { color: rgb(148 163 184); font-size: 0.8rem; }
   .id-notes        { font-size: 0.875rem; color: rgb(226 232 240); white-space: pre-line; line-height: 1.6; background: rgb(15 23 42 / 0.4); border: 1px solid rgb(71 85 105 / 0.5); border-radius: 6px; padding: 0.75rem; }
 
   .id-photos       { display: flex; flex-wrap: wrap; gap: 0.5rem; }
