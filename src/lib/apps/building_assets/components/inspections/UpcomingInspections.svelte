@@ -13,10 +13,18 @@
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
   import { lastDefinitionInspections } from '$lib/apps/inspection/public.js';
+  import { awaitingAccessByDefinition } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
+  import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
 
   export let definitions = [];   // active inspection_definitions rows
   export let sessions    = [];   // walk_sessions (only closed ones with a definition_id contribute)
+  /** Components still awaiting access, from listComponentsAwaitingAccess() (G13).
+   *  A completed run can hide unobserved components — this is what stops a
+   *  definition reading a clean "OK" while a locked door has never been seen. */
+  export let awaitingAccess = [];
+
+  $: awaitingByDef = awaitingAccessByDefinition(awaitingAccess);
 
   // Display order (Admin → Inspections), so this panel, the mobile start list
   // and the Inspections filter all show the same sequence. Urgency still reads
@@ -37,6 +45,12 @@
       rotLastTested = { ...rotLastTested, [defId]: map };
     } catch { /* keep {} — trigger shown as if never tested */ }
   }
+  /** Canonical ref for a component id, for the awaiting-access tooltip. */
+  function componentLabel(componentId) {
+    const c = bas.components?.find(x => x.id === componentId);
+    return c ? buildComponentRef(c, bas.floors, bas.types) : componentId.slice(0, 8);
+  }
+
   function nextTriggerRef(definition) {
     if (!bas.components?.length) return null;
     const { trigger } = buildRotatingWalk(definition, {
@@ -70,6 +84,9 @@
     <div class="up-rows">
       {#each states as st (st.definition.id)}
         {@const b = BAND[st.band]}
+        <!-- The run may be complete and the clock reset, yet these components
+             were never actually seen. Without this the row reads a clean OK. -->
+        {@const waiting = awaitingByDef[st.definition.id] ?? []}
         <div class="up-row">
           <span class="up-band {b.cls}">{b.label}</span>
           <span class="up-name">{st.definition.name}</span>
@@ -83,6 +100,13 @@
           {#if st.unfinishedAttempt}
             <span class="up-unfinished" title="A session was closed before all components were inspected — it does not count as a completed run.">
               ⚠ Unfinished {fmtDate(st.lastAttempt)}
+            </span>
+          {/if}
+          {#if waiting.length > 0}
+            <span class="up-awaiting"
+              title={'Attended but not assessed — nobody has got in since:\n' +
+                waiting.map(w => `• ${componentLabel(w.component_id)} (${noAccessReasonLabel(w.reason)}, ${fmtDate(w.since)})`).join('\n')}>
+              ⊘ {waiting.length} awaiting access
             </span>
           {/if}
           <span class="up-last">{st.lastRun ? `Last: ${fmtDate(st.lastRun)}` : 'No completed runs'}</span>
@@ -115,5 +139,6 @@
   .up-freq { font-size: 0.78rem; color: rgb(203 213 225); }
   .up-due  { font-size: 0.78rem; color: rgb(148 163 184); }
   .up-unfinished { font-size: 0.72rem; font-weight: 600; color: rgb(252 165 165); background: rgb(220 38 38 / 0.12); border: 1px solid rgb(220 38 38 / 0.35); border-radius: 4px; padding: 0.05rem 0.4rem; }
+  .up-awaiting   { font-size: 0.72rem; font-weight: 600; color: rgb(196 181 253); background: rgb(139 92 246 / 0.12); border: 1px solid rgb(139 92 246 / 0.4); border-radius: 4px; padding: 0.05rem 0.4rem; cursor: help; }
   .up-last { font-size: 0.72rem; color: rgb(100 116 139); margin-left: auto; }
 </style>

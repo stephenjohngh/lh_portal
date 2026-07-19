@@ -13,6 +13,7 @@ import { purgeAttachments, listAttachments } from '$lib/utils/mediaAttachments.j
 import { normalisePhotoUrl }             from '$lib/utils/driveUtils.js';
 import { authHeaders }                   from '$lib/utils/authHeaders';
 import { registerDocument, findDocumentBySource } from '$lib/apps/golden_thread/public.js';
+import { resolveAwaitingAccess } from './utils/inspectionHelpers.js';
 
 // One place owns the shape of a session's inspection rows: each row joined to its
 // component + floor. Was duplicated verbatim in the Building Assets InspectionsTab
@@ -95,6 +96,39 @@ export async function loadSessionInspections(sessionId, { withPhotos = true } = 
     for (const r of rows) r.photo_urls = byId[r.id] ?? [];
   }
   return rows;
+}
+
+/**
+ * Components still awaiting access (G13) — the debt a 'no_access' result leaves
+ * behind. A no_access satisfies the SESSION and lets the definition's clock
+ * reset on "best endeavours", so without this a locked door vanishes from view
+ * the moment the inspection completes and can stay unobserved indefinitely.
+ *
+ * Returns one entry per component whose most recent no_access attempt is newer
+ * than the last time anyone actually assessed it. Getting in later clears it
+ * automatically — there is no stored state to maintain.
+ *
+ * Cheap: no_access rows are rare, and only their components' histories are read.
+ * @returns {Promise<Array<{component_id: string, since: string, reason: string|null,
+ *                          definition_id: string|null, lastObserved: string|null}>>}
+ */
+export async function listComponentsAwaitingAccess() {
+  const noAccess = await api.get('component_inspections', {
+    select:  'component_id, no_access_reason, inspected_at, session:walk_sessions!walk_session_id(definition_id)',
+    filters: { inspection_result: 'no_access' },
+  });
+  if (noAccess.length === 0) return [];
+
+  // Only these components' histories are needed to know if anyone got in since.
+  const ids  = [...new Set(noAccess.map((r) => r.component_id))];
+  const hist = await api.getAllIn('component_inspections', 'component_id', ids, {
+    select: 'component_id, inspection_result, inspected_at',
+  });
+
+  return resolveAwaitingAccess(
+    noAccess.map((r) => ({ ...r, definition_id: r.session?.definition_id ?? null })),
+    hist,
+  );
 }
 
 /**

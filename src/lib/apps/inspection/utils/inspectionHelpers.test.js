@@ -4,7 +4,10 @@
 // inspection history, for the walk card's "was → now" line on resume.
 
 import { describe, it, expect } from 'vitest';
-import { statusBeforeSession, sessionStats, worstResult } from './inspectionHelpers.js';
+import {
+  statusBeforeSession, sessionStats, worstResult,
+  resolveAwaitingAccess, awaitingAccessByDefinition,
+} from './inspectionHelpers.js';
 
 const STARTED = '2026-07-15T10:00:00.000Z';
 
@@ -76,5 +79,60 @@ describe('no_access (G1)', () => {
     expect(worstResult([row('c1', 'no_access'), row('c1', 'failed')])).toBe('failed');
     // …and outranks a pass, since an unassessed component needs attention.
     expect(worstResult([row('c1', 'no_access'), row('c1', 'ok')])).toBe('no_access');
+  });
+});
+
+describe('resolveAwaitingAccess (G13)', () => {
+  const na = (component_id, inspected_at, extra = {}) =>
+    ({ component_id, inspected_at, inspection_result: 'no_access', ...extra });
+  const ok = (component_id, inspected_at) =>
+    ({ component_id, inspected_at, inspection_result: 'ok' });
+
+  it('flags a component nobody has got into since the attempt', () => {
+    const noAcc = [na('c1', '2026-07-19T00:00:00Z', { no_access_reason: 'locked', definition_id: 'd1' })];
+    const out = resolveAwaitingAccess(noAcc, [...noAcc, ok('c1', '2026-01-01T00:00:00Z')]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ component_id: 'c1', reason: 'locked', definition_id: 'd1' });
+    expect(out[0].lastObserved).toBe('2026-01-01T00:00:00Z');   // stale, not never
+  });
+
+  it('clears automatically once someone actually gets in — no state to tick off', () => {
+    const noAcc = [na('c1', '2026-07-19T00:00:00Z')];
+    const all   = [...noAcc, ok('c1', '2026-07-20T00:00:00Z')];   // got in the next day
+    expect(resolveAwaitingAccess(noAcc, all)).toEqual([]);
+  });
+
+  it('a component never observed at all reports lastObserved null', () => {
+    const noAcc = [na('c1', '2026-07-19T00:00:00Z')];
+    const [row] = resolveAwaitingAccess(noAcc, noAcc);
+    expect(row.lastObserved).toBeNull();
+  });
+
+  it('uses only the newest attempt per component, newest first overall', () => {
+    const noAcc = [
+      na('c1', '2026-05-01T00:00:00Z', { no_access_reason: 'locked' }),
+      na('c1', '2026-07-19T00:00:00Z', { no_access_reason: 'refused' }),   // newer
+      na('c2', '2026-07-20T00:00:00Z'),
+    ];
+    const out = resolveAwaitingAccess(noAcc, noAcc);
+    expect(out.map(r => r.component_id)).toEqual(['c2', 'c1']);   // newest first
+    expect(out.find(r => r.component_id === 'c1').reason).toBe('refused');
+  });
+
+  it('groups by definition and ignores rows with no definition', () => {
+    const rows = [
+      { component_id: 'c1', since: 'x', reason: null, definition_id: 'd1', lastObserved: null },
+      { component_id: 'c2', since: 'y', reason: null, definition_id: 'd1', lastObserved: null },
+      { component_id: 'c3', since: 'z', reason: null, definition_id: null, lastObserved: null },
+    ];
+    const byDef = awaitingAccessByDefinition(rows);
+    expect(byDef.d1).toHaveLength(2);
+    expect(Object.keys(byDef)).toEqual(['d1']);
+  });
+
+  it('tolerates empty/omitted input', () => {
+    expect(resolveAwaitingAccess([], [])).toEqual([]);
+    expect(resolveAwaitingAccess(undefined, undefined)).toEqual([]);
+    expect(awaitingAccessByDefinition(undefined)).toEqual({});
   });
 });

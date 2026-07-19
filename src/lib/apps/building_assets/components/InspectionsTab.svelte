@@ -29,7 +29,7 @@
   import UpcomingInspections from './inspections/UpcomingInspections.svelte';
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
-  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listInspectionDefinitions } from '$lib/apps/inspection/public.js';
+  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listInspectionDefinitions, listComponentsAwaitingAccess } from '$lib/apps/inspection/public.js';
 
   const logger = getLogger('InspectionsTab');
 
@@ -40,6 +40,7 @@
   // -- State ----------------------------------------------------------------
   let sessions    = [];
   let definitions = [];      // inspection_definitions (all; due list uses active only)
+  let awaitingAccess = [];   // components attended but not assessed (G13)
   let inspections = {};      // { [sessionId]: flattened inspection[] }
   let showReport  = false;
   let loading     = true;
@@ -124,7 +125,7 @@
   $: closedCount     = filtered.filter(s => sessionState(s) === 'closed').length;
   $: hasFilters  = filterSessionType || filterDefinition || filterDateFrom || filterDateTo;
 
-  onMount(() => { loadSessions(); loadDefinitions(); });
+  onMount(() => { loadSessions(); loadDefinitions(); loadAwaitingAccess(); });
 
   // Active definitions drive the Upcoming/Due panel; the full list resolves a
   // session's definition name (inactive definitions still label past sessions).
@@ -160,6 +161,15 @@
     } catch (err) {
       // Non-fatal: the due panel just stays hidden.
       logger('❌ loadDefinitions:', err.message);
+    }
+  }
+
+  async function loadAwaitingAccess() {
+    try {
+      awaitingAccess = await listComponentsAwaitingAccess();
+    } catch (err) {
+      // Non-fatal: the due panel just omits the awaiting-access flag.
+      logger('❌ loadAwaitingAccess:', err.message);
     }
   }
 
@@ -228,7 +238,7 @@
 <div class="insp-tab">
 
   <!-- -- Upcoming / Due ------------------------------------------------------ -->
-  <UpcomingInspections definitions={activeDefs} {sessions} />
+  <UpcomingInspections definitions={activeDefs} {sessions} {awaitingAccess} />
 
   <!-- -- Toolbar ------------------------------------------------------------ -->
   <div class="toolbar">

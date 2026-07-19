@@ -139,6 +139,72 @@ export function statusBeforeSession(historyRows, startedAt) {
 // A local "{floor} / {assetId}" variant used to live here; it dropped the type
 // initial and drifted from every other surface. Use the shared builder.
 
+// -- Components still awaiting access (G13) ------------------------------------
+// A no_access record satisfies the SESSION (the inspector attended) and lets the
+// definition's clock reset on "best endeavours" — but the component itself was
+// never observed. Without this, a locked door disappears from view the moment
+// the inspection is marked complete, and can stay unobserved indefinitely.
+//
+// A component is "awaiting access" when its most recent no_access attempt is
+// NEWER than the last time anyone actually assessed it (or it has never been
+// assessed at all). Getting in later clears it automatically — no stored state
+// to maintain, nothing to tick off.
+//
+// @param {Array<{component_id: string, inspected_at: string, no_access_reason?: string|null, definition_id?: string|null}>} noAccessRows
+// @param {Array<{component_id: string, inspection_result: string, inspected_at: string}>} allRows
+//        all inspections for those components, so the last real observation is known
+// @returns {Array<{component_id: string, since: string, reason: string|null,
+//                  definition_id: string|null, lastObserved: string|null}>}
+//          one entry per component, newest attempt first
+export function resolveAwaitingAccess(noAccessRows, allRows) {
+  // Last time each component was ACTUALLY assessed — no_access ignored, which is
+  // the whole point: an attempt is not an observation.
+  /** @type {Record<string, string>} */
+  const lastObserved = {};
+  for (const r of allRows ?? []) {
+    if (!r?.component_id || !r.inspected_at) continue;
+    if (r.inspection_result === 'no_access') continue;
+    if (!lastObserved[r.component_id] || r.inspected_at > lastObserved[r.component_id]) {
+      lastObserved[r.component_id] = r.inspected_at;
+    }
+  }
+
+  // Newest no_access per component.
+  /** @type {Record<string, any>} */
+  const newest = {};
+  for (const r of noAccessRows ?? []) {
+    if (!r?.component_id || !r.inspected_at) continue;
+    if (!newest[r.component_id] || r.inspected_at > newest[r.component_id].inspected_at) {
+      newest[r.component_id] = r;
+    }
+  }
+
+  return Object.values(newest)
+    .filter(r => {
+      const seen = lastObserved[r.component_id];
+      return !seen || r.inspected_at > seen;      // nobody has got in since
+    })
+    .map(r => ({
+      component_id:  r.component_id,
+      since:         r.inspected_at,
+      reason:        r.no_access_reason ?? null,
+      definition_id: r.definition_id ?? null,
+      lastObserved:  lastObserved[r.component_id] ?? null,
+    }))
+    .sort((a, b) => (a.since < b.since ? 1 : a.since > b.since ? -1 : 0));
+}
+
+/** Group resolveAwaitingAccess output by definition id. */
+export function awaitingAccessByDefinition(awaiting) {
+  /** @type {Record<string, any[]>} */
+  const map = {};
+  for (const a of awaiting ?? []) {
+    if (!a.definition_id) continue;
+    (map[a.definition_id] ??= []).push(a);
+  }
+  return map;
+}
+
 // -- Session floor label -------------------------------------------------------
 export function sessionFloorLabel(session, floors) {
   if (!session.floor_id) return 'All Floors';
