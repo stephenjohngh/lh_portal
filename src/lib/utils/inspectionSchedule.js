@@ -158,8 +158,39 @@ export function scheduleDueText(st) {
 }
 
 /**
- * Order schedule states most-urgent first: never-run and overdue at the top
- * (by due time), then due-soon / ok by due date, on-demand last, name as tiebreak.
+ * Order schedule states by the definition's Display order (presentation_order,
+ * set in Admin → Inspections), name as tiebreak.
+ *
+ * This is what the UI uses: the mobile start list, the Building Assets
+ * Upcoming/Due panel and the Inspections filter all present definitions in the
+ * SAME, user-controlled order, so an inspection is always in the position the
+ * admin put it. Urgency is still visible on each row (band + due text +
+ * the "N due" count) — it just no longer reorders the list.
+ *
+ * Name is a real tiebreak, not decoration: definitions created before the
+ * Display order input existed all sit at 0, and equal orders would otherwise
+ * come back in whatever sequence the DB chose.
+ *
+ * Returns a new array; does not mutate the input.
+ *
+ * @param {ScheduleState[]} states
+ * @returns {ScheduleState[]}
+ */
+export function sortByDisplayOrder(states) {
+  return [...(states ?? [])].sort((a, b) =>
+    (a.definition?.presentation_order ?? 0) - (b.definition?.presentation_order ?? 0)
+    || (a.definition?.name ?? '').localeCompare(b.definition?.name ?? ''));
+}
+
+/**
+ * Order most-urgent first: never-run and overdue at the top (by due time), then
+ * due-soon / ok by due date, on-demand last, name as tiebreak.
+ *
+ * NOT currently used by any screen — the UI switched to sortByDisplayOrder so
+ * every surface presents inspections in the admin-controlled order. Kept
+ * because `sortKey` encodes the urgency ordering and this is the canonical way
+ * to apply it; use it if a "worklist by urgency" view is ever wanted.
+ *
  * Returns a new array; does not mutate the input.
  *
  * @param {ScheduleState[]} states

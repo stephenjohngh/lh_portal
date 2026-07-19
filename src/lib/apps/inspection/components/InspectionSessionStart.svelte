@@ -1,6 +1,6 @@
 ﻿<!-- src/lib/apps/inspection/components/InspectionSessionStart.svelte -->
 <!-- Configure and start a new test or inspection session.
-     Scheduled (configurable) inspection definitions list first, due-ordered;
+     Scheduled (configurable) inspection definitions list first, in Display order;
      below them, Custom picks component types manually for an ad-hoc walk.
      (The legacy Emergency Lighting / Fire Doors / Apartment Doors presets were
      retired in favour of the definitions migration 153 seeds.) -->
@@ -13,7 +13,7 @@
   import { buildRotatingWalk } from '../utils/inspectionRotation.js';
   import { lastDefinitionInspections } from '../public.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
-  import { computeInspectionSchedule, sortBySchedule, scheduleDueText } from '$lib/utils/inspectionSchedule';
+  import { computeInspectionSchedule, sortByDisplayOrder, scheduleDueText } from '$lib/utils/inspectionSchedule';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkInput  from '$lib/apps/inspection/components/common/WalkInput.svelte';
   import WalkSelect from '$lib/apps/inspection/components/common/WalkSelect.svelte';
@@ -49,7 +49,10 @@
   // -- Scheduled inspection definitions -------------------------------------------
   /** @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition */
   $: definitions = /** @type {InspectionDefinition[]} */ ($inspectionStore.definitions ?? []).filter(d => d.active);
-  $: schedStates = sortBySchedule(computeInspectionSchedule(definitions, $inspectionStore.scheduleSessions ?? []));
+  // Display order (Admin → Inspections) — the same sequence as the Building
+  // Assets Upcoming/Due panel and Inspections filter, so an inspection is always
+  // in the position the admin put it. Each row still shows its own due state.
+  $: schedStates = sortByDisplayOrder(computeInspectionSchedule(definitions, $inspectionStore.scheduleSessions ?? []));
   $: selectedDefinition = definitions.find(d => d.id === selectedDefinitionId) ?? null;
   // ctx for the shared scope filter engine — same shape the walk builder uses,
   // so the preview count always equals the real walk length.
@@ -273,7 +276,7 @@
       </section>
     {/if}
 
-    <!-- -- Scheduled inspection definitions (due-ordered) ------------------------ -->
+    <!-- -- Scheduled inspection definitions (Display order) --------------------- -->
     {#if schedStates.length > 0}
       <section class="grp">
         <div class="grp-lbl">SCHEDULED INSPECTIONS</div>

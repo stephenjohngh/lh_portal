@@ -1,11 +1,14 @@
 <!-- src/lib/apps/building_assets/components/inspections/UpcomingInspections.svelte -->
-<!-- "Upcoming / Due" — one row per active inspection definition, most urgent
-     first. Due/overdue state is derived read-time by computeInspectionSchedule
+<!-- "Upcoming / Due" — one row per active inspection definition, in the Display
+     order set in Admin → Inspections (matching the mobile start list and the
+     Inspections filter). Urgency is shown per row (band + due text) and
+     summarised by the "N due" count rather than reordering the list.
+     Due/overdue state is derived read-time by computeInspectionSchedule
      (the same util the mobile app and Admin config use, so the surfaces cannot
      diverge). Rotating definitions also show their derived next trigger.
      Read-only: walks are started from the mobile Inspection app. -->
 <script>
-  import { computeInspectionSchedule, sortBySchedule, frequencyLabel, scheduleDueText } from '$lib/utils/inspectionSchedule';
+  import { computeInspectionSchedule, sortByDisplayOrder, frequencyLabel, scheduleDueText } from '$lib/utils/inspectionSchedule';
   import { fmtDate } from '$lib/utils/dates';
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
   import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
@@ -15,7 +18,10 @@
   export let definitions = [];   // active inspection_definitions rows
   export let sessions    = [];   // walk_sessions (only closed ones with a definition_id contribute)
 
-  $: states = sortBySchedule(computeInspectionSchedule(definitions, sessions));
+  // Display order (Admin → Inspections), so this panel, the mobile start list
+  // and the Inspections filter all show the same sequence. Urgency still reads
+  // off each row's band + due text, and the "N due" count summarises it.
+  $: states = sortByDisplayOrder(computeInspectionSchedule(definitions, sessions));
   $: dueCount = states.filter(s => s.overdue).length;
 
   // -- Rotating: derive the next trigger ("Next: G/CP/03") -------------------

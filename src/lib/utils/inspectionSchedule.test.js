@@ -1,6 +1,6 @@
 // src/lib/utils/inspectionSchedule.test.js
 import { describe, it, expect } from 'vitest';
-import { computeInspectionSchedule, sortBySchedule, frequencyLabel } from './inspectionSchedule.js';
+import { computeInspectionSchedule, sortBySchedule, sortByDisplayOrder, frequencyLabel } from './inspectionSchedule.js';
 
 const NOW = new Date('2026-07-03T12:00:00Z');
 
@@ -167,6 +167,48 @@ describe('sortBySchedule', () => {
     const states = computeInspectionSchedule([def({ id: 'a', frequency_days: 7 })], [], { now: NOW });
     const copy = [...states];
     sortBySchedule(states);
+    expect(states).toEqual(copy);
+  });
+});
+
+describe('sortByDisplayOrder', () => {
+  it('orders by presentation_order regardless of urgency', () => {
+    // 'never' is the most urgent but has the highest display order, so it goes
+    // last — this is what makes every surface match the admin list.
+    const states = computeInspectionSchedule(
+      [
+        def({ id: 'never', name: 'Never',   frequency_days: 7,    presentation_order: 99 }),
+        def({ id: 'ok',    name: 'OK',      frequency_days: 30,   presentation_order: 5 }),
+        def({ id: 'od',    name: 'Ad-hoc',  frequency_days: null, presentation_order: 50 }),
+      ],
+      [closed('ok', 1)],
+      { now: NOW },
+    );
+    expect(sortByDisplayOrder(states).map(s => s.definition.id)).toEqual(['ok', 'od', 'never']);
+  });
+
+  it('breaks equal orders by name, so ties are stable', () => {
+    // Definitions predating the Display order input all sit at 0.
+    const states = computeInspectionSchedule(
+      [
+        def({ id: 'w', name: 'Wayfinding',      frequency_days: 7, presentation_order: 0 }),
+        def({ id: 'e', name: 'Every Component', frequency_days: 7, presentation_order: 0 }),
+      ],
+      [], { now: NOW },
+    );
+    expect(sortByDisplayOrder(states).map(s => s.definition.id)).toEqual(['e', 'w']);
+  });
+
+  it('treats a missing presentation_order as 0 and does not mutate the input', () => {
+    const states = computeInspectionSchedule(
+      [
+        def({ id: 'a', name: 'A', frequency_days: 7, presentation_order: 10 }),
+        def({ id: 'b', name: 'B', frequency_days: 7 }),   // undefined → 0, sorts first
+      ],
+      [], { now: NOW },
+    );
+    const copy = [...states];
+    expect(sortByDisplayOrder(states).map(s => s.definition.id)).toEqual(['b', 'a']);
     expect(states).toEqual(copy);
   });
 });
