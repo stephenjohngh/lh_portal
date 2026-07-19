@@ -276,6 +276,40 @@ describe('navigation', () => {
   });
 });
 
+describe('no_access (G1)', () => {
+  it('records the attempt WITHOUT changing the component status', async () => {
+    await startWalk();   // comp1 starts 'ok'
+    await inspectionStore.recordInspection({
+      componentId: 'comp1', result: 'no_access', noAccessReason: 'locked',
+    });
+
+    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    expect(inspArg).toMatchObject({ inspection_result: 'no_access', no_access_reason: 'locked' });
+
+    // The component patch must carry NO status/status_set_* — not observing a
+    // component says nothing about its condition. Only the pointer advances.
+    const compPatch = h.api.update.mock.calls.find(c => c[0] === 'components')[2];
+    expect(compPatch).not.toHaveProperty('status');
+    expect(compPatch).not.toHaveProperty('status_set_by');
+    expect(compPatch).not.toHaveProperty('status_set_at');
+    expect(compPatch).toHaveProperty('last_inspection_id');
+
+    // …and the in-memory copy must match the DB, not drift to 'no_access'.
+    expect(get(inspectionStore).walkComponents.find(c => c.id === 'comp1').status).toBe('ok');
+  });
+
+  it('drops a stale reason when the component is later actually assessed', async () => {
+    await startWalk();
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'no_access', noAccessReason: 'locked' });
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'ok' });   // got in on a re-visit
+
+    const upd = h.api.update.mock.calls.filter(c => c[0] === 'component_inspections').pop()[2];
+    expect(upd).toMatchObject({ inspection_result: 'ok', no_access_reason: null });
+    // Now it IS an observation, so the status moves.
+    expect(get(inspectionStore).walkComponents.find(c => c.id === 'comp1').status).toBe('ok');
+  });
+});
+
 describe('statusBefore (the walk card\'s "was → now" line)', () => {
   it('recordInspection captures the status held before the write, and a re-inspect keeps it', async () => {
     await startWalk();                                    // comp1 starts 'ok'

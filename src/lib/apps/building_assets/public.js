@@ -58,19 +58,37 @@ export function updateComponent(id, fields, userId) {
  * `status_set_at` — so the two paths drifted. Both now call this, which always
  * writes the full, consistent patch.
  *
+ * ⚠ EXCEPTION — 'no_access': the inspector attended but could not assess the
+ * component, so NO condition was observed and the status must not move. The
+ * component keeps the last value anyone actually saw (and status_set_by/at keep
+ * pointing at who set it). Only `last_inspection_id` advances, because the
+ * attempt IS the most recent inspection event — that is what makes the UI able
+ * to show "OK · last check: no access".
+ *
+ * Writing the status here would be worse than useless: it would overwrite a
+ * known condition with a non-condition. Migration 167 backs this up by leaving
+ * components_status_check without 'no_access', so if this guard is ever removed
+ * the database raises instead of silently corrupting the record.
+ *
  * Returns the patch applied so the caller can update its own in-memory copy.
  * @param {string} componentId
  * @param {{ result: string, inspectionId: string, userId: string }} args
- * @returns {Promise<{ status: string, last_inspection_id: string, status_set_by: string, status_set_at: string, updated_by: string }>}
+ * @returns {Promise<Record<string, string>>} the fields actually written
  */
 export async function applyInspectionResult(componentId, { result, inspectionId, userId }) {
-  const patch = {
-    status:             result,
-    last_inspection_id: inspectionId,
-    status_set_by:      userId,
-    status_set_at:      new Date().toISOString(),
-    updated_by:         userId,
-  };
+  const patch = result === 'no_access'
+    ? {
+        // Attempt recorded; condition unchanged.
+        last_inspection_id: inspectionId,
+        updated_by:         userId,
+      }
+    : {
+        status:             result,
+        last_inspection_id: inspectionId,
+        status_set_by:      userId,
+        status_set_at:      new Date().toISOString(),
+        updated_by:         userId,
+      };
   await api.update('components', componentId, patch);
   return patch;
 }

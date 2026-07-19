@@ -27,6 +27,7 @@
   $: failCount      = inspections.filter(i => i.inspection_result === 'failed').length;
   $: problemCount   = inspections.filter(i => i.inspection_result === 'problem').length;
   $: inactiveCount  = inspections.filter(i => i.inspection_result === 'inactive').length;
+  $: noAccessCount  = inspections.filter(i => i.inspection_result === 'no_access').length;
   $: totalInspected = grouped.length;
   $: totalComponents = session?.total_components_count || totalInspected;
 
@@ -118,6 +119,7 @@
       failCount={failCount}
       problemCount={problemCount}
       inactiveCount={inactiveCount}
+      noAccessCount={noAccessCount}
     />
 
     <div class="sec-title">COMPONENTS</div>

@@ -11,9 +11,13 @@
   export let failCount    = 0;
   export let problemCount = 0;
   export let inactiveCount = 0;
+  export let noAccessCount = 0;
   export let compact      = false;
 
   $: remaining = Math.max(0, total - inspected);
+  // Compact (walk card) is already tight at phone width — only spend a column on
+  // no-access once there is one. The full bars always show it.
+  $: showNoAccess = !compact || noAccessCount > 0;
 </script>
 
 {#if compact}
@@ -37,6 +41,11 @@
     <div class="stat stat-na">
       <span class="stat-v">{inactiveCount}</span><span class="stat-k">N/A</span>
     </div>
+    {#if showNoAccess}
+      <div class="stat stat-noacc">
+        <span class="stat-v">{noAccessCount}</span><span class="stat-k">NO ACC</span>
+      </div>
+    {/if}
   </div>
 {:else}
   <!-- Row 1: totals in light blue -->
@@ -78,6 +87,11 @@
       <div class="stat-v">{inactiveCount}</div>
       <div class="stat-k">INACTIVE</div>
     </div>
+    <div class="stat-div"></div>
+    <div class="stat stat-noacc">
+      <div class="stat-v">{noAccessCount}</div>
+      <div class="stat-k">NO ACCESS</div>
+    </div>
   </div>
 {/if}
 
@@ -111,6 +125,8 @@
   .stat-repair .stat-k { color: #fdba74; }
   .stat-na     .stat-v { color: #aaa; }
   .stat-na     .stat-k { color: #888; }
+  .stat-noacc  .stat-v { color: #c4b5fd; }
+  .stat-noacc  .stat-k { color: #a78bfa; }
 
   .stat-div { width: 1px; height: 2.5rem; background: #2e2e42; flex-shrink: 0; }
 </style>

@@ -9,6 +9,7 @@
   import { uploadMedia }  from '$lib/utils/mediaUpload';
   import { supabase }     from '$lib/supabaseClient';
   import { deriveChecklistOutcome } from '../utils/checklistRules.js';
+  import { NO_ACCESS_REASONS } from '$lib/utils/resultConstants.js';
   import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
   import WalkError    from '$lib/apps/inspection/components/common/WalkError.svelte';
   import WalkButton   from '$lib/apps/inspection/components/common/WalkButton.svelte';
@@ -24,6 +25,8 @@
   export let checklistResults = {};   // { type_attribute_id: boolean }
   /** @type {string[]} */
   export let photoUrls        = [];   // already-uploaded URLs (array)
+  /** @type {string|null} */
+  export let noAccessReason   = null; // only meaningful when result==='no_access'
 
   // One-way from parent
   export let checklistDefs = [];   // type_attributes with checkable=true for this component's type
@@ -37,6 +40,24 @@
   export let saveLabel     = 'RECORD INSPECTION';
 
   $: canSave = !!result;
+
+  // -- No access ---------------------------------------------------------------
+  // A different KIND of outcome from the condition results: "I could not assess
+  // this", not "its condition is X". Hence its own control below the result row
+  // rather than a fifth condition button. Available in enforced (all_checks_pass)
+  // mode too — you can always fail to get in.
+  $: noAccess = result === 'no_access';
+  function toggleNoAccess() {
+    if (noAccess) {                 // undo — back to an unanswered result
+      result = '';
+      noAccessReason = null;
+    } else {
+      result = 'no_access';
+      // Checks can't be answered for something nobody saw.
+      checklistResults = {};
+      inputValues = {};
+    }
+  }
 
   // -- Checklist help popup -----------------------------------------------------
   let activeHelpId = null;
@@ -63,7 +84,10 @@
   let autoFailNote = '';
   $: outcome  = deriveChecklistOutcome(passFailDefs, checklistResults, passFailRule);
   $: enforced = outcome.enforced;
-  $: if (passFailDefs.length > 0) {
+  // `result === 'no_access'` is NOT derived from the checks and must survive
+  // this block — without the guard, clearing the checklist on no-access would
+  // make the enforced branch immediately reset result to '' and undo it.
+  $: if (passFailDefs.length > 0 && result !== 'no_access') {
     if (outcome.result)  result = outcome.result;
     else if (enforced)   result = '';
     autoFailNote = outcome.anyFail ? 'Failed: ' + outcome.failedNames.join(', ') : '';
@@ -159,8 +183,10 @@
   $: uploading = pendingPhotos.some(p => p.uploading);
 </script>
 
-<!-- -- Dynamic checklist — PASS / FAIL per attribute --------------------------- -->
-{#if passFailDefs.length > 0}
+<!-- -- Dynamic checklist — PASS / FAIL per attribute ---------------------------
+     Hidden when no access was possible: you cannot answer checks on something
+     nobody could see, and leaving them visible invites a fabricated record. -->
+{#if passFailDefs.length > 0 && !noAccess}
   <div class="sec">
     <div class="sec-lbl">CONDITION CHECKS</div>
     <div class="checklist">
@@ -197,7 +223,7 @@
 {/if}
 
 <!-- -- Text / number attrs — recorded as notes on save ------------------------- -->
-{#if inputDefs.length > 0}
+{#if inputDefs.length > 0 && !noAccess}
   <div class="sec">
     <div class="sec-lbl">READINGS</div>
     <div class="checklist">
@@ -230,7 +256,13 @@
 <!-- -- Result — derived read-out (all_checks_pass) or manual buttons ------------ -->
 <div class="sec">
   <div class="sec-lbl">INSPECTION RESULT</div>
-  {#if enforced}
+  {#if noAccess}
+    <!-- Condition results are meaningless here — show the outcome instead. -->
+    <div class="noacc-state">
+      <span class="ri">⊘</span>
+      <span class="rl">NO ACCESS — component not assessed</span>
+    </div>
+  {:else if enforced}
     <div class="derived" class:d-pass={result === 'ok'} class:d-fail={result === 'failed'}>
       {#if result === 'ok'}
         <span class="ri">✓</span><span class="rl">PASS — all checks passed</span>
@@ -255,6 +287,30 @@
       <span class="ri">—</span><span class="rl">INACTIVE</span>
     </button>
   </div>
+  {/if}
+
+  <!-- Couldn't assess it. Deliberately outside the result row: this is not a
+       condition, it is the absence of an observation. Required to evidence the
+       "best endeavours" flat-entrance-door check (Fire Safety (England) Regs). -->
+  <button class="noacc-btn" class:noacc-on={noAccess} on:click={toggleNoAccess}>
+    {noAccess ? '↩ UNDO — I CAN ASSESS THIS' : '⊘ NO ACCESS — COULD NOT ASSESS'}
+  </button>
+
+  {#if noAccess}
+    <div class="noacc-reason">
+      <div class="sec-lbl">REASON</div>
+      <div class="reason-row">
+        {#each NO_ACCESS_REASONS as r (r.value)}
+          <button class="reason-chip" class:on={noAccessReason === r.value}
+            on:click={() => noAccessReason = r.value}>{r.label}</button>
+        {/each}
+      </div>
+      <p class="noacc-note">
+        Recorded as attended-but-not-assessed. It counts towards finishing the
+        session, is never reported as a pass, and leaves the component's status
+        unchanged.
+      </p>
+    </div>
   {/if}
 </div>
 
@@ -318,6 +374,20 @@
   .r-fail        { color:#f87171; } .r-fail:hover  { border-color:#ef4444; } .r-fail.sel  { border-color:#ef4444; background:#1f0a0a; }
   .r-repair      { color:#fb923c; } .r-repair:hover{ border-color:#ea580c; } .r-repair.sel{ border-color:#ea580c; background:#2a1000; }
   .r-na          { color:#ccc;    } .r-na:hover    { border-color:#5e5e78; } .r-na.sel    { border-color:#5e5e78; background:#181828; }
+
+  /* No access — a distinct kind of outcome, styled apart from the results */
+  .noacc-btn { width:100%; margin-top:0.5rem; padding:0.75rem; min-height:44px; background:#1a1a2e; border:2px solid #3e3e58; border-radius:10px; color:#c4b5fd; font-family:'DM Mono','Courier New',monospace; font-size:0.68rem; font-weight:700; letter-spacing:0.06em; cursor:pointer; transition:all 0.15s; }
+  .noacc-btn:hover { border-color:#8b5cf6; }
+  .noacc-on   { background:#1e1533; border-color:#8b5cf6; color:#ddd6fe; }
+  .noacc-state { display:flex; align-items:center; gap:0.6rem; padding:1rem; border-radius:10px; border:2px solid #8b5cf6; background:#1e1533; color:#ddd6fe; }
+  .noacc-state .ri { font-size:1.3rem; }
+  .noacc-state .rl { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; }
+  .noacc-reason { display:flex; flex-direction:column; gap:0.5rem; margin-top:0.75rem; }
+  .reason-row  { display:flex; flex-wrap:wrap; gap:0.4rem; }
+  .reason-chip { padding:0.5rem 0.7rem; min-height:40px; background:#1a1a2e; border:2px solid #2e2e42; border-radius:8px; color:#aaa; font-family:'DM Mono','Courier New',monospace; font-size:0.68rem; cursor:pointer; transition:all 0.15s; }
+  .reason-chip:hover { border-color:#8b5cf6; }
+  .reason-chip.on { border-color:#8b5cf6; background:#1e1533; color:#ddd6fe; font-weight:700; }
+  .noacc-note { font-size:0.7rem; color:#888; line-height:1.5; }
 
   /* Derived read-out (pass_fail_rule='all_checks_pass') */
   .derived { display:flex; align-items:center; gap:0.6rem; padding:1rem; border-radius:10px; border:2px solid #2e2e42; background:#1a1a2e; color:#aaa; }

@@ -383,7 +383,8 @@
                   {#if st.failed   > 0}<span class="qs-fail">✗ {st.failed}</span>{/if}
                   {#if st.problem  > 0}<span class="qs-repair">⚙ {st.problem}</span>{/if}
                   {#if st.ok       > 0}<span class="qs-pass">✓ {st.ok}</span>{/if}
-                  <span class="qs-el">{st.components}/{session.total_components_count} comp.</span>
+                  {#if st.no_access > 0}<span class="qs-noacc">⊘ {st.no_access} no access</span>{/if}
+                  <span class="qs-el">{st.observed}/{session.total_components_count} assessed</span>
                 {:else}
                   {@const done = session.status === 'closed' && !unfinished && session.total_components_count > 0}
                   <span class="{done ? 'qs-complete' : 'qs-el'}">
@@ -639,6 +640,7 @@
   .qs-pass   { color: rgb(74 222 128);  font-weight: 600; }
   .qs-el       { color: rgb(107 114 128); }
   .qs-complete { color: rgb(74 222 128); }
+  .qs-noacc    { color: rgb(196 181 253); }
 
   /* Status pill */
   .status-badge  { flex-shrink: 0; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid transparent; }

@@ -53,6 +53,8 @@
   let checklistResults = {};
   /** @type {string[]} */
   let photoUrls        = [];
+  /** @type {string|null} */
+  let noAccessReason   = null;
   let saving           = false;
   let error            = null;
 
@@ -64,7 +66,8 @@
   // Reset when component changes
   $: component, resetForm();
   function resetForm() {
-    result = ''; notes = ''; checklistResults = {}; photoUrls = []; error = null;
+    result = ''; notes = ''; checklistResults = {}; photoUrls = [];
+    noAccessReason = null; error = null;
   }
 
   onMount(async () => {
@@ -89,6 +92,7 @@
         notes,
         photoUrls,
         checklistResults,
+        noAccessReason,
       });
       dispatch('saved');
     } catch (err) {
@@ -140,6 +144,7 @@
       bind:notes
       bind:checklistResults
       bind:photoUrls
+      bind:noAccessReason
       {checklistDefs}
       {passFailRule}
       {saving}

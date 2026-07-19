@@ -105,6 +105,7 @@
       case 'failed':   return '✗ FAILED';
       case 'problem':  return '⚙ PROBLEM';
       case 'inactive': return '— INACTIVE';
+      case 'no_access': return '⊘ NO ACCESS';
       default:         return r ?? '—';
     }
   }
@@ -115,6 +116,7 @@
       case 'failed':   return 'failed';
       case 'problem':  return 'problem';
       case 'inactive': return 'inactive';
+      case 'no_access': return 'inactive';
       default:         return '';
     }
   }

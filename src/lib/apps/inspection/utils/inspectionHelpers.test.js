@@ -4,7 +4,7 @@
 // inspection history, for the walk card's "was → now" line on resume.
 
 import { describe, it, expect } from 'vitest';
-import { statusBeforeSession } from './inspectionHelpers.js';
+import { statusBeforeSession, sessionStats, worstResult } from './inspectionHelpers.js';
 
 const STARTED = '2026-07-15T10:00:00.000Z';
 
@@ -53,5 +53,28 @@ describe('statusBeforeSession', () => {
     expect(statusBeforeSession(history, STARTED)).toEqual({});
     expect(statusBeforeSession([], STARTED)).toEqual({});
     expect(statusBeforeSession(undefined, STARTED)).toEqual({});
+  });
+});
+
+describe('no_access (G1)', () => {
+  const row = (component_id, result) => ({ component_id, result });
+
+  it('sessionStats separates addressed components from those actually observed', () => {
+    const st = sessionStats([
+      row('c1', 'ok'), row('c2', 'failed'),
+      row('c3', 'no_access'), row('c4', 'no_access'),
+    ]);
+    expect(st.no_access).toBe(2);
+    expect(st.components).toBe(4);   // all four addressed → session is complete
+    expect(st.observed).toBe(2);     // but only two were assessed
+  });
+
+  it('worstResult reports no_access rather than falling through to inactive', () => {
+    // A component whose ONLY record is a failed attempt must not read "inactive".
+    expect(worstResult([row('c1', 'no_access')])).toBe('no_access');
+    // …but it never masks a real defect.
+    expect(worstResult([row('c1', 'no_access'), row('c1', 'failed')])).toBe('failed');
+    // …and outranks a pass, since an unassessed component needs attention.
+    expect(worstResult([row('c1', 'no_access'), row('c1', 'ok')])).toBe('no_access');
   });
 });

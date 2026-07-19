@@ -89,6 +89,7 @@
   $: statsFailed   = inspVals.filter(i => i.inspection_result === 'failed').length;
   $: statsProblem  = inspVals.filter(i => i.inspection_result === 'problem').length;
   $: statsInactive = inspVals.filter(i => i.inspection_result === 'inactive').length;
+  $: statsNoAccess = inspVals.filter(i => i.inspection_result === 'no_access').length;
 
   // For building-wide sessions: per-floor progress counter
   $: currentFloorProgress = (isBuilding && currentFloor)
@@ -256,6 +257,7 @@
       failCount={statsFailed}
       problemCount={statsProblem}
       inactiveCount={statsInactive}
+      noAccessCount={statsNoAccess}
     />
   {/if}
 
@@ -408,17 +410,27 @@
           </button>
         </div>
 
-        <!-- Status: what it was on arrival → what this session set it to -->
+        <!-- Status: what it was on arrival → what this session set it to.
+             A no-access record is NOT a status change — the component was never
+             observed — so it reads "OK · not assessed" rather than an arrow to a
+             status the component does not actually hold. -->
         <div class="cstat">
           <span class="cstat-k">STATUS</span>
-          <span class="cpill {statusCls(priorStatus)}">{priorStatus?.toUpperCase() ?? '–'}</span>
-          <span class="cstat-arr">→</span>
-          {#if currentInspection}
-            <span class="cpill {statusCls(currentInspection.inspection_result)}">
-              {currentInspection.inspection_result?.toUpperCase()}
+          {#if currentInspection?.inspection_result === 'no_access'}
+            <span class="cpill {statusCls(currentComponent.status)}">
+              {currentComponent.status?.toUpperCase() ?? '–'}
             </span>
+            <span class="cpill cpill-noacc">⊘ NOT ASSESSED</span>
           {:else}
-            <span class="cpill cpill-na">N/A</span>
+            <span class="cpill {statusCls(priorStatus)}">{priorStatus?.toUpperCase() ?? '–'}</span>
+            <span class="cstat-arr">→</span>
+            {#if currentInspection}
+              <span class="cpill {statusCls(currentInspection.inspection_result)}">
+                {currentInspection.inspection_result?.toUpperCase()}
+              </span>
+            {:else}
+              <span class="cpill cpill-na">N/A</span>
+            {/if}
           {/if}
         </div>
         {#if currentInspection?.inspector_notes}
@@ -529,6 +541,7 @@
 
   .cpill { font-size:0.62rem; font-weight:700; letter-spacing:0.1em; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid; flex-shrink:0; }
   .cpill-na    { color:#555;    border-color:#2e2e42; background:#111122; }
+  .cpill-noacc { color:#ddd6fe; border-color:#8b5cf6; background:#1e1533; }
   .st-ok       { color:#4ade80; border-color:#166534; background:#0a1f0a; }
   .st-fail     { color:#f87171; border-color:#7f1d1d; background:#1f0a0a; }
   .st-problem  { color:#fbbf24; border-color:#713f12; background:#1a1200; }

@@ -5,7 +5,10 @@
 // Summary:  Cover + one table row per session.
 // Detailed: Cover + one section per session (metadata + inspection table + photos).
 //
-// Result values lowercase: 'ok' | 'failed' | 'problem' | 'inactive'
+// Result values lowercase: 'ok' | 'failed' | 'problem' | 'inactive' | 'no_access'
+// 'no_access' = attended but could not assess (Fire Safety (England) Regs 2022
+// "best endeavours"). Never reported as a pass; see docs/requirements/
+// Inspection_Best_Practice_Review.md §G1.
 // photo_urls is an array (multiple photos per inspection)
 //   - session.floor_short_name pre-resolved client-side (floor_id is the raw FK)
 //   - session.inspector_name pre-resolved from profiles join
@@ -42,11 +45,12 @@ function resultColor(result) {
   return result === 'ok'       ? COLOURS.passGreen
        : result === 'failed'   ? COLOURS.failRed
        : result === 'problem'  ? 'EA580C'
+       : result === 'no_access' ? '7C3AED'
        : '6B7280';
 }
 
 function resultLabel(result) {
-  return { ok: 'PASS', failed: 'FAIL', problem: 'PROBLEM', inactive: 'INACTIVE' }[result]
+  return { ok: 'PASS', failed: 'FAIL', problem: 'PROBLEM', inactive: 'INACTIVE', no_access: 'NO ACCESS' }[result]
       ?? (result ?? '—').toUpperCase();
 }
 
@@ -57,7 +61,12 @@ function sessionStats(inspections) {
     failed:     inspections.filter(r => r.result === 'failed').length,
     problem:    inspections.filter(r => r.result === 'problem').length,
     inactive:   inspections.filter(r => r.result === 'inactive').length,
+    no_access:  inspections.filter(r => r.result === 'no_access').length,
+    // components = every component ADDRESSED (incl. no access); observed =
+    // those actually assessed. Reporting both stops "complete" implying that
+    // every component was seen.
     components: new Set(inspections.map(r => r.component_id)).size,
+    observed:   new Set(inspections.filter(r => r.result !== 'no_access').map(r => r.component_id)).size,
     total:      inspections.length,
   };
 }
@@ -365,7 +374,10 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
     mkMetaRow('Status',       s.status === 'open' ? 'Open' : 'Closed',
                               s.status === 'open' ? COLOURS.warnAmber : '6B7280'),
     mkMetaRow('Components',   `${st.components} inspected (${st.total} records)`),
-    mkMetaRow('Results',      `Pass: ${st.ok}   Fail: ${st.failed}   Problem: ${st.problem}   Inactive: ${st.inactive}`),
+    mkMetaRow('Results',      `Pass: ${st.ok}   Fail: ${st.failed}   Problem: ${st.problem}   Inactive: ${st.inactive}`
+      + (st.no_access ? `   No access: ${st.no_access}` : '')),
+    mkMetaRow('Coverage',     `${st.observed} of ${st.components} addressed component(s) assessed`
+      + (st.no_access ? ` — ${st.no_access} could not be accessed` : '')),
   ];
   if (s.notes) metaRows.push(mkMetaRow('Closing Notes', s.notes));
 

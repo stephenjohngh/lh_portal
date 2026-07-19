@@ -63,22 +63,39 @@ export function groupByComponent(rows) {
 }
 
 // -- Session stats -------------------------------------------------------------
+// `components` counts everything ADDRESSED (a no_access row is still an
+// addressed component — it drives completeness). `observed` counts only those
+// actually assessed. Reporting both is what stops "complete" hiding the fact
+// that nobody got into two of the flats — see Inspection_Best_Practice_Review §G1.
 export function sessionStats(inspections) {
+  const resultOf = (r) => r.result ?? r.inspection_result;
+  const count    = (v) => inspections.filter(r => resultOf(r) === v).length;
+  const noAccess = count('no_access');
+  const components = new Set(inspections.map(r => r.component_id)).size;
   return {
-    ok:       inspections.filter(r => (r.result ?? r.inspection_result) === 'ok').length,
-    failed:   inspections.filter(r => (r.result ?? r.inspection_result) === 'failed').length,
-    problem:  inspections.filter(r => (r.result ?? r.inspection_result) === 'problem').length,
-    inactive: inspections.filter(r => (r.result ?? r.inspection_result) === 'inactive').length,
-    components: new Set(inspections.map(r => r.component_id)).size,
-    total:    inspections.length,
+    ok:        count('ok'),
+    failed:    count('failed'),
+    problem:   count('problem'),
+    inactive:  count('inactive'),
+    no_access: noAccess,
+    components,                          // addressed (incl. no access)
+    observed:  components - new Set(
+      inspections.filter(r => resultOf(r) === 'no_access').map(r => r.component_id),
+    ).size,                              // actually assessed
+    total:     inspections.length,
   };
 }
 
 // -- Worst result in a group ---------------------------------------------------
+// Severity order mirrors RESULT_RANK. no_access sits above 'ok' — a component
+// nobody could assess needs attention before one that passed — but below real
+// defects. Checked BEFORE the 'inactive' fallback so that a component whose only
+// record is a no-access attempt does not silently report as 'inactive'.
 export function worstResult(rows) {
-  if (rows.some(r => r.result === 'failed'))  return 'failed';
-  if (rows.some(r => r.result === 'problem')) return 'problem';
-  if (rows.some(r => r.result === 'ok'))      return 'ok';
+  if (rows.some(r => r.result === 'failed'))    return 'failed';
+  if (rows.some(r => r.result === 'problem'))   return 'problem';
+  if (rows.some(r => r.result === 'no_access')) return 'no_access';
+  if (rows.some(r => r.result === 'ok'))        return 'ok';
   return 'inactive';
 }
 

@@ -778,8 +778,10 @@ function createInspectionStore() {
    * @param {string} [args.notes]
    * @param {string[]} [args.photoUrls]
    * @param {Record<string, boolean|undefined>} [args.checklistResults]
+   * @param {string|null} [args.noAccessReason] why the component could not be
+   *        assessed; only meaningful (and only persisted) when result==='no_access'
    */
-  async function recordInspection({ componentId, result, notes, photoUrls = [], checklistResults = {} }) {
+  async function recordInspection({ componentId, result, notes, photoUrls = [], checklistResults = {}, noAccessReason = null }) {
     logger('recordInspection:', componentId, result);
     const userId = await getCurrentUserId();
     const state  = getState();
@@ -796,12 +798,17 @@ function createInspectionStore() {
       ? null
       : (state.walkComponents.find(c => c.id === componentId)?.status ?? null);
 
+    // A reason belongs only to a no_access row — the DB CHECK enforces this, so
+    // null it out when re-inspecting a component that was previously no-access.
+    const reason = result === 'no_access' ? (noAccessReason || null) : null;
+
     let inspection;
     if (existing) {
       inspection = await updateComponentInspection(existing.id, {   // shared (building_assets/public.js)
         inspection_result: result,
         inspector_notes:   notes || null,
         checklist_results: checklistResults,
+        no_access_reason:  reason,
         inspected_by:      userId,
         inspected_at:      now,
       });
@@ -815,6 +822,7 @@ function createInspectionStore() {
         inspection_result: result,
         inspector_notes:   notes || null,
         checklist_results: checklistResults,
+        no_access_reason:  reason,
         inspected_by:      userId,
         inspected_at:      now,
       });
@@ -847,12 +855,20 @@ function createInspectionStore() {
         };
       }
 
-      // Update in-memory component status
+      // Update in-memory component status to match what applyInspectionResult
+      // actually wrote. 'no_access' writes NO status (the component was not
+      // observed), so the in-memory copy must keep its existing status too —
+      // otherwise the UI would show a status the database does not hold.
+      const statusChanged = result !== 'no_access';
+      const withStatus = (c) => (statusChanged ? { ...c, status: result } : c);
+
       const updatedAllComponents = { ...s.allComponents };
-      for (const fid of Object.keys(updatedAllComponents)) {
-        updatedAllComponents[fid] = updatedAllComponents[fid].map(c =>
-          c.id === componentId ? { ...c, status: result } : c
-        );
+      if (statusChanged) {
+        for (const fid of Object.keys(updatedAllComponents)) {
+          updatedAllComponents[fid] = updatedAllComponents[fid].map(c =>
+            c.id === componentId ? withStatus(c) : c
+          );
+        }
       }
 
       return {
@@ -864,7 +880,7 @@ function createInspectionStore() {
         floorProgress:  newFloorProgress,
         allComponents:  updatedAllComponents,
         walkComponents: s.walkComponents.map(c =>
-          c.id === componentId ? { ...c, status: result } : c
+          c.id === componentId ? withStatus(c) : c
         ),
       };
     });
