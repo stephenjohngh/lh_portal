@@ -164,22 +164,27 @@ function buildCover(sessions, reportType, generatedAt) {
 }
 
 // -- Summary table --------------------------------------------------------------
-// Portrait column widths (fallback — summary now uses landscape by default)
-// Columns: Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Prob | N/A | Photos | Notes
-// DXA:      900 |   1100   |  700  |  1000  | 1000 |   1000   |   700    |  650  |550 | 550  |  650 | 650 |   400  |  616
-// Sum = 10466
-const SUM_COLS = [900, 1100, 700, 1000, 1000, 1000, 700, 650, 550, 550, 650, 650, 400, 616];
-
-// Landscape column widths — proportionally wider, total = CONTENT_W_L = 15398
-// Date | Building | Floor | Preset | Name | Inspector | Duration | Comps | OK | Fail | Prob | N/A | Photos | Notes
-// 1200 |   1600   |  950  |  1500  | 1300 |   1500   |   950    |  850  |800 | 800  |  850 | 800 |   700  | 1598
-const SUM_COLS_L = [1200, 1600, 950, 1500, 1300, 1500, 950, 850, 800, 800, 850, 800, 700, 1598];
+// Columns: Date | Floor | Inspection | Inspector | Duration | Comps | OK | Fail | Prob | N/A | No acc | Photos | Notes
+//
+// Dropped since the previous version: Building (single building — it is on the
+// cover), Preset (retired — always "Custom") and the cryptic Session name
+// (redundant with Floor + Inspection + Date; shown in full in the detailed
+// report). Added: Inspection (the definition name — what Preset should have
+// been) and No acc (no_access components, previously invisible in the summary).
+// Portrait fallback; the summary renders landscape by default.
+// DXA: 800 650 1150 900 650 550 480 480 520 480 600 520 2686  (sum = 10466)
+const SUM_COLS   = [800, 650, 1150, 900, 650, 550, 480, 480, 520, 480, 600, 520, 2686];
+// Landscape — total = CONTENT_W_L = 15398
+// DXA: 1150 900 1700 1300 950 750 650 650 700 650 850 750 4398
+const SUM_COLS_L = [1150, 900, 1700, 1300, 950, 750, 650, 650, 700, 650, 850, 750, 4398];
 
 // cols defaults to portrait; pass SUM_COLS_L for the landscape summary.
 function buildSummaryTable(sessionData, cols = SUM_COLS) {
   const totalW   = cols.reduce((a, b) => a + b, 0);
-  const headers  = ['Date', 'Building', 'Floor', 'Preset', 'Name', 'Inspector',
-                    'Duration', 'Comps', 'OK', 'Fail', 'Prob', 'N/A', 'Photos', 'Notes'];
+  // "Inact" (inactive component) is spelled out rather than "N/A" so it is not
+  // confused with the adjacent "No acc" (no access) column — different concepts.
+  const headers  = ['Date', 'Floor', 'Inspection', 'Inspector', 'Duration',
+                    'Comps', 'OK', 'Fail', 'Prob', 'Inact', 'No acc', 'Photos', 'Notes'];
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -196,20 +201,19 @@ function buildSummaryTable(sessionData, cols = SUM_COLS) {
     );
     return new TableRow({
       children: [
-        dCell(fmtDate(s.started_at),        cols[0],  { alt }),
-        dCell(s.building,                   cols[1],  { alt }),
-        dCell(flr,                          cols[2],  { alt }),
-        dCell(s.session_preset_label ?? s.session_preset ?? '—', cols[3], { alt }),
-        dCell(s.session_name || '—',        cols[4],  { alt }),
-        dCell(s.inspector_name || '—',      cols[5],  { alt }),
-        dCell(dur,                          cols[6],  { alt }),
-        dCell(String(st.components),        cols[7],  { alt, bold: true }),
-        dCell(st.ok       || '—', cols[8],  { alt, color: st.ok       ? COLOURS.passGreen : '9CA3AF' }),
-        dCell(st.failed   || '—', cols[9],  { alt, color: st.failed   ? COLOURS.failRed   : '9CA3AF' }),
-        dCell(st.problem  || '—', cols[10], { alt, color: st.problem  ? 'EA580C'           : '9CA3AF' }),
-        dCell(st.inactive || '—', cols[11], { alt, color: st.inactive ? '6B7280'           : '9CA3AF' }),
-        dCell(photoCount  || '—', cols[12], { alt, color: photoCount  ? '0369A1'            : '9CA3AF' }),
-        dCell(s.notes || '—',     cols[13], { alt }),
+        dCell(fmtDate(s.started_at),           cols[0],  { alt }),
+        dCell(flr,                             cols[1],  { alt }),
+        dCell(s.definition_name || 'Ad-hoc',   cols[2],  { alt, bold: true }),
+        dCell(s.inspector_name || '—',         cols[3],  { alt }),
+        dCell(dur,                             cols[4],  { alt }),
+        dCell(String(st.components),           cols[5],  { alt, bold: true }),
+        dCell(st.ok        || '—', cols[6],  { alt, color: st.ok        ? COLOURS.passGreen : '9CA3AF' }),
+        dCell(st.failed    || '—', cols[7],  { alt, color: st.failed    ? COLOURS.failRed   : '9CA3AF' }),
+        dCell(st.problem   || '—', cols[8],  { alt, color: st.problem   ? 'EA580C'          : '9CA3AF' }),
+        dCell(st.inactive  || '—', cols[9],  { alt, color: st.inactive  ? '6B7280'          : '9CA3AF' }),
+        dCell(st.no_access || '—', cols[10], { alt, color: st.no_access ? '7C3AED'          : '9CA3AF' }),
+        dCell(photoCount   || '—', cols[11], { alt, color: photoCount   ? '0369A1'          : '9CA3AF' }),
+        dCell(s.notes || '—',      cols[12], { alt }),
       ],
     });
   });
@@ -350,12 +354,14 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
   const st  = sessionStats(inspections);
   const flr = s.floor_short_name ? `Floor ${s.floor_short_name}` : 'All Floors';
 
-  // Session heading
+  // Session heading — the inspection and the floor. Building is on the cover;
+  // the old heading also carried the retired "Custom" preset. The session name,
+  // type, date etc. are in the meta table below, so they are not repeated here.
   children.push(new Paragraph({
     heading:  HeadingLevel.HEADING_1,
     spacing:  { before: 0, after: 160 },
     children: [new TextRun({
-      text: `${s.building} — ${flr} — ${s.session_preset_label ?? s.session_preset ?? '—'}`,
+      text: `${s.definition_name ?? s.session_name ?? 'Inspection'} — ${flr}`,
       font: 'Arial', size: 32, bold: true,
     })],
   }));
@@ -507,6 +513,43 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
     columnWidths: DET_COLS,
     rows:         [headerRow, ...dataRows],
   }));
+
+  // -- Components not assessed -------------------------------------------------
+  // Listed together at the end so the components nobody could get to are visible
+  // in one place, rather than only as scattered rows in the table above. This is
+  // the evidence for a "best endeavours" check (Fire Safety (England) Regs 2022):
+  // it shows what was attempted and why it could not be completed.
+  const notAssessed = inspections.filter(
+    (i) => (i.result ?? i.inspection_result) === 'no_access',
+  );
+  if (notAssessed.length > 0) {
+    children.push(new Paragraph({
+      spacing:  { before: 320, after: 120 },
+      children: [new TextRun({
+        text: `COMPONENTS NOT ASSESSED (${notAssessed.length})`,
+        font: 'Arial', size: 20, bold: true, color: '7C3AED',
+      })],
+    }));
+    for (const ins of notAssessed) {
+      children.push(new Paragraph({
+        spacing:  { before: 0, after: 60 },
+        children: [
+          new TextRun({ text: `•  ${componentRef(ins)}`, font: 'Arial', size: 18, bold: true, color: COLOURS.textDark }),
+          new TextRun({
+            text:  `   ${ins.label || '—'}  ·  ${noAccessReasonLabel(ins.no_access_reason)}`,
+            font:  'Arial', size: 18, color: '475569',
+          }),
+        ],
+      }));
+    }
+    children.push(new Paragraph({
+      spacing:  { before: 60, after: 0 },
+      children: [new TextRun({
+        text: 'Attended but could not be assessed. The status of these components is unchanged from their last recorded inspection.',
+        font: 'Arial', size: 16, italics: true, color: COLOURS.textMuted,
+      })],
+    }));
+  }
 
   return children;
 }

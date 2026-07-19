@@ -591,6 +591,7 @@
 {#if showReport}
   <InspectionsReport
     sessions={filtered}
+    {definitions}
     types={types}
     floors={floors}
     attrDefs={$buildingAssetsStore.attrDefs}

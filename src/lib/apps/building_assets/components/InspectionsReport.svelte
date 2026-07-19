@@ -32,6 +32,7 @@
   // -- Props -----------------------------------------------------------------
   // sessions: already-filtered list shown in the tab
   export let sessions         = [];
+  export let definitions      = [];   // inspection_definitions — for the definition name
   // types + floors: from $buildingAssetsStore — needed for client-side resolution
   export let types            = [];
   export let floors           = [];
@@ -91,7 +92,9 @@
       ...session,
       floor_short_name:     floorObj?.short_name ?? null,
       inspector_name:       session.inspector?.full_name ?? '—',
-      session_preset_label: presetLabel(session.session_preset),
+      // The inspection this session ran (e.g. "Fire Doors"). Replaces the old
+      // preset, which was retired and always resolved to "Custom".
+      definition_name:      definitions.find(d => d.id === session.definition_id)?.name ?? null,
     };
   }
 
