@@ -781,7 +781,7 @@ function createInspectionStore() {
    * @param {string|null} [args.noAccessReason] why the component could not be
    *        assessed; only meaningful (and only persisted) when result==='no_access'
    */
-  async function recordInspection({ componentId, result, notes, photoUrls = [], checklistResults = {}, noAccessReason = null }) {
+  async function recordInspection({ componentId, result, notes, photoUrls = [], checklistResults = {}, noAccessReason = null, readings = {} }) {
     logger('recordInspection:', componentId, result);
     const userId = await getCurrentUserId();
     const state  = getState();
@@ -801,6 +801,8 @@ function createInspectionStore() {
     // A reason belongs only to a no_access row — the DB CHECK enforces this, so
     // null it out when re-inspecting a component that was previously no-access.
     const reason = result === 'no_access' ? (noAccessReason || null) : null;
+    // A no_access row observed nothing, so it carries no readings either.
+    const readingsToSave = result === 'no_access' ? {} : (readings || {});
 
     let inspection;
     if (existing) {
@@ -808,6 +810,7 @@ function createInspectionStore() {
         inspection_result: result,
         inspector_notes:   notes || null,
         checklist_results: checklistResults,
+        readings:          readingsToSave,
         no_access_reason:  reason,
         inspected_by:      userId,
         inspected_at:      now,
@@ -822,6 +825,7 @@ function createInspectionStore() {
         inspection_result: result,
         inspector_notes:   notes || null,
         checklist_results: checklistResults,
+        readings:          readingsToSave,
         no_access_reason:  reason,
         inspected_by:      userId,
         inspected_at:      now,

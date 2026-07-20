@@ -310,6 +310,35 @@ describe('no_access (G1)', () => {
   });
 });
 
+describe('readings (G2 structured readings)', () => {
+  it('persists a readings jsonb on the inspection (create path)', async () => {
+    await startWalk();
+    await inspectionStore.recordInspection({
+      componentId: 'comp1', result: 'ok',
+      readings: { 'attr-duration': 180, 'attr-note': 'clear' },
+    });
+    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    expect(inspArg.readings).toEqual({ 'attr-duration': 180, 'attr-note': 'clear' });
+  });
+
+  it('defaults readings to {} when none are supplied', async () => {
+    await startWalk();
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'ok' });
+    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    expect(inspArg.readings).toEqual({});
+  });
+
+  it('a no_access attempt carries no readings even if some were passed', async () => {
+    await startWalk();
+    await inspectionStore.recordInspection({
+      componentId: 'comp1', result: 'no_access', noAccessReason: 'locked',
+      readings: { 'attr-duration': 180 },
+    });
+    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    expect(inspArg.readings).toEqual({});
+  });
+});
+
 describe('statusBefore (the walk card\'s "was → now" line)', () => {
   it('recordInspection captures the status held before the write, and a re-inspect keeps it', async () => {
     await startWalk();                                    // comp1 starts 'ok'

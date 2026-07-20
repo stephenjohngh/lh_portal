@@ -56,6 +56,8 @@
   let photoUrls        = [];
   /** @type {string|null} */
   let noAccessReason   = null;
+  /** @type {Record<string, string|number>} */
+  let readings         = {};   // G2: structured text/number readings
   let saving           = false;
   let error            = null;
 
@@ -68,7 +70,7 @@
   $: component, resetForm();
   function resetForm() {
     result = ''; notes = ''; checklistResults = {}; photoUrls = [];
-    noAccessReason = null; error = null;
+    noAccessReason = null; readings = {}; error = null;
   }
 
   onMount(async () => {
@@ -94,6 +96,7 @@
         photoUrls,
         checklistResults,
         noAccessReason,
+        readings,
       });
       dispatch('saved');
     } catch (err) {
@@ -146,6 +149,7 @@
       bind:checklistResults
       bind:photoUrls
       bind:noAccessReason
+      bind:readings
       {checklistDefs}
       {passFailRule}
       {saving}

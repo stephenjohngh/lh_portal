@@ -27,6 +27,8 @@
   export let photoUrls        = [];   // already-uploaded URLs (array)
   /** @type {string|null} */
   export let noAccessReason   = null; // only meaningful when result==='no_access'
+  /** @type {Record<string, string|number>} */
+  export let readings         = {};   // G2: structured text/number readings, built at save
 
   // One-way from parent
   export let checklistDefs = [];   // type_attributes with checkable=true for this component's type
@@ -157,6 +159,20 @@
     return uploaded;
   }
 
+  // G2: the queryable copy of the readings, keyed by type_attribute_id. Values
+  // are coerced to their attribute's kind (number vs text) so a reading can be
+  // trended/threshold-queried; empty inputs are omitted. Built once at save.
+  function buildReadings() {
+    /** @type {Record<string, string|number>} */
+    const out = {};
+    for (const d of inputDefs) {
+      const raw = inputValues[d.id];
+      if (raw === undefined || String(raw).trim() === '') continue;
+      out[d.id] = d.display_type === 'number' ? Number(raw) : String(raw).trim();
+    }
+    return out;
+  }
+
   async function handleSaveClick() {
     // Build final notes from three independent parts — none clobbers the others:
     //   1. autoFailNote  — "Failed: AttrA, AttrB" (from pass/fail checklist reactive)
@@ -172,6 +188,9 @@
       notes.trim(),
     ].filter(Boolean);
     notes = parts.join('\n');
+
+    // The structured, queryable copy (kept alongside the human-readable notes).
+    readings = buildReadings();
 
     const newUrls = await uploadAllPending();
     photoUrls     = [...photoUrls, ...newUrls];
