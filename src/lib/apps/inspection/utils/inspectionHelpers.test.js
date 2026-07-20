@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   statusBeforeSession, sessionStats, worstResult,
-  resolveAwaitingAccess, awaitingAccessByDefinition,
+  resolveAwaitingAccess, awaitingAccessByDefinition, sessionKindLabel,
 } from './inspectionHelpers.js';
 
 const STARTED = '2026-07-15T10:00:00.000Z';
@@ -134,5 +134,44 @@ describe('resolveAwaitingAccess (G13)', () => {
     expect(resolveAwaitingAccess([], [])).toEqual([]);
     expect(resolveAwaitingAccess(undefined, undefined)).toEqual([]);
     expect(awaitingAccessByDefinition(undefined)).toEqual({});
+  });
+});
+
+describe('sessionKindLabel', () => {
+  const DEFS = [{ id: 'def1', name: 'Fire Doors' }];
+
+  it('names the definition rather than the legacy preset', () => {
+    // The bug this fixes: definition-driven sessions stamp session_preset
+    // 'custom', so a Fire Doors run used to render as "Custom".
+    const session = { definition_id: 'def1', session_preset: 'custom' };
+    expect(sessionKindLabel(session, DEFS)).toBe('Fire Doors');
+  });
+
+  it('prefers the session\'s own resolved definition over the list', () => {
+    // _walk is resolved at start/resume with a DB fetch fallback, so it works
+    // even when the definitions list failed to load (it loads non-fatally).
+    const session = {
+      definition_id: 'def1', session_preset: 'custom',
+      _walk: { definition: { id: 'def1', name: 'Fire Doors (revised)' } },
+    };
+    expect(sessionKindLabel(session, [])).toBe('Fire Doors (revised)');
+  });
+
+  it('falls back to a neutral word — never "Custom" — for a deleted definition', () => {
+    // definition_id points somewhere real-but-gone. Saying "Custom" would
+    // assert something false about the session.
+    const session = { definition_id: 'gone', session_preset: 'custom' };
+    expect(sessionKindLabel(session, DEFS)).toBe('Inspection');
+  });
+
+  it('still labels genuinely ad-hoc and historic sessions from the preset', () => {
+    expect(sessionKindLabel({ session_preset: 'custom' }, DEFS)).toBe('Custom');
+    // Pre-migration-153 sessions kept their real preset value.
+    expect(sessionKindLabel({ session_preset: 'fire_doors' }, DEFS)).toBe('Fire Doors');
+  });
+
+  it('tolerates a null session and an omitted definitions list', () => {
+    expect(sessionKindLabel(null)).toBe('');
+    expect(sessionKindLabel({ definition_id: 'def1' })).toBe('Inspection');
   });
 });

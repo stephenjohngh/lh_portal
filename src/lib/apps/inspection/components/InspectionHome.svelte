@@ -3,7 +3,7 @@
   import { createEventDispatcher } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
   import { fmtDate, fmtTime, fmtDuration } from '$lib/utils/dates';
-  import { presetLabel, sessionFloorLabel, sessionDefinitionName } from '../utils/inspectionHelpers.js';
+  import { sessionKindLabel, sessionFloorLabel, sessionDefinitionName } from '../utils/inspectionHelpers.js';
   import WalkBadge from '$lib/apps/inspection/components/common/WalkBadge.svelte';
 
   const dispatch = createEventDispatcher();
@@ -28,7 +28,7 @@
     return { test: 'TEST', inspection: 'INSPECTION', repair: 'REPAIR' }[s.session_type] ?? s.session_type;
   }
   function sessionTitle(s) {
-    return s.session_name || `${presetLabel(s.session_preset)} · ${s.building}`;
+    return s.session_name || `${sessionKindLabel(s, definitions)} · ${s.building}`;
   }
 </script>
 

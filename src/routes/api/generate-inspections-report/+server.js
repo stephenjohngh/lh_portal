@@ -12,7 +12,8 @@
 // photo_urls is an array (multiple photos per inspection)
 //   - session.floor_short_name pre-resolved client-side (floor_id is the raw FK)
 //   - session.inspector_name pre-resolved from profiles join
-//   - session.session_preset_label pre-resolved from presetLabel()
+//   - session.definition_name pre-resolved from inspection_definitions (the
+//     retired presets are gone; session_preset_label no longer exists)
 //   - component ref format: floor_name/type_initial/asset_id
 //
 // Request body:

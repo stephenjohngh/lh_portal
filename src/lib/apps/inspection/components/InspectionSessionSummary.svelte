@@ -3,7 +3,7 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { flattenInspectionRows, groupByComponent, worstResult, resultLabel, sessionFloorLabel, presetLabel } from '../utils/inspectionHelpers.js';
+  import { flattenInspectionRows, groupByComponent, worstResult, resultLabel, sessionFloorLabel, sessionKindLabel } from '../utils/inspectionHelpers.js';
   import { fmtDate, fmtTime } from '$lib/utils/dates';
   import WalkStatsBars      from '$lib/apps/inspection/components/common/WalkStatsBars.svelte';
   import WalkError          from '$lib/apps/inspection/components/common/WalkError.svelte';
@@ -32,7 +32,9 @@
   $: totalComponents = session?.total_components_count || totalInspected;
 
   $: floorLabel  = sessionFloorLabel(session, floors);
-  $: presetDisp  = presetLabel(session?.session_preset ?? '');
+  // A closed session read from the DB has no _walk, so this resolves via the
+  // definitions list.
+  $: presetDisp  = sessionKindLabel(session, $inspectionStore.definitions ?? []);
 
   onMount(async () => {
     try {

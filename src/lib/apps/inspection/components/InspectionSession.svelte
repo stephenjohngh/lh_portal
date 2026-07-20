@@ -6,7 +6,7 @@
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { presetLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
+  import { sessionKindLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
   import InspectionPanel             from './InspectionPanel.svelte';
   import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
   import InspectionJumpList          from './InspectionJumpList.svelte';
@@ -105,8 +105,8 @@
     ? session.session_name
     : sessionFloorLabel(session ?? {}, floors);
 
-  // Preset display
-  $: preset = presetLabel(session?.session_preset ?? '');
+  // What this session IS — the definition's name, not the legacy preset label.
+  $: sessionKind = sessionKindLabel(session, $inspectionStore.definitions ?? []);
 
   // Total for stats bars
   $: totalComponents = session?.total_components_count ?? components.length;
@@ -212,7 +212,7 @@
     <div class="sbar-l">
       <div class="sbar-name">{headerLabel}</div>
       <div class="sbar-meta">
-        {preset}
+        {sessionKind}
         {#if session?.emergency_only}
           <WalkBadge color="orange">Emergency</WalkBadge>
         {/if}

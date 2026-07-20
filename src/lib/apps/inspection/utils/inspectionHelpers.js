@@ -224,6 +224,10 @@ export function sessionDefinitionName(session, definitions) {
 }
 
 // -- Preset label -------------------------------------------------------------
+// LEGACY. The fixed presets were retired (commit 2ead511) in favour of
+// inspection_definitions; this survives only to label historic sessions. For the
+// "what kind of inspection is this" line, use sessionKindLabel() below — calling
+// presetLabel() directly on a modern session prints "Custom" for everything.
 export function presetLabel(preset) {
   return {
     custom:              'Custom',
@@ -231,4 +235,32 @@ export function presetLabel(preset) {
     fire_doors:          'Fire Doors',
     apartment_doors:     'Apartment Doors',
   }[preset] ?? preset;
+}
+
+// -- What kind of inspection this session is -----------------------------------
+// The one label every surface should show under a session's name.
+//
+// Definition-driven sessions stamp `session_preset = 'custom'` (the column is
+// legacy), so labelling them with presetLabel() rendered a Fire Doors run as
+// "Custom" on the walk screen, the summary, the home list and the report modal.
+// Resolution order:
+//   1. session._walk.definition.name — resolved by the store at start/resume,
+//      with a DB fetch fallback, so it survives the definitions list failing to
+//      load (load() fetches it non-fatally).
+//   2. the definitions list, for sessions read straight from the DB (closed
+//      sessions in a summary or report have no _walk).
+//   3. a neutral word, when definition_id points at a since-deleted definition —
+//      never "Custom", which would assert something false about the session.
+//   4. the legacy preset label, for genuinely ad-hoc walks with no definition.
+//
+// @param {{ definition_id?: string|null, session_preset?: string|null, _walk?: any }|null} session
+// @param {Array<{ id: string, name: string }>} [definitions]
+// @returns {string}
+export function sessionKindLabel(session, definitions = []) {
+  if (session?.definition_id) {
+    return session._walk?.definition?.name
+      ?? sessionDefinitionName(session, definitions)
+      ?? 'Inspection';
+  }
+  return presetLabel(session?.session_preset ?? '');
 }

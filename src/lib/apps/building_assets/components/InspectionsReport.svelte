@@ -20,7 +20,7 @@
   import { getLogger } from '$lib/utils/logger';
   import {
     flattenInspectionRows,
-    presetLabel,
+    sessionKindLabel,
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
@@ -310,7 +310,7 @@
               <span class="sess-name-text">
                 {session.building}
                 · {sessionFloorDisplay(session)}
-                · {presetLabel(session.session_preset)}
+                · {sessionKindLabel(session, definitions)}
                 <Badge color={sessionTypeBadgeColor(session.session_type)} size="small">
                   {(session.session_type ?? '').toUpperCase()}
                 </Badge>
