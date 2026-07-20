@@ -24,7 +24,7 @@
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
-  import { conditionChecklistDisplay } from '../lookups.js';
+  import { conditionChecklistDisplay, readingsDisplay } from '../lookups.js';
 
   const logger   = getLogger('InspectionsReport');
   const dispatch = createEventDispatcher();
@@ -106,8 +106,9 @@
   /**
    * Add type_initial and type_name to each flattened inspection row so the
    * server can build component refs without needing the types lookup table,
-   * plus a structured condition_results array {name, passed} so the server
-   * can render the per-attribute checklist without needing attrDefs.
+   * plus a structured condition_results array {name, passed} and a readings
+   * array {name, value} so the server can render the per-attribute checklist
+   * and the measured readings without needing attrDefs.
    */
   function enrichInspections(flatRows) {
     return flatRows.map(r => {
@@ -120,6 +121,12 @@
         condition_results: conditionChecklistDisplay(r, defs).map(({ def, passed }) => ({
           name: def.name,
           passed,
+        })),
+        // Measured numeric/text readings (G2). Only recorded ones appear —
+        // pre-migration-169 inspections carry theirs as prose in the notes.
+        readings: readingsDisplay(r, defs).map(({ def, value }) => ({
+          name: def.name,
+          value,
         })),
       };
     });

@@ -23,6 +23,18 @@ export function checkableDefs(attrDefs, types, typeCode) {
 }
 
 /**
+ * True when a condition attribute captures a *reading* (a measured value) rather
+ * than a pass/fail check. The walk splits on exactly this test — see
+ * `InspectionResultSection.svelte` (`passFailDefs` vs `inputDefs`) — so a
+ * text/number condition attribute NEVER appears in `checklist_results`; its
+ * value goes to `component_inspections.readings` instead (G2, migration 169).
+ * @param {Object|null|undefined} def — a type_attributes row
+ */
+export function isReadingDef(def) {
+  return def?.display_type === 'text' || def?.display_type === 'number';
+}
+
+/**
  * Build the per-attribute condition-checklist display data from an
  * inspection row and the type's effective attribute defs.
  *
@@ -36,17 +48,48 @@ export function checkableDefs(attrDefs, types, typeCode) {
  * has no entry in checklist_results (e.g. attr added after the
  * inspection, or component never inspected).
  *
+ * Reading attributes (text/number) are EXCLUDED — they are never booleans, so
+ * before G2 they rendered as permanently "not recorded" grey dashes on every
+ * surface. They belong to readingsDisplay() instead.
+ *
  * @param {Object|null} inspection — component_inspections row or null
  * @param {Array}       defs       — type_attributes[] (effective set)
  * @returns {Array<{ def: Object, passed: boolean|null }>}
  */
 export function conditionChecklistDisplay(inspection, defs) {
-  const conditionDefs = (defs ?? []).filter(d => d.checkable && d.visible);
+  const conditionDefs = (defs ?? []).filter(d => d.checkable && d.visible && !isReadingDef(d));
   const results       = inspection?.checklist_results ?? {};
   return conditionDefs.map(def => ({
     def,
     passed: typeof results[def.id] === 'boolean' ? results[def.id] : null,
   }));
+}
+
+/**
+ * Build the structured-readings display data for one inspection — the
+ * text/number sibling of conditionChecklistDisplay() (G2, migration 169).
+ *
+ * Only readings that were actually RECORDED are returned. Unlike the checklist
+ * chips there is deliberately no "—" entry for a missing one: inspections
+ * recorded before migration 169 have `readings = {}` and carry their values as
+ * "Name: value" prose in `inspector_notes`, so a dash would falsely claim the
+ * reading was never taken. An empty result means "nothing structured to show",
+ * and the caller renders no readings section at all.
+ *
+ * The attribute's `name` supplies both label and unit (units are written into
+ * the name by convention, e.g. "Duration achieved (min)") — there is no
+ * separate unit column on type_attributes.
+ *
+ * @param {Object|null} inspection — component_inspections row or null
+ * @param {Array}       defs       — type_attributes[] (effective set)
+ * @returns {Array<{ def: Object, value: string|number }>}
+ */
+export function readingsDisplay(inspection, defs) {
+  const readingDefs = (defs ?? []).filter(d => d.checkable && d.visible && isReadingDef(d));
+  const readings    = inspection?.readings ?? {};
+  return readingDefs
+    .map(def => ({ def, value: readings[def.id] }))
+    .filter(({ value }) => value !== undefined && value !== null && value !== '');
 }
 
 /** Raw attribute value for a component + attribute definition id. */

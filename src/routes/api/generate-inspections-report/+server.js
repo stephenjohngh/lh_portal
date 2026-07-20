@@ -492,6 +492,37 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
       }));
     }
 
+    // Readings — the measured numeric/text values recorded for this inspection
+    // (G2). One row spanning all columns, mirroring the Condition row above.
+    // `readings` comes from the client (enrichInspections), already resolved to
+    // {name, value} — units live in the name by convention. Only inspections
+    // recorded after migration 169 have these; older ones keep their readings
+    // as prose in the notes column, so an absent row is not a missing test.
+    const readings = Array.isArray(ins.readings) ? ins.readings : [];
+    if (readings.length > 0) {
+      const readingRuns = [];
+      readings.forEach((rd, j) => {
+        if (j > 0) readingRuns.push(new TextRun({ text: '   ', font: 'Arial', size: 18 }));
+        readingRuns.push(new TextRun({ text: `${rd.name}: `, color: '475569', font: 'Arial', size: 18 }));
+        readingRuns.push(new TextRun({ text: String(rd.value), bold: true, color: '1E293B', font: 'Arial', size: 18 }));
+      });
+      dataRows.push(new TableRow({
+        children: [new TableCell({
+          width:      { size: CONTENT_W, type: WidthType.DXA },
+          columnSpan: DET_N_COLS,
+          margins:    { top: convertInchesToTwip(0.05), bottom: convertInchesToTwip(0.05), left: convertInchesToTwip(0.1), right: convertInchesToTwip(0.1) },
+          shading:    { fill: alt ? 'F8FAFC' : 'FFFFFF', type: ShadingType.CLEAR },
+          children:   [new Paragraph({
+            spacing:  { before: 0, after: 0 },
+            children: [
+              new TextRun({ text: 'Readings: ', bold: true, color: '475569', font: 'Arial', size: 18 }),
+              ...readingRuns,
+            ],
+          })],
+        })],
+      }));
+    }
+
     // Photos — side-by-side pairs, aspect-ratio aware, with captions.
     // Omitted entirely when includePhotos is false.
     if (includePhotos) {

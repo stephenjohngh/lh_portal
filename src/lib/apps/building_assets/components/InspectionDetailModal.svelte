@@ -5,13 +5,14 @@
      so the tab stays focused on the session list. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { typeByCode, defsForType, conditionChecklistDisplay } from '../lookups.js';
+  import { typeByCode, defsForType, conditionChecklistDisplay, readingsDisplay } from '../lookups.js';
   import { resultBadgeColor, noAccessReasonLabel } from '$lib/utils/resultConstants.js';
   import { resultLabel }      from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime }      from '$lib/utils/dates';
   import Modal    from '$lib/components/common/Modal.svelte';
   import Badge    from '$lib/components/common/Badge.svelte';
   import ConditionChecklistChips from './ConditionChecklistChips.svelte';
+  import InspectionReadings      from './InspectionReadings.svelte';
   import PhotoLightbox from '$lib/components/common/PhotoLightbox.svelte';
 
   export let inspection;   // component_inspections row (includes photo_urls)
@@ -23,7 +24,9 @@
   const dispatch = createEventDispatcher();
 
   $: typeObj = typeByCode(types, group?.type_code);
-  $: items   = conditionChecklistDisplay(inspection, defsForType(attrDefs, types, group?.type_code));
+  $: defs    = defsForType(attrDefs, types, group?.type_code);
+  $: items   = conditionChecklistDisplay(inspection, defs);
+  $: rdgs    = readingsDisplay(inspection, defs);
   $: result  = inspection?.inspection_result ?? inspection?.result;
 
   let lightboxPhotos = [];
@@ -86,6 +89,14 @@
     <div class="id-section">
       <p class="id-section-lbl">Condition checks</p>
       <ConditionChecklistChips {items} size="sm" />
+    </div>
+  {/if}
+
+  <!-- Readings (structured measured values — G2) -->
+  {#if rdgs.length > 0}
+    <div class="id-section">
+      <p class="id-section-lbl">Readings</p>
+      <InspectionReadings items={rdgs} />
     </div>
   {/if}
 

@@ -407,6 +407,8 @@ export type Database = {
           created_at: string
           checklist_results: Json | null
           walk_session_id: string | null
+          no_access_reason: string | null
+          readings: Json
         }
         Insert: {
           id?: string
@@ -418,6 +420,8 @@ export type Database = {
           created_at?: string
           checklist_results?: Json | null
           walk_session_id?: string | null
+          no_access_reason?: string | null
+          readings?: Json
         }
         Update: {
           id?: string
@@ -429,6 +433,8 @@ export type Database = {
           created_at?: string
           checklist_results?: Json | null
           walk_session_id?: string | null
+          no_access_reason?: string | null
+          readings?: Json
         }
         Relationships: [
             {
