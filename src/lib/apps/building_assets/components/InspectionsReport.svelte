@@ -88,13 +88,18 @@
    */
   function enrichSession(session) {
     const floorObj = resolveFloor(session.floor_id);
+    const def      = definitions.find(d => d.id === session.definition_id) ?? null;
     return {
       ...session,
       floor_short_name:     floorObj?.short_name ?? null,
       inspector_name:       session.inspector?.full_name ?? '—',
       // The inspection this session ran (e.g. "Fire Doors"). Replaces the old
       // preset, which was retired and always resolved to "Custom".
-      definition_name:      definitions.find(d => d.id === session.definition_id)?.name ?? null,
+      definition_name:      def?.name ?? null,
+      // Statutory provenance (G3) — carried through so the report and the GT
+      // registration explain the compliance basis.
+      statutory_ref:        def?.statutory_ref ?? null,
+      test_type:            def?.test_type ?? null,
     };
   }
 
@@ -162,7 +167,11 @@
       if (existing) { registered = { ...registered, [session.id]: { reference: existing.reference } }; return; }
 
       const { session: es, inspections: ei } = await resolveSessionPayload(session, { withPhotos: true });
-      const title = `Inspection report — ${es.building ?? ''} · ${sessionFloorDisplay(session)} · ${fmtDateTime(session.started_at)}`.trim();
+      // Lead the GT entry with the inspection + its statutory basis (G3), so the
+      // register is self-describing without opening the document.
+      const lead  = [es.definition_name ?? 'Inspection', es.test_type ? `(${es.test_type})` : null].filter(Boolean).join(' ');
+      const title = `${lead} — ${sessionFloorDisplay(session)} · ${fmtDateTime(session.started_at)}`
+        + (es.statutory_ref ? ` · ${es.statutory_ref}` : '');
       const gt = await registerSessionReportToGoldenThread(es, ei, { title }, $auth.user?.id);
       registered = { ...registered, [session.id]: { reference: gt.reference } };
       logAudit('create', 'gt_document', gt.id, gt.title, {

@@ -59,6 +59,9 @@
   let checklistMode    = definition?.checklist_mode ?? 'type_driven';
   let checklistAttrIds = new Set(definition?.checklist_attr_ids ?? []);
   let passFailRule     = definition?.pass_fail_rule ?? 'manual';
+  // Statutory provenance (G3) — descriptive metadata, not logic.
+  let statutoryRef     = definition?.statutory_ref ?? '';
+  let testType         = definition?.test_type ?? '';
   // Display order. A new definition goes to the END of the list rather than
   // defaulting to 0 — previously every new definition landed on 0, so they all
   // tied and their order was whatever the DB happened to return.
@@ -149,6 +152,8 @@
         checklist_attr_ids: [...checklistAttrIds],
         pass_fail_rule: passFailRule,
         presentation_order: Number(presentationOrder) || 0,
+        statutory_ref: statutoryRef.trim() || null,
+        test_type:     testType.trim() || null,
       },
     });
   }
@@ -190,6 +195,20 @@
       {#if frequencyDays == null}
         <p class="hint">On-demand inspections never appear as “due” — available to run any time.</p>
       {/if}
+
+      <!-- Statutory provenance: why this frequency, and which kind of test.
+           Shown on the report and carried into the Golden Thread registration. -->
+      <div class="stat-row">
+        <label class="stat-fld">
+          Standard / clause
+          <input bind:value={statutoryRef} placeholder="e.g. BS 5266-1 §12.2" />
+        </label>
+        <label class="stat-fld">
+          Test type
+          <input bind:value={testType} placeholder="e.g. Monthly function test" />
+        </label>
+      </div>
+      <p class="hint">Optional. Records the compliance basis — appears on the inspection report and the Golden Thread entry.</p>
     </div>
 
     <!-- Mode -->
@@ -339,6 +358,11 @@
   .freq-chip.on { background: rgb(var(--lh-accent-rgb) / 0.22); border-color: var(--lh-accent); color: rgb(226 232 240); }
   .freq-custom { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: rgb(148 163 184); }
   .freq-custom input { width: 4rem; font-size: 0.8rem; padding: 0.2rem 0.4rem; border-radius: 6px; background: rgb(15 23 42 / 0.6); border: 1px solid rgb(71 85 105 / 0.7); color: rgb(226 232 240); }
+
+  .stat-row { display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; }
+  .stat-fld { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 12rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgb(148 163 184); }
+  .stat-fld input { text-transform: none; letter-spacing: normal; padding: 0.4rem 0.55rem; background: rgb(15 23 42); border: 1px solid rgb(71 85 105); border-radius: 6px; color: rgb(226 232 240); font-size: 0.85rem; }
+  .stat-fld input:focus { outline: none; border-color: rgb(60 150 131); }
 
   .mode-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .mode-chip { border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; }

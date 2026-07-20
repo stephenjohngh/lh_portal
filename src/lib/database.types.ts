@@ -1675,6 +1675,8 @@ export type Database = {
           link_source: string
           link_type_filter: string | null
           presentation_order: number
+          statutory_ref: string | null
+          test_type: string | null
           created_at: string
           created_by: string | null
           updated_at: string | null
@@ -1694,6 +1696,8 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
+          statutory_ref?: string | null
+          test_type?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
@@ -1713,6 +1717,8 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
+          statutory_ref?: string | null
+          test_type?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
@@ -2856,8 +2862,7 @@ export type Database = {
           plan_id: string
           floor_id: string | null
           name: string
-          label: string | null
-          type: string | null
+          usage: string | null
           polygon: Json
           colour: string
           notes: string | null
@@ -2875,8 +2880,7 @@ export type Database = {
           plan_id?: string
           floor_id?: string | null
           name?: string
-          label?: string | null
-          type?: string | null
+          usage?: string | null
           polygon?: Json
           colour?: string
           notes?: string | null
@@ -2894,8 +2898,7 @@ export type Database = {
           plan_id?: string
           floor_id?: string | null
           name?: string
-          label?: string | null
-          type?: string | null
+          usage?: string | null
           polygon?: Json
           colour?: string
           notes?: string | null

@@ -385,6 +385,11 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
   const metaRows = [
     mkMetaRow('Session Name', s.session_name || '—'),
     mkMetaRow('Session Type', (s.session_type ?? '—').charAt(0).toUpperCase() + (s.session_type ?? '').slice(1)),
+  ];
+  // Statutory basis (G3) — only when recorded on the definition.
+  if (s.test_type)     metaRows.push(mkMetaRow('Test Type', s.test_type));
+  if (s.statutory_ref) metaRows.push(mkMetaRow('Standard',  s.statutory_ref));
+  metaRows.push(
     mkMetaRow('Date / Time',  fmtDateTime(s.started_at)),
     mkMetaRow('Inspector',    s.inspector_name || '—'),
     mkMetaRow('Duration',     fmtDuration(s.started_at, s.closed_at)),
@@ -395,7 +400,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
       + (st.no_access ? `   No access: ${st.no_access}` : '')),
     mkMetaRow('Coverage',     `${st.observed} of ${st.components} addressed component(s) assessed`
       + (st.no_access ? ` — ${st.no_access} could not be accessed` : '')),
-  ];
+  );
   if (s.notes) metaRows.push(mkMetaRow('Closing Notes', s.notes));
 
   children.push(new Table({
