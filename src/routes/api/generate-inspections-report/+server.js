@@ -153,11 +153,12 @@ function fitDimensions(natW, natH, maxW, maxH) {
 
 // -- Cover page -----------------------------------------------------------------
 function buildCover(sessions, reportType, generatedAt) {
-  const buildings = [...new Set(sessions.map(s => s.building))].sort();
-  const title     = reportType === 'summary' ? 'Inspection Summary Report' : 'Inspection Detailed Report';
+  const title = reportType === 'summary' ? 'Inspection Summary Report' : 'Inspection Detailed Report';
+  // The building is already in the running page header (on every page including
+  // this one), so it is not repeated as a cover subtitle. Generated + session
+  // count only.
   return [
     new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: title, font: 'Arial', size: 48, bold: true, color: COLOURS.textDark })] }),
-    new Paragraph({ spacing: { after: 80 },  children: [new TextRun({ text: buildings.join(', '), font: 'Arial', size: 24, color: '475569' })] }),
     new Paragraph({ spacing: { after: 80 },  children: [new TextRun({ text: `Generated: ${generatedAt}`, font: 'Arial', size: 20, color: COLOURS.textMuted })] }),
     new Paragraph({ spacing: { after: 400 }, children: [new TextRun({ text: `${sessions.length} session${sessions.length !== 1 ? 's' : ''}`, font: 'Arial', size: 20, color: COLOURS.textMuted })] }),
   ];
@@ -173,10 +174,11 @@ function buildCover(sessions, reportType, generatedAt) {
 // been) and No acc (no_access components, previously invisible in the summary).
 // Portrait fallback; the summary renders landscape by default.
 // DXA: 800 650 1150 900 650 550 480 480 520 480 600 520 2686  (sum = 10466)
-const SUM_COLS   = [800, 650, 1150, 900, 650, 550, 480, 480, 520, 480, 600, 520, 2686];
-// Landscape — total = CONTENT_W_L = 15398
-// DXA: 1150 900 1700 1300 950 750 650 650 700 650 850 750 4398
-const SUM_COLS_L = [1150, 900, 1700, 1300, 950, 750, 650, 650, 700, 650, 850, 750, 4398];
+const SUM_COLS   = [780, 620, 1250, 920, 660, 600, 440, 440, 480, 480, 600, 440, 2756];
+// Landscape — total = CONTENT_W_L = 15398. Comps/Pics widened so their headers
+// stop wrapping; Notes trimmed from the excessive 4398 to fund it.
+// DXA: 1150 950 1900 1400 1000 900 650 650 720 720 900 650 3808
+const SUM_COLS_L = [1150, 950, 1900, 1400, 1000, 900, 650, 650, 720, 720, 900, 650, 3808];
 
 // cols defaults to portrait; pass SUM_COLS_L for the landscape summary.
 function buildSummaryTable(sessionData, cols = SUM_COLS) {
@@ -184,7 +186,7 @@ function buildSummaryTable(sessionData, cols = SUM_COLS) {
   // "Inact" (inactive component) is spelled out rather than "N/A" so it is not
   // confused with the adjacent "No acc" (no access) column — different concepts.
   const headers  = ['Date', 'Floor', 'Inspection', 'Inspector', 'Duration',
-                    'Comps', 'OK', 'Fail', 'Prob', 'Inact', 'No acc', 'Photos', 'Notes'];
+                    'Comps', 'OK', 'Fail', 'Prob', 'Inact', 'No acc', 'Pics', 'Notes'];
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -227,9 +229,10 @@ function buildSummaryTable(sessionData, cols = SUM_COLS) {
 
 // -- Detailed section — one per session -----------------------------------------
 // Inspection table columns: Component | Label | Result | Time | Notes
-// DXA:                         1600  |  1700  |   900  | 1200 |  5066
-// Sum = 10466
-const DET_COLS    = [1600, 1700, 900, 1200, 5066];
+// Result widened 900→1400 so "NO ACCESS" fits on one line (it was wrapping to
+// three); Time trimmed (values are just "18:00"). DXA sums to CONTENT_W = 10466.
+// DXA:                         1500  |  1650  |  1400  |  950 |  4966
+const DET_COLS    = [1500, 1650, 1400, 950, 4966];
 const DET_N_COLS  = DET_COLS.length;
 const PHOTO_HALF_W = Math.floor(CONTENT_W / 2);   // 5233 DXA — half of content width
 
