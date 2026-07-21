@@ -27,10 +27,15 @@ import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   /
 // Offline read cache (IndexedDB) — lets a walk start when the network is down.
 // Network-first: a successful fetch always refreshes the cache; the cache is only
 // read as a fallback. See docs/requirements/Inspection_Offline_Walk_Design.md.
-import { openQueue, isOfflineAvailable, readCache, writeCache, enqueueInspectionSave, putPhoto } from '../utils/offlineQueue.js';
+import {
+  openQueue, isOfflineAvailable, readCache, writeCache,
+  enqueue, enqueueInspectionSave, putPhoto, dropSession,
+  listQueuedSessionRows, listQueuedSessionCompletions, listQueuedInspectionRows, hasQueuedSessionCreate,
+} from '../utils/offlineQueue.js';
 import { syncOne }      from '../utils/inspectionSync.js';
 import { makeSyncDeps } from '../utils/inspectionSyncDeps.js';
 import { kickSync, flush as flushQueue } from '../utils/syncRunner.js';
+import { online } from '$lib/stores/online.js';
 import { statusBeforeSession } from '../utils/inspectionHelpers.js';
 import {
   makeWalkBuilder,
@@ -50,6 +55,7 @@ const CACHE_VERSION      = 1;
 const CACHE_KEY_LOAD     = `load_v${CACHE_VERSION}`;         // the hierarchy+components build
 const CACHE_KEY_DEFS     = `definitions_v${CACHE_VERSION}`;  // definitions + scheduleSessions
 const CACHE_KEY_SESSIONS = `sessions_v${CACHE_VERSION}`;     // this user's walk_sessions list
+const CACHE_KEY_PROFILE  = `profile_v${CACHE_VERSION}`;      // { userId, fullName } for offline inspector_name
 
 async function cacheGet(key) {
   if (!isOfflineAvailable()) return null;
@@ -163,8 +169,20 @@ async function getCurrentUserId() {
 async function getCurrentUserName(userId) {
   try {
     const rows = await api.get('profiles', { select: 'full_name', filters: { id: userId } });
-    return rows?.[0]?.full_name ?? null;
+    const name = rows?.[0]?.full_name ?? null;
+    if (name) void cachePut(CACHE_KEY_PROFILE, { userId, fullName: name });   // warm the offline cache
+    return name;
   } catch { return null; }
+}
+
+// The inspector name to stamp on a session — online it comes from profiles (and
+// is cached); offline it falls back to that cache so a session started with no
+// connection still records who ran it.
+async function resolveInspectorName(userId) {
+  const name = await getCurrentUserName(userId);
+  if (name) return name;
+  const cached = await cacheGet(CACHE_KEY_PROFILE);
+  return cached?.data?.userId === userId ? cached.data.fullName : null;
 }
 
 // -- Store factory -------------------------------------------------------------
@@ -340,41 +358,83 @@ function createInspectionStore() {
 
   async function loadSessions() {
     update(s => ({ ...s, loading: true }));
+    let base = null, usingCache = false;
     try {
-      const userId   = await getCurrentUserId();
-      const sessions = await api.get('walk_sessions', {
+      const userId = await getCurrentUserId();
+      base = await api.get('walk_sessions', {
         filters:   { created_by: userId },
         orderBy:   'started_at',
         ascending: false,
       });
-      update(s => ({ ...s, sessions, loading: false }));
-      void cachePut(CACHE_KEY_SESSIONS, sessions);
-      return sessions;
+      void cachePut(CACHE_KEY_SESSIONS, base);   // cache the SERVER truth
     } catch (err) {
-      // Offline — fall back to the last cached session list so the Home screen
-      // (and Resume) still work. Offline-created sessions are folded in by the
-      // outbox in a later phase (P4).
+      // Offline — fall back to the last cached list so Home + Resume still work.
       const cached = await cacheGet(CACHE_KEY_SESSIONS);
-      if (cached) {
-        logger('📦 using cached sessions list');
-        update(s => ({ ...s, sessions: cached.data, loading: false, usingCache: true }));
-        return cached.data;
+      if (cached) { logger('📦 using cached sessions list'); base = cached.data; usingCache = true; }
+      else { update(s => ({ ...s, loading: false, error: err.message })); throw err; }
+    }
+    // Fold in sessions that exist only in the outbox (started/finished offline).
+    const sessions = await mergeOutboxSessions(base);
+    update(s => ({ ...s, sessions, loading: false, ...(usingCache ? { usingCache: true } : {}) }));
+    return sessions;
+  }
+
+  // Merge un-synced session_create / session_complete ops over the server (or
+  // cached) list, so a walk started with no connection appears on Home — as open,
+  // or closed once its offline finish is queued. Server rows win on id collision.
+  async function mergeOutboxSessions(sessions) {
+    if (!isOfflineAvailable()) return sessions ?? [];
+    try {
+      const handle      = await openQueue();
+      const queuedRows  = await listQueuedSessionRows(handle);
+      const completions = await listQueuedSessionCompletions(handle);
+      const byId = new Map((sessions ?? []).map(s => [s.id, s]));
+      for (const row of queuedRows) if (!byId.has(row.id)) byId.set(row.id, { ...row, _unsynced: true });
+      for (const [sid, fields] of Object.entries(completions)) {
+        const cur = byId.get(sid);
+        if (cur) byId.set(sid, { ...cur, ...fields });
       }
-      update(s => ({ ...s, loading: false, error: err.message }));
-      throw err;
+      return [...byId.values()].sort((a, b) =>
+        new Date(b.started_at ?? 0).getTime() - new Date(a.started_at ?? 0).getTime());
+    } catch (e) {
+      logger('⚠ mergeOutboxSessions:', e.message);
+      return sessions ?? [];
     }
   }
 
+  // Build the walk_sessions row with a CLIENT id + started_at and persist it
+  // local-first (queued when IndexedDB is available, synced inline otherwise), so
+  // a walk can be started with no connection. Returns the row the callers stage
+  // as activeSession — same shape as the old api.create return.
   async function createSession(data) {
     const userId        = await getCurrentUserId();
-    const inspectorName = await getCurrentUserName(userId);
-    return api.create('walk_sessions', {
+    const inspectorName = await resolveInspectorName(userId);
+    const row = {
+      id:             newUuid(),
       ...data,
       inspector_name: inspectorName,
       status:         'open',
+      started_at:     new Date().toISOString(),
       created_by:     userId,
       updated_by:     userId,
-    });
+    };
+    await persistSessionCreate(row);
+    return row;
+  }
+
+  async function persistSessionCreate(row) {
+    const payload = { row };
+    if (isOfflineAvailable()) {
+      try {
+        await enqueue(await openQueue(), { type: 'session_create', sessionId: row.id, payload });
+        kickSync();
+        return;
+      } catch (e) {
+        logger('⚠ enqueue session_create failed, syncing inline:', e.message);
+      }
+    }
+    const res = await syncOne({ type: 'session_create', payload }, makeSyncDeps());
+    if (!res.ok) throw new Error(res.error || 'Failed to create session');
   }
 
   // -- Start single-floor session -----------------------------------------------
@@ -570,9 +630,21 @@ function createInspectionStore() {
 
     // Load existing inspections map. A building-wide session can exceed the
     // 1000-row cap, so paginate (getAll pages by id) and sort asc client-side.
-    const inspRows = await api.getAll('component_inspections', {
-      filters: { walk_session_id: session.id },
-    });
+    // Best-effort: offline the server fetch fails and we rely on the outbox.
+    let inspRows = [];
+    try {
+      inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: session.id } });
+    } catch (e) {
+      logger('⚠ resume: server inspections fetch failed (offline?):', e.message);
+    }
+    // Overlay any un-synced inspections for this session (walked offline) — client
+    // id keyed, latest local edit wins — so a paused offline walk resumes intact.
+    const queuedRows = await outboxInspectionRows(session.id);
+    if (queuedRows.length) {
+      const byId = new Map(inspRows.map(r => [r.id, r]));
+      for (const r of queuedRows) byId.set(r.id, r);
+      inspRows = [...byId.values()];
+    }
     inspRows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
     // Attach photo URLs from media_attachments (replaces JSONB photo_urls column)
     await mergePhotosIntoRows(inspRows);
@@ -685,32 +757,50 @@ function createInspectionStore() {
     await loadSessions();
   }
 
+  // Close a session. The inspected count is the single source of completeness
+  // (total_components_count set at start vs this) and drives the schedule — a
+  // finished-early run must not reset the due clock (see inspectionSchedule.js).
   async function completeSession(sessionId, notes = '') {
-    const userId = await getCurrentUserId();
-    // Push any queued inspections to the server BEFORE counting them, so a
-    // just-finished walk whose last saves are still in the outbox isn't stamped
-    // with a too-low count (which would falsely read as "unfinished"). Best-effort
-    // — offline, this is a no-op and completeSession stays online-only until P4.
-    try { await flushQueue(); } catch (e) { logger('⚠ completeSession: flush:', e.message); }
-    // Stamp the TRUE inspected count at close. This is the single source of
-    // completeness: total_components_count (set at start) vs this. It was never
-    // maintained before (always 0), so a finished-early session looked the same
-    // as a full one — which broke the schedule (see inspectionSchedule.js).
-    let inspectedCount = 0;
-    try {
-      inspectedCount = await api.count('component_inspections', { walk_session_id: sessionId });
-    } catch (e) {
-      logger('⚠ completeSession: inspected count failed, leaving as-is:', e.message);
+    const userId     = await getCurrentUserId();
+    const closedAt   = new Date().toISOString();
+    // Every recorded inspection this session is in state.inspections, so this is
+    // the offline-safe count; online we prefer the authoritative server count.
+    const localCount = Object.keys(getState().inspections).length;
+
+    if (get(online)) {
+      // Online: push queued inspections first, then stamp the true server count.
+      try { await flushQueue(); } catch (e) { logger('⚠ completeSession flush:', e.message); }
+      let inspectedCount = localCount;
+      try { inspectedCount = await api.count('component_inspections', { walk_session_id: sessionId }); }
+      catch (e) { logger('⚠ completeSession count (using local):', e.message); }
+      const fields = { status: 'closed', closed_at: closedAt, inspected_components_count: inspectedCount, notes: notes || null, updated_by: userId };
+      try {
+        await api.update('walk_sessions', sessionId, fields, false);
+      } catch (e) {
+        // Lost the connection between the count and the update — don't drop the
+        // completion; queue it so it syncs on reconnect.
+        logger('⚠ completeSession update failed, queueing:', e.message);
+        await enqueueSessionComplete(sessionId, fields);
+      }
+    } else {
+      // Offline: queue the completion with the local count. FIFO puts it behind
+      // this session's create + inspection ops, so it applies in the right order.
+      const fields = { status: 'closed', closed_at: closedAt, inspected_components_count: localCount, notes: notes || null, updated_by: userId };
+      await enqueueSessionComplete(sessionId, fields);
     }
-    await api.update('walk_sessions', sessionId, {
-      status:                     'closed',
-      closed_at:                  new Date().toISOString(),
-      inspected_components_count: inspectedCount,
-      notes:                      notes || null,
-      updated_by:                 userId,
-    }, false);
+
     update(s => ({ ...s, ...RESET_SESSION_STATE }));
     await loadSessions();
+  }
+
+  async function enqueueSessionComplete(sessionId, fields) {
+    const payload = { sessionId, fields };
+    if (isOfflineAvailable()) {
+      try { await enqueue(await openQueue(), { type: 'session_complete', sessionId, payload }); kickSync(); return; }
+      catch (e) { logger('⚠ enqueue session_complete failed, syncing inline:', e.message); }
+    }
+    const res = await syncOne({ type: 'session_complete', payload }, makeSyncDeps());
+    if (!res.ok) throw new Error(res.error || 'Failed to complete session');
   }
 
   async function closeSession(sessionId, notes = '') {
@@ -1079,12 +1169,31 @@ function createInspectionStore() {
   // -- Delete session -----------------------------------------------------------
 
   async function deleteSession(sessionId) {
-    await deleteWalkSession(sessionId);   // shared cascade: photos → inspections → session (../public.js)
+    // A session that exists only in the outbox (started offline, not yet synced)
+    // has nothing on the server to cascade — delete it by dropping its queued ops
+    // + photos. Otherwise run the normal server cascade.
+    if (await isUnsyncedSession(sessionId)) {
+      await dropSession(await openQueue(), sessionId);
+    } else {
+      await deleteWalkSession(sessionId);   // shared cascade: photos → inspections → session (../public.js)
+    }
     // If the deleted session is the one being walked, drop the walk state too —
     // otherwise activeSession keeps pointing at a row that no longer exists.
     // (Used by the finish sheet's "delete inspection" for a zero-progress walk.)
     update(s => (s.activeSession?.id === sessionId ? { ...s, ...RESET_SESSION_STATE } : s));
     await loadSessions();
+  }
+
+  // Outbox read helpers (no-op / empty when IndexedDB is unavailable).
+  async function outboxInspectionRows(sessionId) {
+    if (!isOfflineAvailable()) return [];
+    try { return await listQueuedInspectionRows(await openQueue(), sessionId); }
+    catch (e) { logger('⚠ outboxInspectionRows:', e.message); return []; }
+  }
+  async function isUnsyncedSession(sessionId) {
+    if (!isOfflineAvailable()) return false;
+    try { return await hasQueuedSessionCreate(await openQueue(), sessionId); }
+    catch { return false; }
   }
 
   // -- Public API ----------------------------------------------------------------

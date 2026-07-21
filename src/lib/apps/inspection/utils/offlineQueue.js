@@ -131,6 +131,39 @@ export async function listUnsyncedOps(handle) {
   return (await listOps(handle)).filter(o => o.status !== OP_DONE);
 }
 
+// -- Outbox reads for resume / session listing (P4) ----------------------------
+// These let the store reconstruct a session that was started/walked offline and
+// never synced: its walk_sessions row and its inspections live only in the queue.
+
+/** walk_sessions rows from un-synced session_create ops. */
+export async function listQueuedSessionRows(handle) {
+  return (await listUnsyncedOps(handle))
+    .filter(o => o.type === 'session_create')
+    .map(o => o.payload?.row)
+    .filter(Boolean);
+}
+
+/** { [sessionId]: completeFields } from un-synced session_complete ops (last wins). */
+export async function listQueuedSessionCompletions(handle) {
+  const map = {};
+  for (const o of await listUnsyncedOps(handle)) {
+    if (o.type === 'session_complete' && o.payload?.sessionId) map[o.payload.sessionId] = o.payload.fields;
+  }
+  return map;
+}
+
+/** component_inspections rows from un-synced inspection_save ops for one session. */
+export async function listQueuedInspectionRows(handle, sessionId) {
+  return (await listUnsyncedOps(handle))
+    .filter(o => o.type === 'inspection_save' && o.payload?.row?.walk_session_id === sessionId)
+    .map(o => o.payload.row);
+}
+
+/** Whether a session exists ONLY in the queue (its create op hasn't synced). */
+export async function hasQueuedSessionCreate(handle, sessionId) {
+  return (await listUnsyncedOps(handle)).some(o => o.type === 'session_create' && o.payload?.row?.id === sessionId);
+}
+
 /**
  * Set an op's status. Bumps `attempts` when moving into 'syncing' (i.e. once per
  * try) and records lastError. Returns the updated op, or null if it's gone.

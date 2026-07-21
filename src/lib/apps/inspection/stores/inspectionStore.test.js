@@ -116,7 +116,7 @@ describe('load', () => {
 describe('startSession', () => {
   it('creates a single_floor session and builds the walk list', async () => {
     const session = await startWalk();
-    const createArg = h.api.create.mock.calls.find(c => c[0] === 'walk_sessions')[1];
+    const createArg = h.api.upsert.mock.calls.find(c => c[0] === 'walk_sessions')[1];
     expect(createArg).toMatchObject({
       session_scope: 'single_floor', floor_id: 'f1', status: 'open',
       inspector_name: 'Alice', total_components_count: 2,
@@ -175,7 +175,7 @@ describe('definition sessions (configurable inspections)', () => {
       definition: DEFINITION,
     });
 
-    const createArg = h.api.create.mock.calls.find(c => c[0] === 'walk_sessions')[1];
+    const createArg = h.api.upsert.mock.calls.find(c => c[0] === 'walk_sessions')[1];
     expect(createArg).toMatchObject({
       definition_id: 'def1', session_preset: 'custom', emergency_only: false,
       session_scope: 'single_floor', total_components_count: 2,
@@ -239,7 +239,7 @@ describe('rotating sessions', () => {
       building: 'BLDG', definition: ROT_DEF, sessionName: 'R1', sessionType: 'test',
     });
 
-    const createArg = h.api.create.mock.calls.find(c => c[0] === 'walk_sessions')[1];
+    const createArg = h.api.upsert.mock.calls.find(c => c[0] === 'walk_sessions')[1];
     expect(createArg).toMatchObject({
       definition_id: 'rot1', trigger_component_id: 'cp1',
       session_scope: 'single_floor', floor_id: 'f1', total_components_count: 2,

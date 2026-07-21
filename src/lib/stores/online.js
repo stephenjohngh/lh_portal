@@ -5,7 +5,11 @@
 
 import { readable } from 'svelte/store';
 
-const initial = typeof navigator !== 'undefined' ? navigator.onLine : true;
+// Default to online unless navigator gives a real boolean (Node exposes a global
+// `navigator` with no `onLine`, and SSR should assume connectivity).
+const initial = typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean'
+  ? navigator.onLine
+  : true;
 
 export const online = readable(initial, (set) => {
   if (typeof window === 'undefined') return;

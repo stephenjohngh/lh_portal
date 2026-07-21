@@ -14,6 +14,7 @@ import {
   deleteOp, dropSession, pruneDone,
   putPhoto, getPhoto, deletePhoto, listPhotosFor, markPhotoUploaded,
   writeCache, readCache, summarizeOps, pickNextOp,
+  listQueuedSessionRows, listQueuedSessionCompletions, listQueuedInspectionRows, hasQueuedSessionCreate,
   STORE_OPS, STORE_PHOTOS, STORE_CACHE, OP_PENDING, OP_SYNCING, OP_ERROR, OP_DONE,
 } from './offlineQueue.js';
 
@@ -263,5 +264,53 @@ describe('pickNextOp', () => {
   it('returns null when nothing is pending', () => {
     expect(pickNextOp([{ status: OP_ERROR }, { status: OP_SYNCING }, { status: OP_DONE }])).toBeNull();
     expect(pickNextOp([])).toBeNull();
+  });
+});
+
+// -- Outbox reads for offline resume / session listing (P4) --------------------
+
+describe('outbox session reconstruction', () => {
+  const inspSave = (id, sessionId) => ({
+    row: { id, walk_session_id: sessionId, inspection_result: 'ok' },
+    isUpdate: false, purgeInspectionId: null, photoIds: [], statusPatch: { status: 'ok' },
+  });
+
+  async function seedOfflineWalk() {
+    await enqueue(h, { type: 'session_create', sessionId: 'sess', payload: { row: { id: 'sess', started_at: '2026-07-21T09:00:00Z', building: 'LH' } } });
+    await enqueueInspectionSave(h, inspSave('i1', 'sess'));
+    await enqueueInspectionSave(h, inspSave('i2', 'sess'));
+    await enqueue(h, { type: 'session_complete', sessionId: 'sess', payload: { sessionId: 'sess', fields: { status: 'closed', inspected_components_count: 2 } } });
+  }
+
+  it('listQueuedSessionRows returns the rows of un-synced session_create ops', async () => {
+    await seedOfflineWalk();
+    expect((await listQueuedSessionRows(h)).map(r => r.id)).toEqual(['sess']);
+  });
+
+  it('omits a session_create that has already synced (done)', async () => {
+    await seedOfflineWalk();
+    const [createOp] = await listOps(h);
+    await setOpStatus(h, createOp.seq, OP_DONE);
+    expect(await listQueuedSessionRows(h)).toEqual([]);
+  });
+
+  it('listQueuedInspectionRows returns this session\'s queued inspection rows', async () => {
+    await seedOfflineWalk();
+    expect((await listQueuedInspectionRows(h, 'sess')).map(r => r.id).sort()).toEqual(['i1', 'i2']);
+    expect(await listQueuedInspectionRows(h, 'other')).toEqual([]);
+  });
+
+  it('listQueuedSessionCompletions maps sessionId → fields for un-synced completes', async () => {
+    await seedOfflineWalk();
+    expect(await listQueuedSessionCompletions(h)).toEqual({ sess: { status: 'closed', inspected_components_count: 2 } });
+  });
+
+  it('hasQueuedSessionCreate is true only while the create op is un-synced', async () => {
+    await seedOfflineWalk();
+    expect(await hasQueuedSessionCreate(h, 'sess')).toBe(true);
+    expect(await hasQueuedSessionCreate(h, 'nope')).toBe(false);
+    const [createOp] = await listOps(h);
+    await setOpStatus(h, createOp.seq, OP_DONE);
+    expect(await hasQueuedSessionCreate(h, 'sess')).toBe(false);
   });
 });

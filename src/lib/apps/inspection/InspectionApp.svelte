@@ -8,6 +8,8 @@
   import { auth }       from '$lib/stores/auth';
   import { inspectionStore } from './stores/inspectionStore.js';
   import { startSync, stopSync } from './utils/syncRunner.js';
+  import { online } from '$lib/stores/online.js';
+  import { getPref, setPref } from '$lib/utils/prefs.js';
   import InspectionHome           from './components/InspectionHome.svelte';
   import InspectionSessionStart   from './components/InspectionSessionStart.svelte';
   import InspectionRepairStart    from './components/InspectionRepairStart.svelte';
@@ -25,19 +27,33 @@
   let loading        = true;
   let initError      = null;
 
-  $: canEdit = $permissions.isAdmin || $permissions.canModify;
+  // Edit rights. On a cold OFFLINE boot permissions.init() can't reach the DB and
+  // returns canModify:false, which would hide the Home start buttons. So we cache
+  // the last known edit right (online) and fall back to it while offline. This is
+  // a UI convenience only — every queued write still syncs under the user's real
+  // JWT, where RLS is the actual authority.
+  let cachedCanEdit = false;
+  $: canEdit = $permissions.isAdmin || $permissions.canModify || (!$online && cachedCanEdit);
 
   onMount(async () => {
     // Start the offline sync runner first: it wires the online/offline listener
     // and drains any inspections queued in a previous (offline) session as soon
     // as we're connected — independent of whether load() below succeeds.
     startSync();
+    cachedCanEdit = getPref('inspection_can_edit') === '1';
     try {
       if ($auth.user) {
         await permissions.init($auth.user.id, 'inspection');
       }
       await inspectionStore.load();
       await inspectionStore.loadSessions();
+      // Remember edit rights for the next offline boot (only when we actually
+      // reached the server, i.e. we're online with a real answer).
+      if (get(online)) {
+        const p = get(permissions);
+        cachedCanEdit = p.isAdmin || p.canModify;
+        setPref('inspection_can_edit', cachedCanEdit ? '1' : '0');
+      }
     } catch (err) {
       logger('❌ Init error:', err.message);
       initError = err.message;
