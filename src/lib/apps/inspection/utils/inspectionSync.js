@@ -34,12 +34,28 @@ export async function syncOne(op, deps) {
   }
 }
 
-async function syncInspectionSave({ row, photoUrls = [], statusPatch }, deps) {
+async function syncInspectionSave({ row, photoUrls = [], photoIds = [], statusPatch }, deps) {
   await deps.upsertInspection(row);
+
+  // Resolve any locally-queued photo blobs to Drive URLs. Idempotent: a photo
+  // already uploaded on a previous (partial) attempt is skipped via its stored
+  // url, so a retry never double-uploads. The blobs themselves are deleted by the
+  // runner only once the whole op is done, so `urls` is always the complete set
+  // even across a crash mid-op.
+  const urls = [...photoUrls];
+  for (const photoId of photoIds) {
+    const photo = await deps.getPhoto(photoId);
+    if (!photo) continue;                                   // coalesced away — skip
+    if (photo.uploaded && photo.url) { urls.push(photo.url); continue; }
+    const url = await deps.uploadPhoto(photo.blob, { filename: photo.filename, folderPath: photo.folderPath });
+    await deps.markPhotoUploaded(photoId, url);
+    urls.push(url);
+  }
+
   // Purge-then-add makes the attachment set idempotent on replay and preserves
   // the existing re-inspect behaviour (a re-inspection replaces the photo set).
   await deps.purgeAttachments('component_inspection', row.id);
-  await deps.addAttachments('component_inspection', row.id, photoUrls, row.inspected_by);
+  await deps.addAttachments('component_inspection', row.id, urls, row.inspected_by);
   if (statusPatch) await deps.applyStatusPatch(row.component_id, statusPatch);
 }
 

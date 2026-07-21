@@ -6,6 +6,8 @@
 // interface — the offline path does not get its own copy of those rules.
 
 import { api } from '$lib/utils/api';
+import { supabase } from '$lib/supabaseClient';
+import { uploadMedia } from '$lib/utils/mediaUpload.js';
 import { purgeAttachments, addAttachments } from '$lib/utils/mediaAttachments.js';
 import { updateComponent, upsertComponentInspection } from '$lib/apps/building_assets/public.js';
 
@@ -29,5 +31,14 @@ export function makeSyncDeps() {
     // The patch already carries updated_by (built by inspectionResultPatch);
     // pass it as the userId so updateComponent's stamp stays consistent.
     applyStatusPatch: (componentId, patch) => updateComponent(componentId, patch, patch.updated_by),
+    // Upload one queued photo blob to Drive; fetches the auth token itself so the
+    // syncer has no token plumbing. Returns the stored URL.
+    uploadPhoto: async (blob, { filename, folderPath }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('No auth token available for photo upload');
+      const { url } = await uploadMedia(blob, { filename, folderPath, token });
+      return url;
+    },
   };
 }

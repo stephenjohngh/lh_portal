@@ -27,7 +27,7 @@ import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   /
 // Offline read cache (IndexedDB) — lets a walk start when the network is down.
 // Network-first: a successful fetch always refreshes the cache; the cache is only
 // read as a fallback. See docs/requirements/Inspection_Offline_Walk_Design.md.
-import { openQueue, isOfflineAvailable, readCache, writeCache, enqueueInspectionSave } from '../utils/offlineQueue.js';
+import { openQueue, isOfflineAvailable, readCache, writeCache, enqueueInspectionSave, putPhoto } from '../utils/offlineQueue.js';
 import { syncOne }      from '../utils/inspectionSync.js';
 import { makeSyncDeps } from '../utils/inspectionSyncDeps.js';
 import { kickSync, flush as flushQueue } from '../utils/syncRunner.js';
@@ -845,7 +845,7 @@ function createInspectionStore() {
    * @param {string|null} [args.noAccessReason] why the component could not be
    *        assessed; only meaningful (and only persisted) when result==='no_access'
    */
-  async function recordInspection({ componentId, result, notes, photoUrls = [], checklistResults = {}, noAccessReason = null, readings = {} }) {
+  async function recordInspection({ componentId, result, notes, photoUrls = [], photoBlobs = [], checklistResults = {}, noAccessReason = null, readings = {} }) {
     logger('recordInspection:', componentId, result);
     const userId = await getCurrentUserId();
     const state  = getState();
@@ -888,32 +888,46 @@ function createInspectionStore() {
     // (so status_set_at is the true observation time even if sync happens hours
     // later) and applied to the component by the syncer. Rule stays in public.js.
     const statusPatch = inspectionResultPatch(result, { inspectionId, userId, at: now });
-    const payload = { row, photoUrls, statusPatch };
+    const payload = { row, photoUrls, photoIds: [], statusPatch };
 
-    // Local-first: enqueue the whole unit durably, then let the syncer push it —
-    // immediately when online, on reconnect when not. A dropped connection can no
-    // longer lose a recorded result, and photo/attachment work moves into the
-    // syncer (idempotent upsert-by-id + purge-then-add). Where IndexedDB is
-    // unavailable (SSR / an old private-mode browser) there is nothing durable to
-    // queue into, so sync inline instead — behaviour then equals the pre-offline
-    // direct write (throws on failure so the walk screen can surface it).
+    // Local-first: stash any captured photo blobs, then enqueue the whole unit
+    // durably and let the syncer push it — immediately when online, on reconnect
+    // when not. A dropped connection can no longer lose a recorded result OR its
+    // photos; photo upload + attachment moves into the syncer (idempotent
+    // upsert-by-id + purge-then-add). Where IndexedDB is unavailable (SSR / an old
+    // private-mode browser) there is nothing durable to queue into, so upload the
+    // blobs and sync inline — behaviour then equals the pre-offline direct write
+    // (throws on failure so the walk screen can surface it).
     let queued = false;
     if (isOfflineAvailable()) {
       try {
-        await enqueueInspectionSave(await openQueue(), payload);
+        const handle = await openQueue();
+        for (const pb of photoBlobs) {
+          const photoId = newUuid();
+          await putPhoto(handle, { photoId, inspectionId, blob: pb.blob, filename: pb.filename, folderPath: pb.folderPath });
+          payload.photoIds.push(photoId);
+        }
+        await enqueueInspectionSave(handle, payload);
         queued = true;
       } catch (e) {
         logger('⚠ enqueue failed, syncing inline:', e.message);
       }
     }
     if (!queued) {
-      const res = await syncOne({ type: 'inspection_save', payload }, makeSyncDeps());
+      const deps = makeSyncDeps();
+      const inlineUrls = [...photoUrls];
+      for (const pb of photoBlobs) inlineUrls.push(await deps.uploadPhoto(pb.blob, { filename: pb.filename, folderPath: pb.folderPath }));
+      const res = await syncOne({ type: 'inspection_save', payload: { row, photoUrls: inlineUrls, photoIds: [], statusPatch } }, deps);
       if (!res.ok) throw new Error(res.error || 'Failed to save inspection');
     }
 
-    // In-memory record for the walk UI. Inject photo_urls (normalise Drive viewer
-    // URLs) so the card/history stay consistent before the sync completes.
-    const inspection = { ...row, photo_urls: photoUrls.map(normalisePhotoUrl) };
+    // In-memory record for the walk UI. Show already-uploaded URLs (normalised)
+    // plus local object-URL previews of the just-captured blobs, so photos are
+    // visible immediately even before the sync uploads them.
+    const blobPreviews = (typeof URL !== 'undefined' && URL.createObjectURL)
+      ? photoBlobs.map(pb => URL.createObjectURL(pb.blob))
+      : [];
+    const inspection = { ...row, photo_urls: [...photoUrls.map(normalisePhotoUrl), ...blobPreviews] };
 
     update(s => {
       const newInsp = { ...s.inspections, [componentId]: inspection };

@@ -105,6 +105,10 @@ export async function enqueueInspectionSave(handle, payload) {
     o.payload?.row?.id === inspectionId
   );
   if (existing) {
+    // Free any photo blobs the superseded op referenced that the new payload
+    // doesn't (a re-inspect before sync captured a fresh photo set).
+    const keep = new Set(payload?.photoIds ?? []);
+    for (const pid of (existing.payload?.photoIds ?? [])) if (!keep.has(pid)) await deletePhoto(handle, pid);
     const updated = { ...existing, payload, status: OP_PENDING, attempts: 0, lastError: null };
     await handle.put(STORE_OPS, updated);
     return updated;

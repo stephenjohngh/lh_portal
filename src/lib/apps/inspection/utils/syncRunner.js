@@ -14,6 +14,7 @@ import { online } from '$lib/stores/online.js';
 import { getLogger } from '$lib/utils/logger';
 import {
   openQueue, isOfflineAvailable, listOps, listUnsyncedOps, setOpStatus, pruneDone,
+  getPhoto, markPhotoUploaded, deletePhoto,
   summarizeOps, pickNextOp, OP_PENDING, OP_SYNCING, OP_ERROR, OP_DONE,
 } from './offlineQueue.js';
 import { syncOne } from './inspectionSync.js';
@@ -56,7 +57,13 @@ export async function drain() {
   draining = true;
   try {
     const handle = await openQueue();
-    const deps = injectedDeps ?? makeSyncDeps();
+    // Photo-store helpers are bound to this handle; a test may override them (and
+    // the server deps) via the injected object.
+    const deps = {
+      getPhoto:          (pid) => getPhoto(handle, pid),
+      markPhotoUploaded: (pid, url) => markPhotoUploaded(handle, pid, url),
+      ...(injectedDeps ?? makeSyncDeps()),
+    };
     for (;;) {
       if (!getStore(online)) break;                 // went offline mid-drain
       const next = pickNextOp(await listUnsyncedOps(handle));
@@ -66,6 +73,8 @@ export async function drain() {
       const res = await syncOne(next, deps);
       if (res.ok) {
         await setOpStatus(handle, next.seq, OP_DONE);
+        // The blobs are now safely on Drive + attached — free the local copies.
+        for (const pid of (next.payload?.photoIds ?? [])) await deletePhoto(handle, pid);
       } else if (res.permanent) {
         logger('✗ permanent sync error — op', next.seq, next.type, res.error);
         await setOpStatus(handle, next.seq, OP_ERROR, res.error);

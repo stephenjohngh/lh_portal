@@ -10,12 +10,15 @@ import { syncOne, classifyError } from './inspectionSync.js';
 
 function makeDeps() {
   return {
-    upsertInspection: vi.fn(() => Promise.resolve()),
-    upsertSession:    vi.fn(() => Promise.resolve()),
-    completeSession:  vi.fn(() => Promise.resolve()),
-    purgeAttachments: vi.fn(() => Promise.resolve()),
-    addAttachments:   vi.fn(() => Promise.resolve()),
-    applyStatusPatch: vi.fn(() => Promise.resolve()),
+    upsertInspection:  vi.fn(() => Promise.resolve()),
+    upsertSession:     vi.fn(() => Promise.resolve()),
+    completeSession:   vi.fn(() => Promise.resolve()),
+    purgeAttachments:  vi.fn(() => Promise.resolve()),
+    addAttachments:    vi.fn(() => Promise.resolve()),
+    applyStatusPatch:  vi.fn(() => Promise.resolve()),
+    getPhoto:          vi.fn(() => Promise.resolve(null)),
+    uploadPhoto:       vi.fn(() => Promise.resolve('https://drive/uploaded.jpg')),
+    markPhotoUploaded: vi.fn(() => Promise.resolve()),
   };
 }
 
@@ -77,6 +80,63 @@ describe('syncOne — inspection_save', () => {
     expect(res.ok).toBe(false);
     expect(res.permanent).toBe(false);
     expect(deps.applyStatusPatch).not.toHaveBeenCalled(); // aborted before the status write
+  });
+});
+
+describe('syncOne — queued photo blobs', () => {
+  const withPhotos = {
+    row: { id: 'i1', component_id: 'c1', inspected_by: 'u1' },
+    photoUrls: ['https://drive/already.jpg'],   // pre-uploaded (e.g. inline)
+    photoIds: ['p1', 'p2'],
+    statusPatch: { status: 'ok', updated_by: 'u1' },
+  };
+
+  it('uploads each un-uploaded blob, marks it, and attaches ALL urls (pre-uploaded + resolved)', async () => {
+    const deps = makeDeps();
+    deps.getPhoto.mockImplementation((pid) => Promise.resolve(
+      { photoId: pid, blob: new Blob([pid]), filename: `${pid}.jpg`, folderPath: ['Inspections'], uploaded: false, url: null }
+    ));
+    deps.uploadPhoto.mockImplementation((_blob, { filename }) => Promise.resolve(`https://drive/${filename}`));
+
+    const res = await syncOne({ type: 'inspection_save', payload: withPhotos }, deps);
+    expect(res).toEqual({ ok: true });
+    expect(deps.uploadPhoto).toHaveBeenCalledTimes(2);
+    expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p1', 'https://drive/p1.jpg');
+    expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p2', 'https://drive/p2.jpg');
+    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1',
+      ['https://drive/already.jpg', 'https://drive/p1.jpg', 'https://drive/p2.jpg'], 'u1');
+  });
+
+  it('skips re-uploading a photo already uploaded on a previous attempt (idempotent replay)', async () => {
+    const deps = makeDeps();
+    deps.getPhoto.mockImplementation((pid) => Promise.resolve(
+      pid === 'p1'
+        ? { photoId: 'p1', uploaded: true, url: 'https://drive/p1.jpg' }              // done last time
+        : { photoId: 'p2', blob: new Blob(['p2']), filename: 'p2.jpg', folderPath: [], uploaded: false, url: null }
+    ));
+    deps.uploadPhoto.mockResolvedValue('https://drive/p2.jpg');
+
+    await syncOne({ type: 'inspection_save', payload: withPhotos }, deps);
+    expect(deps.uploadPhoto).toHaveBeenCalledTimes(1);   // only p2
+    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1',
+      ['https://drive/already.jpg', 'https://drive/p1.jpg', 'https://drive/p2.jpg'], 'u1');
+  });
+
+  it('skips a photo that was coalesced away (getPhoto returns nothing)', async () => {
+    const deps = makeDeps();
+    deps.getPhoto.mockResolvedValue(null);
+    await syncOne({ type: 'inspection_save', payload: withPhotos }, deps);
+    expect(deps.uploadPhoto).not.toHaveBeenCalled();
+    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1', ['https://drive/already.jpg'], 'u1');
+  });
+
+  it('a photo upload failure is transient — the whole op retries later', async () => {
+    const deps = makeDeps();
+    deps.getPhoto.mockResolvedValue({ photoId: 'p1', blob: new Blob(['p1']), filename: 'p1.jpg', folderPath: [], uploaded: false, url: null });
+    deps.uploadPhoto.mockRejectedValueOnce(new Error('Failed to fetch'));
+    const res = await syncOne({ type: 'inspection_save', payload: { ...withPhotos, photoIds: ['p1'] } }, deps);
+    expect(res).toEqual({ ok: false, permanent: false, error: 'Failed to fetch' });
+    expect(deps.addAttachments).not.toHaveBeenCalled();
   });
 });
 

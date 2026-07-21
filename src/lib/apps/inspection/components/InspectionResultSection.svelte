@@ -5,9 +5,6 @@
      pendingPhotos state so uploadAllPending() can run at save time. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { getLogger }    from '$lib/utils/logger';
-  import { uploadMedia }  from '$lib/utils/mediaUpload';
-  import { supabase }     from '$lib/supabaseClient';
   import { deriveChecklistOutcome } from '../utils/checklistRules.js';
   import { NO_ACCESS_REASONS } from '$lib/utils/resultConstants.js';
   import WalkTextarea from '$lib/apps/inspection/components/common/WalkTextarea.svelte';
@@ -15,7 +12,6 @@
   import WalkButton   from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import PhotoPanel   from './PhotoPanel.svelte';
 
-  const logger   = getLogger('InspectionResultSection');
   const dispatch = createEventDispatcher();
 
   // Two-way bindable
@@ -25,6 +21,10 @@
   export let checklistResults = {};   // { type_attribute_id: boolean }
   /** @type {string[]} */
   export let photoUrls        = [];   // already-uploaded URLs (array)
+  /** @type {Array<{ blob: Blob, filename: string, folderPath: string[] }>} */
+  export let photoBlobs       = [];   // captured-but-not-uploaded photos; the
+                                      // offline syncer uploads these (or inline
+                                      // where there's no queue). Built at save.
   /** @type {string|null} */
   export let noAccessReason   = null; // only meaningful when result==='no_access'
   /** @type {Record<string, string|number>} */
@@ -96,67 +96,43 @@
   }
 
   // -- Photo state --------------------------------------------------------------
-  // PhotoPanel owns the camera/capture UI; this component owns pendingPhotos
-  // so that uploadAllPending() can run as part of the save flow here.
+  // PhotoPanel owns the camera/capture UI; this component owns pendingPhotos so
+  // it can package them for the save unit. Upload no longer happens here — the
+  // offline syncer uploads the blobs (immediately when online, on reconnect
+  // otherwise), so a walk in a basement never blocks on, or loses, a photo.
   let pendingPhotos = [];   // { blob, preview, uploading, error }
 
-  async function uploadAllPending() {
-    // Obtain the access token once for all uploads in this batch.
-    const { data: { session: authSession } } = await supabase.auth.getSession();
-    const token = authSession?.access_token;
-    if (!token) { logger('❌ No auth token — cannot upload photos'); return []; }
-
-    /** @type {string[]} */
-    const uploaded = [];
-
+  // Package the captured blobs with their target Drive folder + filename (the
+  // same naming as before), for the syncer to upload. No network here.
+  function buildPhotoBlobs() {
     // Strip characters not valid in Drive folder/file names.
     const sanitize = str => str.replace(/[/\\:*?"<>|]/g, '').trim();
 
     // Folder: "Inspections / 2026-06-08 Inspection Ground Floor"
-    // Groups all photos from the same session into one readable Drive folder.
     const sessionDate = session?.started_at
       ? session.started_at.slice(0, 10)           // "YYYY-MM-DD"
       : new Date().toISOString().slice(0, 10);
-    const sessionType = session?.session_type
+    const sessionTypeLabel = session?.session_type
       ? session.session_type.charAt(0).toUpperCase() + session.session_type.slice(1)
       : 'Inspection';
     const floorLabel  = floor?.name ?? floor?.short_name ?? null;
     const scopeLabel  = floorLabel
       ? sanitize(floorLabel)
       : (session?.session_scope === 'building' ? 'Building' : 'Unknown Floor');
-    const sessionFolder = `${sessionDate} ${sessionType} ${scopeLabel}`;
+    const folderPath = ['Inspections', `${sessionDate} ${sessionTypeLabel} ${scopeLabel}`];
 
-    // File name: "Fire Door FD-042 - 1.jpg"
-    // Falls back gracefully if type or asset_id are missing.
+    // File name: "Fire Door FD-042 - 1.jpg" — falls back if type/asset missing.
     const typeName  = type?.name  ?? null;
     const assetId   = component?.asset_id ?? null;
     const nameBase  = typeName && assetId
       ? sanitize(`${typeName} ${assetId}`)
-      : assetId
-        ? sanitize(assetId)
-        : 'Photo';
+      : assetId ? sanitize(assetId) : 'Photo';
 
-    for (let i = 0; i < pendingPhotos.length; i++) {
-      const p = pendingPhotos[i];
-      pendingPhotos[i] = { ...p, uploading: true };
-      pendingPhotos = [...pendingPhotos];
-      try {
-        const fileName = `${nameBase} - ${i + 1}.jpg`;
-        const { url } = await uploadMedia(p.blob, {
-          filename:   fileName,
-          folderPath: ['Inspections', sessionFolder],
-          token,
-        });
-        uploaded.push(url);
-        pendingPhotos[i] = { ...pendingPhotos[i], uploading: false };
-        pendingPhotos = [...pendingPhotos];
-      } catch (err) {
-        logger('❌ Photo upload failed:', err);
-        pendingPhotos[i] = { ...pendingPhotos[i], uploading: false, error: 'Upload failed — photo omitted.' };
-        pendingPhotos = [...pendingPhotos];
-      }
-    }
-    return uploaded;
+    return pendingPhotos.map((p, i) => ({
+      blob:       p.blob,
+      filename:   `${nameBase} - ${i + 1}.jpg`,
+      folderPath,
+    }));
   }
 
   // G2: the queryable copy of the readings, keyed by type_attribute_id. Values
@@ -173,7 +149,7 @@
     return out;
   }
 
-  async function handleSaveClick() {
+  function handleSaveClick() {
     // Build final notes from three independent parts — none clobbers the others:
     //   1. autoFailNote  — "Failed: AttrA, AttrB" (from pass/fail checklist reactive)
     //   2. inputLines    — "AttrName: value" per text/number reading
@@ -192,14 +168,12 @@
     // The structured, queryable copy (kept alongside the human-readable notes).
     readings = buildReadings();
 
-    const newUrls = await uploadAllPending();
-    photoUrls     = [...photoUrls, ...newUrls];
-    // Clear pending (successful ones now in photoUrls; keep only those that errored)
-    pendingPhotos = pendingPhotos.filter(p => !!p.error);
+    // Package the captured blobs for the save unit — the parent hands them to
+    // recordInspection, which queues them (offline) for the syncer to upload.
+    photoBlobs    = buildPhotoBlobs();
+    pendingPhotos = [];
     dispatch('save');
   }
-
-  $: uploading = pendingPhotos.some(p => p.uploading);
 </script>
 
 <!-- -- Dynamic checklist — PASS / FAIL per attribute ---------------------------
@@ -349,9 +323,9 @@
 
 <WalkButton variant="primary" size="full"
   disabled={!canSave}
-  loading={saving || uploading}
+  loading={saving}
   on:click={handleSaveClick}>
-  {saving || uploading ? 'SAVING…' : saveLabel}
+  {saving ? 'SAVING…' : saveLabel}
 </WalkButton>
 
 <style>

@@ -54,6 +54,8 @@
   let checklistResults = {};
   /** @type {string[]} */
   let photoUrls        = [];
+  /** @type {Array<{ blob: Blob, filename: string, folderPath: string[] }>} */
+  let photoBlobs       = [];   // captured-but-not-uploaded; queued by recordInspection
   /** @type {string|null} */
   let noAccessReason   = null;
   /** @type {Record<string, string|number>} */
@@ -69,7 +71,7 @@
   // Reset when component changes
   $: component, resetForm();
   function resetForm() {
-    result = ''; notes = ''; checklistResults = {}; photoUrls = [];
+    result = ''; notes = ''; checklistResults = {}; photoUrls = []; photoBlobs = [];
     noAccessReason = null; readings = {}; error = null;
   }
 
@@ -94,6 +96,7 @@
         result,
         notes,
         photoUrls,
+        photoBlobs,
         checklistResults,
         noAccessReason,
         readings,
@@ -148,6 +151,7 @@
       bind:notes
       bind:checklistResults
       bind:photoUrls
+      bind:photoBlobs
       bind:noAccessReason
       bind:readings
       {checklistDefs}
