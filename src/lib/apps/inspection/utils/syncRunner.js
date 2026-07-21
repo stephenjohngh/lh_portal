@@ -22,7 +22,9 @@ import { makeSyncDeps } from './inspectionSyncDeps.js';
 
 const logger = getLogger('syncRunner');
 
-const _state = writable({ pending: 0, syncing: 0, error: 0, online: true });
+// `items` is a lightweight per-op list so the walk UI can show per-component sync
+// state (each inspection_save carries its inspectionId = the row id).
+const _state = writable({ pending: 0, syncing: 0, error: 0, online: true, items: [] });
 /** Read-only view for the UI. */
 export const syncState = { subscribe: _state.subscribe };
 
@@ -34,11 +36,21 @@ let injectedDeps = null; // test seam
 
 async function refreshState(patch = {}) {
   let counts = { pending: 0, syncing: 0, error: 0 };
+  let items = [];
   if (isOfflineAvailable()) {
-    try { counts = summarizeOps(await listUnsyncedOps(await openQueue())); }
-    catch (e) { logger('⚠ refreshState:', e.message); }
+    try {
+      const ops = await listUnsyncedOps(await openQueue());
+      counts = summarizeOps(ops);
+      items = ops.map(o => ({
+        seq:          o.seq,
+        type:         o.type,
+        status:       o.status,
+        sessionId:    o.sessionId ?? o.payload?.row?.walk_session_id ?? null,
+        inspectionId: o.type === 'inspection_save' ? (o.payload?.row?.id ?? null) : null,
+      }));
+    } catch (e) { logger('⚠ refreshState:', e.message); }
   }
-  _state.update(v => ({ ...v, pending: counts.pending, syncing: counts.syncing, error: counts.error, ...patch }));
+  _state.update(v => ({ ...v, pending: counts.pending, syncing: counts.syncing, error: counts.error, items, ...patch }));
 }
 
 // A drain interrupted by a reload/crash can leave an op stuck 'syncing'. Reset
@@ -101,6 +113,17 @@ export function kickSync() {
   void drain().catch(() => {});
 }
 
+/** Reset every errored op back to pending and re-drain (the "Retry" button). */
+export async function retryErrors() {
+  if (!isOfflineAvailable()) return;
+  try {
+    const handle = await openQueue();
+    for (const o of await listOps(handle)) if (o.status === OP_ERROR) await setOpStatus(handle, o.seq, OP_PENDING);
+    await refreshState();
+  } catch (e) { logger('⚠ retryErrors:', e.message); }
+  kickSync();
+}
+
 /** Drain and wait; returns the remaining unsynced summary. */
 export async function flush() {
   await drain();
@@ -137,5 +160,5 @@ export function stopSync() {
 export function _reset() {
   draining = false; rerun = false; started = false; injectedDeps = null;
   if (unsubOnline) { unsubOnline(); unsubOnline = null; }
-  _state.set({ pending: 0, syncing: 0, error: 0, online: true });
+  _state.set({ pending: 0, syncing: 0, error: 0, online: true, items: [] });
 }

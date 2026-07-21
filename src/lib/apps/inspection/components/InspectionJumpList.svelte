@@ -6,7 +6,7 @@
      view + button. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { resultLabel, worstResult } from '../utils/inspectionHelpers.js';
+  import { resultLabel, syncGlyph } from '../utils/inspectionHelpers.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
 
@@ -17,10 +17,12 @@
   export let inspections   = {};    // { componentId: inspection row }
   export let floors        = [];    // all floors — for the canonical component ref
   export let types         = [];
+  export let syncByInsp    = {};    // { [inspectionId]: 'pending'|'syncing'|'error' } — offline sync state
 
   function getType(c) { return types.find(t => t.code === c.type_code); }
   function getInsp(c) { return inspections[c.id] ?? null; }
   function getResult(c) { const i = getInsp(c); return i?.inspection_result ?? null; }
+  function getSync(c) { const i = getInsp(c); return i ? (syncByInsp[i.id] ?? null) : null; }
 
   $: passCount     = components.filter(c => getResult(c) === 'ok').length;
   $: failCount     = components.filter(c => getResult(c) === 'failed').length;
@@ -68,6 +70,7 @@
         {@const t      = getType(c)}
         {@const result = getResult(c)}
         {@const isCurrent = i === currentIndex}
+        {@const sync   = getSync(c)}
         <button
           class="jl-row"
           class:jl-current={isCurrent}
@@ -84,6 +87,9 @@
             <div class="jl-ref">{buildComponentRef(c, floors, types)}</div>
             {#if c.label}<div class="jl-label">{c.label}</div>{/if}
           </div>
+          {#if sync}
+            <span class="jl-sync jl-sync-{sync}" title="Not yet synced to the server">{syncGlyph(sync)}</span>
+          {/if}
           {#if isCurrent}
             <span class="here-badge">HERE</span>
           {:else if result}
@@ -128,4 +134,8 @@
   .res-failed   { color:#f87171; }
   .res-problem  { color:#fb923c; }
   .res-inactive { color:#888; }
+  .jl-sync         { font-size:0.8rem; font-weight:700; flex-shrink:0; }
+  .jl-sync-pending { color:#93c5fd; }
+  .jl-sync-syncing { color:#fbbf24; }
+  .jl-sync-error   { color:#f87171; }
 </style>

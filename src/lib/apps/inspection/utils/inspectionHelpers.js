@@ -8,6 +8,23 @@ import { sortByFloorAsset } from '$lib/utils/componentSorting.js';
 // Re-export so callers that already import these from here keep working.
 export { resultLabel, resultRank } from '$lib/utils/resultConstants.js';
 
+// -- Offline sync state (G5) ---------------------------------------------------
+// The walk UI shows whether each recorded inspection has reached the server yet.
+// `items` comes from syncRunner's syncState (one entry per un-synced outbox op);
+// a synced inspection has no op, so it is simply absent from the map.
+
+/** { [inspectionId]: 'pending'|'syncing'|'error' } from the sync items list. */
+export function mapSyncByInspection(items) {
+  const m = {};
+  for (const it of (items ?? [])) if (it.inspectionId) m[it.inspectionId] = it.status;
+  return m;
+}
+
+/** Glyph for a sync status ('' = synced / unknown, so nothing renders). */
+export function syncGlyph(status) {
+  return { pending: '⇡', syncing: '⟳', error: '⚠' }[status] ?? '';
+}
+
 // -- Flatten -------------------------------------------------------------------
 // Promotes nested join fields to the top level.
 // Raw row from loadSessionInspections join:

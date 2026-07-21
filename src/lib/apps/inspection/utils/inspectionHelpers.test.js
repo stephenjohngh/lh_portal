@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
   statusBeforeSession, sessionStats, worstResult,
   resolveAwaitingAccess, awaitingAccessByDefinition, sessionKindLabel,
+  mapSyncByInspection, syncGlyph,
 } from './inspectionHelpers.js';
 
 const STARTED = '2026-07-15T10:00:00.000Z';
@@ -173,5 +174,30 @@ describe('sessionKindLabel', () => {
   it('tolerates a null session and an omitted definitions list', () => {
     expect(sessionKindLabel(null)).toBe('');
     expect(sessionKindLabel({ definition_id: 'def1' })).toBe('Inspection');
+  });
+});
+
+describe('offline sync state (G5)', () => {
+  it('mapSyncByInspection keys inspection_save items by inspectionId → status', () => {
+    const items = [
+      { type: 'inspection_save', status: 'pending',  inspectionId: 'i1' },
+      { type: 'inspection_save', status: 'error',    inspectionId: 'i2' },
+      { type: 'session_create',  status: 'pending',  inspectionId: null },  // ignored
+      { type: 'session_complete',status: 'pending',  inspectionId: null },  // ignored
+    ];
+    expect(mapSyncByInspection(items)).toEqual({ i1: 'pending', i2: 'error' });
+  });
+
+  it('mapSyncByInspection tolerates an empty/missing list', () => {
+    expect(mapSyncByInspection([])).toEqual({});
+    expect(mapSyncByInspection(undefined)).toEqual({});
+  });
+
+  it('syncGlyph maps each status, and nothing for synced/unknown', () => {
+    expect(syncGlyph('pending')).toBe('⇡');
+    expect(syncGlyph('syncing')).toBe('⟳');
+    expect(syncGlyph('error')).toBe('⚠');
+    expect(syncGlyph(null)).toBe('');
+    expect(syncGlyph('done')).toBe('');
   });
 });

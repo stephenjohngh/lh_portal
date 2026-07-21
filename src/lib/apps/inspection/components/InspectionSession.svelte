@@ -6,7 +6,9 @@
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
   import { inspectionStore }  from '../stores/inspectionStore.js';
-  import { sessionKindLabel, sessionFloorLabel } from '../utils/inspectionHelpers.js';
+  import { sessionKindLabel, sessionFloorLabel, mapSyncByInspection, syncGlyph } from '../utils/inspectionHelpers.js';
+  import { syncState, retryErrors } from '../utils/syncRunner.js';
+  import { online } from '$lib/stores/online.js';
   import InspectionPanel             from './InspectionPanel.svelte';
   import InspectionComponentEditor   from './InspectionComponentEditor.svelte';
   import InspectionJumpList          from './InspectionJumpList.svelte';
@@ -108,6 +110,13 @@
   // What this session IS — the definition's name, not the legacy preset label.
   $: sessionKind = sessionKindLabel(session, $inspectionStore.definitions ?? []);
 
+  // -- Offline sync state -------------------------------------------------------
+  // Per-inspection sync status (⇡ queued · ⟳ syncing · ⚠ error; synced = nothing)
+  // and the session-wide unsynced count shown in the bar / finish sheet.
+  $: syncByInsp    = mapSyncByInspection($syncState.items);
+  $: unsyncedCount = $syncState.pending + $syncState.syncing + $syncState.error;
+  $: currentSync   = currentInspection ? syncByInsp[currentInspection.id] : null;
+
   // Total for stats bars
   $: totalComponents = session?.total_components_count ?? components.length;
 
@@ -136,6 +145,14 @@
       if (isBuilding && !isRepair && fid && components.length > 1) view = 'floordir';
     }
   }
+  function syncTitle(s) {
+    return {
+      pending: 'Saved on this device — will sync when back online',
+      syncing: 'Syncing to the server…',
+      error:   'Sync failed — use Retry on the finish screen',
+    }[s] ?? '';
+  }
+
   function chooseFloorOrder(reverse) {
     if (reverse) {
       inspectionStore.reverseFloorOrder();
@@ -222,6 +239,12 @@
         {#if reversedFloor}
           <span class="rev-pill" title="This floor is being walked in reverse walk order — highest first">R</span>
         {/if}
+        {#if !$online}
+          <span class="conn-pill conn-off" title="No connection — results are saved on this device and will sync when you're back online">OFFLINE</span>
+        {/if}
+        {#if unsyncedCount > 0}
+          <span class="conn-pill conn-sync" title="{unsyncedCount} result{unsyncedCount === 1 ? '' : 's'} not yet synced to the server">⇡ {unsyncedCount}</span>
+        {/if}
       </div>
     </div>
     <div class="sbar-r">
@@ -290,6 +313,7 @@
       {inspections}
       {floors}
       {types}
+      {syncByInsp}
       on:jump={handleJumpTo}
       on:close={() => view = 'card'}
     />
@@ -335,6 +359,25 @@
                 deleted, because recording a result already changes that
                 component's status.)
               </div>
+            {/if}
+          </div>
+        {/if}
+
+        {#if unsyncedCount > 0}
+          <div class="sync-box">
+            <div class="sync-box-title">⇡ {unsyncedCount} RESULT{unsyncedCount === 1 ? '' : 's'} NOT YET SYNCED</div>
+            <div class="sync-box-text">
+              {#if !$online}
+                You're offline. This session and its results are saved on this device
+                and will sync automatically when you're back online — it's safe to finish.
+              {:else}
+                Syncing to the server… this clears on its own.
+              {/if}
+            </div>
+            {#if $syncState.error > 0}
+              <WalkButton variant="secondary" size="full" on:click={retryErrors}>
+                ↻ RETRY SYNC ({$syncState.error} failed)
+              </WalkButton>
             {/if}
           </div>
         {/if}
@@ -437,6 +480,9 @@
               <span class="cpill cpill-na">N/A</span>
             {/if}
           {/if}
+          {#if currentSync}
+            <span class="sync-glyph sync-{currentSync}" title={syncTitle(currentSync)}>{syncGlyph(currentSync)}</span>
+          {/if}
         </div>
         {#if currentInspection?.inspector_notes}
           <div class="cnotes">{currentInspection.inspector_notes}</div>
@@ -515,6 +561,9 @@
   .sbar-meta { display:flex; align-items:center; gap:0.5rem; margin-top:0.15rem; font-size:0.68rem; color:#aaa; }
   .floor-pill { background:#1a1a30; color:#93c5fd; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:700; border:1px solid #334155; white-space:nowrap; }
   .rev-pill   { background:#1a0e00; color:#fb923c; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.62rem; font-weight:800; border:1px solid #fb923c; white-space:nowrap; }
+  .conn-pill  { padding:0.1rem 0.4rem; border-radius:4px; font-size:0.6rem; font-weight:800; letter-spacing:0.08em; border:1px solid; white-space:nowrap; }
+  .conn-off   { background:#1a0a00; color:#fb923c; border-color:#7c2d12; }
+  .conn-sync  { background:#0a1420; color:#93c5fd; border-color:#334155; }
   .sbar-r { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; margin-left:auto; }
   .sbar-floors { font-size:0.65rem; color:#888; }
   .sbar-count { font-size:0.78rem; font-weight:700; color:#ccc; }
@@ -547,6 +596,11 @@
   .cpill { font-size:0.62rem; font-weight:700; letter-spacing:0.1em; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid; flex-shrink:0; }
   .cpill-na    { color:#555;    border-color:#2e2e42; background:#111122; }
   .cpill-noacc { color:#ddd6fe; border-color:#8b5cf6; background:#1e1533; }
+  /* Per-component offline sync glyph */
+  .sync-glyph   { font-size:0.75rem; font-weight:700; margin-left:0.1rem; }
+  .sync-pending { color:#93c5fd; }
+  .sync-syncing { color:#fbbf24; }
+  .sync-error   { color:#f87171; }
   .st-ok       { color:#4ade80; border-color:#166534; background:#0a1f0a; }
   .st-fail     { color:#f87171; border-color:#7f1d1d; background:#1f0a0a; }
   .st-problem  { color:#fbbf24; border-color:#713f12; background:#1a1200; }
@@ -602,6 +656,10 @@
   .warn-text  { font-size:0.76rem; line-height:1.55; color:#ddd; }
   .warn-text strong { color:#f87171; }
   .del-note   { font-size:0.7rem; color:#f87171; text-align:center; }
+  /* Unsynced-results box on the finish sheet */
+  .sync-box       { background:#0a1420; border:1px solid #334155; border-radius:8px; padding:0.75rem 0.875rem; display:flex; flex-direction:column; gap:0.5rem; }
+  .sync-box-title { font-size:0.66rem; letter-spacing:0.12em; font-weight:800; color:#93c5fd; }
+  .sync-box-text  { font-size:0.76rem; line-height:1.55; color:#cbd5e1; }
 
   /* -- Empty state ----------------------------------------------------------- */
   .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:1rem; color:#555; font-size:0.85rem; padding:4rem 2rem; }
