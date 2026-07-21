@@ -13,7 +13,7 @@ import {
   enqueue, enqueueInspectionSave, listOps, listUnsyncedOps, setOpStatus,
   deleteOp, dropSession, pruneDone,
   putPhoto, getPhoto, deletePhoto, listPhotosFor, markPhotoUploaded,
-  writeCache, readCache, summarizeOps,
+  writeCache, readCache, summarizeOps, pickNextOp,
   STORE_OPS, STORE_PHOTOS, STORE_CACHE, OP_PENDING, OP_SYNCING, OP_ERROR, OP_DONE,
 } from './offlineQueue.js';
 
@@ -238,5 +238,30 @@ describe('summarizeOps', () => {
 
   it('handles an empty list', () => {
     expect(summarizeOps([])).toEqual({ pending: 0, syncing: 0, error: 0, done: 0, unsynced: 0, total: 0 });
+  });
+});
+
+describe('pickNextOp', () => {
+  it('returns the first pending op, skipping done/syncing before it', () => {
+    const ops = [
+      { seq: 1, status: OP_DONE },
+      { seq: 2, status: OP_SYNCING },
+      { seq: 3, status: OP_PENDING },
+      { seq: 4, status: OP_PENDING },
+    ];
+    expect(pickNextOp(ops).seq).toBe(3);
+  });
+
+  it('skips errored ops (they need a manual retry) and returns a later pending', () => {
+    const ops = [
+      { seq: 1, status: OP_ERROR },
+      { seq: 2, status: OP_PENDING },
+    ];
+    expect(pickNextOp(ops).seq).toBe(2);
+  });
+
+  it('returns null when nothing is pending', () => {
+    expect(pickNextOp([{ status: OP_ERROR }, { status: OP_SYNCING }, { status: OP_DONE }])).toBeNull();
+    expect(pickNextOp([])).toBeNull();
   });
 });

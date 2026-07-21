@@ -1,12 +1,13 @@
 <!-- src/lib/apps/inspection/InspectionApp.svelte -->
 <!-- Inspection App — mobile-first inspection tool operating on the components data model -->
 <script>
-  import { onMount }       from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { get }           from 'svelte/store';
   import { getLogger }  from '$lib/utils/logger';
   import { permissions } from '$lib/stores/permissions';
   import { auth }       from '$lib/stores/auth';
   import { inspectionStore } from './stores/inspectionStore.js';
+  import { startSync, stopSync } from './utils/syncRunner.js';
   import InspectionHome           from './components/InspectionHome.svelte';
   import InspectionSessionStart   from './components/InspectionSessionStart.svelte';
   import InspectionRepairStart    from './components/InspectionRepairStart.svelte';
@@ -27,6 +28,10 @@
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
   onMount(async () => {
+    // Start the offline sync runner first: it wires the online/offline listener
+    // and drains any inspections queued in a previous (offline) session as soon
+    // as we're connected — independent of whether load() below succeeds.
+    startSync();
     try {
       if ($auth.user) {
         await permissions.init($auth.user.id, 'inspection');
@@ -40,6 +45,8 @@
       loading = false;
     }
   });
+
+  onDestroy(() => stopSync());
 
   async function handleResume(e) {
     try {

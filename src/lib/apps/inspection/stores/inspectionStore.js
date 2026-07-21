@@ -10,27 +10,27 @@ import { supabase }      from '$lib/supabaseClient';   // auth (getUser) only
 // Components belong to the Building Assets app — reach them only through its
 // public interface, so the write rules live in one place (../building_assets/public.js).
 import {
-  applyInspectionResult,
+  inspectionResultPatch,
   updateComponent          as writeComponent,
   replaceComponentAttributes,
-  createComponentInspection,
-  updateComponentInspection,
 } from '$lib/apps/building_assets/public.js';
+import { newUuid }                 from '$lib/utils/uuid.js';
 import { resolveHierarchy }        from '$lib/utils/attrResolution.js';
 import { sortByResultFloorAsset }  from '$lib/utils/componentSorting.js';
 import { normalisePhotoUrl } from '$lib/utils/driveUtils.js';
 // Polymorphic photo storage (media_attachments) goes through the shared module,
 // not raw supabase queries.
-import {
-  listAttachments,
-  addAttachments,
-  purgeAttachments,
-} from '$lib/utils/mediaAttachments.js';
+// mergePhotosIntoRows batch-reads photos; the write side (add/purge) now lives in
+// the offline syncer (inspectionSyncDeps.js).
+import { listAttachments } from '$lib/utils/mediaAttachments.js';
 import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   // session-delete cascade + rotation inputs (shared)
 // Offline read cache (IndexedDB) — lets a walk start when the network is down.
 // Network-first: a successful fetch always refreshes the cache; the cache is only
 // read as a fallback. See docs/requirements/Inspection_Offline_Walk_Design.md.
-import { openQueue, isOfflineAvailable, readCache, writeCache } from '../utils/offlineQueue.js';
+import { openQueue, isOfflineAvailable, readCache, writeCache, enqueueInspectionSave } from '../utils/offlineQueue.js';
+import { syncOne }      from '../utils/inspectionSync.js';
+import { makeSyncDeps } from '../utils/inspectionSyncDeps.js';
+import { kickSync, flush as flushQueue } from '../utils/syncRunner.js';
 import { statusBeforeSession } from '../utils/inspectionHelpers.js';
 import {
   makeWalkBuilder,
@@ -687,6 +687,11 @@ function createInspectionStore() {
 
   async function completeSession(sessionId, notes = '') {
     const userId = await getCurrentUserId();
+    // Push any queued inspections to the server BEFORE counting them, so a
+    // just-finished walk whose last saves are still in the outbox isn't stamped
+    // with a too-low count (which would falsely read as "unfinished"). Best-effort
+    // — offline, this is a no-op and completeSession stays online-only until P4.
+    try { await flushQueue(); } catch (e) { logger('⚠ completeSession: flush:', e.message); }
     // Stamp the TRUE inspected count at close. This is the single source of
     // completeness: total_components_count (set at start) vs this. It was never
     // maintained before (always 0), so a finished-early session looked the same
@@ -863,44 +868,52 @@ function createInspectionStore() {
     // A no_access row observed nothing, so it carries no readings either.
     const readingsToSave = result === 'no_access' ? {} : (readings || {});
 
-    let inspection;
-    if (existing) {
-      inspection = await updateComponentInspection(existing.id, {   // shared (building_assets/public.js)
-        inspection_result: result,
-        inspector_notes:   notes || null,
-        checklist_results: checklistResults,
-        readings:          readingsToSave,
-        no_access_reason:  reason,
-        inspected_by:      userId,
-        inspected_at:      now,
-      });
-      // Replace all photos for this inspection: purge the old ones (storage
-      // files + rows) before the new set is inserted below.
-      await purgeAttachments('component_inspection', existing.id);
-    } else {
-      inspection = await createComponentInspection({   // shared (building_assets/public.js)
-        walk_session_id:   state.activeSession.id,
-        component_id:      componentId,
-        inspection_result: result,
-        inspector_notes:   notes || null,
-        checklist_results: checklistResults,
-        readings:          readingsToSave,
-        no_access_reason:  reason,
-        inspected_by:      userId,
-        inspected_at:      now,
-      });
+    // Client-generated id (reused on re-inspect) so the local row and its eventual
+    // server row are the SAME record — nothing to remap when the queue syncs.
+    const inspectionId = existing?.id ?? newUuid();
+    const row = {
+      id:                inspectionId,
+      walk_session_id:   state.activeSession.id,
+      component_id:      componentId,
+      inspection_result: result,
+      inspector_notes:   notes || null,
+      checklist_results: checklistResults,
+      readings:          readingsToSave,
+      no_access_reason:  reason,
+      inspected_by:      userId,
+      inspected_at:      now,
+    };
+
+    // The "inspection result → component status" rule, built HERE at record time
+    // (so status_set_at is the true observation time even if sync happens hours
+    // later) and applied to the component by the syncer. Rule stays in public.js.
+    const statusPatch = inspectionResultPatch(result, { inspectionId, userId, at: now });
+    const payload = { row, photoUrls, statusPatch };
+
+    // Local-first: enqueue the whole unit durably, then let the syncer push it —
+    // immediately when online, on reconnect when not. A dropped connection can no
+    // longer lose a recorded result, and photo/attachment work moves into the
+    // syncer (idempotent upsert-by-id + purge-then-add). Where IndexedDB is
+    // unavailable (SSR / an old private-mode browser) there is nothing durable to
+    // queue into, so sync inline instead — behaviour then equals the pre-offline
+    // direct write (throws on failure so the walk screen can surface it).
+    let queued = false;
+    if (isOfflineAvailable()) {
+      try {
+        await enqueueInspectionSave(await openQueue(), payload);
+        queued = true;
+      } catch (e) {
+        logger('⚠ enqueue failed, syncing inline:', e.message);
+      }
+    }
+    if (!queued) {
+      const res = await syncOne({ type: 'inspection_save', payload }, makeSyncDeps());
+      if (!res.ok) throw new Error(res.error || 'Failed to save inspection');
     }
 
-    // Persist photos to media_attachments (for both create and update paths)
-    await addAttachments('component_inspection', inspection.id, photoUrls, userId);
-    // Inject photo_urls onto the in-memory record so UI state stays consistent.
-    // Normalise Drive viewer URLs in case any were captured before the fix.
-    inspection.photo_urls = photoUrls.map(normalisePhotoUrl);
-
-    // Apply the inspection result to the component (status + last_inspection_id +
-    // status_set_by/at) through the Building Assets public interface — the single
-    // place that "inspection result → component status" rule lives.
-    await applyInspectionResult(componentId, { result, inspectionId: inspection.id, userId });
+    // In-memory record for the walk UI. Inject photo_urls (normalise Drive viewer
+    // URLs) so the card/history stay consistent before the sync completes.
+    const inspection = { ...row, photo_urls: photoUrls.map(normalisePhotoUrl) };
 
     update(s => {
       const newInsp = { ...s.inspections, [componentId]: inspection };
@@ -954,6 +967,9 @@ function createInspectionStore() {
         eventAction: existing ? 'inspection_update_inspection' : 'inspection_record_inspection',
         afterData: { componentId, result, session_id: state.activeSession.id },
       });
+
+    // Background drain (online → syncs within a moment; offline → waits).
+    if (queued) kickSync();
 
     return inspection;
   }

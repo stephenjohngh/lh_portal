@@ -76,9 +76,25 @@ export function updateComponent(id, fields, userId) {
  * @returns {Promise<Record<string, string>>} the fields actually written
  */
 export async function applyInspectionResult(componentId, { result, inspectionId, userId }) {
-  const patch = result === 'no_access'
+  const patch = inspectionResultPatch(result, { inspectionId, userId });
+  await api.update('components', componentId, patch);
+  return patch;
+}
+
+/**
+ * Build (without writing) the component patch an inspection result produces — the
+ * pure half of applyInspectionResult, so the Inspection app's offline queue can
+ * compute the patch at RECORD time (stamping status_set_at with the real
+ * observation time) and have the syncer apply it later. The rule stays here; only
+ * its execution moves. Keep this in lockstep with applyInspectionResult above.
+ * @param {string} result  ok | problem | failed | inactive | no_access
+ * @param {{ inspectionId: string, userId: string, at?: string }} args
+ * @returns {Record<string, string>} the patch to apply to the component
+ */
+export function inspectionResultPatch(result, { inspectionId, userId, at = new Date().toISOString() }) {
+  return result === 'no_access'
     ? {
-        // Attempt recorded; condition unchanged.
+        // Attempt recorded; condition unchanged (see applyInspectionResult).
         last_inspection_id: inspectionId,
         updated_by:         userId,
       }
@@ -86,11 +102,9 @@ export async function applyInspectionResult(componentId, { result, inspectionId,
         status:             result,
         last_inspection_id: inspectionId,
         status_set_by:      userId,
-        status_set_at:      new Date().toISOString(),
+        status_set_at:      at,
         updated_by:         userId,
       };
-  await api.update('components', componentId, patch);
-  return patch;
 }
 
 /**
@@ -153,6 +167,16 @@ export function createComponentInspection(fields) {
  */
 export function updateComponentInspection(id, fields) {
   return api.update('component_inspections', id, fields);
+}
+
+/**
+ * Upsert a component_inspection by its (client-supplied) id — the write the
+ * Inspection app's offline syncer uses so a create and a re-inspect are one
+ * idempotent operation, and replaying a partly-synced queue converges.
+ * @param {object} row  full component_inspections row INCLUDING id
+ */
+export function upsertComponentInspection(row) {
+  return api.upsert('component_inspections', row);
 }
 
 // ── Floors ──────────────────────────────────────────────────────────────────

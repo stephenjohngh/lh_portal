@@ -2,8 +2,9 @@
 //
 // CHARACTERIZATION tests for inspectionStore. Pins the contract of the data
 // layer: load() indexes components by floor; startSession builds the walk list
-// and stages a single_floor session; recordInspection creates-or-updates the
-// inspection, stamps the component status + last_inspection_id, and manages the
+// and stages a single_floor session; recordInspection records local-first and
+// (here, with no IndexedDB) syncs inline — an idempotent upsert-by-client-id that
+// stamps the component status + last_inspection_id and manages the
 // media_attachments rows; navigation clamps; completeSession closes + resets;
 // deleteSession tears down inspections then the session.
 //
@@ -41,6 +42,7 @@ const h = vi.hoisted(() => {
     getAll:     vi.fn((table) => Promise.resolve(tables[table] ?? [])),
     getById:    vi.fn((table, id) => Promise.resolve((tables[table] ?? []).find(r => r.id === id) ?? null)),
     create:     vi.fn((table, data) => Promise.resolve({ id: `${table}-new`, ...data })),
+    upsert:     vi.fn((table, data) => Promise.resolve({ ...data })),
     update:     vi.fn((table, id, data) => Promise.resolve({ id, ...data })),
     delete:     vi.fn(() => Promise.resolve()),
     deleteMany: vi.fn(() => Promise.resolve()),
@@ -283,7 +285,7 @@ describe('no_access (G1)', () => {
       componentId: 'comp1', result: 'no_access', noAccessReason: 'locked',
     });
 
-    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    const inspArg = h.api.upsert.mock.calls.find(c => c[0] === 'component_inspections')[1];
     expect(inspArg).toMatchObject({ inspection_result: 'no_access', no_access_reason: 'locked' });
 
     // The component patch must carry NO status/status_set_* — not observing a
@@ -303,7 +305,7 @@ describe('no_access (G1)', () => {
     await inspectionStore.recordInspection({ componentId: 'comp1', result: 'no_access', noAccessReason: 'locked' });
     await inspectionStore.recordInspection({ componentId: 'comp1', result: 'ok' });   // got in on a re-visit
 
-    const upd = h.api.update.mock.calls.filter(c => c[0] === 'component_inspections').pop()[2];
+    const upd = h.api.upsert.mock.calls.filter(c => c[0] === 'component_inspections').pop()[1];
     expect(upd).toMatchObject({ inspection_result: 'ok', no_access_reason: null });
     // Now it IS an observation, so the status moves.
     expect(get(inspectionStore).walkComponents.find(c => c.id === 'comp1').status).toBe('ok');
@@ -317,14 +319,14 @@ describe('readings (G2 structured readings)', () => {
       componentId: 'comp1', result: 'ok',
       readings: { 'attr-duration': 180, 'attr-note': 'clear' },
     });
-    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    const inspArg = h.api.upsert.mock.calls.find(c => c[0] === 'component_inspections')[1];
     expect(inspArg.readings).toEqual({ 'attr-duration': 180, 'attr-note': 'clear' });
   });
 
   it('defaults readings to {} when none are supplied', async () => {
     await startWalk();
     await inspectionStore.recordInspection({ componentId: 'comp1', result: 'ok' });
-    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    const inspArg = h.api.upsert.mock.calls.find(c => c[0] === 'component_inspections')[1];
     expect(inspArg.readings).toEqual({});
   });
 
@@ -334,7 +336,7 @@ describe('readings (G2 structured readings)', () => {
       componentId: 'comp1', result: 'no_access', noAccessReason: 'locked',
       readings: { 'attr-duration': 180 },
     });
-    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    const inspArg = h.api.upsert.mock.calls.find(c => c[0] === 'component_inspections')[1];
     expect(inspArg.readings).toEqual({});
   });
 });
@@ -456,14 +458,16 @@ describe('reverseFloorOrder', () => {
 });
 
 describe('recordInspection', () => {
-  it('CREATE path: inserts the inspection, stamps last_inspection_id + status, saves photos, audits create', async () => {
+  it('CREATE path: upserts the inspection (client id), stamps last_inspection_id + status, saves photos, audits create', async () => {
     await startWalk();
     const insp = await inspectionStore.recordInspection({
       componentId: 'comp1', result: 'failed', notes: 'cracked', photoUrls: ['https://store/p.jpg'],
     });
 
-    const inspArg = h.api.create.mock.calls.find(c => c[0] === 'component_inspections')[1];
-    expect(inspArg).toMatchObject({ component_id: 'comp1', inspection_result: 'failed', inspected_by: 'u1' });
+    // Local-first: the write goes through the offline syncer as an idempotent
+    // upsert-by-(client)-id — here IndexedDB is absent (node) so it runs inline.
+    const inspArg = h.api.upsert.mock.calls.find(c => c[0] === 'component_inspections')[1];
+    expect(inspArg).toMatchObject({ id: insp.id, component_id: 'comp1', inspection_result: 'failed', inspected_by: 'u1' });
     // The "inspection result → component status" rule now runs as ONE write via
     // the Building Assets public interface (applyInspectionResult): status +
     // last_inspection_id + status_set_by/at + updated_by — no longer two
@@ -484,15 +488,19 @@ describe('recordInspection', () => {
     expect(h.logAudit).toHaveBeenCalledWith('create', 'component_inspection', insp.id, 'A1', expect.any(Object));
   });
 
-  it('UPDATE path: a second inspection of the same component updates + clears old photos, audits update', async () => {
+  it('UPDATE path: a re-inspection reuses the same inspection id (idempotent upsert) + clears old photos, audits update', async () => {
     await startWalk();
-    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'ok' });   // create
+    const first = await inspectionStore.recordInspection({ componentId: 'comp1', result: 'ok' });   // create
     h.logAudit.mockClear();
-    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'problem' }); // update
+    await inspectionStore.recordInspection({ componentId: 'comp1', result: 'problem' }); // re-inspect
 
-    // updated the existing inspection row (not a second create)
-    expect(h.api.update).toHaveBeenCalledWith('component_inspections', expect.any(String), expect.objectContaining({ inspection_result: 'problem' }));
-    expect(h.logAudit).toHaveBeenCalledWith('update', 'component_inspection', expect.any(String), 'A1', expect.any(Object));
+    // Re-inspecting reuses the client id, so it is the SAME row upserted again
+    // (not a new inspection) — the by-id upsert converges create and update.
+    const upserts = h.api.upsert.mock.calls.filter(c => c[0] === 'component_inspections');
+    expect(upserts).toHaveLength(2);
+    expect(upserts.every(c => c[1].id === first.id)).toBe(true);
+    expect(upserts.pop()[1]).toMatchObject({ inspection_result: 'problem' });
+    expect(h.logAudit).toHaveBeenCalledWith('update', 'component_inspection', first.id, 'A1', expect.any(Object));
   });
 });
 

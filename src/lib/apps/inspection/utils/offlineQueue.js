@@ -230,3 +230,15 @@ export function summarizeOps(ops) {
   for (const o of ops) if (o.status in s) s[o.status]++;
   return { ...s, unsynced: s.pending + s.syncing + s.error, total: ops.length };
 }
+
+/**
+ * Choose the next op to sync: the first PENDING op (FIFO), skipping errored ones
+ * (they need a manual retry) and any in flight (syncing). Session dependency order
+ * (session_create → its inspections → complete) holds for free because ops are
+ * enqueued in that order and the runner stops on a transient failure. Pure.
+ * @param {Array<{status:string}>} ops  oldest-first
+ */
+export function pickNextOp(ops) {
+  for (const o of ops) if (o.status === OP_PENDING) return o;
+  return null;
+}
