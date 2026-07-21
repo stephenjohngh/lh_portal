@@ -27,6 +27,10 @@ import {
   purgeAttachments,
 } from '$lib/utils/mediaAttachments.js';
 import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   // session-delete cascade + rotation inputs (shared)
+// Offline read cache (IndexedDB) — lets a walk start when the network is down.
+// Network-first: a successful fetch always refreshes the cache; the cache is only
+// read as a fallback. See docs/requirements/Inspection_Offline_Walk_Design.md.
+import { openQueue, isOfflineAvailable, readCache, writeCache } from '../utils/offlineQueue.js';
 import { statusBeforeSession } from '../utils/inspectionHelpers.js';
 import {
   makeWalkBuilder,
@@ -37,6 +41,26 @@ import {
 import { buildRotatingWalk, resolveLinkedSet } from '../utils/inspectionRotation.js';
 
 const logger = getLogger('inspectionStore');
+
+// ── Offline read cache ────────────────────────────────────────────────────────
+// Bump CACHE_VERSION when the cached payload shape changes (forces a fresh fetch
+// rather than restoring a stale shape). Keys are versioned so an old cache is
+// simply never read.
+const CACHE_VERSION      = 1;
+const CACHE_KEY_LOAD     = `load_v${CACHE_VERSION}`;         // the hierarchy+components build
+const CACHE_KEY_DEFS     = `definitions_v${CACHE_VERSION}`;  // definitions + scheduleSessions
+const CACHE_KEY_SESSIONS = `sessions_v${CACHE_VERSION}`;     // this user's walk_sessions list
+
+async function cacheGet(key) {
+  if (!isOfflineAvailable()) return null;
+  try { return await readCache(await openQueue(), key); }
+  catch (e) { logger('⚠ cache read failed:', e.message); return null; }
+}
+async function cachePut(key, data) {
+  if (!isOfflineAvailable()) return;
+  try { await writeCache(await openQueue(), key, data); }
+  catch (e) { logger('⚠ cache write failed:', e.message); }
+}
 
 // ── Shared photo helper ───────────────────────────────────────────────────────
 // Batch-loads media_attachments for a set of component_inspection rows and
@@ -104,6 +128,11 @@ const INITIAL_STATE = {
   currentFloor:     null,    // active floor object (building-wide)
   floorProgress:    {},      // { floorId: { inspected, total } }
 
+  // Offline read cache signalling (P1). usingCache = data came from the IndexedDB
+  // fallback, not a fresh fetch; cachedAt = when that cache was written.
+  usingCache:       false,
+  cachedAt:         null,
+
   loading:          false,
   error:            null,
 };
@@ -122,6 +151,11 @@ const RESET_SESSION_STATE = {
 // -- Auth helpers --------------------------------------------------------------
 
 async function getCurrentUserId() {
+  // getSession() reads the locally-stored session (no network), so it still
+  // yields the user id when offline — unlike getUser(), which round-trips to the
+  // auth server. Fall back to getUser() only if the local session is absent.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user?.id) return session.user.id;
   const { data: { user } } = await supabase.auth.getUser();
   return user?.id ?? null;
 }
@@ -142,87 +176,99 @@ function createInspectionStore() {
 
   // -- Initial load ------------------------------------------------------------
 
+  // Fetch the whole hierarchy + component dataset and build the derived indexes
+  // (attrDefs, allComponents, allComponentAttrs, componentLinks). Returns the
+  // ready-to-spread state slice — the same object we cache for offline use, so a
+  // cache restore needs no re-deriving.
+  async function fetchHierarchyBuilt() {
+    const [facilities, floors, systems, types, defs, options, plans, components, componentAttrs, links] =
+      await Promise.all([
+        api.get('facilities'),
+        api.get('floors', { orderBy: 'level_order', ascending: true }),
+        api.get('building_systems',  { orderBy: 'presentation_order' }),
+        api.get('component_types',   { orderBy: 'presentation_order' }),
+        api.get('type_attributes',   { orderBy: 'presentation_order' }),
+        api.get('type_attribute_options', { orderBy: 'priority_override', ascending: true }),
+        api.get('plans',             { orderBy: 'building', ascending: true }),
+        // components + component_attributes can exceed PostgREST's 1000-row
+        // cap in production — paginate via getAll (pages by id for stability).
+        api.getAll('components'),
+        api.getAll('component_attributes'),
+        // Rotating definitions resolve their linked set from component_links.
+        api.getAll('component_links').catch(() => []),
+      ]);
+
+    // Restore asset_id ordering (getAll pages by id, not asset_id)
+    components.sort((a, b) =>
+      (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true }));
+
+    // Build attrDefs + attrOptions: effective attribute set per type with dropdown/radio options
+    const { attrDefs, attrOptions } = resolveHierarchy(systems, types, defs, options);
+
+    // Build a map from type_attribute_id → name so we can enrich component_attributes
+    // rows with attr_name (component_attributes has no name column — it's in type_attributes).
+    const attrIdToName = {};
+    for (const d of defs) attrIdToName[d.id] = d.name;
+
+    // Index component_attributes by componentId, enriched with attr_name
+    const allComponentAttrs = {};
+    for (const a of componentAttrs) {
+      if (!allComponentAttrs[a.component_id]) allComponentAttrs[a.component_id] = [];
+      allComponentAttrs[a.component_id].push({
+        ...a,
+        attr_name: attrIdToName[a.type_attribute_id] ?? null,
+      });
+    }
+
+    // Index components by floorId
+    const allComponents = {};
+    for (const c of components) {
+      if (!allComponents[c.floor_id]) allComponents[c.floor_id] = [];
+      allComponents[c.floor_id].push(c);
+    }
+
+    // Index component_links by from_component_id
+    const componentLinks = {};
+    for (const link of links) {
+      (componentLinks[link.from_component_id] ??= []).push(link);
+    }
+
+    return { facilities, floors, systems, types, attrDefs, attrOptions,
+             plans, allComponents, allComponentAttrs, componentLinks };
+  }
+
   async function load() {
     logger('Loading inspection data…');
     update(s => ({ ...s, loading: true, error: null }));
+
+    // Hierarchy — network-first, fall back to the offline cache. A successful
+    // fetch always refreshes the cache; the cache is a fallback, never preferred.
+    let built = null, usingCache = false, cachedAt = null;
     try {
-      // Load hierarchy + components in parallel
-      const [facilities, floors, systems, types, defs, options, plans, components, componentAttrs, links] =
-        await Promise.all([
-          api.get('facilities'),
-          api.get('floors', { orderBy: 'level_order', ascending: true }),
-          api.get('building_systems',  { orderBy: 'presentation_order' }),
-          api.get('component_types',   { orderBy: 'presentation_order' }),
-          api.get('type_attributes',   { orderBy: 'presentation_order' }),
-          api.get('type_attribute_options', { orderBy: 'priority_override', ascending: true }),
-          api.get('plans',             { orderBy: 'building', ascending: true }),
-          // components + component_attributes can exceed PostgREST's 1000-row
-          // cap in production — paginate via getAll (pages by id for stability).
-          api.getAll('components'),
-          api.getAll('component_attributes'),
-          // Rotating definitions resolve their linked set from component_links.
-          api.getAll('component_links').catch(() => []),
-        ]);
-
-      // Restore asset_id ordering (getAll pages by id, not asset_id)
-      components.sort((a, b) =>
-        (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true }));
-
-      // Build attrDefs + attrOptions: effective attribute set per type with dropdown/radio options
-      const { attrDefs, attrOptions } = resolveHierarchy(systems, types, defs, options);
-
-      // Build a map from type_attribute_id → name so we can enrich component_attributes
-      // rows with attr_name (component_attributes has no name column — it's in type_attributes).
-      const attrIdToName = {};
-      for (const d of defs) attrIdToName[d.id] = d.name;
-
-      // Index component_attributes by componentId, enriched with attr_name
-      const allComponentAttrs = {};
-      for (const a of componentAttrs) {
-        if (!allComponentAttrs[a.component_id]) allComponentAttrs[a.component_id] = [];
-        allComponentAttrs[a.component_id].push({
-          ...a,
-          attr_name: attrIdToName[a.type_attribute_id] ?? null,
-        });
-      }
-
-      // Index components by floorId
-      const allComponents = {};
-      for (const c of components) {
-        if (!allComponents[c.floor_id]) allComponents[c.floor_id] = [];
-        allComponents[c.floor_id].push(c);
-      }
-
-      // Index component_links by from_component_id
-      const componentLinks = {};
-      for (const link of links) {
-        (componentLinks[link.from_component_id] ??= []).push(link);
-      }
-
-      update(s => ({
-        ...s,
-        facilities, floors, systems, types, attrDefs, attrOptions,
-        plans, allComponents, allComponentAttrs, componentLinks,
-        loading: false,
-      }));
-
-      logger('✅ inspection data loaded:',
-        'facilities:', facilities.length,
-        '| floors:', floors.length,
-        '| types:', types.length,
-        '| components:', components.length,
-        '| componentAttrs:', componentAttrs.length,
-      );
-      logger('🗺 allComponents keys (floorIds):', Object.keys(allComponents));
-      logger('🏢 facilities:', facilities.map(f => `${f.name} (${f.id})`));
-      logger('🪜 floors sample:', floors.slice(0,3).map(f => `${f.short_name} facility_id=${f.facility_id}`));
-      const nullFloorComponents = components.filter(c => !c.floor_id).length;
-      if (nullFloorComponents > 0) logger('⚠️ components with no floor_id:', nullFloorComponents);
+      built = await fetchHierarchyBuilt();
+      void cachePut(CACHE_KEY_LOAD, built);
     } catch (err) {
-      logger('❌ load:', err.message);
-      update(s => ({ ...s, loading: false, error: err.message }));
-      throw err;
+      logger('⚠ hierarchy fetch failed, trying offline cache:', err.message);
+      const cached = await cacheGet(CACHE_KEY_LOAD);
+      if (cached) {
+        built = cached.data; usingCache = true; cachedAt = new Date(cached.ts);
+        logger('📦 using cached inspection data from', cachedAt.toISOString());
+      } else {
+        // No network AND no cache — surface the real failure (the OFFLINE pill
+        // conveys connectivity; masking a genuine server error would mislead).
+        logger('❌ load: fetch failed and no offline cache available');
+        update(s => ({ ...s, loading: false, error: err.message }));
+        throw err;
+      }
     }
+
+    update(s => ({ ...s, ...built, usingCache, cachedAt, loading: false }));
+    logger('✅ inspection data loaded:',
+      'floors:', built.floors.length,
+      '| types:', built.types.length,
+      '| components:', Object.values(built.allComponents).flat().length,
+      usingCache ? '(from cache)' : '',
+    );
 
     // Inspection definitions + their schedule inputs — non-fatal, so the app
     // still works (ad-hoc + repair) if the definitions table is unavailable.
@@ -241,9 +287,12 @@ function createInspectionStore() {
         }),
       ]);
       update(s => ({ ...s, definitions, scheduleSessions }));
+      void cachePut(CACHE_KEY_DEFS, { definitions, scheduleSessions });
       logger('✅ definitions loaded:', definitions.length);
     } catch (err) {
-      logger('⚠ definitions load (non-fatal):', err.message);
+      logger('⚠ definitions load (non-fatal), trying cache:', err.message);
+      const cached = await cacheGet(CACHE_KEY_DEFS);
+      if (cached) update(s => ({ ...s, definitions: cached.data.definitions ?? [], scheduleSessions: cached.data.scheduleSessions ?? [] }));
     }
   }
 
@@ -299,8 +348,18 @@ function createInspectionStore() {
         ascending: false,
       });
       update(s => ({ ...s, sessions, loading: false }));
+      void cachePut(CACHE_KEY_SESSIONS, sessions);
       return sessions;
     } catch (err) {
+      // Offline — fall back to the last cached session list so the Home screen
+      // (and Resume) still work. Offline-created sessions are folded in by the
+      // outbox in a later phase (P4).
+      const cached = await cacheGet(CACHE_KEY_SESSIONS);
+      if (cached) {
+        logger('📦 using cached sessions list');
+        update(s => ({ ...s, sessions: cached.data, loading: false, usingCache: true }));
+        return cached.data;
+      }
       update(s => ({ ...s, loading: false, error: err.message }));
       throw err;
     }

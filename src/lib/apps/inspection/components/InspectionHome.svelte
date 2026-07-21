@@ -2,6 +2,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { inspectionStore }  from '../stores/inspectionStore.js';
+  import { online } from '$lib/stores/online.js';
   import { fmtDate, fmtTime, fmtDuration } from '$lib/utils/dates';
   import { sessionKindLabel, sessionFloorLabel, sessionDefinitionName } from '../utils/inspectionHelpers.js';
   import WalkBadge from '$lib/apps/inspection/components/common/WalkBadge.svelte';
@@ -12,6 +13,19 @@
   $: sessions       = $inspectionStore.sessions;
   $: floors         = $inspectionStore.floors;
   $: definitions    = $inspectionStore.definitions;
+
+  // Offline / cached-data signal (P1). usingCache = the app is running on the
+  // last-cached dataset because the network was unavailable at load.
+  $: usingCache = $inspectionStore.usingCache;
+  $: cachedAt   = $inspectionStore.cachedAt;
+  function ageLabel(d) {
+    if (!d) return '';
+    const ms = Date.now() - new Date(d).getTime();
+    if (ms < 60_000)    return 'just now';
+    if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+    if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+    return `${Math.floor(ms / 86_400_000)}d ago`;
+  }
 
   // "LH Fire Doors · All Floors" — building, definition name (if any), scope.
   function sessionLoc(s) {
@@ -37,6 +51,12 @@
   <div class="home-hdr">
     <div class="home-logo">◈ INSPECTION</div>
     <div class="home-tagline">Component Inspection Walk</div>
+    {#if !$online || usingCache}
+      <div class="conn-row">
+        {#if !$online}<span class="conn-pill conn-offline">OFFLINE</span>{/if}
+        {#if usingCache}<span class="conn-pill conn-cached">cached {ageLabel(cachedAt)}</span>{/if}
+      </div>
+    {/if}
   </div>
 
   {#if canEdit}
@@ -133,6 +153,10 @@
   .home-hdr { padding:2.5rem 1.5rem 1.5rem; border-bottom:1px solid #2e2e42; }
   .home-logo { font-size:1.75rem; font-weight:800; letter-spacing:0.15em; color:#fb923c; }
   .home-tagline { font-size:0.7rem; letter-spacing:0.2em; color:#ccc; margin-top:0.25rem; }
+  .conn-row  { display:flex; gap:0.4rem; margin-top:0.6rem; }
+  .conn-pill { font-size:0.6rem; font-weight:800; letter-spacing:0.12em; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid; }
+  .conn-offline { color:#fb923c; border-color:#7c2d12; background:#1a0a00; }
+  .conn-cached  { color:#93c5fd; border-color:#334155; background:#0a1420; }
   .sect { padding:1.25rem 1.25rem 0; display:flex; flex-direction:column; gap:0.625rem; }
   .sect-title { font-size:0.65rem; letter-spacing:0.2em; color:#ccc; margin-bottom:0.25rem; }
   .start-btn { width:100%; display:flex; align-items:center; gap:0.875rem; padding:1rem 1.125rem; border-radius:10px; text-align:left; font-family:inherit; cursor:pointer; transition:all 0.15s; border:2px solid transparent; }
