@@ -90,6 +90,7 @@
   function onMarkerTap(e) {
     selectedComponent = e.detail ?? e;
     actionComponent   = null;
+    highlightId       = null;   // a new selection supersedes any earlier locate-highlight
   }
 
   function onMarkerLongPress(e) {
@@ -112,6 +113,7 @@
 
   function onActionViewDetails(e) {
     selectedComponent = e.detail;
+    highlightId       = null;
   }
 
   function onActionCentreOnPlan(e) {
@@ -139,6 +141,7 @@
 
   function onOpenDetail(e) {
     selectedComponent = e.detail;
+    highlightId       = null;
   }
 
   // Back to portal home
