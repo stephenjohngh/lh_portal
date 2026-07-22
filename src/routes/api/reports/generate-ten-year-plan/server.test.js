@@ -14,7 +14,7 @@ vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://localhost', 
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
 vi.mock('$app/environment', () => ({ browser: false, dev: false, building: false }));
 
-import { buildPlanDocument } from './+server.js';
+import { _buildPlanDocument } from './+server.js';
 import { buildPlanReportPayload } from '$lib/apps/maintenance/utils/planReport.js';
 import { buildTenYearForecast } from '$lib/apps/maintenance/utils/tenYearPlan.js';
 
@@ -33,9 +33,9 @@ function samplePayload() {
   return buildPlanReportPayload(forecast, membership, groups, { building: 'Lonsdale House', generatedAt: '22 Jul 2026' });
 }
 
-describe('buildPlanDocument', () => {
+describe('_buildPlanDocument', () => {
   it('packs a populated plan to a real .docx buffer', async () => {
-    const buffer = await Packer.toBuffer(buildPlanDocument(samplePayload()));
+    const buffer = await Packer.toBuffer(_buildPlanDocument(samplePayload()));
     expect(buffer.length).toBeGreaterThan(2000);
     // .docx is a ZIP — starts with "PK".
     expect(buffer[0]).toBe(0x50);
@@ -45,7 +45,7 @@ describe('buildPlanDocument', () => {
   it('packs an empty plan (no groups) without throwing', async () => {
     const forecast = buildTenYearForecast([], { startYear: 2026, years: 10 });
     const payload  = buildPlanReportPayload(forecast, {}, [], { building: 'LH', generatedAt: '22 Jul 2026' });
-    const buffer   = await Packer.toBuffer(buildPlanDocument(payload));
+    const buffer   = await Packer.toBuffer(_buildPlanDocument(payload));
     expect(buffer.length).toBeGreaterThan(1000);
   });
 });

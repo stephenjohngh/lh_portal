@@ -43,7 +43,7 @@ export async function POST({ request }) {
       return json({ error: 'Invalid plan payload' }, { status: 400 });
     }
 
-    const buffer   = await Packer.toBuffer(buildPlanDocument(plan));
+    const buffer   = await Packer.toBuffer(_buildPlanDocument(plan));
     const today    = new Date().toISOString().split('T')[0];
     const filename = `10_Year_Capital_Plan_${today}.docx`;
     logger('✅ Generated', filename, buffer.length, 'bytes');
@@ -61,9 +61,11 @@ export async function POST({ request }) {
   }
 }
 
-// ── Document assembly (exported for smoke-testing without auth) ───────────────
+// ── Document assembly ─────────────────────────────────────────────────────────
+// Exported (underscore-prefixed so SvelteKit permits a non-HTTP export in a
+// +server route) so the docx assembly can be smoke-tested without an auth request.
 
-export function buildPlanDocument(plan) {
+export function _buildPlanDocument(plan) {
   const title = '10-Year Capital Plan';
   return new Document({
     styles: DOC_STYLES,
