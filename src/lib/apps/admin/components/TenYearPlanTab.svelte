@@ -10,11 +10,14 @@
   import { buildTenYearForecast }   from '../utils/tenYearPlan.js';
   import { makeGroupMembershipResolver } from '../utils/groupMembership.js';
   import { suggestLastRenewal }     from '../utils/jobHistorySuggest.js';
+  import { buildPlanReportPayload } from '../utils/planReport.js';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
-  import { fmtDate }  from '$lib/utils/dates.js';
+  import { fmtDate, fmtToday } from '$lib/utils/dates.js';
+  import { authHeaders }   from '$lib/utils/authHeaders.js';
+  import { downloadResponse } from '$lib/utils/download.js';
 
   // Building-assets reference data (from AdminApp) — drives the live membership
   // roll-up. All optional: with none loaded, every group reads as a manual line.
@@ -139,6 +142,31 @@
     return '£' + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + 'k';
   }
 
+  // ── Export the plan document (R4) ─────────────────────────────────────
+  let exporting   = false;
+  let exportError = '';
+  async function downloadPlan() {
+    exporting = true; exportError = '';
+    try {
+      const payload = buildPlanReportPayload(forecast, membership, groups, {
+        building:    'Lonsdale House',
+        generatedAt: fmtToday(),
+      });
+      const res = await fetch('/api/reports/generate-ten-year-plan', {
+        method:  'POST',
+        headers: await authHeaders(),
+        body:    JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const date = new Date().toISOString().slice(0, 10);
+      await downloadResponse(res, `10_Year_Capital_Plan_${date}.docx`);
+    } catch (err) {
+      exportError = 'Export failed: ' + err.message;
+    } finally {
+      exporting = false;
+    }
+  }
+
   $: groupsWithData = groups.filter(g => g.last_renewal_date || g.lifetime_years || g.expected_cost);
   // Peak-spend year in the window (for the header summary).
   $: peakYear = forecast.years.reduce(
@@ -156,13 +184,24 @@
       group's renewal cycle below — edit any assumption to re-shape the forecast.
     </p>
   </div>
-  {#if forecast.grandTotal > 0}
-    <div class="text-right">
-      <p class="text-xs text-slate-500">Forecast total ({forecast.startYear}–{forecast.years[forecast.years.length - 1]})</p>
-      <p class="text-xl font-bold text-purple-400">{fmtCost(forecast.grandTotal)}</p>
-    </div>
-  {/if}
+  <div class="flex items-center gap-4">
+    {#if forecast.grandTotal > 0}
+      <div class="text-right">
+        <p class="text-xs text-slate-500">Forecast total ({forecast.startYear}–{forecast.years[forecast.years.length - 1]})</p>
+        <p class="text-xl font-bold text-purple-400">{fmtCost(forecast.grandTotal)}</p>
+      </div>
+    {/if}
+    <Button variant="secondary" size="medium" icon="download"
+            disabled={exporting || groups.length === 0}
+            on:click={downloadPlan}>
+      {exporting ? 'Exporting…' : 'Export Word'}
+    </Button>
+  </div>
 </div>
+
+{#if exportError}
+  <div class="alert-error mb-4 text-sm">{exportError}</div>
+{/if}
 
 <ErrorDisplay message={error} onDismiss={() => maintenanceGroupsStore.load()} />
 
