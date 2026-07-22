@@ -9,14 +9,11 @@
 //
 // Seams mocked: supabaseClient (auth), api, auditLogger, logger, mediaUpload,
 // driveUtils. The pure date/RAG helpers (maintenanceHelpers) are left REAL so
-// the recurrence-date arithmetic is exercised for real. requireUserId() reads
-// localStorage, which we stub on the node global.
+// the recurrence-date arithmetic is exercised for real. The creator id comes from
+// supabase.auth.getSession() (mocked below).
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
-
-// requireUserId() reads localStorage — provide a stub returning a session blob.
-globalThis.localStorage = { getItem: vi.fn(() => JSON.stringify({ user: { id: 'u1' } })) };
 
 const h = vi.hoisted(() => {
   let tables = {};
@@ -35,7 +32,7 @@ const h = vi.hoisted(() => {
   const supabase = {
     auth: {
       getUser:    vi.fn(() => Promise.resolve({ data: { user: { id: 'u1' } } })),
-      getSession: vi.fn(() => Promise.resolve({ data: { session: { access_token: 'tok' } } })),
+      getSession: vi.fn(() => Promise.resolve({ data: { session: { access_token: 'tok', user: { id: 'u1' } } } })),
     },
   };
   return {

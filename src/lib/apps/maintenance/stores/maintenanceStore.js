@@ -15,12 +15,16 @@ import { jobRag, addDays, toDateString } from '../utils/maintenanceHelpers.js';
 
 const logger = getLogger('maintenanceStore');
 
-function requireUserId() {
-  const raw = localStorage.getItem('sb-' + (import.meta.env.VITE_SUPABASE_URL?.split('//')[1]?.split('.')[0] ?? '') + '-auth-token');
-  if (raw) {
-    try { return JSON.parse(raw)?.user?.id ?? null; } catch { return null; }
-  }
-  return null;
+// Current user id for created_by/updated_by stamps. Uses the standard Supabase
+// auth accessors (getSession reads the locally-stored session — no network — with
+// getUser as a fallback), rather than hand-parsing the localStorage token, which
+// was brittle to key-format/token-shape/SSR changes and could silently write
+// unattributed rows.
+async function currentUserId() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user?.id) return session.user.id;
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
 }
 
 function enrichJob(job) {
@@ -112,7 +116,7 @@ function createMaintenanceStore() {
   }
 
   async function uploadDocument(jobId, file, docType, expiryDate = null) {
-    const userId  = requireUserId();
+    const userId  = await currentUserId();
 
     // Build a human-readable folder path: Maintenance / Job Title
     const s       = get({ subscribe });
@@ -252,7 +256,7 @@ function createMaintenanceStore() {
   // ── Job CRUD ───────────────────────────────────────────────────────────────
 
   async function createJob(data) {
-    const userId = requireUserId();
+    const userId = await currentUserId();
     const job = await api.create('maintenance_jobs', {
       ...data,
       status:     'scheduled',
@@ -277,7 +281,7 @@ function createMaintenanceStore() {
   }
 
   async function updateJob(id, data) {
-    const userId  = requireUserId();
+    const userId  = await currentUserId();
     const updated = await api.update('maintenance_jobs', id, {
       ...data,
       updated_by: userId,
@@ -305,7 +309,7 @@ function createMaintenanceStore() {
    * payload.components ([{component_id, result, notes}]) saves per-component results.
    */
   async function completeJob(id, payload) {
-    const userId = requireUserId();
+    const userId = await currentUserId();
     const {
       result, completedDate, completionNotes,
       contractorName, engineerName, referenceNumber,
@@ -372,7 +376,7 @@ function createMaintenanceStore() {
   }
 
   async function cancelJob(id) {
-    const userId  = requireUserId();
+    const userId  = await currentUserId();
     const updated = await api.update('maintenance_jobs', id, {
       status:     'cancelled',
       updated_by: userId,
@@ -388,7 +392,7 @@ function createMaintenanceStore() {
   }
 
   async function reopenJob(id) {
-    const userId  = requireUserId();
+    const userId  = await currentUserId();
     const updated = await api.update('maintenance_jobs', id, {
       status:         'scheduled',
       completed_date: null,
@@ -421,7 +425,7 @@ function createMaintenanceStore() {
    * Skips dates where a job for that regime + scope already exists.
    */
   async function generateJobs(selections, fromDate, toDate) {
-    const userId  = requireUserId();
+    const userId  = await currentUserId();
     const created = [];
     const s       = get({ subscribe });
 
