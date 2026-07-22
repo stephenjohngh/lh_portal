@@ -71,6 +71,32 @@
   function dismiss() {
     dispatch('close');
   }
+
+  // -- Quick presets ------------------------------------------------------------
+  // One-tap filters for the two most-asked-for views: components with a fault
+  // (failed + problem) in a given area. Matched by system/type name so they keep
+  // working if type codes change. Applies immediately and closes.
+
+  function isLightingType(t) {
+    const sys = systems.find(s => s.id === t.building_system_id);
+    return /light/i.test(sys?.name ?? '');
+  }
+  function isFireDoorType(t) {
+    return /fire\s*door/i.test(t.name ?? '') || /fire_door/i.test(t.code ?? '');
+  }
+
+  $: lightingCodes = types.filter(isLightingType).map(t => t.code);
+  $: fireDoorCodes = types.filter(isFireDoorType).map(t => t.code);
+
+  // Show ONLY the given type codes, with status failed + problem (hide ok/inactive).
+  function applyPreset(keepCodes) {
+    const keep = new Set(keepCodes);
+    mobileplanStore.setFilter({
+      hiddenTypes:    new Set(types.filter(t => !keep.has(t.code)).map(t => t.code)),
+      hiddenStatuses: new Set(['ok', 'inactive']),
+    });
+    dispatch('close');
+  }
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -85,6 +111,22 @@
   </div>
 
   <div class="sheet-scroll">
+
+    <!-- Quick presets — one tap: show a fault view (failed + problem) for an area -->
+    {#if lightingCodes.length > 0 || fireDoorCodes.length > 0}
+      <div class="section">
+        <p class="section-title">Quick presets</p>
+        <div class="preset-row">
+          {#if lightingCodes.length > 0}
+            <button class="preset-btn" on:click={() => applyPreset(lightingCodes)}>💡 Lighting issues</button>
+          {/if}
+          {#if fireDoorCodes.length > 0}
+            <button class="preset-btn" on:click={() => applyPreset(fireDoorCodes)}>🚪 Door issues</button>
+          {/if}
+        </div>
+        <p class="preset-hint">Applies immediately — shows failed + problem only.</p>
+      </div>
+    {/if}
 
     <!-- Status filters -->
     <div class="section">
@@ -218,6 +260,37 @@
     letter-spacing: 0.08em;
     color: #64748b;
     margin: 0 0 10px;
+  }
+
+  /* Quick presets */
+  .preset-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .preset-btn {
+    flex: 1 1 40%;
+    min-height: 48px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid #2dd4bf;
+    background: #2dd4bf22;
+    color: #e2e8f0;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.15s;
+  }
+  @media (hover: hover) {
+    .preset-btn:hover { background: #2dd4bf33; }
+  }
+  .preset-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #64748b;
+    margin: 8px 0 0;
   }
 
   /* Status pills */
