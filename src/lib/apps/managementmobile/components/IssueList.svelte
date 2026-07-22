@@ -11,12 +11,17 @@
 
   import { createEventDispatcher } from 'svelte';
   import { fmtDate } from '$lib/utils/dates.js';
+  import MeetingChip from './MeetingChip.svelte';
 
-  export let issues  = [];
-  export let loading = false;
-  export let error   = '';
+  export let issues         = [];
+  export let loading        = false;
+  export let error          = '';
+  export let meetings       = [];     // for meeting badges + banner
+  export let currentMeeting = null;   // the single open meeting, or null
 
   const dispatch = createEventDispatcher();
+
+  $: meetingsById = Object.fromEntries(meetings.map(m => [m.id, m]));
 
   // -- Filter state (module-level persistence) -------------------------
   let statusFilter = _persist.status;
@@ -91,8 +96,19 @@
   <header class="app-header">
     <button class="back-btn" on:click={() => dispatch('home')} aria-label="Back to home">←</button>
     <span class="app-title">Issues</span>
+    <button class="meetings-btn" on:click={() => dispatch('meetings')} aria-label="Meetings">🗓 Meetings</button>
     <span class="issue-count">{filtered.length}</span>
   </header>
+
+  <!-- Meeting-in-progress banner -->
+  {#if currentMeeting}
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="mip-banner" on:click={() => dispatch('openMeeting', currentMeeting.id)}>
+      <span class="mip-dot"></span>
+      <span class="mip-text">Meeting in progress — <strong>{currentMeeting.title}</strong></span>
+      <span class="mip-go">View ›</span>
+    </div>
+  {/if}
 
   <!-- Status tabs -->
   <div class="tab-bar" role="tablist">
@@ -165,6 +181,9 @@
                 <span class="status-badge parked">Parked</span>
               {:else if issue.status === 'completed'}
                 <span class="status-badge done">✓</span>
+              {/if}
+              {#if issue.meeting_id && meetingsById[issue.meeting_id]}
+                <MeetingChip meeting={meetingsById[issue.meeting_id]} on:open={(e) => dispatch('openMeeting', e.detail)} />
               {/if}
             </div>
 
@@ -249,6 +268,37 @@
     border-radius: 8px;
     border: 1px solid #252540;
   }
+
+  .meetings-btn {
+    min-height: 32px;
+    padding: 0 10px;
+    background: #1e1a3a;
+    border: 1px solid #2e2a5a;
+    border-radius: 8px;
+    color: #a5b4fc;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Meeting-in-progress banner */
+  .mip-banner {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: #2a200a;
+    border-bottom: 1px solid #3d2e0a;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .mip-dot { width: 7px; height: 7px; border-radius: 50%; background: #fbbf24; flex-shrink: 0; animation: mip-pulse 1.4s ease-in-out infinite; }
+  @keyframes mip-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .mip-text { flex: 1; min-width: 0; font-family: 'DM Mono', monospace; font-size: 12px; color: #fbbf24; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mip-text strong { color: #fde68a; font-weight: 700; }
+  .mip-go { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: #fbbf24; flex-shrink: 0; }
 
   /* ── Tab bar ── */
   .tab-bar {

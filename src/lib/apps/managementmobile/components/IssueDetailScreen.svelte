@@ -8,10 +8,14 @@
   import { fmtDate, fmtDateTime, isOverdue } from '$lib/utils/dates.js';
   import { sortActions } from '$lib/utils/actionSort.js';
   import ActivitySheet from './ActivitySheet.svelte';
+  import MeetingChip from './MeetingChip.svelte';
 
   export let issue;
+  export let meetings = [];
 
   const dispatch = createEventDispatcher();
+
+  $: meetingsById = Object.fromEntries(meetings.map(m => [m.id, m]));
 
   // -- Activity sheet state ---------------------------------------------
   let selectedActivity = null;
@@ -124,6 +128,9 @@
         <span class="status-badge done">Completed</span>
       {:else}
         <span class="status-badge current">Current</span>
+      {/if}
+      {#if issue.meeting_id && meetingsById[issue.meeting_id]}
+        <MeetingChip meeting={meetingsById[issue.meeting_id]} on:open={(e) => dispatch('openMeeting', e.detail)} />
       {/if}
       <span class="meta-date">{fmtDate(issue.created_at)}</span>
     </div>
