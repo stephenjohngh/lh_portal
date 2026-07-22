@@ -111,8 +111,9 @@
     if ((id === 'maint-groups' || id === 'ten-year') && $maintenanceGroupsStore.groups.length === 0) {
       await maintenanceGroupsStore.load();
     }
-    // Inspections scope preview needs the component set (attrs + latest inspections).
-    if (id === 'inspections' && !componentsLoaded) {
+    // Inspections scope preview + the 10-Year Plan's live membership roll-up both
+    // need the component set (attrs + latest inspections + current status).
+    if ((id === 'inspections' || id === 'ten-year') && !componentsLoaded) {
       componentsLoaded = true;
       await buildingAssetsStore.loadComponents();
     }
@@ -333,7 +334,13 @@
     {#if $buildingAssetsStore.loading}
       <LoadingSpinner />
     {:else}
-      <TenYearPlanTab />
+      <TenYearPlanTab
+        components={$buildingAssetsStore.components}
+        types={$buildingAssetsStore.types}
+        spaces={$buildingAssetsStore.spaces}
+        spaceOverrides={$buildingAssetsStore.spaceOverrides}
+        plans={$buildingAssetsStore.plans}
+      />
     {/if}
 
   {:else if activeTab === 'inspections'}

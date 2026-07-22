@@ -7,13 +7,26 @@
 <script>
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
   import { buildTenYearForecast }   from '../utils/tenYearPlan.js';
+  import { makeGroupMembershipResolver } from '../utils/groupMembership.js';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { fmtDate }  from '$lib/utils/dates.js';
 
+  // Building-assets reference data (from AdminApp) — drives the live membership
+  // roll-up. All optional: with none loaded, every group reads as a manual line.
+  export let components     = [];   // components[] (with current status)
+  export let types          = [];   // component_types[]
+  export let spaces         = [];   // spaces[]
+  export let spaceOverrides = [];   // space_component_overrides[]
+  export let plans          = [];   // plans[]
+
   $: ({ groups, loading, error } = $maintenanceGroupsStore);
+
+  // ── Live membership + condition roll-up (R1 — context only) ───────────
+  $: resolveMembership = makeGroupMembershipResolver({ components, types, spaces, spaceOverrides, plans });
+  $: membership = Object.fromEntries(groups.map(g => [g.id, resolveMembership(g)]));
 
   // ── Horizon control ───────────────────────────────────────────────────
   let startYear = new Date().getFullYear();
@@ -174,7 +187,12 @@
         <tbody class="divide-y divide-slate-700/60">
           {#each forecast.rows as row (row.id)}
             <tr class="hover:bg-slate-700/30 transition-colors">
-              <td class="px-3 py-2.5 font-medium text-white sticky left-0 bg-slate-800/60 whitespace-nowrap">{row.name}</td>
+              <td class="px-3 py-2.5 font-medium text-white sticky left-0 bg-slate-800/60 whitespace-nowrap">
+                {#if membership[row.id]?.attention}
+                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5 align-middle"
+                        title="{membership[row.id].attention} component(s) flagged problem/failed — consider reviewing renewal timing"></span>
+                {/if}{row.name}
+              </td>
               {#each forecast.years as y}
                 {@const overdueHere = row.occurrences.some(o => o.year === y && o.overdue)}
                 <td class="px-2 py-2.5 text-right font-mono whitespace-nowrap
@@ -236,6 +254,7 @@
       <thead>
         <tr class="border-b border-slate-700 text-left">
           <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Group</th>
+          <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Assets &amp; condition</th>
           <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Last Renewal</th>
           <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide text-center">Lifetime (yr)</th>
           <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Next Renewal</th>
@@ -248,11 +267,33 @@
           {@const renewal  = expectedRenewal(g.last_renewal_date, g.lifetime_years)}
           {@const status   = renewalStatus(renewal)}
           {@const scfg     = statusCfg[status]}
+          {@const m        = membership[g.id]}
           <tr class="hover:bg-slate-700/30 transition-colors {!g.last_renewal_date ? 'opacity-60' : ''}">
             <td class="px-4 py-3 font-medium text-white">
               {g.name}
               {#if g.notes}
                 <p class="text-xs text-slate-500 mt-0.5 font-normal truncate max-w-[200px]">{g.notes}</p>
+              {/if}
+            </td>
+            <td class="px-4 py-3">
+              {#if !m || m.manual}
+                <span class="text-xs text-slate-600">Manual line</span>
+              {:else if m.total === 0}
+                <span class="text-xs text-slate-600">No live assets</span>
+              {:else}
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-sm text-slate-300">{m.total}</span>
+                  <span class="text-xs text-slate-500">component{m.total === 1 ? '' : 's'}</span>
+                  {#if m.byStatus.failed}
+                    <span class="px-1.5 py-0.5 text-xs rounded bg-red-900/40 text-red-300 border border-red-800/50">{m.byStatus.failed} failed</span>
+                  {/if}
+                  {#if m.byStatus.problem}
+                    <span class="px-1.5 py-0.5 text-xs rounded bg-amber-900/40 text-amber-300 border border-amber-800/50">{m.byStatus.problem} problem</span>
+                  {/if}
+                  {#if !m.attention}
+                    <span class="text-xs text-emerald-500" title="No components flagged">✓</span>
+                  {/if}
+                </div>
               {/if}
             </td>
             <td class="px-4 py-3 text-slate-300">
@@ -287,6 +328,12 @@
       </tbody>
     </table>
   </div>
+
+  <p class="text-xs text-slate-500 mt-2">
+    Assets &amp; condition reflect each group's live components and their current status.
+    They are shown for context only — a flagged component never changes a renewal date;
+    review it and adjust the assumptions yourself if warranted.
+  </p>
 
   <!-- Summary card if no data at all -->
   {#if groupsWithData.length === 0}
