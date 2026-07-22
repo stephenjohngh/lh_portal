@@ -19,6 +19,7 @@ const logger = getLogger('mobileplanStore');
 const CACHE_VERSION         = 6;
 const CACHE_KEY_HIERARCHY   = `mobileplan_cache_hierarchy_v${CACHE_VERSION}`;
 const CACHE_KEY_FLOOR       = id => `mobileplan_cache_floor_${id}_v${CACHE_VERSION}`;
+const CACHE_KEY_ALLCOMPS    = `mobileplan_cache_all_components_v${CACHE_VERSION}`;
 const CACHE_KEY_FILTER      = 'mobileplan_filter';
 const CACHE_KEY_LAST_FLOOR  = 'mobileplan_last_floor_id';
 const TTL_HIERARCHY_MS    = 24 * 60 * 60 * 1000;   // 24 h
@@ -46,6 +47,11 @@ const INITIAL = {
 
   // Loaded per-floor alongside components
   componentAttrs: {},   // { [componentId]: component_attributes[] }
+
+  // Building-wide component list — lazy, only when the table's "All building"
+  // scope is chosen. Cached separately from the per-floor data.
+  allComponents:  [],
+  loadingAll:     false,
 
   // Filter (persisted to localStorage, except showSpaces which always starts false)
   hiddenTypes:    new Set(),
@@ -421,6 +427,34 @@ async function prefetchFloor(floorId) {
   }
 }
 
+/**
+ * Load every component in the building (all floors) — lazily, for the component
+ * table's "All building" scope. Network-first with a localStorage fallback so it
+ * works offline once cached. Idempotent: a no-op once loaded unless forced.
+ */
+async function loadAllComponents(forceRefresh = false) {
+  const state = get({ subscribe });
+  // Already loaded, or a load is in flight — nothing to do (unless forced).
+  if ((state.allComponents.length > 0 || state.loadingAll) && !forceRefresh) return;
+
+  update(s => ({ ...s, loadingAll: true }));
+
+  let rows = null;
+  try {
+    // getAll paginates past the 1000-row cap; scope to just the table's fields.
+    rows = await api.getAll('components', {
+      select: 'id,asset_id,label,notes,status,type_code,plan_id,x_position,y_position,floor_id',
+    });
+    writeCache(CACHE_KEY_ALLCOMPS, rows);
+  } catch (err) {
+    logger('⚠️ all-components fetch failed, trying cache:', err.message);
+    const cached = readCache(CACHE_KEY_ALLCOMPS, Infinity);
+    if (cached) rows = cached.data;
+  }
+
+  update(s => ({ ...s, allComponents: rows ?? s.allComponents, loadingAll: false }));
+}
+
 function setFilter({ hiddenTypes, hiddenStatuses, showSpaces }) {
   update(s => {
     const next = {
@@ -451,6 +485,9 @@ async function refresh() {
   if (state.currentFloor) {
     await selectFloor(state.currentFloor.id, true);
   }
+  if (state.allComponents.length > 0) {
+    await loadAllComponents(true);   // keep the building-wide list fresh too
+  }
 }
 
 // -- Export --------------------------------------------------------------------
@@ -460,6 +497,7 @@ export const mobileplanStore = {
   load,
   selectFloor,
   loadComponentAttrs,
+  loadAllComponents,
   prefetchFloor,
   setFilter,
   clearFilter,

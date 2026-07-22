@@ -19,6 +19,7 @@
   export let showSpaces     = false;
   export let loadingFloor   = false;
   export let selectedId     = null;
+  export let centreTarget   = null;   // component to centre once the plan image loads (cross-floor nav)
 
   const dispatch = createEventDispatcher();
 
@@ -167,6 +168,16 @@
   function handleImgLoad() {
     imgLoaded = true;
     computeFitScale();
+    // If we arrived here by tapping a component on another floor, centre on it
+    // now that this floor's image (and its dimensions) are ready.
+    if (centreTarget) {
+      const target = centreTarget;
+      // wait a frame so fitScale/tx/ty from computeFitScale are applied first
+      requestAnimationFrame(() => {
+        centreOnComponent(target);
+        dispatch('centred');
+      });
+    }
   }
 
   // Prevent native scroll/zoom on the plan container
@@ -237,9 +248,9 @@
     </div>
   {/if}
 
-  <!-- FAB: open the component table -->
-  <button class="fab" on:click={() => dispatch('openList')} aria-label="Open component table" title="Component table">
-    ☰
+  <!-- FAB: open the component list/table — labelled pill for discoverability -->
+  <button class="fab" on:click={() => dispatch('openList')} aria-label="Open component list" title="Component list">
+    <span class="fab-icon">▤</span> Components
   </button>
 </div>
 
@@ -307,31 +318,35 @@
     to { transform: rotate(360deg); }
   }
 
-  /* FAB */
+  /* FAB — labelled pill so the component list is discoverable */
   .fab {
     position: absolute;
     bottom: 20px;
     right: 16px;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: #1a1a2e;
-    border: 1px solid #252540;
-    color: #e2e8f0;
-    font-size: 20px;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 24px;
+    background: #2dd4bf;
+    border: none;
+    color: #0d0d14;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
     z-index: 20;
     transition: background 0.15s;
     touch-action: manipulation;
   }
 
+  .fab-icon { font-size: 16px; }
+
   @media (hover: hover) {
     .fab:hover {
-      background: #252540;
+      background: #14b8a6;
     }
   }
 </style>

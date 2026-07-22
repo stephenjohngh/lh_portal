@@ -19,7 +19,7 @@
   let state = {
     building: null, floors: [], systems: [], types: [], attrDefs: {}, plans: [],
     currentFloor: null, currentPlan: null, components: [], spaces: [], annotations: [],
-    inspections: {}, componentAttrs: {},
+    inspections: {}, componentAttrs: {}, allComponents: [], loadingAll: false,
     hiddenTypes: new Set(), hiddenStatuses: new Set(), showSpaces: false,
     usingCache: false, cachedAt: null,
     loading: false, loadingFloor: false, error: null,
@@ -40,6 +40,10 @@
   // -- Plan view ref (for centreOnComponent) ------------------------------------
 
   let planViewEl;
+  // When a table row on ANOTHER floor is tapped, we switch floors first; the new
+  // floor's plan image loads asynchronously, so we stash the target and let
+  // PlanView centre on it once its image is ready (via the centreTarget prop).
+  let centreTarget = null;
 
   // -- Online / cache indicators ------------------------------------------------
 
@@ -109,10 +113,20 @@
     planViewEl?.centreOnComponent(e.detail);
   }
 
-  function onNavigateTo(e) {
-    planViewEl?.centreOnComponent(e.detail);
-    selectedComponent = e.detail;
+  async function onNavigateTo(e) {
+    const c = e.detail;
+    selectedComponent = c;
+    if (c.floor_id && c.floor_id !== state.currentFloor?.id) {
+      // Component on another floor (from the All-building table): switch to its
+      // floor first, then centre once that plan's image has loaded.
+      centreTarget = c;
+      await mobileplanStore.selectFloor(c.floor_id);
+    } else {
+      planViewEl?.centreOnComponent(c);
+    }
   }
+
+  function onCentred() { centreTarget = null; }
 
   function onOpenDetail(e) {
     selectedComponent = e.detail;
@@ -188,10 +202,12 @@
         showSpaces={state.showSpaces}
         loadingFloor={state.loadingFloor}
         selectedId={selectedComponent?.id ?? null}
+        {centreTarget}
         on:markerTap={onMarkerTap}
         on:markerLongPress={onMarkerLongPress}
         on:planTap={onPlanTap}
         on:openList={() => showList = true}
+        on:centred={onCentred}
       />
     {/if}
   </main>
@@ -231,7 +247,10 @@
   {#if showList}
     <ComponentTableSheet
       components={state.components}
+      allComponents={state.allComponents}
+      loadingAll={state.loadingAll}
       currentFloor={state.currentFloor}
+      floors={state.floors}
       types={state.types}
       systems={state.systems}
       hiddenTypes={state.hiddenTypes}

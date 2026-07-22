@@ -1,28 +1,33 @@
 <script context="module">
-  // Persist search across open/close cycles without lifting state to parent.
+  // Persist search + scope across open/close cycles without lifting state.
   // Object wrapper avoids a vite-plugin-svelte "module-level reassignment" warning.
-  const _persist = { query: '' };
+  const _persist = { query: '', scope: 'floor' };
 </script>
 
 <script>
   // src/lib/apps/mobileplan/components/ComponentTableSheet.svelte
-  // A tabular list of the current floor's components — columns: Ref · Type ·
-  // Label · Status — with an inline filter bar (System + Status) and a search
-  // box. The filter chips edit the SAME shared filter as the plan (via
+  // A tabular list of components — columns: Ref · Type · Label · Status — with a
+  // scope toggle (This floor / All building), a Status chip row, a Systems menu
+  // (dropdown, since a building can have many systems), and a search box.
+  //
+  // Filter chips/menu edit the SAME shared filter as the plan (via
   // mobileplanStore.setFilter), so plan and table stay in sync; changes apply
-  // instantly (no Apply button). Sort: system → type → asset_id. Tapping a row
-  // centres a placed component on the plan, or opens the detail sheet for an
-  // unplaced one.
+  // instantly. Tapping a row centres a placed component on the plan (switching
+  // floors first when it lives on another floor), or opens the detail sheet for
+  // an unplaced one. Sort: (floor →) system → type → asset_id.
 
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { mobileplanStore } from '../stores/mobileplanStore.js';
   import {
     STATUSES, STATUS_LABELS, systemState, toggleSystem, toggleStatus,
     isFiltered, componentRef, resultLabel, resultClass, typesForSystem,
   } from '../utils/planFilter.js';
 
-  export let components     = [];
+  export let components     = [];    // current floor's components
+  export let allComponents  = [];    // building-wide (lazy; loaded on "All building")
+  export let loadingAll     = false;
   export let currentFloor   = null;
+  export let floors         = [];
   export let types          = [];
   export let systems        = [];
   export let hiddenTypes    = new Set();
@@ -33,16 +38,37 @@
   let query = _persist.query;
   $: _persist.query = query;
 
+  let scope = _persist.scope;        // 'floor' | 'building'
+  $: _persist.scope = scope;
+  let showSystems = false;           // systems dropdown open?
+
+  function setScope(s) {
+    scope = s;
+    if (s === 'building') mobileplanStore.loadAllComponents();  // idempotent
+  }
+
+  // Handle a persisted "All building" scope on reopen (setScope only fires on tap).
+  onMount(() => { if (scope === 'building') mobileplanStore.loadAllComponents(); });
+
   function getType(typeCode) {
     return types.find(t => t.code === typeCode) ?? null;
   }
 
-  // -- Filter bar (edits the shared store filter immediately) -------------------
+  $: floorById   = Object.fromEntries(floors.map(f => [f.id, f]));
+  function floorShort(c) {
+    return floorById[c.floor_id]?.short_name ?? currentFloor?.short_name ?? '?';
+  }
+
+  // -- Systems menu (edits the shared store filter immediately) -----------------
 
   $: shownSystems = systems.filter(sys => typesForSystem(types, sys.id).length > 0);
   $: systemStates = Object.fromEntries(
     systems.map(sys => [sys.id, systemState(types, sys.id, hiddenTypes)])
   );
+  $: visibleSystemCount = shownSystems.filter(s => (systemStates[s.id] ?? 'all') !== 'none').length;
+  $: systemsLabel = visibleSystemCount === shownSystems.length
+    ? 'All systems'
+    : `Systems ${visibleSystemCount}/${shownSystems.length}`;
 
   function onToggleSystem(systemId) {
     mobileplanStore.setFilter({ hiddenTypes: toggleSystem(types, systemId, hiddenTypes) });
@@ -50,24 +76,33 @@
   function onToggleStatus(status) {
     mobileplanStore.setFilter({ hiddenStatuses: toggleStatus(status, hiddenStatuses) });
   }
+  function setAllSystems(visible) {
+    const codes = shownSystems.flatMap(s => typesForSystem(types, s.id).map(t => t.code));
+    const next = new Set(hiddenTypes);
+    codes.forEach(c => visible ? next.delete(c) : next.add(c));
+    mobileplanStore.setFilter({ hiddenTypes: next });
+  }
 
-  // -- Sort: system presentation_order → type presentation_order → asset_id -----
+  // -- Rows ---------------------------------------------------------------------
 
-  $: sorted = [...components].sort((a, b) => {
-    const tA  = getType(a.type_code);
-    const tB  = getType(b.type_code);
-    const sA  = systems.find(s => s.id === tA?.building_system_id);
-    const sB  = systems.find(s => s.id === tB?.building_system_id);
-    const spA = sA?.presentation_order ?? 9999;
-    const spB = sB?.presentation_order ?? 9999;
+  $: source = scope === 'building' ? allComponents : components;
+
+  $: sorted = [...source].sort((a, b) => {
+    if (scope === 'building') {
+      const fa = floorById[a.floor_id]?.level_order ?? 9999;
+      const fb = floorById[b.floor_id]?.level_order ?? 9999;
+      if (fa !== fb) return fa - fb;
+    }
+    const tA = getType(a.type_code), tB = getType(b.type_code);
+    const sA = systems.find(s => s.id === tA?.building_system_id);
+    const sB = systems.find(s => s.id === tB?.building_system_id);
+    const spA = sA?.presentation_order ?? 9999, spB = sB?.presentation_order ?? 9999;
     if (spA !== spB) return spA - spB;
-    const tpA = tA?.presentation_order ?? 9999;
-    const tpB = tB?.presentation_order ?? 9999;
+    const tpA = tA?.presentation_order ?? 9999, tpB = tB?.presentation_order ?? 9999;
     if (tpA !== tpB) return tpA - tpB;
     return (a.asset_id ?? '').localeCompare(b.asset_id ?? '', undefined, { numeric: true });
   });
 
-  // Apply the shared filter, then the search box.
   $: baseList = sorted.filter(c => !isFiltered(c, hiddenTypes, hiddenStatuses));
   $: filtered = query.trim()
     ? baseList.filter(c => {
@@ -92,41 +127,54 @@
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="backdrop" on:click={dismiss}></div>
 
-<div class="sheet" role="dialog" aria-modal="true" aria-label="Component table">
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Component list">
 
   <!-- Header -->
   <div class="sheet-header">
-    <span class="sheet-title">Components — {currentFloor?.name ?? ''}</span>
+    <span class="sheet-title">
+      Components — {scope === 'building' ? 'All building' : (currentFloor?.name ?? '')}
+    </span>
     <button class="close-btn" on:click={dismiss} aria-label="Close">✕</button>
   </div>
 
-  <!-- Filter bar: status + system chips (edit the shared filter live) -->
+  <!-- Scope toggle -->
+  <div class="scope-row">
+    <button class="scope-btn" class:active={scope === 'floor'}    on:click={() => setScope('floor')}>This floor</button>
+    <button class="scope-btn" class:active={scope === 'building'} on:click={() => setScope('building')}>All building</button>
+  </div>
+
+  <!-- Filter bar: status chips + systems menu -->
   <div class="filter-bar">
     <div class="chip-row">
       {#each STATUSES as s}
-        <button
-          class="chip"
-          class:active={!hiddenStatuses.has(s)}
-          on:click={() => onToggleStatus(s)}
-        >{STATUS_LABELS[s]}</button>
+        <button class="chip" class:active={!hiddenStatuses.has(s)} on:click={() => onToggleStatus(s)}>
+          {STATUS_LABELS[s]}
+        </button>
       {/each}
     </div>
+
     {#if shownSystems.length > 0}
-      <div class="chip-row">
-        {#each shownSystems as sys (sys.id)}
-          {@const st = systemStates[sys.id] ?? 'all'}
-          <button
-            class="chip sys-chip"
-            class:active={st !== 'none'}
-            class:partial={st === 'some'}
-            on:click={() => onToggleSystem(sys.id)}
-            title={sys.name}
-          >
-            <span class="sys-dot" style="background:#{sys.colour ?? '64748b'};"></span>
-            {sys.name}
-          </button>
-        {/each}
-      </div>
+      <button class="sys-menu-btn" class:open={showSystems} on:click={() => showSystems = !showSystems}>
+        {systemsLabel} <span class="caret">{showSystems ? '▲' : '▼'}</span>
+      </button>
+
+      {#if showSystems}
+        <div class="sys-menu">
+          <div class="sys-menu-actions">
+            <button on:click={() => setAllSystems(true)}>Show all</button>
+            <button on:click={() => setAllSystems(false)}>Hide all</button>
+          </div>
+          {#each shownSystems as sys (sys.id)}
+            {@const st = systemStates[sys.id] ?? 'all'}
+            <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+            <div class="sys-item" on:click={() => onToggleSystem(sys.id)}>
+              <span class="sys-check">{st === 'all' ? '☑' : st === 'some' ? '▣' : '☐'}</span>
+              <span class="sys-dot" style="background:#{sys.colour ?? '64748b'};"></span>
+              <span class="sys-name">{sys.name}</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
     {/if}
   </div>
 
@@ -142,7 +190,7 @@
     />
   </div>
 
-  <!-- Table (CSS-grid; plain divs + on:click, matching the app's other sheets) -->
+  <!-- Table -->
   <div class="table-scroll">
     <div class="table">
       <div class="thead">
@@ -152,14 +200,18 @@
         <span class="th">Status</span>
       </div>
 
-      {#if filtered.length === 0}
+      {#if scope === 'building' && loadingAll && allComponents.length === 0}
+        <p class="empty-msg">Loading all floors…</p>
+      {:else if scope === 'building' && allComponents.length === 0}
+        <p class="empty-msg">Building-wide list unavailable offline — connect once to load it.</p>
+      {:else if filtered.length === 0}
         <p class="empty-msg">No components match.</p>
       {:else}
         {#each filtered as c (c.id)}
           {@const type = getType(c.type_code)}
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
           <div class="trow" on:click={() => selectComponent(c)}>
-            <span class="td td-ref">{componentRef(c, currentFloor?.short_name, type)}</span>
+            <span class="td td-ref">{componentRef(c, floorShort(c), type)}</span>
             <span class="td td-type">{type?.name ?? c.type_code ?? '—'}</span>
             <span class="td td-label">{c.label || '—'}</span>
             <span class="td td-status {resultClass(c.status)}">{resultLabel(c.status)}</span>
@@ -194,15 +246,33 @@
     flex-shrink: 0;
     border-bottom: 1px solid #252540;
   }
-
   .sheet-title { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 700; color: #e2e8f0; }
-
   .close-btn {
     min-width: 44px; min-height: 44px;
     background: transparent; border: none; color: #64748b;
     font-size: 16px; cursor: pointer; touch-action: manipulation;
     display: flex; align-items: center; justify-content: center;
   }
+
+  /* Scope toggle */
+  .scope-row {
+    display: flex; gap: 4px;
+    padding: 10px 12px 0;
+    flex-shrink: 0;
+  }
+  .scope-btn {
+    flex: 1;
+    min-height: 40px;
+    border: 1px solid #252540;
+    background: transparent;
+    color: #94a3b8;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer; touch-action: manipulation;
+    transition: all 0.15s;
+  }
+  .scope-btn.active { background: #2dd4bf22; border-color: #2dd4bf; color: #e2e8f0; }
 
   /* Filter bar */
   .filter-bar {
@@ -219,7 +289,6 @@
   }
   .chip-row::-webkit-scrollbar { display: none; }
   .chip {
-    display: inline-flex; align-items: center; gap: 6px;
     min-height: 34px;
     padding: 0 12px;
     border-radius: 18px;
@@ -233,8 +302,58 @@
     transition: all 0.15s;
   }
   .chip.active { border-color: #2dd4bf; color: #e2e8f0; background: #2dd4bf22; }
-  .chip.partial { border-style: dashed; }
-  .sys-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Systems menu */
+  .sys-menu-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    align-self: flex-start;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: 1px solid #252540;
+    background: #252540;
+    color: #e2e8f0;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .sys-menu-btn.open { border-color: #2dd4bf; }
+  .caret { font-size: 9px; color: #64748b; }
+
+  .sys-menu {
+    border: 1px solid #252540;
+    border-radius: 8px;
+    background: #14142a;
+    max-height: 40vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #252540 transparent;
+  }
+  .sys-menu-actions {
+    display: flex; gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #252540;
+    position: sticky; top: 0;
+    background: #14142a;
+  }
+  .sys-menu-actions button {
+    background: transparent; border: none;
+    color: #2dd4bf; font-family: 'DM Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    cursor: pointer; padding: 4px 6px; min-height: 32px;
+    touch-action: manipulation;
+  }
+  .sys-item {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 44px;
+    padding: 0 12px;
+    border-bottom: 1px solid #1e1e38;
+    cursor: pointer; touch-action: manipulation;
+  }
+  @media (hover: hover) { .sys-item:hover { background: #1e1e38; } }
+  .sys-check { color: #2dd4bf; font-size: 15px; width: 18px; flex-shrink: 0; }
+  .sys-dot   { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .sys-name  { font-family: 'DM Mono', monospace; font-size: 13px; color: #e2e8f0; }
 
   /* Search */
   .search-row {
@@ -266,7 +385,6 @@
     gap: 8px;
     padding: 0 14px;
   }
-
   .thead {
     position: sticky; top: 0;
     background: #14142a;
@@ -280,7 +398,6 @@
     text-transform: uppercase; letter-spacing: 0.06em;
     color: #64748b;
   }
-
   .trow {
     min-height: 46px;
     border-bottom: 1px solid #252540;
@@ -288,7 +405,6 @@
     transition: background 0.1s;
   }
   @media (hover: hover) { .trow:hover { background: #252540; } }
-
   .td {
     font-family: 'DM Mono', monospace;
     font-size: 12px;
@@ -305,7 +421,7 @@
 
   .empty-msg {
     font-family: 'DM Mono', monospace; font-size: 13px; color: #64748b;
-    text-align: center; padding: 32px 16px; margin: 0;
+    text-align: center; padding: 32px 16px; margin: 0; line-height: 1.5;
   }
 
   .sheet-count {
