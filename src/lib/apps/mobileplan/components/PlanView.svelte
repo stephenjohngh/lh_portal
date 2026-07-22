@@ -198,7 +198,7 @@
   {:else if !plan}
     <div class="plan-placeholder">
       <p class="no-plan-msg">No plan for this floor</p>
-      <p class="no-plan-sub">Use the list (☰) to browse components</p>
+      <p class="no-plan-sub">Use the table (☰) to browse components</p>
     </div>
 
   {:else}
@@ -237,8 +237,8 @@
     </div>
   {/if}
 
-  <!-- FAB: Unplaced / All components list -->
-  <button class="fab" on:click={() => dispatch('openList')} aria-label="View all components">
+  <!-- FAB: open the component table -->
+  <button class="fab" on:click={() => dispatch('openList')} aria-label="Open component table" title="Component table">
     ☰
   </button>
 </div>

@@ -12,7 +12,7 @@
   import ComponentSheet        from './components/ComponentSheet.svelte';
   import ActionSheet           from './components/ActionSheet.svelte';
   import FilterSheet           from './components/FilterSheet.svelte';
-  import UnplacedSheet         from './components/UnplacedSheet.svelte';
+  import ComponentTableSheet   from './components/ComponentTableSheet.svelte';
 
   // -- Store state --------------------------------------------------------------
 
@@ -229,13 +229,11 @@
   {/if}
 
   {#if showList}
-    <UnplacedSheet
+    <ComponentTableSheet
       components={state.components}
       currentFloor={state.currentFloor}
       types={state.types}
       systems={state.systems}
-      attrDefs={state.attrDefs}
-      componentAttrs={state.componentAttrs}
       hiddenTypes={state.hiddenTypes}
       hiddenStatuses={state.hiddenStatuses}
       on:navigateTo={onNavigateTo}

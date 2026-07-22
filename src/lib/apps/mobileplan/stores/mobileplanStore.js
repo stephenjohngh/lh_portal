@@ -15,7 +15,8 @@ const logger = getLogger('mobileplanStore');
 // -- Cache config --------------------------------------------------------------
 
 // Bump CACHE_VERSION whenever the shape of cached data changes (forces fresh fetch).
-const CACHE_VERSION         = 5;
+// v6: spaces now cache `label` (the display name) alongside `name`.
+const CACHE_VERSION         = 6;
 const CACHE_KEY_HIERARCHY   = `mobileplan_cache_hierarchy_v${CACHE_VERSION}`;
 const CACHE_KEY_FLOOR       = id => `mobileplan_cache_floor_${id}_v${CACHE_VERSION}`;
 const CACHE_KEY_FILTER      = 'mobileplan_filter';
@@ -316,7 +317,9 @@ async function fetchFloorForPlan(planId, floorId) {
     planId
       ? withTimeout(
           api.get('spaces', {
-            select: 'id,name,colour,polygon,show_label,plan_id',
+            // `label` is the human display name (multi-word); `name` is the
+            // alphanumerics-stripped report key. Show `label` on the plan.
+            select: 'id,name,label,colour,polygon,show_label,plan_id',
             filters: { plan_id: planId },
           }),
           FETCH_TIMEOUT_MS

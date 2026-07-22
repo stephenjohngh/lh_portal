@@ -1,11 +1,17 @@
 ﻿<script>
   // src/lib/apps/mobileplan/components/FilterSheet.svelte
-  // Filter by status, spaces toggle, and system/type tree.
-  // Changes are applied when user taps "Apply Filters".
-  // Filter state persisted to localStorage by mobileplanStore.setFilter().
+  // Plan filters: status pills, a "show spaces" toggle, and SYSTEM-level
+  // visibility (one checkbox per building system — no per-type rows). Applied on
+  // "Apply Filters"; persisted to localStorage by mobileplanStore.setFilter().
+  // The system → hidden-types translation lives in ../utils/planFilter.js and is
+  // shared with the component table.
 
   import { createEventDispatcher } from 'svelte';
   import { mobileplanStore } from '../stores/mobileplanStore.js';
+  import {
+    STATUSES, STATUS_LABELS, systemState, toggleSystem as toggleSystemHelper,
+    toggleStatus as toggleStatusHelper, typesForSystem,
+  } from '../utils/planFilter.js';
 
   export let systems       = [];
   export let types         = [];
@@ -14,9 +20,6 @@
   export let showSpaces    = false;
 
   const dispatch = createEventDispatcher();
-
-  const ALL_STATUSES = ['ok', 'problem', 'failed', 'inactive'];
-  const STATUS_LABELS = { ok: '✓ OK', problem: '⚙ Problem', failed: '✗ Failed', inactive: '— Inactive' };
 
   // Local working copies — only pushed to store on Apply
   let localHiddenTypes    = new Set(hiddenTypes);
@@ -30,51 +33,20 @@
     localShowSpaces     = showSpaces;
   }
 
-  // -- Status toggle ---------------------------------------------------------
-
   function toggleStatus(s) {
-    const next = new Set(localHiddenStatuses);
-    if (next.has(s)) next.delete(s); else next.add(s);
-    localHiddenStatuses = next;
+    localHiddenStatuses = toggleStatusHelper(s, localHiddenStatuses);
   }
 
-  // -- System/type tree ------------------------------------------------------
+  // Systems with at least one type (empty systems have nothing to toggle).
+  $: shownSystems = systems.filter(sys => typesForSystem(types, sys.id).length > 0);
 
-  function typesForSystem(systemId) {
-    return types.filter(t => t.building_system_id === systemId);
-  }
-
-  // Reactive map so Svelte explicitly tracks localHiddenTypes as a dependency.
-  // 'all' = all types visible, 'none' = all hidden, 'some' = mixed.
-  $: systemCheckStates = (() => {
-    const map = {};
-    for (const sys of systems) {
-      const sysTypes = types.filter(t => t.building_system_id === sys.id);
-      if (sysTypes.length === 0) { map[sys.id] = 'all'; continue; }
-      const hidden = sysTypes.filter(t => localHiddenTypes.has(t.code)).length;
-      if (hidden === 0)                map[sys.id] = 'all';
-      else if (hidden === sysTypes.length) map[sys.id] = 'none';
-      else                             map[sys.id] = 'some';
-    }
-    return map;
-  })();
+  // Reactive map so Svelte tracks localHiddenTypes as a dependency.
+  $: systemCheckStates = Object.fromEntries(
+    systems.map(sys => [sys.id, systemState(types, sys.id, localHiddenTypes)])
+  );
 
   function toggleSystem(systemId) {
-    const sysTypes = typesForSystem(systemId);
-    const state    = systemCheckStates[systemId] ?? 'all';
-    const next     = new Set(localHiddenTypes);
-    if (state === 'all') {
-      sysTypes.forEach(t => next.add(t.code));
-    } else {
-      sysTypes.forEach(t => next.delete(t.code));
-    }
-    localHiddenTypes = next;
-  }
-
-  function toggleType(typeCode) {
-    const next = new Set(localHiddenTypes);
-    if (next.has(typeCode)) next.delete(typeCode); else next.add(typeCode);
-    localHiddenTypes = next;
+    localHiddenTypes = toggleSystemHelper(types, systemId, localHiddenTypes);
   }
 
   // -- Apply / Clear / Set All -----------------------------------------------
@@ -92,13 +64,8 @@
   }
 
   function clearOrSetAll() {
-    if (allTypesHidden) {
-      // Set All — show all types (status pills unchanged)
-      localHiddenTypes = new Set();
-    } else {
-      // Clear — hide all types (status pills unchanged)
-      localHiddenTypes = new Set(types.map(t => t.code));
-    }
+    // Show all / hide all systems (status pills unchanged).
+    localHiddenTypes = allTypesHidden ? new Set() : new Set(types.map(t => t.code));
   }
 
   function dismiss() {
@@ -123,7 +90,7 @@
     <div class="section">
       <p class="section-title">Status</p>
       <div class="status-pills">
-        {#each ALL_STATUSES as s}
+        {#each STATUSES as s}
           <button
             class="status-pill status-pill-{s}"
             class:active={!localHiddenStatuses.has(s)}
@@ -147,44 +114,27 @@
       </div>
     </div>
 
-    <!-- Systems & Types tree -->
-    {#if systems.length > 0}
+    <!-- Systems (one toggle per building system) -->
+    {#if shownSystems.length > 0}
       <div class="section">
-        <p class="section-title">Systems & Types</p>
-        {#each systems as sys (sys.id)}
-          {@const sysTypes = typesForSystem(sys.id)}
-          {#if sysTypes.length > 0}
-            {@const sysState = systemCheckStates[sys.id] ?? 'all'}
-            <div class="system-row">
-              <button
-                class="system-check"
-                class:checked={sysState === 'all'}
-                class:partial={sysState === 'some'}
-                on:click={() => toggleSystem(sys.id)}
-                aria-label="Toggle {sys.name} system"
-              >
-                {sysState === 'all' ? '☑' : sysState === 'some' ? '▣' : '☐'}
-              </button>
-              <span class="system-name">
-                <span class="system-dot" style="background: #{sys.colour ?? '64748b'};"></span>
-                {sys.name}
-              </span>
-            </div>
-
-            {#each sysTypes as t (t.id)}
-              <div class="type-row">
-                <button
-                  class="type-check"
-                  class:checked={!localHiddenTypes.has(t.code)}
-                  on:click={() => toggleType(t.code)}
-                  aria-label="Toggle {t.name} type"
-                >
-                  {!localHiddenTypes.has(t.code) ? '☑' : '☐'}
-                </button>
-                <span class="type-name">{t.name}</span>
-              </div>
-            {/each}
-          {/if}
+        <p class="section-title">Systems</p>
+        {#each shownSystems as sys (sys.id)}
+          {@const sysState = systemCheckStates[sys.id] ?? 'all'}
+          <div class="system-row">
+            <button
+              class="system-check"
+              class:checked={sysState === 'all'}
+              class:partial={sysState === 'some'}
+              on:click={() => toggleSystem(sys.id)}
+              aria-label="Toggle {sys.name} system"
+            >
+              {sysState === 'all' ? '☑' : sysState === 'some' ? '▣' : '☐'}
+            </button>
+            <span class="system-name">
+              <span class="system-dot" style="background: #{sys.colour ?? '64748b'};"></span>
+              {sys.name}
+            </span>
+          </div>
         {/each}
       </div>
     {/if}
@@ -344,7 +294,7 @@
     border-bottom: 1px solid #252540;
   }
 
-  .system-check, .type-check {
+  .system-check {
     min-width: 36px;
     min-height: 36px;
     background: transparent;
@@ -372,21 +322,6 @@
     height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
-  }
-
-  .type-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 44px;
-    padding-left: 28px;
-    border-bottom: 1px solid #1a1a2e;
-  }
-
-  .type-name {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    color: #94a3b8;
   }
 
   .sheet-footer {

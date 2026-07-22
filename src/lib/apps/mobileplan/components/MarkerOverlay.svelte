@@ -16,6 +16,7 @@
   export let longPressId    = null;
 
   import { createEventDispatcher } from 'svelte';
+  import { isFiltered as isFilteredHelper } from '../utils/planFilter.js';
   const dispatch = createEventDispatcher();
 
   function getType(typeCode) {
@@ -59,9 +60,7 @@
   }
 
   function isFiltered(c) {
-    if (hiddenTypes.has(c.type_code)) return true;
-    if (hiddenStatuses.size > 0 && hiddenStatuses.has(c.status)) return true;
-    return false;
+    return isFilteredHelper(c, hiddenTypes, hiddenStatuses);
   }
 
   // Halo: replicate the building assets highlight logic locally.
@@ -160,7 +159,7 @@
         class="space-label"
         style="left:{ctr.x * 100}%; top:{ctr.y * 100}%; color:{col};"
         aria-hidden="true"
-      >{space.name}</div>
+      >{space.label ?? space.name}</div>
     {/if}
   {/each}
 {/if}
