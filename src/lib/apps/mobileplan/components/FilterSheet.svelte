@@ -81,12 +81,13 @@
     const sys = systems.find(s => s.id === t.building_system_id);
     return /light/i.test(sys?.name ?? '');
   }
-  function isFireDoorType(t) {
-    return /fire\s*door/i.test(t.name ?? '') || /fire_door/i.test(t.code ?? '');
+  function isDoorType(t) {
+    const sys = systems.find(s => s.id === t.building_system_id);
+    return /door/i.test(sys?.name ?? '');   // the whole Doors system
   }
 
   $: lightingCodes = types.filter(isLightingType).map(t => t.code);
-  $: fireDoorCodes = types.filter(isFireDoorType).map(t => t.code);
+  $: doorCodes     = types.filter(isDoorType).map(t => t.code);
 
   // Show ONLY the given type codes, with status failed + problem (hide ok/inactive).
   function applyPreset(keepCodes) {
@@ -113,15 +114,15 @@
   <div class="sheet-scroll">
 
     <!-- Quick presets — one tap: show a fault view (failed + problem) for an area -->
-    {#if lightingCodes.length > 0 || fireDoorCodes.length > 0}
+    {#if lightingCodes.length > 0 || doorCodes.length > 0}
       <div class="section">
         <p class="section-title">Quick presets</p>
         <div class="preset-row">
           {#if lightingCodes.length > 0}
             <button class="preset-btn" on:click={() => applyPreset(lightingCodes)}>💡 Lighting issues</button>
           {/if}
-          {#if fireDoorCodes.length > 0}
-            <button class="preset-btn" on:click={() => applyPreset(fireDoorCodes)}>🚪 Door issues</button>
+          {#if doorCodes.length > 0}
+            <button class="preset-btn" on:click={() => applyPreset(doorCodes)}>🚪 Door issues</button>
           {/if}
         </div>
         <p class="preset-hint">Applies immediately — shows failed + problem only.</p>
