@@ -1,9 +1,12 @@
 <!-- src/lib/apps/admin/components/TenYearPlanTab.svelte -->
-<!-- 10-year maintenance plan view.
-     Shows all maintenance groups with renewal dates and costs.
-     Each row has an Edit button that opens a compact modal to update planning data. -->
+<!-- 10-year capital plan.
+     Top: a year-by-year capex forecast + cumulative reserve, derived from each
+     group's renewal cycle (last renewal + lifetime + cost) over a chosen window.
+     Bottom: the per-group setup/assumptions table, where every figure that drives
+     the forecast is editable (R0 — derivation assists, the planner decides). -->
 <script>
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
+  import { buildTenYearForecast }   from '../utils/tenYearPlan.js';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
@@ -11,6 +14,14 @@
   import { fmtDate }  from '$lib/utils/dates.js';
 
   $: ({ groups, loading, error } = $maintenanceGroupsStore);
+
+  // ── Horizon control ───────────────────────────────────────────────────
+  let startYear = new Date().getFullYear();
+  let horizon   = 10;                       // years
+  $: horizon    = Math.min(30, Math.max(1, Math.floor(Number(horizon) || 1)));
+
+  // ── Derived forecast (R3) ─────────────────────────────────────────────
+  $: forecast = buildTenYearForecast(groups, { startYear: Number(startYear), years: horizon });
 
   // ── Edit modal state ──────────────────────────────────────────────────
   let showModal  = false;
@@ -50,7 +61,7 @@
     }
   }
 
-  // ── Calculated fields ─────────────────────────────────────────────────
+  // ── Calculated fields (setup table) ───────────────────────────────────
   function expectedRenewal(lastDate, lifetimeYears) {
     if (!lastDate || lifetimeYears == null) return null;
     const d = new Date(lastDate + 'T00:00:00');
@@ -78,28 +89,40 @@
     overdue: { label: 'OVERDUE', cls: 'text-red-400 font-semibold' },
   };
 
+  // Full currency (totals, tooltips).
   function fmtCost(v) {
     if (v == null) return '—';
     return '£' + Number(v).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
+  // Compact currency for the narrow year cells: 50000 → £50k, 1200 → £1.2k.
+  function fmtK(v) {
+    if (!v) return '';
+    if (v < 1000) return '£' + v;
+    const k = v / 1000;
+    return '£' + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + 'k';
+  }
 
-  // Total expected cost across all groups that have one
-  $: totalCost = groups.reduce((sum, g) => sum + (g.expected_cost ?? 0), 0);
   $: groupsWithData = groups.filter(g => g.last_renewal_date || g.lifetime_years || g.expected_cost);
+  // Peak-spend year in the window (for the header summary).
+  $: peakYear = forecast.years.reduce(
+    (best, y) => (forecast.perYear[y] > (forecast.perYear[best] ?? -1) ? y : best),
+    forecast.years[0]
+  );
 </script>
 
 <!-- ── Header ──────────────────────────────────────────────────────────── -->
 <div class="flex-between mb-4">
   <div>
-    <h3 class="text-lg font-semibold text-white">10-Year Maintenance Plan</h3>
+    <h3 class="text-lg font-semibold text-white">10-Year Capital Plan</h3>
     <p class="text-muted-sm mt-0.5">
-      Set renewal cycles and estimated costs per group. Expected renewal is calculated automatically.
+      Forecast capital renewal spend across the plan window. Figures derive from each
+      group's renewal cycle below — edit any assumption to re-shape the forecast.
     </p>
   </div>
-  {#if totalCost > 0}
+  {#if forecast.grandTotal > 0}
     <div class="text-right">
-      <p class="text-xs text-slate-500">Total estimated cost</p>
-      <p class="text-xl font-bold text-purple-400">{fmtCost(totalCost)}</p>
+      <p class="text-xs text-slate-500">Forecast total ({forecast.startYear}–{forecast.years[forecast.years.length - 1]})</p>
+      <p class="text-xl font-bold text-purple-400">{fmtCost(forecast.grandTotal)}</p>
     </div>
   {/if}
 </div>
@@ -115,6 +138,99 @@
   </div>
 
 {:else}
+  <!-- ── Horizon control ─────────────────────────────────────────────────── -->
+  <div class="flex items-end gap-4 mb-4">
+    <div class="flex flex-col gap-1">
+      <label for="tp-start" class="text-label">Start year</label>
+      <input id="tp-start" type="number" min="2000" max="2100" step="1"
+             bind:value={startYear} class="input w-28" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="tp-horizon" class="text-label">Horizon (years)</label>
+      <input id="tp-horizon" type="number" min="1" max="30" step="1"
+             bind:value={horizon} class="input w-28" />
+    </div>
+    {#if forecast.grandTotal > 0}
+      <p class="text-xs text-slate-500 pb-2">
+        Peak spend <span class="text-slate-300 font-semibold">{peakYear}</span>
+        ({fmtCost(forecast.perYear[peakYear])})
+      </p>
+    {/if}
+  </div>
+
+  <!-- ── Forecast table ──────────────────────────────────────────────────── -->
+  {#if forecast.rows.length > 0}
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl overflow-x-auto mb-6">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="border-b border-slate-700 text-left">
+            <th class="px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide sticky left-0 bg-slate-800/90">Group</th>
+            {#each forecast.years as y}
+              <th class="px-2 py-2.5 text-xs font-semibold text-slate-400 text-right whitespace-nowrap">{y}</th>
+            {/each}
+            <th class="px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide text-right whitespace-nowrap">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-700/60">
+          {#each forecast.rows as row (row.id)}
+            <tr class="hover:bg-slate-700/30 transition-colors">
+              <td class="px-3 py-2.5 font-medium text-white sticky left-0 bg-slate-800/60 whitespace-nowrap">{row.name}</td>
+              {#each forecast.years as y}
+                {@const overdueHere = row.occurrences.some(o => o.year === y && o.overdue)}
+                <td class="px-2 py-2.5 text-right font-mono whitespace-nowrap
+                           {row.byYear[y] ? (overdueHere ? 'text-red-300' : 'text-purple-300') : 'text-slate-700'}"
+                    title={row.byYear[y] ? fmtCost(row.byYear[y]) + (overdueHere ? ' — includes an overdue renewal' : '') : ''}>
+                  {row.byYear[y] ? fmtK(row.byYear[y]) : '·'}
+                </td>
+              {/each}
+              <td class="px-3 py-2.5 text-right font-mono font-semibold text-purple-200 whitespace-nowrap">{fmtCost(row.total)}</td>
+            </tr>
+          {/each}
+        </tbody>
+        <tfoot>
+          <!-- Per-year capex -->
+          <tr class="border-t-2 border-slate-600 bg-slate-800/70">
+            <td class="px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide sticky left-0 bg-slate-800/90 whitespace-nowrap">Per-year capex</td>
+            {#each forecast.years as y}
+              <td class="px-2 py-2.5 text-right font-mono font-semibold text-slate-200 whitespace-nowrap">
+                {forecast.perYear[y] ? fmtK(forecast.perYear[y]) : '·'}
+              </td>
+            {/each}
+            <td class="px-3 py-2.5 text-right font-mono font-bold text-purple-300 whitespace-nowrap">{fmtCost(forecast.grandTotal)}</td>
+          </tr>
+          <!-- Cumulative reserve requirement -->
+          <tr class="bg-slate-800/50">
+            <td class="px-3 py-2 text-xs font-semibold text-slate-500 sticky left-0 bg-slate-800/90 whitespace-nowrap">Cumulative reserve</td>
+            {#each forecast.years as y}
+              <td class="px-2 py-2 text-right font-mono text-xs text-slate-400 whitespace-nowrap">
+                {forecast.cumulative[y] ? fmtK(forecast.cumulative[y]) : '·'}
+              </td>
+            {/each}
+            <td class="px-3 py-2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  {:else}
+    <div class="card-info mb-6">
+      <p class="text-sm text-blue-300">
+        No renewals fall within {forecast.startYear}–{forecast.years[forecast.years.length - 1]}.
+        Add renewal cycles below, or widen the horizon.
+      </p>
+    </div>
+  {/if}
+
+  {#if forecast.incomplete.length > 0}
+    <p class="text-xs text-slate-500 mb-6 -mt-4">
+      {forecast.incomplete.length} group{forecast.incomplete.length === 1 ? '' : 's'}
+      with planning data fall outside this window or need a complete cycle
+      (last renewal + lifetime + cost):
+      <span class="text-slate-400">{forecast.incomplete.map(g => g.name).join(', ')}</span>
+    </p>
+  {/if}
+
+  <!-- ── Group setup / assumptions ───────────────────────────────────────── -->
+  <h4 class="text-sm font-semibold text-slate-300 mb-2">Group setup &amp; assumptions</h4>
   <div class="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
     <table class="w-full text-sm">
       <thead>
@@ -122,8 +238,8 @@
           <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Group</th>
           <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Last Renewal</th>
           <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide text-center">Lifetime (yr)</th>
-          <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Expected Renewal</th>
-          <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide text-right">Estimated Cost</th>
+          <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Next Renewal</th>
+          <th class="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide text-right">Cost / cycle</th>
           <th class="px-4 py-2.5 w-20"></th>
         </tr>
       </thead>
@@ -168,17 +284,6 @@
             </td>
           </tr>
         {/each}
-
-        <!-- Totals row -->
-        {#if totalCost > 0}
-          <tr class="border-t-2 border-slate-600 bg-slate-800/70">
-            <td class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide" colspan="4">
-              Total ({groupsWithData.length} of {groups.length} groups with data)
-            </td>
-            <td class="px-4 py-3 text-right font-bold text-purple-300 font-mono">{fmtCost(totalCost)}</td>
-            <td></td>
-          </tr>
-        {/if}
       </tbody>
     </table>
   </div>
