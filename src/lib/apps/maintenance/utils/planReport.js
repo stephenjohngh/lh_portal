@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/planReport.js
+// src/lib/apps/maintenance/utils/planReport.js
 //
 // Assembles the model for the 10-Year Capital Plan Word document (R4) from the
 // on-screen forecast, live membership and group assumptions. Pure + Type-1 tested;

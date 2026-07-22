@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/jobHistorySuggest.js
+// src/lib/apps/maintenance/utils/jobHistorySuggest.js
 //
 // Suggests a last-renewal date for a maintenance group from its completed job
 // history (R2 of the review).

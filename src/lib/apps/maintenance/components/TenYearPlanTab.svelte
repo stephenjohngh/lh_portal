@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/TenYearPlanTab.svelte -->
+<!-- src/lib/apps/maintenance/components/TenYearPlanTab.svelte -->
 <!-- 10-year capital plan.
      Top: a year-by-year capex forecast + cumulative reserve, derived from each
      group's renewal cycle (last renewal + lifetime + cost) over a chosen window.

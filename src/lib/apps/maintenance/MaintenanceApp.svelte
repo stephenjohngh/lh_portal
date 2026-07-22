@@ -5,11 +5,16 @@
   import { auth }             from '$lib/stores/auth';
   import { permissions }      from '$lib/stores/permissions';
   import { maintenanceStore } from './stores/maintenanceStore.js';
+  import { maintenanceGroupsStore } from './stores/maintenanceGroupsStore.js';
+  import { buildingAssetsStore }    from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import StatsBar       from './components/StatsBar.svelte';
   import DiaryTab       from './components/DiaryTab.svelte';
   import JobsTab        from './components/JobsTab.svelte';
   import DocumentsTab   from './components/DocumentsTab.svelte';
   import SchedulerPanel from './components/SchedulerPanel.svelte';
+  import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
+  import TenYearPlanTab       from './components/TenYearPlanTab.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   $: store   = $maintenanceStore;
   $: jobs    = store.jobs;
@@ -18,12 +23,33 @@
 
   let activeTab = 'diary';
 
+  // Operational horizon (day-to-day servicing) first, then the capital-planning
+  // horizon (long-term asset renewal). The capital tabs are admin-only.
   $: TABS = [
     { key: 'diary',    label: 'Diary' },
     { key: 'jobs',     label: 'All Jobs' },
     { key: 'documents', label: 'Documents' },
-    ...(canEdit ? [{ key: 'schedule', label: 'Schedule' }] : []),
+    ...(canEdit ? [
+      { key: 'schedule', label: 'Schedule' },
+      { key: 'groups',   label: 'Asset Groups' },
+      { key: 'capital',  label: 'Capital Plan' },
+    ] : []),
   ];
+  const CAPITAL_TABS = ['groups', 'capital'];
+
+  // The capital-planning tabs need building-assets reference data (systems, types,
+  // spaces, plans + components for the condition roll-up) and the group register.
+  // Lazy-load it the first time either capital tab is opened.
+  let capitalDataLoaded = false;
+  async function activate(key) {
+    activeTab = key;
+    if (CAPITAL_TABS.includes(key) && !capitalDataLoaded) {
+      capitalDataLoaded = true;
+      await buildingAssetsStore.load();
+      await buildingAssetsStore.loadComponents();
+      await maintenanceGroupsStore.load();
+    }
+  }
 
   onMount(async () => {
     if ($auth.user) {
@@ -61,7 +87,7 @@
       <button
         class="tab-btn"
         class:tab-btn-active={activeTab === tab.key}
-        on:click={() => activeTab = tab.key}
+        on:click={() => activate(tab.key)}
       >
         {tab.label}
       </button>
@@ -77,6 +103,29 @@
     <DocumentsTab docs={allDocs} />
   {:else if activeTab === 'schedule'}
     <SchedulerPanel {jobs} />
+  {:else if activeTab === 'groups'}
+    {#if $buildingAssetsStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <MaintenanceGroupsTab
+        systems={$buildingAssetsStore.systems}
+        types={$buildingAssetsStore.types}
+        spaces={$buildingAssetsStore.spaces}
+        floors={$buildingAssetsStore.floors}
+      />
+    {/if}
+  {:else if activeTab === 'capital'}
+    {#if $buildingAssetsStore.loading}
+      <LoadingSpinner />
+    {:else}
+      <TenYearPlanTab
+        components={$buildingAssetsStore.components}
+        types={$buildingAssetsStore.types}
+        spaces={$buildingAssetsStore.spaces}
+        spaceOverrides={$buildingAssetsStore.spaceOverrides}
+        plans={$buildingAssetsStore.plans}
+      />
+    {/if}
   {/if}
 
 </div>

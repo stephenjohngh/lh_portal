@@ -18,8 +18,6 @@
   import FloorPanel from './components/FloorPanel.svelte';
   import SpaceTypesPanel from './components/SpaceTypesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
-  import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
-  import TenYearPlanTab from './components/TenYearPlanTab.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import InspectionDefinitionsTab from './components/InspectionDefinitionsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
@@ -27,7 +25,6 @@
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
-  import { maintenanceGroupsStore } from './stores/maintenanceGroupsStore.js';
 
 
   let searchTerm = '';
@@ -37,10 +34,8 @@
 
   // Grouped tabs — collapsed into dropdowns so the top bar stays short.
   // The ids match the activeTab values handled in the content section below.
-  const longTermTabs = [
-    { id: 'maint-groups', icon: '🗃', label: 'Maint. Groups' },
-    { id: 'ten-year',     icon: '📅', label: '10-Yr Plan' },
-  ];
+  // (The capital-planning tabs — Maintenance Groups + 10-Year Plan — now live in
+  // the Maintenance app; see MaintenanceApp.svelte.)
   const otherConfigTabs = [
     { id: 'floors',    icon: '🏢', label: 'Floors' },
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
@@ -104,16 +99,12 @@
 
   async function activateTab(id) {
     activeTab = id;
-    if ((id === 'types' || id === 'floors' || id === 'space-types' || id === 'maint-groups' || id === 'ten-year' || id === 'inspections') && !assetsStoreLoaded) {
+    if ((id === 'types' || id === 'floors' || id === 'space-types' || id === 'inspections') && !assetsStoreLoaded) {
       assetsStoreLoaded = true;
       await buildingAssetsStore.load();
     }
-    if ((id === 'maint-groups' || id === 'ten-year') && $maintenanceGroupsStore.groups.length === 0) {
-      await maintenanceGroupsStore.load();
-    }
-    // Inspections scope preview + the 10-Year Plan's live membership roll-up both
-    // need the component set (attrs + latest inspections + current status).
-    if ((id === 'inspections' || id === 'ten-year') && !componentsLoaded) {
+    // Inspections scope preview needs the component set (attrs + latest inspections).
+    if (id === 'inspections' && !componentsLoaded) {
       componentsLoaded = true;
       await buildingAssetsStore.loadComponents();
     }
@@ -218,13 +209,6 @@
           </span>
         </button>
         <TabDropdown
-          label="Long Term"
-          icon="⏳"
-          items={longTermTabs}
-          {activeTab}
-          on:select={(e) => activateTab(e.detail)}
-        />
-        <TabDropdown
           label="Other Config"
           icon="🛠"
           items={otherConfigTabs}
@@ -317,31 +301,6 @@
 
   {:else if activeTab === 'portal'}
     <PortalSettingsPanel />
-
-  {:else if activeTab === 'maint-groups'}
-    {#if $buildingAssetsStore.loading}
-      <LoadingSpinner />
-    {:else}
-      <MaintenanceGroupsTab
-        systems={$buildingAssetsStore.systems}
-        types={$buildingAssetsStore.types}
-        spaces={$buildingAssetsStore.spaces}
-        floors={$buildingAssetsStore.floors}
-      />
-    {/if}
-
-  {:else if activeTab === 'ten-year'}
-    {#if $buildingAssetsStore.loading}
-      <LoadingSpinner />
-    {:else}
-      <TenYearPlanTab
-        components={$buildingAssetsStore.components}
-        types={$buildingAssetsStore.types}
-        spaces={$buildingAssetsStore.spaces}
-        spaceOverrides={$buildingAssetsStore.spaceOverrides}
-        plans={$buildingAssetsStore.plans}
-      />
-    {/if}
 
   {:else if activeTab === 'inspections'}
     {#if $buildingAssetsStore.loading}

@@ -1,4 +1,4 @@
-// src/lib/apps/admin/stores/maintenanceGroupsStore.js
+// src/lib/apps/maintenance/stores/maintenanceGroupsStore.js
 // CRUD store for maintenance_groups — used by Admin > Maint. Groups and 10-Yr Plan tabs.
 
 import { writable }   from 'svelte/store';

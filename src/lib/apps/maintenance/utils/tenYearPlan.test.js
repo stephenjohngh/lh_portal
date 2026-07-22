@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/tenYearPlan.test.js
+// src/lib/apps/maintenance/utils/tenYearPlan.test.js
 //
 // Pins the pure capital-plan forecast engine: renewal spreading, overdue
 // collapse, per-year totals, cumulative reserve, incomplete-group reporting and

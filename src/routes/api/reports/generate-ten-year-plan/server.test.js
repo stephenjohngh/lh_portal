@@ -15,8 +15,8 @@ vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'serv
 vi.mock('$app/environment', () => ({ browser: false, dev: false, building: false }));
 
 import { buildPlanDocument } from './+server.js';
-import { buildPlanReportPayload } from '$lib/apps/admin/utils/planReport.js';
-import { buildTenYearForecast } from '$lib/apps/admin/utils/tenYearPlan.js';
+import { buildPlanReportPayload } from '$lib/apps/maintenance/utils/planReport.js';
+import { buildTenYearForecast } from '$lib/apps/maintenance/utils/tenYearPlan.js';
 
 function samplePayload() {
   const groups = [

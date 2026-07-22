@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/jobHistorySuggest.test.js
+// src/lib/apps/maintenance/utils/jobHistorySuggest.test.js
 //
 // Pins the job-history last-renewal suggestion: scope matching (system/type/
 // component), building exclusion, incomplete-job exclusion, recency ordering and

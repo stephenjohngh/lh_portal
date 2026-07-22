@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/groupMembership.test.js
+// src/lib/apps/maintenance/utils/groupMembership.test.js
 //
 // Pins the live group-membership resolver: union across system/type/space
 // criteria, dedupe, condition roll-up off components.status, and the manual-line

@@ -1,6 +1,6 @@
 // src/routes/api/reports/generate-ten-year-plan/+server.js
 // Renders the 10-Year Capital Plan Word document from the payload built by
-// $lib/apps/admin/utils/planReport.js (buildPlanReportPayload). The endpoint is a
+// $lib/apps/maintenance/utils/planReport.js (buildPlanReportPayload). The endpoint is a
 // pure renderer — all figures are computed client-side and posted here.
 //
 // POST body: the buildPlanReportPayload(...) object.

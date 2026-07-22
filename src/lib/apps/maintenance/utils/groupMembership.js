@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/groupMembership.js
+// src/lib/apps/maintenance/utils/groupMembership.js
 //
 // Resolves a maintenance_group's LIVE membership — the real components it covers —
 // and rolls up their current condition, for the 10-Year Plan (R1 of the review).

@@ -1,4 +1,4 @@
-// src/lib/apps/admin/stores/maintenanceGroupsStore.test.js
+// src/lib/apps/maintenance/stores/maintenanceGroupsStore.test.js
 // CHARACTERIZATION tests for maintenanceGroupsStore (Admin > Maint. Groups /
 // 10-Yr Plan). Seams mocked: api, supabaseClient (auth.getUser), logger.
 

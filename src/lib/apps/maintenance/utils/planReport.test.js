@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/planReport.test.js
+// src/lib/apps/maintenance/utils/planReport.test.js
 //
 // Pins the plan-report payload builder: summary figures, the per-year narrative
 // (only years with spend, biggest-first), and the assumptions register (join of

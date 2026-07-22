@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/tenYearPlan.js
+// src/lib/apps/maintenance/utils/tenYearPlan.js
 //
 // Pure capital-plan forecast engine for the 10-Year Plan (Admin → Long Term).
 //

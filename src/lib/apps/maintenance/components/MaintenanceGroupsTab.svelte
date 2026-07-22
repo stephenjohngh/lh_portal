@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/MaintenanceGroupsTab.svelte -->
+<!-- src/lib/apps/maintenance/components/MaintenanceGroupsTab.svelte -->
 <!-- CRUD for maintenance_groups.
      Each group collects a set of building systems, component types, and spaces
      that should be planned for renewal together. -->
