@@ -5,9 +5,11 @@
      Bottom: the per-group setup/assumptions table, where every figure that drives
      the forecast is editable (R0 — derivation assists, the planner decides). -->
 <script>
+  import { onMount } from 'svelte';
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
   import { buildTenYearForecast }   from '../utils/tenYearPlan.js';
   import { makeGroupMembershipResolver } from '../utils/groupMembership.js';
+  import { suggestLastRenewal }     from '../utils/jobHistorySuggest.js';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
@@ -23,10 +25,32 @@
   export let plans          = [];   // plans[]
 
   $: ({ groups, loading, error } = $maintenanceGroupsStore);
+  $: jobHistory = $maintenanceGroupsStore.jobHistory ?? [];
+
+  // Completed job history drives the last-renewal suggestions (R2). Read-only,
+  // non-fatal if it fails.
+  onMount(() => { maintenanceGroupsStore.loadJobHistory(); });
 
   // ── Live membership + condition roll-up (R1 — context only) ───────────
   $: resolveMembership = makeGroupMembershipResolver({ components, types, spaces, spaceOverrides, plans });
   $: membership = Object.fromEntries(groups.map(g => [g.id, resolveMembership(g)]));
+
+  // type_attributes scope_id may be a component_types.id — map it back to a code.
+  $: typeIdToCode = new Map(types.map(t => [t.id, t.code]));
+
+  // Renewal-date suggestions for the group currently open in the edit modal (R2).
+  // Suggestion only — clicking a candidate fills the input; nothing auto-saves.
+  $: editGroup = groups.find(g => g.id === editId) ?? null;
+  $: editSuggestions = editGroup
+    ? suggestLastRenewal(
+        {
+          systemIds:    editGroup.system_ids,
+          typeCodes:    editGroup.type_codes,
+          componentIds: membership[editId]?.componentIds,
+        },
+        jobHistory,
+        { typeIdToCode })
+    : { candidates: [], best: null };
 
   // ── Horizon control ───────────────────────────────────────────────────
   let startYear = new Date().getFullYear();
@@ -360,6 +384,27 @@
         <label for="tp-last" class="text-label">Last Renewal Date</label>
         <input id="tp-last" type="date" bind:value={editLastRenewal} class="input" />
       </div>
+
+      <!-- Renewal-date suggestions from completed job history (R2 — offer only) -->
+      {#if editSuggestions.candidates.length > 0}
+        <div class="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700">
+          <p class="text-xs text-slate-400 mb-1.5">Recent maintenance for this group — click a date to use it:</p>
+          <div class="flex flex-col gap-1">
+            {#each editSuggestions.candidates as job (job.id)}
+              <button type="button"
+                      on:click={() => editLastRenewal = job.completed_date}
+                      class="flex items-baseline gap-2 text-left px-2 py-1 rounded hover:bg-slate-700/60 transition-colors
+                             {editLastRenewal === job.completed_date ? 'bg-purple-900/30' : ''}">
+                <span class="font-mono text-xs text-purple-300 whitespace-nowrap">{fmtDate(job.completed_date)}</span>
+                <span class="text-xs text-slate-300 truncate">{job.title}</span>
+              </button>
+            {/each}
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1.5">
+            A suggestion only — check it was a renewal, not a routine service. Nothing is saved until you press Save.
+          </p>
+        </div>
+      {/if}
 
       <div class="flex flex-col gap-1">
         <label for="tp-life" class="text-label">Lifetime (years)</label>

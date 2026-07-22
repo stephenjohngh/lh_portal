@@ -13,6 +13,8 @@ function createMaintenanceGroupsStore() {
     groups:  [],
     loading: false,
     error:   null,
+    jobHistory:        [],      // completed maintenance_jobs (enriched w/ componentIds) — R2 suggestions
+    jobHistoryLoaded:  false,
   });
 
   async function load() {
@@ -30,6 +32,32 @@ function createMaintenanceGroupsStore() {
   async function userId() {
     const { data } = await supabase.auth.getUser();
     return data?.user?.id ?? null;
+  }
+
+  // Completed maintenance jobs (+ their component links for component-scoped jobs),
+  // used to SUGGEST a last-renewal date per group (R2). Read-only, cross-app read
+  // of the Maintenance app's tables; non-fatal if it fails (suggestions are optional).
+  async function loadJobHistory() {
+    try {
+      const jobs = await api.getAll('maintenance_jobs', {
+        select:  'id, title, completed_date, status, scope_type, scope_id, scope_label',
+        filters: { status: 'completed' },
+      });
+      const compJobIds = jobs.filter(j => j.scope_type === 'component').map(j => j.id);
+      const byJob = {};
+      if (compJobIds.length) {
+        const links = await api.getAllIn('maintenance_job_components', 'job_id', compJobIds, {
+          select: 'job_id, component_id',
+        });
+        for (const l of links) (byJob[l.job_id] ??= []).push(l.component_id);
+      }
+      const jobHistory = jobs.map(j => ({ ...j, componentIds: byJob[j.id] ?? [] }));
+      update(s => ({ ...s, jobHistory, jobHistoryLoaded: true }));
+      logger('Loaded', jobHistory.length, 'completed jobs for renewal suggestions');
+    } catch (err) {
+      update(s => ({ ...s, jobHistoryLoaded: true }));
+      logger('Job history load failed (suggestions disabled):', err.message);
+    }
   }
 
   async function create(data) {
@@ -101,7 +129,7 @@ function createMaintenanceGroupsStore() {
     logger('Deleted group:', id);
   }
 
-  return { subscribe, load, create, save, savePlan, remove };
+  return { subscribe, load, loadJobHistory, create, save, savePlan, remove };
 }
 
 export const maintenanceGroupsStore = createMaintenanceGroupsStore();
