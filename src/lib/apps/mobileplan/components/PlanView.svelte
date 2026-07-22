@@ -138,17 +138,17 @@
 
   export function centreOnComponent(component) {
     if (!container || !imgEl) return;
+    // Keep the CURRENT zoom — selecting a component no longer jumps to a zoomed-in
+    // view. When the whole plan is visible (at/near fit) the component is already
+    // on screen and highlighted, so leave the view exactly as it is. Only when the
+    // user has zoomed in do we pan to bring the selected component into view (at
+    // that same zoom), positioned in the upper third so the detail sheet doesn't
+    // cover it.
+    if (scale <= fitScale + 1e-3) return;
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    const iw = imgEl.naturalWidth;
-
-    // Zoom to 3× if currently near fit; clamp at current if already zoomed
-    const targetScale = Math.max(scale < fitScale * 1.5 ? 3 : scale, 2);
-
-    // Position component in upper third of viewport
-    tx = cw / 2 - component.x_position * iw * targetScale;
-    ty = ch * 0.35 - component.y_position * (imgEl.naturalHeight) * targetScale;
-    scale = targetScale;
+    tx = cw / 2   - component.x_position * imgEl.naturalWidth  * scale;
+    ty = ch * 0.35 - component.y_position * imgEl.naturalHeight * scale;
     applyPanBounds();
   }
 
