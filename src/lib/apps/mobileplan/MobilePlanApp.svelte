@@ -44,6 +44,11 @@
   // floor's plan image loads asynchronously, so we stash the target and let
   // PlanView centre on it once its image is ready (via the centreTarget prop).
   let centreTarget = null;
+  // Marker highlighted on the plan WITHOUT opening the detail sheet — used when
+  // locating a component from the table / action sheet, so the pulsing highlight
+  // isn't hidden behind the sheet. The detail sheet (selectedComponent) still
+  // takes precedence for the ring when it's open.
+  let highlightId = null;
 
   // -- Online / cache indicators ------------------------------------------------
 
@@ -93,7 +98,7 @@
   }
 
   function onPlanTap() {
-    if (!actionComponent) selectedComponent = null;
+    if (!actionComponent) { selectedComponent = null; highlightId = null; }
     actionComponent = null;
   }
 
@@ -110,12 +115,16 @@
   }
 
   function onActionCentreOnPlan(e) {
+    highlightId = e.detail.id;
     planViewEl?.centreOnComponent(e.detail);
   }
 
   async function onNavigateTo(e) {
     const c = e.detail;
-    selectedComponent = c;
+    // Locate on the plan: highlight the marker but DON'T open the detail sheet,
+    // so the highlight isn't hidden behind it (tap the marker for details).
+    selectedComponent = null;
+    highlightId = c.id;
     if (c.floor_id && c.floor_id !== state.currentFloor?.id) {
       // Component on another floor (from the All-building table): switch to its
       // floor first, then centre once that plan's image has loaded.
@@ -201,7 +210,7 @@
         hiddenStatuses={state.hiddenStatuses}
         showSpaces={state.showSpaces}
         loadingFloor={state.loadingFloor}
-        selectedId={selectedComponent?.id ?? null}
+        selectedId={selectedComponent?.id ?? highlightId}
         {centreTarget}
         on:markerTap={onMarkerTap}
         on:markerLongPress={onMarkerLongPress}

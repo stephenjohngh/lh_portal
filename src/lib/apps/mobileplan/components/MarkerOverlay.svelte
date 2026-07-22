@@ -213,6 +213,11 @@
       <div class="ripple" aria-hidden="true"></div>
     {/if}
 
+    <!-- Sonar locator ring so a selected component is findable at any zoom -->
+    {#if selected}
+      <div class="locator" aria-hidden="true"></div>
+    {/if}
+
     <div
       class="marker"
       class:inactive={c.status === 'inactive'}
@@ -327,10 +332,12 @@
     opacity: 0.35;
   }
 
+  .marker-wrapper.selected { z-index: 30; }
+
   .marker-wrapper.selected .marker {
-    outline: 2px solid #2dd4bf;
+    outline: 3px solid #2dd4bf;
     outline-offset: 2px;
-    animation: pulse-ring 1.2s ease infinite;
+    animation: pulse-glow 1.2s ease-in-out infinite;
   }
 
   .inner-ring {
@@ -364,9 +371,25 @@
     to   { transform: scale(2.2); opacity: 0; }
   }
 
-  @keyframes pulse-ring {
-    0%   { outline-color: #2dd4bf; }
-    50%  { outline-color: #14b8a6; }
-    100% { outline-color: #2dd4bf; }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(45,212,191,0.45), 0 0 12px 3px rgba(45,212,191,0.55); }
+    50%      { box-shadow: 0 0 0 6px rgba(45,212,191,0.20), 0 0 22px 9px rgba(45,212,191,0.35); }
+  }
+
+  /* Expanding sonar ring on the selected marker — draws the eye at fit zoom */
+  .locator {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 40px; height: 40px;
+    margin: -20px 0 0 -20px;
+    border-radius: 50%;
+    border: 2.5px solid #2dd4bf;
+    pointer-events: none;
+    animation: locator-pulse 1.4s ease-out infinite;
+  }
+
+  @keyframes locator-pulse {
+    0%   { transform: scale(0.5); opacity: 0.9; }
+    100% { transform: scale(3.2); opacity: 0; }
   }
 </style>
