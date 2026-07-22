@@ -7,7 +7,7 @@
 <script>
   import { onMount } from 'svelte';
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
-  import { buildTenYearForecast }   from '../utils/tenYearPlan.js';
+  import { buildTenYearForecast, renewalOccurrences } from '../utils/tenYearPlan.js';
   import { makeGroupMembershipResolver } from '../utils/groupMembership.js';
   import { suggestLastRenewal }     from '../utils/jobHistorySuggest.js';
   import { buildPlanReportPayload } from '../utils/planReport.js';
@@ -73,6 +73,18 @@
   let editLifetime     = '';    // string — numeric input
   let editCost         = '';    // string — numeric input
   let editNotes        = '';
+  let overrideInputs   = {};    // { [year]: string } — per-year override amounts
+
+  // Derived (pre-override) spend per year for the group being edited — shown next
+  // to each override input so the planner sees what they're overriding.
+  function deriveByYear(group, years) {
+    if (!group || years.length === 0) return {};
+    const occ = renewalOccurrences(group, years[0], years[years.length - 1]);
+    const by  = Object.fromEntries(years.map(y => [y, 0]));
+    for (const o of occ) by[o.year] += o.cost;
+    return by;
+  }
+  $: editDerived = editGroup ? deriveByYear(editGroup, forecast.years) : {};
 
   function openEdit(g) {
     editId          = g.id;
@@ -80,6 +92,8 @@
     editLifetime    = g.lifetime_years    != null ? String(g.lifetime_years) : '';
     editCost        = g.expected_cost     != null ? String(g.expected_cost)  : '';
     editNotes       = g.notes             ?? '';
+    overrideInputs  = Object.fromEntries(
+      Object.entries(g.plan_overrides ?? {}).map(([y, amt]) => [y, String(amt)]));
     modalError      = '';
     showModal       = true;
   }
@@ -87,11 +101,20 @@
   async function handleSave() {
     saving = true; modalError = '';
     try {
+      // Build plan_overrides from the non-blank inputs (blank = use derived).
+      const plan_overrides = {};
+      for (const [y, val] of Object.entries(overrideInputs)) {
+        const s = String(val ?? '').trim();
+        if (s === '') continue;
+        const n = Number(s);
+        if (Number.isFinite(n) && n >= 0) plan_overrides[y] = n;
+      }
       await maintenanceGroupsStore.savePlan(editId, {
         last_renewal_date: editLastRenewal || null,
         lifetime_years:    editLifetime !== '' ? parseFloat(editLifetime) : null,
         expected_cost:     editCost     !== '' ? parseFloat(editCost)     : null,
         notes:             editNotes,
+        plan_overrides,
       });
       showModal = false;
     } catch (err) {
@@ -258,10 +281,13 @@
               </td>
               {#each forecast.years as y}
                 {@const overdueHere = row.occurrences.some(o => o.year === y && o.overdue)}
+                {@const overridden  = !!row.overrides && (y in row.overrides)}
                 <td class="px-2 py-2.5 text-right font-mono whitespace-nowrap
-                           {row.byYear[y] ? (overdueHere ? 'text-red-300' : 'text-purple-300') : 'text-slate-700'}"
-                    title={row.byYear[y] ? fmtCost(row.byYear[y]) + (overdueHere ? ' — includes an overdue renewal' : '') : ''}>
-                  {row.byYear[y] ? fmtK(row.byYear[y]) : '·'}
+                           {overridden ? 'text-sky-300' : row.byYear[y] ? (overdueHere ? 'text-red-300' : 'text-purple-300') : 'text-slate-700'}"
+                    title={overridden
+                             ? `Manually set: ${fmtCost(row.byYear[y])} (derived ${fmtCost(row.derivedByYear[y])})`
+                             : row.byYear[y] ? fmtCost(row.byYear[y]) + (overdueHere ? ' — includes an overdue renewal' : '') : ''}>
+                  {#if overridden}<span class="text-sky-500">*</span>{/if}{row.byYear[y] ? fmtK(row.byYear[y]) : '·'}
                 </td>
               {/each}
               <td class="px-3 py-2.5 text-right font-mono font-semibold text-purple-200 whitespace-nowrap">{fmtCost(row.total)}</td>
@@ -292,6 +318,11 @@
         </tfoot>
       </table>
     </div>
+    {#if forecast.rows.some(r => r.overrides && Object.keys(r.overrides).length > 0)}
+      <p class="text-xs text-slate-500 -mt-4 mb-6">
+        <span class="text-sky-400 font-mono">*</span> manually set — a per-year override that wins over the derived figure.
+      </p>
+    {/if}
   {:else}
     <div class="card-info mb-6">
       <p class="text-sm text-blue-300">
@@ -411,7 +442,7 @@
 <!-- ── Plan edit modal ────────────────────────────────────────────────────── -->
 {#if showModal}
   {@const g = groups.find(x => x.id === editId)}
-  <Modal bind:show={showModal} size="small" title="Edit Plan — {g?.name ?? ''}">
+  <Modal bind:show={showModal} size="medium" title="Edit Plan — {g?.name ?? ''}">
 
     {#if modalError}
       <div class="alert-error mb-4 text-sm">{modalError}</div>
@@ -493,6 +524,29 @@
           placeholder="Scope, assumptions, contractor…"
           class="textarea"
         ></textarea>
+      </div>
+
+      <!-- Per-year adjustments (finer R0 — override the forecast for specific years) -->
+      <div class="flex flex-col gap-1">
+        <p class="text-label">
+          Per-year adjustments
+          <span class="text-slate-500 font-normal">— optional; override the forecast for a specific year</span>
+        </p>
+        <div class="rounded-lg border border-slate-700 bg-slate-800/40 divide-y divide-slate-700/50 max-h-52 overflow-y-auto">
+          {#each forecast.years as y}
+            <div class="flex items-center gap-3 px-3 py-1.5">
+              <span class="text-sm font-mono text-slate-300 w-12">{y}</span>
+              <span class="text-xs text-slate-500 w-28">derived {editDerived[y] ? fmtCost(editDerived[y]) : '—'}</span>
+              <input type="number" min="0" step="100" placeholder="—"
+                     bind:value={overrideInputs[y]}
+                     class="input flex-1 text-sm" />
+            </div>
+          {/each}
+        </div>
+        <p class="text-muted-sm">
+          Leave blank to use the derived figure. Enter <strong>0</strong> to defer (nothing that year).
+          To move a renewal, set its year to 0 and enter the amount in the target year.
+        </p>
       </div>
 
     </div>

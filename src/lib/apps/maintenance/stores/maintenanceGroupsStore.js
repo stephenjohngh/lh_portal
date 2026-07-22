@@ -108,13 +108,18 @@ function createMaintenanceGroupsStore() {
   // Convenience: save only the planning fields (used by TenYearPlanTab)
   async function savePlan(id, data) {
     const uid = await userId();
-    const updated = await api.update('maintenance_groups', id, {
+    const patch = {
       last_renewal_date: data.last_renewal_date || null,
       lifetime_years:    data.lifetime_years    ?? null,
       expected_cost:     data.expected_cost     ?? null,
       notes:             data.notes?.trim()     || null,
       updated_by:        uid,
-    });
+    };
+    // Only touch plan_overrides when the caller explicitly passes it — otherwise a
+    // plain plan-data save would wipe the planner's per-year overrides (jsonb, mig 171).
+    if (data.plan_overrides !== undefined) patch.plan_overrides = data.plan_overrides;
+
+    const updated = await api.update('maintenance_groups', id, patch);
     update(s => ({
       ...s,
       groups: s.groups.map(g => g.id === id ? { ...g, ...updated } : g),

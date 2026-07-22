@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  buildTenYearForecast, renewalOccurrences, addYearsFractional,
+  buildTenYearForecast, renewalOccurrences, addYearsFractional, normaliseOverrides,
 } from './tenYearPlan.js';
 
 const group = (over) => ({
@@ -137,5 +137,59 @@ describe('buildTenYearForecast', () => {
     expect(f.perYear[2029]).toBe(6000);
     expect(f.perYear[2034]).toBe(6000);
     expect(f.rows[0].occurrences[0].overdue).toBe(true);
+  });
+});
+
+describe('normaliseOverrides', () => {
+  const years = [2026, 2027, 2028];
+  it('keeps valid in-window non-negative amounts, drops the rest', () => {
+    expect(normaliseOverrides({ '2027': 5000, '2028': 0 }, years)).toEqual({ 2027: 5000, 2028: 0 });
+    expect(normaliseOverrides({ '2030': 5000 }, years)).toEqual({});      // out of window
+    expect(normaliseOverrides({ '2027': -1 }, years)).toEqual({});         // negative
+    expect(normaliseOverrides({ '2027': 'x' }, years)).toEqual({});        // non-numeric
+    expect(normaliseOverrides(null, years)).toEqual({});
+  });
+});
+
+describe('buildTenYearForecast — per-year overrides', () => {
+  it('an override REPLACES the derived amount for that year', () => {
+    const f = buildTenYearForecast([
+      group({ id: 'a', name: 'Lift', last_renewal_date: '2020-06-01', lifetime_years: 10, expected_cost: 50000,
+              plan_overrides: { '2030': 45000 } }),
+    ], WIN);
+    const row = f.rows[0];
+    expect(row.derivedByYear[2030]).toBe(50000);   // derivation preserved
+    expect(row.byYear[2030]).toBe(45000);          // override wins
+    expect(row.overrides).toEqual({ 2030: 45000 });
+    expect(f.perYear[2030]).toBe(45000);
+    expect(f.grandTotal).toBe(45000);
+  });
+
+  it('moves a renewal to another year (defer old with 0, add new)', () => {
+    const f = buildTenYearForecast([
+      group({ id: 'a', name: 'Lift', last_renewal_date: '2020-06-01', lifetime_years: 10, expected_cost: 50000,
+              plan_overrides: { '2030': 0, '2029': 50000 } }),
+    ], WIN);
+    expect(f.perYear[2030]).toBe(0);
+    expect(f.perYear[2029]).toBe(50000);
+    expect(f.rows[0].total).toBe(50000);
+  });
+
+  it('places a one-off on a manual line with no renewal cycle', () => {
+    const f = buildTenYearForecast([
+      group({ id: 'm', name: 'Contingency', plan_overrides: { '2027': 5000 } }),
+    ], WIN);
+    expect(f.rows).toHaveLength(1);
+    expect(f.rows[0].byYear[2027]).toBe(5000);
+    expect(f.incomplete).toEqual([]);              // not flagged incomplete — it contributes
+  });
+
+  it('excludes a group whose spend is entirely deferred to 0', () => {
+    const f = buildTenYearForecast([
+      group({ id: 'a', name: 'Lift', last_renewal_date: '2020-06-01', lifetime_years: 10, expected_cost: 50000,
+              plan_overrides: { '2030': 0 } }),
+    ], WIN);
+    expect(f.rows).toEqual([]);
+    expect(f.grandTotal).toBe(0);
   });
 });

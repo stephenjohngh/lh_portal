@@ -41,6 +41,25 @@ export function addYearsFractional(date, years) {
 }
 
 /**
+ * Sanitise a group's plan_overrides jsonb ({ "<year>": amount }) to the numeric
+ * year keys within the window that carry a valid non-negative amount. Absent /
+ * malformed entries are dropped, so a bad value can never corrupt the forecast.
+ * @param {*} raw
+ * @param {number[]} yearList
+ * @returns {Record<number, number>}
+ */
+export function normaliseOverrides(raw, yearList) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  const inWindow = new Set(yearList);
+  for (const [k, v] of Object.entries(raw)) {
+    const y = Number(k), amt = Number(v);
+    if (Number.isInteger(y) && inWindow.has(y) && Number.isFinite(amt) && amt >= 0) out[y] = amt;
+  }
+  return out;
+}
+
+/**
  * Renewal occurrences for a single group that fall within [startYear..endYear].
  *
  * Renewals cycle from last_renewal_date by lifetime_years: last+L, last+2L, …
@@ -105,27 +124,40 @@ export function buildTenYearForecast(groups, { startYear, years = 10, today = ne
   const perYear = Object.fromEntries(yearList.map(y => [y, 0]));
 
   for (const g of groups ?? []) {
-    const occ = renewalOccurrences(g, start, end);
-    if (occ.length === 0) {
-      // Nothing to forecast — either a group with no planning data, or one whose
-      // whole cycle lands outside the window.
+    const occ       = renewalOccurrences(g, start, end);
+    const overrides = normaliseOverrides(g.plan_overrides, yearList);
+    const hasOverride = Object.keys(overrides).length > 0;
+
+    if (occ.length === 0 && !hasOverride) {
+      // Nothing to forecast — a group with no planning data, or one whose whole
+      // cycle lands outside the window (and no manual override placing spend in it).
       const hasPlanningData = g.last_renewal_date || g.lifetime_years || g.expected_cost;
       if (hasPlanningData) incomplete.push({ id: g.id, name: g.name });
       continue;
     }
-    const byYear = Object.fromEntries(yearList.map(y => [y, 0]));
-    for (const o of occ) {
-      byYear[o.year]  += o.cost;
-      perYear[o.year] += o.cost;
-    }
+
+    // Derived spread first, then per-year overrides REPLACE the derived figure for
+    // their year (finer R0 — move/resize a renewal, add a one-off, defer with 0).
+    const derivedByYear = Object.fromEntries(yearList.map(y => [y, 0]));
+    for (const o of occ) derivedByYear[o.year] += o.cost;
+    const byYear = { ...derivedByYear };
+    for (const y of Object.keys(overrides)) byYear[y] = overrides[y];
+
+    const total = yearList.reduce((s, y) => s + byYear[y], 0);
+    if (total <= 0) continue;   // fully deferred/zeroed → nothing to show in the matrix
+
+    for (const y of yearList) perYear[y] += byYear[y];
+
     rows.push({
       id: g.id,
       name: g.name,
       lifetime_years: g.lifetime_years ?? null,
       expected_cost:  g.expected_cost  ?? null,
       occurrences: occ,
+      derivedByYear,
+      overrides,
       byYear,
-      total: occ.reduce((s, o) => s + o.cost, 0),
+      total,
     });
   }
 
