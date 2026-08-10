@@ -6,26 +6,28 @@
   import { onMount }     from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
-  import { getLogger }   from '$lib/utils/logger';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
   import ConfirmDialog   from '$lib/components/common/ConfirmDialog.svelte';
 
   import { dossierStore } from './stores/dossierStore.js';
   import PackList         from './components/PackList.svelte';
   import PackFormModal    from './components/PackFormModal.svelte';
-
-  const logger = getLogger('DossierApp');
+  import PackWorkspace    from './components/PackWorkspace.svelte';
 
   let appError      = '';
   let showPackModal = false;
   let editingPack   = null;
   let packModalRef;
 
+  // null = the pack list; set = the authoring workspace for that pack.
+  let openPackId = null;
+
   // Pending destructive action (house pattern — never confirm()).
   let pendingDelete = null;
   let deletingId    = null;
 
-  $: packs = $dossierStore.packs;
+  $: packs    = $dossierStore.packs;
+  $: openPack = openPackId ? (packs.find(p => p.id === openPackId) ?? null) : null;
 
   onMount(async () => {
     await permissions.init($auth.user.id, 'dossier');
@@ -81,9 +83,19 @@
     }
   }
 
-  // Opening a pack lands in the next build step (the doc tree + editor).
-  function handleOpen(pack) {
-    logger('open pack (workspace lands in the next step)', pack.id);
+  async function handleOpen(pack) {
+    const packId = pack.id;          // capture before the await
+    openPackId = packId;
+    try {
+      await dossierStore.loadDocs(packId);
+    } catch (err) {
+      appError = err.message;
+    }
+  }
+
+  function backToPacks() {
+    openPackId = null;
+    dossierStore.closePack();
   }
 </script>
 
@@ -103,15 +115,19 @@
   {/if}
 
   <div class="flex-1 min-h-0">
-    <PackList
-      {packs}
-      loading={$dossierStore.loading}
-      on:new={openNewPack}
-      on:open={(e)    => handleOpen(e.detail)}
-      on:edit={(e)    => openEditPack(e.detail)}
-      on:archive={(e) => handleArchive(e.detail)}
-      on:delete={(e)  => requestDelete(e.detail)}
-    />
+    {#if openPack}
+      <PackWorkspace pack={openPack} on:back={backToPacks} />
+    {:else}
+      <PackList
+        {packs}
+        loading={$dossierStore.loading}
+        on:new={openNewPack}
+        on:open={(e)    => handleOpen(e.detail)}
+        on:edit={(e)    => openEditPack(e.detail)}
+        on:archive={(e) => handleArchive(e.detail)}
+        on:delete={(e)  => requestDelete(e.detail)}
+      />
+    {/if}
   </div>
 </div>
 

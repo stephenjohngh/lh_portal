@@ -9,10 +9,12 @@
 // Every create MUST pass the current user id or the insert is rejected — this is
 // the internal owner-scoping boundary, not a convention we can skip.
 
-import { writable }  from 'svelte/store';
-import { api }       from '$lib/utils/api';
-import { logAudit }  from '$lib/utils/auditLogger';
-import { getLogger } from '$lib/utils/logger';
+import { writable }     from 'svelte/store';
+import { api }          from '$lib/utils/api';
+import { logAudit }     from '$lib/utils/auditLogger';
+import { getLogger }    from '$lib/utils/logger';
+import { uniqueSlug }   from '../utils/slug.js';
+import { nextOrderIndex } from '../utils/docTree.js';
 
 const logger = getLogger('dossierStore');
 
@@ -31,9 +33,13 @@ function touch(userId) {
 
 function createDossierStore() {
   const { subscribe, update } = writable({
-    packs:   [],
-    loading: false,
-    error:   null,
+    packs:        [],
+    loading:      false,
+    error:        null,
+    // Docs for the pack currently open in the workspace.
+    activePackId: null,
+    docs:         [],
+    loadingDocs:  false,
   });
 
   // ── Packs ────────────────────────────────────────────────────────────────
@@ -115,7 +121,97 @@ function createDossierStore() {
     logger('🗑 pack deleted', id);
   }
 
-  return { subscribe, loadPacks, createPack, updatePack, setArchived, deletePack };
+  // ── Docs ─────────────────────────────────────────────────────────────────
+
+  /** Load the doc tree for a pack. Rows stay flat in state — buildTree() nests at render. */
+  async function loadDocs(packId) {
+    update(s => ({ ...s, activePackId: packId, loadingDocs: true, error: null }));
+    try {
+      const docs = await api.get('dossier_docs', {
+        filters: { pack_id: packId },
+        orderBy: 'order_index', ascending: true,
+      });
+      update(s => ({ ...s, docs, loadingDocs: false }));
+      return docs;
+    } catch (err) {
+      update(s => ({ ...s, error: err.message, loadingDocs: false }));
+      throw err;
+    }
+  }
+
+  function closePack() {
+    update(s => ({ ...s, activePackId: null, docs: [] }));
+  }
+
+  /**
+   * Create a doc. The slug is derived here, once, from the titles already in
+   * the pack — and is never recomputed on rename (see utils/slug.js).
+   */
+  async function createDoc({ packId, parentId = null, title }, userId, currentDocs = []) {
+    const doc = await api.create('dossier_docs', {
+      pack_id:       packId,
+      parent_doc_id: parentId,
+      title,
+      slug:          uniqueSlug(title, currentDocs.map(d => d.slug)),
+      order_index:   nextOrderIndex(currentDocs, parentId),
+      created_by:    userId,
+      ...touch(userId),
+    }, true);
+
+    update(s => ({ ...s, docs: [...s.docs, doc] }));
+    logAudit('create', 'dossier_doc', doc.id, doc.title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info',
+      afterData: { pack_id: packId, parent_doc_id: parentId, slug: doc.slug },
+    });
+    return doc;
+  }
+
+  /** Rename only — the slug deliberately stays put so published links keep working. */
+  async function renameDoc(id, title, userId) {
+    const doc = await api.update('dossier_docs', id, { title, ...touch(userId) }, true);
+    update(s => ({ ...s, docs: s.docs.map(d => d.id === id ? { ...d, ...doc } : d) }));
+    logAudit('update', 'dossier_doc', id, title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info', afterData: { title },
+    });
+    return doc;
+  }
+
+  /** Admin-only at RLS. Cascades to the whole subtree and its revisions. */
+  async function deleteDoc(id, title, removedIds = []) {
+    await api.delete('dossier_docs', id);
+    const gone = new Set([id, ...removedIds]);
+    update(s => ({ ...s, docs: s.docs.filter(d => !gone.has(d.id)) }));
+    logAudit('delete', 'dossier_doc', id, title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+    });
+    logger('🗑 doc deleted', id);
+  }
+
+  /**
+   * Persist a plan from docTree.planMove(). Takes the plan rather than raw
+   * coordinates so the cycle and depth guards cannot be bypassed by a caller.
+   * @param {{ ok: boolean, patches?: object[] }} plan
+   */
+  async function applyMove(plan, userId) {
+    if (!plan?.ok || !plan.patches?.length) return;
+    for (const patch of plan.patches) {
+      const { id, ...fields } = patch;
+      await api.update('dossier_docs', id, { ...fields, ...touch(userId) });
+    }
+    // Reflect the patches locally rather than refetching — the plan is already
+    // the authoritative description of what changed.
+    const byId = new Map(plan.patches.map(p => [p.id, p]));
+    update(s => ({
+      ...s,
+      docs: s.docs.map(d => byId.has(d.id) ? { ...d, ...byId.get(d.id) } : d),
+    }));
+  }
+
+  return {
+    subscribe,
+    loadPacks, createPack, updatePack, setArchived, deletePack,
+    loadDocs, closePack, createDoc, renameDoc, deleteDoc, applyMove,
+  };
 }
 
 export const dossierStore = createDossierStore();
