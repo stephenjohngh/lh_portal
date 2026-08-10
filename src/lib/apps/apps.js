@@ -115,6 +115,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'dossier',
+    name: 'Dossier',
+    icon: 'book',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Author briefing packs for people outside the portal'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -140,6 +149,7 @@ export const APP_IDS = {
   INFO:            'info',
   MOR:             'mor',
   GOLDEN_THREAD:   'golden_thread',
+  DOSSIER:         'dossier',
   SETTINGS:        'settings'
 };
 

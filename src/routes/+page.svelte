@@ -49,6 +49,7 @@
     'info':             () => import('$lib/apps/info/InfoApp.svelte'),
     'mor':              () => import('$lib/apps/mor/MorApp.svelte'),
     'golden_thread':    () => import('$lib/apps/golden_thread/GoldenThreadApp.svelte'),
+    'dossier':          () => import('$lib/apps/dossier/DossierApp.svelte'),
   };
 
   let appComponents = {};   // appId -> component constructor (loaded chunks)
