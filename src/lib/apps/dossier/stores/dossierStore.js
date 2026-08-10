@@ -176,6 +176,18 @@ function createDossierStore() {
     return doc;
   }
 
+  /**
+   * Persist a doc's block content. Called on an autosave debounce, so it is
+   * deliberately quiet: no audit entry per keystroke-batch (the revision
+   * history is the record of what changed), and it returns the saved row so
+   * the caller can confirm.
+   */
+  async function saveDocBlocks(id, blocks, userId) {
+    const doc = await api.update('dossier_docs', id, { blocks, ...touch(userId) }, true);
+    update(s => ({ ...s, docs: s.docs.map(d => d.id === id ? { ...d, ...doc } : d) }));
+    return doc;
+  }
+
   /** Admin-only at RLS. Cascades to the whole subtree and its revisions. */
   async function deleteDoc(id, title, removedIds = []) {
     await api.delete('dossier_docs', id);
@@ -210,7 +222,7 @@ function createDossierStore() {
   return {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
-    loadDocs, closePack, createDoc, renameDoc, deleteDoc, applyMove,
+    loadDocs, closePack, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
   };
 }
 

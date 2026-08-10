@@ -16,6 +16,7 @@
   } from '../utils/docTree.js';
   import DocTree      from './DocTree.svelte';
   import DocFormModal from './DocFormModal.svelte';
+  import DocEditor    from './DocEditor.svelte';
 
   export let pack;
 
@@ -111,6 +112,11 @@
     }
   }
 
+  /** Autosave sink for DocEditor. Errors propagate so it can show "Not saved". */
+  async function handleSaveBlocks(docId, blocks) {
+    await dossierStore.saveDocBlocks(docId, blocks, $auth.user.id);
+  }
+
   function requestDelete(doc) { pendingDelete = doc; }
 
   async function confirmDelete() {
@@ -188,18 +194,18 @@
       {/if}
     </div>
 
-    <!-- ── Editor pane (placeholder until the Tiptap step) ── -->
+    <!-- ── Editor pane ── -->
     <div class="flex-1 min-w-0 flex flex-col">
       {#if selectedDoc}
-        <div class="px-6 py-4 border-b border-slate-700/50 shrink-0">
+        <div class="px-6 py-3 border-b border-slate-700/50 shrink-0">
           <h2 class="text-base font-semibold text-white">{selectedDoc.title}</h2>
           <p class="text-xs text-slate-500 mt-0.5 font-mono">{selectedDoc.slug}</p>
         </div>
-        <div class="flex-1 flex items-center justify-center p-8">
-          <p class="text-sm text-slate-500 text-center max-w-sm">
-            The block editor lands in the next step. The page exists and is saved —
-            it just has nothing in it yet.
-          </p>
+        <!-- One long-lived editor instance across page switches: DocEditor
+             flushes the outgoing page's pending save itself, which a {#key}
+             remount would not do reliably. -->
+        <div class="flex-1 min-h-0">
+          <DocEditor doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks} />
         </div>
       {:else}
         <div class="flex-1 flex items-center justify-center p-8">
