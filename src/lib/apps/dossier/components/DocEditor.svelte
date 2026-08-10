@@ -13,6 +13,7 @@
   import { fmtTime }     from '$lib/utils/dates';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
   import { buildExtensions, EMPTY_DOC } from '../utils/blockSchema.js';
+  import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
 
   /** The dossier_docs row being edited. */
   export let doc;
@@ -137,6 +138,19 @@
     { label: '—',  title: 'Divider',        is: null,          go: c => c.setHorizontalRule() },
   ];
 
+  // Callouts carry their variant, so each button reports active only for its own.
+  const CALLOUT_ACTIONS = CALLOUT_VARIANTS.map(v => ({
+    label: v.icon,
+    title: v.label,
+    is:    'callout',
+    attrs: { variant: v.value },
+    go:    c => c.toggleCallout(v.value),
+  }));
+
+  const STRUCTURE_ACTIONS = [
+    { label: '▸', title: 'Collapsible section', is: 'toggle', go: c => c.setToggle() },
+  ];
+
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
 </script>
 
@@ -150,6 +164,18 @@
           type="button"
           title={a.title}
           class="min-w-7 h-7 px-1.5 rounded text-xs transition-colors {a.cls ?? ''}
+                 {isActive(a) ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}"
+          on:click={run(a.go)}
+        >{a.label}</button>
+      {/each}
+
+      <span class="w-px h-4 bg-slate-700 mx-1"></span>
+
+      {#each [...CALLOUT_ACTIONS, ...STRUCTURE_ACTIONS] as a}
+        <button
+          type="button"
+          title={a.title}
+          class="min-w-7 h-7 px-1.5 rounded text-xs transition-colors
                  {isActive(a) ? 'bg-slate-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}"
           on:click={run(a.go)}
         >{a.label}</button>
@@ -242,4 +268,79 @@
   }
   :global(.dossier-prose pre code) { background: none; padding: 0; }
   :global(.dossier-prose a) { color: var(--lh-accent, #3c9683); text-decoration: underline; }
+
+  /* ── Callout ───────────────────────────────────────────────────────────── */
+  /* The icon is drawn here from data-variant, so the node itself stays a plain
+     declarative spec that the P3 reader can render without any editor code. */
+  :global(.dossier-prose div[data-callout]) {
+    position: relative;
+    border-radius: 6px;
+    border: 1px solid;
+    padding: 0.7rem 0.9rem 0.7rem 2.4rem;
+    margin: 0 0 0.85rem;
+  }
+  :global(.dossier-prose div[data-callout]::before) {
+    position: absolute;
+    left: 0.8rem;
+    top: 0.65rem;
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+  :global(.dossier-prose div[data-callout] > :last-child) { margin-bottom: 0; }
+
+  :global(.dossier-prose div[data-variant='info']) {
+    background: rgb(59 130 246 / 0.08);
+    border-color: rgb(59 130 246 / 0.35);
+  }
+  :global(.dossier-prose div[data-variant='info']::before)    { content: 'ℹ'; }
+
+  :global(.dossier-prose div[data-variant='warning']) {
+    background: rgb(245 158 11 / 0.08);
+    border-color: rgb(245 158 11 / 0.35);
+  }
+  :global(.dossier-prose div[data-variant='warning']::before) { content: '⚠'; }
+
+  :global(.dossier-prose div[data-variant='success']) {
+    background: rgb(34 197 94 / 0.08);
+    border-color: rgb(34 197 94 / 0.35);
+  }
+  :global(.dossier-prose div[data-variant='success']::before) { content: '✅'; }
+
+  /* ── Toggle ────────────────────────────────────────────────────────────── */
+  :global(.dossier-prose .dossier-toggle) {
+    position: relative;
+    padding-left: 1.4rem;
+    margin: 0 0 0.75rem;
+  }
+  :global(.dossier-prose .dossier-toggle-chevron) {
+    position: absolute;
+    left: 0;
+    top: 0.28rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    font-size: 0.6rem;
+    line-height: 1;
+    color: #94a3b8;                  /* slate-400 */
+    background: none;
+    border: 0;
+    cursor: pointer;
+    user-select: none;
+  }
+  :global(.dossier-prose .dossier-toggle-chevron:hover) { color: #e2e8f0; }
+
+  :global(.dossier-prose div[data-toggle-summary]) {
+    font-weight: 600;
+    color: #f1f5f9;
+    min-height: 1.5rem;
+  }
+  /* Collapsed hides only the body — the summary line stays visible. */
+  :global(.dossier-prose .dossier-toggle[data-open='false'] div[data-toggle-body]) {
+    display: none;
+  }
+  :global(.dossier-prose div[data-toggle-body]) {
+    margin-top: 0.35rem;
+    border-left: 1px solid #334155;  /* slate-700 */
+    padding-left: 0.75rem;
+  }
+  :global(.dossier-prose div[data-toggle-body] > :last-child) { margin-bottom: 0; }
 </style>

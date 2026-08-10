@@ -6,14 +6,16 @@
 // That buys a mature editor, and costs us the block-identity work below.
 //
 // P0 block set is deliberately small (plan §4): paragraph, heading 1-3, lists,
-// blockquote, horizontal rule. Callout and toggle arrive as custom nodes in the
-// next step; asset/embed/dataset blocks are P1-P2 by definition.
+// blockquote, horizontal rule, callout and toggle. Asset/embed/dataset blocks
+// are P1-P2 by definition.
 
 import { Extension } from '@tiptap/core';
 import StarterKit    from '@tiptap/starter-kit';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { newUuid }   from '$lib/utils/uuid';
 import { planIdFixes, collectBlocks } from './blockId.js';
+import { Callout }   from './calloutNode.js';
+import { Toggle, ToggleSummary, ToggleBody } from './toggleNode.js';
 
 /** An empty ProseMirror doc — matches the DB default on dossier_docs.blocks. */
 export const EMPTY_DOC = { type: 'doc', content: [] };
@@ -21,11 +23,12 @@ export const EMPTY_DOC = { type: 'doc', content: [] };
 /**
  * Node types that carry a stable `uid`. Deliberately excludes listItem: a link
  * to "the third bullet" is not a useful anchor, and stamping every item would
- * bloat the stored JSON for no benefit.
+ * bloat the stored JSON for no benefit. Likewise toggleSummary/toggleBody —
+ * the addressable thing is the toggle itself, not its two halves.
  */
 export const ADDRESSABLE_TYPES = [
   'paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList',
-  'codeBlock', 'horizontalRule',
+  'codeBlock', 'horizontalRule', 'callout', 'toggle',
 ];
 
 /**
@@ -92,6 +95,8 @@ export function buildExtensions() {
       // codeBlock, horizontalRule, hardBreak, history, link.
       link: { openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer' } },
     }),
+    Callout,
+    Toggle, ToggleSummary, ToggleBody,
     BlockId,
   ];
 }
