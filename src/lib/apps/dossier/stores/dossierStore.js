@@ -9,7 +9,7 @@
 // Every create MUST pass the current user id or the insert is rejected — this is
 // the internal owner-scoping boundary, not a convention we can skip.
 
-import { writable }     from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { api }          from '$lib/utils/api';
 import { logAudit }     from '$lib/utils/auditLogger';
 import { getLogger }    from '$lib/utils/logger';
@@ -17,6 +17,22 @@ import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 
 const logger = getLogger('dossierStore');
+
+/**
+ * Revision policy (plan §2). Both are PRODUCT rules and deliberately live here
+ * rather than in SQL, so they can be tuned without a migration.
+ */
+export const REVISION_CAP = 20;
+/** Autosaves inside this window reuse the last snapshot instead of making a new one. */
+export const REVISION_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * When each doc last had a revision written, in memory only. A page reload
+ * simply means the next save snapshots again — harmless, and much cheaper than
+ * querying the revision table on every autosave.
+ * @type {Map<string, number>}
+ */
+const lastRevisionAt = new Map();
 
 /** Most-recently-touched first; a pack that has never been edited falls back to its creation time. */
 function sortPacks(packs) {
@@ -32,7 +48,7 @@ function touch(userId) {
 }
 
 function createDossierStore() {
-  const { subscribe, update } = writable({
+  const store = writable({
     packs:        [],
     loading:      false,
     error:        null,
@@ -41,6 +57,10 @@ function createDossierStore() {
     docs:         [],
     loadingDocs:  false,
   });
+
+  const { subscribe, update } = store;
+  /** Read current state — needed to snapshot a doc's OUTGOING content on save. */
+  const getState = () => get(store);
 
   // ── Packs ────────────────────────────────────────────────────────────────
 
@@ -179,12 +199,90 @@ function createDossierStore() {
   /**
    * Persist a doc's block content. Called on an autosave debounce, so it is
    * deliberately quiet: no audit entry per keystroke-batch (the revision
-   * history is the record of what changed), and it returns the saved row so
-   * the caller can confirm.
+   * history is the record of what changed).
+   *
+   * Snapshots the OUTGOING content first, at most once per REVISION_INTERVAL_MS
+   * (or always, when the caller supplies a summary via saveVersion). A revision
+   * therefore holds a PRIOR state you can return to; the live row is the
+   * current state.
+   *
+   * @param {{ summary?: string, force?: boolean }} [opts]
    */
-  async function saveDocBlocks(id, blocks, userId) {
+  async function saveDocBlocks(id, blocks, userId, opts = {}) {
+    const state = getState();
+    const previous = state.docs.find(d => d.id === id) ?? null;
+
+    const last = lastRevisionAt.get(id);
+    const due  = last === undefined || (Date.now() - last) > REVISION_INTERVAL_MS;
+    if (previous && (opts.force || opts.summary || due)) {
+      await snapshot(previous, userId, opts.summary ?? null);
+    }
+
     const doc = await api.update('dossier_docs', id, { blocks, ...touch(userId) }, true);
     update(s => ({ ...s, docs: s.docs.map(d => d.id === id ? { ...d, ...doc } : d) }));
+    return doc;
+  }
+
+  /** Write one revision of a doc's current content, then prune to the cap. */
+  async function snapshot(doc, userId, summary) {
+    await api.create('dossier_doc_revisions', {
+      doc_id:     doc.id,
+      title:      doc.title,
+      blocks:     doc.blocks ?? { type: 'doc', content: [] },
+      summary,
+      created_by: userId,
+    });
+    lastRevisionAt.set(doc.id, Date.now());
+    await pruneRevisions(doc.id);
+  }
+
+  /**
+   * Keep only the newest REVISION_CAP revisions. Deleting is permitted by
+   * migration 173; UPDATE is still denied, so a snapshot can be pruned but
+   * never rewritten.
+   */
+  async function pruneRevisions(docId) {
+    try {
+      const rows = await api.get('dossier_doc_revisions', {
+        select: 'id', filters: { doc_id: docId },
+        orderBy: 'created_at', ascending: false,
+      });
+      for (const row of rows.slice(REVISION_CAP)) {
+        await api.delete('dossier_doc_revisions', row.id);
+      }
+    } catch (err) {
+      // Pruning is housekeeping — never fail a save because of it.
+      logger('⚠ could not prune revisions', err);
+    }
+  }
+
+  /** Explicit "save a version" with an author-written summary. */
+  async function saveVersion(id, blocks, userId, summary) {
+    return saveDocBlocks(id, blocks, userId, { summary, force: true });
+  }
+
+  /** Newest first. Not held in store state — the history modal is transient. */
+  async function loadRevisions(docId) {
+    return api.get('dossier_doc_revisions', {
+      select: 'id, doc_id, title, summary, created_at, created_by, blocks',
+      filters: { doc_id: docId },
+      orderBy: 'created_at', ascending: false,
+    });
+  }
+
+  /**
+   * Put a doc back to an earlier snapshot. The current content is snapshotted
+   * first, so a restore is itself undoable.
+   */
+  async function restoreRevision(docId, revision, userId) {
+    const doc = await saveDocBlocks(docId, revision.blocks, userId, {
+      force: true,
+      summary: `Restored the version from ${new Date(revision.created_at).toISOString()}`,
+    });
+    logAudit('restore', 'dossier_doc', docId, doc.title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info',
+      afterData: { restored_revision_id: revision.id },
+    });
     return doc;
   }
 
@@ -223,6 +321,7 @@ function createDossierStore() {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
     loadDocs, closePack, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
+    saveVersion, loadRevisions, restoreRevision,
   };
 }
 

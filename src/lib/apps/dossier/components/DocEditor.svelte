@@ -14,6 +14,7 @@
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
   import { buildExtensions, EMPTY_DOC } from '../utils/blockSchema.js';
   import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
+  import BlockContent from './BlockContent.svelte';
 
   /** The dossier_docs row being edited. */
   export let doc;
@@ -210,137 +211,12 @@
 
   <!-- Editor surface -->
   <div class="flex-1 min-h-0 overflow-y-auto">
-    <div class="max-w-3xl mx-auto px-8 py-6" bind:this={editorEl}></div>
+    <!-- min-h gives a generous click target below the last block; it belongs
+         to the editing surface, not to the shared prose styles. -->
+    <div class="max-w-3xl mx-auto px-8 py-6 min-h-[60vh]">
+      <!-- The editor attaches to BlockContent's host element so edit and read
+           modes share one stylesheet — see BlockContent.svelte. -->
+      <BlockContent mode="edit" bind:host={editorEl} />
+    </div>
   </div>
 </div>
-
-<style>
-  /* ProseMirror renders its own DOM, which Tailwind classes cannot reach —
-     hence :global. Mirrors the approach in common/RichTextEditor.svelte. */
-  :global(.dossier-prose) {
-    outline: none;
-    color: #e2e8f0;              /* slate-200 */
-    font-size: 0.9375rem;
-    line-height: 1.7;
-    min-height: 60vh;
-  }
-  :global(.dossier-prose p) { margin: 0 0 0.75rem 0; }
-  :global(.dossier-prose h1) {
-    font-size: 1.5rem; font-weight: 700; color: #fff;
-    margin: 1.5rem 0 0.75rem; line-height: 1.3;
-  }
-  :global(.dossier-prose h2) {
-    font-size: 1.2rem; font-weight: 650; color: #fff;
-    margin: 1.25rem 0 0.5rem; line-height: 1.35;
-  }
-  :global(.dossier-prose h3) {
-    font-size: 1.02rem; font-weight: 600; color: #f1f5f9;
-    margin: 1rem 0 0.4rem;
-  }
-  :global(.dossier-prose h1:first-child),
-  :global(.dossier-prose h2:first-child),
-  :global(.dossier-prose h3:first-child) { margin-top: 0; }
-
-  :global(.dossier-prose ul) { list-style: disc;    padding-left: 1.5rem; margin: 0 0 0.75rem; }
-  :global(.dossier-prose ol) { list-style: decimal; padding-left: 1.5rem; margin: 0 0 0.75rem; }
-  :global(.dossier-prose li) { margin: 0.15rem 0; }
-  :global(.dossier-prose li p) { margin: 0; }
-
-  :global(.dossier-prose blockquote) {
-    border-left: 3px solid var(--lh-accent, #3c9683);
-    padding-left: 0.9rem;
-    margin: 0 0 0.75rem;
-    color: #cbd5e1;              /* slate-300 */
-    font-style: italic;
-  }
-  :global(.dossier-prose hr) {
-    border: 0;
-    border-top: 1px solid #334155;   /* slate-700 */
-    margin: 1.5rem 0;
-  }
-  :global(.dossier-prose code) {
-    background: #1e293b; border-radius: 3px;
-    padding: 0.1em 0.35em; font-size: 0.875em;
-  }
-  :global(.dossier-prose pre) {
-    background: #0f172a; border: 1px solid #1e293b; border-radius: 6px;
-    padding: 0.75rem 0.9rem; margin: 0 0 0.75rem; overflow-x: auto;
-  }
-  :global(.dossier-prose pre code) { background: none; padding: 0; }
-  :global(.dossier-prose a) { color: var(--lh-accent, #3c9683); text-decoration: underline; }
-
-  /* ── Callout ───────────────────────────────────────────────────────────── */
-  /* The icon is drawn here from data-variant, so the node itself stays a plain
-     declarative spec that the P3 reader can render without any editor code. */
-  :global(.dossier-prose div[data-callout]) {
-    position: relative;
-    border-radius: 6px;
-    border: 1px solid;
-    padding: 0.7rem 0.9rem 0.7rem 2.4rem;
-    margin: 0 0 0.85rem;
-  }
-  :global(.dossier-prose div[data-callout]::before) {
-    position: absolute;
-    left: 0.8rem;
-    top: 0.65rem;
-    font-size: 0.95rem;
-    line-height: 1.3;
-  }
-  :global(.dossier-prose div[data-callout] > :last-child) { margin-bottom: 0; }
-
-  :global(.dossier-prose div[data-variant='info']) {
-    background: rgb(59 130 246 / 0.08);
-    border-color: rgb(59 130 246 / 0.35);
-  }
-  :global(.dossier-prose div[data-variant='info']::before)    { content: 'ℹ'; }
-
-  :global(.dossier-prose div[data-variant='warning']) {
-    background: rgb(245 158 11 / 0.08);
-    border-color: rgb(245 158 11 / 0.35);
-  }
-  :global(.dossier-prose div[data-variant='warning']::before) { content: '⚠'; }
-
-  :global(.dossier-prose div[data-variant='success']) {
-    background: rgb(34 197 94 / 0.08);
-    border-color: rgb(34 197 94 / 0.35);
-  }
-  :global(.dossier-prose div[data-variant='success']::before) { content: '✅'; }
-
-  /* ── Toggle ────────────────────────────────────────────────────────────── */
-  :global(.dossier-prose .dossier-toggle) {
-    position: relative;
-    padding-left: 1.4rem;
-    margin: 0 0 0.75rem;
-  }
-  :global(.dossier-prose .dossier-toggle-chevron) {
-    position: absolute;
-    left: 0;
-    top: 0.28rem;
-    width: 1.1rem;
-    height: 1.1rem;
-    font-size: 0.6rem;
-    line-height: 1;
-    color: #94a3b8;                  /* slate-400 */
-    background: none;
-    border: 0;
-    cursor: pointer;
-    user-select: none;
-  }
-  :global(.dossier-prose .dossier-toggle-chevron:hover) { color: #e2e8f0; }
-
-  :global(.dossier-prose div[data-toggle-summary]) {
-    font-weight: 600;
-    color: #f1f5f9;
-    min-height: 1.5rem;
-  }
-  /* Collapsed hides only the body — the summary line stays visible. */
-  :global(.dossier-prose .dossier-toggle[data-open='false'] div[data-toggle-body]) {
-    display: none;
-  }
-  :global(.dossier-prose div[data-toggle-body]) {
-    margin-top: 0.35rem;
-    border-left: 1px solid #334155;  /* slate-700 */
-    padding-left: 0.75rem;
-  }
-  :global(.dossier-prose div[data-toggle-body] > :last-child) { margin-bottom: 0; }
-</style>

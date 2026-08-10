@@ -227,6 +227,110 @@ describe('applyMove', () => {
   });
 });
 
+describe('revisions', () => {
+  // The store throttles snapshots per doc id in module-level state that
+  // outlives a single test, so each test uses its OWN doc id — otherwise a
+  // later test inherits an earlier one's "just snapshotted" timestamp and
+  // silently skips the snapshot it is trying to assert on.
+  let seq = 0;
+  const nextDocId = () => `d-${++seq}`;
+
+  /** Seed one doc and leave the mocks ready for a save. */
+  async function seedDoc(docId, blocks = { type: 'doc', content: [] }) {
+    h.api.get.mockResolvedValueOnce([{ id: docId, title: 'Overview', blocks }]);
+    await store.loadDocs(`p-${docId}`);
+    h.api.get.mockResolvedValue([]);              // prune query: nothing to trim
+  }
+
+  it('snapshots the OUTGOING content on the first save of a doc', async () => {
+    const id = nextDocId();
+    await seedDoc(id, { type: 'doc', content: ['before'] });
+    await store.saveDocBlocks(id, { type: 'doc', content: ['after'] }, 'u1');
+
+    const revision = h.api.create.mock.calls.find(c => c[0] === 'dossier_doc_revisions');
+    expect(revision).toBeTruthy();
+    // The snapshot holds the PRIOR state — that is what you can return to.
+    expect(revision[1]).toMatchObject({
+      doc_id: id, title: 'Overview', blocks: { type: 'doc', content: ['before'] },
+      created_by: 'u1',
+    });
+  });
+
+  it('does not snapshot again on a save moments later', async () => {
+    const id = nextDocId();
+    await seedDoc(id);
+    await store.saveDocBlocks(id, { type: 'doc', content: ['a'] }, 'u1');
+    const first = h.api.create.mock.calls.filter(c => c[0] === 'dossier_doc_revisions').length;
+
+    await store.saveDocBlocks(id, { type: 'doc', content: ['b'] }, 'u1');
+    const second = h.api.create.mock.calls.filter(c => c[0] === 'dossier_doc_revisions').length;
+
+    // Autosave fires constantly; without the interval every keystroke-batch
+    // would burn a version slot.
+    expect(second).toBe(first);
+  });
+
+  it('always snapshots when a summary is given, however recent the last one', async () => {
+    const id = nextDocId();
+    await seedDoc(id);
+    await store.saveDocBlocks(id, { type: 'doc', content: ['a'] }, 'u1');
+    const before = h.api.create.mock.calls.filter(c => c[0] === 'dossier_doc_revisions').length;
+
+    await store.saveVersion(id, { type: 'doc', content: ['b'] }, 'u1', 'By hand');
+    const calls = h.api.create.mock.calls.filter(c => c[0] === 'dossier_doc_revisions');
+
+    expect(calls.length).toBe(before + 1);
+    expect(calls.at(-1)[1]).toMatchObject({ summary: 'By hand' });
+  });
+
+  it('prunes past the cap, newest kept', async () => {
+    const id = nextDocId();
+    await seedDoc(id);
+    // 22 existing revisions, newest first — the oldest 2 must go.
+    const rows = Array.from({ length: 22 }, (_, i) => ({ id: `r${i}` }));
+    h.api.get.mockResolvedValueOnce(rows);
+
+    await store.saveDocBlocks(id, { type: 'doc', content: ['x'] }, 'u1');
+
+    const deleted = h.api.delete.mock.calls
+      .filter(c => c[0] === 'dossier_doc_revisions').map(c => c[1]);
+    expect(deleted).toEqual(['r20', 'r21']);
+  });
+
+  it('never fails a save because pruning failed', async () => {
+    const id = nextDocId();
+    await seedDoc(id);
+    h.api.get.mockRejectedValueOnce(new Error('prune boom'));
+    await expect(
+      store.saveDocBlocks(id, { type: 'doc', content: ['x'] }, 'u1')
+    ).resolves.toBeTruthy();
+  });
+
+  it('loads revisions newest first', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'r1' }]);
+    await store.loadRevisions('d1');
+    expect(h.api.get).toHaveBeenCalledWith('dossier_doc_revisions', expect.objectContaining({
+      filters: { doc_id: 'd1' }, orderBy: 'created_at', ascending: false,
+    }));
+  });
+
+  it('restore snapshots the current content first, so it is itself undoable', async () => {
+    const id = nextDocId();
+    await seedDoc(id, { type: 'doc', content: ['current'] });
+
+    await store.restoreRevision(id,
+      { id: 'r1', blocks: { type: 'doc', content: ['old'] }, created_at: '2026-01-01T00:00:00Z' },
+      'u1');
+
+    const revisions = h.api.create.mock.calls.filter(c => c[0] === 'dossier_doc_revisions');
+    expect(revisions.at(-1)[1].blocks).toEqual({ type: 'doc', content: ['current'] });
+
+    // …and the doc itself is written back to the old content.
+    const write = h.api.update.mock.calls.find(c => c[0] === 'dossier_docs');
+    expect(write[2].blocks).toEqual({ type: 'doc', content: ['old'] });
+  });
+});
+
 describe('store contract', () => {
   it('exposes only subscribe + named methods (never set/update)', () => {
     expect(store.set).toBeUndefined();

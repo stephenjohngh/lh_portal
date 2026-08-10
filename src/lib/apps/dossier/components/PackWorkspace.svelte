@@ -17,6 +17,7 @@
   import DocTree      from './DocTree.svelte';
   import DocFormModal from './DocFormModal.svelte';
   import DocEditor    from './DocEditor.svelte';
+  import RevisionHistoryModal from './RevisionHistoryModal.svelte';
 
   export let pack;
 
@@ -117,6 +118,58 @@
     await dossierStore.saveDocBlocks(docId, blocks, $auth.user.id);
   }
 
+  // ── Version history ───────────────────────────────────────────────────────
+
+  let showHistory      = false;
+  let revisions        = [];
+  let loadingRevisions = false;
+  let historyModalRef;
+  let editorRef;
+
+  async function openHistory() {
+    const docId = selectedId;
+    if (!docId) return;
+    // Flush any pending autosave first, or the newest edits are missing from
+    // the comparison the user is about to make.
+    await editorRef?.flushNow();
+    showHistory = true;
+    loadingRevisions = true;
+    try {
+      revisions = await dossierStore.loadRevisions(docId);
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      loadingRevisions = false;
+    }
+  }
+
+  async function handleRestore(e) {
+    const revision = e.detail;
+    const docId    = selectedId;
+    try {
+      await dossierStore.restoreRevision(docId, revision, $auth.user.id);
+      revisions = await dossierStore.loadRevisions(docId);
+      historyModalRef?.done();
+      showHistory = false;
+    } catch (err) {
+      historyModalRef?.fail(err.message);
+    }
+  }
+
+  async function saveVersion() {
+    const docId = selectedId;
+    if (!docId) return;
+    await editorRef?.flushNow();
+    const current = docs.find(d => d.id === docId);
+    try {
+      await dossierStore.saveVersion(
+        docId, current?.blocks, $auth.user.id, 'Saved by hand');
+      notice = 'Version saved.';
+    } catch (err) {
+      treeError = err.message;
+    }
+  }
+
   function requestDelete(doc) { pendingDelete = doc; }
 
   async function confirmDelete() {
@@ -197,15 +250,28 @@
     <!-- ── Editor pane ── -->
     <div class="flex-1 min-w-0 flex flex-col">
       {#if selectedDoc}
-        <div class="px-6 py-3 border-b border-slate-700/50 shrink-0">
-          <h2 class="text-base font-semibold text-white">{selectedDoc.title}</h2>
-          <p class="text-xs text-slate-500 mt-0.5 font-mono">{selectedDoc.slug}</p>
+        <div class="flex items-start gap-3 px-6 py-3 border-b border-slate-700/50 shrink-0">
+          <div class="flex-1 min-w-0">
+            <h2 class="text-base font-semibold text-white truncate">{selectedDoc.title}</h2>
+            <p class="text-xs text-slate-500 mt-0.5 font-mono">{selectedDoc.slug}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            {#if canEdit}
+              <Button variant="secondary" size="small" on:click={saveVersion}>
+                Save version
+              </Button>
+            {/if}
+            <Button variant="secondary" size="small" on:click={openHistory}>
+              History
+            </Button>
+          </div>
         </div>
         <!-- One long-lived editor instance across page switches: DocEditor
              flushes the outgoing page's pending save itself, which a {#key}
              remount would not do reliably. -->
         <div class="flex-1 min-h-0">
-          <DocEditor doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks} />
+          <DocEditor bind:this={editorRef}
+                     doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks} />
         </div>
       {:else}
         <div class="flex-1 flex items-center justify-center p-8">
@@ -225,6 +291,17 @@
   parent={newDocParent}
   on:save={handleDocSave}
   on:close={() => showDocModal = false}
+/>
+
+<RevisionHistoryModal
+  bind:this={historyModalRef}
+  bind:show={showHistory}
+  doc={selectedDoc}
+  {revisions}
+  loading={loadingRevisions}
+  {canEdit}
+  on:restore={handleRestore}
+  on:close={() => showHistory = false}
 />
 
 <ConfirmDialog
