@@ -16,22 +16,34 @@ export const FILE_PROXY_PREFIX = '/api/media/file/';
  * The sandbox a PDF preview frame runs under. One constant so the node's
  * renderHTML, its edit-mode node view and the sanitiser cannot drift apart.
  *
- * `allow-scripts` is required, not optional: Firefox renders PDFs with pdf.js,
- * which IS script. Under a no-token sandbox it cannot run, so the browser falls
- * back to downloading the file and then blocks that too ("Download was blocked
- * because the triggering iframe has the sandbox flag set") — a blank box.
+ * Arrived at empirically, after two wrong guesses:
+ *   sandbox=""              → Firefox cannot run pdf.js (it IS script), falls
+ *                             back to downloading, then blocks the download.
+ *   sandbox="allow-scripts" → same result. The remaining blocker is the OPAQUE
+ *                             ORIGIN: Firefox's PDF viewer declines to run in a
+ *                             frame that has no real origin.
+ *   + allow-same-origin     → the viewer runs.
  *
- * Crucially `allow-same-origin` is NOT granted, so the frame keeps an opaque
- * origin: script inside it cannot reach this app's DOM, cookies or storage.
- * (Granting both together is the combination that lets a frame escape its own
- * sandbox, and is exactly what we avoid.)
+ * ⚠ Be honest about what this costs. `allow-scripts` + `allow-same-origin`
+ * together means the frame could, if it were ever running script of its own,
+ * remove its own sandbox. So the sandbox is NOT the security boundary here.
  *
- * The XSS route this originally guarded is closed further up anyway: an iframe
- * is only ever produced for a file whose recorded type is application/pdf, that
- * type is what we declare on the response, and the proxy sends nosniff — so the
- * browser will not reinterpret the bytes as HTML however they were uploaded.
+ * The actual boundary is upstream, and does not depend on this attribute:
+ *   1. An iframe is only produced for a file whose recorded type is
+ *      application/pdf. Anything else renders as a card.
+ *   2. That is therefore what we declare on the response — the `?mime` hint is
+ *      validated against a tiny non-scriptable allow-list before it is used.
+ *   3. The proxy sends X-Content-Type-Options: nosniff, so the browser will not
+ *      reinterpret those bytes as HTML however the file was actually uploaded.
+ *   4. The src must pass isProxyUrl(), so a frame can only ever point at our
+ *      own storage proxy — enforced again in the sanitiser.
+ *
+ * What the sandbox still buys, even in this permissive form: no top-level
+ * navigation, no popups, no form submission, no modals. `allow-downloads` is
+ * granted so that a browser which still declines to render gives the user the
+ * file, rather than the dead end of a blocked download and an empty box.
  */
-export const ASSET_FRAME_SANDBOX = 'allow-scripts';
+export const ASSET_FRAME_SANDBOX = 'allow-scripts allow-same-origin allow-downloads';
 
 /**
  * Which preview to render for a mime type.
