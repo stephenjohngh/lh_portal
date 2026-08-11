@@ -30,14 +30,15 @@ const ALLOWED_TAGS = [
   'code', 'pre',
   'strong', 'em', 's', 'b', 'i', 'u',
   'a', 'span', 'div',
-  // Asset previews (P1 step 2). `object` is a tag one would normally never
-  // whitelist — it can embed arbitrary content types — so it is admitted here
-  // ONLY together with the hook below, which strips any <object> whose data
-  // does not point at this app's own file proxy.
-  'img', 'object',
+  // Asset previews (P1 step 2). `iframe` is a tag one would normally never
+  // whitelist, so it is admitted ONLY together with the hook below, which
+  // strips any iframe (or img) whose src is not this app's own file proxy.
+  // `object` is deliberately NOT here: the portal's CSP sets object-src 'none',
+  // and an iframe is the narrower primitive.
+  'img', 'iframe',
 ];
 
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'data', 'type'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'sandbox'];
 
 /**
  * Sanitise generated block HTML before it reaches {@html}.
@@ -51,13 +52,17 @@ export function sanitizeBlockHtml(html) {
   // DOMPurify needs a window; during SSR there is nothing to render into.
   if (typeof window === 'undefined') return html;
 
-  // Confine <object> and <img> to this app's own file proxy. Without this, the
-  // `object` tag above would be a general-purpose embed primitive in the one
-  // feature designed to be handed to an outsider.
+  // Confine <iframe> and <img> to this app's own file proxy, and force every
+  // surviving iframe to be sandboxed. Without this the iframe tag above would
+  // be a general-purpose embed primitive in the one feature designed to be
+  // handed to an outsider.
   const hook = (node) => {
     const tag = node.tagName?.toLowerCase();
-    if (tag === 'object' && !isProxyUrl(node.getAttribute('data'))) {
-      node.remove();
+    if (tag === 'iframe') {
+      if (!isProxyUrl(node.getAttribute('src'))) { node.remove(); return; }
+      // Re-assert the sandbox here rather than trusting the stored HTML: this
+      // is the layer that sees what actually reaches the page.
+      node.setAttribute('sandbox', '');
     } else if (tag === 'img' && !isProxyUrl(node.getAttribute('src'))) {
       node.remove();
     }

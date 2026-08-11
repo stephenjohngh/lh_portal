@@ -45,6 +45,10 @@ export async function GET({ params }) {
         'Content-Type':   mimeType,
         'Cache-Control':  'private, max-age=3600',
         'Content-Length': String(data.length),
+        // These are user-uploaded bytes served from our own origin. Without
+        // nosniff a browser may ignore the declared type and sniff the content
+        // — e.g. treating an uploaded file as HTML and running it here.
+        'X-Content-Type-Options': 'nosniff',
       },
     });
   } catch (err) {

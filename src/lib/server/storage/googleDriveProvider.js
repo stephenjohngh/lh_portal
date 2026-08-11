@@ -104,6 +104,23 @@ function mapFile(f) {
 }
 
 /** @type {import('./storageProvider.js').StorageProvider} */
+/**
+ * Read one header regardless of the shape the HTTP client handed back:
+ * a fetch-style `Headers`, or a plain object with unpredictable key casing.
+ * @returns {string|undefined}
+ */
+export function readHeader(headers, name) {
+  if (!headers) return undefined;
+  if (typeof headers.get === 'function') return headers.get(name) ?? undefined;
+  const wanted = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === wanted) {
+      return Array.isArray(value) ? value[0] : value;
+    }
+  }
+  return undefined;
+}
+
 export const googleDriveProvider = {
   name: 'google_drive',
 
@@ -245,9 +262,31 @@ export const googleDriveProvider = {
       { fileId, supportsAllDrives: true, alt: 'media' },
       { responseType: 'arraybuffer' },
     );
+
+    // The response header is the best source, but gaxios has returned headers
+    // as both a plain object and a fetch-style Headers across versions, so read
+    // it defensively. Falling back to Drive's own stored mimeType costs one
+    // extra call and only on the path where the header is unreadable.
+    //
+    // ⚠ This previously defaulted to 'image/jpeg', which silently mislabelled
+    // every non-image: a PDF was served as a JPEG, so browsers refused it with
+    // "the image cannot be displayed". Images worked only by coincidence. Never
+    // guess a type here — an honest octet-stream downloads, a wrong type breaks.
+    let mimeType = readHeader(res.headers, 'content-type');
+    if (!mimeType) {
+      try {
+        const meta = await drive.files.get({
+          fileId, supportsAllDrives: true, fields: 'mimeType',
+        });
+        mimeType = meta?.data?.mimeType;
+      } catch {
+        // fall through to the generic type
+      }
+    }
+
     return {
       data:     Buffer.from(res.data),
-      mimeType: res.headers?.['content-type'] ?? 'image/jpeg',
+      mimeType: (mimeType || 'application/octet-stream').split(';')[0].trim(),
     };
   },
 

@@ -66,21 +66,37 @@ export const Asset = Node.create({
     if (kind === 'image') {
       return ['div', wrapper,
         ['img', { src: url, alt: name, class: 'dossier-asset-image' }],
-        ['div', { class: 'dossier-asset-caption' }, name],
+        // The caption is the full-size affordance: an <a> around the <img>
+        // itself would fight ProseMirror's node selection in edit mode.
+        ['div', { class: 'dossier-asset-caption' },
+          ['a', { href: url, target: '_blank', rel: 'noopener noreferrer' },
+            `${name} — view full size`],
+        ],
       ];
     }
 
     if (kind === 'pdf') {
       return ['div', wrapper,
-        // <object> is allowed through the sanitiser ONLY when its data points at
-        // our own proxy — see blockRender.sanitizeBlockHtml.
-        ['object', {
-          data: url,
-          type: 'application/pdf',
+        // An <iframe>, not an <object>: the portal's CSP sets object-src 'none'
+        // (good hardening, left alone), while frame-src falls back to
+        // default-src 'self' — so a same-origin iframe is already permitted.
+        //
+        // `sandbox` with no tokens gives the frame an opaque origin and no
+        // scripting. That matters because these are USER-UPLOADED bytes: a file
+        // stored as application/pdf but actually HTML would otherwise execute
+        // in this app's own origin. The browser's built-in PDF viewer is not
+        // page script, so it still renders.
+        //
+        // The sanitiser admits iframes only when the src is our own proxy.
+        ['iframe', {
+          src: url,
+          sandbox: '',
+          title: name,
           class: 'dossier-asset-pdf',
         }],
         ['div', { class: 'dossier-asset-caption' },
-          ['a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, name],
+          ['a', { href: url, target: '_blank', rel: 'noopener noreferrer' },
+            `${name} — open`],
         ],
       ];
     }
