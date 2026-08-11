@@ -448,7 +448,11 @@
     </div>
 
     <!-- ── Editor pane ── -->
-    <div class="flex-1 min-w-0 flex flex-col">
+    <!-- min-h-0 is load-bearing: a flex item defaults to min-height:auto and
+         refuses to shrink below its content, so without it a long page grows
+         this pane past the viewport instead of letting the editor's own scroll
+         area take over — which scrolls the toolbar off screen with it. -->
+    <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       {#if selectedDoc}
         <div class="flex items-start gap-3 px-6 py-3 border-b border-slate-700/50 shrink-0">
           <div class="flex-1 min-w-0">

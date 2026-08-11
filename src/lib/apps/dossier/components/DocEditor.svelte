@@ -114,7 +114,10 @@
       extensions: buildExtensions({ filesProvider: filesStore }),
       content: doc?.blocks ?? EMPTY_DOC,
       editable,
-      editorProps: { attributes: { class: 'dossier-prose' } },
+      // The editing class gives the ProseMirror element itself a tall minimum,
+      // so it owns the empty space below the last block and places the cursor
+      // at the NEAREST line on click rather than always jumping to the end.
+      editorProps: { attributes: { class: 'dossier-prose dossier-prose-editing' } },
       onUpdate: () => {
         if (swapping) return;
         scheduleSave(loadedDocId);
@@ -197,6 +200,20 @@
   }
 
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
+
+  /**
+   * Clicking the empty space below the last block puts the cursor at the end.
+   *
+   * That space sits OUTSIDE ProseMirror's own DOM, so without this a click
+   * there does nothing at all — the author has to find the last line and click
+   * exactly on it to carry on writing.
+   */
+  function focusEnd(event) {
+    if (!editable) return;
+    // Only when the click landed on the padding itself, never on content.
+    if (event.target !== event.currentTarget) return;
+    editor?.commands.focus('end');
+  }
 </script>
 
 <div class="flex flex-col h-full min-h-0">
@@ -285,7 +302,9 @@
   <div class="flex-1 min-h-0 overflow-y-auto">
     <!-- min-h gives a generous click target below the last block; it belongs
          to the editing surface, not to the shared prose styles. -->
-    <div class="max-w-3xl mx-auto px-8 py-6 min-h-[60vh]">
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="max-w-3xl mx-auto px-8 py-6 min-h-[60vh] {editable ? 'cursor-text' : ''}"
+         on:click={focusEnd}>
       <!-- The editor attaches to BlockContent's host element so edit and read
            modes share one stylesheet — see BlockContent.svelte. -->
       <BlockContent mode="edit" bind:host={editorEl} />

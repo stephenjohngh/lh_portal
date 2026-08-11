@@ -55,6 +55,11 @@
     font-size: 0.9375rem;
     line-height: 1.7;
   }
+  /* Edit mode only: a tall writing surface, so there is always somewhere to
+     click below the last block. Read mode must NOT have this — a short page in
+     a revision preview or a published pack should not carry 60vh of blank. */
+  :global(.dossier-prose-editing) { min-height: 60vh; }
+
   :global(.dossier-prose p) { margin: 0 0 0.75rem 0; }
   :global(.dossier-prose h1) {
     font-size: 1.5rem; font-weight: 700; color: #fff;
