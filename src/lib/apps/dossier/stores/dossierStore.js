@@ -17,6 +17,7 @@ import { listDocuments } from '$lib/utils/documentApi';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
+import { coerceRecordFields, templateFor } from '../utils/datasetTemplates.js';
 
 const logger = getLogger('dossierStore');
 
@@ -88,6 +89,9 @@ function createDossierStore() {
     docs:         [],
     loadingDocs:  false,
     files:        [],   // document_library rows on this pack's shelf
+    datasets:     [],   // the pack's structured lists (chronology etc.)
+    records:      [],   // rows of the dataset currently open
+    activeDatasetId: null,
   }));
 
   const { subscribe, update } = store;
@@ -194,6 +198,101 @@ function createDossierStore() {
     }
   }
 
+  // ── Datasets ─────────────────────────────────────────────────────────────
+  // A dataset belongs to the pack, like the file shelf — one chronology,
+  // referenced from wherever it is useful.
+
+  async function loadDatasets(packId) {
+    if (!packId) { update(s => ({ ...s, datasets: [] })); return []; }
+    try {
+      const datasets = await api.get('dossier_datasets', {
+        filters: { pack_id: packId }, orderBy: 'created_at', ascending: true,
+      });
+      update(s => ({ ...s, datasets }));
+      return datasets;
+    } catch (err) {
+      // Non-fatal: a pack is still editable without its tables.
+      logger('⚠ could not load datasets', err);
+      update(s => ({ ...s, datasets: [] }));
+      return [];
+    }
+  }
+
+  async function createDataset(packId, key, userId) {
+    const template = templateFor(key);
+    if (!template) throw new Error(`Unknown dataset type: ${key}`);
+
+    const dataset = await api.create('dossier_datasets', {
+      pack_id: packId, key, title: template.title,
+      created_by: userId, ...touch(userId),
+    }, true);
+
+    update(s => ({ ...s, datasets: [...s.datasets, dataset] }));
+    logAudit('create', 'dossier_dataset', dataset.id, dataset.title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'info',
+      afterData: { pack_id: packId, key },
+    });
+    return dataset;
+  }
+
+  async function deleteDataset(id, title) {
+    await api.delete('dossier_datasets', id);
+    update(s => ({
+      ...s,
+      datasets: s.datasets.filter(d => d.id !== id),
+      records: s.activeDatasetId === id ? [] : s.records,
+      activeDatasetId: s.activeDatasetId === id ? null : s.activeDatasetId,
+    }));
+    logAudit('delete', 'dossier_dataset', id, title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+    });
+  }
+
+  /** Rows stay unsorted in state — sortRecords() orders them at render. */
+  async function loadRecords(datasetId) {
+    update(s => ({ ...s, activeDatasetId: datasetId, records: [] }));
+    if (!datasetId) return [];
+    const records = await api.get('dossier_records', {
+      filters: { dataset_id: datasetId }, orderBy: 'position', ascending: true,
+    });
+    update(s => ({ ...s, records }));
+    return records;
+  }
+
+  async function createRecord(dataset, fields, userId) {
+    const state = getState();
+    const position = state.records.length
+      ? Math.max(...state.records.map(r => r.position ?? 0)) + 1
+      : 0;
+
+    const record = await api.create('dossier_records', {
+      dataset_id: dataset.id,
+      // Coerced against the template, so a stray key or a bad date never lands.
+      fields: coerceRecordFields(dataset.key, fields),
+      position,
+      created_by: userId, ...touch(userId),
+    }, true);
+
+    update(s => ({ ...s, records: [...s.records, record] }));
+    return record;
+  }
+
+  async function updateRecord(dataset, id, patch, userId) {
+    const body = { ...touch(userId) };
+    if (patch.fields) body.fields = coerceRecordFields(dataset.key, patch.fields);
+    if ('document_id' in patch) body.document_id = patch.document_id;
+    if ('doc_id' in patch) body.doc_id = patch.doc_id;
+
+    const record = await api.update('dossier_records', id, body, true);
+    update(s => ({ ...s, records: s.records.map(r => r.id === id ? { ...r, ...record } : r) }));
+    return record;
+  }
+
+  async function deleteRecord(id) {
+    await api.delete('dossier_records', id);
+    update(s => ({ ...s, records: s.records.filter(r => r.id !== id) }));
+  }
+
   // ── Docs ─────────────────────────────────────────────────────────────────
 
   /** Load the doc tree for a pack. Rows stay flat in state — buildTree() nests at render. */
@@ -213,7 +312,10 @@ function createDossierStore() {
   }
 
   function closePack() {
-    update(s => ({ ...s, activePackId: null, docs: [], files: [] }));
+    update(s => ({
+      ...s, activePackId: null, docs: [], files: [],
+      datasets: [], records: [], activeDatasetId: null,
+    }));
   }
 
   /**
@@ -429,6 +531,8 @@ function createDossierStore() {
   return {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
+    loadDatasets, createDataset, deleteDataset,
+    loadRecords, createRecord, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
   };

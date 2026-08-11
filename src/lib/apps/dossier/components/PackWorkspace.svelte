@@ -24,6 +24,8 @@
   import RevisionHistoryModal from './RevisionHistoryModal.svelte';
   import AssetPickerModal     from './AssetPickerModal.svelte';
   import PagePickerModal     from './PagePickerModal.svelte';
+  import DatasetTable        from './DatasetTable.svelte';
+  import { DATASET_TEMPLATES, TEMPLATE_KEYS } from '../utils/datasetTemplates.js';
   import { assetAttrsFromDocument } from '../utils/assetPreview.js';
   import { findBrokenReferences, describeBrokenReferences } from '../utils/brokenRefs.js';
   import { extractAllLinks } from '../utils/docLinks.js';
@@ -151,6 +153,71 @@
 
   function handlePickAsset(file) {
     editorRef?.insertAsset(assetAttrsFromDocument(file));
+  }
+
+  // ── Datasets ──────────────────────────────────────────────────────────────
+  // Selecting a table takes over the main pane, exactly as selecting a page
+  // does — they are peers in the pack, not a panel bolted onto a page.
+
+  let selectedDatasetId = null;
+
+  $: datasets = $dossierStore.datasets;
+  $: records  = $dossierStore.records;
+  $: selectedDataset = datasets.find(d => d.id === selectedDatasetId) ?? null;
+  $: if (pack?.id) dossierStore.loadDatasets(pack.id);
+
+  async function openDataset(dataset) {
+    const id = dataset.id;      // capture before the await
+    await editorRef?.flushNow();
+    selectedDatasetId = id;
+    selectedId = null;          // a table and a page cannot both be open
+    try {
+      await dossierStore.loadRecords(id);
+    } catch (err) {
+      treeError = err.message;
+    }
+  }
+
+  function selectPage(id) {
+    selectedDatasetId = null;
+    selectedId = id;
+  }
+
+  async function addDataset(key) {
+    try {
+      const dataset = await dossierStore.createDataset(pack.id, key, $auth.user.id);
+      await openDataset(dataset);
+    } catch (err) {
+      treeError = err.message;
+    }
+  }
+
+  async function handleRecordCreate(e) {
+    try {
+      await dossierStore.createRecord(selectedDataset, e.detail.fields, $auth.user.id);
+    } catch (err) { treeError = err.message; }
+  }
+
+  async function handleRecordUpdate(e) {
+    const { id, fields } = e.detail;
+    try {
+      await dossierStore.updateRecord(selectedDataset, id, { fields }, $auth.user.id);
+    } catch (err) { treeError = err.message; }
+  }
+
+  async function handleRecordDelete(e) {
+    try {
+      await dossierStore.deleteRecord(e.detail);
+    } catch (err) { treeError = err.message; }
+  }
+
+  async function handleDatasetDelete() {
+    const target = selectedDataset;
+    if (!target) return;
+    try {
+      await dossierStore.deleteDataset(target.id, target.title);
+      selectedDatasetId = null;
+    } catch (err) { treeError = err.message; }
   }
 
   // ── Cross-links ───────────────────────────────────────────────────────────
@@ -393,7 +460,7 @@
             nodes={tree}
             {selectedId}
             bind:collapsed
-            on:select={(e)   => { selectedId = e.detail.id; notice = ''; }}
+            on:select={(e)   => { selectPage(e.detail.id); notice = ''; }}
             on:move={handleMove}
             on:newChild={(e) => openNewDoc(e.detail)}
             on:rename={(e)   => openRename(e.detail)}
@@ -407,6 +474,42 @@
           <p class="text-xs text-amber-400/90">{notice}</p>
         </div>
       {/if}
+
+      <!-- ── Tables: the pack's structured lists ── -->
+      <div class="border-t border-slate-700 shrink-0">
+        <div class="flex items-center gap-2 px-3 py-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
+            Tables
+          </span>
+          {#if canEdit}
+            <!-- Only offer templates the pack does not already have: two
+                 chronologies is a mistake, not a feature. -->
+            {#each TEMPLATE_KEYS.filter(k => !datasets.some(d => d.key === k)) as key}
+              <button
+                class="text-xs text-slate-500 hover:text-white px-1"
+                title="Add a {DATASET_TEMPLATES[key].title.toLowerCase()} to this pack"
+                on:click={() => addDataset(key)}
+              >+ {DATASET_TEMPLATES[key].title}</button>
+            {/each}
+          {/if}
+        </div>
+
+        {#if datasets.length}
+          <div class="pb-1.5">
+            {#each datasets as dataset (dataset.id)}
+              <button
+                class="flex items-center gap-2 w-full px-3 py-1 text-left text-sm
+                       hover:bg-slate-700/50 transition-colors
+                       {selectedDatasetId === dataset.id ? 'bg-slate-700 text-white' : 'text-slate-300'}"
+                on:click={() => openDataset(dataset)}
+              >
+                <span class="text-slate-600 text-xs shrink-0">▦</span>
+                <span class="truncate">{dataset.title}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <!-- ── Files: the pack's evidence shelf ── -->
       <!-- Conditional class rather than class:flex-1 + shrink-0 — those two are
@@ -453,7 +556,17 @@
          this pane past the viewport instead of letting the editor's own scroll
          area take over — which scrolls the toolbar off screen with it. -->
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
-      {#if selectedDoc}
+      {#if selectedDataset}
+        <DatasetTable
+          dataset={selectedDataset}
+          {records}
+          {canEdit}
+          on:createRecord={handleRecordCreate}
+          on:updateRecord={handleRecordUpdate}
+          on:deleteRecord={handleRecordDelete}
+          on:deleteDataset={handleDatasetDelete}
+        />
+      {:else if selectedDoc}
         <!-- One row, not three. Title, address, backlinks and actions all live
              here: five stacked bars above the editor left very little room to
              actually write. -->

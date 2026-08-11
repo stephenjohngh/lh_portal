@@ -489,6 +489,76 @@ describe('loadBacklinks', () => {
   });
 });
 
+describe('datasets', () => {
+  it('creates a dataset from a template, taking its title from code', () => {
+    // The title is not author-supplied: the template owns it, so every pack's
+    // chronology is called the same thing.
+    return store.createDataset('p1', 'chronology', 'u1').then(() => {
+      expect(h.api.create.mock.calls[0][1]).toMatchObject({
+        pack_id: 'p1', key: 'chronology', title: 'Chronology', created_by: 'u1',
+      });
+    });
+  });
+
+  it('refuses an unknown template rather than writing a row the DB will reject', async () => {
+    // migration 175 has a CHECK constraint; failing here gives a clear message
+    // instead of a Postgres violation.
+    await expect(store.createDataset('p1', 'invoices', 'u1'))
+      .rejects.toThrow(/Unknown dataset type/);
+    expect(h.api.create).not.toHaveBeenCalled();
+  });
+
+  it('loads a dataset-s rows in stored order', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'r1', position: 0 }]);
+    await store.loadRecords('ds1');
+    expect(h.api.get).toHaveBeenCalledWith('dossier_records', {
+      filters: { dataset_id: 'ds1' }, orderBy: 'position', ascending: true,
+    });
+    expect(get(store).records).toHaveLength(1);
+  });
+
+  it('coerces a new row against the template, dropping unknown columns', async () => {
+    h.api.get.mockResolvedValueOnce([]);
+    await store.loadRecords('ds1');
+
+    await store.createRecord({ id: 'ds1', key: 'chronology' }, {
+      date: '2026-02-14', event: 'Contract signed', rogue: 'nope',
+    }, 'u1');
+
+    const row = h.api.create.mock.calls.at(-1)[1];
+    expect(row.fields).toEqual({
+      date: '2026-02-14', event: 'Contract signed', significance: '',
+    });
+    expect(row.fields).not.toHaveProperty('rogue');
+  });
+
+  it('appends after the highest existing position', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'r1', position: 0 }, { id: 'r2', position: 4 }]);
+    await store.loadRecords('ds1');
+    await store.createRecord({ id: 'ds1', key: 'chronology' }, { event: 'x' }, 'u1');
+    expect(h.api.create.mock.calls.at(-1)[1].position).toBe(5);
+  });
+
+  it('rejects a bad date on update instead of storing it', async () => {
+    await store.updateRecord({ id: 'ds1', key: 'chronology' }, 'r1',
+      { fields: { date: '14/02/2026', event: 'x' } }, 'u1');
+    expect(h.api.update.mock.calls.at(-1)[2].fields.date).toBe('');
+  });
+
+  it('clears the open table when its dataset is deleted', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'ds1', key: 'chronology', title: 'Chronology' }]);
+    await store.loadDatasets('p1');
+    h.api.get.mockResolvedValueOnce([{ id: 'r1' }]);
+    await store.loadRecords('ds1');
+
+    await store.deleteDataset('ds1', 'Chronology');
+
+    expect(get(store).datasets).toEqual([]);
+    expect(get(store).records).toEqual([]);
+    expect(get(store).activeDatasetId).toBeNull();
+  });
+});
+
 describe('store contract', () => {
   it('exposes only subscribe + named methods (never set/update)', () => {
     expect(store.set).toBeUndefined();
