@@ -503,6 +503,7 @@
             {:else}
             <DocEditor bind:this={editorRef}
                        doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks}
+                       {files}
                        on:pickAsset={() => showAssetPicker = true}
                        on:pickPage={() => openPicker('link')}
                        on:pickEmbed={() => openPicker('embed')} />

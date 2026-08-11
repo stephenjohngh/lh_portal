@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   previewKind, fileProxyUrl, isProxyUrl, fmtSize, assetAttrsFromDocument,
-  FILE_PROXY_PREFIX,
+  assetIsMissing, FILE_PROXY_PREFIX,
 } from './assetPreview.js';
 
 describe('previewKind', () => {
@@ -98,6 +98,31 @@ describe('isProxyUrl — the sanitiser trusts this', () => {
     expect(isProxyUrl('data:text/html,<script>')).toBe(false);
     expect(isProxyUrl(null)).toBe(false);
     expect(isProxyUrl(undefined)).toBe(false);
+  });
+});
+
+describe('assetIsMissing', () => {
+  const shelf = [{ id: 'f1' }, { id: 'f2' }];
+
+  it('is true when the file has left the shelf', () => {
+    expect(assetIsMissing('gone', shelf)).toBe(true);
+  });
+
+  it('is false when the file is still there', () => {
+    expect(assetIsMissing('f1', shelf)).toBe(false);
+  });
+
+  it('never claims missing without a shelf to check against', () => {
+    // An empty or absent list means "caller supplied no shelf", not "everything
+    // is deleted" — inferring absence from it would mark every asset in the
+    // editor as broken.
+    expect(assetIsMissing('f1', [])).toBe(false);
+    expect(assetIsMissing('f1', null)).toBe(false);
+    expect(assetIsMissing('f1', undefined)).toBe(false);
+  });
+
+  it('is false for a block with no file reference at all', () => {
+    expect(assetIsMissing(null, shelf)).toBe(false);
   });
 });
 

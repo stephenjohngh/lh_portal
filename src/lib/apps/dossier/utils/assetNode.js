@@ -9,7 +9,7 @@
 // alongside the document_id reference.
 
 import { Node, mergeAttributes } from '@tiptap/core';
-import { previewKind, fileProxyUrl, fmtSize } from './assetPreview.js';
+import { previewKind, fileProxyUrl, fmtSize, assetIsMissing } from './assetPreview.js';
 
 /**
  * Simple attr spec: round-trip through a data- attribute of the same name.
@@ -26,6 +26,22 @@ function dataAttr(name, fallback = null) {
 
 export const Asset = Node.create({
   name: 'asset',
+
+  addOptions() {
+    return {
+      /**
+       * A Svelte-store-shaped `{ subscribe }` yielding the pack's shelf, or
+       * null. Injected rather than imported so this module stays free of app
+       * state — the P3 reader uses read mode and supplies nothing.
+       *
+       * The node view SUBSCRIBES to it. Checking once at paint time would go
+       * stale the moment a file was deleted, which is exactly the bug this
+       * exists to fix: the editor kept showing a healthy image because nothing
+       * told it the file had gone, and a cached image never raises an error.
+       */
+      filesProvider: null,
+    };
+  },
   group: 'block',
   atom: true,
   draggable: true,
@@ -99,6 +115,8 @@ export const Asset = Node.create({
    * Backspace, and a click lands inside the iframe or image instead.
    */
   addNodeView() {
+    const { filesProvider } = this.options;
+
     return ({ node, getPos, editor }) => {
       const dom = document.createElement('div');
       dom.className = 'dossier-asset-host';
@@ -125,16 +143,38 @@ export const Asset = Node.create({
       });
       dom.appendChild(remove);
 
-      // Render the node's declarative markup into `inner`.
-      paint(inner, node);
+      let current = node;
+      let missing = false;
+      let lastFiles = null;   // latest shelf seen, so update() can re-derive
+
+      const repaint = () => paint(inner, current, missing);
+
+      // Re-check whenever the shelf changes, so removing a file marks the block
+      // immediately rather than at the next reload.
+      const unsubscribe = filesProvider?.subscribe
+        ? filesProvider.subscribe((files) => {
+            lastFiles = files;
+            const next = assetIsMissing(current.attrs.document_id, files);
+            if (next === missing) return;
+            missing = next;
+            repaint();
+          })
+        : null;
+
+      repaint();
 
       return {
         dom,
         update(updated) {
           if (updated.type.name !== 'asset') return false;
-          paint(inner, updated);
+          current = updated;
+          // Re-derive against the last known shelf: the subscription only fires
+          // when the shelf changes, so it will not correct this for us.
+          missing = assetIsMissing(current.attrs.document_id, lastFiles);
+          repaint();
           return true;
         },
+        destroy() { unsubscribe?.(); },
         ignoreMutation: () => true,   // the whole subtree is ours, not ProseMirror's
       };
     };
@@ -156,7 +196,7 @@ export const Asset = Node.create({
  * Draw an asset's preview into a host element, reusing the same decisions as
  * renderHTML so edit and read modes stay identical.
  */
-function paint(host, node) {
+function paint(host, node, missing = false) {
   const { filename, mime_type, provider_file_id, size_bytes } = node.attrs;
   const kind = previewKind(mime_type);
   const url  = fileProxyUrl(provider_file_id, mime_type);
@@ -165,7 +205,12 @@ function paint(host, node) {
 
   host.textContent = '';
   host.className = 'dossier-asset-inner dossier-asset';
-  host.setAttribute('data-kind', url ? kind : 'file');
+  host.setAttribute('data-kind', missing ? 'missing' : (url ? kind : 'file'));
+
+  if (missing) {
+    host.appendChild(missingCard(name));
+    return;
+  }
 
   const caption = (text, href) => {
     const cap = document.createElement('div');

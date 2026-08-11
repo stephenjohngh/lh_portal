@@ -9,6 +9,7 @@
           opening a page does not mark it dirty or trigger a write. -->
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { writable } from 'svelte/store';
   import { Editor }      from '@tiptap/core';
   import { fmtTime }     from '$lib/utils/dates';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
@@ -21,6 +22,13 @@
   export let editable = true;
   /** @type {(docId: string, blocks: object) => Promise<any>} */
   export let onSave = async () => {};
+  /** The pack's shelf. Asset blocks watch it so a deleted file marks itself. */
+  export let files = [];
+
+  // The editor is created once, so a plain prop would be a snapshot. Mirroring
+  // into a store gives the asset node view something live to subscribe to.
+  const filesStore = writable(files);
+  $: filesStore.set(files);
 
   const dispatch = createEventDispatcher();
 
@@ -103,7 +111,7 @@
   onMount(() => {
     editor = new Editor({
       element: editorEl,
-      extensions: buildExtensions(),
+      extensions: buildExtensions({ filesProvider: filesStore }),
       content: doc?.blocks ?? EMPTY_DOC,
       editable,
       editorProps: { attributes: { class: 'dossier-prose' } },
