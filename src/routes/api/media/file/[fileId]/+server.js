@@ -60,7 +60,13 @@ export async function GET({ params, url }) {
       },
     });
   } catch (err) {
-    logger('⚠ proxy fetch failed for', fileId, ':', friendlyStorageError(err));
+    // The response stays deliberately vague — this endpoint is unauthenticated,
+    // so it must not narrate storage internals to a caller. But the cause has
+    // to reach the operator: `logger` is debug-namespaced and silent unless
+    // DEBUG is set, which made this 404 undiagnosable. console.error always
+    // prints, and a failed file fetch is a genuine error worth seeing.
+    console.error('[MediaFileProxy] fetch failed for', fileId, '—',
+      friendlyStorageError(err), err?.code ?? '', err?.stack ?? '');
     return json({ error: 'File not found or inaccessible' }, { status: 404 });
   }
 }

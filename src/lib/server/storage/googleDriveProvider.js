@@ -103,7 +103,6 @@ function mapFile(f) {
   };
 }
 
-/** @type {import('./storageProvider.js').StorageProvider} */
 /**
  * Read one header regardless of the shape the HTTP client handed back:
  * a fetch-style `Headers`, or a plain object with unpredictable key casing.
@@ -121,6 +120,7 @@ export function readHeader(headers, name) {
   return undefined;
 }
 
+/** @type {import('./storageProvider.js').StorageProvider} */
 export const googleDriveProvider = {
   name: 'google_drive',
 
@@ -272,16 +272,19 @@ export const googleDriveProvider = {
     // every non-image: a PDF was served as a JPEG, so browsers refused it with
     // "the image cannot be displayed". Images worked only by coincidence. Never
     // guess a type here — an honest octet-stream downloads, a wrong type breaks.
-    let mimeType = readHeader(res.headers, 'content-type');
-    if (!mimeType) {
-      try {
+    // The whole mime determination is best-effort: the bytes are already in
+    // hand, so nothing here may be allowed to fail the fetch.
+    let mimeType;
+    try {
+      mimeType = readHeader(res.headers, 'content-type');
+      if (!mimeType) {
         const meta = await drive.files.get({
           fileId, supportsAllDrives: true, fields: 'mimeType',
         });
         mimeType = meta?.data?.mimeType;
-      } catch {
-        // fall through to the generic type
       }
+    } catch (err) {
+      logger('⚠ could not determine mime type for', fileId, '—', err?.message);
     }
 
     return {
