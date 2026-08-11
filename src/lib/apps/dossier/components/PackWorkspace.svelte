@@ -195,7 +195,7 @@
     <Button variant="secondary" size="small" on:click={() => dispatch('back')}>
       ← Packs
     </Button>
-    <p class="text-sm font-semibold text-white truncate">{pack.title}</p>
+    <p class="text-sm font-semibold text-white truncate" title={pack.title}>{pack.title}</p>
     {#if pack.status === 'archived'}
       <span class="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">Archived</span>
     {/if}
@@ -210,7 +210,7 @@
   <div class="flex flex-1 min-h-0">
 
     <!-- ── Doc tree ── -->
-    <div class="w-64 shrink-0 border-r border-slate-700 flex flex-col min-h-0">
+    <div class="w-72 shrink-0 border-r border-slate-700 flex flex-col min-h-0">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700/50 shrink-0">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">Pages</p>
         {#if canEdit}

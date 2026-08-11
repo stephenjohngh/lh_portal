@@ -27,10 +27,11 @@
     <li>
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div
-        class="group flex items-center gap-1 pr-1 py-1 rounded cursor-pointer
+        class="group relative flex items-center gap-1 pr-1 py-1 rounded cursor-pointer
                hover:bg-slate-700/50 transition-colors
                {selectedId === node.id ? 'bg-slate-700' : ''}"
-        style="padding-left: {depth * 14 + 4}px"
+        style="padding-left: {depth * 12 + 4}px"
+        title={node.title}
         on:click={() => dispatch('select', node)}
       >
         <!-- Expand / collapse -->
@@ -50,8 +51,17 @@
         </span>
 
         {#if canEdit}
-          <span class="flex items-center gap-0.5 shrink-0 opacity-0
-                       group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <!-- Absolutely positioned so the controls consume NO width while
+               hidden — otherwise seven buttons permanently squeeze the page
+               title, which is what caused every name to truncate. They float
+               over the row on hover, with the row's own background behind them.
+               opacity (not `hidden`) keeps them keyboard-reachable. -->
+          <span class="absolute right-1 top-1/2 -translate-y-1/2 z-10
+                       flex items-center gap-0.5 rounded px-0.5
+                       bg-slate-700 shadow-sm
+                       opacity-0 pointer-events-none transition-opacity
+                       group-hover:opacity-100 group-hover:pointer-events-auto
+                       focus-within:opacity-100 focus-within:pointer-events-auto">
             <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Move up"
                     on:click|stopPropagation={() => dispatch('move', { node, kind: 'up' })}>↑</button>
             <button class="w-5 h-5 text-slate-400 hover:text-white text-xs" title="Move down"
