@@ -5,6 +5,9 @@
   import { createEventDispatcher } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
+  import { getPref, setPref } from '$lib/utils/prefs';
+  import { logAudit }    from '$lib/utils/auditLogger';
+  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
   import Button          from '$lib/components/common/Button.svelte';
   import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
@@ -116,6 +119,28 @@
   /** Autosave sink for DocEditor. Errors propagate so it can show "Not saved". */
   async function handleSaveBlocks(docId, blocks) {
     await dossierStore.saveDocBlocks(docId, blocks, $auth.user.id);
+  }
+
+  // ── Pack file shelf ───────────────────────────────────────────────────────
+  // Files belong to the PACK, not to a page: blocks will reference rows on this
+  // shelf by document_id (P1 step 2), and P3 must be able to enumerate exactly
+  // what a publication exposes — an orphan file uploaded straight into a block
+  // would be invisible to that walk.
+
+  const LS_FILES = 'dossier:filesOpen';
+  let filesOpen = getPref(LS_FILES) === '1';
+
+  function toggleFiles() {
+    filesOpen = !filesOpen;
+    setPref(LS_FILES, filesOpen ? '1' : '0');
+  }
+
+  function auditDoc(action, doc) {
+    logAudit(action, 'dossier_file', doc.id, doc.display_name || doc.filename, {
+      appId: 'dossier', eventCategory: 'dossier',
+      severity: action === 'delete' ? 'warning' : 'info',
+      afterData: { pack_id: pack.id, filename: doc.filename },
+    });
   }
 
   // ── Version history ───────────────────────────────────────────────────────
@@ -245,6 +270,44 @@
           <p class="text-xs text-amber-400/90">{notice}</p>
         </div>
       {/if}
+
+      <!-- ── Files: the pack's evidence shelf ── -->
+      <!-- Conditional class rather than class:flex-1 + shrink-0 — those two are
+           the same specificity, so which wins would depend on CSS order. -->
+      <div class="border-t border-slate-700 flex flex-col min-h-0
+                  {filesOpen ? 'flex-1' : 'shrink-0'}">
+        <!-- When open, AttachedDocuments supplies its own "FILES (n)" heading,
+             so this button carries the label only while collapsed. -->
+        <button
+          class="flex items-center gap-2 w-full px-3 py-2 text-left shrink-0
+                 hover:bg-slate-700/40 transition-colors"
+          aria-label={filesOpen ? 'Hide files' : 'Show files'}
+          aria-expanded={filesOpen}
+          on:click={toggleFiles}
+        >
+          <span class="text-[10px] text-slate-500 w-2">{filesOpen ? '▼' : '▶'}</span>
+          {#if !filesOpen}
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
+              Files
+            </span>
+          {/if}
+        </button>
+
+        {#if filesOpen}
+          <div class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
+            <AttachedDocuments
+              entityType="dossier_pack"
+              entityId={pack.id}
+              canEdit={canEdit}
+              canDelete={$permissions.isAdmin}
+              folderPath="Dossier Packs"
+              title="Files"
+              on:uploaded={(e) => auditDoc('create', e.detail)}
+              on:deleted={(e)  => auditDoc('delete', e.detail)}
+            />
+          </div>
+        {/if}
+      </div>
     </div>
 
     <!-- ── Editor pane ── -->
