@@ -21,6 +21,8 @@
   import DocFormModal from './DocFormModal.svelte';
   import DocEditor    from './DocEditor.svelte';
   import RevisionHistoryModal from './RevisionHistoryModal.svelte';
+  import AssetPickerModal     from './AssetPickerModal.svelte';
+  import { assetAttrsFromDocument } from '../utils/assetPreview.js';
 
   export let pack;
 
@@ -42,6 +44,9 @@
   let deletingId    = null;
 
   $: docs        = $dossierStore.docs;
+  // Load the shelf once per pack; the picker needs it whether or not the Files
+  // panel has ever been opened.
+  $: if (pack?.id) dossierStore.loadPackFiles(pack.id);
   $: tree        = buildTree(docs);
   $: selectedDoc = docs.find(d => d.id === selectedId) ?? null;
   $: canEdit     = $permissions.isAdmin || $permissions.canModify;
@@ -135,7 +140,17 @@
     setPref(LS_FILES, filesOpen ? '1' : '0');
   }
 
+  // The picker reads the shelf from the store; AttachedDocuments keeps its own
+  // copy for the panel, so both are refreshed when a file is added or removed.
+  let showAssetPicker = false;
+  $: files = $dossierStore.files;
+
+  function handlePickAsset(file) {
+    editorRef?.insertAsset(assetAttrsFromDocument(file));
+  }
+
   function auditDoc(action, doc) {
+    dossierStore.loadPackFiles(pack.id);
     logAudit(action, 'dossier_file', doc.id, doc.display_name || doc.filename, {
       appId: 'dossier', eventCategory: 'dossier',
       severity: action === 'delete' ? 'warning' : 'info',
@@ -334,7 +349,8 @@
              remount would not do reliably. -->
         <div class="flex-1 min-h-0">
           <DocEditor bind:this={editorRef}
-                     doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks} />
+                     doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks}
+                     on:pickAsset={() => showAssetPicker = true} />
         </div>
       {:else}
         <div class="flex-1 flex items-center justify-center p-8">
@@ -354,6 +370,13 @@
   parent={newDocParent}
   on:save={handleDocSave}
   on:close={() => showDocModal = false}
+/>
+
+<AssetPickerModal
+  bind:show={showAssetPicker}
+  {files}
+  on:pick={(e) => handlePickAsset(e.detail)}
+  on:close={() => showAssetPicker = false}
 />
 
 <RevisionHistoryModal

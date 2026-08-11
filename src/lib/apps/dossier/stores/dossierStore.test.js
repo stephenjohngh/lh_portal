@@ -14,12 +14,16 @@ const h = vi.hoisted(() => {
     delete: vi.fn(() => Promise.resolve()),
   };
   const logAudit = vi.fn();
-  return { api, logAudit };
+  const listDocuments = vi.fn(() => Promise.resolve([]));
+  return { api, logAudit, listDocuments };
 });
 
 vi.mock('$lib/utils/api',         () => ({ api: h.api }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
+// documentApi transitively imports supabaseClient → $env/static/public, which
+// does not resolve without the SvelteKit vite plugin.
+vi.mock('$lib/utils/documentApi', () => ({ listDocuments: h.listDocuments }));
 
 const { dossierStore: store } = await import('./dossierStore.js');
 
@@ -149,6 +153,31 @@ describe('loadDocs / closePack', () => {
     store.closePack();
     expect(get(store).docs).toEqual([]);
     expect(get(store).activePackId).toBeNull();
+  });
+});
+
+describe('loadPackFiles', () => {
+  it('loads the shelf scoped to the pack', async () => {
+    h.listDocuments.mockResolvedValueOnce([{ id: 'f1', filename: 'notice.pdf' }]);
+    await store.loadPackFiles('p1');
+
+    expect(h.listDocuments).toHaveBeenCalledWith({
+      entity_type: 'dossier_pack', entity_id: 'p1',
+    });
+    expect(get(store).files).toHaveLength(1);
+  });
+
+  it('is non-fatal — a pack stays editable without its shelf', async () => {
+    h.listDocuments.mockRejectedValueOnce(new Error('documents down'));
+    await expect(store.loadPackFiles('p1')).resolves.toEqual([]);
+    expect(get(store).files).toEqual([]);
+  });
+
+  it('clears the shelf when the pack is closed', async () => {
+    h.listDocuments.mockResolvedValueOnce([{ id: 'f1' }]);
+    await store.loadPackFiles('p1');
+    store.closePack();
+    expect(get(store).files).toEqual([]);
   });
 });
 

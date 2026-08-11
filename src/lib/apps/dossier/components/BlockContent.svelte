@@ -174,6 +174,49 @@
   }
   :global(.dossier-prose div[data-toggle-body] > :last-child) { margin-bottom: 0; }
 
+  /* ── Assets ────────────────────────────────────────────────────────────── */
+  :global(.dossier-prose .dossier-asset) { margin: 0 0 0.9rem; }
+
+  :global(.dossier-prose .dossier-asset-image) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    border: 1px solid #334155;       /* slate-700 */
+  }
+  :global(.dossier-prose .dossier-asset-pdf) {
+    display: block;
+    width: 100%;
+    height: 60vh;
+    min-height: 20rem;
+    border-radius: 6px;
+    border: 1px solid #334155;
+    background: #0f172a;
+  }
+  :global(.dossier-prose .dossier-asset-caption) {
+    font-size: 0.75rem;
+    color: #94a3b8;                  /* slate-400 */
+    margin-top: 0.35rem;
+  }
+  :global(.dossier-prose .dossier-asset-card) {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    background: rgb(30 41 59 / 0.5); /* slate-800/50 */
+  }
+  :global(.dossier-prose .dossier-asset-icon) { font-size: 1rem; line-height: 1; }
+  :global(.dossier-prose .dossier-asset-name) { font-size: 0.85rem; }
+
+  /* An asset selected in the editor — Tiptap marks atoms with this class. */
+  :global(.dossier-prose .dossier-asset.ProseMirror-selectednode) {
+    outline: 2px solid var(--lh-accent, #3c9683);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
   /* Read mode has no chevron button, so mark the collapsed state visibly. */
   :global(.dossier-prose div[data-toggle]:not(.dossier-toggle)::before) {
     content: '▾';

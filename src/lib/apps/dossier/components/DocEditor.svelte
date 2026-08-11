@@ -8,7 +8,7 @@
        2. Programmatic content loading never counts as an edit, so merely
           opening a page does not mark it dirty or trigger a write. -->
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Editor }      from '@tiptap/core';
   import { fmtTime }     from '$lib/utils/dates';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
@@ -21,6 +21,8 @@
   export let editable = true;
   /** @type {(docId: string, blocks: object) => Promise<any>} */
   export let onSave = async () => {};
+
+  const dispatch = createEventDispatcher();
 
   const SAVE_DEBOUNCE_MS = 800;
 
@@ -152,6 +154,11 @@
     { label: '▸', title: 'Collapsible section', is: 'toggle', go: c => c.setToggle() },
   ];
 
+  /** Insert an asset block. The picker lives in the parent, which owns the shelf. */
+  export function insertAsset(attrs) {
+    editor?.chain().focus().insertAsset(attrs).run();
+  }
+
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
 </script>
 
@@ -181,6 +188,14 @@
           on:click={run(a.go)}
         >{a.label}</button>
       {/each}
+
+      <button
+        type="button"
+        title="Insert a file from this pack"
+        class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400
+               hover:bg-slate-700 hover:text-white transition-colors"
+        on:click={() => dispatch('pickAsset')}
+      >📎</button>
 
       <span class="w-px h-4 bg-slate-700 mx-1"></span>
 

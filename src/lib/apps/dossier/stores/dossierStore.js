@@ -13,6 +13,7 @@ import { writable, get } from 'svelte/store';
 import { api }          from '$lib/utils/api';
 import { logAudit }     from '$lib/utils/auditLogger';
 import { getLogger }    from '$lib/utils/logger';
+import { listDocuments } from '$lib/utils/documentApi';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 
@@ -56,6 +57,7 @@ function createDossierStore() {
     activePackId: null,
     docs:         [],
     loadingDocs:  false,
+    files:        [],   // document_library rows on this pack's shelf
   });
 
   const { subscribe, update } = store;
@@ -141,6 +143,27 @@ function createDossierStore() {
     logger('🗑 pack deleted', id);
   }
 
+  // ── Pack files (the shelf) ───────────────────────────────────────────────
+  // AttachedDocuments keeps its own copy for the panel it renders; this list
+  // exists so the asset picker — and, at step 5, the broken-reference panel —
+  // can see the shelf without reaching into that component.
+
+  async function loadPackFiles(packId) {
+    if (!packId) { update(s => ({ ...s, files: [] })); return []; }
+    try {
+      const files = await listDocuments({
+        entity_type: 'dossier_pack', entity_id: packId,
+      });
+      update(s => ({ ...s, files }));
+      return files;
+    } catch (err) {
+      // Non-fatal: a pack is still perfectly editable without its shelf.
+      logger('⚠ could not load pack files', err);
+      update(s => ({ ...s, files: [] }));
+      return [];
+    }
+  }
+
   // ── Docs ─────────────────────────────────────────────────────────────────
 
   /** Load the doc tree for a pack. Rows stay flat in state — buildTree() nests at render. */
@@ -160,7 +183,7 @@ function createDossierStore() {
   }
 
   function closePack() {
-    update(s => ({ ...s, activePackId: null, docs: [] }));
+    update(s => ({ ...s, activePackId: null, docs: [], files: [] }));
   }
 
   /**
@@ -320,7 +343,7 @@ function createDossierStore() {
   return {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
-    loadDocs, closePack, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
+    loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision,
   };
 }

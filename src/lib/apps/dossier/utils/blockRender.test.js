@@ -11,6 +11,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 
 const { renderBlocksToHtml, sanitizeBlockHtml, blocksToText } = await import('./blockRender.js');
+const { default: DOMPurify } = await import('dompurify');
 
 const doc = (...content) => ({ type: 'doc', content });
 const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
@@ -102,6 +103,91 @@ describe('sanitizeBlockHtml', () => {
   it('handles empty input', () => {
     expect(sanitizeBlockHtml('')).toBe('');
     expect(sanitizeBlockHtml(null)).toBe('');
+  });
+});
+
+describe('asset blocks', () => {
+  const asset = (attrs) => doc({ type: 'asset', attrs });
+
+  it('renders an image through the file proxy', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd1', filename: 'Roof.jpg',
+      mime_type: 'image/jpeg', provider_file_id: 'drive1',
+    }));
+    expect(html).toContain('src="/api/media/file/drive1"');
+    expect(html).toContain('alt="Roof.jpg"');
+  });
+
+  it('renders a PDF as an object pointing at the proxy', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd2', filename: 'Notice.pdf',
+      mime_type: 'application/pdf', provider_file_id: 'drive2',
+    }));
+    expect(html).toContain('<object');
+    expect(html).toContain('data="/api/media/file/drive2"');
+  });
+
+  it('renders anything else as a download card', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd3', filename: 'Schedule.xlsx', size_bytes: 2048,
+      mime_type: 'application/vnd.ms-excel', provider_file_id: 'drive3',
+    }));
+    expect(html).toContain('dossier-asset-card');
+    expect(html).toContain('Schedule.xlsx');
+    expect(html).toContain('2.0 KB');
+    expect(html).toContain('href="/api/media/file/drive3"');
+  });
+
+  it('degrades to a card with no link when the provider id is unusable', () => {
+    // e.g. a path-shaped Supabase id, which the proxy would reject anyway.
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd4', filename: 'Old.png',
+      mime_type: 'image/png', provider_file_id: 'packs/old.png',
+    }));
+    expect(html).toContain('dossier-asset-card');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('href=');
+  });
+
+  it('keeps the document_id — the link graph and publish walk follow it', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd5', filename: 'x', mime_type: 'text/plain', provider_file_id: 'p5',
+    }));
+    expect(html).toContain('data-document_id="d5"');
+  });
+});
+
+describe('sanitizeBlockHtml — the object/img allow-rule', () => {
+  it('keeps an object whose data points at our own proxy', () => {
+    const html = sanitizeBlockHtml(
+      '<object data="/api/media/file/abc" type="application/pdf"></object>');
+    expect(html).toContain('<object');
+  });
+
+  it('strips an object pointing anywhere else', () => {
+    // <object> is a general-purpose embed primitive; admitting it unconditionally
+    // in the one feature built to be handed to an outsider would be a hole.
+    for (const bad of [
+      '<object data="https://evil.test/x"></object>',
+      '<object data="javascript:alert(1)"></object>',
+      '<object data="/api/media/file/../../secret"></object>',
+      '<object></object>',
+    ]) {
+      expect(sanitizeBlockHtml(bad)).not.toContain('<object');
+    }
+  });
+
+  it('strips an img pointing outside the proxy', () => {
+    expect(sanitizeBlockHtml('<img src="/api/media/file/abc">')).toContain('<img');
+    expect(sanitizeBlockHtml('<img src="https://tracker.test/pixel.gif">')).not.toContain('<img');
+  });
+
+  it('does not leave its hook installed for other callers', () => {
+    // DOMPurify hooks are global — a leaked hook would silently change every
+    // other sanitise call in the app.
+    sanitizeBlockHtml('<object data="https://evil.test/x"></object>');
+    const after = DOMPurify.sanitize('<img src="https://example.test/a.png">');
+    expect(after).toContain('<img');
   });
 });
 

@@ -16,6 +16,7 @@ import { newUuid }   from '$lib/utils/uuid';
 import { planIdFixes, collectBlocks } from './blockId.js';
 import { Callout }   from './calloutNode.js';
 import { Toggle, ToggleSummary, ToggleBody } from './toggleNode.js';
+import { Asset }   from './assetNode.js';
 
 /** An empty ProseMirror doc — matches the DB default on dossier_docs.blocks. */
 export const EMPTY_DOC = { type: 'doc', content: [] };
@@ -28,7 +29,7 @@ export const EMPTY_DOC = { type: 'doc', content: [] };
  */
 export const ADDRESSABLE_TYPES = [
   'paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList',
-  'codeBlock', 'horizontalRule', 'callout', 'toggle',
+  'codeBlock', 'horizontalRule', 'callout', 'toggle', 'asset',
 ];
 
 /**
@@ -97,6 +98,7 @@ export function buildExtensions() {
     }),
     Callout,
     Toggle, ToggleSummary, ToggleBody,
+    Asset,
     BlockId,
   ];
 }
