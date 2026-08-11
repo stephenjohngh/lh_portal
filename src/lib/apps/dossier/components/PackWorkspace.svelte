@@ -22,6 +22,7 @@
   import DocEditor    from './DocEditor.svelte';
   import RevisionHistoryModal from './RevisionHistoryModal.svelte';
   import AssetPickerModal     from './AssetPickerModal.svelte';
+  import PagePickerModal     from './PagePickerModal.svelte';
   import { assetAttrsFromDocument } from '../utils/assetPreview.js';
 
   export let pack;
@@ -147,6 +148,55 @@
 
   function handlePickAsset(file) {
     editorRef?.insertAsset(assetAttrsFromDocument(file));
+  }
+
+  // ── Cross-links ───────────────────────────────────────────────────────────
+
+  let showPagePicker = false;
+
+  function handlePickPage(doc) {
+    editorRef?.applyDocLink(doc);
+  }
+
+  /**
+   * Follow a cross-link. Delegated from the editor surface rather than bound
+   * per link, so it works for links the author has only just typed and for the
+   * read-only renderer alike.
+   *
+   * In edit mode a plain click must still place the caret — otherwise the link
+   * text becomes uneditable — so following requires Ctrl/Cmd. In read mode a
+   * plain click follows.
+   */
+  function handleContentClick(event) {
+    const anchor = event.target?.closest?.('a.dossier-doclink');
+    if (!anchor) return;
+    if (canEdit && !(event.ctrlKey || event.metaKey)) return;
+
+    const targetId = anchor.getAttribute('data-doc-id');
+    event.preventDefault();
+    if (targetId && docs.some(d => d.id === targetId)) {
+      selectedId = targetId;
+      notice = '';
+    } else {
+      notice = 'That page no longer exists.';
+    }
+  }
+
+  // ── Backlinks ─────────────────────────────────────────────────────────────
+
+  let backlinks = [];
+
+  // Reload whenever the selected page changes. Cheap, and it must reflect edits
+  // made on other pages since this one was opened.
+  $: refreshBacklinks(selectedId);
+
+  async function refreshBacklinks(docId) {
+    if (!docId) { backlinks = []; return; }
+    try {
+      backlinks = await dossierStore.loadBacklinks(docId);
+    } catch {
+      backlinks = [];      // non-fatal: the page is still perfectly editable
+    }
   }
 
   function auditDoc(action, doc) {
@@ -344,13 +394,35 @@
             </Button>
           </div>
         </div>
+
+        {#if backlinks.length}
+          <!-- Which pages point here. The answer to "why is this page in the
+               pack?", and the first thing to check before deleting one. -->
+          <div class="flex items-start gap-2 px-6 py-2 border-b border-slate-700/50
+                      bg-slate-800/30 shrink-0 text-xs">
+            <span class="text-slate-500 shrink-0 pt-0.5">Referenced from</span>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 min-w-0">
+              {#each backlinks as link (link.doc_id)}
+                <button
+                  class="text-slate-300 hover:text-white underline underline-offset-2"
+                  title="Go to {link.title}"
+                  on:click={() => { selectedId = link.doc_id; notice = ''; }}
+                >{link.title}</button>
+              {/each}
+            </div>
+          </div>
+        {/if}
         <!-- One long-lived editor instance across page switches: DocEditor
              flushes the outgoing page's pending save itself, which a {#key}
              remount would not do reliably. -->
         <div class="flex-1 min-h-0">
-          <DocEditor bind:this={editorRef}
-                     doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks}
-                     on:pickAsset={() => showAssetPicker = true} />
+          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+          <div class="h-full" on:click={handleContentClick}>
+            <DocEditor bind:this={editorRef}
+                       doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks}
+                       on:pickAsset={() => showAssetPicker = true}
+                       on:pickPage={() => showPagePicker = true} />
+          </div>
         </div>
       {:else}
         <div class="flex-1 flex items-center justify-center p-8">
@@ -370,6 +442,14 @@
   parent={newDocParent}
   on:save={handleDocSave}
   on:close={() => showDocModal = false}
+/>
+
+<PagePickerModal
+  bind:show={showPagePicker}
+  {docs}
+  currentDocId={selectedId}
+  on:pick={(e) => handlePickPage(e.detail)}
+  on:close={() => showPagePicker = false}
 />
 
 <AssetPickerModal

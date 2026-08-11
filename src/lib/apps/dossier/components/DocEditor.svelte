@@ -159,6 +159,27 @@
     editor?.chain().focus().insertAsset(attrs).run();
   }
 
+  /** Apply a cross-link to the current selection. */
+  export function applyDocLink(doc) {
+    editor?.chain().focus()
+      .setDocLink({ target_doc_id: doc.id, target_slug: doc.slug })
+      .run();
+  }
+
+  // A mark needs something to wrap, so the button is inert on an empty
+  // selection — unless the cursor is already inside a link, where it removes it.
+  $: selectionEmpty = editor ? editor.state.selection.empty : true;
+  $: onExistingLink = editor?.isActive('docLink') ?? false;
+  $: linkDisabled   = selectionEmpty && !onExistingLink;
+
+  function handleLinkClick() {
+    if (onExistingLink) {
+      editor?.chain().focus().unsetDocLink().run();
+      return;
+    }
+    dispatch('pickPage');
+  }
+
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
 </script>
 
@@ -196,6 +217,19 @@
                hover:bg-slate-700 hover:text-white transition-colors"
         on:click={() => dispatch('pickAsset')}
       >📎</button>
+      <button
+        type="button"
+        title={linkDisabled
+          ? 'Select some text first, then link it to another page'
+          : 'Link the selected text to another page'}
+        disabled={linkDisabled}
+        class="min-w-7 h-7 px-1.5 rounded text-xs transition-colors
+               {editor?.isActive('docLink')
+                 ? 'bg-slate-600 text-white'
+                 : 'text-slate-400 hover:bg-slate-700 hover:text-white'}
+               disabled:opacity-30 disabled:hover:bg-transparent"
+        on:click={handleLinkClick}
+      >🔗</button>
 
       <span class="w-px h-4 bg-slate-700 mx-1"></span>
 

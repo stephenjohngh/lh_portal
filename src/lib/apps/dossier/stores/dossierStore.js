@@ -16,6 +16,7 @@ import { getLogger }    from '$lib/utils/logger';
 import { listDocuments } from '$lib/utils/documentApi';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
+import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
 
 const logger = getLogger('dossierStore');
 
@@ -34,6 +35,13 @@ export const REVISION_INTERVAL_MS = 5 * 60 * 1000;
  * @type {Map<string, number>}
  */
 const lastRevisionAt = new Map();
+
+/**
+ * The reference signature last written to dossier_links per doc. Lets an
+ * autosave that only changed prose skip the reconcile query entirely.
+ * @type {Map<string, string>}
+ */
+const lastLinkSignature = new Map();
 
 /** Most-recently-touched first; a pack that has never been edited falls back to its creation time. */
 function sortPacks(packs) {
@@ -265,6 +273,9 @@ function createDossierStore() {
 
     const doc = await api.update('dossier_docs', id, { blocks, ...touch(userId) }, true);
     update(s => ({ ...s, docs: s.docs.map(d => d.id === id ? { ...d, ...doc } : d) }));
+
+    // Derived index, updated after the content it describes is safely stored.
+    await reconcileLinks({ ...doc, blocks, pack_id: doc.pack_id ?? previous?.pack_id }, userId);
     return doc;
   }
 
@@ -331,6 +342,59 @@ function createDossierStore() {
     return doc;
   }
 
+  // ── Link graph ───────────────────────────────────────────────────────────
+
+  /**
+   * Bring dossier_links into line with what a page now references.
+   *
+   * Called on every save, so it is built to do NOTHING most of the time: the
+   * extracted signature is compared against the last one reconciled for this
+   * doc, and an unchanged set returns before touching the database at all.
+   * Only when the signature moves does it fetch and diff.
+   */
+  async function reconcileLinks(doc, userId) {
+    if (!doc?.id) return;
+    const extracted = extractLinks(doc.blocks);
+    const signature = linkSignature(extracted);
+    if (lastLinkSignature.get(doc.id) === signature) return;
+
+    try {
+      const existing = await api.get('dossier_links', {
+        select: 'id, from_block_id, target_kind, target_doc_id, target_document_id',
+        filters: { from_doc_id: doc.id },
+      });
+      const { toInsert, toDeleteIds } = diffLinks(existing, extracted);
+
+      if (toDeleteIds.length) {
+        for (const id of toDeleteIds) await api.delete('dossier_links', id);
+      }
+      if (toInsert.length) {
+        await api.createMany('dossier_links', toInsert.map(link => ({
+          ...link,
+          pack_id:     doc.pack_id,
+          from_doc_id: doc.id,
+          created_by:  userId,
+        })));
+      }
+      lastLinkSignature.set(doc.id, signature);
+    } catch (err) {
+      // The graph is derived and rebuildable; a failure here must never cost
+      // the author their content. Drop the cached signature so the next save
+      // retries rather than assuming the write landed.
+      lastLinkSignature.delete(doc.id);
+      logger('⚠ could not reconcile links', err);
+    }
+  }
+
+  /** Pages that reference this one, one entry each. */
+  async function loadBacklinks(docId) {
+    const rows = await api.get('dossier_links', {
+      select: 'from_doc_id, from_block_id, from_doc:dossier_docs!from_doc_id(title, slug)',
+      filters: { target_doc_id: docId },
+    });
+    return groupBacklinks(rows);
+  }
+
   /** Admin-only at RLS. Cascades to the whole subtree and its revisions. */
   async function deleteDoc(id, title, removedIds = []) {
     await api.delete('dossier_docs', id);
@@ -366,7 +430,7 @@ function createDossierStore() {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
-    saveVersion, loadRevisions, restoreRevision,
+    saveVersion, loadRevisions, restoreRevision, loadBacklinks,
   };
 }
 

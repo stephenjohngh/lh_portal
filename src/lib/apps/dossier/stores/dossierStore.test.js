@@ -7,12 +7,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 
 const h = vi.hoisted(() => {
-  const api = {
+  // Cast: a hand-rolled mock is not the real api, and without this TS infers
+  // never[] from the empty default and then rejects every fixture row.
+  const api = /** @type {any} */ ({
     get:    vi.fn(() => Promise.resolve([])),
     create: vi.fn((t, d) => Promise.resolve({ id: 'p-new', ...d })),
     update: vi.fn((t, id, d) => Promise.resolve({ id, ...d })),
     delete: vi.fn(() => Promise.resolve()),
-  };
+    createMany: vi.fn((t, rows) => Promise.resolve(rows)),
+  });
   const logAudit = vi.fn();
   const listDocuments = vi.fn(() => Promise.resolve([]));
   return { api, logAudit, listDocuments };
@@ -357,6 +360,132 @@ describe('revisions', () => {
     // …and the doc itself is written back to the old content.
     const write = h.api.update.mock.calls.find(c => c[0] === 'dossier_docs');
     expect(write[2].blocks).toEqual({ type: 'doc', content: ['old'] });
+  });
+});
+
+describe('link reconciliation', () => {
+  let seq = 0;
+  const nextId = () => `ld-${++seq}`;
+
+  /** A doc whose blocks contain one cross-link. */
+  const withLink = (uid, targetId) => ({
+    type: 'doc',
+    content: [{
+      type: 'paragraph', attrs: { uid },
+      content: [{
+        type: 'text', text: 'see',
+        marks: [{ type: 'docLink', attrs: { target_doc_id: targetId, target_slug: 's' } }],
+      }],
+    }],
+  });
+
+  async function seedDoc(id, blocks) {
+    h.api.get.mockResolvedValueOnce([{ id, title: 'Page', pack_id: 'p1', blocks }]);
+    await store.loadDocs(`p-${id}`);
+    h.api.get.mockResolvedValue([]);
+  }
+
+  // A save fires TWO reads — the revision prune and the link fetch — so
+  // mockResolvedValueOnce is ambiguous about which it answers. Route by table.
+  const getByTable = (map) =>
+    h.api.get.mockImplementation((table) => Promise.resolve(map[table] ?? []));
+  const rejectTable = (table, message) =>
+    h.api.get.mockImplementation((t) =>
+      t === table ? Promise.reject(new Error(message)) : Promise.resolve([]));
+
+  it('writes a link row when a cross-link appears', async () => {
+    const id = nextId();
+    await seedDoc(id, { type: 'doc', content: [] });
+    h.api.update.mockResolvedValueOnce({ id, pack_id: 'p1', title: 'Page' });
+
+    await store.saveDocBlocks(id, withLink('b1', 'doc-target'), 'u1');
+
+    const [table, rows] = h.api.createMany.mock.calls.at(-1);
+    expect(table).toBe('dossier_links');
+    expect(rows[0]).toMatchObject({
+      pack_id: 'p1', from_doc_id: id, from_block_id: 'b1',
+      target_kind: 'doc', target_doc_id: 'doc-target', created_by: 'u1',
+    });
+  });
+
+  it('writes NOTHING when a save did not change the references', async () => {
+    // The property autosave depends on — a prose edit must not touch the graph.
+    const id = nextId();
+    const blocks = withLink('b1', 'doc-target');
+    await seedDoc(id, blocks);
+    h.api.update.mockResolvedValue({ id, pack_id: 'p1', title: 'Page' });
+
+    await store.saveDocBlocks(id, blocks, 'u1');   // first save: reconciles
+    h.api.createMany.mockClear();
+    h.api.delete.mockClear();
+    const getCallsBefore = h.api.get.mock.calls.length;
+
+    await store.saveDocBlocks(id, blocks, 'u1');   // second: identical refs
+
+    expect(h.api.createMany).not.toHaveBeenCalled();
+    expect(h.api.delete).not.toHaveBeenCalled();
+    // …and it did not even query: the signature short-circuits before the fetch.
+    const linkFetches = h.api.get.mock.calls
+      .slice(getCallsBefore).filter(c => c[0] === 'dossier_links');
+    expect(linkFetches).toHaveLength(0);
+  });
+
+  it('removes a link row when the author deletes the reference', async () => {
+    const id = nextId();
+    await seedDoc(id, withLink('b1', 'doc-target'));
+    h.api.update.mockResolvedValue({ id, pack_id: 'p1', title: 'Page' });
+    // The existing row the reconcile will find.
+    getByTable({ dossier_links: [{
+      id: 'row-1', from_block_id: 'b1', target_kind: 'doc',
+      target_doc_id: 'doc-target', target_document_id: null,
+    }] });
+
+    await store.saveDocBlocks(id, { type: 'doc', content: [] }, 'u1');
+
+    expect(h.api.delete).toHaveBeenCalledWith('dossier_links', 'row-1');
+  });
+
+  it('never fails a save because the graph could not be reconciled', async () => {
+    // dossier_links is derived and rebuildable; content must not be at risk.
+    const id = nextId();
+    await seedDoc(id, { type: 'doc', content: [] });
+    h.api.update.mockResolvedValue({ id, pack_id: 'p1', title: 'Page' });
+    rejectTable('dossier_links', 'links table down');
+
+    await expect(
+      store.saveDocBlocks(id, withLink('b1', 'doc-target'), 'u1')
+    ).resolves.toBeTruthy();
+  });
+
+  it('retries after a failure rather than assuming the write landed', async () => {
+    const id = nextId();
+    await seedDoc(id, { type: 'doc', content: [] });
+    h.api.update.mockResolvedValue({ id, pack_id: 'p1', title: 'Page' });
+    const blocks = withLink('b1', 'doc-target');
+
+    rejectTable('dossier_links', 'boom');
+    await store.saveDocBlocks(id, blocks, 'u1');       // reconcile fails
+    expect(h.api.createMany).not.toHaveBeenCalled();
+
+    getByTable({});                                    // links table recovers
+    await store.saveDocBlocks(id, blocks, 'u1');       // same refs, must retry
+
+    expect(h.api.createMany).toHaveBeenCalled();
+  });
+});
+
+describe('loadBacklinks', () => {
+  it('queries by target and groups by referring page', async () => {
+    h.api.get.mockResolvedValueOnce([
+      { from_doc_id: 'd1', from_block_id: 'b1', from_doc: { title: 'Overview', slug: 'overview' } },
+      { from_doc_id: 'd1', from_block_id: 'b2', from_doc: { title: 'Overview', slug: 'overview' } },
+    ]);
+    const result = await store.loadBacklinks('target-doc');
+
+    expect(h.api.get).toHaveBeenCalledWith('dossier_links',
+      expect.objectContaining({ filters: { target_doc_id: 'target-doc' } }));
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ doc_id: 'd1', title: 'Overview' });
   });
 });
 

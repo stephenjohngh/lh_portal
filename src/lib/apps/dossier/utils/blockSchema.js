@@ -17,6 +17,7 @@ import { planIdFixes, collectBlocks } from './blockId.js';
 import { Callout }   from './calloutNode.js';
 import { Toggle, ToggleSummary, ToggleBody } from './toggleNode.js';
 import { Asset }   from './assetNode.js';
+import { DocLink } from './docLinkMark.js';
 
 /** An empty ProseMirror doc — matches the DB default on dossier_docs.blocks. */
 export const EMPTY_DOC = { type: 'doc', content: [] };
@@ -99,6 +100,7 @@ export function buildExtensions() {
     Callout,
     Toggle, ToggleSummary, ToggleBody,
     Asset,
+    DocLink,
     BlockId,
   ];
 }

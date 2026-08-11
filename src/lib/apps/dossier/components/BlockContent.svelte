@@ -174,6 +174,28 @@
   }
   :global(.dossier-prose div[data-toggle-body] > :last-child) { margin-bottom: 0; }
 
+  /* ── Cross-links ───────────────────────────────────────────────────────── */
+  /* Visually distinct from an external link: a reference to another page in the
+     same pack is navigation, not a departure. */
+  :global(.dossier-prose a.dossier-doclink) {
+    color: #e2e8f0;                  /* slate-200 */
+    text-decoration: none;
+    border-bottom: 1px solid rgb(var(--lh-accent-rgb, 60 150 131) / 0.6);
+    padding-bottom: 1px;
+    cursor: pointer;
+  }
+  :global(.dossier-prose a.dossier-doclink:hover) {
+    color: #fff;
+    border-bottom-color: var(--lh-accent, #3c9683);
+  }
+  :global(.dossier-prose a.dossier-doclink::before) {
+    content: '¶';
+    font-size: 0.75em;
+    color: var(--lh-accent, #3c9683);
+    margin-right: 0.15em;
+    vertical-align: 0.05em;
+  }
+
   /* ── Assets ────────────────────────────────────────────────────────────── */
   :global(.dossier-prose .dossier-asset) { margin: 0 0 0.9rem; }
 
