@@ -114,7 +114,7 @@ describe('asset blocks', () => {
       document_id: 'd1', filename: 'Roof.jpg',
       mime_type: 'image/jpeg', provider_file_id: 'drive1',
     }));
-    expect(html).toContain('src="/api/media/file/drive1"');
+    expect(html).toContain('src="/api/media/file/drive1?mime=image%2Fjpeg"');
     expect(html).toContain('alt="Roof.jpg"');
   });
 
@@ -126,7 +126,7 @@ describe('asset blocks', () => {
       mime_type: 'application/pdf', provider_file_id: 'drive2',
     }));
     expect(html).toContain('<iframe');
-    expect(html).toContain('src="/api/media/file/drive2"');
+    expect(html).toContain('src="/api/media/file/drive2?mime=application%2Fpdf"');
     expect(html).toContain('sandbox');
     expect(html).not.toContain('<object');
   });
@@ -136,7 +136,7 @@ describe('asset blocks', () => {
       document_id: 'd1', filename: 'Roof.jpg',
       mime_type: 'image/jpeg', provider_file_id: 'drive1',
     }));
-    expect(html).toContain('href="/api/media/file/drive1"');
+    expect(html).toContain('href="/api/media/file/drive1?mime=image%2Fjpeg"');
     expect(html).toContain('view full size');
   });
 
@@ -148,7 +148,7 @@ describe('asset blocks', () => {
     expect(html).toContain('dossier-asset-card');
     expect(html).toContain('Schedule.xlsx');
     expect(html).toContain('2.0 KB');
-    expect(html).toContain('href="/api/media/file/drive3"');
+    expect(html).toContain('href="/api/media/file/drive3"');  // no hint: not a declarable type
   });
 
   it('degrades to a card with no link when the provider id is unusable', () => {

@@ -30,7 +30,7 @@ import { getLogger }            from '$lib/utils/logger';
 
 const logger = getLogger('MediaFileProxy');
 
-export async function GET({ params }) {
+export async function GET({ params, url }) {
   const { fileId } = params;
 
   if (!fileId || !/^[A-Za-z0-9_-]+$/.test(fileId)) {
@@ -40,9 +40,17 @@ export async function GET({ params }) {
   try {
     const { data, mimeType } = await storageProvider.getFileStream(fileId);
 
+    // A caller may declare the type it recorded at upload. Storage providers
+    // report what they stored, which is wrong for anything uploaded before the
+    // type was captured properly — a PDF held as octet-stream downloads rather
+    // than rendering. The hint is re-validated here against a tiny allow-list
+    // of inline-renderable, non-scriptable types, so it can never be used to
+    // relabel a file as something executable.
+    const declared = declarableMime(url.searchParams.get('mime')) || mimeType;
+
     return new Response(data, {
       headers: {
-        'Content-Type':   mimeType,
+        'Content-Type':   declared,
         'Cache-Control':  'private, max-age=3600',
         'Content-Length': String(data.length),
         // These are user-uploaded bytes served from our own origin. Without

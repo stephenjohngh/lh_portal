@@ -47,7 +47,7 @@ export const Asset = Node.create({
   renderHTML({ HTMLAttributes, node }) {
     const { filename, mime_type, provider_file_id, size_bytes } = node.attrs;
     const kind = previewKind(mime_type);
-    const url  = fileProxyUrl(provider_file_id);
+    const url  = fileProxyUrl(provider_file_id, mime_type);
     const name = filename || 'File';
     const size = fmtSize(size_bytes);
 
@@ -104,6 +104,57 @@ export const Asset = Node.create({
     return ['div', wrapper, ...cardChildren(name, size, url)];
   },
 
+  /**
+   * An editing affordance only — spec 2 §11 allows exactly this to differ
+   * between modes. The node view renders the SAME declarative markup (via
+   * renderHTML above) and adds a remove button over it, so the read-only
+   * renderer is untouched and no markup is duplicated.
+   *
+   * It exists because an asset is an atom with no text cursor: without a
+   * visible control, removing one means knowing to click-select it and press
+   * Backspace, and a click lands inside the iframe or image instead.
+   */
+  addNodeView() {
+    return ({ node, getPos, editor }) => {
+      const dom = document.createElement('div');
+      dom.className = 'dossier-asset-host';
+
+      const inner = document.createElement('div');
+      inner.className = 'dossier-asset-inner';
+      dom.appendChild(inner);
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'dossier-asset-remove';
+      remove.title = 'Remove this file from the page';
+      remove.setAttribute('aria-label', 'Remove this file from the page');
+      remove.textContent = '×';
+      remove.contentEditable = 'false';
+      remove.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        if (typeof getPos !== 'function') return;
+        const pos = getPos();
+        editor.view.dispatch(
+          editor.state.tr.delete(pos, pos + node.nodeSize)
+        );
+      });
+      dom.appendChild(remove);
+
+      // Render the node's declarative markup into `inner`.
+      paint(inner, node);
+
+      return {
+        dom,
+        update(updated) {
+          if (updated.type.name !== 'asset') return false;
+          paint(inner, updated);
+          return true;
+        },
+        ignoreMutation: () => true,   // the whole subtree is ours, not ProseMirror's
+      };
+    };
+  },
+
   addCommands() {
     return {
       /** @param {object} attrs from assetAttrsFromDocument() */
@@ -112,6 +163,65 @@ export const Asset = Node.create({
     };
   },
 });
+
+/**
+ * Draw an asset's preview into a host element, reusing the same decisions as
+ * renderHTML so edit and read modes stay identical.
+ */
+function paint(host, node) {
+  const { filename, mime_type, provider_file_id, size_bytes } = node.attrs;
+  const kind = previewKind(mime_type);
+  const url  = fileProxyUrl(provider_file_id, mime_type);
+  const name = filename || 'File';
+  const size = fmtSize(size_bytes);
+
+  host.textContent = '';
+  host.className = 'dossier-asset-inner dossier-asset';
+  host.setAttribute('data-kind', url ? kind : 'file');
+
+  const caption = (text, href) => {
+    const cap = document.createElement('div');
+    cap.className = 'dossier-asset-caption';
+    if (href) {
+      const a = document.createElement('a');
+      a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = text;
+      cap.appendChild(a);
+    } else {
+      cap.textContent = text;
+    }
+    return cap;
+  };
+
+  if (url && kind === 'image') {
+    const img = document.createElement('img');
+    img.src = url; img.alt = name; img.className = 'dossier-asset-image';
+    host.append(img, caption(`${name} — view full size`, url));
+    return;
+  }
+
+  if (url && kind === 'pdf') {
+    const frame = document.createElement('iframe');
+    frame.src = url;
+    frame.setAttribute('sandbox', '');
+    frame.title = name;
+    frame.className = 'dossier-asset-pdf';
+    host.append(frame, caption(`${name} — open`, url));
+    return;
+  }
+
+  const card = document.createElement('div');
+  card.className = 'dossier-asset-card';
+  const icon = document.createElement('span');
+  icon.className = 'dossier-asset-icon';
+  icon.textContent = '📎';
+  const label = document.createElement(url ? 'a' : 'span');
+  label.className = 'dossier-asset-name';
+  label.textContent = size ? `${name} · ${size}` : name;
+  if (url) { label.href = url; label.target = '_blank'; label.rel = 'noopener noreferrer'; }
+  card.append(icon, label);
+  host.appendChild(card);
+}
 
 /** The generic file card: name, size, and a download link when we have a URL. */
 function cardChildren(name, size, url) {

@@ -36,6 +36,19 @@ describe('fileProxyUrl', () => {
     expect(fileProxyUrl('1a2B_c-3')).toBe(`${FILE_PROXY_PREFIX}1a2B_c-3`);
   });
 
+  it('appends a mime hint when we hold a declarable type', () => {
+    // Fixes files already stored with the wrong type at the provider — a PDF
+    // held as octet-stream downloads instead of rendering.
+    expect(fileProxyUrl('abc', 'application/pdf'))
+      .toBe(`${FILE_PROXY_PREFIX}abc?mime=application%2Fpdf`);
+  });
+
+  it('omits the hint for a type it would not declare', () => {
+    expect(fileProxyUrl('abc', 'text/html')).toBe(`${FILE_PROXY_PREFIX}abc`);
+    expect(fileProxyUrl('abc', 'image/svg+xml')).toBe(`${FILE_PROXY_PREFIX}abc`);
+    expect(fileProxyUrl('abc', '')).toBe(`${FILE_PROXY_PREFIX}abc`);
+  });
+
   it('rejects anything the proxy itself would reject', () => {
     // The proxy guards with the same pattern; a mismatch here would produce a
     // broken embed rather than a graceful card.
@@ -60,6 +73,20 @@ describe('fileProxyUrl', () => {
 describe('isProxyUrl — the sanitiser trusts this', () => {
   it('accepts a URL this app generated', () => {
     expect(isProxyUrl(`${FILE_PROXY_PREFIX}abc123`)).toBe(true);
+  });
+
+  it('accepts a URL carrying a valid mime hint', () => {
+    expect(isProxyUrl(`${FILE_PROXY_PREFIX}abc?mime=application%2Fpdf`)).toBe(true);
+  });
+
+  it('rejects a query it did not generate', () => {
+    // The sanitiser trusts this to decide whether an iframe reaches the page,
+    // so the query must be exactly one hint we would have produced ourselves.
+    expect(isProxyUrl(`${FILE_PROXY_PREFIX}abc?mime=text%2Fhtml`)).toBe(false);
+    expect(isProxyUrl(`${FILE_PROXY_PREFIX}abc?other=1`)).toBe(false);
+    expect(isProxyUrl(`${FILE_PROXY_PREFIX}abc?mime=application%2Fpdf&x=1`)).toBe(false);
+    expect(isProxyUrl(`${FILE_PROXY_PREFIX}abc?mime=`)).toBe(false);
+    expect(isProxyUrl(`${FILE_PROXY_PREFIX}abc?mime=%E0%A4%A`)).toBe(false); // bad encoding
   });
 
   it('rejects anything else, however similar', () => {

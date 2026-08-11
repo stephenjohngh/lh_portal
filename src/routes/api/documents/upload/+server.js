@@ -3,6 +3,7 @@ import { json }                 from '@sveltejs/kit';
 import { uploadDocument }       from '$lib/server/documentLibrary';
 import { requireAuth }          from '$lib/server/requireAuth';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors';
+import { resolveMimeType } from '$lib/utils/mimeTypes';
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -23,7 +24,11 @@ export async function POST({ request }) {
 
     const buffer   = Buffer.from(await file.arrayBuffer());
     const filename = file.name;
-    const mimeType = file.type || 'application/octet-stream';
+    // Browsers leave File.type empty often enough to matter (no OS
+    // association, some drag-and-drop paths, some mobile pickers). Storing the
+    // blank as octet-stream is what Drive then records, and what the media
+    // proxy later serves — so a good PDF arrives as an anonymous download.
+    const mimeType = resolveMimeType(file.type, filename);
 
     // Metadata from form fields
     const meta = {

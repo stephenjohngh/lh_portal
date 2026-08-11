@@ -210,6 +210,37 @@
   :global(.dossier-prose .dossier-asset-icon) { font-size: 1rem; line-height: 1; }
   :global(.dossier-prose .dossier-asset-name) { font-size: 0.85rem; }
 
+  /* Edit-mode only: the node view wraps the preview so it can offer a remove
+     button. An atom has no text cursor, so without a visible control the only
+     way to delete one is to know to click-select it and press Backspace — and
+     a click lands inside the iframe or image instead. */
+  :global(.dossier-prose .dossier-asset-host) {
+    position: relative;
+    margin: 0 0 0.9rem;
+  }
+  :global(.dossier-prose .dossier-asset-host .dossier-asset) { margin: 0; }
+
+  :global(.dossier-prose .dossier-asset-remove) {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 4px;
+    border: 1px solid #334155;       /* slate-700 */
+    background: rgb(15 23 42 / 0.85);/* slate-900 */
+    color: #94a3b8;                  /* slate-400 */
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s, color 0.12s;
+    z-index: 2;
+  }
+  :global(.dossier-prose .dossier-asset-host:hover .dossier-asset-remove),
+  :global(.dossier-prose .dossier-asset-remove:focus) { opacity: 1; }
+  :global(.dossier-prose .dossier-asset-remove:hover) { color: #f87171; }  /* red-400 */
+
   /* An asset selected in the editor — Tiptap marks atoms with this class. */
   :global(.dossier-prose .dossier-asset.ProseMirror-selectednode) {
     outline: 2px solid var(--lh-accent, #3c9683);

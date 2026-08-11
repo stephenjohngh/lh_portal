@@ -4,6 +4,8 @@
 // Spec 2 §6 calls inline preview "the most common failure point in homegrown
 // tools", so the decisions live here on their own rather than inside a node.
 
+import { declarableMime } from '$lib/utils/mimeTypes';
+
 /** Ids the media proxy will accept — it applies exactly this guard itself. */
 const SAFE_FILE_ID = /^[A-Za-z0-9_-]+$/;
 
@@ -30,19 +32,47 @@ export function previewKind(mimeType) {
  * this makes previews Drive/OneDrive-only: the Supabase storage provider
  * addresses files by path, which contains characters this guard rejects.
  *
+ * A `?mime=` hint is appended when we hold a type worth declaring. The proxy
+ * otherwise reports whatever the storage provider says, and that is wrong for
+ * any file uploaded before the type was recorded properly — a PDF stored as
+ * octet-stream downloads instead of rendering. `document_library.mime_type` is
+ * our own record and the better answer; the proxy re-validates it against the
+ * same tiny allow-list, so this is a hint, never a trusted instruction.
+ *
  * @param {string} providerFileId - document_library.provider_file_id
+ * @param {string} [mimeType]     - document_library.mime_type
  * @returns {string} '' when the id is unusable
  */
-export function fileProxyUrl(providerFileId) {
+export function fileProxyUrl(providerFileId, mimeType) {
   const id = String(providerFileId ?? '');
-  return SAFE_FILE_ID.test(id) ? `${FILE_PROXY_PREFIX}${id}` : '';
+  if (!SAFE_FILE_ID.test(id)) return '';
+  const hint = declarableMime(mimeType);
+  return hint
+    ? `${FILE_PROXY_PREFIX}${id}?mime=${encodeURIComponent(hint)}`
+    : `${FILE_PROXY_PREFIX}${id}`;
 }
 
-/** True when a URL is one this app generated for its own proxy. */
+/**
+ * True when a URL is one this app generated for its own proxy — the check the
+ * sanitiser trusts before admitting an iframe or img.
+ */
 export function isProxyUrl(url) {
   if (typeof url !== 'string') return false;
   if (!url.startsWith(FILE_PROXY_PREFIX)) return false;
-  return SAFE_FILE_ID.test(url.slice(FILE_PROXY_PREFIX.length));
+
+  const [path, query, ...rest] = url.slice(FILE_PROXY_PREFIX.length).split('?');
+  if (rest.length) return false;                 // more than one '?'
+  if (!SAFE_FILE_ID.test(path)) return false;
+  if (query === undefined) return true;
+
+  // The only query we ever generate is a single declarable mime hint.
+  const match = /^mime=([^&]+)$/.exec(query);
+  if (!match) return false;
+  try {
+    return declarableMime(decodeURIComponent(match[1])) !== '';
+  } catch {
+    return false;                                // malformed percent-encoding
+  }
 }
 
 /** Human-readable size. Mirrors $lib/utils/files fmtBytes, kept local so this module stays pure. */
