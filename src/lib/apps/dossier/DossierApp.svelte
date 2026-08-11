@@ -3,7 +3,7 @@
      P0: internal authoring only. Nothing published, nothing leaves the portal.
      Plan: docs/requirements/Dossier_P0_Build_Plan.md -->
 <script>
-  import { onMount }     from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
@@ -14,6 +14,9 @@
   import PackFormModal    from './components/PackFormModal.svelte';
   import PackWorkspace    from './components/PackWorkspace.svelte';
 
+  /** A caught value is `unknown`; narrow it without asserting a type. */
+  const errMessage = (err) => (err instanceof Error ? err.message : String(err));
+
   let appError      = '';
   let showPackModal = false;
   let editingPack   = null;
@@ -21,6 +24,39 @@
 
   // null = the pack list; set = the authoring workspace for that pack.
   let openPackId = null;
+
+  // ── Bounding the app's height ─────────────────────────────────────────────
+  // The portal shell is `min-h-screen` with a sticky nav, so the DOCUMENT
+  // scrolls and no ancestor has a fixed height. Dossier is a two-pane editor
+  // and needs the opposite: a bounded box whose panes scroll internally, or the
+  // toolbar and page tree scroll off the top as soon as a page gets long.
+  //
+  // Measured rather than a calc() against the shell's nav height and padding —
+  // those are someone else's numbers and would break silently if they changed.
+  let shellEl;
+  let shellStyle = '';
+
+  function measure() {
+    if (!shellEl) return;
+    const top = shellEl.getBoundingClientRect().top + window.scrollY;
+    // The shell's <main> has bottom padding below us; without subtracting it the
+    // box overruns the viewport and the whole page drifts by that much.
+    const parent = shellEl.parentElement;
+    const padBottom = parent
+      ? parseFloat(window.getComputedStyle(parent).paddingBottom) || 0
+      : 0;
+    shellStyle = `height: calc(100vh - ${Math.max(0, Math.round(top + padBottom))}px)`;
+  }
+
+  onMount(() => {
+    // After layout has settled, or the measurement reads a pre-style position.
+    requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+  });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') window.removeEventListener('resize', measure);
+  });
 
   // Pending destructive action (house pattern — never confirm()).
   let pendingDelete = null;
@@ -34,7 +70,7 @@
     try {
       await dossierStore.loadPacks();
     } catch (err) {
-      appError = err.message;
+      appError = errMessage(err);
     }
   });
 
@@ -55,7 +91,7 @@
       showPackModal = false;
       packModalRef?.done();
     } catch (err) {
-      packModalRef?.fail(err.message);
+      packModalRef?.fail(errMessage(err));
     }
   }
 
@@ -64,7 +100,7 @@
     try {
       await dossierStore.setArchived(id, status !== 'archived', $auth.user.id);
     } catch (err) {
-      appError = err.message;
+      appError = errMessage(err);
     }
   }
 
@@ -77,7 +113,7 @@
       await dossierStore.deletePack(id, title);
       pendingDelete = null;
     } catch (err) {
-      appError = err.message;
+      appError = errMessage(err);
     } finally {
       deletingId = null;
     }
@@ -89,7 +125,7 @@
     try {
       await dossierStore.loadDocs(packId);
     } catch (err) {
-      appError = err.message;
+      appError = errMessage(err);
     }
   }
 
@@ -99,7 +135,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full">
+<div class="flex flex-col overflow-hidden" bind:this={shellEl} style={shellStyle}>
 
   <!-- App header -->
   <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700
