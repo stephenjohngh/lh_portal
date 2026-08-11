@@ -184,15 +184,6 @@
     border-radius: 6px;
     border: 1px solid #334155;       /* slate-700 */
   }
-  :global(.dossier-prose .dossier-asset-pdf) {
-    display: block;
-    width: 100%;
-    height: 60vh;
-    min-height: 20rem;
-    border-radius: 6px;
-    border: 1px solid #334155;
-    background: #0f172a;
-  }
   :global(.dossier-prose .dossier-asset-caption) {
     font-size: 0.75rem;
     color: #94a3b8;                  /* slate-400 */
@@ -207,8 +198,24 @@
     border-radius: 6px;
     background: rgb(30 41 59 / 0.5); /* slate-800/50 */
   }
-  :global(.dossier-prose .dossier-asset-icon) { font-size: 1rem; line-height: 1; }
-  :global(.dossier-prose .dossier-asset-name) { font-size: 0.85rem; }
+  :global(.dossier-prose .dossier-asset-icon) { font-size: 1.05rem; line-height: 1; }
+  :global(.dossier-prose .dossier-asset-name) {
+    font-size: 0.85rem;
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  :global(.dossier-prose .dossier-asset-action) {
+    font-size: 0.8rem;
+    white-space: nowrap;
+    color: var(--lh-accent, #3c9683);
+    text-decoration: underline;
+  }
+  :global(.dossier-prose .dossier-asset-missing) {
+    color: #94a3b8;                  /* slate-400 */
+    text-decoration: none;
+    font-style: italic;
+  }
 
   /* Edit-mode only: the node view wraps the preview so it can offer a remove
      button. An atom has no text cursor, so without a visible control the only

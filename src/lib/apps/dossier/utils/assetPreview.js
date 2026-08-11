@@ -13,41 +13,37 @@ const SAFE_FILE_ID = /^[A-Za-z0-9_-]+$/;
 export const FILE_PROXY_PREFIX = '/api/media/file/';
 
 /**
- * The sandbox a PDF preview frame runs under. One constant so the node's
- * renderHTML, its edit-mode node view and the sanitiser cannot drift apart.
+ * ── Why there is no inline PDF frame ──────────────────────────────────────
  *
- * Arrived at empirically, after two wrong guesses:
- *   sandbox=""              → Firefox cannot run pdf.js (it IS script), falls
- *                             back to downloading, then blocks the download.
- *   sandbox="allow-scripts" → same result. The remaining blocker is the OPAQUE
- *                             ORIGIN: Firefox's PDF viewer declines to run in a
- *                             frame that has no real origin.
- *   + allow-same-origin     → the viewer runs.
+ * A PDF renders as a prominent open-in-new-tab card, not an embedded viewer.
+ * Four attempts at an <iframe> preview each failed for a different reason:
  *
- * ⚠ Be honest about what this costs. `allow-scripts` + `allow-same-origin`
- * together means the frame could, if it were ever running script of its own,
- * remove its own sandbox. So the sandbox is NOT the security boundary here.
+ *   <object>                              → blocked by the portal CSP
+ *                                           (object-src 'none')
+ *   <iframe sandbox="">                   → Firefox cannot run pdf.js (it IS
+ *                                           script) → falls back to a download
+ *                                           → blocks that too
+ *   <iframe sandbox="allow-scripts">      → same; the blocker is the opaque
+ *                                           origin, which Firefox's viewer
+ *                                           refuses to run in
+ *   + allow-same-origin allow-downloads   → still blank in Firefox, and Chrome
+ *                                           refuses the frame outright
  *
- * The actual boundary is upstream, and does not depend on this attribute:
- *   1. An iframe is only produced for a file whose recorded type is
- *      application/pdf. Anything else renders as a card.
- *   2. That is therefore what we declare on the response — the `?mime` hint is
- *      validated against a tiny non-scriptable allow-list before it is used.
- *   3. The proxy sends X-Content-Type-Options: nosniff, so the browser will not
- *      reinterpret those bytes as HTML however the file was actually uploaded.
- *   4. The src must pass isProxyUrl(), so a frame can only ever point at our
- *      own storage proxy — enforced again in the sanitiser.
+ * Stopping was the better engineering call. Embedding user-uploaded bytes in a
+ * same-origin frame that has been granted both allow-scripts AND
+ * allow-same-origin gives the frame the ability to drop its own sandbox — a
+ * meaningful risk to carry for a convenience. The card always works, in every
+ * browser, and the browser's own full-window PDF viewer is a better reading
+ * experience than a 60vh box anyway.
  *
- * What the sandbox still buys, even in this permissive form: no top-level
- * navigation, no popups, no form submission, no modals. `allow-downloads` is
- * granted so that a browser which still declines to render gives the user the
- * file, rather than the dead end of a blocked download and an empty box.
+ * If inline preview is ever wanted again, the honest route is pdf.js as a real
+ * dependency rendering to a canvas — no frame, no sandbox question. That is a
+ * P4 polish item, not a bug fix.
  */
-export const ASSET_FRAME_SANDBOX = 'allow-scripts allow-same-origin allow-downloads';
 
 /**
  * Which preview to render for a mime type.
- * @param {string} mimeType
+ * @param {string|null} [mimeType]
  * @returns {'image' | 'pdf' | 'file'}
  */
 export function previewKind(mimeType) {
@@ -72,11 +68,11 @@ export function previewKind(mimeType) {
  * our own record and the better answer; the proxy re-validates it against the
  * same tiny allow-list, so this is a hint, never a trusted instruction.
  *
- * @param {string} providerFileId - document_library.provider_file_id
- * @param {string} [mimeType]     - document_library.mime_type
+ * @param {string|null} providerFileId - document_library.provider_file_id
+ * @param {string|null} [mimeType]      - document_library.mime_type
  * @returns {string} '' when the id is unusable
  */
-export function fileProxyUrl(providerFileId, mimeType) {
+export function fileProxyUrl(providerFileId, mimeType = '') {
   const id = String(providerFileId ?? '');
   if (!SAFE_FILE_ID.test(id)) return '';
   const hint = declarableMime(mimeType);
@@ -87,7 +83,8 @@ export function fileProxyUrl(providerFileId, mimeType) {
 
 /**
  * True when a URL is one this app generated for its own proxy — the check the
- * sanitiser trusts before admitting an iframe or img.
+ * sanitiser trusts before admitting an img.
+ * @param {string|null} [url]
  */
 export function isProxyUrl(url) {
   if (typeof url !== 'string') return false;
@@ -129,7 +126,7 @@ export function fmtSize(bytes) {
  * Trade-off: a renamed file leaves a stale label until the block is re-inserted,
  * which the step-5 broken-reference panel can detect.
  *
- * @param {object} doc - a document_library row
+ * @param {object|null} doc - a document_library row
  */
 export function assetAttrsFromDocument(doc) {
   return {

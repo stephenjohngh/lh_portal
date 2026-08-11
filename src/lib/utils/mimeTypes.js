@@ -40,7 +40,10 @@ const BY_EXTENSION = {
   zip:  'application/zip',
 };
 
-/** Lowercase extension without the dot, or '' when there isn't one. */
+/**
+ * Lowercase extension without the dot, or '' when there isn't one.
+ * @param {string|null} [filename]
+ */
 export function extensionOf(filename) {
   const name = String(filename ?? '');
   const dot = name.lastIndexOf('.');
@@ -51,8 +54,8 @@ export function extensionOf(filename) {
 /**
  * Best mime type for an upload: what the browser said, else the extension,
  * else the honest generic.
- * @param {string} browserType - File.type, often ''
- * @param {string} filename
+ * @param {string|null} [browserType] - File.type, often ''
+ * @param {string|null} [filename]
  */
 export function resolveMimeType(browserType, filename) {
   const given = String(browserType ?? '').split(';')[0].trim().toLowerCase();
@@ -77,7 +80,7 @@ const MIME_SHAPE = /^[a-z]+\/[a-z0-9.+-]+$/;
 
 /**
  * Normalise a caller-supplied mime hint, or '' if it is not one we will declare.
- * @param {string} mime
+ * @param {string|null} [mime]
  */
 export function declarableMime(mime) {
   const value = String(mime ?? '').split(';')[0].trim().toLowerCase();

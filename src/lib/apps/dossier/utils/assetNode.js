@@ -9,9 +9,13 @@
 // alongside the document_id reference.
 
 import { Node, mergeAttributes } from '@tiptap/core';
-import { previewKind, fileProxyUrl, fmtSize, ASSET_FRAME_SANDBOX } from './assetPreview.js';
+import { previewKind, fileProxyUrl, fmtSize } from './assetPreview.js';
 
-/** Simple attr spec: round-trip through a data- attribute of the same name. */
+/**
+ * Simple attr spec: round-trip through a data- attribute of the same name.
+ * @param {string} name
+ * @param {string|null} [fallback]
+ */
 function dataAttr(name, fallback = null) {
   return {
     default: fallback,
@@ -76,27 +80,9 @@ export const Asset = Node.create({
     }
 
     if (kind === 'pdf') {
-      return ['div', wrapper,
-        // An <iframe>, not an <object>: the portal's CSP sets object-src 'none'
-        // (good hardening, left alone), while frame-src falls back to
-        // default-src 'self' — so a same-origin iframe is already permitted.
-        // hooks.server.js relaxes X-Frame-Options to SAMEORIGIN for the proxy
-        // path, since DENY refuses even our own frames.
-        //
-        // See ASSET_FRAME_SANDBOX for why the sandbox grants allow-scripts but
-        // never allow-same-origin. The sanitiser admits iframes only when the
-        // src is our own proxy, and re-asserts the same sandbox value.
-        ['iframe', {
-          src: url,
-          sandbox: ASSET_FRAME_SANDBOX,
-          title: name,
-          class: 'dossier-asset-pdf',
-        }],
-        ['div', { class: 'dossier-asset-caption' },
-          ['a', { href: url, target: '_blank', rel: 'noopener noreferrer' },
-            `${name} — open`],
-        ],
-      ];
+      // A card, not an embedded viewer — see assetPreview.js for the four
+      // failed frame attempts and why stopping was the better call.
+      return ['div', wrapper, ...cardChildren(name, size, url, '📄', 'Open PDF')];
     }
 
     return ['div', wrapper, ...cardChildren(name, size, url)];
@@ -132,6 +118,7 @@ export const Asset = Node.create({
         event.preventDefault();
         if (typeof getPos !== 'function') return;
         const pos = getPos();
+        if (pos == null) return;      // node already gone from the document
         editor.view.dispatch(
           editor.state.tr.delete(pos, pos + node.nodeSize)
         );
@@ -154,11 +141,14 @@ export const Asset = Node.create({
   },
 
   addCommands() {
-    return {
+    // Cast: Tiptap types commands against its own RawCommands, which cannot
+    // know about one we add without a .d.ts augmentation — disproportionate
+    // for a single command.
+    return /** @type {any} */ ({
       /** @param {object} attrs from assetAttrsFromDocument() */
       insertAsset: (attrs) => ({ commands }) =>
         commands.insertContent({ type: this.name, attrs }),
-    };
+    });
   },
 });
 
@@ -198,39 +188,49 @@ function paint(host, node) {
     return;
   }
 
-  if (url && kind === 'pdf') {
-    const frame = document.createElement('iframe');
-    frame.src = url;
-    frame.setAttribute('sandbox', ASSET_FRAME_SANDBOX);
-    frame.title = name;
-    frame.className = 'dossier-asset-pdf';
-    host.append(frame, caption(`${name} — open`, url));
-    return;
-  }
-
+  // PDFs and everything else: the same card renderHTML produces, built as DOM.
+  // Kept structurally identical on purpose — if these two drift, the author
+  // stops seeing what the reader will get.
+  const isPdf = kind === 'pdf';
   const card = document.createElement('div');
   card.className = 'dossier-asset-card';
+
   const icon = document.createElement('span');
   icon.className = 'dossier-asset-icon';
-  icon.textContent = '📎';
-  const label = document.createElement(url ? 'a' : 'span');
+  icon.textContent = isPdf ? '📄' : '📎';
+
+  const label = document.createElement('span');
   label.className = 'dossier-asset-name';
   label.textContent = size ? `${name} · ${size}` : name;
-  if (url) { label.href = url; label.target = '_blank'; label.rel = 'noopener noreferrer'; }
-  card.append(icon, label);
+
+  let action;
+  if (url) {
+    const link = document.createElement('a');
+    link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.className = 'dossier-asset-action';
+    link.textContent = isPdf ? 'Open PDF' : 'Open';
+    action = link;
+  } else {
+    action = document.createElement('span');
+    action.className = 'dossier-asset-action dossier-asset-missing';
+    action.textContent = 'Unavailable';
+  }
+
+  card.append(icon, label, action);
   host.appendChild(card);
 }
 
-/** The generic file card: name, size, and a download link when we have a URL. */
-function cardChildren(name, size, url) {
+/** The file card: icon, name, size, and an open-in-new-tab link when we have a URL. */
+function cardChildren(name, size, url, icon = '📎', action = 'Open') {
   const label = size ? `${name} · ${size}` : name;
   return [
     ['div', { class: 'dossier-asset-card' },
-      ['span', { class: 'dossier-asset-icon' }, '📎'],
+      ['span', { class: 'dossier-asset-icon' }, icon],
+      ['span', { class: 'dossier-asset-name' }, label],
       url
         ? ['a', { href: url, target: '_blank', rel: 'noopener noreferrer',
-                  class: 'dossier-asset-name' }, label]
-        : ['span', { class: 'dossier-asset-name' }, label],
+                  class: 'dossier-asset-action' }, action]
+        : ['span', { class: 'dossier-asset-action dossier-asset-missing' }, 'Unavailable'],
     ],
   ];
 }

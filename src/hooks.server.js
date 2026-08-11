@@ -41,14 +41,11 @@ async function securityHeaders({ event, resolve }) {
   response.headers.set('X-Content-Type-Options', 'nosniff');
 
   // Belt-and-braces with CSP frame-ancestors 'none' for older browsers.
-  //
-  // The media proxy is the one exception: it serves our own stored files back
-  // to our own pages, and the Dossier app frames PDFs from it. DENY blocks that
-  // (Firefox reports NS_ERROR_XFO_VIOLATION). SAMEORIGIN still refuses any
-  // external site, and the frame itself is sandboxed with no tokens, so the
-  // framed bytes get an opaque origin and no scripting.
-  const framesOwnFiles = event.url.pathname.startsWith('/api/media/file/');
-  response.headers.set('X-Frame-Options', framesOwnFiles ? 'SAMEORIGIN' : 'DENY');
+  // No exception: nothing in the portal frames its own content. Dossier briefly
+  // needed SAMEORIGIN for an inline PDF viewer, which was abandoned in favour
+  // of an open-in-new-tab card (see dossier/utils/assetPreview.js), so the
+  // stricter blanket DENY is back.
+  response.headers.set('X-Frame-Options', 'DENY');
 
   // Don't leak portal URLs (which include case ids etc.) to external sites.
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

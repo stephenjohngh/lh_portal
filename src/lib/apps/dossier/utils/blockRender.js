@@ -14,7 +14,7 @@ import { generateHTML } from '@tiptap/core';
 import DOMPurify        from 'dompurify';
 import { getLogger }    from '$lib/utils/logger';
 import { buildExtensions, EMPTY_DOC } from './blockSchema.js';
-import { isProxyUrl, ASSET_FRAME_SANDBOX } from './assetPreview.js';
+import { isProxyUrl } from './assetPreview.js';
 
 const logger = getLogger('dossierBlockRender');
 
@@ -30,15 +30,14 @@ const ALLOWED_TAGS = [
   'code', 'pre',
   'strong', 'em', 's', 'b', 'i', 'u',
   'a', 'span', 'div',
-  // Asset previews (P1 step 2). `iframe` is a tag one would normally never
-  // whitelist, so it is admitted ONLY together with the hook below, which
-  // strips any iframe (or img) whose src is not this app's own file proxy.
-  // `object` is deliberately NOT here: the portal's CSP sets object-src 'none',
-  // and an iframe is the narrower primitive.
-  'img', 'iframe',
+  // Asset previews (P1 step 2). `img` only — neither `iframe` nor `object` is
+  // admitted. PDFs render as an open-in-new-tab card rather than an embedded
+  // viewer (see assetPreview.js), which means no frame primitive needs to
+  // exist in the one feature built to be handed to an outsider.
+  'img',
 ];
 
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'sandbox'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title'];
 
 /**
  * Sanitise generated block HTML before it reaches {@html}.
@@ -52,18 +51,12 @@ export function sanitizeBlockHtml(html) {
   // DOMPurify needs a window; during SSR there is nothing to render into.
   if (typeof window === 'undefined') return html;
 
-  // Confine <iframe> and <img> to this app's own file proxy, and force every
-  // surviving iframe to be sandboxed. Without this the iframe tag above would
-  // be a general-purpose embed primitive in the one feature designed to be
-  // handed to an outsider.
+  // Confine <img> to this app's own file proxy, so a stored block cannot point
+  // at an external URL — which would leak a reader's IP to a third party the
+  // moment a published pack is opened.
   const hook = (node) => {
     const tag = node.tagName?.toLowerCase();
-    if (tag === 'iframe') {
-      if (!isProxyUrl(node.getAttribute('src'))) { node.remove(); return; }
-      // Re-assert the sandbox here rather than trusting the stored HTML: this
-      // is the layer that sees what actually reaches the page.
-      node.setAttribute('sandbox', ASSET_FRAME_SANDBOX);
-    } else if (tag === 'img' && !isProxyUrl(node.getAttribute('src'))) {
+    if (tag === 'img' && !isProxyUrl(node.getAttribute('src'))) {
       node.remove();
     }
   };
