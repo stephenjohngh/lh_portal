@@ -195,6 +195,73 @@ describe('sanitizeBlockHtml — the img allow-rule', () => {
   });
 });
 
+describe('transclusion', () => {
+  const embed = (targetId, mode = 'full') => doc({
+    type: 'embedDoc',
+    attrs: { target_doc_id: targetId, render_mode: mode, target_title: 'Chronology' },
+  });
+  const page = (id, text) => ({ id, title: 'Chronology', blocks: doc(para(text)) });
+
+  it('expands a full embed inline', () => {
+    const html = renderBlocksToHtml(embed('d2'), { docs: [page('d2', 'Contract signed')] });
+    expect(html).toContain('Contract signed');
+    expect(html).toContain('data-embed-rendered="full"');
+  });
+
+  it('renders summary mode as title plus opening line only', () => {
+    const html = renderBlocksToHtml(embed('d2', 'summary'),
+      { docs: [page('d2', 'The opening line')] });
+    expect(html).toContain('The opening line');
+    expect(html).toContain('data-embed-rendered="summary"');
+  });
+
+  it('degrades a cycle to a link card instead of looping', () => {
+    // d1 embeds d2; d2 embeds d1. Rendering d1 must terminate.
+    const d1 = { id: 'd1', title: 'A', blocks: embed('d2') };
+    const d2 = { id: 'd2', title: 'B', blocks: embed('d1') };
+    const html = renderBlocksToHtml(d1.blocks, { docs: [d1, d2], ancestry: ['d1'] });
+    expect(html).toContain('data-embed-note="cycle"');
+    expect(html).toContain('would loop');
+  });
+
+  it('stops at the depth cap rather than expanding forever', () => {
+    const chain = ['a', 'b', 'c', 'd', 'e'].map((id, i, all) => ({
+      id, title: id.toUpperCase(),
+      blocks: all[i + 1] ? embed(all[i + 1]) : doc(para('DEEPEST-PAGE-TEXT')),
+    }));
+    const html = renderBlocksToHtml(chain[0].blocks, { docs: chain });
+    expect(html).toContain('data-embed-note="depth"');
+    // The page past the cap is never expanded — note the substring must be
+    // distinctive: 'end' also appears inside `data-embed-rendered`.
+    expect(html).not.toContain('DEEPEST-PAGE-TEXT');
+  });
+
+  it('shows a card when the embedded page has been deleted', () => {
+    // A non-empty docs list that simply lacks the target: an EMPTY list means
+    // "no resolver supplied" and is left untouched (see the test below).
+    const html = renderBlocksToHtml(embed('gone'), { docs: [page('other', 'x')] });
+    expect(html).toContain('data-embed-note="missing"');
+    expect(html).toContain('no longer exists');
+  });
+
+  it('escapes a page title rather than letting it inject markup', () => {
+    const html = renderBlocksToHtml(embed('d2', 'summary'), {
+      docs: [{ id: 'd2', title: '<img src=x onerror=alert(1)>', blocks: doc(para('x')) }],
+    });
+    // The title survives as inert TEXT, so the word "onerror" is still in the
+    // string — what matters is that no <img> element was ever created from it.
+    expect(html).toContain('&lt;img');
+    expect(html).not.toContain('<img');
+  });
+
+  it('leaves the placeholder alone when there is nothing to resolve against', () => {
+    // The live editor renders without a docs list; the node view fills in there.
+    const html = renderBlocksToHtml(embed('d2'));
+    expect(html).toContain('data-embed-doc="d2"');
+    expect(html).not.toContain('data-embed-rendered');
+  });
+});
+
 describe('blocksToText', () => {
   it('flattens nested text in document order', () => {
     expect(blocksToText(doc(para('One'), para('Two')))).toBe('One Two');

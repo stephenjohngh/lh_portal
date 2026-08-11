@@ -12,6 +12,7 @@
 /** Marks and nodes that constitute a reference. */
 const DOC_LINK_MARK = 'docLink';
 const ASSET_NODE    = 'asset';
+const EMBED_NODE    = 'embedDoc';
 
 /**
  * Pull every reference out of a ProseMirror doc, in document order.
@@ -59,6 +60,18 @@ export function extractLinks(blocks) {
         target_doc_id:      null,
         target_doc_ref:     null,
         target_document_id: node.attrs.document_id,
+      });
+    }
+
+    // A transclusion is a reference too — it must reach the graph, or the P3
+    // publish walk would miss a page the pack actually shows.
+    if (node.type === EMBED_NODE && (node.attrs?.target_doc_id || node.attrs?.target_slug)) {
+      push({
+        from_block_id:      uid ?? null,
+        target_kind:        'doc',
+        target_doc_id:      node.attrs.target_doc_id ?? null,
+        target_doc_ref:     node.attrs.target_slug ?? null,
+        target_document_id: null,
       });
     }
 

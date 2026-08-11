@@ -15,6 +15,9 @@ import DOMPurify        from 'dompurify';
 import { getLogger }    from '$lib/utils/logger';
 import { buildExtensions, EMPTY_DOC } from './blockSchema.js';
 import { isProxyUrl } from './assetPreview.js';
+import {
+  resolveEmbedRender, firstParagraphText, EMBED_NOTE_TEXT, MAX_EMBED_DEPTH,
+} from './embedGuard.js';
 
 const logger = getLogger('dossierBlockRender');
 
@@ -86,14 +89,95 @@ export function sanitizeBlockHtml(html) {
  * @param {object} blocks - dossier_docs.blocks
  * @returns {string}
  */
-export function renderBlocksToHtml(blocks) {
+export function renderBlocksToHtml(blocks, opts = {}) {
   const json = blocks && typeof blocks === 'object' && blocks.type ? blocks : EMPTY_DOC;
   try {
-    return sanitizeBlockHtml(generateHTML(json, buildExtensions()));
+    const html = sanitizeBlockHtml(generateHTML(json, buildExtensions()));
+    return expandEmbeds(html, opts);
   } catch (err) {
     logger('⚠ could not render blocks', err);
     return '';
   }
+}
+
+/**
+ * The "resolve references" stage of the pipeline (spec 2 §11).
+ *
+ * Embed nodes render only a placeholder, because a declarative renderHTML has
+ * no access to the other pages. This fills each one — applying the cycle and
+ * depth guard first, and recursing through the SAME renderer so an embedded
+ * page looks exactly like the real thing.
+ *
+ * A no-op when there are no pages to resolve against (the editor's own live
+ * view) or no DOM (SSR), so callers never have to check.
+ *
+ * @param {string} html
+ * @param {{ docs?: object[], ancestry?: string[], maxDepth?: number }} opts
+ */
+function expandEmbeds(html, { docs = [], ancestry = [], maxDepth = MAX_EMBED_DEPTH } = {}) {
+  if (!html || typeof document === 'undefined') return html;
+  // No pages to resolve against means the CALLER supplied no resolver — the
+  // live editor, which fills placeholders with its own node view. It does not
+  // mean every target is deleted, and treating it that way would stamp
+  // "this page no longer exists" over every embed in the editor.
+  if (!docs.length) return html;
+
+  const host = document.createElement('div');
+  host.innerHTML = html;
+
+  const placeholders = host.querySelectorAll('div[data-embed-doc]');
+  if (!placeholders.length) return html;
+
+  const byId = new Map(docs.map(d => [d.id, d]));
+
+  for (const node of placeholders) {
+    const targetId = node.getAttribute('data-embed-doc');
+    const target   = byId.get(targetId);
+    const title    = target?.title || node.getAttribute('data-embed-title') || 'Untitled page';
+
+    const decision = resolveEmbedRender({
+      requested: node.getAttribute('data-embed-mode'),
+      targetId,
+      ancestry,
+      exists:    Boolean(target),
+      maxDepth,
+    });
+
+    node.setAttribute('data-embed-rendered', decision.mode);
+    if (decision.note) node.setAttribute('data-embed-note', decision.note);
+
+    const heading = `<div class="dossier-embed-title">${escapeHtml(title)}</div>`;
+
+    if (decision.mode === 'full') {
+      // Recurse with this page pushed onto the ancestry — that is what the
+      // cycle guard reads on the way back down.
+      const inner = renderBlocksToHtml(target.blocks, {
+        docs, ancestry: [...ancestry, targetId], maxDepth,
+      });
+      node.innerHTML = `${heading}<div class="dossier-embed-body">${inner}</div>`;
+      continue;
+    }
+
+    if (decision.mode === 'summary') {
+      const summary = firstParagraphText(target.blocks);
+      node.innerHTML = heading
+        + `<div class="dossier-embed-summary">${escapeHtml(summary || 'This page is empty.')}</div>`;
+      continue;
+    }
+
+    const note = decision.note ? EMBED_NOTE_TEXT[decision.note] : '';
+    node.innerHTML = heading
+      + (note ? `<div class="dossier-embed-note">${escapeHtml(note)}</div>` : '');
+  }
+
+  return host.innerHTML;
+}
+
+/** Titles and summaries are plain text and must not be able to inject markup. */
+function escapeHtml(value) {
+  const el = document.createElement('span');
+  el.textContent = String(value ?? '');
+  return el.innerHTML;
 }
 
 /**

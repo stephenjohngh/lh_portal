@@ -20,10 +20,12 @@
   import DocTree      from './DocTree.svelte';
   import DocFormModal from './DocFormModal.svelte';
   import DocEditor    from './DocEditor.svelte';
+  import BlockContent from './BlockContent.svelte';
   import RevisionHistoryModal from './RevisionHistoryModal.svelte';
   import AssetPickerModal     from './AssetPickerModal.svelte';
   import PagePickerModal     from './PagePickerModal.svelte';
   import { assetAttrsFromDocument } from '../utils/assetPreview.js';
+  import { describeBrokenReferences } from '../utils/brokenRefs.js';
 
   export let pack;
 
@@ -153,9 +155,16 @@
   // ── Cross-links ───────────────────────────────────────────────────────────
 
   let showPagePicker = false;
+  let pickerPurpose  = 'link';   // 'link' | 'embed'
 
-  function handlePickPage(doc) {
-    editorRef?.applyDocLink(doc);
+  function handlePickPage({ doc, mode }) {
+    if (pickerPurpose === 'embed') editorRef?.insertDocEmbed(doc, mode);
+    else                           editorRef?.applyDocLink(doc);
+  }
+
+  function openPicker(purpose) {
+    pickerPurpose = purpose;
+    showPagePicker = true;
   }
 
   /**
@@ -179,6 +188,24 @@
       notice = '';
     } else {
       notice = 'That page no longer exists.';
+    }
+  }
+
+  // ── Broken references ─────────────────────────────────────────────────────
+  // Recomputed whenever the pages or the shelf change, so a deletion surfaces
+  // immediately rather than at some later audit.
+
+  let broken = [];
+  let showBroken = false;
+
+  $: refreshBroken(docs, files);
+
+  async function refreshBroken(_docs, _files) {
+    if (!pack?.id) { broken = []; return; }
+    try {
+      broken = await dossierStore.loadBrokenReferences(pack.id);
+    } catch {
+      broken = [];      // non-fatal: the pack is still perfectly editable
     }
   }
 
@@ -207,6 +234,22 @@
       afterData: { pack_id: pack.id, filename: doc.filename },
     });
   }
+
+  // ── Preview ───────────────────────────────────────────────────────────────
+  // The editor can only show an embed as a placeholder — a Tiptap node cannot
+  // reach the other pages. Preview renders through the SAME read-mode renderer
+  // a recipient will get, so transclusions, cycles and depth limits are all
+  // visible before anything is published.
+
+  let previewing = false;
+
+  async function togglePreview() {
+    if (!previewing) await editorRef?.flushNow();   // preview the saved state
+    previewing = !previewing;
+  }
+
+  // Leaving a page always returns to editing.
+  $: if (selectedId) previewing = previewing && true;
 
   // ── Version history ───────────────────────────────────────────────────────
 
@@ -289,7 +332,43 @@
     {#if pack.status === 'archived'}
       <span class="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">Archived</span>
     {/if}
+
+    <div class="flex-1"></div>
+
+    {#if broken.length}
+      <!-- A pack about to be handed to someone outside the portal should not
+           contain references that go nowhere. -->
+      <button
+        class="text-xs px-2 py-1 rounded bg-amber-500/15 text-amber-300
+               hover:bg-amber-500/25 transition-colors shrink-0"
+        title="Show which references no longer resolve"
+        on:click={() => showBroken = !showBroken}
+      >⚠ {describeBrokenReferences(broken)}</button>
+    {/if}
   </div>
+
+  {#if showBroken && broken.length}
+    <div class="px-4 py-3 border-b border-amber-500/20 bg-amber-500/5 shrink-0">
+      <div class="flex items-start gap-3">
+        <div class="flex-1 min-w-0 space-y-1">
+          {#each broken as ref}
+            <p class="text-xs text-slate-300">
+              <button
+                class="text-amber-300 hover:text-amber-200 underline underline-offset-2"
+                on:click={() => { selectedId = ref.from_doc_id; showBroken = false; }}
+              >{ref.from_doc_title}</button>
+              <span class="text-slate-500">
+                {ref.kind === 'doc' ? 'links to' : 'shows'}
+              </span>
+              <span class="text-slate-400">{ref.label}</span>
+            </p>
+          {/each}
+        </div>
+        <button class="text-xs text-slate-500 hover:text-slate-300 shrink-0"
+                on:click={() => showBroken = false}>Hide</button>
+      </div>
+    </div>
+  {/if}
 
   {#if treeError}
     <div class="px-4 pt-3">
@@ -389,6 +468,10 @@
                 Save version
               </Button>
             {/if}
+            <Button variant="secondary" size="small"
+                    on:click={togglePreview}>
+              {previewing ? 'Edit' : 'Preview'}
+            </Button>
             <Button variant="secondary" size="small" on:click={openHistory}>
               History
             </Button>
@@ -418,10 +501,19 @@
         <div class="flex-1 min-h-0">
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
           <div class="h-full" on:click={handleContentClick}>
+            {#if previewing}
+              <div class="h-full overflow-y-auto">
+                <div class="max-w-3xl mx-auto px-8 py-6">
+                  <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} />
+                </div>
+              </div>
+            {:else}
             <DocEditor bind:this={editorRef}
                        doc={selectedDoc} editable={canEdit} onSave={handleSaveBlocks}
                        on:pickAsset={() => showAssetPicker = true}
-                       on:pickPage={() => showPagePicker = true} />
+                       on:pickPage={() => openPicker('link')}
+                       on:pickEmbed={() => openPicker('embed')} />
+            {/if}
           </div>
         </div>
       {:else}
@@ -448,6 +540,7 @@
   bind:show={showPagePicker}
   {docs}
   currentDocId={selectedId}
+  purpose={pickerPurpose}
   on:pick={(e) => handlePickPage(e.detail)}
   on:close={() => showPagePicker = false}
 />
@@ -464,6 +557,7 @@
   bind:show={showHistory}
   doc={selectedDoc}
   {revisions}
+  {docs}
   loading={loadingRevisions}
   {canEdit}
   on:restore={handleRestore}

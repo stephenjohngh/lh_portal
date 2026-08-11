@@ -21,8 +21,10 @@
   export let mode = 'read';
   /** Edit mode only: bound to the element the caller attaches the Editor to. */
   export let host = null;
+  /** The pack's pages — needed to resolve transclusions. Read mode only. */
+  export let docs = [];
 
-  $: html = mode === 'read' ? renderBlocksToHtml(blocks) : '';
+  $: html = mode === 'read' ? renderBlocksToHtml(blocks, { docs }) : '';
   // Distinguish "nothing written yet" from "stored JSON we could not render".
   $: broken = mode === 'read' && html === '' && !isEmptyDoc(blocks);
 </script>
@@ -194,6 +196,47 @@
     color: var(--lh-accent, #3c9683);
     margin-right: 0.15em;
     vertical-align: 0.05em;
+  }
+
+  /* ── Embedded pages ────────────────────────────────────────────────────── */
+  /* Visibly a quotation of another page, not part of this one — otherwise a
+     reader cannot tell whose words they are looking at. */
+  :global(.dossier-prose .dossier-embed) {
+    border: 1px solid #334155;       /* slate-700 */
+    border-left: 3px solid var(--lh-accent, #3c9683);
+    border-radius: 6px;
+    padding: 0.7rem 0.9rem;
+    margin: 0 0 0.9rem;
+    background: rgb(15 23 42 / 0.35); /* slate-900 */
+  }
+  :global(.dossier-prose .dossier-embed-title) {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;                  /* slate-400 */
+    margin-bottom: 0.4rem;
+  }
+  :global(.dossier-prose .dossier-embed-body > :last-child) { margin-bottom: 0; }
+  :global(.dossier-prose .dossier-embed-summary) {
+    font-size: 0.875rem;
+    color: #cbd5e1;                  /* slate-300 */
+  }
+  :global(.dossier-prose .dossier-embed-note) {
+    font-size: 0.8rem;
+    color: #fbbf24;                  /* amber-400 */
+  }
+  /* An embed that could not be expanded reads as a warning, not as content. */
+  :global(.dossier-prose .dossier-embed[data-embed-note]) {
+    border-left-color: #f59e0b;      /* amber-500 */
+  }
+  /* Nested embeds step back so depth is legible at a glance. */
+  :global(.dossier-prose .dossier-embed .dossier-embed) {
+    background: transparent;
+  }
+  /* The editor's stand-in, which states what is embedded rather than showing it. */
+  :global(.dossier-prose .dossier-embed-stub) {
+    position: relative;
+    user-select: none;
   }
 
   /* ── Assets ────────────────────────────────────────────────────────────── */

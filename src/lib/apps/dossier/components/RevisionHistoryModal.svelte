@@ -20,6 +20,7 @@
   export let revisions = [];
   export let loading   = false;
   export let canEdit   = true;
+  export let docs      = [];
 
   const dispatch = createEventDispatcher();
 
@@ -97,7 +98,7 @@
                 · titled “{selected.title}” at the time
               {/if}
             </p>
-            <BlockContent blocks={selected.blocks} mode="read" />
+            <BlockContent blocks={selected.blocks} mode="read" {docs} />
           {:else}
             <p class="text-sm text-slate-500">Select a version to preview it.</p>
           {/if}

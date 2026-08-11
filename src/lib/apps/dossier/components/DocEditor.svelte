@@ -159,6 +159,14 @@
     editor?.chain().focus().insertAsset(attrs).run();
   }
 
+  /** Insert a transclusion of another page. */
+  export function insertDocEmbed(doc, mode = 'full') {
+    editor?.chain().focus().insertDocEmbed({
+      target_doc_id: doc.id, target_slug: doc.slug,
+      target_title: doc.title, render_mode: mode,
+    }).run();
+  }
+
   /** Apply a cross-link to the current selection. */
   export function applyDocLink(doc) {
     editor?.chain().focus()
@@ -230,6 +238,13 @@
                disabled:opacity-30 disabled:hover:bg-transparent"
         on:click={handleLinkClick}
       >🔗</button>
+      <button
+        type="button"
+        title="Show another page's content inside this one"
+        class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400
+               hover:bg-slate-700 hover:text-white transition-colors"
+        on:click={() => dispatch('pickEmbed')}
+      >⧉</button>
 
       <span class="w-px h-4 bg-slate-700 mx-1"></span>
 
