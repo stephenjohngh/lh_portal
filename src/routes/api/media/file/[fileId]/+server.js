@@ -27,6 +27,7 @@ import { storageProvider }      from '$lib/server/storage/index.js';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
 import { requireAuth }          from '$lib/server/requireAuth.js';
 import { getLogger }            from '$lib/utils/logger';
+import { declarableMime }       from '$lib/utils/mimeTypes';
 
 const logger = getLogger('MediaFileProxy');
 
