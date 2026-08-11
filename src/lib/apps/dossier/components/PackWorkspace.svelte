@@ -317,7 +317,7 @@
 <div class="flex flex-col h-full">
 
   <!-- Workspace header -->
-  <div class="flex items-center gap-3 px-4 py-2.5 border-b border-slate-700 shrink-0">
+  <div class="flex items-center gap-3 px-4 py-2 border-b border-slate-700 shrink-0">
     <Button variant="secondary" size="small" on:click={() => dispatch('back')}>
       ← Packs
     </Button>
@@ -454,19 +454,45 @@
          area take over — which scrolls the toolbar off screen with it. -->
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       {#if selectedDoc}
-        <div class="flex items-start gap-3 px-6 py-3 border-b border-slate-700/50 shrink-0">
-          <div class="flex-1 min-w-0">
-            <h2 class="text-base font-semibold text-white truncate">{selectedDoc.title}</h2>
-            <p class="text-xs text-slate-500 mt-0.5 font-mono">{selectedDoc.slug}</p>
-          </div>
+        <!-- One row, not three. Title, address, backlinks and actions all live
+             here: five stacked bars above the editor left very little room to
+             actually write. -->
+        <div class="flex items-center gap-3 px-6 py-2 border-b border-slate-700/50 shrink-0">
+          <h2 class="text-sm font-semibold text-white truncate shrink min-w-0">
+            {selectedDoc.title}
+          </h2>
+          <span class="text-xs text-slate-600 font-mono truncate hidden md:inline shrink-0"
+                title="This page's address">{selectedDoc.slug}</span>
+
+          {#if backlinks.length}
+            <!-- Which pages point here — the answer to "why is this page in the
+                 pack?", and the first thing to check before deleting one. -->
+            <span class="hidden lg:flex items-center gap-1.5 text-xs min-w-0 shrink">
+              <span class="text-slate-600 shrink-0">↩</span>
+              {#each backlinks.slice(0, 3) as link (link.doc_id)}
+                <button
+                  class="text-slate-400 hover:text-white underline underline-offset-2 truncate"
+                  title="Referenced from {link.title} — go there"
+                  on:click={() => { selectedId = link.doc_id; notice = ''; }}
+                >{link.title}</button>
+              {/each}
+              {#if backlinks.length > 3}
+                <span class="text-slate-600 shrink-0"
+                      title={backlinks.slice(3).map(l => l.title).join(', ')}
+                >+{backlinks.length - 3}</span>
+              {/if}
+            </span>
+          {/if}
+
+          <div class="flex-1"></div>
+
           <div class="flex items-center gap-2 shrink-0">
             {#if canEdit}
               <Button variant="secondary" size="small" on:click={saveVersion}>
                 Save version
               </Button>
             {/if}
-            <Button variant="secondary" size="small"
-                    on:click={togglePreview}>
+            <Button variant="secondary" size="small" on:click={togglePreview}>
               {previewing ? 'Edit' : 'Preview'}
             </Button>
             <Button variant="secondary" size="small" on:click={openHistory}>
@@ -475,23 +501,6 @@
           </div>
         </div>
 
-        {#if backlinks.length}
-          <!-- Which pages point here. The answer to "why is this page in the
-               pack?", and the first thing to check before deleting one. -->
-          <div class="flex items-start gap-2 px-6 py-2 border-b border-slate-700/50
-                      bg-slate-800/30 shrink-0 text-xs">
-            <span class="text-slate-500 shrink-0 pt-0.5">Referenced from</span>
-            <div class="flex flex-wrap gap-x-3 gap-y-1 min-w-0">
-              {#each backlinks as link (link.doc_id)}
-                <button
-                  class="text-slate-300 hover:text-white underline underline-offset-2"
-                  title="Go to {link.title}"
-                  on:click={() => { selectedId = link.doc_id; notice = ''; }}
-                >{link.title}</button>
-              {/each}
-            </div>
-          </div>
-        {/if}
         <!-- One long-lived editor instance across page switches: DocEditor
              flushes the outgoing page's pending save itself, which a {#key}
              remount would not do reliably. -->

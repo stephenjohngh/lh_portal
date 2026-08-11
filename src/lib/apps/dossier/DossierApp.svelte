@@ -137,12 +137,16 @@
 
 <div class="flex flex-col overflow-hidden" bind:this={shellEl} style={shellStyle}>
 
-  <!-- App header -->
-  <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700
-              bg-slate-800/50 shrink-0">
-    <h1 class="text-lg font-bold text-white">Dossier</h1>
-    <span class="text-xs text-slate-500">Briefing packs</span>
-  </div>
+  <!-- App header. Hidden once a pack is open: the workspace header directly
+       below already carries "← Packs" and the pack's title, so this row is pure
+       repetition at exactly the moment vertical space is scarcest. -->
+  {#if !openPack}
+    <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700
+                bg-slate-800/50 shrink-0">
+      <h1 class="text-lg font-bold text-white">Dossier</h1>
+      <span class="text-xs text-slate-500">Briefing packs</span>
+    </div>
+  {/if}
 
   {#if appError}
     <div class="px-4 pt-3">
