@@ -850,6 +850,179 @@ export type Database = {
             }
           ]
       }
+      dossier_doc_revisions: {
+        Row: {
+          id: string
+          doc_id: string
+          title: string | null
+          blocks: Json
+          summary: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          doc_id?: string
+          title?: string | null
+          blocks?: Json
+          summary?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          doc_id?: string
+          title?: string | null
+          blocks?: Json
+          summary?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_doc_revisions_doc_id_fkey"
+              columns: ["doc_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_docs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_doc_revisions_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      dossier_docs: {
+        Row: {
+          id: string
+          pack_id: string
+          parent_doc_id: string | null
+          slug: string
+          title: string
+          icon: string | null
+          order_index: number
+          blocks: Json
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          pack_id?: string
+          parent_doc_id?: string | null
+          slug?: string
+          title?: string
+          icon?: string | null
+          order_index?: number
+          blocks?: Json
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          pack_id?: string
+          parent_doc_id?: string | null
+          slug?: string
+          title?: string
+          icon?: string | null
+          order_index?: number
+          blocks?: Json
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_docs_pack_id_fkey"
+              columns: ["pack_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_packs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_docs_parent_doc_id_fkey"
+              columns: ["parent_doc_id"]
+              isOneToOne: false
+              referencedRelation: "dossier_docs"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_docs_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_docs_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      dossier_packs: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          status: string
+          subject_entity_type: string | null
+          subject_entity_id: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          title?: string
+          description?: string | null
+          status?: string
+          subject_entity_type?: string | null
+          subject_entity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          status?: string
+          subject_entity_type?: string | null
+          subject_entity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "dossier_packs_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "dossier_packs_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       facilities: {
         Row: {
           id: string
@@ -1681,12 +1854,12 @@ export type Database = {
           link_source: string
           link_type_filter: string | null
           presentation_order: number
-          statutory_ref: string | null
-          test_type: string | null
           created_at: string
           created_by: string | null
           updated_at: string | null
           updated_by: string | null
+          statutory_ref: string | null
+          test_type: string | null
         }
         Insert: {
           id?: string
@@ -1702,12 +1875,12 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
-          statutory_ref?: string | null
-          test_type?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          statutory_ref?: string | null
+          test_type?: string | null
         }
         Update: {
           id?: string
@@ -1723,12 +1896,12 @@ export type Database = {
           link_source?: string
           link_type_filter?: string | null
           presentation_order?: number
-          statutory_ref?: string | null
-          test_type?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          statutory_ref?: string | null
+          test_type?: string | null
         }
         Relationships: [
             {
@@ -1910,6 +2083,7 @@ export type Database = {
           updated_at: string
           created_by: string | null
           updated_by: string | null
+          plan_overrides: Json
         }
         Insert: {
           id?: string
@@ -1925,6 +2099,7 @@ export type Database = {
           updated_at?: string
           created_by?: string | null
           updated_by?: string | null
+          plan_overrides?: Json
         }
         Update: {
           id?: string
@@ -1940,6 +2115,7 @@ export type Database = {
           updated_at?: string
           created_by?: string | null
           updated_by?: string | null
+          plan_overrides?: Json
         }
         Relationships: [
             {
@@ -2862,13 +3038,37 @@ export type Database = {
             }
           ]
       }
+      space_types: {
+        Row: {
+          id: string
+          value: string
+          presentation_order: number
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          value?: string
+          presentation_order?: number
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          value?: string
+          presentation_order?: number
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: []
+      }
       spaces: {
         Row: {
           id: string
           plan_id: string
           floor_id: string | null
           name: string
-          usage: string | null
+          type: string | null
           polygon: Json
           colour: string
           notes: string | null
@@ -2880,13 +3080,14 @@ export type Database = {
           show_label: boolean
           kind: string
           assigned_id: string | null
+          label: string | null
         }
         Insert: {
           id?: string
           plan_id?: string
           floor_id?: string | null
           name?: string
-          usage?: string | null
+          type?: string | null
           polygon?: Json
           colour?: string
           notes?: string | null
@@ -2898,13 +3099,14 @@ export type Database = {
           show_label?: boolean
           kind?: string
           assigned_id?: string | null
+          label?: string | null
         }
         Update: {
           id?: string
           plan_id?: string
           floor_id?: string | null
           name?: string
-          usage?: string | null
+          type?: string | null
           polygon?: Json
           colour?: string
           notes?: string | null
@@ -2916,6 +3118,7 @@ export type Database = {
           show_label?: boolean
           kind?: string
           assigned_id?: string | null
+          label?: string | null
         }
         Relationships: [
             {

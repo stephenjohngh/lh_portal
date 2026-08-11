@@ -43,13 +43,35 @@ function sortPacks(packs) {
   );
 }
 
+/** A caught value is `unknown`; narrow it to a message without asserting a type. */
+function errMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** Stamp the audit columns carried on every write (portal convention). */
 function touch(userId) {
   return { updated_by: userId, updated_at: new Date().toISOString() };
 }
 
+/**
+ * Typing the state is what stops TypeScript inferring `never[]` for the empty
+ * arrays and then rejecting every real row assigned to them — the pattern
+ * CLAUDE.md prescribes for portal stores. It also propagates Row types to
+ * consumers.
+ *
+ * @typedef {import('$lib/database.types').Tables<'dossier_packs'>} Pack
+ * @typedef {import('$lib/database.types').Tables<'dossier_docs'>} Doc
+ * @typedef {import('$lib/database.types').Tables<'dossier_doc_revisions'>} DocRevision
+ * @typedef {import('$lib/database.types').Tables<'document_library'>} LibraryFile
+ * @typedef {{
+ *   packs: Pack[], loading: boolean, error: string|null,
+ *   activePackId: string|null, docs: Doc[], loadingDocs: boolean,
+ *   files: LibraryFile[]
+ * }} DossierState
+ */
+
 function createDossierStore() {
-  const store = writable({
+  const store = writable(/** @type {DossierState} */ ({
     packs:        [],
     loading:      false,
     error:        null,
@@ -58,7 +80,7 @@ function createDossierStore() {
     docs:         [],
     loadingDocs:  false,
     files:        [],   // document_library rows on this pack's shelf
-  });
+  }));
 
   const { subscribe, update } = store;
   /** Read current state — needed to snapshot a doc's OUTGOING content on save. */
@@ -77,7 +99,7 @@ function createDossierStore() {
       update(s => ({ ...s, packs: sortPacks(packs), loading: false }));
       return packs;
     } catch (err) {
-      update(s => ({ ...s, error: err.message, loading: false }));
+      update(s => ({ ...s, error: errMessage(err), loading: false }));
       throw err;
     }
   }
@@ -177,7 +199,7 @@ function createDossierStore() {
       update(s => ({ ...s, docs, loadingDocs: false }));
       return docs;
     } catch (err) {
-      update(s => ({ ...s, error: err.message, loadingDocs: false }));
+      update(s => ({ ...s, error: errMessage(err), loadingDocs: false }));
       throw err;
     }
   }
