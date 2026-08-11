@@ -9,7 +9,10 @@
 // alongside the document_id reference.
 
 import { Node, mergeAttributes } from '@tiptap/core';
-import { previewKind, fileProxyUrl, fmtSize, assetIsMissing } from './assetPreview.js';
+import {
+  previewKind, fileProxyUrl, fmtSize, assetIsMissing,
+  IMAGE_WIDTHS, IMAGE_WIDTH_LABEL, normaliseImageWidth,
+} from './assetPreview.js';
 
 /**
  * Simple attr spec: round-trip through a data- attribute of the same name.
@@ -52,6 +55,11 @@ export const Asset = Node.create({
       filename:         dataAttr('filename', 'File'),
       mime_type:        dataAttr('mime_type', ''),
       provider_file_id: dataAttr('provider_file_id', ''),
+      width: {
+        default: 'full',
+        parseHTML:  el => normaliseImageWidth(el.getAttribute('data-width')),
+        renderHTML: attrs => ({ 'data-width': normaliseImageWidth(attrs.width) }),
+      },
       size_bytes: {
         default: 0,
         parseHTML:  el => Number(el.getAttribute('data-size_bytes')) || 0,
@@ -125,13 +133,37 @@ export const Asset = Node.create({
       inner.className = 'dossier-asset-inner';
       dom.appendChild(inner);
 
+      const controls = document.createElement('div');
+      controls.className = 'dossier-block-controls';
+      controls.contentEditable = 'false';
+
+      // Size is only meaningful for an image; a card is always full width.
+      const sizes = document.createElement('span');
+      sizes.className = 'dossier-block-sizes';
+      for (const value of IMAGE_WIDTHS) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = IMAGE_WIDTH_LABEL[value];
+        button.title = `Show this image at ${IMAGE_WIDTH_LABEL[value].toLowerCase()} width`;
+        button.dataset.width = value;
+        button.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+          if (typeof getPos !== 'function') return;
+          const pos = getPos();
+          if (pos == null) return;
+          // A real document change: the chosen size is an author decision that
+          // must persist and reach the reader, not a view preference.
+          editor.view.dispatch(editor.state.tr.setNodeAttribute(pos, 'width', value));
+        });
+        sizes.appendChild(button);
+      }
+
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'dossier-block-remove';
       remove.title = 'Remove this file from the page';
       remove.setAttribute('aria-label', 'Remove this file from the page');
       remove.textContent = '×';
-      remove.contentEditable = 'false';
       remove.addEventListener('mousedown', (event) => {
         event.preventDefault();
         if (typeof getPos !== 'function') return;
@@ -141,13 +173,25 @@ export const Asset = Node.create({
           editor.state.tr.delete(pos, pos + node.nodeSize)
         );
       });
-      dom.appendChild(remove);
+
+      controls.append(sizes, remove);
+      dom.appendChild(controls);
 
       let current = node;
       let missing = false;
       let lastFiles = null;   // latest shelf seen, so update() can re-derive
 
-      const repaint = () => paint(inner, current, missing);
+      const repaint = () => {
+        paint(inner, current, missing);
+        // Size controls only apply to an image that actually rendered.
+        const isImage = !missing && previewKind(current.attrs.mime_type) === 'image'
+          && Boolean(fileProxyUrl(current.attrs.provider_file_id, current.attrs.mime_type));
+        sizes.hidden = !isImage;
+        const active = normaliseImageWidth(current.attrs.width);
+        for (const button of sizes.children) {
+          button.classList.toggle('is-active', button.dataset.width === active);
+        }
+      };
 
       // Re-check whenever the shelf changes, so removing a file marks the block
       // immediately rather than at the next reload.
@@ -206,6 +250,7 @@ function paint(host, node, missing = false) {
   host.textContent = '';
   host.className = 'dossier-asset-inner dossier-asset';
   host.setAttribute('data-kind', missing ? 'missing' : (url ? kind : 'file'));
+  host.setAttribute('data-width', normaliseImageWidth(node.attrs.width));
 
   if (missing) {
     host.appendChild(missingCard(name));

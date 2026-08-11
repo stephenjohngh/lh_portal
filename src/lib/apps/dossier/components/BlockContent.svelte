@@ -251,6 +251,11 @@
     border-radius: 6px;
     border: 1px solid #334155;       /* slate-700 */
   }
+  /* Author-chosen preview width, as a share of the text column so it renders
+     the same in the editor, in Preview and in a published pack. */
+  :global(.dossier-prose [data-width='small']  .dossier-asset-image) { max-width: 25%; }
+  :global(.dossier-prose [data-width='medium'] .dossier-asset-image) { max-width: 50%; }
+  :global(.dossier-prose [data-width='large']  .dossier-asset-image) { max-width: 75%; }
   :global(.dossier-prose .dossier-asset-caption) {
     font-size: 0.75rem;
     color: #94a3b8;                  /* slate-400 */
@@ -302,13 +307,54 @@
   }
   :global(.dossier-prose .dossier-asset-host .dossier-asset) { margin: 0; }
 
+  /* The hover control strip: size buttons (images only) plus remove. */
+  :global(.dossier-prose .dossier-block-controls) {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s;
+  }
+  :global(.dossier-prose .dossier-asset-host:hover .dossier-block-controls),
+  :global(.dossier-prose .dossier-block-controls:focus-within) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  :global(.dossier-prose .dossier-block-sizes) {
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #334155;       /* slate-700 */
+    background: rgb(15 23 42 / 0.85);
+  }
+  :global(.dossier-prose .dossier-block-sizes[hidden]) { display: none; }
+  :global(.dossier-prose .dossier-block-sizes button) {
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.3rem;
+    font-size: 0.65rem;
+    line-height: 1;
+    color: #94a3b8;                  /* slate-400 */
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  :global(.dossier-prose .dossier-block-sizes button:hover) { color: #fff; }
+  :global(.dossier-prose .dossier-block-sizes button.is-active) {
+    background: #475569;             /* slate-600 */
+    color: #fff;
+  }
+
   /* The remove control, shared by asset and embedded-page blocks. Both are
      atoms with no text cursor, so without it the only way to delete one is to
      know to click-select it and press Backspace. */
   :global(.dossier-prose .dossier-block-remove) {
-    position: absolute;
-    top: 0.35rem;
-    right: 0.35rem;
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 4px;
@@ -320,16 +366,26 @@
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.12s, color 0.12s;
+  }
+  /* The embed stub has no control strip — its remove button positions itself. */
+  :global(.dossier-prose .dossier-embed-stub .dossier-block-remove) {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
     z-index: 2;
     /* Not clickable while invisible: an unseen button in the corner of every
        block would delete it on a stray click. */
     pointer-events: none;
   }
-  :global(.dossier-prose .dossier-asset-host:hover .dossier-block-remove),
   :global(.dossier-prose .dossier-embed-stub:hover .dossier-block-remove),
-  :global(.dossier-prose .dossier-block-remove:focus) {
+  :global(.dossier-prose .dossier-embed-stub .dossier-block-remove:focus) {
     opacity: 1;
     pointer-events: auto;
+  }
+  :global(.dossier-prose .dossier-block-controls .dossier-block-remove) {
+    opacity: 1;
+    border: 1px solid #334155;
+    background: rgb(15 23 42 / 0.85);
   }
   :global(.dossier-prose .dossier-block-remove:hover) { color: #f87171; }  /* red-400 */
 

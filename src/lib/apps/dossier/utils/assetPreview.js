@@ -117,6 +117,25 @@ export function fmtSize(bytes) {
 }
 
 /**
+ * How wide an image preview renders, as a share of the text column.
+ *
+ * Discrete steps rather than a drag handle: the same value has to render
+ * identically in the editor, in Preview and in a published pack, and a pixel
+ * width chosen against one column width would not survive the others. It is
+ * also an author decision worth persisting, not a view setting.
+ */
+export const IMAGE_WIDTHS = ['small', 'medium', 'large', 'full'];
+
+export const IMAGE_WIDTH_LABEL = {
+  small: 'S', medium: 'M', large: 'L', full: 'Full',
+};
+
+/** Default to full width, which is what every image rendered as before this existed. */
+export function normaliseImageWidth(width) {
+  return IMAGE_WIDTHS.includes(width) ? width : 'full';
+}
+
+/**
  * Is this asset's file still on the pack's shelf?
  *
  * `files` undefined means the CALLER supplied no shelf to check against (the

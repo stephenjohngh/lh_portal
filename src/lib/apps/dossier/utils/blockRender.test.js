@@ -131,6 +131,22 @@ describe('asset blocks', () => {
     expect(html).not.toContain('<object');
   });
 
+  it('carries the author-chosen preview width into the markup', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd1', filename: 'Roof.jpg', width: 'medium',
+      mime_type: 'image/jpeg', provider_file_id: 'drive1',
+    }));
+    expect(html).toContain('data-width="medium"');
+  });
+
+  it('defaults an image with no width to full', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd1', filename: 'Roof.jpg',
+      mime_type: 'image/jpeg', provider_file_id: 'drive1',
+    }));
+    expect(html).toContain('data-width="full"');
+  });
+
   it('gives an image a full-size link in its caption', () => {
     const html = renderBlocksToHtml(asset({
       document_id: 'd1', filename: 'Roof.jpg',

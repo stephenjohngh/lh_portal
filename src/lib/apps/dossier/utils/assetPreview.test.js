@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   previewKind, fileProxyUrl, isProxyUrl, fmtSize, assetAttrsFromDocument,
-  assetIsMissing, FILE_PROXY_PREFIX,
+  assetIsMissing, normaliseImageWidth, IMAGE_WIDTHS, FILE_PROXY_PREFIX,
 } from './assetPreview.js';
 
 describe('previewKind', () => {
@@ -98,6 +98,21 @@ describe('isProxyUrl — the sanitiser trusts this', () => {
     expect(isProxyUrl('data:text/html,<script>')).toBe(false);
     expect(isProxyUrl(null)).toBe(false);
     expect(isProxyUrl(undefined)).toBe(false);
+  });
+});
+
+describe('normaliseImageWidth', () => {
+  it('passes through every declared size', () => {
+    for (const w of IMAGE_WIDTHS) expect(normaliseImageWidth(w)).toBe(w);
+  });
+
+  it('defaults to full — what every image rendered as before sizes existed', () => {
+    // Content authored before this attribute must not change appearance.
+    expect(normaliseImageWidth(undefined)).toBe('full');
+    expect(normaliseImageWidth(null)).toBe('full');
+    expect(normaliseImageWidth('')).toBe('full');
+    expect(normaliseImageWidth('120px')).toBe('full');
+    expect(normaliseImageWidth('huge')).toBe('full');
   });
 });
 
