@@ -25,7 +25,8 @@
   import AssetPickerModal     from './AssetPickerModal.svelte';
   import PagePickerModal     from './PagePickerModal.svelte';
   import { assetAttrsFromDocument } from '../utils/assetPreview.js';
-  import { describeBrokenReferences } from '../utils/brokenRefs.js';
+  import { findBrokenReferences, describeBrokenReferences } from '../utils/brokenRefs.js';
+  import { extractAllLinks } from '../utils/docLinks.js';
 
   export let pack;
 
@@ -195,19 +196,11 @@
   // Recomputed whenever the pages or the shelf change, so a deletion surfaces
   // immediately rather than at some later audit.
 
-  let broken = [];
   let showBroken = false;
 
-  $: refreshBroken(docs, files);
-
-  async function refreshBroken(_docs, _files) {
-    if (!pack?.id) { broken = []; return; }
-    try {
-      broken = await dossierStore.loadBrokenReferences(pack.id);
-    } catch {
-      broken = [];      // non-fatal: the pack is still perfectly editable
-    }
-  }
+  // Derived straight from the pages and the shelf, so a deleted file shows up
+  // the instant the shelf reloads.
+  $: broken = findBrokenReferences(extractAllLinks(docs), docs, files);
 
   // ── Backlinks ─────────────────────────────────────────────────────────────
 
@@ -504,7 +497,7 @@
             {#if previewing}
               <div class="h-full overflow-y-auto">
                 <div class="max-w-3xl mx-auto px-8 py-6">
-                  <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} />
+                  <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files} />
                 </div>
               </div>
             {:else}
@@ -558,6 +551,7 @@
   doc={selectedDoc}
   {revisions}
   {docs}
+  {files}
   loading={loadingRevisions}
   {canEdit}
   on:restore={handleRestore}

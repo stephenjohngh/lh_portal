@@ -195,6 +195,46 @@ describe('sanitizeBlockHtml — the img allow-rule', () => {
   });
 });
 
+describe('missing assets', () => {
+  const asset = (attrs) => doc({ type: 'asset', attrs });
+  const live  = { document_id: 'f1', filename: 'Notice.pdf',
+                  mime_type: 'application/pdf', provider_file_id: 'drive1' };
+
+  it('marks an asset whose file has left the shelf', () => {
+    // Otherwise the block renders a healthy-looking card pointing at a 404 —
+    // which a recipient discovers by clicking it.
+    const html = renderBlocksToHtml(asset(live), { files: [{ id: 'other' }] });
+    expect(html).toContain('no longer available');
+    expect(html).toContain('data-kind="missing"');
+    expect(html).not.toContain('Open PDF');
+  });
+
+  it('leaves an asset alone when its file is still there', () => {
+    const html = renderBlocksToHtml(asset(live), { files: [{ id: 'f1' }] });
+    expect(html).toContain('Open PDF');
+    expect(html).not.toContain('no longer available');
+  });
+
+  it('does not judge when no shelf was supplied', () => {
+    // An empty list means "caller gave no shelf", not "everything is deleted".
+    const html = renderBlocksToHtml(asset(live));
+    expect(html).not.toContain('no longer available');
+  });
+
+  it('escapes the filename in the notice', () => {
+    const html = renderBlocksToHtml(
+      asset({ ...live, filename: '<img src=x onerror=1>' }), { files: [{ id: 'other' }] });
+
+    // Parse rather than string-match: the raw '<img' also appears inside the
+    // quoted data-filename attribute, where it is inert. What matters is that
+    // no element is created from it.
+    const parsed = document.createElement('div');
+    parsed.innerHTML = html;
+    expect(parsed.querySelectorAll('img')).toHaveLength(0);
+    expect(parsed.textContent).toContain('<img src=x onerror=1>');
+  });
+});
+
 describe('transclusion', () => {
   const embed = (targetId, mode = 'full') => doc({
     type: 'embedDoc',

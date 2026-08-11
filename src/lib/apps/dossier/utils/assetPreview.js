@@ -117,6 +117,23 @@ export function fmtSize(bytes) {
 }
 
 /**
+ * Is this asset's file still on the pack's shelf?
+ *
+ * `files` undefined means the CALLER supplied no shelf to check against (the
+ * live editor), not that the file is gone — the same distinction the embed
+ * resolver makes. Only an explicit list can prove absence.
+ *
+ * @param {string|null} documentId
+ * @param {object[]|null} [files]
+ * @returns {boolean}
+ */
+export function assetIsMissing(documentId, files) {
+  if (!Array.isArray(files) || !files.length) return false;
+  if (!documentId) return false;
+  return !files.some(f => f.id === documentId);
+}
+
+/**
  * The attributes an asset block stores.
  *
  * `document_id` is the REFERENCE and the source of truth — it is what the link

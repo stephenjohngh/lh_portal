@@ -17,7 +17,6 @@ import { listDocuments } from '$lib/utils/documentApi';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
-import { findBrokenReferences } from '../utils/brokenRefs.js';
 
 const logger = getLogger('dossierStore');
 
@@ -387,21 +386,7 @@ function createDossierStore() {
     }
   }
 
-  /**
-   * Every reference in the pack that no longer resolves. Computed from the
-   * link graph against the pages and shelf currently in state, so it reflects
-   * a deletion the moment it happens.
-   */
-  async function loadBrokenReferences(packId) {
-    const links = await api.get('dossier_links', {
-      select: 'from_doc_id, from_block_id, target_kind, target_doc_id, target_doc_ref, target_document_id',
-      filters: { pack_id: packId },
-    });
-    const { docs, files } = getState();
-    return findBrokenReferences(links, docs, files);
-  }
-
-  /** Pages that reference this one, one entry each. */
+    /** Pages that reference this one, one entry each. */
   async function loadBacklinks(docId) {
     const rows = await api.get('dossier_links', {
       select: 'from_doc_id, from_block_id, from_doc:dossier_docs!from_doc_id(title, slug)',
@@ -445,7 +430,7 @@ function createDossierStore() {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
-    saveVersion, loadRevisions, restoreRevision, loadBacklinks, loadBrokenReferences,
+    saveVersion, loadRevisions, restoreRevision, loadBacklinks,
   };
 }
 

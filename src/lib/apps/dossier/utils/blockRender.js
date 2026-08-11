@@ -14,7 +14,7 @@ import { generateHTML } from '@tiptap/core';
 import DOMPurify        from 'dompurify';
 import { getLogger }    from '$lib/utils/logger';
 import { buildExtensions, EMPTY_DOC } from './blockSchema.js';
-import { isProxyUrl } from './assetPreview.js';
+import { isProxyUrl, assetIsMissing } from './assetPreview.js';
 import {
   resolveEmbedRender, firstParagraphText, EMBED_NOTE_TEXT, MAX_EMBED_DEPTH,
 } from './embedGuard.js';
@@ -93,7 +93,7 @@ export function renderBlocksToHtml(blocks, opts = {}) {
   const json = blocks && typeof blocks === 'object' && blocks.type ? blocks : EMPTY_DOC;
   try {
     const html = sanitizeBlockHtml(generateHTML(json, buildExtensions()));
-    return expandEmbeds(html, opts);
+    return expandEmbeds(markMissingAssets(html, opts), opts);
   } catch (err) {
     logger('⚠ could not render blocks', err);
     return '';
@@ -171,6 +171,42 @@ function expandEmbeds(html, { docs = [], ancestry = [], maxDepth = MAX_EMBED_DEP
   }
 
   return host.innerHTML;
+}
+
+/**
+ * Replace an asset whose file is no longer on the shelf with a plain notice.
+ *
+ * Without this the block renders a normal image or download card pointing at a
+ * file that 404s — the reference looks healthy right up until someone clicks
+ * it, which is the worst possible moment for a recipient to find out.
+ *
+ * Skipped entirely when no shelf is supplied: absence can only be proven
+ * against an actual list.
+ */
+function markMissingAssets(html, { files } = {}) {
+  if (!html || typeof document === 'undefined') return html;
+  if (!Array.isArray(files) || !files.length) return html;
+
+  const host = document.createElement('div');
+  host.innerHTML = html;
+
+  const assets = host.querySelectorAll('div[data-asset]');
+  if (!assets.length) return html;
+
+  let changed = false;
+  for (const node of assets) {
+    if (!assetIsMissing(node.getAttribute('data-document_id'), files)) continue;
+    const name = node.getAttribute('data-filename') || 'File';
+    node.setAttribute('data-kind', 'missing');
+    node.innerHTML =
+      '<div class="dossier-asset-card dossier-asset-gone">'
+      + '<span class="dossier-asset-icon">⚠</span>'
+      + `<span class="dossier-asset-name">${escapeHtml(name)}`
+      + ' — this file is no longer available</span></div>';
+    changed = true;
+  }
+
+  return changed ? host.innerHTML : html;
 }
 
 /** Titles and summaries are plain text and must not be able to inject markup. */

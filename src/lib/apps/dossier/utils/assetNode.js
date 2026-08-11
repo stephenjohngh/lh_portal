@@ -184,6 +184,13 @@ function paint(host, node) {
   if (url && kind === 'image') {
     const img = document.createElement('img');
     img.src = url; img.alt = name; img.className = 'dossier-asset-image';
+    // The editor cannot know the shelf, so it finds out the way the browser
+    // does: a file deleted from storage fails to load, and the block says so
+    // instead of showing a broken-image glyph and a link that 404s.
+    img.addEventListener('error', () => {
+      host.textContent = '';
+      host.appendChild(missingCard(name));
+    }, { once: true });
     host.append(img, caption(`${name} — view full size`, url));
     return;
   }
@@ -218,6 +225,23 @@ function paint(host, node) {
 
   card.append(icon, label, action);
   host.appendChild(card);
+}
+
+/** Shown in place of a preview once we know the file is gone. */
+function missingCard(name) {
+  const card = document.createElement('div');
+  card.className = 'dossier-asset-card dossier-asset-gone';
+
+  const icon = document.createElement('span');
+  icon.className = 'dossier-asset-icon';
+  icon.textContent = '⚠';
+
+  const label = document.createElement('span');
+  label.className = 'dossier-asset-name';
+  label.textContent = `${name} — this file is no longer available`;
+
+  card.append(icon, label);
+  return card;
 }
 
 /** The file card: icon, name, size, and an open-in-new-tab link when we have a URL. */

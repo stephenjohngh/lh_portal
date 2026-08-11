@@ -100,6 +100,21 @@ export function extractLinks(blocks) {
 }
 
 /**
+ * Every reference in a whole pack, straight from the pages' blocks.
+ *
+ * Deliberately does NOT read dossier_links: that table only has rows for pages
+ * saved since it existed, so anything authored earlier would be invisible to a
+ * check built on it. The blocks are the source of truth and are already in
+ * memory, so the check is both correct and free.
+ *
+ * @param {object[]} docs
+ */
+export function extractAllLinks(docs = []) {
+  return docs.flatMap(doc =>
+    extractLinks(doc?.blocks).map(link => ({ ...link, from_doc_id: doc.id })));
+}
+
+/**
  * Identity of a reference, for deduping and diffing. Deliberately excludes
  * target_doc_ref: a page renamed does not change which link this is, and
  * including it would make every rename look like a link change.

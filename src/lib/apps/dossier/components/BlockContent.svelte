@@ -23,8 +23,10 @@
   export let host = null;
   /** The pack's pages — needed to resolve transclusions. Read mode only. */
   export let docs = [];
+  /** The pack's shelf — lets a reference to a deleted file show as such. */
+  export let files = [];
 
-  $: html = mode === 'read' ? renderBlocksToHtml(blocks, { docs }) : '';
+  $: html = mode === 'read' ? renderBlocksToHtml(blocks, { docs, files }) : '';
   // Distinguish "nothing written yet" from "stored JSON we could not render".
   $: broken = mode === 'read' && html === '' && !isEmptyDoc(blocks);
 </script>
@@ -275,6 +277,14 @@
     white-space: nowrap;
     color: var(--lh-accent, #3c9683);
     text-decoration: underline;
+  }
+  /* A reference whose file has gone. Reads as a warning, not as content. */
+  :global(.dossier-prose .dossier-asset-gone) {
+    border-color: rgb(245 158 11 / 0.4);
+    background: rgb(245 158 11 / 0.07);
+  }
+  :global(.dossier-prose .dossier-asset-gone .dossier-asset-name) {
+    color: #fbbf24;                  /* amber-400 */
   }
   :global(.dossier-prose .dossier-asset-missing) {
     color: #94a3b8;                  /* slate-400 */
