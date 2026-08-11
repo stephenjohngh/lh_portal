@@ -82,7 +82,7 @@ export const EmbedDoc = Node.create({
 
       const remove = document.createElement('button');
       remove.type = 'button';
-      remove.className = 'dossier-asset-remove';
+      remove.className = 'dossier-block-remove';
       remove.title = 'Remove this embedded page';
       remove.setAttribute('aria-label', 'Remove this embedded page');
       remove.textContent = '×';

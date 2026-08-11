@@ -127,7 +127,7 @@ export const Asset = Node.create({
 
       const remove = document.createElement('button');
       remove.type = 'button';
-      remove.className = 'dossier-asset-remove';
+      remove.className = 'dossier-block-remove';
       remove.title = 'Remove this file from the page';
       remove.setAttribute('aria-label', 'Remove this file from the page');
       remove.textContent = '×';

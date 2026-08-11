@@ -302,7 +302,10 @@
   }
   :global(.dossier-prose .dossier-asset-host .dossier-asset) { margin: 0; }
 
-  :global(.dossier-prose .dossier-asset-remove) {
+  /* The remove control, shared by asset and embedded-page blocks. Both are
+     atoms with no text cursor, so without it the only way to delete one is to
+     know to click-select it and press Backspace. */
+  :global(.dossier-prose .dossier-block-remove) {
     position: absolute;
     top: 0.35rem;
     right: 0.35rem;
@@ -318,10 +321,17 @@
     opacity: 0;
     transition: opacity 0.12s, color 0.12s;
     z-index: 2;
+    /* Not clickable while invisible: an unseen button in the corner of every
+       block would delete it on a stray click. */
+    pointer-events: none;
   }
-  :global(.dossier-prose .dossier-asset-host:hover .dossier-asset-remove),
-  :global(.dossier-prose .dossier-asset-remove:focus) { opacity: 1; }
-  :global(.dossier-prose .dossier-asset-remove:hover) { color: #f87171; }  /* red-400 */
+  :global(.dossier-prose .dossier-asset-host:hover .dossier-block-remove),
+  :global(.dossier-prose .dossier-embed-stub:hover .dossier-block-remove),
+  :global(.dossier-prose .dossier-block-remove:focus) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  :global(.dossier-prose .dossier-block-remove:hover) { color: #f87171; }  /* red-400 */
 
   /* An asset selected in the editor — Tiptap marks atoms with this class. */
   :global(.dossier-prose .dossier-asset.ProseMirror-selectednode) {
