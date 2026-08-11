@@ -14,7 +14,7 @@ import { generateHTML } from '@tiptap/core';
 import DOMPurify        from 'dompurify';
 import { getLogger }    from '$lib/utils/logger';
 import { buildExtensions, EMPTY_DOC } from './blockSchema.js';
-import { isProxyUrl } from './assetPreview.js';
+import { isProxyUrl, ASSET_FRAME_SANDBOX } from './assetPreview.js';
 
 const logger = getLogger('dossierBlockRender');
 
@@ -62,7 +62,7 @@ export function sanitizeBlockHtml(html) {
       if (!isProxyUrl(node.getAttribute('src'))) { node.remove(); return; }
       // Re-assert the sandbox here rather than trusting the stored HTML: this
       // is the layer that sees what actually reaches the page.
-      node.setAttribute('sandbox', '');
+      node.setAttribute('sandbox', ASSET_FRAME_SANDBOX);
     } else if (tag === 'img' && !isProxyUrl(node.getAttribute('src'))) {
       node.remove();
     }

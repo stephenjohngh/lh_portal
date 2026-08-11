@@ -13,6 +13,27 @@ const SAFE_FILE_ID = /^[A-Za-z0-9_-]+$/;
 export const FILE_PROXY_PREFIX = '/api/media/file/';
 
 /**
+ * The sandbox a PDF preview frame runs under. One constant so the node's
+ * renderHTML, its edit-mode node view and the sanitiser cannot drift apart.
+ *
+ * `allow-scripts` is required, not optional: Firefox renders PDFs with pdf.js,
+ * which IS script. Under a no-token sandbox it cannot run, so the browser falls
+ * back to downloading the file and then blocks that too ("Download was blocked
+ * because the triggering iframe has the sandbox flag set") — a blank box.
+ *
+ * Crucially `allow-same-origin` is NOT granted, so the frame keeps an opaque
+ * origin: script inside it cannot reach this app's DOM, cookies or storage.
+ * (Granting both together is the combination that lets a frame escape its own
+ * sandbox, and is exactly what we avoid.)
+ *
+ * The XSS route this originally guarded is closed further up anyway: an iframe
+ * is only ever produced for a file whose recorded type is application/pdf, that
+ * type is what we declare on the response, and the proxy sends nosniff — so the
+ * browser will not reinterpret the bytes as HTML however they were uploaded.
+ */
+export const ASSET_FRAME_SANDBOX = 'allow-scripts';
+
+/**
  * Which preview to render for a mime type.
  * @param {string} mimeType
  * @returns {'image' | 'pdf' | 'file'}

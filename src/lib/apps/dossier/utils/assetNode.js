@@ -9,7 +9,7 @@
 // alongside the document_id reference.
 
 import { Node, mergeAttributes } from '@tiptap/core';
-import { previewKind, fileProxyUrl, fmtSize } from './assetPreview.js';
+import { previewKind, fileProxyUrl, fmtSize, ASSET_FRAME_SANDBOX } from './assetPreview.js';
 
 /** Simple attr spec: round-trip through a data- attribute of the same name. */
 function dataAttr(name, fallback = null) {
@@ -80,17 +80,15 @@ export const Asset = Node.create({
         // An <iframe>, not an <object>: the portal's CSP sets object-src 'none'
         // (good hardening, left alone), while frame-src falls back to
         // default-src 'self' — so a same-origin iframe is already permitted.
+        // hooks.server.js relaxes X-Frame-Options to SAMEORIGIN for the proxy
+        // path, since DENY refuses even our own frames.
         //
-        // `sandbox` with no tokens gives the frame an opaque origin and no
-        // scripting. That matters because these are USER-UPLOADED bytes: a file
-        // stored as application/pdf but actually HTML would otherwise execute
-        // in this app's own origin. The browser's built-in PDF viewer is not
-        // page script, so it still renders.
-        //
-        // The sanitiser admits iframes only when the src is our own proxy.
+        // See ASSET_FRAME_SANDBOX for why the sandbox grants allow-scripts but
+        // never allow-same-origin. The sanitiser admits iframes only when the
+        // src is our own proxy, and re-asserts the same sandbox value.
         ['iframe', {
           src: url,
-          sandbox: '',
+          sandbox: ASSET_FRAME_SANDBOX,
           title: name,
           class: 'dossier-asset-pdf',
         }],
@@ -203,7 +201,7 @@ function paint(host, node) {
   if (url && kind === 'pdf') {
     const frame = document.createElement('iframe');
     frame.src = url;
-    frame.setAttribute('sandbox', '');
+    frame.setAttribute('sandbox', ASSET_FRAME_SANDBOX);
     frame.title = name;
     frame.className = 'dossier-asset-pdf';
     host.append(frame, caption(`${name} — open`, url));
