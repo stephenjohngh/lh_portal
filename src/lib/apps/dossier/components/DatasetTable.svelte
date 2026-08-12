@@ -64,6 +64,21 @@
     return null;
   }
 
+  /**
+   * A textarea that grows with its content, as a Svelte action so the initial
+   * size is right too — a cell loaded with three lines of notes should show
+   * three lines, not one with the rest hidden.
+   */
+  function grows(node) {
+    const resize = () => {
+      node.style.height = 'auto';
+      node.style.height = `${node.scrollHeight}px`;
+    };
+    resize();
+    node.addEventListener('input', resize);
+    return { destroy: () => node.removeEventListener('input', resize) };
+  }
+
   function commitCell(record, field, value) {
     if (String(record.fields?.[field.key] ?? '') === String(value)) return;
     dispatch('updateRecord', {
@@ -111,6 +126,9 @@
 
   function handleDraftKeydown(event) {
     if (event.key !== 'Enter') return;
+    // In a multi-line cell Enter is a newline, which is the whole point of the
+    // column. Leave the row or Tab onward to commit.
+    if (event.target?.tagName === 'TEXTAREA') return;
     event.preventDefault();          // a bare Enter would submit nothing useful
     clearTimeout(focusOutTimer);     // this commit supersedes any deferred one
     if (commitDraft()) draftInputs[0]?.focus();
@@ -176,7 +194,7 @@
                 style={field.width ? `width:${field.width}` : ''}>{field.label}</th>
           {/each}
           <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
-                     pb-2 pr-3 align-bottom w-40">Detail</th>
+                     pb-2 pr-3 align-bottom w-32">Detail</th>
           <th class="w-8"></th>
         </tr>
       </thead>
@@ -202,6 +220,17 @@
                       <option value={option}>{option}</option>
                     {/each}
                   </select>
+                {:else if field.type === 'longtext'}
+                  <textarea
+                    rows="1"
+                    use:grows
+                    class="w-full bg-transparent text-slate-200 text-sm rounded px-1 py-1
+                           border border-transparent hover:border-slate-700
+                           focus:border-slate-600 focus:bg-slate-800 outline-none
+                           resize-none overflow-hidden leading-snug"
+                    value={record.fields?.[field.key] ?? ''}
+                    on:blur={(e) => commitCell(record, field, e.currentTarget.value)}
+                  ></textarea>
                 {:else}
                   <input
                     type={field.type === 'date' ? 'date' : 'text'}
@@ -286,6 +315,18 @@
                       <option value={option}>{option}</option>
                     {/each}
                   </select>
+                {:else if field.type === 'longtext'}
+                  <textarea
+                    rows="1"
+                    use:grows
+                    class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
+                           border border-dashed border-slate-800 focus:border-slate-600
+                           focus:bg-slate-800 outline-none placeholder:text-slate-600
+                           resize-none overflow-hidden leading-snug"
+                    placeholder={field.placeholder ?? field.label}
+                    bind:value={draft[field.key]}
+                    bind:this={draftInputs[i]}
+                  ></textarea>
                 {:else}
                   <input
                     type={field.type === 'date' ? 'date' : 'text'}

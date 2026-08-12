@@ -54,12 +54,15 @@ export const DATASET_TEMPLATES = {
     key: 'document_index',
     title: 'Document index',
     blurb: 'Every document referred to, and where it came from.',
+    // Every column but `notes` is given a width, so the notes column takes
+    // whatever is left. Without a width on `name` the two shared the remainder
+    // and notes ended up too narrow to write in.
     fields: /** @type {FieldDef[]} */ ([
-      { key: 'name',   label: 'Document', type: 'text' },
-      { key: 'date',   label: 'Dated',    type: 'date', width: '9rem' },
-      { key: 'author', label: 'Author',   type: 'text', width: '10rem' },
+      { key: 'name',   label: 'Document', type: 'text', width: '16rem' },
+      { key: 'date',   label: 'Dated',    type: 'date', width: '8rem' },
+      { key: 'author', label: 'Author',   type: 'text', width: '9rem' },
       {
-        key: 'status', label: 'Status', type: 'select', width: '9rem',
+        key: 'status', label: 'Status', type: 'select', width: '8rem',
         options: ['Disclosed', 'Withheld', 'Requested', 'Missing'],
       },
       { key: 'notes',  label: 'Notes',    type: 'longtext' },
