@@ -273,6 +273,37 @@ function createDossierStore() {
     return record;
   }
 
+  /**
+   * Add several rows at once — one insert, not one per row.
+   *
+   * Positions continue from the end of the table in the order given, so a
+   * pasted thread keeps its sequence for same-day messages that the date sort
+   * cannot separate.
+   */
+  async function createRecords(dataset, rowsFields, userId) {
+    if (!rowsFields?.length) return [];
+
+    const siblings = getState().records.filter(r => r.dataset_id === dataset.id);
+    const base = siblings.length
+      ? Math.max(...siblings.map(r => r.position ?? 0)) + 1
+      : 0;
+
+    const records = await api.createMany('dossier_records', rowsFields.map((fields, i) => ({
+      dataset_id: dataset.id,
+      fields: coerceRecordFields(dataset.key, fields),
+      position: base + i,
+      created_by: userId, ...touch(userId),
+    })), true);
+
+    update(s => ({ ...s, records: [...s.records, ...records] }));
+    logAudit('create', 'dossier_record', dataset.id,
+      `${records.length} entries in ${dataset.title}`, {
+        appId: 'dossier', eventCategory: 'dossier', severity: 'info',
+        afterData: { dataset_id: dataset.id, count: records.length },
+      });
+    return records;
+  }
+
   async function updateRecord(dataset, id, patch, userId) {
     const body = { ...touch(userId) };
     if (patch.fields) body.fields = coerceRecordFields(dataset.key, patch.fields);
@@ -528,7 +559,7 @@ function createDossierStore() {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
     loadDatasets, createDataset, deleteDataset,
-    createRecord, updateRecord, deleteRecord,
+    createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
   };

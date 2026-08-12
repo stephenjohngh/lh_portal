@@ -170,6 +170,13 @@
       {records.length} {records.length === 1 ? 'entry' : 'entries'}
     </span>
     {#if canEdit}
+      {#if dataset.key === 'correspondence'}
+        <ProtectedButton requireAdmin={false} variant="secondary" size="small"
+                         title="Paste an email or a thread to add entries"
+                         on:click={() => dispatch('pasteEmails')}>
+          Paste emails
+        </ProtectedButton>
+      {/if}
       <ProtectedButton requireAdmin={false} variant="secondary" size="small"
                        on:click={() => dispatch('deleteDataset')}>
         Delete table

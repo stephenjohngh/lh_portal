@@ -548,6 +548,36 @@ describe('datasets', () => {
     expect(h.api.create.mock.calls.at(-1)[1].position).toBe(5);
   });
 
+  it('adds pasted rows in ONE insert, numbered in the order given', async () => {
+    // A pasted thread is up to a dozen messages. One insert per row would be a
+    // dozen round trips and a dozen chances to half-finish.
+    h.api.get.mockResolvedValueOnce([{ id: 'ds1', key: 'correspondence', title: 'Correspondence' }]);
+    h.api.getAllIn.mockResolvedValueOnce([{ id: 'r1', dataset_id: 'ds1', position: 2 }]);
+    await store.loadDatasets('p1');
+
+    await store.createRecords({ id: 'ds1', key: 'correspondence', title: 'Correspondence' }, [
+      { date: '2025-01-13', from: 'Jane', subject: 'One',  rogue: 'nope' },
+      { date: '2025-01-14', from: 'Steve', subject: 'Two' },
+    ], 'u1');
+
+    expect(h.api.createMany).toHaveBeenCalledTimes(1);
+    const [table, rows] = h.api.createMany.mock.calls.at(-1);
+    expect(table).toBe('dossier_records');
+    // Positions continue the table, in order, so same-day messages keep their
+    // sequence when the date sort cannot separate them.
+    expect(rows.map(r => r.position)).toEqual([3, 4]);
+    expect(rows[0].fields).not.toHaveProperty('rogue');
+    expect(rows[0].fields.summary).toBe('');   // every template column present
+    expect(get(store).records).toHaveLength(3);
+  });
+
+  it('writes nothing when there are no rows to add', async () => {
+    h.api.createMany.mockClear();
+    await expect(store.createRecords({ id: 'ds1', key: 'correspondence' }, [], 'u1'))
+      .resolves.toEqual([]);
+    expect(h.api.createMany).not.toHaveBeenCalled();
+  });
+
   it('rejects a bad date on update instead of storing it', async () => {
     await store.updateRecord({ id: 'ds1', key: 'chronology' }, 'r1',
       { fields: { date: '14/02/2026', event: 'x' } }, 'u1');

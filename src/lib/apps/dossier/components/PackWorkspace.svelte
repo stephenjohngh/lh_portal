@@ -26,6 +26,7 @@
   import PagePickerModal     from './PagePickerModal.svelte';
   import DatasetTable        from './DatasetTable.svelte';
   import TablePickerModal    from './TablePickerModal.svelte';
+  import EmailPasteModal     from './EmailPasteModal.svelte';
   import {
     DATASET_TEMPLATES, TEMPLATE_KEYS, describeRecord,
   } from '../utils/datasetTemplates.js';
@@ -260,6 +261,21 @@
     try {
       await dossierStore.createRecord(selectedDataset, e.detail.fields, $auth.user.id);
     } catch (err) { treeError = err.message; }
+  }
+
+  // Pasting a thread. The modal owns the preview and which rows survive it;
+  // the write belongs here, like every other store call in this component.
+  let showEmailPaste = false;
+  let emailPasteRef;
+
+  async function handleEmailPaste(e) {
+    const dataset = selectedDataset;      // capture before the await
+    try {
+      await dossierStore.createRecords(dataset, e.detail.rows, $auth.user.id);
+      emailPasteRef?.done();
+    } catch (err) {
+      emailPasteRef?.fail(err.message);
+    }
   }
 
   async function handleRecordUpdate(e) {
@@ -686,6 +702,7 @@
           on:clearLink={(e)  => clearRecordLink(e.detail)}
           on:openTarget={(e) => openRecordTarget(e.detail)}
           on:createRecord={handleRecordCreate}
+          on:pasteEmails={() => showEmailPaste = true}
           on:updateRecord={handleRecordUpdate}
           on:deleteRecord={requestRecordDelete}
           on:deleteDataset={requestDatasetDelete}
@@ -807,6 +824,13 @@
   confirmText="Delete"
   on:confirm={confirmDatasetDelete}
   on:cancel={() => pendingDatasetDelete = null}
+/>
+
+<EmailPasteModal
+  bind:this={emailPasteRef}
+  bind:show={showEmailPaste}
+  on:add={handleEmailPaste}
+  on:close={() => showEmailPaste = false}
 />
 
 <TablePickerModal
