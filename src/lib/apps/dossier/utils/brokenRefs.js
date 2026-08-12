@@ -15,13 +15,16 @@
  * @param {object[]} links - dossier_links rows for the pack
  * @param {object[]} docs  - the pack's pages
  * @param {object[]} files - the pack's shelf (document_library rows)
+ * @param {object[]} datasets - the pack's tables
  * @returns {{ origin: {type:'page'|'table', id: string, title: string},
- *             from_block_id: string|null, kind: 'doc'|'asset',
- *             label: string, reason: 'deleted-page'|'missing-file' }[]}
+ *             from_block_id: string|null, kind: 'doc'|'asset'|'dataset',
+ *             label: string,
+ *             reason: 'deleted-page'|'missing-file'|'deleted-table' }[]}
  */
-export function findBrokenReferences(links = [], docs = [], files = []) {
+export function findBrokenReferences(links = [], docs = [], files = [], datasets = []) {
   const docIds  = new Set(docs.map(d => d.id));
   const fileIds = new Set(files.map(f => f.id));
+  const setIds  = new Set(datasets.map(d => d.id));
   const titleOf = new Map(docs.map(d => [d.id, d.title]));
 
   const broken = [];
@@ -58,6 +61,22 @@ export function findBrokenReferences(links = [], docs = [], files = []) {
         kind:           'asset',
         label:          'a file that is no longer on the shelf',
         reason:         'missing-file',
+      });
+      continue;
+    }
+
+    // A page showing a table the author has since deleted. Only checkable once
+    // the tables are loaded — with none loaded, every embed would look broken.
+    if (link.target_kind === 'dataset' && datasets.length) {
+      if (link.target_dataset_id && setIds.has(link.target_dataset_id)) continue;
+      broken.push({
+        origin,
+        from_block_id:  link.from_block_id ?? null,
+        kind:           'dataset',
+        label:          link.target_dataset_ref
+          ? `the table "${link.target_dataset_ref}", which has been deleted`
+          : 'a table that has been deleted',
+        reason:         'deleted-table',
       });
     }
   }

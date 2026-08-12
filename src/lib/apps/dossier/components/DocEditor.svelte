@@ -24,11 +24,19 @@
   export let onSave = async () => {};
   /** The pack's shelf. Asset blocks watch it so a deleted file marks itself. */
   export let files = [];
+  /** The pack's tables and their rows, so an embedded table renders live. */
+  export let datasets = [];
+  export let records  = [];
 
   // The editor is created once, so a plain prop would be a snapshot. Mirroring
   // into a store gives the asset node view something live to subscribe to.
   const filesStore = writable(files);
   $: filesStore.set(files);
+
+  // Same bridge for tables: the embedded table repaints as rows are added,
+  // rather than going stale until the page is reopened.
+  const dataStore = writable({ datasets, records });
+  $: dataStore.set({ datasets, records });
 
   const dispatch = createEventDispatcher();
 
@@ -111,7 +119,7 @@
   onMount(() => {
     editor = new Editor({
       element: editorEl,
-      extensions: buildExtensions({ filesProvider: filesStore }),
+      extensions: buildExtensions({ filesProvider: filesStore, dataProvider: dataStore }),
       content: doc?.blocks ?? EMPTY_DOC,
       editable,
       // The editing class gives the ProseMirror element itself a tall minimum,
@@ -168,6 +176,13 @@
   /** Insert an asset block. The picker lives in the parent, which owns the shelf. */
   export function insertAsset(attrs) {
     editor?.chain().focus().insertAsset(attrs).run();
+  }
+
+  /** Insert one of the pack's tables. */
+  export function insertDatasetEmbed(dataset) {
+    editor?.chain().focus().insertDatasetEmbed({
+      dataset_id: dataset.id, dataset_title: dataset.title,
+    }).run();
   }
 
   /** Insert a transclusion of another page. */
@@ -270,6 +285,13 @@
                hover:bg-slate-700 hover:text-white transition-colors"
         on:click={() => dispatch('pickEmbed')}
       >⧉</button>
+      <button
+        type="button"
+        title="Show one of this pack's tables here"
+        class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400
+               hover:bg-slate-700 hover:text-white transition-colors"
+        on:click={() => dispatch('pickTable')}
+      >▦</button>
 
       <span class="w-px h-4 bg-slate-700 mx-1"></span>
 

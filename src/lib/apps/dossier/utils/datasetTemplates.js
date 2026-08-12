@@ -59,7 +59,7 @@ export const DATASET_TEMPLATES = {
     // and notes ended up too narrow to write in.
     fields: /** @type {FieldDef[]} */ ([
       { key: 'name',   label: 'Document', type: 'text', width: '16rem' },
-      { key: 'date',   label: 'Dated',    type: 'date', width: '8rem' },
+      { key: 'date',   label: 'Dated',    type: 'date', width: '8.5rem' },
       { key: 'author', label: 'Author',   type: 'text', width: '9rem' },
       {
         key: 'status', label: 'Status', type: 'select', width: '8rem',

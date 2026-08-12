@@ -25,6 +25,7 @@
   import AssetPickerModal     from './AssetPickerModal.svelte';
   import PagePickerModal     from './PagePickerModal.svelte';
   import DatasetTable        from './DatasetTable.svelte';
+  import TablePickerModal    from './TablePickerModal.svelte';
   import {
     DATASET_TEMPLATES, TEMPLATE_KEYS, describeRecord,
   } from '../utils/datasetTemplates.js';
@@ -240,6 +241,12 @@
     selectedId = id;
   }
 
+  let showTablePicker = false;
+
+  function handlePickTable(dataset) {
+    editorRef?.insertDatasetEmbed(dataset);
+  }
+
   async function addDataset(key) {
     try {
       const dataset = await dossierStore.createDataset(pack.id, key, $auth.user.id);
@@ -357,7 +364,7 @@
   // Pages AND table rows — a chronology entry pointing at a deleted page is
   // just as broken as a link in a paragraph.
   $: broken = findBrokenReferences(
-    extractPackReferences(docs, datasets, records), docs, files);
+    extractPackReferences(docs, datasets, records), docs, files, datasets);
 
   // ── Backlinks ─────────────────────────────────────────────────────────────
 
@@ -740,7 +747,8 @@
             {#if previewing}
               <div class="h-full overflow-y-auto">
                 <div class="max-w-3xl mx-auto px-8 py-6">
-                  <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files} />
+                  <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files}
+                                {datasets} {records} />
                 </div>
               </div>
             {:else}
@@ -749,7 +757,9 @@
                        {files}
                        on:pickAsset={() => showAssetPicker = true}
                        on:pickPage={() => openPicker('link')}
-                       on:pickEmbed={() => openPicker('embed')} />
+                       on:pickEmbed={() => openPicker('embed')}
+                       on:pickTable={() => showTablePicker = true}
+                       {datasets} {records} />
             {/if}
           </div>
         </div>
@@ -797,6 +807,14 @@
   confirmText="Delete"
   on:confirm={confirmDatasetDelete}
   on:cancel={() => pendingDatasetDelete = null}
+/>
+
+<TablePickerModal
+  bind:show={showTablePicker}
+  {datasets}
+  {records}
+  on:pick={(e) => handlePickTable(e.detail)}
+  on:close={() => showTablePicker = false}
 />
 
 <PagePickerModal

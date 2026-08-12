@@ -163,11 +163,53 @@ export function extractRecordLinks(datasets = [], records = []) {
 }
 
 /**
+ * Pages that SHOW one of the pack's tables.
+ *
+ * Kept out of extractLinks() on purpose: these never reach dossier_links. That
+ * table's CHECK admits only 'doc' and 'asset', and widening it would buy
+ * nothing — a table cannot leave the pack the way a shared-library file can, so
+ * the only failure mode is "the author deleted it", which the in-memory blocks
+ * already tell us. Persisting it would be a migration for a fact we hold.
+ *
+ * @param {object[]} docs
+ */
+export function extractDatasetEmbeds(docs = []) {
+  const found = [];
+
+  const walk = (node, blockUid, doc) => {
+    if (!node || typeof node !== 'object') return;
+    const uid = node.attrs?.uid ?? blockUid;
+
+    if (node.type === 'embedDataset' && node.attrs?.dataset_id) {
+      found.push({
+        from_doc_id:        doc.id,
+        origin:             { type: 'page', id: doc.id, title: doc.title ?? 'Untitled page' },
+        from_block_id:      uid ?? null,
+        target_kind:        'dataset',
+        target_dataset_id:  node.attrs.dataset_id,
+        target_dataset_ref: node.attrs.dataset_title ?? null,
+      });
+    }
+
+    if (Array.isArray(node.content)) {
+      for (const child of node.content) walk(child, uid, doc);
+    }
+  };
+
+  for (const doc of docs) walk(doc?.blocks, null, doc);
+  return found;
+}
+
+/**
  * Every reference in a pack, from pages AND tables — what the broken-reference
  * check reads, and the shape the P3 publish walk will need.
  */
 export function extractPackReferences(docs = [], datasets = [], records = []) {
-  return [...extractAllLinks(docs), ...extractRecordLinks(datasets, records)];
+  return [
+    ...extractAllLinks(docs),
+    ...extractRecordLinks(datasets, records),
+    ...extractDatasetEmbeds(docs),
+  ];
 }
 
 /**

@@ -25,8 +25,13 @@
   export let docs = [];
   /** The pack's shelf — lets a reference to a deleted file show as such. */
   export let files = [];
+  /** The pack's tables and rows, so an embedded table renders in read mode. */
+  export let datasets = [];
+  export let records  = [];
 
-  $: html = mode === 'read' ? renderBlocksToHtml(blocks, { docs, files }) : '';
+  $: html = mode === 'read'
+    ? renderBlocksToHtml(blocks, { docs, files, datasets, records })
+    : '';
   // Distinguish "nothing written yet" from "stored JSON we could not render".
   $: broken = mode === 'read' && html === '' && !isEmptyDoc(blocks);
 </script>
@@ -245,6 +250,60 @@
     position: relative;
     user-select: none;
   }
+
+  /* ── Embedded tables ───────────────────────────────────────────────────── */
+  /* A table shown inside a page. Unlike a page embed this paints the real rows
+     in both modes — a table cannot contain an embed, so there is no recursion
+     to guard against and no reason to show the author a stand-in. */
+  :global(.dossier-prose .dossier-dataset) {
+    margin: 0 0 1rem;
+    border: 1px solid #334155;         /* slate-700 */
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  :global(.dossier-prose .dossier-dataset-title) {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #f1f5f9;                    /* slate-100 */
+    background: #1e293b;               /* slate-800 */
+    padding: 0.45rem 0.7rem;
+    border-bottom: 1px solid #334155;
+  }
+  :global(.dossier-prose .dossier-dataset-table) {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;               /* a long filename must not steal a column */
+    font-size: 0.8125rem;
+  }
+  :global(.dossier-prose .dossier-dataset-table th) {
+    text-align: left;
+    font-weight: 600;
+    color: #94a3b8;                    /* slate-400 */
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid #334155;
+  }
+  :global(.dossier-prose .dossier-dataset-table td) {
+    padding: 0.4rem 0.6rem;
+    color: #cbd5e1;                    /* slate-300 */
+    vertical-align: top;
+    border-bottom: 1px solid #1e293b;
+    /* Author prose wraps rather than overflowing its column. */
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+  :global(.dossier-prose .dossier-dataset-table tr:last-child td) { border-bottom: 0; }
+
+  :global(.dossier-prose .dossier-dataset-empty),
+  :global(.dossier-prose .dossier-dataset-note) {
+    padding: 0.6rem 0.7rem;
+    font-size: 0.8125rem;
+    color: #94a3b8;                    /* slate-400 */
+  }
+  :global(.dossier-prose .dossier-dataset-gone) { border-color: rgb(245 158 11 / 0.35); }
+  :global(.dossier-prose .dossier-dataset-gone .dossier-dataset-note) { color: #fbbf24; }
 
   /* ── Assets ────────────────────────────────────────────────────────────── */
   :global(.dossier-prose .dossier-asset) { margin: 0 0 0.9rem; }
