@@ -246,7 +246,7 @@
                          opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                   title="Delete this entry"
                   aria-label="Delete this entry"
-                  on:click={() => dispatch('deleteRecord', record.id)}
+                  on:click={() => dispatch('deleteRecord', record)}
                 >×</button>
               {/if}
             </td>

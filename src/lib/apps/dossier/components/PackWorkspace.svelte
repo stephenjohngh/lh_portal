@@ -25,7 +25,9 @@
   import AssetPickerModal     from './AssetPickerModal.svelte';
   import PagePickerModal     from './PagePickerModal.svelte';
   import DatasetTable        from './DatasetTable.svelte';
-  import { DATASET_TEMPLATES, TEMPLATE_KEYS } from '../utils/datasetTemplates.js';
+  import {
+    DATASET_TEMPLATES, TEMPLATE_KEYS, describeRecord,
+  } from '../utils/datasetTemplates.js';
   import { assetAttrsFromDocument, fileProxyUrl } from '../utils/assetPreview.js';
   import { findBrokenReferences, describeBrokenReferences } from '../utils/brokenRefs.js';
   import { extractPackReferences } from '../utils/docLinks.js';
@@ -260,10 +262,25 @@
     } catch (err) { treeError = err.message; }
   }
 
-  async function handleRecordDelete(e) {
+  // Deleting a row goes through the same confirmation as a pack, a page or a
+  // table. The dialog NAMES the entry: in a dense table the real risk is not
+  // deleting deliberately, it is deleting the row next to the one you meant.
+  let pendingRecordDelete = null;
+  let deletingRecordId    = null;
+
+  function requestRecordDelete(e) { pendingRecordDelete = e.detail; }
+
+  async function confirmRecordDelete() {
+    const record = pendingRecordDelete;
+    deletingRecordId = record.id;
     try {
-      await dossierStore.deleteRecord(e.detail);
-    } catch (err) { treeError = err.message; }
+      await dossierStore.deleteRecord(record.id);
+      pendingRecordDelete = null;
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      deletingRecordId = null;
+    }
   }
 
   // Deleting a table takes every entry with it, so it goes through the same
@@ -662,7 +679,7 @@
           on:openTarget={(e) => openRecordTarget(e.detail)}
           on:createRecord={handleRecordCreate}
           on:updateRecord={handleRecordUpdate}
-          on:deleteRecord={handleRecordDelete}
+          on:deleteRecord={requestRecordDelete}
           on:deleteDataset={requestDatasetDelete}
         />
       {:else if selectedDoc}
@@ -753,6 +770,19 @@
   parent={newDocParent}
   on:save={handleDocSave}
   on:close={() => showDocModal = false}
+/>
+
+<ConfirmDialog
+  show={!!pendingRecordDelete}
+  danger={true}
+  processing={!!deletingRecordId}
+  title="Delete this entry?"
+  message={pendingRecordDelete && selectedDataset
+    ? `“${describeRecord(selectedDataset.key, pendingRecordDelete.fields)}” will be removed from ${selectedDataset.title}. This cannot be undone.`
+    : ''}
+  confirmText="Delete"
+  on:confirm={confirmRecordDelete}
+  on:cancel={() => pendingRecordDelete = null}
 />
 
 <ConfirmDialog

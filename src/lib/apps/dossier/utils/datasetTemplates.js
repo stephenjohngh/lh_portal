@@ -144,6 +144,30 @@ export function sortRecords(key, records = []) {
   });
 }
 
+/**
+ * A short human label for one row, for confirmations and audit entries.
+ *
+ * Takes the first two columns that have anything in them, so a chronology reads
+ * "2024-09-12 — Section 20 notice served" rather than "entry". In a dense table
+ * the real risk is deleting the wrong row, and only naming it guards against
+ * that. Dates stay in ISO form: unambiguous, and this module has no locale.
+ *
+ * @param {string} key
+ * @param {object} fields
+ * @param {number} [limit]
+ */
+export function describeRecord(key, fields = {}, limit = 80) {
+  const parts = [];
+  for (const field of fieldsFor(key)) {
+    const value = String(fields?.[field.key] ?? '').trim();
+    if (value) parts.push(value);
+    if (parts.length === 2) break;
+  }
+  const text = parts.join(' — ');
+  if (!text) return 'this blank entry';
+  return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text;
+}
+
 /** True when a row has nothing in it — used to skip saving blank additions. */
 export function isBlankRecord(key, fields = {}) {
   return fieldsFor(key).every(field => !String(fields?.[field.key] ?? '').trim());

@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DATASET_TEMPLATES, TEMPLATE_KEYS, templateFor, fieldsFor,
   coerceField, coerceRecordFields, emptyRecordFields, sortRecords, isBlankRecord,
+  describeRecord,
 } from './datasetTemplates.js';
 
 describe('templates', () => {
@@ -124,6 +125,32 @@ describe('sortRecords', () => {
   it('falls back to position for a template with no sort column', () => {
     expect(sortRecords('unknown', [rec('', 2), rec('', 1)]).map(r => r.position))
       .toEqual([1, 2]);
+  });
+});
+
+describe('describeRecord', () => {
+  it('names a row by its first two filled columns', () => {
+    // In a dense table the real risk is deleting the wrong row; a confirmation
+    // that just says "this entry" does not guard against that.
+    expect(describeRecord('chronology', {
+      date: '2024-09-12', event: 'Section 20 notice served', significance: 'x',
+    })).toBe('2024-09-12 — Section 20 notice served');
+  });
+
+  it('skips empty columns rather than leaving gaps', () => {
+    expect(describeRecord('chronology', { date: '', event: 'Works completed' }))
+      .toBe('Works completed');
+  });
+
+  it('truncates a long label', () => {
+    const label = describeRecord('chronology', { event: 'x'.repeat(200) }, 20);
+    expect(label.length).toBeLessThanOrEqual(21);
+    expect(label.endsWith('…')).toBe(true);
+  });
+
+  it('has something to say about a blank row', () => {
+    expect(describeRecord('chronology', {})).toBe('this blank entry');
+    expect(describeRecord('chronology')).toBe('this blank entry');
   });
 });
 
