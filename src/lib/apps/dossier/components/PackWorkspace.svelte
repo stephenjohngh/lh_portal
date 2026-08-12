@@ -211,13 +211,27 @@
     } catch (err) { treeError = err.message; }
   }
 
-  async function handleDatasetDelete() {
-    const target = selectedDataset;
-    if (!target) return;
+  // Deleting a table takes every entry with it, so it goes through the same
+  // confirmation as deleting a pack or a page (house pattern — never confirm()).
+  let pendingDatasetDelete = null;
+  let deletingDatasetId    = null;
+
+  function requestDatasetDelete() {
+    if (selectedDataset) pendingDatasetDelete = selectedDataset;
+  }
+
+  async function confirmDatasetDelete() {
+    const { id, title } = pendingDatasetDelete;
+    deletingDatasetId = id;
     try {
-      await dossierStore.deleteDataset(target.id, target.title);
+      await dossierStore.deleteDataset(id, title);
       selectedDatasetId = null;
-    } catch (err) { treeError = err.message; }
+      pendingDatasetDelete = null;
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      deletingDatasetId = null;
+    }
   }
 
   // ── Cross-links ───────────────────────────────────────────────────────────
@@ -564,7 +578,7 @@
           on:createRecord={handleRecordCreate}
           on:updateRecord={handleRecordUpdate}
           on:deleteRecord={handleRecordDelete}
-          on:deleteDataset={handleDatasetDelete}
+          on:deleteDataset={requestDatasetDelete}
         />
       {:else if selectedDoc}
         <!-- One row, not three. Title, address, backlinks and actions all live
@@ -654,6 +668,19 @@
   parent={newDocParent}
   on:save={handleDocSave}
   on:close={() => showDocModal = false}
+/>
+
+<ConfirmDialog
+  show={!!pendingDatasetDelete}
+  danger={true}
+  processing={!!deletingDatasetId}
+  title="Delete table?"
+  message={pendingDatasetDelete
+    ? `"${pendingDatasetDelete.title}" and all ${records.length} of its entries will be permanently deleted. Pages that mention it are not affected. This cannot be undone.`
+    : ''}
+  confirmText="Delete"
+  on:confirm={confirmDatasetDelete}
+  on:cancel={() => pendingDatasetDelete = null}
 />
 
 <PagePickerModal
