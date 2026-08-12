@@ -182,7 +182,7 @@ export const Asset = Node.create({
       let lastFiles = null;   // latest shelf seen, so update() can re-derive
 
       const repaint = () => {
-        paint(inner, current, missing);
+        paint(inner, current, missing, describeFile(current, lastFiles));
         // Size controls only apply to an image that actually rendered.
         const isImage = !missing && previewKind(current.attrs.mime_type) === 'image'
           && Boolean(fileProxyUrl(current.attrs.provider_file_id, current.attrs.mime_type));
