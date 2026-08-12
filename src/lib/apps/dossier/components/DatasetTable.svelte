@@ -6,7 +6,7 @@
      Rows save on blur rather than on every keystroke: a table is a lot of small
      fields, and a per-character autosave would be a write per letter. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import Button        from '$lib/components/common/Button.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -48,11 +48,62 @@
     });
   }
 
+  // ── Committing the draft row ──────────────────────────────────────────────
+  // The boundary is LEAVING THE ROW, not leaving a field. Committing per field
+  // meant tabbing from Date to Event saved a row holding only a date — which
+  // then sorted itself away underneath the author, who was still typing it.
+
+  /** The draft <tr>, so focusout can tell "moved a cell" from "left the row". */
+  let draftRowEl;
+  /** Draft cell elements by column index, so Enter can return to the first. */
+  let draftInputs = [];
+  /** Briefly highlights a newly added row so the eye can follow it as it sorts. */
+  let flashId = null;
+  let flashTimer = null;
+  let knownIds = new Set();
+
   function commitDraft() {
-    if (isBlankRecord(dataset.key, draft)) return;
+    if (!dataset || isBlankRecord(dataset.key, draft)) return false;
     dispatch('createRecord', { fields: { ...draft } });
     draft = emptyRecordFields(dataset.key);
+    return true;
   }
+
+  function handleDraftFocusOut(event) {
+    // Moving between cells of the same row is not finishing the row.
+    if (draftRowEl?.contains(event.relatedTarget)) return;
+    commitDraft();
+  }
+
+  function handleDraftKeydown(event) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();          // a bare Enter would submit nothing useful
+    if (commitDraft()) draftInputs[0]?.focus();
+  }
+
+  /**
+   * Flash whichever row has just appeared. A chronology re-sorts on save, so
+   * without this an entry can leap several rows and leave the author hunting
+   * for it.
+   */
+  function trackNewRows(list) {
+    const seen = knownIds;
+    let added = null;
+    for (const record of list) {
+      if (!seen.has(record.id)) {
+        if (seen.size) added = record.id;   // not the first load
+        seen.add(record.id);
+      }
+    }
+    if (!added) return;
+    flashId = added;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { flashId = null; }, 1600);
+  }
+
+  $: trackNewRows(records);
+
+  onDestroy(() => clearTimeout(flashTimer));
 </script>
 
 <div class="flex flex-col h-full min-h-0">
@@ -95,7 +146,8 @@
 
       <tbody>
         {#each ordered as record (record.id)}
-          <tr class="group border-t border-slate-800 align-top">
+          <tr class="group border-t border-slate-800 align-top transition-colors
+                     {flashId === record.id ? 'bg-slate-700/40' : ''}">
             {#each template.fields as field}
               <td class="py-1 pr-3">
                 {#if !canEdit}
@@ -144,8 +196,12 @@
         <!-- The always-present blank row: an empty table with no way in teaches
              nothing, and "Add row" is one click more than typing. -->
         {#if canEdit}
-          <tr class="border-t border-slate-800 align-top">
-            {#each template?.fields ?? [] as field}
+          <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+          <tr class="border-t border-slate-800 align-top"
+              bind:this={draftRowEl}
+              on:focusout={handleDraftFocusOut}
+              on:keydown={handleDraftKeydown}>
+            {#each template?.fields ?? [] as field, i}
               <td class="py-1 pr-3">
                 {#if field.type === 'select'}
                   <select
@@ -153,7 +209,7 @@
                            border border-dashed border-slate-800 focus:border-slate-600
                            focus:bg-slate-800 outline-none"
                     bind:value={draft[field.key]}
-                    on:change={commitDraft}
+                    bind:this={draftInputs[i]}
                   >
                     <option value=""></option>
                     {#each field.options ?? [] as option}
@@ -168,7 +224,7 @@
                            focus:bg-slate-800 outline-none placeholder:text-slate-600"
                     placeholder={field.placeholder ?? field.label}
                     bind:value={draft[field.key]}
-                    on:blur={commitDraft}
+                    bind:this={draftInputs[i]}
                   />
                 {/if}
               </td>
