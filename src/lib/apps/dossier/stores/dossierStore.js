@@ -18,6 +18,8 @@ import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
 import { coerceRecordFields, templateFor } from '../utils/datasetTemplates.js';
+import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
+import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 
 const logger = getLogger('dossierStore');
 
@@ -94,6 +96,10 @@ function createDossierStore() {
     // check has to see rows in tables the author has not opened, and P3's
     // publish walk will need the same.
     records:      [],
+    // Publications of the open pack. Loaded on demand — most editing sessions
+    // never publish, and the list is the one place a live external link is
+    // visible, so it should not be lying around unrequested.
+    publications: [],
   }));
 
   const { subscribe, update } = store;
@@ -328,6 +334,134 @@ function createDossierStore() {
     update(s => ({ ...s, records: s.records.filter(r => r.id !== id) }));
   }
 
+  // ── Publications (P3) ────────────────────────────────────────────────────
+  // The EXTERNAL boundary. Note what these methods do NOT do: none of them
+  // reads a publication by token, and none is reachable without a session.
+  // The recipient's path is a separate set of service-role endpoints that
+  // share no code with this store — that separation is the guarantee.
+
+  async function loadPublications(packId) {
+    if (!packId) { update(s => ({ ...s, publications: [] })); return []; }
+    const publications = await api.get('dossier_publications', {
+      filters: { pack_id: packId }, orderBy: 'version', ascending: false,
+    });
+    update(s => ({ ...s, publications }));
+    return publications;
+  }
+
+  /**
+   * Freeze the pack and issue a link.
+   *
+   * Returns `{ publication, token }`. The TOKEN IS RETURNED ONCE AND NEVER
+   * AGAIN — only its SHA-256 reaches the database. The caller must show it to
+   * the author immediately; there is no recovery path but Regenerate.
+   *
+   * The snapshot is built from what is already in memory rather than re-read,
+   * so what the author reviewed on screen is exactly what is frozen.
+   *
+   * @param {object} input
+   * @param {object} input.pack
+   * @param {'snapshot'|'latest'} [input.mode]
+   * @param {string} [input.title]
+   * @param {string} [input.recipientLabel]
+   * @param {string|null} [input.expiresAt]
+   * @param {Record<string,string|null>} [input.checksums] - document_id → sha-256
+   * @param {string} userId
+   */
+  async function createPublication({
+    pack, mode = 'snapshot', title, recipientLabel = '', expiresAt = null,
+    checksums = {},
+  }, userId) {
+    const state = getState();
+    const snapshot = buildSnapshot({
+      pack,
+      docs:     state.docs,
+      datasets: state.datasets,
+      records:  state.records,
+      files:    state.files,
+    });
+    const manifest = buildManifest(snapshot, checksums);
+
+    // Version numbers come from what is loaded, which is every publication of
+    // this pack — the unique (pack_id, version) constraint is the real guard if
+    // two tabs ever race.
+    const version = state.publications.length
+      ? Math.max(...state.publications.map(p => p.version ?? 0)) + 1
+      : 1;
+
+    const token = generateToken();
+    const publication = await api.create('dossier_publications', {
+      pack_id:         pack.id,
+      version,
+      title:           title || pack.title,
+      recipient_label: recipientLabel || null,
+      mode,
+      token_hash:      await hashToken(token),
+      token_prefix:    tokenPrefix(token),
+      // 'latest' follows the live pack, so freezing a copy would be a lie about
+      // what the recipient is seeing.
+      snapshot:        mode === 'snapshot' ? snapshot : null,
+      manifest,
+      expires_at:      expiresAt,
+      created_by:      userId, ...touch(userId),
+    }, true);
+
+    update(s => ({ ...s, publications: [publication, ...s.publications] }));
+    logAudit('create', 'dossier_publication', publication.id,
+      `${publication.title} v${version}`, {
+        appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+        afterData: {
+          pack_id: pack.id, version, mode,
+          expires_at: expiresAt, recipient_label: recipientLabel || null,
+          // What was exposed, so the audit trail answers "what did that link
+          // give them?" long after the pack has moved on.
+          doc_count: manifest.doc_count, file_count: manifest.files.length,
+        },
+      });
+    logger('🔗 publication issued', publication.id, 'v' + version);
+    return { publication, token };
+  }
+
+  /** Kill a link. Deliberately not a delete — the record that it was issued survives. */
+  async function revokePublication(id, userId) {
+    const publication = await api.update('dossier_publications', id, {
+      revoked_at: new Date().toISOString(), revoked_by: userId, ...touch(userId),
+    }, true);
+
+    update(s => ({
+      ...s, publications: s.publications.map(p => p.id === id ? publication : p),
+    }));
+    logAudit('revoke', 'dossier_publication', id, publication.title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+    });
+    return publication;
+  }
+
+  /**
+   * Issue a new token for an existing publication, breaking the old link.
+   *
+   * The recovery path for a link the author lost, and the fast response to one
+   * that reached the wrong inbox. The snapshot is untouched: the recipient who
+   * gets the new link sees exactly what the old one showed.
+   */
+  async function regeneratePublicationToken(id, userId) {
+    const token = generateToken();
+    const publication = await api.update('dossier_publications', id, {
+      token_hash: await hashToken(token), token_prefix: tokenPrefix(token),
+      ...touch(userId),
+    }, true);
+
+    update(s => ({
+      ...s, publications: s.publications.map(p => p.id === id ? publication : p),
+    }));
+    logAudit('update', 'dossier_publication', id,
+      `${publication.title} — link regenerated`, {
+        appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+        afterData: { token_prefix: publication.token_prefix },
+      });
+    return { publication, token };
+  }
+
   // ── Docs ─────────────────────────────────────────────────────────────────
 
   /** Load the doc tree for a pack. Rows stay flat in state — buildTree() nests at render. */
@@ -349,7 +483,7 @@ function createDossierStore() {
   function closePack() {
     update(s => ({
       ...s, activePackId: null, docs: [], files: [],
-      datasets: [], records: [],
+      datasets: [], records: [], publications: [],
     }));
   }
 
@@ -570,6 +704,8 @@ function createDossierStore() {
     createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
+    loadPublications, createPublication, revokePublication,
+    regeneratePublicationToken,
   };
 }
 

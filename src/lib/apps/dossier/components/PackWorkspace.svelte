@@ -36,6 +36,12 @@
   import { findBrokenReferences, describeBrokenReferences } from '../utils/brokenRefs.js';
   import { extractPackReferences } from '../utils/docLinks.js';
   import { unindexedFiles, shelfIndexRows } from '../utils/documentIndex.js';
+  import PublishModal      from './PublishModal.svelte';
+  import PublicationsPanel from './PublicationsPanel.svelte';
+  import {
+    buildSnapshot, buildManifest, describeInclusion, fetchChecksums,
+  } from '../utils/snapshot.js';
+  import { expiryFromDays, publicationState } from '../utils/publicationState.js';
 
   export let pack;
 
@@ -502,6 +508,98 @@
     }
   }
 
+  // ── Publishing (P3) ───────────────────────────────────────────────────────
+
+  let showPublish   = false;
+  let publishReview = null;
+  let preparing     = false;
+  let publishRef;
+  let pubBusyId     = null;
+  let pendingRevoke = null;
+
+  $: publications = $dossierStore.publications;
+  $: liveLinks = publications.filter(p => publicationState(p) === 'live').length;
+
+  /** The checksums computed for the review, reused by the publish itself. */
+  let reviewChecksums = {};
+
+  async function openPublish() {
+    // Flush first: publishing something that does not include the sentence the
+    // author just typed would be a quiet and serious bug.
+    await editorRef?.flushNow();
+
+    publishReview = null;
+    reviewChecksums = {};
+    preparing = true;
+    showPublish = true;
+
+    const snapshot = buildSnapshot({ pack, docs, datasets, records, files });
+    // Baselines are taken NOW, at publication, not later: a checksum measured
+    // afterwards is a baseline for a file that may already have changed.
+    reviewChecksums = await fetchChecksums(snapshot.files);
+    publishReview = describeInclusion(snapshot, buildManifest(snapshot, reviewChecksums));
+    preparing = false;
+  }
+
+  async function handlePublish(e) {
+    const { title, recipientLabel, mode, expiryDays } = e.detail;
+    const checksums = reviewChecksums;      // capture before the await
+    try {
+      const result = await dossierStore.createPublication({
+        pack, mode, title, recipientLabel,
+        expiresAt: expiryFromDays(expiryDays), checksums,
+      }, $auth.user.id);
+      publishRef?.done(result);
+    } catch (err) {
+      publishRef?.fail(err.message);
+    }
+  }
+
+  async function handleRegenerate(publication) {
+    const id = publication.id;
+    pubBusyId = id;
+    try {
+      const result = await dossierStore.regeneratePublicationToken(id, $auth.user.id);
+      // Straight into the same "copy it now" screen: a regenerated token is as
+      // unrecoverable as the first one.
+      showPublish = true;
+      publishRef?.done(result);
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      pubBusyId = null;
+    }
+  }
+
+  async function confirmRevoke() {
+    const publication = pendingRevoke;
+    pubBusyId = publication.id;
+    try {
+      await dossierStore.revokePublication(publication.id, $auth.user.id);
+      pendingRevoke = null;
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      pubBusyId = null;
+    }
+  }
+
+  const LS_PUBS = 'dossier:pubsOpen';
+  let pubsOpen = getPref(LS_PUBS) === '1';
+
+  function togglePubs() {
+    pubsOpen = !pubsOpen;
+    setPref(LS_PUBS, pubsOpen ? '1' : '0');
+    if (pubsOpen) dossierStore.loadPublications(pack.id).catch(() => {});
+  }
+
+  // Loaded on open, and once up front only if the section is already expanded.
+  let loadedPubsFor = null;
+  $: if (pubsOpen && pack?.id && pack.id !== loadedPubsFor) {
+    loadedPubsFor = pack.id;
+    dossierStore.loadPublications(pack.id).catch(() => {});
+  }
+
   function requestDelete(doc) { pendingDelete = doc; }
 
   async function confirmDelete() {
@@ -543,6 +641,18 @@
         title="Show which references no longer resolve"
         on:click={() => showBroken = !showBroken}
       >⚠ {describeBrokenReferences(broken)}</button>
+    {/if}
+
+    {#if canEdit}
+      {#if liveLinks}
+        <span class="text-xs text-slate-500 shrink-0"
+              title="Links to this pack that currently work">
+          {liveLinks} live link{liveLinks === 1 ? '' : 's'}
+        </span>
+      {/if}
+      <Button variant="primary" size="small" on:click={openPublish}>
+        Publish
+      </Button>
     {/if}
   </div>
 
@@ -708,6 +818,39 @@
           </div>
         {/if}
       </div>
+
+      <!-- Links issued to people outside the portal. Its own section, and
+           collapsed by default: it is the one place a live external link is
+           visible, and it should be looked at deliberately. -->
+      <div class="border-t border-slate-700 shrink-0">
+        <button
+          class="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50
+                 transition-colors text-left"
+          aria-label={pubsOpen ? 'Hide links' : 'Show links'}
+          aria-expanded={pubsOpen}
+          on:click={togglePubs}
+        >
+          <span class="text-[10px] text-slate-500 w-2">{pubsOpen ? '▼' : '▶'}</span>
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
+            Links
+          </span>
+          {#if liveLinks}
+            <span class="text-[10px] text-green-400">{liveLinks} live</span>
+          {/if}
+        </button>
+
+        {#if pubsOpen}
+          <div class="max-h-64 overflow-y-auto px-3 pb-3">
+            <PublicationsPanel
+              {publications}
+              {canEdit}
+              busyId={pubBusyId}
+              on:regenerate={(e) => handleRegenerate(e.detail)}
+              on:revoke={(e) => pendingRevoke = e.detail}
+            />
+          </div>
+        {/if}
+      </div>
     </div>
 
     <!-- ── Editor pane ── -->
@@ -851,6 +994,31 @@
   confirmText="Delete"
   on:confirm={confirmDatasetDelete}
   on:cancel={() => pendingDatasetDelete = null}
+/>
+
+<PublishModal
+  bind:this={publishRef}
+  bind:show={showPublish}
+  review={publishReview}
+  packTitle={pack.title}
+  {preparing}
+  on:publish={handlePublish}
+  on:close={() => { showPublish = false; publishReview = null; }}
+/>
+
+<ConfirmDialog
+  show={!!pendingRevoke}
+  title="Revoke this link?"
+  message={pendingRevoke
+    ? `The link for "${pendingRevoke.title}" will stop working immediately, for `
+      + `everyone who has it. This cannot be undone — publish again to issue a `
+      + `new one. The record that this link was issued is kept.`
+    : ''}
+  confirmText="Revoke"
+  danger={true}
+  processing={!!pubBusyId}
+  on:confirm={confirmRevoke}
+  on:cancel={() => pendingRevoke = null}
 />
 
 <EmailPasteModal

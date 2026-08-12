@@ -608,6 +608,139 @@ describe('datasets', () => {
   });
 });
 
+describe('publications', () => {
+  const pack = { id: 'p1', title: 'Flat 4 dispute', description: '' };
+
+  /** Load a pack with one page, one file on the shelf, and the page using it. */
+  async function seedPack() {
+    h.api.get.mockResolvedValueOnce([{
+      id: 'd1', slug: 'overview', title: 'Overview', order_index: 0,
+      blocks: {
+        type: 'doc',
+        content: [{ type: 'asset', attrs: { uid: 'b1', document_id: 'f1' } }],
+      },
+    }]);
+    await store.loadDocs('p1');
+
+    h.listDocuments.mockResolvedValueOnce([
+      { id: 'f1', filename: 'notice.pdf', display_name: 'Notice',
+        provider_file_id: 'drive-1', mime_type: 'application/pdf', file_size: 10 },
+      { id: 'f9', filename: 'private.pdf', display_name: 'Unreferenced',
+        provider_file_id: 'drive-9', mime_type: 'application/pdf', file_size: 20 },
+    ]);
+    await store.loadPackFiles('p1');
+  }
+
+  it('stores only the token HASH, and returns the token exactly once', async () => {
+    await seedPack();
+    const { token } = await store.createPublication({ pack }, 'u1');
+
+    const row = h.api.create.mock.calls.at(-1)[1];
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    // The row must not carry the token in any form.
+    expect(JSON.stringify(row)).not.toContain(token);
+    expect(row.token_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(row.token_prefix).toBe(token.slice(0, 8));
+  });
+
+  it('freezes what is loaded, so the author publishes what they reviewed', async () => {
+    await seedPack();
+    await store.createPublication({ pack }, 'u1');
+
+    const row = h.api.create.mock.calls.at(-1)[1];
+    expect(row.snapshot.docs.map(d => d.id)).toEqual(['d1']);
+    expect(row.snapshot.docs[0].blocks).toBeTruthy();
+  });
+
+  it('manifests ONLY referenced files — the rest of the shelf stays out of reach', async () => {
+    await seedPack();
+    await store.createPublication({ pack }, 'u1');
+
+    const { manifest } = h.api.create.mock.calls.at(-1)[1];
+    expect(manifest.files.map(f => f.document_id)).toEqual(['f1']);
+  });
+
+  it('carries the checksums measured at publish time', async () => {
+    await seedPack();
+    await store.createPublication({ pack, checksums: { f1: 'abc' } }, 'u1');
+
+    const { manifest } = h.api.create.mock.calls.at(-1)[1];
+    expect(manifest.files[0].checksum).toBe('abc');
+  });
+
+  it('stores no snapshot in follow-latest mode', async () => {
+    // Freezing a copy would be a lie about what the recipient is seeing.
+    await seedPack();
+    await store.createPublication({ pack, mode: 'latest' }, 'u1');
+
+    const row = h.api.create.mock.calls.at(-1)[1];
+    expect(row.mode).toBe('latest');
+    expect(row.snapshot).toBeNull();
+    expect(row.manifest.files).toHaveLength(1);   // assets still need serving
+  });
+
+  it('numbers versions from the publications already issued', async () => {
+    h.api.get.mockResolvedValueOnce([
+      { id: 'pub2', version: 2 }, { id: 'pub1', version: 1 },
+    ]);
+    await store.loadPublications('p1');
+    await seedPack();
+
+    await store.createPublication({ pack }, 'u1');
+    expect(h.api.create.mock.calls.at(-1)[1].version).toBe(3);
+  });
+
+  it('audits the issue at warning severity, recording what was exposed', async () => {
+    // Long after the pack has moved on, the audit trail must still answer
+    // "what did that link give them?".
+    //
+    // The store is a module singleton, so earlier tests in this block have left
+    // publications in state and the version would otherwise be whatever they
+    // added up to. Reset it, so the number asserted below means something.
+    h.api.get.mockResolvedValueOnce([]);
+    await store.loadPublications('p1');
+    await seedPack();
+    await store.createPublication({ pack, recipientLabel: 'Smith & Co' }, 'u1');
+
+    const [, , , , meta] = h.logAudit.mock.calls.at(-1);
+    expect(meta.severity).toBe('warning');
+    expect(meta.afterData).toMatchObject({
+      pack_id: 'p1', version: 1, file_count: 1, recipient_label: 'Smith & Co',
+    });
+  });
+
+  it('revokes without deleting — the record that a link was issued survives', async () => {
+    h.api.update.mockResolvedValueOnce({ id: 'pub1', title: 'P', revoked_at: 'now' });
+    await store.revokePublication('pub1', 'u2');
+
+    expect(h.api.delete).not.toHaveBeenCalled();
+    expect(h.api.update.mock.calls.at(-1)[2]).toMatchObject({ revoked_by: 'u2' });
+    expect(h.api.update.mock.calls.at(-1)[2].revoked_at).toBeTruthy();
+  });
+
+  it('regenerating replaces the token and leaves the snapshot alone', async () => {
+    // The recipient who gets the new link must see exactly what the old one
+    // showed — only the secret changes.
+    h.api.update.mockResolvedValueOnce({ id: 'pub1', title: 'P', token_prefix: 'xxxxxxxx' });
+    const { token } = await store.regeneratePublicationToken('pub1', 'u1');
+
+    const patch = h.api.update.mock.calls.at(-1)[2];
+    expect(patch.token_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(patch).not.toHaveProperty('snapshot');
+    expect(patch).not.toHaveProperty('manifest');
+    expect(JSON.stringify(patch)).not.toContain(token);
+  });
+
+  it('clears publications when the pack is closed', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'pub1', version: 1 }]);
+    await store.loadPublications('p1');
+    expect(get(store).publications).toHaveLength(1);
+
+    store.closePack();
+    expect(get(store).publications).toEqual([]);
+  });
+});
+
 describe('store contract', () => {
   it('exposes only subscribe + named methods (never set/update)', () => {
     expect(store.set).toBeUndefined();

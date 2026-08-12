@@ -167,6 +167,38 @@ export function buildManifest(snapshot, checksums = {}) {
   };
 }
 
+/**
+ * Ask the server to checksum the files a publication is about to freeze.
+ *
+ * Keyed by `document_id` on the way out, because that is what the manifest
+ * uses; the endpoint works in `provider_file_id`, which is what storage
+ * understands. Never throws — a publication with no baselines is a real
+ * publication with a known gap, and the review shows the author which files
+ * those are.
+ *
+ * @param {object[]} files - the snapshot's file entries
+ * @returns {Promise<Record<string, string|null>>} document_id → sha-256 hex
+ */
+export async function fetchChecksums(files = []) {
+  const usable = files.filter(f => f.provider_file_id);
+  if (!usable.length) return {};
+
+  try {
+    const { postJson } = await import('$lib/utils/request');
+    const body = await postJson('/api/dossier/checksums',
+      { fileIds: usable.map(f => f.provider_file_id) },
+      'Could not read the files');
+
+    const out = {};
+    for (const file of usable) {
+      out[file.id] = body?.checksums?.[file.provider_file_id] ?? null;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 /** Is this file id allowed through this publication's asset endpoint? */
 export function manifestAllows(manifest, documentId) {
   if (!documentId) return false;
