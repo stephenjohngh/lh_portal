@@ -57,6 +57,8 @@
   let draftRowEl;
   /** Draft cell elements by column index, so Enter can return to the first. */
   let draftInputs = [];
+  /** How long a newly added row stays highlighted. */
+  const FLASH_MS = 3000;
   /** Briefly highlights a newly added row so the eye can follow it as it sorts. */
   let flashId = null;
   let flashTimer = null;
@@ -98,7 +100,7 @@
     if (!added) return;
     flashId = added;
     clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => { flashId = null; }, 1600);
+    flashTimer = setTimeout(() => { flashId = null; }, FLASH_MS);
   }
 
   $: trackNewRows(records);
@@ -170,9 +172,7 @@
                     type={field.type === 'date' ? 'date' : 'text'}
                     class="w-full bg-transparent text-slate-200 text-sm rounded px-1 py-1
                            border border-transparent hover:border-slate-700
-                           focus:border-slate-600 focus:bg-slate-800 outline-none
-                           placeholder:text-slate-600"
-                    placeholder={field.placeholder ?? ''}
+                           focus:border-slate-600 focus:bg-slate-800 outline-none"
                     value={record.fields?.[field.key] ?? ''}
                     on:blur={(e) => commitCell(record, field, e.currentTarget.value)}
                   />
