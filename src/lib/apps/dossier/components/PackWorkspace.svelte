@@ -653,6 +653,7 @@
               folderPath="Dossier Packs"
               title="Files"
               on:uploaded={(e) => auditDoc('create', e.detail)}
+              on:updated={(e)  => auditDoc('update', e.detail)}
               on:deleted={(e)  => auditDoc('delete', e.detail)}
             />
           </div>

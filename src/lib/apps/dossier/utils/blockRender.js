@@ -93,7 +93,7 @@ export function renderBlocksToHtml(blocks, opts = {}) {
   const json = blocks && typeof blocks === 'object' && blocks.type ? blocks : EMPTY_DOC;
   try {
     const html = sanitizeBlockHtml(generateHTML(json, buildExtensions()));
-    return expandEmbeds(markMissingAssets(html, opts), opts);
+    return expandEmbeds(resolveAssets(html, opts), opts);
   } catch (err) {
     logger('⚠ could not render blocks', err);
     return '';
@@ -174,7 +174,12 @@ function expandEmbeds(html, { docs = [], ancestry = [], maxDepth = MAX_EMBED_DEP
 }
 
 /**
- * Replace an asset whose file is no longer on the shelf with a plain notice.
+ * Resolve each asset against the pack's shelf: mark the ones whose file has
+ * gone, and give the rest their file's DESCRIPTION.
+ *
+ * The description is looked up live rather than copied onto the block, so
+ * editing it once updates every page that shows the file — the same
+ * reference-not-copy rule the rest of the app follows.
  *
  * Without this the block renders a normal image or download card pointing at a
  * file that 404s — the reference looks healthy right up until someone clicks
@@ -183,7 +188,7 @@ function expandEmbeds(html, { docs = [], ancestry = [], maxDepth = MAX_EMBED_DEP
  * Skipped entirely when no shelf is supplied: absence can only be proven
  * against an actual list.
  */
-function markMissingAssets(html, { files } = {}) {
+function resolveAssets(html, { files } = {}) {
   if (!html || typeof document === 'undefined') return html;
   if (!Array.isArray(files) || !files.length) return html;
 
@@ -193,17 +198,30 @@ function markMissingAssets(html, { files } = {}) {
   const assets = host.querySelectorAll('div[data-asset]');
   if (!assets.length) return html;
 
+  const byId = new Map(files.map(f => [f.id, f]));
   let changed = false;
+
   for (const node of assets) {
-    if (!assetIsMissing(node.getAttribute('data-document_id'), files)) continue;
+    const documentId = node.getAttribute('data-document_id');
     const name = node.getAttribute('data-filename') || 'File';
-    node.setAttribute('data-kind', 'missing');
-    node.innerHTML =
-      '<div class="dossier-asset-card dossier-asset-gone">'
-      + '<span class="dossier-asset-icon">⚠</span>'
-      + `<span class="dossier-asset-name">${escapeHtml(name)}`
-      + ' — this file is no longer available</span></div>';
-    changed = true;
+
+    if (assetIsMissing(documentId, files)) {
+      node.setAttribute('data-kind', 'missing');
+      node.innerHTML =
+        '<div class="dossier-asset-card dossier-asset-gone">'
+        + '<span class="dossier-asset-icon">⚠</span>'
+        + `<span class="dossier-asset-name">${escapeHtml(name)}`
+        + ' — this file is no longer available</span></div>';
+      changed = true;
+      continue;
+    }
+
+    const description = byId.get(documentId)?.description;
+    if (description) {
+      node.insertAdjacentHTML('beforeend',
+        `<div class="dossier-asset-description">${escapeHtml(description)}</div>`);
+      changed = true;
+    }
   }
 
   return changed ? host.innerHTML : html;

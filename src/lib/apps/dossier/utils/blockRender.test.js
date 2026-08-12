@@ -231,6 +231,30 @@ describe('missing assets', () => {
     expect(html).not.toContain('no longer available');
   });
 
+  it('shows the file-s description, read live from the shelf', () => {
+    // Not copied onto the block: editing the description once has to update
+    // every page showing that file.
+    const html = renderBlocksToHtml(asset(live), {
+      files: [{ id: 'f1', description: 'Consultation notice as served' }],
+    });
+    expect(html).toContain('Consultation notice as served');
+    expect(html).toContain('dossier-asset-description');
+  });
+
+  it('adds nothing when the file has no description', () => {
+    const html = renderBlocksToHtml(asset(live), { files: [{ id: 'f1' }] });
+    expect(html).not.toContain('dossier-asset-description');
+  });
+
+  it('escapes a description rather than letting it inject markup', () => {
+    const html = renderBlocksToHtml(asset(live), {
+      files: [{ id: 'f1', description: '<img src=x onerror=1>' }],
+    });
+    const parsed = document.createElement('div');
+    parsed.innerHTML = html;
+    expect(parsed.querySelectorAll('img')).toHaveLength(0);
+  });
+
   it('does not judge when no shelf was supplied', () => {
     // An empty list means "caller gave no shelf", not "everything is deleted".
     const html = renderBlocksToHtml(asset(live));

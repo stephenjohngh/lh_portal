@@ -46,6 +46,35 @@
   let pendingDelete = null;
   let deleting      = false;
 
+  // Inline description edit. The description was capturable at upload but never
+  // afterwards, even though PATCH /api/documents/[id] has always supported it —
+  // so a typo or a later realisation had no route back in.
+  let editingId   = null;
+  let editingText = '';
+  let savingEdit  = false;
+
+  function startEdit(doc) {
+    editingId = doc.id;
+    editingText = doc.description ?? '';
+  }
+
+  async function saveEdit() {
+    const id = editingId;              // capture before the await
+    const value = editingText.trim();
+    if (!id) return;
+    savingEdit = true; error = '';
+    try {
+      const updated = await docApi.updateDocument(id, { description: value || null });
+      docs = docs.map(d => d.id === id ? { ...d, ...updated } : d);
+      dispatch('updated', updated);
+      editingId = null;
+    } catch (e) {
+      error = e.message;
+    } finally {
+      savingEdit = false;
+    }
+  }
+
   async function load() {
     if (!entityId) { docs = []; return; }
     loading = true; error = '';
@@ -160,11 +189,35 @@
           <span class="text-lg shrink-0">{mimeIcon(doc.mime_type)}</span>
           <div class="flex-1 min-w-0">
             <p class="text-sm text-slate-200 truncate">{doc.display_name || doc.filename}</p>
-            <p class="text-xs text-slate-500">
-              {#if doc.description}<span class="text-slate-400">{doc.description} · </span>{/if}
-              {#if doc.file_size}{fmtBytes(doc.file_size)} · {/if}
-              {fmtDate(doc.created_at)}
-            </p>
+            {#if editingId === doc.id}
+              <!-- svelte-ignore a11y-autofocus -->
+              <input
+                class="w-full bg-slate-900 text-xs text-slate-200 rounded px-1.5 py-1
+                       border border-slate-600 outline-none"
+                placeholder="What this file is"
+                autofocus
+                bind:value={editingText}
+                disabled={savingEdit}
+                on:blur={saveEdit}
+                on:keydown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+                  if (e.key === 'Escape') { editingId = null; }
+                }}
+              />
+            {:else}
+              <p class="text-xs text-slate-500">
+                {#if doc.description}<span class="text-slate-400">{doc.description} · </span>{/if}
+                {#if doc.file_size}{fmtBytes(doc.file_size)} · {/if}
+                {fmtDate(doc.created_at)}
+                {#if canEdit}
+                  <button
+                    class="ml-1 text-slate-600 hover:text-purple-300 transition-colors"
+                    title={doc.description ? 'Edit the description' : 'Add a description'}
+                    on:click={() => startEdit(doc)}
+                  >✎</button>
+                {/if}
+              </p>
+            {/if}
           </div>
           <a
             href={doc.web_view_url}

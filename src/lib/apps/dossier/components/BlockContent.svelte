@@ -261,6 +261,14 @@
   :global(.dossier-prose [data-width='small']  .dossier-asset-image) { max-width: 25%; }
   :global(.dossier-prose [data-width='medium'] .dossier-asset-image) { max-width: 50%; }
   :global(.dossier-prose [data-width='large']  .dossier-asset-image) { max-width: 75%; }
+  /* The uploader's own words about the file, under it. Distinct from the
+     filename line, which says what it is called rather than what it is. */
+  :global(.dossier-prose .dossier-asset-description) {
+    font-size: 0.8125rem;
+    color: #cbd5e1;                  /* slate-300 */
+    margin-top: 0.3rem;
+    line-height: 1.5;
+  }
   :global(.dossier-prose .dossier-asset-caption) {
     font-size: 0.75rem;
     color: #94a3b8;                  /* slate-400 */

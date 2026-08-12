@@ -199,7 +199,9 @@ export const Asset = Node.create({
         ? filesProvider.subscribe((files) => {
             lastFiles = files;
             const next = assetIsMissing(current.attrs.document_id, files);
-            if (next === missing) return;
+            // Repaint on ANY shelf change, not only when missing flips: the
+            // file's description is read from the shelf too, so an edit to it
+            // must show here without re-inserting the block.
             missing = next;
             repaint();
           })
@@ -240,7 +242,13 @@ export const Asset = Node.create({
  * Draw an asset's preview into a host element, reusing the same decisions as
  * renderHTML so edit and read modes stay identical.
  */
-function paint(host, node, missing = false) {
+/** The file's description, read live from the shelf (never copied onto the node). */
+function describeFile(node, files) {
+  if (!Array.isArray(files)) return '';
+  return files.find(f => f.id === node.attrs.document_id)?.description ?? '';
+}
+
+function paint(host, node, missing = false, description = '') {
   const { filename, mime_type, provider_file_id, size_bytes } = node.attrs;
   const kind = previewKind(mime_type);
   const url  = fileProxyUrl(provider_file_id, mime_type);
@@ -282,6 +290,7 @@ function paint(host, node, missing = false) {
       host.appendChild(missingCard(name));
     }, { once: true });
     host.append(img, caption(`${name} — view full size`, url));
+    if (description) host.appendChild(descriptionEl(description));
     return;
   }
 
@@ -315,6 +324,15 @@ function paint(host, node, missing = false) {
 
   card.append(icon, label, action);
   host.appendChild(card);
+  if (description) host.appendChild(descriptionEl(description));
+}
+
+/** The caption an author typed when uploading — what the file IS, not what it is called. */
+function descriptionEl(text) {
+  const el = document.createElement('div');
+  el.className = 'dossier-asset-description';
+  el.textContent = text;
+  return el;
 }
 
 /** Shown in place of a preview once we know the file is gone. */
