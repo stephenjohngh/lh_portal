@@ -185,7 +185,11 @@
 
   <!-- Table -->
   <div class="flex-1 min-h-0 overflow-auto px-6 py-4">
-    <table class="w-full text-sm border-collapse">
+    <!-- table-fixed is load-bearing: with the default auto layout a column's
+         CONTENT sets its width, so one long filename in Detail stole the space
+         Notes needed and the declared widths were ignored. Fixed layout honours
+         them and gives the remainder to the columns that declare none. -->
+    <table class="w-full text-sm border-collapse table-fixed">
       <thead>
         <tr class="text-left">
           {#each template?.fields ?? [] as field}
@@ -245,7 +249,7 @@
             {/each}
             <!-- Where the fuller story lives: a page, or a file on the shelf.
                  A reference, so the link graph and the P3 publish walk follow it. -->
-            <td class="py-1 pr-3 text-xs">
+            <td class="py-1 pr-3 text-xs min-w-0">
               {#if linkTargets.get(record.id)}
                 <span class="flex items-center gap-1 min-w-0">
                   <span class="shrink-0 text-slate-600">
