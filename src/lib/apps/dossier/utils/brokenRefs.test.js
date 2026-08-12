@@ -26,8 +26,8 @@ describe('findBrokenReferences — pages', () => {
     const broken = findBrokenReferences([docLink({ target_doc_id: null })], docs, files);
     expect(broken).toHaveLength(1);
     expect(broken[0]).toMatchObject({
-      kind: 'doc', reason: 'deleted-page',
-      from_doc_title: 'Overview', from_block_id: 'b1',
+      kind: 'doc', reason: 'deleted-page', from_block_id: 'b1',
+      origin: { type: 'page', id: 'd1', title: 'Overview' },
     });
   });
 
@@ -71,7 +71,7 @@ describe('findBrokenReferences — presentation', () => {
       { from_doc_id: 'd1', target_kind: 'doc', target_doc_id: null, target_doc_ref: 'alpha' },
       { from_doc_id: 'd2', target_kind: 'doc', target_doc_id: null, target_doc_ref: 'alpha' },
     ], docs, files);
-    expect(broken.map(b => `${b.from_doc_title}/${b.label}`))
+    expect(broken.map(b => `${b.origin.title}/${b.label}`))
       .toEqual(['Chronology/alpha', 'Chronology/zebra', 'Overview/alpha']);
   });
 
@@ -84,14 +84,16 @@ describe('findBrokenReferences — presentation', () => {
 describe('describeBrokenReferences', () => {
   it('counts references and the pages they sit on', () => {
     const broken = [
-      { from_doc_id: 'd1' }, { from_doc_id: 'd1' }, { from_doc_id: 'd2' },
+      { origin: { type: 'page', id: 'd1' } },
+      { origin: { type: 'page', id: 'd1' } },
+      { origin: { type: 'table', id: 'ds1' } },
     ];
-    expect(describeBrokenReferences(broken)).toBe('3 broken references on 2 pages');
+    expect(describeBrokenReferences(broken)).toBe('3 broken references in 2 places');
   });
 
   it('uses the singular where it should', () => {
-    expect(describeBrokenReferences([{ from_doc_id: 'd1' }]))
-      .toBe('1 broken reference on 1 page');
+    expect(describeBrokenReferences([{ origin: { type: 'page', id: 'd1' } }]))
+      .toBe('1 broken reference in 1 place');
   });
 
   it('says nothing when everything resolves', () => {

@@ -90,8 +90,10 @@ function createDossierStore() {
     loadingDocs:  false,
     files:        [],   // document_library rows on this pack's shelf
     datasets:     [],   // the pack's structured lists (chronology etc.)
-    records:      [],   // rows of the dataset currently open
-    activeDatasetId: null,
+    // EVERY record in the pack, not just the open table's. The broken-reference
+    // check has to see rows in tables the author has not opened, and P3's
+    // publish walk will need the same.
+    records:      [],
   }));
 
   const { subscribe, update } = store;
@@ -208,7 +210,12 @@ function createDossierStore() {
       const datasets = await api.get('dossier_datasets', {
         filters: { pack_id: packId }, orderBy: 'created_at', ascending: true,
       });
-      update(s => ({ ...s, datasets }));
+      // Load every table's rows up front. A pack's tables are small, and the
+      // broken-reference check cannot report on a table nobody has opened.
+      const records = datasets.length
+        ? await api.getAllIn('dossier_records', 'dataset_id', datasets.map(d => d.id))
+        : [];
+      update(s => ({ ...s, datasets, records }));
       return datasets;
     } catch (err) {
       // Non-fatal: a pack is still editable without its tables.
@@ -240,29 +247,18 @@ function createDossierStore() {
     update(s => ({
       ...s,
       datasets: s.datasets.filter(d => d.id !== id),
-      records: s.activeDatasetId === id ? [] : s.records,
-      activeDatasetId: s.activeDatasetId === id ? null : s.activeDatasetId,
+      records: s.records.filter(r => r.dataset_id !== id),
     }));
     logAudit('delete', 'dossier_dataset', id, title, {
       appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
     });
   }
 
-  /** Rows stay unsorted in state — sortRecords() orders them at render. */
-  async function loadRecords(datasetId) {
-    update(s => ({ ...s, activeDatasetId: datasetId, records: [] }));
-    if (!datasetId) return [];
-    const records = await api.get('dossier_records', {
-      filters: { dataset_id: datasetId }, orderBy: 'position', ascending: true,
-    });
-    update(s => ({ ...s, records }));
-    return records;
-  }
-
   async function createRecord(dataset, fields, userId) {
-    const state = getState();
-    const position = state.records.length
-      ? Math.max(...state.records.map(r => r.position ?? 0)) + 1
+    // Position is per-table, so count only this dataset's rows.
+    const siblings = getState().records.filter(r => r.dataset_id === dataset.id);
+    const position = siblings.length
+      ? Math.max(...siblings.map(r => r.position ?? 0)) + 1
       : 0;
 
     const record = await api.create('dossier_records', {
@@ -314,7 +310,7 @@ function createDossierStore() {
   function closePack() {
     update(s => ({
       ...s, activePackId: null, docs: [], files: [],
-      datasets: [], records: [], activeDatasetId: null,
+      datasets: [], records: [],
     }));
   }
 
@@ -532,7 +528,7 @@ function createDossierStore() {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
     loadDatasets, createDataset, deleteDataset,
-    loadRecords, createRecord, updateRecord, deleteRecord,
+    createRecord, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
   };

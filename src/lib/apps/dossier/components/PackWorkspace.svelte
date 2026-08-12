@@ -26,9 +26,9 @@
   import PagePickerModal     from './PagePickerModal.svelte';
   import DatasetTable        from './DatasetTable.svelte';
   import { DATASET_TEMPLATES, TEMPLATE_KEYS } from '../utils/datasetTemplates.js';
-  import { assetAttrsFromDocument } from '../utils/assetPreview.js';
+  import { assetAttrsFromDocument, fileProxyUrl } from '../utils/assetPreview.js';
   import { findBrokenReferences, describeBrokenReferences } from '../utils/brokenRefs.js';
-  import { extractAllLinks } from '../utils/docLinks.js';
+  import { extractPackReferences } from '../utils/docLinks.js';
 
   export let pack;
 
@@ -162,6 +162,9 @@
   $: files = $dossierStore.files;
 
   function handlePickAsset(file) {
+    // The same picker serves the editor and a table row; only one of them is
+    // ever waiting.
+    if (linkingRecord) { setRecordLink({ document_id: file.id, doc_id: null }); return; }
     editorRef?.insertAsset(assetAttrsFromDocument(file));
   }
 
@@ -173,6 +176,7 @@
 
   $: datasets = $dossierStore.datasets;
   $: records  = $dossierStore.records;
+  $: datasetRecords = records.filter(r => r.dataset_id === selectedDatasetId);
   $: selectedDataset = datasets.find(d => d.id === selectedDatasetId) ?? null;
 
   async function openDataset(dataset) {
@@ -180,11 +184,53 @@
     await editorRef?.flushNow();
     selectedDatasetId = id;
     selectedId = null;          // a table and a page cannot both be open
+  }
+
+  // ── Row references ────────────────────────────────────────────────────────
+  // A row can point at the page or file holding the fuller story. Reuses the
+  // same pickers as the editor.
+
+  /** The record awaiting a target, while a picker is open. */
+  let linkingRecord = null;
+
+  function startLinkPage(record) {
+    linkingRecord = record;
+    openPicker('recordPage');
+  }
+
+  function startLinkFile(record) {
+    linkingRecord = record;
+    showAssetPicker = true;
+  }
+
+  async function setRecordLink(patch) {
+    const record = linkingRecord;
+    linkingRecord = null;
+    if (!record) return;
     try {
-      await dossierStore.loadRecords(id);
-    } catch (err) {
-      treeError = err.message;
+      await dossierStore.updateRecord(selectedDataset, record.id, patch, $auth.user.id);
+    } catch (err) { treeError = err.message; }
+  }
+
+  async function clearRecordLink(record) {
+    try {
+      await dossierStore.updateRecord(
+        selectedDataset, record.id, { doc_id: null, document_id: null }, $auth.user.id);
+    } catch (err) { treeError = err.message; }
+  }
+
+  /** Follow a row's reference — to the page, or by opening the file. */
+  function openRecordTarget(record) {
+    if (record.doc_id && docs.some(d => d.id === record.doc_id)) {
+      selectPage(record.doc_id);
+      return;
     }
+    if (record.document_id) {
+      const file = files.find(f => f.id === record.document_id);
+      const url = file && fileProxyUrl(file.provider_file_id, file.mime_type);
+      if (url) { window.open(url, '_blank', 'noopener'); return; }
+    }
+    notice = 'What this entry pointed at is no longer here.';
   }
 
   function selectPage(id) {
@@ -249,8 +295,9 @@
   let pickerPurpose  = 'link';   // 'link' | 'embed'
 
   function handlePickPage({ doc, mode }) {
-    if (pickerPurpose === 'embed') editorRef?.insertDocEmbed(doc, mode);
-    else                           editorRef?.applyDocLink(doc);
+    if (pickerPurpose === 'recordPage') { setRecordLink({ doc_id: doc.id, document_id: null }); return; }
+    if (pickerPurpose === 'embed')      { editorRef?.insertDocEmbed(doc, mode); return; }
+    editorRef?.applyDocLink(doc);
   }
 
   function openPicker(purpose) {
@@ -290,7 +337,10 @@
 
   // Derived straight from the pages and the shelf, so a deleted file shows up
   // the instant the shelf reloads.
-  $: broken = findBrokenReferences(extractAllLinks(docs), docs, files);
+  // Pages AND table rows — a chronology entry pointing at a deleted page is
+  // just as broken as a link in a paragraph.
+  $: broken = findBrokenReferences(
+    extractPackReferences(docs, datasets, records), docs, files);
 
   // ── Backlinks ─────────────────────────────────────────────────────────────
 
@@ -438,8 +488,18 @@
             <p class="text-xs text-slate-300">
               <button
                 class="text-amber-300 hover:text-amber-200 underline underline-offset-2"
-                on:click={() => { selectedId = ref.from_doc_id; showBroken = false; }}
-              >{ref.from_doc_title}</button>
+                on:click={() => {
+                  // A broken reference lives on a page or in a table; open
+                  // whichever it is rather than assuming a page.
+                  if (ref.origin.type === 'table') {
+                    const table = datasets.find(d => d.id === ref.origin.id);
+                    if (table) openDataset(table);
+                  } else {
+                    selectPage(ref.origin.id);
+                  }
+                  showBroken = false;
+                }}
+              >{ref.origin.title}</button>
               <span class="text-slate-500">
                 {ref.kind === 'doc' ? 'links to' : 'shows'}
               </span>
@@ -592,8 +652,14 @@
       {#if selectedDataset}
         <DatasetTable
           dataset={selectedDataset}
-          {records}
+          records={datasetRecords}
           {canEdit}
+          {docs}
+          {files}
+          on:linkPage={(e)   => startLinkPage(e.detail)}
+          on:linkFile={(e)   => startLinkFile(e.detail)}
+          on:clearLink={(e)  => clearRecordLink(e.detail)}
+          on:openTarget={(e) => openRecordTarget(e.detail)}
           on:createRecord={handleRecordCreate}
           on:updateRecord={handleRecordUpdate}
           on:deleteRecord={handleRecordDelete}
@@ -708,14 +774,14 @@
   currentDocId={selectedId}
   purpose={pickerPurpose}
   on:pick={(e) => handlePickPage(e.detail)}
-  on:close={() => showPagePicker = false}
+  on:close={() => { showPagePicker = false; linkingRecord = null; }}
 />
 
 <AssetPickerModal
   bind:show={showAssetPicker}
   {files}
   on:pick={(e) => handlePickAsset(e.detail)}
-  on:close={() => showAssetPicker = false}
+  on:close={() => { showAssetPicker = false; linkingRecord = null; }}
 />
 
 <RevisionHistoryModal

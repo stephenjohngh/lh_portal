@@ -111,7 +111,63 @@ export function extractLinks(blocks) {
  */
 export function extractAllLinks(docs = []) {
   return docs.flatMap(doc =>
-    extractLinks(doc?.blocks).map(link => ({ ...link, from_doc_id: doc.id })));
+    extractLinks(doc?.blocks).map(link => ({
+      ...link,
+      from_doc_id: doc.id,
+      origin: { type: 'page', id: doc.id, title: doc.title ?? 'Untitled page' },
+    })));
+}
+
+/**
+ * References carried by table ROWS rather than by page blocks.
+ *
+ * A chronology entry can point at a page ("the detail is here") or at a file on
+ * the shelf. Those are references like any other and MUST reach the same graph:
+ * without this, the broken-reference check would not notice a row pointing at a
+ * deleted page, and — far worse — the P3 publish walk would miss a page that is
+ * only reachable from a chronology, publishing a pack whose own timeline links
+ * into nothing.
+ *
+ * @param {object[]} datasets
+ * @param {object[]} records - every record in the pack, not just one table's
+ */
+export function extractRecordLinks(datasets = [], records = []) {
+  const byId = new Map(datasets.map(d => [d.id, d]));
+  const links = [];
+
+  for (const record of records) {
+    const dataset = byId.get(record?.dataset_id);
+    if (!dataset) continue;
+    const origin = {
+      type: 'table', id: dataset.id, title: dataset.title ?? 'Table',
+      record_id: record.id,
+    };
+
+    if (record.doc_id) {
+      links.push({
+        from_block_id: null, target_kind: 'doc',
+        target_doc_id: record.doc_id, target_doc_ref: null,
+        target_document_id: null, origin,
+      });
+    }
+    if (record.document_id) {
+      links.push({
+        from_block_id: null, target_kind: 'asset',
+        target_doc_id: null, target_doc_ref: null,
+        target_document_id: record.document_id, origin,
+      });
+    }
+  }
+
+  return links;
+}
+
+/**
+ * Every reference in a pack, from pages AND tables — what the broken-reference
+ * check reads, and the shape the P3 publish walk will need.
+ */
+export function extractPackReferences(docs = [], datasets = [], records = []) {
+  return [...extractAllLinks(docs), ...extractRecordLinks(datasets, records)];
 }
 
 /**

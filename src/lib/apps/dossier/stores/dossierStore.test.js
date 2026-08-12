@@ -15,6 +15,7 @@ const h = vi.hoisted(() => {
     update: vi.fn((t, id, d) => Promise.resolve({ id, ...d })),
     delete: vi.fn(() => Promise.resolve()),
     createMany: vi.fn((t, rows) => Promise.resolve(rows)),
+    getAllIn: vi.fn(() => Promise.resolve([])),
   });
   const logAudit = vi.fn();
   const listDocuments = vi.fn(() => Promise.resolve([]));
@@ -508,19 +509,19 @@ describe('datasets', () => {
     expect(h.api.create).not.toHaveBeenCalled();
   });
 
-  it('loads a dataset-s rows in stored order', async () => {
-    h.api.get.mockResolvedValueOnce([{ id: 'r1', position: 0 }]);
-    await store.loadRecords('ds1');
-    expect(h.api.get).toHaveBeenCalledWith('dossier_records', {
-      filters: { dataset_id: 'ds1' }, orderBy: 'position', ascending: true,
-    });
+  it('loads EVERY table-s rows with the datasets, not one table at a time', async () => {
+    // The broken-reference check has to see rows in tables nobody has opened,
+    // and P3's publish walk will need the same.
+    h.api.get.mockResolvedValueOnce([{ id: 'ds1', key: 'chronology', title: 'Chronology' }]);
+    h.api.getAllIn.mockResolvedValueOnce([{ id: 'r1', dataset_id: 'ds1', position: 0 }]);
+
+    await store.loadDatasets('p1');
+
+    expect(h.api.getAllIn).toHaveBeenCalledWith('dossier_records', 'dataset_id', ['ds1']);
     expect(get(store).records).toHaveLength(1);
   });
 
   it('coerces a new row against the template, dropping unknown columns', async () => {
-    h.api.get.mockResolvedValueOnce([]);
-    await store.loadRecords('ds1');
-
     await store.createRecord({ id: 'ds1', key: 'chronology' }, {
       date: '2026-02-14', event: 'Contract signed', rogue: 'nope',
     }, 'u1');
@@ -532,9 +533,17 @@ describe('datasets', () => {
     expect(row.fields).not.toHaveProperty('rogue');
   });
 
-  it('appends after the highest existing position', async () => {
-    h.api.get.mockResolvedValueOnce([{ id: 'r1', position: 0 }, { id: 'r2', position: 4 }]);
-    await store.loadRecords('ds1');
+  it('appends after the highest position IN THAT TABLE', async () => {
+    // Records for every table share one list now, so position must be scoped
+    // or a new chronology row would land after an unrelated table's rows.
+    h.api.get.mockResolvedValueOnce([{ id: 'ds1', key: 'chronology', title: 'Chronology' }]);
+    h.api.getAllIn.mockResolvedValueOnce([
+      { id: 'r1', dataset_id: 'ds1',   position: 0 },
+      { id: 'r2', dataset_id: 'ds1',   position: 4 },
+      { id: 'r9', dataset_id: 'other', position: 99 },
+    ]);
+    await store.loadDatasets('p1');
+
     await store.createRecord({ id: 'ds1', key: 'chronology' }, { event: 'x' }, 'u1');
     expect(h.api.create.mock.calls.at(-1)[1].position).toBe(5);
   });
@@ -547,15 +556,16 @@ describe('datasets', () => {
 
   it('clears the open table when its dataset is deleted', async () => {
     h.api.get.mockResolvedValueOnce([{ id: 'ds1', key: 'chronology', title: 'Chronology' }]);
+    h.api.getAllIn.mockResolvedValueOnce([
+      { id: 'r1', dataset_id: 'ds1' }, { id: 'r2', dataset_id: 'other' },
+    ]);
     await store.loadDatasets('p1');
-    h.api.get.mockResolvedValueOnce([{ id: 'r1' }]);
-    await store.loadRecords('ds1');
 
     await store.deleteDataset('ds1', 'Chronology');
 
     expect(get(store).datasets).toEqual([]);
-    expect(get(store).records).toEqual([]);
-    expect(get(store).activeDatasetId).toBeNull();
+    // Only that table's rows go; another table's are untouched.
+    expect(get(store).records.map(r => r.id)).toEqual(['r2']);
   });
 });
 

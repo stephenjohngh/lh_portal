@@ -15,8 +15,9 @@
  * @param {object[]} links - dossier_links rows for the pack
  * @param {object[]} docs  - the pack's pages
  * @param {object[]} files - the pack's shelf (document_library rows)
- * @returns {{ from_doc_id: string, from_doc_title: string, from_block_id: string|null,
- *             kind: 'doc'|'asset', label: string, reason: 'deleted-page'|'missing-file' }[]}
+ * @returns {{ origin: {type:'page'|'table', id: string, title: string},
+ *             from_block_id: string|null, kind: 'doc'|'asset',
+ *             label: string, reason: 'deleted-page'|'missing-file' }[]}
  */
 export function findBrokenReferences(links = [], docs = [], files = []) {
   const docIds  = new Set(docs.map(d => d.id));
@@ -26,15 +27,19 @@ export function findBrokenReferences(links = [], docs = [], files = []) {
   const broken = [];
 
   for (const link of links) {
-    const fromTitle = titleOf.get(link.from_doc_id) ?? 'Untitled page';
+    // Where the reference lives: a page, or a row in a table. Both are worth
+    // reporting, and both need to be reachable from the panel.
+    const origin = link.origin ?? {
+      type: 'page', id: link.from_doc_id,
+      title: titleOf.get(link.from_doc_id) ?? 'Untitled page',
+    };
 
     if (link.target_kind === 'doc') {
       // Either the FK was nulled by the delete, or the id no longer resolves.
       const stillThere = link.target_doc_id && docIds.has(link.target_doc_id);
       if (stillThere) continue;
       broken.push({
-        from_doc_id:    link.from_doc_id,
-        from_doc_title: fromTitle,
+        origin,
         from_block_id:  link.from_block_id ?? null,
         kind:           'doc',
         // The slug is what survives a deletion, so it is the only name we can
@@ -48,8 +53,7 @@ export function findBrokenReferences(links = [], docs = [], files = []) {
     if (link.target_kind === 'asset') {
       if (link.target_document_id && fileIds.has(link.target_document_id)) continue;
       broken.push({
-        from_doc_id:    link.from_doc_id,
-        from_doc_title: fromTitle,
+        origin,
         from_block_id:  link.from_block_id ?? null,
         kind:           'asset',
         label:          'a file that is no longer on the shelf',
@@ -58,15 +62,15 @@ export function findBrokenReferences(links = [], docs = [], files = []) {
     }
   }
 
-  // Group visually by page, stable between loads.
+  // Group visually by where they live, stable between loads.
   return broken.sort((a, b) =>
-    a.from_doc_title.localeCompare(b.from_doc_title) || a.label.localeCompare(b.label));
+    a.origin.title.localeCompare(b.origin.title) || a.label.localeCompare(b.label));
 }
 
 /** One line summarising the state of a pack's references. */
 export function describeBrokenReferences(broken = []) {
   if (!broken.length) return '';
-  const pages = new Set(broken.map(b => b.from_doc_id)).size;
-  const refs  = broken.length;
-  return `${refs} broken reference${refs === 1 ? '' : 's'} on ${pages} page${pages === 1 ? '' : 's'}`;
+  const places = new Set(broken.map(b => `${b.origin.type}:${b.origin.id}`)).size;
+  const refs   = broken.length;
+  return `${refs} broken reference${refs === 1 ? '' : 's'} in ${places} place${places === 1 ? '' : 's'}`;
 }

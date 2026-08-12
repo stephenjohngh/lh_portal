@@ -17,6 +17,9 @@
   export let dataset;
   export let records = [];
   export let canEdit = true;
+  /** The pack's pages and shelf, for resolving what a row points at. */
+  export let docs  = [];
+  export let files = [];
 
   const dispatch = createEventDispatcher();
 
@@ -35,10 +38,30 @@
 
   $: template = templateFor(dataset?.key);
   $: ordered  = sortRecords(dataset?.key, records);
+  // Resolved once per render rather than per cell — and {@const} is not allowed
+  // inside a <td>, only as the immediate child of a block.
+  $: linkTargets = new Map(records.map(r => [r.id, linkTargetOf(r, docs, files)]));
   // A new dataset resets the draft, or the previous table's values bleed in.
   $: if (dataset && dataset.id !== draftFor) {
     draftFor = dataset.id;
     draft = emptyRecordFields(dataset.key);
+  }
+
+  /** What a row's reference points at, or null. */
+  function linkTargetOf(record, docList, fileList) {
+    if (record.doc_id) {
+      const doc = docList.find(d => d.id === record.doc_id);
+      return { kind: 'doc', label: doc?.title ?? 'a deleted page', missing: !doc };
+    }
+    if (record.document_id) {
+      const file = fileList.find(f => f.id === record.document_id);
+      return {
+        kind: 'file',
+        label: file?.display_name || file?.filename || 'a removed file',
+        missing: !file,
+      };
+    }
+    return null;
   }
 
   function commitCell(record, field, value) {
@@ -142,6 +165,8 @@
                        pb-2 pr-3 align-bottom"
                 style={field.width ? `width:${field.width}` : ''}>{field.label}</th>
           {/each}
+          <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
+                     pb-2 pr-3 align-bottom w-40">Detail</th>
           <th class="w-8"></th>
         </tr>
       </thead>
@@ -179,6 +204,41 @@
                 {/if}
               </td>
             {/each}
+            <!-- Where the fuller story lives: a page, or a file on the shelf.
+                 A reference, so the link graph and the P3 publish walk follow it. -->
+            <td class="py-1 pr-3 text-xs">
+              {#if linkTargets.get(record.id)}
+                <span class="flex items-center gap-1 min-w-0">
+                  <span class="shrink-0 text-slate-600">
+                    {linkTargets.get(record.id).kind === 'doc' ? '¶' : '📎'}
+                  </span>
+                  <button
+                    class="truncate underline underline-offset-2
+                           {linkTargets.get(record.id).missing
+                             ? 'text-amber-400' : 'text-slate-300 hover:text-white'}"
+                    title={linkTargets.get(record.id).missing
+                      ? 'What this pointed at is gone'
+                      : `Go to ${linkTargets.get(record.id).label}`}
+                    on:click={() => dispatch('openTarget', record)}
+                  >{linkTargets.get(record.id).label}</button>
+                  {#if canEdit}
+                    <button class="shrink-0 text-slate-600 hover:text-red-400"
+                            title="Remove this link"
+                            on:click={() => dispatch('clearLink', record)}>×</button>
+                  {/if}
+                </span>
+              {:else if canEdit}
+                <span class="flex items-center gap-2 opacity-0 group-hover:opacity-100
+                             focus-within:opacity-100 transition-opacity">
+                  <button class="text-slate-500 hover:text-white"
+                          title="Link this entry to a page"
+                          on:click={() => dispatch('linkPage', record)}>¶ Page</button>
+                  <button class="text-slate-500 hover:text-white"
+                          title="Link this entry to a file"
+                          on:click={() => dispatch('linkFile', record)}>📎 File</button>
+                </span>
+              {/if}
+            </td>
             <td class="py-1">
               {#if canEdit}
                 <button
@@ -229,6 +289,7 @@
                 {/if}
               </td>
             {/each}
+            <td class="text-xs text-slate-600 pr-3">—</td>
             <td></td>
           </tr>
         {/if}

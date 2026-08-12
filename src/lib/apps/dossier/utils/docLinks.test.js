@@ -5,7 +5,8 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  extractLinks, diffLinks, linkKey, linkSignature, groupBacklinks,
+  extractLinks, extractRecordLinks, extractPackReferences,
+  diffLinks, linkKey, linkSignature, groupBacklinks,
 } from './docLinks.js';
 
 const doc = (...content) => ({ type: 'doc', content });
@@ -114,6 +115,61 @@ describe('extractLinks', () => {
     expect(extractLinks(null)).toEqual([]);
     expect(extractLinks(undefined)).toEqual([]);
     expect(extractLinks({})).toEqual([]);
+  });
+});
+
+describe('extractRecordLinks', () => {
+  const datasets = [{ id: 'ds1', title: 'Chronology' }];
+
+  it('finds a row pointing at a page', () => {
+    const links = extractRecordLinks(datasets, [
+      { id: 'r1', dataset_id: 'ds1', doc_id: 'doc-2' },
+    ]);
+    expect(links).toEqual([{
+      from_block_id: null, target_kind: 'doc',
+      target_doc_id: 'doc-2', target_doc_ref: null, target_document_id: null,
+      origin: { type: 'table', id: 'ds1', title: 'Chronology', record_id: 'r1' },
+    }]);
+  });
+
+  it('finds a row pointing at a file', () => {
+    const links = extractRecordLinks(datasets, [
+      { id: 'r1', dataset_id: 'ds1', document_id: 'f9' },
+    ]);
+    expect(links[0]).toMatchObject({ target_kind: 'asset', target_document_id: 'f9' });
+  });
+
+  it('ignores a row with no reference', () => {
+    expect(extractRecordLinks(datasets, [{ id: 'r1', dataset_id: 'ds1' }])).toEqual([]);
+  });
+
+  it('ignores a row whose table is not in the pack', () => {
+    expect(extractRecordLinks(datasets, [
+      { id: 'r1', dataset_id: 'gone', doc_id: 'doc-2' },
+    ])).toEqual([]);
+  });
+
+  it('handles empty input', () => {
+    expect(extractRecordLinks()).toEqual([]);
+    expect(extractRecordLinks([], [])).toEqual([]);
+  });
+});
+
+describe('extractPackReferences', () => {
+  it('combines page references and table references', () => {
+    // Without the table half, the P3 publish walk would miss a page reachable
+    // only from a chronology row — publishing a pack that links into nothing.
+    const docs = [{
+      id: 'd1', title: 'Overview',
+      blocks: doc(para('b1', linkText('see', 'doc-2'))),
+    }];
+    const refs = extractPackReferences(
+      docs,
+      [{ id: 'ds1', title: 'Chronology' }],
+      [{ id: 'r1', dataset_id: 'ds1', doc_id: 'doc-3' }],
+    );
+    expect(refs.map(r => r.origin.type)).toEqual(['page', 'table']);
+    expect(refs.map(r => r.target_doc_id)).toEqual(['doc-2', 'doc-3']);
   });
 });
 
