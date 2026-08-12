@@ -82,6 +82,8 @@
   let draftInputs = [];
   /** How long a newly added row stays highlighted. */
   const FLASH_MS = 3000;
+  /** Pending focusout check — see handleDraftFocusOut for why it is deferred. */
+  let focusOutTimer = null;
   /** Briefly highlights a newly added row so the eye can follow it as it sorts. */
   let flashId = null;
   let flashTimer = null;
@@ -94,15 +96,23 @@
     return true;
   }
 
-  function handleDraftFocusOut(event) {
-    // Moving between cells of the same row is not finishing the row.
-    if (draftRowEl?.contains(event.relatedTarget)) return;
-    commitDraft();
+  function handleDraftFocusOut() {
+    // Do NOT trust event.relatedTarget. It is null whenever the browser will
+    // not say where focus went — and opening a native DATE PICKER is exactly
+    // that case, so `contains(null)` read as "left the row" and committed a
+    // half-typed entry the moment the author picked a date. Defer a tick and
+    // ask what actually holds focus instead.
+    clearTimeout(focusOutTimer);
+    focusOutTimer = setTimeout(() => {
+      if (draftRowEl?.contains(document.activeElement)) return;
+      commitDraft();
+    }, 0);
   }
 
   function handleDraftKeydown(event) {
     if (event.key !== 'Enter') return;
     event.preventDefault();          // a bare Enter would submit nothing useful
+    clearTimeout(focusOutTimer);     // this commit supersedes any deferred one
     if (commitDraft()) draftInputs[0]?.focus();
   }
 
@@ -128,7 +138,7 @@
 
   $: trackNewRows(records);
 
-  onDestroy(() => clearTimeout(flashTimer));
+  onDestroy(() => { clearTimeout(flashTimer); clearTimeout(focusOutTimer); });
 </script>
 
 <div class="flex flex-col h-full min-h-0">
