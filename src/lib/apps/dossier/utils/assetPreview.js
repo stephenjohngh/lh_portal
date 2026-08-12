@@ -5,6 +5,7 @@
 // tools", so the decisions live here on their own rather than inside a node.
 
 import { declarableMime } from '$lib/utils/mimeTypes';
+import { isSheetMime }    from './sheetPreview.js';
 
 /** Ids the media proxy will accept — it applies exactly this guard itself. */
 const SAFE_FILE_ID = /^[A-Za-z0-9_-]+$/;
@@ -42,14 +43,22 @@ export const FILE_PROXY_PREFIX = '/api/media/file/';
  */
 
 /**
- * Which preview to render for a mime type.
+ * Which preview to render for a file.
+ *
+ * The filename is consulted for spreadsheets only, because that is where the
+ * stored mime type is least reliable — an .xlsx uploaded before the type was
+ * captured properly is octet-stream, and an octet-stream image or PDF has
+ * bigger problems than its preview.
+ *
  * @param {string|null} [mimeType]
- * @returns {'image' | 'pdf' | 'file'}
+ * @param {string|null} [filename]
+ * @returns {'image' | 'pdf' | 'sheet' | 'file'}
  */
-export function previewKind(mimeType) {
+export function previewKind(mimeType, filename = '') {
   const mime = String(mimeType ?? '').toLowerCase().trim();
   if (mime.startsWith('image/')) return 'image';
   if (mime === 'application/pdf') return 'pdf';
+  if (isSheetMime(mime, filename)) return 'sheet';
   return 'file';   // everything else: name, size, download
 }
 
@@ -150,6 +159,33 @@ export function assetIsMissing(documentId, files) {
   if (!Array.isArray(files) || !files.length) return false;
   if (!documentId) return false;
   return !files.some(f => f.id === documentId);
+}
+
+/**
+ * Ask the server for a spreadsheet's first rows.
+ *
+ * Never throws: a preview is an enhancement, and failing to get one must not
+ * stop the author inserting the file. The block falls back to the plain card,
+ * which still opens correctly.
+ *
+ * Lives here rather than in a store because it is stateless and per-file — the
+ * result is snapshotted onto the block, not held in app state.
+ *
+ * @param {object|null} doc - a document_library row
+ * @returns {Promise<object|null>}
+ */
+export async function fetchSheetPreview(doc) {
+  const id = String(doc?.provider_file_id ?? '');
+  if (!SAFE_FILE_ID.test(id)) return null;
+  if (!isSheetMime(doc?.mime_type, doc?.display_name || doc?.filename)) return null;
+
+  try {
+    const { getJson } = await import('$lib/utils/request');
+    const body = await getJson(`/api/dossier/sheet-preview/${id}`, 'Could not read the spreadsheet');
+    return body?.preview?.columns?.length ? body.preview : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

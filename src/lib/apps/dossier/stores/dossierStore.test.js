@@ -556,8 +556,8 @@ describe('datasets', () => {
     await store.loadDatasets('p1');
 
     await store.createRecords({ id: 'ds1', key: 'correspondence', title: 'Correspondence' }, [
-      { date: '2025-01-13', from: 'Jane', subject: 'One',  rogue: 'nope' },
-      { date: '2025-01-14', from: 'Steve', subject: 'Two' },
+      { fields: { date: '2025-01-13', from: 'Jane', subject: 'One', rogue: 'nope' } },
+      { fields: { date: '2025-01-14', from: 'Steve', subject: 'Two' } },
     ], 'u1');
 
     expect(h.api.createMany).toHaveBeenCalledTimes(1);
@@ -569,6 +569,15 @@ describe('datasets', () => {
     expect(rows[0].fields).not.toHaveProperty('rogue');
     expect(rows[0].fields.summary).toBe('');   // every template column present
     expect(get(store).records).toHaveLength(3);
+  });
+
+  it('carries a row-s file link, so an index entry opens what it describes', async () => {
+    await store.createRecords({ id: 'ds1', key: 'document_index' },
+      [{ fields: { name: 'Notice' }, document_id: 'f1' }], 'u1');
+
+    const [row] = h.api.createMany.mock.calls.at(-1)[1];
+    expect(row.document_id).toBe('f1');
+    expect(row.doc_id).toBeNull();
   });
 
   it('writes nothing when there are no rows to add', async () => {

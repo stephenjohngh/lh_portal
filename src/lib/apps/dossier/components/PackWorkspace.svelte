@@ -30,9 +30,12 @@
   import {
     DATASET_TEMPLATES, TEMPLATE_KEYS, describeRecord,
   } from '../utils/datasetTemplates.js';
-  import { assetAttrsFromDocument, fileProxyUrl } from '../utils/assetPreview.js';
+  import {
+    assetAttrsFromDocument, fileProxyUrl, fetchSheetPreview,
+  } from '../utils/assetPreview.js';
   import { findBrokenReferences, describeBrokenReferences } from '../utils/brokenRefs.js';
   import { extractPackReferences } from '../utils/docLinks.js';
+  import { unindexedFiles, shelfIndexRows } from '../utils/documentIndex.js';
 
   export let pack;
 
@@ -165,11 +168,23 @@
   let showAssetPicker = false;
   $: files = $dossierStore.files;
 
-  function handlePickAsset(file) {
+  async function handlePickAsset(file) {
     // The same picker serves the editor and a table row; only one of them is
     // ever waiting.
     if (linkingRecord) { setRecordLink({ document_id: file.id, doc_id: null }); return; }
-    editorRef?.insertAsset(assetAttrsFromDocument(file));
+
+    const documentId = file.id;          // capture before the await
+    const editor = editorRef;
+    editor?.insertAsset(assetAttrsFromDocument(file));
+
+    // A spreadsheet also carries a snapshot of its first rows, taken once here
+    // so the renderer never has to fetch. It lands a moment after the block:
+    // reading a large workbook is not instant, and an author should not watch
+    // a closed picker wondering whether the click worked. Returns null for
+    // anything that is not a spreadsheet, and for a read that fails — the
+    // block then simply stays a card.
+    const preview = await fetchSheetPreview(file);
+    if (preview) editor?.setSheetPreview(documentId, preview);
   }
 
   // ── Datasets ──────────────────────────────────────────────────────────────
@@ -271,11 +286,22 @@
   async function handleEmailPaste(e) {
     const dataset = selectedDataset;      // capture before the await
     try {
-      await dossierStore.createRecords(dataset, e.detail.rows, $auth.user.id);
+      await dossierStore.createRecords(
+        dataset, e.detail.rows.map(fields => ({ fields })), $auth.user.id);
       emailPasteRef?.done();
     } catch (err) {
       emailPasteRef?.fail(err.message);
     }
+  }
+
+  async function handleAddFromShelf() {
+    const dataset = selectedDataset;      // capture before the await
+    const rows = shelfIndexRows(unindexedFiles(files, records.filter(
+      r => r.dataset_id === dataset.id)));
+    if (!rows.length) return;
+    try {
+      await dossierStore.createRecords(dataset, rows, $auth.user.id);
+    } catch (err) { treeError = err.message; }
   }
 
   async function handleRecordUpdate(e) {
@@ -703,6 +729,7 @@
           on:openTarget={(e) => openRecordTarget(e.detail)}
           on:createRecord={handleRecordCreate}
           on:pasteEmails={() => showEmailPaste = true}
+          on:addFromShelf={handleAddFromShelf}
           on:updateRecord={handleRecordUpdate}
           on:deleteRecord={requestRecordDelete}
           on:deleteDataset={requestDatasetDelete}

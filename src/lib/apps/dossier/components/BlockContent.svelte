@@ -305,8 +305,58 @@
   :global(.dossier-prose .dossier-dataset-gone) { border-color: rgb(245 158 11 / 0.35); }
   :global(.dossier-prose .dossier-dataset-gone .dossier-dataset-note) { color: #fbbf24; }
 
+  /* ── Spreadsheet previews ──────────────────────────────────────────────── */
+  /* A bounded window onto a file, sitting above its card. Visually quieter
+     than an embedded table: that IS the pack's content, this is a look at
+     something that lives elsewhere. */
+  :global(.dossier-prose .dossier-sheet) {
+    border: 1px solid #334155;         /* slate-700 */
+    border-radius: 6px 6px 0 0;
+    border-bottom: 0;
+    overflow-x: auto;                  /* a wide sheet scrolls itself */
+  }
+  :global(.dossier-prose .dossier-sheet-table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    white-space: nowrap;               /* a preview row stays one line */
+  }
+  :global(.dossier-prose .dossier-sheet-table th) {
+    text-align: left;
+    font-weight: 600;
+    color: #94a3b8;                    /* slate-400 */
+    background: #1e293b;               /* slate-800 */
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid #334155;
+  }
+  :global(.dossier-prose .dossier-sheet-table td) {
+    padding: 0.3rem 0.6rem;
+    color: #cbd5e1;                    /* slate-300 */
+    border-bottom: 1px solid #1e293b;
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  :global(.dossier-prose .dossier-sheet-table tr:last-child td) { border-bottom: 0; }
+  /* The line saying what is NOT shown. Not decoration — a reader who mistakes
+     a 12-row window for the whole file may draw a conclusion it cannot carry. */
+  :global(.dossier-prose .dossier-sheet-note) {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.6875rem;
+    color: #94a3b8;                    /* slate-400 */
+    background: #0f172a;               /* slate-900 */
+    border-top: 1px solid #1e293b;
+    position: sticky;
+    left: 0;                           /* stays put while the table scrolls */
+  }
+
   /* ── Assets ────────────────────────────────────────────────────────────── */
   :global(.dossier-prose .dossier-asset) { margin: 0 0 0.9rem; }
+  /* The card under a sheet preview joins onto it rather than floating free. */
+  :global(.dossier-prose [data-kind='sheet'] .dossier-asset-card) {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
 
   :global(.dossier-prose .dossier-asset-image) {
     display: block;

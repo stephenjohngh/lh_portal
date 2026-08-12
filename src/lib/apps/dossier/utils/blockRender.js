@@ -19,6 +19,7 @@ import {
   resolveEmbedRender, firstParagraphText, EMBED_NOTE_TEXT, MAX_EMBED_DEPTH,
 } from './embedGuard.js';
 import { renderDatasetTableHtml, renderMissingDatasetHtml } from './datasetRender.js';
+import { renderSheetPreviewHtml } from './sheetPreview.js';
 
 const logger = getLogger('dossierBlockRender');
 
@@ -97,7 +98,9 @@ export function renderBlocksToHtml(blocks, opts = {}) {
   const json = blocks && typeof blocks === 'object' && blocks.type ? blocks : EMPTY_DOC;
   try {
     const html = sanitizeBlockHtml(generateHTML(json, buildExtensions()));
-    return expandEmbeds(resolveDatasetEmbeds(resolveAssets(html, opts), opts), opts);
+    return expandEmbeds(
+      resolveDatasetEmbeds(resolveSheetPreviews(resolveAssets(html, opts)), opts),
+      opts);
   } catch (err) {
     logger('⚠ could not render blocks', err);
     return '';
@@ -226,6 +229,42 @@ function resolveAssets(html, { files } = {}) {
         `<div class="dossier-asset-description">${escapeHtml(description)}</div>`);
       changed = true;
     }
+  }
+
+  return changed ? host.innerHTML : html;
+}
+
+/**
+ * Put a spreadsheet's snapshot above its card.
+ *
+ * The snapshot rides on the block as `data-sheet_preview` (see assetNode.js for
+ * why it is cached rather than fetched), so this stage needs nothing from the
+ * caller and always runs — including in a P3 published pack, which has no
+ * server to ask.
+ *
+ * @param {string} html
+ */
+function resolveSheetPreviews(html) {
+  if (!html || typeof document === 'undefined') return html;
+  if (!html.includes('data-sheet_preview')) return html;
+
+  const host = document.createElement('div');
+  host.innerHTML = html;
+
+  let changed = false;
+  for (const node of host.querySelectorAll('div[data-sheet_preview]')) {
+    // A missing file already replaced this block's contents; do not put a
+    // table above a "no longer available" card.
+    if (node.getAttribute('data-kind') === 'missing') continue;
+
+    let preview = null;
+    try { preview = JSON.parse(node.getAttribute('data-sheet_preview') ?? 'null'); }
+    catch { continue; }              // corrupted attr → just the card
+
+    const table = renderSheetPreviewHtml(preview, escapeHtml);
+    if (!table) continue;
+    node.insertAdjacentHTML('afterbegin', table);
+    changed = true;
   }
 
   return changed ? host.innerHTML : html;

@@ -178,6 +178,30 @@
     editor?.chain().focus().insertAsset(attrs).run();
   }
 
+  /**
+   * Attach a spreadsheet snapshot to blocks referencing a file.
+   *
+   * The block is inserted immediately and the preview arrives after, so a slow
+   * read never leaves the author staring at a picker that has closed with
+   * nothing to show for it. Only blocks that have no snapshot yet are touched,
+   * so re-inserting the same file cannot wipe an existing one.
+   */
+  export function setSheetPreview(documentId, preview) {
+    if (!editor || !documentId || !preview) return;
+    const positions = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'asset'
+        && node.attrs.document_id === documentId
+        && !node.attrs.sheet_preview) positions.push(pos);
+    });
+    if (!positions.length) return;
+
+    // Attribute-only changes, so earlier positions stay valid as we go.
+    const tr = editor.state.tr;
+    for (const pos of positions) tr.setNodeAttribute(pos, 'sheet_preview', preview);
+    editor.view.dispatch(tr);
+  }
+
   /** Insert one of the pack's tables. */
   export function insertDatasetEmbed(dataset) {
     editor?.chain().focus().insertDatasetEmbed({

@@ -131,6 +131,71 @@ describe('asset blocks', () => {
     expect(html).not.toContain('<object');
   });
 
+  it('renders a spreadsheet snapshot above its card', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd3', filename: 'Schedule.xlsx',
+      mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      provider_file_id: 'drive3',
+      sheet_preview: {
+        sheetName: 'Costs', columns: ['Item', 'Cost'], rows: [['Roof', '8400']],
+        totalRows: 40, totalColumns: 2, truncated: true,
+      },
+    }));
+
+    expect(html).toContain('<th>Item</th>');
+    expect(html).toContain('<td>8400</td>');
+    // The card survives underneath — the preview is a window, not the file.
+    expect(html).toContain('Schedule.xlsx');
+    expect(html).toContain('href="/api/media/file/drive3"');
+    // And the reader is told it is a window.
+    expect(html).toContain('1 of 40 rows');
+  });
+
+  it('shows only the card when a spreadsheet has no snapshot', () => {
+    // A preview that could not be read must not stop the file being usable.
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd3', filename: 'Schedule.xlsx',
+      mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      provider_file_id: 'drive3',
+    }));
+
+    expect(html).toContain('Schedule.xlsx');
+    expect(html).not.toContain('dossier-sheet-table');
+  });
+
+  it('escapes cell text from a snapshot', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd3', filename: 'S.csv', mime_type: 'text/csv',
+      provider_file_id: 'drive3',
+      sheet_preview: {
+        sheetName: '', columns: ['A'], rows: [['<img src=x onerror=alert(1)>']],
+        totalRows: 1, totalColumns: 1, truncated: false,
+      },
+    }));
+
+    // The property is "no element was created", not "the string is absent" —
+    // it survives inside the inert data-sheet_preview JSON, which is fine.
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    expect(host.querySelector('.dossier-sheet-table img')).toBeNull();
+    expect(host.querySelector('.dossier-sheet-table td').textContent)
+      .toBe('<img src=x onerror=alert(1)>');
+  });
+
+  it('does not put a table above a card for a file that has gone', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'gone', filename: 'Schedule.xlsx', mime_type: 'text/csv',
+      provider_file_id: 'drive3',
+      sheet_preview: {
+        sheetName: '', columns: ['A'], rows: [['1']],
+        totalRows: 1, totalColumns: 1, truncated: false,
+      },
+    }), { files: [{ id: 'other' }] });
+
+    expect(html).toContain('no longer available');
+    expect(html).not.toContain('dossier-sheet-table');
+  });
+
   it('carries the author-chosen preview width into the markup', () => {
     const html = renderBlocksToHtml(asset({
       document_id: 'd1', filename: 'Roof.jpg', width: 'medium',

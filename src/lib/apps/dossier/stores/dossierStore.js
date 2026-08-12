@@ -279,18 +279,26 @@ function createDossierStore() {
    * Positions continue from the end of the table in the order given, so a
    * pasted thread keeps its sequence for same-day messages that the date sort
    * cannot separate.
+   *
+   * @param {object} dataset
+   * @param {{ fields: object, document_id?: string, doc_id?: string }[]} rows
+   * @param {string} userId
    */
-  async function createRecords(dataset, rowsFields, userId) {
-    if (!rowsFields?.length) return [];
+  async function createRecords(dataset, rows, userId) {
+    if (!rows?.length) return [];
 
     const siblings = getState().records.filter(r => r.dataset_id === dataset.id);
     const base = siblings.length
       ? Math.max(...siblings.map(r => r.position ?? 0)) + 1
       : 0;
 
-    const records = await api.createMany('dossier_records', rowsFields.map((fields, i) => ({
+    const records = await api.createMany('dossier_records', rows.map((row, i) => ({
       dataset_id: dataset.id,
-      fields: coerceRecordFields(dataset.key, fields),
+      fields: coerceRecordFields(dataset.key, row?.fields),
+      // A row built from a shelf file points at that file, so the index entry
+      // opens the document it describes.
+      document_id: row?.document_id ?? null,
+      doc_id: row?.doc_id ?? null,
       position: base + i,
       created_by: userId, ...touch(userId),
     })), true);

@@ -13,6 +13,7 @@ import {
   previewKind, fileProxyUrl, fmtSize, assetIsMissing,
   IMAGE_WIDTHS, IMAGE_WIDTH_LABEL, normaliseImageWidth,
 } from './assetPreview.js';
+import { renderSheetPreviewHtml } from './sheetPreview.js';
 
 /**
  * Simple attr spec: round-trip through a data- attribute of the same name.
@@ -60,6 +61,28 @@ export const Asset = Node.create({
         parseHTML:  el => normaliseImageWidth(el.getAttribute('data-width')),
         renderHTML: attrs => ({ 'data-width': normaliseImageWidth(attrs.width) }),
       },
+      /**
+       * A SNAPSHOT of the first few rows of a spreadsheet, taken once when the
+       * block is inserted (P2 step 4).
+       *
+       * Caching here rather than fetching at render time is what keeps the
+       * renderer synchronous — the same reason filename and size are cached,
+       * and the same trade-off. It also means a P3 published pack shows its
+       * tables with no extra endpoint and no exceljs in the reader.
+       *
+       * Staleness is not a real risk: document_library never rewrites a file in
+       * place, so a replacement is a new row and therefore a new block. There
+       * is deliberately no refresh control.
+       */
+      sheet_preview: {
+        default: null,
+        parseHTML: (el) => {
+          try { return JSON.parse(el.getAttribute('data-sheet_preview') ?? 'null'); }
+          catch { return null; }     // a corrupted attr degrades to a plain card
+        },
+        renderHTML: attrs => (attrs.sheet_preview
+          ? { 'data-sheet_preview': JSON.stringify(attrs.sheet_preview) } : {}),
+      },
       size_bytes: {
         default: 0,
         parseHTML:  el => Number(el.getAttribute('data-size_bytes')) || 0,
@@ -74,7 +97,7 @@ export const Asset = Node.create({
 
   renderHTML({ HTMLAttributes, node }) {
     const { filename, mime_type, provider_file_id, size_bytes } = node.attrs;
-    const kind = previewKind(mime_type);
+    const kind = previewKind(mime_type, filename);
     const url  = fileProxyUrl(provider_file_id, mime_type);
     const name = filename || 'File';
     const size = fmtSize(size_bytes);
@@ -101,6 +124,14 @@ export const Asset = Node.create({
             `${name} — view full size`],
         ],
       ];
+    }
+
+    if (kind === 'sheet') {
+      // The card only. blockRender's resolveSheetPreviews() puts the table
+      // above it from the snapshot in data-sheet_preview, using the same one
+      // renderer the node view calls — a Tiptap render spec cannot carry raw
+      // HTML, and a second table renderer here would be free to drift.
+      return ['div', wrapper, ...cardChildren(name, size, url, '▦', 'Open')];
     }
 
     if (kind === 'pdf') {
@@ -250,7 +281,7 @@ function describeFile(node, files) {
 
 function paint(host, node, missing = false, description = '') {
   const { filename, mime_type, provider_file_id, size_bytes } = node.attrs;
-  const kind = previewKind(mime_type);
+  const kind = previewKind(mime_type, filename);
   const url  = fileProxyUrl(provider_file_id, mime_type);
   const name = filename || 'File';
   const size = fmtSize(size_bytes);
@@ -294,6 +325,15 @@ function paint(host, node, missing = false, description = '') {
     return;
   }
 
+  // A spreadsheet shows its snapshot above the card. Same function the read
+  // path calls, so the author sees what the reader will get.
+  if (kind === 'sheet' && node.attrs.sheet_preview) {
+    const table = document.createElement('div');
+    // Escaped inside renderSheetPreviewHtml; the values are cell text.
+    table.innerHTML = renderSheetPreviewHtml(node.attrs.sheet_preview, escapeAttr);
+    if (table.firstChild) host.appendChild(table.firstChild);
+  }
+
   // PDFs and everything else: the same card renderHTML produces, built as DOM.
   // Kept structurally identical on purpose — if these two drift, the author
   // stops seeing what the reader will get.
@@ -303,7 +343,7 @@ function paint(host, node, missing = false, description = '') {
 
   const icon = document.createElement('span');
   icon.className = 'dossier-asset-icon';
-  icon.textContent = isPdf ? '📄' : '📎';
+  icon.textContent = isPdf ? '📄' : (kind === 'sheet' ? '▦' : '📎');
 
   const label = document.createElement('span');
   label.className = 'dossier-asset-name';
@@ -325,6 +365,13 @@ function paint(host, node, missing = false, description = '') {
   card.append(icon, label, action);
   host.appendChild(card);
   if (description) host.appendChild(descriptionEl(description));
+}
+
+/** Escape for HTML text and quoted attribute contexts. */
+function escapeAttr(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /** The caption an author typed when uploading — what the file IS, not what it is called. */

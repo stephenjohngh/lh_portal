@@ -13,6 +13,7 @@
   import {
     templateFor, sortRecords, emptyRecordFields, isBlankRecord,
   } from '../utils/datasetTemplates.js';
+  import { unindexedFiles, describeShelfAddition } from '../utils/documentIndex.js';
 
   export let dataset;
   export let records = [];
@@ -22,6 +23,12 @@
   export let files = [];
 
   const dispatch = createEventDispatcher();
+
+  // A document index whose files are all already on the shelf should not have
+  // to be retyped. Derived here so the button can say how many it would add.
+  $: shelfPending = dataset.key === 'document_index'
+    ? unindexedFiles(files, records)
+    : [];
 
   let error = '';
   /** The blank row at the bottom, committed once something is typed into it. */
@@ -170,6 +177,13 @@
       {records.length} {records.length === 1 ? 'entry' : 'entries'}
     </span>
     {#if canEdit}
+      {#if dataset.key === 'document_index' && shelfPending.length}
+        <ProtectedButton requireAdmin={false} variant="secondary" size="small"
+                         title="Add every file on the pack-s shelf that is not indexed yet"
+                         on:click={() => dispatch('addFromShelf')}>
+          {describeShelfAddition(shelfPending)}
+        </ProtectedButton>
+      {/if}
       {#if dataset.key === 'correspondence'}
         <ProtectedButton requireAdmin={false} variant="secondary" size="small"
                          title="Paste an email or a thread to add entries"
