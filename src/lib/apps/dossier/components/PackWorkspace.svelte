@@ -50,9 +50,19 @@
   let deletingId    = null;
 
   $: docs        = $dossierStore.docs;
-  // Load the shelf once per pack; the picker needs it whether or not the Files
-  // panel has ever been opened.
-  $: if (pack?.id) dossierStore.loadPackFiles(pack.id);
+  /**
+   * Load the pack's shelf and tables ONCE per pack.
+   *
+   * Keyed on the id, not on `pack`: Svelte's safe_not_equal reports any object
+   * as changed, so `$: if (pack?.id) …` re-fired on every store update and sent
+   * a fresh pair of requests after every edit.
+   */
+  let loadedForPackId = null;
+  $: if (pack?.id && pack.id !== loadedForPackId) {
+    loadedForPackId = pack.id;
+    dossierStore.loadPackFiles(pack.id);
+    dossierStore.loadDatasets(pack.id);
+  }
   $: tree        = buildTree(docs);
   $: selectedDoc = docs.find(d => d.id === selectedId) ?? null;
   $: canEdit     = $permissions.isAdmin || $permissions.canModify;
@@ -164,7 +174,6 @@
   $: datasets = $dossierStore.datasets;
   $: records  = $dossierStore.records;
   $: selectedDataset = datasets.find(d => d.id === selectedDatasetId) ?? null;
-  $: if (pack?.id) dossierStore.loadDatasets(pack.id);
 
   async function openDataset(dataset) {
     const id = dataset.id;      // capture before the await
@@ -491,25 +500,14 @@
 
       <!-- ── Tables: the pack's structured lists ── -->
       <div class="border-t border-slate-700 shrink-0">
-        <div class="flex items-center gap-2 px-3 py-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide flex-1">
+        <div class="px-3 py-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide">
             Tables
           </span>
-          {#if canEdit}
-            <!-- Only offer templates the pack does not already have: two
-                 chronologies is a mistake, not a feature. -->
-            {#each TEMPLATE_KEYS.filter(k => !datasets.some(d => d.key === k)) as key}
-              <button
-                class="text-xs text-slate-500 hover:text-white px-1"
-                title="Add a {DATASET_TEMPLATES[key].title.toLowerCase()} to this pack"
-                on:click={() => addDataset(key)}
-              >+ {DATASET_TEMPLATES[key].title}</button>
-            {/each}
-          {/if}
         </div>
 
         {#if datasets.length}
-          <div class="pb-1.5">
+          <div class="pb-1">
             {#each datasets as dataset (dataset.id)}
               <button
                 class="flex items-center gap-2 w-full px-3 py-1 text-left text-sm
@@ -522,6 +520,27 @@
               </button>
             {/each}
           </div>
+        {/if}
+
+        {#if canEdit}
+          <!-- The add buttons get their own wrapped row: on the label line they
+               squeezed into two-word columns in a 288px sidebar. Only templates
+               the pack does not already have are offered — two chronologies is
+               a mistake, not a feature. -->
+          {@const available = TEMPLATE_KEYS.filter(k => !datasets.some(d => d.key === k))}
+          {#if available.length}
+            <div class="flex flex-wrap gap-1 px-3 pb-2">
+              {#each available as key}
+                <button
+                  class="text-xs px-1.5 py-0.5 rounded border border-slate-700
+                         text-slate-500 hover:text-white hover:border-slate-600
+                         transition-colors whitespace-nowrap"
+                  title="Add a {DATASET_TEMPLATES[key].title.toLowerCase()} to this pack"
+                  on:click={() => addDataset(key)}
+                >+ {DATASET_TEMPLATES[key].title}</button>
+              {/each}
+            </div>
+          {/if}
         {/if}
       </div>
 

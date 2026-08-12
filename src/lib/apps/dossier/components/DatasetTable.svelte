@@ -23,11 +23,23 @@
   let error = '';
   /** The blank row at the bottom, committed once something is typed into it. */
   let draft = emptyRecordFields(dataset?.key);
+  /**
+   * Which dataset the draft belongs to, tracked by ID.
+   *
+   * Guarding on `dataset` itself does not work: Svelte's safe_not_equal treats
+   * ANY object as changed, so an object prop is dirty on every parent update
+   * even when it is the identical reference. A reset keyed on the object reran
+   * constantly and wiped each character as it was typed.
+   */
+  let draftFor = dataset?.id ?? null;
 
   $: template = templateFor(dataset?.key);
   $: ordered  = sortRecords(dataset?.key, records);
   // A new dataset resets the draft, or the previous table's values bleed in.
-  $: if (dataset) draft = emptyRecordFields(dataset.key);
+  $: if (dataset && dataset.id !== draftFor) {
+    draftFor = dataset.id;
+    draft = emptyRecordFields(dataset.key);
+  }
 
   function commitCell(record, field, value) {
     if (String(record.fields?.[field.key] ?? '') === String(value)) return;
