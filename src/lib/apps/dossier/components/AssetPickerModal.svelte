@@ -24,7 +24,10 @@
   $: visible = files.filter(f => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    return `${f.display_name ?? ''} ${f.filename ?? ''}`.toLowerCase().includes(q);
+    // Search what is shown, including the description — otherwise a file is
+    // visibly labelled with words that will not find it.
+    return `${f.display_name ?? ''} ${f.filename ?? ''} ${f.description ?? ''}`
+      .toLowerCase().includes(q);
   });
 
   const KIND_ICON = { image: '🖼', pdf: '📄', file: '📎' };
@@ -58,11 +61,19 @@
                    {selectedId === file.id ? 'bg-slate-700' : ''}"
             on:click={() => choose(file)}
           >
-            <span class="text-base shrink-0">{KIND_ICON[previewKind(file.mime_type)]}</span>
+            <span class="text-base shrink-0 self-start mt-0.5">
+              {KIND_ICON[previewKind(file.mime_type)]}
+            </span>
             <div class="flex-1 min-w-0">
               <p class="text-sm text-slate-200 truncate">
                 {file.display_name || file.filename}
               </p>
+              {#if file.description}
+                <!-- The filename alone rarely distinguishes two scans of the
+                     same thing; the description is what the author wrote to
+                     tell them apart, so it belongs at the moment of choosing. -->
+                <p class="text-xs text-slate-400 line-clamp-2">{file.description}</p>
+              {/if}
               <p class="text-xs text-slate-500">
                 {fmtSize(file.file_size)}{file.file_size ? ' · ' : ''}{fmtDate(file.created_at)}
               </p>
