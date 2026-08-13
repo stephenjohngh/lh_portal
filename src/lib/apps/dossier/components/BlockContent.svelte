@@ -400,6 +400,13 @@
   :global(.dossier-prose .dossier-asset-host) {
     position: relative;
     margin: 0 0 0.9rem;
+    /* An atom inside a contenteditable region. Without this, clicking it starts
+       a native text selection and the browser paints the whole block
+       highlighted — very obvious on a spreadsheet preview, which is a table
+       full of text. The asset is one thing here and is selected as one; its
+       text is read from the file itself. Editor only: `-host` exists just in
+       the node view, so a recipient's copy stays selectable. */
+    user-select: none;
   }
   :global(.dossier-prose .dossier-asset-host .dossier-asset) { margin: 0; }
 
@@ -525,7 +532,13 @@
   }
   :global(.dossier-prose .dossier-block-remove:hover) { color: #f87171; }  /* red-400 */
 
-  /* An asset selected in the editor — Tiptap marks atoms with this class. */
+  /* An asset selected in the editor — ProseMirror marks atoms with this class.
+     It lands on the NODE VIEW's outer element, which is .dossier-asset-host;
+     .dossier-asset is the inner one, so that selector alone never matched in
+     edit mode and the outline has been invisible. Both are listed rather than
+     just swapped, because renderHTML (no node view) puts the class on
+     .dossier-asset directly. */
+  :global(.dossier-prose .dossier-asset-host.ProseMirror-selectednode),
   :global(.dossier-prose .dossier-asset.ProseMirror-selectednode) {
     outline: 2px solid var(--lh-accent, #3c9683);
     outline-offset: 2px;
