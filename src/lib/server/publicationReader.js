@@ -24,7 +24,7 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
 import { hashToken, isWellFormedToken } from '$lib/apps/dossier/utils/publicationToken.js';
 import { isServable, READER_REFUSAL }   from '$lib/apps/dossier/utils/publicationState.js';
-import { buildSnapshot }                from '$lib/apps/dossier/utils/snapshot.js';
+import { buildSnapshot, buildManifest } from '$lib/apps/dossier/utils/snapshot.js';
 
 let _svc = null;
 function svc() {
@@ -123,6 +123,33 @@ export async function readPublicationContent(publication) {
     records:  records ?? [],
     files:    files ?? [],
   });
+}
+
+/**
+ * The manifest to check an asset request against.
+ *
+ * 'snapshot' — the one stored at publish time. It describes exactly the frozen
+ *              content, which is the whole point.
+ *
+ * 'latest'   — rebuilt from current content. A follow-latest link promises the
+ *              recipient the current pack, so a file added since publication
+ *              must be reachable; checking against the publish-time manifest
+ *              would serve a page whose own images 404.
+ *
+ * Either way the manifest stays an ALLOW-LIST derived from what the content
+ * references — never "every file on the shelf".
+ *
+ * @param {object} publication
+ * @returns {Promise<object>}
+ */
+export async function resolveManifest(publication) {
+  if (publication?.mode !== 'latest') return publication?.manifest ?? { files: [] };
+
+  const content = await readPublicationContent(publication);
+  if (!content) return { files: [] };
+  // No checksums: a follow-latest link makes no immutability promise, so there
+  // is no baseline to compare against and inventing one would be misleading.
+  return buildManifest(content);
 }
 
 /**
