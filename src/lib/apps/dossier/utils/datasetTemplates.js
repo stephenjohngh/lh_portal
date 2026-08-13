@@ -84,8 +84,12 @@ export const DATASET_TEMPLATES = {
     // Every column but `notes` is given a width, so the notes column takes
     // whatever is left. Without a width on `name` the two shared the remainder
     // and notes ended up too narrow to write in.
+    //
+    // The declared widths are kept modest on purpose: they are a floor the
+    // editor's fixed layout must fit alongside the Detail and delete columns,
+    // and anything generous here comes straight out of Notes.
     fields: /** @type {FieldDef[]} */ ([
-      { key: 'name',   label: 'Document', type: 'text', width: '16rem' },
+      { key: 'name',   label: 'Document', type: 'text', width: '13rem' },
       { key: 'date',   label: 'Dated',    type: 'date', width: '8.5rem' },
       { key: 'author', label: 'Author',   type: 'text', width: '9rem' },
       {

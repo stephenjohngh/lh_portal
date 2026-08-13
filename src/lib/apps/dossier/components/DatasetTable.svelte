@@ -284,13 +284,19 @@
     <!-- table-fixed is load-bearing: with the default auto layout a column's
          CONTENT sets its width, so one long filename in Detail stole the space
          Notes needed and the declared widths were ignored. Fixed layout honours
-         them and gives the remainder to the columns that declare none. -->
-    <table class="w-full text-sm border-collapse table-fixed">
+         them and gives the remainder to the columns that declare none.
+
+         min-width is load-bearing too, and was missing. Fixed layout scales the
+         declared widths DOWN when they do not fit, so on a narrower pane the
+         columns that declare none — Notes — were left a few rem and rendered
+         one character per line, with the headers overlapping. A minimum lets
+         the pane scroll instead, which is what the read view already does. -->
+    <table class="w-full min-w-[62rem] text-sm border-collapse table-fixed">
       <thead>
         <tr class="text-left">
           {#each columns as field}
             <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
-                       pb-2 pr-3 align-bottom"
+                       pb-2 pr-3 align-bottom whitespace-nowrap"
                 style={field.width ? `width:${field.width}` : ''}>{field.label}</th>
           {/each}
           <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
