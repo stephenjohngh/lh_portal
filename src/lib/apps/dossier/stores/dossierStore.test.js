@@ -682,15 +682,53 @@ describe('publications', () => {
     expect(row.manifest.files).toHaveLength(1);   // assets still need serving
   });
 
-  it('numbers versions from the publications already issued', async () => {
-    h.api.get.mockResolvedValueOnce([
-      { id: 'pub2', version: 2 }, { id: 'pub1', version: 1 },
-    ]);
-    await store.loadPublications('p1');
+  it('reads the next version from the DATABASE, not from what is loaded', async () => {
+    // The Links sidebar is collapsed by default, so state.publications is
+    // usually empty. Deriving the version from it meant the SECOND publish of
+    // any pack computed version 1 again and died on the unique constraint —
+    // after the files had already been read and pinned.
     await seedPack();
+    h.api.get.mockResolvedValueOnce([{ version: 4 }]);   // the query for max version
 
     await store.createPublication({ pack }, 'u1');
+
+    expect(h.api.get).toHaveBeenCalledWith('dossier_publications', {
+      select: 'version', filters: { pack_id: 'p1' },
+      orderBy: 'version', ascending: false, limit: 1,
+    });
+    expect(h.api.create.mock.calls.at(-1)[1].version).toBe(5);
+  });
+
+  it('starts at 1 for a pack that has never been published', async () => {
+    await seedPack();
+    h.api.get.mockResolvedValueOnce([]);
+    await store.createPublication({ pack }, 'u1');
+    expect(h.api.create.mock.calls.at(-1)[1].version).toBe(1);
+  });
+
+  it('retries once when two tabs race for the same version', async () => {
+    // The unique constraint is the real guard; an author whose files are
+    // already pinned should not meet a Postgres error because of it.
+    await seedPack();
+    h.api.get.mockResolvedValueOnce([{ version: 1 }]);
+    h.api.create.mockRejectedValueOnce(
+      Object.assign(new Error('duplicate key value violates unique constraint'),
+        { code: '23505' }));
+    h.api.get.mockResolvedValueOnce([{ version: 2 }]);
+
+    await store.createPublication({ pack }, 'u1');
+
+    expect(h.api.create).toHaveBeenCalledTimes(2);
     expect(h.api.create.mock.calls.at(-1)[1].version).toBe(3);
+  });
+
+  it('does not swallow an unrelated insert failure', async () => {
+    await seedPack();
+    h.api.get.mockResolvedValueOnce([]);
+    h.api.create.mockRejectedValueOnce(new Error('network down'));
+
+    await expect(store.createPublication({ pack }, 'u1')).rejects.toThrow('network down');
+    expect(h.api.create).toHaveBeenCalledTimes(1);
   });
 
   it('audits the issue at warning severity, recording what was exposed', async () => {

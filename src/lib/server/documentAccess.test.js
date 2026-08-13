@@ -27,8 +27,10 @@ vi.mock('$env/static/public', () => ({
   PUBLIC_SUPABASE_URL: 'http://x', PUBLIC_SUPABASE_ANON_KEY: 'anon',
 }));
 
-const { canListDocuments, bearerToken, ENTITY_PARENT_TABLE } =
-  await import('./documentAccess.js');
+const {
+  canListDocuments, canAccessDocument, sanitizeDocumentPatch, bearerToken,
+  ENTITY_PARENT_TABLE, PATCHABLE_FIELDS,
+} = await import('./documentAccess.js');
 
 const user  = { isAdmin: false, token: 'caller-token' };
 const admin = { isAdmin: true,  token: 'admin-token' };
@@ -142,6 +144,73 @@ describe('ENTITY_PARENT_TABLE', () => {
     // describes the attachment, not the parent. Exactly what a hand-written
     // mapping gets wrong.
     expect(ENTITY_PARENT_TABLE.maintenance_document).toBe('maintenance_jobs');
+  });
+});
+
+describe('canAccessDocument', () => {
+  it('asks the same question of a fetched row', async () => {
+    visible();
+    const result = await canAccessDocument(
+      { entity_type: 'dossier_pack', entity_id: 'e1' }, user);
+
+    expect(result.ok).toBe(true);
+    expect(h.from).toHaveBeenCalledWith('dossier_packs');
+  });
+
+  it('refuses a document on another user-s pack', async () => {
+    // The by-id route returns select('*'), which includes provider_file_id —
+    // all anyone needs to pull the bytes from the unauthenticated media proxy.
+    hidden();
+    expect((await canAccessDocument(
+      { entity_type: 'dossier_pack', entity_id: 'theirs' }, user)).ok).toBe(false);
+  });
+
+  it('refuses a document with no owning entity, for a non-admin', async () => {
+    expect((await canAccessDocument({}, user)).ok).toBe(false);
+    expect((await canAccessDocument({}, admin)).ok).toBe(true);
+  });
+});
+
+describe('sanitizeDocumentPatch', () => {
+  it('keeps editable metadata', () => {
+    const { patch, rejected } = sanitizeDocumentPatch({
+      description: 'Served by post', display_name: 'Notice',
+    });
+    expect(patch).toEqual({ description: 'Served by post', display_name: 'Notice' });
+    expect(rejected).toEqual([]);
+  });
+
+  it('rejects the columns authorisation is decided BY', () => {
+    // Without this an uploader could attach their own file to somebody else's
+    // owner-scoped pack, and it would then be listed on that pack's shelf.
+    const { patch, rejected } = sanitizeDocumentPatch({
+      description: 'ok', entity_type: 'dossier_pack', entity_id: 'victim-pack',
+    });
+    expect(patch).toEqual({ description: 'ok' });
+    expect(rejected).toEqual(['entity_type', 'entity_id']);
+  });
+
+  it('rejects storage identity and the drift baseline', () => {
+    const { rejected } = sanitizeDocumentPatch({
+      provider_file_id: 'x', file_checksum: 'y', filename: 'z',
+      mime_type: 'text/html', file_size: 1, uploaded_by: 'someone',
+    });
+    expect(rejected.sort()).toEqual([
+      'file_checksum', 'file_size', 'filename', 'mime_type',
+      'provider_file_id', 'uploaded_by',
+    ]);
+  });
+
+  it('copes with nothing at all', () => {
+    expect(sanitizeDocumentPatch()).toEqual({ patch: {}, rejected: [] });
+    expect(sanitizeDocumentPatch(null)).toEqual({ patch: {}, rejected: [] });
+  });
+
+  it('never admits a column that decides access', () => {
+    for (const field of ['entity_type', 'entity_id', 'provider_file_id',
+                         'file_checksum', 'uploaded_by', 'id']) {
+      expect(PATCHABLE_FIELDS).not.toContain(field);
+    }
   });
 });
 

@@ -341,6 +341,29 @@ function createDossierStore() {
   // The recipient's path is a separate set of service-role endpoints that
   // share no code with this store — that separation is the guarantee.
 
+  /**
+   * The next version number for a pack, read from the DATABASE.
+   *
+   * Deliberately not derived from `state.publications`: that list is only
+   * loaded when the author expands the Links section, which is collapsed by
+   * default. Trusting it meant the second-ever publish of a pack computed
+   * version 1 again and died on the unique constraint — after the files had
+   * already been read and pinned.
+   */
+  async function nextPublicationVersion(packId) {
+    const rows = await api.get('dossier_publications', {
+      select: 'version', filters: { pack_id: packId },
+      orderBy: 'version', ascending: false, limit: 1,
+    });
+    return (rows?.[0]?.version ?? 0) + 1;
+  }
+
+  /** Postgres unique-violation, however the client surfaces it. */
+  function isVersionConflict(err) {
+    const text = `${err?.code ?? ''} ${err?.message ?? ''}`;
+    return text.includes('23505') || /duplicate key|already exists/i.test(text);
+  }
+
   async function loadPublications(packId) {
     if (!packId) { update(s => ({ ...s, publications: [] })); return []; }
     const publications = await api.get('dossier_publications', {
@@ -384,25 +407,19 @@ function createDossierStore() {
     });
     const manifest = buildManifest(snapshot, checksums);
 
-    // Version numbers come from what is loaded, which is every publication of
-    // this pack — the unique (pack_id, version) constraint is the real guard if
-    // two tabs ever race.
-    const version = state.publications.length
-      ? Math.max(...state.publications.map(p => p.version ?? 0)) + 1
-      : 1;
-
     const token = generateToken();
     // Hashed in the author's browser, so the plaintext never travels except
     // when a recipient is actually answering it.
     const secret = passphrase ? await hashPassphrase(passphrase) : null;
+    const tokenHash = await hashToken(token);
 
-    const publication = await api.create('dossier_publications', {
+    const row = (version) => ({
       pack_id:         pack.id,
       version,
       title:           title || pack.title,
       recipient_label: recipientLabel || null,
       mode,
-      token_hash:      await hashToken(token),
+      token_hash:      tokenHash,
       token_prefix:    tokenPrefix(token),
       passphrase_hash: secret?.hash ?? null,
       passphrase_salt: secret?.salt ?? null,
@@ -412,7 +429,21 @@ function createDossierStore() {
       manifest,
       expires_at:      expiresAt,
       created_by:      userId, ...touch(userId),
-    }, true);
+    });
+
+    // The unique (pack_id, version) constraint is the real guard against two
+    // tabs racing. Re-read and retry once rather than surfacing a Postgres
+    // error to an author whose files have already been pinned.
+    let publication;
+    try {
+      publication = await api.create('dossier_publications',
+        row(await nextPublicationVersion(pack.id)), true);
+    } catch (err) {
+      if (!isVersionConflict(err)) throw err;
+      publication = await api.create('dossier_publications',
+        row(await nextPublicationVersion(pack.id)), true);
+    }
+    const version = publication.version;
 
     update(s => ({ ...s, publications: [publication, ...s.publications] }));
     logAudit('create', 'dossier_publication', publication.id,

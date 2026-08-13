@@ -48,6 +48,36 @@ export const ENTITY_PARENT_TABLE = {
   maintenance_document: 'maintenance_jobs',
 };
 
+/**
+ * Columns a caller may edit through PATCH /api/documents/[id].
+ *
+ * An allow-list because the update spreads the patch straight into the row.
+ * Without it an uploader could rewrite `entity_type` / `entity_id` — the very
+ * columns authorisation is decided BY — and attach their file to somebody
+ * else's pack; or overwrite `file_checksum` and destroy the baseline a
+ * publication's drift detection depends on. Storage identity
+ * (provider_file_id, filename, mime_type, file_size) is a fact about the bytes
+ * and is not editable either.
+ */
+export const PATCHABLE_FIELDS = [
+  'display_name', 'title', 'description', 'doc_type', 'category', 'tags',
+  'document_date', 'expiry_date', 'reference_number', 'issuer',
+];
+
+/**
+ * Keep only the editable columns.
+ * @returns {{ patch: object, rejected: string[] }}
+ */
+export function sanitizeDocumentPatch(patch = {}) {
+  const clean = {};
+  const rejected = [];
+  for (const [key, value] of Object.entries(patch ?? {})) {
+    if (PATCHABLE_FIELDS.includes(key)) clean[key] = value;
+    else rejected.push(key);
+  }
+  return { patch: clean, rejected };
+}
+
 /** A client that speaks as the CALLER, so their RLS policies apply. */
 function callerClient(token) {
   return createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
@@ -102,4 +132,21 @@ export async function canListDocuments(query, { isAdmin, token }) {
   // is the behaviour we want: the caller learns nothing either way.
   if (error || !data) return { ok: false, status: 403, message: 'Not permitted.' };
   return { ok: true };
+}
+
+/**
+ * May this caller see ONE document's metadata?
+ *
+ * The same question as canListDocuments, asked of a row already fetched. It
+ * exists because the by-id route is the other way to reach the same data —
+ * and `select('*')` there returns `provider_file_id`, which is all anyone needs
+ * to pull the bytes from the unauthenticated media proxy. Gating the list and
+ * leaving this open would have closed the front door only.
+ *
+ * @param {{ entity_type?: string, entity_id?: string }} doc
+ * @param {{ isAdmin: boolean, token: string }} caller
+ */
+export async function canAccessDocument(doc, caller) {
+  return canListDocuments(
+    { entity_type: doc?.entity_type, entity_id: doc?.entity_id }, caller);
 }
