@@ -95,10 +95,11 @@ export function splitEmailThread(text) {
 /**
  * Map one parsed email onto the correspondence template's fields.
  *
- * The body becomes `summary` in full rather than being truncated. It is the
- * author's evidence: cutting it to fit a column would lose text they can no
- * longer see, and the summary cell is an auto-growing textarea they can edit
- * down themselves. Runs of blank lines are collapsed, which is formatting
+ * The subject line fills `subject` — the column a reader scans, which the
+ * author is then free to rewrite into something more useful than the sender's
+ * wording. The body fills `body` IN FULL and renders on a line of its own: it
+ * is the author's evidence, and cutting it to fit anything would lose text they
+ * can no longer see. Runs of blank lines are collapsed, which is formatting
  * rather than content.
  *
  * @param {{from?: string, to?: string, subject?: string,
@@ -110,19 +111,19 @@ export function emailToCorrespondence(parsed) {
     from:    parsed?.from ?? '',
     to:      parsed?.to ?? '',
     subject: parsed?.subject ?? '',
-    summary: String(parsed?.body ?? '').replace(/\n{3,}/g, '\n\n').trim(),
+    body:    String(parsed?.body ?? '').replace(/\n{3,}/g, '\n\n').trim(),
   });
 }
 
 /** Identity of a message, for dropping the duplicates a thread repeats. */
 function rowKey(fields) {
-  return [fields.date, fields.from, fields.subject, fields.summary.slice(0, 200)]
+  return [fields.date, fields.from, fields.subject, fields.body.slice(0, 200)]
     .join('|').toLowerCase();
 }
 
 /** True when a row has nothing an author could use. */
 function isUseless(fields) {
-  return !fields.from && !fields.subject && !fields.summary;
+  return !fields.from && !fields.subject && !fields.body;
 }
 
 /**

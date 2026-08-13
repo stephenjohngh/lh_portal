@@ -11,10 +11,17 @@
 // value is in one well-shaped chronology.
 
 /**
+ * `layout: 'row'` marks a field that is NOT a column: it renders on a line of
+ * its own beneath the row, in both the editor and the read view. An email body
+ * is the case that needs it — as a column it either squeezed everything else
+ * off the screen or was too narrow to read, and it is a different KIND of thing
+ * from the row's other values.
+ *
  * @typedef {{
  *   key: string, label: string,
  *   type: 'date'|'text'|'longtext'|'select',
- *   width?: string, options?: string[], placeholder?: string
+ *   width?: string, options?: string[], placeholder?: string,
+ *   layout?: 'column'|'row'
  * }} FieldDef
  */
 
@@ -44,10 +51,30 @@ export const DATASET_TEMPLATES = {
       { key: 'date',    label: 'Date',    type: 'date', width: '9rem' },
       { key: 'from',    label: 'From',    type: 'text', width: '10rem' },
       { key: 'to',      label: 'To',      type: 'text', width: '10rem' },
-      { key: 'subject', label: 'Subject', type: 'text' },
-      { key: 'summary', label: 'Summary', type: 'longtext' },
+      // One column, not two. A pasted email fills it with the subject line and
+      // the author edits it into whatever actually describes the item — which
+      // is what a reader scans. Splitting "subject" from "summary" gave two
+      // narrow columns saying nearly the same thing.
+      {
+        key: 'subject', label: 'Subject / summary', type: 'text',
+        placeholder: 'What this was about',
+      },
+      // The message itself, on its own line beneath. Never a column: a full
+      // email body cannot be one.
+      {
+        key: 'body', label: 'Message', type: 'longtext', layout: 'row',
+        placeholder: 'The message itself',
+      },
     ]),
     sort: 'date',
+    /**
+     * Values written under an earlier key, carried across on read.
+     *
+     * `summary` held the pasted body before it became `body`. Without this,
+     * coerceRecordFields — which drops anything the template does not define —
+     * would discard those bodies the next time their row was touched.
+     */
+    legacy: { body: ['summary'] },
   },
 
   document_index: {
@@ -83,6 +110,42 @@ export function fieldsFor(key) {
   return templateFor(key)?.fields ?? [];
 }
 
+/** Fields that are table columns. */
+export function columnFields(key) {
+  return fieldsFor(key).filter(f => f.layout !== 'row');
+}
+
+/** Fields that render on a line of their own beneath the row. */
+export function rowFields(key) {
+  return fieldsFor(key).filter(f => f.layout === 'row');
+}
+
+/**
+ * Move any value stored under a superseded key onto its current one.
+ *
+ * Applied where records are LOADED, so everything downstream — the editor, the
+ * renderer, the publish snapshot — sees only current keys. `coerceRecordFields`
+ * does the same on write, so a row saved before this existed is corrected
+ * rather than emptied.
+ *
+ * @param {string} key - the template key
+ * @param {object} fields
+ */
+export function migrateRecordFields(key, fields = {}) {
+  const legacy = templateFor(key)?.legacy;
+  if (!legacy) return fields;
+
+  let changed = false;
+  const out = { ...fields };
+  for (const [current, olds] of Object.entries(legacy)) {
+    if (out[current]) continue;                       // already on the new key
+    for (const old of [].concat(olds)) {
+      if (out[old]) { out[current] = out[old]; changed = true; break; }
+    }
+  }
+  return changed ? out : fields;
+}
+
 /**
  * Coerce one cell to the shape its column expects.
  *
@@ -111,9 +174,12 @@ export function coerceField(field, value) {
 
 /** Coerce a whole row, dropping anything the template does not define. */
 export function coerceRecordFields(key, fields = {}) {
+  // Migrate first: dropping unknown keys is the point of this function, and a
+  // superseded key is exactly the value that must survive being dropped.
+  const source = migrateRecordFields(key, fields ?? {});
   const out = {};
   for (const field of fieldsFor(key)) {
-    out[field.key] = coerceField(field, fields?.[field.key]);
+    out[field.key] = coerceField(field, source?.[field.key]);
   }
   return out;
 }

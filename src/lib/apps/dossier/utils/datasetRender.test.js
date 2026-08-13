@@ -182,17 +182,24 @@ describe('renderDatasetTableHtml — long bodies', () => {
     + 'with a landmark double-header at the Volksparkstadion, and you can watch '
     + 'every minute live on evertontv. Everton Women get the action under way.';
 
-  const rows = [{ id: 'r1', fields: { date: '2026-08-01', subject: 'Buy Now', summary: long } }];
+  const rows = [{ id: 'r1', fields: { date: '2026-08-01', subject: 'Buy Now', body: long } }];
 
-  it('keeps a gist in the cell and folds the rest away', () => {
+  it('puts the message on a line of its own, never in a column', () => {
     const html = renderDatasetTableHtml(dataset, rows);
 
     expect(html).toContain('dossier-dataset-bodyrow');
     expect(html).toContain('<details class="dossier-dataset-body">');
-    expect(html).toContain('Summary — full text');
-    // The cell itself carries only the opening of the body.
-    expect(html).toContain('Everton continue their pre-season');
-    expect(html).toContain('…');
+    expect(html).toContain('<summary>Message</summary>');
+    // And it is NOT a column: the header has no Message in it.
+    expect(html).not.toContain('<th>Message</th>');
+  });
+
+  it('gives the row four scannable columns, not six', () => {
+    // Subject and Summary said nearly the same thing in two narrow cells.
+    const html = renderDatasetTableHtml(dataset, rows);
+    expect(html).toContain('<th>Subject / summary</th>');
+    // `<th[ >]`, not `<th` — the latter also matches <thead>.
+    expect(html.match(/<th[ >]/g)).toHaveLength(4);
   });
 
   it('keeps the WHOLE body — nothing is lost to the fold', () => {
@@ -202,22 +209,22 @@ describe('renderDatasetTableHtml — long bodies', () => {
     expect(html).toContain('Everton Women get the action under way.');
   });
 
-  it('folds a SHORT but multi-line value too', () => {
-    // Three one-word paragraphs still read as a body rather than a cell value.
+  it('shows even a SHORT message below, because that is what it is', () => {
     const html = renderDatasetTableHtml(dataset,
-      [{ id: 'r1', fields: { summary: 'One.\n\nTwo.\n\nThree.' } }]);
+      [{ id: 'r1', fields: { body: 'Thanks, noted.' } }]);
     expect(html).toContain('dossier-dataset-bodyrow');
+    expect(html).toContain('Thanks, noted.');
   });
 
-  it('leaves a short single-line value alone', () => {
+  it('adds no row beneath when there is no message', () => {
     const html = renderDatasetTableHtml(dataset,
-      [{ id: 'r1', fields: { date: '2026-08-01', summary: 'Thanks, noted.' } }]);
+      [{ id: 'r1', fields: { date: '2026-08-01', subject: 'Noted' } }]);
 
     expect(html).not.toContain('dossier-dataset-bodyrow');
-    expect(html).toContain('<td>Thanks, noted.</td>');
+    expect(html).toContain('<td>Noted</td>');
   });
 
-  it('folds only longtext columns, never a short one', () => {
+  it('folds only longtext, never a long text column', () => {
     // Subject is `text`; a long subject line is still a subject.
     const html = renderDatasetTableHtml(dataset,
       [{ id: 'r1', fields: { subject: 'x'.repeat(300) } }]);
@@ -226,16 +233,16 @@ describe('renderDatasetTableHtml — long bodies', () => {
 
   it('spans the whole table, including the Detail column when present', () => {
     const html = renderDatasetTableHtml(dataset,
-      [{ id: 'r1', fields: { summary: long }, doc_id: 'd1' }],
+      [{ id: 'r1', fields: { body: long }, doc_id: 'd1' }],
       { links: { docs: [{ id: 'd1', title: 'Detail page' }] } });
 
-    // 5 template columns + Detail.
-    expect(html).toContain('colspan="6"');
+    // 4 columns + Detail. The message is not one of them.
+    expect(html).toContain('colspan="5"');
   });
 
   it('escapes the folded body', () => {
     const html = renderDatasetTableHtml(dataset,
-      [{ id: 'r1', fields: { summary: `${'x'.repeat(200)}<script>alert(1)</script>` } }]);
+      [{ id: 'r1', fields: { body: `${'x'.repeat(200)}<script>alert(1)</script>` } }]);
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script');
   });

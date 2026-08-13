@@ -12,6 +12,7 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import {
     templateFor, sortRecords, emptyRecordFields, isBlankRecord,
+    columnFields, rowFields,
   } from '../utils/datasetTemplates.js';
   import { unindexedFiles, describeShelfAddition } from '../utils/documentIndex.js';
   import { needsFolding } from '../utils/datasetRender.js';
@@ -45,6 +46,12 @@
   let draftFor = dataset?.id ?? null;
 
   $: template = templateFor(dataset?.key);
+  // A field marked layout:'row' is not a column — it gets a line of its own
+  // beneath the entry, because an email body cannot be a table cell.
+  $: columns  = columnFields(dataset?.key);
+  $: beneath  = rowFields(dataset?.key);
+  /** Columns + Detail + the delete button, for a full-width row underneath. */
+  $: spanAll  = columns.length + 2;
   $: ordered  = sortRecords(dataset?.key, records);
   // Resolved once per render rather than per cell — and {@const} is not allowed
   // inside a <td>, only as the immediate child of a block.
@@ -251,7 +258,7 @@
     <table class="w-full text-sm border-collapse table-fixed">
       <thead>
         <tr class="text-left">
-          {#each template?.fields ?? [] as field}
+          {#each columns as field}
             <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
                        pb-2 pr-3 align-bottom"
                 style={field.width ? `width:${field.width}` : ''}>{field.label}</th>
@@ -266,7 +273,7 @@
         {#each ordered as record (record.id)}
           <tr class="group border-t border-slate-800 align-top transition-colors
                      {flashId === record.id ? 'bg-slate-700/40' : ''}">
-            {#each template.fields as field}
+            {#each columns as field}
               <td class="py-1 pr-3">
                 {#if !canEdit}
                   <span class="text-slate-300">{record.fields?.[field.key] || '—'}</span>
@@ -364,17 +371,66 @@
               {/if}
             </td>
           </tr>
-        {/each}
 
-        <!-- The always-present blank row: an empty table with no way in teaches
-             nothing, and "Add row" is one click more than typing. -->
-        {#if canEdit}
-          <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-          <tr class="border-t border-slate-800 align-top"
-              bind:this={draftRowEl}
-              on:focusout={handleDraftFocusOut}
-              on:keydown={handleDraftKeydown}>
-            {#each template?.fields ?? [] as field, i}
+          {#if beneath.length}
+            <!-- The message itself, on its own line. As a column it either
+                 squeezed every other value off the screen or was too narrow to
+                 read; it is also a different kind of thing from the rest of the
+                 row. -->
+            <tr class="align-top {flashId === record.id ? 'bg-slate-700/40' : ''}">
+              <td colspan={spanAll} class="pb-2 pr-3">
+                {#each beneath as field}
+                  {#if canEdit || record.fields?.[field.key]}
+                    <p class="text-[11px] text-slate-600 uppercase tracking-wide">
+                      {field.label}
+                    </p>
+                    {#if canEdit}
+                      <textarea
+                        rows="1"
+                        use:grows={expanded.has(cellKey(record, field))}
+                        class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
+                               border border-transparent hover:border-slate-700
+                               focus:border-slate-600 focus:bg-slate-800 outline-none
+                               resize-none leading-snug"
+                        placeholder={field.placeholder ?? field.label}
+                        value={record.fields?.[field.key] ?? ''}
+                        on:blur={(e) => commitCell(record, field, e.currentTarget.value)}
+                      ></textarea>
+                      {#if needsFolding(record.fields?.[field.key])}
+                        <button
+                          type="button"
+                          class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+                          on:click={() => toggleExpanded(record, field)}
+                        >{expanded.has(cellKey(record, field))
+                            ? '▾ show less'
+                            : '▸ show full text'}</button>
+                      {/if}
+                    {:else}
+                      <p class="text-sm text-slate-300 whitespace-pre-wrap">
+                        {record.fields[field.key]}
+                      </p>
+                    {/if}
+                  {/if}
+                {/each}
+              </td>
+            </tr>
+          {/if}
+        {/each}
+      </tbody>
+
+      <!-- The always-present blank row: an empty table with no way in teaches
+           nothing, and "Add row" is one click more than typing.
+
+           Its own <tbody> so the message line below can be part of the same
+           focus scope — handleDraftFocusOut asks whether focus is still inside
+           this element, and a sibling <tr> would read as having left the row. -->
+      {#if canEdit}
+        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+        <tbody bind:this={draftRowEl}
+               on:focusout={handleDraftFocusOut}
+               on:keydown={handleDraftKeydown}>
+          <tr class="border-t border-slate-800 align-top">
+            {#each columns as field, i}
               <td class="py-1 pr-3">
                 {#if field.type === 'select'}
                   <select
@@ -417,8 +473,27 @@
             <td class="text-xs text-slate-600 pr-3">—</td>
             <td></td>
           </tr>
-        {/if}
-      </tbody>
+
+          {#if beneath.length}
+            <tr class="align-top">
+              <td colspan={spanAll} class="pb-2 pr-3">
+                {#each beneath as field}
+                  <textarea
+                    rows="1"
+                    use:grows={false}
+                    class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
+                           border border-dashed border-slate-800 focus:border-slate-600
+                           focus:bg-slate-800 outline-none placeholder:text-slate-600
+                           resize-none leading-snug"
+                    placeholder={field.placeholder ?? field.label}
+                    bind:value={draft[field.key]}
+                  ></textarea>
+                {/each}
+              </td>
+            </tr>
+          {/if}
+        </tbody>
+      {/if}
     </table>
 
     {#if records.length === 0}

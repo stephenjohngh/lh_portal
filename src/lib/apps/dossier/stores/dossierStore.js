@@ -17,7 +17,9 @@ import { listDocuments } from '$lib/utils/documentApi';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
-import { coerceRecordFields, templateFor } from '../utils/datasetTemplates.js';
+import {
+  coerceRecordFields, templateFor, migrateRecordFields,
+} from '../utils/datasetTemplates.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
@@ -219,9 +221,20 @@ function createDossierStore() {
       });
       // Load every table's rows up front. A pack's tables are small, and the
       // broken-reference check cannot report on a table nobody has opened.
-      const records = datasets.length
+      const loaded = datasets.length
         ? await api.getAllIn('dossier_records', 'dataset_id', datasets.map(d => d.id))
         : [];
+
+      // Carry values written under a superseded key onto the current one, ONCE,
+      // here — so the editor, the renderer and the publish snapshot all see the
+      // same shape and none of them has to know the old names. A row is only
+      // rewritten in the database when the author next touches it.
+      const keyOf = new Map(datasets.map(d => [d.id, d.key]));
+      const records = loaded.map((r) => {
+        const fields = migrateRecordFields(keyOf.get(r.dataset_id), r.fields ?? {});
+        return fields === r.fields ? r : { ...r, fields };
+      });
+
       update(s => ({ ...s, datasets, records }));
       return datasets;
     } catch (err) {

@@ -6,6 +6,7 @@ import {
   DATASET_TEMPLATES, TEMPLATE_KEYS, templateFor, fieldsFor,
   coerceField, coerceRecordFields, emptyRecordFields, sortRecords, isBlankRecord,
   describeRecord,
+  columnFields, rowFields, migrateRecordFields,
 } from './datasetTemplates.js';
 
 describe('templates', () => {
@@ -163,5 +164,50 @@ describe('isBlankRecord', () => {
   it('is false as soon as anything is typed', () => {
     expect(isBlankRecord('chronology', { date: '', event: 'x' })).toBe(false);
     expect(isBlankRecord('chronology', { date: '2026-01-01' })).toBe(false);
+  });
+});
+
+describe('correspondence — subject/summary and the message', () => {
+  // The subject and summary columns said nearly the same thing in two narrow
+  // cells, and the body could not be a column at all.
+  it('has ONE scannable column, and the message beneath', () => {
+    expect(columnFields('correspondence').map(f => f.key))
+      .toEqual(['date', 'from', 'to', 'subject']);
+    expect(rowFields('correspondence').map(f => f.key)).toEqual(['body']);
+  });
+
+  it('leaves the other templates entirely as columns', () => {
+    expect(rowFields('chronology')).toEqual([]);
+    expect(rowFields('document_index')).toEqual([]);
+    expect(columnFields('chronology')).toHaveLength(3);
+  });
+});
+
+describe('migrateRecordFields', () => {
+  // `summary` held the pasted body before it became `body`. Rows written then
+  // exist in production, and coerceRecordFields drops anything the template
+  // does not define — so without this the next edit would empty them.
+  it('moves a superseded value onto its current key', () => {
+    expect(migrateRecordFields('correspondence', { summary: 'the message' }).body)
+      .toBe('the message');
+  });
+
+  it('never overwrites a value already on the current key', () => {
+    const fields = migrateRecordFields('correspondence',
+      { body: 'current', summary: 'old' });
+    expect(fields.body).toBe('current');
+  });
+
+  it('returns the SAME object when there is nothing to move', () => {
+    // Identity matters: the store skips rebuilding a record when it is unchanged.
+    const fields = { body: 'x' };
+    expect(migrateRecordFields('correspondence', fields)).toBe(fields);
+    const plain = { event: 'x' };
+    expect(migrateRecordFields('chronology', plain)).toBe(plain);
+  });
+
+  it('survives a coerce, which is where the value would otherwise be lost', () => {
+    expect(coerceRecordFields('correspondence', { summary: 'the message' }))
+      .toMatchObject({ body: 'the message' });
   });
 });

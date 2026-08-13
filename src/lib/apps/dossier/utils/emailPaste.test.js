@@ -91,13 +91,15 @@ describe('emailToCorrespondence', () => {
     });
     expect(fields).toEqual({
       date: '2025-01-14', from: 'Jane Patel', to: 'Stephen Hall',
-      subject: 'Roof works', summary: 'Please confirm.',
+      // The subject fills the one column a reader scans; the message goes to
+      // `body`, which renders on a line of its own.
+      subject: 'Roof works', body: 'Please confirm.',
     });
   });
 
   it('keeps every column the template defines, even when empty', () => {
     expect(Object.keys(emailToCorrespondence({})).sort())
-      .toEqual(['date', 'from', 'subject', 'summary', 'to']);
+      .toEqual(['body', 'date', 'from', 'subject', 'to']);
   });
 
   it('drops a date the template cannot store rather than storing junk', () => {
@@ -106,11 +108,11 @@ describe('emailToCorrespondence', () => {
 
   it('keeps the whole body — a summary is edited down, not truncated for you', () => {
     const long = 'x'.repeat(2000);
-    expect(emailToCorrespondence({ body: long }).summary).toHaveLength(2000);
+    expect(emailToCorrespondence({ body: long }).body).toHaveLength(2000);
   });
 
   it('collapses runs of blank lines', () => {
-    expect(emailToCorrespondence({ body: 'One.\n\n\n\nTwo.' }).summary).toBe('One.\n\nTwo.');
+    expect(emailToCorrespondence({ body: 'One.\n\n\n\nTwo.' }).body).toBe('One.\n\nTwo.');
   });
 });
 
@@ -132,11 +134,11 @@ describe('parsePastedEmails', () => {
     expect(rows[0].to).toBe('Stephen Hall');
   });
 
-  it('keeps the body as the summary', () => {
+  it('keeps the body as the message', () => {
     const { rows } = parsePastedEmails(SINGLE);
-    expect(rows[0].summary).toContain('The notice is attached');
-    // Header lines must not leak into the summary column.
-    expect(rows[0].summary).not.toContain('Subject:');
+    expect(rows[0].body).toContain('The notice is attached');
+    // Header lines must not leak into the message.
+    expect(rows[0].body).not.toContain('Subject:');
   });
 
   it('reports unreadable segments instead of dropping them silently', () => {

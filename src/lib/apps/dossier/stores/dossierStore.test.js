@@ -568,7 +568,7 @@ describe('datasets', () => {
     // sequence when the date sort cannot separate them.
     expect(rows.map(r => r.position)).toEqual([3, 4]);
     expect(rows[0].fields).not.toHaveProperty('rogue');
-    expect(rows[0].fields.summary).toBe('');   // every template column present
+    expect(rows[0].fields.body).toBe('');      // every template field present
     expect(get(store).records).toHaveLength(3);
   });
 

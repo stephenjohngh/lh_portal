@@ -9,7 +9,9 @@
 // Everything interpolated is escaped here: the values are author-typed text
 // and one of them will eventually contain an angle bracket.
 
-import { fieldsFor, sortRecords, templateFor } from './datasetTemplates.js';
+import {
+  columnFields, rowFields, sortRecords, templateFor,
+} from './datasetTemplates.js';
 
 /**
  * How much of a long field shows in its cell before the rest is folded away.
@@ -106,7 +108,10 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
   const template = templateFor(dataset?.key);
   if (!template) return '';
 
-  const fields = fieldsFor(dataset.key);
+  // Columns and beneath-the-row fields are different things: a body is never a
+  // column, and a column folds only when it is too long to sit in one.
+  const fields = columnFields(dataset.key);
+  const beneath = rowFields(dataset.key);
   const rows = sortRecords(dataset.key, records);
 
   const heading = opts.heading === false
@@ -138,10 +143,12 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
   const columnCount = fields.length + (showLinks ? 1 : 0);
 
   const body = rows.map((record, i) => {
-    // Long or multi-line values show a gist here and their full text below, so
-    // one email body cannot push every other entry off the screen.
+    // Long or multi-line COLUMN values show a gist in the cell and their full
+    // text below, so one long note cannot push every other entry off screen.
     const folded = fields.filter(f =>
       f.type === 'longtext' && needsFolding(record?.fields?.[f.key]));
+    // Beneath-the-row fields always go below, when they have anything in them.
+    const below = beneath.filter(f => String(record?.fields?.[f.key] ?? '').trim());
 
     const cells = fields
       .map((f) => {
@@ -157,16 +164,21 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
       + (showLinks ? `<td>${linked[i] || '—'}</td>` : '');
 
     const row = `<tr>${cells}</tr>`;
-    if (!folded.length) return row;
+    if (!folded.length && !below.length) return row;
 
     // <details> rather than a scripted toggle: native, keyboard-accessible,
     // works in a published pack with no JS of its own, and the print stylesheet
     // can force it open — a body hidden on paper would be dropped evidence.
-    const bodies = folded.map(f =>
+    const fold = (f, label) =>
       '<details class="dossier-dataset-body">'
-      + `<summary>${escapeHtml(f.label)} — full text</summary>`
+      + `<summary>${escapeHtml(label)}</summary>`
       + `<div class="dossier-dataset-body-text">${escapeHtml(record.fields[f.key])}</div>`
-      + '</details>').join('');
+      + '</details>';
+
+    const bodies = [
+      ...below.map(f => fold(f, f.label)),
+      ...folded.map(f => fold(f, `${f.label} — full text`)),
+    ].join('');
 
     return row
       + `<tr class="dossier-dataset-bodyrow"><td colspan="${columnCount}">${bodies}</td></tr>`;
