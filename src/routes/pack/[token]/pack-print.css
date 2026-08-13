@@ -1,0 +1,185 @@
+/* src/routes/pack/[token]/pack-print.css
+   Printing a published pack.
+
+   A solicitor will print this, and what they need on paper is the WHOLE pack in
+   order — not whichever page happened to be open. So the reader builds a
+   print-only rendering of every page and every table (see `printing` in
+   +page.svelte) and this stylesheet is what makes it read as a document.
+
+   Loaded only on this route, so none of it can reach the authoring app.
+
+   The one thing to keep in mind when editing: the screen design is dark, and a
+   dark design printed is a wall of toner and unreadable grey text. Everything
+   below is a deliberate inversion, not an oversight. */
+
+@media print {
+  /* ── Page setup ──────────────────────────────────────────────────────── */
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Chrome that means nothing on paper. */
+  .pack-screen,
+  .pack-nav,
+  .pack-header,
+  .pack-footer,
+  .pack-print-button {
+    display: none !important;
+  }
+
+  .pack-print {
+    display: block !important;
+  }
+
+  /* ── Document furniture ──────────────────────────────────────────────── */
+  .pack-print-cover {
+    margin-bottom: 12mm;
+    padding-bottom: 6mm;
+    border-bottom: 1pt solid #000;
+  }
+  .pack-print-cover h1 {
+    font-size: 20pt;
+    margin: 0 0 2mm;
+  }
+  .pack-print-meta {
+    font-size: 9pt;
+    color: #444;
+  }
+
+  /* Each page of the pack starts a new sheet — a briefing read as one
+     continuous column is much harder to navigate than one with edges. */
+  .pack-print-section {
+    break-before: page;
+    page-break-before: always;
+  }
+  .pack-print-section:first-of-type {
+    break-before: auto;
+    page-break-before: auto;
+  }
+
+  .pack-print-section > h2 {
+    font-size: 14pt;
+    margin: 0 0 4mm;
+    padding-bottom: 1.5mm;
+    border-bottom: 0.5pt solid #999;
+  }
+
+  /* ── Content ─────────────────────────────────────────────────────────── */
+  /* The reader's prose styles are built for a dark screen. Undo the colours,
+     keep the structure. */
+  .dossier-prose,
+  .dossier-prose p,
+  .dossier-prose li,
+  .dossier-prose h1,
+  .dossier-prose h2,
+  .dossier-prose h3 {
+    color: #000 !important;
+  }
+  .dossier-prose {
+    font-size: 10.5pt;
+    line-height: 1.45;
+  }
+
+  .dossier-prose blockquote {
+    border-left: 2pt solid #666 !important;
+    color: #222 !important;
+  }
+  .dossier-prose code,
+  .dossier-prose pre {
+    background: #f2f2f2 !important;
+    border-color: #ccc !important;
+    color: #000 !important;
+  }
+
+  /* A callout's meaning is carried by its colour on screen. On paper it has to
+     be carried by its border and its label instead. */
+  .dossier-prose div[data-callout] {
+    background: none !important;
+    border: 0.75pt solid #666 !important;
+    color: #000 !important;
+  }
+
+  /* A toggle collapsed on screen must still PRINT — the recipient cannot open
+     it on paper, and silently omitting content from a briefing pack would be a
+     serious fault. */
+  .dossier-prose div[data-toggle][data-open='false'] div[data-toggle-body],
+  .dossier-prose .dossier-toggle[data-open='false'] div[data-toggle-body] {
+    display: block !important;
+  }
+  .dossier-prose .dossier-toggle-chevron { display: none !important; }
+
+  /* Cross-links and file links: the target is not clickable on paper, so the
+     underline is noise. The filename stays, which is what identifies it in the
+     document index. */
+  .dossier-prose a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* ── Tables ──────────────────────────────────────────────────────────── */
+  .dossier-dataset,
+  .dossier-dataset-table th,
+  .dossier-dataset-table td {
+    border-color: #999 !important;
+  }
+  .dossier-dataset-title,
+  .dossier-dataset-table th {
+    background: #eee !important;
+    color: #000 !important;
+  }
+  .dossier-dataset-table td,
+  .dossier-dataset-note,
+  .dossier-dataset-empty {
+    color: #000 !important;
+  }
+  .dossier-dataset-table {
+    font-size: 9pt;
+    /* A wide chronology is unreadable at a fixed layout on paper; let the
+       content decide the columns instead. */
+    table-layout: auto !important;
+  }
+  /* A row split across a page break is very hard to read back. */
+  .dossier-dataset-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .dossier-dataset-table thead {
+    display: table-header-group;   /* repeat the header on every sheet */
+  }
+
+  /* ── Assets ──────────────────────────────────────────────────────────── */
+  .dossier-asset-image {
+    max-width: 100% !important;
+    border-color: #999 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .dossier-asset-card {
+    border: 0.5pt solid #999 !important;
+    background: none !important;
+    color: #000 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .dossier-asset-caption,
+  .dossier-asset-description,
+  .dossier-asset-name {
+    color: #333 !important;
+  }
+  /* "Open PDF" is meaningless on paper. */
+  .dossier-asset-action { display: none !important; }
+
+  /* Headings should not be the last line on a sheet. */
+  h1, h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
+
+/* Off-screen until the browser asks for paper. */
+.pack-print { display: none; }

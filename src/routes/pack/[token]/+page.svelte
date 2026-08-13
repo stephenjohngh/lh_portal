@@ -16,8 +16,10 @@
   import { fmtDateLong } from '$lib/utils/dates';
   import lhLogo from '$lib/assets/LH_services_logo.png';
 
+  import { tick } from 'svelte';
   import { invalidateAll } from '$app/navigation';
   import { page as pageStore } from '$app/stores';
+  import './pack-print.css';
 
   export let data;
 
@@ -82,6 +84,25 @@
     return out;
   }
   $: navDocs = flatten(tree);
+
+  // ── Printing ──────────────────────────────────────────────────────────────
+  // What a recipient needs on paper is the WHOLE pack in order, not whichever
+  // page happened to be open — a printed briefing with one section in it is
+  // worse than useless. So the print rendering is built on demand: rendering
+  // every page all the time would cost a large pack real work on every visit,
+  // for something most readers never do.
+  let printing = false;
+
+  async function printPack() {
+    printing = true;
+    await tick();
+    // Tidy up after the dialog closes so a large pack is not left rendered
+    // twice for the rest of the visit. `once` because Chrome fires afterprint
+    // per dialog; if a browser never fires it, the markup simply stays — it is
+    // display:none on screen, so the only cost is DOM.
+    window.addEventListener('afterprint', () => (printing = false), { once: true });
+    window.print();
+  }
 </script>
 
 <svelte:head>
@@ -142,7 +163,7 @@
   <div class="min-h-screen bg-slate-900 text-slate-200">
 
     <!-- Header -->
-    <header class="border-b border-slate-700 bg-slate-900/95 sticky top-0 z-10">
+    <header class="pack-header border-b border-slate-700 bg-slate-900/95 sticky top-0 z-10">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
         <img src={lhLogo} alt="Lonsdale House" class="h-7 shrink-0" />
         <div class="min-w-0 flex-1">
@@ -161,6 +182,13 @@
           </p>
         </div>
         <button
+          class="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
+                 text-slate-300 hover:text-white hover:border-slate-500
+                 transition-colors shrink-0"
+          title="Print the whole pack"
+          on:click={printPack}
+        >Print</button>
+        <button
           class="md:hidden text-xs px-2 py-1 rounded border border-slate-700
                  text-slate-300"
           aria-expanded={navOpen}
@@ -169,11 +197,11 @@
       </div>
     </header>
 
-    <div class="max-w-6xl mx-auto px-4 py-6 flex gap-8">
+    <div class="pack-screen max-w-6xl mx-auto px-4 py-6 flex gap-8">
 
       <!-- Contents -->
       <nav
-        class="w-56 shrink-0 {navOpen ? 'block' : 'hidden'} md:block
+        class="pack-nav w-56 shrink-0 {navOpen ? 'block' : 'hidden'} md:block
                fixed md:static inset-x-4 top-16 z-10 md:z-auto
                bg-slate-800 md:bg-transparent rounded md:rounded-none p-3 md:p-0
                border border-slate-700 md:border-0"
@@ -276,7 +304,50 @@
       </main>
     </div>
 
-    <footer class="border-t border-slate-800 mt-8">
+    <!-- ── The printed pack ──────────────────────────────────────────────
+         Every page and every table, in order, so what comes out of the printer
+         is the whole briefing rather than the one section that was open. Hidden
+         on screen by pack-print.css; built only once Print is clicked. -->
+    {#if printing}
+      <div class="pack-print">
+        <div class="pack-print-cover">
+          <h1>{content.pack.title}</h1>
+          {#if content.pack.description}
+            <p>{content.pack.description}</p>
+          {/if}
+          <p class="pack-print-meta">
+            Prepared {fmtDateLong(content.generated_at)}
+            {#if data.publication.mode === 'latest'}
+              · this pack is kept up to date, so a printed copy may go out of date
+            {/if}
+          </p>
+        </div>
+
+        {#each navDocs as node (node.id)}
+          <section class="pack-print-section">
+            <h2>{node.title}</h2>
+            <BlockContent
+              blocks={node.blocks}
+              mode="read"
+              {docs} {files} {datasets} {records}
+              assetBase={data.assetBase}
+            />
+          </section>
+        {/each}
+
+        {#each datasets as dataset (dataset.id)}
+          <section class="pack-print-section">
+            <h2>{dataset.title}</h2>
+            <DatasetTableView
+              {dataset}
+              records={records.filter(r => r.dataset_id === dataset.id)}
+            />
+          </section>
+        {/each}
+      </div>
+    {/if}
+
+    <footer class="pack-footer border-t border-slate-800 mt-8">
       <div class="max-w-6xl mx-auto px-4 py-4">
         <p class="text-[11px] text-slate-600">
           This pack was prepared for you and is private to whoever holds this
