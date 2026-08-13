@@ -184,9 +184,16 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
       + `<tr class="dossier-dataset-bodyrow"><td colspan="${columnCount}">${bodies}</td></tr>`;
   }).join('');
 
+  // The table scrolls inside its own element, NOT inside the outer box. A block
+  // in a scroll container is only as wide as the container's visible area, so
+  // with the heading inside it the title bar's background stopped short the
+  // moment the table was scrolled sideways. Keeping the heading out of the
+  // scrolling region also means it stays put while the columns move, which is
+  // what a caption should do.
   return `<div class="dossier-dataset">${heading}`
+    + '<div class="dossier-dataset-scroll">'
     + `<table class="dossier-dataset-table"><thead><tr>${head}</tr></thead>`
-    + `<tbody>${body}</tbody></table></div>`;
+    + `<tbody>${body}</tbody></table></div></div>`;
 }
 
 /** What to show when an embedded table has been deleted. */

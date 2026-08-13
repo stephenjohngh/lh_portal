@@ -296,12 +296,12 @@
         <tr class="text-left">
           {#each columns as field}
             <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
-                       pb-2 pr-3 align-bottom whitespace-nowrap"
+                       py-2 pr-3 pl-2 align-bottom whitespace-nowrap bg-slate-800/60"
                 style={field.width ? `width:${field.width}` : ''}>{field.label}</th>
           {/each}
           <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
-                     pb-2 pr-3 align-bottom w-32">Detail</th>
-          <th class="w-8"></th>
+                     py-2 pr-3 align-bottom w-32 bg-slate-800/60">Detail</th>
+          <th class="w-8 bg-slate-800/60"></th>
         </tr>
       </thead>
 

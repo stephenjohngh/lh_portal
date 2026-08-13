@@ -142,6 +142,13 @@
     /* A wide chronology is unreadable at a fixed layout on paper; let the
        content decide the columns instead. */
     table-layout: auto !important;
+    min-width: 0 !important;         /* the screen's floor would overflow A4 */
+  }
+  /* Paper does not scroll. A clipped scroll box would simply lose whatever sat
+     past its edge — dropped content, not a layout blemish. */
+  .dossier-dataset,
+  .dossier-dataset-scroll {
+    overflow: visible !important;
   }
   /* A row split across a page break is very hard to read back. */
   .dossier-dataset-table tr {

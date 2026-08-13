@@ -17,10 +17,20 @@
   margin: 0 0 1rem;
   border: 1px solid #334155;         /* slate-700 */
   border-radius: 6px;
-  /* Scrolls rather than crushes. With `overflow: hidden` a table wider than its
-     container had nowhere to go, so the browser squeezed whichever columns had
-     no width down to almost nothing — a document index rendered its Notes one
-     character per line, and the headers overlapped each other. */
+  /* Clips the table's corners to the box. The SCROLLING happens one level in —
+     see .dossier-dataset-scroll. */
+  overflow: hidden;
+}
+
+/* Scrolls rather than crushes. With no scroll anywhere, a table wider than its
+   container had nowhere to go and the browser squeezed whichever columns had no
+   declared width down to almost nothing — a document index rendered its Notes
+   one character per line, with the headers overlapping.
+
+   This wrapper rather than the box above it, because a block inside a scroll
+   container is only as wide as the VISIBLE area: with the title bar in here its
+   background stopped short as soon as the table was scrolled sideways. */
+.dossier-dataset-scroll {
   overflow-x: auto;
 }
 
@@ -49,6 +59,9 @@
 
 .dossier-dataset-table th {
   text-align: left;
+  /* Its own ground, so the header reads as a band across the whole table
+     however far it is scrolled — the cells carry it, so it travels with them. */
+  background: #1e293b;               /* slate-800 */
   /* A header must never wrap into its neighbour — that is what produced
      "SUBJECTSUMMARYDETAIL" running together. */
   white-space: nowrap;
