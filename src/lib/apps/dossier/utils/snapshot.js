@@ -126,11 +126,12 @@ export function referencedFileIds(snapshot) {
  * shelf — the difference between "this link reaches their pack" and "this link
  * reaches the pack, and anything else the author happens to have uploaded".
  *
- * Checksums are supplied by the caller, which computes them from the bytes at
- * publish time. They are NOT read from document_library.file_checksum: that
- * column exists but the shared upload route does not populate it (only the
- * Golden Thread does, for its own flow), so relying on it would leave most
- * files with no baseline at all.
+ * Checksums are supplied by the caller, which measures them from the bytes at
+ * publish time rather than reading `document_library.file_checksum`. That
+ * column IS populated on upload — but it records the bytes as they were when
+ * the file arrived, and the file lives in a Drive that can be edited from
+ * outside the portal. What a publication needs is the bytes it actually sent,
+ * so it measures its own.
  *
  * `pinned_file_id`, where present, is a copy of the bytes taken at publish time
  * (P3 step 6). The asset endpoint prefers it, which is what makes a snapshot

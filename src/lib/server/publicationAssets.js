@@ -18,6 +18,11 @@
 //     nothing to pin. Its baseline checksums let the AUTHOR ask "has anything
 //     changed since I sent this?" and get a real answer.
 
+// Note on baselines: document_library.file_checksum is populated at upload, but
+// it records the bytes as they ARRIVED. The files live in a Drive that can be
+// edited from outside the portal, so a publication measures its own — what it
+// needs is a record of what it actually sent.
+
 import { storageProvider }      from './storage/index.js';
 import { friendlyStorageError } from './storage/storageErrors.js';
 
