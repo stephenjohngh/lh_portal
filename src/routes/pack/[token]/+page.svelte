@@ -16,7 +16,38 @@
   import { fmtDateLong } from '$lib/utils/dates';
   import lhLogo from '$lib/assets/LH_services_logo.png';
 
+  import { invalidateAll } from '$app/navigation';
+  import { page as pageStore } from '$app/stores';
+
   export let data;
+
+  // ── Passphrase gate ───────────────────────────────────────────────────────
+  let passphrase = '';
+  let unlocking  = false;
+  let unlockError = '';
+
+  async function unlock() {
+    unlocking = true; unlockError = '';
+    try {
+      const res = await fetch(`/api/pack/${$pageStore.params.token}/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passphrase }),
+      });
+      if (!res.ok) {
+        unlockError = (await res.json().catch(() => ({})))?.error
+          ?? 'That passphrase was not recognised.';
+        return;
+      }
+      // The grant is an HttpOnly cookie, so the server has to be asked again.
+      passphrase = '';
+      await invalidateAll();
+    } catch {
+      unlockError = 'Could not check that just now. Please try again.';
+    } finally {
+      unlocking = false;
+    }
+  }
 
   $: content  = data.content ?? null;
   $: docs     = content?.docs ?? [];
@@ -60,7 +91,47 @@
   <meta name="robots" content="noindex, nofollow, noarchive" />
 </svelte:head>
 
-{#if data.refused}
+{#if data.locked}
+  <!-- Deliberately says nothing about the pack: no title, no dates, no sender.
+       Someone holding the link but not the passphrase learns only that they
+       need to ask for one. -->
+  <div class="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+    <form class="max-w-sm w-full space-y-4" on:submit|preventDefault={unlock}>
+      <img src={lhLogo} alt="Lonsdale House" class="h-10 mx-auto opacity-80" />
+      <p class="text-sm text-slate-300 text-center">
+        This pack is protected by a passphrase. Enter the one you were given.
+      </p>
+
+      <label class="block">
+        <span class="sr-only">Passphrase</span>
+        <input
+          type="password"
+          bind:value={passphrase}
+          autocomplete="off"
+          disabled={unlocking}
+          class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2
+                 text-sm text-slate-200 focus:outline-none focus:border-purple-500"
+        />
+      </label>
+
+      {#if unlockError}
+        <p class="text-xs text-amber-300 text-center">{unlockError}</p>
+      {/if}
+
+      <button
+        type="submit"
+        disabled={!passphrase || unlocking}
+        class="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50
+               text-white text-sm rounded px-3 py-2 transition-colors"
+      >{unlocking ? 'Checking…' : 'Open the pack'}</button>
+
+      <p class="text-[11px] text-slate-600 text-center">
+        The passphrase is not in this link. It should have reached you
+        separately.
+      </p>
+    </form>
+  </div>
+{:else if data.refused}
   <div class="min-h-screen bg-slate-900 flex items-center justify-center p-6">
     <div class="max-w-md text-center space-y-4">
       <img src={lhLogo} alt="Lonsdale House" class="h-10 mx-auto opacity-70" />

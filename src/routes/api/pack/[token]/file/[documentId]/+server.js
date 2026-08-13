@@ -13,6 +13,9 @@
 //   1. the token resolves to a publication that is live (not revoked, not
 //      expired) — checked on EVERY request, so revoking a link stops the images
 //      in a page the recipient already has open;
+//   1b. if the publication has a passphrase, this browser has answered it —
+//      otherwise the lock on the page would be cosmetic, and someone holding
+//      the link alone could still pull every file the manifest lists;
 //   2. the requested document_id appears in that publication's manifest — an
 //      allow-list of what the content actually references, so a valid link
 //      cannot be walked outwards into the rest of the shelf;
@@ -32,6 +35,7 @@ import { manifestEntry }        from '$lib/apps/dossier/utils/snapshot.js';
 import {
   findServablePublication, resolveManifest, readerRefusal,
 } from '$lib/server/publicationReader.js';
+import { hasGrant } from '$lib/server/publicationPassphrase.js';
 
 /**
  * A Content-Disposition header that cannot break, whatever the file is called.
@@ -57,7 +61,7 @@ function refuse() {
   return json({ error: readerRefusal().message }, { status: 404 });
 }
 
-export async function GET({ params, request }) {
+export async function GET({ params, request, cookies }) {
   const allowed = await checkRateLimit(request, 'pack_asset');
   if (!allowed) return json({ error: 'Too many requests.' }, { status: 429 });
 
@@ -65,6 +69,9 @@ export async function GET({ params, request }) {
   // load, so revocation reaches a page the recipient already has open.
   const found = await findServablePublication(params.token);
   if (!found.ok) return refuse();
+
+  // Gate 1b — a passphrase-protected pack serves nothing until it is answered.
+  if (!hasGrant(cookies, found.publication)) return refuse();
 
   // Gate 2 — is this file part of what the link exposes?
   const manifest = await resolveManifest(found.publication);

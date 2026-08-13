@@ -28,6 +28,9 @@ export const LIMITS = {
   // unguessable token is the real defence — this is the belt to its braces.
   pack_read:     { max: 120, windowMinutes: 15 },
   pack_asset:    { max: 300, windowMinutes: 15 }, // a page of images is many requests
+  // A passphrase is the low-entropy half of a publication's credential, so
+  // this limiter is what makes guessing it impractical rather than merely slow.
+  pack_unlock:   { max: 10,  windowMinutes: 15 },
 };
 
 // Module-level singleton for the service role client

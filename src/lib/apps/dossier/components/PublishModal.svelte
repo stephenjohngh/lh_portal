@@ -31,6 +31,7 @@
   let recipient  = '';
   let mode       = 'snapshot';
   let expiryDays = 30;
+  let passphrase = '';
   let publishing = false;
   let error      = '';
 
@@ -45,7 +46,7 @@
   export function fail(message) { error = message; publishing = false; }
 
   function reset() {
-    title = ''; recipient = ''; mode = 'snapshot'; expiryDays = 30;
+    title = ''; recipient = ''; mode = 'snapshot'; expiryDays = 30; passphrase = '';
     publishing = false; error = ''; issued = null; copied = false;
   }
 
@@ -56,6 +57,7 @@
     dispatch('publish', {
       title: title.trim(), recipientLabel: recipient.trim(), mode,
       expiryDays: expiryDays === '' ? null : Number(expiryDays),
+      passphrase: passphrase.trim(),
     });
   }
 
@@ -109,6 +111,10 @@
       <p class="text-xs text-slate-500">
         The portal does not send email. Send this link yourself, in a message
         the recipient already expects from you.
+        {#if issued.publication?.passphrase_hash}
+          <span class="text-slate-400">Send the passphrase separately</span> —
+          in the same message it protects nothing.
+        {/if}
       </p>
     </div>
 
@@ -208,6 +214,19 @@
               <option value="latest">Always the latest version</option>
             </FormSelect>
           </div>
+
+          <FormInput
+            label="Passphrase (optional)"
+            type="password"
+            bind:value={passphrase}
+            placeholder="Leave blank for link-only access"
+          />
+          <p class="text-xs text-slate-500 -mt-1">
+            A second factor for anything sensitive. Send it to the recipient
+            <span class="text-slate-400">separately</span> — by phone, or in a
+            different message — or it protects nothing. Like the link, it is
+            stored hashed and cannot be shown again.
+          </p>
 
           {#if mode === 'latest'}
             <p class="text-xs text-amber-300/90">

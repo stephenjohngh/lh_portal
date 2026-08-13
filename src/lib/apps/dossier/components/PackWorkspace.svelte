@@ -542,11 +542,11 @@
   }
 
   async function handlePublish(e) {
-    const { title, recipientLabel, mode, expiryDays } = e.detail;
+    const { title, recipientLabel, mode, expiryDays, passphrase } = e.detail;
     const checksums = reviewChecksums;      // capture before the await
     try {
       const result = await dossierStore.createPublication({
-        pack, mode, title, recipientLabel,
+        pack, mode, title, recipientLabel, passphrase,
         expiresAt: expiryFromDays(expiryDays), checksums,
       }, $auth.user.id);
       publishRef?.done(result);

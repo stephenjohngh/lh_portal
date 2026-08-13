@@ -15,6 +15,7 @@ const h = vi.hoisted(() => ({
   checkRateLimit: vi.fn(() => Promise.resolve(true)),
   findServablePublication: vi.fn(),
   resolveManifest: vi.fn(),
+  hasGrant: vi.fn(() => true),
 }));
 
 vi.mock('$lib/server/storage/index.js', () => ({
@@ -24,6 +25,7 @@ vi.mock('$lib/server/storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
 vi.mock('$lib/server/publicRateLimit.js', () => ({ checkRateLimit: h.checkRateLimit }));
+vi.mock('$lib/server/publicationPassphrase.js', () => ({ hasGrant: h.hasGrant }));
 vi.mock('$lib/server/publicationReader.js', () => ({
   findServablePublication: h.findServablePublication,
   resolveManifest: h.resolveManifest,
@@ -33,8 +35,10 @@ vi.mock('$lib/server/publicationReader.js', () => ({
 const { GET } = await import('./+server.js');
 
 const TOKEN = 'a'.repeat(43);
+/** SvelteKit hands the endpoint a cookie jar; the grant check reads it. */
+const cookies = { get: () => undefined };
 const call = (documentId = 'doc-1', token = TOKEN) =>
-  GET({ params: { token, documentId }, request: new Request('http://x/') });
+  GET({ params: { token, documentId }, request: new Request('http://x/'), cookies });
 
 const MANIFEST = {
   files: [{
@@ -46,6 +50,7 @@ const MANIFEST = {
 beforeEach(() => {
   vi.clearAllMocks();
   h.checkRateLimit.mockResolvedValue(true);
+  h.hasGrant.mockReturnValue(true);
   h.findServablePublication.mockResolvedValue({
     ok: true, publication: { id: 'pub1', mode: 'snapshot', manifest: MANIFEST },
   });
@@ -91,6 +96,36 @@ describe('gate 1 — the link must still be live', () => {
     await call();
     await call();
     expect(h.findServablePublication).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('gate 1b — a passphrase must have been answered', () => {
+  const PROTECTED = {
+    id: 'pub1', mode: 'snapshot', manifest: MANIFEST,
+    passphrase_hash: 'h', passphrase_salt: 's',
+  };
+
+  it('refuses a protected pack when the browser has not answered', async () => {
+    // Without this the lock on the page would be cosmetic: someone holding the
+    // link alone could still pull every file the manifest lists.
+    h.findServablePublication.mockResolvedValueOnce({ ok: true, publication: PROTECTED });
+    h.hasGrant.mockReturnValueOnce(false);
+
+    const res = await call();
+    expect(res.status).toBe(404);
+    expect(h.getFileStream).not.toHaveBeenCalled();
+  });
+
+  it('serves once the grant is present', async () => {
+    h.findServablePublication.mockResolvedValueOnce({ ok: true, publication: PROTECTED });
+    h.hasGrant.mockReturnValueOnce(true);
+    expect((await call()).status).toBe(200);
+  });
+
+  it('checks the grant against THIS publication', async () => {
+    h.findServablePublication.mockResolvedValueOnce({ ok: true, publication: PROTECTED });
+    await call();
+    expect(h.hasGrant).toHaveBeenCalledWith(cookies, PROTECTED);
   });
 });
 

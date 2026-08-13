@@ -17,9 +17,10 @@ import {
   stripStorageIds,
 } from '$lib/server/publicationReader.js';
 import { checkRateLimit } from '$lib/server/publicRateLimit.js';
+import { needsPassphrase, hasGrant } from '$lib/server/publicationPassphrase.js';
 
 /** @type {import('./$types').PageServerLoad} */
-export async function load({ params, request, setHeaders }) {
+export async function load({ params, request, setHeaders, cookies }) {
   // Throttle by IP before any lookup. The token is unguessable, so this is not
   // the primary defence — it is what makes enumeration pointless rather than
   // merely impractical, and it is the same table-backed limiter the MOR public
@@ -31,6 +32,14 @@ export async function load({ params, request, setHeaders }) {
 
   const found = await findServablePublication(params.token);
   if (!found.ok) return { refused: true, message: found.message };
+
+  // A passphrase, when the author set one. Note what is NOT returned in this
+  // branch: no title, no dates, nothing about the pack. Someone who has the
+  // link but not the passphrase learns only that they must ask for one.
+  if (needsPassphrase(found.publication) && !hasGrant(cookies, found.publication)) {
+    setHeaders({ 'Cache-Control': 'private, no-store' });
+    return { refused: false, locked: true };
+  }
 
   const content = await readPublicationContent(found.publication);
   if (!content) return { refused: true, message: found.message };
@@ -44,6 +53,7 @@ export async function load({ params, request, setHeaders }) {
 
   return {
     refused:     false,
+    locked:      false,
     publication: publicPublicationFields(found.publication),
     // Storage ids never leave for a recipient — see stripStorageIds() for why
     // revocation depends on it.

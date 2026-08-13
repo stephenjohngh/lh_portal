@@ -20,6 +20,7 @@ import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils
 import { coerceRecordFields, templateFor } from '../utils/datasetTemplates.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
+import { hashPassphrase } from '../utils/publicationPassphrase.js';
 
 const logger = getLogger('dossierStore');
 
@@ -366,11 +367,12 @@ function createDossierStore() {
    * @param {string} [input.recipientLabel]
    * @param {string|null} [input.expiresAt]
    * @param {Record<string,string|null>} [input.checksums] - document_id → sha-256
+   * @param {string} [input.passphrase] - optional second factor; hashed here
    * @param {string} userId
    */
   async function createPublication({
     pack, mode = 'snapshot', title, recipientLabel = '', expiresAt = null,
-    checksums = {},
+    checksums = {}, passphrase = '',
   }, userId) {
     const state = getState();
     const snapshot = buildSnapshot({
@@ -390,6 +392,10 @@ function createDossierStore() {
       : 1;
 
     const token = generateToken();
+    // Hashed in the author's browser, so the plaintext never travels except
+    // when a recipient is actually answering it.
+    const secret = passphrase ? await hashPassphrase(passphrase) : null;
+
     const publication = await api.create('dossier_publications', {
       pack_id:         pack.id,
       version,
@@ -398,6 +404,8 @@ function createDossierStore() {
       mode,
       token_hash:      await hashToken(token),
       token_prefix:    tokenPrefix(token),
+      passphrase_hash: secret?.hash ?? null,
+      passphrase_salt: secret?.salt ?? null,
       // 'latest' follows the live pack, so freezing a copy would be a lie about
       // what the recipient is seeing.
       snapshot:        mode === 'snapshot' ? snapshot : null,
@@ -416,6 +424,7 @@ function createDossierStore() {
           // What was exposed, so the audit trail answers "what did that link
           // give them?" long after the pack has moved on.
           doc_count: manifest.doc_count, file_count: manifest.files.length,
+          passphrase_protected: Boolean(secret),
         },
       });
     logger('🔗 publication issued', publication.id, 'v' + version);
