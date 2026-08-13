@@ -128,6 +128,7 @@
         filesProvider: filesStore,
         dataProvider: dataStore,
         onOpenDoc: (id) => dispatch('openDoc', id),
+        onSheetRows: (documentId, rows) => dispatch('sheetRows', { documentId, rows }),
       }),
       content: doc?.blocks ?? EMPTY_DOC,
       editable,
@@ -195,19 +196,25 @@
    * nothing to show for it. Only blocks that have no snapshot yet are touched,
    * so re-inserting the same file cannot wipe an existing one.
    */
-  export function setSheetPreview(documentId, preview) {
+  export function setSheetPreview(documentId, preview, rows = null) {
     if (!editor || !documentId || !preview) return;
     const positions = [];
     editor.state.doc.descendants((node, pos) => {
-      if (node.type.name === 'asset'
-        && node.attrs.document_id === documentId
-        && !node.attrs.sheet_preview) positions.push(pos);
+      if (node.type.name !== 'asset' || node.attrs.document_id !== documentId) return;
+      // With a row count this is a REPLACEMENT the author asked for, so it
+      // applies to blocks that already have a preview. Without one it is the
+      // first fill after an insert, and must not overwrite an existing choice.
+      if (rows == null && node.attrs.sheet_preview) return;
+      positions.push(pos);
     });
     if (!positions.length) return;
 
     // Attribute-only changes, so earlier positions stay valid as we go.
     const tr = editor.state.tr;
-    for (const pos of positions) tr.setNodeAttribute(pos, 'sheet_preview', preview);
+    for (const pos of positions) {
+      tr.setNodeAttribute(pos, 'sheet_preview', preview);
+      if (rows != null) tr.setNodeAttribute(pos, 'sheet_rows', rows);
+    }
     editor.view.dispatch(tr);
   }
 

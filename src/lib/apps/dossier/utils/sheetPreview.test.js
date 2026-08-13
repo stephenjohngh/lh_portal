@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   formatCell, buildSheetPreview, parseCsv, describeSheetPreview,
   renderSheetPreviewHtml, isSheetMime, MAX_CELL_CHARS,
+  normalisePreviewRows, PREVIEW_ROW_CHOICES, MAX_PREVIEW_ROWS,
 } from './sheetPreview.js';
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -237,5 +238,28 @@ describe('renderSheetPreviewHtml', () => {
   it('renders nothing for an empty preview, so the caller falls back to a card', () => {
     expect(renderSheetPreviewHtml(buildSheetPreview([]), esc)).toBe('');
     expect(renderSheetPreviewHtml(null, esc)).toBe('');
+  });
+});
+
+describe('normalisePreviewRows', () => {
+  // The author picks how much of a sheet to show, but the value reaches the
+  // server as a query string — so it is coerced to something we will serve
+  // rather than trusted.
+  it('accepts each offered choice', () => {
+    for (const n of PREVIEW_ROW_CHOICES) expect(normalisePreviewRows(n)).toBe(n);
+    expect(normalisePreviewRows('25')).toBe(25);
+  });
+
+  it('falls back to the default for anything else', () => {
+    for (const bad of [0, -1, 7, 5000, 'all', null, undefined, {}, NaN]) {
+      expect(normalisePreviewRows(bad)).toBe(MAX_PREVIEW_ROWS);
+    }
+  });
+
+  it('cannot be used to pull a whole file into a page block', () => {
+    // The rows are stored on the block and travel in every revision of the
+    // page, so an unbounded request is a storage problem, not just a layout one.
+    expect(normalisePreviewRows(100000)).toBe(MAX_PREVIEW_ROWS);
+    expect(Math.max(...PREVIEW_ROW_CHOICES)).toBeLessThanOrEqual(50);
   });
 });

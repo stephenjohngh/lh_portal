@@ -9,8 +9,29 @@
 // tried to show all of it would be unreadable and would bloat the stored JSON
 // it is snapshotted into.
 
-/** How much of a sheet a preview holds. Bounds the stored snapshot, not just the view. */
+/**
+ * How much of a sheet a preview holds, by default.
+ *
+ * Bounds the stored snapshot, not just the view — the rows travel in the block
+ * and again in every revision of the page, so this is a storage decision as
+ * much as a layout one.
+ */
 export const MAX_PREVIEW_ROWS = 12;
+
+/**
+ * What an author may choose instead.
+ *
+ * A schedule of works wants more than a summary table does, and only the author
+ * knows which this is. Capped: past about fifty rows a "preview" has stopped
+ * being one, and the file itself is one click away.
+ */
+export const PREVIEW_ROW_CHOICES = [5, 12, 25, 50];
+
+/** Coerce a requested row count to one we will actually serve. */
+export function normalisePreviewRows(rows) {
+  const n = Number(rows);
+  return PREVIEW_ROW_CHOICES.includes(n) ? n : MAX_PREVIEW_ROWS;
+}
 export const MAX_PREVIEW_COLS = 8;
 /** Long cells are clipped: a preview table with a 2,000-character cell is not a preview. */
 export const MAX_CELL_CHARS = 120;

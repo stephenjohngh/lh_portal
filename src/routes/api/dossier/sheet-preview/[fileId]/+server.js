@@ -15,7 +15,7 @@ import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
 import { requireAuth }          from '$lib/server/requireAuth.js';
 import { readSheetPreview, MAX_SHEET_BYTES } from '$lib/server/sheetReader.js';
 
-export async function GET({ params, request }) {
+export async function GET({ params, request, url }) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
@@ -40,7 +40,9 @@ export async function GET({ params, request }) {
   }
 
   try {
-    return json({ preview: await readSheetPreview(data) });
+    return json({
+      preview: await readSheetPreview(data, { rows: url.searchParams.get('rows') }),
+    });
   } catch (err) {
     // .xls and .ods land here: exceljs reads neither. Say so plainly — the
     // block falls back to a file card, which still opens correctly.

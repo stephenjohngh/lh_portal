@@ -10,7 +10,9 @@
 // belongs where the bytes already are.
 
 import ExcelJS from 'exceljs';
-import { buildSheetPreview, parseCsv } from '$lib/apps/dossier/utils/sheetPreview.js';
+import {
+  buildSheetPreview, parseCsv, normalisePreviewRows,
+} from '$lib/apps/dossier/utils/sheetPreview.js';
 
 /** Above this we decline rather than pull a whole workbook into memory to show 12 rows. */
 export const MAX_SHEET_BYTES = 15 * 1024 * 1024;
@@ -33,18 +35,23 @@ function isZip(buffer) {
  * the caller can say so plainly instead of returning an empty table.
  *
  * @param {Buffer} buffer
+ * @param {{ rows?: number }} [opts] - how many rows the author asked for
  * @returns {Promise<object>} a buildSheetPreview() result
  */
-export async function readSheetPreview(buffer) {
+export async function readSheetPreview(buffer, { rows } = {}) {
+  // Coerced to one of the offered choices, so a caller cannot ask for the whole
+  // file and have it stored in a page block.
+  const maxRows = normalisePreviewRows(rows);
+
   if (!isZip(buffer)) {
-    return buildSheetPreview(parseCsv(buffer.toString('utf8')));
+    return buildSheetPreview(parseCsv(buffer.toString('utf8')), { maxRows });
   }
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
 
   const sheet = workbook.worksheets?.[0];
-  if (!sheet) return buildSheetPreview([]);
+  if (!sheet) return buildSheetPreview([], { maxRows });
 
   const grid = [];
   // eachRow() skips blank rows entirely, which would silently close up a gap in
@@ -57,5 +64,5 @@ export async function readSheetPreview(buffer) {
     grid.push(cells);
   }
 
-  return buildSheetPreview(grid, { sheetName: sheet.name ?? '' });
+  return buildSheetPreview(grid, { sheetName: sheet.name ?? '', maxRows });
 }

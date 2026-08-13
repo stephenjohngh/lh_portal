@@ -13,7 +13,7 @@ import {
   previewKind, fileProxyUrl, fmtSize, assetIsMissing,
   IMAGE_WIDTHS, IMAGE_WIDTH_LABEL, normaliseImageWidth,
 } from './assetPreview.js';
-import { renderSheetPreviewHtml } from './sheetPreview.js';
+import { renderSheetPreviewHtml, PREVIEW_ROW_CHOICES } from './sheetPreview.js';
 
 /**
  * Simple attr spec: round-trip through a data- attribute of the same name.
@@ -44,6 +44,12 @@ export const Asset = Node.create({
        * told it the file had gone, and a cached image never raises an error.
        */
       filesProvider: null,
+      /**
+       * Called with (document_id, rows) when the author changes how much of a
+       * spreadsheet to show. The re-read is a server call, so it belongs to the
+       * app rather than to this module.
+       */
+      onSheetRows: null,
 
       /**
        * Where this render's file bytes come from.
@@ -96,6 +102,13 @@ export const Asset = Node.create({
         },
         renderHTML: attrs => (attrs.sheet_preview
           ? { 'data-sheet_preview': JSON.stringify(attrs.sheet_preview) } : {}),
+      },
+      /** How many rows of a spreadsheet this block shows. */
+      sheet_rows: {
+        default: null,
+        parseHTML: el => Number(el.getAttribute('data-sheet_rows')) || null,
+        renderHTML: attrs => (attrs.sheet_rows
+          ? { 'data-sheet_rows': String(attrs.sheet_rows) } : {}),
       },
       size_bytes: {
         default: 0,
@@ -182,7 +195,7 @@ export const Asset = Node.create({
    * Backspace, and a click lands inside the iframe or image instead.
    */
   addNodeView() {
-    const { filesProvider } = this.options;
+    const { filesProvider, onSheetRows } = this.options;
 
     return ({ node, getPos, editor }) => {
       const dom = document.createElement('div');
@@ -217,6 +230,27 @@ export const Asset = Node.create({
         sizes.appendChild(button);
       }
 
+      // How much of a spreadsheet to show. Only the author knows whether this
+      // is a summary table or a schedule, and the answer changes what the
+      // recipient sees — so it is a document decision like image width, not a
+      // view preference. Re-read from the file rather than stored in full and
+      // sliced: the rows travel in the block and in every revision of the page.
+      const rowCounts = document.createElement('span');
+      rowCounts.className = 'dossier-block-sizes';
+      for (const value of PREVIEW_ROW_CHOICES) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = String(value);
+        button.title = `Show ${value} rows of this spreadsheet`;
+        button.dataset.rows = String(value);
+        button.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+          if (!current.attrs.document_id) return;
+          onSheetRows?.(current.attrs.document_id, value);
+        });
+        rowCounts.appendChild(button);
+      }
+
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'dossier-block-remove';
@@ -233,7 +267,7 @@ export const Asset = Node.create({
         );
       });
 
-      controls.append(sizes, remove);
+      controls.append(sizes, rowCounts, remove);
       dom.appendChild(controls);
 
       let current = node;
@@ -243,12 +277,21 @@ export const Asset = Node.create({
       const repaint = () => {
         paint(inner, current, missing, describeFile(current, lastFiles));
         // Size controls only apply to an image that actually rendered.
-        const isImage = !missing && previewKind(current.attrs.mime_type) === 'image'
+        const isImage = !missing
+          && previewKind(current.attrs.mime_type, current.attrs.filename) === 'image'
           && Boolean(fileProxyUrl(current.attrs.provider_file_id, current.attrs.mime_type));
         sizes.hidden = !isImage;
         const active = normaliseImageWidth(current.attrs.width);
         for (const button of sizes.children) {
           button.classList.toggle('is-active', button.dataset.width === active);
+        }
+
+        // Row counts only apply to a spreadsheet whose preview actually read.
+        const isSheet = !missing && Boolean(current.attrs.sheet_preview);
+        rowCounts.hidden = !isSheet || !onSheetRows;
+        const rows = String(current.attrs.sheet_rows ?? '');
+        for (const button of rowCounts.children) {
+          button.classList.toggle('is-active', button.dataset.rows === rows);
         }
       };
 

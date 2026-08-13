@@ -172,16 +172,19 @@ export function assetIsMissing(documentId, files) {
  * result is snapshotted onto the block, not held in app state.
  *
  * @param {object|null} doc - a document_library row
+ * @param {number} [rows] - how many rows to show; the server coerces it
  * @returns {Promise<object|null>}
  */
-export async function fetchSheetPreview(doc) {
+export async function fetchSheetPreview(doc, rows) {
   const id = String(doc?.provider_file_id ?? '');
   if (!SAFE_FILE_ID.test(id)) return null;
   if (!isSheetMime(doc?.mime_type, doc?.display_name || doc?.filename)) return null;
 
   try {
     const { getJson } = await import('$lib/utils/request');
-    const body = await getJson(`/api/dossier/sheet-preview/${id}`, 'Could not read the spreadsheet');
+    const query = rows ? `?rows=${encodeURIComponent(rows)}` : '';
+    const body = await getJson(
+      `/api/dossier/sheet-preview/${id}${query}`, 'Could not read the spreadsheet');
     return body?.preview?.columns?.length ? body.preview : null;
   } catch {
     return null;

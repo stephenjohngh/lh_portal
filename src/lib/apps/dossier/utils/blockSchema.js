@@ -94,6 +94,7 @@ export const BlockId = Extension.create({
  */
 export function buildExtensions({
   filesProvider = null, dataProvider = null, assetBase = '', onOpenDoc = null,
+  onSheetRows = null,
 } = {}) {
   return [
     StarterKit.configure({
@@ -104,7 +105,7 @@ export function buildExtensions({
     }),
     Callout,
     Toggle, ToggleSummary, ToggleBody,
-    Asset.configure({ filesProvider, assetBase }),
+    Asset.configure({ filesProvider, assetBase, onSheetRows }),
     EmbedDoc,
     EmbedDataset.configure({ dataProvider, onOpenDoc }),
     DocLink,

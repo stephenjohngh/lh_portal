@@ -42,6 +42,7 @@
     buildSnapshot, buildManifest, describeInclusion, prepareAssets,
   } from '../utils/snapshot.js';
   import { expiryFromDays, publicationState } from '../utils/publicationState.js';
+  import { MAX_PREVIEW_ROWS as DEFAULT_SHEET_ROWS } from '../utils/sheetPreview.js';
 
   export let pack;
 
@@ -190,7 +191,23 @@
     // anything that is not a spreadsheet, and for a read that fails — the
     // block then simply stays a card.
     const preview = await fetchSheetPreview(file);
-    if (preview) editor?.setSheetPreview(documentId, preview);
+    if (preview) editor?.setSheetPreview(documentId, preview, DEFAULT_SHEET_ROWS);
+  }
+
+  /**
+   * The author changed how much of a spreadsheet to show.
+   *
+   * Re-read rather than stored in full and sliced: those rows travel in the
+   * block and again in every revision of the page, so keeping fifty on hand to
+   * display five would be paid for on every save.
+   */
+  async function handleSheetRows(e) {
+    const { documentId, rows } = e.detail;
+    const file = files.find(f => f.id === documentId);
+    if (!file) return;
+    const editor = editorRef;               // capture before the await
+    const preview = await fetchSheetPreview(file, rows);
+    if (preview) editor?.setSheetPreview(documentId, preview, rows);
   }
 
   // ── Datasets ──────────────────────────────────────────────────────────────
@@ -977,7 +994,8 @@
                 <div class="max-w-3xl mx-auto px-8 py-6">
                   <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files}
                                 {datasets} {records}
-                                on:openDoc={(e) => selectPage(e.detail)} />
+                                on:openDoc={(e) => selectPage(e.detail)}
+                       on:sheetRows={handleSheetRows} />
                 </div>
               </div>
             {:else}
@@ -989,6 +1007,7 @@
                        on:pickEmbed={() => openPicker('embed')}
                        on:pickTable={() => showTablePicker = true}
                        on:openDoc={(e) => selectPage(e.detail)}
+                       on:sheetRows={handleSheetRows}
                        {datasets} {records} {docs} />
             {/if}
           </div>
