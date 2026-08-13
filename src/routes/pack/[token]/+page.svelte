@@ -51,7 +51,9 @@
     }
   }
 
-  $: content  = data.content ?? null;
+  $: content     = data.content ?? null;
+  /** Narrowed once here; the template is inside {:else} but TS cannot see that. */
+  $: publication = data.publication ?? null;
   $: docs     = content?.docs ?? [];
   $: datasets = content?.datasets ?? [];
   $: records  = content?.records ?? [];
@@ -168,16 +170,16 @@
         <img src={lhLogo} alt="Lonsdale House" class="h-7 shrink-0" />
         <div class="min-w-0 flex-1">
           <p class="text-sm font-semibold text-white truncate">
-            {data.publication.title}
+            {publication?.title}
           </p>
           <p class="text-[11px] text-slate-500">
-            {#if data.publication.mode === 'snapshot'}
+            {#if publication?.mode === 'snapshot'}
               Prepared {fmtDateLong(content.generated_at)}
             {:else}
               Kept up to date · shown as at {fmtDateLong(content.generated_at)}
             {/if}
-            {#if data.publication.expires_at}
-              · available until {fmtDateLong(data.publication.expires_at)}
+            {#if publication?.expires_at}
+              · available until {fmtDateLong(publication?.expires_at)}
             {/if}
           </p>
         </div>
@@ -317,7 +319,7 @@
           {/if}
           <p class="pack-print-meta">
             Prepared {fmtDateLong(content.generated_at)}
-            {#if data.publication.mode === 'latest'}
+            {#if publication?.mode === 'latest'}
               · this pack is kept up to date, so a printed copy may go out of date
             {/if}
           </p>
