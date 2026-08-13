@@ -53,7 +53,7 @@ export async function POST({ params, request, url, cookies }) {
   cookies.set(
     grantCookieName(found.publication.id),
     mintGrant(found.publication.id),
-    grantCookieOptions());
+    grantCookieOptions(url));
 
   return json({ ok: true });
 }

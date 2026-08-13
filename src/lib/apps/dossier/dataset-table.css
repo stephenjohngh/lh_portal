@@ -68,3 +68,16 @@
 
 .dossier-dataset-gone { border-color: rgb(245 158 11 / 0.35); }
 .dossier-dataset-gone .dossier-dataset-note { color: #fbbf24; }
+
+/* ── Row references ─────────────────────────────────────────────────────────
+   The "Detail" column: where a row says the fuller story lives. A page opens
+   in place (the reader intercepts the click); a file opens in a new tab. */
+.dossier-prose .dossier-record-link {
+  color: var(--lh-accent, #3c9683);
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+.dossier-prose .dossier-record-link:hover { border-bottom-style: solid; }
+
+/* Named but not reachable — a file in a rendering with no asset base. */
+.dossier-prose .dossier-record-link-plain { color: #94a3b8; }

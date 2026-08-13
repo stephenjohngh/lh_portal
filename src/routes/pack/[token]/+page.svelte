@@ -266,6 +266,8 @@
           <DatasetTableView
             dataset={selectedDataset}
             records={records.filter(r => r.dataset_id === selectedDataset.id)}
+            {docs} {files} assetBase={data.assetBase}
+            on:openDoc={(e) => openDoc(e.detail)}
           />
         {:else if selectedDoc}
           <h1 class="text-xl font-semibold text-white mb-4">{selectedDoc.title}</h1>
@@ -274,6 +276,7 @@
             mode="read"
             {docs} {files} {datasets} {records}
             assetBase={data.assetBase}
+            on:openDoc={(e) => openDoc(e.detail)}
           />
         {:else}
           <!-- The front page: what this is, and what is in it. -->
@@ -343,6 +346,8 @@
             <DatasetTableView
               {dataset}
               records={records.filter(r => r.dataset_id === dataset.id)}
+              {docs} {files} assetBase={data.assetBase}
+              on:openDoc={(e) => openDoc(e.detail)}
             />
           </section>
         {/each}

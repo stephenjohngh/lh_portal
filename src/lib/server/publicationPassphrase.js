@@ -86,15 +86,25 @@ export function hasGrant(cookies, publication, now = Date.now()) {
   return verifyGrant(cookies?.get?.(grantCookieName(publication.id)), publication.id, now);
 }
 
-/** Cookie options for a minted grant. */
-export function grantCookieOptions() {
+/**
+ * Cookie options for a minted grant.
+ *
+ * `secure` follows the ACTUAL protocol rather than being hard-coded. In
+ * production (Netlify, Northflank) that is https, and a passphrase grant has no
+ * business travelling in the clear. But a hard-coded `true` is silently fatal
+ * over plain http from anything other than localhost — the browser discards the
+ * cookie, the page re-locks, and the recipient sees a correct passphrase
+ * rejected with no error at all. Reading the request's own protocol keeps the
+ * production guarantee and makes LAN testing work.
+ *
+ * @param {URL} [url] - the request URL; omit only where no request exists
+ */
+export function grantCookieOptions(url) {
   return {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
-    // Netlify and Northflank both serve over HTTPS; a passphrase grant has no
-    // business travelling in the clear.
-    secure: true,
+    secure: url ? url.protocol === 'https:' : true,
     maxAge: Math.floor(GRANT_TTL_MS / 1000),
   };
 }

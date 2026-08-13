@@ -30,6 +30,7 @@ vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/utils/documentApi', () => ({ listDocuments: h.listDocuments }));
 
 const { dossierStore: store } = await import('./dossierStore.js');
+const { buildSnapshot } = await import('../utils/snapshot.js');
 
 beforeEach(() => { vi.clearAllMocks(); h.api.get.mockResolvedValue([]); });
 
@@ -611,6 +612,15 @@ describe('datasets', () => {
 describe('publications', () => {
   const pack = { id: 'p1', title: 'Flat 4 dispute', description: '' };
 
+  /** The snapshot a caller would have built and shown in the review. */
+  function reviewed() {
+    const state = get(store);
+    return buildSnapshot({
+      pack, docs: state.docs, datasets: state.datasets,
+      records: state.records, files: state.files,
+    });
+  }
+
   /** Load a pack with one page, one file on the shelf, and the page using it. */
   async function seedPack() {
     h.api.get.mockResolvedValueOnce([{
@@ -633,7 +643,7 @@ describe('publications', () => {
 
   it('stores only the token HASH, and returns the token exactly once', async () => {
     await seedPack();
-    const { token } = await store.createPublication({ pack }, 'u1');
+    const { token } = await store.createPublication({ pack, snapshot: reviewed() }, 'u1');
 
     const row = h.api.create.mock.calls.at(-1)[1];
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -645,7 +655,7 @@ describe('publications', () => {
 
   it('freezes what is loaded, so the author publishes what they reviewed', async () => {
     await seedPack();
-    await store.createPublication({ pack }, 'u1');
+    await store.createPublication({ pack, snapshot: reviewed() }, 'u1');
 
     const row = h.api.create.mock.calls.at(-1)[1];
     expect(row.snapshot.docs.map(d => d.id)).toEqual(['d1']);
@@ -654,7 +664,7 @@ describe('publications', () => {
 
   it('manifests ONLY referenced files — the rest of the shelf stays out of reach', async () => {
     await seedPack();
-    await store.createPublication({ pack }, 'u1');
+    await store.createPublication({ pack, snapshot: reviewed() }, 'u1');
 
     const { manifest } = h.api.create.mock.calls.at(-1)[1];
     expect(manifest.files.map(f => f.document_id)).toEqual(['f1']);
@@ -663,7 +673,8 @@ describe('publications', () => {
   it('carries the checksums measured at publish time', async () => {
     await seedPack();
     await store.createPublication({
-      pack, checksums: { f1: { checksum: 'abc', pinned_file_id: 'pin-1' } },
+      pack, snapshot: reviewed(),
+      checksums: { f1: { checksum: 'abc', pinned_file_id: 'pin-1' } },
     }, 'u1');
 
     const { manifest } = h.api.create.mock.calls.at(-1)[1];
@@ -674,7 +685,7 @@ describe('publications', () => {
   it('stores no snapshot in follow-latest mode', async () => {
     // Freezing a copy would be a lie about what the recipient is seeing.
     await seedPack();
-    await store.createPublication({ pack, mode: 'latest' }, 'u1');
+    await store.createPublication({ pack, snapshot: reviewed(), mode: 'latest' }, 'u1');
 
     const row = h.api.create.mock.calls.at(-1)[1];
     expect(row.mode).toBe('latest');
@@ -690,7 +701,7 @@ describe('publications', () => {
     await seedPack();
     h.api.get.mockResolvedValueOnce([{ version: 4 }]);   // the query for max version
 
-    await store.createPublication({ pack }, 'u1');
+    await store.createPublication({ pack, snapshot: reviewed() }, 'u1');
 
     expect(h.api.get).toHaveBeenCalledWith('dossier_publications', {
       select: 'version', filters: { pack_id: 'p1' },
@@ -702,7 +713,7 @@ describe('publications', () => {
   it('starts at 1 for a pack that has never been published', async () => {
     await seedPack();
     h.api.get.mockResolvedValueOnce([]);
-    await store.createPublication({ pack }, 'u1');
+    await store.createPublication({ pack, snapshot: reviewed() }, 'u1');
     expect(h.api.create.mock.calls.at(-1)[1].version).toBe(1);
   });
 
@@ -716,7 +727,7 @@ describe('publications', () => {
         { code: '23505' }));
     h.api.get.mockResolvedValueOnce([{ version: 2 }]);
 
-    await store.createPublication({ pack }, 'u1');
+    await store.createPublication({ pack, snapshot: reviewed() }, 'u1');
 
     expect(h.api.create).toHaveBeenCalledTimes(2);
     expect(h.api.create.mock.calls.at(-1)[1].version).toBe(3);
@@ -727,7 +738,7 @@ describe('publications', () => {
     h.api.get.mockResolvedValueOnce([]);
     h.api.create.mockRejectedValueOnce(new Error('network down'));
 
-    await expect(store.createPublication({ pack }, 'u1')).rejects.toThrow('network down');
+    await expect(store.createPublication({ pack, snapshot: reviewed() }, 'u1')).rejects.toThrow('network down');
     expect(h.api.create).toHaveBeenCalledTimes(1);
   });
 
@@ -741,7 +752,8 @@ describe('publications', () => {
     h.api.get.mockResolvedValueOnce([]);
     await store.loadPublications('p1');
     await seedPack();
-    await store.createPublication({ pack, recipientLabel: 'Smith & Co' }, 'u1');
+    await store.createPublication(
+      { pack, snapshot: reviewed(), recipientLabel: 'Smith & Co' }, 'u1');
 
     const [, , , , meta] = h.logAudit.mock.calls.at(-1);
     expect(meta.severity).toBe('warning');

@@ -520,6 +520,17 @@
   $: publications = $dossierStore.publications;
   $: liveLinks = publications.filter(p => publicationState(p) === 'live').length;
 
+  /**
+   * The snapshot the author is looking at.
+   *
+   * Built ONCE, when the review opens, and then carried through pinning and
+   * persistence unchanged. Rebuilding it at publish time would mean the row
+   * written is a different object from the list that was approved, and the file
+   * pass takes seconds — long enough for a store update to change what goes
+   * out without anyone seeing it.
+   */
+  let reviewedSnapshot = null;
+
   async function openPublish() {
     // Flush first: publishing something that does not include the sentence the
     // author just typed would be a quiet and serious bug.
@@ -532,14 +543,16 @@
     // read once at PUBLISH instead (see handlePublish): pinning here would
     // leave an orphaned copy behind every time an author looked and thought
     // better of it.
-    const snapshot = buildSnapshot({ pack, docs, datasets, records, files });
-    publishReview = describeInclusion(snapshot, buildManifest(snapshot));
+    reviewedSnapshot = buildSnapshot({ pack, docs, datasets, records, files });
+    publishReview = describeInclusion(
+      reviewedSnapshot, buildManifest(reviewedSnapshot));
     preparing = false;
   }
 
   async function handlePublish(e) {
     const { title, recipientLabel, mode, expiryDays, passphrase } = e.detail;
-    const snapshot = buildSnapshot({ pack, docs, datasets, records, files });
+    const snapshot = reviewedSnapshot;     // exactly what was on screen
+    if (!snapshot) { publishRef?.fail('Nothing was reviewed. Please try again.'); return; }
     try {
       // One pass over the bytes: checksum every file, and PIN a copy when the
       // publication is a frozen one. Measured now, at publication — a checksum
@@ -548,7 +561,7 @@
       const assets = await prepareAssets(snapshot.files, { pin: mode === 'snapshot' });
 
       const result = await dossierStore.createPublication({
-        pack, mode, title, recipientLabel, passphrase,
+        pack, snapshot, mode, title, recipientLabel, passphrase,
         expiresAt: expiryFromDays(expiryDays), checksums: assets,
       }, $auth.user.id);
       publishRef?.done(result);
@@ -614,7 +627,8 @@
   function togglePubs() {
     pubsOpen = !pubsOpen;
     setPref(LS_PUBS, pubsOpen ? '1' : '0');
-    if (pubsOpen) dossierStore.loadPublications(pack.id).catch(() => {});
+    // No load here: setting pubsOpen satisfies the reactive block below, which
+    // is the single place that fetches. Doing both sent two identical queries.
   }
 
   // Loaded on open, and once up front only if the section is already expanded.
@@ -1030,7 +1044,7 @@
   packTitle={pack.title}
   {preparing}
   on:publish={handlePublish}
-  on:close={() => { showPublish = false; publishReview = null; }}
+  on:close={() => { showPublish = false; publishReview = null; reviewedSnapshot = null; }}
 />
 
 <ConfirmDialog

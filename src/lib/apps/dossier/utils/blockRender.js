@@ -287,7 +287,9 @@ function resolveSheetPreviews(html) {
  * Skipped when no tables are supplied — that means the caller gave no resolver,
  * not that every table has been deleted.
  */
-function resolveDatasetEmbeds(html, { datasets = [], records = [] } = {}) {
+function resolveDatasetEmbeds(
+  html, { datasets = [], records = [], docs = [], files = [], assetBase = '' } = {},
+) {
   if (!html || typeof document === 'undefined') return html;
   if (!datasets.length) return html;
 
@@ -302,7 +304,11 @@ function resolveDatasetEmbeds(html, { datasets = [], records = [] } = {}) {
     const dataset = datasets.find(d => d.id === id);
 
     node.innerHTML = dataset
-      ? renderDatasetTableHtml(dataset, records.filter(r => r.dataset_id === id))
+      // Row references travel here too: a chronology shown inside a page is the
+      // same table, and dropping its links only when embedded would be an
+      // arbitrary difference the author never asked for.
+      ? renderDatasetTableHtml(dataset, records.filter(r => r.dataset_id === id),
+          { links: { docs, files, assetBase } })
       : renderMissingDatasetHtml(node.getAttribute('data-embed-dataset-title'));
   }
 

@@ -380,11 +380,16 @@ function createDossierStore() {
    * AGAIN — only its SHA-256 reaches the database. The caller must show it to
    * the author immediately; there is no recovery path but Regenerate.
    *
-   * The snapshot is built from what is already in memory rather than re-read,
-   * so what the author reviewed on screen is exactly what is frozen.
+   * The caller passes the SNAPSHOT IT REVIEWED. This method deliberately does
+   * not rebuild one: reading live store state here would mean the row persisted
+   * is a different object from the list the author approved, and any store
+   * mutation during the (multi-second) file pass would silently change what
+   * goes out. For the one dialog whose purpose is to be authoritative about
+   * what leaves the building, that invariant has to be structural.
    *
    * @param {object} input
    * @param {object} input.pack
+   * @param {object} input.snapshot - the reviewed snapshot, built by the caller
    * @param {'snapshot'|'latest'} [input.mode]
    * @param {string} [input.title]
    * @param {string} [input.recipientLabel]
@@ -394,17 +399,10 @@ function createDossierStore() {
    * @param {string} userId
    */
   async function createPublication({
-    pack, mode = 'snapshot', title, recipientLabel = '', expiresAt = null,
-    checksums = {}, passphrase = '',
+    pack, snapshot, mode = 'snapshot', title, recipientLabel = '',
+    expiresAt = null, checksums = {}, passphrase = '',
   }, userId) {
-    const state = getState();
-    const snapshot = buildSnapshot({
-      pack,
-      docs:     state.docs,
-      datasets: state.datasets,
-      records:  state.records,
-      files:    state.files,
-    });
+    if (!snapshot) throw new Error('createPublication requires the reviewed snapshot.');
     const manifest = buildManifest(snapshot, checksums);
 
     const token = generateToken();

@@ -14,7 +14,7 @@
 
 import {
   findServablePublication, readPublicationContent, publicPublicationFields,
-  stripStorageIds,
+  stripStorageIds, readerRefusal,
 } from '$lib/server/publicationReader.js';
 import { checkRateLimit } from '$lib/server/publicRateLimit.js';
 import { needsPassphrase, hasGrant } from '$lib/server/publicationPassphrase.js';
@@ -42,7 +42,9 @@ export async function load({ params, request, setHeaders, cookies }) {
   }
 
   const content = await readPublicationContent(found.publication);
-  if (!content) return { refused: true, message: found.message };
+  // `found` carries no message on its ok branch, so this must not reach for
+  // one — a recipient would get the refusal layout with an empty paragraph.
+  if (!content) return { refused: true, message: readerRefusal().message };
 
   // A published pack is private to whoever holds the link. It must not be
   // cached by a shared proxy, and it must not turn up in a search index.

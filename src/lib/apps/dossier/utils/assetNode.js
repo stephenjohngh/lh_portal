@@ -112,8 +112,11 @@ export const Asset = Node.create({
   renderHTML({ HTMLAttributes, node }) {
     const { filename, mime_type, provider_file_id, size_bytes, document_id } = node.attrs;
     const kind = previewKind(mime_type, filename);
+    // An empty document_id must yield NO url, not the bare directory path —
+    // otherwise the truthiness check below passes and the recipient gets a
+    // broken image where the author correctly sees the "Unavailable" card.
     const url  = this.options.assetBase
-      ? `${this.options.assetBase}${encodeURIComponent(document_id ?? '')}`
+      ? (document_id ? `${this.options.assetBase}${encodeURIComponent(document_id)}` : '')
       : fileProxyUrl(provider_file_id, mime_type);
     const name = filename || 'File';
     const size = fmtSize(size_bytes);

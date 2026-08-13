@@ -12,6 +12,7 @@
      the public reader it renders <BlockContent mode="read"> and inherits every
      rule below with no duplication. -->
 <script>
+  import { createEventDispatcher } from 'svelte';
   import { renderBlocksToHtml } from '../utils/blockRender.js';
   import { isEmptyDoc }         from '../utils/blockSchema.js';
   // Table styling is shared with DatasetTableView and the editor's node view,
@@ -39,6 +40,22 @@
    */
   export let assetBase = '';
 
+  const dispatch = createEventDispatcher();
+
+  /**
+   * A table row can reference another page. The table is injected as HTML, so
+   * there is nothing to bind a handler to — the click is caught by delegation
+   * and turned into an event the surrounding reader can navigate on. In the
+   * editor no such anchors are rendered, so this never fires.
+   */
+  function handleClick(event) {
+    const anchor = event.target instanceof Element
+      ? event.target.closest('a[data-doc-id]') : null;
+    if (!anchor) return;
+    event.preventDefault();
+    dispatch('openDoc', anchor.getAttribute('data-doc-id'));
+  }
+
   $: html = mode === 'read'
     ? renderBlocksToHtml(blocks, { docs, files, datasets, records, assetBase })
     : '';
@@ -57,7 +74,8 @@
   <p class="text-sm text-slate-500">This page is empty.</p>
 {:else}
   <!-- Sanitised in renderBlocksToHtml() with a Dossier-specific allow-list. -->
-  <div class="dossier-prose">{@html html}</div>
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="dossier-prose" on:click={handleClick}>{@html html}</div>
 {/if}
 
 <style>
