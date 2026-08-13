@@ -1,0 +1,70 @@
+/* src/lib/apps/dossier/dataset-table.css
+   How a table looks — chronology, correspondence, document index.
+
+   A plain stylesheet rather than a component <style> block because THREE
+   surfaces render this markup and all three must agree (merge doc D10):
+
+     * BlockContent's read-mode renderer (a table embedded in a page)
+     * the editor's embedded-table node view
+     * DatasetTableView, which the published reader uses for a table on its own
+
+   These rules lived inside BlockContent as :global() until the reader needed a
+   table on a page with no prose on it — at which point BlockContent was not
+   mounted and the rules simply did not exist. Importing one stylesheet from
+   both components is what stops that recurring. */
+
+.dossier-dataset {
+  margin: 0 0 1rem;
+  border: 1px solid #334155;         /* slate-700 */
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.dossier-dataset-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #f1f5f9;                    /* slate-100 */
+  background: #1e293b;               /* slate-800 */
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid #334155;
+}
+
+.dossier-dataset-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;               /* a long filename must not steal a column */
+  font-size: 0.8125rem;
+}
+
+.dossier-dataset-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #94a3b8;                    /* slate-400 */
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #334155;
+}
+
+.dossier-dataset-table td {
+  padding: 0.4rem 0.6rem;
+  color: #cbd5e1;                    /* slate-300 */
+  vertical-align: top;
+  border-bottom: 1px solid #1e293b;
+  /* Author prose wraps rather than overflowing its column. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.dossier-dataset-table tr:last-child td { border-bottom: 0; }
+
+.dossier-dataset-empty,
+.dossier-dataset-note {
+  padding: 0.6rem 0.7rem;
+  font-size: 0.8125rem;
+  color: #94a3b8;                    /* slate-400 */
+}
+
+.dossier-dataset-gone { border-color: rgb(245 158 11 / 0.35); }
+.dossier-dataset-gone .dossier-dataset-note { color: #fbbf24; }

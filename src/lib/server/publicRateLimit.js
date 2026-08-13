@@ -22,6 +22,12 @@ export const LIMITS = {
   status_lookup: { max: 10, windowMinutes: 15 }, // 10 status checks per 15 min (per IP)
   ai_suggest:    { max: 60, windowMinutes: 60 }, // 60 action suggestions per hour (per user)
   ai_summary:    { max: 60, windowMinutes: 60 }, // 60 summaries per hour (per user)
+  // Dossier published packs (per IP). Generous enough that a solicitor reading
+  // a pack, opening its files and coming back to it never notices; low enough
+  // that enumerating tokens is pointless rather than merely impractical. The
+  // unguessable token is the real defence — this is the belt to its braces.
+  pack_read:     { max: 120, windowMinutes: 15 },
+  pack_asset:    { max: 300, windowMinutes: 15 }, // a page of images is many requests
 };
 
 // Module-level singleton for the service role client

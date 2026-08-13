@@ -54,7 +54,7 @@ const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', '
  * than the primary control — but a pack is the one thing in this portal built
  * to be handed to an outsider, so the render path is belt and braces.
  */
-export function sanitizeBlockHtml(html) {
+export function sanitizeBlockHtml(html, { assetBase = '' } = {}) {
   if (typeof html !== 'string' || html === '') return '';
   // DOMPurify needs a window; during SSR there is nothing to render into.
   if (typeof window === 'undefined') return html;
@@ -64,9 +64,13 @@ export function sanitizeBlockHtml(html) {
   // moment a published pack is opened.
   const hook = (node) => {
     const tag = node.tagName?.toLowerCase();
-    if (tag === 'img' && !isProxyUrl(node.getAttribute('src'))) {
-      node.remove();
-    }
+    if (tag !== 'img') return;
+    const src = node.getAttribute('src');
+    // Two shapes are admissible: this app's media proxy (the author's view),
+    // and the token-scoped base a published pack renders with. Both are
+    // same-origin paths this code generated; anything else goes.
+    const ours = assetBase ? String(src ?? '').startsWith(assetBase) : false;
+    if (!ours && !isProxyUrl(src)) node.remove();
   };
 
   DOMPurify.addHook('afterSanitizeAttributes', hook);
@@ -97,7 +101,11 @@ export function sanitizeBlockHtml(html) {
 export function renderBlocksToHtml(blocks, opts = {}) {
   const json = blocks && typeof blocks === 'object' && blocks.type ? blocks : EMPTY_DOC;
   try {
-    const html = sanitizeBlockHtml(generateHTML(json, buildExtensions()));
+    // assetBase decides where a file's bytes come from — empty for the author
+    // (this app's media proxy), token-scoped for a published pack's recipient.
+    const html = sanitizeBlockHtml(
+      generateHTML(json, buildExtensions({ assetBase: opts.assetBase ?? '' })),
+      opts);
     return expandEmbeds(
       resolveDatasetEmbeds(resolveSheetPreviews(resolveAssets(html, opts)), opts),
       opts);

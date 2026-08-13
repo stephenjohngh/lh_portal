@@ -92,7 +92,9 @@ export const BlockId = Extension.create({
  * The extension list for a Dossier editor.
  * @param {{ placeholder?: string }} [opts]
  */
-export function buildExtensions({ filesProvider = null, dataProvider = null } = {}) {
+export function buildExtensions({
+  filesProvider = null, dataProvider = null, assetBase = '',
+} = {}) {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
@@ -102,7 +104,7 @@ export function buildExtensions({ filesProvider = null, dataProvider = null } = 
     }),
     Callout,
     Toggle, ToggleSummary, ToggleBody,
-    Asset.configure({ filesProvider }),
+    Asset.configure({ filesProvider, assetBase }),
     EmbedDoc,
     EmbedDataset.configure({ dataProvider }),
     DocLink,

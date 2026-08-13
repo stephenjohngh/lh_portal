@@ -196,6 +196,53 @@ describe('asset blocks', () => {
     expect(html).not.toContain('dossier-sheet-table');
   });
 
+  it('points assets at a token-scoped path when one is given', () => {
+    // How a published pack keeps a recipient's file requests inside their own
+    // publication instead of reaching the portal-wide media proxy.
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd1', filename: 'Roof.jpg',
+      mime_type: 'image/jpeg', provider_file_id: 'drive1',
+    }), { assetBase: '/api/pack/TOKEN123/file/' });
+
+    expect(html).toContain('src="/api/pack/TOKEN123/file/d1"');
+    // The storage id must not survive into the recipient's markup — the media
+    // proxy is unauthenticated, so a leaked provider id outlives revocation.
+    expect(html).not.toContain('drive1');
+    expect(html).not.toContain('/api/media/file/');
+  });
+
+  it('keys the token-scoped URL on document_id, never on the storage id', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd9', filename: 'Notice.pdf',
+      mime_type: 'application/pdf', provider_file_id: 'drive9',
+    }), { assetBase: '/api/pack/TOKEN123/file/' });
+
+    expect(html).toContain('href="/api/pack/TOKEN123/file/d9"');
+    expect(html).not.toContain('drive9');
+  });
+
+  it('survives the sanitiser, which must admit the token path too', () => {
+    // The img allow-rule knows the media proxy by shape. A published pack's URL
+    // is a different shape, and getting this wrong strips every image from the
+    // one page built to be handed to an outsider.
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd1', filename: 'Roof.jpg',
+      mime_type: 'image/jpeg', provider_file_id: 'drive1',
+    }), { assetBase: '/api/pack/TOKEN123/file/' });
+
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    expect(host.querySelector('img')).not.toBeNull();
+  });
+
+  it('still uses the media proxy for the author', () => {
+    const html = renderBlocksToHtml(asset({
+      document_id: 'd1', filename: 'Roof.jpg',
+      mime_type: 'image/jpeg', provider_file_id: 'drive1',
+    }));
+    expect(html).toContain('/api/media/file/drive1');
+  });
+
   it('carries the author-chosen preview width into the markup', () => {
     const html = renderBlocksToHtml(asset({
       document_id: 'd1', filename: 'Roof.jpg', width: 'medium',

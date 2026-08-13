@@ -44,6 +44,20 @@ export const Asset = Node.create({
        * told it the file had gone, and a cached image never raises an error.
        */
       filesProvider: null,
+
+      /**
+       * Where this render's file bytes come from.
+       *
+       * Empty (the default) means this app's own media proxy, which is right
+       * for the AUTHOR. A published pack passes its token-scoped base, so the
+       * URL becomes `<base><document_id>` and every request is checked against
+       * the publication's manifest, its expiry and its revocation.
+       *
+       * Deciding it here rather than rewriting the HTML afterwards is
+       * deliberate: a post-render pass needs a DOM, so it would quietly do
+       * nothing during SSR and emit portal-wide proxy URLs to a recipient.
+       */
+      assetBase: '',
     };
   },
   group: 'block',
@@ -96,13 +110,24 @@ export const Asset = Node.create({
   },
 
   renderHTML({ HTMLAttributes, node }) {
-    const { filename, mime_type, provider_file_id, size_bytes } = node.attrs;
+    const { filename, mime_type, provider_file_id, size_bytes, document_id } = node.attrs;
     const kind = previewKind(mime_type, filename);
-    const url  = fileProxyUrl(provider_file_id, mime_type);
+    const url  = this.options.assetBase
+      ? `${this.options.assetBase}${encodeURIComponent(document_id ?? '')}`
+      : fileProxyUrl(provider_file_id, mime_type);
     const name = filename || 'File';
     const size = fmtSize(size_bytes);
 
-    const wrapper = mergeAttributes(HTMLAttributes, {
+    // Belt to stripStorageIds()'s braces: when rendering for a recipient, the
+    // storage id must not appear even as a data- attribute. The media proxy is
+    // unauthenticated, so a leaked provider id outlives revocation entirely —
+    // and a caller who forgets to strip should still not be able to leak one.
+    const attrs = this.options.assetBase
+      ? Object.fromEntries(
+          Object.entries(HTMLAttributes).filter(([k]) => k !== 'data-provider_file_id'))
+      : HTMLAttributes;
+
+    const wrapper = mergeAttributes(attrs, {
       'data-asset': '',
       'data-kind': url ? kind : 'file',   // no usable URL → always the plain card
       class: 'dossier-asset',
