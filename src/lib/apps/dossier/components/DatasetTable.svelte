@@ -14,6 +14,7 @@
     templateFor, sortRecords, emptyRecordFields, isBlankRecord,
   } from '../utils/datasetTemplates.js';
   import { unindexedFiles, describeShelfAddition } from '../utils/documentIndex.js';
+  import { needsFolding } from '../utils/datasetRender.js';
 
   export let dataset;
   export let records = [];
@@ -82,20 +83,45 @@
   const MAX_CELL_PX = 180;
 
   /**
+   * Which capped cells the author has chosen to open, keyed `<row>:<field>`.
+   *
+   * The read view folds a long body into a row of its own; this table cannot do
+   * that, because every cell is an input. So the cell expands in place instead
+   * — the same promise (the whole text is reachable) by the means this surface
+   * allows.
+   */
+  let expanded = new Set();
+
+  const cellKey = (record, field) => `${record.id}:${field.key}`;
+
+  function toggleExpanded(record, field) {
+    const key = cellKey(record, field);
+    // Reassigned, not mutated: Svelte does not track Set mutation.
+    const next = new Set(expanded);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    expanded = next;
+  }
+
+  /**
    * A textarea that grows with its content, as a Svelte action so the initial
    * size is right too — a cell loaded with three lines of notes should show
    * three lines, not one with the rest hidden.
    */
-  function grows(node) {
+  function grows(node, open = false) {
+    let uncapped = open;
     const resize = () => {
       node.style.height = 'auto';
       const wanted = node.scrollHeight;
-      node.style.height = `${Math.min(wanted, MAX_CELL_PX)}px`;
-      node.style.overflowY = wanted > MAX_CELL_PX ? 'auto' : 'hidden';
+      const height = uncapped ? wanted : Math.min(wanted, MAX_CELL_PX);
+      node.style.height = `${height}px`;
+      node.style.overflowY = !uncapped && wanted > MAX_CELL_PX ? 'auto' : 'hidden';
     };
     resize();
     node.addEventListener('input', resize);
-    return { destroy: () => node.removeEventListener('input', resize) };
+    return {
+      update(next) { uncapped = next; resize(); },
+      destroy: () => node.removeEventListener('input', resize),
+    };
   }
 
   function commitCell(record, field, value) {
@@ -260,14 +286,25 @@
                 {:else if field.type === 'longtext'}
                   <textarea
                     rows="1"
-                    use:grows
+                    use:grows={expanded.has(cellKey(record, field))}
                     class="w-full bg-transparent text-slate-200 text-sm rounded px-1 py-1
                            border border-transparent hover:border-slate-700
                            focus:border-slate-600 focus:bg-slate-800 outline-none
-                           resize-none overflow-hidden leading-snug"
+                           resize-none leading-snug"
                     value={record.fields?.[field.key] ?? ''}
                     on:blur={(e) => commitCell(record, field, e.currentTarget.value)}
                   ></textarea>
+                  {#if needsFolding(record.fields?.[field.key])}
+                    <!-- A pasted email body is forty lines. The cell caps at a
+                         readable height; this is how the rest is reached. -->
+                    <button
+                      type="button"
+                      class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+                      on:click={() => toggleExpanded(record, field)}
+                    >{expanded.has(cellKey(record, field))
+                        ? '▾ show less'
+                        : '▸ show full text'}</button>
+                  {/if}
                 {:else}
                   <input
                     type={field.type === 'date' ? 'date' : 'text'}

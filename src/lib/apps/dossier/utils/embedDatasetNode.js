@@ -98,6 +98,31 @@ export const EmbedDataset = Node.create({
 
       let current = node;
       let latest  = null;
+      /** The markup currently in `body`, so an identical repaint is skipped. */
+      let painted = null;
+
+      /**
+       * Replace the table's markup — but ONLY when it has actually changed.
+       *
+       * The provider fires on every store update, and the editor's props are
+       * objects, which Svelte's safe_not_equal reports as changed on every
+       * parent render. So this ran constantly, and each run replaced the DOM
+       * wholesale: a reader who opened a folded email body watched it close
+       * again about a second later, when the next autosave happened to tick.
+       *
+       * Skipping an identical repaint fixes that outright. When the markup HAS
+       * changed — a row edited, an entry added — the open/closed state of each
+       * folded body is carried across, because losing the one you were reading
+       * is exactly as annoying as it sounds.
+       */
+      const render = (html) => {
+        if (html === painted) return;
+
+        const open = [...body.querySelectorAll('details')].map(d => d.open);
+        body.innerHTML = html;
+        painted = html;
+        body.querySelectorAll('details').forEach((d, i) => { d.open = open[i] ?? false; });
+      };
 
       const paint = (data) => {
         if (data !== undefined) latest = data;
@@ -108,18 +133,18 @@ export const EmbedDataset = Node.create({
         if (!dataset) {
           // With nothing loaded we cannot tell "deleted" from "not loaded yet",
           // so name the table rather than accuse it of being gone.
-          body.innerHTML = datasets.length
+          render(datasets.length
             ? renderMissingDatasetHtml(current.attrs.dataset_title)
             : `<div class="dossier-dataset"><div class="dossier-dataset-title">`
               + `${escapeHtml(current.attrs.dataset_title || 'Table')}</div>`
-              + '<div class="dossier-dataset-empty">Loading…</div></div>';
+              + '<div class="dossier-dataset-empty">Loading…</div></div>');
           return;
         }
-        body.innerHTML = renderDatasetTableHtml(
+        render(renderDatasetTableHtml(
           dataset, records.filter(r => r.dataset_id === dataset.id),
           // No assetBase in the editor: a file reference renders as a label
           // rather than a link, because the author already has the shelf.
-          { links: { docs: latest?.docs ?? [], files: latest?.files ?? [] } });
+          { links: { docs: latest?.docs ?? [], files: latest?.files ?? [] } }));
       };
 
       // A page reference is navigation, not a URL. The table is innerHTML, so
