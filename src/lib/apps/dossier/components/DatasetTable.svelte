@@ -15,7 +15,6 @@
     columnFields, rowFields,
   } from '../utils/datasetTemplates.js';
   import { unindexedFiles, describeShelfAddition } from '../utils/documentIndex.js';
-  import { needsFolding } from '../utils/datasetRender.js';
 
   export let dataset;
   export let records = [];
@@ -99,6 +98,18 @@
    */
   let expanded = new Set();
 
+  /**
+   * Cells whose content actually exceeds the cap — MEASURED, not guessed.
+   *
+   * The control used to appear whenever the text held a newline or ran past 140
+   * characters, which is the READ view's rule for folding. But the cap here is
+   * 180 PIXELS, so a short multi-line message fitted comfortably and still got
+   * a "show full text" button that did nothing at all. Two thresholds in
+   * different units cannot agree; the only honest one is what the textarea
+   * reports about itself.
+   */
+  let overflowing = new Set();
+
   const cellKey = (record, field) => `${record.id}:${field.key}`;
 
   function toggleExpanded(record, field) {
@@ -109,24 +120,43 @@
     expanded = next;
   }
 
+  /** Record whether a cell overflows, without looping back through Svelte. */
+  function noteOverflow(key, isOver) {
+    // The guard is load-bearing: `grows` reports on every resize, a state
+    // change re-renders, and a re-render resizes again. Only a genuine change
+    // may reach the store.
+    if (overflowing.has(key) === isOver) return;
+    const next = new Set(overflowing);
+    if (isOver) next.add(key); else next.delete(key);
+    overflowing = next;
+  }
+
+  /** Offer the control only when there is something behind it. */
+  const canExpand = (record, field) =>
+    overflowing.has(cellKey(record, field)) || expanded.has(cellKey(record, field));
+
   /**
    * A textarea that grows with its content, as a Svelte action so the initial
    * size is right too — a cell loaded with three lines of notes should show
    * three lines, not one with the rest hidden.
    */
-  function grows(node, open = false) {
-    let uncapped = open;
+  function grows(node, params = {}) {
+    let opts = params;
     const resize = () => {
       node.style.height = 'auto';
       const wanted = node.scrollHeight;
-      const height = uncapped ? wanted : Math.min(wanted, MAX_CELL_PX);
-      node.style.height = `${height}px`;
-      node.style.overflowY = !uncapped && wanted > MAX_CELL_PX ? 'auto' : 'hidden';
+      const open = opts.open ?? false;
+      node.style.height = `${open ? wanted : Math.min(wanted, MAX_CELL_PX)}px`;
+      node.style.overflowY = !open && wanted > MAX_CELL_PX ? 'auto' : 'hidden';
+      // A pixel of slack: scrollHeight can exceed the height just set by a
+      // rounding error at some zoom levels, which would put the control on
+      // every cell in the table.
+      opts.onOverflow?.(wanted > MAX_CELL_PX + 1);
     };
     resize();
     node.addEventListener('input', resize);
     return {
-      update(next) { uncapped = next; resize(); },
+      update(next) { opts = next; resize(); },
       destroy: () => node.removeEventListener('input', resize),
     };
   }
@@ -293,7 +323,10 @@
                 {:else if field.type === 'longtext'}
                   <textarea
                     rows="1"
-                    use:grows={expanded.has(cellKey(record, field))}
+                    use:grows={{
+                      open: expanded.has(cellKey(record, field)),
+                      onOverflow: (v) => noteOverflow(cellKey(record, field), v),
+                    }}
                     class="w-full bg-transparent text-slate-200 text-sm rounded px-1 py-1
                            border border-transparent hover:border-slate-700
                            focus:border-slate-600 focus:bg-slate-800 outline-none
@@ -301,9 +334,8 @@
                     value={record.fields?.[field.key] ?? ''}
                     on:blur={(e) => commitCell(record, field, e.currentTarget.value)}
                   ></textarea>
-                  {#if needsFolding(record.fields?.[field.key])}
-                    <!-- A pasted email body is forty lines. The cell caps at a
-                         readable height; this is how the rest is reached. -->
+                  {#if canExpand(record, field)}
+                    <!-- Only when the cell is genuinely cut off. -->
                     <button
                       type="button"
                       class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
@@ -387,7 +419,10 @@
                     {#if canEdit}
                       <textarea
                         rows="1"
-                        use:grows={expanded.has(cellKey(record, field))}
+                        use:grows={{
+                          open: expanded.has(cellKey(record, field)),
+                          onOverflow: (v) => noteOverflow(cellKey(record, field), v),
+                        }}
                         class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
                                border border-transparent hover:border-slate-700
                                focus:border-slate-600 focus:bg-slate-800 outline-none
@@ -396,7 +431,7 @@
                         value={record.fields?.[field.key] ?? ''}
                         on:blur={(e) => commitCell(record, field, e.currentTarget.value)}
                       ></textarea>
-                      {#if needsFolding(record.fields?.[field.key])}
+                      {#if canExpand(record, field)}
                         <button
                           type="button"
                           class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
@@ -448,7 +483,7 @@
                 {:else if field.type === 'longtext'}
                   <textarea
                     rows="1"
-                    use:grows
+                    use:grows={{}}
                     class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
                            border border-dashed border-slate-800 focus:border-slate-600
                            focus:bg-slate-800 outline-none placeholder:text-slate-600
@@ -480,7 +515,7 @@
                 {#each beneath as field}
                   <textarea
                     rows="1"
-                    use:grows={false}
+                    use:grows={{}}
                     class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
                            border border-dashed border-slate-800 focus:border-slate-600
                            focus:bg-slate-800 outline-none placeholder:text-slate-600

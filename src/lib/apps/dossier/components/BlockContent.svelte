@@ -487,6 +487,21 @@
      .dossier-embed-stub. */
   :global(.dossier-prose .dossier-dataset-embed-host) {
     position: relative;
+    /* The node is an atom with contentEditable=false sitting inside a
+       contenteditable region. Without this, clicking it starts a native text
+       selection and the browser paints EVERY cell highlighted — which looks
+       like a bug and hides the actual ProseMirror node selection. The table is
+       a unit here; it is selected as one, and its text is read (and copied)
+       from the table's own view, not from inside a page. */
+    user-select: none;
+  }
+  /* What being selected should actually look like — the same treatment an
+     asset gets, so an atom reads as an atom wherever it appears. */
+  :global(.dossier-prose .dossier-dataset-embed-host.ProseMirror-selectednode),
+  :global(.dossier-prose .ProseMirror-selectednode > .dossier-dataset-embed-host) {
+    outline: 2px solid var(--lh-accent, #3c9683);
+    outline-offset: 2px;
+    border-radius: 6px;
   }
   :global(.dossier-prose .dossier-dataset-embed-host .dossier-block-remove) {
     position: absolute;
