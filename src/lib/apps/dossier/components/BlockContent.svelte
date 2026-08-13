@@ -410,6 +410,34 @@
   }
   :global(.dossier-prose .dossier-asset-host .dossier-asset) { margin: 0; }
 
+  /* How many rows of a spreadsheet to show. A typed number rather than a few
+     preset buttons — a schedule and a summary table want very different
+     amounts, and the preset that fits is rarely one of four guesses. */
+  :global(.dossier-prose .dossier-block-rows) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.65rem;
+    color: #94a3b8;                  /* slate-400 */
+    /* The host sets user-select:none so a click cannot smear a highlight over
+       the block; a field the author types into has to opt back in. */
+    user-select: text;
+  }
+  :global(.dossier-prose .dossier-block-rows input) {
+    width: 3rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    border: 1px solid #334155;       /* slate-700 */
+    background: rgb(15 23 42 / 0.9); /* slate-900 */
+    color: #e2e8f0;                  /* slate-200 */
+    font-size: 0.7rem;
+    text-align: right;
+  }
+  :global(.dossier-prose .dossier-block-rows input:focus) {
+    outline: none;
+    border-color: var(--lh-accent, #3c9683);
+  }
+
   /* The hover control strip: size buttons (images only) plus remove. */
   :global(.dossier-prose .dossier-block-controls) {
     position: absolute;

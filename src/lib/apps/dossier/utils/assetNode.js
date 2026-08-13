@@ -13,7 +13,10 @@ import {
   previewKind, fileProxyUrl, fmtSize, assetIsMissing,
   IMAGE_WIDTHS, IMAGE_WIDTH_LABEL, normaliseImageWidth,
 } from './assetPreview.js';
-import { renderSheetPreviewHtml, PREVIEW_ROW_CHOICES } from './sheetPreview.js';
+import {
+  renderSheetPreviewHtml, normalisePreviewRows,
+  MIN_PREVIEW_ROWS, ROW_LIMIT, MAX_PREVIEW_ROWS,
+} from './sheetPreview.js';
 
 /**
  * Simple attr spec: round-trip through a data- attribute of the same name.
@@ -235,21 +238,25 @@ export const Asset = Node.create({
       // recipient sees — so it is a document decision like image width, not a
       // view preference. Re-read from the file rather than stored in full and
       // sliced: the rows travel in the block and in every revision of the page.
-      const rowCounts = document.createElement('span');
-      rowCounts.className = 'dossier-block-sizes';
-      for (const value of PREVIEW_ROW_CHOICES) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = String(value);
-        button.title = `Show ${value} rows of this spreadsheet`;
-        button.dataset.rows = String(value);
-        button.addEventListener('mousedown', (event) => {
-          event.preventDefault();
-          if (!current.attrs.document_id) return;
-          onSheetRows?.(current.attrs.document_id, value);
-        });
-        rowCounts.appendChild(button);
-      }
+      const rowCounts = document.createElement('label');
+      rowCounts.className = 'dossier-block-rows';
+      const rowLabel = document.createElement('span');
+      rowLabel.textContent = 'rows';
+      const rowInput = document.createElement('input');
+      rowInput.type = 'number';
+      rowInput.min = String(MIN_PREVIEW_ROWS);
+      rowInput.max = String(ROW_LIMIT);
+      rowInput.step = '1';
+      rowInput.title = `How many rows to show (${MIN_PREVIEW_ROWS}–${ROW_LIMIT})`;
+      // `change`, not `input`: a re-read is a server call, and firing one per
+      // keystroke would issue five requests for "25".
+      rowInput.addEventListener('change', () => {
+        if (!current.attrs.document_id) return;
+        const rows = normalisePreviewRows(rowInput.value);
+        rowInput.value = String(rows);      // show what will actually be served
+        onSheetRows?.(current.attrs.document_id, rows);
+      });
+      rowCounts.append(rowInput, rowLabel);
 
       const remove = document.createElement('button');
       remove.type = 'button';
@@ -286,12 +293,13 @@ export const Asset = Node.create({
           button.classList.toggle('is-active', button.dataset.width === active);
         }
 
-        // Row counts only apply to a spreadsheet whose preview actually read.
+        // The row count only applies to a spreadsheet whose preview read.
         const isSheet = !missing && Boolean(current.attrs.sheet_preview);
         rowCounts.hidden = !isSheet || !onSheetRows;
-        const rows = String(current.attrs.sheet_rows ?? '');
-        for (const button of rowCounts.children) {
-          button.classList.toggle('is-active', button.dataset.rows === rows);
+        // Do not fight the author mid-edit: only restate the value when the
+        // field is not the thing they are typing into.
+        if (document.activeElement !== rowInput) {
+          rowInput.value = String(current.attrs.sheet_rows ?? MAX_PREVIEW_ROWS);
         }
       };
 
@@ -324,6 +332,10 @@ export const Asset = Node.create({
         },
         destroy() { unsubscribe?.(); },
         ignoreMutation: () => true,   // the whole subtree is ours, not ProseMirror's
+        // Keystrokes in the row field belong to the field. Without this
+        // ProseMirror handles them against the document — Backspace would
+        // delete the block the author is trying to configure.
+        stopEvent: (event) => controls.contains(/** @type {any} */ (event.target)),
       };
     };
   },

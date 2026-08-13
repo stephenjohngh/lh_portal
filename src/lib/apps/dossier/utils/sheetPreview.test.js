@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   formatCell, buildSheetPreview, parseCsv, describeSheetPreview,
   renderSheetPreviewHtml, isSheetMime, MAX_CELL_CHARS,
-  normalisePreviewRows, PREVIEW_ROW_CHOICES, MAX_PREVIEW_ROWS,
+  normalisePreviewRows, MIN_PREVIEW_ROWS, ROW_LIMIT, MAX_PREVIEW_ROWS,
 } from './sheetPreview.js';
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -242,24 +242,46 @@ describe('renderSheetPreviewHtml', () => {
 });
 
 describe('normalisePreviewRows', () => {
-  // The author picks how much of a sheet to show, but the value reaches the
+  // The author types how much of a sheet to show, but the value reaches the
   // server as a query string — so it is coerced to something we will serve
   // rather than trusted.
-  it('accepts each offered choice', () => {
-    for (const n of PREVIEW_ROW_CHOICES) expect(normalisePreviewRows(n)).toBe(n);
-    expect(normalisePreviewRows('25')).toBe(25);
+  it('accepts any whole number in range', () => {
+    for (const n of [1, 7, 12, 23, 40]) expect(normalisePreviewRows(n)).toBe(n);
+    expect(normalisePreviewRows('23')).toBe(23);
   });
 
-  it('falls back to the default for anything else', () => {
-    for (const bad of [0, -1, 7, 5000, 'all', null, undefined, {}, NaN]) {
+  it('CLAMPS rather than rejecting an out-of-range number', () => {
+    // Someone who types 90 wants as much as we will give them; answering with
+    // the default 12 would be perverse.
+    expect(normalisePreviewRows(90)).toBe(ROW_LIMIT);
+    expect(normalisePreviewRows(0)).toBe(MIN_PREVIEW_ROWS);
+    expect(normalisePreviewRows(-5)).toBe(MIN_PREVIEW_ROWS);
+  });
+
+  it('truncates a fraction rather than serving half a row', () => {
+    expect(normalisePreviewRows(7.9)).toBe(7);
+  });
+
+  it('falls back to the default for a value that is not a number at all', () => {
+    // A malformed request, not an opinion.
+    for (const bad of ['all', {}, NaN, Infinity]) {
       expect(normalisePreviewRows(bad)).toBe(MAX_PREVIEW_ROWS);
+    }
+  });
+
+  it('treats ABSENT as the default, not as zero', () => {
+    // Number(null) is 0 and Number('') is 0, and URLSearchParams.get() returns
+    // null for a parameter nobody sent — so without a guard every request that
+    // omitted the count would clamp to the minimum and show a single row.
+    for (const absent of [null, undefined, '']) {
+      expect(normalisePreviewRows(absent)).toBe(MAX_PREVIEW_ROWS);
     }
   });
 
   it('cannot be used to pull a whole file into a page block', () => {
     // The rows are stored on the block and travel in every revision of the
     // page, so an unbounded request is a storage problem, not just a layout one.
-    expect(normalisePreviewRows(100000)).toBe(MAX_PREVIEW_ROWS);
-    expect(Math.max(...PREVIEW_ROW_CHOICES)).toBeLessThanOrEqual(50);
+    expect(normalisePreviewRows(100000)).toBe(ROW_LIMIT);
+    expect(ROW_LIMIT).toBeLessThanOrEqual(40);
   });
 });

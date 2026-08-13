@@ -19,18 +19,34 @@
 export const MAX_PREVIEW_ROWS = 12;
 
 /**
- * What an author may choose instead.
+ * The range an author may choose from.
  *
  * A schedule of works wants more than a summary table does, and only the author
- * knows which this is. Capped: past about fifty rows a "preview" has stopped
- * being one, and the file itself is one click away.
+ * knows which this is — so it is a number they type, not a short list of
+ * guesses. Bounded at both ends: nought rows is not a preview, and past forty a
+ * preview has stopped being one, with the file itself one click away.
  */
-export const PREVIEW_ROW_CHOICES = [5, 12, 25, 50];
+export const MIN_PREVIEW_ROWS = 1;
+export const ROW_LIMIT = 40;
 
-/** Coerce a requested row count to one we will actually serve. */
+/**
+ * Coerce a requested row count into the range we will actually serve.
+ *
+ * Clamps rather than rejects: an author who types 90 wants "as much as you
+ * will give me", and answering with the default 12 would be perverse. Anything
+ * that is not a number at all falls back to the default, because that is a
+ * malformed request rather than an opinion.
+ */
 export function normalisePreviewRows(rows) {
+  // Absent is not zero. `Number(null)` is 0 and `Number('')` is 0, and
+  // URLSearchParams.get() returns null for a parameter nobody sent — so
+  // without this guard every request that simply omitted the count would clamp
+  // to the minimum and show a single row.
+  if (rows == null || rows === '') return MAX_PREVIEW_ROWS;
+
   const n = Number(rows);
-  return PREVIEW_ROW_CHOICES.includes(n) ? n : MAX_PREVIEW_ROWS;
+  if (!Number.isFinite(n)) return MAX_PREVIEW_ROWS;
+  return Math.min(Math.max(Math.trunc(n), MIN_PREVIEW_ROWS), ROW_LIMIT);
 }
 export const MAX_PREVIEW_COLS = 8;
 /** Long cells are clipped: a preview table with a 2,000-character cell is not a preview. */
