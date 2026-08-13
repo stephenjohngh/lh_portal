@@ -11,6 +11,33 @@
 
 import { fieldsFor, sortRecords, templateFor } from './datasetTemplates.js';
 
+/**
+ * How much of a long field shows in its cell before the rest is folded away.
+ *
+ * A pasted email body is the case that forced this: the whole message goes into
+ * Summary (deliberately — it is the author's evidence and truncating it would
+ * lose text they can no longer see), and a single row then ran to forty lines,
+ * pushing every other entry off the screen. The body has to be READABLE without
+ * being the only thing visible.
+ */
+export const LONGTEXT_PREVIEW_CHARS = 140;
+
+/** Does this value need folding, or does it fit in a cell as it is? */
+export function needsFolding(value) {
+  const text = String(value ?? '');
+  // Multi-line counts even when short: a pasted email with three one-word
+  // paragraphs still reads as a body, not as a cell value.
+  return text.length > LONGTEXT_PREVIEW_CHARS || text.includes('\n');
+}
+
+/** The one-line gist that stays in the cell. */
+export function previewOf(value) {
+  const flat = String(value ?? '').replace(/\s+/g, ' ').trim();
+  return flat.length > LONGTEXT_PREVIEW_CHARS
+    ? `${flat.slice(0, LONGTEXT_PREVIEW_CHARS).trimEnd()}…`
+    : flat;
+}
+
 /** Escape for HTML text and quoted attribute contexts. */
 export function escapeHtml(value) {
   return String(value ?? '')
@@ -108,14 +135,41 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
     // would take space from the prose columns that need it.
     + (showLinks ? '<th>Detail</th>' : '');
 
+  const columnCount = fields.length + (showLinks ? 1 : 0);
+
   const body = rows.map((record, i) => {
+    // Long or multi-line values show a gist here and their full text below, so
+    // one email body cannot push every other entry off the screen.
+    const folded = fields.filter(f =>
+      f.type === 'longtext' && needsFolding(record?.fields?.[f.key]));
+
     const cells = fields
-      // An empty cell gets a dash, not nothing: a blank in a table reads as an
-      // oversight, whereas "—" reads as deliberately not applicable.
-      .map(f => `<td>${escapeHtml(record?.fields?.[f.key] || '—')}</td>`)
+      .map((f) => {
+        const value = record?.fields?.[f.key] ?? '';
+        // An empty cell gets a dash, not nothing: a blank in a table reads as
+        // an oversight, whereas "—" reads as deliberately not applicable.
+        if (!value) return '<td>—</td>';
+        return folded.includes(f)
+          ? `<td>${escapeHtml(previewOf(value))}</td>`
+          : `<td>${escapeHtml(value)}</td>`;
+      })
       .join('')
       + (showLinks ? `<td>${linked[i] || '—'}</td>` : '');
-    return `<tr>${cells}</tr>`;
+
+    const row = `<tr>${cells}</tr>`;
+    if (!folded.length) return row;
+
+    // <details> rather than a scripted toggle: native, keyboard-accessible,
+    // works in a published pack with no JS of its own, and the print stylesheet
+    // can force it open — a body hidden on paper would be dropped evidence.
+    const bodies = folded.map(f =>
+      '<details class="dossier-dataset-body">'
+      + `<summary>${escapeHtml(f.label)} — full text</summary>`
+      + `<div class="dossier-dataset-body-text">${escapeHtml(record.fields[f.key])}</div>`
+      + '</details>').join('');
+
+    return row
+      + `<tr class="dossier-dataset-bodyrow"><td colspan="${columnCount}">${bodies}</td></tr>`;
   }).join('');
 
   return `<div class="dossier-dataset">${heading}`

@@ -72,6 +72,16 @@
   }
 
   /**
+   * How tall a cell may grow before it scrolls instead.
+   *
+   * A pasted email body is not three lines, it is forty — and an uncapped
+   * textarea made one correspondence row taller than the screen. Past the cap
+   * the cell scrolls; nothing is lost, and the read view folds the full text
+   * into a row of its own.
+   */
+  const MAX_CELL_PX = 180;
+
+  /**
    * A textarea that grows with its content, as a Svelte action so the initial
    * size is right too — a cell loaded with three lines of notes should show
    * three lines, not one with the rest hidden.
@@ -79,7 +89,9 @@
   function grows(node) {
     const resize = () => {
       node.style.height = 'auto';
-      node.style.height = `${node.scrollHeight}px`;
+      const wanted = node.scrollHeight;
+      node.style.height = `${Math.min(wanted, MAX_CELL_PX)}px`;
+      node.style.overflowY = wanted > MAX_CELL_PX ? 'auto' : 'hidden';
     };
     resize();
     node.addEventListener('input', resize);

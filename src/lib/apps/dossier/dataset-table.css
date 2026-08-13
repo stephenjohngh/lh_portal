@@ -105,3 +105,38 @@
 .dossier-dataset-table td:last-child .dossier-record-link-plain {
   white-space: nowrap;
 }
+
+/* ── Folded bodies ──────────────────────────────────────────────────────────
+   A pasted email body goes into Summary in full, deliberately — it is the
+   author's evidence. But a forty-line cell pushes every other entry off the
+   screen, so the cell keeps a gist and the whole text folds into a row of its
+   own beneath. <details> is native: keyboard-accessible, no script, and the
+   print stylesheet can force it open. */
+.dossier-dataset-bodyrow > td {
+  padding: 0 0.6rem 0.5rem;
+  border-bottom: 1px solid #1e293b;
+}
+.dossier-dataset-table tr.dossier-dataset-bodyrow:last-child > td { border-bottom: 0; }
+
+.dossier-dataset-body > summary {
+  cursor: pointer;
+  font-size: 0.6875rem;
+  color: #94a3b8;                    /* slate-400 */
+  padding: 0.2rem 0;
+  user-select: none;
+}
+.dossier-dataset-body > summary:hover { color: #e2e8f0; }
+
+.dossier-dataset-body-text {
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.7rem;
+  background: rgb(15 23 42 / 0.6);   /* slate-900 */
+  border-left: 2px solid #334155;    /* slate-700 */
+  border-radius: 0 4px 4px 0;
+  color: #cbd5e1;                    /* slate-300 */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  /* A very long body scrolls rather than becoming the whole page. */
+  max-height: 22rem;
+  overflow-y: auto;
+}

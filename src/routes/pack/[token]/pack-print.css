@@ -152,6 +152,24 @@
     display: table-header-group;   /* repeat the header on every sheet */
   }
 
+  /* A folded email body must PRINT. The recipient cannot expand a <details>
+     on paper, and silently omitting evidence from a briefing pack is the same
+     fault as a collapsed toggle. */
+  .dossier-dataset-body[open],
+  .dossier-dataset-body {
+    display: block !important;
+  }
+  .dossier-dataset-body > summary { display: none !important; }
+  .dossier-dataset-body .dossier-dataset-body-text {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: none !important;
+    border-left: 1pt solid #999 !important;
+    color: #000 !important;
+  }
+  .dossier-dataset-bodyrow > td { border-color: #999 !important; }
+
   /* ── Assets ──────────────────────────────────────────────────────────── */
   .dossier-asset-image {
     max-width: 100% !important;

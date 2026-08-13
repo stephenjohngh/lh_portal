@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   renderDatasetTableHtml, renderMissingDatasetHtml, escapeHtml,
+  previewOf, needsFolding, LONGTEXT_PREVIEW_CHARS,
 } from './datasetRender.js';
 
 const chronology = { id: 'ds1', key: 'chronology', title: 'Chronology' };
@@ -169,5 +170,86 @@ describe('renderDatasetTableHtml — row references', () => {
       { links: { ...links, docs: [{ id: 'd9', title: '<script>x</script>' }] } });
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script');
+  });
+});
+
+describe('renderDatasetTableHtml — long bodies', () => {
+  // A pasted email body goes into Summary in full, deliberately. But a
+  // forty-line cell pushes every other entry off the screen, so the cell keeps
+  // a gist and the whole text folds into a row of its own.
+  const dataset = { id: 'ds1', key: 'correspondence', title: 'Correspondence' };
+  const long = 'Everton continue their pre-season preparations this afternoon '
+    + 'with a landmark double-header at the Volksparkstadion, and you can watch '
+    + 'every minute live on evertontv. Everton Women get the action under way.';
+
+  const rows = [{ id: 'r1', fields: { date: '2026-08-01', subject: 'Buy Now', summary: long } }];
+
+  it('keeps a gist in the cell and folds the rest away', () => {
+    const html = renderDatasetTableHtml(dataset, rows);
+
+    expect(html).toContain('dossier-dataset-bodyrow');
+    expect(html).toContain('<details class="dossier-dataset-body">');
+    expect(html).toContain('Summary — full text');
+    // The cell itself carries only the opening of the body.
+    expect(html).toContain('Everton continue their pre-season');
+    expect(html).toContain('…');
+  });
+
+  it('keeps the WHOLE body — nothing is lost to the fold', () => {
+    // The body is the author's evidence; the fold is a display decision, not a
+    // truncation.
+    const html = renderDatasetTableHtml(dataset, rows);
+    expect(html).toContain('Everton Women get the action under way.');
+  });
+
+  it('folds a SHORT but multi-line value too', () => {
+    // Three one-word paragraphs still read as a body rather than a cell value.
+    const html = renderDatasetTableHtml(dataset,
+      [{ id: 'r1', fields: { summary: 'One.\n\nTwo.\n\nThree.' } }]);
+    expect(html).toContain('dossier-dataset-bodyrow');
+  });
+
+  it('leaves a short single-line value alone', () => {
+    const html = renderDatasetTableHtml(dataset,
+      [{ id: 'r1', fields: { date: '2026-08-01', summary: 'Thanks, noted.' } }]);
+
+    expect(html).not.toContain('dossier-dataset-bodyrow');
+    expect(html).toContain('<td>Thanks, noted.</td>');
+  });
+
+  it('folds only longtext columns, never a short one', () => {
+    // Subject is `text`; a long subject line is still a subject.
+    const html = renderDatasetTableHtml(dataset,
+      [{ id: 'r1', fields: { subject: 'x'.repeat(300) } }]);
+    expect(html).not.toContain('dossier-dataset-bodyrow');
+  });
+
+  it('spans the whole table, including the Detail column when present', () => {
+    const html = renderDatasetTableHtml(dataset,
+      [{ id: 'r1', fields: { summary: long }, doc_id: 'd1' }],
+      { links: { docs: [{ id: 'd1', title: 'Detail page' }] } });
+
+    // 5 template columns + Detail.
+    expect(html).toContain('colspan="6"');
+  });
+
+  it('escapes the folded body', () => {
+    const html = renderDatasetTableHtml(dataset,
+      [{ id: 'r1', fields: { summary: `${'x'.repeat(200)}<script>alert(1)</script>` } }]);
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script');
+  });
+});
+
+describe('previewOf / needsFolding', () => {
+  it('flattens whitespace for the gist', () => {
+    expect(previewOf('  one\n\n  two  ')).toBe('one two');
+  });
+
+  it('marks anything past the cap, or containing a newline', () => {
+    expect(needsFolding('short')).toBe(false);
+    expect(needsFolding('a\nb')).toBe(true);
+    expect(needsFolding('x'.repeat(LONGTEXT_PREVIEW_CHARS + 1))).toBe(true);
+    expect(needsFolding(null)).toBe(false);
   });
 });
