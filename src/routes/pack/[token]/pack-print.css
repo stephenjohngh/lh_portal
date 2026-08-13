@@ -168,7 +168,12 @@
     border-left: 1pt solid #999 !important;
     color: #000 !important;
   }
-  .dossier-dataset-bodyrow > td { border-color: #999 !important; }
+  /* The screen tint that separates a message from its row is toner on paper,
+     where the indent and the rule already do that job. */
+  .dossier-dataset-bodyrow > td {
+    background: none !important;
+    border-color: #999 !important;
+  }
 
   /* ── Assets ──────────────────────────────────────────────────────────── */
   .dossier-asset-image {

@@ -409,11 +409,15 @@
                  squeezed every other value off the screen or was too narrow to
                  read; it is also a different kind of thing from the rest of the
                  row. -->
+            <!-- Tinted a shade LIGHTER than the table, matching the read view.
+                 Without it the message and the row it belongs to read as one
+                 flat surface. -->
             <tr class="align-top {flashId === record.id ? 'bg-slate-700/40' : ''}">
-              <td colspan={spanAll} class="pb-2 pr-3">
+              <td colspan={spanAll}
+                  class="pt-0.5 pb-2 px-2 bg-slate-800/35 border-l-2 border-slate-600">
                 {#each beneath as field}
                   {#if canEdit || record.fields?.[field.key]}
-                    <p class="text-[11px] text-slate-600 uppercase tracking-wide">
+                    <p class="text-[11px] text-slate-500 uppercase tracking-wide">
                       {field.label}
                     </p>
                     {#if canEdit}
@@ -425,7 +429,7 @@
                         }}
                         class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
                                border border-transparent hover:border-slate-700
-                               focus:border-slate-600 focus:bg-slate-800 outline-none
+                               focus:border-slate-600 focus:bg-slate-900/60 outline-none
                                resize-none leading-snug"
                         placeholder={field.placeholder ?? field.label}
                         value={record.fields?.[field.key] ?? ''}
@@ -511,14 +515,15 @@
 
           {#if beneath.length}
             <tr class="align-top">
-              <td colspan={spanAll} class="pb-2 pr-3">
+              <td colspan={spanAll}
+                  class="pt-0.5 pb-2 px-2 bg-slate-800/20 border-l-2 border-slate-700">
                 {#each beneath as field}
                   <textarea
                     rows="1"
                     use:grows={{}}
                     class="w-full bg-transparent text-slate-300 text-sm rounded px-1 py-1
                            border border-dashed border-slate-800 focus:border-slate-600
-                           focus:bg-slate-800 outline-none placeholder:text-slate-600
+                           focus:bg-slate-900/60 outline-none placeholder:text-slate-600
                            resize-none leading-snug"
                     placeholder={field.placeholder ?? field.label}
                     bind:value={draft[field.key]}

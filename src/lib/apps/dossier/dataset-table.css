@@ -112,8 +112,13 @@
    screen, so the cell keeps a gist and the whole text folds into a row of its
    own beneath. <details> is native: keyboard-accessible, no script, and the
    print stylesheet can force it open. */
+/* The message sits on a LIGHTER ground than the table, not a darker one. The
+   first attempt tinted it slate-900 over a slate-900 page, which is no tint at
+   all — everything read as one flat surface. Lifting it instead makes the row
+   and its message legible as two things without a heavy border. */
 .dossier-dataset-bodyrow > td {
-  padding: 0 0.6rem 0.5rem;
+  padding: 0.15rem 0.6rem 0.5rem;
+  background: rgb(30 41 59 / 0.35);  /* slate-800 */
   border-bottom: 1px solid #1e293b;
 }
 .dossier-dataset-table tr.dossier-dataset-bodyrow:last-child > td { border-bottom: 0; }
@@ -130,8 +135,8 @@
 .dossier-dataset-body-text {
   margin-top: 0.35rem;
   padding: 0.5rem 0.7rem;
-  background: rgb(15 23 42 / 0.6);   /* slate-900 */
-  border-left: 2px solid #334155;    /* slate-700 */
+  background: rgb(30 41 59 / 0.75);  /* slate-800 — lighter than the table */
+  border-left: 2px solid #475569;    /* slate-600 */
   border-radius: 0 4px 4px 0;
   color: #cbd5e1;                    /* slate-300 */
   white-space: pre-wrap;
