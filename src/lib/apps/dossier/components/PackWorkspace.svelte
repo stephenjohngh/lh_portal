@@ -39,7 +39,7 @@
   import PublishModal      from './PublishModal.svelte';
   import PublicationsPanel from './PublicationsPanel.svelte';
   import {
-    buildSnapshot, buildManifest, describeInclusion, fetchChecksums,
+    buildSnapshot, buildManifest, describeInclusion, prepareAssets,
   } from '../utils/snapshot.js';
   import { expiryFromDays, publicationState } from '../utils/publicationState.js';
 
@@ -520,38 +520,62 @@
   $: publications = $dossierStore.publications;
   $: liveLinks = publications.filter(p => publicationState(p) === 'live').length;
 
-  /** The checksums computed for the review, reused by the publish itself. */
-  let reviewChecksums = {};
-
   async function openPublish() {
     // Flush first: publishing something that does not include the sentence the
     // author just typed would be a quiet and serious bug.
     await editorRef?.flushNow();
 
-    publishReview = null;
-    reviewChecksums = {};
     preparing = true;
     showPublish = true;
 
+    // The review is pure — no server call, so it opens instantly. Files are
+    // read once at PUBLISH instead (see handlePublish): pinning here would
+    // leave an orphaned copy behind every time an author looked and thought
+    // better of it.
     const snapshot = buildSnapshot({ pack, docs, datasets, records, files });
-    // Baselines are taken NOW, at publication, not later: a checksum measured
-    // afterwards is a baseline for a file that may already have changed.
-    reviewChecksums = await fetchChecksums(snapshot.files);
-    publishReview = describeInclusion(snapshot, buildManifest(snapshot, reviewChecksums));
+    publishReview = describeInclusion(snapshot, buildManifest(snapshot));
     preparing = false;
   }
 
   async function handlePublish(e) {
     const { title, recipientLabel, mode, expiryDays, passphrase } = e.detail;
-    const checksums = reviewChecksums;      // capture before the await
+    const snapshot = buildSnapshot({ pack, docs, datasets, records, files });
     try {
+      // One pass over the bytes: checksum every file, and PIN a copy when the
+      // publication is a frozen one. Measured now, at publication — a checksum
+      // taken later is a baseline for a file that may already have changed, and
+      // a pin taken later is not the thing that was sent.
+      const assets = await prepareAssets(snapshot.files, { pin: mode === 'snapshot' });
+
       const result = await dossierStore.createPublication({
         pack, mode, title, recipientLabel, passphrase,
-        expiresAt: expiryFromDays(expiryDays), checksums,
+        expiresAt: expiryFromDays(expiryDays), checksums: assets,
       }, $auth.user.id);
       publishRef?.done(result);
     } catch (err) {
       publishRef?.fail(err.message);
+    }
+  }
+
+  // ── Checking a publication's files ────────────────────────────────────────
+  // "Has anything changed since I sent this?" — the author-facing half of
+  // decision #5. For a pinned publication a changed source is information; for
+  // a follow-latest one it is a warning.
+  let verifyResult = null;
+  let verifyingId  = null;
+
+  async function handleVerify(publication) {
+    const id = publication.id;
+    verifyingId = id; verifyResult = null;
+    try {
+      const { postJson } = await import('$lib/utils/request');
+      const body = await postJson(`/api/dossier/publications/${id}/verify`, {},
+        'Could not check the files');
+      verifyResult = { id, message: body.message };
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      verifyingId = null;
     }
   }
 
@@ -847,6 +871,9 @@
               busyId={pubBusyId}
               on:regenerate={(e) => handleRegenerate(e.detail)}
               on:revoke={(e) => pendingRevoke = e.detail}
+              on:verify={(e) => handleVerify(e.detail)}
+              {verifyResult}
+              {verifyingId}
             />
           </div>
         {/if}

@@ -662,10 +662,13 @@ describe('publications', () => {
 
   it('carries the checksums measured at publish time', async () => {
     await seedPack();
-    await store.createPublication({ pack, checksums: { f1: 'abc' } }, 'u1');
+    await store.createPublication({
+      pack, checksums: { f1: { checksum: 'abc', pinned_file_id: 'pin-1' } },
+    }, 'u1');
 
     const { manifest } = h.api.create.mock.calls.at(-1)[1];
     expect(manifest.files[0].checksum).toBe('abc');
+    expect(manifest.files[0].pinned_file_id).toBe('pin-1');
   });
 
   it('stores no snapshot in follow-latest mode', async () => {

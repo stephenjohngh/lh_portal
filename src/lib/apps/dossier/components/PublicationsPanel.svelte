@@ -17,6 +17,9 @@
   export let canEdit = true;
   /** id of the publication currently being revoked/regenerated. */
   export let busyId = null;
+  /** { id, message } from the most recent file check. */
+  export let verifyResult = null;
+  export let verifyingId = null;
 
   const dispatch = createEventDispatcher();
 </script>
@@ -46,6 +49,11 @@
             <span class="font-mono">{publication.token_prefix}…</span>
             · {describePublication(publication)}
             {#if publication.mode === 'latest'}· follows the latest version{/if}
+            {#if publication.manifest?.files?.some(f => f.pinned_file_id)}
+              <!-- The recipient is served copies taken at publication, so
+                   editing a source document cannot change what they see. -->
+              · files pinned
+            {/if}
           </p>
           <p>Issued {fmtDateTime(publication.created_at)}</p>
         </div>
@@ -65,6 +73,18 @@
               Revoke
             </ProtectedButton>
           </div>
+        {/if}
+
+        {#if canEdit}
+          <button
+            class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+            disabled={verifyingId === publication.id}
+            on:click={() => dispatch('verify', publication)}
+          >{verifyingId === publication.id ? 'Checking files…' : 'Check files'}</button>
+
+          {#if verifyResult?.id === publication.id}
+            <p class="text-[11px] text-slate-400">{verifyResult.message}</p>
+          {/if}
         {/if}
       </div>
     {/each}

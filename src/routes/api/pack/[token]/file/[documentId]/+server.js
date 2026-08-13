@@ -80,7 +80,12 @@ export async function GET({ params, request, cookies }) {
 
   // Gate 3 — the storage id is the manifest's, never the caller's. The caller
   // supplies a document_id and has no way to name a file outside the pack.
-  const storageId = String(entry.provider_file_id ?? '');
+  //
+  // The PINNED copy wins where there is one (P3 step 6): it is the bytes as
+  // they were at publication, and serving the original instead would quietly
+  // undo the immutability the author was promised. Falling back to the original
+  // is right for follow-latest links, and for a file that could not be pinned.
+  const storageId = String(entry.pinned_file_id || entry.provider_file_id || '');
   if (!/^[A-Za-z0-9_-]+$/.test(storageId)) return refuse();
 
   let data;

@@ -132,10 +132,15 @@ export function referencedFileIds(snapshot) {
  * Golden Thread does, for its own flow), so relying on it would leave most
  * files with no baseline at all.
  *
+ * `pinned_file_id`, where present, is a copy of the bytes taken at publish time
+ * (P3 step 6). The asset endpoint prefers it, which is what makes a snapshot
+ * publication genuinely immutable rather than merely labelled so.
+ *
  * @param {object} snapshot
- * @param {Record<string, string>} [checksums] - document_id → sha-256 hex
+ * @param {Record<string, { checksum?: string|null, pinned_file_id?: string|null }>} [assets]
+ *        keyed by document_id
  */
-export function buildManifest(snapshot, checksums = {}) {
+export function buildManifest(snapshot, assets = {}) {
   const referenced = referencedFileIds(snapshot);
   const byId = new Map((snapshot?.files ?? []).map(f => [f.id, f]));
 
@@ -150,7 +155,8 @@ export function buildManifest(snapshot, checksums = {}) {
         filename:         file.display_name || file.filename || 'File',
         mime_type:        file.mime_type ?? '',
         file_size:        file.file_size ?? 0,
-        checksum:         checksums[id] ?? null,
+        checksum:         assets[id]?.checksum ?? null,
+        pinned_file_id:   assets[id]?.pinned_file_id ?? null,
       };
     });
 
@@ -168,30 +174,42 @@ export function buildManifest(snapshot, checksums = {}) {
 }
 
 /**
- * Ask the server to checksum the files a publication is about to freeze.
+ * Prepare a publication's files: checksum them, and pin a copy when the
+ * publication is a frozen one.
+ *
+ * Called at PUBLISH, not when the review opens — pinning at review time would
+ * leave an orphaned copy behind every time an author looked and thought better
+ * of it, and a checksum is only meaningful measured at the moment the
+ * publication is created.
  *
  * Keyed by `document_id` on the way out, because that is what the manifest
  * uses; the endpoint works in `provider_file_id`, which is what storage
- * understands. Never throws — a publication with no baselines is a real
- * publication with a known gap, and the review shows the author which files
- * those are.
+ * understands. Never throws — a publication with a known gap, shown to the
+ * author, beats one that will not go out.
  *
  * @param {object[]} files - the snapshot's file entries
- * @returns {Promise<Record<string, string|null>>} document_id → sha-256 hex
+ * @param {{ pin?: boolean }} [opts]
+ * @returns {Promise<Record<string, { checksum: string|null, pinned_file_id: string|null }>>}
  */
-export async function fetchChecksums(files = []) {
+export async function prepareAssets(files = [], { pin = false } = {}) {
   const usable = files.filter(f => f.provider_file_id);
   if (!usable.length) return {};
 
   try {
     const { postJson } = await import('$lib/utils/request');
-    const body = await postJson('/api/dossier/checksums',
-      { fileIds: usable.map(f => f.provider_file_id) },
-      'Could not read the files');
+    const body = await postJson('/api/dossier/publish-assets', {
+      pin,
+      files: usable.map(f => ({
+        providerFileId: f.provider_file_id,
+        filename: f.display_name || f.filename || 'file',
+        mimeType: f.mime_type ?? '',
+      })),
+    }, 'Could not read the files');
 
     const out = {};
     for (const file of usable) {
-      out[file.id] = body?.checksums?.[file.provider_file_id] ?? null;
+      out[file.id] = body?.assets?.[file.provider_file_id]
+        ?? { checksum: null, pinned_file_id: null };
     }
     return out;
   } catch {

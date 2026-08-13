@@ -174,12 +174,27 @@ describe('buildManifest', () => {
   });
 
   it('carries the checksums the caller computed from the bytes', () => {
-    const manifest = buildManifest(snapshot(), { f1: 'abc123' });
+    const manifest = buildManifest(snapshot(), { f1: { checksum: 'abc123' } });
     expect(manifestEntry(manifest, 'f1').checksum).toBe('abc123');
   });
 
   it('records a null checksum rather than pretending one exists', () => {
     expect(manifestEntry(buildManifest(snapshot()), 'f1').checksum).toBeNull();
+  });
+
+  it('records the pinned copy, so the endpoint can prefer it', () => {
+    // The pin is what makes a frozen publication genuinely immutable rather
+    // than merely labelled so.
+    const manifest = buildManifest(snapshot(), {
+      f1: { checksum: 'abc123', pinned_file_id: 'drive-pinned-1' },
+    });
+    expect(manifestEntry(manifest, 'f1').pinned_file_id).toBe('drive-pinned-1');
+  });
+
+  it('records a null pin rather than pretending one exists', () => {
+    // A follow-latest publication pins nothing, and a file that could not be
+    // pinned must not look as though it was.
+    expect(manifestEntry(buildManifest(snapshot()), 'f1').pinned_file_id).toBeNull();
   });
 
   it('reports a referenced file that has left the shelf', () => {

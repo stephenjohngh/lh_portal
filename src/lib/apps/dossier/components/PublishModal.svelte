@@ -248,7 +248,7 @@
       <Button variant="secondary" disabled={publishing} on:click={close}>Cancel</Button>
       <Button variant="primary" disabled={!review || publishing || preparing}
               on:click={publish}>
-        {publishing ? 'Publishing…' : 'Publish and get the link'}
+        {publishing ? 'Preparing files…' : 'Publish and get the link'}
       </Button>
     {/if}
   </div>
