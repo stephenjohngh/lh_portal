@@ -976,7 +976,8 @@
               <div class="h-full overflow-y-auto">
                 <div class="max-w-3xl mx-auto px-8 py-6">
                   <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files}
-                                {datasets} {records} />
+                                {datasets} {records}
+                                on:openDoc={(e) => selectPage(e.detail)} />
                 </div>
               </div>
             {:else}
@@ -987,7 +988,8 @@
                        on:pickPage={() => openPicker('link')}
                        on:pickEmbed={() => openPicker('embed')}
                        on:pickTable={() => showTablePicker = true}
-                       {datasets} {records} />
+                       on:openDoc={(e) => selectPage(e.detail)}
+                       {datasets} {records} {docs} />
             {/if}
           </div>
         </div>

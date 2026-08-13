@@ -104,7 +104,9 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
     .map(f => `<th${f.width ? ` style="width:${escapeHtml(f.width)}"` : ''}>`
       + `${escapeHtml(f.label)}</th>`)
     .join('')
-    + (showLinks ? '<th style="width:10rem">Detail</th>' : '');
+    // No width: the table lays out automatically now, so a hard width here
+    // would take space from the prose columns that need it.
+    + (showLinks ? '<th>Detail</th>' : '');
 
   const body = rows.map((record, i) => {
     const cells = fields

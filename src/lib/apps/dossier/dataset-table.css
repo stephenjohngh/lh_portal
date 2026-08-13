@@ -17,7 +17,11 @@
   margin: 0 0 1rem;
   border: 1px solid #334155;         /* slate-700 */
   border-radius: 6px;
-  overflow: hidden;
+  /* Scrolls rather than crushes. With `overflow: hidden` a table wider than its
+     container had nowhere to go, so the browser squeezed whichever columns had
+     no width down to almost nothing — a document index rendered its Notes one
+     character per line, and the headers overlapped each other. */
+  overflow-x: auto;
 }
 
 .dossier-dataset-title {
@@ -32,12 +36,22 @@
 .dossier-dataset-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;               /* a long filename must not steal a column */
+  /* AUTO, not fixed. Fixed layout is right in the EDITOR, where inputs need
+     stable widths and a long filename must not steal a column — that table is
+     separate markup in DatasetTable.svelte and still uses it. Here there are no
+     inputs, and fixed layout meant the template's width hints plus the Detail
+     column could exceed the container and starve everything without a width.
+     Auto lets content decide; min-width makes it scroll instead of collapsing. */
+  table-layout: auto;
+  min-width: 42rem;
   font-size: 0.8125rem;
 }
 
 .dossier-dataset-table th {
   text-align: left;
+  /* A header must never wrap into its neighbour — that is what produced
+     "SUBJECTSUMMARYDETAIL" running together. */
+  white-space: nowrap;
   font-weight: 600;
   color: #94a3b8;                    /* slate-400 */
   font-size: 0.6875rem;
@@ -52,9 +66,13 @@
   color: #cbd5e1;                    /* slate-300 */
   vertical-align: top;
   border-bottom: 1px solid #1e293b;
-  /* Author prose wraps rather than overflowing its column. */
-  overflow-wrap: anywhere;
+  /* Author prose wraps at word boundaries, breaking a word only when the word
+     itself is too long. `anywhere` broke mid-word on any narrow column, which
+     is how a Notes cell ended up one character per line. */
+  overflow-wrap: break-word;
   white-space: pre-wrap;
+  /* Nothing sensible comes of a 40-character-wide column of prose. */
+  min-width: 6rem;
 }
 
 .dossier-dataset-table tr:last-child td { border-bottom: 0; }
@@ -81,3 +99,9 @@
 
 /* Named but not reachable — a file in a rendering with no asset base. */
 .dossier-prose .dossier-record-link-plain { color: #94a3b8; }
+
+/* The Detail cell names one thing; wrapping it gains nothing. */
+.dossier-dataset-table td:last-child .dossier-record-link,
+.dossier-dataset-table td:last-child .dossier-record-link-plain {
+  white-space: nowrap;
+}

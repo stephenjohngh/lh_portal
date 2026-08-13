@@ -478,6 +478,31 @@
     opacity: 1;
     pointer-events: auto;
   }
+  /* An embedded TABLE gets the same treatment as an embedded page. Without
+     these it inherited only the `opacity: 0` base rule and was permanently
+     invisible — the only way to remove a table from a page was to select the
+     node and press Delete, which is not discoverable and (being a bare
+     keypress on a contentEditable=false node) does not reliably land in the
+     editor's undo history either. Exactly the bug already fixed once for
+     .dossier-embed-stub. */
+  :global(.dossier-prose .dossier-dataset-embed-host) {
+    position: relative;
+  }
+  :global(.dossier-prose .dossier-dataset-embed-host .dossier-block-remove) {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    z-index: 2;
+    /* Not clickable while invisible — an unseen button in the corner of every
+       block would delete it on a stray click. */
+    pointer-events: none;
+  }
+  :global(.dossier-prose .dossier-dataset-embed-host:hover .dossier-block-remove),
+  :global(.dossier-prose .dossier-dataset-embed-host .dossier-block-remove:focus) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   :global(.dossier-prose .dossier-block-controls .dossier-block-remove) {
     opacity: 1;
     border: 1px solid #334155;

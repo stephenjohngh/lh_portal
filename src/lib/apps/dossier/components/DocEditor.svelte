@@ -24,6 +24,8 @@
   export let onSave = async () => {};
   /** The pack's shelf. Asset blocks watch it so a deleted file marks itself. */
   export let files = [];
+  /** The pack's pages — an embedded table names the page a row points at. */
+  export let docs = [];
   /** The pack's tables and their rows, so an embedded table renders live. */
   export let datasets = [];
   export let records  = [];
@@ -34,9 +36,12 @@
   $: filesStore.set(files);
 
   // Same bridge for tables: the embedded table repaints as rows are added,
-  // rather than going stale until the page is reopened.
-  const dataStore = writable({ datasets, records });
-  $: dataStore.set({ datasets, records });
+  // rather than going stale until the page is reopened. `docs` and `files`
+  // ride along so a row's reference renders here exactly as it does for the
+  // recipient — without them the editor showed a bare table and the reader
+  // showed a Detail column.
+  const dataStore = writable({ datasets, records, docs, files });
+  $: dataStore.set({ datasets, records, docs, files });
 
   const dispatch = createEventDispatcher();
 
@@ -119,7 +124,11 @@
   onMount(() => {
     editor = new Editor({
       element: editorEl,
-      extensions: buildExtensions({ filesProvider: filesStore, dataProvider: dataStore }),
+      extensions: buildExtensions({
+        filesProvider: filesStore,
+        dataProvider: dataStore,
+        onOpenDoc: (id) => dispatch('openDoc', id),
+      }),
       content: doc?.blocks ?? EMPTY_DOC,
       editable,
       // The editing class gives the ProseMirror element itself a tall minimum,

@@ -93,7 +93,7 @@ export const BlockId = Extension.create({
  * @param {{ placeholder?: string }} [opts]
  */
 export function buildExtensions({
-  filesProvider = null, dataProvider = null, assetBase = '',
+  filesProvider = null, dataProvider = null, assetBase = '', onOpenDoc = null,
 } = {}) {
   return [
     StarterKit.configure({
@@ -106,7 +106,7 @@ export function buildExtensions({
     Toggle, ToggleSummary, ToggleBody,
     Asset.configure({ filesProvider, assetBase }),
     EmbedDoc,
-    EmbedDataset.configure({ dataProvider }),
+    EmbedDataset.configure({ dataProvider, onOpenDoc }),
     DocLink,
     BlockId,
   ];

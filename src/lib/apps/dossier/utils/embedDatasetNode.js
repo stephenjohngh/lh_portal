@@ -24,11 +24,22 @@ export const EmbedDataset = Node.create({
   addOptions() {
     return {
       /**
-       * A Svelte-store-shaped `{ subscribe }` yielding `{ datasets, records }`,
-       * or null. Injected rather than imported, so this module stays free of
-       * app state — the P3 reader uses read mode and supplies nothing.
+       * A Svelte-store-shaped `{ subscribe }` yielding
+       * `{ datasets, records, docs, files }`, or null. Injected rather than
+       * imported, so this module stays free of app state — the P3 reader uses
+       * read mode and supplies nothing.
+       *
+       * `docs` and `files` are what let a row's reference render here. Without
+       * them the editor showed a bare table while the reader showed a Detail
+       * column, which is precisely the author/recipient divergence D10 exists
+       * to prevent.
        */
       dataProvider: null,
+      /**
+       * Called with a doc id when the author clicks a row's page reference.
+       * Editing affordance only; the reader has its own navigation.
+       */
+      onOpenDoc: null,
     };
   },
 
@@ -60,7 +71,7 @@ export const EmbedDataset = Node.create({
   },
 
   addNodeView() {
-    const { dataProvider } = this.options;
+    const { dataProvider, onOpenDoc } = this.options;
 
     return ({ node, getPos, editor }) => {
       const dom = document.createElement('div');
@@ -105,8 +116,24 @@ export const EmbedDataset = Node.create({
           return;
         }
         body.innerHTML = renderDatasetTableHtml(
-          dataset, records.filter(r => r.dataset_id === dataset.id));
+          dataset, records.filter(r => r.dataset_id === dataset.id),
+          // No assetBase in the editor: a file reference renders as a label
+          // rather than a link, because the author already has the shelf.
+          { links: { docs: latest?.docs ?? [], files: latest?.files ?? [] } });
       };
+
+      // A page reference is navigation, not a URL. The table is innerHTML, so
+      // the click is caught by delegation — and on mousedown, because
+      // ProseMirror selects the atom on mousedown and would otherwise swallow
+      // it.
+      body.addEventListener('mousedown', (event) => {
+        const anchor = event.target instanceof Element
+          ? event.target.closest('a[data-doc-id]') : null;
+        if (!anchor) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onOpenDoc?.(anchor.getAttribute('data-doc-id'));
+      });
 
       // Subscribing keeps the embedded table live: adding a chronology entry
       // shows up on the page that embeds it without a reload.
