@@ -59,7 +59,14 @@
   $: files    = content?.files ?? [];
   $: tree     = buildTree(docs);
 
-  /** null = the pack's own front page; a doc id = that page. */
+  /**
+   * null = the generated contents page; a doc id = that page.
+   *
+   * Only offered when the author asked for it. Most packs open on a page that
+   * already introduces them, and a second "Overview" above it is a duplicate
+   * the recipient has to look past.
+   */
+  $: showContents = publication?.show_contents === true;
   let selectedId = null;
   let navOpen = false;
 
@@ -79,6 +86,10 @@
     return out;
   }
   $: navDocs = flatten(tree);
+  // With no contents page, open on the first page rather than on nothing.
+  $: if (!showContents && selectedId === null && navDocs.length) {
+    selectedId = navDocs[0].id;
+  }
 
   // ── Printing ──────────────────────────────────────────────────────────────
   // What a recipient needs on paper is the WHOLE pack in order, not whichever
@@ -208,14 +219,16 @@
               Contents
             </p>
             <ul class="space-y-0.5">
-              <li>
-                <button
-                  class="w-full text-left text-sm px-2 py-1 rounded transition-colors
-                         {selectedId === null
-                           ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}"
-                  on:click={() => openDoc(null)}
-                >Overview</button>
-              </li>
+              {#if showContents}
+                <li>
+                  <button
+                    class="w-full text-left text-sm px-2 py-1 rounded transition-colors
+                           {selectedId === null
+                             ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}"
+                    on:click={() => openDoc(null)}
+                  >Contents</button>
+                </li>
+              {/if}
               {#each navDocs as node (node.id)}
                 <li>
                   <button

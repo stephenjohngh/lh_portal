@@ -567,7 +567,7 @@
   }
 
   async function handlePublish(e) {
-    const { title, recipientLabel, mode, expiryDays, passphrase } = e.detail;
+    const { title, recipientLabel, mode, expiryDays, passphrase, showContents } = e.detail;
     const snapshot = reviewedSnapshot;     // exactly what was on screen
     if (!snapshot) { publishRef?.fail('Nothing was reviewed. Please try again.'); return; }
     try {
@@ -578,7 +578,7 @@
       const assets = await prepareAssets(snapshot.files, { pin: mode === 'snapshot' });
 
       const result = await dossierStore.createPublication({
-        pack, snapshot, mode, title, recipientLabel, passphrase,
+        pack, snapshot, mode, title, recipientLabel, passphrase, showContents,
         expiresAt: expiryFromDays(expiryDays), checksums: assets,
       }, $auth.user.id);
       publishRef?.done(result);
@@ -618,6 +618,21 @@
       // unrecoverable as the first one.
       showPublish = true;
       publishRef?.done(result);
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      pubBusyId = null;
+    }
+  }
+
+  let pendingPubDelete = null;
+
+  async function confirmPubDelete() {
+    const publication = pendingPubDelete;
+    pubBusyId = publication.id;
+    try {
+      await dossierStore.deletePublication(publication);
+      pendingPubDelete = null;
     } catch (err) {
       treeError = err.message;
     } finally {
@@ -903,6 +918,7 @@
               on:regenerate={(e) => handleRegenerate(e.detail)}
               on:revoke={(e) => pendingRevoke = e.detail}
               on:verify={(e) => handleVerify(e.detail)}
+              on:deletePublication={(e) => pendingPubDelete = e.detail}
               {verifyResult}
               {verifyingId}
             />
@@ -1066,6 +1082,21 @@
   {preparing}
   on:publish={handlePublish}
   on:close={() => { showPublish = false; publishReview = null; reviewedSnapshot = null; }}
+/>
+
+<ConfirmDialog
+  show={!!pendingPubDelete}
+  title="Delete this publication?"
+  message={pendingPubDelete
+    ? `This removes every record that "${pendingPubDelete.title}" was ever issued, `
+      + `along with the copies of its files kept for it. Revoke instead if you `
+      + `only want the link to stop working.`
+    : ''}
+  confirmText="Delete"
+  danger={true}
+  processing={!!pubBusyId}
+  on:confirm={confirmPubDelete}
+  on:cancel={() => pendingPubDelete = null}
 />
 
 <ConfirmDialog

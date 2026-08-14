@@ -13,6 +13,9 @@
   import { Editor }      from '@tiptap/core';
   import { fmtTime }     from '$lib/utils/dates';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
+  import Modal           from '$lib/components/common/Modal.svelte';
+  import Button          from '$lib/components/common/Button.svelte';
+  import FormInput       from '$lib/components/common/FormInput.svelte';
   import { buildExtensions, EMPTY_DOC } from '../utils/blockSchema.js';
   import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
   import BlockContent from './BlockContent.svelte';
@@ -254,6 +257,44 @@
     dispatch('pickPage');
   }
 
+  // ── External links ────────────────────────────────────────────────────────
+  // 🔗 links to another PAGE in this pack. A link out to the web is a different
+  // thing and had no control at all: the only way to make one was to paste a
+  // URL and let the editor autolink it.
+
+  let showUrlModal = false;
+  let urlValue = '';
+  let urlError = '';
+
+  function openUrlModal() {
+    // Offer whatever is already there, so the control edits as well as adds.
+    urlValue = editor?.getAttributes('link')?.href ?? '';
+    urlError = '';
+    showUrlModal = true;
+  }
+
+  function applyUrl() {
+    const raw = urlValue.trim();
+    if (!raw) {
+      editor?.chain().focus().extendMarkRange('link').unsetLink().run();
+      showUrlModal = false;
+      return;
+    }
+    // A bare `example.com` is what people type. Left alone the browser reads it
+    // as a relative path and the link lands inside the portal.
+    const href = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+    // Only http(s) and mailto. `javascript:` in an author's document would
+    // execute in a recipient's browser — the sanitiser would strip it on the
+    // way out, but it has no business being stored in the first place.
+    if (!/^(https?|mailto):/i.test(href)) {
+      urlError = 'Only web addresses and mailto: links can be used here.';
+      return;
+    }
+    editor?.chain().focus().extendMarkRange('link')
+      .setLink({ href, target: '_blank', rel: 'noopener noreferrer' }).run();
+    showUrlModal = false;
+  }
+
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
 
   /**
@@ -320,6 +361,14 @@
       >🔗</button>
       <button
         type="button"
+        title="Link to a web address"
+        class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400
+               hover:bg-slate-700 hover:text-white transition-colors
+               {editor?.isActive('link') ? 'bg-slate-700 text-white' : ''}"
+        on:click={openUrlModal}
+      >🌐</button>
+      <button
+        type="button"
         title="Show another page's content inside this one"
         class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400
                hover:bg-slate-700 hover:text-white transition-colors"
@@ -373,3 +422,24 @@
     </div>
   </div>
 </div>
+
+<Modal bind:show={showUrlModal} title="Link to a web address" size="medium"
+       on:close={() => showUrlModal = false}>
+  <div class="space-y-2">
+    <FormInput
+      label="Address"
+      bind:value={urlValue}
+      placeholder="example.com or https://example.com"
+      error={urlError}
+    />
+    <p class="text-xs text-slate-500">
+      Select some text first and it becomes the link. Leave this empty to
+      remove a link that is already there.
+    </p>
+  </div>
+
+  <div slot="footer" class="flex justify-end gap-2">
+    <Button variant="secondary" on:click={() => showUrlModal = false}>Cancel</Button>
+    <Button variant="primary" on:click={applyUrl}>Apply</Button>
+  </div>
+</Modal>

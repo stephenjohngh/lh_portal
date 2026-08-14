@@ -32,6 +32,8 @@
   let mode       = 'snapshot';
   let expiryDays = 30;
   let passphrase = '';
+  /** Off by default — most packs open on a page the author wrote. */
+  let showContents = false;
   let publishing = false;
   let error      = '';
 
@@ -47,6 +49,7 @@
 
   function reset() {
     title = ''; recipient = ''; mode = 'snapshot'; expiryDays = 30; passphrase = '';
+    showContents = false;
     publishing = false; error = ''; issued = null; copied = false;
   }
 
@@ -58,6 +61,7 @@
       title: title.trim(), recipientLabel: recipient.trim(), mode,
       expiryDays: expiryDays === '' ? null : Number(expiryDays),
       passphrase: passphrase.trim(),
+      showContents,
     });
   }
 
@@ -213,6 +217,19 @@
               { value: 'latest',   label: 'Always the latest version' },
             ]} />
           </div>
+
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" bind:checked={showContents}
+                   class="mt-0.5 accent-purple-500" />
+            <span class="text-xs text-slate-400">
+              Start with a contents page
+              <span class="block text-slate-500">
+                A generated page listing what is in the pack. Off by default —
+                if your first page already introduces it, this is a second
+                overview the recipient has to look past.
+              </span>
+            </span>
+          </label>
 
           <FormInput
             label="Passphrase (optional)"

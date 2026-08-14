@@ -413,10 +413,10 @@ function createDossierStore() {
    */
   async function createPublication({
     pack, snapshot, mode = 'snapshot', title, recipientLabel = '',
-    expiresAt = null, checksums = {}, passphrase = '',
+    expiresAt = null, checksums = {}, passphrase = '', showContents = false,
   }, userId) {
     if (!snapshot) throw new Error('createPublication requires the reviewed snapshot.');
-    const manifest = buildManifest(snapshot, checksums);
+    const manifest = buildManifest(snapshot, checksums, { showContents });
 
     const token = generateToken();
     // Hashed in the author's browser, so the plaintext never travels except
@@ -486,6 +486,39 @@ function createDossierStore() {
       appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
     });
     return publication;
+  }
+
+  /**
+   * Remove a publication entirely — admin-only at RLS.
+   *
+   * Revoke is the everyday action and keeps the record that a link was issued.
+   * This is the other one: it discards that record, and with it the pinned
+   * copies of the files, which is the only thing that stops published storage
+   * growing without bound.
+   *
+   * The pinned copies go first. If the row were deleted first, the ids of the
+   * copies would go with it and the bytes would be orphaned in Drive with
+   * nothing left pointing at them.
+   */
+  async function deletePublication(publication) {
+    const pinned = (publication?.manifest?.files ?? [])
+      .map(f => f.pinned_file_id).filter(Boolean);
+
+    if (pinned.length) {
+      const { del } = await import('$lib/utils/request');
+      // Storage cleanup is best-effort, as it is everywhere else in the portal:
+      // a copy that cannot be removed must not block the delete.
+      await Promise.allSettled(pinned.map(id => del(`/api/media/file/${id}`)));
+    }
+
+    await api.delete('dossier_publications', publication.id);
+    update(s => ({
+      ...s, publications: s.publications.filter(p => p.id !== publication.id),
+    }));
+    logAudit('delete', 'dossier_publication', publication.id, publication.title, {
+      appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+      afterData: { version: publication.version, pinned_removed: pinned.length },
+    });
   }
 
   /**
@@ -755,7 +788,7 @@ function createDossierStore() {
     createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
-    loadPublications, createPublication, revokePublication,
+    loadPublications, createPublication, revokePublication, deletePublication,
     regeneratePublicationToken,
   };
 }

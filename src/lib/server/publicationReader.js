@@ -207,5 +207,8 @@ export function publicPublicationFields(publication) {
     mode:       publication.mode,
     expires_at: publication.expires_at ?? null,
     issued_at:  publication.created_at ?? null,
+    // Whether the reader opens on a generated contents page. An author choice,
+    // made when the link was issued.
+    show_contents: publication.manifest?.show_contents === true,
   };
 }

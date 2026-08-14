@@ -250,6 +250,9 @@ describe('publicPublicationFields', () => {
     expect(fields).toEqual({
       title: 'Flat 4 dispute', mode: 'snapshot',
       expires_at: null, issued_at: '2026-08-01T00:00:00Z',
+      // A display choice the author made when issuing the link: whether the
+      // pack opens on a generated contents page.
+      show_contents: false,
     });
   });
 

@@ -7,6 +7,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import Badge          from '$lib/components/common/Badge.svelte';
+  import { permissions } from '$lib/stores/permissions';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import { fmtDateTime } from '$lib/utils/dates';
   import {
@@ -81,6 +82,17 @@
             disabled={verifyingId === publication.id}
             on:click={() => dispatch('verify', publication)}
           >{verifyingId === publication.id ? 'Checking files…' : 'Check files'}</button>
+
+          {#if $permissions.isAdmin}
+            <!-- Admin only, matching the RLS policy. Revoke is the everyday
+                 action and keeps the record that a link was issued; this
+                 discards it, and takes the pinned copies of the files with it. -->
+            <button
+              class="ml-2 text-[11px] text-slate-600 hover:text-red-400 transition-colors"
+              disabled={busyId === publication.id}
+              on:click={() => dispatch('deletePublication', publication)}
+            >Delete</button>
+          {/if}
 
           {#if verifyResult?.id === publication.id}
             <p class="text-[11px] text-slate-400">{verifyResult.message}</p>

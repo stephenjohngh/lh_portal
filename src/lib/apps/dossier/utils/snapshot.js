@@ -145,7 +145,7 @@ export function referencedFileIds(snapshot) {
  * @param {Record<string, { checksum?: string|null, pinned_file_id?: string|null }>} [assets]
  *        keyed by document_id
  */
-export function buildManifest(snapshot, assets = {}) {
+export function buildManifest(snapshot, assets = {}, options = {}) {
   const referenced = referencedFileIds(snapshot);
   const byId = new Map((snapshot?.files ?? []).map(f => [f.id, f]));
 
@@ -167,6 +167,15 @@ export function buildManifest(snapshot, assets = {}) {
 
   return {
     format: SNAPSHOT_FORMAT,
+    /**
+     * Whether the reader opens on a generated contents page.
+     *
+     * Off by default: most packs already start with a page the author wrote,
+     * and a second "Overview" above it is a duplicate the recipient has to look
+     * past. Lives here rather than in a column so this needed no migration —
+     * the manifest is the per-publication jsonb both modes always have.
+     */
+    show_contents: options.showContents === true,
     doc_count:     (snapshot?.docs ?? []).length,
     dataset_count: (snapshot?.datasets ?? []).length,
     record_count:  (snapshot?.records ?? []).length,
