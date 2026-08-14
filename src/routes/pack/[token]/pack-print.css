@@ -63,14 +63,17 @@
   }
 
   /* ── Document furniture ──────────────────────────────────────────────── */
+  /* A title page of its own, the way a bound document opens. It also puts the
+     confidentiality notice on a sheet by itself, where it is read rather than
+     skimmed past on the way into the first page. */
   .pack-print-cover {
-    margin-bottom: 12mm;
-    padding-bottom: 6mm;
-    border-bottom: 1pt solid #000;
+    break-after: page;
+    page-break-after: always;
+    padding-top: 40mm;           /* sit the title down the sheet, not at the top */
   }
   .pack-print-cover h1 {
-    font-size: 20pt;
-    margin: 0 0 2mm;
+    font-size: 22pt;
+    margin: 0 0 3mm;
   }
   .pack-print-meta {
     font-size: 9pt;
@@ -92,17 +95,17 @@
     break-before: page;
     page-break-before: always;
   }
+  /* The cover already broke, so the first section must not break again — two
+     adjacent breaks are what puts a blank sheet between the title page and the
+     start of the pack. */
   .pack-print-section:first-of-type {
     break-before: auto;
     page-break-before: auto;
   }
 
-  .pack-print-section > h2 {
-    font-size: 14pt;
-    margin: 0 0 4mm;
-    padding-bottom: 1.5mm;
-    border-bottom: 0.5pt solid #999;
-  }
+  /* No rule for a section heading: there is no longer one to style. A page's
+     own content opens with the author's heading, and repeating the page name
+     above it was the same duplication the screen view had. */
 
   /* ── Content ─────────────────────────────────────────────────────────── */
   /* The reader's prose styles are built for a dark screen. Undo the colours,

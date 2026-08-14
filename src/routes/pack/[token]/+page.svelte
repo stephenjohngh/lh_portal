@@ -108,17 +108,54 @@
   // worse than useless. So the print rendering is built on demand: rendering
   // every page all the time would cost a large pack real work on every visit,
   // for something most readers never do.
-  let printing = false;
+  let printing  = false;
+  let preparing = false;
+  let printHost;
+
+  /**
+   * Wait for the print rendering's images to load before opening the dialog.
+   *
+   * ⚠ The bug this fixes, and it is not obvious: the print markup is built on
+   * demand, so a page the reader has never opened has its <img> created for the
+   * first time here. `tick()` returns as soon as the DOM exists — the image
+   * requests have only just been issued — and the browser snapshots the page
+   * for print immediately, blank. Printing a second time worked because the
+   * file was then in the cache, which is exactly the shape of the report:
+   * "a second print after clicking on the page shows it".
+   *
+   * Errors resolve like loads: a file that has gone should print as the gap it
+   * is, not hold the dialog. The timeout is the same argument for a slow one —
+   * a briefing that will not print is worse than one printed without an image.
+   */
+  function imagesReady(root, timeoutMs = 15000) {
+    const pending = [...(root?.querySelectorAll('img') ?? [])].filter(img => !img.complete);
+    if (!pending.length) return Promise.resolve();
+
+    return Promise.race([
+      Promise.all(pending.map(img => new Promise((resolve) => {
+        img.addEventListener('load',  resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      }))),
+      new Promise(resolve => setTimeout(resolve, timeoutMs)),
+    ]);
+  }
 
   async function printPack() {
-    printing = true;
-    await tick();
-    // Tidy up after the dialog closes so a large pack is not left rendered
-    // twice for the rest of the visit. `once` because Chrome fires afterprint
-    // per dialog; if a browser never fires it, the markup simply stays — it is
-    // display:none on screen, so the only cost is DOM.
-    window.addEventListener('afterprint', () => (printing = false), { once: true });
-    window.print();
+    if (preparing) return;
+    preparing = true;
+    printing  = true;
+    try {
+      await tick();
+      await imagesReady(printHost);
+      // Tidy up after the dialog closes so a large pack is not left rendered
+      // twice for the rest of the visit. `once` because Chrome fires afterprint
+      // per dialog; if a browser never fires it, the markup simply stays — it is
+      // display:none on screen, so the only cost is DOM.
+      window.addEventListener('afterprint', () => (printing = false), { once: true });
+      window.print();
+    } finally {
+      preparing = false;
+    }
   }
 </script>
 
@@ -206,8 +243,9 @@
                  text-slate-300 hover:text-white hover:border-slate-500
                  transition-colors shrink-0"
           title="Print the whole pack"
+          disabled={preparing}
           on:click={printPack}
-        >Print</button>
+        >{preparing ? 'Preparing…' : 'Print'}</button>
         <button
           class="md:hidden text-xs px-2 py-1 rounded border border-slate-700
                  text-slate-300"
@@ -302,12 +340,12 @@
          by being part of a page, not as an item of its own. Hidden on screen by
          pack-print.css; built only once Print is clicked. -->
     {#if printing}
-      <div class="pack-print">
+      <div class="pack-print" bind:this={printHost}>
+        <!-- A title page of its own. The description is deliberately absent:
+             it is an author's note about the pack, not something the recipient
+             was written for. -->
         <div class="pack-print-cover">
           <h1>{content.pack.title}</h1>
-          {#if content.pack.description}
-            <p>{content.pack.description}</p>
-          {/if}
           <p class="pack-print-meta">
             Prepared {fmtDateLong(content.generated_at)}
             {#if publication?.mode === 'latest'}
@@ -320,8 +358,10 @@
         </div>
 
         {#each navDocs as node (node.id)}
+          <!-- No heading: the same duplication the screen had. Each page's own
+               content opens with the author's heading, and every section starts
+               a fresh sheet, so the boundary is already plain. -->
           <section class="pack-print-section">
-            <h2>{node.title}</h2>
             <BlockContent
               blocks={node.blocks}
               mode="read"
