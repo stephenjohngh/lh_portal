@@ -110,6 +110,13 @@
   :global(.dossier-prose-editing) { min-height: 60vh; }
 
   :global(.dossier-prose p) { margin: 0 0 0.75rem 0; }
+  /* A deliberate blank line must survive into read mode and onto paper.
+     While editing, ProseMirror puts a trailing <br> inside an empty paragraph,
+     so it occupies a line; generateHTML emits a bare <p></p>, which has no
+     height and whose margins collapse with its neighbours' — so every blank
+     line the author put in vanished from the preview and from the published
+     pack. Giving it one line of height is what makes the two agree. */
+  :global(.dossier-prose p:empty) { min-height: 1.7em; }
   :global(.dossier-prose h1) {
     font-size: 1.5rem; font-weight: 700; color: #fff;
     margin: 1.5rem 0 0.75rem; line-height: 1.3;
@@ -473,15 +480,21 @@
     pointer-events: auto;
   }
 
-  :global(.dossier-prose .dossier-block-sizes) {
+  /* Two segmented groups on the asset toolbar — image width, and what is shown
+     under the file. Styled together deliberately: they are the same kind of
+     control and reading as one row is what makes the toolbar legible. */
+  :global(.dossier-prose .dossier-block-sizes),
+  :global(.dossier-prose .dossier-block-shows) {
     display: flex;
     border-radius: 4px;
     overflow: hidden;
     border: 1px solid #334155;       /* slate-700 */
     background: rgb(15 23 42 / 0.85);
   }
-  :global(.dossier-prose .dossier-block-sizes[hidden]) { display: none; }
-  :global(.dossier-prose .dossier-block-sizes button) {
+  :global(.dossier-prose .dossier-block-sizes[hidden]),
+  :global(.dossier-prose .dossier-block-shows[hidden]) { display: none; }
+  :global(.dossier-prose .dossier-block-sizes button),
+  :global(.dossier-prose .dossier-block-shows button) {
     min-width: 1.5rem;
     height: 1.5rem;
     padding: 0 0.3rem;
@@ -492,8 +505,11 @@
     border: 0;
     cursor: pointer;
   }
-  :global(.dossier-prose .dossier-block-sizes button:hover) { color: #fff; }
-  :global(.dossier-prose .dossier-block-sizes button.is-active) {
+  :global(.dossier-prose .dossier-block-shows button[hidden]) { display: none; }
+  :global(.dossier-prose .dossier-block-sizes button:hover),
+  :global(.dossier-prose .dossier-block-shows button:hover) { color: #fff; }
+  :global(.dossier-prose .dossier-block-sizes button.is-active),
+  :global(.dossier-prose .dossier-block-shows button.is-active) {
     background: #475569;             /* slate-600 */
     color: #fff;
   }

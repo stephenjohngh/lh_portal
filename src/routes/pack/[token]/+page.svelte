@@ -249,7 +249,11 @@
       <!-- Content -->
       <main class="flex-1 min-w-0">
         {#if selectedDoc}
-          <h1 class="text-xl font-semibold text-white mb-4">{selectedDoc.title}</h1>
+          <!-- No page heading here. The contents list on the left highlights
+               the open page, so a title above the content repeated it — and an
+               author whose page opens with its own heading got two. The print
+               rendering below DOES head each section, because paper has no
+               contents panel to say where you are. -->
           <BlockContent
             blocks={selectedDoc.blocks}
             mode="read"

@@ -358,6 +358,52 @@ describe('missing assets', () => {
     expect(html).not.toContain('dossier-asset-description');
   });
 
+  it('leaves the description out when the author turned it off', () => {
+    const html = renderBlocksToHtml(
+      asset({ ...live, show_description: false }),
+      { files: [{ id: 'f1', description: 'Consultation notice as served' }] });
+
+    expect(html).not.toContain('Consultation notice as served');
+  });
+
+  it('shows it for a block authored before the control existed', () => {
+    // The attribute is absent on every asset placed until now, and absent must
+    // read as ON or those pages would silently lose a caption.
+    const html = renderBlocksToHtml(asset(live), {
+      files: [{ id: 'f1', description: 'Consultation notice as served' }],
+    });
+    expect(html).toContain('dossier-asset-description');
+  });
+
+  it('drops the file name from the card when the author turned it off', () => {
+    const html = renderBlocksToHtml(
+      asset({ ...live, size_bytes: 2048, show_name: false }),
+      { files: [{ id: 'f1' }] });
+
+    const parsed = document.createElement('div');
+    parsed.innerHTML = html;
+    // The name is gone from what is SHOWN. It stays in data-filename, which is
+    // how a file that later leaves the shelf can still be named in the gap.
+    expect(parsed.querySelector('.dossier-asset-name').textContent)
+      .not.toContain('Notice.pdf');
+    // The size is kept — it still tells a recipient what they are opening.
+    expect(parsed.querySelector('.dossier-asset-name').textContent).toContain('2');
+    // And the card is still openable; only its label went.
+    expect(html).toContain('Open PDF');
+  });
+
+  it('drops an image-s caption entirely with the name, not just the text', () => {
+    // "— view full size" without a filename is a link with nothing to say, and
+    // a logo should sit on the page unlabelled.
+    const image = { document_id: 'f1', filename: 'logo.png',
+                    mime_type: 'image/png', provider_file_id: 'drive1' };
+    const html = renderBlocksToHtml(asset({ ...image, show_name: false }),
+      { files: [{ id: 'f1' }] });
+
+    expect(html).not.toContain('dossier-asset-caption');
+    expect(html).toContain('dossier-asset-image');
+  });
+
   it('escapes a description rather than letting it inject markup', () => {
     const html = renderBlocksToHtml(asset(live), {
       files: [{ id: 'f1', description: '<img src=x onerror=1>' }],

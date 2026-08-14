@@ -31,6 +31,20 @@ function dataAttr(name, fallback = null) {
   };
 }
 
+/**
+ * A boolean attr that defaults to TRUE and only writes the attribute when it is
+ * false. Reading it back has to treat a missing attribute as true, or every
+ * block authored before this existed would come back with both labels off.
+ * @param {string} name
+ */
+function boolAttr(name) {
+  return {
+    default: true,
+    parseHTML:  el => el.getAttribute(`data-${name}`) !== 'false',
+    renderHTML: attrs => (attrs[name] === false ? { [`data-${name}`]: 'false' } : {}),
+  };
+}
+
 export const Asset = Node.create({
   name: 'asset',
 
@@ -118,6 +132,18 @@ export const Asset = Node.create({
         parseHTML:  el => Number(el.getAttribute('data-size_bytes')) || 0,
         renderHTML: attrs => (attrs.size_bytes ? { 'data-size_bytes': String(attrs.size_bytes) } : {}),
       },
+      /**
+       * What goes UNDER the file: its name, and the description the uploader
+       * wrote. Both default on, which is what the block did before there was a
+       * choice — but a logo wants neither, and a piece of evidence often wants
+       * the description without the storage filename ("scan_0041.pdf" tells a
+       * recipient nothing).
+       *
+       * Author decisions, so they live on the node and travel to the reader,
+       * like image width and spreadsheet row count.
+       */
+      show_name:        boolAttr('show_name'),
+      show_description: boolAttr('show_description'),
     };
   },
 
@@ -136,6 +162,7 @@ export const Asset = Node.create({
       : fileProxyUrl(provider_file_id, mime_type);
     const name = filename || 'File';
     const size = fmtSize(size_bytes);
+    const showName = node.attrs.show_name !== false;
 
     // Belt to stripStorageIds()'s braces: when rendering for a recipient, the
     // storage id must not appear even as a data- attribute. The media proxy is
@@ -155,12 +182,17 @@ export const Asset = Node.create({
     // An unusable provider id (or a provider that addresses files by path)
     // degrades to a card with no link rather than a broken embed.
     if (!url) {
-      return ['div', wrapper, ...cardChildren(name, size, null)];
+      return ['div', wrapper, ...cardChildren(name, size, null, '📎', 'Open', showName)];
     }
 
     if (kind === 'image') {
-      return ['div', wrapper,
-        ['img', { src: url, alt: name, class: 'dossier-asset-image' }],
+      const image = ['img', { src: url, alt: name, class: 'dossier-asset-image' }];
+      // With the name off there is no caption at all: "view full size" without
+      // the filename is a link with nothing to say, and an image placed as a
+      // logo or a letterhead should sit on the page unlabelled.
+      if (!showName) return ['div', wrapper, image];
+
+      return ['div', wrapper, image,
         // The caption is the full-size affordance: an <a> around the <img>
         // itself would fight ProseMirror's node selection in edit mode.
         ['div', { class: 'dossier-asset-caption' },
@@ -175,16 +207,16 @@ export const Asset = Node.create({
       // above it from the snapshot in data-sheet_preview, using the same one
       // renderer the node view calls — a Tiptap render spec cannot carry raw
       // HTML, and a second table renderer here would be free to drift.
-      return ['div', wrapper, ...cardChildren(name, size, url, '▦', 'Open')];
+      return ['div', wrapper, ...cardChildren(name, size, url, '▦', 'Open', showName)];
     }
 
     if (kind === 'pdf') {
       // A card, not an embedded viewer — see assetPreview.js for the four
       // failed frame attempts and why stopping was the better call.
-      return ['div', wrapper, ...cardChildren(name, size, url, '📄', 'Open PDF')];
+      return ['div', wrapper, ...cardChildren(name, size, url, '📄', 'Open PDF', showName)];
     }
 
-    return ['div', wrapper, ...cardChildren(name, size, url)];
+    return ['div', wrapper, ...cardChildren(name, size, url, '📎', 'Open', showName)];
   },
 
   /**
@@ -258,6 +290,34 @@ export const Asset = Node.create({
       });
       rowCounts.append(rowInput, rowLabel);
 
+      // What appears UNDER the file. Two independent toggles rather than a
+      // cycle, because the useful combinations are all four: a logo wants
+      // neither, a piece of evidence often wants the description without the
+      // storage filename, and an appendix wants both.
+      const shows = document.createElement('span');
+      shows.className = 'dossier-block-shows';
+      /** @type {Record<string, HTMLButtonElement>} */
+      const showButtons = {};
+      for (const [attr, label, hint] of [
+        ['show_name', 'Name', 'Show the file name under this file'],
+        ['show_description', 'Description', 'Show the description under this file'],
+      ]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.title = hint;
+        button.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+          if (typeof getPos !== 'function') return;
+          const pos = getPos();
+          if (pos == null) return;
+          editor.view.dispatch(editor.state.tr.setNodeAttribute(
+            pos, attr, current.attrs[attr] === false));
+        });
+        showButtons[attr] = button;
+        shows.appendChild(button);
+      }
+
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'dossier-block-remove';
@@ -274,7 +334,7 @@ export const Asset = Node.create({
         );
       });
 
-      controls.append(sizes, rowCounts, remove);
+      controls.append(sizes, shows, rowCounts, remove);
       dom.appendChild(controls);
 
       let current = node;
@@ -282,7 +342,17 @@ export const Asset = Node.create({
       let lastFiles = null;   // latest shelf seen, so update() can re-derive
 
       const repaint = () => {
-        paint(inner, current, missing, describeFile(current, lastFiles));
+        const description = describeFile(current, lastFiles);
+        paint(inner, current, missing, description);
+
+        for (const [attr, button] of Object.entries(showButtons)) {
+          button.classList.toggle('is-active', current.attrs[attr] !== false);
+        }
+        // Offering "Description" for a file that has none would be a control
+        // that visibly does nothing. The description is edited on the shelf, so
+        // this appears as soon as one is written.
+        showButtons.show_description.hidden = !description;
+        shows.hidden = missing;
         // Size controls only apply to an image that actually rendered.
         const isImage = !missing
           && previewKind(current.attrs.mime_type, current.attrs.filename) === 'image'
@@ -368,6 +438,11 @@ function paint(host, node, missing = false, description = '') {
   const url  = fileProxyUrl(provider_file_id, mime_type);
   const name = filename || 'File';
   const size = fmtSize(size_bytes);
+  const showName = node.attrs.show_name !== false;
+  // The description is only ever rendered here when the author asked for it —
+  // the read path applies the same test in blockRender's resolveAssets(), so
+  // what the editor shows and what the recipient gets stay the same thing.
+  const shownDescription = node.attrs.show_description === false ? '' : description;
 
   host.textContent = '';
   host.className = 'dossier-asset-inner dossier-asset';
@@ -403,8 +478,9 @@ function paint(host, node, missing = false, description = '') {
       host.textContent = '';
       host.appendChild(missingCard(name));
     }, { once: true });
-    host.append(img, caption(`${name} — view full size`, url));
-    if (description) host.appendChild(descriptionEl(description));
+    host.appendChild(img);
+    if (showName) host.appendChild(caption(`${name} — view full size`, url));
+    if (shownDescription) host.appendChild(descriptionEl(shownDescription));
     return;
   }
 
@@ -430,7 +506,7 @@ function paint(host, node, missing = false, description = '') {
 
   const label = document.createElement('span');
   label.className = 'dossier-asset-name';
-  label.textContent = size ? `${name} · ${size}` : name;
+  label.textContent = cardLabel(name, size, showName);
 
   let action;
   if (url) {
@@ -447,7 +523,17 @@ function paint(host, node, missing = false, description = '') {
 
   card.append(icon, label, action);
   host.appendChild(card);
-  if (description) host.appendChild(descriptionEl(description));
+  if (shownDescription) host.appendChild(descriptionEl(shownDescription));
+}
+
+/**
+ * The text on a download card. With the name turned off the size is kept: it
+ * still tells a recipient what they are about to open, and dropping both would
+ * leave a bare icon next to a button.
+ */
+function cardLabel(name, size, showName = true) {
+  if (!showName) return size;
+  return size ? `${name} · ${size}` : name;
 }
 
 /** Escape for HTML text and quoted attribute contexts. */
@@ -483,8 +569,8 @@ function missingCard(name) {
 }
 
 /** The file card: icon, name, size, and an open-in-new-tab link when we have a URL. */
-function cardChildren(name, size, url, icon = '📎', action = 'Open') {
-  const label = size ? `${name} · ${size}` : name;
+function cardChildren(name, size, url, icon = '📎', action = 'Open', showName = true) {
+  const label = cardLabel(name, size, showName);
   return [
     ['div', { class: 'dossier-asset-card' },
       ['span', { class: 'dossier-asset-icon' }, icon],

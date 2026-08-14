@@ -236,7 +236,11 @@ function resolveAssets(html, { files } = {}) {
       continue;
     }
 
-    const description = byId.get(documentId)?.description;
+    // The author's choice, carried on the block (assetNode.js `show_description`).
+    // Absent means true, so blocks placed before the control existed keep
+    // showing what they always showed.
+    const description = node.getAttribute('data-show_description') === 'false'
+      ? '' : byId.get(documentId)?.description;
     if (description) {
       node.insertAdjacentHTML('beforeend',
         `<div class="dossier-asset-description">${escapeHtml(description)}</div>`);
