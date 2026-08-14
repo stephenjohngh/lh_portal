@@ -49,11 +49,27 @@
    * editor no such anchors are rendered, so this never fires.
    */
   function handleClick(event) {
-    const anchor = event.target instanceof Element
-      ? event.target.closest('a[data-doc-id]') : null;
-    if (!anchor) return;
-    event.preventDefault();
-    dispatch('openDoc', anchor.getAttribute('data-doc-id'));
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const anchor = target.closest('a[data-doc-id]');
+    if (anchor) {
+      event.preventDefault();
+      dispatch('openDoc', anchor.getAttribute('data-doc-id'));
+      return;
+    }
+
+    // A collapsible section. The author sets its state in the editor, which is
+    // the DEFAULT the reader arrives at — but the reader must still be able to
+    // open one, or a section the author happened to leave closed is content
+    // nobody can reach. Deliberately NOT written back: this is how one reader
+    // is looking at the page, not a change to the page.
+    const summary = target.closest('div[data-toggle-summary]');
+    const toggle = summary?.closest('div[data-toggle]');
+    if (toggle) {
+      toggle.setAttribute(
+        'data-open', toggle.getAttribute('data-open') === 'false' ? 'true' : 'false');
+    }
   }
 
   $: html = mode === 'read'
@@ -584,5 +600,14 @@
   }
   :global(.dossier-prose div[data-toggle][data-open='false']:not(.dossier-toggle)::before) {
     content: '▸';
+  }
+  /* Read mode: the summary line opens and closes the section, so it has to look
+     like something you can click. The editor has its own chevron button and is
+     excluded. */
+  :global(.dossier-prose div[data-toggle]:not(.dossier-toggle) div[data-toggle-summary]) {
+    cursor: pointer;
+  }
+  :global(.dossier-prose div[data-toggle]:not(.dossier-toggle) div[data-toggle-summary]:hover) {
+    color: #fff;
   }
 </style>
