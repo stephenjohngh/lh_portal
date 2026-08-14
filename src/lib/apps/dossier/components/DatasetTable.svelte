@@ -301,7 +301,7 @@
           {/each}
           <th class="text-xs font-semibold text-slate-400 uppercase tracking-wide
                      py-2 pr-3 align-bottom w-32 bg-slate-800/60">Detail</th>
-          <th class="w-8 bg-slate-800/60"></th>
+          <th class="w-8 sticky right-0 bg-slate-800"></th>
         </tr>
       </thead>
 
@@ -397,11 +397,15 @@
                 </span>
               {/if}
             </td>
-            <td class="py-1">
+            <!-- Pinned to the right edge. The table scrolls sideways now, so a
+                 control in the last column could sit off-screen entirely —
+                 and this one was invisible until hovered, which made deleting
+                 a row a thing you had to already know about. -->
+            <td class="py-1 sticky right-0 bg-slate-900">
               {#if canEdit}
                 <button
                   class="w-6 h-6 rounded text-slate-600 hover:text-red-400 text-xs
-                         opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                         opacity-60 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                   title="Delete this entry"
                   aria-label="Delete this entry"
                   on:click={() => dispatch('deleteRecord', record)}
@@ -516,7 +520,7 @@
               </td>
             {/each}
             <td class="text-xs text-slate-600 pr-3">—</td>
-            <td></td>
+            <td class="sticky right-0 bg-slate-900"></td>
           </tr>
 
           {#if beneath.length}
