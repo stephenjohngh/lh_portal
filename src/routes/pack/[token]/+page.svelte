@@ -166,7 +166,10 @@
     </div>
   </div>
 {:else}
-  <div class="min-h-screen bg-slate-900 text-slate-200">
+  <!-- `pack-root` exists for print. This div's dark background and light text
+       sit between <body> and everything printed, so the print stylesheet's
+       inversion of body was reaching nothing — see pack-print.css. -->
+  <div class="pack-root min-h-screen bg-slate-900 text-slate-200">
 
     <!-- Header -->
     <header class="pack-header border-b border-slate-700 bg-slate-900/95 sticky top-0 z-10">
@@ -282,9 +285,11 @@
     </div>
 
     <!-- ── The printed pack ──────────────────────────────────────────────
-         Every page and every table, in order, so what comes out of the printer
-         is the whole briefing rather than the one section that was open. Hidden
-         on screen by pack-print.css; built only once Print is clicked. -->
+         Every page in order, so what comes out of the printer is the whole
+         briefing rather than the one section that was open. Tables appear where
+         they are embedded, exactly as on screen — a table reaches a recipient
+         by being part of a page, not as an item of its own. Hidden on screen by
+         pack-print.css; built only once Print is clicked. -->
     {#if printing}
       <div class="pack-print">
         <div class="pack-print-cover">

@@ -23,6 +23,32 @@
     color: #000 !important;
   }
 
+  /* ⚠ The rule this stylesheet was missing, found by finally printing one.
+     Everything above inverted BODY — but the reader's shell is a Tailwind
+     `bg-slate-900 text-slate-200` div sitting between body and everything
+     printed. So the pack came out of the printer on a black canvas in pale
+     grey: the dark background painted, and every element without a colour of
+     its own inherited light text. The few rules that did land (the #444 meta
+     line) made it worse by being dark grey on near-black.
+
+     Neutralise the shell, then blacken the whole printed subtree — elements
+     carrying their own screen colour (a callout's accent, an embed's title)
+     inherit nothing and had to be caught explicitly. The handful of deliberate
+     greys further down restate themselves; they are all `!important` and all
+     below this rule, which is what makes them win. */
+  .pack-root {
+    background: #fff !important;
+    color: #000 !important;
+    /* 100vh of empty canvas after the last page break. */
+    min-height: 0 !important;
+  }
+  .pack-print,
+  .pack-print * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
   /* Chrome that means nothing on paper. */
   .pack-screen,
   .pack-nav,
@@ -48,7 +74,7 @@
   }
   .pack-print-meta {
     font-size: 9pt;
-    color: #444;
+    color: #444 !important;
   }
 
   /* Each page of the pack starts a new sheet — a briefing read as one
@@ -94,6 +120,8 @@
     background: #f2f2f2 !important;
     border-color: #ccc !important;
     color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* A callout's meaning is carried by its colour on screen. On paper it has to
@@ -131,6 +159,12 @@
   .dossier-dataset-table th {
     background: #eee !important;
     color: #000 !important;
+    /* Browsers drop backgrounds from a print unless the person ticks
+       "Background graphics", which nobody does. A header row that is not
+       distinguishable from its data is a real loss of legibility on a long
+       chronology, so this one is asked for explicitly. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .dossier-dataset-table td,
   .dossier-dataset-note,
@@ -183,8 +217,13 @@
   }
 
   /* ── Assets ──────────────────────────────────────────────────────────── */
+  /* ⚠ `max-width: 100% !important` here was overriding the author's chosen
+     image width — the screen rules are `[data-width='small'] .dossier-asset-
+     image { max-width: 25% }`, more specific but not important, so the logo
+     that sits as a small mark on screen printed a full page wide. The cap
+     stays as the default; the width choice must outrank it. */
   .dossier-asset-image {
-    max-width: 100% !important;
+    max-width: 100%;
     border-color: #999 !important;
     break-inside: avoid;
     page-break-inside: avoid;
@@ -201,6 +240,11 @@
   .dossier-asset-name {
     color: #333 !important;
   }
+  /* An image and the caption naming it belong on the same sheet. */
+  .dossier-asset {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   /* "Open PDF" is meaningless on paper. */
   .dossier-asset-action { display: none !important; }
 
@@ -208,6 +252,23 @@
   h1, h2, h3 {
     break-after: avoid;
     page-break-after: avoid;
+  }
+
+  /* A single line stranded at the top or bottom of a sheet. */
+  .dossier-prose p,
+  .dossier-prose li {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* Rules and borders were drawn for a dark background; on white the darker
+     ones read as heavy. */
+  .dossier-prose hr {
+    border-top-color: #999 !important;
+  }
+  .dossier-prose blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 
