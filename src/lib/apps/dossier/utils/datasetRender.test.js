@@ -123,7 +123,7 @@ describe('renderDatasetTableHtml — row references', () => {
 
   it('links a page reference by title, for the reader to intercept', () => {
     const html = renderDatasetTableHtml(dataset, rows, { links });
-    expect(html).toContain('<th>Detail</th>');
+    expect(html).toContain('Detail</th>');
     expect(html).toContain('data-doc-id="d1"');
     expect(html).toContain('The notice');
   });

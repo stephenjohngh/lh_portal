@@ -17,10 +17,16 @@
  * off the screen or was too narrow to read, and it is a different KIND of thing
  * from the row's other values.
  *
+ * `width` sizes the column in the EDITOR, where a cell is an input: a date
+ * field needs room for `dd / mm / yyyy` and a picker icon. `readWidth` sizes it
+ * in the READ view, where the same date is just "2026-08-12" and the surplus
+ * would come out of whichever column takes the remainder — in practice Notes,
+ * the one an author actually writes in. Falls back to `width`.
+ *
  * @typedef {{
  *   key: string, label: string,
  *   type: 'date'|'text'|'longtext'|'select',
- *   width?: string, options?: string[], placeholder?: string,
+ *   width?: string, readWidth?: string, options?: string[], placeholder?: string,
  *   layout?: 'column'|'row'
  * }} FieldDef
  */
@@ -32,7 +38,7 @@ export const DATASET_TEMPLATES = {
     /** What the author is being asked for, shown on an empty table. */
     blurb: 'What happened and when. The spine of most briefings.',
     fields: /** @type {FieldDef[]} */ ([
-      { key: 'date',  label: 'Date',  type: 'date', width: '9rem' },
+      { key: 'date',  label: 'Date',  type: 'date', width: '9rem', readWidth: '6.5rem' },
       { key: 'event', label: 'Event', type: 'text', placeholder: 'What happened' },
       {
         key: 'significance', label: 'Why it matters', type: 'longtext',
@@ -48,9 +54,9 @@ export const DATASET_TEMPLATES = {
     title: 'Correspondence',
     blurb: 'Letters and emails, in order.',
     fields: /** @type {FieldDef[]} */ ([
-      { key: 'date',    label: 'Date',    type: 'date', width: '9rem' },
-      { key: 'from',    label: 'From',    type: 'text', width: '10rem' },
-      { key: 'to',      label: 'To',      type: 'text', width: '10rem' },
+      { key: 'date',    label: 'Date',    type: 'date', width: '9rem', readWidth: '6.5rem' },
+      { key: 'from',    label: 'From',    type: 'text', width: '10rem', readWidth: '8rem' },
+      { key: 'to',      label: 'To',      type: 'text', width: '10rem', readWidth: '8rem' },
       // One column, not two. A pasted email fills it with the subject line and
       // the author edits it into whatever actually describes the item — which
       // is what a reader scans. Splitting "subject" from "summary" gave two
@@ -89,9 +95,9 @@ export const DATASET_TEMPLATES = {
     // editor's fixed layout must fit alongside the Detail and delete columns,
     // and anything generous here comes straight out of Notes.
     fields: /** @type {FieldDef[]} */ ([
-      { key: 'name',   label: 'Document', type: 'text', width: '13rem' },
-      { key: 'date',   label: 'Dated',    type: 'date', width: '8.5rem' },
-      { key: 'author', label: 'Author',   type: 'text', width: '9rem' },
+      { key: 'name',   label: 'Document', type: 'text', width: '13rem', readWidth: '11rem' },
+      { key: 'date',   label: 'Dated',    type: 'date', width: '8.5rem', readWidth: '6.5rem' },
+      { key: 'author', label: 'Author',   type: 'text', width: '9rem',   readWidth: '7rem' },
       // No Status column. Disclosed / Withheld / Requested / Missing looked
       // useful and went unused in practice — four options that suited a
       // disclosure exercise and nothing else, taking a column's width from the

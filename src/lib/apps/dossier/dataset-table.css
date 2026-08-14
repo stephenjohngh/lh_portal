@@ -46,14 +46,17 @@
 .dossier-dataset-table {
   width: 100%;
   border-collapse: collapse;
-  /* AUTO, not fixed. Fixed layout is right in the EDITOR, where inputs need
-     stable widths and a long filename must not steal a column — that table is
-     separate markup in DatasetTable.svelte and still uses it. Here there are no
-     inputs, and fixed layout meant the template's width hints plus the Detail
-     column could exceed the container and starve everything without a width.
-     Auto lets content decide; min-width makes it scroll instead of collapsing. */
-  table-layout: auto;
-  min-width: 42rem;
+  /* FIXED, so the declared widths are honoured and the columns that declare
+     none get the remainder. Auto layout was tried and is worse here: a column
+     sizes to its CONTENT, so one long filename in Detail simply took the width
+     Notes needed — and no amount of truncation helps, because the column grows
+     to fit whatever it holds and there is nothing to truncate against.
+
+     Fixed layout on its own used to crush the unwidthed columns when the
+     declared ones did not fit. min-width is the answer to that: the table
+     scrolls instead. */
+  table-layout: fixed;
+  min-width: 40rem;
   font-size: 0.8125rem;
 }
 

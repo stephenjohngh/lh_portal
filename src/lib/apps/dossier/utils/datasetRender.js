@@ -138,12 +138,17 @@ export function renderDatasetTableHtml(dataset, records = [], opts = {}) {
   const showLinks = linked.some(Boolean);
 
   const head = fields
-    .map(f => `<th${f.width ? ` style="width:${escapeHtml(f.width)}"` : ''}>`
-      + `${escapeHtml(f.label)}</th>`)
+    // readWidth where a field has one: a date needs `dd / mm / yyyy` and a
+    // picker in the editor, and eight narrower characters here.
+    .map((f) => {
+      const width = f.readWidth ?? f.width;
+      return `<th${width ? ` style="width:${escapeHtml(width)}"` : ''}>`
+        + `${escapeHtml(f.label)}</th>`;
+    })
     .join('')
-    // No width: the table lays out automatically now, so a hard width here
-    // would take space from the prose columns that need it.
-    + (showLinks ? '<th>Detail</th>' : '');
+    // Bounded on purpose. Left to size itself, a long filename took as much
+    // width as it wanted and the column it took it from was the prose one.
+    + (showLinks ? '<th style="width:10rem">Detail</th>' : '');
 
   const columnCount = fields.length + (showLinks ? 1 : 0);
 
