@@ -22,6 +22,17 @@
 
   export let data;
 
+  /**
+   * Shown to the recipient on screen AND on the printed cover. Defined once:
+   * two copies of a confidentiality notice is how they come to disagree, and
+   * the printed sheet is the copy most likely to be left on a desk or handed
+   * on, so it is the one that can least afford to be missing it.
+   */
+  const CONFIDENTIALITY_NOTICE =
+    'This document package contains proprietary and confidential information '
+    + 'intended strictly for the designated recipient. Please do not copy, '
+    + 'forward, or distribute these materials without prior written consent.';
+
   // ── Passphrase gate ───────────────────────────────────────────────────────
   let passphrase = '';
   let unlocking  = false;
@@ -303,6 +314,9 @@
               · this pack is kept up to date, so a printed copy may go out of date
             {/if}
           </p>
+          <!-- On the cover, not at the end: the sheet a reader sees first is
+               also the one most likely to be photocopied on its own. -->
+          <p class="pack-print-notice">{CONFIDENTIALITY_NOTICE}</p>
         </div>
 
         {#each navDocs as node (node.id)}
@@ -322,8 +336,7 @@
     <footer class="pack-footer border-t border-slate-800 mt-8">
       <div class="max-w-6xl mx-auto px-4 py-4">
         <p class="text-[11px] text-slate-600">
-          This pack was prepared for you and is private to whoever holds this
-          link. Please do not forward it.
+          {CONFIDENTIALITY_NOTICE}
         </p>
       </div>
     </footer>

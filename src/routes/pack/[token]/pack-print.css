@@ -76,6 +76,15 @@
     font-size: 9pt;
     color: #444 !important;
   }
+  .pack-print-notice {
+    margin-top: 4mm;
+    padding-top: 2mm;
+    border-top: 0.5pt solid #bbb;
+    font-size: 8.5pt;
+    font-style: italic;
+    color: #333 !important;
+    max-width: 120mm;
+  }
 
   /* Each page of the pack starts a new sheet — a briefing read as one
      continuous column is much harder to navigate than one with edges. */
