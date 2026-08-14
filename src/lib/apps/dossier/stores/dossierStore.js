@@ -20,6 +20,7 @@ import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils
 import {
   coerceRecordFields, templateFor, migrateRecordFields,
 } from '../utils/datasetTemplates.js';
+import { planPackCopy } from '../utils/packCopy.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
@@ -186,6 +187,142 @@ function createDossierStore() {
       appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
     });
     logger('🗑 pack deleted', id);
+  }
+
+  /**
+   * Read a pack's whole contents, without opening it.
+   *
+   * Deliberately not taken from `state`: duplicating happens from the pack
+   * list, where the source pack is not the open one and the store holds another
+   * pack's docs — or none.
+   */
+  async function readPackContents(packId) {
+    const [docs, datasets, files] = await Promise.all([
+      api.get('dossier_docs', {
+        filters: { pack_id: packId }, orderBy: 'order_index', ascending: true,
+      }),
+      api.get('dossier_datasets', {
+        filters: { pack_id: packId }, orderBy: 'created_at', ascending: true,
+      }),
+      listDocuments({ entity_type: 'dossier_pack', entity_id: packId })
+        .catch(() => []),
+    ]);
+
+    const records = datasets.length
+      ? await api.getAllIn('dossier_records', 'dataset_id', datasets.map(d => d.id))
+      : [];
+
+    return { docs, datasets, records, files };
+  }
+
+  /**
+   * Duplicate a pack — the template workflow.
+   *
+   * The copy is INDEPENDENT: its own pages, its own tables, its own files. Not
+   * one row of it points at the pack it came from, which is what makes a
+   * template safe to reuse and what utils/packCopy.js exists to guarantee.
+   *
+   * Two things are deliberately left behind. Revisions: the copy starts with no
+   * history rather than importing another author's edit trail. Publications: a
+   * link is issued to a named person for a particular pack, and duplicating one
+   * would be issuing it again to someone who was never told.
+   *
+   * ⚠ There is no transaction across these calls, and DELETE on packs and docs
+   * is admin-only at RLS — so a non-admin cannot clear up a duplicate that
+   * fails halfway. Hence the catch: the partial pack is archived and renamed so
+   * it is out of the list and obviously not finished, rather than left looking
+   * like a real pack the author might edit.
+   *
+   * @param {object} source - the pack row being copied
+   * @param {{ title: string, includeRecords?: boolean, includeFiles?: boolean }} options
+   * @param {string} userId
+   */
+  async function duplicatePack(source, options, userId) {
+    const { title, includeRecords = false, includeFiles = false } = options ?? {};
+    const sourceId = source.id;
+
+    const contents = await readPackContents(sourceId);
+
+    const pack = await createPack({
+      title, description: source.description ?? null,
+    }, userId);
+
+    try {
+      // ── Files first: the slow, failure-prone part, and the map every page
+      //    rewrite depends on. Skipped entirely when the shelf is empty.
+      /** @type {Map<string, { id: string, provider_file_id?: string }>} */
+      let fileMap = new Map();
+      let skippedFiles = [];
+
+      if (includeFiles && contents.files.length) {
+        const { postJson } = await import('$lib/utils/request');
+        const result = await postJson('/api/dossier/copy-files', {
+          sourcePackId: sourceId, targetPackId: pack.id,
+        });
+        fileMap = new Map(Object.entries(result?.map ?? {}));
+        skippedFiles = result?.skipped ?? [];
+      }
+
+      const plan = planPackCopy(contents, {
+        packId: pack.id, includeRecords, files: fileMap,
+      });
+
+      // One insert statement per table. Referential integrity is checked at the
+      // end of the statement, so the pages' self-referencing parent_doc_id
+      // resolves even though the parents are in the same batch.
+      if (plan.docs.length) {
+        await api.createMany('dossier_docs', plan.docs.map(d => ({
+          ...d, created_by: userId, ...touch(userId),
+        })), false);
+      }
+      if (plan.datasets.length) {
+        await api.createMany('dossier_datasets', plan.datasets.map(d => ({
+          ...d, created_by: userId, ...touch(userId),
+        })), false);
+      }
+      if (plan.records.length) {
+        await api.createMany('dossier_records', plan.records.map(r => ({
+          ...r, created_by: userId, ...touch(userId),
+        })), false);
+      }
+
+      // dossier_links is derived, and each page rebuilds its own rows the next
+      // time it is saved — but backlinks read the table, so seeding it now is
+      // the difference between a copy whose backlink panels work and one whose
+      // panels are empty until every page has been opened and edited.
+      const linkRows = plan.docs.flatMap(doc =>
+        extractLinks(doc.blocks).map(link => ({
+          ...link, pack_id: pack.id, from_doc_id: doc.id, created_by: userId,
+        })));
+      if (linkRows.length) {
+        await api.createMany('dossier_links', linkRows, false)
+          .catch(err => logger('⚠ link index not seeded (rebuilds on save)', err));
+      }
+
+      logAudit('create', 'dossier_pack', pack.id, pack.title, {
+        appId: 'dossier', eventCategory: 'dossier', severity: 'info',
+        afterData: {
+          duplicated_from: sourceId, pages: plan.docs.length,
+          tables: plan.datasets.length, entries: plan.records.length,
+          files: fileMap.size,
+        },
+      });
+      logger('📋 pack duplicated', sourceId, '→', pack.id);
+
+      return { pack, plan, skippedFiles };
+    } catch (err) {
+      await setArchived(pack.id, true, userId).catch(() => {});
+      await api.update('dossier_packs', pack.id,
+        { title: `${title} — incomplete copy`, ...touch(userId) }, false).catch(() => {});
+      update(s => ({
+        ...s,
+        packs: s.packs.map(p => p.id === pack.id
+          ? { ...p, title: `${title} — incomplete copy` } : p),
+      }));
+      throw new Error(
+        `The copy could not be completed: ${errMessage(err)}. The part that was ` +
+        'created has been archived — an admin can delete it.');
+    }
   }
 
   // ── Pack files (the shelf) ───────────────────────────────────────────────
@@ -784,6 +921,7 @@ function createDossierStore() {
   return {
     subscribe,
     loadPacks, createPack, updatePack, setArchived, deletePack,
+    readPackContents, duplicatePack,
     loadDatasets, createDataset, deleteDataset,
     createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,

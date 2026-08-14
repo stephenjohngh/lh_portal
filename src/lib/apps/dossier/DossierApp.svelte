@@ -13,6 +13,8 @@
   import PackList         from './components/PackList.svelte';
   import PackFormModal    from './components/PackFormModal.svelte';
   import PackWorkspace    from './components/PackWorkspace.svelte';
+  import DuplicatePackModal from './components/DuplicatePackModal.svelte';
+  import { copyTitle }    from './utils/packCopy.js';
 
   /** A caught value is `unknown`; narrow it without asserting a type. */
   const errMessage = (err) => (err instanceof Error ? err.message : String(err));
@@ -104,6 +106,65 @@
     }
   }
 
+  // ── Duplicating a pack (the template workflow) ────────────────────────────
+
+  let duplicateSource   = null;
+  let duplicateContents = null;
+  let duplicateLoading  = false;
+  let showDuplicate     = false;
+  let duplicateModalRef;
+  let duplicateNotice   = '';
+
+  $: duplicateTitle = duplicateSource
+    ? copyTitle(duplicateSource.title, packs.map(p => p.title))
+    : '';
+
+  async function requestDuplicate(pack) {
+    duplicateSource   = pack;
+    duplicateContents = null;
+    duplicateLoading  = true;
+    showDuplicate     = true;
+    duplicateNotice   = '';
+    try {
+      // Read the source up front so the dialog can state what the copy will
+      // contain — the counts are the whole point of asking before doing it.
+      duplicateContents = await dossierStore.readPackContents(pack.id);
+    } catch (err) {
+      duplicateModalRef?.fail(errMessage(err));
+    } finally {
+      duplicateLoading = false;
+    }
+  }
+
+  async function handleDuplicate(e) {
+    const source  = duplicateSource;      // capture before the await
+    const options = e.detail;
+    const userId  = $auth.user.id;
+    try {
+      const { pack, plan, skippedFiles } =
+        await dossierStore.duplicatePack(source, options, userId);
+      showDuplicate   = false;
+      duplicateSource = null;
+
+      // Say what did not come across. A gap the author knows about is a choice;
+      // one they find later, in a published pack, is a fault.
+      const notes = [];
+      if (skippedFiles?.length) {
+        notes.push(`${skippedFiles.length} file${skippedFiles.length === 1 ? '' : 's'} ` +
+          `could not be copied (${skippedFiles[0].reason})`);
+      }
+      if (plan?.dropped?.files) {
+        notes.push(`${plan.dropped.files} reference${plan.dropped.files === 1 ? '' : 's'} ` +
+          'to a file now shows a gap');
+      }
+      duplicateNotice = notes.length
+        ? `"${pack.title}" created — ${notes.join('; ')}.`
+        : '';
+    } catch (err) {
+      duplicateModalRef?.fail(errMessage(err));
+    }
+  }
+
   function requestDelete(pack) { pendingDelete = pack; }
 
   async function confirmDelete() {
@@ -154,6 +215,17 @@
     </div>
   {/if}
 
+  {#if duplicateNotice}
+    <div class="px-4 pt-3">
+      <div class="flex items-start gap-2 p-3 rounded border border-amber-500/40
+                  bg-amber-500/10">
+        <p class="text-xs text-amber-200 flex-1">{duplicateNotice}</p>
+        <button class="text-xs text-amber-200/70 hover:text-amber-100"
+                on:click={() => duplicateNotice = ''}>Dismiss</button>
+      </div>
+    </div>
+  {/if}
+
   <div class="flex-1 min-h-0">
     {#if openPack}
       <PackWorkspace pack={openPack} on:back={backToPacks} />
@@ -165,6 +237,7 @@
         on:open={(e)    => handleOpen(e.detail)}
         on:edit={(e)    => openEditPack(e.detail)}
         on:archive={(e) => handleArchive(e.detail)}
+        on:duplicate={(e) => requestDuplicate(e.detail)}
         on:delete={(e)  => requestDelete(e.detail)}
       />
     {/if}
@@ -177,6 +250,17 @@
   pack={editingPack}
   on:save={handlePackSave}
   on:close={() => showPackModal = false}
+/>
+
+<DuplicatePackModal
+  bind:this={duplicateModalRef}
+  bind:show={showDuplicate}
+  pack={duplicateSource}
+  contents={duplicateContents}
+  loading={duplicateLoading}
+  suggestedTitle={duplicateTitle}
+  on:duplicate={handleDuplicate}
+  on:close={() => { showDuplicate = false; duplicateSource = null; }}
 />
 
 <ConfirmDialog

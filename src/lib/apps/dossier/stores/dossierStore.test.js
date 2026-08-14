@@ -19,7 +19,8 @@ const h = vi.hoisted(() => {
   });
   const logAudit = vi.fn();
   const listDocuments = vi.fn(() => Promise.resolve([]));
-  return { api, logAudit, listDocuments };
+  const postJson = vi.fn(() => Promise.resolve({ map: {}, skipped: [] }));
+  return { api, logAudit, listDocuments, postJson };
 });
 
 vi.mock('$lib/utils/api',         () => ({ api: h.api }));
@@ -28,6 +29,9 @@ vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
 // documentApi transitively imports supabaseClient → $env/static/public, which
 // does not resolve without the SvelteKit vite plugin.
 vi.mock('$lib/utils/documentApi', () => ({ listDocuments: h.listDocuments }));
+// duplicatePack imports this lazily, so the file copy costs nothing when the
+// author left the files behind.
+vi.mock('$lib/utils/request', () => ({ postJson: h.postJson, del: vi.fn() }));
 
 const { dossierStore: store } = await import('./dossierStore.js');
 const { buildSnapshot } = await import('../utils/snapshot.js');
@@ -791,6 +795,143 @@ describe('publications', () => {
 
     store.closePack();
     expect(get(store).publications).toEqual([]);
+  });
+});
+
+describe('duplicatePack', () => {
+  const SOURCE = { id: 'p1', title: 'Template', description: 'A starter' };
+
+  /**
+   * readPackContents fires docs + datasets + listDocuments together, then the
+   * records query. Order matters here because api.get is one mock for both.
+   */
+  function seedSource({ docs = [], datasets = [], records = [], files = [] } = {}) {
+    h.api.get.mockResolvedValueOnce(docs).mockResolvedValueOnce(datasets);
+    h.listDocuments.mockResolvedValueOnce(files);
+    h.api.getAllIn.mockResolvedValueOnce(records);
+  }
+
+  const rowsFor = (table) =>
+    h.api.createMany.mock.calls.find(c => c[0] === table)?.[1] ?? [];
+
+  it('creates a new pack and fills it, without touching the original', async () => {
+    seedSource({
+      docs: [{ id: 'd1', slug: 'brief', title: 'Brief', order_index: 0,
+        blocks: { type: 'doc', content: [] } }],
+      datasets: [{ id: 's1', key: 'chronology', title: 'Chronology' }],
+      records: [{ id: 'r1', dataset_id: 's1', fields: { event: 'Letter' } }],
+    });
+
+    await store.duplicatePack(SOURCE, { title: 'Template (copy)' }, 'u1');
+
+    expect(h.api.update).not.toHaveBeenCalled();
+    expect(h.api.delete).not.toHaveBeenCalled();
+    expect(rowsFor('dossier_docs')[0]).toMatchObject({
+      pack_id: 'p-new', slug: 'brief', title: 'Brief', created_by: 'u1',
+    });
+  });
+
+  it('gives the copy new ids — nothing points back at the source pack', async () => {
+    seedSource({
+      docs: [{ id: 'd1', slug: 'a', title: 'A', blocks: { type: 'doc', content: [
+        { type: 'embedDataset', attrs: { uid: 'u', dataset_id: 's1' } },
+      ] } }],
+      datasets: [{ id: 's1', key: 'chronology', title: 'Chronology' }],
+    });
+
+    await store.duplicatePack(SOURCE, { title: 'Copy' }, 'u1');
+
+    const json = JSON.stringify([...rowsFor('dossier_docs'), ...rowsFor('dossier_datasets')]);
+    expect(json).not.toContain('"d1"');
+    expect(json).not.toContain('"s1"');
+  });
+
+  it('leaves table entries out unless asked, and brings them when asked', async () => {
+    seedSource({
+      datasets: [{ id: 's1', key: 'chronology', title: 'C' }],
+      records: [{ id: 'r1', dataset_id: 's1', fields: { event: 'Letter' } }],
+    });
+    await store.duplicatePack(SOURCE, { title: 'Copy' }, 'u1');
+    expect(rowsFor('dossier_records')).toEqual([]);
+
+    vi.clearAllMocks();
+    seedSource({
+      datasets: [{ id: 's1', key: 'chronology', title: 'C' }],
+      records: [{ id: 'r1', dataset_id: 's1', fields: { event: 'Letter' } }],
+    });
+    await store.duplicatePack(SOURCE, { title: 'Copy', includeRecords: true }, 'u1');
+    expect(rowsFor('dossier_records')).toHaveLength(1);
+  });
+
+  it('does not call the file-copy endpoint when the files stay behind', async () => {
+    seedSource({ files: [{ id: 'f1', filename: 'logo.png' }] });
+    await store.duplicatePack(SOURCE, { title: 'Copy' }, 'u1');
+    expect(h.postJson).not.toHaveBeenCalled();
+  });
+
+  it('copies the shelf into the NEW pack when asked, and uses the map it returns', async () => {
+    seedSource({
+      docs: [{ id: 'd1', slug: 'a', title: 'A', blocks: { type: 'doc', content: [
+        { type: 'asset', attrs: { uid: 'u', document_id: 'f1', provider_file_id: 'drive-1' } },
+      ] } }],
+      files: [{ id: 'f1', filename: 'logo.png' }],
+    });
+    h.postJson.mockResolvedValueOnce({
+      map: { f1: { id: 'f2', provider_file_id: 'drive-2' } }, skipped: [],
+    });
+
+    await store.duplicatePack(SOURCE, { title: 'Copy', includeFiles: true }, 'u1');
+
+    expect(h.postJson).toHaveBeenCalledWith('/api/dossier/copy-files',
+      { sourcePackId: 'p1', targetPackId: 'p-new' });
+    const asset = rowsFor('dossier_docs')[0].blocks.content[0];
+    expect(asset.attrs).toMatchObject({ document_id: 'f2', provider_file_id: 'drive-2' });
+  });
+
+  it('copies neither revisions nor publications', async () => {
+    // A copy starts with no history and no links: both belong to the pack they
+    // were made for, and a duplicated link would reach a person nobody told.
+    seedSource({ docs: [{ id: 'd1', slug: 'a', title: 'A', blocks: null }] });
+    await store.duplicatePack(SOURCE, { title: 'Copy' }, 'u1');
+
+    const tables = h.api.createMany.mock.calls.map(c => c[0]);
+    expect(tables).not.toContain('dossier_doc_revisions');
+    expect(tables).not.toContain('dossier_publications');
+  });
+
+  it('seeds the link index, so backlinks work before anything is re-saved', async () => {
+    seedSource({
+      docs: [
+        { id: 'd1', slug: 'a', title: 'A', blocks: { type: 'doc', content: [
+          { type: 'paragraph', attrs: { uid: 'u' }, content: [{
+            type: 'text', text: 'see B',
+            marks: [{ type: 'docLink', attrs: { target_doc_id: 'd2', target_slug: 'b' } }],
+          }] },
+        ] } },
+        { id: 'd2', slug: 'b', title: 'B', blocks: { type: 'doc', content: [] } },
+      ],
+    });
+
+    await store.duplicatePack(SOURCE, { title: 'Copy' }, 'u1');
+
+    const links = rowsFor('dossier_links');
+    expect(links).toHaveLength(1);
+    expect(links[0].pack_id).toBe('p-new');
+    expect(links[0].target_doc_id).toBe(rowsFor('dossier_docs')[1].id);
+  });
+
+  it('archives the half-made pack when a copy fails part-way', async () => {
+    // Nothing here is transactional, and DELETE is admin-only at RLS — so the
+    // best available cleanup is to get it out of the list and label it.
+    seedSource({ docs: [{ id: 'd1', slug: 'a', title: 'A', blocks: null }] });
+    h.api.createMany.mockRejectedValueOnce(new Error('insert failed'));
+
+    await expect(store.duplicatePack(SOURCE, { title: 'Copy' }, 'u1'))
+      .rejects.toThrow(/could not be completed/);
+
+    const patches = h.api.update.mock.calls.filter(c => c[0] === 'dossier_packs');
+    expect(patches.some(c => c[2].status === 'archived')).toBe(true);
+    expect(patches.some(c => String(c[2].title).includes('incomplete'))).toBe(true);
   });
 });
 

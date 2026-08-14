@@ -101,6 +101,11 @@
                 Edit
               </Button>
               <Button variant="secondary" size="small"
+                      title="Make an independent copy — the way to reuse a pack as a template"
+                      on:click={(e) => { e.stopPropagation(); dispatch('duplicate', pack); }}>
+                Duplicate
+              </Button>
+              <Button variant="secondary" size="small"
                       on:click={(e) => { e.stopPropagation(); dispatch('archive', pack); }}>
                 {pack.status === 'archived' ? 'Restore' : 'Archive'}
               </Button>
