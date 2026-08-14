@@ -20,7 +20,11 @@ function snapshotDoc(doc) {
     id:          doc.id,
     slug:        doc.slug,
     title:       doc.title,
-    parent_id:   doc.parent_id ?? null,
+    // parent_doc_id, both sides. The column is parent_doc_id and buildTree()
+    // reads parent_doc_id; this wrote `parent_id` from a `parent_id` that never
+    // existed, so every page arrived at the recipient as a root and the pack's
+    // structure was flattened.
+    parent_doc_id: doc.parent_doc_id ?? null,
     order_index: doc.order_index ?? 0,
     blocks:      doc.blocks ?? null,
   };

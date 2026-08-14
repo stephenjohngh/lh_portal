@@ -98,7 +98,7 @@ export async function readPublicationContent(publication) {
   const [{ data: pack }, { data: docs }, { data: datasets }] = await Promise.all([
     db.from('dossier_packs').select('id, title, description').eq('id', packId).maybeSingle(),
     db.from('dossier_docs')
-      .select('id, slug, title, parent_id, order_index, blocks')
+      .select('id, slug, title, parent_doc_id, order_index, blocks')
       .eq('pack_id', packId).order('order_index', { ascending: true }),
     db.from('dossier_datasets').select('id, key, title').eq('pack_id', packId),
   ]);

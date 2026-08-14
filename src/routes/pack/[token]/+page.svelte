@@ -11,7 +11,6 @@
      no Supabase client, and no store import. -->
 <script>
   import BlockContent from '$lib/apps/dossier/components/BlockContent.svelte';
-  import DatasetTableView from '$lib/apps/dossier/components/DatasetTableView.svelte';
   import { buildTree } from '$lib/apps/dossier/utils/docTree.js';
   import { fmtDateLong } from '$lib/utils/dates';
   import lhLogo from '$lib/assets/LH_services_logo.png';
@@ -62,18 +61,12 @@
 
   /** null = the pack's own front page; a doc id = that page. */
   let selectedId = null;
-  let selectedDatasetId = null;
   let navOpen = false;
 
   $: selectedDoc = docs.find(d => d.id === selectedId) ?? null;
-  $: selectedDataset = datasets.find(d => d.id === selectedDatasetId) ?? null;
 
   function openDoc(id) {
-    selectedId = id; selectedDatasetId = null; navOpen = false;
-    scrollTo(0, 0);
-  }
-  function openDataset(id) {
-    selectedDatasetId = id; selectedId = null; navOpen = false;
+    selectedId = id; navOpen = false;
     scrollTo(0, 0);
   }
 
@@ -218,7 +211,7 @@
               <li>
                 <button
                   class="w-full text-left text-sm px-2 py-1 rounded transition-colors
-                         {selectedId === null && selectedDatasetId === null
+                         {selectedId === null
                            ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}"
                   on:click={() => openDoc(null)}
                 >Overview</button>
@@ -237,39 +230,12 @@
             </ul>
           </div>
 
-          {#if datasets.length}
-            <div>
-              <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                Tables
-              </p>
-              <ul class="space-y-0.5">
-                {#each datasets as dataset (dataset.id)}
-                  <li>
-                    <button
-                      class="w-full text-left text-sm px-2 py-1 rounded transition-colors truncate
-                             {selectedDatasetId === dataset.id
-                               ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}"
-                      on:click={() => openDataset(dataset.id)}
-                    >{dataset.title}</button>
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
         </div>
       </nav>
 
       <!-- Content -->
       <main class="flex-1 min-w-0">
-        {#if selectedDataset}
-          <h1 class="text-xl font-semibold text-white mb-4">{selectedDataset.title}</h1>
-          <DatasetTableView
-            dataset={selectedDataset}
-            records={records.filter(r => r.dataset_id === selectedDataset.id)}
-            {docs} {files} assetBase={data.assetBase}
-            on:openDoc={(e) => openDoc(e.detail)}
-          />
-        {:else if selectedDoc}
+        {#if selectedDoc}
           <h1 class="text-xl font-semibold text-white mb-4">{selectedDoc.title}</h1>
           <BlockContent
             blocks={selectedDoc.blocks}
@@ -291,17 +257,6 @@
               <li style="padding-left: {node.depth * 0.75}rem">
                 <button class="text-sm text-purple-400 hover:underline text-left"
                         on:click={() => openDoc(node.id)}>{node.title}</button>
-              </li>
-            {/each}
-            {#each datasets as dataset (dataset.id)}
-              <li>
-                <button class="text-sm text-purple-400 hover:underline text-left"
-                        on:click={() => openDataset(dataset.id)}>
-                  {dataset.title}
-                  <span class="text-slate-500">
-                    · {records.filter(r => r.dataset_id === dataset.id).length} entries
-                  </span>
-                </button>
               </li>
             {/each}
           </ul>
@@ -336,18 +291,6 @@
               mode="read"
               {docs} {files} {datasets} {records}
               assetBase={data.assetBase}
-            />
-          </section>
-        {/each}
-
-        {#each datasets as dataset (dataset.id)}
-          <section class="pack-print-section">
-            <h2>{dataset.title}</h2>
-            <DatasetTableView
-              {dataset}
-              records={records.filter(r => r.dataset_id === dataset.id)}
-              {docs} {files} assetBase={data.assetBase}
-              on:openDoc={(e) => openDoc(e.detail)}
             />
           </section>
         {/each}

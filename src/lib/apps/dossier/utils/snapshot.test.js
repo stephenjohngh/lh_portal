@@ -15,6 +15,7 @@ import {
   buildSnapshot, buildManifest, referencedFileIds, manifestAllows, manifestEntry,
   describeInclusion, SNAPSHOT_FORMAT,
 } from './snapshot.js';
+import { buildTree } from './docTree.js';
 
 const AT = '2026-08-12T10:00:00.000Z';
 
@@ -24,7 +25,7 @@ const assetNode = (documentId) => ({
 
 const page = (id, title, order, ...nodes) => ({
   id, slug: title.toLowerCase().replace(/\W+/g, '-'), title,
-  parent_id: null, order_index: order,
+  parent_doc_id: null, order_index: order,
   blocks: { type: 'doc', content: nodes },
 });
 
@@ -104,6 +105,35 @@ describe('buildSnapshot', () => {
       if (record.document_id) expect(fileIds.has(record.document_id)).toBe(true);
     }
     for (const id of referencedFileIds(snapshot)) expect(fileIds.has(id)).toBe(true);
+  });
+
+  it('carries the PARENT of every page, so the pack keeps its shape', () => {
+    // The column is parent_doc_id and buildTree() reads parent_doc_id. This
+    // once read `doc.parent_id` — which does not exist — and wrote it as
+    // `parent_id`, wrong at both ends, so every page reached the recipient as a
+    // root and a nested briefing arrived flattened.
+    const child = { ...page('d2', 'Detail', 1), parent_doc_id: 'd1' };
+    const snapshot = buildSnapshot({
+      pack, docs: [page('d1', 'Overview', 0), child], generatedAt: AT,
+    });
+
+    expect(snapshot.docs.find(d => d.id === 'd2').parent_doc_id).toBe('d1');
+    expect(snapshot.docs.find(d => d.id === 'd1').parent_doc_id).toBeNull();
+  });
+
+  it('nests back into the same tree the author built', () => {
+    // The end-to-end property: what buildTree() makes of the snapshot must
+    // match what it makes of the live rows.
+    const docs = [
+      page('d1', 'Issues', 0),
+      { ...page('d2', 'Sub', 1), parent_doc_id: 'd1' },
+      { ...page('d3', 'Deeper', 2), parent_doc_id: 'd2' },
+    ];
+    const roots = buildTree(buildSnapshot({ pack, docs, generatedAt: AT }).docs);
+
+    expect(roots).toHaveLength(1);
+    expect(roots[0].children[0].id).toBe('d2');
+    expect(roots[0].children[0].children[0].id).toBe('d3');
   });
 
   it('survives an empty pack', () => {

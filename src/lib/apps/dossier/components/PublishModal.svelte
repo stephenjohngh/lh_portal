@@ -203,16 +203,15 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <FormSelect label="Expires" bind:value={expiryDays}>
-              {#each EXPIRY_CHOICES as choice (choice.label)}
-                <option value={choice.days ?? ''}>{choice.label}</option>
-              {/each}
-            </FormSelect>
+            <!-- FormSelect takes its options as a PROP; it has no slot, so
+                 <option> children render nowhere and both menus came up empty. -->
+            <FormSelect label="Expires" bind:value={expiryDays}
+              options={EXPIRY_CHOICES.map(c => ({ value: c.days ?? '', label: c.label }))} />
 
-            <FormSelect label="Content" bind:value={mode}>
-              <option value="snapshot">Frozen as it is now</option>
-              <option value="latest">Always the latest version</option>
-            </FormSelect>
+            <FormSelect label="Content" bind:value={mode} options={[
+              { value: 'snapshot', label: 'Frozen as it is now' },
+              { value: 'latest',   label: 'Always the latest version' },
+            ]} />
           </div>
 
           <FormInput
