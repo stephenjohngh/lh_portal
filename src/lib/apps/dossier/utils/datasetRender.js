@@ -72,8 +72,11 @@ function renderRecordLink(record, links) {
     // A deleted page leaves the entry standing (doc_id is ON DELETE SET NULL),
     // so an id with no page is a genuine possibility, not a bug.
     if (doc) {
-      return `<a class="dossier-record-link" href="#" data-doc-id="${escapeHtml(doc.id)}">`
-        + `${escapeHtml(doc.title || 'Page')}</a>`;
+      const title = doc.title || 'Page';
+      // title=, because the cell truncates: the full name has to stay
+      // reachable without giving the column the width to show it.
+      return `<a class="dossier-record-link" href="#" data-doc-id="${escapeHtml(doc.id)}"`
+        + ` title="${escapeHtml(title)}">${escapeHtml(title)}</a>`;
     }
   }
 
@@ -84,12 +87,14 @@ function renderRecordLink(record, links) {
       : 'File';
     if (links.assetBase) {
       return `<a class="dossier-record-link" target="_blank" rel="noopener noreferrer" `
+        + `title="${escapeHtml(name)}" `
         + `href="${escapeHtml(links.assetBase)}${encodeURIComponent(record.document_id)}">`
         + `${escapeHtml(name)}</a>`;
     }
     // No asset base (a print rendering, say) — name it without pretending it
     // can be opened.
-    return `<span class="dossier-record-link-plain">${escapeHtml(name)}</span>`;
+    return `<span class="dossier-record-link-plain" title="${escapeHtml(name)}">`
+      + `${escapeHtml(name)}</span>`;
   }
 
   return '';

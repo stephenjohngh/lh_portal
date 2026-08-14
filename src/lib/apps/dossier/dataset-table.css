@@ -113,10 +113,18 @@
 /* Named but not reachable — a file in a rendering with no asset base. */
 .dossier-prose .dossier-record-link-plain { color: #94a3b8; }
 
-/* The Detail cell names one thing; wrapping it gains nothing. */
+/* The Detail cell names one thing; wrapping it gains nothing — but nowrap
+   ALONE made a long filename demand width from the automatic layout, and the
+   column it took it from was Notes, which is the one an author writes in. So
+   it truncates instead, and carries the full name in a title. */
 .dossier-dataset-table td:last-child .dossier-record-link,
 .dossier-dataset-table td:last-child .dossier-record-link-plain {
+  display: inline-block;
+  max-width: 100%;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 
 /* ── Folded bodies ──────────────────────────────────────────────────────────
