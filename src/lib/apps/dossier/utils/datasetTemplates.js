@@ -92,11 +92,15 @@ export const DATASET_TEMPLATES = {
       { key: 'name',   label: 'Document', type: 'text', width: '13rem' },
       { key: 'date',   label: 'Dated',    type: 'date', width: '8.5rem' },
       { key: 'author', label: 'Author',   type: 'text', width: '9rem' },
+      // No Status column. Disclosed / Withheld / Requested / Missing looked
+      // useful and went unused in practice — four options that suited a
+      // disclosure exercise and nothing else, taking a column's width from the
+      // one field authors actually write in. Anything worth saying about a
+      // document's standing goes in Notes, in the author's own words.
       {
-        key: 'status', label: 'Status', type: 'select', width: '8rem',
-        options: ['Disclosed', 'Withheld', 'Requested', 'Missing'],
+        key: 'notes', label: 'Notes', type: 'longtext',
+        placeholder: 'Anything worth saying about this document',
       },
-      { key: 'notes',  label: 'Notes',    type: 'longtext' },
     ]),
     sort: 'name',
   },

@@ -280,7 +280,11 @@
   {/if}
 
   <!-- Table -->
-  <div class="flex-1 min-h-0 overflow-auto px-6 py-4">
+  <!-- The pane scrolls VERTICALLY; the table scrolls sideways inside its own
+       wrapper below. With both on this element the horizontal bar sat at the
+       bottom of the pane — the bottom of the window — far from the table it
+       belonged to, so there was nothing to suggest the table could scroll. -->
+  <div class="flex-1 min-h-0 overflow-y-auto px-6 py-4">
     <!-- table-fixed is load-bearing: with the default auto layout a column's
          CONTENT sets its width, so one long filename in Detail stole the space
          Notes needed and the declared widths were ignored. Fixed layout honours
@@ -291,7 +295,8 @@
          columns that declare none — Notes — were left a few rem and rendered
          one character per line, with the headers overlapping. A minimum lets
          the pane scroll instead, which is what the read view already does. -->
-    <table class="w-full min-w-[62rem] text-sm border-collapse table-fixed">
+    <div class="overflow-x-auto">
+    <table class="w-full min-w-[54rem] text-sm border-collapse table-fixed">
       <thead>
         <tr class="text-left">
           {#each columns as field}
@@ -541,6 +546,7 @@
         </tbody>
       {/if}
     </table>
+    </div>
 
     {#if records.length === 0}
       <p class="text-xs text-slate-500 mt-4 max-w-md">

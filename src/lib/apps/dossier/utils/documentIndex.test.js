@@ -63,15 +63,17 @@ describe('shelfIndexRows', () => {
     expect(row.fields.notes).toBe('Served by post');
   });
 
-  it('leaves status EMPTY — that is a judgement, not a fact about the file', () => {
-    // Guessing "Disclosed" would put a claim in a solicitor's pack that
-    // nobody actually made.
-    expect(shelfIndexRows([file('f1', 'Notice')])[0].fields.status).toBe('');
+  it('leaves author EMPTY — the file records who uploaded it, not who wrote it', () => {
+    // A plausible-looking wrong answer in a solicitor's pack is worse than a
+    // blank.
+    expect(shelfIndexRows([file('f1', 'Notice')])[0].fields.author).toBe('');
   });
 
-  it('produces every column the template defines', () => {
+  it('produces every field the template defines, and only those', () => {
+    // Status was removed from the template; a row built here must not carry a
+    // key the template no longer knows about.
     expect(Object.keys(shelfIndexRows([file('f1', 'N')])[0].fields).sort())
-      .toEqual(['author', 'date', 'name', 'notes', 'status']);
+      .toEqual(['author', 'date', 'name', 'notes']);
   });
 
   it('leaves the date empty when there is no usable timestamp', () => {

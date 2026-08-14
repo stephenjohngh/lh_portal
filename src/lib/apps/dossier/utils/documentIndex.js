@@ -66,7 +66,6 @@ export function shelfIndexRows(files = []) {
       // beats an empty column, and it is at least true of the file.
       date:   ymd(file.created_at),
       author: '',
-      status: '',
       notes:  file.description ?? '',
     }),
   }));
