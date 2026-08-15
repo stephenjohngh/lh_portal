@@ -228,6 +228,16 @@ describe('buildArchiveText', () => {
     expect(build()[0].text).not.toContain('internal note');
   });
 
+  it('omits the Prepared line for a pack that was never published', () => {
+    // An archive of a live pack has no such moment, and a bare "Prepared" with
+    // nothing after it reads as a bug.
+    const live = buildArchiveText({
+      content: { pack: { title: 'Live' }, docs: [] },
+    });
+    expect(live[0].text).not.toContain('Prepared');
+    expect(live[0].text).toContain('Archived ');
+  });
+
   it('handles a pack with no tables and no files', () => {
     const bare = buildArchiveText({
       content: { pack: { title: 'Bare' }, docs: [{ id: 'd', slug: 'p', title: 'P', blocks: null }] },

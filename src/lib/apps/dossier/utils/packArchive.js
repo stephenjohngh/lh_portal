@@ -306,10 +306,12 @@ function readmeText({ content, entries, fileNames, notice, omitted }) {
     content?.pack?.title ?? 'Pack',
     '='.repeat((content?.pack?.title ?? 'Pack').length),
     '',
-    `Prepared ${content?.generated_at ?? ''}`.trim(),
-    `Archived ${new Date().toISOString()}`,
-    '',
   ];
+
+  // Only a publication was "prepared" on a date. An archive of a live pack has
+  // no such moment, and a bare "Prepared" with nothing after it reads as a bug.
+  if (content?.generated_at) lines.push(`Prepared ${content.generated_at}`);
+  lines.push(`Archived ${new Date().toISOString()}`, '');
 
   if (notice) lines.push(notice, '');
 

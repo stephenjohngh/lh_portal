@@ -31,11 +31,10 @@ export const LIMITS = {
   // A passphrase is the low-entropy half of a publication's credential, so
   // this limiter is what makes guessing it impractical rather than merely slow.
   pack_unlock:   { max: 10,  windowMinutes: 15 },
-  // The whole pack as one zip. Its own budget because one request costs as
-  // much as every file request put together — sharing pack_asset's allowance
-  // would let a handful of archive calls exhaust a reader's ability to open
-  // anything at all.
-  pack_archive:  { max: 6,   windowMinutes: 15 },
+  // The author's offline zip of a whole pack (per USER, not per IP — the
+  // endpoint is authenticated). Metered because one request reads every file
+  // in the pack, which is as expensive as everything else here put together.
+  pack_archive:  { max: 10,  windowMinutes: 15 },
 };
 
 // Module-level singleton for the service role client

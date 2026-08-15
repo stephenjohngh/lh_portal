@@ -162,47 +162,12 @@
     ]);
   }
 
-  // ── The offline archive ───────────────────────────────────────────────────
-  // Fetched rather than linked, so a failure can be explained. A plain <a
-  // download> would navigate away on a 413 or a revoked link and leave the
-  // recipient looking at a JSON error page.
-  let archiving = false;
-  let archiveError = '';
-
-  async function downloadArchive() {
-    if (archiving) return;
-    archiving = true; archiveError = '';
-    try {
-      const res = await fetch(`/api/pack/${$pageStore.params.token}/archive`);
-      if (!res.ok) {
-        archiveError = (await res.json().catch(() => ({})))?.error
-          ?? 'The archive could not be prepared just now.';
-        return;
-      }
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url;
-      a.download = filenameFrom(res.headers.get('content-disposition'))
-        ?? `${publication?.title ?? 'pack'}.zip`;
-      a.click();
-      // Revoke on the next turn: Safari has not started the download yet when
-      // click() returns, and revoking synchronously produces an empty file.
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch {
-      archiveError = 'The archive could not be downloaded just now.';
-    } finally {
-      archiving = false;
-    }
-  }
-
-  /** The server's name for the file, preferring the RFC 5987 form. */
-  function filenameFrom(header) {
-    if (!header) return null;
-    const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
-    if (star) { try { return decodeURIComponent(star[1]); } catch { /* fall through */ } }
-    return /filename="([^"]+)"/i.exec(header)?.[1] ?? null;
-  }
+  // Note on what is deliberately NOT here: a "download the whole pack" control.
+  // The offline zip archive is an AUTHORING feature — an author keeps a copy of
+  // their own pack — and there is no endpoint behind a publication token that
+  // would serve one. A recipient reads the pack, prints it, and downloads the
+  // individual files a page refers to. Handing over everything in one request
+  // is a different act from reading, and it is not one this link permits.
 
   async function printPack() {
     if (preparing) return;
@@ -306,14 +271,6 @@
           class="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
                  text-slate-300 hover:text-white hover:border-slate-500
                  transition-colors shrink-0"
-          title="Download the whole pack — pages, tables and files — as a zip you can keep"
-          disabled={archiving}
-          on:click={downloadArchive}
-        >{archiving ? 'Preparing…' : 'Download'}</button>
-        <button
-          class="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
-                 text-slate-300 hover:text-white hover:border-slate-500
-                 transition-colors shrink-0"
           title="Print the whole pack"
           disabled={preparing}
           on:click={printPack}
@@ -326,17 +283,6 @@
         >Contents</button>
       </div>
     </header>
-
-    {#if archiveError}
-      <div class="pack-screen max-w-6xl mx-auto px-4 pt-3">
-        <div class="flex items-start gap-2 p-3 rounded border border-amber-500/40
-                    bg-amber-500/10">
-          <p class="text-xs text-amber-200 flex-1">{archiveError}</p>
-          <button class="text-xs text-amber-200/70 hover:text-amber-100"
-                  on:click={() => archiveError = ''}>Dismiss</button>
-        </div>
-      </div>
-    {/if}
 
     <div class="pack-screen max-w-6xl mx-auto px-4 py-6 flex gap-8">
 

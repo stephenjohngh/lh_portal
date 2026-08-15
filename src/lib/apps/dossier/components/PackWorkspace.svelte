@@ -550,6 +550,54 @@
     }
   }
 
+  // ── The offline archive ───────────────────────────────────────────────────
+  // The author's own copy: pages as markdown, tables as CSV, and the shelf's
+  // files. Fetched rather than linked so a failure can be explained — a plain
+  // <a download> would navigate away on a 413 and leave a JSON error page.
+
+  let archiving = false;
+
+  async function downloadArchive() {
+    if (archiving) return;
+    const packId = pack.id;               // capture before the await
+    archiving = true; treeError = '';
+    try {
+      await editorRef?.flushNow();        // a pending edit belongs in the archive
+      const { authHeaders } = await import('$lib/utils/authHeaders');
+      const res = await fetch(`/api/dossier/archive/${packId}`, {
+        headers: await authHeaders(),
+      });
+      if (!res.ok) {
+        treeError = (await res.json().catch(() => ({})))?.error
+          ?? 'The archive could not be prepared just now.';
+        return;
+      }
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      a.download = filenameFrom(res.headers.get('content-disposition'))
+        ?? `${pack.title || 'pack'}.zip`;
+      a.click();
+      // Revoked on a later turn: Safari has not begun the download when click()
+      // returns, and revoking synchronously yields an empty file.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      treeError = err.message;
+    } finally {
+      archiving = false;
+    }
+  }
+
+  /** The server's name for the file, preferring the RFC 5987 form. */
+  function filenameFrom(header) {
+    if (!header) return null;
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+    if (star) { try { return decodeURIComponent(star[1]); } catch { /* fall through */ } }
+    return /filename="([^"]+)"/i.exec(header)?.[1] ?? null;
+  }
+
   // ── Publishing (P3) ───────────────────────────────────────────────────────
 
   let showPublish   = false;
@@ -745,6 +793,11 @@
           {liveLinks} live link{liveLinks === 1 ? '' : 's'}
         </span>
       {/if}
+      <Button variant="secondary" size="small" disabled={archiving}
+              title="Download this pack as a zip — pages, tables and files — to keep offline"
+              on:click={downloadArchive}>
+        {archiving ? 'Preparing…' : 'Archive'}
+      </Button>
       <Button variant="primary" size="small" on:click={openPublish}>
         Publish
       </Button>
