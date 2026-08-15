@@ -16,7 +16,7 @@
   import Modal           from '$lib/components/common/Modal.svelte';
   import Button          from '$lib/components/common/Button.svelte';
   import FormInput       from '$lib/components/common/FormInput.svelte';
-  import { buildExtensions, EMPTY_DOC } from '../utils/blockSchema.js';
+  import { editorExtensions, EMPTY_DOC } from '../utils/blockSchema.js';
   import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
   import BlockContent from './BlockContent.svelte';
 
@@ -127,7 +127,7 @@
   onMount(() => {
     editor = new Editor({
       element: editorEl,
-      extensions: buildExtensions({
+      extensions: editorExtensions({
         filesProvider: filesStore,
         dataProvider: dataStore,
         onOpenDoc: (id) => dispatch('openDoc', id),

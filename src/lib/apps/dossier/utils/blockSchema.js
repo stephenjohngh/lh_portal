@@ -20,6 +20,7 @@ import { Asset }   from './assetNode.js';
 import { DocLink } from './docLinkMark.js';
 import { EmbedDoc } from './embedDocNode.js';
 import { EmbedDataset } from './embedDatasetNode.js';
+import { MarkdownPaste } from './markdownPasteExtension.js';
 
 /** An empty ProseMirror doc — matches the DB default on dossier_docs.blocks. */
 export const EMPTY_DOC = { type: 'doc', content: [] };
@@ -111,6 +112,22 @@ export function buildExtensions({
     DocLink,
     BlockId,
   ];
+}
+
+/**
+ * The extension list for a LIVE editor — the schema plus the behaviours that
+ * only make sense with a cursor in the document.
+ *
+ * Kept separate from buildExtensions() because that one is also what
+ * renderBlocksToHtml() builds the read-only schema from, and the read path must
+ * stay free of editing behaviour: the two modes agreeing on the SCHEMA is the
+ * whole of decision D10, and it is not an invitation to give the renderer paste
+ * handlers it can never use.
+ *
+ * @param {Parameters<typeof buildExtensions>[0]} [opts]
+ */
+export function editorExtensions(opts = {}) {
+  return [...buildExtensions(opts), MarkdownPaste];
 }
 
 /**
