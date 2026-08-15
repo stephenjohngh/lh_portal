@@ -765,7 +765,8 @@
 
   <!-- Workspace header -->
   <div class="flex items-center gap-3 px-4 py-2 border-b border-slate-700 shrink-0">
-    <Button variant="secondary" size="small" on:click={() => dispatch('back')}>
+    <Button variant="secondary" size="small" className="shrink-0"
+            on:click={() => dispatch('back')}>
       ← Packs
     </Button>
     <p class="text-sm font-semibold text-white truncate" title={pack.title}>{pack.title}</p>
@@ -793,12 +794,15 @@
           {liveLinks} live link{liveLinks === 1 ? '' : 's'}
         </span>
       {/if}
-      <Button variant="secondary" size="small" disabled={archiving}
+      <!-- "Download", NOT "Archive": this app already uses that word for
+           archiving a pack, so a button called Archive in the header reads as
+           the soft-delete rather than as a zip you keep. -->
+      <Button variant="secondary" size="small" className="shrink-0" disabled={archiving}
               title="Download this pack as a zip — pages, tables and files — to keep offline"
               on:click={downloadArchive}>
-        {archiving ? 'Preparing…' : 'Archive'}
+        {archiving ? 'Preparing…' : 'Download'}
       </Button>
-      <Button variant="primary" size="small" on:click={openPublish}>
+      <Button variant="primary" size="small" className="shrink-0" on:click={openPublish}>
         Publish
       </Button>
     {/if}
