@@ -1,0 +1,41 @@
+/* src/lib/apps/dossier/block-reveal.css
+   Marking the block a reader was sent to — by an outline click, or by a search
+   hit.
+
+   A plain stylesheet rather than a component's scoped <style> because BOTH
+   surfaces need it and the target belongs to neither: in the reader it lives
+   inside {@html} output, and in the workspace it lives inside ProseMirror's
+   DOM. Neither carries a Svelte scoping class, so a scoped rule would not
+   apply, and duplicating a keyframe in two components is how two animations
+   drift apart. Imported by BlockContent, so anything that renders blocks has
+   it — see utils/revealBlock.js for the class it applies. */
+
+.pack-reveal {
+  animation: pack-reveal 2.4s ease-out;
+  border-radius: 3px;
+}
+
+@keyframes pack-reveal {
+  /* A fading tint, not a persistent one: a highlight that stays reads as part
+     of the document, and what the document says is the author's to decide. */
+  0%   { background: rgb(var(--lh-accent-rgb) / 0.3); }
+  100% { background: transparent; }
+}
+
+/* Someone who has asked for less motion still needs to see WHICH block. */
+@media (prefers-reduced-motion: reduce) {
+  .pack-reveal {
+    animation: none;
+    outline: 2px solid rgb(var(--lh-accent-rgb) / 0.6);
+    outline-offset: 2px;
+  }
+}
+
+/* On paper the mark is meaningless — and a tint would be toner. */
+@media print {
+  .pack-reveal {
+    animation: none !important;
+    outline: none !important;
+    background: transparent !important;
+  }
+}

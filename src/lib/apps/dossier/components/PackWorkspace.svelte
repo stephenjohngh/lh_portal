@@ -2,7 +2,7 @@
 <!-- The two-pane authoring shell: doc tree | editor.
      P0 step 4 fills the tree; the editor pane lands with the Tiptap step. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { getPref, setPref } from '$lib/utils/prefs';
@@ -20,6 +20,7 @@
   import DocTree      from './DocTree.svelte';
   import PackSearch   from './PackSearch.svelte';
   import { pageShowingFile } from '../utils/packSearch.js';
+  import { revealBlock }     from '../utils/revealBlock.js';
   import DocFormModal from './DocFormModal.svelte';
   import DocEditor    from './DocEditor.svelte';
   import BlockContent from './BlockContent.svelte';
@@ -289,7 +290,18 @@
    */
   async function goToSearchResult(result) {
     notice = '';
-    if (result.kind === 'page') { await editorRef?.flushNow(); selectPage(result.docId); return; }
+    if (result.kind === 'page') {
+      await editorRef?.flushNow();
+      selectPage(result.docId);
+      // The same reveal the recipient gets. The editor's DOM carries `data-uid`
+      // too — the BlockId extension writes it — so one helper serves both.
+      // A tick is not enough here: the editor is re-created for the new page.
+      if (result.blockUid) {
+        await tick();
+        requestAnimationFrame(() => revealBlock(result.blockUid));
+      }
+      return;
+    }
 
     if (result.kind === 'file') {
       // A file has no view of its own, so go to where it is used. A file on the

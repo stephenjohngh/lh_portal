@@ -13,11 +13,16 @@
   import BlockContent from '$lib/apps/dossier/components/BlockContent.svelte';
   import PackSearch   from '$lib/apps/dossier/components/PackSearch.svelte';
   import { pageShowingFile } from '$lib/apps/dossier/utils/packSearch.js';
+  import { revealBlock } from '$lib/apps/dossier/utils/revealBlock.js';
   import { buildTree } from '$lib/apps/dossier/utils/docTree.js';
   import { fmtDateLong } from '$lib/utils/dates';
   import lhLogo from '$lib/assets/LH_services_logo.png';
 
-  import { tick } from 'svelte';
+  import { tick, onMount } from 'svelte';
+  import {
+    pageOutline, outlineDepths, wordCount, describeReadingTime, packReadingTime,
+    docIdFromHash, hashForDoc, WORDS_PER_MINUTE,
+  } from '$lib/apps/dossier/utils/pageNav.js';
   import { invalidateAll } from '$app/navigation';
   import { page as pageStore } from '$app/stores';
   import './pack-print.css';
@@ -84,10 +89,64 @@
   let navOpen = false;
 
   $: selectedDoc = docs.find(d => d.id === selectedId) ?? null;
+  $: outline     = outlineDepths(pageOutline(selectedDoc?.blocks));
+  $: pageWords   = wordCount(selectedDoc?.blocks);
+  $: pageReading = describeReadingTime(pageWords);
+  $: packReading = packReadingTime(docs);
+
+  // ── Deep links ────────────────────────────────────────────────────────────
+  // `/pack/<token>#chronology`. Both specs asked for links to a LOCATION rather
+  // than to a document, and it is the last of their settled items to be built.
+  //
+  // The URL drives the selection, never the other way round: openDoc() only
+  // sets the hash, and the listener below decides what is open. That is what
+  // makes Back and Forward work — a `hashchange` fires for both — without any
+  // history bookkeeping of our own.
+  /**
+   * A block to scroll to once the page it lives on is open.
+   *
+   * `hashchange` fires asynchronously, so a search hit that both changes the
+   * page AND wants a block would otherwise race: the reveal scrolled to the
+   * block and applyHash then yanked the reader back to the top. Handing the
+   * intent to applyHash makes the order explicit instead.
+   */
+  let pendingReveal = null;
+
+  function applyHash() {
+    const id = docIdFromHash(
+      typeof location === 'undefined' ? '' : location.hash, docs);
+    // A fragment naming a page that is not in this pack (a stale link, or one
+    // for a different pack) opens the pack rather than an error.
+    selectedId = id;
+    navOpen = false;
+
+    if (pendingReveal) {
+      const uid = pendingReveal;
+      pendingReveal = null;
+      reveal(uid);
+    } else {
+      scrollTo(0, 0);
+    }
+  }
+
+  onMount(() => {
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  });
 
   function openDoc(id) {
-    selectedId = id; navOpen = false;
-    scrollTo(0, 0);
+    const doc = docs.find(d => d.id === id) ?? null;
+    const hash = hashForDoc(doc);
+    // Assigning an unchanged hash fires no event, so drive the state directly.
+    if (hash === (location.hash || '')) { applyHash(); return; }
+    if (hash) location.hash = hash;
+    else location.hash = '';
+  }
+
+  /** After the page has rendered — the block does not exist until then. */
+  function reveal(uid) {
+    if (uid) tick().then(() => revealBlock(uid));
   }
 
   /**
@@ -97,7 +156,14 @@
    * items in a published pack.
    */
   function goToResult(result) {
-    if (result.kind === 'page') { openDoc(result.docId); return; }
+    if (result.kind === 'page') {
+      // Landing on the page is half the answer; the reader still has to find
+      // the phrase on it. Set BEFORE opening, so applyHash performs the reveal
+      // rather than scrolling to the top out from under it.
+      pendingReveal = result.blockUid ?? null;
+      openDoc(result.docId);
+      return;
+    }
 
     if (result.kind === 'file') {
       const docId = pageShowingFile(result.documentId, docs, records);
@@ -265,6 +331,10 @@
             {#if publication?.expires_at}
               · available until {fmtDateLong(publication?.expires_at)}
             {/if}
+            <!-- What the recipient is holding. Spec 1's success criterion is a
+                 reader understanding the matter in 15-20 minutes; they cannot
+                 judge that without being told the size of the thing. -->
+            {#if packReading}· {packReading}{/if}
           </p>
         </div>
         <button
@@ -326,6 +396,24 @@
                     style="padding-left: {0.5 + node.depth * 0.75}rem"
                     on:click={() => openDoc(node.id)}
                   >{node.title}</button>
+
+                  <!-- The open page's own headings, in place. Nested under the
+                       page rather than in a panel of its own so the reader has
+                       one list to look at, not two competing ones. -->
+                  {#if selectedId === node.id && outline.length > 1}
+                    <ul class="mt-0.5 mb-1 space-y-0.5 border-l border-slate-700 ml-3">
+                      {#each outline as head, i (head.uid ?? i)}
+                        <li>
+                          <button
+                            class="w-full text-left text-xs py-0.5 text-slate-500
+                                   hover:text-slate-200 transition-colors truncate"
+                            style="padding-left: {0.5 + head.depth * 0.6}rem"
+                            on:click={() => reveal(head.uid)}
+                          >{head.text}</button>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
                 </li>
               {/each}
             </ul>
@@ -342,6 +430,14 @@
                author whose page opens with its own heading got two. The print
                rendering below DOES head each section, because paper has no
                contents panel to say where you are. -->
+
+          <!-- Only for a page long enough that the answer is useful. "Under a
+               minute" on a three-line page is chrome, and this reader has just
+               had a repeated title taken out of it for the same reason. -->
+          {#if pageWords >= WORDS_PER_MINUTE}
+            <p class="text-[11px] text-slate-600 mb-3">{pageReading}</p>
+          {/if}
+
           <BlockContent
             blocks={selectedDoc.blocks}
             mode="read"
@@ -418,3 +514,4 @@
     </footer>
   </div>
 {/if}
+

@@ -18,6 +18,7 @@
   // Table styling is shared with DatasetTableView and the editor's node view,
   // so it lives in its own stylesheet rather than in this component's styles.
   import '../dataset-table.css';
+  import '../block-reveal.css';
 
   /** Stored ProseMirror JSON (dossier_docs.blocks). Ignored in edit mode. */
   export let blocks = null;
