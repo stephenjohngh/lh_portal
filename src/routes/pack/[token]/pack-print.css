@@ -54,6 +54,7 @@
   .pack-nav,
   .pack-header,
   .pack-footer,
+  .pack-search,
   .pack-print-button {
     display: none !important;
   }

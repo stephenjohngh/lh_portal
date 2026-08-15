@@ -18,6 +18,7 @@
     buildTree, descendantIds, planReorder, planIndent, planOutdent,
   } from '../utils/docTree.js';
   import DocTree      from './DocTree.svelte';
+  import PackSearch   from './PackSearch.svelte';
   import DocFormModal from './DocFormModal.svelte';
   import DocEditor    from './DocEditor.svelte';
   import BlockContent from './BlockContent.svelte';
@@ -278,6 +279,19 @@
   function selectPage(id) {
     selectedDatasetId = null;
     selectedId = id;
+  }
+
+  /**
+   * Follow a search hit. Unlike the reader, the workspace CAN open a table on
+   * its own — tables are peers of pages here — so a table hit goes straight to
+   * it rather than to a page that happens to embed it.
+   */
+  async function goToSearchResult(result) {
+    notice = '';
+    if (result.kind === 'page') { await editorRef?.flushNow(); selectPage(result.docId); return; }
+
+    const dataset = datasets.find(d => d.id === result.datasetId);
+    if (dataset) await openDataset(dataset);
   }
 
   let showTablePicker = false;
@@ -775,6 +789,14 @@
           <button class="text-xs text-slate-400 hover:text-white px-1"
                   title="New top-level page" on:click={() => openNewDoc(null)}>+ New</button>
         {/if}
+      </div>
+
+      <div class="px-2 py-2 border-b border-slate-700/50 shrink-0">
+        <PackSearch
+          content={{ docs, datasets: $dossierStore.datasets, records: $dossierStore.records }}
+          placeholder="Search pages and tables…"
+          on:go={(e) => goToSearchResult(e.detail)}
+        />
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto p-1.5">

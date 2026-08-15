@@ -11,6 +11,7 @@
      no Supabase client, and no store import. -->
 <script>
   import BlockContent from '$lib/apps/dossier/components/BlockContent.svelte';
+  import PackSearch   from '$lib/apps/dossier/components/PackSearch.svelte';
   import { buildTree } from '$lib/apps/dossier/utils/docTree.js';
   import { fmtDateLong } from '$lib/utils/dates';
   import lhLogo from '$lib/assets/LH_services_logo.png';
@@ -88,6 +89,20 @@
     scrollTo(0, 0);
   }
 
+  /**
+   * Follow a search hit. A page hit opens that page; a table hit opens the
+   * first page that shows the table, because a recipient has no way to reach a
+   * table on its own — that was decided when tables stopped being top-level
+   * items in a published pack.
+   */
+  function goToResult(result) {
+    if (result.kind === 'page') { openDoc(result.docId); return; }
+
+    const showing = docs.find(d =>
+      JSON.stringify(d.blocks ?? {}).includes(result.datasetId));
+    if (showing) openDoc(showing.id);
+  }
+
   /** Indent depth for the flat nav list — the tree is usually two levels. */
   function flatten(nodes, depth = 0, out = []) {
     for (const node of nodes) {
@@ -138,6 +153,48 @@
       }))),
       new Promise(resolve => setTimeout(resolve, timeoutMs)),
     ]);
+  }
+
+  // ── The offline archive ───────────────────────────────────────────────────
+  // Fetched rather than linked, so a failure can be explained. A plain <a
+  // download> would navigate away on a 413 or a revoked link and leave the
+  // recipient looking at a JSON error page.
+  let archiving = false;
+  let archiveError = '';
+
+  async function downloadArchive() {
+    if (archiving) return;
+    archiving = true; archiveError = '';
+    try {
+      const res = await fetch(`/api/pack/${$pageStore.params.token}/archive`);
+      if (!res.ok) {
+        archiveError = (await res.json().catch(() => ({})))?.error
+          ?? 'The archive could not be prepared just now.';
+        return;
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      a.download = filenameFrom(res.headers.get('content-disposition'))
+        ?? `${publication?.title ?? 'pack'}.zip`;
+      a.click();
+      // Revoke on the next turn: Safari has not started the download yet when
+      // click() returns, and revoking synchronously produces an empty file.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      archiveError = 'The archive could not be downloaded just now.';
+    } finally {
+      archiving = false;
+    }
+  }
+
+  /** The server's name for the file, preferring the RFC 5987 form. */
+  function filenameFrom(header) {
+    if (!header) return null;
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+    if (star) { try { return decodeURIComponent(star[1]); } catch { /* fall through */ } }
+    return /filename="([^"]+)"/i.exec(header)?.[1] ?? null;
   }
 
   async function printPack() {
@@ -242,6 +299,14 @@
           class="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
                  text-slate-300 hover:text-white hover:border-slate-500
                  transition-colors shrink-0"
+          title="Download the whole pack — pages, tables and files — as a zip you can keep"
+          disabled={archiving}
+          on:click={downloadArchive}
+        >{archiving ? 'Preparing…' : 'Download'}</button>
+        <button
+          class="pack-print-button text-xs px-2 py-1 rounded border border-slate-700
+                 text-slate-300 hover:text-white hover:border-slate-500
+                 transition-colors shrink-0"
           title="Print the whole pack"
           disabled={preparing}
           on:click={printPack}
@@ -255,6 +320,17 @@
       </div>
     </header>
 
+    {#if archiveError}
+      <div class="pack-screen max-w-6xl mx-auto px-4 pt-3">
+        <div class="flex items-start gap-2 p-3 rounded border border-amber-500/40
+                    bg-amber-500/10">
+          <p class="text-xs text-amber-200 flex-1">{archiveError}</p>
+          <button class="text-xs text-amber-200/70 hover:text-amber-100"
+                  on:click={() => archiveError = ''}>Dismiss</button>
+        </div>
+      </div>
+    {/if}
+
     <div class="pack-screen max-w-6xl mx-auto px-4 py-6 flex gap-8">
 
       <!-- Contents -->
@@ -266,6 +342,13 @@
         aria-label="Contents"
       >
         <div class="md:sticky md:top-20 space-y-4">
+          <div class="pack-search">
+            <PackSearch
+              content={{ docs, datasets, records }}
+              on:go={(e) => goToResult(e.detail)}
+            />
+          </div>
+
           <div>
             <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
               Contents
