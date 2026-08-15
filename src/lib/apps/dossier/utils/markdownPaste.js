@@ -146,6 +146,12 @@ export function markdownToHtml(markdown) {
   let paragraph = [];
   let quote = [];
   let fence = null;
+  /**
+   * Consecutive blank lines seen. The FIRST separates two blocks; every one
+   * after it was put there by the author, and comes back as an empty paragraph
+   * so the spacing they arranged survives the round trip.
+   */
+  let blankRun = 0;
 
   const closeParagraph = () => {
     if (!paragraph.length) return;
@@ -163,6 +169,18 @@ export function markdownToHtml(markdown) {
     }
   };
   const closeAll = () => { closeParagraph(); closeQuote(); closeLists(); };
+  /**
+   * Turn the author's own blank lines into empty paragraphs.
+   *
+   * Nothing at the very start of a page: leading blank lines are whitespace
+   * around a paste, not a layout choice somebody made.
+   */
+  const flushBlanks = () => {
+    if (out.length) {
+      for (let i = 1; i < blankRun; i++) out.push('<p></p>');
+    }
+    blankRun = 0;
+  };
 
   for (const raw of lines) {
     const line = raw.replace(/\s+$/, '');
@@ -178,9 +196,10 @@ export function markdownToHtml(markdown) {
       }
       continue;
     }
-    if (fenceMark) { closeAll(); fence = []; continue; }
+    if (fenceMark) { closeAll(); flushBlanks(); fence = []; continue; }
 
-    if (!line.trim()) { closeAll(); continue; }
+    if (!line.trim()) { closeAll(); blankRun++; continue; }
+    flushBlanks();
 
     // ── Horizontal rule, before lists: `---` is not a bullet.
     if (/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(line)) {

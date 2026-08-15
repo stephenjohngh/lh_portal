@@ -79,6 +79,28 @@ describe('markdownToHtml — blocks', () => {
   });
 });
 
+describe('markdownToHtml — the author-s own blank lines', () => {
+  it('treats one blank line as an ordinary block separator', () => {
+    expect(markdownToHtml('one\n\ntwo')).toBe('<p>one</p><p>two</p>');
+  });
+
+  it('returns every blank line beyond the first as an empty paragraph', () => {
+    // Spacing somebody arranged is part of the page, not whitespace to tidy.
+    expect(markdownToHtml('one\n\n\n\ntwo'))
+      .toBe('<p>one</p><p></p><p></p><p>two</p>');
+  });
+
+  it('ignores blank lines at the very start of a paste', () => {
+    // Whitespace around a paste, not a layout choice.
+    expect(markdownToHtml('\n\n\nfirst')).toBe('<p>first</p>');
+  });
+
+  it('does not count blank lines inside a code fence', () => {
+    expect(markdownToHtml('```\na\n\n\nb\n```'))
+      .toBe('<pre><code>a\n\n\nb</code></pre>');
+  });
+});
+
 describe('markdownToHtml — inline', () => {
   it('reads the marks the editor has', () => {
     expect(markdownToHtml('**bold**')).toBe('<p><strong>bold</strong></p>');
@@ -256,6 +278,21 @@ describe('the round trip', () => {
     expect(html).toContain('<strong>notice</strong>');
     expect(html).toContain('<ul><li><p>first</p></li><li><p>second</p></li></ul>');
     expect(html).toContain('<blockquote><p>as agreed</p></blockquote>');
+  });
+
+  it('carries the author-s blank lines all the way round', () => {
+    // They went missing in the zip: the tidy-up that stops a nested list
+    // leaving a double gap was collapsing the author's spacing with it.
+    const spaced = { type: 'doc', content: [
+      { type: 'paragraph', content: [{ type: 'text', text: 'above' }] },
+      { type: 'paragraph' },
+      { type: 'paragraph' },
+      { type: 'paragraph', content: [{ type: 'text', text: 'below' }] },
+    ] };
+
+    const markdown = blocksToMarkdown(spaced);
+    expect(markdown).toBe('above\n\n\n\nbelow');
+    expect(markdownToHtml(markdown)).toBe('<p>above</p><p></p><p></p><p>below</p>');
   });
 
   it('carries a cross-link between pages all the way round', () => {

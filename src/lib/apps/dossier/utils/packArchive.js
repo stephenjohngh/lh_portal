@@ -27,6 +27,17 @@ import { templateFor, columnFields, rowFields } from './datasetTemplates.js';
 /** Node types whose content is inline text. */
 const TEXT_BLOCKS = new Set(['paragraph', 'heading', 'blockquote', 'codeBlock']);
 
+/**
+ * Stands in for a blank line the AUTHOR put there, as opposed to the blank line
+ * that merely separates two blocks.
+ *
+ * The two are indistinguishable once everything is newlines, and the tidy-up
+ * pass that stops a nested list leaving a double gap was therefore also eating
+ * the author's spacing. Carrying the deliberate ones as a token keeps them out
+ * of that collapse; they become real blank lines at the very end.
+ */
+const HARD_BLANK = '\u0002';
+
 /** Inline text of a node, with marks rendered as markdown. */
 function inlineText(node) {
   if (!node) return '';
@@ -83,8 +94,9 @@ export function blocksToMarkdown(blocks, refs = {}) {
 
       case 'paragraph': {
         const text = inlineText(node);
-        // An empty paragraph is a deliberate blank line in the author's layout.
-        lines.push(text ? `${indent}${text}` : '', text ? '' : null);
+        // An empty paragraph is a deliberate blank line in the author's layout,
+        // and must survive the tidy-up below that ordinary blanks do not.
+        lines.push(text ? `${indent}${text}` : HARD_BLANK, text ? '' : null);
         return;
       }
 
@@ -108,7 +120,12 @@ export function blocksToMarkdown(blocks, refs = {}) {
       case 'orderedList': {
         (node.content ?? []).forEach((item, i) => {
           const marker = node.type === 'orderedList' ? `${i + 1}.` : '-';
-          const text = (item.content ?? []).map(inlineText).join(' ').trim();
+          // Only the item's OWN content. A nested list is walked separately
+          // below, and including it here wrote its text twice — once flattened
+          // into the parent bullet, once as the sub-list.
+          const own = (item.content ?? [])
+            .filter(child => child.type !== 'bulletList' && child.type !== 'orderedList');
+          const text = own.map(inlineText).join(' ').trim();
           if (text) lines.push(`${indent}${marker} ${text}`);
           // A nested list lives inside the item alongside its paragraph.
           for (const child of item.content ?? []) {
@@ -179,7 +196,11 @@ export function blocksToMarkdown(blocks, refs = {}) {
   return lines
     .filter(line => line !== null)
     .join('\n')
-    .replace(/\n{3,}/g, '\n\n')     // an author's blank line, not three
+    // Runs of incidental blanks collapse — a nested list would otherwise
+    // leave a double gap behind it. The author's own blank lines are tokens at
+    // this point, so they pass through untouched and become real afterwards.
+    .replace(/\n{3,}/g, '\n\n')
+    .split(HARD_BLANK).join('')
     .trim();
 }
 

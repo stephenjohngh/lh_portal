@@ -96,11 +96,29 @@ describe('blocksToMarkdown', () => {
     expect(md).toContain('`tables/Chronology.csv`');
   });
 
-  it('keeps an author-s blank line but not three', () => {
-    const md = blocksToMarkdown(doc(para('one'), para(), para('two')));
-    expect(md).not.toMatch(/\n{3}/);
-    expect(md).toContain('one');
-    expect(md).toContain('two');
+  it('keeps a blank line the author put there', () => {
+    // This test previously asserted the opposite — that no run of three
+    // newlines survived — which is exactly the bug: the author's spacing
+    // vanished from every page in the zip.
+    expect(blocksToMarkdown(doc(para('one'), para(), para('two'))))
+      .toBe('one\n\n\ntwo');
+  });
+
+  it('still collapses the gap a nested list leaves behind it', () => {
+    // The incidental blanks are what the tidy-up is for; telling the two apart
+    // is why a deliberate one is carried as a token rather than as a newline.
+    const nested = doc(
+      { type: 'bulletList', content: [
+        { type: 'listItem', content: [
+          para('top'),
+          { type: 'bulletList', content: [
+            { type: 'listItem', content: [para('under')] },
+          ] },
+        ] },
+      ] },
+      para('after'));
+
+    expect(blocksToMarkdown(nested)).toBe('- top\n  - under\n\nafter');
   });
 
   it('survives an absent or unknown block', () => {
