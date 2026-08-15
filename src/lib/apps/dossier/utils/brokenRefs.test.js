@@ -21,6 +21,27 @@ describe('findBrokenReferences — pages', () => {
     expect(findBrokenReferences([docLink(), assetLink()], docs, files)).toEqual([]);
   });
 
+  it('accepts a link that names a live page by SLUG alone', () => {
+    // dossier_links deliberately admits a doc reference carrying only
+    // target_doc_ref, and that is how a link pasted as markdown arrives — it
+    // cannot know an id it has never seen. A slug also survives a rename, so
+    // addressing a page the durable way is not a defect.
+    const slugged = [{ id: 'd1', title: 'Overview', slug: 'overview' },
+                     { id: 'd2', title: 'Chronology', slug: 'chronology' }];
+
+    expect(findBrokenReferences(
+      [docLink({ target_doc_id: null })], slugged, files)).toEqual([]);
+  });
+
+  it('still catches a slug that names no page at all', () => {
+    const slugged = [{ id: 'd1', title: 'Overview', slug: 'overview' }];
+    const broken = findBrokenReferences(
+      [docLink({ target_doc_id: null, target_doc_ref: 'gone' })], slugged, files);
+
+    expect(broken).toHaveLength(1);
+    expect(broken[0].reason).toBe('deleted-page');
+  });
+
   it('catches a link whose FK was nulled by the delete', () => {
     // migration 174 uses ON DELETE SET NULL precisely so this stays visible.
     const broken = findBrokenReferences([docLink({ target_doc_id: null })], docs, files);

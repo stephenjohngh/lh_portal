@@ -40,7 +40,10 @@ export const DocLink = Mark.create({
   },
 
   parseHTML() {
-    return [{ tag: 'a[data-doc-id]' }];
+    // Either identifier is enough to be a cross-link. A link pasted as markdown
+    // arrives with a SLUG only — it cannot know an id it has never seen — and
+    // requiring the id meant such a link silently became ordinary text.
+    return [{ tag: 'a[data-doc-id]' }, { tag: 'a[data-doc-slug]' }];
   },
 
   renderHTML({ HTMLAttributes }) {

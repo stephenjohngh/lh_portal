@@ -5,7 +5,9 @@
 // So several of these use the exact shapes that module emits.
 
 import { describe, it, expect } from 'vitest';
-import { markdownToHtml, inlineMarkdown, escapeHtml, looksLikeMarkdown } from './markdownPaste.js';
+import {
+  markdownToHtml, inlineMarkdown, escapeHtml, looksLikeMarkdown, internalSlug,
+} from './markdownPaste.js';
 import { blocksToMarkdown } from './packArchive.js';
 
 describe('markdownToHtml — blocks', () => {
@@ -126,6 +128,53 @@ describe('markdownToHtml — inline', () => {
   });
 });
 
+describe('internalSlug — links between pages of the same pack', () => {
+  it('reads the form blocksToMarkdown writes', () => {
+    expect(internalSlug('./overview.md')).toBe('overview');
+  });
+
+  it('reads the numbered layout inside the zip', () => {
+    expect(internalSlug('pages/2-service-charge.md')).toBe('service-charge');
+    expect(internalSlug('../pages/10-detail.md')).toBe('detail');
+  });
+
+  it('reads a bare filename and a published anchor', () => {
+    expect(internalSlug('overview.md')).toBe('overview');
+    expect(internalSlug('#overview')).toBe('overview');
+  });
+
+  it('is not fooled by anything absolute', () => {
+    expect(internalSlug('https://x.test/a.md')).toBeNull();
+    expect(internalSlug('mailto:a@b.test')).toBeNull();
+    expect(internalSlug('javascript:alert(1)')).toBeNull();
+  });
+
+  it('is null for an ordinary path', () => {
+    expect(internalSlug('files/notice.pdf')).toBeNull();
+    expect(internalSlug('')).toBeNull();
+  });
+});
+
+describe('markdownToHtml — cross-links', () => {
+  it('turns an internal link into a docLink anchor, by SLUG', () => {
+    // Pasted text cannot know a doc id. A slug is the durable address anyway —
+    // a page's slug survives a rename by design.
+    expect(markdownToHtml('see the [chronology](./chronology.md)'))
+      .toBe('<p>see the <a data-doc-slug="chronology">chronology</a></p>');
+  });
+
+  it('gives the internal anchor no href, so it cannot parse as an external link', () => {
+    // StarterKit's link mark parses a[href]; an anchor carrying both would be
+    // ambiguous between the two marks.
+    expect(markdownToHtml('[x](./a.md)')).not.toContain('href');
+  });
+
+  it('still reads an external link as an external link', () => {
+    expect(markdownToHtml('[out](https://x.test)'))
+      .toContain('rel="noopener noreferrer"');
+  });
+});
+
 describe('markdownToHtml — escaping', () => {
   it('escapes before it marks up, so pasted text cannot introduce markup', () => {
     expect(markdownToHtml('<script>alert(1)</script>'))
@@ -207,6 +256,21 @@ describe('the round trip', () => {
     expect(html).toContain('<strong>notice</strong>');
     expect(html).toContain('<ul><li><p>first</p></li><li><p>second</p></li></ul>');
     expect(html).toContain('<blockquote><p>as agreed</p></blockquote>');
+  });
+
+  it('carries a cross-link between pages all the way round', () => {
+    // Export writes [label](./slug.md); import reads it back as a docLink. Without
+    // this the navigation between pages — most of what makes a pack a pack rather
+    // than a folder — was lost on re-import.
+    const linked = { type: 'doc', content: [{
+      type: 'paragraph', content: [{
+        type: 'text', text: 'the detail',
+        marks: [{ type: 'docLink', attrs: { target_doc_id: 'd2', target_slug: 'detail' } }],
+      }],
+    }] };
+
+    const html = markdownToHtml(blocksToMarkdown(linked));
+    expect(html).toBe('<p><a data-doc-slug="detail">the detail</a></p>');
   });
 
   it('carries a callout back as a quote rather than losing its text', () => {

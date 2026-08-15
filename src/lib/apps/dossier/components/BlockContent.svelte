@@ -52,10 +52,16 @@
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
 
-    const anchor = target.closest('a[data-doc-id]');
+    const anchor = target.closest('a[data-doc-id], a[data-doc-slug]');
     if (anchor) {
       event.preventDefault();
-      dispatch('openDoc', anchor.getAttribute('data-doc-id'));
+      // The id where there is one; otherwise the slug, resolved against this
+      // pack. A link pasted as markdown has only a slug — it cannot know an id
+      // it has never seen — and a slug is a durable address here anyway, since
+      // a page's slug deliberately survives a rename.
+      const id = anchor.getAttribute('data-doc-id')
+        ?? docs.find(d => d.slug === anchor.getAttribute('data-doc-slug'))?.id;
+      if (id) dispatch('openDoc', id);
       return;
     }
 

@@ -22,7 +22,8 @@
  *             reason: 'deleted-page'|'missing-file'|'deleted-table' }[]}
  */
 export function findBrokenReferences(links = [], docs = [], files = [], datasets = []) {
-  const docIds  = new Set(docs.map(d => d.id));
+  const docIds   = new Set(docs.map(d => d.id));
+  const docSlugs = new Set(docs.map(d => d.slug).filter(Boolean));
   const fileIds = new Set(files.map(f => f.id));
   const setIds  = new Set(datasets.map(d => d.id));
   const titleOf = new Map(docs.map(d => [d.id, d.title]));
@@ -39,7 +40,12 @@ export function findBrokenReferences(links = [], docs = [], files = [], datasets
 
     if (link.target_kind === 'doc') {
       // Either the FK was nulled by the delete, or the id no longer resolves.
-      const stillThere = link.target_doc_id && docIds.has(link.target_doc_id);
+      // A slug counts too: dossier_links deliberately admits a doc reference
+      // carrying only target_doc_ref, that is how a link pasted as markdown
+      // arrives, and a slug survives a rename — so a link addressing a page
+      // that IS here is not broken merely for naming it the durable way.
+      const stillThere = (link.target_doc_id && docIds.has(link.target_doc_id))
+        || (link.target_doc_ref && docSlugs.has(link.target_doc_ref));
       if (stillThere) continue;
       broken.push({
         origin,

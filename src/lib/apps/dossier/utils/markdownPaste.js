@@ -48,6 +48,35 @@ function safeHref(raw) {
 }
 
 /**
+ * A link pointing at another page in the same pack, and the slug it names.
+ *
+ * blocksToMarkdown() writes a cross-link as `[label](./overview.md)`, so
+ * without this the archive's own internal links come back as plain text — the
+ * navigation between pages, which is most of what makes a pack a pack rather
+ * than a folder, silently lost on re-import.
+ *
+ * Accepts the forms an archive and a person actually produce: `./overview.md`,
+ * `overview.md`, `pages/2-overview.md` (the numbered layout inside the zip),
+ * and `#overview` (the href a published pack renders).
+ *
+ * A SLUG, never an id: pasted text cannot know an id, and a slug is the durable
+ * address here anyway — a page's slug deliberately survives a rename.
+ *
+ * @param {string} raw
+ * @returns {string|null}
+ */
+export function internalSlug(raw) {
+  const href = String(raw ?? '').trim();
+  if (!href || /^[a-z][a-z0-9+.-]*:/i.test(href)) return null;   // absolute: not ours
+
+  const anchor = /^#([\w-]+)$/.exec(href);
+  if (anchor) return anchor[1];
+
+  const path = /^(?:\.\/|\.\.\/)?(?:pages\/)?(?:\d+-)?([\w-]+)\.md$/i.exec(href);
+  return path ? path[1] : null;
+}
+
+/**
  * Inline marks within one line of already-escaped text.
  *
  * Code spans are taken FIRST and their contents held aside, because `**` inside
@@ -69,6 +98,14 @@ export function inlineMarkdown(escaped) {
     // recognised whole and refused, rather than truncated at the first bracket
     // and leaving a stray one behind.
     .replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, (whole, label, href) => {
+      // A cross-link to another page in this pack comes first: it is not a URL
+      // and would fail every test below.
+      // Deliberately NO href: StarterKit's link mark parses `a[href]`, so an
+      // anchor carrying both would be ambiguous between the two marks. The
+      // docLink mark writes its own href when it renders.
+      const slug = internalSlug(href);
+      if (slug) return `<a data-doc-slug="${escapeHtml(slug)}">${label}</a>`;
+
       const url = safeHref(href);
       return url
         ? `<a href="${escapeHtml(url)}" rel="noopener noreferrer">${label}</a>`
