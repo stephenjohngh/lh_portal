@@ -12,6 +12,7 @@
 <script>
   import BlockContent from '$lib/apps/dossier/components/BlockContent.svelte';
   import PackSearch   from '$lib/apps/dossier/components/PackSearch.svelte';
+  import { pageShowingFile } from '$lib/apps/dossier/utils/packSearch.js';
   import { buildTree } from '$lib/apps/dossier/utils/docTree.js';
   import { fmtDateLong } from '$lib/utils/dates';
   import lhLogo from '$lib/assets/LH_services_logo.png';
@@ -97,6 +98,12 @@
    */
   function goToResult(result) {
     if (result.kind === 'page') { openDoc(result.docId); return; }
+
+    if (result.kind === 'file') {
+      const docId = pageShowingFile(result.documentId, docs, records);
+      if (docId) openDoc(docId);
+      return;
+    }
 
     const showing = docs.find(d =>
       JSON.stringify(d.blocks ?? {}).includes(result.datasetId));
@@ -344,7 +351,7 @@
         <div class="md:sticky md:top-20 space-y-4">
           <div class="pack-search">
             <PackSearch
-              content={{ docs, datasets, records }}
+              content={{ docs, datasets, records, files }}
               on:go={(e) => goToResult(e.detail)}
             />
           </div>

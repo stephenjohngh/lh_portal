@@ -3,7 +3,8 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  blockTextRuns, snippetAround, searchPack, describeResults, MAX_RESULTS,
+  blockTextRuns, snippetAround, searchPack, describeResults, pageShowingFile,
+  MAX_RESULTS,
 } from './packSearch.js';
 
 const para = (uid, ...texts) => ({
@@ -159,6 +160,81 @@ describe('searchPack', () => {
   });
 });
 
+describe('searchPack — files on the shelf', () => {
+  const files = [
+    { id: 'f1', filename: 'hare.jpg', display_name: 'hare.jpg',
+      description: 'Logo used on the letterhead' },
+    { id: 'f2', filename: 'scan001.pdf', display_name: 'scan001.pdf',
+      description: 'Section 20 notice served on the leaseholders' },
+  ];
+
+  it('finds a file by its name — the case that found nothing before', () => {
+    // An asset block caches its filename in the node ATTRIBUTES, so walking a
+    // page's text runs never sees it: searching "hare" on a page plainly
+    // showing hare.jpg returned nothing.
+    const results = searchPack({ files }, 'hare');
+
+    expect(results).toHaveLength(1);
+    expect(results[0].kind).toBe('file');
+    expect(results[0].documentId).toBe('f1');
+    expect(results[0].where).toBe('File name');
+  });
+
+  it('finds a file by its description, which says what it IS', () => {
+    // "scan001.pdf" is unsearchable by definition; the description is the only
+    // place anyone wrote that it is the section 20 notice.
+    const results = searchPack({ files }, 'section 20');
+
+    expect(results[0].documentId).toBe('f2');
+    expect(results[0].where).toBe('File description');
+    // Still named by its filename, so it is recognisable on the shelf.
+    expect(results[0].title).toBe('scan001.pdf');
+  });
+
+  it('reports a file once when the name and the description both match', () => {
+    expect(searchPack({ files: [
+      { id: 'f3', display_name: 'notice.pdf', description: 'the notice' },
+    ] }, 'notice')).toHaveLength(1);
+  });
+
+  it('does not fall over on a file with no description', () => {
+    expect(searchPack({ files: [{ id: 'f4', filename: 'a.pdf' }] }, 'zzz')).toEqual([]);
+  });
+});
+
+describe('pageShowingFile', () => {
+  const docs = [
+    { id: 'd1', blocks: doc(para('b1', 'no files here')) },
+    { id: 'd2', blocks: doc({ type: 'asset', attrs: { uid: 'b2', document_id: 'f1' } }) },
+  ];
+
+  it('finds the page an asset block sits on', () => {
+    expect(pageShowingFile('f1', docs)).toBe('d2');
+  });
+
+  it('looks inside a toggle, where a file is easily buried', () => {
+    const nested = [{ id: 'd3', blocks: doc({
+      type: 'toggle', content: [{ type: 'toggleBody', content: [
+        { type: 'asset', attrs: { document_id: 'f9' } },
+      ] }],
+    }) }];
+    expect(pageShowingFile('f9', nested)).toBe('d3');
+  });
+
+  it('falls back to the page a table row points at', () => {
+    // A file can be referenced only by a chronology entry. Sending the reader
+    // to the page that entry names is better than sending them nowhere.
+    const records = [{ id: 'r1', document_id: 'f5', doc_id: 'd1' }];
+    expect(pageShowingFile('f5', docs, records)).toBe('d1');
+  });
+
+  it('is null when nothing refers to the file', () => {
+    // Which is a real state worth naming: a file uploaded and then forgotten.
+    expect(pageShowingFile('f7', docs)).toBeNull();
+    expect(pageShowingFile(null, docs)).toBeNull();
+  });
+});
+
 describe('describeResults', () => {
   it('never leaves an empty panel unexplained', () => {
     expect(describeResults([], 'zzz')).toContain('Nothing in this pack');
@@ -171,5 +247,15 @@ describe('describeResults', () => {
       { kind: 'entry', datasetId: 's1' },
     ];
     expect(describeResults(results, 'fee')).toBe('3 results in 1 page and 1 table entry.');
+  });
+
+  it('reads as a list once files join in', () => {
+    const results = [
+      { kind: 'page', docId: 'd1' },
+      { kind: 'entry', datasetId: 's1' },
+      { kind: 'file', documentId: 'f1' },
+    ];
+    expect(describeResults(results, 'fee'))
+      .toBe('3 results in 1 page, 1 table entry and 1 file.');
   });
 });

@@ -38,8 +38,13 @@
     open = false;
   }
 
+  function clear() {
+    query = ''; open = false;
+    dispatch('clear');
+  }
+
   function onKeydown(event) {
-    if (event.key === 'Escape') { query = ''; open = false; }
+    if (event.key === 'Escape') clear();
   }
 </script>
 
@@ -51,19 +56,35 @@
     on:focus={() => (open = query.trim().length >= MIN_QUERY)}
     {placeholder}
     aria-label="Search this pack"
-    class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5
+    class="w-full bg-slate-900 border border-slate-700 rounded pl-2.5 pr-7 py-1.5
            text-xs text-slate-200 placeholder-slate-500
            focus:outline-none focus:border-purple-500"
   />
+
+  {#if query}
+    <!-- The panel sits over the page tree, so there must be a way out of it
+         that is not "select all and delete". Escape does the same. -->
+    <button
+      class="absolute right-1 top-1/2 -translate-y-1/2 px-1.5 text-slate-500
+             hover:text-slate-200 transition-colors"
+      title="Clear search (Esc)"
+      aria-label="Clear search"
+      on:click={clear}
+    >×</button>
+  {/if}
 
   {#if open}
     <div
       class="absolute z-30 mt-1 w-full max-h-80 overflow-y-auto rounded
              border border-slate-700 bg-slate-800 shadow-lg"
     >
-      <p class="px-3 py-2 text-[11px] text-slate-500 border-b border-slate-700/70">
-        {summary}
-      </p>
+      <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700/70">
+        <p class="text-[11px] text-slate-500 flex-1">{summary}</p>
+        <button
+          class="text-[11px] text-slate-500 hover:text-slate-200 transition-colors shrink-0"
+          on:click={clear}
+        >Clear</button>
+      </div>
 
       {#each results as result, i (result.kind + (result.docId ?? result.datasetId) + i)}
         <button
@@ -72,7 +93,9 @@
           on:click={() => choose(result)}
         >
           <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
-            <span class="text-slate-500">{result.kind === 'page' ? '📄' : '▤'}</span>
+            <span class="text-slate-500">
+              {result.kind === 'page' ? '📄' : result.kind === 'file' ? '📎' : '▤'}
+            </span>
             <span class="truncate">{result.title}</span>
             <span class="text-slate-600">· {result.where}</span>
           </p>

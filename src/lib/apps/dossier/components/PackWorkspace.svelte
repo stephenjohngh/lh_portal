@@ -19,6 +19,7 @@
   } from '../utils/docTree.js';
   import DocTree      from './DocTree.svelte';
   import PackSearch   from './PackSearch.svelte';
+  import { pageShowingFile } from '../utils/packSearch.js';
   import DocFormModal from './DocFormModal.svelte';
   import DocEditor    from './DocEditor.svelte';
   import BlockContent from './BlockContent.svelte';
@@ -289,6 +290,16 @@
   async function goToSearchResult(result) {
     notice = '';
     if (result.kind === 'page') { await editorRef?.flushNow(); selectPage(result.docId); return; }
+
+    if (result.kind === 'file') {
+      // A file has no view of its own, so go to where it is used. A file on the
+      // shelf that nothing refers to is worth saying out loud — it is the shape
+      // of "I uploaded it and forgot to put it in".
+      const docId = pageShowingFile(result.documentId, docs, records);
+      if (docId) { await editorRef?.flushNow(); selectPage(docId); }
+      else notice = `“${result.title}” is on the shelf but no page or table refers to it yet.`;
+      return;
+    }
 
     const dataset = datasets.find(d => d.id === result.datasetId);
     if (dataset) await openDataset(dataset);
@@ -793,8 +804,8 @@
 
       <div class="px-2 py-2 border-b border-slate-700/50 shrink-0">
         <PackSearch
-          content={{ docs, datasets: $dossierStore.datasets, records: $dossierStore.records }}
-          placeholder="Search pages and tables…"
+          content={{ docs, datasets, records, files: $dossierStore.files }}
+          placeholder="Search pages, tables and files…"
           on:go={(e) => goToSearchResult(e.detail)}
         />
       </div>

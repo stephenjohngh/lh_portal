@@ -17,6 +17,13 @@
 // Table entries are searched as well as pages. A chronology is often the thing
 // a reader is scanning for ("when did we first write to them?"), and a search
 // that silently ignored the tables would answer that question wrongly.
+//
+// So are the shelf's files, by name and by description — and that one is less
+// obvious than it looks. An asset block caches its filename in the node's
+// ATTRIBUTES, never as text, so walking a page's text runs cannot see it:
+// searching "hare" on a page plainly showing `hare.jpg` found nothing at all.
+// The shelf is where a filename is searchable, and the description is where the
+// author wrote what a file IS rather than what it is called.
 
 import { templateFor, columnFields, rowFields } from './datasetTemplates.js';
 
@@ -95,13 +102,17 @@ export function snippetAround(text, query) {
  * and an invented ranking would shuffle a chronology out of date order for no
  * gain.
  *
- * @param {{ docs?: object[], datasets?: object[], records?: object[] }} content
+ * @param {{ docs?: object[], datasets?: object[], records?: object[],
+ *           files?: object[] }} content
  * @param {string} query
- * @returns {{ kind: 'page'|'entry', docId: string|null, datasetId: string|null,
+ * @returns {{ kind: 'page'|'entry'|'file', docId: string|null,
+ *             datasetId: string|null, documentId: string|null,
  *             title: string, where: string, blockUid: string|null,
  *             snippet: { text: string, from: number, to: number } }[]}
  */
-export function searchPack({ docs = [], datasets = [], records = [] } = {}, query) {
+export function searchPack(
+  { docs = [], datasets = [], records = [], files = [] } = {}, query,
+) {
   const q = String(query ?? '').trim();
   if (q.length < MIN_QUERY) return [];
 
@@ -115,7 +126,7 @@ export function searchPack({ docs = [], datasets = [], records = [] } = {}, quer
     const inTitle = snippetAround(title, q);
     if (inTitle) {
       results.push({
-        kind: 'page', docId: doc.id, datasetId: null,
+        kind: 'page', docId: doc.id, datasetId: null, documentId: null,
         title, where: 'Page name', blockUid: null, snippet: inTitle,
       });
     }
@@ -123,12 +134,30 @@ export function searchPack({ docs = [], datasets = [], records = [] } = {}, quer
     for (const run of blockTextRuns(doc.blocks)) {
       if (!run.text.toLowerCase().includes(needle)) continue;
       results.push({
-        kind: 'page', docId: doc.id, datasetId: null,
+        kind: 'page', docId: doc.id, datasetId: null, documentId: null,
         title, where: 'On this page', blockUid: run.uid,
         snippet: snippetAround(run.text, q),
       });
       if (results.length >= MAX_RESULTS) return results;
     }
+  }
+
+  // ── Files on the shelf. Name first: it is what the author would type.
+  for (const file of files) {
+    const name = file.display_name || file.filename || 'File';
+
+    const inName = snippetAround(name, q);
+    const inDescription = inName ? null : snippetAround(String(file.description ?? ''), q);
+    if (!inName && !inDescription) continue;
+
+    results.push({
+      kind: 'file', docId: null, datasetId: null, documentId: file.id,
+      title: name,
+      where: inName ? 'File name' : 'File description',
+      blockUid: null,
+      snippet: inName ?? inDescription,
+    });
+    if (results.length >= MAX_RESULTS) return results;
   }
 
   // ── Table entries. A row is reported once, naming the column it was found
@@ -148,7 +177,7 @@ export function searchPack({ docs = [], datasets = [], records = [] } = {}, quer
       if (!value || !value.toLowerCase().includes(needle)) continue;
 
       results.push({
-        kind: 'entry', docId: null, datasetId: dataset.id,
+        kind: 'entry', docId: null, datasetId: dataset.id, documentId: null,
         title: dataset.title ?? 'Table',
         where: field.label, blockUid: null,
         snippet: snippetAround(value, q),
@@ -175,10 +204,51 @@ export function describeResults(results, query) {
   const capped = results.length >= MAX_RESULTS ? ' (showing the first ' + MAX_RESULTS + ')' : '';
   const pages  = new Set(results.filter(r => r.kind === 'page').map(r => r.docId)).size;
   const rows   = results.filter(r => r.kind === 'entry').length;
+  const files  = results.filter(r => r.kind === 'file').length;
 
   const parts = [];
   if (pages) parts.push(`${pages} page${pages === 1 ? '' : 's'}`);
   if (rows)  parts.push(`${rows} table ${rows === 1 ? 'entry' : 'entries'}`);
+  if (files) parts.push(`${files} file${files === 1 ? '' : 's'}`);
 
-  return `${results.length} result${results.length === 1 ? '' : 's'} in ${parts.join(' and ')}${capped}.`;
+  return `${results.length} result${results.length === 1 ? '' : 's'} in ${listJoin(parts)}${capped}.`;
+}
+
+/** "a", "a and b", "a, b and c". */
+function listJoin(parts) {
+  if (parts.length <= 1) return parts[0] ?? '';
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * The first page that shows a given file.
+ *
+ * A file result has to lead somewhere. In the reader a file is only reachable
+ * through a page that refers to it, and in the workspace opening that page is
+ * still the most useful answer — "here is where you used it" beats highlighting
+ * a row in the shelf. Records count too: a chronology entry can be the only
+ * thing pointing at a document.
+ *
+ * @param {string} documentId
+ * @param {object[]} docs
+ * @param {object[]} [records]
+ * @returns {string|null} doc id, or null when nothing refers to it
+ */
+export function pageShowingFile(documentId, docs = [], records = []) {
+  if (!documentId) return null;
+
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return false;
+    if (node.type === 'asset' && node.attrs?.document_id === documentId) return true;
+    return Array.isArray(node.content) && node.content.some(walk);
+  };
+
+  for (const doc of docs) {
+    if (walk(doc.blocks)) return doc.id;
+  }
+
+  // Only referenced by a table row: send the reader to the page that row
+  // points at, if it has one.
+  const row = records.find(r => r.document_id === documentId && r.doc_id);
+  return row?.doc_id ?? null;
 }
