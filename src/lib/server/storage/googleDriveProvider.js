@@ -47,6 +47,12 @@ if (!_rootFolderId) {
 if (!_oauthRefresh && (!_saEmail || !_saKey)) {
   logger('⚠️  No Drive credentials found — set GOOGLE_OAUTH_REFRESH_TOKEN (OAuth2) or GOOGLE_DRIVE_CLIENT_EMAIL + GOOGLE_DRIVE_PRIVATE_KEY (service account)');
 }
+// Both configured is not an error, but it IS a trap: OAuth wins, so a perfectly
+// good service account sits unused while a stale OAuth client fails every call.
+if (_oauthId && _oauthSecret && _oauthRefresh && _saEmail && _saKey) {
+  console.warn('[GoogleDrive] both OAuth2 and service-account credentials are set — '
+    + 'OAuth2 takes precedence and the service account will NOT be used');
+}
 
 // ── Drive client singleton ─────────────────────────────────────────────────
 let _drive = null;
@@ -64,7 +70,14 @@ function getDrive() {
     const oauth2 = new google.auth.OAuth2(_oauthId, _oauthSecret);
     oauth2.setCredentials({ refresh_token: _oauthRefresh });
     _drive = google.drive({ version: 'v3', auth: oauth2 });
-    logger('Drive client initialised (OAuth2 mode)');
+    // console.info, not the debug logger: `logger` is namespaced and silent
+    // unless DEBUG is set, so which credentials a deployment actually picked
+    // was invisible exactly when it mattered. Two deployments differing only in
+    // this took a day to find, because OAuth SILENTLY WINS over a service
+    // account when both are configured — so a correct service account can be
+    // present and never used. The client id is logged (it is not a secret) so
+    // two environments can be compared without guessing.
+    console.info('[GoogleDrive] OAuth2 mode, client', _oauthId.slice(0, 24));
 
   } else if (_saEmail && _saKey) {
     // ── Service account mode ─────────────────────────────────────────────
@@ -75,7 +88,7 @@ function getDrive() {
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
     _drive = google.drive({ version: 'v3', auth });
-    logger('Drive client initialised (service account mode)');
+    console.info('[GoogleDrive] service account mode,', _saEmail);
 
   } else {
     throw new Error(

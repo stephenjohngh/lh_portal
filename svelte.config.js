@@ -1,6 +1,7 @@
 import adapterNetlify from '@sveltejs/adapter-netlify';
 import adapterNode from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import { execSync } from 'node:child_process';
 
 // Two deploy targets from the same `main`, chosen at build time:
 //   • Netlify (default)        → adapter-netlify (serverless functions)
@@ -19,6 +20,49 @@ const selectedAdapter = process.env.DEPLOYMENT_TARGET === 'northflank'
   ? adapterNode
   : adapterNetlify;
 
+/**
+ * The build's identity, shown in the footer as `v…`.
+ *
+ * ⚠ This used to be SvelteKit's default for `version.name`, which is
+ * `Date.now()` — a build timestamp with nothing in it derived from the source.
+ * Two platforms building the SAME commit produced two different numbers, so the
+ * one question the footer is there to answer — "are these running the same
+ * code?" — could not be answered by it, and a stale deploy was indistinguishable
+ * from a fresh one. A commit SHA answers it exactly.
+ *
+ * Order: an explicit override, then whatever the platform already knows, then
+ * git itself. The env vars matter because a build that starts from an exported
+ * tarball has no `.git` to ask.
+ */
+function buildVersion() {
+  const fromEnv =
+    process.env.PUBLIC_BUILD_SHA        // set this by hand if all else fails
+    ?? process.env.COMMIT_REF           // Netlify
+    ?? process.env.NF_GIT_COMMIT_SHA    // Northflank
+    ?? process.env.GIT_COMMIT
+    ?? process.env.SOURCE_VERSION;      // Render, Heroku
+
+  if (fromEnv) return String(fromEnv).slice(0, 7);
+
+  try {
+    const sha = execSync('git rev-parse --short HEAD', {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).toString().trim();
+
+    // Uncommitted changes mean the SHA alone is a lie about what is running —
+    // which matters most locally, where that is the normal state.
+    const dirty = execSync('git status --porcelain', {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).toString().trim().length > 0;
+
+    return dirty ? `${sha}-dirty` : sha;
+  } catch {
+    // No git, no platform variable: fall back to the old behaviour rather than
+    // failing a build over a version string.
+    return String(Date.now());
+  }
+}
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   preprocess: vitePreprocess(),
@@ -29,6 +73,9 @@ const config = {
         ? { out: 'build' } // Node options
         : { edge: false, split: false } // Netlify options
     ),
+
+    // The footer's `v…`, read by the app from $app/environment.
+    version: { name: buildVersion() },
 
     // Content-Security-Policy. Declared here (not in hooks.server.js) so
     // SvelteKit nonces its own inline hydration scripts automatically —
