@@ -36,10 +36,14 @@ const selectedAdapter = process.env.DEPLOYMENT_TARGET === 'northflank'
  * tarball has no `.git` to ask.
  */
 function buildVersion() {
+  // ⚠ Every source here must be BUILD-time. This file is evaluated by Vite
+  // during the build, so a variable a platform injects only into the running
+  // container is invisible and falls through to the constant below.
   const fromEnv =
     process.env.PUBLIC_BUILD_SHA        // set this by hand if all else fails
     ?? process.env.COMMIT_REF           // Netlify
-    ?? process.env.NF_GIT_COMMIT_SHA    // Northflank
+    ?? process.env.NF_DEPLOYMENT_SHA    // Northflank
+    ?? process.env.NF_GIT_COMMIT_SHA    // Northflank, older naming
     ?? process.env.GIT_COMMIT
     ?? process.env.SOURCE_VERSION;      // Render, Heroku
 
@@ -75,6 +79,22 @@ function buildVersion() {
   }
 }
 
+/**
+ * buildVersion(), said out loud in the build log.
+ *
+ * Worth a line of output because the value being invisible is what made a bad
+ * one expensive: the fallback fired silently on one platform and the only
+ * symptom was every page failing to hydrate. If this prints `nogit-…` in a
+ * deploy log, that build could not identify itself and the footer will not
+ * distinguish it from any other — set PUBLIC_BUILD_SHA (or make the platform's
+ * own commit variable available to the BUILD, not just the container).
+ */
+function announcedVersion() {
+  const name = buildVersion();
+  console.log(`[build] app version: ${name}`);
+  return name;
+}
+
 /** The version from package.json — stable across evaluations, unlike a clock. */
 function packageVersion() {
   try {
@@ -96,7 +116,7 @@ const config = {
     ),
 
     // The footer's `v…`, read by the app from $app/environment.
-    version: { name: buildVersion() },
+    version: { name: announcedVersion() },
 
     // Content-Security-Policy. Declared here (not in hooks.server.js) so
     // SvelteKit nonces its own inline hydration scripts automatically —
