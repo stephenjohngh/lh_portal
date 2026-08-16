@@ -2,6 +2,7 @@ import adapterNetlify from '@sveltejs/adapter-netlify';
 import adapterNode from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 // Two deploy targets from the same `main`, chosen at build time:
 //   • Netlify (default)        → adapter-netlify (serverless functions)
@@ -57,9 +58,29 @@ function buildVersion() {
 
     return dirty ? `${sha}-dirty` : sha;
   } catch {
-    // No git, no platform variable: fall back to the old behaviour rather than
-    // failing a build over a version string.
-    return String(Date.now());
+    // ⚠ MUST BE DETERMINISTIC. Never Date.now() here, which is what this
+    // fell back to at first and is a hydration bomb: SvelteKit namespaces
+    // `globalThis.__sveltekit_<hash>` with a hash of THIS STRING, the inline
+    // script in the SSR'd HTML defines it and the client chunks read it. If the
+    // value differs between two evaluations in one build — which a timestamp
+    // does by definition — the two halves look for different globals and every
+    // page dies on load with:
+    //
+    //   TypeError: can't access property "env", globalThis.__sveltekit_… is
+    //   undefined
+    //
+    // A constant costs only SvelteKit's "app updated" detection, which is
+    // cosmetic. Getting it wrong costs the whole application.
+    return `nogit-${packageVersion()}`;
+  }
+}
+
+/** The version from package.json — stable across evaluations, unlike a clock. */
+function packageVersion() {
+  try {
+    return JSON.parse(readFileSync('./package.json', 'utf8')).version ?? '0';
+  } catch {
+    return '0';
   }
 }
 
