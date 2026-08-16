@@ -11,6 +11,20 @@
   import { portalSettings } from '$lib/stores/portalSettings.js';
   import { activeDbUrl } from '$lib/supabaseClient';
   import { version } from '$app/environment';
+  import { page } from '$app/stores';
+
+  /**
+   * What the footer shows.
+   *
+   * Prefer the commit the SERVER reports (+layout.server.js), because on
+   * Northflank the deployed SHA is injected into the container and is invisible
+   * to the build — so `version`, which can only come from build time, reads
+   * `nogit-…` there however hard the build tries. `version` remains the
+   * fallback: it is the real answer on Netlify and locally, where the build can
+   * see git.
+   */
+  $: deployedVersion = $page.data.deployedSha ?? version;
+
   // Optional var — import.meta.env returns undefined (not an error) when unset.
   // $env/static/public would throw if the variable isn't defined in .env.
   const PUBLIC_ENV_LABEL = import.meta.env.PUBLIC_ENV_LABEL ?? '';
@@ -334,7 +348,7 @@
         <div>
           <h1 class="text-4xl font-bold mb-1">LH Services Portal</h1>
           <p class="text-xs text-slate-600 mb-4">
-            v{version} · {buildDate} · {viteMode} · DB:
+            v{deployedVersion} · {buildDate} · {viteMode} · DB:
             <span class={dbName === 'PROD' ? 'text-slate-500' : 'text-teal-400 font-semibold'}>{dbName}</span>
           </p>
           <p class="text-gray-400 mb-8">
