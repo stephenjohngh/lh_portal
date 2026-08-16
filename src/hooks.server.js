@@ -58,6 +58,31 @@ async function securityHeaders({ event, resolve }) {
   // pin that for a year.
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
+  // ── An HTML page must never be cached, and adapter-node will not say so ────
+  // Symptom this fixes, which is bewildering until you know the cause:
+  //
+  //   TypeError: can't access property "env", globalThis.__sveltekit_1vouhui
+  //   is undefined
+  //
+  // SvelteKit namespaces that global with a hash of the app VERSION. The
+  // document's inline hydration script defines it and the JS chunks read it, so
+  // the error means the browser is running HTML from one build against
+  // JavaScript from another. Immutable chunks are content-hashed and safe to
+  // cache for ever; the HTML that names them is not, and a stale copy of it is
+  // a broken page rather than an old one.
+  //
+  // Netlify sets `must-revalidate` on HTML itself, which is why only the
+  // Northflank (adapter-node) deploy broke: a bare node server behind a proxy
+  // sends no cache directive at all, so the document is fair game for the
+  // browser and anything in between. Say it explicitly and both targets behave
+  // the same.
+  //
+  // Only documents. Everything else — /_app/immutable, the media proxy's own
+  // `private, max-age=3600`, API responses — keeps whatever it set.
+  if ((response.headers.get('content-type') ?? '').includes('text/html')) {
+    response.headers.set('Cache-Control', 'no-cache, must-revalidate');
+  }
+
   return response;
 }
 
