@@ -10,6 +10,22 @@
    drift apart. Imported by BlockContent, so anything that renders blocks has
    it — see utils/revealBlock.js for the class it applies. */
 
+/* Where a scroll STOPS when it lands on a block.
+
+   The reader's header is `sticky`, so the top ~62px of the viewport is covered.
+   scrollIntoView({ block: 'start' }) puts the target at y=0 — underneath it —
+   and the reader sees the page starting two lines BELOW the heading they asked
+   for, with the heading itself invisible. Measured on the deployed pack: header
+   bottom 61.5px, target top 0.03px.
+
+   scroll-margin-top is the whole fix, and it belongs on the target rather than
+   in the scrolling code: it applies to a fragment navigation (#slug) and a
+   keyboard scroll just as much as to our own scrollIntoView. 4.5rem clears the
+   header with a little breathing room above the heading. */
+[data-uid] {
+  scroll-margin-top: 4.5rem;
+}
+
 .pack-reveal {
   animation: pack-reveal 2.4s ease-out;
   border-radius: 3px;
