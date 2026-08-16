@@ -372,7 +372,16 @@
             />
           </div>
 
-          <div>
+          <!-- The LIST scrolls, not the whole panel. Two reasons: the search
+               box should stay put while you scroll what it filters, and its
+               results dropdown is absolutely positioned — inside an
+               overflow-y-auto ancestor it would be clipped to the panel.
+
+               Bounded because `sticky` alone pins the top and lets the rest run
+               off the bottom of the screen. A pasted document can carry fifty
+               headings, and the end of the contents was simply unreachable. -->
+          <div class="max-h-[60vh] md:max-h-[calc(100vh-11rem)]
+                      overflow-y-auto overscroll-contain pr-1">
             <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
               Contents
             </p>
