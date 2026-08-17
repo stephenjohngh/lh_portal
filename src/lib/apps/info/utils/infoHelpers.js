@@ -25,6 +25,37 @@ export function sectionNotes(notes = [], sectionId) {
   return notes.filter(n => n.section_id === sectionId && n.status !== 'archived');
 }
 
+/**
+ * Every note that is visible outside the Info app, newest publication first.
+ *
+ * The question this answers — "what have we put out, and to whom?" — was
+ * answerable before only by visiting each section in turn with the visibility
+ * filter set, which is why nobody could answer it. Publication is the one
+ * property of a note that reaches beyond the portal, so it deserves a view that
+ * ignores sections entirely.
+ *
+ * Archived notes are INCLUDED, deliberately: archiving hides a note from the
+ * working list, it does not unpublish it. An archived note with
+ * `visibility: 'public'` is still a live page on the internet, and that is
+ * exactly the thing this view exists to make impossible to miss.
+ *
+ * @param {object[]} notes
+ */
+export function publishedNotes(notes = []) {
+  return notes
+    .filter(n => (n.visibility ?? 'internal') !== 'internal')
+    .sort((a, b) => {
+      const at = a.published_at ?? a.updated_at ?? '';
+      const bt = b.published_at ?? b.updated_at ?? '';
+      return String(bt).localeCompare(String(at));
+    });
+}
+
+/** How many notes are published — for the sidebar count. */
+export function publishedCount(notes = []) {
+  return notes.filter(n => (n.visibility ?? 'internal') !== 'internal').length;
+}
+
 export function parseTags(raw) {
   return [...new Set(
     raw.split(',')

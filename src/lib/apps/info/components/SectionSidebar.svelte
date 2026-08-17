@@ -5,7 +5,7 @@
   import Icon             from '$lib/components/icons/Icon.svelte';
   import ProtectedButton  from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
-  import { sectionNotes } from '../utils/infoHelpers.js';
+  import { sectionNotes, publishedCount } from '../utils/infoHelpers.js';
 
   export let sections        = [];
   export let selectedId      = null;   // null = All Notes
@@ -14,8 +14,12 @@
   export let notes           = [];
   /** The note open in the main panel, so the sidebar can show where you are. */
   export let openNoteId      = null;
+  /** True when the Published view is showing, rather than a section. */
+  export let publishedView   = false;
 
   const dispatch = createEventDispatcher();
+
+  $: publishedTotal = publishedCount(notes);
 
   let pendingDelete   = null;
   let deleting        = false;
@@ -47,7 +51,7 @@
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div
     class="flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-colors text-sm
-           {selectedId === null
+           {selectedId === null && !publishedView
              ? 'bg-purple-600/20 text-purple-300 border-r-2 border-purple-500'
              : 'text-slate-300 hover:bg-slate-700/50'}"
     on:click={() => dispatch('select', null)}
@@ -55,6 +59,24 @@
     <Icon name="book" size={4} className="shrink-0" />
     <span class="flex-1 font-medium">All Notes</span>
     <span class="text-xs text-slate-500 tabular-nums">{totalCount}</span>
+  </div>
+
+  <!-- Everything visible outside the portal, cutting across sections. Sits
+       beside All Notes rather than inside the section list because publication
+       is not a place a note is filed — it is a property that reaches past the
+       portal, and it was previously only discoverable one section at a time. -->
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div
+    class="flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-colors text-sm
+           {publishedView
+             ? 'bg-purple-600/20 text-purple-300 border-r-2 border-purple-500'
+             : 'text-slate-300 hover:bg-slate-700/50'}"
+    title="Every note readable outside the Info app"
+    on:click={() => dispatch('showPublished')}
+  >
+    <span class="shrink-0 text-xs">🌐</span>
+    <span class="flex-1 font-medium">Published</span>
+    <span class="text-xs text-slate-500 tabular-nums">{publishedTotal}</span>
   </div>
 
   <div class="px-3 pt-3 pb-1">
@@ -65,7 +87,7 @@
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div
       class="group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors text-sm
-             {selectedId === section.id
+             {selectedId === section.id && !publishedView
                ? 'bg-purple-600/20 text-purple-300 border-r-2 border-purple-500'
                : 'text-slate-300 hover:bg-slate-700/50'}"
       title={section.description || section.name}
@@ -106,7 +128,7 @@
     <!-- The open section's notes, in place. Clicking one opens it — the list
          in the main panel is then free to be the richer view (search, the
          visibility filter, archived) rather than the only way through. -->
-    {#if selectedId === section.id}
+    {#if selectedId === section.id && !publishedView}
       {@const inSection = sectionNotes(notes, section.id)}
       {#each inSection as note (note.id)}
         <button

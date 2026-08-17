@@ -41,6 +41,14 @@
       </button>
     {/if}
 
+    <!-- Not a filter on this list: it shows PUBLICATIONS, of which one pack can
+         have several, and the question it answers spans every pack. -->
+    <button
+      class="text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2"
+      title="Every link issued from every pack"
+      on:click={() => dispatch('showPublished')}
+    >Published links</button>
+
     <Button variant="primary" size="small" on:click={() => dispatch('new')}>
       + New Pack
     </Button>

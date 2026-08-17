@@ -104,6 +104,9 @@ function createDossierStore() {
     // never publish, and the list is the one place a live external link is
     // visible, so it should not be lying around unrequested.
     publications: [],
+    // Every pack's links, for the cross-pack summary. Separate from
+    // `publications` above, which is the OPEN pack's.
+    allPublications: [],
   }));
 
   const { subscribe, update } = store;
@@ -512,6 +515,26 @@ function createDossierStore() {
   function isVersionConflict(err) {
     const text = `${err?.code ?? ''} ${err?.message ?? ''}`;
     return text.includes('23505') || /duplicate key|already exists/i.test(text);
+  }
+
+  /**
+   * Every link issued from every pack — the "what have I sent outside the
+   * portal?" question, which no per-pack panel can answer.
+   *
+   * No filter, deliberately: RLS scopes publications through their pack, so
+   * this returns the caller's own (and everything, for an admin). Adding a
+   * created_by filter here would be a second, weaker copy of that rule.
+   *
+   * Kept out of `publications`, which belongs to the open pack — two lists with
+   * different scopes in one field is how a panel ends up showing another pack's
+   * links.
+   */
+  async function loadAllPublications() {
+    const all = await api.get('dossier_publications', {
+      orderBy: 'created_at', ascending: false,
+    });
+    update(s => ({ ...s, allPublications: all }));
+    return all;
   }
 
   async function loadPublications(packId) {
@@ -926,7 +949,7 @@ function createDossierStore() {
     createRecord, createRecords, updateRecord, deleteRecord,
     loadDocs, closePack, loadPackFiles, createDoc, renameDoc, deleteDoc, applyMove, saveDocBlocks,
     saveVersion, loadRevisions, restoreRevision, loadBacklinks,
-    loadPublications, createPublication, revokePublication, deletePublication,
+    loadPublications, loadAllPublications, createPublication, revokePublication, deletePublication,
     regeneratePublicationToken,
   };
 }

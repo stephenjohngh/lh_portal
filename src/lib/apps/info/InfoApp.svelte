@@ -15,6 +15,7 @@
   import SectionSidebar   from './components/SectionSidebar.svelte';
   import NoteList         from './components/NoteList.svelte';
   import NoteView         from './components/NoteView.svelte';
+  import PublishedList    from './components/PublishedList.svelte';
   import SectionFormModal from './components/modals/SectionFormModal.svelte';
   import NoteFormModal    from './components/modals/NoteFormModal.svelte';
 
@@ -83,7 +84,21 @@
 
   // Section selection is a client-side filter — all notes stay loaded so the
   // sidebar counts (derived from the full `notes` array) remain correct.
+  /**
+   * The Published view is a peer of a section, not one of them: it cuts
+   * across every section, so it cannot be expressed as a selectedSectionId.
+   */
+  let publishedView = false;
+
+  function showPublished() {
+    publishedView = true;
+    viewingNoteId = null;
+    infoStore.clearNote();
+    setPref(LS_NOTE, null);
+  }
+
   function selectSection(sectionId) {
+    publishedView = false;
     selectedSectionId = sectionId;
     viewingNoteId     = null;
     infoStore.clearNote();
@@ -249,8 +264,10 @@
         {noteCounts}
         {notes}
         openNoteId={viewingNoteId}
+        {publishedView}
         on:select={(e) => selectSection(e.detail)}
         on:selectNote={(e) => selectNote(e.detail)}
+        on:showPublished={showPublished}
         on:newSection={openNewSection}
         on:edit={(e) => openEditSection(e.detail)}
         on:delete={(e) => handleSectionDelete(e.detail)}
@@ -269,6 +286,12 @@
             on:archive={(e)    => handleArchive(e.detail)}
             on:docUploaded={handleDocUploaded}
             on:docDeleted={handleDocDeleted}
+          />
+        {:else if publishedView}
+          <PublishedList
+            {notes}
+            loading={$infoStore.loadingNotes}
+            on:select={(e) => selectNote(e.detail)}
           />
         {:else}
           <NoteList

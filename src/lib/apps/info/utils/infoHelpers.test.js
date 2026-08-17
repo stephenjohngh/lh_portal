@@ -2,7 +2,10 @@
 // Pure helpers behind the Info app's sidebar and note form.
 
 import { describe, it, expect } from 'vitest';
-import { sectionNotes, parseTags, tagsToString, stripHtml } from './infoHelpers.js';
+import {
+  sectionNotes, publishedNotes, publishedCount,
+  parseTags, tagsToString, stripHtml,
+} from './infoHelpers.js';
 
 const note = (over = {}) => ({
   id: 'n1', section_id: 's1', title: 'A note', status: 'active', ...over,
@@ -47,6 +50,56 @@ describe('sectionNotes', () => {
   it('survives being called before the notes have loaded', () => {
     expect(sectionNotes(undefined, 's1')).toEqual([]);
     expect(sectionNotes([], 's1')).toEqual([]);
+  });
+});
+
+describe('publishedNotes', () => {
+  const notes = [
+    note({ id: 'a', visibility: 'internal' }),
+    note({ id: 'b', visibility: 'public',     published_at: '2026-01-10T00:00:00Z' }),
+    note({ id: 'c', visibility: 'registered', published_at: '2026-03-01T00:00:00Z' }),
+  ];
+
+  it('lists everything readable outside the Info app', () => {
+    expect(publishedNotes(notes).map(n => n.id)).toEqual(['c', 'b']);
+  });
+
+  it('treats a note with no visibility as internal', () => {
+    // The column default. An absent value must never read as published.
+    expect(publishedNotes([note({ id: 'x', visibility: undefined })])).toEqual([]);
+    expect(publishedNotes([note({ id: 'y', visibility: null })])).toEqual([]);
+  });
+
+  it('puts the most recently published first', () => {
+    expect(publishedNotes(notes)[0].id).toBe('c');
+  });
+
+  it('falls back to updated_at when a note has no published_at', () => {
+    const mixed = [
+      note({ id: 'old', visibility: 'public', updated_at: '2026-01-01T00:00:00Z' }),
+      note({ id: 'new', visibility: 'public', updated_at: '2026-06-01T00:00:00Z' }),
+    ];
+    expect(publishedNotes(mixed).map(n => n.id)).toEqual(['new', 'old']);
+  });
+
+  it('INCLUDES an archived note that is still published', () => {
+    // The point of the view. Archiving hides a note from the working list; it
+    // does not unpublish it, so an archived public note is still a live page on
+    // the internet and must not disappear from the one place that would say so.
+    const archived = [note({ id: 'z', visibility: 'public', status: 'archived' })];
+    expect(publishedNotes(archived).map(n => n.id)).toEqual(['z']);
+  });
+
+  it('does not mutate or re-order the caller-s array', () => {
+    const original = [...notes];
+    publishedNotes(notes);
+    expect(notes).toEqual(original);
+  });
+
+  it('counts the same set', () => {
+    expect(publishedCount(notes)).toBe(2);
+    expect(publishedCount([])).toBe(0);
+    expect(publishedCount()).toBe(0);
   });
 });
 

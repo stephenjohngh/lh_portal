@@ -14,6 +14,7 @@
   import PackFormModal    from './components/PackFormModal.svelte';
   import PackWorkspace    from './components/PackWorkspace.svelte';
   import DuplicatePackModal from './components/DuplicatePackModal.svelte';
+  import PublishedPacksList from './components/PublishedPacksList.svelte';
   import { copyTitle }    from './utils/packCopy.js';
 
   /** A caught value is `unknown`; narrow it without asserting a type. */
@@ -26,6 +27,26 @@
 
   // null = the pack list; set = the authoring workspace for that pack.
   let openPackId = null;
+
+  /**
+   * The cross-pack Published view. A peer of the pack list, not a pack: the
+   * question it answers — what is reachable from outside the portal — cuts
+   * across every pack, and the per-pack Links panel cannot see past its own.
+   */
+  let publishedView = false;
+  let loadingPublished = false;
+
+  async function showPublished() {
+    publishedView = true;
+    loadingPublished = true;
+    try {
+      await dossierStore.loadAllPublications();
+    } catch (err) {
+      appError = errMessage(err);
+    } finally {
+      loadingPublished = false;
+    }
+  }
 
   // ── Bounding the app's height ─────────────────────────────────────────────
   // The portal shell is `min-h-screen` with a sticky nav, so the DOCUMENT
@@ -181,6 +202,7 @@
   }
 
   async function handleOpen(pack) {
+    publishedView = false;
     const packId = pack.id;          // capture before the await
     openPackId = packId;
     try {
@@ -229,6 +251,14 @@
   <div class="flex-1 min-h-0">
     {#if openPack}
       <PackWorkspace pack={openPack} on:back={backToPacks} />
+    {:else if publishedView}
+      <PublishedPacksList
+        publications={$dossierStore.allPublications}
+        {packs}
+        loading={loadingPublished}
+        on:openPack={(e) => handleOpen({ id: e.detail })}
+        on:back={() => (publishedView = false)}
+      />
     {:else}
       <PackList
         {packs}
@@ -239,6 +269,7 @@
         on:archive={(e) => handleArchive(e.detail)}
         on:duplicate={(e) => requestDuplicate(e.detail)}
         on:delete={(e)  => requestDelete(e.detail)}
+        on:showPublished={showPublished}
       />
     {/if}
   </div>
