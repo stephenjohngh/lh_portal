@@ -106,14 +106,30 @@
                 {/if}
               </td>
               <td class="px-4 py-2">
-                {#if note.visibility === 'public' && note.slug}
-                  <a href="/info/{note.slug}" target="_blank" rel="noopener noreferrer"
-                     class="text-xs text-purple-400 hover:underline font-mono"
-                  >/info/{note.slug}</a>
-                {:else if note.slug}
-                  <span class="text-xs text-slate-500 font-mono">/info/{note.slug}</span>
+                <!-- Both levels are links. A registered-only page is a real
+                     page — it just asks the reader to be signed in with the
+                     Info permission, which whoever is reading this list is. The
+                     colour still says which is which; only public is the one
+                     anyone on the internet can open. -->
+                {#if note.slug}
+                  <a
+                    href="/info/{note.slug}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-xs font-mono hover:underline inline-flex items-center gap-1
+                           {note.visibility === 'public'
+                             ? 'text-purple-400' : 'text-slate-400'}"
+                    title={note.visibility === 'public'
+                      ? 'Open the public page in a new tab'
+                      : 'Open in a new tab — readers must be signed in with the Info permission'}
+                  >/info/{note.slug}<span class="text-[9px] opacity-70">↗</span></a>
                 {:else}
-                  <span class="text-xs text-slate-600">—</span>
+                  <!-- Published with no slug should not happen: publishing sets
+                       one. Worth showing rather than hiding, because a page
+                       with no address cannot be reached at all. -->
+                  <span class="text-xs text-amber-400" title="Published but has no address">
+                    no address
+                  </span>
                 {/if}
               </td>
               <td class="px-4 py-2 text-xs text-slate-400">
