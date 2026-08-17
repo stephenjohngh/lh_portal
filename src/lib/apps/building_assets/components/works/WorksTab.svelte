@@ -277,19 +277,24 @@
 
 {#if !openSchedule}
   <!-- ── The list ────────────────────────────────────────────────────────── -->
-  <div class="flex items-center gap-3 mb-4">
-    <div>
-      <h2 class="text-sm font-semibold text-white">Works schedules</h2>
+  <div class="flex items-start gap-3 mb-4">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-white">Works schedules</h2>
+        <span class="text-xs text-slate-500">{schedules.length}</span>
+      </div>
       <p class="text-xs text-slate-500 mt-0.5">
         What we want a contractor to do — priced, instructed, then applied back
         to the asset records.
       </p>
     </div>
     <div class="flex-1"></div>
-    <ProtectedButton requireAdmin={true} variant="primary" size="small"
-                     on:click={newSchedule}>
-      + New schedule
-    </ProtectedButton>
+    <div class="flex items-center gap-2 shrink-0">
+      <ProtectedButton requireAdmin={true} variant="primary" size="small"
+                       on:click={newSchedule}>
+        + New schedule
+      </ProtectedButton>
+    </div>
   </div>
 
   {#if state.loading}
@@ -332,45 +337,76 @@
 
 {:else}
   <!-- ── One schedule ───────────────────────────────────────────────────── -->
-  <div class="flex items-center gap-3 mb-4">
+  <!-- Layout rule, applied consistently: the LEFT is what this is (where you
+       came from, its name, its state), the RIGHT is what you can do to it.
+       The status badge belongs on the left — it is information, and sitting in
+       the button row it read as an action you could press.
+
+       Actions run in workflow order, which is also the order they are used:
+       edit it, send it, mark it out, mark it done. Delete is separated from
+       them by a rule, because it is not a step in that sequence. -->
+  <div class="flex items-start gap-3 mb-4">
     <Button variant="secondary" size="small" on:click={back}>← Schedules</Button>
+
     <div class="min-w-0">
-      <p class="text-sm font-semibold text-white truncate">{openSchedule.title}</p>
-      <p class="text-xs text-slate-500">
+      <div class="flex items-center gap-2">
+        <p class="text-sm font-semibold text-white truncate">{openSchedule.title}</p>
+        <Badge color={STATUS_BADGE[openSchedule.status] ?? 'bg-slate-600'}>
+          {statusLabel(openSchedule.status)}
+        </Badge>
+      </div>
+      <p class="text-xs text-slate-500 mt-0.5">
         {purposeLabel(openSchedule.purpose)} · {describeSummary(items)}
         {#if progress.done}· {progress.done} of {progress.total} carried out{/if}
       </p>
     </div>
+
     <div class="flex-1"></div>
 
-    <Badge color={STATUS_BADGE[openSchedule.status] ?? 'bg-slate-600'}>
-      {statusLabel(openSchedule.status)}
-    </Badge>
+    <div class="flex items-center gap-2 shrink-0">
+      {#if canEdit}
+        <Button variant="secondary" size="small" on:click={editSchedule}>Edit</Button>
+      {/if}
 
-    {#if canEdit}
-      <Button variant="secondary" size="small" on:click={editSchedule}>Edit</Button>
-      <!-- Available whether or not the schedule has lines: an empty one created
-           by mistake was previously impossible to remove. -->
-      <ProtectedButton requireAdmin={true} variant="danger" size="small"
-                       on:click={() => pendingDelete = openSchedule}>
-        Delete
-      </ProtectedButton>
-    {/if}
-    <Button variant="secondary" size="small" disabled={exporting || !items.length}
-            title="Word document to send to the contractor"
-            on:click={exportDocument}>
-      {exporting ? 'Building…' : 'Document'}
-    </Button>
-    {#if canEdit && openSchedule.status === 'draft'}
-      <Button variant="secondary" size="small" disabled={issuing} on:click={issue}>
-        {issuing ? 'Marking…' : 'Mark issued'}
+      <!-- Disabled rather than hidden: a control that vanishes leaves the
+           reader wondering where it went, and the row jumping as they work. -->
+      <Button variant="secondary" size="small"
+              disabled={exporting || !items.length}
+              title={items.length
+                ? 'Word document to send to the contractor'
+                : 'Add components before producing a document'}
+              on:click={exportDocument}>
+        {exporting ? 'Building…' : 'Document'}
       </Button>
-    {/if}
-    {#if canEdit && items.length}
-      <Button variant="primary" size="small" on:click={openApply}>
-        Carried out…
-      </Button>
-    {/if}
+
+      {#if canEdit}
+        <!-- Only while it IS a draft: "mark issued" on something already issued
+             is not a disabled action, it is a meaningless one. -->
+        {#if openSchedule.status === 'draft'}
+          <Button variant="secondary" size="small" disabled={issuing}
+                  title="Record that this has gone to the contractor"
+                  on:click={issue}>
+            {issuing ? 'Marking…' : 'Mark issued'}
+          </Button>
+        {/if}
+
+        <Button variant="primary" size="small" disabled={!items.length}
+                title={items.length
+                  ? 'Update the asset records from what was done'
+                  : 'Nothing to mark'}
+                on:click={openApply}>
+          Mark carried out
+        </Button>
+
+        <!-- Not a step in the sequence above, so it does not sit in it. -->
+        <span class="w-px h-5 bg-slate-700 mx-1"></span>
+        <ProtectedButton requireAdmin={true} variant="danger" size="small"
+                         title="Delete this schedule and all its lines"
+                         on:click={() => pendingDelete = openSchedule}>
+          Delete
+        </ProtectedButton>
+      {/if}
+    </div>
   </div>
 
   {#if applyNotice}
@@ -383,12 +419,18 @@
   {/if}
 
   {#if canEdit && items.length}
-    <div class="flex items-center gap-2 mb-3 text-xs text-slate-500">
-      <span>Set every line to:</span>
+    <!-- A bulk edit, not a workflow step, so it sits with the table it changes
+         rather than in the header's action row. Labelled with what it does to
+         EVERY line, because that is the surprise otherwise. -->
+    <div class="flex items-center gap-1.5 mb-3 text-xs">
+      <span class="text-slate-500">Set every line to</span>
       {#each WORKS_ACTIONS as a}
-        <button class="px-2 py-0.5 rounded border border-slate-700
-                       hover:border-slate-500 hover:text-slate-200 transition-colors"
-                on:click={() => setAllActions(a.value)}>{a.label}</button>
+        <button
+          class="px-2 py-0.5 rounded border border-slate-700 text-slate-400
+                 hover:border-slate-500 hover:text-slate-200 transition-colors"
+          title="Set all {items.length} lines to {a.label} — {a.describe.toLowerCase()}"
+          on:click={() => setAllActions(a.value)}
+        >{a.label}</button>
       {/each}
     </div>
   {/if}
