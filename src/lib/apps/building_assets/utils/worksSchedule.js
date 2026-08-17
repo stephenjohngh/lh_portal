@@ -113,18 +113,49 @@ export function applyPatch(item, component, { userId, at = new Date().toISOStrin
 }
 
 /**
+ * The attribute values a component should end up with, or null for no change.
+ *
+ * ⚠ MERGED, never replaced, and that is not a nicety. The write path this feeds
+ * — `replaceComponentAttributes` — deletes every attribute row for the
+ * component and re-inserts what it is given. Handing it only the changed
+ * values would silently erase every attribute the schedule did not mention:
+ * fit a new light, lose its fire rating and its circuit reference.
+ *
+ * A schedule lists only what CHANGES (wattage 40 → 15), so the merge is what
+ * turns a sparse instruction into a complete set.
+ *
+ * @param {object} item     works_schedule_items row
+ * @param {Record<string, string>} current  existing values, by type_attribute_id
+ * @returns {Record<string, string>|null}
+ */
+export function attributePatch(item, current = {}) {
+  const target = item?.target_attributes;
+  if (!target || typeof target !== 'object') return null;
+
+  const changed = Object.entries(target).filter(
+    ([id, value]) => String(current?.[id] ?? '') !== String(value ?? ''));
+  if (!changed.length) return null;
+
+  return { ...current, ...Object.fromEntries(changed) };
+}
+
+/**
  * The whole apply, as a plan to show someone BEFORE it is written.
  *
  * @param {object[]} items
  * @param {Map<string, object>|object[]} components
- * @param {{ userId: string, at?: string }} ctx
- * @returns {{ changes: { item: object, component: object, patch: object }[],
+ * @param {{ userId: string, at?: string,
+ *           attributes?: Record<string, Record<string, string>> }} ctx
+ *        `attributes` is current values per component id, by type_attribute_id
+ * @returns {{ changes: { item: object, component: object,
+ *                        patch: object|null, attrs: object|null }[],
  *             unchanged: object[], missing: object[] }}
  */
 export function planApply(items = [], components, ctx = {}) {
   const byId = components instanceof Map
     ? components
     : new Map((components ?? []).map(c => [c.id, c]));
+  const currentAttrs = ctx.attributes ?? {};
 
   const changes = [];
   const unchanged = [];
@@ -139,7 +170,15 @@ export function planApply(items = [], components, ctx = {}) {
     if (!component) { missing.push(item); continue; }
 
     const patch = applyPatch(item, component, ctx);
-    if (patch) changes.push({ item, component, patch });
+    // Attributes only follow an action that actually fits something new. A
+    // 'leave' line carrying stray target attributes must not quietly rewrite
+    // the register.
+    const def = actionDef(item.action);
+    const attrs = def?.applies?.retype
+      ? attributePatch(item, currentAttrs[item.component_id] ?? {})
+      : null;
+
+    if (patch || attrs) changes.push({ item, component, patch, attrs });
     else unchanged.push(item);
   }
 

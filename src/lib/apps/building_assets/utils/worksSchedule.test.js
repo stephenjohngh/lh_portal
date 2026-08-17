@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  WORKS_ACTIONS, actionDef, actionLabel, applyPatch, planApply,
+  WORKS_ACTIONS, actionDef, actionLabel, applyPatch, attributePatch, planApply,
   actionSummary, describeSummary, appliedProgress, purposeLabel, statusLabel,
 } from './worksSchedule.js';
 
@@ -129,6 +129,79 @@ describe('planApply', () => {
   it('is empty for an empty schedule', () => {
     expect(planApply([], components, ctx))
       .toEqual({ changes: [], unchanged: [], missing: [] });
+  });
+});
+
+describe('attributePatch', () => {
+  it('MERGES over what the component already has', () => {
+    // The write path deletes every attribute row and re-inserts what it is
+    // given. Handing it only the changed value would erase the rest — fit a new
+    // light, lose its fire rating and its circuit reference.
+    const current = { wattage: '40', circuit: 'L3', fire_rating: 'FD30' };
+    const patch = attributePatch(item({ target_attributes: { wattage: '15' } }), current);
+
+    expect(patch).toEqual({ wattage: '15', circuit: 'L3', fire_rating: 'FD30' });
+  });
+
+  it('is null when the value is already what was specified', () => {
+    expect(attributePatch(
+      item({ target_attributes: { wattage: '15' } }), { wattage: '15' })).toBeNull();
+  });
+
+  it('compares as text, so 15 and "15" are the same value', () => {
+    expect(attributePatch(
+      item({ target_attributes: { wattage: 15 } }), { wattage: '15' })).toBeNull();
+  });
+
+  it('adds an attribute the component did not have', () => {
+    expect(attributePatch(item({ target_attributes: { wattage: '15' } }), {}))
+      .toEqual({ wattage: '15' });
+  });
+
+  it('is null when the item specifies no attributes', () => {
+    expect(attributePatch(item(), { wattage: '40' })).toBeNull();
+    expect(attributePatch(item({ target_attributes: {} }), {})).toBeNull();
+  });
+});
+
+describe('planApply — attributes', () => {
+  const components = [component({ id: 'c1', type_code: 'LGT-FL', status: 'failed' })];
+  const attributes = { c1: { wattage: '40', circuit: 'L3' } };
+
+  it('carries the new attribute values alongside the type change', () => {
+    // Fitting a 15W LED where a 40W fluorescent was changes the register, not
+    // just the fitting.
+    const plan = planApply([
+      item({ action: 'replace', target_type_code: 'LGT-LED',
+             target_attributes: { wattage: '15' } }),
+    ], components, { ...ctx, attributes });
+
+    expect(plan.changes[0].patch.type_code).toBe('LGT-LED');
+    expect(plan.changes[0].attrs).toEqual({ wattage: '15', circuit: 'L3' });
+  });
+
+  it('ignores stray attributes on an action that fits nothing', () => {
+    // A 'leave' line is listed for information. It must not quietly rewrite the
+    // register on its way past.
+    const plan = planApply([
+      item({ action: 'leave', target_attributes: { wattage: '15' } }),
+    ], components, { ...ctx, attributes });
+
+    expect(plan.changes).toEqual([]);
+    expect(plan.unchanged).toHaveLength(1);
+  });
+
+  it('counts a line as a change when ONLY its attributes differ', () => {
+    // Same type, same status, new wattage — still work that must be recorded.
+    const plan = planApply([
+      item({ action: 'replace', target_type_code: 'LGT-FL',
+             target_attributes: { wattage: '15' } }),
+    ], [component({ id: 'c1', type_code: 'LGT-FL', status: 'ok' })],
+       { ...ctx, attributes });
+
+    expect(plan.changes).toHaveLength(1);
+    expect(plan.changes[0].patch).toBeNull();
+    expect(plan.changes[0].attrs).toEqual({ wattage: '15', circuit: 'L3' });
   });
 });
 
