@@ -9,9 +9,11 @@
   import { getLogger }    from '$lib/utils/logger';
   import { logAudit }     from '$lib/utils/auditLogger';
   import ErrorDisplay     from '$lib/components/common/ErrorDisplay.svelte';
+  import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
   import LoadingSpinner   from '$lib/components/common/LoadingSpinner.svelte';
 
   import { infoStore }    from './stores/infoStore.js';
+  import { isPublished }  from './utils/infoHelpers.js';
   import SectionSidebar   from './components/SectionSidebar.svelte';
   import NoteList         from './components/NoteList.svelte';
   import NoteView         from './components/NoteView.svelte';
@@ -207,11 +209,30 @@
     }
   }
 
+  /**
+   * Archiving a PUBLISHED note also takes it off the internet, so that one is
+   * asked about first. Archiving an internal note is an everyday tidy-up and
+   * gets no dialog — a confirmation on the common case is how people learn to
+   * click through confirmations without reading them.
+   */
+  let pendingArchive = null;
+  let archiving = false;
+
   async function handleArchive(note) {
+    const archiving_ = note.status !== 'archived';
+    if (archiving_ && isPublished(note)) { pendingArchive = note; return; }
+    await runArchive(note, archiving_);
+  }
+
+  async function runArchive(note, archived) {
+    archiving = true;
     try {
-      await infoStore.setArchived(note.id, note.status !== 'archived');
+      await infoStore.setArchived(note, archived);
+      pendingArchive = null;
     } catch (err) {
       appError = err.message;
+    } finally {
+      archiving = false;
     }
   }
 
@@ -328,4 +349,27 @@
   sectionId={selectedSectionId}
   on:save={handleNoteSave}
   on:close={() => showNoteModal = false}
+/>
+
+<!-- Archiving something the public can read is not the same act as archiving a
+     note, so it says what will actually happen to a reader rather than asking
+     "are you sure?". -->
+<ConfirmDialog
+  show={!!pendingArchive}
+  danger={true}
+  processing={archiving}
+  title="Archive and unpublish?"
+  message={pendingArchive
+    ? `"${pendingArchive.title}" is currently readable outside the portal`
+      + (pendingArchive.visibility === 'public'
+          ? ` by anyone, at /info/${pendingArchive.slug ?? ''}`
+          : ' by signed-in users with the Info permission')
+      + '. Archiving it will also unpublish it, so that address stops working '
+      + 'and anyone who has linked to it will get a not-found page. '
+      + 'Restoring the note later will NOT put it back online — you would '
+      + 'publish it again yourself, and it would keep the same address.'
+    : ''}
+  confirmText="Archive and unpublish"
+  on:confirm={() => runArchive(pendingArchive, true)}
+  on:cancel={() => pendingArchive = null}
 />

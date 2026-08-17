@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  sectionNotes, publishedNotes, publishedCount,
+  sectionNotes, publishedNotes, publishedCount, archiveNotePatch, isPublished,
   parseTags, tagsToString, stripHtml,
 } from './infoHelpers.js';
 
@@ -100,6 +100,58 @@ describe('publishedNotes', () => {
     expect(publishedCount(notes)).toBe(2);
     expect(publishedCount([])).toBe(0);
     expect(publishedCount()).toBe(0);
+  });
+});
+
+describe('archiveNotePatch', () => {
+  it('archives an internal note and touches nothing else', () => {
+    expect(archiveNotePatch(note({ visibility: 'internal' }), true))
+      .toEqual({ status: 'archived' });
+  });
+
+  it('UNPUBLISHES a published note when it is archived', () => {
+    // Archiving reads as "take this out of circulation". Leaving a live public
+    // page behind means the portal and the internet disagree about what the
+    // building has said — gone from the working list, still readable by a
+    // resident.
+    expect(archiveNotePatch(note({ visibility: 'public', published_at: '2026-01-01' }), true))
+      .toEqual({ status: 'archived', visibility: 'internal', published_at: null });
+  });
+
+  it('unpublishes a registered-only note too', () => {
+    expect(archiveNotePatch(note({ visibility: 'registered' }), true).visibility)
+      .toBe('internal');
+  });
+
+  it('does NOT republish when a note is restored', () => {
+    // Deliberately not symmetrical. Putting a page back on the internet is an
+    // outward-facing act somebody has to choose, never a side effect of
+    // un-hiding a note.
+    expect(archiveNotePatch(note({ visibility: 'internal', status: 'archived' }), false))
+      .toEqual({ status: 'active' });
+  });
+
+  it('leaves the slug alone, so re-publishing keeps the same address', () => {
+    const patch = archiveNotePatch(note({ visibility: 'public', slug: 'fire-safety' }), true);
+    expect(patch).not.toHaveProperty('slug');
+  });
+
+  it('treats an absent visibility as internal', () => {
+    expect(archiveNotePatch(note({ visibility: undefined }), true))
+      .toEqual({ status: 'archived' });
+  });
+});
+
+describe('isPublished', () => {
+  it('is false for internal, absent and null', () => {
+    expect(isPublished(note({ visibility: 'internal' }))).toBe(false);
+    expect(isPublished(note({ visibility: undefined }))).toBe(false);
+    expect(isPublished(null)).toBe(false);
+  });
+
+  it('is true for anything readable outside the app', () => {
+    expect(isPublished(note({ visibility: 'public' }))).toBe(true);
+    expect(isPublished(note({ visibility: 'registered' }))).toBe(true);
   });
 });
 

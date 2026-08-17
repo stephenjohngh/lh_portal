@@ -8,6 +8,7 @@ import * as docApi     from '$lib/utils/documentApi';
 import { logAudit }    from '$lib/utils/auditLogger';
 import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
 import { getLogger }   from '$lib/utils/logger';
+import { archiveNotePatch } from '../utils/infoHelpers.js';
 
 const logger = getLogger('infoStore');
 
@@ -221,14 +222,31 @@ function createInfoStore() {
     }));
   }
 
-  async function setArchived(id, archived) {
-    const status = archived ? 'archived' : 'active';
-    await api.update('info_notes', id, { status });
+  /**
+   * Archive or restore. Takes the NOTE, not just its id, because archiving a
+   * published note also unpublishes it and that decision needs its visibility.
+   * The rule itself lives in archiveNotePatch() — pure, and tested there.
+   *
+   * @param {object} note
+   * @param {boolean} archived
+   */
+  async function setArchived(note, archived) {
+    const patch = archiveNotePatch(note, archived);
+    await api.update('info_notes', note.id, patch);
+
+    if (patch.visibility === 'internal') {
+      logAudit('unpublish', 'info_note', note.id, note.title, {
+        appId: 'info', eventCategory: 'info', severity: 'warning',
+        beforeData: { visibility: note.visibility },
+        afterData:  { visibility: 'internal', reason: 'archived' },
+      });
+    }
+
     update(s => ({
       ...s,
-      notes: s.notes.map(n => n.id === id ? { ...n, status } : n),
-      selectedNote: s.selectedNote?.id === id
-        ? { ...s.selectedNote, status }
+      notes: s.notes.map(n => n.id === note.id ? { ...n, ...patch } : n),
+      selectedNote: s.selectedNote?.id === note.id
+        ? { ...s.selectedNote, ...patch }
         : s.selectedNote,
     }));
   }

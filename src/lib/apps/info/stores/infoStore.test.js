@@ -106,11 +106,40 @@ describe('notes mutations', () => {
   });
 
   it('setArchived maps the boolean to a status string', async () => {
-    h.api.get.mockResolvedValueOnce([{ id: 'n1', status: 'active', is_pinned: false, updated_at: '2026-01-01' }]);
+    const note = { id: 'n1', status: 'active', is_pinned: false, updated_at: '2026-01-01' };
+    h.api.get.mockResolvedValueOnce([note]);
     await infoStore.loadNotes();
-    await infoStore.setArchived('n1', true);
+    // Takes the NOTE, not an id: archiving a published note also unpublishes
+    // it, and that decision needs its visibility.
+    await infoStore.setArchived(note, true);
     expect(h.api.update).toHaveBeenCalledWith('info_notes', 'n1', { status: 'archived' });
     expect(get(infoStore).notes[0].status).toBe('archived');
+  });
+
+  it('setArchived UNPUBLISHES a published note as it archives it', async () => {
+    // The divergence this closes: a note gone from the working list but still
+    // readable by a resident on the public site.
+    const note = {
+      id: 'n2', status: 'active', visibility: 'public', published_at: '2026-01-01',
+      is_pinned: false, updated_at: '2026-01-01',
+    };
+    h.api.get.mockResolvedValueOnce([note]);
+    await infoStore.loadNotes();
+    await infoStore.setArchived(note, true);
+
+    expect(h.api.update).toHaveBeenCalledWith('info_notes', 'n2', {
+      status: 'archived', visibility: 'internal', published_at: null,
+    });
+    expect(get(infoStore).notes[0].visibility).toBe('internal');
+  });
+
+  it('setArchived does not republish on restore', async () => {
+    const note = { id: 'n3', status: 'archived', visibility: 'internal', is_pinned: false, updated_at: '2026-01-01' };
+    h.api.get.mockResolvedValueOnce([note]);
+    await infoStore.loadNotes();
+    await infoStore.setArchived(note, false);
+
+    expect(h.api.update).toHaveBeenCalledWith('info_notes', 'n3', { status: 'active' });
   });
 });
 

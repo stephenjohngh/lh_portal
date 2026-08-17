@@ -51,6 +51,40 @@ export function publishedNotes(notes = []) {
     });
 }
 
+/** Is this note readable outside the Info app? */
+export function isPublished(note) {
+  return (note?.visibility ?? 'internal') !== 'internal';
+}
+
+/**
+ * What to write when a note is archived or restored.
+ *
+ * **Archiving a published note also unpublishes it.** Archiving reads as
+ * "take this out of circulation", and leaving a live public page behind means
+ * the portal and the internet quietly disagree about what the building has
+ * said — the note is gone from the working list, and a resident can still read
+ * it. The Published view exists because that divergence was invisible; this
+ * stops it happening in the first place.
+ *
+ * **Restoring does NOT republish.** The reverse is not symmetrical and must not
+ * be: putting a page back on the internet is an outward-facing act that someone
+ * has to choose, not a side effect of un-hiding a note. The slug is kept, so
+ * re-publishing later restores the same address.
+ *
+ * @param {object} note
+ * @param {boolean} archived
+ * @returns {object} the columns to update
+ */
+export function archiveNotePatch(note, archived) {
+  const patch = { status: archived ? 'archived' : 'active' };
+
+  if (archived && isPublished(note)) {
+    patch.visibility   = 'internal';
+    patch.published_at = null;
+  }
+  return patch;
+}
+
 /** How many notes are published — for the sidebar count. */
 export function publishedCount(notes = []) {
   return notes.filter(n => (n.visibility ?? 'internal') !== 'internal').length;
