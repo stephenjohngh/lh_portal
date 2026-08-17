@@ -17,7 +17,8 @@
   import FormInput    from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import AttrField    from '../AttrField.svelte';
-  import { WORKS_ACTIONS, actionDef, attrPair, attrPairsText } from '../../utils/worksSchedule.js';
+  import { WORKS_ACTIONS, actionDef } from '../../utils/worksSchedule.js';
+  import { attrPairsText, componentAttrPairs } from '../../utils/attrDisplay.js';
 
   export let show = false;
   /** The works_schedule_items row, with .component joined. */
@@ -79,9 +80,7 @@
     ? (attrDefs[currentType.id] ?? []).filter(d => d.visible !== false && !d.checkable)
     : [];
 
-  $: currentText = attrPairsText(
-    currentDefs.map(d => attrPair(d, currentValues[d.id] ?? d.default_value ?? null))
-      .filter(Boolean));
+  $: currentText = attrPairsText(componentAttrPairs(currentDefs, currentValues));
 
   $: fitsSomething = actionDef(action)?.applies?.retype === true;
 

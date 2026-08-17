@@ -23,8 +23,9 @@
   import { worksSchedulesStore } from '../../stores/worksSchedulesStore.js';
   import {
     WORKS_ACTIONS, actionLabel, describeSummary, appliedProgress,
-    statusLabel, purposeLabel, attrPair, attrPairsText,
+    statusLabel, purposeLabel,
   } from '../../utils/worksSchedule.js';
+  import { attrPair, attrPairsText, componentAttrPairs } from '../../utils/attrDisplay.js';
   import WorksScheduleFormModal from './WorksScheduleFormModal.svelte';
   import ApplyScheduleDialog    from './ApplyScheduleDialog.svelte';
   import WorksLineModal         from './WorksLineModal.svelte';
@@ -75,9 +76,7 @@
   function currentAttrText(item) {
     const values = state.attributes[item.component_id] ?? {};
     return attrPairsText(
-      defsFor(item.component?.type_code)
-        .map(d => attrPair(d, values[d.id] ?? d.default_value ?? null))
-        .filter(Boolean));
+      componentAttrPairs(defsFor(item.component?.type_code), values));
   }
 
   /** What the line specifies for the replacement, in the same words. */

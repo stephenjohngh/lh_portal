@@ -218,47 +218,6 @@ export function appliedProgress(items = []) {
   return { done, total, complete: total > 0 && done === total };
 }
 
-/**
- * Attribute values rendered the way the Components inventory table renders
- * them: `name: value` for a number, the bare value for a dropdown, the name
- * alone for anything else that is simply present.
- *
- * Lifted out of ComponentInventoryTable so the works schedule shows an asset's
- * attributes in the SAME words as the table the author picked it from. Two
- * formats for one thing is how a reader ends up unsure whether they are looking
- * at the same asset.
- *
- * @param {{ name: string, value: string, display_type?: string }[]} pairs
- * @returns {string}
- */
-export function attrPairsText(pairs = []) {
-  return pairs
-    .map(p => (p.display_type === 'number'   ? `${p.name}: ${p.value}`
-             : p.display_type === 'dropdown' ? p.value
-             : p.name))
-    .join(', ');
-}
-
-/** Values suppressed as "not worth saying" — matches the inventory table. */
-export const SUPPRESSED_ATTR_VALUES = new Set(['None', 'No', 'Unknown']);
-
-/**
- * One attribute definition + a raw value → the pair the display uses, or null
- * when there is nothing worth showing.
- *
- * @param {object} def   type_attributes row
- * @param {string|null} raw
- */
-export function attrPair(def, raw) {
-  if (raw == null || raw === '') return null;
-  if (def.display_type === 'checkbox') {
-    return raw === 'true' || raw === true
-      ? { name: def.name, value: 'Yes', display_type: 'checkbox' } : null;
-  }
-  if (SUPPRESSED_ATTR_VALUES.has(String(raw))) return null;
-  return { name: def.name, value: String(raw), display_type: def.display_type ?? 'text' };
-}
-
 export const SCHEDULE_STATUS = [
   { value: 'draft',     label: 'Draft',     hint: 'Being prepared; not sent' },
   { value: 'issued',    label: 'Issued',    hint: 'Sent to the contractor' },

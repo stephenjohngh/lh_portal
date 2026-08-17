@@ -17,6 +17,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { typeByCode, defsForType, systemById, attrValue as lookupAttrValue } from '../lookups.js';
+  import { componentAttrPairs, attrPairsText } from '../utils/attrDisplay.js';
   import { fmtComponentRef } from '$lib/utils/componentRef.js';
   import { statusBadgeCls, statusDotCls } from '$lib/utils/resultConstants.js';
   import { fmtDate } from '$lib/utils/dates.js';
@@ -90,22 +91,16 @@
   //   dropdown → { name, value, display_type:'dropdown' }  — show "value" only
   //   checkbox → included only when true                   — show "name" only
   //   others   → { name, value, display_type:'text' }      — show "name" only
-  // Suppressed: visible=false, checkable, null/empty, or value in (None/No/Unknown)
-  const SUPPRESSED = new Set(['None', 'No', 'Unknown']);
-
+  // The display rule (which values are suppressed, how each display_type is
+  // written) lives in utils/attrDisplay.js — one definition, so the works
+  // schedule and anything else showing an asset's attributes says it the same
+  // way. This function is now only the lookup: which defs, and their values.
   function allAttrPairs(c) {
-    return defsForType(attrDefs, types, c.type_code)
-      .filter(d => d.visible !== false && !d.checkable)
-      .map(d => {
-        const raw = lookupAttrValue(componentAttrs, c.id, d.id) ?? d.default_value ?? null;
-        if (raw == null || raw === '') return null;
-        if (d.display_type === 'checkbox') {
-          return raw === 'true' ? { name: d.name, value: 'Yes', display_type: 'checkbox' } : null;
-        }
-        if (SUPPRESSED.has(String(raw))) return null;
-        return { name: d.name, value: String(raw), display_type: d.display_type ?? 'text' };
-      })
-      .filter(Boolean);
+    const defs = defsForType(attrDefs, types, c.type_code);
+    const values = Object.fromEntries(
+      defs.map(d => [d.id, lookupAttrValue(componentAttrs, c.id, d.id)])
+          .filter(([, v]) => v != null));
+    return componentAttrPairs(defs, values);
   }
 
   // -- Status helpers ------------------------------------------------
@@ -309,10 +304,7 @@
               <!-- ⑥ Attributes (report rules: number=name:value, dropdown=value, others=name) -->
               <td class="px-2 py-2 text-slate-400 overflow-hidden">
                 {#if attrs.length > 0}
-                  {@const tooltip = attrs.map(p =>
-                    p.display_type === 'number'   ? `${p.name}: ${p.value}` :
-                    p.display_type === 'dropdown' ? p.value : p.name
-                  ).join(', ')}
+                  {@const tooltip = attrPairsText(attrs)}
                   <span class="truncate block" title={tooltip}>
                     {#each attrs as p, i}
                       {#if i > 0}<span class="text-slate-500">, </span>{/if}
