@@ -16,6 +16,7 @@
   import FormSelect   from '$lib/components/common/FormSelect.svelte';
   import FormInput    from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
+  import AttrField    from '../AttrField.svelte';
   import { WORKS_ACTIONS, actionDef, attrPair, attrPairsText } from '../../utils/worksSchedule.js';
 
   export let show = false;
@@ -25,6 +26,8 @@
   export let types = [];
   /** attrDefs map, keyed by component_type_id. */
   export let attrDefs = {};
+  /** type_attribute_options, keyed by ATTRIBUTE id — not by type. */
+  export let attrOptions = {};
   /** The component's current attribute values, by type_attribute_id. */
   export let currentValues = {};
   export let componentRef = '';
@@ -152,22 +155,23 @@
                              underline-offset-2"
                       on:click={copyCurrent}>Copy what is there now</button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <!-- AttrField is the app's own attribute control — the one the
+                 component form and the detail panel use. Hand-rolling these was
+                 the bug: it guessed `def.options`, but the options live in the
+                 store's `attrOptions` map keyed by attribute id, so every
+                 dropdown came up empty. Reusing the component also gets radio,
+                 checkbox and number right for free. -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               {#each targetDefs as def (def.id)}
                 {@const currentMatch = currentDefs.find(d => d.name === def.name)}
                 {@const was = currentMatch ? (currentValues[currentMatch.id] ?? '') : ''}
                 <div>
-                  {#if def.display_type === 'dropdown'}
-                    <FormSelect label={def.name} value={targetAttrs[def.id] ?? ''}
-                      on:change={(e) => setAttr(def.id, e.detail ?? e.target?.value)}
-                      options={[{ value: '', label: 'Unchanged' },
-                                ...(def.options ?? []).map(o => ({ value: o.value ?? o, label: o.value ?? o }))]} />
-                  {:else}
-                    <FormInput label={def.name}
-                      type={def.display_type === 'number' ? 'number' : 'text'}
-                      value={targetAttrs[def.id] ?? ''}
-                      on:input={(e) => setAttr(def.id, e.target.value)} />
-                  {/if}
+                  <AttrField
+                    {def}
+                    options={attrOptions[def.id] ?? []}
+                    value={targetAttrs[def.id] ?? ''}
+                    on:change={(e) => setAttr(e.detail.attrDefId, e.detail.value)}
+                  />
                   {#if was}
                     <!-- The current value beside the box, because the question
                          is what CHANGES, not what the new value is. -->

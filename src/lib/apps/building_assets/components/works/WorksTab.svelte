@@ -51,6 +51,7 @@
   $: types    = $buildingAssetsStore.types ?? [];
   $: floors   = $buildingAssetsStore.floors ?? [];
   $: attrDefs = $buildingAssetsStore.attrDefs ?? {};
+  $: attrOptions = $buildingAssetsStore.attrOptions ?? {};
   $: attrLabels = Object.fromEntries(
     Object.values(attrDefs).flat().map(a => [a.id, a.name ?? 'Attribute']));
 
@@ -157,9 +158,21 @@
     catch (err) { error = errMessage(err); }
   }
 
-  async function removeLine(item) {
-    try { await worksSchedulesStore.removeItem(item.id); }
-    catch (err) { error = errMessage(err); }
+  // Removing a line is asked about, like every other destructive action in the
+  // portal. It is a small loss — one line — but a schedule is worked through
+  // row by row with the mouse, and the × sits next to the row you click to
+  // EDIT, which is exactly the arrangement that produces an accidental one.
+  let pendingLineDelete = null;
+  let removingLine = false;
+
+  async function confirmRemoveLine() {
+    const item = pendingLineDelete;
+    removingLine = true;
+    try {
+      await worksSchedulesStore.removeItem(item.id);
+      pendingLineDelete = null;
+    } catch (err) { error = errMessage(err); }
+    finally { removingLine = false; }
   }
 
   // ── The line editor ───────────────────────────────────────────────────────
@@ -449,7 +462,7 @@
                   {#if !item.applied_at}
                     <button class="text-slate-600 hover:text-red-400 transition-colors"
                             title="Remove this line"
-                            on:click|stopPropagation={() => removeLine(item)}>×</button>
+                            on:click|stopPropagation={() => pendingLineDelete = item}>×</button>
                   {/if}
                 </td>
               {/if}
@@ -475,6 +488,7 @@
   item={editingLine}
   {types}
   {attrDefs}
+  {attrOptions}
   currentValues={editingLine ? (state.attributes[editingLine.component_id] ?? {}) : {}}
   componentRef={editingLine ? refFor(editingLine.component) : ''}
   on:save={handleLineSave}
@@ -489,6 +503,20 @@
   {applying}
   on:apply={doApply}
   on:close={() => showApply = false}
+/>
+
+<ConfirmDialog
+  show={!!pendingLineDelete}
+  danger={true}
+  processing={removingLine}
+  title="Remove this line?"
+  message={pendingLineDelete
+    ? `${refFor(pendingLineDelete.component)} will be taken off this schedule. `
+      + 'The asset itself is not affected.'
+    : ''}
+  confirmText="Remove"
+  on:confirm={confirmRemoveLine}
+  on:cancel={() => pendingLineDelete = null}
 />
 
 <ConfirmDialog
