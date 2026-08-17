@@ -15,6 +15,7 @@
   import LoadingSpinner   from '$lib/components/common/LoadingSpinner.svelte';
   import Badge            from '$lib/components/common/Badge.svelte';
   import { fmtDate }      from '$lib/utils/dates';
+  import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { downloadResponse } from '$lib/utils/download';
   import { authHeaders }  from '$lib/utils/authHeaders';
 
@@ -22,10 +23,11 @@
   import { worksSchedulesStore } from '../../stores/worksSchedulesStore.js';
   import {
     WORKS_ACTIONS, actionLabel, describeSummary, appliedProgress,
-    statusLabel, purposeLabel,
+    statusLabel, purposeLabel, attrPair, attrPairsText,
   } from '../../utils/worksSchedule.js';
   import WorksScheduleFormModal from './WorksScheduleFormModal.svelte';
   import ApplyScheduleDialog    from './ApplyScheduleDialog.svelte';
+  import WorksLineModal         from './WorksLineModal.svelte';
 
   const errMessage = (e) => (e instanceof Error ? e.message : String(e));
 
@@ -47,16 +49,46 @@
   // `attrDefs` is a MAP keyed by component_type_id, not an array — it holds each
   // type's effective attributes (its own plus those inherited from its system).
   $: types    = $buildingAssetsStore.types ?? [];
+  $: floors   = $buildingAssetsStore.floors ?? [];
   $: attrDefs = $buildingAssetsStore.attrDefs ?? {};
   $: attrLabels = Object.fromEntries(
     Object.values(attrDefs).flat().map(a => [a.id, a.name ?? 'Attribute']));
 
-  /**
-   * Attributes of the type a line is being replaced WITH — not the one coming
-   * out. The wattage being specified belongs to the new fitting.
-   */
-  const attrsForType = (typeCode) =>
-    attrDefs[types.find(t => t.type_code === typeCode)?.id] ?? [];
+  // component_types are keyed by `code`, and carry a human name — "LED Batten",
+  // not "light_led_batten". The code is the machine's handle; nobody reading a
+  // schedule should have to.
+  const typeName = (code) =>
+    types.find(t => t.code === code)?.name ?? code ?? '—';
+
+  /** "G/FD/FD-042" — the portal's canonical asset reference. */
+  const refFor = (component) =>
+    component ? buildComponentRef(component, floors, types) : '—';
+
+  /** Visible, non-condition attribute defs for a type code. */
+  const defsFor = (code) => {
+    const t = types.find(x => x.code === code);
+    return t ? (attrDefs[t.id] ?? []).filter(d => d.visible !== false && !d.checkable) : [];
+  };
+
+  /** What an asset records now, in the Components table's own words. */
+  function currentAttrText(item) {
+    const values = state.attributes[item.component_id] ?? {};
+    return attrPairsText(
+      defsFor(item.component?.type_code)
+        .map(d => attrPair(d, values[d.id] ?? d.default_value ?? null))
+        .filter(Boolean));
+  }
+
+  /** What the line specifies for the replacement, in the same words. */
+  function targetAttrText(item) {
+    const target = item.target_attributes ?? {};
+    if (!Object.keys(target).length) return '';
+    const defs = defsFor(item.target_type_code || item.component?.type_code);
+    return attrPairsText(
+      Object.entries(target)
+        .map(([id, value]) => attrPair(defs.find(d => d.id === id) ?? { name: attrLabels[id] ?? 'Attribute' }, value))
+        .filter(Boolean));
+  }
 
   onMount(async () => {
     try { await worksSchedulesStore.loadSchedules(); }
@@ -130,12 +162,22 @@
     catch (err) { error = errMessage(err); }
   }
 
-  /** One attribute value on a line, merged into whatever it already carries. */
-  async function setLineAttribute(item, attrId, value) {
-    const next = { ...(item.target_attributes ?? {}) };
-    if (value === '' || value === null) delete next[attrId];
-    else next[attrId] = value;
-    await setLine(item, { target_attributes: Object.keys(next).length ? next : null });
+  // ── The line editor ───────────────────────────────────────────────────────
+  // Replacement attributes were inline inputs in the table first and were
+  // wrong: no room for an attribute's name, and no way to render a dropdown as
+  // a dropdown. Specifying a replacement is a considered act on one asset.
+  let editingLine = null;
+  let showLine = false;
+
+  function editLine(item) { editingLine = item; showLine = true; }
+
+  async function handleLineSave(e) {
+    const target = editingLine;             // capture before the await
+    try {
+      await setLine(target, e.detail);
+      showLine = false;
+      editingLine = null;
+    } catch (err) { error = errMessage(err); }
   }
 
   // ── Issue / export / apply ────────────────────────────────────────────────
@@ -157,15 +199,19 @@
       const res = await fetch('/api/reports/generate-works-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        // Resolved here rather than on the server: the names live in the
+        // store the author is looking at, and a contractor's document must
+        // never say "light_led_batten" where a person would say "LED Batten".
         body: JSON.stringify({
           schedule: openSchedule,
           items: items.map(i => ({
             ...i,
-            attribute_labels: Object.fromEntries(
-              Object.entries(i.target_attributes ?? {})
-                .map(([id, v]) => [attrLabels[id] ?? 'Attribute', v])),
+            ref:              refFor(i.component),
+            current_type:     typeName(i.component?.type_code),
+            current_attrs:    currentAttrText(i),
+            target_type_name: i.target_type_code ? typeName(i.target_type_code) : '',
+            target_attrs:     targetAttrText(i),
           })),
-          floors: $buildingAssetsStore.floors ?? [],
         }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Export failed');
@@ -291,6 +337,12 @@
 
     {#if canEdit}
       <Button variant="secondary" size="small" on:click={editSchedule}>Edit</Button>
+      <!-- Available whether or not the schedule has lines: an empty one created
+           by mistake was previously impossible to remove. -->
+      <ProtectedButton requireAdmin={true} variant="danger" size="small"
+                       on:click={() => pendingDelete = openSchedule}>
+        Delete
+      </ProtectedButton>
     {/if}
     <Button variant="secondary" size="small" disabled={exporting || !items.length}
             title="Word document to send to the contractor"
@@ -337,102 +389,67 @@
     </p>
   {:else}
     <div class="border border-slate-700 rounded overflow-x-auto">
-      <table class="w-full text-xs min-w-[52rem]">
+      <table class="w-full text-xs min-w-[56rem]">
         <thead class="bg-slate-800 text-slate-400 text-left">
           <tr>
-            <th class="px-3 py-2 font-medium">Asset</th>
+            <th class="px-3 py-2 font-medium w-32">Ref</th>
             <th class="px-3 py-2 font-medium">Now</th>
-            <th class="px-3 py-2 font-medium w-28">Action</th>
-            <th class="px-3 py-2 font-medium w-36">Replace with</th>
-            <th class="px-3 py-2 font-medium">Specification / notes</th>
+            <th class="px-3 py-2 font-medium w-24">Action</th>
+            <th class="px-3 py-2 font-medium">After</th>
             <th class="px-3 py-2 font-medium w-20">Done</th>
             {#if canEdit}<th class="px-2 py-2 w-8"></th>{/if}
           </tr>
         </thead>
         <tbody>
           {#each items as item (item.id)}
-            <tr class="border-t border-slate-700/50 {item.applied_at ? 'opacity-60' : ''}">
-              <td class="px-3 py-1.5 text-slate-200">
-                {item.component?.asset_id || item.component?.label || '—'}
-              </td>
-              <td class="px-3 py-1.5 text-slate-500">
-                {item.component?.type_code ?? '—'} · {item.component?.status ?? '—'}
-              </td>
+            {@const nowAttrs = currentAttrText(item)}
+            {@const newAttrs = targetAttrText(item)}
+            <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+            <tr
+              class="border-t border-slate-700/50 {item.applied_at ? 'opacity-60' : ''}
+                     {canEdit && !item.applied_at ? 'cursor-pointer hover:bg-slate-800/40' : ''}
+                     transition-colors"
+              on:click={() => canEdit && !item.applied_at && editLine(item)}
+              title={canEdit && !item.applied_at ? 'Click to set what should happen' : ''}
+            >
+              <td class="px-3 py-1.5 font-mono text-slate-200">{refFor(item.component)}</td>
+
               <td class="px-3 py-1.5">
-                {#if canEdit && !item.applied_at}
-                  <select
-                    class="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5
-                           text-xs text-slate-200"
-                    value={item.action}
-                    on:change={(e) => setLine(item, { action: e.currentTarget.value })}
-                  >
-                    {#each WORKS_ACTIONS as a}
-                      <option value={a.value}>{a.label}</option>
-                    {/each}
-                  </select>
-                {:else}
-                  {actionLabel(item.action)}
+                <span class="text-slate-300">{typeName(item.component?.type_code)}</span>
+                <span class="text-slate-500">· {item.component?.status ?? '—'}</span>
+                {#if nowAttrs}
+                  <span class="block text-slate-500 truncate" title={nowAttrs}>{nowAttrs}</span>
                 {/if}
               </td>
+
+              <td class="px-3 py-1.5 text-slate-300">{actionLabel(item.action)}</td>
+
               <td class="px-3 py-1.5">
-                {#if canEdit && !item.applied_at}
-                  <select
-                    class="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5
-                           text-xs text-slate-200"
-                    value={item.target_type_code ?? ''}
-                    on:change={(e) => setLine(item, { target_type_code: e.currentTarget.value || null })}
-                  >
-                    <option value="">—</option>
-                    {#each types as t}
-                      <option value={t.type_code}>{t.type_code}</option>
-                    {/each}
-                  </select>
+                {#if item.target_type_code}
+                  <span class="text-purple-300">{typeName(item.target_type_code)}</span>
+                {:else if item.action === 'replace'}
+                  <span class="text-slate-600">same type</span>
                 {:else}
-                  {item.target_type_code ?? '—'}
+                  <span class="text-slate-600">—</span>
+                {/if}
+                {#if newAttrs}
+                  <span class="block text-teal-300 truncate" title={newAttrs}>{newAttrs}</span>
+                {/if}
+                {#if item.spec}
+                  <span class="block text-slate-500 truncate" title={item.spec}>{item.spec}</span>
                 {/if}
               </td>
-              <td class="px-3 py-1.5">
-                {#if canEdit && !item.applied_at}
-                  <input
-                    class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5
-                           text-xs text-slate-200"
-                    placeholder="e.g. LED panel, 4000K, 3h emergency"
-                    value={item.spec ?? ''}
-                    on:change={(e) => setLine(item, { spec: e.currentTarget.value || null })}
-                  />
-                  <!-- Attributes of the type being fitted, not the one coming
-                       out: the wattage you are specifying belongs to the new
-                       fitting. -->
-                  {#if item.target_type_code}
-                    {@const defs = attrsForType(item.target_type_code)}
-                    {#if defs.length}
-                      <div class="flex flex-wrap gap-1 mt-1">
-                        {#each defs as def}
-                          <label class="flex items-center gap-1 text-[10px] text-slate-500">
-                            {def.name}
-                            <input
-                              class="w-16 bg-slate-900 border border-slate-700 rounded px-1
-                                     text-[10px] text-slate-200"
-                              value={item.target_attributes?.[def.id] ?? ''}
-                              on:change={(e) => setLineAttribute(item, def.id, e.currentTarget.value)}
-                            />
-                          </label>
-                        {/each}
-                      </div>
-                    {/if}
-                  {/if}
-                {:else}
-                  <span class="text-slate-400">{item.spec ?? '—'}</span>
-                {/if}
-              </td>
+
               <td class="px-3 py-1.5 text-slate-500">
                 {item.applied_at ? fmtDate(item.applied_at) : '—'}
               </td>
+
               {#if canEdit}
                 <td class="px-2 py-1.5">
                   {#if !item.applied_at}
                     <button class="text-slate-600 hover:text-red-400 transition-colors"
-                            title="Remove this line" on:click={() => removeLine(item)}>×</button>
+                            title="Remove this line"
+                            on:click|stopPropagation={() => removeLine(item)}>×</button>
                   {/if}
                 </td>
               {/if}
@@ -442,14 +459,6 @@
       </table>
     </div>
 
-    {#if canEdit}
-      <div class="mt-3">
-        <ProtectedButton requireAdmin={true} variant="danger" size="small"
-                         on:click={() => pendingDelete = openSchedule}>
-          Delete schedule
-        </ProtectedButton>
-      </div>
-    {/if}
   {/if}
 {/if}
 
@@ -459,6 +468,17 @@
   schedule={editing}
   on:save={handleSave}
   on:close={() => { showForm = false; editing = null; }}
+/>
+
+<WorksLineModal
+  bind:show={showLine}
+  item={editingLine}
+  {types}
+  {attrDefs}
+  currentValues={editingLine ? (state.attributes[editingLine.component_id] ?? {}) : {}}
+  componentRef={editingLine ? refFor(editingLine.component) : ''}
+  on:save={handleLineSave}
+  on:close={() => { showLine = false; editingLine = null; }}
 />
 
 <ApplyScheduleDialog

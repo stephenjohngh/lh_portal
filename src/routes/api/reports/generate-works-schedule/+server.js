@@ -34,8 +34,12 @@ const PURPOSE_HEADING = {
   works: 'Instruction to proceed',
 };
 
-/** Column widths, as a share of the content width. */
-const COLS = [0.14, 0.16, 0.12, 0.16, 0.30, 0.12];
+/**
+ * Column widths, as a share of the content width.
+ * Ref · Existing · Action · Required · Price · Done — the last two left empty
+ * for the contractor to complete and return.
+ */
+const COLS = [0.13, 0.22, 0.11, 0.30, 0.12, 0.12];
 
 function widths() {
   return COLS.map(c => Math.round(CONTENT_W * c));
@@ -52,12 +56,11 @@ function summarise(items) {
     .join(' · ');
 }
 
-/** The attributes a line specifies, as "Wattage 15, Colour 4000K". */
-function attrText(item) {
-  const labels = item.attribute_labels ?? {};
-  const parts = Object.entries(labels).map(([label, value]) => `${label} ${value}`);
-  return parts.join(', ');
-}
+// Names, references and attribute text are resolved by the CLIENT and arrive
+// ready to print. They live in the store the author is looking at, and a
+// contractor's document must never say "light_led_batten" where a person would
+// say "LED Batten". Rebuilding them here would be a second lookup path that
+// could disagree with what was on screen.
 
 export async function POST({ request }) {
   const auth = await requireAuth(request);
@@ -69,13 +72,11 @@ export async function POST({ request }) {
 
   const schedule = body?.schedule;
   const items    = Array.isArray(body?.items) ? body.items : [];
-  const floors   = Array.isArray(body?.floors) ? body.floors : [];
 
   if (!schedule?.title) {
     return json({ error: 'A schedule is required' }, { status: 400 });
   }
 
-  const floorName = new Map(floors.map(f => [f.id, f.name ?? f.label ?? '']));
   const w = widths();
 
   try {
@@ -83,29 +84,32 @@ export async function POST({ request }) {
       new TableRow({
         tableHeader: true,
         children: [
-          hCell('Ref',      w[0]), hCell('Location', w[1]),
-          hCell('Type',     w[2]), hCell('Action',   w[3]),
-          hCell('What is required', w[4]), hCell('Done', w[5]),
+          hCell('Ref',    w[0]), hCell('Existing', w[1]),
+          hCell('Action', w[2]), hCell('What is required', w[3]),
+          hCell('Price',  w[4]), hCell('Done', w[5]),
         ],
       }),
       ...items.map(item => {
-        const c = item.component ?? {};
+        // What is there now — type name and its attributes, exactly as the
+        // register shows them.
+        const existing = [item.current_type, item.current_attrs]
+          .filter(Boolean).join('\n');
         const required = [
-          item.target_type_code ? `Fit: ${item.target_type_code}` : '',
-          attrText(item),
+          item.target_type_name ? `Fit: ${item.target_type_name}` : '',
+          item.target_attrs ?? '',
           item.spec ?? '',
           item.notes ?? '',
         ].filter(Boolean).join('\n');
 
         return new TableRow({
           children: [
-            dCell(c.asset_id ?? '—',                w[0]),
-            dCell(floorName.get(c.floor_id) ?? '—', w[1]),
-            dCell(c.type_code ?? '—',               w[2]),
-            dCell(ACTION_LABEL[item.action] ?? item.action, w[3]),
-            // Blank rather than a dash: this column is where a contractor
-            // writes, and a dash in it reads as an instruction.
-            dCell(required || '', w[4]),
+            dCell(item.ref ?? '—',  w[0]),
+            dCell(existing || '—',  w[1]),
+            dCell(ACTION_LABEL[item.action] ?? item.action, w[2]),
+            dCell(required || '',   w[3]),
+            // Blank rather than dashed: these are the columns a contractor
+            // writes in, and a dash in one reads as an instruction.
+            dCell('', w[4]),
             dCell('', w[5]),
           ],
         });
