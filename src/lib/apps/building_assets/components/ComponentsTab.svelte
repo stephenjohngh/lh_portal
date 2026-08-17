@@ -23,6 +23,8 @@
   import InspectionPanel         from './InspectionPanel.svelte';
   import AttrFilterStrip         from './AttrFilterStrip.svelte';
   import ReportActionButtons     from './ReportActionButtons.svelte';
+  import WorksScheduleFormModal  from './works/WorksScheduleFormModal.svelte';
+  import { worksSchedulesStore } from '../stores/worksSchedulesStore.js';
   import ReportSectionToggles    from './ReportSectionToggles.svelte';
   import MultiSelectDropdown     from './MultiSelectDropdown.svelte';
   import ColumnToggles           from './ColumnToggles.svelte';
@@ -247,6 +249,28 @@
   // -- Multi-select dropdown state -----------------------------------
   let openDropdown = null;   // 'system' | 'type' | 'status' | null
 
+
+  // -- Works schedule -------------------------------------------------
+  // Created from what the author is CURRENTLY looking at. The ids are captured
+  // rather than the filter, so a schedule is a record of a decision about a
+  // known set of assets, not a query that could mean something else tomorrow.
+  let showWorksModal = false;
+  let worksModalRef;
+  let worksNotice = '';
+
+  async function handleCreateWorks(e) {
+    const data = e.detail;
+    const ids  = filteredComponents.map(c => c.id);
+    try {
+      const schedule = await worksSchedulesStore.createSchedule(data, ids, $auth.user.id);
+      showWorksModal = false;
+      worksNotice = `"${schedule.title}" created with ${ids.length} `
+        + `component${ids.length === 1 ? '' : 's'} — open the Works tab to price or issue it.`;
+      worksModalRef?.done();
+    } catch (err) {
+      worksModalRef?.fail(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   // -- Report state --------------------------------------------------
   let showReportPanel      = false;
@@ -863,6 +887,15 @@
         <div class="fixed inset-0 z-40" on:click={closePopover}></div>
       {/if}
 
+      {#if worksNotice}
+        <div class="px-4 py-2 border-b border-slate-700/60 bg-green-500/10
+                    flex items-start gap-2">
+          <p class="text-xs text-green-200 flex-1">{worksNotice}</p>
+          <button class="text-xs text-green-200/70 hover:text-green-100"
+                  on:click={() => worksNotice = ''}>Dismiss</button>
+        </div>
+      {/if}
+
       <!-- -- Report panel -------------------------------------------- -->
       <div class="border-b border-slate-700/60 bg-slate-800/20">
 
@@ -877,6 +910,19 @@
             📄 Report Options
             <span class="text-slate-500 tabular-nums font-normal">({filteredComponents.length})</span>
           </button>
+
+          <!-- The filtered list is already "the assets this is about" — failed
+               items, or a type due for replacement. Starting a works schedule
+               here means the author sends exactly what they were looking at,
+               rather than rebuilding the filter somewhere else. -->
+          {#if $permissions.isAdmin && filteredComponents.length > 0}
+            <button
+              on:click={() => showWorksModal = true}
+              class="flex items-center gap-1.5 text-xs font-semibold text-slate-300
+                     hover:text-white transition-colors"
+              title="Create a works schedule from these {filteredComponents.length} components"
+            >🛠 Works schedule</button>
+          {/if}
 
           {#if showReportPanel}
             {#if reportNoneSelected}
@@ -920,3 +966,12 @@
     </ComponentInventoryTable>
   {/if}
 {/if}
+
+<!-- Starting a works schedule from the filtered list. -->
+<WorksScheduleFormModal
+  bind:this={worksModalRef}
+  bind:show={showWorksModal}
+  componentCount={filteredComponents.length}
+  on:save={handleCreateWorks}
+  on:close={() => showWorksModal = false}
+/>

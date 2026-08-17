@@ -13,6 +13,7 @@
   import PlanViewTab      from './components/PlanViewTab.svelte';
   import SpacesTab        from './components/SpacesTab.svelte';
   import MaintenanceView  from './components/MaintenanceView.svelte';
+  import WorksTab       from './components/works/WorksTab.svelte';
   import InspectionsTab from './components/InspectionsTab.svelte';
 
   let activeTab   = 'components';
@@ -58,6 +59,7 @@
     { id: 'spaces',      label: 'Spaces',         icon: '⬡',  adminOnly: false },
     { id: 'inspections', label: 'Inspections',    icon: '🔍',  adminOnly: false },
     { id: 'maintenance', label: 'Maintenance',    icon: '🔧',  adminOnly: false },
+    { id: 'works',       label: 'Works',          icon: '🛠',  adminOnly: false },
     { id: 'types',       label: 'Type Browser',   icon: '🗂',  adminOnly: false },
   ];
 </script>
@@ -113,6 +115,8 @@
     <MaintenanceView {systems} {types} {regime} />
   {:else if activeTab === 'inspections'}
     <InspectionsTab />
+  {:else if activeTab === 'works'}
+    <WorksTab />
   {/if}
 
 </div>
