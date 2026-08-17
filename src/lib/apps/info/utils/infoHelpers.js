@@ -5,6 +5,26 @@
 export { fmtBytes, mimeIcon } from '$lib/utils/files.js';
 
 /** Parse a comma-separated tag string into a trimmed, deduplicated array. */
+/**
+ * The notes to list under a section in the sidebar.
+ *
+ * Archived notes are left out. The sidebar is for the notes being worked on,
+ * and archiving is how a note is taken out of the way — putting them back in
+ * the one list you cannot filter would undo that. They remain reachable through
+ * the Archived toggle in the main list.
+ *
+ * Order is preserved rather than re-sorted: the store already returns notes
+ * pinned-first then most-recently-updated, and a second opinion about ordering
+ * here would only drift from it.
+ *
+ * @param {object[]} notes  every note (the store keeps them all loaded)
+ * @param {string} sectionId
+ */
+export function sectionNotes(notes = [], sectionId) {
+  if (!sectionId) return [];
+  return notes.filter(n => n.section_id === sectionId && n.status !== 'archived');
+}
+
 export function parseTags(raw) {
   return [...new Set(
     raw.split(',')

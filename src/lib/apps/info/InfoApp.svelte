@@ -247,7 +247,10 @@
         {sections}
         selectedId={selectedSectionId}
         {noteCounts}
+        {notes}
+        openNoteId={viewingNoteId}
         on:select={(e) => selectSection(e.detail)}
+        on:selectNote={(e) => selectNote(e.detail)}
         on:newSection={openNewSection}
         on:edit={(e) => openEditSection(e.detail)}
         on:delete={(e) => handleSectionDelete(e.detail)}

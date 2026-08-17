@@ -5,10 +5,15 @@
   import Icon             from '$lib/components/icons/Icon.svelte';
   import ProtectedButton  from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog    from '$lib/components/common/ConfirmDialog.svelte';
+  import { sectionNotes } from '../utils/infoHelpers.js';
 
   export let sections        = [];
   export let selectedId      = null;   // null = All Notes
   export let noteCounts      = {};     // { sectionId: count }
+  /** Every note — the store keeps them all loaded, so counts stay right. */
+  export let notes           = [];
+  /** The note open in the main panel, so the sidebar can show where you are. */
+  export let openNoteId      = null;
 
   const dispatch = createEventDispatcher();
 
@@ -66,6 +71,13 @@
       title={section.description || section.name}
       on:click={() => dispatch('select', section.id)}
     >
+      <!-- Points down when the section is open. The section itself is the
+           control: one click both selects it and reveals what is in it, rather
+           than making "show me this section" and "show me its notes" two
+           separate gestures on two separate targets. -->
+      <span class="text-[9px] text-slate-500 shrink-0 w-2
+                   {selectedId === section.id ? 'rotate-90' : ''} transition-transform"
+      >▶</span>
       <span class="w-2.5 h-2.5 rounded-full shrink-0"
             style="background:{section.colour}"></span>
       <span class="flex-1 truncate">{section.name}</span>
@@ -90,6 +102,31 @@
         </div>
       {/if}
     </div>
+
+    <!-- The open section's notes, in place. Clicking one opens it — the list
+         in the main panel is then free to be the richer view (search, the
+         visibility filter, archived) rather than the only way through. -->
+    {#if selectedId === section.id}
+      {@const inSection = sectionNotes(notes, section.id)}
+      {#each inSection as note (note.id)}
+        <button
+          class="w-full text-left pl-7 pr-3 py-1.5 text-xs truncate transition-colors
+                 flex items-center gap-1.5
+                 {openNoteId === note.id
+                   ? 'bg-slate-700/70 text-white'
+                   : 'text-slate-400 hover:bg-slate-700/40 hover:text-slate-200'}"
+          title={note.title}
+          on:click={() => dispatch('selectNote', note)}
+        >
+          {#if note.is_pinned}
+            <span class="text-purple-400 shrink-0" title="Pinned">📌</span>
+          {/if}
+          <span class="truncate">{note.title}</span>
+        </button>
+      {:else}
+        <p class="pl-7 pr-3 py-1.5 text-xs text-slate-600 italic">No notes yet</p>
+      {/each}
+    {/if}
   {/each}
 
   {#if sections.length === 0}
