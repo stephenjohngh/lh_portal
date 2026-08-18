@@ -91,6 +91,42 @@ describe('addItems', () => {
   });
 });
 
+describe('loadItems', () => {
+  it('joins every component column the schedule VIEW needs', () => {
+    // A joined select names its columns, so one that is never asked for is
+    // simply absent at the far end and reads as data that is not set. That is
+    // how x_position/y_position went missing: the plan peek drew the floor plan
+    // correctly and then reported "no position set" for every asset.
+    //
+    // Pinned as a list because the failure is silent — nothing errors, a
+    // feature just quietly shows the wrong thing.
+    return worksSchedulesStore.loadItems('s1').then(() => {
+      const select = h.api.get.mock.calls[0][1].select;
+      for (const column of [
+        'id', 'asset_id', 'label', 'type_code', 'status',
+        'floor_id', 'plan_id', 'x_position', 'y_position',
+      ]) {
+        expect(select).toContain(column);
+      }
+    });
+  });
+
+  it('orders lines by position, so the schedule reads as it was built', () => {
+    return worksSchedulesStore.loadItems('s1').then(() => {
+      expect(h.api.get.mock.calls[0][1]).toMatchObject({
+        orderBy: 'position', ascending: true,
+      });
+    });
+  });
+
+  it('clears the open schedule when asked for nothing', () => {
+    return worksSchedulesStore.loadItems(null).then((items) => {
+      expect(items).toEqual([]);
+      expect(h.api.get).not.toHaveBeenCalled();
+    });
+  });
+});
+
 describe('applyChanges', () => {
   it('writes the component, stamps the line, and audits against the ASSET', async () => {
     const result = await worksSchedulesStore.applyChanges([change()], 'u1');

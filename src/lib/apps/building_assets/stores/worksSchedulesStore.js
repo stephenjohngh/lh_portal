@@ -123,7 +123,12 @@ function createWorksSchedulesStore() {
     update(s => ({ ...s, loadingItems: true }));
     try {
       const items = await api.get('works_schedule_items', {
-        select: '*, component:components(id, asset_id, label, type_code, status, floor_id, plan_id)',
+        // x_position/y_position are needed by the plan peek. A joined select
+        // names its columns explicitly, so a field that is never asked for is
+        // simply absent at the far end — which reads as "no position set"
+        // rather than as a missing query.
+        select: '*, component:components(id, asset_id, label, type_code, status, '
+              + 'floor_id, plan_id, x_position, y_position)',
         filters: { schedule_id: scheduleId },
         orderBy: 'position', ascending: true,
       });
