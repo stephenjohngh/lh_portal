@@ -3,6 +3,7 @@
      Only shown when currentComponent.plan_id is set (component is placed). -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
+  import { drawComponentOnPlan } from '$lib/utils/planMarker.js';
 
   const dispatch = createEventDispatcher();
 
@@ -15,66 +16,24 @@
   let imageLoaded = false;
   let error       = null;
 
-  onMount(() => { loadPlan(); });
-
-  async function loadPlan() {
-    if (!plan?.image_url) { error = 'No plan image available'; return; }
+  // The drawing lives in $lib/utils/planMarker.js, shared with Building Assets'
+  // works schedules. Only the picture is shared — this app's chrome stays its
+  // own, which is why the accent and the marker centre are passed in.
+  onMount(async () => {
     try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-
-      img.onload = () => {
-        const container = canvas.parentElement;
-        const maxWidth  = container.clientWidth;
-        const maxHeight = window.innerHeight * 0.6;
-
-        const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
-        canvas.width  = img.width  * scale;
-        canvas.height = img.height * scale;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        if (component.x_position != null && component.y_position != null) {
-          drawMarker(ctx, component.x_position * canvas.width, component.y_position * canvas.height);
-        }
-        imageLoaded = true;
-      };
-
-      img.onerror = () => { error = 'Failed to load plan image'; };
-      img.src = plan.image_url;
+      await drawComponentOnPlan(canvas, {
+        imageUrl: plan?.image_url,
+        x: component.x_position,
+        y: component.y_position,
+        accent: '#fb923c',
+        markerFill: '#0d0d14',
+      });
+      imageLoaded = true;
     } catch (err) {
       error = err.message;
     }
-  }
+  });
 
-  function drawMarker(ctx, x, y) {
-    const r = 10;
-
-    // Glow
-    ctx.shadowColor = '#fb923c';
-    ctx.shadowBlur  = 15;
-
-    // Outer circle
-    ctx.fillStyle = '#fb923c';
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Inner circle
-    ctx.fillStyle = '#0d0d14';
-    ctx.beginPath();
-    ctx.arc(x, y, r * 0.55, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
-
-    // Crosshair
-    ctx.strokeStyle = '#fb923c';
-    ctx.lineWidth   = 1.5;
-    ctx.beginPath(); ctx.moveTo(x - r * 2, y); ctx.lineTo(x + r * 2, y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y - r * 2); ctx.lineTo(x, y + r * 2); ctx.stroke();
-  }
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->

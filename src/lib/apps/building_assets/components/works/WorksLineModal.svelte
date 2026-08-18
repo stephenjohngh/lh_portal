@@ -32,6 +32,8 @@
   /** The component's current attribute values, by type_attribute_id. */
   export let currentValues = {};
   export let componentRef = '';
+  /** Whether this component is placed on a plan — enables the location link. */
+  export let canShowPlan = false;
 
   const dispatch = createEventDispatcher();
 
@@ -122,10 +124,23 @@
     <!-- What is there now -->
     <div class="p-3 rounded border border-slate-700 bg-slate-800/40">
       <p class="text-[11px] uppercase tracking-wide text-slate-500 mb-1">Now</p>
-      <p class="text-sm text-slate-200">
-        {currentType?.name ?? item?.component?.type_code ?? '—'}
-        <span class="text-xs text-slate-500">· {item?.component?.status ?? '—'}</span>
-      </p>
+      <div class="flex items-center gap-2">
+        <p class="text-sm text-slate-200">
+          {currentType?.name ?? item?.component?.type_code ?? '—'}
+          <span class="text-xs text-slate-500">· {item?.component?.status ?? '—'}</span>
+        </p>
+        <div class="flex-1"></div>
+        {#if canShowPlan}
+          <!-- Whether to replace or remove a fitting often depends on WHERE it
+               is. Reachable from the decision itself, rather than by leaving
+               for Plan View and losing your place in the list. -->
+          <button
+            class="text-xs text-slate-400 hover:text-purple-300 transition-colors
+                   flex items-center gap-1"
+            on:click={() => dispatch('showPlan')}
+          >&#9678; Show on plan</button>
+        {/if}
+      </div>
       {#if currentText}
         <p class="text-xs text-slate-400 mt-1">{currentText}</p>
       {/if}

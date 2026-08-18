@@ -29,6 +29,7 @@
   import WorksScheduleFormModal from './WorksScheduleFormModal.svelte';
   import ApplyScheduleDialog    from './ApplyScheduleDialog.svelte';
   import WorksLineModal         from './WorksLineModal.svelte';
+  import ComponentPlanPeek      from '../ComponentPlanPeek.svelte';
 
   const errMessage = (e) => (e instanceof Error ? e.message : String(e));
 
@@ -53,6 +54,7 @@
   $: floors   = $buildingAssetsStore.floors ?? [];
   $: attrDefs = $buildingAssetsStore.attrDefs ?? {};
   $: attrOptions = $buildingAssetsStore.attrOptions ?? {};
+  $: plans    = $buildingAssetsStore.plans ?? [];
   $: attrLabels = Object.fromEntries(
     Object.values(attrDefs).flat().map(a => [a.id, a.name ?? 'Attribute']));
 
@@ -182,6 +184,15 @@
   let showLine = false;
 
   function editLine(item) { editingLine = item; showLine = true; }
+
+  // "Where is that one?" — the same question the Inspection app answers mid-walk.
+  // Deciding whether to replace or remove a fitting often depends on where it
+  // is, and having to leave the schedule for Plan View to find out loses your
+  // place in the list.
+  let peekComponent = null;
+  let showPeek = false;
+
+  function peekAt(item) { peekComponent = item.component; showPeek = true; }
 
   async function handleLineSave(e) {
     const target = editingLine;             // capture before the await
@@ -451,6 +462,7 @@
             <th class="px-3 py-2 font-medium w-24">Action</th>
             <th class="px-3 py-2 font-medium">After</th>
             <th class="px-3 py-2 font-medium w-20">Done</th>
+            <th class="px-2 py-2 w-8"></th>
             {#if canEdit}<th class="px-2 py-2 w-8"></th>{/if}
           </tr>
         </thead>
@@ -498,6 +510,16 @@
                 {item.applied_at ? fmtDate(item.applied_at) : '—'}
               </td>
 
+              <td class="px-2 py-1.5">
+                <button
+                  class="text-slate-600 hover:text-purple-300 transition-colors"
+                  title={item.component?.plan_id
+                    ? 'Show where this is on the floor plan'
+                    : 'Not placed on a floor plan'}
+                  on:click|stopPropagation={() => peekAt(item)}
+                >&#9678;</button>
+              </td>
+
               {#if canEdit}
                 <td class="px-2 py-1.5">
                   {#if !item.applied_at}
@@ -524,6 +546,15 @@
   on:close={() => { showForm = false; editing = null; }}
 />
 
+<ComponentPlanPeek
+  bind:show={showPeek}
+  component={peekComponent}
+  {plans}
+  componentRef={refFor(peekComponent)}
+  typeName={typeName(peekComponent?.type_code)}
+  on:close={() => { showPeek = false; peekComponent = null; }}
+/>
+
 <WorksLineModal
   bind:show={showLine}
   item={editingLine}
@@ -532,6 +563,8 @@
   {attrOptions}
   currentValues={editingLine ? (state.attributes[editingLine.component_id] ?? {}) : {}}
   componentRef={editingLine ? refFor(editingLine.component) : ''}
+  canShowPlan={!!editingLine?.component?.plan_id}
+  on:showPlan={() => peekAt(editingLine)}
   on:save={handleLineSave}
   on:close={() => { showLine = false; editingLine = null; }}
 />
