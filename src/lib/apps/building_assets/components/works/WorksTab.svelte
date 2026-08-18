@@ -563,8 +563,7 @@
   {attrOptions}
   currentValues={editingLine ? (state.attributes[editingLine.component_id] ?? {}) : {}}
   componentRef={editingLine ? refFor(editingLine.component) : ''}
-  canShowPlan={!!editingLine?.component?.plan_id}
-  on:showPlan={() => peekAt(editingLine)}
+  {plans}
   on:save={handleLineSave}
   on:close={() => { showLine = false; editingLine = null; }}
 />

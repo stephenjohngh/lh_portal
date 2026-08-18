@@ -10,7 +10,7 @@
      "what are the new values" in the abstract; it is "what changes", and that
      is only readable with the current values beside them. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import FormSelect   from '$lib/components/common/FormSelect.svelte';
@@ -19,6 +19,7 @@
   import AttrField    from '../AttrField.svelte';
   import { WORKS_ACTIONS, actionDef } from '../../utils/worksSchedule.js';
   import { attrPairsText, componentAttrPairs } from '../../utils/attrDisplay.js';
+  import { drawComponentOnPlan } from '$lib/utils/planMarker.js';
 
   export let show = false;
   /** The works_schedule_items row, with .component joined. */
@@ -32,8 +33,8 @@
   /** The component's current attribute values, by type_attribute_id. */
   export let currentValues = {};
   export let componentRef = '';
-  /** Whether this component is placed on a plan — enables the location link. */
-  export let canShowPlan = false;
+  /** plans[] — the location panel finds this component's by plan_id. */
+  export let plans = [];
 
   const dispatch = createEventDispatcher();
 
@@ -56,6 +57,7 @@
     notes       = item.notes ?? '';
     targetAttrs = { ...(item.target_attributes ?? {}) };
     saving      = false;
+    showPlan    = false;
   }
 
   $: currentType = types.find(t => t.code === item?.component?.type_code) ?? null;
@@ -104,6 +106,45 @@
     targetAttrs = next;
   }
 
+  // ── Where is it? ──────────────────────────────────────────────────────────
+  // Shown INSIDE this form rather than as a second modal. Every Modal in the
+  // portal is z-50, so one opened from another lands underneath it and appears
+  // to do nothing — which is exactly what happened. It also belongs here: the
+  // question "where is that one?" is part of deciding replace-versus-remove,
+  // not a separate errand.
+  let showPlan = false;
+  let planCanvas;
+  let planError = '';
+  let planPlaced = true;
+
+  $: plan = item?.component?.plan_id
+    ? (plans.find(p => p.id === item.component.plan_id) ?? null)
+    : null;
+
+  // Redrawn when the panel opens or the line changes; guarded on primitives so
+  // an unrelated parent update does not reload the image.
+  let drawnFor = null;
+  $: if (showPlan && item?.id && item.id !== drawnFor) {
+    drawnFor = item.id;
+    drawPlan();
+  }
+  $: if (!showPlan) drawnFor = null;
+
+  async function drawPlan() {
+    planError = ''; planPlaced = true;
+    await tick();                       // the canvas does not exist until now
+    try {
+      const result = await drawComponentOnPlan(planCanvas, {
+        imageUrl: plan?.image_url,
+        x: item.component?.x_position,
+        y: item.component?.y_position,
+      });
+      planPlaced = result.placed;
+    } catch (err) {
+      planError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
   function save() {
     saving = true;
     dispatch('save', {
@@ -130,17 +171,31 @@
           <span class="text-xs text-slate-500">· {item?.component?.status ?? '—'}</span>
         </p>
         <div class="flex-1"></div>
-        {#if canShowPlan}
-          <!-- Whether to replace or remove a fitting often depends on WHERE it
-               is. Reachable from the decision itself, rather than by leaving
-               for Plan View and losing your place in the list. -->
+        {#if item?.component?.plan_id}
           <button
-            class="text-xs text-slate-400 hover:text-purple-300 transition-colors
-                   flex items-center gap-1"
-            on:click={() => dispatch('showPlan')}
-          >&#9678; Show on plan</button>
+            class="text-xs text-slate-400 hover:text-purple-300 transition-colors"
+            on:click={() => showPlan = !showPlan}
+          >&#9678; {showPlan ? 'Hide plan' : 'Show on plan'}</button>
         {/if}
       </div>
+
+      {#if showPlan}
+        <div class="mt-2">
+          {#if planError}
+            <p class="text-xs text-red-300">&#9888; {planError}</p>
+          {:else}
+            <div class="flex justify-center">
+              <canvas bind:this={planCanvas}
+                      class="max-w-full rounded border border-slate-700 bg-slate-900"></canvas>
+            </div>
+            {#if !planPlaced}
+              <p class="text-xs text-amber-300 mt-1">
+                On this plan, but without a position set.
+              </p>
+            {/if}
+          {/if}
+        </div>
+      {/if}
       {#if currentText}
         <p class="text-xs text-slate-400 mt-1">{currentText}</p>
       {/if}
