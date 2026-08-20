@@ -9,8 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   WORKS_ACTIONS, actionDef, actionLabel, applyPatch, attributePatch, planApply,
-  actionSummary, describeSummary, appliedProgress, purposeLabel, statusLabel,
-} from './worksSchedule.js';
+  actionSummary, describeSummary, appliedProgress, purposeLabel, statusLabel, specSuggestions, countMatchingLines } from './worksSchedule.js';
 
 const item = (over = {}) => ({
   id: 'i1', component_id: 'c1', action: 'replace', target_type_code: null,
@@ -266,5 +265,73 @@ describe('labels', () => {
       expect(actionDef(a.value).applies).toBeDefined();
       expect(a.describe.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('specSuggestions', () => {
+  const specs = [
+    { spec: '18W LED batten, 4000K',   target_type_code: 'LIGHT_LED' },
+    { spec: 'FD30S, intumescent seal', target_type_code: 'DOOR_FD' },
+    { spec: '18W LED batten, 4000K',   target_type_code: 'DOOR_FD' },
+    { spec: '  ',                      target_type_code: 'LIGHT_LED' },
+    { spec: null,                      target_type_code: null },
+  ];
+
+  it('offers specifications written for the type being fitted first', () => {
+    expect(specSuggestions(specs, 'DOOR_FD')[0]).toBe('FD30S, intumescent seal');
+    expect(specSuggestions(specs, 'LIGHT_LED')[0]).toBe('18W LED batten, 4000K');
+  });
+
+  it('offers the same wording once, however many types used it', () => {
+    const out = specSuggestions(specs, 'LIGHT_LED');
+    expect(out.filter(x => x === '18W LED batten, 4000K')).toHaveLength(1);
+  });
+
+  it('leaves out blank and missing specifications', () => {
+    // Five rows in, two usable suggestions out: the whitespace-only one and
+    // the null one are not offers.
+    expect(specSuggestions(specs, null).sort()).toEqual([
+      '18W LED batten, 4000K', 'FD30S, intumescent seal',
+    ]);
+  });
+
+  it('survives having nothing to offer', () => {
+    expect(specSuggestions(undefined, 'X')).toEqual([]);
+    expect(specSuggestions([], 'X')).toEqual([]);
+  });
+});
+
+describe('countMatchingLines', () => {
+  const items = [
+    { action: 'replace', target_type_code: 'LIGHT_LED' },
+    { action: 'replace', target_type_code: 'LIGHT_LED' },
+    { action: 'replace', target_type_code: 'LIGHT_EM'  },
+    { action: 'remove',  target_type_code: null        },
+    { action: 'remove',  target_type_code: null        },
+    { action: 'replace', target_type_code: 'LIGHT_LED', applied_at: '2026-08-18T09:00:00Z' },
+  ];
+
+  it('counts only lines fitting the same thing', () => {
+    expect(countMatchingLines(items,
+      { action: 'replace', target_type_code: 'LIGHT_LED' })).toBe(2);
+  });
+
+  it('ignores the replacement type where the action does not fit anything', () => {
+    // Removing is one instruction whatever the assets are; there is nothing
+    // being put in to differ.
+    expect(countMatchingLines(items,
+      { action: 'remove', target_type_code: null })).toBe(2);
+  });
+
+  it('leaves out work already carried out', () => {
+    // The applied line is a sixth row and would otherwise make it three.
+    expect(countMatchingLines(items,
+      { action: 'replace', target_type_code: 'LIGHT_LED' })).toBe(2);
+  });
+
+  it('counts nothing when the answer matches nothing', () => {
+    expect(countMatchingLines(items,
+      { action: 'repair', target_type_code: null })).toBe(0);
+    expect(countMatchingLines(undefined, { action: 'remove' })).toBe(0);
   });
 });

@@ -93,7 +93,12 @@
   }
 
   onMount(async () => {
-    try { await worksSchedulesStore.loadSchedules(); }
+    try {
+      await worksSchedulesStore.loadSchedules();
+      // Not awaited into the render path — the suggestion list is a
+      // convenience, and the tab must not wait on it.
+      worksSchedulesStore.loadSpecs().catch(() => {});
+    }
     catch (err) { error = errMessage(err); }
   });
 
@@ -196,8 +201,21 @@
 
   async function handleLineSave(e) {
     const target = editingLine;             // capture before the await
+    const scheduleId = openId;
+    const { fields, applyToAll } = e.detail;
     try {
-      await setLine(target, e.detail);
+      await setLine(target, fields);
+      if (applyToAll) {
+        // Everything else doing the same thing gets the same answer. The line
+        // just saved is included by the filter, harmlessly.
+        await worksSchedulesStore.applyToMatching(scheduleId,
+          { action: fields.action, target_type_code: fields.target_type_code },
+          { spec: fields.spec, notes: fields.notes,
+            target_attributes: fields.target_attributes },
+          $auth.user.id);
+      }
+      // Specifications written now are suggestions for the next line.
+      worksSchedulesStore.loadSpecs().catch(() => {});
       showLine = false;
       editingLine = null;
     } catch (err) { error = errMessage(err); }
@@ -564,6 +582,8 @@
   currentValues={editingLine ? (state.attributes[editingLine.component_id] ?? {}) : {}}
   componentRef={editingLine ? refFor(editingLine.component) : ''}
   {plans}
+  specs={state.specs}
+  siblings={items}
   on:save={handleLineSave}
   on:close={() => { showLine = false; editingLine = null; }}
 />

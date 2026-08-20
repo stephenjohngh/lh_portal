@@ -241,3 +241,59 @@ export function purposeLabel(value) {
 export function statusLabel(value) {
   return SCHEDULE_STATUS.find(s => s.value === value)?.label ?? value ?? '—';
 }
+
+/**
+ * The specifications to offer for a line, best guess first.
+ *
+ * Ordered by the type being FITTED: what you are putting in is the strongest
+ * predictor of how it gets written up. De-duplicated on the text itself, so the
+ * same wording used for two types is offered once.
+ *
+ * @param {{spec: string, target_type_code: string|null}[]} specs used before
+ * @param {string} targetType the type code being fitted, if any
+ * @returns {string[]}
+ */
+export function specSuggestions(specs, targetType) {
+  const ranked = [...(specs ?? [])].sort((a, b) =>
+    Number(b.target_type_code === targetType) - Number(a.target_type_code === targetType));
+
+  const seen = new Set();
+  const out = [];
+  for (const row of ranked) {
+    const text = row?.spec?.trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    out.push(text);
+  }
+  return out;
+}
+
+/**
+ * How many lines one answer would cover — the number behind "use this for all
+ * N lines doing the same thing".
+ *
+ * Matched on action AND replacement type, because that is the set a
+ * specification actually describes; "everything on this schedule" is not.
+ * Lines already carried out are excluded: they are history, and applying is
+ * keyed on `applied_at` being unset.
+ *
+ * The action's own definition decides whether the type takes part — removing
+ * forty fittings is one instruction whatever they are being replaced with,
+ * because they are not.
+ *
+ * @param {object[]} items every line on the schedule
+ * @param {{action: string, target_type_code: string|null}} answer
+ */
+export function matchingLines(items, { action, target_type_code }) {
+  const typeMatters = actionDef(action)?.applies?.retype === true;
+  return (items ?? []).filter(x =>
+    !x.applied_at
+    && x.action === action
+    && (!typeMatters || (x.target_type_code ?? null) === (target_type_code || null))
+  );
+}
+
+/** How many — what the offer in the line editor counts. */
+export function countMatchingLines(items, answer) {
+  return matchingLines(items, answer).length;
+}

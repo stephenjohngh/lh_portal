@@ -17,7 +17,8 @@
   import FormInput    from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import AttrField    from '../AttrField.svelte';
-  import { WORKS_ACTIONS, actionDef } from '../../utils/worksSchedule.js';
+  import { WORKS_ACTIONS, actionDef, specSuggestions, countMatchingLines }
+    from '../../utils/worksSchedule.js';
   import { attrPairsText, componentAttrPairs } from '../../utils/attrDisplay.js';
   import { drawComponentOnPlan } from '$lib/utils/planMarker.js';
 
@@ -35,6 +36,10 @@
   export let componentRef = '';
   /** plans[] — the location panel finds this component's by plan_id. */
   export let plans = [];
+  /** [{ spec, target_type_code }] used before — the suggestion list. */
+  export let specs = [];
+  /** Every line on this schedule — for counting the ones like this. */
+  export let siblings = [];
 
   const dispatch = createEventDispatcher();
 
@@ -45,6 +50,8 @@
   /** { [type_attribute_id]: value } — only what the author has set. */
   let targetAttrs = {};
   let saving = false;
+  /** Write this line's answer to every line doing the same thing. */
+  let applyToAll = false;
 
   // Guard on a primitive: `item` is an object prop, and safe_not_equal marks
   // every object dirty, so keying off it would wipe what is being typed.
@@ -58,6 +65,7 @@
     targetAttrs = { ...(item.target_attributes ?? {}) };
     saving      = false;
     showPlan    = false;
+    applyToAll  = false;
   }
 
   $: currentType = types.find(t => t.code === item?.component?.type_code) ?? null;
@@ -87,6 +95,11 @@
   $: currentText = attrPairsText(componentAttrPairs(currentDefs, currentValues));
 
   $: fitsSomething = actionDef(action)?.applies?.retype === true;
+
+  $: specOptions = specSuggestions(specs, targetType);
+
+  $: matchingCount = countMatchingLines(siblings,
+       { action, target_type_code: fitsSomething ? (targetType || null) : null });
 
   function setAttr(defId, value) {
     const next = { ...targetAttrs };
@@ -148,11 +161,14 @@
   function save() {
     saving = true;
     dispatch('save', {
-      action,
-      target_type_code: fitsSomething ? (targetType || null) : null,
-      target_attributes: fitsSomething && Object.keys(targetAttrs).length ? targetAttrs : null,
-      spec: spec.trim() || null,
-      notes: notes.trim() || null,
+      fields: {
+        action,
+        target_type_code: fitsSomething ? (targetType || null) : null,
+        target_attributes: fitsSomething && Object.keys(targetAttrs).length ? targetAttrs : null,
+        spec: spec.trim() || null,
+        notes: notes.trim() || null,
+      },
+      applyToAll,
     });
   }
 
@@ -257,10 +273,42 @@
       </div>
     {/if}
 
-    <FormInput label="Specification (optional)" bind:value={spec}
-               placeholder="e.g. LED batten, 4000K, 3h emergency" />
+    <div>
+      <FormInput label="Specification (optional)" bind:value={spec}
+                 list="works-spec-suggestions"
+                 placeholder="e.g. LED batten, 4000K, 3h emergency" />
+      <!-- A native combobox: still free text, but anything specified before is
+           one keystroke away. Fed from what this building's schedules have
+           actually said, so it needs no curating and cannot go stale. -->
+      <datalist id="works-spec-suggestions">
+        {#each specOptions as option}<option value={option}></option>{/each}
+      </datalist>
+      {#if specOptions.length}
+        <p class="text-[11px] text-slate-600 mt-0.5">
+          Start typing to reuse one of {specOptions.length} specification{specOptions.length === 1 ? '' : 's'}
+          written before.
+        </p>
+      {/if}
+    </div>
     <FormTextarea label="Notes for this item (optional)" bind:value={notes} rows={2} />
   </div>
+
+  {#if matchingCount > 1}
+    <!-- The real saving: forty identical fittings get specified once. Matched
+         on action AND replacement type, because that is the set a
+         specification actually describes. -->
+    <label class="flex items-start gap-2 cursor-pointer mt-4 p-2 rounded
+                  border border-slate-700 bg-slate-800/40">
+      <input type="checkbox" bind:checked={applyToAll} class="mt-0.5 accent-purple-500" />
+      <span class="text-xs text-slate-400">
+        Use this for all {matchingCount} lines doing the same thing
+        <span class="block text-slate-500">
+          Same action and same replacement type. Lines already carried out are
+          left alone.
+        </span>
+      </span>
+    </label>
+  {/if}
 
   <div slot="footer" class="flex justify-end gap-2">
     <Button variant="secondary" disabled={saving} on:click={close}>Cancel</Button>

@@ -14,6 +14,12 @@
   export let maxlength = null;
   export let pattern = null;
   export let inputClass = '';
+  /**
+   * id of a <datalist> to offer as suggestions — a native combobox: the field
+   * stays free text, but values already used are one keystroke away. The
+   * caller owns the <datalist> element.
+   */
+  export let list = null;
 
   // Generate ID if not provided
   $: elementId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
@@ -43,6 +49,7 @@
     {autocomplete}
     {maxlength}
     {pattern}
+    {list}
     class="w-full px-3 py-2 bg-slate-700 border rounded-lg text-white placeholder-gray-400 
            focus:outline-none focus:ring-2 transition-all
            {error ? 'border-red-500 focus:ring-red-500' : 'border-slate-600 focus:ring-purple-500'}

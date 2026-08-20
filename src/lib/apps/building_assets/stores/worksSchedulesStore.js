@@ -15,7 +15,7 @@ import { api }        from '$lib/utils/api';
 import { logAudit }   from '$lib/utils/auditLogger';
 import { getLogger }  from '$lib/utils/logger';
 import { replaceComponentAttributes } from '../public.js';
-import { planApply, describeSummary } from '../utils/worksSchedule.js';
+import { planApply, describeSummary, matchingLines } from '../utils/worksSchedule.js';
 
 const logger = getLogger('worksSchedules');
 
@@ -35,6 +35,8 @@ function createWorksSchedulesStore() {
     loadingItems: false,
     /** Current attribute values for those items' components, by component id. */
     attributes: {},
+    /** Specifications used before, for the suggestion list. */
+    specs: [],
   });
 
   const { subscribe, update } = store;
@@ -217,6 +219,73 @@ function createWorksSchedulesStore() {
     update(s => ({ ...s, items: s.items.map(x => ({ ...x, action })) }));
   }
 
+  /**
+   * Specifications already written, newest first — what the spec field offers
+   * as suggestions.
+   *
+   * Drawn from history rather than a curated list, so it needs no management
+   * screen and is right by construction: the things this building's schedules
+   * actually specify. A preset library would be a table, a form and a
+   * maintenance burden to arrive at the same place more slowly.
+   *
+   * Capped and de-duplicated. Only the most recent few hundred lines matter —
+   * a specification nobody has used in two years is not a suggestion, it is
+   * clutter.
+   */
+  async function loadSpecs() {
+    const rows = await api.get('works_schedule_items', {
+      select: 'spec, target_type_code',
+      orderBy: 'created_at', ascending: false, limit: 400,
+    });
+
+    const seen = new Set();
+    const specs = [];
+    for (const row of rows) {
+      const spec = row.spec?.trim();
+      if (!spec) continue;
+      const key = `${row.target_type_code ?? ''}|${spec}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      specs.push({ spec, target_type_code: row.target_type_code ?? null });
+    }
+
+    update(s => ({ ...s, specs }));
+    return specs;
+  }
+
+  /**
+   * Write the same fields to every line doing the same thing.
+   *
+   * The multiplier this feature needed: forty identical fittings are specified
+   * once. `countMatchingLines` decides the set — same action, and same
+   * replacement type where the action fits something — so the offer the author
+   * accepted and the rows written are the same set by construction.
+   *
+   * Line by line rather than one `updateMany`, because the set excludes work
+   * already carried out and `updateMany` filters are all equality: "applied_at
+   * is null" cannot be expressed there, and a bulk statement would quietly
+   * rewrite the specification of work already done.
+   */
+  async function applyToMatching(scheduleId, answer, fields, userId) {
+    // Filtered by schedule as well as by the answer: `items` holds whatever
+    // schedule is open, and writing another one's lines from here would be
+    // invisible to the person doing it.
+    const targets = matchingLines(
+      getState().items.filter(x => x.schedule_id === scheduleId), answer
+    ).map(x => x.id);
+    const stamp = touch(userId);
+
+    for (const id of targets) {
+      await api.update('works_schedule_items', id, { ...fields, ...stamp }, false);
+    }
+
+    update(s => ({
+      ...s,
+      items: s.items.map(x => targets.includes(x.id) ? { ...x, ...fields } : x),
+    }));
+    return targets.length;
+  }
+
   // ── Applying ─────────────────────────────────────────────────────────────
 
   /**
@@ -295,6 +364,7 @@ function createWorksSchedulesStore() {
     subscribe,
     loadSchedules, createSchedule, updateSchedule, issueSchedule, deleteSchedule,
     loadItems, addItems, updateItem, removeItem, setActionForAll,
+    loadSpecs, applyToMatching,
     previewApply, applyChanges, completeSchedule, closeSchedule,
     describeSummary,
   };
