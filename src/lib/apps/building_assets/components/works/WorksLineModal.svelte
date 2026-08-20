@@ -36,8 +36,10 @@
   export let componentRef = '';
   /** plans[] — the location panel finds this component's by plan_id. */
   export let plans = [];
-  /** [{ spec, target_type_code }] used before — the suggestion list. */
+  /** [{ spec, target_type_code }] used before — the suggestion source. */
   export let specs = [];
+  /** Wordings withdrawn from the suggestion list. */
+  export let hiddenSpecs = [];
   /** Every line on this schedule — for counting the ones like this. */
   export let siblings = [];
 
@@ -96,7 +98,7 @@
 
   $: fitsSomething = actionDef(action)?.applies?.retype === true;
 
-  $: specOptions = specSuggestions(specs, targetType);
+  $: specOptions = specSuggestions(specs, targetType, hiddenSpecs);
 
   $: matchingCount = countMatchingLines(siblings,
        { action, target_type_code: fitsSomething ? (targetType || null) : null });

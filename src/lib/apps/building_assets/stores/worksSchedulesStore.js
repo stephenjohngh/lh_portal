@@ -19,6 +19,9 @@ import { planApply, describeSummary, matchingLines } from '../utils/worksSchedul
 
 const logger = getLogger('worksSchedules');
 
+/** portal_settings key holding the withdrawn wordings. */
+const HIDDEN_SPECS_KEY = 'works_hidden_specs';
+
 const touch = (userId) => ({ updated_by: userId, updated_at: new Date().toISOString() });
 
 function errMessage(err) {
@@ -35,8 +38,10 @@ function createWorksSchedulesStore() {
     loadingItems: false,
     /** Current attribute values for those items' components, by component id. */
     attributes: {},
-    /** Specifications used before, for the suggestion list. */
+    /** Specifications used before, one row per line — the suggestion source. */
     specs: [],
+    /** Wordings withdrawn from the suggestion list. */
+    hiddenSpecs: [],
   });
 
   const { subscribe, update } = store;
@@ -220,37 +225,121 @@ function createWorksSchedulesStore() {
   }
 
   /**
-   * Specifications already written, newest first — what the spec field offers
-   * as suggestions.
+   * Every specification already written — what the spec field offers, and what
+   * the management panel groups.
    *
-   * Drawn from history rather than a curated list, so it needs no management
-   * screen and is right by construction: the things this building's schedules
-   * actually specify. A preset library would be a table, a form and a
-   * maintenance burden to arrive at the same place more slowly.
+   * Drawn from history rather than a curated list, so it needs no setting up
+   * and is right by construction: the things this building's schedules actually
+   * specify. A preset library would be a table, a form and a maintenance burden
+   * to arrive at the same place more slowly.
    *
-   * Capped and de-duplicated. Only the most recent few hundred lines matter —
-   * a specification nobody has used in two years is not a suggestion, it is
-   * clutter.
+   * Kept as raw rows, one per line, because the counts are what tell a settled
+   * wording from a one-off mistake. Capped: only the most recent few hundred
+   * lines matter — a specification nobody has used in two years is not a
+   * suggestion, it is clutter.
    */
   async function loadSpecs() {
     const rows = await api.get('works_schedule_items', {
-      select: 'spec, target_type_code',
+      select: 'spec, target_type_code, schedule_id',
       orderBy: 'created_at', ascending: false, limit: 400,
     });
 
-    const seen = new Set();
-    const specs = [];
-    for (const row of rows) {
-      const spec = row.spec?.trim();
-      if (!spec) continue;
-      const key = `${row.target_type_code ?? ''}|${spec}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      specs.push({ spec, target_type_code: row.target_type_code ?? null });
-    }
+    const specs = rows
+      .filter(r => r.spec?.trim())
+      .map(r => ({
+        spec: r.spec.trim(),
+        target_type_code: r.target_type_code ?? null,
+        schedule_id: r.schedule_id,
+      }));
 
     update(s => ({ ...s, specs }));
     return specs;
+  }
+
+  /**
+   * Wordings withdrawn from the suggestion list.
+   *
+   * A portal setting rather than a per-browser preference: a mistyped
+   * specification is wrong for everyone who writes a schedule, not just for
+   * whoever noticed. Lives in the existing key/value table, so it costs no
+   * migration.
+   */
+  async function loadHiddenSpecs() {
+    try {
+      const rows = await api.get('portal_settings', {
+        select: 'key, value', filters: { key: HIDDEN_SPECS_KEY },
+      });
+      const hiddenSpecs = rows[0]?.value ?? [];
+      update(s => ({ ...s, hiddenSpecs }));
+      return hiddenSpecs;
+    } catch (err) {
+      // Never fatal: without it every wording is simply still offered.
+      logger('⚠ Could not read withdrawn specifications:', errMessage(err));
+      return [];
+    }
+  }
+
+  async function setSpecHidden(spec, hidden, userId) {
+    const current = getState().hiddenSpecs;
+    const next = hidden
+      ? [...new Set([...current, spec])]
+      : current.filter(x => x !== spec);
+
+    await api.upsert('portal_settings',
+      { key: HIDDEN_SPECS_KEY, value: next, updated_by: userId },
+      { onConflict: 'key' });
+
+    update(s => ({ ...s, hiddenSpecs: next }));
+    logAudit('update', 'portal_setting', HIDDEN_SPECS_KEY, 'Withdrawn specifications', {
+      appId: 'building_assets', eventCategory: 'building_assets', severity: 'info',
+      afterData: { spec, hidden },
+    });
+    return next;
+  }
+
+  /**
+   * Correct a wording everywhere it is used — the fix a wrong suggestion
+   * actually needs, since the list is only a view of what the lines say.
+   *
+   * Confined to schedules still in DRAFT. An issued schedule is the document a
+   * contractor holds; rewriting its specification would leave the register
+   * disagreeing with the paper, and no suggestion list is worth that. Those
+   * wordings are withdrawn instead.
+   *
+   * Passing an empty replacement clears the specification on those lines.
+   */
+  async function renameSpec(from, to, userId) {
+    const draftIds = new Set(
+      getState().schedules.filter(x => x.status === 'draft').map(x => x.id));
+
+    // Narrowed at the database, then checked again here: the stored text may
+    // carry whitespace the suggestion list trimmed away, so the equality filter
+    // is a way of not reading every line, not the test itself.
+    const rows = await api.getAll('works_schedule_items', {
+      select: 'id, schedule_id, spec', filters: { spec: from },
+    });
+    const targets = rows.filter(r =>
+      r.spec?.trim() === from && draftIds.has(r.schedule_id));
+
+    const value = to?.trim() || null;
+    const stamp = touch(userId);
+    for (const row of targets) {
+      await api.update('works_schedule_items', row.id, { spec: value, ...stamp }, false);
+    }
+
+    await loadSpecs();
+    if (getState().items.some(x => x.spec?.trim() === from)) {
+      update(s => ({
+        ...s,
+        items: s.items.map(x => x.spec?.trim() === from ? { ...x, spec: value } : x),
+      }));
+    }
+
+    logAudit('update', 'works_schedule_spec', from, from, {
+      appId: 'building_assets', eventCategory: 'building_assets', severity: 'info',
+      afterData: { from, to: value, lines: targets.length },
+    });
+    return targets.length;
   }
 
   /**
@@ -364,7 +453,7 @@ function createWorksSchedulesStore() {
     subscribe,
     loadSchedules, createSchedule, updateSchedule, issueSchedule, deleteSchedule,
     loadItems, addItems, updateItem, removeItem, setActionForAll,
-    loadSpecs, applyToMatching,
+    loadSpecs, loadHiddenSpecs, setSpecHidden, renameSpec, applyToMatching,
     previewApply, applyChanges, completeSchedule, closeSchedule,
     describeSummary,
   };

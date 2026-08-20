@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   WORKS_ACTIONS, actionDef, actionLabel, applyPatch, attributePatch, planApply,
-  actionSummary, describeSummary, appliedProgress, purposeLabel, statusLabel, specSuggestions, countMatchingLines } from './worksSchedule.js';
+  actionSummary, describeSummary, appliedProgress, purposeLabel, statusLabel, specSuggestions, countMatchingLines, specUsage } from './worksSchedule.js';
 
 const item = (over = {}) => ({
   id: 'i1', component_id: 'c1', action: 'replace', target_type_code: null,
@@ -269,35 +269,100 @@ describe('labels', () => {
 });
 
 describe('specSuggestions', () => {
-  const specs = [
+  const rows = [
     { spec: '18W LED batten, 4000K',   target_type_code: 'LIGHT_LED' },
+    { spec: '18W LED batten, 4000K',   target_type_code: 'LIGHT_LED' },
+    { spec: '18W LED batten, 4000K',   target_type_code: 'LIGHT_LED' },
+    { spec: '18W LED battne, 4000K',   target_type_code: 'LIGHT_LED' },  // typo, once
     { spec: 'FD30S, intumescent seal', target_type_code: 'DOOR_FD' },
-    { spec: '18W LED batten, 4000K',   target_type_code: 'DOOR_FD' },
     { spec: '  ',                      target_type_code: 'LIGHT_LED' },
     { spec: null,                      target_type_code: null },
   ];
 
-  it('offers specifications written for the type being fitted first', () => {
-    expect(specSuggestions(specs, 'DOOR_FD')[0]).toBe('FD30S, intumescent seal');
-    expect(specSuggestions(specs, 'LIGHT_LED')[0]).toBe('18W LED batten, 4000K');
+  it('offers wordings written for the type being fitted first', () => {
+    expect(specSuggestions(rows, 'DOOR_FD')[0]).toBe('FD30S, intumescent seal');
+    expect(specSuggestions(rows, 'LIGHT_LED')[0]).toBe('18W LED batten, 4000K');
   });
 
-  it('offers the same wording once, however many types used it', () => {
-    const out = specSuggestions(specs, 'LIGHT_LED');
+  it('sinks a wording used once below one used often', () => {
+    const out = specSuggestions(rows, 'LIGHT_LED');
+    expect(out.indexOf('18W LED batten, 4000K'))
+      .toBeLessThan(out.indexOf('18W LED battne, 4000K'));
+  });
+
+  it('offers each wording once, however many lines use it', () => {
+    const out = specSuggestions(rows, 'LIGHT_LED');
     expect(out.filter(x => x === '18W LED batten, 4000K')).toHaveLength(1);
   });
 
+  it('leaves out withdrawn wordings entirely', () => {
+    // Sinking a mistake is not the same as removing it.
+    expect(specSuggestions(rows, 'LIGHT_LED', ['18W LED battne, 4000K']))
+      .not.toContain('18W LED battne, 4000K');
+  });
+
   it('leaves out blank and missing specifications', () => {
-    // Five rows in, two usable suggestions out: the whitespace-only one and
-    // the null one are not offers.
-    expect(specSuggestions(specs, null).sort()).toEqual([
-      '18W LED batten, 4000K', 'FD30S, intumescent seal',
+    expect(specSuggestions(rows, null).sort()).toEqual([
+      '18W LED batten, 4000K', '18W LED battne, 4000K', 'FD30S, intumescent seal',
     ]);
   });
 
   it('survives having nothing to offer', () => {
     expect(specSuggestions(undefined, 'X')).toEqual([]);
     expect(specSuggestions([], 'X')).toEqual([]);
+  });
+});
+
+describe('specUsage', () => {
+  const schedules = [
+    { id: 's1', title: 'Landing lights', status: 'draft' },
+    { id: 's2', title: 'Stair doors',    status: 'issued' },
+  ];
+  const rows = [
+    { spec: 'LED batten', schedule_id: 's1' },
+    { spec: 'LED batten', schedule_id: 's1' },
+    { spec: 'FD30S',      schedule_id: 's2' },
+    { spec: 'Mixed',      schedule_id: 's1' },
+    { spec: 'Mixed',      schedule_id: 's2' },
+    { spec: '   ',        schedule_id: 's1' },
+  ];
+
+  it('counts the lines behind each wording, most used first', () => {
+    const usage = specUsage(rows, schedules);
+    expect(usage.map(u => [u.spec, u.count])).toEqual([
+      ['LED batten', 2], ['Mixed', 2], ['FD30S', 1],
+    ]);
+  });
+
+  it('names the schedules a wording appears on, once each', () => {
+    const led = specUsage(rows, schedules).find(u => u.spec === 'LED batten');
+    expect(led.schedules).toEqual([{ id: 's1', title: 'Landing lights', status: 'draft' }]);
+  });
+
+  it('lets a draft-only wording be corrected', () => {
+    expect(specUsage(rows, schedules).find(u => u.spec === 'LED batten').renameable).toBe(true);
+  });
+
+  it('refuses to correct a wording used on an issued schedule', () => {
+    // That is the document a contractor holds; rewriting it would leave the
+    // register disagreeing with the paper.
+    expect(specUsage(rows, schedules).find(u => u.spec === 'FD30S').renameable).toBe(false);
+    expect(specUsage(rows, schedules).find(u => u.spec === 'Mixed').renameable).toBe(false);
+  });
+
+  it('refuses to correct a wording whose schedule is not loaded', () => {
+    const orphan = [{ spec: 'Unknown home', schedule_id: 'gone' }];
+    expect(specUsage(orphan, schedules)[0].renameable).toBe(false);
+  });
+
+  it('marks the withdrawn ones', () => {
+    const usage = specUsage(rows, schedules, ['FD30S']);
+    expect(usage.find(u => u.spec === 'FD30S').hidden).toBe(true);
+    expect(usage.find(u => u.spec === 'Mixed').hidden).toBe(false);
+  });
+
+  it('ignores blank specifications', () => {
+    expect(specUsage(rows, schedules).map(u => u.spec)).not.toContain('   ');
   });
 });
 

@@ -245,27 +245,77 @@ export function statusLabel(value) {
 /**
  * The specifications to offer for a line, best guess first.
  *
- * Ordered by the type being FITTED: what you are putting in is the strongest
- * predictor of how it gets written up. De-duplicated on the text itself, so the
- * same wording used for two types is offered once.
+ * Ordered by the type being FITTED — what you are putting in is the strongest
+ * predictor of the wording — and then by how many lines already use it, so the
+ * wording everybody uses sits above the one somebody typed once. A one-off
+ * mistake therefore sinks, though sinking is not the same as gone: `hidden`
+ * removes it outright.
  *
- * @param {{spec: string, target_type_code: string|null}[]} specs used before
+ * @param {{spec: string, target_type_code: string|null}[]} rows every spec written
  * @param {string} targetType the type code being fitted, if any
+ * @param {string[]} [hidden] wordings withdrawn from the suggestion list
  * @returns {string[]}
  */
-export function specSuggestions(specs, targetType) {
-  const ranked = [...(specs ?? [])].sort((a, b) =>
-    Number(b.target_type_code === targetType) - Number(a.target_type_code === targetType));
+export function specSuggestions(rows, targetType, hidden = []) {
+  const withheld = new Set(hidden);
+  const counts = new Map();
+  const fitsType = new Set();
 
-  const seen = new Set();
-  const out = [];
-  for (const row of ranked) {
+  for (const row of rows ?? []) {
     const text = row?.spec?.trim();
-    if (!text || seen.has(text)) continue;
-    seen.add(text);
-    out.push(text);
+    if (!text || withheld.has(text)) continue;
+    counts.set(text, (counts.get(text) ?? 0) + 1);
+    if (row.target_type_code === targetType) fitsType.add(text);
   }
-  return out;
+
+  return [...counts.keys()].sort((a, b) =>
+    Number(fitsType.has(b)) - Number(fitsType.has(a))
+    || counts.get(b) - counts.get(a)
+    || a.localeCompare(b));
+}
+
+/**
+ * Every distinct specification with where it is used — what the management
+ * panel shows, and the only way to see that a wording is a one-off.
+ *
+ * `renameable` says whether correcting it would rewrite a document already
+ * sent: it is true only when every line using it belongs to a schedule still in
+ * draft. An issued schedule is what a contractor was given, and editing it
+ * would make the register disagree with the paper.
+ *
+ * @param {{spec: string, schedule_id: string}[]} rows
+ * @param {{id: string, title: string, status: string}[]} schedules
+ * @param {string[]} [hidden]
+ */
+export function specUsage(rows, schedules, hidden = []) {
+  const withheld = new Set(hidden);
+  const byId = new Map((schedules ?? []).map(x => [x.id, x]));
+  const groups = new Map();
+
+  for (const row of rows ?? []) {
+    const text = row?.spec?.trim();
+    if (!text) continue;
+
+    const group = groups.get(text)
+      ?? { spec: text, count: 0, schedules: [], renameable: true, hidden: withheld.has(text) };
+    group.count += 1;
+
+    const schedule = byId.get(row.schedule_id);
+    if (schedule) {
+      if (schedule.status !== 'draft') group.renameable = false;
+      if (!group.schedules.some(x => x.id === schedule.id)) {
+        group.schedules.push({ id: schedule.id, title: schedule.title, status: schedule.status });
+      }
+    } else {
+      // A line whose schedule is not loaded cannot be shown to be safe.
+      group.renameable = false;
+    }
+
+    groups.set(text, group);
+  }
+
+  return [...groups.values()].sort((a, b) =>
+    b.count - a.count || a.spec.localeCompare(b.spec));
 }
 
 /**

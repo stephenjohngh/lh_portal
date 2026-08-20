@@ -29,6 +29,7 @@
   import WorksScheduleFormModal from './WorksScheduleFormModal.svelte';
   import ApplyScheduleDialog    from './ApplyScheduleDialog.svelte';
   import WorksLineModal         from './WorksLineModal.svelte';
+  import WorksSpecsModal        from './WorksSpecsModal.svelte';
   import ComponentPlanPeek      from '../ComponentPlanPeek.svelte';
 
   const errMessage = (e) => (e instanceof Error ? e.message : String(e));
@@ -98,6 +99,7 @@
       // Not awaited into the render path — the suggestion list is a
       // convenience, and the tab must not wait on it.
       worksSchedulesStore.loadSpecs().catch(() => {});
+      worksSchedulesStore.loadHiddenSpecs().catch(() => {});
     }
     catch (err) { error = errMessage(err); }
   });
@@ -224,6 +226,34 @@
     } catch (err) { error = errMessage(err); }
   }
 
+  // ── The suggestion list ───────────────────────────────────────────────────
+
+  let showSpecs = false;
+  let specsBusy = false;
+
+  /**
+   * Correcting a wording rewrites the lines that carry it, so the open
+   * schedule is reloaded — otherwise the table still shows the old text.
+   */
+  async function renameSpec(e) {
+    const { from, to } = e.detail;
+    const scheduleId = openId;
+    specsBusy = true;
+    try {
+      await worksSchedulesStore.renameSpec(from, to, $auth.user.id);
+      if (scheduleId) await worksSchedulesStore.loadItems(scheduleId);
+    } catch (err) { error = errMessage(err); }
+    finally { specsBusy = false; }
+  }
+
+  async function hideSpec(e) {
+    const { spec, hidden } = e.detail;
+    specsBusy = true;
+    try { await worksSchedulesStore.setSpecHidden(spec, hidden, $auth.user.id); }
+    catch (err) { error = errMessage(err); }
+    finally { specsBusy = false; }
+  }
+
   // ── Issue / export / apply ────────────────────────────────────────────────
 
   let issuing = false;
@@ -322,6 +352,11 @@
     </div>
     <div class="flex-1"></div>
     <div class="flex items-center gap-2 shrink-0">
+      <ProtectedButton requireAdmin={true} variant="secondary" size="small"
+                       title="The wordings the specification field offers"
+                       on:click={() => showSpecs = true}>
+        Specifications
+      </ProtectedButton>
       <ProtectedButton requireAdmin={true} variant="primary" size="small"
                        on:click={newSchedule}>
         + New schedule
@@ -586,9 +621,21 @@
   componentRef={editingLine ? refFor(editingLine.component) : ''}
   {plans}
   specs={state.specs}
+  hiddenSpecs={state.hiddenSpecs}
   siblings={items}
   on:save={handleLineSave}
   on:close={() => { showLine = false; editingLine = null; }}
+/>
+
+<WorksSpecsModal
+  bind:show={showSpecs}
+  specs={state.specs}
+  schedules={state.schedules}
+  hidden={state.hiddenSpecs}
+  busy={specsBusy}
+  on:rename={renameSpec}
+  on:hide={hideSpec}
+  on:close={() => showSpecs = false}
 />
 
 <ApplyScheduleDialog
