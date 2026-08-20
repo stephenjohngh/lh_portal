@@ -208,10 +208,13 @@
       if (applyToAll) {
         // Everything else doing the same thing gets the same answer. The line
         // just saved is included by the filter, harmlessly.
+        // Specification and the new fitting's attributes only. Notes are not
+        // copied: they are where the per-line remark goes ("access via the
+        // roof hatch"), and spreading one line's across forty would destroy
+        // exactly the information worth keeping.
         await worksSchedulesStore.applyToMatching(scheduleId,
           { action: fields.action, target_type_code: fields.target_type_code },
-          { spec: fields.spec, notes: fields.notes,
-            target_attributes: fields.target_attributes },
+          { spec: fields.spec, target_attributes: fields.target_attributes },
           $auth.user.id);
       }
       // Specifications written now are suggestions for the next line.

@@ -301,10 +301,11 @@
                   border border-slate-700 bg-slate-800/40">
       <input type="checkbox" bind:checked={applyToAll} class="mt-0.5 accent-purple-500" />
       <span class="text-xs text-slate-400">
-        Use this for all {matchingCount} lines doing the same thing
+        Use this specification for all {matchingCount} lines doing the same thing
         <span class="block text-slate-500">
-          Same action and same replacement type. Lines already carried out are
-          left alone.
+          Same action and same replacement type. The specification and the new
+          fitting's attributes are copied; notes stay with their own line, and
+          work already carried out is left alone.
         </span>
       </span>
     </label>
