@@ -402,6 +402,11 @@ function createWorksSchedulesStore() {
    * @param {string} userId
    * @returns {Promise<{ applied: number, failed: { item: object, error: string }[] }>}
    */
+  /** The schedule's name, for an audit entry a person has to read. */
+  function scheduleTitle(scheduleId) {
+    return getState().schedules.find(x => x.id === scheduleId)?.title ?? null;
+  }
+
   async function applyChanges(changes, userId) {
     const at = new Date().toISOString();
     const failed = [];
@@ -422,12 +427,18 @@ function createWorksSchedulesStore() {
         // Audited against the COMPONENT, not the schedule: "what has happened to
         // this asset" is the question someone asks later, and it is asked of the
         // asset.
+        //
+        // The schedule's TITLE goes in beside its id. The apply dialog promises
+        // the history will show "which schedule said so", and a bare uuid does
+        // not say that to anyone reading it.
         logAudit('update', 'component', change.component.id,
           change.component.asset_id || change.component.label || 'Component', {
             appId: 'building_assets', eventCategory: 'building_assets', severity: 'info',
             beforeData: { status: change.component.status, type_code: change.component.type_code },
             afterData:  { ...change.patch, attributes: change.attrs ?? undefined,
-                          works_schedule_item: change.item.id },
+                          works_schedule_item: change.item.id,
+                          works_schedule_id: change.item.schedule_id,
+                          works_schedule: scheduleTitle(change.item.schedule_id) },
           });
         applied++;
       } catch (err) {
