@@ -21,6 +21,7 @@ import { DocLink } from './docLinkMark.js';
 import { EmbedDoc } from './embedDocNode.js';
 import { EmbedDataset } from './embedDatasetNode.js';
 import { MarkdownPaste } from '$lib/utils/markdownPasteExtension.js';
+import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 
 /** An empty ProseMirror doc — matches the DB default on dossier_docs.blocks. */
 export const EMPTY_DOC = { type: 'doc', content: [] };
@@ -110,6 +111,17 @@ export function buildExtensions({
     EmbedDoc,
     EmbedDataset.configure({ dataProvider, onOpenDoc }),
     DocLink,
+    // Tables, so a markdown table pasted into a page arrives as a table. In
+    // buildExtensions rather than editorExtensions because the READ renderer
+    // builds its schema from this list too — a node the renderer does not know
+    // is a node it silently drops, and a published pack losing its tables is
+    // the one failure this feature cannot have (decision D10: both modes agree
+    // on the schema).
+    //
+    // resizable is off: column widths are a layout decision, and a pack is read
+    // on someone else's screen at a width we do not control.
+    Table.configure({ resizable: false }),
+    TableRow, TableHeader, TableCell,
     BlockId,
   ];
 }
@@ -128,7 +140,8 @@ export function buildExtensions({
  */
 export function editorExtensions(opts = {}) {
   // internalLinks: a pack HAS other pages, so `[x](./overview.md)` means one.
-  return [...buildExtensions(opts), MarkdownPaste.configure({ internalLinks: true })];
+  return [...buildExtensions(opts),
+          MarkdownPaste.configure({ internalLinks: true, tables: true })];
 }
 
 /**

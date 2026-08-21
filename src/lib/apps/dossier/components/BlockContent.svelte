@@ -152,6 +152,52 @@
     color: #cbd5e1;              /* slate-300 */
     font-style: italic;
   }
+  /* A table written INTO a page — pasted from markdown, or built in the editor.
+     Distinct from .dossier-dataset, which is a whole stored table embedded by
+     reference; this one is the page's own content and is styled to match it
+     rather than to look like an embed.
+
+     Scrolls rather than crushes, for the reason dataset-table.css explains at
+     length: a table wider than its column has nowhere to go, and the browser
+     squeezes the undeclared columns to nothing. */
+  :global(.dossier-prose table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    display: block;
+    overflow-x: auto;
+  }
+  :global(.dossier-prose th),
+  :global(.dossier-prose td) {
+    border: 1px solid #334155;   /* slate-700 */
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  :global(.dossier-prose th) {
+    background: #1e293b;         /* slate-800 */
+    color: #f1f5f9;              /* slate-100 */
+    font-weight: 600;
+  }
+  :global(.dossier-prose td) { color: #cbd5e1; }
+  /* Cells hold paragraphs; their bottom margin would double every row's
+     height. */
+  :global(.dossier-prose th > p:last-child),
+  :global(.dossier-prose td > p:last-child) { margin-bottom: 0; }
+  /* ProseMirror's own cell-selection overlay — without a colour it is
+     invisible, and a multi-cell selection looks like nothing happened. */
+  :global(.dossier-prose .selectedCell:after) {
+    background: rgb(var(--lh-accent-rgb, 60 150 131) / 0.18);
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  :global(.dossier-prose td),
+  :global(.dossier-prose th) { position: relative; }
+
   :global(.dossier-prose hr) {
     border: 0;
     border-top: 1px solid #334155;   /* slate-700 */

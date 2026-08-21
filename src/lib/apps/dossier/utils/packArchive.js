@@ -64,12 +64,30 @@ function inlineText(node) {
 }
 
 /**
+ * One table cell as a single line of markdown.
+ *
+ * A cell holds block content — usually one paragraph, sometimes more — but a
+ * GFM row is one line, so paragraphs are joined rather than kept apart. A
+ * literal pipe inside the text is escaped, or it would split the cell in two
+ * when read back.
+ */
+function cellText(cell) {
+  return (cell?.content ?? [])
+    .map(inlineText)
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\|/g, '\\|')
+    .trim();
+}
+
+/**
  * One page as markdown.
  *
  * References are named rather than followed: a file becomes a line pointing at
- * its copy in `files/`, a table becomes a line pointing at its CSV. An archive
- * whose links go nowhere would be worse than one that says plainly where the
- * thing is.
+ * its copy in `files/`, an embedded dataset becomes a line pointing at its CSV.
+ * An archive whose links go nowhere would be worse than one that says plainly
+ * where the thing is. A table written INTO the page is different — it is the
+ * page's own content, so it is written out in full as GFM.
  *
  * @param {object|null} blocks
  * @param {{ files?: Map<string,string>, datasets?: Map<string,{title:string,file:string}> }} [refs]
@@ -115,6 +133,28 @@ export function blocksToMarkdown(blocks, refs = {}) {
       case 'horizontalRule':
         lines.push('---', '');
         return;
+
+      case 'table': {
+        // Written back as GFM, which markdownToHtml reads — so a table pasted
+        // into a page survives the archive and comes back a table. Without
+        // this it would leave as nothing at all: an unhandled node writes no
+        // line, and the round trip would quietly drop the one block most
+        // likely to be carrying the facts.
+        const rows = (node.content ?? [])
+          .filter(row => row.type === 'tableRow')
+          .map(row => (row.content ?? []).map(cellText));
+        if (!rows.length) return;
+
+        const width = Math.max(...rows.map(r => r.length));
+        const pad = (cells) =>
+          `| ${Array.from({ length: width }, (_, i) => cells[i] ?? '').join(' | ')} |`;
+
+        lines.push(pad(rows[0]));
+        lines.push(`|${' --- |'.repeat(width)}`);
+        for (const row of rows.slice(1)) lines.push(pad(row));
+        lines.push('');
+        return;
+      }
 
       case 'bulletList':
       case 'orderedList': {

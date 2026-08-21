@@ -40,6 +40,12 @@ export const MarkdownPaste = Extension.create({
        * schema starts lower than h1 — see RichTextEditor's `levels: [2, 3]`.
        */
       minHeading: 1,
+      /**
+       * Convert a markdown table into a real table. Only where the editor has
+       * the table nodes — without them ProseMirror drops the whole thing, so
+       * the default instead puts each row on its own line and keeps the text.
+       */
+      tables: false,
     };
   },
 

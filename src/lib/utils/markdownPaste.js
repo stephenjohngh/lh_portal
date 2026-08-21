@@ -166,6 +166,63 @@ function indentOf(line) {
  * @param {string} markdown
  * @returns {string}
  */
+/**
+ * A line that could be a row of a GFM table.
+ *
+ * Deliberately loose — a pipe and something either side. What actually decides
+ * a table is the DELIMITER row below the header, so this only has to be cheap
+ * and not wrong about prose that happens to contain a pipe on its own.
+ */
+export function isTableRow(line) {
+  return typeof line === 'string' && line.includes('|') && line.trim().length > 1;
+}
+
+/** The `|---|:--:|` row. Its presence is what makes the line above a header. */
+export function isTableDelimiter(line) {
+  if (typeof line !== 'string' || !line.includes('|')) return false;
+  return /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line);
+}
+
+/**
+ * The cells of one row.
+ *
+ * The outer pipes are fences, not empty cells — `| a | b |` is two cells, not
+ * four. An unfenced row (`a | b`) is equally valid GFM, hence trimming only
+ * what is actually empty at the ends.
+ */
+export function tableCells(line) {
+  const cells = String(line ?? '').trim().split('|').map(c => c.trim());
+  if (cells.length && cells[0] === '') cells.shift();
+  if (cells.length && cells[cells.length - 1] === '') cells.pop();
+  return cells;
+}
+
+/**
+ * A table as the editor's schema wants it.
+ *
+ * Cells hold a paragraph because Tiptap's table cell takes block content —
+ * bare text in a `<td>` parses to the same thing, but saying so is clearer
+ * than relying on the parser to insert it.
+ *
+ * Ragged rows are padded to the header's width rather than dropped: a row with
+ * a missing trailing pipe is a typo, and losing its content over that would be
+ * the worst outcome available here. Column ALIGNMENT is deliberately not
+ * carried — the schema has no attribute for it, so emitting it would only look
+ * like it had survived.
+ */
+function renderTable(header, rows, options) {
+  const width = Math.max(header.length, ...rows.map(r => r.length), 1);
+  const cell = (tag, text) =>
+    `<${tag}><p>${inlineMarkdown(escapeHtml(text ?? ''), options)}</p></${tag}>`;
+  const row = (cells, tag) =>
+    `<tr>${Array.from({ length: width }, (_, i) => cell(tag, cells[i])).join('')}</tr>`;
+
+  return '<table><tbody>'
+    + row(header, 'th')
+    + rows.map(r => row(r, 'td')).join('')
+    + '</tbody></table>';
+}
+
 export function markdownToHtml(markdown, options = {}) {
   const lines = String(markdown ?? '').replace(/\r\n?/g, '\n').split('\n');
   const out = [];
@@ -211,7 +268,8 @@ export function markdownToHtml(markdown, options = {}) {
     blankRun = 0;
   };
 
-  for (const raw of lines) {
+  for (let index = 0; index < lines.length; index++) {
+    const raw = lines[index];
     const line = raw.replace(/\s+$/, '');
 
     // ── Fenced code. Everything inside is literal, including blank lines.
@@ -234,6 +292,38 @@ export function markdownToHtml(markdown, options = {}) {
     if (/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(line)) {
       closeAll();
       out.push('<hr>');
+      continue;
+    }
+
+    // ── Table. A header row is only a header row if a delimiter follows it,
+    // which is what separates a real table from a line that happens to contain
+    // pipes.
+    if (options.tables && isTableRow(line) && isTableDelimiter(lines[index + 1])) {
+      closeAll();
+      const rows = [];
+      index++;                                   // step over the delimiter
+      while (index + 1 < lines.length && isTableRow(lines[index + 1])) {
+        rows.push(tableCells(lines[++index]));
+      }
+      out.push(renderTable(tableCells(line), rows, options));
+      continue;
+    }
+
+    // Where the target has no table node, each row becomes its own paragraph
+    // and the delimiter is dropped. Not pretty, but the alternative is what
+    // used to happen: every row joined into one paragraph, so a ten-row table
+    // arrived as a single unreadable line of pipes.
+    //
+    // The run continues to the first line that is not a row, so it holds for a
+    // whole table rather than for the two lines either side of the delimiter.
+    if (!options.tables && isTableRow(line) && isTableDelimiter(lines[index + 1])) {
+      closeAll();
+      out.push(`<p>${inlineMarkdown(escapeHtml(line.trim()), options)}</p>`);
+      index++;                                   // the delimiter itself is noise
+      while (index + 1 < lines.length && isTableRow(lines[index + 1])) {
+        const row = lines[++index].trim();
+        out.push(`<p>${inlineMarkdown(escapeHtml(row), options)}</p>`);
+      }
       continue;
     }
 
@@ -310,7 +400,10 @@ export function looksLikeMarkdown(text) {
   const hasFence   = lines.filter(l => /^\s*```/.test(l)).length >= 2;
   const hasQuote   = lines.some(l => /^\s*>\s+\S/.test(l));
   const listItems  = lines.filter(l => /^\s*([-*+]|\d+[.)])\s+\S/.test(l)).length;
-  if (hasHeading || hasFence || hasQuote || listItems >= 2) return true;
+  // A delimiter row under a row of pipes. Nothing else looks like that, and
+  // without it a pasted table alone reads as prose and stays as pipes.
+  const hasTable   = lines.some((l, i) => isTableRow(l) && isTableDelimiter(lines[i + 1]));
+  if (hasHeading || hasFence || hasQuote || hasTable || listItems >= 2) return true;
 
   // Otherwise, inline marks — but more than one KIND, so a single emphasised
   // word in ordinary prose is left alone.

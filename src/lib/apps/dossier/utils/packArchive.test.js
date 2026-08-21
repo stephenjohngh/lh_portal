@@ -264,3 +264,45 @@ describe('buildArchiveText', () => {
     expect(bare[0].text).not.toContain('tables/');
   });
 });
+
+describe('blocksToMarkdown — tables', () => {
+  // A table written into a page is the page's own content, unlike an embedded
+  // dataset (which the archive names and puts in tables/ as CSV). Before this
+  // an unhandled node wrote no line at all, so the archive quietly dropped the
+  // block most likely to be carrying the facts.
+  const cell = (tag, text) => ({ type: tag, content: [para(text)] });
+  const row  = (tag, ...texts) => ({ type: 'tableRow', content: texts.map(t => cell(tag, t)) });
+
+  it('writes a table back as markdown a reader can parse', () => {
+    const md = blocksToMarkdown(doc({ type: 'table', content: [
+      row('tableHeader', 'Badge', 'Meaning'),
+      row('tableCell', 'Draft', 'Being written'),
+    ] }));
+
+    expect(md).toBe([
+      '| Badge | Meaning |',
+      '| --- | --- |',
+      '| Draft | Being written |',
+    ].join('\n'));
+  });
+
+  it('escapes a pipe inside a cell, so the row does not gain a column', () => {
+    const md = blocksToMarkdown(doc({ type: 'table', content: [
+      row('tableHeader', 'Command'),
+      row('tableCell', 'grep | head'),
+    ] }));
+    expect(md).toContain('| grep \\| head |');
+  });
+
+  it('pads a short row to the width of the table', () => {
+    const md = blocksToMarkdown(doc({ type: 'table', content: [
+      row('tableHeader', 'A', 'B', 'C'),
+      row('tableCell', '1'),
+    ] }));
+    expect(md).toContain('| 1 |  |  |');
+  });
+
+  it('writes nothing for a table with no rows rather than a bare delimiter', () => {
+    expect(blocksToMarkdown(doc({ type: 'table', content: [] }))).toBe('');
+  });
+});

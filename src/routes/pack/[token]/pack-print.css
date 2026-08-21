@@ -206,6 +206,33 @@
     display: table-header-group;   /* repeat the header on every sheet */
   }
 
+  /* A table written into a page. Same treatment as a dataset table, for the
+     same reasons — a header that cannot be told from its data, and a scroll box
+     that would silently clip whatever sat past its edge. */
+  .dossier-prose table {
+    display: table !important;       /* the screen's scroll box, undone */
+    overflow: visible !important;
+    font-size: 9pt;
+    width: 100% !important;
+  }
+  .dossier-prose th,
+  .dossier-prose td {
+    border-color: #999 !important;
+    color: #000 !important;
+  }
+  .dossier-prose th {
+    background: #eee !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .dossier-prose tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .dossier-prose thead {
+    display: table-header-group;     /* repeat the header on every sheet */
+  }
+
   /* A folded email body must PRINT. The recipient cannot expand a <details>
      on paper, and silently omitting evidence from a briefing pack is the same
      fault as a collapsed toggle. */

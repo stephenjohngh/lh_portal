@@ -7,6 +7,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   markdownToHtml, inlineMarkdown, escapeHtml, looksLikeMarkdown, internalSlug,
+  isTableRow, isTableDelimiter, tableCells,
+  isTableRow, isTableDelimiter, tableCells,
 } from './markdownPaste.js';
 import { blocksToMarkdown } from '$lib/apps/dossier/utils/packArchive.js';
 
@@ -370,5 +372,80 @@ describe('markdownToHtml — heading levels follow the target schema', () => {
 
   it('refuses a nonsensical floor rather than emitting an h0', () => {
     expect(markdownToHtml('# Top', { minHeading: 0 })).toBe('<h1>Top</h1>');
+  });
+});
+
+
+describe('tables', () => {
+  const table = [
+    '| Badge | Meaning |',
+    '|---|---|',
+    '| Draft | Being written |',
+    '| Issued | Sent to the contractor |',
+  ].join('\n');
+
+  it('recognises a delimiter row, and does not mistake prose for one', () => {
+    expect(isTableDelimiter('|---|---|')).toBe(true);
+    expect(isTableDelimiter('| :--- | ---: | :---: |')).toBe(true);
+    expect(isTableDelimiter('| Draft | Being written |')).toBe(false);
+    // An em-dash cell is content, not a delimiter.
+    expect(isTableDelimiter('| — | — |')).toBe(false);
+  });
+
+  it('treats the outer pipes as fences, not as empty cells', () => {
+    expect(tableCells('| a | b |')).toEqual(['a', 'b']);
+    expect(tableCells('a | b')).toEqual(['a', 'b']);       // unfenced is valid GFM
+  });
+
+  it('builds a real table where the target has one', () => {
+    expect(markdownToHtml(table, { tables: true })).toBe(
+      '<table><tbody>'
+      + '<tr><th><p>Badge</p></th><th><p>Meaning</p></th></tr>'
+      + '<tr><td><p>Draft</p></td><td><p>Being written</p></td></tr>'
+      + '<tr><td><p>Issued</p></td><td><p>Sent to the contractor</p></td></tr>'
+      + '</tbody></table>');
+  });
+
+  it('keeps inline marks inside cells', () => {
+    const html = markdownToHtml('| **Draft** | see `spec` |\n|---|---|\n| a | b |',
+      { tables: true });
+    expect(html).toContain('<th><p><strong>Draft</strong></p></th>');
+    expect(html).toContain('<th><p>see <code>spec</code></p></th>');
+  });
+
+  it('pads a ragged row rather than dropping its content', () => {
+    // A missing trailing pipe is a typo; losing the row over it would be the
+    // worst outcome available here.
+    const html = markdownToHtml('| a | b | c |\n|---|---|---|\n| 1 | 2 |', { tables: true });
+    expect(html).toContain('<tr><td><p>1</p></td><td><p>2</p></td><td><p></p></td></tr>');
+  });
+
+  it('puts each row on its own line where the target has no table node', () => {
+    // The default. Before this every row was joined into ONE paragraph, and a
+    // table arrived as a single unreadable line of pipes.
+    expect(markdownToHtml(table)).toBe(
+      '<p>| Badge | Meaning |</p>'
+      + '<p>| Draft | Being written |</p>'
+      + '<p>| Issued | Sent to the contractor |</p>');
+  });
+
+  it('carries on with the text after a table', () => {
+    expect(markdownToHtml(table + '\n\nAfter.', { tables: true }))
+      .toContain('</table><p>After.</p>');
+    expect(markdownToHtml(table + '\n\nAfter.')).toContain('<p>After.</p>');
+  });
+
+  it('does not read a lone pipe in prose as a table', () => {
+    const prose = 'Use grep | head to see the first lines.';
+    expect(markdownToHtml(prose, { tables: true })).toBe('<p>' + prose + '</p>');
+    expect(isTableRow(prose)).toBe(true);   // loose on its own...
+    expect(isTableDelimiter('to see the first lines.')).toBe(false);  // ...the delimiter decides
+  });
+
+  it('recognises a pasted table as markdown at all', () => {
+    // Without this the paste is left alone and the pipes stay pipes, whatever
+    // the converter could have done with them.
+    expect(looksLikeMarkdown(table)).toBe(true);
+    expect(looksLikeMarkdown('Use grep | head to see the first lines.')).toBe(false);
   });
 });
