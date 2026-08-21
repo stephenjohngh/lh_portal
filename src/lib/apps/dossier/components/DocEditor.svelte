@@ -36,9 +36,27 @@
    * `app:*` wholesale, and a line per selection change would drown ordinary
    * work. This is a thing you turn on to catch one fault and turn off again.
    */
-  const DEBUG_SELECTION = typeof localStorage !== 'undefined'
-    && (() => { try { return localStorage.getItem('dossier.debugSelection') === 'on'; }
-                catch { return false; } })();
+  const DEBUG_SELECTION = (() => {
+    try {
+      // Tolerant of how it was set. Typing the value into the DevTools storage
+      // editor often keeps the quote characters, and "on" is not on.
+      const raw = String(localStorage.getItem('dossier.debugSelection') ?? '')
+        .trim().replace(/^["']|["']$/g, '').toLowerCase();
+      return ['on', '1', 'true', 'yes'].includes(raw);
+    } catch { return false; }
+  })();
+
+  /**
+   * Also switchable without a reload:  window.dossierDebugSelection = true
+   *
+   * The localStorage flag is read when this module is first imported, which
+   * happens the moment a page is opened — so setting it and NOT reloading looks
+   * exactly like the diagnostics being broken. This is the escape hatch.
+   */
+  function debugOn() {
+    return DEBUG_SELECTION
+      || (typeof globalThis !== 'undefined' && globalThis.dossierDebugSelection === true);
+  }
 
   /** A DOM node in one short string — enough to tell padding from prose. */
   function describe(node) {
@@ -49,8 +67,14 @@
   }
 
   function dbg(event, detail) {
-    if (!DEBUG_SELECTION) return;
+    if (!debugOn()) return;
     console.log(`[dossier/selection] ${event}`, detail ?? '');
+  }
+
+  // Say so at load, so "I turned it on and saw nothing" is answerable.
+  if (DEBUG_SELECTION && typeof console !== 'undefined') {
+    console.log('[dossier/selection] diagnostics ON — open a page and edit it. '
+      + "Off again: localStorage.removeItem('dossier.debugSelection'); location.reload();");
   }
 </script>
 
