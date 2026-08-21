@@ -284,20 +284,59 @@
   }
 
   /**
-   * Preview's scrolling surface, and the page it was last reset for.
+   * Preview keeps its own place per page, the way the editor does.
    *
-   * Guarded on the id rather than on the doc object: every `$:` that depends on
-   * an object re-runs on every parent update, and this one moves the reader.
+   * A separate map from the editor's: the same page is a different height in
+   * the two modes, so one offset cannot serve both.
+   *
+   * Guarded on the id rather than on the doc object — every `$:` that depends
+   * on an object re-runs on every parent update, and this one moves the reader.
+   * Keyed off selectedId rather than done inside selectPage() because six
+   * different things open a page (the tree, a backlink, a search hit, a
+   * cross-link in the text, a delete falling back to a sibling) and the
+   * variable they all assign is the only thing common to them.
    */
   let previewEl;
-  let scrolledFor = null;
-  $: if (selectedId !== scrolledFor) {
-    scrolledFor = selectedId;
-    // Keyed off selectedId rather than done inside selectPage() because six
-    // different things open a page — the tree, a backlink, a search hit, a
-    // cross-link in the text, a delete falling back to a sibling — and only the
-    // variable they all assign is common to them.
-    tick().then(() => { if (previewEl) previewEl.scrollTop = 0; });
+  let previewShownFor = null;
+  /** @type {Map<string, number>} */
+  const previewScroll = new Map();
+  /** Set when something is about to scroll to a particular block instead. */
+  let skipPreviewRestore = false;
+
+  $: if (selectedId !== previewShownFor) {
+    const leaving = previewShownFor;
+    previewShownFor = selectedId;
+    // A `$:` runs before the DOM is patched, so the surface still shows the
+    // outgoing page here and its offset is the one worth keeping.
+    if (leaving && previewEl) previewScroll.set(leaving, previewEl.scrollTop);
+
+    const target = skipPreviewRestore ? 0 : (previewScroll.get(selectedId) ?? 0);
+    skipPreviewRestore = false;
+    tick().then(() => { if (previewEl) previewEl.scrollTop = target; });
+  }
+
+  /** Both surfaces: open the next page at a block, not where we last were. */
+  function skipScrollRestoreOnce() {
+    skipPreviewRestore = true;
+    editorRef?.skipScrollRestoreOnce();
+  }
+
+  /**
+   * Preview and back keeps its place too.
+   *
+   * Toggling the mode swaps one surface for the other without changing the
+   * page, so the guard above never fires. The editor handles its own side of
+   * this on destroy and on mount, since it is torn down and rebuilt each time.
+   */
+  let previewedMode = false;
+  $: if (previewing !== previewedMode) {
+    previewedMode = previewing;
+    if (!previewing && previewEl && selectedId) {
+      previewScroll.set(selectedId, previewEl.scrollTop);
+    } else if (previewing && selectedId) {
+      const target = previewScroll.get(selectedId) ?? 0;
+      tick().then(() => { if (previewEl) previewEl.scrollTop = target; });
+    }
   }
 
   /**
@@ -309,6 +348,9 @@
     notice = '';
     if (result.kind === 'page') {
       await editorRef?.flushNow();
+      // A hit names a block, so neither surface should restore the place the
+      // author last had on that page — the reveal below is the destination.
+      if (result.blockUid) skipScrollRestoreOnce();
       selectPage(result.docId);
       // The same reveal the recipient gets. The editor's DOM carries `data-uid`
       // too — the BlockId extension writes it — so one helper serves both.

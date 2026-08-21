@@ -7,6 +7,27 @@
           content can never be written onto page B.
        2. Programmatic content loading never counts as an edit, so merely
           opening a page does not mark it dirty or trigger a write. -->
+<script context="module">
+  /**
+   * Where the author was on each page, for as long as the tab is open.
+   *
+   * Someone editing works between a few pages and goes back and forth; losing
+   * their place every time was the cost of one editor instance serving them
+   * all — an instance that exists so the outgoing page's save can be flushed.
+   *
+   * At MODULE scope, not component scope, because toggling Preview destroys
+   * this component and builds a new one: a per-instance map would be emptied
+   * every time the author looked at what they had written.
+   *
+   * In memory rather than in localStorage on purpose. An offset only means
+   * anything against the content it was measured on, so a stored one would come
+   * back stale after any edit — including somebody else's.
+   *
+   * @type {Map<string, number>}
+   */
+  const scrollByDoc = new Map();
+</script>
+
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { writable } from 'svelte/store';
@@ -106,11 +127,26 @@
   $: if (ready && doc && doc.id !== loadedDocId) swapDoc(doc);
   $: editor?.setEditable(editable);
 
-  /** The scrolling surface, so a new page can start at its top. */
+  /** The scrolling surface. */
   let surfaceEl;
+
+
+  /** Set when the caller is about to scroll somewhere specific itself. */
+  let skipRestore = false;
+
+  /**
+   * Open the next page WITHOUT restoring its remembered place.
+   *
+   * For a deep link or a search hit, where the destination is a particular
+   * block rather than wherever the author last was.
+   */
+  export function skipScrollRestoreOnce() { skipRestore = true; }
 
   async function swapDoc(next) {
     const nextId = next.id;
+    // The outgoing page's place, read before anything awaits and before the
+    // content is replaced — at this point the surface still holds it.
+    if (loadedDocId && surfaceEl) scrollByDoc.set(loadedDocId, surfaceEl.scrollTop);
     // Flush the OUTGOING doc first, using its own id — never write A onto B.
     if (pendingFor && pendingFor !== nextId) await flush();
 
@@ -124,16 +160,24 @@
     // installed Tiptap version treats the emitUpdate option.
     swapping = false;
 
-    // A new page starts at its top. One editor instance serves every page (it
-    // has to, so the outgoing page's save can be flushed), so the surface keeps
-    // whatever scroll the LAST page left behind — which lands the reader
-    // half-way down a page they have never seen, or past the end of a short
-    // one. The published reader has always done this; only the workspace had
-    // not. A reveal — a deep link, or a search hit — scrolls afterwards and so
-    // still wins: the workspace flushes this editor before it changes the page,
-    // so the `await flush()` above is skipped and everything from there down
-    // runs synchronously, ahead of the reveal's own frame.
-    if (surfaceEl) surfaceEl.scrollTop = 0;
+    // Back to where this page was left, or its top the first time it is seen.
+    // One editor instance serves every page, so without this the surface simply
+    // keeps whatever scroll the LAST page left behind — landing the author
+    // half-way down a page they have never opened, or past the end of a short
+    // one.
+    const target = skipRestore ? 0 : (scrollByDoc.get(nextId) ?? 0);
+    skipRestore = false;
+    if (surfaceEl) {
+      surfaceEl.scrollTop = target;
+      // Again next frame. setContent lays out synchronously, but an image or an
+      // embed that has not loaded yet changes the height afterwards, and a
+      // scrollTop set against the short version was silently clamped. Skipped
+      // when the target is 0, where there is nothing to clamp and a second
+      // assignment could only fight a reveal.
+      if (target > 0) {
+        requestAnimationFrame(() => { if (surfaceEl) surfaceEl.scrollTop = target; });
+      }
+    }
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -161,6 +205,14 @@
     });
     loadedDocId = doc?.id ?? null;
     ready = true;
+
+    // A fresh instance — first open, or coming back from Preview — starts where
+    // this page was left. swapDoc does it for every later page change, but it
+    // never runs for the page the editor is BUILT with.
+    const target = scrollByDoc.get(loadedDocId) ?? 0;
+    if (target > 0) {
+      requestAnimationFrame(() => { if (surfaceEl) surfaceEl.scrollTop = target; });
+    }
   });
 
   onDestroy(() => {
@@ -168,6 +220,9 @@
     // than an unobserved promise.
     if (pendingFor) flush();
     clearTimeout(timer);
+    // Remember the place before the surface goes. This is what makes Preview
+    // and back land where the author was rather than at the top.
+    if (loadedDocId && surfaceEl) scrollByDoc.set(loadedDocId, surfaceEl.scrollTop);
     editor?.destroy();
   });
 
