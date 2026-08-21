@@ -20,7 +20,7 @@ import { Asset }   from './assetNode.js';
 import { DocLink } from './docLinkMark.js';
 import { EmbedDoc } from './embedDocNode.js';
 import { EmbedDataset } from './embedDatasetNode.js';
-import { MarkdownPaste } from './markdownPasteExtension.js';
+import { MarkdownPaste } from '$lib/utils/markdownPasteExtension.js';
 
 /** An empty ProseMirror doc — matches the DB default on dossier_docs.blocks. */
 export const EMPTY_DOC = { type: 'doc', content: [] };
@@ -127,7 +127,8 @@ export function buildExtensions({
  * @param {Parameters<typeof buildExtensions>[0]} [opts]
  */
 export function editorExtensions(opts = {}) {
-  return [...buildExtensions(opts), MarkdownPaste];
+  // internalLinks: a pack HAS other pages, so `[x](./overview.md)` means one.
+  return [...buildExtensions(opts), MarkdownPaste.configure({ internalLinks: true })];
 }
 
 /**

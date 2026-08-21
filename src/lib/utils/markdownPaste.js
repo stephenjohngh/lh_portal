@@ -1,9 +1,17 @@
-// src/lib/apps/dossier/utils/markdownPaste.js
-// Understanding markdown pasted into a page — pure, Type-1 testable, no DOM.
+// src/lib/utils/markdownPaste.js
+// Understanding markdown pasted into an editor — pure, Type-1 testable, no DOM.
 //
-// The other half of the archive. utils/packArchive.js writes a pack's pages out
-// as markdown; this reads them back, so a page can be lifted out of a zip and
-// dropped into a new pack without losing its headings, lists and emphasis.
+// Written for Dossier, where it is the other half of the archive:
+// dossier/utils/packArchive.js writes a pack's pages out as markdown and this
+// reads them back, so a page can be lifted out of a zip and dropped into a new
+// pack without losing its headings, lists and emphasis.
+//
+// It lives in shared utils because the need is not Dossier's. Anyone who keeps
+// notes in markdown — and pastes them into a comment, a note, an issue — hits
+// the same wall of literal asterisks. The one Dossier-specific behaviour,
+// links between pages of the same pack, is behind the `internalLinks` option
+// and OFF by default: outside a pack there is no page for `./overview.md` to
+// mean.
 //
 // ── Why a parser here rather than a markdown dependency ─────────────────────
 // It only has to understand the subset we EMIT — headings, lists, quotes, code
@@ -21,6 +29,23 @@
 
 /** Schema allows h1–h3; deeper headings clamp rather than disappear. */
 const MAX_HEADING = 3;
+
+/**
+ * Which heading tag a run of #s becomes.
+ *
+ * `minHeading` shifts the whole scale down for targets whose top level is not
+ * h1 — a comment box, where the comment is the top level and an h1 inside it
+ * would shout. Shifting rather than clamping keeps the document's own
+ * hierarchy: `#` and `##` stay one step apart.
+ *
+ * Anything past the bottom clamps rather than disappearing. A heading rendered
+ * one size too small is a blemish; a heading dropped by the schema takes its
+ * text with it.
+ */
+function headingLevel(hashes, { minHeading = 1 } = {}) {
+  const floor = Math.min(Math.max(minHeading, 1), MAX_HEADING);
+  return Math.min(MAX_HEADING, hashes + floor - 1);
+}
 
 export function escapeHtml(value) {
   return String(value ?? '')
@@ -83,7 +108,7 @@ export function internalSlug(raw) {
  * a code span is literal — marking it up would corrupt exactly the text a
  * reader was trying to quote verbatim.
  */
-export function inlineMarkdown(escaped) {
+export function inlineMarkdown(escaped, { internalLinks = false } = {}) {
   const held = [];
   let text = String(escaped ?? '').replace(/`([^`]+)`/g, (_, code) => {
     held.push(`<code>${code}</code>`);
@@ -103,7 +128,11 @@ export function inlineMarkdown(escaped) {
       // Deliberately NO href: StarterKit's link mark parses `a[href]`, so an
       // anchor carrying both would be ambiguous between the two marks. The
       // docLink mark writes its own href when it renders.
-      const slug = internalSlug(href);
+      //
+      // Only where the paste target HAS other pages. In a comment box
+      // `./overview.md` names nothing, and emitting an anchor no schema
+      // recognises would drop the label's formatting for no gain.
+      const slug = internalLinks ? internalSlug(href) : null;
       if (slug) return `<a data-doc-slug="${escapeHtml(slug)}">${label}</a>`;
 
       const url = safeHref(href);
@@ -137,7 +166,7 @@ function indentOf(line) {
  * @param {string} markdown
  * @returns {string}
  */
-export function markdownToHtml(markdown) {
+export function markdownToHtml(markdown, options = {}) {
   const lines = String(markdown ?? '').replace(/\r\n?/g, '\n').split('\n');
   const out = [];
 
@@ -155,12 +184,12 @@ export function markdownToHtml(markdown) {
 
   const closeParagraph = () => {
     if (!paragraph.length) return;
-    out.push(`<p>${inlineMarkdown(escapeHtml(paragraph.join(' ')))}</p>`);
+    out.push(`<p>${inlineMarkdown(escapeHtml(paragraph.join(' ')), options)}</p>`);
     paragraph = [];
   };
   const closeQuote = () => {
     if (!quote.length) return;
-    out.push(`<blockquote><p>${inlineMarkdown(escapeHtml(quote.join(' ')))}</p></blockquote>`);
+    out.push(`<blockquote><p>${inlineMarkdown(escapeHtml(quote.join(' ')), options)}</p></blockquote>`);
     quote = [];
   };
   const closeLists = (toDepth = -1) => {
@@ -212,8 +241,8 @@ export function markdownToHtml(markdown) {
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (heading) {
       closeAll();
-      const level = Math.min(MAX_HEADING, heading[1].length);
-      out.push(`<h${level}>${inlineMarkdown(escapeHtml(heading[2]))}</h${level}>`);
+      const level = headingLevel(heading[1].length, options);
+      out.push(`<h${level}>${inlineMarkdown(escapeHtml(heading[2]), options)}</h${level}>`);
       continue;
     }
 
@@ -246,7 +275,7 @@ export function markdownToHtml(markdown) {
         out.push(`</${listStack.pop().tag}>`, `<${tag}>`);
         listStack.push({ tag, depth });
       }
-      out.push(`<li><p>${inlineMarkdown(escapeHtml(match[2]))}</p></li>`);
+      out.push(`<li><p>${inlineMarkdown(escapeHtml(match[2]), options)}</p></li>`);
       continue;
     }
     closeLists();

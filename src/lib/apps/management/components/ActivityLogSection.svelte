@@ -665,6 +665,7 @@
         value={editingActivity.body}
         placeholder={editTypeConfig.placeholder}
         ringClass={editTypeConfig.ringClass}
+        markdown={true}
         on:change={(e) => { editingActivity = { ...editingActivity, body: e.detail }; }}
       />
 

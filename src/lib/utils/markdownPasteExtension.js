@@ -1,4 +1,4 @@
-// src/lib/apps/dossier/utils/markdownPasteExtension.js
+// src/lib/utils/markdownPasteExtension.js
 // Paste markdown and get a page, not a wall of asterisks.
 //
 // Editing only. The read renderer never installs this — there is nothing to
@@ -12,6 +12,14 @@
 //     prose somebody meant literally is the irritating failure mode, and it is
 //     harder to recover from than a paste that stayed plain.
 //   * The cursor is inside a code block. Markdown pasted into code is code.
+//
+// ── The target's schema decides what survives ───────────────────────────────
+// This produces headings, quotes, code blocks and rules whether or not the
+// editor it is installed in can hold them: ProseMirror drops nodes its schema
+// does not define. An editor that turns this on should therefore ENABLE the
+// nodes markdown produces, or accept that pasting a document flattens it —
+// see common/RichTextEditor.svelte, which does the former behind its
+// `markdown` prop.
 
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
@@ -20,8 +28,24 @@ import { looksLikeMarkdown, markdownToHtml } from './markdownPaste.js';
 export const MarkdownPaste = Extension.create({
   name: 'markdownPaste',
 
+  addOptions() {
+    return {
+      /**
+       * Treat `[label](./page.md)` as a link to another page of the same pack.
+       * Dossier only — elsewhere there is no page for it to name.
+       */
+      internalLinks: false,
+      /**
+       * The heading level a single `#` becomes. Raise it where the editor's
+       * schema starts lower than h1 — see RichTextEditor's `levels: [2, 3]`.
+       */
+      minHeading: 1,
+    };
+  },
+
   addProseMirrorPlugins() {
     const editor = this.editor;
+    const options = this.options;
 
     return [
       new Plugin({
@@ -44,7 +68,7 @@ export const MarkdownPaste = Extension.create({
               if ($from.node(depth).type.name === 'codeBlock') return false;
             }
 
-            const html = markdownToHtml(text);
+            const html = markdownToHtml(text, options);
             if (!html) return false;
 
             event.preventDefault();

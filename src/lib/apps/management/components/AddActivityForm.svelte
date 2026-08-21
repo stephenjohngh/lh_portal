@@ -281,6 +281,7 @@
     placeholder={newTypeConfig.placeholder}
     ringClass={newTypeConfig.ringClass}
     onPaste={handleBodyPasteForEditor}
+    markdown={true}
     on:change={(e) => { newActivity = { ...newActivity, body: e.detail }; }}
   />
 

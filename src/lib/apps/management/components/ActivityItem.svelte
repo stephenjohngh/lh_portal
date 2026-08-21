@@ -292,6 +292,7 @@
       placeholder={editTypeConfig.placeholder}
       ringClass={editTypeConfig.ringClass}
       onPaste={handleBodyPasteForEditor}
+      markdown={true}
       on:change={(e) => { editingActivity = { ...editingActivity, body: e.detail }; }}
     />
 

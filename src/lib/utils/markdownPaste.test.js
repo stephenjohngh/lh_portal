@@ -1,4 +1,4 @@
-// src/lib/apps/dossier/utils/markdownPaste.test.js
+// src/lib/utils/markdownPaste.test.js
 // Reading markdown back into a page — the other half of the archive.
 //
 // The round trip is the point: what packArchive.js writes out, this reads back.
@@ -8,7 +8,11 @@ import { describe, it, expect } from 'vitest';
 import {
   markdownToHtml, inlineMarkdown, escapeHtml, looksLikeMarkdown, internalSlug,
 } from './markdownPaste.js';
-import { blocksToMarkdown } from './packArchive.js';
+import { blocksToMarkdown } from '$lib/apps/dossier/utils/packArchive.js';
+
+// Pack-internal links are opt-in: only Dossier has other pages for
+// `./overview.md` to name, so the tests that want them ask for them.
+const inPack = { internalLinks: true };
 
 describe('markdownToHtml — blocks', () => {
   it('reads headings, clamping to what the schema allows', () => {
@@ -181,7 +185,7 @@ describe('markdownToHtml — cross-links', () => {
   it('turns an internal link into a docLink anchor, by SLUG', () => {
     // Pasted text cannot know a doc id. A slug is the durable address anyway —
     // a page's slug survives a rename by design.
-    expect(markdownToHtml('see the [chronology](./chronology.md)'))
+    expect(markdownToHtml('see the [chronology](./chronology.md)', inPack))
       .toBe('<p>see the <a data-doc-slug="chronology">chronology</a></p>');
   });
 
@@ -306,7 +310,7 @@ describe('the round trip', () => {
       }],
     }] };
 
-    const html = markdownToHtml(blocksToMarkdown(linked));
+    const html = markdownToHtml(blocksToMarkdown(linked), inPack);
     expect(html).toBe('<p><a data-doc-slug="detail">the detail</a></p>');
   });
 
@@ -322,5 +326,49 @@ describe('the round trip', () => {
     const html = markdownToHtml(blocksToMarkdown(callout));
     expect(html).toContain('Deadline Friday');
     expect(html).toContain('<blockquote>');
+  });
+});
+
+describe('markdownToHtml — outside a pack', () => {
+  // The default, and what every editor other than Dossier gets.
+
+  it('leaves a pack-style link as plain text rather than a dangling anchor', () => {
+    // `./chronology.md` names nothing in a comment box. An anchor no schema
+    // recognises would be dropped along with the label's formatting, so the
+    // label is kept and the link is not.
+    expect(markdownToHtml('see the [chronology](./chronology.md)'))
+      .toBe('<p>see the chronology</p>');
+  });
+
+  it('still links a real URL', () => {
+    expect(markdownToHtml('see [the guidance](https://gov.uk/x)'))
+      .toBe('<p>see <a href="https://gov.uk/x" rel="noopener noreferrer">the guidance</a></p>');
+  });
+});
+
+describe('markdownToHtml — heading levels follow the target schema', () => {
+  // A comment box starts at h2 (RichTextEditor: levels [2, 3]), because the
+  // comment itself is the top level. Emitting an h1 there would be dropped by
+  // the schema, taking the heading's text with it.
+
+  it('starts at h1 by default', () => {
+    expect(markdownToHtml('# Top')).toBe('<h1>Top</h1>');
+    expect(markdownToHtml('## Next')).toBe('<h2>Next</h2>');
+  });
+
+  it('shifts the whole scale down when the target starts lower', () => {
+    expect(markdownToHtml('# Top', { minHeading: 2 })).toBe('<h2>Top</h2>');
+    expect(markdownToHtml('## Next', { minHeading: 2 })).toBe('<h3>Next</h3>');
+  });
+
+  it('clamps past the bottom rather than dropping the line', () => {
+    // A heading one size too small is a blemish; a heading the schema refuses
+    // takes its text with it.
+    expect(markdownToHtml('#### Deep', { minHeading: 2 })).toBe('<h3>Deep</h3>');
+    expect(markdownToHtml('###### Deeper', { minHeading: 2 })).toBe('<h3>Deeper</h3>');
+  });
+
+  it('refuses a nonsensical floor rather than emitting an h0', () => {
+    expect(markdownToHtml('# Top', { minHeading: 0 })).toBe('<h1>Top</h1>');
   });
 });

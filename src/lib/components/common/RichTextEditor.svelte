@@ -19,6 +19,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
+  import { MarkdownPaste } from '$lib/utils/markdownPasteExtension.js';
   // Link is bundled into StarterKit v3 — configured via its `link` option below.
 
   export let value       = '';
@@ -33,6 +34,24 @@
    * @type {((rawText: string) => string | null | undefined) | null}
    */
   export let onPaste = null;
+
+  /**
+   * Understand markdown when it is pasted in.
+   *
+   * Someone who keeps notes in markdown pastes them into a comment box and gets
+   * a wall of asterisks. With this on, `## Heading` and `- item` arrive as a
+   * heading and a list.
+   *
+   * It also ENABLES the nodes markdown produces — headings, quotes, code
+   * blocks, rules, strikethrough — which this editor otherwise turns off.
+   * Without that the paste converts and ProseMirror then drops what its schema
+   * cannot hold, which is worse than not converting: the text goes too.
+   *
+   * The toolbar does not grow buttons for them. They arrive by paste, they
+   * render, they save (the sanitiser has always allowed these tags) — but
+   * writing a heading by hand is not what a comment box is for.
+   */
+  export let markdown = false;
 
   const dispatch = createEventDispatcher();
 
@@ -95,12 +114,17 @@
         StarterKit.configure({
           // Keep: bold, italic, underline, bulletList, orderedList,
           //       hardBreak, history, paragraph, text, document
-          heading:        false,
-          blockquote:     false,
-          codeBlock:      false,
-          horizontalRule: false,
-          strike:         false,
-          code:           false,
+          //
+          // The rest are off because the toolbar does not offer them — except
+          // when `markdown` is set, where a paste can produce them and the
+          // schema has to be able to hold what it produces. h1 is still off:
+          // the top level of a comment is the comment.
+          heading:        markdown ? { levels: [2, 3] } : false,
+          blockquote:     markdown,
+          codeBlock:      markdown,
+          horizontalRule: markdown,
+          strike:         markdown,
+          code:           markdown,
           // Link ships inside StarterKit v3 — configure it here rather than
           // registering @tiptap/extension-link separately (which duplicates it).
           link: {
@@ -115,6 +139,13 @@
             },
           },
         }),
+        // After StarterKit, and only when asked for: it reads the clipboard
+        // before Tiptap's own handler but after editorProps.handlePaste below,
+        // which is the order that matters — an email paste in an email
+        // activity is not a markdown paste.
+        // minHeading 2 to match `levels: [2, 3]` above — a converted `#`
+        // must be a tag this schema can hold, or the line is dropped.
+        ...(markdown ? [MarkdownPaste.configure({ minHeading: 2 })] : []),
       ],
       content: initContent(value),
       editorProps: {
@@ -419,6 +450,58 @@
     text-decoration: underline;
     text-underline-offset: 2px;
   }
+  /* Only reachable with `markdown` set — pasted, never typed. Sized close to
+     body text: this is a comment, and a pasted heading should organise it, not
+     dominate the thread it sits in. */
+  :global(.rte-prosemirror h2),
+  :global(.rte-prosemirror h3) {
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0.75em 0 0.35em;
+    line-height: 1.3;
+  }
+  :global(.rte-prosemirror h2) { font-size: 1.05em; }
+  :global(.rte-prosemirror h3) { font-size: 0.95em; }
+
+  :global(.rte-prosemirror blockquote) {
+    border-left: 2px solid #475569;
+    padding-left: 0.75em;
+    margin: 0.5em 0;
+    color: #cbd5e1;
+  }
+
+  :global(.rte-prosemirror pre) {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 0.25rem;
+    padding: 0.5em 0.65em;
+    margin: 0.5em 0;
+    overflow-x: auto;
+    font-size: 0.85em;
+  }
+  :global(.rte-prosemirror code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+  }
+  /* An inline code span needs the chip; one inside a fence already has the
+     block's background and would otherwise draw a box inside a box. */
+  :global(.rte-prosemirror :not(pre) > code) {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 0.2rem;
+    padding: 0.05em 0.3em;
+  }
+
+  :global(.rte-prosemirror hr) {
+    border: 0;
+    border-top: 1px solid #475569;
+    margin: 0.85em 0;
+  }
+
+  :global(.rte-prosemirror s) {
+    text-decoration: line-through;
+  }
+
   :global(.rte-prosemirror a.rte-link) {
     color: #7dd3cc;           /* teal-300 — visible on dark bg */
     text-decoration: underline;

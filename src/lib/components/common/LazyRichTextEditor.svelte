@@ -17,6 +17,8 @@
   export let ringClass   = 'focus-within:ring-teal-500/50';
   /** @type {((rawText: string) => string | null | undefined) | null} */
   export let onPaste     = null;
+  /** Understand pasted markdown — see RichTextEditor. */
+  export let markdown    = false;
 
   const dispatch = createEventDispatcher();
 
@@ -40,6 +42,7 @@
     {placeholder}
     {ringClass}
     {onPaste}
+    {markdown}
     on:change={handleChange}
   />
 {:else}
