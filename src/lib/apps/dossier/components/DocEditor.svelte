@@ -26,6 +26,32 @@
    * @type {Map<string, number>}
    */
   const scrollByDoc = new Map();
+
+  /**
+   * Selection diagnostics — off unless asked for.
+   *
+   *   localStorage.setItem('dossier.debugSelection', 'on'); location.reload();
+   *
+   * Deliberately NOT on the `debug` namespace logger: dev builds enable
+   * `app:*` wholesale, and a line per selection change would drown ordinary
+   * work. This is a thing you turn on to catch one fault and turn off again.
+   */
+  const DEBUG_SELECTION = typeof localStorage !== 'undefined'
+    && (() => { try { return localStorage.getItem('dossier.debugSelection') === 'on'; }
+                catch { return false; } })();
+
+  /** A DOM node in one short string — enough to tell padding from prose. */
+  function describe(node) {
+    if (!node) return 'none';
+    if (node.nodeType === 3) return `text("${String(node.textContent).slice(0, 20)}")`;
+    const cls = typeof node.className === 'string' ? node.className.split(/\s+/)[0] : '';
+    return `${node.tagName?.toLowerCase() ?? '?'}${cls ? '.' + cls : ''}`;
+  }
+
+  function dbg(event, detail) {
+    if (!DEBUG_SELECTION) return;
+    console.log(`[dossier/selection] ${event}`, detail ?? '');
+  }
 </script>
 
 <script>
@@ -102,6 +128,7 @@
     if (!docId || !editor) return;
 
     pendingFor = null;
+    dbg('save flush', { docId });
     const blocks = editor.getJSON();
     saving = true;
     saveError = '';
@@ -145,6 +172,7 @@
 
   async function swapDoc(next) {
     const nextId = next.id;
+    dbg('page swap', { from: loadedDocId, to: nextId });
     // The outgoing page's place, read before anything awaits and before the
     // content is replaced — at this point the surface still holds it.
     if (loadedDocId && surfaceEl) scrollByDoc.set(loadedDocId, surfaceEl.scrollTop);
@@ -168,6 +196,7 @@
     // one.
     const target = skipRestore ? 0 : (scrollByDoc.get(nextId) ?? 0);
     skipRestore = false;
+    dbg('scroll restore', { target, skipRestore });
     if (surfaceEl) {
       surfaceEl.scrollTop = target;
       // Again next frame. setContent lays out synchronously, but an image or an
@@ -199,8 +228,20 @@
       // at the NEAREST line on click rather than always jumping to the end.
       editorProps: { attributes: { class: 'dossier-prose dossier-prose-editing' } },
       onUpdate: () => {
+        // A CONTENT change. If one of these appears while merely selecting,
+        // something is rewriting the document underneath the selection.
+        dbg('content changed', { swapping });
         if (swapping) return;
         scheduleSave(loadedDocId);
+      },
+      onSelectionUpdate: ({ editor: e }) => {
+        const sel = e.state.selection;
+        dbg('selection', {
+          from: sel.from, to: sel.to,
+          empty: sel.empty,
+          docEnd: e.state.doc.content.size,
+          atEnd: sel.to >= e.state.doc.content.size - 1,
+        });
       },
       onTransaction: () => { editor = editor; },   // re-render toolbar state
     });
@@ -378,6 +419,12 @@
 
   function notePress(event) {
     pressedOnPadding = event.target === event.currentTarget;
+    dbg('mousedown', {
+      target: describe(event.target),
+      onPadding: pressedOnPadding,
+      button: event.button,
+      detail: event.detail,          // 2 = double-click, 3 = triple
+    });
   }
 
   /**
@@ -391,13 +438,18 @@
 
     const selection = typeof window === 'undefined' ? null : window.getSelection();
 
-    if (!shouldFocusEnd({
+    const inputs = {
       editable,
       onPadding: event.target === event.currentTarget,
       beganOnPadding: beganHere,
       selectionCollapsed: !selection || selection.isCollapsed,
-    })) return;
+    };
+    const decision = shouldFocusEnd(inputs);
+    dbg('click', { ...inputs, target: describe(event.target), focusEnd: decision });
 
+    if (!decision) return;
+
+    dbg('focus(end) ← this moved the cursor');
     editor?.commands.focus('end');
   }
 
