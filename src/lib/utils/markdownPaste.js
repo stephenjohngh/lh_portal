@@ -231,6 +231,16 @@ export function markdownToHtml(markdown, options = {}) {
   const listStack = [];
   let paragraph = [];
   let quote = [];
+  /**
+   * The list item currently open, as its lines.
+   *
+   * Held rather than emitted at once so a wrapped item can be completed. A
+   * markdown author wraps a long bullet across several source lines and means
+   * ONE bullet; emitting on sight made every continuation line into a
+   * paragraph after the list, which is what a pasted document looked like when
+   * anything ran past the margin.
+   */
+  let item = null;
   let fence = null;
   /**
    * Consecutive blank lines seen. The FIRST separates two blocks; every one
@@ -262,7 +272,13 @@ export function markdownToHtml(markdown, options = {}) {
     out.push(`<blockquote>${inner || '<p></p>'}</blockquote>`);
     quote = [];
   };
+  const closeItem = () => {
+    if (!item) return;
+    out.push(`<li><p>${inlineMarkdown(escapeHtml(item.join(' ')), options)}</p></li>`);
+    item = null;
+  };
   const closeLists = (toDepth = -1) => {
+    closeItem();
     while (listStack.length && listStack[listStack.length - 1].depth > toDepth) {
       out.push(`</${listStack.pop().tag}>`);
     }
@@ -379,9 +395,16 @@ export function markdownToHtml(markdown, options = {}) {
         out.push(`</${listStack.pop().tag}>`, `<${tag}>`);
         listStack.push({ tag, depth });
       }
-      out.push(`<li><p>${inlineMarkdown(escapeHtml(match[2]), options)}</p></li>`);
+      item = [match[2]];
       continue;
     }
+
+    // Anything else while an item is open continues it. Every line that starts
+    // a block of its own — heading, quote, rule, fence, table, another bullet —
+    // has already been dealt with above, so what reaches here is the rest of
+    // the sentence the author wrapped.
+    if (item) { item.push(line.trim()); continue; }
+
     closeLists();
 
     paragraph.push(line.trim());

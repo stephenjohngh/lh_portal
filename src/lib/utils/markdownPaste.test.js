@@ -504,3 +504,56 @@ describe('a quote holds markdown, not just prose', () => {
       .toBe('<blockquote><p>| A | B |</p><p>| 1 | 2 |</p></blockquote>');
   });
 });
+
+describe('a wrapped list item is one item', () => {
+  // A markdown author wraps a long bullet across several source lines and means
+  // ONE bullet. Emitting the item on sight made every continuation line into a
+  // paragraph AFTER the list — which is what a pasted document looked like the
+  // moment anything ran past the margin.
+
+  it('joins the continuation lines into the item', () => {
+    const md = [
+      '- You need **Building Assets** in your app switcher, and you must be an',
+      '  **admin**. The tab is visible to everyone with the app.',
+      '- **Migration 177 must be applied.** Without it the tab loads and then',
+      '  fails the moment it queries `works_schedules`.',
+    ].join('\n');
+
+    const html = markdownToHtml(md);
+    expect(html.match(/<li>/g)).toHaveLength(2);
+    expect(html).toContain('you must be an <strong>admin</strong>. The tab');
+    // Nothing escaped the list into a paragraph of its own.
+    expect(html).not.toContain('</ul><p>');
+  });
+
+  it('continues an item that was not indented', () => {
+    // Lazy continuation: CommonMark allows it, and a reflowed paste loses the
+    // indent anyway.
+    expect(markdownToHtml('- first line\nsecond line'))
+      .toBe('<ul><li><p>first line second line</p></li></ul>');
+  });
+
+  it('ends the item at the next block, whatever kind it is', () => {
+    expect(markdownToHtml('- a\n\n## Heading'))
+      .toBe('<ul><li><p>a</p></li></ul><h2>Heading</h2>');
+    expect(markdownToHtml('- a\n> quoted'))
+      .toBe('<ul><li><p>a</p></li></ul><blockquote><p>quoted</p></blockquote>');
+    expect(markdownToHtml('- a\n---'))
+      .toBe('<ul><li><p>a</p></li></ul><hr>');
+  });
+
+  it('still nests a sub-list rather than continuing the item', () => {
+    expect(markdownToHtml('- top\n  - under\n- next'))
+      .toBe('<ul><li><p>top</p></li><ul><li><p>under</p></li></ul><li><p>next</p></li></ul>');
+  });
+
+  it('starts a paragraph again after the list', () => {
+    expect(markdownToHtml('- a\n\nAfter the list.'))
+      .toBe('<ul><li><p>a</p></li></ul><p>After the list.</p>');
+  });
+
+  it('joins a wrapped item inside a quote too', () => {
+    expect(markdownToHtml('> - wrapped over\n>   two lines'))
+      .toBe('<blockquote><ul><li><p>wrapped over two lines</p></li></ul></blockquote>');
+  });
+});
