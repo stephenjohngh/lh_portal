@@ -118,13 +118,20 @@ export function blocksToMarkdown(blocks, refs = {}) {
         return;
       }
 
-      case 'blockquote':
-        for (const child of node.content ?? []) {
-          const text = inlineText(child);
-          if (text) lines.push(`> ${text}`);
-        }
+      case 'blockquote': {
+        // A quote's contents are blocks, so they are written the same way any
+        // blocks are and then prefixed. Taking inlineText of each child was
+        // enough while a quote only ever held prose; a quoted table or list
+        // flattened into a run of words, which is exactly what the reader
+        // could not put back.
+        const inner = blocksToMarkdown({ type: 'doc', content: node.content ?? [] }, refs);
+        if (!inner) return;
+        // A bare `>` for the quote's own blank lines: with a trailing space
+        // some editors strip it, and the blocks either side merge.
+        for (const line of inner.split('\n')) lines.push(line ? `> ${line}` : '>');
         lines.push('');
         return;
+      }
 
       case 'codeBlock':
         lines.push('```', inlineText(node), '```', '');

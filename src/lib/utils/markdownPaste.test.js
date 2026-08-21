@@ -449,3 +449,58 @@ describe('tables', () => {
     expect(looksLikeMarkdown('Use grep | head to see the first lines.')).toBe(false);
   });
 });
+
+describe('a quote holds markdown, not just prose', () => {
+  // The lines inside a quote have had their `>` removed, so what is left is an
+  // ordinary document. Flattening it into one paragraph was wrong in a way only
+  // tables made visible: the tutorial's own header block is a table inside a
+  // quote, and it arrived as a line of pipes.
+
+  it('renders a table inside a quote', () => {
+    const md = [
+      '> **Scope:** what this covers.',
+      '>',
+      '> | Sections | Covers |',
+      '> |---|---|',
+      '> | 1–2 | Setting up |',
+      '>',
+      '> Read it first.',
+    ].join('\n');
+
+    const html = markdownToHtml(md, { tables: true });
+    expect(html).toContain('<blockquote><p><strong>Scope:</strong> what this covers.</p>');
+    expect(html).toContain('<table><tbody><tr><th><p>Sections</p></th>');
+    expect(html).toContain('<p>Read it first.</p></blockquote>');
+  });
+
+  it('renders a list inside a quote', () => {
+    expect(markdownToHtml('> - a\n> - b'))
+      .toBe('<blockquote><ul><li><p>a</p></li><li><p>b</p></li></ul></blockquote>');
+  });
+
+  it('keeps two quoted paragraphs apart', () => {
+    // A bare `>` is the quote's own blank line: it separates blocks inside the
+    // quote rather than ending it.
+    expect(markdownToHtml('> first\n>\n> second'))
+      .toBe('<blockquote><p>first</p><p>second</p></blockquote>');
+  });
+
+  it('nests a quote inside a quote', () => {
+    // Each level strips one `>`, so the recursion is bounded by the text.
+    expect(markdownToHtml('> outer\n> > inner'))
+      .toBe('<blockquote><p>outer</p><blockquote><p>inner</p></blockquote></blockquote>');
+  });
+
+  it('still joins a plain wrapped quote into one paragraph', () => {
+    // The common case must not change: a quote wrapped across two source lines
+    // is one paragraph, not two.
+    expect(markdownToHtml('> one line\n> continued here'))
+      .toBe('<blockquote><p>one line continued here</p></blockquote>');
+  });
+
+  it('puts quoted table rows on their own lines where there is no table node', () => {
+    const md = '> | A | B |\n> |---|---|\n> | 1 | 2 |';
+    expect(markdownToHtml(md))
+      .toBe('<blockquote><p>| A | B |</p><p>| 1 | 2 |</p></blockquote>');
+  });
+});

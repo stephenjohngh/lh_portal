@@ -244,9 +244,22 @@ export function markdownToHtml(markdown, options = {}) {
     out.push(`<p>${inlineMarkdown(escapeHtml(paragraph.join(' ')), options)}</p>`);
     paragraph = [];
   };
+  /**
+   * A quote's contents are markdown too.
+   *
+   * The collected lines have had their `>` removed, so what is left is an
+   * ordinary document — and the way to read an ordinary document is this
+   * function. Flattening it into one paragraph instead was wrong in a way that
+   * only showed up once tables existed: a table inside a quote came out as a
+   * line of pipes, and so did a list, a heading, or a second paragraph.
+   *
+   * Recursion is bounded by the text: each level strips one `>`, so a quote
+   * inside a quote is strictly shorter than its parent.
+   */
   const closeQuote = () => {
     if (!quote.length) return;
-    out.push(`<blockquote><p>${inlineMarkdown(escapeHtml(quote.join(' ')), options)}</p></blockquote>`);
+    const inner = markdownToHtml(quote.join('\n'), options);
+    out.push(`<blockquote>${inner || '<p></p>'}</blockquote>`);
     quote = [];
   };
   const closeLists = (toDepth = -1) => {
@@ -336,7 +349,8 @@ export function markdownToHtml(markdown, options = {}) {
       continue;
     }
 
-    // ── Blockquote
+    // ── Blockquote. A bare `>` is the quote's own blank line — it separates
+    // blocks INSIDE the quote, so it is kept rather than ending it.
     const blockquote = /^\s*>\s?(.*)$/.exec(line);
     if (blockquote) {
       closeParagraph(); closeLists();

@@ -306,3 +306,52 @@ describe('blocksToMarkdown — tables', () => {
     expect(blocksToMarkdown(doc({ type: 'table', content: [] }))).toBe('');
   });
 });
+
+describe('blocksToMarkdown — quoted blocks', () => {
+  // A quote holds blocks, not just prose. Taking inlineText of each child was
+  // enough while quotes only ever held sentences; a quoted table flattened into
+  // a run of words the reader could not put back.
+  const cell = (tag, text) => ({ type: tag, content: [para(text)] });
+
+  it('keeps a table inside a quote', () => {
+    const md = blocksToMarkdown(doc({ type: 'blockquote', content: [
+      para('Scope: what this covers.'),
+      { type: 'table', content: [
+        { type: 'tableRow', content: [cell('tableHeader', 'Sections'), cell('tableHeader', 'Covers')] },
+        { type: 'tableRow', content: [cell('tableCell', '1–2'), cell('tableCell', 'Setting up')] },
+      ] },
+    ] }));
+
+    expect(md).toBe([
+      '> Scope: what this covers.',
+      '>',
+      '> | Sections | Covers |',
+      '> | --- | --- |',
+      '> | 1–2 | Setting up |',
+    ].join('\n'));
+  });
+
+  it('keeps a list inside a quote', () => {
+    const md = blocksToMarkdown(doc({ type: 'blockquote', content: [
+      { type: 'bulletList', content: [
+        { type: 'listItem', content: [para('first')] },
+        { type: 'listItem', content: [para('second')] },
+      ] },
+    ] }));
+    expect(md).toBe('> - first\n> - second');
+  });
+
+  it('marks the quote\'s own blank line with a bare >', () => {
+    // With a trailing space some editors strip it, and the blocks either side
+    // merge back into one paragraph on re-import.
+    const md = blocksToMarkdown(doc({ type: 'blockquote', content: [
+      para('one'), para('two'),
+    ] }));
+    expect(md).toBe('> one\n>\n> two');
+  });
+
+  it('still writes an ordinary quote as one line per paragraph', () => {
+    expect(blocksToMarkdown(doc({ type: 'blockquote', content: [para('Just prose.')] })))
+      .toBe('> Just prose.');
+  });
+});
