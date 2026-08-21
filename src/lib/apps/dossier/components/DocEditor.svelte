@@ -106,6 +106,9 @@
   $: if (ready && doc && doc.id !== loadedDocId) swapDoc(doc);
   $: editor?.setEditable(editable);
 
+  /** The scrolling surface, so a new page can start at its top. */
+  let surfaceEl;
+
   async function swapDoc(next) {
     const nextId = next.id;
     // Flush the OUTGOING doc first, using its own id — never write A onto B.
@@ -120,6 +123,17 @@
     // Belt and braces: `swapping` guards onUpdate regardless of how the
     // installed Tiptap version treats the emitUpdate option.
     swapping = false;
+
+    // A new page starts at its top. One editor instance serves every page (it
+    // has to, so the outgoing page's save can be flushed), so the surface keeps
+    // whatever scroll the LAST page left behind — which lands the reader
+    // half-way down a page they have never seen, or past the end of a short
+    // one. The published reader has always done this; only the workspace had
+    // not. A reveal — a deep link, or a search hit — scrolls afterwards and so
+    // still wins: the workspace flushes this editor before it changes the page,
+    // so the `await flush()` above is skipped and everything from there down
+    // runs synchronously, ahead of the reveal's own frame.
+    if (surfaceEl) surfaceEl.scrollTop = 0;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -410,7 +424,7 @@
   {/if}
 
   <!-- Editor surface -->
-  <div class="flex-1 min-h-0 overflow-y-auto">
+  <div class="flex-1 min-h-0 overflow-y-auto" bind:this={surfaceEl}>
     <!-- min-h gives a generous click target below the last block; it belongs
          to the editing surface, not to the shared prose styles. -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->

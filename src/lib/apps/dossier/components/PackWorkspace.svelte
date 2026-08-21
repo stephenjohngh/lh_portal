@@ -284,6 +284,23 @@
   }
 
   /**
+   * Preview's scrolling surface, and the page it was last reset for.
+   *
+   * Guarded on the id rather than on the doc object: every `$:` that depends on
+   * an object re-runs on every parent update, and this one moves the reader.
+   */
+  let previewEl;
+  let scrolledFor = null;
+  $: if (selectedId !== scrolledFor) {
+    scrolledFor = selectedId;
+    // Keyed off selectedId rather than done inside selectPage() because six
+    // different things open a page — the tree, a backlink, a search hit, a
+    // cross-link in the text, a delete falling back to a sibling — and only the
+    // variable they all assign is common to them.
+    tick().then(() => { if (previewEl) previewEl.scrollTop = 0; });
+  }
+
+  /**
    * Follow a search hit. Unlike the reader, the workspace CAN open a table on
    * its own — tables are peers of pages here — so a table hit goes straight to
    * it rather than to a page that happens to embed it.
@@ -1108,7 +1125,7 @@
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
           <div class="h-full" on:click={handleContentClick}>
             {#if previewing}
-              <div class="h-full overflow-y-auto">
+              <div class="h-full overflow-y-auto" bind:this={previewEl}>
                 <div class="max-w-3xl mx-auto px-8 py-6">
                   <BlockContent blocks={selectedDoc.blocks} mode="read" {docs} {files}
                                 {datasets} {records}
