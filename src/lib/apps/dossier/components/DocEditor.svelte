@@ -40,6 +40,7 @@
   import { editorExtensions, EMPTY_DOC } from '../utils/blockSchema.js';
   import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
   import BlockContent from './BlockContent.svelte';
+  import { shouldFocusEnd } from '../utils/paddingClick.js';
 
   /** The dossier_docs row being edited. */
   export let doc;
@@ -367,18 +368,39 @@
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
 
   /**
-   * Clicking the empty space below the last block puts the cursor at the end.
+   * Whether the press that is in progress began on the padding.
    *
-   * That space sits OUTSIDE ProseMirror's own DOM, so without this a click
-   * there does nothing at all — the author has to find the last line and click
-   * exactly on it to carry on writing.
+   * A click alone cannot say: it fires on the common ancestor of press and
+   * release, so a drag out of the text through the padding looks exactly like a
+   * click on the padding.
+   */
+  let pressedOnPadding = false;
+
+  function notePress(event) {
+    pressedOnPadding = event.target === event.currentTarget;
+  }
+
+  /**
+   * Clicking the empty space below the last block puts the cursor at the end.
+   * The rule for when that is what the author actually asked for is pure and
+   * tested — see utils/paddingClick.js, which carries the reasoning.
    */
   function focusEnd(event) {
-    if (!editable) return;
-    // Only when the click landed on the padding itself, never on content.
-    if (event.target !== event.currentTarget) return;
+    const beganHere = pressedOnPadding;
+    pressedOnPadding = false;
+
+    const selection = typeof window === 'undefined' ? null : window.getSelection();
+
+    if (!shouldFocusEnd({
+      editable,
+      onPadding: event.target === event.currentTarget,
+      beganOnPadding: beganHere,
+      selectionCollapsed: !selection || selection.isCollapsed,
+    })) return;
+
     editor?.commands.focus('end');
   }
+
 </script>
 
 <div class="flex flex-col h-full min-h-0">
@@ -484,6 +506,7 @@
          to the editing surface, not to the shared prose styles. -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="max-w-3xl mx-auto px-8 py-6 min-h-[60vh] {editable ? 'cursor-text' : ''}"
+         on:mousedown={notePress}
          on:click={focusEnd}>
       <!-- The editor attaches to BlockContent's host element so edit and read
            modes share one stylesheet — see BlockContent.svelte. -->
