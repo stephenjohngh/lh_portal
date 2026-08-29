@@ -95,3 +95,27 @@ export function stickyOffset(scope, gap = 8) {
 
   return navH + barH + gap;
 }
+
+/**
+ * The nearest ancestor that actually scrolls, or null when the window does.
+ *
+ * "Actually" is the operative word: an element is only a scroller if it both
+ * declares overflow and has something to scroll. A box with `overflow: hidden`
+ * and content that fits is not one, and treating it as one is how a scroll
+ * gets swallowed — the code scrolls a container that cannot move and stops
+ * looking, so the window never scrolls at all.
+ *
+ * @param {Element|null} el
+ * @returns {HTMLElement|null}
+ */
+export function scrollParent(el) {
+  let node = el?.parentElement ?? null;
+
+  while (node && node !== document.body && node !== document.documentElement) {
+    const { overflowY } = getComputedStyle(node);
+    const scrolls = overflowY === 'auto' || overflowY === 'scroll';
+    if (scrolls && node.scrollHeight > node.clientHeight + 1) return node;
+    node = node.parentElement;
+  }
+  return null;
+}

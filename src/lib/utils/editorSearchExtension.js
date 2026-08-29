@@ -166,7 +166,11 @@ export const EditorSearch = Extension.create({
         if (dispatch) {
           tr.setMeta(searchKey, { step });
           tr.setSelection(TextSelection.create(tr.doc, range.from, range.to));
-          tr.scrollIntoView();
+          // NOT tr.scrollIntoView(). ProseMirror scrolls the nearest scrollable
+          // ancestor and knows nothing about the app's fixed nav or an editor
+          // whose page scrolls rather than its box — so the match arrived under
+          // the header, or nowhere. The find bar does the scrolling, where the
+          // offset is already known.
         }
         return true;
       },

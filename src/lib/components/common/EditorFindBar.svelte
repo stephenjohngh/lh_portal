@@ -11,6 +11,7 @@
   import { tick, onDestroy } from 'svelte';
   import { searchState } from '$lib/utils/editorSearchExtension.js';
   import { describeMatches } from '$lib/utils/editorSearch.js';
+  import { scrollParent, stickyOffset } from '$lib/utils/revealElement.js';
 
   /** The Tiptap editor to search. */
   export let editor = null;
@@ -101,11 +102,66 @@
     editor?.commands.focus();
   }
 
+  /** Breathing room above and below the match. */
+  const PAD = 24;
+
+  /**
+   * Bring the current match into view — whichever thing does the scrolling.
+   *
+   * ProseMirror's own `tr.scrollIntoView()` used to do this and was wrong twice
+   * over: it stops at the first scrollable ancestor, and it aims for the top of
+   * whatever that is. In a page editor that is a box with its own scrollbar and
+   * it worked; in a Management or Info note the PAGE scrolls, and the match
+   * landed under the app's fixed nav — or, on a long note, nowhere at all.
+   *
+   * Only scrolls when the match is actually out of view, so walking through
+   * hits near each other does not jerk the page about.
+   */
+  function scrollToMatch() {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    let coords;
+    try {
+      coords = { top: editor.view.coordsAtPos(from).top,
+                 bottom: editor.view.coordsAtPos(to).bottom };
+    } catch { return; }          // a position that no longer resolves
+
+    const box = scrollParent(editor.view.dom);
+
+    if (box) {
+      const bounds = box.getBoundingClientRect();
+      if (coords.top < bounds.top + PAD) {
+        box.scrollTop += coords.top - bounds.top - PAD;
+      } else if (coords.bottom > bounds.bottom - PAD) {
+        box.scrollTop += coords.bottom - bounds.bottom + PAD;
+      }
+      return;
+    }
+
+    // The window scrolls. The top of it is covered by the app's nav and
+    // whatever the app sticks beneath it, so that is where "the top" begins.
+    const top = stickyOffset();
+    if (coords.top < top + PAD) {
+      window.scrollTo({ top: window.scrollY + coords.top - top - PAD, behavior: 'smooth' });
+    } else if (coords.bottom > window.innerHeight - PAD) {
+      window.scrollTo({
+        top: window.scrollY + coords.bottom - window.innerHeight + PAD,
+        behavior: 'smooth',
+      });
+    }
+  }
+
+  /** Step, then show. Both buttons and both keys come through here. */
+  function goTo(step) {
+    editor?.commands.goToMatch(step);
+    scrollToMatch();
+  }
+
   function onKeydown(event) {
     if (event.key === 'Escape') { event.preventDefault(); close(); }
     if (event.key === 'Enter') {
       event.preventDefault();
-      editor?.commands.goToMatch(event.shiftKey ? -1 : 1);
+      goTo(event.shiftKey ? -1 : 1);
     }
   }
 
@@ -128,9 +184,9 @@
          as the count changes under them. -->
     <span class="text-[11px] text-slate-500 w-16 tabular-nums">{summary}</span>
     <button type="button" title="Previous match (Shift+Enter)" class={btn}
-            on:click={() => editor?.commands.goToMatch(-1)}>↑</button>
+            on:click={() => goTo(-1)}>↑</button>
     <button type="button" title="Next match (Enter)" class={btn}
-            on:click={() => editor?.commands.goToMatch(1)}>↓</button>
+            on:click={() => goTo(1)}>↓</button>
     <button type="button" title="Close (Esc)" class={btn} on:click={close}>✕</button>
   </div>
 {/if}
