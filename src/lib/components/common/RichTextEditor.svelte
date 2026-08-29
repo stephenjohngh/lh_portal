@@ -408,9 +408,14 @@
   <!-- ── Editor area ──────────────────────────────────────────────── -->
   <!-- Ctrl+F is taken only while the cursor is IN here. A person typing in a
        comment box who reaches for it means this text, the way they would in any
-       editor; Escape hands the shortcut straight back to the browser. -->
+       editor; Escape hands the shortcut straight back to the browser.
+
+       `rte-scroll` gives long content its own scrollbar so the toolbar above it
+       stays put — the same shape the Dossier editor has always had. Without it
+       a long note scrolled the toolbar, and with it the find bar, off the top
+       of the window just when they were being used. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="relative" on:keydown={onEditorKeydown}>
+  <div class="relative rte-scroll" on:keydown={onEditorKeydown}>
     <div bind:this={editorEl}></div>
     {#if isEmpty}
       <p class="rte-placeholder">{placeholder}</p>
@@ -420,6 +425,16 @@
 </div>
 
 <style>
+  /* The editing surface scrolls, not the page.
+     max-height rather than a fixed one, so a two-line comment is still two
+     lines high: the limit only arrives when there is enough content to need
+     it. 60vh leaves the toolbar, the surrounding form and its buttons all on
+     screen at once on a laptop. */
+  .rte-scroll {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
   /* Toolbar background — between slate-700 and slate-800 */
   .rte-wrap :global(.bg-slate-750) {
     background-color: #2a3344;
