@@ -10,7 +10,8 @@
   import { issuesUiState }  from './stores/issuesUiStore';
   import IssueCard          from './components/IssueCard.svelte';
   import SearchMatches      from './components/SearchMatches.svelte';
-  import { searchIssues, describeMatches } from './utils/issueSearch.js';
+  import { searchIssues, describeMatches, inStatusTab } from './utils/issueSearch.js';
+  import { revealById } from '$lib/utils/revealElement.js';
   import IssueForm          from './components/IssueForm.svelte';
   import ReportsTab         from './components/reports/ReportsTab.svelte';
   import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
@@ -102,14 +103,6 @@
   }
   // -- Filter issues (no meeting filter — that lives in the Meetings tab) -
 
-  /** An issue with no status set is Current — that is the historic default. */
-  function inStatusTab(issue) {
-    if (statusFilter === ISSUE_STATUS.CURRENT)   return issue.status === ISSUE_STATUS.CURRENT || !issue.status;
-    if (statusFilter === ISSUE_STATUS.PARKED)    return issue.status === ISSUE_STATUS.PARKED;
-    if (statusFilter === ISSUE_STATUS.COMPLETED) return issue.status === ISSUE_STATUS.COMPLETED;
-    return false;
-  }
-
   // Search EVERY issue, then narrow to the tab — not the other way round.
   //
   // Two reasons. It is one pass over the activities rather than two, which
@@ -122,7 +115,10 @@
   // inline filter was wrong (it never searched actions, and it searched raw
   // HTML).
   $: allSearchResults = searchIssues(issues, searchTerm);
-  $: searchResults    = allSearchResults.filter(r => inStatusTab(r.issue));
+  // statusFilter is passed, not closed over: a `$:` block tracks only the
+  // variables it NAMES, so a predicate reading it from scope left the list
+  // frozen when the dropdown changed.
+  $: searchResults    = allSearchResults.filter(r => inStatusTab(r.issue, statusFilter));
   $: filteredIssues   = searchResults.map(r => r.issue);
   $: searchSummary    = describeMatches(searchResults, searchTerm);
   $: elsewhereCount   = allSearchResults.length - searchResults.length;
@@ -237,12 +233,17 @@
    * section for anyone who had already opened it, which reads as the click
    * having done the opposite of what it said.
    */
-  function openSection(issueId, section) {
+  function openSection(issueId, section, revealId = null) {
     if (!expandedSections[issueId]) {
       expandedSections[issueId] = { activities: false, actions: false };
     }
     expandedSections[issueId][section] = true;
     expandedSections = expandedSections;
+
+    // Then the entry itself. The section has to render before the element
+    // exists, and a frame after that before it has been laid out — see
+    // revealById, which waits for both.
+    if (revealId) tick().then(() => revealById(revealId));
   }
 
   async function handleJumpToIssue(issueId) {
@@ -470,8 +471,8 @@
           >
             <SearchMatches
               {matches}
-              on:openActivity={() => openSection(issue.id, 'activities')}
-              on:openActions={() => openSection(issue.id, 'actions')}
+              on:openActivity={(e) => openSection(issue.id, 'activities', e.detail?.id)}
+              on:openActions={(e) => openSection(issue.id, 'actions', e.detail?.id)}
             />
           </IssueCard>
           </div>

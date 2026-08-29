@@ -25,33 +25,3 @@
 [data-uid] {
   scroll-margin-top: 4.5rem;
 }
-
-.pack-reveal {
-  animation: pack-reveal 2.4s ease-out;
-  border-radius: 3px;
-}
-
-@keyframes pack-reveal {
-  /* A fading tint, not a persistent one: a highlight that stays reads as part
-     of the document, and what the document says is the author's to decide. */
-  0%   { background: rgb(var(--lh-accent-rgb) / 0.3); }
-  100% { background: transparent; }
-}
-
-/* Someone who has asked for less motion still needs to see WHICH block. */
-@media (prefers-reduced-motion: reduce) {
-  .pack-reveal {
-    animation: none;
-    outline: 2px solid rgb(var(--lh-accent-rgb) / 0.6);
-    outline-offset: 2px;
-  }
-}
-
-/* On paper the mark is meaningless — and a tint would be toner. */
-@media print {
-  .pack-reveal {
-    animation: none !important;
-    outline: none !important;
-    background: transparent !important;
-  }
-}

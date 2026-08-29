@@ -2,7 +2,9 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  issueMatches, searchIssues, describeMatches, MIN_QUERY, MAX_MATCHES_PER_ISSUE,
+  issueMatches, searchIssues, describeMatches, inStatusTab,
+  meetingMatches, searchMeetings,
+  MIN_QUERY, MAX_MATCHES_PER_ISSUE,
 } from './issueSearch.js';
 
 const issue = {
@@ -146,5 +148,113 @@ describe('describeMatches', () => {
 
   it('says nothing at all when nobody is searching', () => {
     expect(describeMatches([], '')).toBe('');
+  });
+});
+
+describe('inStatusTab', () => {
+  // Takes the filter as an argument rather than reading it from scope. A Svelte
+  // `$:` block tracks only the variables it names, so a predicate closing over
+  // statusFilter left the issue list frozen when the dropdown changed.
+
+  it('files an issue under its own status', () => {
+    expect(inStatusTab({ status: 'parked' }, 'parked')).toBe(true);
+    expect(inStatusTab({ status: 'parked' }, 'current')).toBe(false);
+    expect(inStatusTab({ status: 'completed' }, 'completed')).toBe(true);
+  });
+
+  it('treats an issue with NO status as current', () => {
+    // The historic default from before the column existed, and there are rows
+    // like it.
+    expect(inStatusTab({}, 'current')).toBe(true);
+    expect(inStatusTab({ status: null }, 'current')).toBe(true);
+    expect(inStatusTab({}, 'parked')).toBe(false);
+  });
+
+  it('matches nothing for a filter it does not know', () => {
+    expect(inStatusTab({ status: 'current' }, 'nonsense')).toBe(false);
+  });
+});
+
+describe('meetingMatches', () => {
+  const meeting = {
+    id: 'm1',
+    title: 'Board meeting — 4 March',
+    notes: 'Quorum reached. Roof works discussed.',
+    participants: { profile_ids: ['p1'], extras: ['J. Okafor (surveyor)'] },
+  };
+
+  const meetingIssues = [
+    {
+      id: 'i1', name: 'Roof leak above stair 2', meeting_id: 'm1',
+      activities: [
+        { id: 'd1', activity_type: 'decision', meeting_id: 'm1',
+          body: '<p>Agreed to instruct the scaffold.</p>' },
+        { id: 'c9', activity_type: 'comment', meeting_id: 'm2',
+          body: '<p>Belongs to another meeting entirely.</p>' },
+      ],
+      actions: [
+        { id: 'a1', action_text: 'Obtain three quotations', meeting_id: 'm1' },
+        { id: 'a2', action_text: 'Something from another meeting', meeting_id: 'm2' },
+      ],
+    },
+  ];
+
+  const namesOf = (ids, extras) =>
+    [...ids.map(id => (id === 'p1' ? 'P. Shah' : null)), ...extras].filter(Boolean);
+
+  it('finds the meeting title and its notes', () => {
+    expect(meetingMatches(meeting, [], 'Board', namesOf)[0].label).toBe('Meeting');
+    expect(meetingMatches(meeting, [], 'Quorum', namesOf)[0].label).toBe('Notes');
+  });
+
+  it('finds a meeting by who was there, named or external', () => {
+    expect(meetingMatches(meeting, [], 'Shah', namesOf)[0].label).toBe('Attendee');
+    expect(meetingMatches(meeting, [], 'Okafor', namesOf)[0].label).toBe('Attendee');
+  });
+
+  it('finds a DECISION tagged to the meeting, not just the meeting row', () => {
+    // "Which meeting did we agree the scaffold?" is answered by a decision on
+    // an issue. A search reading only the meeting's own fields says no.
+    const [match] = meetingMatches(meeting, meetingIssues, 'scaffold', namesOf);
+    expect(match).toMatchObject({ where: 'activity', label: 'Decision', issueId: 'i1' });
+    expect(match.issueName).toBe('Roof leak above stair 2');
+  });
+
+  it('finds an action tagged to the meeting', () => {
+    expect(meetingMatches(meeting, meetingIssues, 'quotations', namesOf)[0])
+      .toMatchObject({ where: 'action', issueId: 'i1' });
+  });
+
+  it('ignores items tagged to a DIFFERENT meeting', () => {
+    expect(meetingMatches(meeting, meetingIssues, 'another meeting entirely', namesOf))
+      .toHaveLength(0);
+    expect(meetingMatches(meeting, meetingIssues, 'Something from another', namesOf))
+      .toHaveLength(0);
+  });
+
+  it('works without a name resolver, minus the attendees', () => {
+    expect(meetingMatches(meeting, meetingIssues, 'scaffold')).toHaveLength(1);
+    expect(meetingMatches(meeting, [], 'Shah')).toHaveLength(0);
+  });
+
+  it('survives a query too short, or no meeting', () => {
+    expect(meetingMatches(meeting, meetingIssues, 'a', namesOf)).toEqual([]);
+    expect(meetingMatches(null, meetingIssues, 'roof', namesOf)).toEqual([]);
+  });
+});
+
+describe('searchMeetings', () => {
+  const meetings = [
+    { id: 'm1', title: 'Board meeting', notes: 'Roof works' },
+    { id: 'm2', title: 'Residents meeting', notes: 'Bin store' },
+  ];
+
+  it('keeps only meetings with a match', () => {
+    const results = searchMeetings(meetings, [], 'roof');
+    expect(results.map(r => r.meeting.id)).toEqual(['m1']);
+  });
+
+  it('returns every meeting, unannotated, with no query', () => {
+    expect(searchMeetings(meetings, [], '').map(r => r.meeting.id)).toEqual(['m1', 'm2']);
   });
 });

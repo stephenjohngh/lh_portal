@@ -190,6 +190,43 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
     @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
   }
 
+  /* ========== REVEAL ==========
+     Marking the thing a reader was just sent to — a Dossier block from a search
+     hit or an outline click, an activity from a Management search. Global
+     rather than scoped to either app: the target usually lives inside {@html}
+     output or inside ProseMirror's DOM, neither of which carries a Svelte
+     scoping class, and one keyframe beats two that drift apart.
+     Applied by $lib/utils/revealElement.js. */
+  .lh-reveal {
+    animation: lh-reveal 2.4s ease-out;
+    border-radius: 3px;
+  }
+
+  @keyframes lh-reveal {
+    /* A fading tint, not a persistent one: a highlight that stays reads as a
+       property of the thing rather than as an answer to what was just asked. */
+    0%   { background: rgb(var(--lh-accent-rgb) / 0.3); }
+    100% { background: transparent; }
+  }
+
+  /* Someone who has asked for less motion still needs to see WHICH one. */
+  @media (prefers-reduced-motion: reduce) {
+    .lh-reveal {
+      animation: none;
+      outline: 2px solid rgb(var(--lh-accent-rgb) / 0.6);
+      outline-offset: 2px;
+    }
+  }
+
+  /* On paper the mark is meaningless — and a tint would be toner. */
+  @media print {
+    .lh-reveal {
+      animation: none !important;
+      outline: none !important;
+      background: transparent !important;
+    }
+  }
+
   /* ========== RICH TEXT DISPLAY ========== */
   /* Used wherever Tiptap HTML is rendered read-only (activity display,
      reports, meeting minutes). Colour is inherited from the parent. */

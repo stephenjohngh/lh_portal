@@ -12,9 +12,7 @@
 // works for both, which is the only reason this is shared code and not two
 // near-identical handlers.
 
-/** Matches the animation in the reader's <style> block. */
-const MARK_CLASS = 'pack-reveal';
-const MARK_MS = 2400;
+import { revealElement } from '$lib/utils/revealElement.js';
 
 /**
  * @param {string|null|undefined} uid
@@ -30,10 +28,7 @@ export function revealBlock(uid, { root, behavior = 'smooth' } = {}) {
   const el = scope.querySelector(`[data-uid="${CSS.escape(String(uid))}"]`);
   if (!(el instanceof HTMLElement)) return false;
 
-  el.scrollIntoView({ behavior, block: 'start' });
-  el.classList.add(MARK_CLASS);
-  // Removed rather than left on: a highlight that stays reads as part of the
-  // document, and what the document says is the author's to decide, not ours.
-  setTimeout(() => el.classList.remove(MARK_CLASS), MARK_MS);
-  return true;
+  // The scroll and the mark are shared — see $lib/utils/revealElement.js. What
+  // is Dossier's is the SELECTOR above: data-uid, written by both surfaces.
+  return revealElement(el, { behavior });
 }

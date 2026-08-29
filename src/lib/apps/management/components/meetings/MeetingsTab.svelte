@@ -24,6 +24,8 @@
   import ConfirmDialog          from '$lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay           from '$lib/components/common/ErrorDisplay.svelte';
   import MeetingForm            from './MeetingForm.svelte';
+  import SearchMatches          from '../SearchMatches.svelte';
+  import { searchMeetings, describeMatches } from '../../utils/issueSearch.js';
   import MeetingMinutesView     from './MeetingMinutesView.svelte';
   import MeetingAssignModal     from './MeetingAssignModal.svelte';
 
@@ -77,6 +79,25 @@
   })();
 
   $: pastMeetings = $meetingsStore.list.filter(m => m.status === 'closed');
+
+  // -- Search -----------------------------------------------------------
+  // Over the meeting AND what was tagged to it. "Which meeting did we agree the
+  // roof works?" is answered by a decision on an issue, not by a word in the
+  // meeting's own notes — so a search that read only the meeting row would say
+  // no. See utils/issueSearch.js.
+  let meetingSearch = '';
+
+  /** Attendee names, so a meeting is findable by who was at it. */
+  function attendeeNames(profileIds, extras) {
+    return [
+      ...(profileIds ?? []).map(id => $profiles.list.find(p => p.id === id)?.full_name),
+      ...(extras ?? []),
+    ].filter(Boolean);
+  }
+
+  $: meetingResults = searchMeetings(pastMeetings, issues, meetingSearch, attendeeNames);
+  $: meetingSummary = describeMatches(
+    meetingResults.map(r => ({ matches: r.matches })), meetingSearch);
 
   // Per-meeting item counts, computed from the live issues prop.
   $: itemCounts = (() => {
@@ -400,8 +421,26 @@
         </h3>
       {/if}
 
+      <div class="mb-3 flex items-center gap-2">
+        <input
+          type="text"
+          bind:value={meetingSearch}
+          placeholder="Search meetings, notes, decisions…"
+          class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
+                 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500
+                 flex-1 min-w-0"
+        />
+        {#if meetingSearch}
+          <button class="text-xs text-slate-400 hover:text-white shrink-0"
+                  on:click={() => meetingSearch = ''}>Clear</button>
+        {/if}
+      </div>
+      {#if meetingSummary}
+        <p class="text-xs text-slate-500 mb-2">{meetingSummary}</p>
+      {/if}
+
       <div class="space-y-2">
-        {#each pastMeetings as m (m.id)}
+        {#each meetingResults as { meeting: m, matches } (m.id)}
           {@const canReopen = m.id === latestClosedId}
           <div class="rounded-lg border border-slate-600/60 bg-slate-700/40 p-3">
             <div class="flex items-start justify-between gap-3 flex-wrap">
@@ -422,6 +461,8 @@
                     <span>Closed {fmtDateTime(m.closed_at)}</span>
                   {/if}
                 </div>
+
+                <SearchMatches {matches} on:open={() => viewMeeting(m)} />
               </div>
 
               <div class="flex flex-wrap items-center gap-1.5 shrink-0">

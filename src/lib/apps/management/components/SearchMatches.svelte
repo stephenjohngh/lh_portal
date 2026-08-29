@@ -7,9 +7,9 @@
      where each hit is and shows the line, so the list answers the question
      rather than narrowing it.
 
-     Clicking a match opens the section it lives in, which is as far as this
-     goes deliberately — scrolling to the individual activity would need every
-     activity to carry an anchor, and the section is usually enough to see it. -->
+     Clicking a match opens the section it lives in and then scrolls to the
+     entry itself, marking it briefly — the same "you are here" the Dossier
+     reader gives a search hit, through the same helper. -->
 <script>
   import { createEventDispatcher } from 'svelte';
 
@@ -18,25 +18,46 @@
 
   const dispatch = createEventDispatcher();
 
-  /** Where clicking this match should take the reader. */
+  /**
+   * Where clicking this match should take the reader.
+   *
+   * On an issue card that means opening the section the hit lives in and
+   * scrolling to the entry. In the meetings list there is nothing to expand —
+   * the whole minutes view is the destination — so the parent listens for
+   * `open` instead and decides for itself.
+   */
   function open(match) {
-    if (match.where === 'action')   dispatch('openActions');
-    if (match.where === 'activity') dispatch('openActivity');
+    dispatch('open', match);
+
+    if (match.where === 'action' && match.actionId) {
+      dispatch('openActions', { id: `action-${match.actionId}` });
+    }
+    if (match.where === 'activity' && match.activityId) {
+      // A historic entry is filtered out of the list, so there is nothing to
+      // scroll to. Open the section anyway; the label says why.
+      dispatch('openActivity', { id: match.historic ? null : `activity-${match.activityId}` });
+    }
   }
 </script>
 
 {#if matches.length}
   <div class="mt-2 pt-2 border-t border-slate-700/50 space-y-1">
     {#each matches as match}
-      {@const clickable = match.where === 'action' || match.where === 'activity'}
+      {@const clickable = true}
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div
         class="flex items-start gap-2 text-xs {clickable ? 'cursor-pointer hover:bg-slate-700/30' : ''} rounded px-1 py-0.5"
-        title={clickable ? 'Open the section this is in' : ''}
+        title="Go to this"
         on:click|stopPropagation={() => open(match)}
       >
         <span class="shrink-0 text-[10px] uppercase tracking-wide text-slate-500
-                     pt-0.5 w-20 text-right">{match.label}</span>
+                     pt-0.5 w-20 text-right">
+          {match.label}{#if match.historic}<span class="block text-slate-600 normal-case">archived</span>{/if}
+        </span>
+        {#if match.issueName}
+          <span class="shrink-0 text-[10px] text-slate-500 pt-0.5 max-w-[10rem] truncate"
+                title={match.issueName}>{match.issueName}</span>
+        {/if}
         <span class="text-slate-400 min-w-0">
           <!-- Sliced by the offsets the search returned, so text somebody typed
                is never interpolated into markup. -->
