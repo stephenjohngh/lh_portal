@@ -8,7 +8,7 @@
      The matching lives in $lib/utils/editorSearch.js (pure) and
      editorSearchExtension.js (the ProseMirror plugin). -->
 <script>
-  import { tick } from 'svelte';
+  import { tick, onDestroy } from 'svelte';
   import { searchState } from '$lib/utils/editorSearchExtension.js';
   import { describeMatches } from '$lib/utils/editorSearch.js';
 
@@ -22,10 +22,40 @@
   let query = '';
   let input;
 
-  // Recomputed on every transaction: both editors re-assign `editor` in
-  // onTransaction, which is what makes this reactive at all.
-  $: state = editor ? searchState(editor) : { count: 0, index: -1 };
-  $: summary = describeMatches(state.count, state.index, query);
+  /**
+   * The count, kept by subscribing to the editor rather than by reading it in a
+   * reactive statement.
+   *
+   * Reading it reactively did not work, and the reason is worth writing down: a
+   * `$:` block re-runs when the variables it NAMES change, and `editor` is the
+   * same object for the editor's whole life. Typing changes `query`, which the
+   * count expression does not mention, so it never re-ran — the number only
+   * moved when something else happened to re-render the parent, which is
+   * exactly what a click or Enter does. Same family of fault as the status
+   * dropdown that stopped filtering.
+   *
+   * A transaction is the honest signal: the plugin recomputes its matches on
+   * every one, so this is told the moment there is something new to say.
+   */
+  let count = 0;
+  let index = -1;
+
+  function refresh() {
+    const state = searchState(editor);
+    count = state.count;
+    index = state.index;
+  }
+
+  let boundTo = null;
+  $: if (editor !== boundTo) {
+    boundTo?.off('transaction', refresh);
+    boundTo = editor;
+    boundTo?.on('transaction', refresh);
+    refresh();
+  }
+  onDestroy(() => boundTo?.off('transaction', refresh));
+
+  $: summary = describeMatches(count, index, query);
 
   // Focus follows opening. Guarded on the primitive so an unrelated parent
   // update does not steal focus back mid-typing.
