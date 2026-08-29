@@ -434,30 +434,6 @@
 
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
 
-  // ── Find in this page ─────────────────────────────────────────────────────
-  //
-  // The browser's own Ctrl+F searches the whole PAGE: with a long pack open it
-  // matches the page tree, the shelf and anything else on screen, scrolls to
-  // those instead, and cannot say how many hits are in the document. Tiptap has
-  // no official search extension for v3, so this drives our own — see
-  // $lib/utils/editorSearchExtension.js.
-
-  let findOpen = false;
-
-  /**
-   * Ctrl+F while the editor has focus.
-   *
-   * Taking the browser's shortcut is a strong move and deliberate: inside this
-   * editor its find is the wrong tool, and every editor a person is likely to
-   * compare this with does the same. Escape gives it straight back.
-   */
-  function editorKeydown(event) {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-      event.preventDefault();
-      findOpen = true;   // the bar takes focus itself when it opens
-    }
-  }
-
   /**
    * Whether the press that is in progress began on the padding.
    *
@@ -587,13 +563,7 @@
 
     <div class="flex-1"></div>
 
-    <div class="mr-2"><EditorFindBar {editor} bind:open={findOpen} /></div>
-    {#if !findOpen}
-      <button type="button" title="Find in this page (Ctrl+F)"
-              class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400 shrink-0
-                     hover:bg-slate-700 hover:text-white transition-colors mr-1"
-              on:click={() => findOpen = true}>🔍</button>
-    {/if}
+    <div class="mr-2 flex items-center"><EditorFindBar {editor} /></div>
 
     <span class="text-xs shrink-0 {saveError ? 'text-red-400' : 'text-slate-500'}">
       {#if saving}Saving…
@@ -611,11 +581,7 @@
   {/if}
 
   <!-- Editor surface -->
-  <!-- Ctrl+F is caught here rather than on the editor element, so it works
-       wherever the cursor is inside the scrolling surface. -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="flex-1 min-h-0 overflow-y-auto" bind:this={surfaceEl}
-       on:keydown={editorKeydown}>
+  <div class="flex-1 min-h-0 overflow-y-auto" bind:this={surfaceEl}>
     <!-- min-h gives a generous click target below the last block; it belongs
          to the editing surface, not to the shared prose styles. -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->

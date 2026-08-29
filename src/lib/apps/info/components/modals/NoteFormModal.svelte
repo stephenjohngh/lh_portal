@@ -152,9 +152,14 @@
     <!-- Body (rich text) -->
     <div>
       <p class="text-sm font-medium text-gray-200 mb-2">Body</p>
+      <!-- markdown: an Info note is the longest-form text in the portal, and
+           the one most likely to be drafted somewhere else and pasted in. It
+           was the only editor without this while three Management comment
+           boxes had it. -->
       <RichTextEditor
         value={body}
         placeholder="Note content…"
+        markdown={true}
         on:change={(e) => { body = e.detail; }}
       />
     </div>

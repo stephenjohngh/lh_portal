@@ -57,16 +57,6 @@
 
   const dispatch = createEventDispatcher();
 
-  /** Find bar, shared with the Dossier editor — see EditorFindBar.svelte. */
-  let findOpen = false;
-
-  function onEditorKeydown(event) {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-      event.preventDefault();
-      findOpen = true;      // the bar takes focus itself when it opens
-    }
-  }
-
   let editorEl;
   let editor;
 
@@ -397,25 +387,16 @@
 
     <!-- Find. Pushed to the right, so it reads as a way of looking at the text
          rather than as another way of changing it. -->
-    <EditorFindBar {editor} bind:open={findOpen} compact={true} />
-    {#if !findOpen}
-      <button type="button" class="{TB}"
-        on:click={() => findOpen = true} title="Find in this text (Ctrl+F)">🔍</button>
-    {/if}
+    <EditorFindBar {editor} compact={true} />
 
   </div>
 
   <!-- ── Editor area ──────────────────────────────────────────────── -->
-  <!-- Ctrl+F is taken only while the cursor is IN here. A person typing in a
-       comment box who reaches for it means this text, the way they would in any
-       editor; Escape hands the shortcut straight back to the browser.
-
-       `rte-scroll` gives long content its own scrollbar so the toolbar above it
+  <!-- `rte-scroll` gives long content its own scrollbar so the toolbar above it
        stays put — the same shape the Dossier editor has always had. Without it
        a long note scrolled the toolbar, and with it the find bar, off the top
        of the window just when they were being used. -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="relative rte-scroll" on:keydown={onEditorKeydown}>
+  <div class="relative rte-scroll">
     <div bind:this={editorEl}></div>
     {#if isEmpty}
       <p class="rte-placeholder">{placeholder}</p>

@@ -15,10 +15,19 @@
 
   /** The Tiptap editor to search. */
   export let editor = null;
-  /** Bound by the parent, which owns the toolbar button that opens this. */
-  export let open = false;
   /** Smaller controls for a compact toolbar. */
   export let compact = false;
+
+  /**
+   * Open state, the button that opens it and the Ctrl+F that opens it all live
+   * here rather than in each editor.
+   *
+   * They started in the toolbars — a flag, a handler and a button, twice, in
+   * two files. Identical code in two places is how two editors quietly stop
+   * behaving the same way, which for a find bar is the whole point of having
+   * one component.
+   */
+  let open = false;
 
   let query = '';
   let input;
@@ -57,14 +66,35 @@
     summary = describeMatches(count, index, query);
   }
 
+  /**
+   * Ctrl+F, taken only while the cursor is in the editor.
+   *
+   * Bound to the editable element itself rather than to a wrapper, so it is
+   * precisely the rule it claims to be: in the editor, this means this text;
+   * anywhere else on the page, the browser's own find is untouched. Escape
+   * hands it straight back.
+   */
+  function onShortcut(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+      event.preventDefault();
+      open = true;               // the input takes focus itself, below
+    }
+  }
+
   let boundTo = null;
   $: if (editor !== boundTo) {
-    boundTo?.off('transaction', refresh);
+    unbind(boundTo);
     boundTo = editor;
     boundTo?.on('transaction', refresh);
+    boundTo?.view?.dom?.addEventListener('keydown', onShortcut);
     refresh();
   }
-  onDestroy(() => boundTo?.off('transaction', refresh));
+
+  function unbind(target) {
+    target?.off('transaction', refresh);
+    target?.view?.dom?.removeEventListener('keydown', onShortcut);
+  }
+  onDestroy(() => unbind(boundTo));
 
 
   // Focus follows opening. Guarded on the primitive so an unrelated parent
@@ -168,7 +198,10 @@
   const btn = 'min-w-6 h-6 rounded text-xs text-slate-400 hover:bg-slate-700 hover:text-white';
 </script>
 
-{#if open}
+{#if !open}
+  <button type="button" title="Find (Ctrl+F)" class="{btn} shrink-0"
+          on:click={() => open = true}>🔍</button>
+{:else}
   <div class="flex items-center gap-1 shrink-0">
     <input
       bind:this={input}
