@@ -107,8 +107,13 @@ export const EditorSearch = Extension.create({
             let index;
             if (meta?.step) {
               index = stepIndex(ranges.length, value.index, meta.step);
-            } else if (meta?.query !== undefined) {
-              index = ranges.length ? 0 : -1;      // a new query starts at the first hit
+            } else if (meta?.query !== undefined && meta.query !== value.query) {
+              // A NEW query starts at the first hit. Setting the same one again
+              // must not: the find bar re-sends the query whenever the editor
+              // re-renders, and jumping back to the first match every time made
+              // the arrows appear to do nothing at all — they moved, and were
+              // undone in the same breath.
+              index = ranges.length ? 0 : -1;
             } else {
               index = Math.min(value.index, ranges.length - 1);
             }

@@ -99,3 +99,39 @@ describe('editing while a search is open', () => {
     expect(searchState(editor).count).toBe(1);
   });
 });
+
+describe('the find bar re-sending its query', () => {
+  // What actually broke the arrows, and what the earlier tests could not see:
+  // the editors re-assign `editor` on every transaction to refresh their
+  // toolbars, so the bar's reactive block re-ran and re-sent the SAME query
+  // after every arrow click. Treating that as a new search reset the index to
+  // zero, so the highlight moved and was put back in the same breath.
+
+  beforeEach(() => editor.commands.setSearchQuery('door'));
+
+  it('keeps your place when the same query is sent again', () => {
+    editor.commands.goToMatch(1);
+    expect(searchState(editor).index).toBe(1);
+
+    editor.commands.setSearchQuery('door');          // the re-send
+    expect(searchState(editor).index).toBe(1);
+  });
+
+  it('still starts from the first hit when the query really changes', () => {
+    editor.commands.goToMatch(1);
+    editor.commands.goToMatch(1);
+    expect(searchState(editor).index).toBe(2);
+
+    editor.commands.setSearchQuery('second');
+    expect(searchState(editor).index).toBe(0);
+  });
+
+  it('survives a re-send between every step', () => {
+    // The real sequence: click, transaction, re-send, click, transaction…
+    for (const expected of [1, 2, 0]) {
+      editor.commands.goToMatch(1);
+      editor.commands.setSearchQuery('door');
+      expect(searchState(editor).index).toBe(expected);
+    }
+  });
+});

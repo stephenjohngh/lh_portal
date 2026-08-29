@@ -74,14 +74,29 @@
     if (open) tick().then(() => { input?.select(); input?.focus(); });
   }
 
-  // Read straight back, in the same statement. The command dispatches
-  // synchronously, so the plugin's answer is available immediately — waiting
-  // for the transaction event would be a render later.
-  $: if (editor && open) { editor.commands.setSearchQuery(query); refresh(); }
+  /**
+   * Send the query only when it has actually changed.
+   *
+   * Guarded on the string, not just on `editor && open`, because the editors
+   * re-assign `editor` on every transaction to refresh their toolbars — so this
+   * block re-ran on every transaction the search itself caused, re-sending the
+   * same query in a loop.
+   *
+   * Read straight back afterwards: the command dispatches synchronously, so the
+   * plugin's answer is there immediately and waiting for the transaction event
+   * would be a render later.
+   */
+  let sentQuery = null;
+  $: if (editor && open && query !== sentQuery) {
+    sentQuery = query;
+    editor.commands.setSearchQuery(query);
+    refresh();
+  }
 
   export function close() {
     open = false;
     query = '';
+    sentQuery = null;      // so re-opening sends the next query afresh
     editor?.commands.setSearchQuery('');
     editor?.commands.focus();
   }
