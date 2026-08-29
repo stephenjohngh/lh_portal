@@ -91,6 +91,8 @@
   import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
   import BlockContent from './BlockContent.svelte';
   import { shouldFocusEnd } from '../utils/paddingClick.js';
+  import { EditorSearch, searchState } from '$lib/utils/editorSearchExtension.js';
+  import { describeMatches as describeFind } from '$lib/utils/editorSearch.js';
 
   /** The dossier_docs row being edited. */
   export let doc;
@@ -239,12 +241,12 @@
   onMount(() => {
     editor = new Editor({
       element: editorEl,
-      extensions: editorExtensions({
+      extensions: [...editorExtensions({
         filesProvider: filesStore,
         dataProvider: dataStore,
         onOpenDoc: (id) => dispatch('openDoc', id),
         onSheetRows: (documentId, rows) => dispatch('sheetRows', { documentId, rows }),
-      }),
+      }), EditorSearch],
       content: doc?.blocks ?? EMPTY_DOC,
       editable,
       // The editing class gives the ProseMirror element itself a tall minimum,
@@ -432,6 +434,61 @@
 
   const isActive = (a) => (a.is ? (editor?.isActive(a.is, a.attrs) ?? false) : false);
 
+  // ── Find in this page ─────────────────────────────────────────────────────
+  //
+  // The browser's own Ctrl+F searches the whole PAGE: with a long pack open it
+  // matches the page tree, the shelf and anything else on screen, scrolls to
+  // those instead, and cannot say how many hits are in the document. Tiptap has
+  // no official search extension for v3, so this drives our own — see
+  // $lib/utils/editorSearchExtension.js.
+
+  let findOpen = false;
+  let findQuery = '';
+  let findInput;
+
+  /** Recomputed on every transaction, since `editor = editor` re-renders. */
+  $: findCount = editor ? searchState(editor).count : 0;
+  $: findIndex = editor ? searchState(editor).index : -1;
+  $: findSummary = describeFind(findCount, findIndex, findQuery);
+
+  async function openFind() {
+    findOpen = true;
+    await tick();
+    findInput?.select();
+    findInput?.focus();
+  }
+
+  function closeFind() {
+    findOpen = false;
+    findQuery = '';
+    editor?.commands.setSearchQuery('');
+    editor?.commands.focus();
+  }
+
+  $: if (editor && findOpen) editor.commands.setSearchQuery(findQuery);
+
+  function findKeydown(event) {
+    if (event.key === 'Escape') { event.preventDefault(); closeFind(); }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      editor?.commands.goToMatch(event.shiftKey ? -1 : 1);
+    }
+  }
+
+  /**
+   * Ctrl+F while the editor has focus.
+   *
+   * Taking the browser's shortcut is a strong move and deliberate: inside this
+   * editor its find is the wrong tool, and every editor a person is likely to
+   * compare this with does the same. Escape gives it straight back.
+   */
+  function editorKeydown(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+      event.preventDefault();
+      openFind();
+    }
+  }
+
   /**
    * Whether the press that is in progress began on the padding.
    *
@@ -561,6 +618,36 @@
 
     <div class="flex-1"></div>
 
+    {#if findOpen}
+      <div class="flex items-center gap-1 shrink-0 mr-2">
+        <input
+          bind:this={findInput}
+          bind:value={findQuery}
+          on:keydown={findKeydown}
+          type="text"
+          placeholder="Find in page"
+          class="w-40 px-2 py-0.5 text-xs bg-slate-900 border border-slate-600 rounded
+                 text-white placeholder-slate-500 focus:outline-none focus:ring-1
+                 focus:ring-purple-500"
+        />
+        <span class="text-[11px] text-slate-500 w-16 tabular-nums">{findSummary}</span>
+        <button type="button" title="Previous match (Shift+Enter)"
+                class="min-w-6 h-6 rounded text-xs text-slate-400 hover:bg-slate-700 hover:text-white"
+                on:click={() => editor?.commands.goToMatch(-1)}>↑</button>
+        <button type="button" title="Next match (Enter)"
+                class="min-w-6 h-6 rounded text-xs text-slate-400 hover:bg-slate-700 hover:text-white"
+                on:click={() => editor?.commands.goToMatch(1)}>↓</button>
+        <button type="button" title="Close (Esc)"
+                class="min-w-6 h-6 rounded text-xs text-slate-400 hover:bg-slate-700 hover:text-white"
+                on:click={closeFind}>✕</button>
+      </div>
+    {:else}
+      <button type="button" title="Find in this page (Ctrl+F)"
+              class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400 shrink-0
+                     hover:bg-slate-700 hover:text-white transition-colors mr-1"
+              on:click={openFind}>🔍</button>
+    {/if}
+
     <span class="text-xs shrink-0 {saveError ? 'text-red-400' : 'text-slate-500'}">
       {#if saving}Saving…
       {:else if saveError}Not saved
@@ -577,7 +664,11 @@
   {/if}
 
   <!-- Editor surface -->
-  <div class="flex-1 min-h-0 overflow-y-auto" bind:this={surfaceEl}>
+  <!-- Ctrl+F is caught here rather than on the editor element, so it works
+       wherever the cursor is inside the scrolling surface. -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="flex-1 min-h-0 overflow-y-auto" bind:this={surfaceEl}
+       on:keydown={editorKeydown}>
     <!-- min-h gives a generous click target below the last block; it belongs
          to the editing surface, not to the shared prose styles. -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->

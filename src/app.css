@@ -243,6 +243,26 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
     }
   }
 
+  /* ========== FIND IN EDITOR ==========
+     Applied as ProseMirror decorations by $lib/utils/editorSearchExtension.js.
+     Global because the target lives inside ProseMirror's own DOM, which carries
+     no Svelte scoping class.
+
+     Amber rather than the portal accent: the accent already means "revealed"
+     (.lh-reveal above) and "selected" in half the app, and a find hit is
+     neither. It is also what every browser's own find bar uses, so it needs no
+     explaining. */
+  .editor-find-hit {
+    background: rgb(251 191 36 / 0.35);      /* amber-400 */
+    border-radius: 2px;
+  }
+  /* The one the reader is ON. Solid, so it can be picked out of thirty. */
+  .editor-find-hit-active {
+    background: rgb(251 191 36 / 0.85);
+    color: #0f172a;
+    box-shadow: 0 0 0 1px rgb(251 191 36);
+  }
+
   /* ========== RICH TEXT DISPLAY ========== */
   /* Used wherever Tiptap HTML is rendered read-only (activity display,
      reports, meeting minutes). Colour is inherited from the parent. */
