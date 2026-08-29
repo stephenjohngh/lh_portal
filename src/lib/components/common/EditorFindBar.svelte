@@ -39,11 +39,21 @@
    */
   let count = 0;
   let index = -1;
+  let summary = '';
 
+  /**
+   * `summary` is ASSIGNED here rather than derived with `$:`.
+   *
+   * As a derivation it depended on count, index and query — and Svelte runs
+   * reactive statements in dependency order, so it could be evaluated with the
+   * new query and the previous count, which is exactly the "one behind" the
+   * number showed. Assigning all three together removes the ordering question.
+   */
   function refresh() {
     const state = searchState(editor);
     count = state.count;
     index = state.index;
+    summary = describeMatches(count, index, query);
   }
 
   let boundTo = null;
@@ -55,7 +65,6 @@
   }
   onDestroy(() => boundTo?.off('transaction', refresh));
 
-  $: summary = describeMatches(count, index, query);
 
   // Focus follows opening. Guarded on the primitive so an unrelated parent
   // update does not steal focus back mid-typing.
@@ -65,7 +74,10 @@
     if (open) tick().then(() => { input?.select(); input?.focus(); });
   }
 
-  $: if (editor && open) editor.commands.setSearchQuery(query);
+  // Read straight back, in the same statement. The command dispatches
+  // synchronously, so the plugin's answer is available immediately — waiting
+  // for the transaction event would be a render later.
+  $: if (editor && open) { editor.commands.setSearchQuery(query); refresh(); }
 
   export function close() {
     open = false;

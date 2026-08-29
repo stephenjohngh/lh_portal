@@ -10,7 +10,7 @@
 // the other direction.
 
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { findRanges, stepIndex } from './editorSearch.js';
 
@@ -129,32 +129,40 @@ export const EditorSearch = Extension.create({
     ];
   },
 
+  // Both commands MUTATE the transaction Tiptap hands them and let Tiptap
+  // dispatch it. The first version built its own transaction and dispatched
+  // that, leaving Tiptap to dispatch its own — two transactions per keystroke,
+  // the second built from a state that no longer existed. ProseMirror rejects
+  // a mismatched transaction, which is why the arrows appeared to do nothing
+  // and the count read one keystroke behind.
   addCommands() {
     return {
       /** Set (or clear, with '') what is being looked for. */
-      setSearchQuery: (query) => ({ state, dispatch }) => {
-        dispatch?.(state.tr.setMeta(searchKey, { query: query ?? '' }));
+      setSearchQuery: (query) => ({ tr, dispatch }) => {
+        if (dispatch) tr.setMeta(searchKey, { query: query ?? '' });
         return true;
       },
 
       /**
-       * Move to the next or previous match and put the cursor there.
+       * Move to the next or previous match and select it.
        *
-       * The selection moves as well as the highlight, so the editor scrolls to
-       * it — and so typing continues from where the reader was sent, which is
-       * what they were looking for the text in order to do.
+       * Selecting the match rather than placing a caret near it does two
+       * things: the editor scrolls to it, and typing replaces what was found —
+       * which is usually why somebody went looking for it.
        */
-      goToMatch: (step) => ({ state, dispatch, tr }) => {
+      goToMatch: (step) => ({ state, tr, dispatch }) => {
         const current = searchKey.getState(state);
         if (!current?.ranges.length) return false;
 
         const index = stepIndex(current.ranges.length, current.index, step);
         const range = current.ranges[index];
+        if (!range) return false;
 
-        tr.setMeta(searchKey, { step });
-        tr.setSelection(state.selection.constructor.near(tr.doc.resolve(range.from)));
-        tr.scrollIntoView();
-        dispatch?.(tr);
+        if (dispatch) {
+          tr.setMeta(searchKey, { step });
+          tr.setSelection(TextSelection.create(tr.doc, range.from, range.to));
+          tr.scrollIntoView();
+        }
         return true;
       },
     };
