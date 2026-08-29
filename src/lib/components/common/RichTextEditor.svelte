@@ -20,6 +20,8 @@
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
   import { MarkdownPaste } from '$lib/utils/markdownPasteExtension.js';
+  import { EditorSearch } from '$lib/utils/editorSearchExtension.js';
+  import EditorFindBar from './EditorFindBar.svelte';
   // Link is bundled into StarterKit v3 — configured via its `link` option below.
 
   export let value       = '';
@@ -54,6 +56,16 @@
   export let markdown = false;
 
   const dispatch = createEventDispatcher();
+
+  /** Find bar, shared with the Dossier editor — see EditorFindBar.svelte. */
+  let findOpen = false;
+
+  function onEditorKeydown(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+      event.preventDefault();
+      findOpen = true;      // the bar takes focus itself when it opens
+    }
+  }
 
   let editorEl;
   let editor;
@@ -146,6 +158,10 @@
         // minHeading 2 to match `levels: [2, 3]` above — a converted `#`
         // must be a tag this schema can hold, or the line is dropped.
         ...(markdown ? [MarkdownPaste.configure({ minHeading: 2 })] : []),
+        // Find-in-editor. Always on: the browser's Ctrl+F searches the whole
+        // page, which for an editor inside a dialog means it matches — and
+        // scrolls to — text behind the dialog that nobody can see.
+        EditorSearch,
       ],
       content: initContent(value),
       editorProps: {
@@ -377,10 +393,24 @@
       title="Join line-breaks within paragraphs — useful for text pasted from narrow web columns"
     >⟳ Reflow</button>
 
+    <div class="flex-1"></div>
+
+    <!-- Find. Pushed to the right, so it reads as a way of looking at the text
+         rather than as another way of changing it. -->
+    <EditorFindBar {editor} bind:open={findOpen} compact={true} />
+    {#if !findOpen}
+      <button type="button" class="{TB}"
+        on:click={() => findOpen = true} title="Find in this text (Ctrl+F)">🔍</button>
+    {/if}
+
   </div>
 
   <!-- ── Editor area ──────────────────────────────────────────────── -->
-  <div class="relative">
+  <!-- Ctrl+F is taken only while the cursor is IN here. A person typing in a
+       comment box who reaches for it means this text, the way they would in any
+       editor; Escape hands the shortcut straight back to the browser. -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="relative" on:keydown={onEditorKeydown}>
     <div bind:this={editorEl}></div>
     {#if isEmpty}
       <p class="rte-placeholder">{placeholder}</p>

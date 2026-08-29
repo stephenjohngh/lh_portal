@@ -91,8 +91,8 @@
   import { CALLOUT_VARIANTS } from '../utils/calloutNode.js';
   import BlockContent from './BlockContent.svelte';
   import { shouldFocusEnd } from '../utils/paddingClick.js';
-  import { EditorSearch, searchState } from '$lib/utils/editorSearchExtension.js';
-  import { describeMatches as describeFind } from '$lib/utils/editorSearch.js';
+  import { EditorSearch } from '$lib/utils/editorSearchExtension.js';
+  import EditorFindBar from '$lib/components/common/EditorFindBar.svelte';
 
   /** The dossier_docs row being edited. */
   export let doc;
@@ -443,37 +443,6 @@
   // $lib/utils/editorSearchExtension.js.
 
   let findOpen = false;
-  let findQuery = '';
-  let findInput;
-
-  /** Recomputed on every transaction, since `editor = editor` re-renders. */
-  $: findCount = editor ? searchState(editor).count : 0;
-  $: findIndex = editor ? searchState(editor).index : -1;
-  $: findSummary = describeFind(findCount, findIndex, findQuery);
-
-  async function openFind() {
-    findOpen = true;
-    await tick();
-    findInput?.select();
-    findInput?.focus();
-  }
-
-  function closeFind() {
-    findOpen = false;
-    findQuery = '';
-    editor?.commands.setSearchQuery('');
-    editor?.commands.focus();
-  }
-
-  $: if (editor && findOpen) editor.commands.setSearchQuery(findQuery);
-
-  function findKeydown(event) {
-    if (event.key === 'Escape') { event.preventDefault(); closeFind(); }
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      editor?.commands.goToMatch(event.shiftKey ? -1 : 1);
-    }
-  }
 
   /**
    * Ctrl+F while the editor has focus.
@@ -485,7 +454,7 @@
   function editorKeydown(event) {
     if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
       event.preventDefault();
-      openFind();
+      findOpen = true;   // the bar takes focus itself when it opens
     }
   }
 
@@ -618,34 +587,12 @@
 
     <div class="flex-1"></div>
 
-    {#if findOpen}
-      <div class="flex items-center gap-1 shrink-0 mr-2">
-        <input
-          bind:this={findInput}
-          bind:value={findQuery}
-          on:keydown={findKeydown}
-          type="text"
-          placeholder="Find in page"
-          class="w-40 px-2 py-0.5 text-xs bg-slate-900 border border-slate-600 rounded
-                 text-white placeholder-slate-500 focus:outline-none focus:ring-1
-                 focus:ring-purple-500"
-        />
-        <span class="text-[11px] text-slate-500 w-16 tabular-nums">{findSummary}</span>
-        <button type="button" title="Previous match (Shift+Enter)"
-                class="min-w-6 h-6 rounded text-xs text-slate-400 hover:bg-slate-700 hover:text-white"
-                on:click={() => editor?.commands.goToMatch(-1)}>↑</button>
-        <button type="button" title="Next match (Enter)"
-                class="min-w-6 h-6 rounded text-xs text-slate-400 hover:bg-slate-700 hover:text-white"
-                on:click={() => editor?.commands.goToMatch(1)}>↓</button>
-        <button type="button" title="Close (Esc)"
-                class="min-w-6 h-6 rounded text-xs text-slate-400 hover:bg-slate-700 hover:text-white"
-                on:click={closeFind}>✕</button>
-      </div>
-    {:else}
+    <div class="mr-2"><EditorFindBar {editor} bind:open={findOpen} /></div>
+    {#if !findOpen}
       <button type="button" title="Find in this page (Ctrl+F)"
               class="min-w-7 h-7 px-1.5 rounded text-xs text-slate-400 shrink-0
                      hover:bg-slate-700 hover:text-white transition-colors mr-1"
-              on:click={openFind}>🔍</button>
+              on:click={() => findOpen = true}>🔍</button>
     {/if}
 
     <span class="text-xs shrink-0 {saveError ? 'text-red-400' : 'text-slate-500'}">
