@@ -26,9 +26,13 @@
 // author wrote what a file IS rather than what it is called.
 
 import { templateFor, columnFields, rowFields } from './datasetTemplates.js';
+import { snippetAround } from '$lib/utils/textSearch.js';
 
-/** Characters either side of a hit in the snippet. */
-const SNIPPET_PAD = 60;
+// snippetAround now lives in shared utils — the Management app's search shows
+// hits the same way, and one definition of "how a hit reads" is worth more
+// than each app having its own. Re-exported so this module stays the one
+// import a caller of pack search needs.
+export { snippetAround };
 /** Enough to find something; past this the answer is "refine the query". */
 export const MAX_RESULTS = 50;
 /** Below this a query matches most of the pack and helps nobody. */
@@ -69,30 +73,6 @@ export function blockTextRuns(blocks) {
     .filter(run => run.text);
 }
 
-/**
- * A readable fragment around the first hit, with the hit marked.
- *
- * Returns the offsets rather than HTML: the caller decides how to emphasise a
- * match, and building markup here would mean escaping author text in a module
- * that has no business doing it.
- *
- * @returns {{ text: string, from: number, to: number } | null}
- */
-export function snippetAround(text, query) {
-  const at = text.toLowerCase().indexOf(query.toLowerCase());
-  if (at === -1) return null;
-
-  const start = Math.max(0, at - SNIPPET_PAD);
-  const end   = Math.min(text.length, at + query.length + SNIPPET_PAD);
-  const lead  = start > 0 ? '…' : '';
-  const tail  = end < text.length ? '…' : '';
-
-  return {
-    text: `${lead}${text.slice(start, end)}${tail}`,
-    from: lead.length + (at - start),
-    to:   lead.length + (at - start) + query.length,
-  };
-}
 
 /**
  * Search a pack's pages and table entries.

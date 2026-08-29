@@ -9,6 +9,8 @@
   import { meetingsStore }  from './stores/meetingsStore';
   import { issuesUiState }  from './stores/issuesUiStore';
   import IssueCard          from './components/IssueCard.svelte';
+  import SearchMatches      from './components/SearchMatches.svelte';
+  import { searchIssues, describeMatches } from './utils/issueSearch.js';
   import IssueForm          from './components/IssueForm.svelte';
   import ReportsTab         from './components/reports/ReportsTab.svelte';
   import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
@@ -99,27 +101,31 @@
     });
   }
   // -- Filter issues (no meeting filter — that lives in the Meetings tab) -
-  $: filteredIssues = issues.filter(issue => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      issue.name?.toLowerCase().includes(term) ||
-      issue.description?.toLowerCase().includes(term) ||
-      (issue.activities || []).some(a =>
-        a.body?.toLowerCase().includes(term) ||
-        Object.values(a.fields || {}).some(v => typeof v === 'string' && v.toLowerCase().includes(term))
-      );
 
-    let matchesStatus = false;
-    if (statusFilter === ISSUE_STATUS.CURRENT) {
-      matchesStatus = issue.status === ISSUE_STATUS.CURRENT || !issue.status;
-    } else if (statusFilter === ISSUE_STATUS.PARKED) {
-      matchesStatus = issue.status === ISSUE_STATUS.PARKED;
-    } else if (statusFilter === ISSUE_STATUS.COMPLETED) {
-      matchesStatus = issue.status === ISSUE_STATUS.COMPLETED;
-    }
+  /** An issue with no status set is Current — that is the historic default. */
+  function inStatusTab(issue) {
+    if (statusFilter === ISSUE_STATUS.CURRENT)   return issue.status === ISSUE_STATUS.CURRENT || !issue.status;
+    if (statusFilter === ISSUE_STATUS.PARKED)    return issue.status === ISSUE_STATUS.PARKED;
+    if (statusFilter === ISSUE_STATUS.COMPLETED) return issue.status === ISSUE_STATUS.COMPLETED;
+    return false;
+  }
 
-    return matchesSearch && matchesStatus;
-  });
+  // Search EVERY issue, then narrow to the tab — not the other way round.
+  //
+  // Two reasons. It is one pass over the activities rather than two, which
+  // matters because this re-runs on every keystroke. And it is the only way to
+  // know that the thing being looked for is sitting in Completed while the
+  // reader stares at Current, which is exactly when a search looks broken.
+  //
+  // The search returns the MATCHES rather than a yes/no, so the list can show
+  // what it found — see utils/issueSearch.js, which also explains why the old
+  // inline filter was wrong (it never searched actions, and it searched raw
+  // HTML).
+  $: allSearchResults = searchIssues(issues, searchTerm);
+  $: searchResults    = allSearchResults.filter(r => inStatusTab(r.issue));
+  $: filteredIssues   = searchResults.map(r => r.issue);
+  $: searchSummary    = describeMatches(searchResults, searchTerm);
+  $: elsewhereCount   = allSearchResults.length - searchResults.length;
 
   // -- Meeting badge click: navigate to Meetings tab and select meeting --
   function handleMeetingBadgeClick(e) {
@@ -221,6 +227,21 @@
       expandedSections[issueId] = { activities: false, actions: false };
     }
     expandedSections[issueId][section] = !expandedSections[issueId][section];
+    expandedSections = expandedSections;
+  }
+
+  /**
+   * Open a section, rather than toggle it.
+   *
+   * Clicking a search match asks to SEE the thing. Toggling would close the
+   * section for anyone who had already opened it, which reads as the click
+   * having done the opposite of what it said.
+   */
+  function openSection(issueId, section) {
+    if (!expandedSections[issueId]) {
+      expandedSections[issueId] = { activities: false, actions: false };
+    }
+    expandedSections[issueId][section] = true;
     expandedSections = expandedSections;
   }
 
@@ -345,7 +366,7 @@
         <input
           type="text"
           bind:value={searchTerm}
-          placeholder="Search…"
+          placeholder="Search issues, notes, actions…"
           class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
                  placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500
                  flex-1 min-w-0"
@@ -390,7 +411,7 @@
           <input
             type="text"
             bind:value={searchTerm}
-            placeholder="Search…"
+            placeholder="Search issues, notes, actions…"
             class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white
                    placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500
                    flex-1 min-w-0"
@@ -413,11 +434,28 @@
       <LoadingSpinner />
     {:else if filteredIssues.length === 0}
       <div class="empty-state">
-        No issues found. {searchTerm ? 'Try a different search.' : 'Click "New Issue" to create one.'}
+        {#if searchTerm}
+          {#if elsewhereCount > 0}
+            Nothing here matches “{searchTerm}” — but {elsewhereCount}
+            issue{elsewhereCount === 1 ? '' : 's'} under another status tab
+            do{elsewhereCount === 1 ? 'es' : ''}.
+          {:else}
+            {searchSummary || 'No issues found.'} Try a different search.
+          {/if}
+        {:else}
+          No issues found. Click "New Issue" to create one.
+        {/if}
       </div>
     {:else}
+      {#if searchSummary}
+        <p class="text-xs text-slate-500 mb-2">
+          {searchSummary}{#if elsewhereCount > 0}
+            <span class="text-slate-600"> · {elsewhereCount} more under another status tab</span>
+          {/if}
+        </p>
+      {/if}
       <div class="section-spacing">
-        {#each filteredIssues as issue (issue.id)}
+        {#each searchResults as { issue, matches } (issue.id)}
           <div id="issue-{issue.id}">
           <IssueCard
             {issue}
@@ -429,7 +467,13 @@
             on:delete={handleDeleteIssue}
             on:meetingFilter={handleMeetingBadgeClick}
             on:moveRequest={handleMoveRequest}
-          />
+          >
+            <SearchMatches
+              {matches}
+              on:openActivity={() => openSection(issue.id, 'activities')}
+              on:openActions={() => openSection(issue.id, 'actions')}
+            />
+          </IssueCard>
           </div>
         {/each}
       </div>

@@ -303,6 +303,10 @@
     </div>
   </div>
 
+  <!-- What a search found in this issue. Empty, and so invisible, the rest of
+       the time — see SearchMatches.svelte. -->
+  <div class="px-4 pb-1"><slot /></div>
+
   <!-- Activity Log Section -->
   {#if showActivity}
     <div class="ml-8 mr-4 mb-3">
