@@ -11,7 +11,7 @@
   import IssueCard          from './components/IssueCard.svelte';
   import SearchMatches      from './components/SearchMatches.svelte';
   import { searchIssues, describeMatches, inStatusTab } from './utils/issueSearch.js';
-  import { revealById } from '$lib/utils/revealElement.js';
+  import { revealElement, stickyOffset } from '$lib/utils/revealElement.js';
   import IssueForm          from './components/IssueForm.svelte';
   import ReportsTab         from './components/reports/ReportsTab.svelte';
   import MeetingsTab        from './components/meetings/MeetingsTab.svelte';
@@ -152,9 +152,8 @@
       if (saved.topIssueId) {
         const el = document.getElementById(`issue-${saved.topIssueId}`);
         if (el) {
-          const stickyBar = containerElement?.querySelector('.sticky');
-          const stickyH   = stickyBar ? stickyBar.getBoundingClientRect().height : 76;
-          const top = window.scrollY + el.getBoundingClientRect().top - 64 - stickyH - 8;
+          const top = window.scrollY + el.getBoundingClientRect().top
+                    - stickyOffset(containerElement);
           window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
         } else if (saved.scrollY > 0) {
           // Issue no longer in filtered list — fall back to raw pixel position.
@@ -241,9 +240,18 @@
     expandedSections = expandedSections;
 
     // Then the entry itself. The section has to render before the element
-    // exists, and a frame after that before it has been laid out — see
-    // revealById, which waits for both.
-    if (revealId) tick().then(() => revealById(revealId));
+    // exists, and a frame after that before it has been laid out.
+    //
+    // Scrolled with an offset rather than by scrollIntoView: the app's nav is
+    // fixed and the tab/filter bar is sticky, so "put this at the top of the
+    // viewport" puts it underneath both of them, out of sight — which is
+    // exactly what it did.
+    if (revealId) {
+      tick().then(() => requestAnimationFrame(() => {
+        revealElement(document.getElementById(revealId),
+          { offset: stickyOffset(containerElement) });
+      }));
+    }
   }
 
   async function handleJumpToIssue(issueId) {
@@ -260,11 +268,10 @@
     await tick();
     const el = document.getElementById(`issue-${issueId}`);
     if (!el) return;
-    // Scroll so the issue title sits just below the sticky header.
-    // Offset = fixed nav (64px) + sticky tab+toolbar bar (≈76px) + 8px breathing room.
-    const stickyBar = containerElement?.querySelector('.sticky');
-    const stickyH   = stickyBar ? stickyBar.getBoundingClientRect().height : 76;
-    const top = window.scrollY + el.getBoundingClientRect().top - 64 - stickyH - 8;
+    // Just below the sticky header — the same measurement the search reveal
+    // uses, since getting it wrong looks identical in both.
+    const top = window.scrollY + el.getBoundingClientRect().top
+              - stickyOffset(containerElement);
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     el.classList.add('ring-2', 'ring-purple-400', 'lh-jump-highlight');
     document.addEventListener(
