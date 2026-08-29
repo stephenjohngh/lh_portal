@@ -12,8 +12,14 @@
 /** The class in app.css that draws the mark. */
 export const REVEAL_CLASS = 'lh-reveal';
 
-/** Long enough to catch the eye, short enough not to become part of the page. */
-const MARK_MS = 2400;
+/**
+ * How long the mark stays on.
+ *
+ * Must match the animation in app.css, or the class is pulled while the mark
+ * is still showing and it vanishes mid-fade — which looks like a glitch rather
+ * than an ending.
+ */
+const MARK_MS = 4000;
 
 /**
  * @param {Element|null|undefined} el

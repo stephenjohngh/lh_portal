@@ -198,23 +198,39 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
      scoping class, and one keyframe beats two that drift apart.
      Applied by $lib/utils/revealElement.js. */
   .lh-reveal {
-    animation: lh-reveal 2.4s ease-out;
+    animation: lh-reveal 4s ease-out;
     border-radius: 3px;
   }
 
   @keyframes lh-reveal {
-    /* A fading tint, not a persistent one: a highlight that stays reads as a
+    /* HOLDS, then fades. A tint that starts fading immediately is a flash the
+       eye can miss entirely — especially a teal one over a slate card, where
+       the two are close in tone. So it sits at full strength for most of the
+       four seconds and only then goes, and it carries a ring as well as a
+       background: on a busy list the outline is what says "this one" at a
+       glance, and it works whatever the row underneath is coloured.
+
+       It still ends at nothing. A highlight that stayed would read as a
        property of the thing rather than as an answer to what was just asked. */
-    0%   { background: rgb(var(--lh-accent-rgb) / 0.3); }
-    100% { background: transparent; }
+    0%, 70% {
+      background: rgb(var(--lh-accent-rgb) / 0.55);
+      box-shadow: 0 0 0 2px rgb(var(--lh-accent-rgb) / 0.95);
+    }
+    100% {
+      background: transparent;
+      box-shadow: 0 0 0 2px rgb(var(--lh-accent-rgb) / 0);
+    }
   }
 
-  /* Someone who has asked for less motion still needs to see WHICH one. */
+  /* Someone who has asked for less motion still needs to see WHICH one — and
+     needs it to be at least as obvious, not less. It holds for the same four
+     seconds and is then removed by the same timer. */
   @media (prefers-reduced-motion: reduce) {
     .lh-reveal {
       animation: none;
-      outline: 2px solid rgb(var(--lh-accent-rgb) / 0.6);
-      outline-offset: 2px;
+      background: rgb(var(--lh-accent-rgb) / 0.35);
+      outline: 2px solid rgb(var(--lh-accent-rgb) / 0.95);
+      outline-offset: 1px;
     }
   }
 
