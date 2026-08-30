@@ -9,7 +9,7 @@ import {
 const CATEGORIES = [
   { slug: 'meeting',     name: 'Meeting',     colour: 'green',  system: true,  position: 3 },
   { slug: 'compliance',  name: 'Compliance',  colour: 'red',    system: true,  position: 1 },
-  { slug: 'gardening',   name: 'Gardening',   colour: 'lime',   system: false, position: 9 },
+  { slug: 'gardening',   name: 'Gardening',   colour: 'lime',   system: false, position: 9, hands_to_maintenance: true },
   { slug: 'old',         name: 'Old thing',   colour: 'slate',  system: false, position: 5, archived: true },
 ];
 
@@ -186,5 +186,24 @@ describe('day marks', () => {
 
   it('falls back to grey for a colour it does not know', () => {
     expect(markStyle({ colour: 'chartreuse', label: 'x' }).wash).toBe(FALLBACK.wash);
+  });
+});
+
+describe('categoryOf — hands_to_maintenance', () => {
+  // Migration 184. The row decides whether to offer "Hand to Maintenance" from
+  // this flag, so it has to survive being merged with a palette swatch — and a
+  // category that cannot be resolved must not quietly acquire it.
+  it('carries the flag through the merge with the swatch', () => {
+    expect(categoryOf('gardening', CATEGORIES).hands_to_maintenance).toBe(true);
+  });
+
+  it('is absent for a category that does not have it', () => {
+    expect(categoryOf('meeting', CATEGORIES).hands_to_maintenance).toBeFalsy();
+  });
+
+  it('is absent for an unknown category and for no category at all', () => {
+    // The safe direction: an event nobody can file does not get to make a job.
+    expect(categoryOf('was-deleted', CATEGORIES).hands_to_maintenance).toBeFalsy();
+    expect(categoryOf(null, CATEGORIES).hands_to_maintenance).toBeFalsy();
   });
 });

@@ -268,11 +268,14 @@ function createPlannerStore() {
   }
 
   /** Rename or recolour. Never the slug — see createCategory. */
-  async function updateCategory(id, { name, colour, archived }, userId) {
+  async function updateCategory(id, { name, colour, archived, hands_to_maintenance }, userId) {
     const fields = {};
     if (name !== undefined)     fields.name = name;
     if (colour !== undefined)   fields.colour = colour;
     if (archived !== undefined) fields.archived = archived;
+    // Whether events in this category may be handed to Maintenance —
+    // migration 184. A property of the category, not a rule in a component.
+    if (hands_to_maintenance !== undefined) fields.hands_to_maintenance = hands_to_maintenance;
 
     const row = await api.update('planner_categories', id, { ...fields, ...touch(userId) }, true);
 

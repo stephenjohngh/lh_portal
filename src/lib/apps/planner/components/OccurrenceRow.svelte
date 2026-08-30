@@ -40,6 +40,20 @@
   $: recurring = isRecurring(series?.recurrence);
   /** The opening line of the event's notes, if it has any. */
   $: summary   = firstLine(series?.description);
+  /**
+   * A skip on a one-off is a CANCELLATION — the AGM did not happen — and that
+   * is the word for it. On a series it is a skip, because the pattern carries
+   * on regardless. Same stored status either way: it is one fact, "this dated
+   * thing was deliberately not done", and storing two words for it would make
+   * every reader of the column learn both.
+   */
+  $: notDoneWord = recurring ? 'skipped' : 'cancelled';
+  /**
+   * Whether this event's category is one the building hands to Maintenance —
+   * migration 184. An AGM or a set of accounts is not maintenance work, and a
+   * button that makes a job out of one is an invitation to a mess.
+   */
+  $: canPromote = !!category.hands_to_maintenance;
 </script>
 
 <div class="flex items-start gap-3 p-2.5 rounded border border-slate-700
@@ -78,7 +92,7 @@
         <span class="text-[10px] px-1 rounded border {category.chip}">{occurrence.sourceLabel}</span>
       {/if}
       {#if skipped}
-        <span class="text-[10px] uppercase tracking-wide text-slate-500">skipped</span>
+        <span class="text-[10px] uppercase tracking-wide text-slate-500">{notDoneWord}</span>
       {/if}
       {#if occurrence.moved}
         <span class="text-[10px] text-amber-400"
@@ -128,13 +142,15 @@
               on:click={() => dispatch('move', occurrence)}>↦</button>
       <button type="button"
               title={skipped
-                ? (recurring ? 'Un-skip' : 'Mark as still needed')
-                : (recurring ? 'Skip this one' : 'Mark as not needed')}
+                ? (recurring ? 'Un-skip' : 'Reinstate')
+                : (recurring ? 'Skip this one' : 'Mark as cancelled')}
               class="text-slate-600 hover:text-slate-300 text-xs px-1"
               on:click={() => dispatch('skip', occurrence)}>⊘</button>
-      <button type="button" title="Hand this to Maintenance"
-              class="text-slate-600 hover:text-sky-300 text-xs px-1"
-              on:click={() => dispatch('promote', occurrence)}>⇥</button>
+      {#if canPromote}
+        <button type="button" title="Hand this to Maintenance"
+                class="text-slate-600 hover:text-sky-300 text-xs px-1"
+                on:click={() => dispatch('promote', occurrence)}>⇥</button>
+      {/if}
       <button type="button" title={recurring ? 'Edit the series' : 'Edit this event'}
               class="text-slate-600 hover:text-purple-300 text-xs px-1"
               on:click={() => dispatch('editSeries', series)}>✎</button>

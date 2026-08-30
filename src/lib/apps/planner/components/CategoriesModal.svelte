@@ -69,6 +69,14 @@
     <div class="mb-3"><ErrorDisplay message={error} onDismiss={() => error = ''} /></div>
   {/if}
 
+  {#if canEdit}
+    <p class="text-[11px] text-slate-500 mb-2">
+      <span class="text-sky-300">⇥</span> marks the categories whose events can be
+      handed to the Maintenance app as a job. Meetings and financial dates are
+      not maintenance work, so they do not offer it.
+    </p>
+  {/if}
+
   <div class="space-y-1.5">
     {#each ordered as category (category.id)}
       <div class="flex items-center gap-3 p-2 rounded border border-slate-700 bg-slate-800/40">
@@ -111,6 +119,26 @@
                 ></button>
               {/each}
             </div>
+
+            <!-- Whether this category's events offer "Hand to Maintenance".
+                 It lives here rather than in code because the categories are
+                 the building's: a fire door inspection genuinely does become a
+                 job, and only they can say whether theirs do. -->
+            <button
+              type="button"
+              aria-pressed={!!category.hands_to_maintenance}
+              title={category.hands_to_maintenance
+                ? `${category.name} events can be handed to Maintenance — click to stop offering it`
+                : `${category.name} events cannot be handed to Maintenance — click to allow it`}
+              class="text-xs px-1 transition-colors
+                     {category.hands_to_maintenance
+                       ? 'text-sky-300 hover:text-sky-200'
+                       : 'text-slate-700 hover:text-slate-500'}"
+              on:click={() => dispatch('update', {
+                id: category.id,
+                hands_to_maintenance: !category.hands_to_maintenance,
+              })}
+            >⇥</button>
 
             <button type="button" class="text-slate-600 hover:text-purple-300 text-xs px-1"
                     title="Rename" on:click={() => startRename(category)}>✎</button>
