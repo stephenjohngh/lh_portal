@@ -13,10 +13,8 @@
   import { pickable } from '../utils/categories.js';
   import { isRecurring } from '../utils/recurrence.js';
   import { today } from '$lib/utils/dates';
-  import { profiles, profilesStore } from '$lib/stores/profiles';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-  import { onMount } from 'svelte';
 
   export let show = false;
   /** The series being edited, or null to create one. */
@@ -44,6 +42,14 @@
   let startTime = '';
   let endTime = '';
   let leadDays = '';
+  /**
+   * Kept, though there is no longer a field for it.
+   *
+   * `owner_id` is still a column and some events already have one — read on
+   * load, written back on save, so editing an event does not silently clear
+   * whose job it was. Restoring the picker is a line of markup if it is ever
+   * wanted again.
+   */
   let ownerId = '';
   let rule = { freq: 'once' };
   let drifts = false;
@@ -144,13 +150,6 @@
 
   function close() { loadedFor = null; show = false; dispatch('close'); }
 
-  /** Whose job this is. Ids, because the column is a foreign key. */
-  onMount(() => profilesStore.load());
-  $: owners = [
-    { value: '', label: 'Nobody in particular' },
-    ...$profiles.list.map(p => ({ value: p.id, label: p.full_name })),
-  ];
-
   let pendingArchive = false;
   let pendingDelete = false;
 </script>
@@ -191,8 +190,6 @@
     <div class="border-t border-slate-700 pt-3">
       <RecurrenceFields bind:rule bind:drifts />
     </div>
-
-    <FormSelect label="Whose job (optional)" bind:value={ownerId} options={owners} />
 
     <FormInput label="Days of notice (optional)" type="number" bind:value={leadDays}
                placeholder="30" min="0" />

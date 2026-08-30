@@ -25,6 +25,7 @@
   import FormInput    from '$lib/components/common/FormInput.svelte';
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
+  import AdminMenu from './components/AdminMenu.svelte';
   import CategoriesModal from './components/CategoriesModal.svelte';
   import DayMarkControl from './components/DayMarkControl.svelte';
   import MultiSelectDropdown from '$lib/components/common/MultiSelectDropdown.svelte';
@@ -60,6 +61,16 @@
    */
   let categoryFilter = new Set();
   let openDropdown = null;
+  /**
+   * The toolbar, for closing an open menu when the click lands anywhere else.
+   * Neither menu closes itself: both are parent-controlled so only one can be
+   * open at a time, which leaves the parent owning this too.
+   */
+  let toolbar = null;
+
+  function onWindowClick(e) {
+    if (openDropdown && toolbar && !toolbar.contains(e.target)) openDropdown = null;
+  }
   let showDone = false;
 
   // ── Which view ────────────────────────────────────────────────────────────
@@ -267,6 +278,11 @@
   });
 </script>
 
+<!-- Closes an open toolbar menu when the click lands anywhere else. Both menus
+     are parent-controlled so that only one can be open at a time, which leaves
+     the parent owning the dismissal too. -->
+<svelte:window on:click={onWindowClick} />
+
 <div class="p-4">
 
   {#if error}
@@ -278,53 +294,63 @@
     </div>
   {/if}
 
-  <!-- Header -->
-  <div class="flex items-start gap-3 mb-4 flex-wrap">
+  <!-- Header.
+
+       Two groups with the gap between them, rather than one long row: on the
+       left is WHICH VIEW and WHEN — the controls that change what you are
+       looking at — and on the right the ones that act on it. The arrows sit
+       either side of the month they move, because an arrow's meaning is the
+       thing next to it. -->
+  <div bind:this={toolbar} class="flex items-center gap-3 mb-4 flex-wrap">
     <div class="min-w-0">
       <h2 class="text-sm font-semibold text-white">Planner</h2>
       <p class="text-xs text-slate-500 mt-0.5">{summary}</p>
     </div>
 
-    <div class="flex-1"></div>
+    <div class="flex rounded border border-slate-600 overflow-hidden text-xs shrink-0">
+      {#each [['agenda', 'Agenda'], ['month', 'Month'], ['year', 'Year']] as [key, label]}
+        <button type="button"
+                class="px-2.5 py-1 transition-colors
+                       {view === key ? 'bg-purple-600 text-white'
+                                     : 'text-slate-400 hover:bg-slate-700'}"
+                on:click={() => { view = key; selectedDay = null; }}>{label}</button>
+      {/each}
+    </div>
+
+    {#if view === 'month'}
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" title="Previous month"
+                class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
+                       border border-slate-600 rounded"
+                on:click={() => goMonth(-1)}>←</button>
+        <span class="text-xs text-slate-300 w-28 text-center">{monthLabel}</span>
+        <button type="button" title="Next month"
+                class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
+                       border border-slate-600 rounded"
+                on:click={() => goMonth(1)}>→</button>
+      </div>
+    {/if}
+
+    {#if view === 'year'}
+      <select bind:value={year} title="Which year"
+              class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded
+                     text-white focus:outline-none focus:ring-1 focus:ring-purple-500 shrink-0">
+        {#each years as y}<option value={y}>{y}</option>{/each}
+      </select>
+    {/if}
+
+    <div class="flex-1 min-w-[1rem]"></div>
 
     <div class="flex items-center gap-2 shrink-0">
-      <div class="flex rounded border border-slate-600 overflow-hidden text-xs">
-        {#each [['agenda', 'Agenda'], ['month', 'Month'], ['year', 'Year']] as [key, label]}
-          <button type="button"
-                  class="px-2.5 py-1 transition-colors
-                         {view === key ? 'bg-purple-600 text-white'
-                                       : 'text-slate-400 hover:bg-slate-700'}"
-                  on:click={() => { view = key; selectedDay = null; }}>{label}</button>
-        {/each}
-      </div>
-
-      {#if view === 'month'}
-        <div class="flex items-center gap-1">
-          <button type="button" title="Previous month"
-                  class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
-                         border border-slate-600 rounded"
-                  on:click={() => goMonth(-1)}>←</button>
-          <span class="text-xs text-slate-300 w-28 text-center">{monthLabel}</span>
-          <button type="button" title="Next month"
-                  class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
-                         border border-slate-600 rounded"
-                  on:click={() => goMonth(1)}>→</button>
-        </div>
-      {/if}
-
-      {#if view === 'year'}
-        <select bind:value={year}
-                class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded
-                       text-white focus:outline-none focus:ring-1 focus:ring-purple-500">
-          {#each years as y}<option value={y}>{y}</option>{/each}
-        </select>
-      {/if}
-
       <!-- The portal's own filter control, moved to common/ for this — the
            Components tab has had it for a year and it behaves the way people
-           here already expect a filter to behave. -->
+           here already expect a filter to behave.
+
+           No label above it: "All categories" already says what it is, and the
+           heading only made the control taller than everything beside it. -->
       <MultiSelectDropdown
-        label="Category" placeholder="All categories" noun="categories" minWidth="130px"
+        title="Show only certain categories"
+        placeholder="All categories" noun="categories" minWidth="130px"
         options={pickable(state.categories).map(c => ({ value: c.slug, label: c.name }))}
         bind:selected={categoryFilter}
         open={openDropdown === 'category'}
@@ -337,11 +363,14 @@
         Other apps
       </label>
 
-      <ProtectedButton variant="secondary" size="small"
-                       title="The categories this building uses"
-                       on:click={() => categoriesOpen = true}>
-        Categories
-      </ProtectedButton>
+      {#if $permissions.isAdmin}
+        <AdminMenu
+          items={[{ id: 'categories', label: 'Categories', hint: 'Colours, names, what may be handed over' }]}
+          open={openDropdown === 'admin'}
+          on:toggle={() => openDropdown = openDropdown === 'admin' ? null : 'admin'}
+          on:select={(e) => { openDropdown = null; if (e.detail === 'categories') categoriesOpen = true; }}
+        />
+      {/if}
 
       <ProtectedButton variant="primary" size="small" on:click={newEvent}>
         + New event
