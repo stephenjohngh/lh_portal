@@ -23,12 +23,25 @@
   $: category = categoryOf(series?.category);
   $: done     = occurrence.status === STATUS.DONE;
   $: skipped  = occurrence.status === STATUS.SKIPPED;
+  /**
+   * Something another app owns. It is shown, never touched: ticking it here
+   * and ticking it there would be two records of one fact.
+   */
+  $: linked   = !!occurrence.linked;
 </script>
 
 <div class="flex items-start gap-3 p-2.5 rounded border border-slate-700
             bg-slate-800/40 hover:bg-slate-800/70 transition-colors
             {done || skipped ? 'opacity-60' : ''}">
 
+  {#if linked}
+    <!-- No tick at all, rather than a disabled one. A disabled tick invites
+         the question "why can I not"; a mark that is plainly not a control
+         says this belongs elsewhere. -->
+    <span class="mt-0.5 w-5 h-5 shrink-0 rounded flex items-center justify-center
+                 text-[10px] text-slate-500 border border-slate-700"
+          title="Owned by {occurrence.ownerApp}">↗</span>
+  {:else}
   <!-- The tick. Disabled rather than hidden for a viewer: a control that
        vanishes leaves the reader wondering where it went. -->
   <button
@@ -42,12 +55,16 @@
     title={done ? 'Mark as not done' : 'Mark as done'}
     on:click={() => dispatch('toggle', occurrence)}
   >✓</button>
+  {/if}
 
   <div class="min-w-0 flex-1">
     <div class="flex items-baseline gap-2 flex-wrap">
       <span class="w-1.5 h-1.5 rounded-full shrink-0 {category.dot}"></span>
       <span class="text-sm text-white {done ? 'line-through' : ''}">{series?.title}</span>
 
+      {#if linked}
+        <span class="text-[10px] px-1 rounded border {category.chip}">{occurrence.sourceLabel}</span>
+      {/if}
       {#if skipped}
         <span class="text-[10px] uppercase tracking-wide text-slate-500">skipped</span>
       {/if}
@@ -63,6 +80,7 @@
         · {series.start_time.slice(0, 5)}{#if series.end_time}–{series.end_time.slice(0, 5)}{/if}
       {/if}
       {#if series?.location}· {series.location}{/if}
+      {#if linked}· <span class="text-slate-600">in {occurrence.ownerApp}</span>{/if}
       {#if showLateness && daysLate > 0}
         · <span class="text-red-400">{daysLate} day{daysLate === 1 ? '' : 's'} late</span>
       {/if}
@@ -82,7 +100,7 @@
     {/if}
   </div>
 
-  {#if canEdit}
+  {#if canEdit && !linked}
     <div class="flex items-center gap-1 shrink-0">
       <button type="button" title="Move this one to another date"
               class="text-slate-600 hover:text-amber-300 text-xs px-1"

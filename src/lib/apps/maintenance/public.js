@@ -13,6 +13,34 @@ export function getJob(id) {
   return api.getById('maintenance_jobs', id);
 }
 
+/**
+ * Jobs falling in a date window — what the Planner shows on the year.
+ *
+ * Read-only by design, and the Planner is told so: a job ticked off in two
+ * places is two sources of truth for "done". Completing one stays here, in the
+ * app that owns the work.
+ *
+ * Completed jobs are included, dated by when they were DONE rather than when
+ * they were scheduled, because a planner looking back at last spring wants what
+ * actually happened.
+ *
+ * @param {string} from ISO date
+ * @param {string} to   ISO date
+ */
+export async function listScheduledWork(from, to) {
+  const rows = await api.getAll('maintenance_jobs', {
+    select: 'id, task_name, scheduled_date, completed_date, status, contractor_name',
+  });
+
+  // Filtered here rather than in the query: a job is placed on the date it was
+  // completed when it has one, and PostgREST cannot express "whichever of these
+  // two columns is set" without a view.
+  return rows.filter((row) => {
+    const date = row.completed_date ?? row.scheduled_date;
+    return date && date >= from && date <= to;
+  });
+}
+
 /** A job's certificate/documents, newest first. */
 export function listJobDocuments(jobId) {
   return api.get('maintenance_documents', { filters: { job_id: jobId }, orderBy: 'created_at', ascending: false });

@@ -56,6 +56,30 @@ export function listCurrentDocuments(filters = {}) {
 }
 
 /**
+ * Current documents whose review falls due in a window — what the Planner shows
+ * on the building's year.
+ *
+ * Read-only, like everything the Planner aggregates: a review is discharged in
+ * the Golden Thread, where the lifecycle and the audit chain are, and never by
+ * ticking a box on a calendar.
+ *
+ * The window is applied here because api.get() filters only with `.eq()`, so a
+ * range key would be sent as a column name and match nothing. A register is
+ * hundreds of rows, not thousands.
+ *
+ * @param {string} from ISO date
+ * @param {string} to   ISO date
+ */
+export async function listReviewsDue(from, to) {
+  const rows = await api.get('gt_documents', {
+    select: 'id, title, review_due, status',
+    filters: { status: 'current' },
+    orderBy: 'review_due',
+  });
+  return rows.filter(r => r.review_due && r.review_due >= from && r.review_due <= to);
+}
+
+/**
  * The current document(s) satisfying a Schedule-1 category slot.
  * @param {number} categoryCode  gt_schedule1_categories.code (smallint)
  */

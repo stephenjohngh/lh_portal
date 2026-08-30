@@ -11,6 +11,10 @@ import { api } from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { completionPatch, STATUS } from '../utils/agenda.js';
+import { linkedOccurrences } from '../utils/linked.js';
+import { listScheduledWork } from '$lib/apps/maintenance/public.js';
+import { listMeetings, listOpenActionDeadlines } from '$lib/apps/management/public.js';
+import { listReviewsDue } from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('planner');
 
@@ -24,6 +28,9 @@ function createPlannerStore() {
   const store = writable({
     events: [],
     occurrences: [],
+    /** Other apps' dated items — read-only, never written back. */
+    linked: [],
+    loadingLinked: false,
     loading: false,
     error: null,
   });
@@ -54,6 +61,41 @@ function createPlannerStore() {
       update(s => ({ ...s, error: errMessage(err), loading: false }));
       throw err;
     }
+  }
+
+  /**
+   * What the other apps have in this window.
+   *
+   * Each source is read through the OWNING app's public.js, and each is allowed
+   * to fail on its own. A user without the Golden Thread permission gets a
+   * rejected promise for that one source; the planner shows maintenance and
+   * meetings anyway rather than an error page. That is the difference between
+   * an aggregate view and a dependency.
+   *
+   * Never written back. Completing any of these happens in the app that owns
+   * it — see utils/linked.js for why.
+   */
+  async function loadLinked(from, to) {
+    update(s => ({ ...s, loadingLinked: true }));
+
+    const [jobs, meetings, actions, gtDocuments] = await Promise.all([
+      listScheduledWork(from, to).catch(fellShort('maintenance jobs')),
+      listMeetings(from, to).catch(fellShort('meetings')),
+      listOpenActionDeadlines(from, to).catch(fellShort('action deadlines')),
+      listReviewsDue(from, to).catch(fellShort('Golden Thread reviews')),
+    ]);
+
+    const linked = linkedOccurrences({ jobs, meetings, actions, gtDocuments });
+    update(s => ({ ...s, linked, loadingLinked: false }));
+    return linked;
+  }
+
+  /** One source being unavailable is a gap in the view, not a failure of it. */
+  function fellShort(what) {
+    return (err) => {
+      logger('⚠ could not read', what, '—', errMessage(err));
+      return [];
+    };
   }
 
   // ── Series ────────────────────────────────────────────────────────────────
@@ -175,7 +217,7 @@ function createPlannerStore() {
 
   return {
     subscribe,
-    load,
+    load, loadLinked,
     createEvent, updateEvent, archiveEvent, deleteEvent,
     recordOccurrence, moveOccurrence,
     clearError,

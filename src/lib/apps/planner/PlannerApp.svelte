@@ -13,6 +13,7 @@
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween } from './utils/recurrence.js';
   import { CATEGORIES } from './utils/categories.js';
+  import { SOURCES } from './utils/linked.js';
   import { today, fmtDateLong } from '$lib/utils/dates';
 
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -58,8 +59,21 @@
     ? occurrences.filter(o => o.date === selectedDay)
     : [];
 
-  $: occurrences = buildOccurrences(state.events, state.occurrences, from, to)
-    .filter(o => !categoryFilter || o.series?.category === categoryFilter);
+  /**
+   * Show what the other apps have as well.
+   *
+   * On by default: the point of the app is one year, not the planner's own
+   * corner of it. The switch exists for the case where one source drowns the
+   * rest — a building with weekly maintenance jobs, most likely.
+   */
+  let showLinked = true;
+
+  $: occurrences = [
+    ...buildOccurrences(state.events, state.occurrences, from, to),
+    ...(showLinked ? state.linked : []),
+  ]
+    .filter(o => !categoryFilter || o.series?.category === categoryFilter)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   $: groups = agenda(occurrences, now);
   $: summary = describeAgenda(groups);
@@ -128,6 +142,11 @@
     await permissions.init($auth.user.id, 'planner');
     try { await plannerStore.load(); }
     catch (err) { error = err instanceof Error ? err.message : String(err); }
+
+    // Not awaited into the first paint: the planner's own year is the app, and
+    // four cross-app reads should not hold it back. Each of those four is
+    // allowed to fail alone — see the store.
+    plannerStore.loadLinked(from, to).catch(() => {});
   });
 </script>
 
@@ -179,6 +198,12 @@
         {/each}
       </select>
 
+      <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer"
+             title="Maintenance jobs, meetings, action deadlines and reviews falling due">
+        <input type="checkbox" bind:checked={showLinked} class="accent-purple-500" />
+        Other apps
+      </label>
+
       <ProtectedButton variant="primary" size="small" on:click={newEvent}>
         + New event
       </ProtectedButton>
@@ -188,7 +213,7 @@
   {#if state.loading && !state.events.length}
     <div class="flex justify-center py-10"><LoadingSpinner /></div>
 
-  {:else if !state.events.length}
+  {:else if !state.events.length && !occurrences.length}
     <div class="text-center py-12 text-slate-500">
       <p class="text-sm">The year is empty.</p>
       <p class="text-xs mt-2 max-w-md mx-auto">
@@ -221,6 +246,13 @@
           <span class="w-1.5 h-1.5 rounded-full bg-slate-400 opacity-40"></span>faded = done
         </span>
       </div>
+
+      {#if showLinked}
+        <p class="text-[11px] text-slate-600">
+          Also showing {Object.values(SOURCES).map(s => s.label).join(', ').toLowerCase()}
+          from other apps. Those are marked ↗ and are completed where they live.
+        </p>
+      {/if}
 
       {#if selectedDay}
         <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
