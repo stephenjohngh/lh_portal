@@ -1,0 +1,187 @@
+// src/lib/apps/planner/stores/plannerStore.js
+// The planner's state: series, and the occurrences somebody has touched.
+//
+// The store holds ROWS. It does not expand recurrence, decide what is overdue,
+// or work out what a tick means — that is all pure and lives in utils/, where
+// it can be tested without a database. This file is the I/O seam and nothing
+// more, which is what makes the rest of the app testable.
+
+import { writable, get } from 'svelte/store';
+import { api } from '$lib/utils/api';
+import { logAudit } from '$lib/utils/auditLogger';
+import { getLogger } from '$lib/utils/logger';
+import { completionPatch, STATUS } from '../utils/agenda.js';
+
+const logger = getLogger('planner');
+
+const touch = (userId) => ({ updated_by: userId, updated_at: new Date().toISOString() });
+
+function errMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function createPlannerStore() {
+  const store = writable({
+    events: [],
+    occurrences: [],
+    loading: false,
+    error: null,
+  });
+
+  const { subscribe, update } = store;
+  const getState = () => get(store);
+
+  /**
+   * Everything, in two queries.
+   *
+   * The whole planner is loaded rather than a window of it: a building's year
+   * is tens of series and a few hundred touched occurrences, and paging that
+   * would cost more in round trips and complexity than it saves. If a building
+   * ever has thousands, the window is a filter on occurs_on and this comment is
+   * where to start.
+   */
+  async function load() {
+    update(s => ({ ...s, loading: true, error: null }));
+    try {
+      const [events, occurrences] = await Promise.all([
+        api.get('planner_events', { orderBy: 'start_date', ascending: true }),
+        api.getAll('planner_occurrences', { orderBy: 'occurs_on' }),
+      ]);
+      update(s => ({ ...s, events, occurrences, loading: false }));
+      logger('✅ loaded', events.length, 'series,', occurrences.length, 'recorded occurrences');
+      return events;
+    } catch (err) {
+      update(s => ({ ...s, error: errMessage(err), loading: false }));
+      throw err;
+    }
+  }
+
+  // ── Series ────────────────────────────────────────────────────────────────
+
+  async function createEvent(data, userId) {
+    const event = await api.create('planner_events', {
+      ...data,
+      created_by: userId,
+      ...touch(userId),
+    }, true);
+
+    update(s => ({ ...s, events: [...s.events, event] }));
+    logAudit('create', 'planner_event', event.id, event.title, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+      afterData: { start_date: event.start_date, recurrence: event.recurrence, drifts: event.drifts },
+    });
+    return event;
+  }
+
+  async function updateEvent(id, fields, userId) {
+    const event = await api.update('planner_events', id, { ...fields, ...touch(userId) }, true);
+
+    update(s => ({ ...s, events: s.events.map(e => (e.id === id ? event : e)) }));
+    logAudit('update', 'planner_event', id, event.title, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info', afterData: fields,
+    });
+    return event;
+  }
+
+  /**
+   * Archive rather than delete, by default.
+   *
+   * A series that ran for three years and then stopped is history: its
+   * occurrences record work that was done, and deleting the series would take
+   * them with it (the FK cascades). Archiving keeps the record and takes the
+   * series out of the year.
+   */
+  async function archiveEvent(id, archived, userId) {
+    return updateEvent(id, { archived }, userId);
+  }
+
+  async function deleteEvent(id, title) {
+    await api.delete('planner_events', id);
+    update(s => ({
+      ...s,
+      events: s.events.filter(e => e.id !== id),
+      occurrences: s.occurrences.filter(o => o.event_id !== id),
+    }));
+    logAudit('delete', 'planner_event', id, title, {
+      appId: 'planner', eventCategory: 'planner', severity: 'warning',
+    });
+  }
+
+  // ── Occurrences ───────────────────────────────────────────────────────────
+
+  /**
+   * Record something against one occurrence — tick, un-tick, skip, annotate.
+   *
+   * Upserted on (event_id, occurs_on), because an occurrence has no row until
+   * this moment: what is being written may be the first thing anyone has ever
+   * said about that date.
+   *
+   * What the patch MEANS is decided by `completionPatch`, which is pure and
+   * tested — including the rule that completing something records the day it was
+   * actually done rather than the day it was due.
+   */
+  async function recordOccurrence(occurrence, { status, on = null, note = null }, userId) {
+    const patch = completionPatch(occurrence, { status, on, note, userId });
+
+    const row = await api.upsert('planner_occurrences', {
+      ...patch,
+      created_by: userId,
+    }, { onConflict: 'event_id,occurs_on' });
+
+    update(s => ({
+      ...s,
+      occurrences: [...s.occurrences.filter(o => o.id !== row.id), row],
+    }));
+
+    logAudit('update', 'planner_occurrence', row.id, occurrence.series?.title ?? 'Occurrence', {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+      afterData: { occurs_on: patch.occurs_on, status, completed_on: patch.completed_on },
+    });
+    return row;
+  }
+
+  /**
+   * Move ONE occurrence to another date.
+   *
+   * Never the series: "the contractor is coming on the Thursday instead" says
+   * nothing about next month. The rule is untouched and `occurs_on` still holds
+   * the date it was meant to be.
+   */
+  async function moveOccurrence(occurrence, toDate, userId) {
+    const row = await api.upsert('planner_occurrences', {
+      event_id: occurrence.event_id,
+      occurs_on: occurrence.scheduled_for,
+      moved_to: toDate,
+      status: occurrence.status ?? STATUS.DUE,
+      created_by: userId,
+      ...touch(userId),
+    }, { onConflict: 'event_id,occurs_on' });
+
+    update(s => ({
+      ...s,
+      occurrences: [...s.occurrences.filter(o => o.id !== row.id), row],
+    }));
+
+    logAudit('update', 'planner_occurrence', row.id, occurrence.series?.title ?? 'Occurrence', {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+      afterData: { occurs_on: occurrence.scheduled_for, moved_to: toDate },
+    });
+    return row;
+  }
+
+  function clearError() {
+    update(s => ({ ...s, error: null }));
+  }
+
+  return {
+    subscribe,
+    load,
+    createEvent, updateEvent, archiveEvent, deleteEvent,
+    recordOccurrence, moveOccurrence,
+    clearError,
+    /** For tests and for callers that need a snapshot without subscribing. */
+    snapshot: getState,
+  };
+}
+
+export const plannerStore = createPlannerStore();

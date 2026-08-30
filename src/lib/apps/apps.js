@@ -124,6 +124,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'planner',
+    name: 'Planner',
+    icon: 'calendar',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: "The building's recurring year — what is outstanding, and what is coming up"
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -150,6 +159,7 @@ export const APP_IDS = {
   MOR:             'mor',
   GOLDEN_THREAD:   'golden_thread',
   DOSSIER:         'dossier',
+  PLANNER:         'planner',
   SETTINGS:        'settings'
 };
 
