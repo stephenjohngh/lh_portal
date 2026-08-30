@@ -22,6 +22,14 @@
   export let rule = { freq: 'once' };
   /** Whether the series counts from the last completion. */
   export let drifts = false;
+  /**
+   * The event's first date, used to SEED a newly chosen monthly or yearly rule.
+   *
+   * Choosing "Monthly" for an event starting on the 14th should mean the 14th.
+   * Before this it meant nothing at all until the day was picked separately,
+   * and the description underneath said so — "Every month on the th".
+   */
+  export let startDate = null;
 
   /**
    * What the dropdown offers.
@@ -48,9 +56,31 @@
    */
   $: choice = presetOf(rule) ?? rule.freq;
 
+  /**
+   * The day and month of the first date, if there is one.
+   *
+   * Sliced rather than parsed through Date: the value is a plain 'YYYY-MM-DD'
+   * from a date input, and putting it through a Date only invites a timezone to
+   * move it.
+   */
+  $: startDay   = Number(String(startDate ?? '').slice(8, 10)) || null;
+  $: startMonth = Number(String(startDate ?? '').slice(5, 7)) || null;
+
+  /** Fills in what a monthly or yearly rule needs, from the first date. */
+  function seedFromStart(next) {
+    if (next.freq !== 'monthly' && next.freq !== 'yearly') return next;
+
+    const out = { ...next };
+    if (!out.nth && !out.monthDay && startDay) out.monthDay = startDay;
+    if (out.freq === 'yearly' && !out.month && startMonth) out.month = startMonth;
+    return out;
+  }
+
   function chooseFreq(value) {
-    if (PRESETS.some(p => p.key === value)) rule = applyPreset(rule, value);
-    else rule = { ...rule, freq: value, interval: 1 };
+    const next = PRESETS.some(p => p.key === value)
+      ? applyPreset(rule, value)
+      : { ...rule, freq: value, interval: 1 };
+    rule = seedFromStart(next);
   }
 
   const WEEKDAYS = [
@@ -83,7 +113,7 @@
   function setMode(useWeekday) {
     rule = useWeekday
       ? { ...rule, nth: rule.nth ?? 1, weekday: rule.weekday ?? 1, monthDay: undefined }
-      : { ...rule, nth: undefined, weekday: undefined, monthDay: rule.monthDay ?? 1 };
+      : { ...rule, nth: undefined, weekday: undefined, monthDay: rule.monthDay || startDay || 1 };
   }
 
   function toggleWeekday(day) {
@@ -146,9 +176,14 @@
     </div>
   {/if}
 
+  <!-- Every select below carries placeholder="" deliberately. FormSelect's
+       default renders a '-- Select an option --' entry whose VALUE IS '', and
+       with bind:value an unset field selects it and writes that '' straight
+       into the rule. These fields are always seeded, so there is nothing for a
+       placeholder to stand in for. -->
   {#if monthly && !drifts}
     {#if rule.freq === 'yearly'}
-      <FormSelect label="In" bind:value={rule.month} options={MONTHS} />
+      <FormSelect label="In" placeholder="" bind:value={rule.month} options={MONTHS} />
     {/if}
 
     <div class="flex items-center gap-3 text-xs">
@@ -166,12 +201,12 @@
 
     {#if byWeekday}
       <div class="grid grid-cols-2 gap-3">
-        <FormSelect label="The" bind:value={rule.nth} options={NTH} />
-        <FormSelect label="Weekday" bind:value={rule.weekday}
+        <FormSelect label="The" placeholder="" bind:value={rule.nth} options={NTH} />
+        <FormSelect label="Weekday" placeholder="" bind:value={rule.weekday}
                     options={WEEKDAYS.map(d => ({ value: d.value, label: d.short }))} />
       </div>
     {:else}
-      <FormSelect label="On the" bind:value={rule.monthDay} options={MONTH_DAYS} />
+      <FormSelect label="On the" placeholder="" bind:value={rule.monthDay} options={MONTH_DAYS} />
     {/if}
   {/if}
 

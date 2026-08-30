@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expandRule, expandSeries, describeRule, clampDay, nthWeekdayOf,
   daysInMonth, weekdayOf, addDaysISO, daysBetween, ordinal, MAX_OCCURRENCES,
-  PRESETS, presetOf, applyPreset, isRecurring,
+  PRESETS, presetOf, applyPreset, isRecurring, normaliseRule,
 } from './recurrence.js';
 
 const YEAR = ['2026-01-01', '2026-12-31'];
@@ -325,5 +325,70 @@ describe('isRecurring', () => {
     expect(isRecurring({ freq: 'daily' })).toBe(true);
     expect(isRecurring({ freq: 'monthly', monthDay: 1 })).toBe(true);
     expect(isRecurring({ freq: 'yearly', month: 3, monthDay: 14 })).toBe(true);
+  });
+});
+
+describe('normaliseRule — a rule straight off a form', () => {
+  // A <select> on its placeholder binds '' back into the rule, and a number
+  // input hands back a string. '' is not nullish, so every `?? default` in
+  // here used to keep it.
+  it('drops a field a select left empty', () => {
+    expect(normaliseRule({ freq: 'monthly', monthDay: '' })).toEqual({ freq: 'monthly' });
+    expect(normaliseRule({ freq: 'yearly', month: '', nth: '', weekday: '' }))
+      .toEqual({ freq: 'yearly' });
+  });
+
+  it('turns the strings a number input gives back into numbers', () => {
+    expect(normaliseRule({ freq: 'monthly', interval: '3', monthDay: '14', count: '5' }))
+      .toEqual({ freq: 'monthly', interval: 3, monthDay: 14, count: 5 });
+  });
+
+  it('drops a value that is not a number at all', () => {
+    expect(normaliseRule({ freq: 'monthly', monthDay: 'abc' })).toEqual({ freq: 'monthly' });
+  });
+
+  it('keeps a legitimate negative — "last day", "last weekday"', () => {
+    expect(normaliseRule({ freq: 'monthly', monthDay: -1 }).monthDay).toBe(-1);
+    expect(normaliseRule({ freq: 'monthly', nth: '-1' }).nth).toBe(-1);
+  });
+
+  it('keeps a legitimate zero — Sunday', () => {
+    expect(normaliseRule({ freq: 'monthly', nth: 1, weekday: 0 }).weekday).toBe(0);
+    expect(normaliseRule({ freq: 'weekly', weekdays: [0, '3'] }).weekdays).toEqual([0, 3]);
+  });
+
+  it('drops an empty until and an empty weekday list', () => {
+    expect(normaliseRule({ freq: 'weekly', until: '', weekdays: [] }))
+      .toEqual({ freq: 'weekly' });
+  });
+
+  it('leaves anything that is not a rule alone', () => {
+    expect(normaliseRule(null)).toBe(null);
+    expect(normaliseRule(undefined)).toBe(undefined);
+  });
+});
+
+describe('a half-filled rule does not describe itself wrongly', () => {
+  it('does not say "on the th"', () => {
+    // The reported bug, exactly: a monthly rule whose day-of-month select was
+    // still on its placeholder described itself as "Every month on the th".
+    expect(describeRule({ freq: 'monthly', monthDay: '' }))
+      .toBe('Every month on the 1st');
+  });
+
+  it('does not treat an empty count as a limit', () => {
+    expect(describeRule({ freq: 'monthly', monthDay: 3, count: '' }))
+      .toBe('Every month on the 3rd');
+  });
+
+  it('expands from the anchor when the day was never chosen', () => {
+    // '' survived `?? start.d` and reached clampDay as a string.
+    expect(expandRule({ freq: 'monthly', monthDay: '' }, '2026-03-14', '2026-01-01', '2026-06-30'))
+      .toEqual(['2026-03-14', '2026-04-14', '2026-05-14', '2026-06-14']);
+  });
+
+  it('reads an interval that arrived as a string', () => {
+    expect(expandRule({ freq: 'daily', interval: '10' }, '2026-01-01', '2026-01-01', '2026-01-31'))
+      .toEqual(['2026-01-01', '2026-01-11', '2026-01-21', '2026-01-31']);
   });
 });

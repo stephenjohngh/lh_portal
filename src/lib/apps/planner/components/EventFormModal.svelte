@@ -204,7 +204,7 @@
     </div>
 
     <div class="border-t border-slate-700 pt-3">
-      <RecurrenceFields bind:rule bind:drifts />
+      <RecurrenceFields bind:rule bind:drifts {startDate} />
     </div>
 
     <!-- Label, field and explanation on one line. Two lines of prose for one

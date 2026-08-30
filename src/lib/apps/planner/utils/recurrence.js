@@ -128,7 +128,10 @@ export function nthWeekdayOf(y, m, weekday, nth) {
  * @param {string} to
  * @returns {string[]} ISO dates, ascending
  */
-export function expandRule(rule, anchor, from, to) {
+export function expandRule(input, anchor, from, to) {
+  // Normalised first: a rule can reach here straight from a form, and '' as a
+  // monthDay would survive `?? start.d` and be handed to clampDay as a string.
+  const rule = normaliseRule(input);
   const start = parseISO(anchor);
   if (!start || !parseISO(from) || !parseISO(to) || !rule?.freq) return [];
 
@@ -321,6 +324,51 @@ export function ordinal(n) {
 }
 
 /**
+ * One numeric field of a rule, as a number — or null if there is not one.
+ *
+ * Every number on a rule arrives from a form control, and a control hands back
+ * a STRING: "3" from a number input, and '' from a <select> sitting on its
+ * placeholder. '' is not nullish, so `rule.monthDay ?? 1` keeps the '' and
+ * `ordinal('')` renders "th" — which is how a form nobody had touched came to
+ * describe itself as "Every month on the th".
+ */
+function num(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** The numeric fields of a rule. */
+const NUMERIC = ['interval', 'count', 'month', 'monthDay', 'nth', 'weekday'];
+
+/**
+ * A rule with its numbers as numbers, and its empties removed.
+ *
+ * Both readers of a rule start here, so neither has to know that a half-filled
+ * form says '' where it means "nothing". An absent field then falls through to
+ * its default the way the code already assumed it would.
+ */
+export function normaliseRule(rule) {
+  if (!rule || typeof rule !== 'object') return rule;
+
+  const out = { ...rule };
+  for (const key of NUMERIC) {
+    if (!(key in out)) continue;
+    const n = num(out[key]);
+    if (n === null) delete out[key];
+    else out[key] = n;
+  }
+
+  if (Array.isArray(out.weekdays)) {
+    out.weekdays = out.weekdays.map(num).filter(d => d !== null);
+    if (!out.weekdays.length) delete out.weekdays;
+  }
+  if (!out.until) delete out.until;
+
+  return out;
+}
+
+/**
  * Whether an event repeats at all.
  *
  * A one-off is NOT a series, and the difference is not pedantry: "edit the
@@ -338,7 +386,8 @@ export function isRecurring(rule) {
  * Shown wherever a series is listed. A recurrence a person cannot read is one
  * they cannot check, and a wrong rule is invisible until the year is wrong.
  */
-export function describeRule(rule, { drifts = false } = {}) {
+export function describeRule(input, { drifts = false } = {}) {
+  const rule = normaliseRule(input);
   if (!rule?.freq || rule.freq === 'once') return 'Once';
 
   const every = Math.max(1, rule.interval ?? 1);
