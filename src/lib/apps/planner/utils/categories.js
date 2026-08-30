@@ -7,18 +7,32 @@
 // the categories a residential block's year actually contains, and adding one
 // is a line here.
 //
-// Colours are Tailwind classes rather than hex, so they follow the portal's
-// palette — and they are picked to be distinguishable in the year grid, which is
-// the view that has to carry a dozen of them at once.
+// ── The rule these colours follow: teal is CHROME, never data ───────────────
+// The portal's accent is teal, and `tailwind.config.js` remaps the whole
+// `purple-*` scale onto it — so `purple-400` renders teal, not purple. The
+// first version of this file did not account for that and picked purple-400
+// for Meeting, teal-400 for Seasonal and emerald-500 for Financial: three of
+// seven categories came out in the accent colour or next to it, so the data
+// read as interface. Buttons, selection and "today" are teal; a category never
+// is.
+//
+// The remaining constraint is that seven hues have to be told apart as a dot
+// six pixels across, on a dark ground, by somebody scanning a year. Hence one
+// red, one orange, one blue, one violet, one magenta, one yellow-green and one
+// grey — no two neighbours on the wheel.
+//
+// Two of them are not free choices: red for Compliance and amber for
+// Maintenance match what red and amber already mean everywhere else in the
+// portal (failed, and due soon).
 
 export const CATEGORIES = [
-  { value: 'compliance',  label: 'Compliance',  dot: 'bg-red-500',     chip: 'bg-red-500/15 text-red-300 border-red-500/30' },
-  { value: 'maintenance', label: 'Maintenance', dot: 'bg-amber-500',   chip: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-  { value: 'meeting',     label: 'Meeting',     dot: 'bg-purple-400',  chip: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
-  { value: 'financial',   label: 'Financial',   dot: 'bg-emerald-500', chip: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  { value: 'contractor',  label: 'Contractor',  dot: 'bg-sky-500',     chip: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
-  { value: 'seasonal',    label: 'Seasonal',    dot: 'bg-teal-400',    chip: 'bg-teal-500/15 text-teal-300 border-teal-500/30' },
-  { value: 'other',       label: 'Other',       dot: 'bg-slate-400',   chip: 'bg-slate-500/15 text-slate-300 border-slate-500/30' },
+  { value: 'compliance',  label: 'Compliance',  dot: 'bg-red-500',      chip: 'bg-red-500/15 text-red-300 border-red-500/30' },
+  { value: 'maintenance', label: 'Maintenance', dot: 'bg-amber-500',    chip: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+  { value: 'meeting',     label: 'Meeting',     dot: 'bg-indigo-400',   chip: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' },
+  { value: 'financial',   label: 'Financial',   dot: 'bg-fuchsia-400',  chip: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30' },
+  { value: 'contractor',  label: 'Contractor',  dot: 'bg-sky-400',      chip: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
+  { value: 'seasonal',    label: 'Seasonal',    dot: 'bg-lime-400',     chip: 'bg-lime-500/15 text-lime-300 border-lime-500/30' },
+  { value: 'other',       label: 'Other',       dot: 'bg-slate-400',    chip: 'bg-slate-500/15 text-slate-300 border-slate-500/30' },
 ];
 
 const BY_VALUE = new Map(CATEGORIES.map(c => [c.value, c]));
