@@ -274,6 +274,38 @@ function intervalOnly(rule) {
   };
 }
 
+/**
+ * Named intervals people actually say, expressed in the model we already have.
+ *
+ * Quarterly IS monthly-every-three and twice-a-year IS monthly-every-six, and
+ * the engine has always produced both. What was missing is that nobody would
+ * guess it: "Repeats: Monthly, Every: 3" is a puzzle, not a choice.
+ *
+ * So these are PRESETS over the existing four frequencies, not new ones. Adding
+ * `freq: 'quarterly'` would give the expander another case to get right, and
+ * would leave every rule already stored as monthly-every-three failing to
+ * recognise itself.
+ */
+export const PRESETS = [
+  { key: 'quarterly',  label: 'Quarterly',     rule: { freq: 'monthly', interval: 3 } },
+  { key: 'half_year',  label: 'Twice a year',  rule: { freq: 'monthly', interval: 6 } },
+];
+
+/** Which preset a rule IS, if any — derived, never stored. */
+export function presetOf(rule) {
+  if (!rule) return null;
+  const found = PRESETS.find(p =>
+    p.rule.freq === rule.freq && p.rule.interval === Number(rule.interval));
+  return found?.key ?? null;
+}
+
+/** The same rule, said as a preset. Keeps everything else about it. */
+export function applyPreset(rule, key) {
+  const preset = PRESETS.find(p => p.key === key);
+  if (!preset) return rule;
+  return { ...rule, ...preset.rule };
+}
+
 /** Weekday names, Sunday first, matching the numbers used above. */
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -298,7 +330,11 @@ export function describeRule(rule, { drifts = false } = {}) {
   if (!rule?.freq || rule.freq === 'once') return 'Once';
 
   const every = Math.max(1, rule.interval ?? 1);
-  const plural = (unit) => (every === 1 ? `Every ${unit}` : `Every ${every} ${unit}s`);
+  const preset = PRESETS.find(p => p.key === presetOf(rule));
+  // "Quarterly" rather than "Every 3 months" — the same rule, in the words
+  // somebody chose it by.
+  const plural = (unit) => (preset ? preset.label
+    : every === 1 ? `Every ${unit}` : `Every ${every} ${unit}s`);
 
   // A drifting series honours only the interval, so saying "in March" here
   // would describe behaviour it does not have.

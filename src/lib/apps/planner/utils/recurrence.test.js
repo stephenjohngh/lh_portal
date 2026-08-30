@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expandRule, expandSeries, describeRule, clampDay, nthWeekdayOf,
   daysInMonth, weekdayOf, addDaysISO, daysBetween, ordinal, MAX_OCCURRENCES,
+  PRESETS, presetOf, applyPreset,
 } from './recurrence.js';
 
 const YEAR = ['2026-01-01', '2026-12-31'];
@@ -253,5 +254,59 @@ describe('ordinal', () => {
     expect(ordinal(13)).toBe('13th');
     expect(ordinal(21)).toBe('21st');
     expect(ordinal(-1)).toBe('last day');
+  });
+});
+
+describe('quarterly and twice a year', () => {
+  // Both were always producible — monthly with an interval — but nobody would
+  // guess it. "Repeats: Monthly, Every: 3" is a puzzle, not a choice.
+
+  it('are presets over the existing frequencies, not new ones', () => {
+    // A new `freq` would give the expander another case to get right, and every
+    // rule already stored as monthly-every-three would fail to recognise itself.
+    expect(PRESETS.map(p => p.rule.freq)).toEqual(['monthly', 'monthly']);
+  });
+
+  it('produce four dates a year, and two', () => {
+    const quarterly = applyPreset({ freq: 'monthly', monthDay: 25 }, 'quarterly');
+    expect(expandRule(quarterly, '2026-03-25', ...YEAR))
+      .toEqual(['2026-03-25', '2026-06-25', '2026-09-25', '2026-12-25']);
+
+    const twice = applyPreset({ freq: 'monthly', monthDay: 1 }, 'half_year');
+    expect(expandRule(twice, '2026-04-01', ...YEAR))
+      .toEqual(['2026-04-01', '2026-10-01']);
+  });
+
+  it('recognise themselves in a rule that was stored the long way', () => {
+    expect(presetOf({ freq: 'monthly', interval: 3 })).toBe('quarterly');
+    expect(presetOf({ freq: 'monthly', interval: 6 })).toBe('half_year');
+    expect(presetOf({ freq: 'monthly', interval: 4 })).toBeNull();
+    expect(presetOf({ freq: 'yearly', interval: 3 })).toBeNull();
+    expect(presetOf(null)).toBeNull();
+  });
+
+  it('keep the rest of the rule when applied', () => {
+    const out = applyPreset({ freq: 'monthly', monthDay: 14, until: '2027-01-01' }, 'quarterly');
+    expect(out).toMatchObject({ monthDay: 14, until: '2027-01-01', interval: 3 });
+  });
+
+  it('are described in the words they were chosen by', () => {
+    expect(describeRule({ freq: 'monthly', interval: 3, monthDay: 25 }))
+      .toBe('Quarterly on the 25th');
+    expect(describeRule({ freq: 'monthly', interval: 6, monthDay: 1 }))
+      .toBe('Twice a year on the 1st');
+    // And still say the plain thing when it is not one of them.
+    expect(describeRule({ freq: 'monthly', interval: 4, monthDay: 1 }))
+      .toBe('Every 4 months on the 1st');
+  });
+
+  it('say so even when the series drifts', () => {
+    expect(describeRule({ freq: 'monthly', interval: 3 }, { drifts: true }))
+      .toBe('Quarterly — counted from when it was last done');
+  });
+
+  it('are left alone by an unknown preset key', () => {
+    const rule = { freq: 'monthly', interval: 2 };
+    expect(applyPreset(rule, 'nonsense')).toBe(rule);
   });
 });

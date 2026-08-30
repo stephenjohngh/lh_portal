@@ -9,20 +9,42 @@
   import FormSelect from '$lib/components/common/FormSelect.svelte';
   import FormInput  from '$lib/components/common/FormInput.svelte';
   import Checkbox   from '$lib/components/common/Checkbox.svelte';
-  import { describeRule, ordinal } from '../utils/recurrence.js';
+  import { describeRule, ordinal, PRESETS, presetOf, applyPreset } from '../utils/recurrence.js';
 
   /** The rule object, bound by the parent form. */
   export let rule = { freq: 'once' };
   /** Whether the series counts from the last completion. */
   export let drifts = false;
 
+  /**
+   * What the dropdown offers.
+   *
+   * Quarterly and twice-a-year sit alongside the four real frequencies even
+   * though they are monthly underneath — because that is how people say them,
+   * and "Monthly, every 3" is a puzzle rather than a choice.
+   */
   const FREQ = [
-    { value: 'once',    label: 'Does not repeat' },
-    { value: 'daily',   label: 'Daily' },
-    { value: 'weekly',  label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'yearly',  label: 'Yearly' },
+    { value: 'once',      label: 'Does not repeat' },
+    { value: 'daily',     label: 'Daily' },
+    { value: 'weekly',    label: 'Weekly' },
+    { value: 'monthly',   label: 'Monthly' },
+    ...PRESETS.map(p => ({ value: p.key, label: p.label })),
+    { value: 'yearly',    label: 'Yearly' },
   ];
+
+  /**
+   * The dropdown's value is DERIVED from the rule, never held beside it.
+   *
+   * Choose Quarterly, then change the interval to 4, and it must stop calling
+   * itself quarterly — which it cannot do if the choice is remembered
+   * separately from the thing it described.
+   */
+  $: choice = presetOf(rule) ?? rule.freq;
+
+  function chooseFreq(value) {
+    if (PRESETS.some(p => p.key === value)) rule = applyPreset(rule, value);
+    else rule = { ...rule, freq: value, interval: 1 };
+  }
 
   const WEEKDAYS = [
     { value: 0, short: 'Sun' }, { value: 1, short: 'Mon' }, { value: 2, short: 'Tue' },
@@ -65,9 +87,17 @@
 </script>
 
 <div class="space-y-3">
-  <FormSelect label="Repeats" bind:value={rule.freq} options={FREQ} />
+  <!-- FormSelect forwards the NATIVE change event, so the value comes off the
+       target. Not `e.detail ?? e.target.value`: a native event's `detail` is a
+       number, and `0 ?? x` is 0 — which would have been passed straight through
+       as the chosen frequency. -->
+  <FormSelect label="Repeats" value={choice} options={FREQ}
+              on:change={(e) => chooseFreq(e.target.value)} />
 
-  {#if repeats}
+  <!-- The interval is hidden for a preset: it is the preset. Showing "Every 3
+       months" beneath the word "Quarterly" invites somebody to change one and
+       wonder why the other disagrees. -->
+  {#if repeats && !presetOf(rule)}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <FormInput label="Every" type="number" bind:value={rule.interval}
                  placeholder="1" min="1" />
