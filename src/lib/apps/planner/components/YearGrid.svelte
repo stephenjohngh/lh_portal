@@ -1,107 +1,110 @@
 <!-- src/lib/apps/planner/components/YearGrid.svelte -->
-<!-- The wallplanner: twelve rows of months, thirty-one day columns.
+<!-- The wallplanner, in the shape a printed one has always had: twelve rows of
+     months, and columns that are WEEKDAYS rather than day numbers.
 
-     A real <table>, not a grid of divs. Three reasons, and the third is the one
-     that decided it: it is tabular data; a screen reader can then say "March,
-     14" instead of reading 372 anonymous cells; and print engines lay tables
-     out properly across a page, which is what §0.5 of the analysis will need
-     when the print output is designed.
+     Every day sits under its own weekday, so each month starts at its own
+     offset and the left edge is ragged — that raggedness is the layout working.
+     What it buys is that Saturdays and Sundays line up as stripes down the whole
+     year, which is what makes twelve rows readable at a glance, and every cell
+     carries its date so the chart can be read rather than decoded.
+
+     A real <table>: it is tabular data, a screen reader can say "March, 14"
+     rather than reading 444 anonymous cells, and print engines lay tables out
+     across a page properly — which the print work will need.
 
      Layout logic is pure and tested — utils/yearGrid.js. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { buildYearGrid, cellMarks } from '../utils/yearGrid.js';
+  import { buildYearGrid, cellMarks, columnWeekdays, WEEKDAY_SHORT } from '../utils/yearGrid.js';
   import { categoryOf } from '../utils/categories.js';
 
   export let year;
   export let occurrences = [];
   export let today = null;
-  /** The day whose contents are showing beside the grid. */
+  /** The day whose contents are showing beneath the grid. */
   export let selected = null;
-  /** The building's categories, for resolving a slug to a colour. */
   export let categories = [];
 
   const dispatch = createEventDispatcher();
 
   $: grid = buildYearGrid(year, occurrences, today);
 
-  const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+  const COLUMNS = columnWeekdays();
 </script>
 
 <div class="overflow-x-auto planner-year">
-  <table class="w-full border-collapse text-[10px]">
+  <table class="border-collapse">
     <caption class="sr-only">Planner for {year}</caption>
 
     <thead>
       <tr>
-        <th class="sticky left-0 z-10 bg-slate-700 text-left px-1.5 py-1
-                   text-slate-200 font-semibold border-b border-slate-600">{year}</th>
-        {#each DAYS as day}
-          <!-- Every fifth column is marked, so a reader can count across
-               thirty-one of them without losing their place. -->
-          <th class="px-0 py-1 font-normal border-b border-slate-600
-                     {day % 5 === 0 ? 'text-slate-300' : 'text-slate-500'}">{day}</th>
+        <th class="sticky left-0 z-20 bg-slate-700 text-left px-2 py-1
+                   text-[11px] text-slate-100 font-semibold border border-slate-600">
+          {year}
+        </th>
+        {#each COLUMNS as weekday}
+          <th class="px-0 py-1 text-[9px] font-semibold uppercase border border-slate-700
+                     {weekday >= 5 ? 'bg-sky-500/20 text-sky-200' : 'bg-slate-700/70 text-slate-300'}"
+          >{WEEKDAY_SHORT[weekday].slice(0, 1)}</th>
         {/each}
       </tr>
     </thead>
 
     <tbody>
       {#each grid as month}
-        <!-- Banded rows. Twelve identical dark stripes cannot be tracked
-             across: the eye slides between March and April halfway along. -->
-        <tr class="{month.month % 2 === 0 ? 'bg-slate-800/40' : ''}">
+        <tr>
           <th scope="row"
-              class="sticky left-0 z-10 text-left p-0 whitespace-nowrap
-                     border-r border-slate-600 text-slate-200 font-medium
-                     {month.month % 2 === 0 ? 'bg-slate-750' : 'bg-slate-800'}">
-            <!-- The month name opens the month. A wallplanner is for seeing the
-                 shape of a year; the question it prompts is nearly always
-                 "what IS that in March", and the answer needs words. -->
+              class="sticky left-0 z-20 bg-slate-700 text-left p-0 whitespace-nowrap
+                     border border-slate-600">
+            <!-- The month name opens the month. A wallplanner shows the shape of
+                 a year; the question it prompts is "what IS that in March", and
+                 the answer needs words. -->
             <button type="button"
-                    class="w-full text-left px-1.5 py-0.5 hover:text-white
-                           hover:bg-slate-700/60 transition-colors"
+                    class="w-full text-left px-2 py-1 text-[11px] font-semibold
+                           text-slate-100 hover:bg-slate-600 transition-colors"
                     title="Open {month.label}"
                     on:click={() => dispatch('selectMonth', month.month)}>{month.short}</button>
           </th>
 
-          {#each month.days as cell}
+          {#each month.slots as cell, column}
             {#if !cell}
-              <!-- A day this month does not have. Kept as a cell so the columns
-                   stay aligned — "the 15th" must be a straight line down the
-                   year. -->
-              <td class="bg-slate-950/60 border-r border-slate-800"></td>
+              <!-- Before the 1st or after the last. Empty, and visibly outside
+                   the month rather than merely dark. -->
+              <td class="border border-slate-800 bg-slate-950/80
+                         {COLUMNS[column] >= 5 ? 'bg-sky-950/40' : ''}"></td>
             {:else}
-              {@const marks = cellMarks(cell.items)}
-              <td class="p-0 align-middle text-center relative border-r
-                         {cell.day % 5 === 0 ? 'border-slate-600' : 'border-slate-800/60'}
-                         {cell.weekend ? 'bg-slate-900/60' : ''}
-                         {cell.today ? 'planner-today' : ''}
-                         {selected === cell.date ? 'bg-purple-500/30' : ''}">
-                {#if cell.items.length}
-                  <button
-                    type="button"
-                    class="w-full h-6 flex items-center justify-center gap-px
-                           hover:bg-slate-700/70 transition-colors"
-                    title="{cell.date} — {marks.count} item{marks.count === 1 ? '' : 's'}"
-                    on:click={() => dispatch('selectDay', cell)}
-                  >
-                    {#each marks.categories as category}
-                      <span class="w-2 h-2 rounded-full {categoryOf(category, categories).dot}
-                                   {marks.outstanding ? '' : 'opacity-40'}"></span>
-                    {/each}
-                    {#if marks.overflow}
-                      <span class="text-[8px] text-slate-500 leading-none">+</span>
-                    {/if}
-                  </button>
-                {:else}
-                  <!-- Empty days are still clickable: "what is happening on the
-                       9th" is a fair question when the answer is nothing, and a
-                       dead cell answers it less clearly than an empty panel. -->
-                  <button type="button" class="w-full h-6 hover:bg-slate-700/40"
-                          title={cell.date}
-                          on:click={() => dispatch('selectDay', cell)}
-                          aria-label={cell.date}></button>
-                {/if}
+              {@const marks = cellMarks(cell.items, 2)}
+              <td class="p-0 align-top border border-slate-700
+                         {cell.weekend ? 'bg-sky-500/10' : 'bg-slate-800/80'}
+                         {cell.today ? 'ring-2 ring-inset ring-purple-400 z-10 relative' : ''}
+                         {selected === cell.date ? 'bg-purple-500/40' : ''}">
+                <button
+                  type="button"
+                  class="w-full h-7 px-0.5 flex flex-col items-center justify-center leading-none
+                         hover:bg-slate-600/60 transition-colors"
+                  title="{cell.date}{marks.count ? ` — ${marks.count} item${marks.count === 1 ? '' : 's'}` : ''}"
+                  on:click={() => dispatch('selectDay', cell)}
+                >
+                  <!-- The DATE, in every cell. Without it the chart has to be
+                       counted rather than read. -->
+                  <span class="text-[10px] tabular-nums
+                               {cell.today ? 'text-white font-bold'
+                                 : cell.weekend ? 'text-sky-200/80' : 'text-slate-300'}">
+                    {cell.day}
+                  </span>
+
+                  {#if marks.count}
+                    <span class="flex items-center gap-px mt-px">
+                      {#each marks.categories as category}
+                        <span class="w-1.5 h-1.5 rounded-full {categoryOf(category, categories).dot}
+                                     {marks.outstanding ? '' : 'opacity-40'}"></span>
+                      {/each}
+                      {#if marks.overflow}
+                        <span class="text-[7px] text-slate-400 leading-none">+</span>
+                      {/if}
+                    </span>
+                  {/if}
+                </button>
               </td>
             {/if}
           {/each}
@@ -112,57 +115,36 @@
 </div>
 
 <style>
-  /* The half-step between slate-700 and slate-800, as used by the editor
-     toolbar. Tailwind has no 750. */
-  .planner-year :global(.bg-slate-750) {
-    background-color: #2a3344;
-  }
-
-  /* The grid must not squeeze below the point where a dot is a dot. Narrower
-     than this it scrolls, which is what the wrapper is for. */
+  /* Every day column is the same width, and wide enough for two digits and a
+     dot beneath them. Thirty-seven of these is wider than most screens, which
+     is what the scroll container is for — and what a wall planner is: wide. */
   .planner-year table {
-    min-width: 44rem;
     table-layout: fixed;
+    width: max-content;
   }
-
-  /* The month column is sized HERE and the day columns are given no width at
-     all, which is the whole fix for a bug worth remembering: under
-     `table-layout: fixed` the browser hands leftover space to whatever is not
-     pinned. Percentages on the 31 day columns came to 74.4%, and the month
-     label quietly took the other quarter of the table. Pin one column, leave
-     the rest, and they divide the remainder equally. */
   .planner-year th:first-child,
   .planner-year td:first-child {
-    width: 3.5rem;
+    width: 3.25rem;
+  }
+  .planner-year thead th:not(:first-child),
+  .planner-year tbody td {
+    width: 1.6rem;
   }
 
-  /* Today. An inset ring rendered as a solid pale block at this size, which
-     read as an event rather than as a marker; a bottom rule under the day says
-     "you are here" without competing with the dots. */
-  .planner-year :global(.planner-today) {
-    box-shadow: inset 0 -2px 0 0 rgb(var(--lh-accent-rgb) / 0.9);
-  }
-
-  /* Provisional print rules. The layout proper is its own piece of work (see
-     the analysis §0.5); this is only enough that printing produces a legible
-     wallplanner rather than a dark smear. */
+  /* Provisional print rules. The layout proper is its own piece of work; this
+     is enough that a print is legible rather than a dark smear. Weekends keep
+     their tint, because losing it would cost the chart its stripes. */
   @media print {
-    .planner-year {
-      overflow: visible !important;
-    }
-    .planner-year table {
-      min-width: 0;
-      color: #000;
-    }
+    .planner-year { overflow: visible !important; }
+    .planner-year table { width: 100%; }
     .planner-year :global(th),
     .planner-year :global(td) {
       border: 1px solid #999 !important;
       background: transparent !important;
       color: #000 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
-    /* Backgrounds are dropped from a print unless the reader ticks a box
-       nobody ticks, so the category dots are asked for explicitly — without
-       them the whole chart is empty. */
     .planner-year :global(span) {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;

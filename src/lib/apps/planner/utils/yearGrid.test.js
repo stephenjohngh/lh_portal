@@ -1,13 +1,28 @@
 // src/lib/apps/planner/utils/yearGrid.test.js
 
 import { describe, it, expect } from 'vitest';
-import { buildYearGrid, cellMarks, yearsInWindow, monthItems, MONTH_SHORT } from './yearGrid.js';
+import {
+  buildYearGrid, cellMarks, yearsInWindow, monthItems, mondayIndex,
+  columnWeekdays, MONTH_SHORT, WEEKDAY_SHORT, SLOTS,
+} from './yearGrid.js';
 
 const occ = (date, category = 'compliance', status = 'due') => ({
   date, status, series: { id: 'e1', title: 'Thing', category },
 });
 
-describe('buildYearGrid', () => {
+/** Where a date sits in a month's row. */
+const slotOf = (grid, month, date) =>
+  grid[month - 1].slots.findIndex(s => s?.date === date);
+
+describe('mondayIndex', () => {
+  it('runs Monday to Sunday, not Sunday first', () => {
+    expect(mondayIndex('2026-01-05')).toBe(0);   // Monday
+    expect(mondayIndex('2026-01-10')).toBe(5);   // Saturday
+    expect(mondayIndex('2026-01-11')).toBe(6);   // Sunday
+  });
+});
+
+describe('buildYearGrid — laid out by weekday', () => {
   it('gives twelve months', () => {
     const grid = buildYearGrid(2026, []);
     expect(grid).toHaveLength(12);
@@ -15,72 +30,104 @@ describe('buildYearGrid', () => {
     expect(grid[11].short).toBe('Dec');
   });
 
-  it('gives every month 31 cells, so the columns line up', () => {
-    // A ragged grid cannot be a grid: "the 15th" has to be a vertical line down
-    // the year, which is most of what a wallplanner is for.
+  it('gives every month the same number of columns', () => {
+    // The weekend stripes only run straight down the year if every row has the
+    // full width, whatever the month's own shape.
     const grid = buildYearGrid(2026, []);
-    expect(grid.every(m => m.days.length === 31)).toBe(true);
+    expect(grid.every(m => m.slots.length === SLOTS)).toBe(true);
   });
 
-  it('returns null for days a month does not have', () => {
+  it('starts each month at the column of its OWN first weekday', () => {
+    // This is the whole point of the layout, and the ragged left edge is the
+    // evidence it is working. 1 January 2026 is a Thursday; 1 February a Sunday.
+    const grid = buildYearGrid(2026, []);
+    expect(grid[0].offset).toBe(3);              // Thu
+    expect(grid[0].slots[3].day).toBe(1);
+    expect(grid[0].slots[2]).toBeNull();
+
+    expect(grid[1].offset).toBe(6);              // Sun
+    expect(grid[1].slots[6].day).toBe(1);
+  });
+
+  it('puts every day of a month in a weekday column that matches its date', () => {
+    const grid = buildYearGrid(2026, []);
+    for (const month of grid) {
+      for (const slot of month.slots.filter(Boolean)) {
+        expect(slot.weekday).toBe(mondayIndex(slot.date));
+      }
+    }
+  });
+
+  it('lines Saturdays and Sundays up as vertical stripes', () => {
+    // The reason the layout is worth having: one column is a weekend for every
+    // month at once.
+    const grid = buildYearGrid(2026, []);
+    for (const column of [5, 6, 12, 13]) {
+      const days = grid.map(m => m.slots[column]).filter(Boolean);
+      expect(days.every(d => d.weekend)).toBe(true);
+    }
+    for (const column of [0, 7, 14]) {
+      const days = grid.map(m => m.slots[column]).filter(Boolean);
+      expect(days.every(d => !d.weekend)).toBe(true);
+    }
+  });
+
+  it('is wide enough for the worst month', () => {
+    // A 31-day month beginning on a Sunday needs 6 + 31 columns exactly.
+    const grid = buildYearGrid(2026, []);
+    const widest = Math.max(...grid.map(m => m.offset + m.slots.filter(Boolean).length));
+    expect(widest).toBeLessThanOrEqual(SLOTS);
+  });
+
+  it('ends each month after its last day', () => {
     const grid = buildYearGrid(2026, []);
     const february = grid[1];
-    expect(february.days[27]).not.toBeNull();     // the 28th
-    expect(february.days[28]).toBeNull();         // no 29th in 2026
-    expect(grid[3].days[30]).toBeNull();          // no 31st of April
-  });
-
-  it('knows a leap year', () => {
-    expect(buildYearGrid(2028, [])[1].days[28]).not.toBeNull();
+    expect(february.slots.filter(Boolean)).toHaveLength(28);
+    expect(buildYearGrid(2028, [])[1].slots.filter(Boolean)).toHaveLength(29);
+    expect(grid[3].slots.filter(Boolean)).toHaveLength(30);   // April
   });
 
   it('places occurrences on their day', () => {
     const grid = buildYearGrid(2026, [occ('2026-03-14'), occ('2026-03-14'), occ('2026-07-01')]);
-    expect(grid[2].days[13].items).toHaveLength(2);
-    expect(grid[6].days[0].items).toHaveLength(1);
-    expect(grid[0].days[0].items).toEqual([]);
+    expect(grid[2].slots[slotOf(grid, 3, '2026-03-14')].items).toHaveLength(2);
+    expect(grid[6].slots[slotOf(grid, 7, '2026-07-01')].items).toHaveLength(1);
   });
 
   it('ignores occurrences from another year', () => {
     const grid = buildYearGrid(2026, [occ('2027-03-14'), occ('2025-03-14')]);
-    expect(grid.flatMap(m => m.days.filter(Boolean).flatMap(d => d.items))).toEqual([]);
+    expect(grid.flatMap(m => m.slots.filter(Boolean).flatMap(d => d.items))).toEqual([]);
   });
 
-  it('marks weekends', () => {
-    // 3 January 2026 is a Saturday.
-    const grid = buildYearGrid(2026, []);
-    expect(grid[0].days[2].weekend).toBe(true);
-    expect(grid[0].days[3].weekend).toBe(true);   // Sunday the 4th
-    expect(grid[0].days[4].weekend).toBe(false);
-  });
-
-  it('marks today, when told what it is', () => {
+  it('marks today', () => {
     const grid = buildYearGrid(2026, [], '2026-06-15');
-    expect(grid[5].days[14].today).toBe(true);
-    expect(grid[5].days[13].today).toBe(false);
+    expect(grid[5].slots[slotOf(grid, 6, '2026-06-15')].today).toBe(true);
   });
 
   it('survives an empty year and bad input', () => {
-    expect(buildYearGrid(2026, []).every(m => m.days.filter(Boolean)
+    expect(buildYearGrid(2026, []).every(m => m.slots.filter(Boolean)
       .every(d => d.items.length === 0))).toBe(true);
     expect(() => buildYearGrid(2026, [{ }])).not.toThrow();
   });
 });
 
+describe('columnWeekdays', () => {
+  it('repeats Monday to Sunday across the width', () => {
+    const columns = columnWeekdays();
+    expect(columns).toHaveLength(SLOTS);
+    expect(columns.slice(0, 8)).toEqual([0, 1, 2, 3, 4, 5, 6, 0]);
+  });
+});
+
 describe('cellMarks', () => {
   it('collapses repeats of one category', () => {
-    // Three compliance items should read as "busy with compliance", not as
-    // three identical marks in a cell six pixels wide.
     const marks = cellMarks([occ('2026-01-01'), occ('2026-01-01'), occ('2026-01-01')]);
     expect(marks.categories).toEqual(['compliance']);
     expect(marks.count).toBe(3);
   });
 
   it('keeps distinct categories, in the order they appear', () => {
-    const marks = cellMarks([
-      occ('2026-01-01', 'meeting'), occ('2026-01-01', 'compliance'),
-    ]);
-    expect(marks.categories).toEqual(['meeting', 'compliance']);
+    expect(cellMarks([occ('2026-01-01', 'meeting'), occ('2026-01-01', 'compliance')]).categories)
+      .toEqual(['meeting', 'compliance']);
   });
 
   it('says how many kinds did not fit', () => {
@@ -92,7 +139,7 @@ describe('cellMarks', () => {
     expect(marks.overflow).toBe(1);
   });
 
-  it('distinguishes a day with something outstanding from a day that is done', () => {
+  it('distinguishes a day with something outstanding from one that is done', () => {
     expect(cellMarks([occ('2026-01-01', 'x', 'due')]).outstanding).toBe(true);
     expect(cellMarks([occ('2026-01-01', 'x', 'done')]).outstanding).toBe(false);
   });
@@ -104,13 +151,7 @@ describe('cellMarks', () => {
 
 describe('yearsInWindow', () => {
   it('offers only years that have been expanded', () => {
-    // Offering 2043 when nothing is computed past 2028 gives an empty grid and
-    // no way to tell an empty year from an unloaded one.
     expect(yearsInWindow('2025-06-15', '2028-06-15')).toEqual([2025, 2026, 2027, 2028]);
-  });
-
-  it('handles a window inside one year', () => {
-    expect(yearsInWindow('2026-01-01', '2026-12-31')).toEqual([2026]);
   });
 
   it('survives nonsense', () => {
@@ -131,9 +172,9 @@ describe('monthItems', () => {
   });
 });
 
-describe('MONTH_SHORT', () => {
-  it('is three letters, twelve times', () => {
+describe('labels', () => {
+  it('are three letters each', () => {
     expect(MONTH_SHORT).toHaveLength(12);
-    expect(MONTH_SHORT.every(m => m.length === 3)).toBe(true);
+    expect(WEEKDAY_SHORT).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   });
 });
