@@ -13,15 +13,16 @@
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween } from './utils/recurrence.js';
   import { CATEGORIES } from './utils/categories.js';
-  import { today } from '$lib/utils/dates';
+  import { today, fmtDateLong } from '$lib/utils/dates';
 
-  import Button        from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
+  import YearGrid from './components/YearGrid.svelte';
+  import { yearsInWindow } from './utils/yearGrid.js';
 
   /**
    * The window occurrences are expanded over.
@@ -43,6 +44,19 @@
 
   let categoryFilter = '';
   let showDone = false;
+
+  // ── Which view ────────────────────────────────────────────────────────────
+  // The agenda answers "what should I be doing"; the year answers "what does
+  // this year look like". They are different questions, and a wallplanner that
+  // could only answer the second would not be much use on a Monday morning.
+  let view = 'agenda';
+  let year = Number(now.slice(0, 4));
+  let selectedDay = null;
+
+  $: years = yearsInWindow(from, to);
+  $: dayItems = selectedDay
+    ? occurrences.filter(o => o.date === selectedDay)
+    : [];
 
   $: occurrences = buildOccurrences(state.events, state.occurrences, from, to)
     .filter(o => !categoryFilter || o.series?.category === categoryFilter);
@@ -138,6 +152,24 @@
     <div class="flex-1"></div>
 
     <div class="flex items-center gap-2 shrink-0">
+      <div class="flex rounded border border-slate-600 overflow-hidden text-xs">
+        {#each [['agenda', 'Agenda'], ['year', 'Year']] as [key, label]}
+          <button type="button"
+                  class="px-2.5 py-1 transition-colors
+                         {view === key ? 'bg-purple-600 text-white'
+                                       : 'text-slate-400 hover:bg-slate-700'}"
+                  on:click={() => { view = key; selectedDay = null; }}>{label}</button>
+        {/each}
+      </div>
+
+      {#if view === 'year'}
+        <select bind:value={year}
+                class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded
+                       text-white focus:outline-none focus:ring-1 focus:ring-purple-500">
+          {#each years as y}<option value={y}>{y}</option>{/each}
+        </select>
+      {/if}
+
       <select bind:value={categoryFilter}
               class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded
                      text-white focus:outline-none focus:ring-1 focus:ring-purple-500">
@@ -164,6 +196,61 @@
         readings, gutters each autumn — and they will appear here as they come
         round.
       </p>
+    </div>
+
+  {:else if view === 'year'}
+    <!-- ── The wallplanner ─────────────────────────────────────────────── -->
+    <div class="space-y-3">
+      <YearGrid
+        {year}
+        {occurrences}
+        today={now}
+        selected={selectedDay}
+        on:selectDay={(e) => selectedDay = e.detail.date}
+      />
+
+      <!-- The legend earns its place: a grid of coloured dots is unreadable
+           without one, and it is also what makes the print output usable. -->
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+        {#each CATEGORIES as c}
+          <span class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full {c.dot}"></span>{c.label}
+          </span>
+        {/each}
+        <span class="flex items-center gap-1 ml-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-400 opacity-40"></span>faded = done
+        </span>
+      </div>
+
+      {#if selectedDay}
+        <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
+          <div class="flex items-center gap-2 mb-2">
+            <h3 class="text-xs font-semibold text-white">{fmtDateLong(selectedDay)}</h3>
+            <div class="flex-1"></div>
+            <button class="text-xs text-slate-500 hover:text-slate-300"
+                    on:click={() => selectedDay = null}>Close</button>
+          </div>
+
+          {#if dayItems.length}
+            <div class="space-y-1.5">
+              {#each dayItems as occurrence (occurrence.event_id + occurrence.scheduled_for)}
+                <OccurrenceRow
+                  {occurrence}
+                  {canEdit}
+                  on:toggle={toggleDone}
+                  on:skip={toggleSkip}
+                  on:move={requestMove}
+                  on:editSeries={(e) => editSeries(e.detail)}
+                />
+              {/each}
+            </div>
+          {:else}
+            <p class="text-xs text-slate-500">Nothing planned.</p>
+          {/if}
+        </div>
+      {:else}
+        <p class="text-xs text-slate-600">Click a day to see what is on it.</p>
+      {/if}
     </div>
 
   {:else}
