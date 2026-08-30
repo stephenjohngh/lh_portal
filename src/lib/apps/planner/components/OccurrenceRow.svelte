@@ -18,6 +18,8 @@
   export let daysLate = 0;
   /** The building's categories, so a slug can be resolved to name and colour. */
   export let categories = [];
+  /** Profiles, so an owner id can be shown as a name. */
+  export let owners = [];
 
   const dispatch = createEventDispatcher();
 
@@ -30,6 +32,7 @@
    * and ticking it there would be two records of one fact.
    */
   $: linked   = !!occurrence.linked;
+  $: owner    = owners.find(p => p.id === series?.owner_id)?.full_name ?? null;
 </script>
 
 <div class="flex items-start gap-3 p-2.5 rounded border border-slate-700
@@ -82,6 +85,7 @@
         · {series.start_time.slice(0, 5)}{#if series.end_time}–{series.end_time.slice(0, 5)}{/if}
       {/if}
       {#if series?.location}· {series.location}{/if}
+      {#if owner}· <span class="text-slate-400">{owner}</span>{/if}
       {#if linked}· <span class="text-slate-600">in {occurrence.ownerApp}</span>{/if}
       {#if showLateness && daysLate > 0}
         · <span class="text-red-400">{daysLate} day{daysLate === 1 ? '' : 's'} late</span>

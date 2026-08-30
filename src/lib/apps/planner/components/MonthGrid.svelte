@@ -32,8 +32,10 @@
     <thead>
       <tr>
         {#each WEEKDAY_LABELS as label, i}
-          <th class="px-1 py-1 text-[10px] font-medium text-slate-500 text-left
-                     {i >= 5 ? 'text-slate-600' : ''}">{label}</th>
+          <th class="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide
+                     text-left border-b border-slate-600
+                     {i >= 5 ? 'text-slate-500 bg-slate-900/60' : 'text-slate-300 bg-slate-800/60'}"
+          >{label}</th>
         {/each}
       </tr>
     </thead>
@@ -42,17 +44,26 @@
       {#each grid.weeks as week}
         <tr>
           {#each week as day}
-            <td class="align-top border border-slate-700/50 p-0
-                       {day.weekend ? 'bg-slate-800/30' : ''}
-                       {day.outside ? 'opacity-40' : ''}">
+            <!-- Three tones, not one. A month of near-black cells with a hairline
+                 between them reads as a dark rectangle: the eye needs the
+                 weekend to be a different SURFACE, not a slightly different
+                 shade of the same one, and it needs to see where the weeks
+                 divide without hunting. -->
+            <td class="align-top p-0 border border-slate-600/70
+                       {day.outside ? 'bg-slate-900/70'
+                         : day.weekend ? 'bg-slate-900/40' : 'bg-slate-800/70'}
+                       {day.today ? 'ring-2 ring-inset ring-purple-500/70' : ''}">
               <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
               <div class="h-24 p-1 overflow-hidden cursor-pointer hover:bg-slate-700/30
                           transition-colors"
                    on:click={() => dispatch('selectDay', day)}>
 
                 <div class="flex items-baseline gap-1">
-                  <span class="text-[11px] tabular-nums
-                               {day.today ? 'text-white font-semibold' : 'text-slate-500'}">
+                  <!-- The date is the thing you scan for, so it is legible
+                       rather than decorative. -->
+                  <span class="text-xs tabular-nums font-medium
+                               {day.today ? 'text-white font-bold'
+                                 : day.outside ? 'text-slate-600' : 'text-slate-300'}">
                     {day.day}
                   </span>
                   {#if day.today}
@@ -73,7 +84,7 @@
                           {item.series.start_time.slice(0, 5)}
                         </span>
                       {/if}
-                      <span class="truncate {done ? 'line-through text-slate-500' : 'text-slate-300'}">
+                      <span class="truncate {done ? 'line-through text-slate-500' : 'text-slate-200'}">
                         {item.series?.title}
                       </span>
                     </div>

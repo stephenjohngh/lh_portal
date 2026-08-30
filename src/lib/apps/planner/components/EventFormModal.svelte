@@ -12,6 +12,10 @@
   import RecurrenceFields from './RecurrenceFields.svelte';
   import { pickable } from '../utils/categories.js';
   import { today } from '$lib/utils/dates';
+  import { profiles, profilesStore } from '$lib/stores/profiles';
+  import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { onMount } from 'svelte';
 
   export let show = false;
   /** The series being edited, or null to create one. */
@@ -30,6 +34,7 @@
   let startTime = '';
   let endTime = '';
   let leadDays = '';
+  let ownerId = '';
   let rule = { freq: 'once' };
   let drifts = false;
 
@@ -50,6 +55,7 @@
     startTime   = event?.start_time?.slice(0, 5) ?? '';
     endTime     = event?.end_time?.slice(0, 5) ?? '';
     leadDays    = event?.lead_days ?? '';
+    ownerId     = event?.owner_id ?? '';
     rule        = { ...(event?.recurrence ?? { freq: 'once' }) };
     drifts      = event?.drifts ?? false;
     saving      = false;
@@ -74,6 +80,9 @@
       start_time: allDay ? null : startTime,
       end_time: allDay || !endTime ? null : endTime,
       lead_days: leadDays === '' ? null : Number(leadDays),
+      // A uuid, not a name: the column is a foreign key, and a name would
+      // stop meaning anybody the moment somebody is renamed.
+      owner_id: ownerId || null,
       recurrence: cleanRule(rule),
       drifts,
     });
@@ -112,6 +121,16 @@
   export function fail(message) { saving = false; error = message; }
 
   function close() { loadedFor = null; show = false; dispatch('close'); }
+
+  /** Whose job this is. Ids, because the column is a foreign key. */
+  onMount(() => profilesStore.load());
+  $: owners = [
+    { value: '', label: 'Nobody in particular' },
+    ...$profiles.list.map(p => ({ value: p.id, label: p.full_name })),
+  ];
+
+  let pendingArchive = false;
+  let pendingDelete = false;
 </script>
 
 <Modal bind:show title={event ? 'Edit series' : 'New planner event'} size="large" on:close={close}>
@@ -149,6 +168,8 @@
       <RecurrenceFields bind:rule bind:drifts />
     </div>
 
+    <FormSelect label="Whose job (optional)" bind:value={ownerId} options={owners} />
+
     <FormInput label="Days of notice (optional)" type="number" bind:value={leadDays}
                placeholder="30" min="0" />
     <p class="text-xs text-slate-500 -mt-2">
@@ -160,10 +181,49 @@
                   placeholder="Anything the person doing this needs to know" />
   </div>
 
-  <div slot="footer" class="flex justify-end gap-2">
+  <div slot="footer" class="flex items-center gap-2">
+    {#if event}
+      <!-- Removing a series lives HERE, with the series, because that is where
+           somebody who has just realised it is wrong will look for it.
+           Archiving first and deleting second, and separated from the save
+           buttons by a gap: they are not steps in the same sequence. -->
+      <Button variant="secondary" disabled={saving}
+              on:click={() => pendingArchive = true}>
+        {event.archived ? 'Restore' : 'Archive'}
+      </Button>
+      <ProtectedButton requireAdmin={true} variant="danger" size="medium"
+                       disabled={saving}
+                       on:click={() => pendingDelete = true}>
+        Delete
+      </ProtectedButton>
+    {/if}
+
+    <div class="flex-1"></div>
+
     <Button variant="secondary" disabled={saving} on:click={close}>Cancel</Button>
     <Button variant="primary" disabled={saving} on:click={save}>
       {saving ? 'Saving…' : (event ? 'Save' : 'Create')}
     </Button>
   </div>
 </Modal>
+
+<ConfirmDialog
+  show={pendingArchive}
+  title={event?.archived ? 'Put this back on the planner?' : 'Take this off the planner?'}
+  message={event?.archived
+    ? `“${event?.title}” starts appearing on the year again.`
+    : `“${event?.title}” stops appearing on the year. Everything already recorded against it is kept, and it can be put back.`}
+  confirmText={event?.archived ? 'Restore' : 'Archive'}
+  on:confirm={() => { pendingArchive = false; dispatch('archive', { event, archived: !event?.archived }); }}
+  on:cancel={() => pendingArchive = false}
+/>
+
+<ConfirmDialog
+  show={pendingDelete}
+  danger={true}
+  title="Delete this series?"
+  message={`“${event?.title}” and every tick, note and skip recorded against it are deleted. That is a record of work done — archiving keeps it and takes the series off the year.`}
+  confirmText="Delete"
+  on:confirm={() => { pendingDelete = false; dispatch('remove', event); }}
+  on:cancel={() => pendingDelete = false}
+/>

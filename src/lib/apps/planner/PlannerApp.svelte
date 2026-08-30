@@ -10,6 +10,7 @@
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { plannerStore } from './stores/plannerStore.js';
+  import { profiles, profilesStore } from '$lib/stores/profiles';
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween } from './utils/recurrence.js';
   import { pickable, swatch } from './utils/categories.js';
@@ -19,7 +20,9 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
-  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import Modal        from '$lib/components/common/Modal.svelte';
+  import Button       from '$lib/components/common/Button.svelte';
+  import FormInput    from '$lib/components/common/FormInput.svelte';
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
   import CategoriesModal from './components/CategoriesModal.svelte';
@@ -143,6 +146,24 @@
     } catch (err) { error = err instanceof Error ? err.message : String(err); }
   }
 
+  async function archiveEvent(e) {
+    const { event, archived } = e.detail;
+    try {
+      await plannerStore.archiveEvent(event.id, archived, $auth.user.id);
+      formOpen = false;
+      editing = null;
+    } catch (err) { error = err instanceof Error ? err.message : String(err); }
+  }
+
+  async function removeEvent(e) {
+    const target = e.detail;                // captured before the await
+    try {
+      await plannerStore.deleteEvent(target.id, target.title);
+      formOpen = false;
+      editing = null;
+    } catch (err) { error = err instanceof Error ? err.message : String(err); }
+  }
+
   // ── Categories ────────────────────────────────────────────────────────────
 
   let categoriesOpen = false;
@@ -168,14 +189,18 @@
   let moving = null;
   let moveTo = '';
 
+  let movingOpen = false;
+
   function requestMove(e) {
     moving = e.detail;
     moveTo = e.detail.date;
+    movingOpen = true;
   }
 
   async function confirmMove() {
     const occurrence = moving;
     const date = moveTo;
+    movingOpen = false;
     moving = null;
     if (!occurrence || !date) return;
     try {
@@ -185,6 +210,7 @@
 
   onMount(async () => {
     await permissions.init($auth.user.id, 'planner');
+    profilesStore.load();
     try { await plannerStore.load(); }
     catch (err) { error = err instanceof Error ? err.message : String(err); }
 
@@ -300,7 +326,6 @@
         categories={state.categories}
         today={now}
         on:selectDay={(e) => selectedDay = e.detail.date}
-        on:selectMonth={(e) => { month = e.detail; view = 'month'; selectedDay = null; }}
       />
 
       {#if selectedDay}
@@ -319,6 +344,7 @@
                   {occurrence}
                   {canEdit}
                   categories={state.categories}
+                  owners={$profiles.list}
                   on:toggle={toggleDone}
                   on:skip={toggleSkip}
                   on:move={requestMove}
@@ -343,6 +369,7 @@
         today={now}
         selected={selectedDay}
         on:selectDay={(e) => selectedDay = e.detail.date}
+        on:selectMonth={(e) => { month = e.detail; view = 'month'; selectedDay = null; }}
       />
 
       <!-- The legend earns its place: a grid of coloured dots is unreadable
@@ -381,6 +408,7 @@
                   {occurrence}
                   {canEdit}
                   categories={state.categories}
+                  owners={$profiles.list}
                   on:toggle={toggleDone}
                   on:skip={toggleSkip}
                   on:move={requestMove}
@@ -419,6 +447,7 @@
                     {occurrence}
                     {canEdit}
                     categories={state.categories}
+                    owners={$profiles.list}
                     showLateness={bucket.key === 'overdue'}
                     daysLate={daysBetween(occurrence.date, now)}
                     on:toggle={toggleDone}
@@ -447,6 +476,8 @@
   event={editing}
   categories={state.categories}
   on:save={saveEvent}
+  on:archive={archiveEvent}
+  on:remove={removeEvent}
   on:close={() => { formOpen = false; editing = null; }}
 />
 
@@ -462,27 +493,20 @@
   on:close={() => { categoriesOpen = false; categoryError = ''; }}
 />
 
-<ConfirmDialog
-  show={!!moving}
-  title="Move this one?"
-  message={moving
-    ? `Only this occurrence of “${moving.series?.title}” moves. The pattern is unchanged.`
-    : ''}
-  confirmText="Move"
-  on:confirm={confirmMove}
-  on:cancel={() => moving = null}
-/>
+<Modal bind:show={movingOpen} title="Move this one" size="small"
+       on:close={() => { movingOpen = false; moving = null; }}>
+  <!-- A dialog with the field in it, rather than a floating box beside a
+       confirmation. One question, one place to answer it. -->
+  <p class="text-xs text-slate-400 mb-3">
+    Only this occurrence of “{moving?.series?.title}” moves. The pattern is
+    unchanged, and it keeps a note of where it should have been.
+  </p>
+  <FormInput label="New date" type="date" bind:value={moveTo} />
 
-{#if moving}
-  <!-- The date sits with the confirmation rather than in a form of its own:
-       there is one field, and asking twice for one field is a dialog too many. -->
-  <div class="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
-    <div class="pointer-events-auto bg-slate-800 border border-slate-600 rounded
-                px-3 py-2 shadow-lg mt-32">
-      <label class="text-xs text-slate-400 block mb-1" for="planner-move-to">Move to</label>
-      <input id="planner-move-to" type="date" bind:value={moveTo}
-             class="px-2 py-1 text-xs bg-slate-900 border border-slate-600 rounded text-white
-                    focus:outline-none focus:ring-1 focus:ring-purple-500" />
-    </div>
+  <div slot="footer" class="flex justify-end gap-2">
+    <Button variant="secondary" on:click={() => { movingOpen = false; moving = null; }}>
+      Cancel
+    </Button>
+    <Button variant="primary" disabled={!moveTo} on:click={confirmMove}>Move</Button>
   </div>
-{/if}
+</Modal>
