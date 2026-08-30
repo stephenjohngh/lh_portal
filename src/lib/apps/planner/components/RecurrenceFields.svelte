@@ -86,7 +86,7 @@
   }
 </script>
 
-<div class="space-y-3">
+<div class="space-y-2">
   <!-- FormSelect forwards the NATIVE change event, so the value comes off the
        target. Not `e.detail ?? e.target.value`: a native event's `detail` is a
        number, and `0 ?? x` is 0 — which would have been passed straight through
@@ -170,10 +170,9 @@
       <input type="checkbox" bind:checked={drifts} class="mt-0.5 accent-purple-500" />
       <span class="text-xs text-slate-400">
         Count from when it was last done
-        <span class="block text-slate-500">
-          For a boiler serviced every twelve months, whenever that was. Leave it
-          off for something fixed to the calendar, like the AGM — which is in its
-          month whether or not last year ran late.
+        <span class="block text-[11px] text-slate-500">
+          A boiler serviced every twelve months, whenever that was. Off for
+          anything fixed to the calendar, like the AGM.
         </span>
       </span>
     </label>

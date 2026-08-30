@@ -157,7 +157,15 @@
 <Modal bind:show
        title={!event ? 'New planner event' : editingSeries ? 'Edit series' : 'Edit event'}
        size="large" on:close={close}>
-  <div class="space-y-3">
+  <!-- The body scrolls, the header and footer do not.
+
+       Everything below the frequency dropdown is conditional — weekdays,
+       month, nth-weekday, until/count, the drifting explanation — so a
+       yearly-on-a-weekday rule is roughly twice the height of a one-off. The
+       shared Modal scrolls the whole overlay instead, which pushes Save and
+       Cancel below the fold exactly when the form is at its longest. Capping
+       the body keeps them where they were. -->
+  <div class="planner-form space-y-2.5 max-h-[calc(100vh-16rem)] overflow-y-auto pr-1">
     {#if error}
       <ErrorDisplay message={error} onDismiss={() => error = ''} />
     {/if}
@@ -173,32 +181,47 @@
                  placeholder="e.g. Residents' lounge" />
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <FormInput label="First date" type="date" bind:value={startDate} />
+    <!-- Date, all-day and times on one line: "all day" is about the times
+         beside it, and on its own row it read as a separate decision. -->
+    <div class="flex flex-wrap items-end gap-x-4 gap-y-1">
+      <div class="min-w-[9rem] flex-1">
+        <FormInput label="First date" type="date" bind:value={startDate} />
+      </div>
+
+      <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-400 pb-3">
+        <input type="checkbox" bind:checked={allDay} class="accent-purple-500" />
+        All day
+      </label>
 
       {#if !allDay}
-        <FormInput label="From" type="time" bind:value={startTime} />
-        <FormInput label="To (optional)" type="time" bind:value={endTime} />
+        <div class="min-w-[7rem] flex-1">
+          <FormInput label="From" type="time" bind:value={startTime} />
+        </div>
+        <div class="min-w-[7rem] flex-1">
+          <FormInput label="To (optional)" type="time" bind:value={endTime} />
+        </div>
       {/if}
     </div>
-
-    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-400">
-      <input type="checkbox" bind:checked={allDay} class="accent-purple-500" />
-      All day
-    </label>
 
     <div class="border-t border-slate-700 pt-3">
       <RecurrenceFields bind:rule bind:drifts />
     </div>
 
-    <FormInput label="Days of notice (optional)" type="number" bind:value={leadDays}
-               placeholder="30" min="0" />
-    <p class="text-xs text-slate-500 -mt-2">
-      How far ahead this should start showing under “Coming up”. A fire risk
-      assessment wants months; a bin day wants two days.
-    </p>
+    <!-- The explanation sits BESIDE the field rather than under it. It is two
+         lines of prose for one number, and stacked it cost more height than the
+         field it explains. -->
+    <div class="flex flex-wrap items-end gap-x-4">
+      <div class="w-32">
+        <FormInput label="Days of notice (optional)" type="number" bind:value={leadDays}
+                   placeholder="30" min="0" />
+      </div>
+      <p class="text-[11px] text-slate-500 pb-3 flex-1 min-w-[14rem]">
+        How far ahead this starts showing under “Coming up”. A fire risk
+        assessment wants months; a bin day wants two days.
+      </p>
+    </div>
 
-    <FormTextarea label="Notes (optional)" bind:value={description} rows={3}
+    <FormTextarea label="Notes (optional)" bind:value={description} rows={2}
                   placeholder="Anything the person doing this needs to know" />
   </div>
 
@@ -227,6 +250,20 @@
     </Button>
   </div>
 </Modal>
+
+<style>
+  /* The shared form controls carry `mb-4` for a page, which inside a modal that
+     stacks eight of them is most of a screen. Compressed here rather than by
+     adding a `dense` prop to FormInput/FormSelect/FormTextarea and threading it
+     through every field and into RecurrenceFields.
+
+     It depends on the utility class the shared components use, which is a
+     coupling worth naming: if those wrappers ever stop using `mb-4`, this stops
+     working and the form gets tall again — it will not break, it will just
+     look like it used to. */
+  .planner-form :global(.mb-4) { margin-bottom: 0.25rem; }
+  .planner-form :global(label.block) { margin-bottom: 0.25rem; }
+</style>
 
 <ConfirmDialog
   show={pendingArchive}
