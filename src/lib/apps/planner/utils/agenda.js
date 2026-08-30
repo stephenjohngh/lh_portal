@@ -210,3 +210,25 @@ export function completionPatch(occurrence, { status, on = null, note = null, us
 
   return patch;
 }
+
+/**
+ * The first line of an event's notes, for a row that has one line to spare.
+ *
+ * A description can be a sentence or a page; the agenda has room for a
+ * sentence. Taking the first LINE rather than the first N characters means an
+ * author who wrote a summary on line one gets exactly that — and one who did
+ * not still gets whole words, because the cut falls at a space and the row
+ * clips whatever is left over.
+ *
+ * Leading blank lines are skipped: a note that begins with a gap should show
+ * its first real words, not its formatting.
+ */
+export function firstLine(text, limit = 160) {
+  const line = String(text ?? '').split(/\r?\n/).find(l => l.trim()) ?? '';
+  const trimmed = line.trim();
+  if (trimmed.length <= limit) return trimmed;
+
+  const cut = trimmed.slice(0, limit);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > limit * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}

@@ -7,9 +7,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fmtDate } from '$lib/utils/dates';
-  import { STATUS } from '../utils/agenda.js';
+  import { STATUS, firstLine } from '../utils/agenda.js';
   import { categoryOf } from '../utils/categories.js';
-  import { describeRule } from '../utils/recurrence.js';
+  import { describeRule, isRecurring } from '../utils/recurrence.js';
 
   export let occurrence;
   export let canEdit = false;
@@ -33,6 +33,13 @@
    */
   $: linked   = !!occurrence.linked;
   $: owner    = owners.find(p => p.id === series?.owner_id)?.full_name ?? null;
+  /**
+   * A one-off is not a series, and every word on this row has to know it —
+   * "skip this one" and "edit the series" both promise dates that do not exist.
+   */
+  $: recurring = isRecurring(series?.recurrence);
+  /** The opening line of the event's notes, if it has any. */
+  $: summary   = firstLine(series?.description);
 </script>
 
 <div class="flex items-start gap-3 p-2.5 rounded border border-slate-700
@@ -95,11 +102,19 @@
       {/if}
     </p>
 
+    <!-- The first line of the notes. A whole description would turn an agenda
+         into a wall of text, but a row with no hint of what a title means costs
+         a click to find out — one line is what fits and usually what is needed.
+         Clipped rather than wrapped, so every row stays the same height. -->
+    {#if summary}
+      <p class="text-xs text-slate-400 mt-0.5 truncate" title={series.description}>{summary}</p>
+    {/if}
+
     {#if occurrence.note}
       <p class="text-xs text-slate-400 mt-1 italic">{occurrence.note}</p>
     {/if}
 
-    {#if series?.recurrence?.freq && series.recurrence.freq !== 'once'}
+    {#if recurring}
       <p class="text-[11px] text-slate-600 mt-0.5">
         {describeRule(series.recurrence, { drifts: series.drifts })}
       </p>
@@ -108,16 +123,19 @@
 
   {#if canEdit && !linked}
     <div class="flex items-center gap-1 shrink-0">
-      <button type="button" title="Move this one to another date"
+      <button type="button" title={recurring ? 'Move this one to another date' : 'Move to another date'}
               class="text-slate-600 hover:text-amber-300 text-xs px-1"
               on:click={() => dispatch('move', occurrence)}>↦</button>
-      <button type="button" title={skipped ? 'Un-skip' : 'Skip this one'}
+      <button type="button"
+              title={skipped
+                ? (recurring ? 'Un-skip' : 'Mark as still needed')
+                : (recurring ? 'Skip this one' : 'Mark as not needed')}
               class="text-slate-600 hover:text-slate-300 text-xs px-1"
               on:click={() => dispatch('skip', occurrence)}>⊘</button>
       <button type="button" title="Hand this to Maintenance"
               class="text-slate-600 hover:text-sky-300 text-xs px-1"
               on:click={() => dispatch('promote', occurrence)}>⇥</button>
-      <button type="button" title="Edit the series"
+      <button type="button" title={recurring ? 'Edit the series' : 'Edit this event'}
               class="text-slate-600 hover:text-purple-300 text-xs px-1"
               on:click={() => dispatch('editSeries', series)}>✎</button>
     </div>

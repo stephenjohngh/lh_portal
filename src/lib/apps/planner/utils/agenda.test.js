@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   mergeOccurrences, buildOccurrences, bucketOf, agenda, describeAgenda,
-  byMonth, completionPatch, STATUS,
+  byMonth, completionPatch, STATUS, firstLine,
 } from './agenda.js';
 
 const TODAY = '2026-06-15';
@@ -251,5 +251,42 @@ describe('a promoted series', () => {
     const out = buildOccurrences([promoted, monthly], [], '2026-01-01', '2026-03-31');
     expect(out.every(o => o.event_id === 'e1')).toBe(true);
     expect(out).toHaveLength(3);
+  });
+});
+
+describe('firstLine', () => {
+  it('takes the first line, not the first sentence', () => {
+    expect(firstLine('Meter readings\nBoth meters, cupboard by the bins'))
+      .toBe('Meter readings');
+  });
+
+  it('skips leading blank lines rather than showing the formatting', () => {
+    expect(firstLine('\n\n  Gutters, front elevation  ')).toBe('Gutters, front elevation');
+  });
+
+  it('handles the Windows line ending a pasted note arrives with', () => {
+    expect(firstLine('Fire door check\r\nAll floors')).toBe('Fire door check');
+  });
+
+  it('cuts a long line at a space, so no word is left in half', () => {
+    const long = `${'a'.repeat(50)} ${'b'.repeat(50)} ${'c'.repeat(50)}`;
+    const cut = firstLine(long, 120);
+    expect(cut).toBe(`${'a'.repeat(50)} ${'b'.repeat(50)}…`);
+  });
+
+  it('cuts mid-word only when there is no space worth cutting at', () => {
+    // One unbroken 200-character run: better a hard cut than the whole thing.
+    expect(firstLine('x'.repeat(200), 20)).toBe(`${'x'.repeat(20)}…`);
+  });
+
+  it('leaves a short line exactly as written', () => {
+    expect(firstLine('AGM')).toBe('AGM');
+  });
+
+  it('is empty rather than undefined for an event with no notes', () => {
+    expect(firstLine(null)).toBe('');
+    expect(firstLine(undefined)).toBe('');
+    expect(firstLine('')).toBe('');
+    expect(firstLine('   \n  ')).toBe('');
   });
 });

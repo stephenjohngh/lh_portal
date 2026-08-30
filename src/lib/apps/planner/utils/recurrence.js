@@ -321,6 +321,18 @@ export function ordinal(n) {
 }
 
 /**
+ * Whether an event repeats at all.
+ *
+ * A one-off is NOT a series, and the difference is not pedantry: "edit the
+ * series", "skip this one" and "delete this series" all promise other dates
+ * that a one-off does not have, and a reader who hesitates over that is right
+ * to. Everywhere the interface says "series", it has to have asked this first.
+ */
+export function isRecurring(rule) {
+  return !!rule?.freq && rule.freq !== 'once';
+}
+
+/**
  * A rule in words — "the first Tuesday of every month".
  *
  * Shown wherever a series is listed. A recurrence a person cannot read is one

@@ -11,6 +11,7 @@
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import RecurrenceFields from './RecurrenceFields.svelte';
   import { pickable } from '../utils/categories.js';
+  import { isRecurring } from '../utils/recurrence.js';
   import { today } from '$lib/utils/dates';
   import { profiles, profilesStore } from '$lib/stores/profiles';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -56,6 +57,14 @@
   // What this dialog is currently about. Null while closed, so re-opening always
   // starts from the record — or from the day just clicked — rather than from
   // whatever was half-typed and then cancelled.
+  /**
+   * Whether the thing being edited actually repeats. Calling a one-off a
+   * "series" promises other dates it does not have, and the word appears in the
+   * heading and in the delete warning — the two places a reader is deciding
+   * how much they are about to change.
+   */
+  $: editingSeries = !!event && isRecurring(event.recurrence);
+
   $: token = !show ? null : (event?.id ?? `new:${defaultDate ?? ''}`);
   $: if (token && token !== loadedFor) {
     loadedFor   = token;
@@ -146,7 +155,9 @@
   let pendingDelete = false;
 </script>
 
-<Modal bind:show title={event ? 'Edit series' : 'New planner event'} size="large" on:close={close}>
+<Modal bind:show
+       title={!event ? 'New planner event' : editingSeries ? 'Edit series' : 'Edit event'}
+       size="large" on:close={close}>
   <div class="space-y-3">
     {#if error}
       <ErrorDisplay message={error} onDismiss={() => error = ''} />
@@ -234,8 +245,8 @@
 <ConfirmDialog
   show={pendingDelete}
   danger={true}
-  title="Delete this series?"
-  message={`“${event?.title}” and every tick, note and skip recorded against it are deleted. That is a record of work done — archiving keeps it and takes the series off the year.`}
+  title={editingSeries ? 'Delete this series?' : 'Delete this event?'}
+  message={`“${event?.title}” and every tick, note and skip recorded against it are deleted. That is a record of work done — archiving keeps it and takes ${editingSeries ? 'the series' : 'it'} off the year.`}
   confirmText="Delete"
   on:confirm={() => { pendingDelete = false; dispatch('remove', event); }}
   on:cancel={() => pendingDelete = false}

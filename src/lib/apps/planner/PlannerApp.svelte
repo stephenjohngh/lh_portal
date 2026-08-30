@@ -12,7 +12,7 @@
   import { plannerStore } from './stores/plannerStore.js';
   import { profiles, profilesStore } from '$lib/stores/profiles';
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
-  import { addDaysISO, daysBetween } from './utils/recurrence.js';
+  import { addDaysISO, daysBetween, isRecurring } from './utils/recurrence.js';
   import { pickable, swatch, marksByDate } from './utils/categories.js';
   import { SOURCES } from './utils/linked.js';
   import { today, fmtDateLong } from '$lib/utils/dates';
@@ -583,7 +583,7 @@
 
     <FormInput label="Scheduled for" type="date" bind:value={promoteOn} />
 
-    {#if promoting?.series?.recurrence?.freq !== 'once'}
+    {#if isRecurring(promoting?.series?.recurrence)}
       <!-- The thing nobody would work out for themselves, and the reason this
            is a dialog rather than a button. -->
       <p class="p-2 rounded border border-amber-500/40 bg-amber-500/10 text-amber-200">

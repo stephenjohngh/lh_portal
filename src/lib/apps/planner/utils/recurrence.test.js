@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expandRule, expandSeries, describeRule, clampDay, nthWeekdayOf,
   daysInMonth, weekdayOf, addDaysISO, daysBetween, ordinal, MAX_OCCURRENCES,
-  PRESETS, presetOf, applyPreset,
+  PRESETS, presetOf, applyPreset, isRecurring,
 } from './recurrence.js';
 
 const YEAR = ['2026-01-01', '2026-12-31'];
@@ -308,5 +308,22 @@ describe('quarterly and twice a year', () => {
   it('are left alone by an unknown preset key', () => {
     const rule = { freq: 'monthly', interval: 2 };
     expect(applyPreset(rule, 'nonsense')).toBe(rule);
+  });
+});
+
+describe('isRecurring', () => {
+  it('is false for a one-off, and for an event with no rule at all', () => {
+    // The second case is the one that matters: `freq !== 'once'` is true for
+    // undefined, so the naive test called every rule-less event a series.
+    expect(isRecurring({ freq: 'once' })).toBe(false);
+    expect(isRecurring({})).toBe(false);
+    expect(isRecurring(null)).toBe(false);
+    expect(isRecurring(undefined)).toBe(false);
+  });
+
+  it('is true for anything that actually repeats', () => {
+    expect(isRecurring({ freq: 'daily' })).toBe(true);
+    expect(isRecurring({ freq: 'monthly', monthDay: 1 })).toBe(true);
+    expect(isRecurring({ freq: 'yearly', month: 3, monthDay: 14 })).toBe(true);
   });
 });
