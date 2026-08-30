@@ -78,7 +78,7 @@ function linkedOccurrence(source, { id, title, date, done = false, detail = null
 export function fromMaintenanceJob(row) {
   return linkedOccurrence('maintenance', {
     id: row?.id,
-    title: row?.task_name ?? row?.title ?? 'Maintenance job',
+    title: row?.title ?? 'Maintenance job',
     date: row?.completed_date ?? row?.scheduled_date,
     done: !!row?.completed_date,
     detail: row?.contractor_name ?? null,

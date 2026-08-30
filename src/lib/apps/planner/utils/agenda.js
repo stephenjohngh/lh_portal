@@ -99,7 +99,10 @@ function occurrence(series, date, row, orphaned = false) {
  */
 export function buildOccurrences(series = [], stored = [], from, to) {
   return series
-    .filter(s => !s.archived)
+    // A promoted series has handed its work to another app and stops producing
+    // dates. The target is shown instead, through the ordinary aggregation —
+    // which is the whole point: one record, not two that disagree.
+    .filter(s => !s.archived && !s.promoted_id)
     .flatMap(s => mergeOccurrences(s, stored, from, to))
     .sort((a, b) => a.date.localeCompare(b.date)
       || (a.series.start_time ?? '').localeCompare(b.series.start_time ?? ''));

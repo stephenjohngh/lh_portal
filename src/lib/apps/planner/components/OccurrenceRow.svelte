@@ -114,6 +114,9 @@
       <button type="button" title={skipped ? 'Un-skip' : 'Skip this one'}
               class="text-slate-600 hover:text-slate-300 text-xs px-1"
               on:click={() => dispatch('skip', occurrence)}>⊘</button>
+      <button type="button" title="Hand this to Maintenance"
+              class="text-slate-600 hover:text-sky-300 text-xs px-1"
+              on:click={() => dispatch('promote', occurrence)}>⇥</button>
       <button type="button" title="Edit the series"
               class="text-slate-600 hover:text-purple-300 text-xs px-1"
               on:click={() => dispatch('editSeries', series)}>✎</button>

@@ -230,3 +230,26 @@ describe('completionPatch', () => {
       .toBe('2026-02-01');
   });
 });
+
+describe('a promoted series', () => {
+  // Promotion moves ownership rather than copying. Once a planner event has
+  // become a maintenance job, the JOB is the record and the planner shows it
+  // through aggregation — so the series itself must stop producing dates, or
+  // the same intent appears twice and the two disagree the moment one is
+  // ticked.
+  const promoted = {
+    ...monthly, id: 'e-promoted',
+    promoted_type: 'maintenance_job',
+    promoted_id: 'job-1',
+  };
+
+  it('produces no occurrences of its own', () => {
+    expect(buildOccurrences([promoted], [], '2026-01-01', '2026-12-31')).toEqual([]);
+  });
+
+  it('leaves the rest of the planner alone', () => {
+    const out = buildOccurrences([promoted, monthly], [], '2026-01-01', '2026-03-31');
+    expect(out.every(o => o.event_id === 'e1')).toBe(true);
+    expect(out).toHaveLength(3);
+  });
+});

@@ -164,6 +164,36 @@
     } catch (err) { error = err instanceof Error ? err.message : String(err); }
   }
 
+  // ── Promotion ─────────────────────────────────────────────────────────────
+
+  let promoting = null;
+  let promoteOn = '';
+  let promoteBusy = false;
+
+  function requestPromote(e) {
+    promoting = e.detail;
+    promoteOn = e.detail.date;
+  }
+
+  async function confirmPromote() {
+    const occurrence = promoting;
+    const onDate = promoteOn;
+    if (!occurrence) return;
+
+    promoteBusy = true;
+    try {
+      await plannerStore.promoteToMaintenance(occurrence.series, onDate, $auth.user.id);
+      // Read the aggregation again: the job did not exist when it was last
+      // asked, and without this the event vanishes with nothing in its place.
+      await plannerStore.loadLinked(from, to);
+      promoting = null;
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    } finally {
+      promoteBusy = false;
+    }
+  }
+
   // ── Categories ────────────────────────────────────────────────────────────
 
   let categoriesOpen = false;
@@ -348,6 +378,7 @@
                   on:toggle={toggleDone}
                   on:skip={toggleSkip}
                   on:move={requestMove}
+                  on:promote={requestPromote}
                   on:editSeries={(e) => editSeries(e.detail)}
                 />
               {/each}
@@ -412,6 +443,7 @@
                   on:toggle={toggleDone}
                   on:skip={toggleSkip}
                   on:move={requestMove}
+                  on:promote={requestPromote}
                   on:editSeries={(e) => editSeries(e.detail)}
                 />
               {/each}
@@ -453,6 +485,8 @@
                     on:toggle={toggleDone}
                     on:skip={toggleSkip}
                     on:move={requestMove}
+                    on:promote={requestPromote}
+                  on:promote={requestPromote}
                     on:editSeries={(e) => editSeries(e.detail)}
                   />
                 {/each}
@@ -492,6 +526,44 @@
   on:delete={deleteCategory}
   on:close={() => { categoriesOpen = false; categoryError = ''; }}
 />
+
+<Modal show={!!promoting} title="Hand this to Maintenance" size="medium"
+       on:close={() => promoting = null}>
+  <div class="space-y-3 text-xs text-slate-400">
+    <p>
+      <span class="text-white">“{promoting?.series?.title}”</span> becomes a
+      maintenance job. The planner stops holding it and shows the job instead —
+      one record, in the app that owns that kind of work.
+    </p>
+
+    <FormInput label="Scheduled for" type="date" bind:value={promoteOn} />
+
+    {#if promoting?.series?.recurrence?.freq !== 'once'}
+      <!-- The thing nobody would work out for themselves, and the reason this
+           is a dialog rather than a button. -->
+      <p class="p-2 rounded border border-amber-500/40 bg-amber-500/10 text-amber-200">
+        This series repeats. One job is created, for the date above — Maintenance
+        schedules repeats from when work is COMPLETED, which is not the same as
+        the planner's fixed pattern. Set up a regime in Maintenance if it should
+        keep coming round.
+      </p>
+    {/if}
+
+    <p class="text-slate-500">
+      Anything already ticked against it is kept. This cannot be undone from
+      here.
+    </p>
+  </div>
+
+  <div slot="footer" class="flex justify-end gap-2">
+    <Button variant="secondary" disabled={promoteBusy} on:click={() => promoting = null}>
+      Cancel
+    </Button>
+    <Button variant="primary" disabled={promoteBusy || !promoteOn} on:click={confirmPromote}>
+      {promoteBusy ? 'Handing over…' : 'Create the job'}
+    </Button>
+  </div>
+</Modal>
 
 <Modal bind:show={movingOpen} title="Move this one" size="small"
        on:close={() => { movingOpen = false; moving = null; }}>

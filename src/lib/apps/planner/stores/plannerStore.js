@@ -13,7 +13,7 @@ import { getLogger } from '$lib/utils/logger';
 import { completionPatch, STATUS } from '../utils/agenda.js';
 import { linkedOccurrences } from '../utils/linked.js';
 import { uniqueSlug } from '../utils/categories.js';
-import { listScheduledWork } from '$lib/apps/maintenance/public.js';
+import { listScheduledWork, createJobFromPlanner } from '$lib/apps/maintenance/public.js';
 import { listMeetings, listOpenActionDeadlines } from '$lib/apps/management/public.js';
 import { listReviewsDue } from '$lib/apps/golden_thread/public.js';
 
@@ -153,6 +153,50 @@ function createPlannerStore() {
     });
   }
 
+  /**
+   * Hand a planner event to the app that should own it.
+   *
+   * Two writes, in an order that matters. The job is created FIRST: if the
+   * second write fails, the planner still owns its event and the worst outcome
+   * is a job somebody has to tidy up. Marking the event first and failing to
+   * create the job would leave an event that produces no dates and points at
+   * nothing — invisible work, which is the failure this app exists to prevent.
+   *
+   * Not a transaction, because it crosses two apps through a public interface
+   * rather than one table. The ordering is the guarantee.
+   *
+   * @param {object} event      the planner series
+   * @param {string} onDate     which occurrence becomes the job
+   * @param {string} userId
+   */
+  async function promoteToMaintenance(event, onDate, userId) {
+    const job = await createJobFromPlanner({
+      title: event.title,
+      description: event.description,
+      scheduled_date: onDate,
+      source_id: event.id,
+    }, userId);
+
+    const updated = await api.update('planner_events', event.id, {
+      promoted_type: 'maintenance_job',
+      promoted_id: job.id,
+      promoted_at: new Date().toISOString(),
+      promoted_by: userId,
+      ...touch(userId),
+    }, true);
+
+    update(s => ({ ...s, events: s.events.map(e => (e.id === event.id ? updated : e)) }));
+
+    logAudit('update', 'planner_event', event.id, event.title, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+      afterData: { promoted_type: 'maintenance_job', promoted_id: job.id, scheduled_date: onDate },
+    });
+
+    // The new job will not appear until the aggregation is read again — it did
+    // not exist when the planner last asked.
+    return { job, event: updated };
+  }
+
   // ── Categories ────────────────────────────────────────────────────────────
 
   /**
@@ -288,6 +332,7 @@ function createPlannerStore() {
     subscribe,
     load, loadLinked,
     createEvent, updateEvent, archiveEvent, deleteEvent,
+    promoteToMaintenance,
     createCategory, updateCategory, deleteCategory,
     recordOccurrence, moveOccurrence,
     clearError,

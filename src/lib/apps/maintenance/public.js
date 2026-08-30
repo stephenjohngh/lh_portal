@@ -29,7 +29,11 @@ export function getJob(id) {
  */
 export async function listScheduledWork(from, to) {
   const rows = await api.getAll('maintenance_jobs', {
-    select: 'id, task_name, scheduled_date, completed_date, status, contractor_name',
+    // `title`, not `task_name`: that column belongs to maintenance_regime, and
+    // asking PostgREST for it fails the whole request. The Planner catches a
+    // failed source and shows the rest, so this went unnoticed — maintenance
+    // jobs simply never appeared on the year.
+    select: 'id, title, scheduled_date, completed_date, status, contractor_name',
   });
 
   // Filtered here rather than in the query: a job is placed on the date it was
@@ -39,6 +43,44 @@ export async function listScheduledWork(from, to) {
     const date = row.completed_date ?? row.scheduled_date;
     return date && date >= from && date <= to;
   });
+}
+
+/**
+ * Create a job from something the Planner was holding.
+ *
+ * The Planner cannot write `maintenance_jobs` itself, so this is the door — and
+ * it is deliberately narrow: one job, on one date, scoped to the building.
+ *
+ * ⚠ What this changes, and what the caller must tell the user: a planner series
+ * is ANCHORED (every March, whatever happened last year), and maintenance
+ * scheduling DRIFTS (the next one is due `frequency_days` after this one is
+ * completed). Promoting a recurring planner event therefore hands its recurrence
+ * to a different set of rules. One job is created here, not a series; a repeating
+ * regime is set up in Maintenance, where regimes live.
+ *
+ * @param {{title: string, description?: string, scheduled_date: string,
+ *          contractor_name?: string, source_id: string}} event
+ * @param {string} userId
+ */
+export function createJobFromPlanner(event, userId) {
+  return api.create('maintenance_jobs', {
+    title:          event.title,
+    // The planner event's id is written into the job's description rather than
+    // into a column of its own: maintenance_jobs has no notion of a planner, and
+    // adding one would put knowledge of the Planner inside Maintenance. The
+    // pointer that matters is held the other way round, on planner_events.
+    description:    event.description ?? null,
+    scheduled_date: event.scheduled_date,
+    // Building scope: a planner event describes something the building does,
+    // not a component. Narrowing it is a job for Maintenance, which has the
+    // asset tree to narrow it against.
+    scope_type:     'building',
+    scope_label:    'Building',
+    status:         'scheduled',
+    contractor_name: event.contractor_name ?? null,
+    created_by:     userId,
+    updated_by:     userId,
+  }, true);
 }
 
 /** A job's certificate/documents, newest first. */

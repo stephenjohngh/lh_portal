@@ -9,7 +9,7 @@ import { agenda, bucketOf } from './agenda.js';
 
 describe('fromMaintenanceJob', () => {
   it('shows a scheduled job on its date', () => {
-    const item = fromMaintenanceJob({ id: 'j1', task_name: 'Boiler service', scheduled_date: '2026-03-01' });
+    const item = fromMaintenanceJob({ id: 'j1', title: 'Boiler service', scheduled_date: '2026-03-01' });
     expect(item).toMatchObject({
       date: '2026-03-01', status: 'due', linked: true,
       source: 'maintenance', ownerApp: 'Maintenance',
@@ -22,7 +22,7 @@ describe('fromMaintenanceJob', () => {
     // Hiding finished work would make a busy year look empty — "the boiler was
     // serviced in March" is exactly what somebody looking at last spring wants.
     const item = fromMaintenanceJob({
-      id: 'j2', task_name: 'Boiler service',
+      id: 'j2', title: 'Boiler service',
       scheduled_date: '2026-03-01', completed_date: '2026-03-04',
     });
     expect(item.date).toBe('2026-03-04');
@@ -38,7 +38,7 @@ describe('fromMaintenanceJob', () => {
   });
 
   it('is dropped when there is no date to put it on', () => {
-    expect(fromMaintenanceJob({ id: 'j4', task_name: 'No date' })).toBeNull();
+    expect(fromMaintenanceJob({ id: 'j4', title: 'No date' })).toBeNull();
     expect(fromMaintenanceJob(null)).toBeNull();
   });
 });
@@ -80,7 +80,7 @@ describe('fromGtDocument', () => {
 
 describe('linkedOccurrences', () => {
   const input = {
-    jobs: [{ id: 'j1', task_name: 'Service', scheduled_date: '2026-03-01' }],
+    jobs: [{ id: 'j1', title: 'Service', scheduled_date: '2026-03-01' }],
     meetings: [{ id: 'm1', title: 'AGM', meeting_date: '2026-01-15' }],
     actions: [{ id: 'a1', action_text: 'Chase', date_deadline: '2026-02-01' }],
     gtDocuments: [{ id: 'd1', title: 'FRA', review_due: '2026-04-01' }],
