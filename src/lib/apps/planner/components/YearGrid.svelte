@@ -100,17 +100,25 @@
                     {cell.day}
                   </span>
 
-                  <!-- Dots WRAP into the height beneath. A column is only so
-                       wide, but a wallplanner row has height to spare, and a
-                       busy day should look busy rather than be summarised. -->
+                  <!-- Dots in a fixed 2 x 3 block beneath the date. A column is
+                       only so wide, but a wallplanner row has height to spare,
+                       so the six go DOWN rather than competing for one line —
+                       and at a fixed pitch they are big enough to tell apart by
+                       colour, which is the only thing a dot has to do.
+
+                       The overflow "+" takes the sixth slot rather than a
+                       seventh, so a crowded day never grows a fourth row. -->
                   {#if dots.count}
-                    <span class="flex flex-wrap justify-center items-center gap-px mt-0.5 max-w-full">
-                      {#each dots.categories as category}
-                        <span class="w-1.5 h-1.5 rounded-full {categoryOf(category, categories).dot}
+                    {@const shown = dots.overflow ? dots.categories.slice(0, 5) : dots.categories}
+                    {@const filled = shown.length + (dots.overflow ? 1 : 0)}
+                    <span class="grid gap-0.5 justify-items-center mt-0.5
+                                 {filled === 1 ? 'grid-cols-1' : 'grid-cols-2'}">
+                      {#each shown as category}
+                        <span class="w-2 h-2 rounded-full {categoryOf(category, categories).dot}
                                      {dots.outstanding ? '' : 'opacity-40'}"></span>
                       {/each}
                       {#if dots.overflow}
-                        <span class="text-[7px] text-slate-300 leading-none">+</span>
+                        <span class="text-[9px] text-slate-300 leading-none">+</span>
                       {/if}
                     </span>
                   {/if}

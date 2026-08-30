@@ -439,11 +439,11 @@
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
         {#each pickable(state.categories) as c}
           <span class="flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full {swatch(c.colour).dot}"></span>{c.name}
+            <span class="w-2 h-2 rounded-full {swatch(c.colour).dot}"></span>{c.name}
           </span>
         {/each}
         <span class="flex items-center gap-1 ml-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-slate-400 opacity-40"></span>faded = done
+          <span class="w-2 h-2 rounded-full bg-slate-400 opacity-40"></span>faded = done
         </span>
       </div>
 
