@@ -2,12 +2,12 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  PALETTE, swatch, categoryOf, pickable, slugify, uniqueSlug, SYSTEM_SLUGS,
+  PALETTE, FALLBACK, swatch, categoryOf, pickable, slugify, uniqueSlug, SYSTEM_SLUGS,
   marksByDate, markStyle,
 } from './categories.js';
 
 const CATEGORIES = [
-  { slug: 'meeting',     name: 'Meeting',     colour: 'indigo', system: true,  position: 3 },
+  { slug: 'meeting',     name: 'Meeting',     colour: 'violet', system: true,  position: 3 },
   { slug: 'compliance',  name: 'Compliance',  colour: 'red',    system: true,  position: 1 },
   { slug: 'gardening',   name: 'Gardening',   colour: 'lime',   system: false, position: 9 },
   { slug: 'old',         name: 'Old thing',   colour: 'slate',  system: false, position: 5, archived: true },
@@ -31,6 +31,17 @@ describe('PALETTE', () => {
   it('has no duplicate keys', () => {
     expect(new Set(PALETTE.map(p => p.key)).size).toBe(PALETTE.length);
   });
+
+  it('offers nothing that sinks into a dark cell', () => {
+    // A planner cell is dark navy. Indigo and mid grey were close enough to it
+    // that the dot was drawn and still could not be seen, so neither is a
+    // choice any more — this is the guard against quietly reinstating them.
+    const keys = PALETTE.map(p => p.key);
+    expect(keys).not.toContain('indigo');
+    expect(keys).not.toContain('slate');
+    expect(keys).not.toContain('gray');
+    expect(keys).not.toContain('zinc');
+  });
 });
 
 describe('swatch', () => {
@@ -38,11 +49,22 @@ describe('swatch', () => {
     expect(swatch('red').dot).toBe('bg-red-500');
   });
 
-  it('falls back to grey rather than to nothing', () => {
+  it('falls back to the neutral rather than to nothing', () => {
     // A missing swatch would render a dot with no background — invisible, and
     // indistinguishable from an empty day.
-    expect(swatch('chartreuse').dot).toBe('bg-slate-400');
-    expect(swatch(null).dot).toBe('bg-slate-400');
+    expect(swatch('chartreuse')).toBe(FALLBACK);
+    expect(swatch(null)).toBe(FALLBACK);
+  });
+
+  it('still renders a retired colour, so the chart does not wait on a migration', () => {
+    // Categories seeded as indigo keep that key until migration 182 is applied,
+    // and the dot has to be right in the meantime.
+    expect(swatch('indigo').dot).toBe('bg-violet-400');
+  });
+
+  it('sends the retired grey to the neutral, which is lighter', () => {
+    expect(swatch('slate')).toBe(FALLBACK);
+    expect(FALLBACK.dot).toBe('bg-slate-300');
   });
 });
 
@@ -50,7 +72,7 @@ describe('categoryOf', () => {
   it('resolves a category to its name and colour', () => {
     const category = categoryOf('meeting', CATEGORIES);
     expect(category.name).toBe('Meeting');
-    expect(category.dot).toBe('bg-indigo-400');
+    expect(category.dot).toBe('bg-violet-400');
   });
 
   it('names an event with no category at all', () => {
@@ -63,7 +85,7 @@ describe('categoryOf', () => {
     const gone = categoryOf('was-deleted', CATEGORIES);
     expect(gone.missing).toBe(true);
     expect(gone.name).toBe('was-deleted');
-    expect(gone.dot).toBe('bg-slate-400');
+    expect(gone.dot).toBe(FALLBACK.dot);
   });
 
   it('works with no categories loaded yet', () => {
@@ -161,6 +183,6 @@ describe('day marks', () => {
   });
 
   it('falls back to grey for a colour it does not know', () => {
-    expect(markStyle({ colour: 'chartreuse', label: 'x' }).wash).toBe('bg-slate-500/25');
+    expect(markStyle({ colour: 'chartreuse', label: 'x' }).wash).toBe(FALLBACK.wash);
   });
 });

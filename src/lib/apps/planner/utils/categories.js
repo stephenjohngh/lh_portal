@@ -19,31 +19,64 @@
 // rather than a matter of taste: a category in the accent colour reads as
 // interface.
 //
-// The rest is that these have to be told apart as a dot six pixels across, on a
-// dark ground, by somebody scanning a year — hence one red, one orange, one
-// blue, one violet, one magenta, one yellow-green, one grey, no two neighbours
-// on the wheel.
+// The rest is that these have to be told apart as a dot eight pixels across, on
+// a dark ground, by somebody scanning a year — hence one red, one orange, one
+// amber, one blue, one violet, one magenta, one pink, one yellow-green, no two
+// neighbours on the wheel.
+//
+// ── And nothing that sinks into the ground ──────────────────────────────────
+// A cell is dark navy (slate-800 over slate-900, and a blue-tinted variant at
+// weekends), so a dot in the same family disappears into it. Indigo and mid
+// grey both did, which two of the seeded categories were using — the dot was
+// technically drawn and practically invisible. Both are retired below: indigo
+// became violet, which is brighter and further round the wheel, and grey
+// stopped being a choice at all.
 
 // `wash` is the same colour again at the strength a whole cell can carry.
 // A dot at full strength is a mark; a cell at full strength is a shout, and
 // the date printed on it stops being readable.
 export const PALETTE = [
   { key: 'red',     label: 'Red',     dot: 'bg-red-500',     chip: 'bg-red-500/15 text-red-300 border-red-500/30',         wash: 'bg-red-500/25' },
+  { key: 'orange',  label: 'Orange',  dot: 'bg-orange-400',  chip: 'bg-orange-500/15 text-orange-300 border-orange-500/30', wash: 'bg-orange-500/25' },
   { key: 'amber',   label: 'Amber',   dot: 'bg-amber-500',   chip: 'bg-amber-500/15 text-amber-300 border-amber-500/30',   wash: 'bg-amber-500/25' },
   { key: 'lime',    label: 'Lime',    dot: 'bg-lime-400',    chip: 'bg-lime-500/15 text-lime-300 border-lime-500/30',      wash: 'bg-lime-500/25' },
   { key: 'sky',     label: 'Sky',     dot: 'bg-sky-400',     chip: 'bg-sky-500/15 text-sky-300 border-sky-500/30',         wash: 'bg-sky-500/25' },
-  { key: 'indigo',  label: 'Indigo',  dot: 'bg-indigo-400',  chip: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30', wash: 'bg-indigo-500/25' },
+  { key: 'violet',  label: 'Violet',  dot: 'bg-violet-400',  chip: 'bg-violet-500/15 text-violet-300 border-violet-500/30', wash: 'bg-violet-500/25' },
   { key: 'fuchsia', label: 'Fuchsia', dot: 'bg-fuchsia-400', chip: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30', wash: 'bg-fuchsia-500/25' },
   { key: 'rose',    label: 'Rose',    dot: 'bg-rose-400',    chip: 'bg-rose-500/15 text-rose-300 border-rose-500/30',      wash: 'bg-rose-500/25' },
-  { key: 'orange',  label: 'Orange',  dot: 'bg-orange-400',  chip: 'bg-orange-500/15 text-orange-300 border-orange-500/30', wash: 'bg-orange-500/25' },
-  { key: 'slate',   label: 'Grey',    dot: 'bg-slate-400',   chip: 'bg-slate-500/15 text-slate-300 border-slate-500/30',   wash: 'bg-slate-500/25' },
 ];
+
+/**
+ * Where a category with no usable colour lands. NOT in the palette, so it can
+ * never be chosen — it is what "uncategorised" and "a colour we no longer
+ * offer" look like.
+ *
+ * Light rather than mid grey: its whole job is to be visible on a dark cell,
+ * which is the failure the retired grey had.
+ */
+export const FALLBACK = {
+  key: 'none', label: 'Grey',
+  dot: 'bg-slate-300',
+  chip: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+  wash: 'bg-slate-400/25',
+};
+
+/**
+ * Colours that used to be offered, and what replaced them.
+ *
+ * Kept because categories in the database still store the old key, and the
+ * migration that repaints them is applied on somebody else's schedule — the
+ * chart has to be right before that happens, not after. A key that maps to
+ * nothing falls through to FALLBACK.
+ */
+const RETIRED = { indigo: 'violet', slate: null };
 
 const BY_KEY = new Map(PALETTE.map(c => [c.key, c]));
 
-/** A swatch, or grey — never undefined at a render site. */
+/** A swatch, or the neutral — never undefined at a render site. */
 export function swatch(key) {
-  return BY_KEY.get(key) ?? BY_KEY.get('slate');
+  const resolved = key in RETIRED ? RETIRED[key] : key;
+  return BY_KEY.get(resolved) ?? FALLBACK;
 }
 
 /**
@@ -71,9 +104,9 @@ export function categoryOf(slug, categories = []) {
   if (found) return { ...found, ...swatch(found.colour) };
 
   if (!slug) {
-    return { slug: null, name: 'Uncategorised', ...swatch('slate') };
+    return { slug: null, name: 'Uncategorised', ...FALLBACK };
   }
-  return { slug, name: slug, missing: true, ...swatch('slate') };
+  return { slug, name: slug, missing: true, ...FALLBACK };
 }
 
 /** The ones worth offering in a picker — in the order the building chose. */
