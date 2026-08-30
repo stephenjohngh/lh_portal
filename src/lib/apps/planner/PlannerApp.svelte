@@ -14,7 +14,7 @@
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween, isRecurring } from './utils/recurrence.js';
   import { pickable, swatch, marksByDate } from './utils/categories.js';
-  import { SOURCES } from './utils/linked.js';
+  import { SOURCES, visibleSources } from './utils/linked.js';
   import { today, fmtDateLong } from '$lib/utils/dates';
 
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -108,6 +108,19 @@
    * rest — a building with weekly maintenance jobs, most likely.
    */
   let showLinked = true;
+  /**
+   * The other apps whose work this user may be shown — Maintenance, Management,
+   * Golden Thread — from the permissions already loaded for every app.
+   *
+   * Being given the planner is not being given Management: a caretaker without
+   * that app should not meet its meetings here instead. Derived rather than
+   * captured, so granting somebody an app takes effect on their next load.
+   */
+  $: sources = visibleSources($permissions);
+  /** The names of those apps, for the line under the year. */
+  $: sourceLabels = Object.values(SOURCES)
+    .filter(source => sources.has(source.key))
+    .map(source => source.label);
 
   $: occurrences = [
     ...buildOccurrences(state.events, state.occurrences, from, to),
@@ -212,7 +225,7 @@
       await plannerStore.promoteToMaintenance(occurrence.series, onDate, $auth.user.id);
       // Read the aggregation again: the job did not exist when it was last
       // asked, and without this the event vanishes with nothing in its place.
-      await plannerStore.loadLinked(from, to);
+      await plannerStore.loadLinked(from, to, visibleSources($permissions));
       promoting = null;
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
@@ -274,7 +287,12 @@
     // Not awaited into the first paint: the planner's own year is the app, and
     // four cross-app reads should not hold it back. Each of those four is
     // allowed to fail alone — see the store.
-    plannerStore.loadLinked(from, to).catch(() => {});
+    // visibleSources($permissions), not the `sources` derivation: a store
+    // subscription updates $permissions synchronously, whereas a `$:` block
+    // waits for the render cycle. This line runs immediately after the await
+    // that fills the store, so reading the derivation could ask before it had
+    // caught up — and this one fails CLOSED, which would silently show nothing.
+    plannerStore.loadLinked(from, to, visibleSources($permissions)).catch(() => {});
   });
 </script>
 
@@ -357,11 +375,15 @@
         on:toggle={() => openDropdown = openDropdown === 'category' ? null : 'category'}
       />
 
-      <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer"
-             title="Maintenance jobs, meetings, action deadlines and reviews falling due">
-        <input type="checkbox" bind:checked={showLinked} class="accent-purple-500" />
-        Other apps
-      </label>
+      <!-- Hidden outright when this user has none of the other apps: a switch
+           whose only possible result is "nothing" is a control that lies. -->
+      {#if sources.size}
+        <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer"
+               title="Dated work from {sourceLabels.join(', ')}">
+          <input type="checkbox" bind:checked={showLinked} class="accent-purple-500" />
+          Other apps
+        </label>
+      {/if}
 
       {#if $permissions.isAdmin}
         <AdminMenu
@@ -478,8 +500,8 @@
 
       {#if showLinked}
         <p class="text-[11px] text-slate-600">
-          Also showing {Object.values(SOURCES).map(s => s.label).join(', ').toLowerCase()}
-          from other apps. Those are marked ↗ and are completed where they live.
+          Also showing {sourceLabels.join(', ').toLowerCase()} from other apps.
+          Those are marked ↗ and are completed where they live.
         </p>
       {/if}
 

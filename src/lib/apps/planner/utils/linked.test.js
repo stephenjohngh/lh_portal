@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   fromMaintenanceJob, fromMeeting, fromAction, fromGtDocument,
-  linkedOccurrences, filterLinked, SOURCES,
+  linkedOccurrences, filterLinked, SOURCES, visibleSources,
 } from './linked.js';
 import { agenda, bucketOf } from './agenda.js';
 
@@ -154,5 +154,67 @@ describe('SOURCES', () => {
     expect(SOURCES.maintenance.app).toBe('Maintenance');
     expect(SOURCES.meeting.app).toBe('Management');
     expect(SOURCES.gt_review.app).toBe('Golden Thread');
+  });
+
+  it('names the PERMISSION that governs each kind', () => {
+    // These are app_permissions.app_id values, not display names. A typo here
+    // would fail open — the source would simply never be shown to anybody.
+    expect(SOURCES.maintenance.appId).toBe('maintenance');
+    expect(SOURCES.meeting.appId).toBe('management');
+    expect(SOURCES.action.appId).toBe('management');
+    expect(SOURCES.gt_review.appId).toBe('golden_thread');
+  });
+});
+
+describe('visibleSources', () => {
+  const withApps = (...ids) => ({
+    isAdmin: false,
+    appPermissions: Object.fromEntries(ids.map(id => [id, { hasAccess: true }])),
+  });
+
+  it('shows nothing from an app the user does not have', () => {
+    // The caretaker: the planner and Maintenance, but not Management.
+    const visible = visibleSources(withApps('planner', 'maintenance'));
+    expect(visible.has('maintenance')).toBe(true);
+    expect(visible.has('meeting')).toBe(false);
+    expect(visible.has('action')).toBe(false);
+    expect(visible.has('gt_review')).toBe(false);
+  });
+
+  it('treats meetings and action deadlines as one permission', () => {
+    // Both come from Management, so one grant covers both and neither is
+    // reachable without it.
+    const visible = visibleSources(withApps('management'));
+    expect(visible.has('meeting')).toBe(true);
+    expect(visible.has('action')).toBe(true);
+    expect(visible.has('maintenance')).toBe(false);
+  });
+
+  it('shows an admin everything', () => {
+    expect(visibleSources({ isAdmin: true, appPermissions: {} }).size)
+      .toBe(Object.keys(SOURCES).length);
+  });
+
+  it('shows nothing at all rather than everything when it knows nothing', () => {
+    // The direction a bug here has to fail. An empty or missing permissions
+    // state is "not established yet", never "allow the lot".
+    expect(visibleSources({}).size).toBe(0);
+    expect(visibleSources(null).size).toBe(0);
+    expect(visibleSources(undefined).size).toBe(0);
+    expect(visibleSources({ isAdmin: false, appPermissions: {} }).size).toBe(0);
+  });
+
+  it('does not count a permission row that grants no access', () => {
+    expect(visibleSources({ appPermissions: { management: { hasAccess: false } } }).size)
+      .toBe(0);
+  });
+
+  it('still shows a source to a read-only user of that app', () => {
+    // Read-only is about writing. Somebody who may READ Management should see
+    // its meetings here — the planner never offered to tick them anyway.
+    const visible = visibleSources({
+      appPermissions: { management: { hasAccess: true, isReadOnly: true } },
+    });
+    expect(visible.has('meeting')).toBe(true);
   });
 });

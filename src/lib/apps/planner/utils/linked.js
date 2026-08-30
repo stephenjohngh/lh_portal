@@ -18,13 +18,46 @@
 // for last March sorts among the planner's own arrears rather than in a
 // separate list nobody reads.
 
-/** Where each kind comes from, and how it should read. */
+/**
+ * Where each kind comes from, and how it should read.
+ *
+ * `appId` is the permission that governs it. An aggregating view has to ask
+ * this: the planner shows four apps' work on one page, and somebody granted the
+ * planner has not thereby been granted the Management app. A caretaker who
+ * cannot open Management should not meet its meetings here instead.
+ */
 export const SOURCES = {
-  maintenance: { key: 'maintenance', label: 'Maintenance', app: 'Maintenance', category: 'maintenance' },
-  meeting:     { key: 'meeting',     label: 'Meeting',     app: 'Management',  category: 'meeting' },
-  action:      { key: 'action',      label: 'Action',      app: 'Management',  category: 'other' },
-  gt_review:   { key: 'gt_review',   label: 'Review due',  app: 'Golden Thread', category: 'compliance' },
+  maintenance: { key: 'maintenance', label: 'Maintenance', app: 'Maintenance',   appId: 'maintenance',   category: 'maintenance' },
+  meeting:     { key: 'meeting',     label: 'Meeting',     app: 'Management',    appId: 'management',    category: 'meeting' },
+  action:      { key: 'action',      label: 'Action',      app: 'Management',    appId: 'management',    category: 'other' },
+  gt_review:   { key: 'gt_review',   label: 'Review due',  app: 'Golden Thread', appId: 'golden_thread', category: 'compliance' },
 };
+
+/**
+ * Which sources this user may be shown, from the permissions store's own state.
+ *
+ * Takes the state rather than reaching for the store, so it stays pure and
+ * testable — `permissions.init()` has already loaded every app's row, so this
+ * costs no query.
+ *
+ * ⚠ **This is a UI gate, not a security boundary.** The underlying tables read
+ * `USING (auth.uid() IS NOT NULL)` — any signed-in user can still fetch them
+ * through PostgREST directly. What this fixes is the planner PRESENTING another
+ * app's work to somebody who was never given that app. Closing it properly means
+ * per-app-permission RLS on those tables, which is the portal-wide hardening
+ * deferred as GT S5 / MOR M7.
+ *
+ * Admins see everything, as they do everywhere else.
+ */
+export function visibleSources(permissions) {
+  const { isAdmin = false, appPermissions = {} } = permissions ?? {};
+
+  return new Set(
+    Object.values(SOURCES)
+      .filter(source => isAdmin || appPermissions[source.appId]?.hasAccess)
+      .map(source => source.key),
+  );
+}
 
 /**
  * A foreign row as an occurrence.

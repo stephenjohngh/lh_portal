@@ -82,14 +82,25 @@ function createPlannerStore() {
    * Never written back. Completing any of these happens in the app that owns
    * it — see utils/linked.js for why.
    */
-  async function loadLinked(from, to) {
+  /**
+   * Other apps' dated work — only from the apps this user has.
+   *
+   * `sources` is a Set of SOURCES keys, from `visibleSources()`. A source that
+   * is not in it is never FETCHED, not merely hidden: a request that would be
+   * refused, or worse quietly allowed, is one not worth making.
+   */
+  async function loadLinked(from, to, sources = new Set()) {
     update(s => ({ ...s, loadingLinked: true }));
 
     const [jobs, meetings, actions, gtDocuments] = await Promise.all([
-      listScheduledWork(from, to).catch(fellShort('maintenance jobs')),
-      listMeetings(from, to).catch(fellShort('meetings')),
-      listOpenActionDeadlines(from, to).catch(fellShort('action deadlines')),
-      listReviewsDue(from, to).catch(fellShort('Golden Thread reviews')),
+      sources.has('maintenance')
+        ? listScheduledWork(from, to).catch(fellShort('maintenance jobs')) : [],
+      sources.has('meeting')
+        ? listMeetings(from, to).catch(fellShort('meetings')) : [],
+      sources.has('action')
+        ? listOpenActionDeadlines(from, to).catch(fellShort('action deadlines')) : [],
+      sources.has('gt_review')
+        ? listReviewsDue(from, to).catch(fellShort('Golden Thread reviews')) : [],
     ]);
 
     const linked = linkedOccurrences({ jobs, meetings, actions, gtDocuments });
