@@ -33,9 +33,9 @@
     <thead>
       <tr>
         <th class="sticky left-0 z-10 bg-slate-800 text-left px-1.5 py-1
-                   text-slate-400 font-medium w-10">{year}</th>
+                   text-slate-400 font-medium">{year}</th>
         {#each DAYS as day}
-          <th class="px-0 py-1 text-slate-600 font-normal w-[2.4%]">{day}</th>
+          <th class="px-0 py-1 text-slate-600 font-normal">{day}</th>
         {/each}
       </tr>
     </thead>
@@ -55,10 +55,10 @@
               <td class="bg-slate-900/40"></td>
             {:else}
               {@const marks = cellMarks(cell.items)}
-              <td class="p-0 align-middle text-center
+              <td class="p-0 align-middle text-center relative
                          {cell.weekend ? 'bg-slate-800/40' : ''}
-                         {cell.today ? 'ring-1 ring-inset ring-purple-400' : ''}
-                         {selected === cell.date ? 'bg-purple-500/20' : ''}">
+                         {cell.today ? 'planner-today' : ''}
+                         {selected === cell.date ? 'bg-purple-500/25' : ''}">
                 {#if cell.items.length}
                   <button
                     type="button"
@@ -99,6 +99,24 @@
   .planner-year table {
     min-width: 44rem;
     table-layout: fixed;
+  }
+
+  /* The month column is sized HERE and the day columns are given no width at
+     all, which is the whole fix for a bug worth remembering: under
+     `table-layout: fixed` the browser hands leftover space to whatever is not
+     pinned. Percentages on the 31 day columns came to 74.4%, and the month
+     label quietly took the other quarter of the table. Pin one column, leave
+     the rest, and they divide the remainder equally. */
+  .planner-year th:first-child,
+  .planner-year td:first-child {
+    width: 3.5rem;
+  }
+
+  /* Today. An inset ring rendered as a solid pale block at this size, which
+     read as an event rather than as a marker; a bottom rule under the day says
+     "you are here" without competing with the dots. */
+  .planner-year :global(.planner-today) {
+    box-shadow: inset 0 -2px 0 0 rgb(var(--lh-accent-rgb) / 0.9);
   }
 
   /* Provisional print rules. The layout proper is its own piece of work (see
