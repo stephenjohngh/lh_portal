@@ -19,10 +19,16 @@
 // rather than a matter of taste: a category in the accent colour reads as
 // interface.
 //
+// Plain green IS allowed, and is not the same argument. The accent is a muted
+// blue-green (#3c9683, #6db0a2 at 400); `green-400` is #4ade80 — far more
+// saturated and a good deal yellower, and on a navy cell the two do not read as
+// the same thing. `emerald-400` (#34d399) is very nearly the accent itself,
+// which is why it stays out.
+//
 // The rest is that these have to be told apart as a dot eight pixels across, on
 // a dark ground, by somebody scanning a year — hence one red, one orange, one
-// amber, one blue, one violet, one magenta, one pink, one yellow-green, no two
-// neighbours on the wheel.
+// amber, one blue, one violet, one magenta, one pink, and a yellow-green beside
+// a true green.
 //
 // ── And nothing that sinks into the ground ──────────────────────────────────
 // A cell is dark navy (slate-800 over slate-900, and a blue-tinted variant at
@@ -40,6 +46,11 @@ export const PALETTE = [
   { key: 'orange',  label: 'Orange',  dot: 'bg-orange-400',  chip: 'bg-orange-500/15 text-orange-300 border-orange-500/30', wash: 'bg-orange-500/25' },
   { key: 'amber',   label: 'Amber',   dot: 'bg-amber-500',   chip: 'bg-amber-500/15 text-amber-300 border-amber-500/30',   wash: 'bg-amber-500/25' },
   { key: 'lime',    label: 'Lime',    dot: 'bg-lime-400',    chip: 'bg-lime-500/15 text-lime-300 border-lime-500/30',      wash: 'bg-lime-500/25' },
+  // The one neighbour the palette allows, because a bright green is worth
+  // having: lime is yellow-green (#a3e635), green is pure (#4ade80), and side
+  // by side at eight pixels that difference holds. It is the only pair here
+  // that has to be looked at rather than merely glanced at.
+  { key: 'green',   label: 'Green',   dot: 'bg-green-400',   chip: 'bg-green-500/15 text-green-300 border-green-500/30',   wash: 'bg-green-500/25' },
   { key: 'sky',     label: 'Sky',     dot: 'bg-sky-400',     chip: 'bg-sky-500/15 text-sky-300 border-sky-500/30',         wash: 'bg-sky-500/25' },
   { key: 'violet',  label: 'Violet',  dot: 'bg-violet-400',  chip: 'bg-violet-500/15 text-violet-300 border-violet-500/30', wash: 'bg-violet-500/25' },
   { key: 'fuchsia', label: 'Fuchsia', dot: 'bg-fuchsia-400', chip: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30', wash: 'bg-fuchsia-500/25' },

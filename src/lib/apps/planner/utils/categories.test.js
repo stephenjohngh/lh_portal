@@ -7,7 +7,7 @@ import {
 } from './categories.js';
 
 const CATEGORIES = [
-  { slug: 'meeting',     name: 'Meeting',     colour: 'violet', system: true,  position: 3 },
+  { slug: 'meeting',     name: 'Meeting',     colour: 'green',  system: true,  position: 3 },
   { slug: 'compliance',  name: 'Compliance',  colour: 'red',    system: true,  position: 1 },
   { slug: 'gardening',   name: 'Gardening',   colour: 'lime',   system: false, position: 9 },
   { slug: 'old',         name: 'Old thing',   colour: 'slate',  system: false, position: 5, archived: true },
@@ -17,11 +17,13 @@ describe('PALETTE', () => {
   it('contains no teal, emerald or purple', () => {
     // The portal's accent is teal, and tailwind remaps purple-* onto it. A
     // category in the accent colour reads as interface rather than as data.
+    // Plain green is NOT covered by that: the accent is a muted blue-green
+    // (#3c9683) and green-400 is #4ade80, which is neither.
     const keys = PALETTE.map(p => p.key);
     expect(keys).not.toContain('teal');
     expect(keys).not.toContain('emerald');
     expect(keys).not.toContain('purple');
-    expect(keys).not.toContain('green');
+    expect(keys).toContain('green');
   });
 
   it('gives every swatch a dot and a chip class', () => {
@@ -72,7 +74,7 @@ describe('categoryOf', () => {
   it('resolves a category to its name and colour', () => {
     const category = categoryOf('meeting', CATEGORIES);
     expect(category.name).toBe('Meeting');
-    expect(category.dot).toBe('bg-violet-400');
+    expect(category.dot).toBe('bg-green-400');
   });
 
   it('names an event with no category at all', () => {
