@@ -22,6 +22,15 @@
   export let event = null;
   /** The building's categories — see migration 179. */
   export let categories = [];
+  /**
+   * The day the reader is standing on, used as the start date of a NEW series.
+   *
+   * Somebody who has clicked the 14th of March and then reached for "new event"
+   * has already said which day they mean; making them say it again in a date
+   * field is asking twice. It only seeds a creation — an existing series keeps
+   * its own start date, because that date is part of the pattern.
+   */
+  export let defaultDate = null;
 
   const dispatch = createEventDispatcher();
 
@@ -44,13 +53,17 @@
   // Guarded on the id, not the object: every `$:` depending on an object prop
   // re-runs on each parent update, which would wipe what is being typed.
   let loadedFor = null;
-  $: if (show && (event?.id ?? 'new') !== loadedFor) {
-    loadedFor   = event?.id ?? 'new';
+  // What this dialog is currently about. Null while closed, so re-opening always
+  // starts from the record — or from the day just clicked — rather than from
+  // whatever was half-typed and then cancelled.
+  $: token = !show ? null : (event?.id ?? `new:${defaultDate ?? ''}`);
+  $: if (token && token !== loadedFor) {
+    loadedFor   = token;
     title       = event?.title ?? '';
     description = event?.description ?? '';
     category    = event?.category ?? '';
     location    = event?.location ?? '';
-    startDate   = event?.start_date ?? today();
+    startDate   = event?.start_date ?? defaultDate ?? today();
     allDay      = event?.all_day ?? true;
     startTime   = event?.start_time?.slice(0, 5) ?? '';
     endTime     = event?.end_time?.slice(0, 5) ?? '';

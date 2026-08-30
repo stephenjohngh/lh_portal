@@ -387,6 +387,12 @@
               on:clear={clearDayMark}
             />
             <div class="flex-1"></div>
+            <!-- Adding from the day panel, where somebody looking at a date
+                 already is. The form opens with this date filled in. -->
+            {#if canEdit}
+              <button class="text-xs text-purple-300 hover:text-purple-200"
+                      on:click={newEvent}>+ Add event</button>
+            {/if}
             <button class="text-xs text-slate-500 hover:text-slate-300"
                     on:click={() => selectedDay = null}>Close</button>
           </div>
@@ -460,6 +466,12 @@
               on:clear={clearDayMark}
             />
             <div class="flex-1"></div>
+            <!-- Adding from the day panel, where somebody looking at a date
+                 already is. The form opens with this date filled in. -->
+            {#if canEdit}
+              <button class="text-xs text-purple-300 hover:text-purple-200"
+                      on:click={newEvent}>+ Add event</button>
+            {/if}
             <button class="text-xs text-slate-500 hover:text-slate-300"
                     on:click={() => selectedDay = null}>Close</button>
           </div>
@@ -540,6 +552,7 @@
   bind:this={formRef}
   bind:show={formOpen}
   event={editing}
+  defaultDate={selectedDay}
   categories={state.categories}
   on:save={saveEvent}
   on:archive={archiveEvent}
