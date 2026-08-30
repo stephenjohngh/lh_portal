@@ -26,7 +26,7 @@
   import WorksScheduleFormModal  from './works/WorksScheduleFormModal.svelte';
   import { worksSchedulesStore } from '../stores/worksSchedulesStore.js';
   import ReportSectionToggles    from './ReportSectionToggles.svelte';
-  import MultiSelectDropdown     from './MultiSelectDropdown.svelte';
+  import MultiSelectDropdown     from '$lib/components/common/MultiSelectDropdown.svelte';
   import ColumnToggles           from './ColumnToggles.svelte';
   import ActiveFilterSummary     from './ActiveFilterSummary.svelte';
   import {

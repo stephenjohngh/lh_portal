@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// src/lib/apps/building_assets/components/MultiSelectDropdown.test.js
+// src/lib/components/common/MultiSelectDropdown.test.js
 //
 // Type-2 DOM test for the reusable filter dropdown — Phase-2 example #4
 // (a reusable primitive). Covers the summary logic (0/1/many), controlled

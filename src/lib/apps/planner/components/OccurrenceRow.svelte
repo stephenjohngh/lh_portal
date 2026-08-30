@@ -16,11 +16,13 @@
   /** Overdue rows say how late they are; planned ones do not need to. */
   export let showLateness = false;
   export let daysLate = 0;
+  /** The building's categories, so a slug can be resolved to name and colour. */
+  export let categories = [];
 
   const dispatch = createEventDispatcher();
 
   $: series   = occurrence.series;
-  $: category = categoryOf(series?.category);
+  $: category = categoryOf(series?.category, categories);
   $: done     = occurrence.status === STATUS.DONE;
   $: skipped  = occurrence.status === STATUS.SKIPPED;
   /**

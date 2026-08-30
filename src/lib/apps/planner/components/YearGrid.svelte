@@ -18,6 +18,8 @@
   export let today = null;
   /** The day whose contents are showing beside the grid. */
   export let selected = null;
+  /** The building's categories, for resolving a slug to a colour. */
+  export let categories = [];
 
   const dispatch = createEventDispatcher();
 
@@ -44,8 +46,17 @@
       {#each grid as month}
         <tr class="border-t border-slate-700/40">
           <th scope="row"
-              class="sticky left-0 z-10 bg-slate-800 text-left px-1.5 py-0.5
-                     text-slate-400 font-medium whitespace-nowrap">{month.short}</th>
+              class="sticky left-0 z-10 bg-slate-800 text-left p-0
+                     text-slate-400 font-medium whitespace-nowrap">
+            <!-- The month name opens the month. A wallplanner is for seeing the
+                 shape of a year; the question it prompts is nearly always
+                 "what IS that in March", and the answer needs words. -->
+            <button type="button"
+                    class="w-full text-left px-1.5 py-0.5 hover:text-white
+                           hover:bg-slate-700/60 transition-colors"
+                    title="Open {month.label}"
+                    on:click={() => dispatch('selectMonth', month.month)}>{month.short}</button>
+          </th>
 
           {#each month.days as cell}
             {#if !cell}
@@ -68,7 +79,7 @@
                     on:click={() => dispatch('selectDay', cell)}
                   >
                     {#each marks.categories as category}
-                      <span class="w-1.5 h-1.5 rounded-full {categoryOf(category).dot}
+                      <span class="w-1.5 h-1.5 rounded-full {categoryOf(category, categories).dot}
                                    {marks.outstanding ? '' : 'opacity-40'}"></span>
                     {/each}
                     {#if marks.overflow}

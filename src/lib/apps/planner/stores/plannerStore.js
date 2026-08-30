@@ -12,6 +12,7 @@ import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { completionPatch, STATUS } from '../utils/agenda.js';
 import { linkedOccurrences } from '../utils/linked.js';
+import { uniqueSlug } from '../utils/categories.js';
 import { listScheduledWork } from '$lib/apps/maintenance/public.js';
 import { listMeetings, listOpenActionDeadlines } from '$lib/apps/management/public.js';
 import { listReviewsDue } from '$lib/apps/golden_thread/public.js';
@@ -28,6 +29,8 @@ function createPlannerStore() {
   const store = writable({
     events: [],
     occurrences: [],
+    /** The building's own categories — see migration 179. */
+    categories: [],
     /** Other apps' dated items — read-only, never written back. */
     linked: [],
     loadingLinked: false,
@@ -50,11 +53,12 @@ function createPlannerStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [events, occurrences] = await Promise.all([
+      const [events, occurrences, categories] = await Promise.all([
         api.get('planner_events', { orderBy: 'start_date', ascending: true }),
         api.getAll('planner_occurrences', { orderBy: 'occurs_on' }),
+        api.get('planner_categories', { orderBy: 'position' }),
       ]);
-      update(s => ({ ...s, events, occurrences, loading: false }));
+      update(s => ({ ...s, events, occurrences, categories, loading: false }));
       logger('✅ loaded', events.length, 'series,', occurrences.length, 'recorded occurrences');
       return events;
     } catch (err) {
@@ -149,6 +153,71 @@ function createPlannerStore() {
     });
   }
 
+  // ── Categories ────────────────────────────────────────────────────────────
+
+  /**
+   * Add a category.
+   *
+   * The slug is generated once, here, and never again. It is what events are
+   * filed under, so regenerating it on a rename would orphan every event using
+   * it — which is why renaming only ever touches `name`.
+   */
+  async function createCategory({ name, colour }, userId) {
+    const slug = uniqueSlug(name, getState().categories);
+    const position = getState().categories.length + 1;
+
+    const row = await api.create('planner_categories', {
+      slug, name, colour, position,
+      system: false,
+      created_by: userId,
+      ...touch(userId),
+    }, true);
+
+    update(s => ({ ...s, categories: [...s.categories, row] }));
+    logAudit('create', 'planner_category', row.id, row.name, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+      afterData: { slug, colour },
+    });
+    return row;
+  }
+
+  /** Rename or recolour. Never the slug — see createCategory. */
+  async function updateCategory(id, { name, colour, archived }, userId) {
+    const fields = {};
+    if (name !== undefined)     fields.name = name;
+    if (colour !== undefined)   fields.colour = colour;
+    if (archived !== undefined) fields.archived = archived;
+
+    const row = await api.update('planner_categories', id, { ...fields, ...touch(userId) }, true);
+
+    update(s => ({ ...s, categories: s.categories.map(c => (c.id === id ? row : c)) }));
+    logAudit('update', 'planner_category', id, row.name, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info', afterData: fields,
+    });
+    return row;
+  }
+
+  /**
+   * Remove a category the building added.
+   *
+   * A system one cannot go: utils/linked.js files every maintenance job,
+   * meeting, action and review under one of four slugs, and removing one would
+   * leave those items uncategorised with no way to put it right. The database
+   * refuses it too — this is the message, not the control.
+   */
+  async function deleteCategory(id, name) {
+    const category = getState().categories.find(c => c.id === id);
+    if (category?.system) {
+      throw new Error(`“${name}” is used to file items from other apps, so it cannot be removed. It can be renamed.`);
+    }
+
+    await api.delete('planner_categories', id);
+    update(s => ({ ...s, categories: s.categories.filter(c => c.id !== id) }));
+    logAudit('delete', 'planner_category', id, name, {
+      appId: 'planner', eventCategory: 'planner', severity: 'warning',
+    });
+  }
+
   // ── Occurrences ───────────────────────────────────────────────────────────
 
   /**
@@ -219,6 +288,7 @@ function createPlannerStore() {
     subscribe,
     load, loadLinked,
     createEvent, updateEvent, archiveEvent, deleteEvent,
+    createCategory, updateCategory, deleteCategory,
     recordOccurrence, moveOccurrence,
     clearError,
     /** For tests and for callers that need a snapshot without subscribing. */

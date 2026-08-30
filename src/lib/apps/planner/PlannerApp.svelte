@@ -12,7 +12,7 @@
   import { plannerStore } from './stores/plannerStore.js';
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween } from './utils/recurrence.js';
-  import { CATEGORIES } from './utils/categories.js';
+  import { pickable, swatch } from './utils/categories.js';
   import { SOURCES } from './utils/linked.js';
   import { today, fmtDateLong } from '$lib/utils/dates';
 
@@ -22,7 +22,11 @@
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
+  import CategoriesModal from './components/CategoriesModal.svelte';
+  import MultiSelectDropdown from '$lib/components/common/MultiSelectDropdown.svelte';
   import YearGrid from './components/YearGrid.svelte';
+  import MonthGrid from './components/MonthGrid.svelte';
+  import { stepMonth, buildMonthGrid } from './utils/monthGrid.js';
   import { yearsInWindow } from './utils/yearGrid.js';
 
   /**
@@ -43,7 +47,15 @@
   $: state = $plannerStore;
   $: canEdit = $permissions.isAdmin || $permissions.canModify;
 
-  let categoryFilter = '';
+  /**
+   * Categories to show. Empty means all of them — the same convention the
+   * Components tab uses, so a filter bar behaves the same way in both places.
+   *
+   * A Set rather than an array because MultiSelectDropdown binds one, and
+   * because "is this category showing" is asked once per occurrence per render.
+   */
+  let categoryFilter = new Set();
+  let openDropdown = null;
   let showDone = false;
 
   // ── Which view ────────────────────────────────────────────────────────────
@@ -52,7 +64,19 @@
   // could only answer the second would not be much use on a Monday morning.
   let view = 'agenda';
   let year = Number(now.slice(0, 4));
+  let month = Number(now.slice(5, 7));
   let selectedDay = null;
+
+  /** Paging the month view, stopped at the edges of the expanded window. */
+  function goMonth(step) {
+    const next = stepMonth(year, month, step, { from, to });
+    if (!next) return;
+    year = next.year;
+    month = next.month;
+    selectedDay = null;
+  }
+
+  $: monthLabel = buildMonthGrid(year, month, []).label;
 
   $: years = yearsInWindow(from, to);
   $: dayItems = selectedDay
@@ -72,7 +96,7 @@
     ...buildOccurrences(state.events, state.occurrences, from, to),
     ...(showLinked ? state.linked : []),
   ]
-    .filter(o => !categoryFilter || o.series?.category === categoryFilter)
+    .filter(o => categoryFilter.size === 0 || categoryFilter.has(o.series?.category))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   $: groups = agenda(occurrences, now);
@@ -117,6 +141,27 @@
     try {
       await plannerStore.recordOccurrence(occurrence, { status }, $auth.user.id);
     } catch (err) { error = err instanceof Error ? err.message : String(err); }
+  }
+
+  // ── Categories ────────────────────────────────────────────────────────────
+
+  let categoriesOpen = false;
+  let categoryError = '';
+
+  async function createCategory(e) {
+    try { await plannerStore.createCategory(e.detail, $auth.user.id); }
+    catch (err) { categoryError = err instanceof Error ? err.message : String(err); }
+  }
+
+  async function updateCategory(e) {
+    const { id, ...fields } = e.detail;
+    try { await plannerStore.updateCategory(id, fields, $auth.user.id); }
+    catch (err) { categoryError = err instanceof Error ? err.message : String(err); }
+  }
+
+  async function deleteCategory(e) {
+    try { await plannerStore.deleteCategory(e.detail.id, e.detail.name); }
+    catch (err) { categoryError = err instanceof Error ? err.message : String(err); }
   }
 
   /** Moving one occurrence, which never touches the pattern. */
@@ -172,7 +217,7 @@
 
     <div class="flex items-center gap-2 shrink-0">
       <div class="flex rounded border border-slate-600 overflow-hidden text-xs">
-        {#each [['agenda', 'Agenda'], ['year', 'Year']] as [key, label]}
+        {#each [['agenda', 'Agenda'], ['month', 'Month'], ['year', 'Year']] as [key, label]}
           <button type="button"
                   class="px-2.5 py-1 transition-colors
                          {view === key ? 'bg-purple-600 text-white'
@@ -180,6 +225,20 @@
                   on:click={() => { view = key; selectedDay = null; }}>{label}</button>
         {/each}
       </div>
+
+      {#if view === 'month'}
+        <div class="flex items-center gap-1">
+          <button type="button" title="Previous month"
+                  class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
+                         border border-slate-600 rounded"
+                  on:click={() => goMonth(-1)}>←</button>
+          <span class="text-xs text-slate-300 w-28 text-center">{monthLabel}</span>
+          <button type="button" title="Next month"
+                  class="px-1.5 py-1 text-xs text-slate-400 hover:text-white
+                         border border-slate-600 rounded"
+                  on:click={() => goMonth(1)}>→</button>
+        </div>
+      {/if}
 
       {#if view === 'year'}
         <select bind:value={year}
@@ -189,20 +248,28 @@
         </select>
       {/if}
 
-      <select bind:value={categoryFilter}
-              class="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded
-                     text-white focus:outline-none focus:ring-1 focus:ring-purple-500">
-        <option value="">All categories</option>
-        {#each CATEGORIES as c}
-          <option value={c.value}>{c.label}</option>
-        {/each}
-      </select>
+      <!-- The portal's own filter control, moved to common/ for this — the
+           Components tab has had it for a year and it behaves the way people
+           here already expect a filter to behave. -->
+      <MultiSelectDropdown
+        label="Category" placeholder="All categories" noun="categories" minWidth="130px"
+        options={pickable(state.categories).map(c => ({ value: c.slug, label: c.name }))}
+        bind:selected={categoryFilter}
+        open={openDropdown === 'category'}
+        on:toggle={() => openDropdown = openDropdown === 'category' ? null : 'category'}
+      />
 
       <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer"
              title="Maintenance jobs, meetings, action deadlines and reviews falling due">
         <input type="checkbox" bind:checked={showLinked} class="accent-purple-500" />
         Other apps
       </label>
+
+      <ProtectedButton variant="secondary" size="small"
+                       title="The categories this building uses"
+                       on:click={() => categoriesOpen = true}>
+        Categories
+      </ProtectedButton>
 
       <ProtectedButton variant="primary" size="small" on:click={newEvent}>
         + New event
@@ -223,12 +290,56 @@
       </p>
     </div>
 
+  {:else if view === 'month'}
+    <!-- ── One month, with room to read ────────────────────────────────── -->
+    <div class="space-y-3">
+      <MonthGrid
+        {year}
+        {month}
+        {occurrences}
+        categories={state.categories}
+        today={now}
+        on:selectDay={(e) => selectedDay = e.detail.date}
+        on:selectMonth={(e) => { month = e.detail; view = 'month'; selectedDay = null; }}
+      />
+
+      {#if selectedDay}
+        <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
+          <div class="flex items-center gap-2 mb-2">
+            <h3 class="text-xs font-semibold text-white">{fmtDateLong(selectedDay)}</h3>
+            <div class="flex-1"></div>
+            <button class="text-xs text-slate-500 hover:text-slate-300"
+                    on:click={() => selectedDay = null}>Close</button>
+          </div>
+
+          {#if dayItems.length}
+            <div class="space-y-1.5">
+              {#each dayItems as occurrence (occurrence.event_id + occurrence.scheduled_for)}
+                <OccurrenceRow
+                  {occurrence}
+                  {canEdit}
+                  categories={state.categories}
+                  on:toggle={toggleDone}
+                  on:skip={toggleSkip}
+                  on:move={requestMove}
+                  on:editSeries={(e) => editSeries(e.detail)}
+                />
+              {/each}
+            </div>
+          {:else}
+            <p class="text-xs text-slate-500">Nothing planned.</p>
+          {/if}
+        </div>
+      {/if}
+    </div>
+
   {:else if view === 'year'}
     <!-- ── The wallplanner ─────────────────────────────────────────────── -->
     <div class="space-y-3">
       <YearGrid
         {year}
         {occurrences}
+        categories={state.categories}
         today={now}
         selected={selectedDay}
         on:selectDay={(e) => selectedDay = e.detail.date}
@@ -237,9 +348,9 @@
       <!-- The legend earns its place: a grid of coloured dots is unreadable
            without one, and it is also what makes the print output usable. -->
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-        {#each CATEGORIES as c}
+        {#each pickable(state.categories) as c}
           <span class="flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full {c.dot}"></span>{c.label}
+            <span class="w-1.5 h-1.5 rounded-full {swatch(c.colour).dot}"></span>{c.name}
           </span>
         {/each}
         <span class="flex items-center gap-1 ml-2">
@@ -269,6 +380,7 @@
                 <OccurrenceRow
                   {occurrence}
                   {canEdit}
+                  categories={state.categories}
                   on:toggle={toggleDone}
                   on:skip={toggleSkip}
                   on:move={requestMove}
@@ -306,6 +418,7 @@
                   <OccurrenceRow
                     {occurrence}
                     {canEdit}
+                    categories={state.categories}
                     showLateness={bucket.key === 'overdue'}
                     daysLate={daysBetween(occurrence.date, now)}
                     on:toggle={toggleDone}
@@ -332,8 +445,21 @@
   bind:this={formRef}
   bind:show={formOpen}
   event={editing}
+  categories={state.categories}
   on:save={saveEvent}
   on:close={() => { formOpen = false; editing = null; }}
+/>
+
+<CategoriesModal
+  bind:show={categoriesOpen}
+  categories={state.categories}
+  {canEdit}
+  canDelete={$permissions.isAdmin}
+  bind:error={categoryError}
+  on:create={createCategory}
+  on:update={updateCategory}
+  on:delete={deleteCategory}
+  on:close={() => { categoriesOpen = false; categoryError = ''; }}
 />
 
 <ConfirmDialog

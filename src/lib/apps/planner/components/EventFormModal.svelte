@@ -10,12 +10,14 @@
   import FormTextarea  from '$lib/components/common/FormTextarea.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
   import RecurrenceFields from './RecurrenceFields.svelte';
-  import { CATEGORIES } from '../utils/categories.js';
+  import { pickable } from '../utils/categories.js';
   import { today } from '$lib/utils/dates';
 
   export let show = false;
   /** The series being edited, or null to create one. */
   export let event = null;
+  /** The building's categories — see migration 179. */
+  export let categories = [];
 
   const dispatch = createEventDispatcher();
 
@@ -124,7 +126,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <FormSelect label="Category" bind:value={category}
                   options={[{ value: '', label: 'None' },
-                            ...CATEGORIES.map(c => ({ value: c.value, label: c.label }))]} />
+                            ...pickable(categories).map(c => ({ value: c.slug, label: c.name }))]} />
       <FormInput label="Where (optional)" bind:value={location}
                  placeholder="e.g. Residents' lounge" />
     </div>
