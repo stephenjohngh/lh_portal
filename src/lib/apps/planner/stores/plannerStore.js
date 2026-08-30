@@ -31,6 +31,8 @@ function createPlannerStore() {
     occurrences: [],
     /** The building's own categories — see migration 179. */
     categories: [],
+    /** Days shaded on the grids — bank holidays and the like (migration 181). */
+    dayMarks: [],
     /** Other apps' dated items — read-only, never written back. */
     linked: [],
     loadingLinked: false,
@@ -53,12 +55,13 @@ function createPlannerStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [events, occurrences, categories] = await Promise.all([
+      const [events, occurrences, categories, dayMarks] = await Promise.all([
         api.get('planner_events', { orderBy: 'start_date', ascending: true }),
         api.getAll('planner_occurrences', { orderBy: 'occurs_on' }),
         api.get('planner_categories', { orderBy: 'position' }),
+        api.getAll('planner_day_marks', { orderBy: 'date' }),
       ]);
-      update(s => ({ ...s, events, occurrences, categories, loading: false }));
+      update(s => ({ ...s, events, occurrences, categories, dayMarks, loading: false }));
       logger('✅ loaded', events.length, 'series,', occurrences.length, 'recorded occurrences');
       return events;
     } catch (err) {
@@ -197,6 +200,45 @@ function createPlannerStore() {
     return { job, event: updated };
   }
 
+  // ── Day marks ─────────────────────────────────────────────────────────────
+
+  /**
+   * Shade a day, or change how it is shaded.
+   *
+   * Upserted on the DATE, which is the whole key: a day is one colour, and
+   * setting a mark twice replaces it rather than starting an argument about
+   * which of two marks wins.
+   */
+  async function setDayMark(date, { label, colour }, userId) {
+    const row = await api.upsert('planner_day_marks', {
+      date,
+      label,
+      colour,
+      created_by: userId,
+      ...touch(userId),
+    }, { onConflict: 'date' });
+
+    update(s => ({
+      ...s,
+      dayMarks: [...s.dayMarks.filter(m => m.date !== date), row],
+    }));
+
+    logAudit('update', 'planner_day_mark', date, label, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+      afterData: { date, label, colour },
+    });
+    return row;
+  }
+
+  /** Unshade a day. Editors may, because shading one is small and reversible. */
+  async function clearDayMark(date) {
+    await api.deleteMany('planner_day_marks', { date });
+    update(s => ({ ...s, dayMarks: s.dayMarks.filter(m => m.date !== date) }));
+    logAudit('delete', 'planner_day_mark', date, date, {
+      appId: 'planner', eventCategory: 'planner', severity: 'info',
+    });
+  }
+
   // ── Categories ────────────────────────────────────────────────────────────
 
   /**
@@ -333,6 +375,7 @@ function createPlannerStore() {
     load, loadLinked,
     createEvent, updateEvent, archiveEvent, deleteEvent,
     promoteToMaintenance,
+    setDayMark, clearDayMark,
     createCategory, updateCategory, deleteCategory,
     recordOccurrence, moveOccurrence,
     clearError,

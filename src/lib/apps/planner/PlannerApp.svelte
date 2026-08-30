@@ -13,7 +13,7 @@
   import { profiles, profilesStore } from '$lib/stores/profiles';
   import { buildOccurrences, agenda, describeAgenda, BUCKETS, STATUS } from './utils/agenda.js';
   import { addDaysISO, daysBetween } from './utils/recurrence.js';
-  import { pickable, swatch } from './utils/categories.js';
+  import { pickable, swatch, marksByDate } from './utils/categories.js';
   import { SOURCES } from './utils/linked.js';
   import { today, fmtDateLong } from '$lib/utils/dates';
 
@@ -26,6 +26,7 @@
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
   import CategoriesModal from './components/CategoriesModal.svelte';
+  import DayMarkControl from './components/DayMarkControl.svelte';
   import MultiSelectDropdown from '$lib/components/common/MultiSelectDropdown.svelte';
   import YearGrid from './components/YearGrid.svelte';
   import MonthGrid from './components/MonthGrid.svelte';
@@ -82,6 +83,8 @@
   $: monthLabel = buildMonthGrid(year, month, []).label;
 
   $: years = yearsInWindow(from, to);
+  /** Shaded days, keyed by date, so a grid can ask per cell without scanning. */
+  $: dayMarks = marksByDate(state.dayMarks);
   $: dayItems = selectedDay
     ? occurrences.filter(o => o.date === selectedDay)
     : [];
@@ -162,6 +165,19 @@
       formOpen = false;
       editing = null;
     } catch (err) { error = err instanceof Error ? err.message : String(err); }
+  }
+
+  // ── Shaded days ───────────────────────────────────────────────────────────
+
+  async function setDayMark(e) {
+    const { date, label, colour } = e.detail;
+    try { await plannerStore.setDayMark(date, { label, colour }, $auth.user.id); }
+    catch (err) { error = err instanceof Error ? err.message : String(err); }
+  }
+
+  async function clearDayMark(e) {
+    try { await plannerStore.clearDayMark(e.detail.date); }
+    catch (err) { error = err instanceof Error ? err.message : String(err); }
   }
 
   // ── Promotion ─────────────────────────────────────────────────────────────
@@ -354,6 +370,7 @@
         {month}
         {occurrences}
         categories={state.categories}
+        marks={dayMarks}
         today={now}
         on:selectDay={(e) => selectedDay = e.detail.date}
       />
@@ -362,6 +379,13 @@
         <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
           <div class="flex items-center gap-2 mb-2">
             <h3 class="text-xs font-semibold text-white">{fmtDateLong(selectedDay)}</h3>
+            <DayMarkControl
+              date={selectedDay}
+              mark={dayMarks.get(selectedDay) ?? null}
+              {canEdit}
+              on:set={setDayMark}
+              on:clear={clearDayMark}
+            />
             <div class="flex-1"></div>
             <button class="text-xs text-slate-500 hover:text-slate-300"
                     on:click={() => selectedDay = null}>Close</button>
@@ -397,6 +421,7 @@
         {year}
         {occurrences}
         categories={state.categories}
+        marks={dayMarks}
         today={now}
         selected={selectedDay}
         on:selectDay={(e) => selectedDay = e.detail.date}
@@ -427,6 +452,13 @@
         <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
           <div class="flex items-center gap-2 mb-2">
             <h3 class="text-xs font-semibold text-white">{fmtDateLong(selectedDay)}</h3>
+            <DayMarkControl
+              date={selectedDay}
+              mark={dayMarks.get(selectedDay) ?? null}
+              {canEdit}
+              on:set={setDayMark}
+              on:clear={clearDayMark}
+            />
             <div class="flex-1"></div>
             <button class="text-xs text-slate-500 hover:text-slate-300"
                     on:click={() => selectedDay = null}>Close</button>

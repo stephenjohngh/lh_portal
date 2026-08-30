@@ -8,7 +8,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildMonthGrid, WEEKDAY_LABELS } from '../utils/monthGrid.js';
-  import { categoryOf } from '../utils/categories.js';
+  import { categoryOf, markStyle } from '../utils/categories.js';
   import { STATUS } from '../utils/agenda.js';
 
   export let year;
@@ -16,6 +16,8 @@
   export let occurrences = [];
   export let categories = [];
   export let today = null;
+  /** Days shaded on the chart, keyed by date. */
+  export let marks = new Map();
 
   const dispatch = createEventDispatcher();
 
@@ -49,8 +51,10 @@
                  weekend to be a different SURFACE, not a slightly different
                  shade of the same one, and it needs to see where the weeks
                  divide without hunting. -->
+            {@const mark = markStyle(marks.get(day.date))}
             <td class="align-top p-0 border border-slate-600/70
-                       {day.outside ? 'bg-slate-900/70'
+                       {mark ? mark.wash
+                         : day.outside ? 'bg-slate-900/70'
                          : day.weekend ? 'bg-slate-900/40' : 'bg-slate-800/70'}
                        {day.today ? 'ring-2 ring-inset ring-purple-500/70' : ''}">
               <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -68,6 +72,11 @@
                   </span>
                   {#if day.today}
                     <span class="text-[9px] uppercase tracking-wide text-purple-300">today</span>
+                  {/if}
+                  {#if mark}
+                    <!-- Named, not merely coloured. A shaded square nobody can
+                         explain is a puzzle. -->
+                    <span class="text-[9px] text-slate-300 truncate">{mark.label}</span>
                   {/if}
                 </div>
 

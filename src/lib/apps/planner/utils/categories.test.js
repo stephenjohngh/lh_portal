@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   PALETTE, swatch, categoryOf, pickable, slugify, uniqueSlug, SYSTEM_SLUGS,
+  marksByDate, markStyle,
 } from './categories.js';
 
 const CATEGORIES = [
@@ -120,5 +121,46 @@ describe('SYSTEM_SLUGS', () => {
     // onto these, so they have to exist — which is why the database refuses to
     // delete them.
     expect(SYSTEM_SLUGS).toEqual(['compliance', 'maintenance', 'meeting', 'other']);
+  });
+});
+
+describe('day marks', () => {
+  // A bank holiday is not something anybody DOES: no owner, never ticked, never
+  // overdue. It is a property of the day, so it is stored against the date and
+  // drawn as background rather than as content.
+
+  it('gives every swatch a wash for shading a whole cell', () => {
+    // A dot at full strength is a mark; a cell at full strength is a shout, and
+    // the date printed on it stops being readable.
+    expect(PALETTE.every(p => p.wash?.includes('/25'))).toBe(true);
+  });
+
+  it('keys marks by date for the grids to read', () => {
+    const map = marksByDate([
+      { date: '2026-12-25', label: 'Christmas Day', colour: 'red' },
+      { date: '2026-12-26', label: 'Boxing Day', colour: 'red' },
+    ]);
+    expect(map.get('2026-12-25').label).toBe('Christmas Day');
+    expect(map.has('2026-12-27')).toBe(false);
+  });
+
+  it('ignores a mark with no date', () => {
+    expect(marksByDate([{ label: 'nowhere' }]).size).toBe(0);
+    expect(marksByDate().size).toBe(0);
+  });
+
+  it('resolves a mark to a wash and a label', () => {
+    const style = markStyle({ date: '2026-12-25', label: 'Christmas Day', colour: 'red' });
+    expect(style.wash).toBe('bg-red-500/25');
+    expect(style.label).toBe('Christmas Day');
+  });
+
+  it('is null for an unmarked day, so it can be tested as a condition', () => {
+    expect(markStyle(null)).toBeNull();
+    expect(markStyle(undefined)).toBeNull();
+  });
+
+  it('falls back to grey for a colour it does not know', () => {
+    expect(markStyle({ colour: 'chartreuse', label: 'x' }).wash).toBe('bg-slate-500/25');
   });
 });

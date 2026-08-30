@@ -16,7 +16,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildYearGrid, cellMarks, columnWeekdays, WEEKDAY_SHORT } from '../utils/yearGrid.js';
-  import { categoryOf } from '../utils/categories.js';
+  import { categoryOf, markStyle } from '../utils/categories.js';
 
   export let year;
   export let occurrences = [];
@@ -24,6 +24,8 @@
   /** The day whose contents are showing beneath the grid. */
   export let selected = null;
   export let categories = [];
+  /** Days shaded on the chart, keyed by date — bank holidays and the like. */
+  export let marks = new Map();
 
   const dispatch = createEventDispatcher();
 
@@ -70,37 +72,45 @@
             {#if !cell}
               <!-- Before the 1st or after the last. Empty, and visibly outside
                    the month rather than merely dark. -->
-              <td class="border border-slate-800 bg-slate-950/80
+              <td class="border border-slate-800 h-12 bg-slate-950/80
                          {COLUMNS[column] >= 5 ? 'bg-sky-950/40' : ''}"></td>
             {:else}
-              {@const marks = cellMarks(cell.items, 2)}
+              {@const dots = cellMarks(cell.items, 6)}
+              {@const mark = markStyle(marks.get(cell.date))}
+              <!-- A marked day is shaded, and the shading wins over the weekend
+                   tint: a bank holiday IS the fact worth seeing about that
+                   square. -->
               <td class="p-0 align-top border border-slate-700
-                         {cell.weekend ? 'bg-sky-500/10' : 'bg-slate-800/80'}
+                         {mark ? mark.wash
+                           : cell.weekend ? 'bg-sky-500/10' : 'bg-slate-800/80'}
                          {cell.today ? 'ring-2 ring-inset ring-purple-400 z-10 relative' : ''}
                          {selected === cell.date ? 'bg-purple-500/40' : ''}">
                 <button
                   type="button"
-                  class="w-full h-7 px-0.5 flex flex-col items-center justify-center leading-none
-                         hover:bg-slate-600/60 transition-colors"
-                  title="{cell.date}{marks.count ? ` — ${marks.count} item${marks.count === 1 ? '' : 's'}` : ''}"
+                  class="w-full h-12 px-0.5 pt-0.5 flex flex-col items-center
+                         hover:bg-slate-600/50 transition-colors"
+                  title="{cell.date}{mark ? ` — ${mark.label}` : ''}{dots.count ? ` — ${dots.count} item${dots.count === 1 ? '' : 's'}` : ''}"
                   on:click={() => dispatch('selectDay', cell)}
                 >
                   <!-- The DATE, in every cell. Without it the chart has to be
                        counted rather than read. -->
-                  <span class="text-[10px] tabular-nums
+                  <span class="text-[10px] tabular-nums leading-none
                                {cell.today ? 'text-white font-bold'
-                                 : cell.weekend ? 'text-sky-200/80' : 'text-slate-300'}">
+                                 : cell.weekend && !mark ? 'text-sky-200/80' : 'text-slate-200'}">
                     {cell.day}
                   </span>
 
-                  {#if marks.count}
-                    <span class="flex items-center gap-px mt-px">
-                      {#each marks.categories as category}
+                  <!-- Dots WRAP into the height beneath. A column is only so
+                       wide, but a wallplanner row has height to spare, and a
+                       busy day should look busy rather than be summarised. -->
+                  {#if dots.count}
+                    <span class="flex flex-wrap justify-center items-center gap-px mt-0.5 max-w-full">
+                      {#each dots.categories as category}
                         <span class="w-1.5 h-1.5 rounded-full {categoryOf(category, categories).dot}
-                                     {marks.outstanding ? '' : 'opacity-40'}"></span>
+                                     {dots.outstanding ? '' : 'opacity-40'}"></span>
                       {/each}
-                      {#if marks.overflow}
-                        <span class="text-[7px] text-slate-400 leading-none">+</span>
+                      {#if dots.overflow}
+                        <span class="text-[7px] text-slate-300 leading-none">+</span>
                       {/if}
                     </span>
                   {/if}
