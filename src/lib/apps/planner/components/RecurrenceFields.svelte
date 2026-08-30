@@ -11,6 +11,13 @@
   import Checkbox   from '$lib/components/common/Checkbox.svelte';
   import { describeRule, ordinal, PRESETS, presetOf, applyPreset } from '../utils/recurrence.js';
 
+  /**
+   * Unique per instance, because the labels here sit BESIDE their controls and
+   * so have to associate by for/id rather than by wrapping. Two of these on one
+   * page with fixed ids would point every label at the first one's fields.
+   */
+  const uid = Math.random().toString(36).slice(2, 8);
+
   /** The rule object, bound by the parent form. */
   export let rule = { freq: 'once' };
   /** Whether the series counts from the last completion. */
@@ -87,26 +94,38 @@
 </script>
 
 <div class="space-y-2">
-  <!-- FormSelect forwards the NATIVE change event, so the value comes off the
+  <!-- One line, and it reads as one: "Repeats [monthly] every [3] months".
+       Stacked, the interval looked like a second question rather than the tail
+       of the first — and cost two more rows of a form that was already too
+       tall. Labels sit beside their controls with for/id, which is the same
+       association a stacked label makes.
+
+       FormSelect forwards the NATIVE change event, so the value comes off the
        target. Not `e.detail ?? e.target.value`: a native event's `detail` is a
        number, and `0 ?? x` is 0 — which would have been passed straight through
        as the chosen frequency. -->
-  <FormSelect label="Repeats" value={choice} options={FREQ}
-              on:change={(e) => chooseFreq(e.target.value)} />
+  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <label for="freq-{uid}" class="text-sm font-medium text-gray-200 shrink-0">Repeats</label>
+    <div class="min-w-[9rem] flex-1 max-w-[14rem]">
+      <FormSelect id="freq-{uid}" placeholder="" value={choice} options={FREQ}
+                  on:change={(e) => chooseFreq(e.target.value)} />
+    </div>
 
-  <!-- The interval is hidden for a preset: it is the preset. Showing "Every 3
-       months" beneath the word "Quarterly" invites somebody to change one and
-       wonder why the other disagrees. -->
-  {#if repeats && !presetOf(rule)}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <FormInput label="Every" type="number" bind:value={rule.interval}
-                 placeholder="1" min="1" />
-      <div class="flex items-end pb-2 text-xs text-slate-500">
+    <!-- The interval is hidden for a preset: it is the preset. Showing "every 3
+         months" beside the word "Quarterly" invites somebody to change one and
+         wonder why the other disagrees. -->
+    {#if repeats && !presetOf(rule)}
+      <label for="interval-{uid}" class="text-sm font-medium text-gray-200 shrink-0 ml-1">every</label>
+      <div class="w-16">
+        <FormInput id="interval-{uid}" type="number" bind:value={rule.interval}
+                   placeholder="1" min="1" />
+      </div>
+      <span class="text-sm text-slate-400 shrink-0">
         {rule.freq === 'daily' ? 'days' : rule.freq === 'weekly' ? 'weeks'
           : rule.freq === 'monthly' ? 'months' : 'years'}
-      </div>
-    </div>
-  {/if}
+      </span>
+    {/if}
+  </div>
 
   {#if rule.freq === 'weekly'}
     <div>

@@ -207,17 +207,20 @@
       <RecurrenceFields bind:rule bind:drifts />
     </div>
 
-    <!-- The explanation sits BESIDE the field rather than under it. It is two
-         lines of prose for one number, and stacked it cost more height than the
-         field it explains. -->
-    <div class="flex flex-wrap items-end gap-x-4">
-      <div class="w-32">
-        <FormInput label="Days of notice (optional)" type="number" bind:value={leadDays}
+    <!-- Label, field and explanation on one line. Two lines of prose for one
+         number cost more height than the number did, and a label above a
+         two-inch box wastes a whole row to say what fits beside it. -->
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <label for="planner-lead" class="text-sm font-medium text-gray-200 shrink-0">
+        Days of notice
+      </label>
+      <div class="w-20">
+        <FormInput id="planner-lead" type="number" bind:value={leadDays}
                    placeholder="30" min="0" />
       </div>
-      <p class="text-[11px] text-slate-500 pb-3 flex-1 min-w-[14rem]">
-        How far ahead this starts showing under “Coming up”. A fire risk
-        assessment wants months; a bin day wants two days.
+      <p class="text-[11px] text-slate-500 flex-1 min-w-[15rem]">
+        Optional — how far ahead this starts showing under “Coming up”. A fire
+        risk assessment wants months; a bin day wants two days.
       </p>
     </div>
 
