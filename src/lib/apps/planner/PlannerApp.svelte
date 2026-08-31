@@ -536,7 +536,10 @@
   {:else if view === 'year'}
     <!-- ── The wallplanner ─────────────────────────────────────────────── -->
     <div class="space-y-3">
+      <!-- Fullscreen is not just more room around the chart: `fit` makes the
+           chart take the room. -->
       <YearGrid
+        fit={isFullscreen}
         {year}
         {occurrences}
         categories={state.categories}
