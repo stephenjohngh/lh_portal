@@ -433,9 +433,12 @@
         </label>
       {/if}
 
-      <!-- Year only. The agenda is a list that gains nothing from the extra
-           room, and the month already fits. -->
-      {#if view === 'year' && canFullscreen}
+      <!-- ENTERING is year-only: the agenda is a list that gains nothing from
+           the extra room, and the month already fits. LEAVING is always
+           offered, because the toolbar comes with you — switch to the agenda
+           in fullscreen and a year-only button would take the way out with it,
+           leaving Escape as the only exit and nothing on screen saying so. -->
+      {#if canFullscreen && (view === 'year' || isFullscreen)}
         <button
           type="button"
           class="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded
