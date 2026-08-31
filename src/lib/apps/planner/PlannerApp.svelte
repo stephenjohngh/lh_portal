@@ -166,11 +166,18 @@
     printOpen = false;
     printing = true;
     try {
+      // Names the page for the whole document, so no box changes page type
+      // mid-flow and generates a blank sheet. Scoped to the print itself: a
+      // permanent landscape @page would outlive the planner in this session.
+      document.body.classList.add('planner-printing');
       // Rendered before the dialog opens, or the browser prints an empty host.
       await tick();
       // Chrome fires afterprint once per dialog; `once` keeps a second print
       // from tearing down a rendering that is still on screen.
-      window.addEventListener('afterprint', () => (printing = false), { once: true });
+      window.addEventListener('afterprint', () => {
+        printing = false;
+        document.body.classList.remove('planner-printing');
+      }, { once: true });
       window.print();
     } finally {
       preparingPrint = false;

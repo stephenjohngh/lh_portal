@@ -8,10 +8,12 @@
    1. The screen design is dark. Everything here is a deliberate inversion, not
       an oversight: a dark chart printed is a page of toner with grey text on
       it. The portal shell above us is neutralised in app.css.
-   2. `@page` is NAMED. An unnamed `@page { size: landscape }` would be global
-      the moment the planner had ever been opened, and would silently turn some
-      other app's print sideways later in the same session. The name is applied
-      by the `page` property on the print host, so it reaches only these pages.
+   2. `@page` is NAMED, and the name is applied by a class on <body> that lives
+      only for the duration of the print. An unnamed `@page { size: landscape }`
+      would be global the moment the planner had ever been opened, and would
+      silently turn some other app's print sideways later in the same session.
+      See the note above `body.planner-printing` for why body and not just the
+      print host — it cost a blank page to find out.
 
    What is printed is what is on screen: the year, the category filter and the
    "other apps" switch all apply, because the print rendering is handed the same
@@ -20,6 +22,25 @@
 @page planner-landscape {
   size: A4 landscape;
   margin: 10mm;
+}
+
+/* ── Why the name is on BODY and not only on the print host ────────────────
+   First attempt put `page: planner-landscape` on the host alone. Every sheet
+   came out landscape and the chart fitted one page — and every print carried a
+   BLANK second page.
+
+   A change of page name forces a page break. The document begins on the unnamed
+   default page, adopts the named one at the host, and reverts when the flow
+   leaves it — and that reversion generates an empty page box for the rest of
+   body, which has no visible content but is still there.
+
+   Naming the page on body means nothing ever changes page type mid-document.
+   It is scoped by the `planner-printing` class, which PlannerApp sets for the
+   duration of the print and removes afterwards: an unscoped `@page { size:
+   landscape }` would be global from the moment the planner had been opened once
+   and would turn some other app's print sideways later in the same session. */
+body.planner-printing {
+  page: planner-landscape;
 }
 
 .planner-print-host {
@@ -53,8 +74,12 @@
   }
 
   /* ── Pages ──────────────────────────────────────────────────────────── */
-  .print-page { break-after: page; }
-  .print-page:last-child { break-after: auto; }
+  /* break-BEFORE on every sheet after the first, never break-after. The two are
+     equivalent in the middle of a run and differ at the end: break-after on the
+     last sheet is a trailing break, and whether the browser honours it is the
+     difference between twelve sheets and thirteen. This way there is nothing to
+     get wrong. */
+  .print-page + .print-page { break-before: page; }
 
   /* A month must not be split across two sheets. */
   .print-page, .print-month { break-inside: avoid; }
