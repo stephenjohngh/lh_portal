@@ -58,5 +58,10 @@ CLAUDE_general_dev_rules.md
 # Misc
 .gitmodules
 
+# Scratch — working files, test printouts, anything mid-task. NOTHING here is
+# saved: it is a bin, not a folder. Emptying it must never lose work, and a
+# stray `git add -A` must never sweep it into a commit (it has, twice).
+/_scratch/
+
 # Local history backup (contains pre-purge history — must never be committed)
 /_history_backup/
