@@ -138,12 +138,12 @@ body.planner-print-portrait  { page: planner-portrait; }
 
      The arithmetic, so it can be redone if the furniture changes. A4 landscape
      is 210mm tall, less 10mm margins each side leaves 190mm. Heading ~10mm,
-     column letters ~3.5mm, legend ~6mm, footnote ~8mm — call it 27mm. That
-     leaves 163mm for twelve rows, so 13mm each with a little in hand.
+     column letters ~3.5mm, legend ~6mm — call it 20mm. That leaves 170mm for
+     twelve rows, and they take 156mm.
 
-     The slack is deliberate and the legend is what eats it: enough categories
-     to wrap it onto a third line is what would push this over, and the symptom
-     would be a second sheet. If that happens, this number comes down. */
+     The 14mm left over is deliberate, and the legend is what eats it: enough
+     categories to wrap it onto a third line is what would push this to a
+     second sheet. If that happens, this number comes down. */
   .print-year tbody td { height: 13mm; }
 
   /* Room now to be seen from across a room. Two per line at this size in a
@@ -211,11 +211,5 @@ body.planner-print-portrait  { page: planner-portrait; }
   .planner-print-host {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-  }
-
-  .print-foot {
-    margin-top: 3mm;
-    font-size: 6.5pt;
-    color: #555 !important;
   }
 }

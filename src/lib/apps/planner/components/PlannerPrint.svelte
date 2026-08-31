@@ -118,12 +118,6 @@
           {/each}
         </div>
       {/if}
-
-      <p class="print-foot">
-        A dot marks a day with something on it, one per category — not one per
-        item. Shaded squares are marked days; hover is no use on paper, so their
-        labels are on the month sheets.
-      </p>
     </section>
 
   {:else}
