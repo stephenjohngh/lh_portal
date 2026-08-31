@@ -12,8 +12,13 @@
       only for the duration of the print. An unnamed `@page { size: landscape }`
       would be global the moment the planner had ever been opened, and would
       silently turn some other app's print sideways later in the same session.
-      See the note above `body.planner-printing` for why body and not just the
-      print host — it cost a blank page to find out.
+      See the note above the body rules for why body and not just the print
+      host — it cost a blank page and a portrait month sheet to find out.
+
+   3. The two layouts want DIFFERENT paper, and say so. The year is 37 columns
+      wide and can only be landscape. A month is 7 columns by 6 rows, which is
+      taller than it is wide — portrait gives its cells the height to list what
+      is on each day, which is the whole reason for printing a month.
 
    What is printed is what is on screen: the year, the category filter and the
    "other apps" switch all apply, because the print rendering is handed the same
@@ -24,28 +29,31 @@
   margin: 10mm;
 }
 
+@page planner-portrait {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
 /* ── Why the name is on BODY and not only on the print host ────────────────
-   First attempt put `page: planner-landscape` on the host alone. Every sheet
-   came out landscape and the chart fitted one page — and every print carried a
-   BLANK second page.
+   First attempt put `page: planner-landscape` on the host alone. It half
+   worked, which was worse than failing: the year chart came out landscape on
+   one sheet — followed by a BLANK one — and the month sheet came out PORTRAIT,
+   having ignored the rule entirely.
 
-   A change of page name forces a page break. The document begins on the unnamed
-   default page, adopts the named one at the host, and reverts when the flow
-   leaves it — and that reversion generates an empty page box for the rest of
-   body, which has no visible content but is still there.
+   Both symptoms are the same cause. A change of page name forces a page break,
+   and a name applied to a box in the middle of the flow is honoured
+   inconsistently. The document begins on the unnamed default page, adopts the
+   named one at the host, and reverts when the flow leaves it — and that
+   reversion generates a page box for the rest of body, which has no visible
+   content but is still a sheet of paper.
 
-   Naming the page on body means nothing ever changes page type mid-document.
-   It is scoped by the `planner-printing` class, which PlannerApp sets for the
-   duration of the print and removes afterwards: an unscoped `@page { size:
+   Naming the page on BODY means the whole document is one page type from the
+   start and nothing ever changes. It is scoped by a class PlannerApp sets for
+   the duration of the print and removes afterwards: an unscoped `@page { size:
    landscape }` would be global from the moment the planner had been opened once
    and would turn some other app's print sideways later in the same session. */
-body.planner-printing {
-  page: planner-landscape;
-}
-
-.planner-print-host {
-  page: planner-landscape;
-}
+body.planner-print-landscape { page: planner-landscape; }
+body.planner-print-portrait  { page: planner-portrait; }
 
 /* Built only when Print is clicked, and never shown on screen. */
 @media screen {
@@ -163,7 +171,9 @@ body.planner-printing {
   .print-month th,
   .print-month td { border: 0.4pt solid #999; vertical-align: top; padding: 0.8mm; }
   .print-month thead th { font-size: 7.5pt; font-weight: 700; background: #eee !important; }
-  .print-month td { height: 26mm; }
+  /* Portrait gives six rows about 40mm each, which is the point of printing a
+     month: room for the day's items rather than a grid of bare numbers. */
+  .print-month td { height: 38mm; }
   .print-month .date { font-size: 8pt; font-weight: 700; }
   .print-month .adjacent .date { color: #999 !important; }
   .print-month .item {

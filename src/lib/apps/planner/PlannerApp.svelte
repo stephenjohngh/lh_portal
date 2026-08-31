@@ -130,6 +130,8 @@
   let printLayout = 'chart';
   let printFrom = 1;
   let printTo = 12;
+  /** The body class naming the paper, remembered so it can be taken off again. */
+  let printPage = '';
 
   const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
@@ -166,17 +168,23 @@
     printOpen = false;
     printing = true;
     try {
-      // Names the page for the whole document, so no box changes page type
-      // mid-flow and generates a blank sheet. Scoped to the print itself: a
-      // permanent landscape @page would outlive the planner in this session.
-      document.body.classList.add('planner-printing');
+      // Names the page for the WHOLE document, so no box changes page type
+      // mid-flow — that cost a blank sheet and a month printed portrait when
+      // the name lived on the print host. Scoped to this print: a permanent
+      // landscape @page would outlive the planner in the session.
+      //
+      // The year is 37 columns and can only be landscape; a month is taller
+      // than it is wide and reads better portrait, with the height going into
+      // the cells.
+      printPage = printLayout === 'chart' ? 'planner-print-landscape' : 'planner-print-portrait';
+      document.body.classList.add(printPage);
       // Rendered before the dialog opens, or the browser prints an empty host.
       await tick();
       // Chrome fires afterprint once per dialog; `once` keeps a second print
       // from tearing down a rendering that is still on screen.
       window.addEventListener('afterprint', () => {
         printing = false;
-        document.body.classList.remove('planner-printing');
+        if (printPage) document.body.classList.remove(printPage);
       }, { once: true });
       window.print();
     } finally {
@@ -851,7 +859,7 @@
 
     <p class="text-[11px] text-slate-500">
       {printMonths.length} month{printMonths.length === 1 ? '' : 's'} of {year}
-      {#if printLayout === 'months'}— {printMonths.length} sheet{printMonths.length === 1 ? '' : 's'}{:else}on one sheet{/if}.
+      {#if printLayout === 'months'}— {printMonths.length} portrait sheet{printMonths.length === 1 ? '' : 's'}{:else}on one landscape sheet{/if}.
       <span class="block mt-1">
         Printed as filtered: <span class="text-slate-400">{filterNote}</span>. The
         sheet says so too, because it will outlive this screen.
