@@ -38,23 +38,28 @@
 // became violet, which is brighter and further round the wheel, and grey
 // stopped being a choice at all.
 
+// `ink` is the same colour as an actual hex, for PRINT. Paper has no Tailwind,
+// and a class is no use to a stylesheet that has to fill a circle — so this is
+// the one place a literal colour belongs. They are the 600 shades rather than
+// the screen's 400s: the light ones vanish on white.
+//
 // `wash` is the same colour again at the strength a whole cell can carry.
 // A dot at full strength is a mark; a cell at full strength is a shout, and
 // the date printed on it stops being readable.
 export const PALETTE = [
-  { key: 'red',     label: 'Red',     dot: 'bg-red-500',     chip: 'bg-red-500/15 text-red-300 border-red-500/30',         wash: 'bg-red-500/25' },
-  { key: 'orange',  label: 'Orange',  dot: 'bg-orange-400',  chip: 'bg-orange-500/15 text-orange-300 border-orange-500/30', wash: 'bg-orange-500/25' },
-  { key: 'amber',   label: 'Amber',   dot: 'bg-amber-500',   chip: 'bg-amber-500/15 text-amber-300 border-amber-500/30',   wash: 'bg-amber-500/25' },
-  { key: 'lime',    label: 'Lime',    dot: 'bg-lime-400',    chip: 'bg-lime-500/15 text-lime-300 border-lime-500/30',      wash: 'bg-lime-500/25' },
+  { key: 'red',     label: 'Red',     ink: '#dc2626', dot: 'bg-red-500',     chip: 'bg-red-500/15 text-red-300 border-red-500/30',         wash: 'bg-red-500/25' },
+  { key: 'orange',  label: 'Orange',  ink: '#ea580c', dot: 'bg-orange-400',  chip: 'bg-orange-500/15 text-orange-300 border-orange-500/30', wash: 'bg-orange-500/25' },
+  { key: 'amber',   label: 'Amber',   ink: '#d97706', dot: 'bg-amber-500',   chip: 'bg-amber-500/15 text-amber-300 border-amber-500/30',   wash: 'bg-amber-500/25' },
+  { key: 'lime',    label: 'Lime',    ink: '#65a30d', dot: 'bg-lime-400',    chip: 'bg-lime-500/15 text-lime-300 border-lime-500/30',      wash: 'bg-lime-500/25' },
   // The one neighbour the palette allows, because a bright green is worth
   // having: lime is yellow-green (#a3e635), green is pure (#4ade80), and side
   // by side at eight pixels that difference holds. It is the only pair here
   // that has to be looked at rather than merely glanced at.
-  { key: 'green',   label: 'Green',   dot: 'bg-green-400',   chip: 'bg-green-500/15 text-green-300 border-green-500/30',   wash: 'bg-green-500/25' },
-  { key: 'sky',     label: 'Sky',     dot: 'bg-sky-400',     chip: 'bg-sky-500/15 text-sky-300 border-sky-500/30',         wash: 'bg-sky-500/25' },
-  { key: 'violet',  label: 'Violet',  dot: 'bg-violet-400',  chip: 'bg-violet-500/15 text-violet-300 border-violet-500/30', wash: 'bg-violet-500/25' },
-  { key: 'fuchsia', label: 'Fuchsia', dot: 'bg-fuchsia-400', chip: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30', wash: 'bg-fuchsia-500/25' },
-  { key: 'rose',    label: 'Rose',    dot: 'bg-rose-400',    chip: 'bg-rose-500/15 text-rose-300 border-rose-500/30',      wash: 'bg-rose-500/25' },
+  { key: 'green',   label: 'Green',   ink: '#16a34a', dot: 'bg-green-400',   chip: 'bg-green-500/15 text-green-300 border-green-500/30',   wash: 'bg-green-500/25' },
+  { key: 'sky',     label: 'Sky',     ink: '#0284c7', dot: 'bg-sky-400',     chip: 'bg-sky-500/15 text-sky-300 border-sky-500/30',         wash: 'bg-sky-500/25' },
+  { key: 'violet',  label: 'Violet',  ink: '#7c3aed', dot: 'bg-violet-400',  chip: 'bg-violet-500/15 text-violet-300 border-violet-500/30', wash: 'bg-violet-500/25' },
+  { key: 'fuchsia', label: 'Fuchsia', ink: '#c026d3', dot: 'bg-fuchsia-400', chip: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30', wash: 'bg-fuchsia-500/25' },
+  { key: 'rose',    label: 'Rose',    ink: '#e11d48', dot: 'bg-rose-400',    chip: 'bg-rose-500/15 text-rose-300 border-rose-500/30',      wash: 'bg-rose-500/25' },
 ];
 
 /**
@@ -67,6 +72,7 @@ export const PALETTE = [
  */
 export const FALLBACK = {
   key: 'none', label: 'Grey',
+  ink: '#64748b',
   dot: 'bg-slate-300',
   chip: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
   wash: 'bg-slate-400/25',

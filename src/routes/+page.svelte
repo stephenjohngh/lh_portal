@@ -256,8 +256,11 @@
     <div class="text-white text-xl">Loading...</div>
   </div>
 {:else if $auth.user}
-  <div class="min-h-screen bg-slate-900 text-white">
-    <nav class="bg-purple-900 backdrop-blur-lg border-b border-purple-800/60 sticky top-0 z-50">
+  <!-- `lh-shell` / `lh-chrome` / `lh-main` exist for ONE reason: print. The
+       shell is a dark canvas and the nav is meaningless on paper, and a sub-app
+       cannot reach either from its own scoped styles. See app.css. -->
+  <div class="lh-shell min-h-screen bg-slate-900 text-white">
+    <nav class="lh-chrome bg-purple-900 backdrop-blur-lg border-b border-purple-800/60 sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center space-x-4">
@@ -337,14 +340,14 @@
 
     <!-- Test environment banner — baked at build time via PUBLIC_ENV_LABEL -->
     {#if PUBLIC_ENV_LABEL && PUBLIC_ENV_LABEL !== 'production'}
-      <div class="bg-teal-500/10 border-b border-teal-500/30 px-4 py-1.5">
+      <div class="lh-chrome bg-teal-500/10 border-b border-teal-500/30 px-4 py-1.5">
         <div class="max-w-7xl mx-auto text-center text-xs text-teal-300">
           🧪 <strong>{PUBLIC_ENV_LABEL.toUpperCase()}</strong> environment — {activeDbUrl}
         </div>
       </div>
     {/if}
 
-    <main class="max-w-7xl mx-auto px-4 py-8">
+    <main class="lh-main max-w-7xl mx-auto px-4 py-8">
       {#if activeApp === 'home'}
         <div>
           <h1 class="text-4xl font-bold mb-1">LH Services Portal</h1>

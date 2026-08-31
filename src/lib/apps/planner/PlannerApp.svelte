@@ -6,7 +6,7 @@
      (P2) come next, and the model was built first on purpose — the hard part is
      series-versus-occurrence, and everything else depends on it being right. -->
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { plannerStore } from './stores/plannerStore.js';
@@ -23,9 +23,12 @@
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
   import FormInput    from '$lib/components/common/FormInput.svelte';
+  import FormSelect   from '$lib/components/common/FormSelect.svelte';
   import OccurrenceRow from './components/OccurrenceRow.svelte';
   import EventFormModal from './components/EventFormModal.svelte';
   import AdminMenu from './components/AdminMenu.svelte';
+  import PlannerPrint from './components/PlannerPrint.svelte';
+  import './planner-print.css';
   import CategoriesModal from './components/CategoriesModal.svelte';
   import DayMarkControl from './components/DayMarkControl.svelte';
   import MultiSelectDropdown from '$lib/components/common/MultiSelectDropdown.svelte';
@@ -113,6 +116,65 @@
    */
   function onFullscreenChange() {
     isFullscreen = !!(document.fullscreenElement ?? document.webkitFullscreenElement);
+  }
+
+  // ── Printing ──────────────────────────────────────────────────────────────
+  // A caretaker wants the year on the wall. What is printed is what is on
+  // SCREEN — the same filtered occurrences the grids are given — because a
+  // chart that quietly restored everything a filter removed would be a
+  // different year from the one that was asked for.
+  let printOpen = false;
+  let printing = false;
+  let preparingPrint = false;
+  /** 'chart' — the year on one landscape sheet. 'months' — one month a sheet. */
+  let printLayout = 'chart';
+  let printFrom = 1;
+  let printTo = 12;
+
+  const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
+    value: i + 1,
+    label: buildMonthGrid(2026, i + 1, []).label.split(' ')[0],
+  }));
+
+  /** Always in order, and never empty — a backwards range prints one month. */
+  $: printMonths = (() => {
+    const a = Math.min(Number(printFrom), Number(printTo));
+    const b = Math.max(Number(printFrom), Number(printTo));
+    return Array.from({ length: b - a + 1 }, (_, i) => a + i);
+  })();
+
+  /**
+   * What the paper has to admit to.
+   *
+   * A printed chart outlives the screen it came from, so it says which filters
+   * were in force. Somebody finding it on a wall in six months cannot ask.
+   */
+  $: filterNote = [
+    categoryFilter.size
+      ? `Categories: ${pickable(state.categories)
+          .filter(c => categoryFilter.has(c.slug))
+          .map(c => c.name).join(', ')}`
+      : 'All categories',
+    showLinked && sourceLabels.length
+      ? `including ${sourceLabels.join(', ').toLowerCase()}`
+      : 'planner events only',
+  ].join(' · ');
+
+  async function doPrint() {
+    if (preparingPrint) return;
+    preparingPrint = true;
+    printOpen = false;
+    printing = true;
+    try {
+      // Rendered before the dialog opens, or the browser prints an empty host.
+      await tick();
+      // Chrome fires afterprint once per dialog; `once` keeps a second print
+      // from tearing down a rendering that is still on screen.
+      window.addEventListener('afterprint', () => (printing = false), { once: true });
+      window.print();
+    } finally {
+      preparingPrint = false;
+    }
   }
   let showDone = false;
 
@@ -349,7 +411,7 @@
 <!-- The fullscreen element. Everything is inside it — including the dialogs
      below — because only the fullscreen subtree is painted. -->
 <div bind:this={shell} class="planner-shell">
-<div class="p-4">
+<div class="planner-screen p-4">
 
   {#if error}
     <div class="mb-3"><ErrorDisplay message={error} onDismiss={() => error = ''} /></div>
@@ -448,6 +510,22 @@
             : 'Fill the screen — the whole planner, without the browser or the portal nav'}
           on:click={toggleFullscreen}
         >{isFullscreen ? '⤡ Exit' : '⤢ Fullscreen'}</button>
+      {/if}
+
+      <!-- Year and month only: the agenda is a list, and the portal already
+           makes Word documents for lists. -->
+      {#if view === 'year' || view === 'month'}
+        <button
+          type="button"
+          class="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded
+                 px-2.5 py-1.5 text-xs text-white transition-colors"
+          title="Print the year, or a run of months — as filtered"
+          on:click={() => {
+            // The month view opens on the month being looked at.
+            if (view === 'month') { printLayout = 'months'; printFrom = month; printTo = month; }
+            printOpen = true;
+          }}
+        >Print</button>
       {/if}
 
       {#if $permissions.isAdmin}
@@ -728,6 +806,71 @@
     </Button>
   </div>
 </Modal>
+
+<Modal bind:show={printOpen} title="Print the planner" size="small"
+       on:close={() => printOpen = false}>
+  <div class="space-y-3">
+    <div>
+      <p class="text-xs text-slate-400 mb-1.5">What to print</p>
+      <div class="space-y-1.5">
+        <label class="flex items-start gap-2 cursor-pointer text-xs">
+          <input type="radio" bind:group={printLayout} value="chart"
+                 class="mt-0.5 accent-purple-500" />
+          <span class="text-slate-300">
+            The year chart, on one landscape sheet
+            <span class="block text-slate-500">
+              The wallplanner as you see it — dates and category dots. Fewer
+              months simply make taller rows.
+            </span>
+          </span>
+        </label>
+        <label class="flex items-start gap-2 cursor-pointer text-xs">
+          <input type="radio" bind:group={printLayout} value="months"
+                 class="mt-0.5 accent-purple-500" />
+          <span class="text-slate-300">
+            Month by month, one sheet each
+            <span class="block text-slate-500">
+              With titles and times. This is the one to carry around.
+            </span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="flex items-end gap-2">
+      <div class="flex-1"><FormSelect label="From" bind:value={printFrom} options={MONTH_OPTIONS} placeholder="" /></div>
+      <div class="flex-1"><FormSelect label="To" bind:value={printTo} options={MONTH_OPTIONS} placeholder="" /></div>
+    </div>
+
+    <p class="text-[11px] text-slate-500">
+      {printMonths.length} month{printMonths.length === 1 ? '' : 's'} of {year}
+      {#if printLayout === 'months'}— {printMonths.length} sheet{printMonths.length === 1 ? '' : 's'}{:else}on one sheet{/if}.
+      <span class="block mt-1">
+        Printed as filtered: <span class="text-slate-400">{filterNote}</span>. The
+        sheet says so too, because it will outlive this screen.
+      </span>
+    </p>
+  </div>
+
+  <div slot="footer" class="flex justify-end gap-2">
+    <Button variant="secondary" on:click={() => printOpen = false}>Cancel</Button>
+    <Button variant="primary" disabled={preparingPrint} on:click={doPrint}>
+      {preparingPrint ? 'Preparing…' : 'Print'}
+    </Button>
+  </div>
+</Modal>
+
+{#if printing}
+  <PlannerPrint
+    {year}
+    layout={printLayout}
+    months={printMonths}
+    {occurrences}
+    categories={state.categories}
+    marks={dayMarks}
+    {filterNote}
+  />
+{/if}
 
 <Modal bind:show={movingOpen} title="Move this one" size="small"
        on:close={() => { movingOpen = false; moving = null; }}>

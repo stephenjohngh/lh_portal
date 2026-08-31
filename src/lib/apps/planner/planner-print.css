@@ -1,0 +1,166 @@
+/* src/lib/apps/planner/planner-print.css
+   Printing the planner.
+
+   Imported by PlannerApp, which is code-split — so none of this exists until
+   somebody opens the planner.
+
+   ── The two things to know before editing ─────────────────────────────────
+   1. The screen design is dark. Everything here is a deliberate inversion, not
+      an oversight: a dark chart printed is a page of toner with grey text on
+      it. The portal shell above us is neutralised in app.css.
+   2. `@page` is NAMED. An unnamed `@page { size: landscape }` would be global
+      the moment the planner had ever been opened, and would silently turn some
+      other app's print sideways later in the same session. The name is applied
+      by the `page` property on the print host, so it reaches only these pages.
+
+   What is printed is what is on screen: the year, the category filter and the
+   "other apps" switch all apply, because the print rendering is handed the same
+   filtered occurrences the grids get. */
+
+@page planner-landscape {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+.planner-print-host {
+  page: planner-landscape;
+}
+
+/* Built only when Print is clicked, and never shown on screen. */
+@media screen {
+  .planner-print-host { display: none; }
+}
+
+@media print {
+  /* Everything of the planner EXCEPT the print rendering: the toolbar, the
+     grids, the agenda, and any dialog that happens to be open. */
+  .planner-shell > :not(.planner-print-host) { display: none !important; }
+
+  .planner-print-host {
+    display: block !important;
+    color: #000;
+    background: #fff;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Screen colours carried by Tailwind classes on cloned structures would
+     otherwise survive into the print rendering. Colour is reintroduced below,
+     deliberately and only where it carries meaning. */
+  .planner-print-host * {
+    color: #000;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* ── Pages ──────────────────────────────────────────────────────────── */
+  .print-page { break-after: page; }
+  .print-page:last-child { break-after: auto; }
+
+  /* A month must not be split across two sheets. */
+  .print-page, .print-month { break-inside: avoid; }
+
+  /* ── Heading ────────────────────────────────────────────────────────── */
+  .print-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8mm;
+    border-bottom: 1px solid #000;
+    padding-bottom: 1.5mm;
+    margin-bottom: 3mm;
+  }
+  .print-title  { font-size: 13pt; font-weight: 700; }
+  .print-sub    { font-size: 7.5pt; color: #444 !important; text-align: right; }
+
+  /* ── The year chart ─────────────────────────────────────────────────── */
+  .print-year {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+  .print-year th,
+  .print-year td {
+    border: 0.4pt solid #999;
+    padding: 0;
+    text-align: center;
+    vertical-align: top;
+  }
+  .print-year thead th { font-size: 6pt; font-weight: 700; padding: 0.6mm 0; }
+  .print-year .month-cell {
+    width: 13mm;
+    font-size: 8pt;
+    font-weight: 700;
+    text-align: left;
+    padding: 0 1mm;
+    vertical-align: middle;
+  }
+  .print-year .day       { font-size: 6.5pt; line-height: 1.05; padding-top: 0.4mm; }
+  .print-year .outside   { background: #f2f2f2 !important; }
+
+  /* Weekends as a light stripe. Without this the chart loses the one thing
+     that makes twelve rows readable at a glance. */
+  .print-year .weekend   { background: #eaeaea !important; }
+
+  /* A shaded day beats the weekend stripe, as it does on screen. Printed in
+     grey with the label in the tooltip position — colour cannot be relied on. */
+  .print-year .marked    { background: #d4d4d4 !important; }
+
+  /* ── Dots ───────────────────────────────────────────────────────────── */
+  .print-dots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4mm;
+    padding: 0.3mm 0.3mm 0;
+  }
+  .print-dot {
+    width: 1.7mm;
+    height: 1.7mm;
+    border-radius: 50%;
+    border: 0.3pt solid #333;
+  }
+  /* The only colour on the page, and the reason for it: a mono printer still
+     shows a filled circle, so a busy day is visibly busy either way. */
+  .print-dot[data-ink] { background: var(--ink) !important; }
+
+  /* ── The legend ─────────────────────────────────────────────────────── */
+  .print-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1mm 5mm;
+    margin-top: 3mm;
+    font-size: 7pt;
+  }
+  .print-legend span.key { display: inline-flex; align-items: center; gap: 1.2mm; }
+
+  /* ── Month pages ────────────────────────────────────────────────────── */
+  .print-month { width: 100%; table-layout: fixed; border-collapse: collapse; }
+  .print-month th,
+  .print-month td { border: 0.4pt solid #999; vertical-align: top; padding: 0.8mm; }
+  .print-month thead th { font-size: 7.5pt; font-weight: 700; background: #eee !important; }
+  .print-month td { height: 26mm; }
+  .print-month .date { font-size: 8pt; font-weight: 700; }
+  .print-month .adjacent .date { color: #999 !important; }
+  .print-month .item {
+    font-size: 6.8pt;
+    line-height: 1.25;
+    display: flex;
+    gap: 1mm;
+    margin-top: 0.6mm;
+  }
+  .print-month .item .when { font-variant-numeric: tabular-nums; }
+  .print-month .done { color: #666 !important; text-decoration: line-through; }
+  .print-month .mark-label { font-size: 6.5pt; font-style: italic; color: #444 !important; }
+
+  /* Backgrounds and dot colours are the content here, not decoration. */
+  .planner-print-host {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-foot {
+    margin-top: 3mm;
+    font-size: 6.5pt;
+    color: #555 !important;
+  }
+}

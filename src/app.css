@@ -485,3 +485,39 @@ npx tailwindcss -i src/app.css -o dist/app.css --watch --watch-stats
     overflow: hidden;
   }
 }
+
+/* ========== PRINTING A SUB-APP ==========
+   The portal shell sits between <body> and whatever a sub-app renders, and it
+   is a dark canvas with a purple nav on top. Printed, that is a page of toner
+   with pale text on it — the same trap the published-pack reader fell into
+   (see routes/pack/[token]/pack-print.css, which carries the full story).
+
+   A sub-app cannot reach the shell from its own scoped styles, so the shell
+   carries three names and this is where they are answered. Anything printable
+   the portal grows later gets this for free.
+
+   The APP still decides what to print; this only clears the way. */
+@media print {
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* The dark ground, neutralised — not merely covered. */
+  .lh-shell {
+    background: #fff !important;
+    color: #000 !important;
+    min-height: 0 !important;
+  }
+
+  /* Nav and the environment banner say nothing on paper. */
+  .lh-chrome { display: none !important; }
+
+  /* On screen the content is a centred 80rem column with padding. A sheet of
+     paper already has margins, and a landscape chart wants all of it. */
+  .lh-main {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
