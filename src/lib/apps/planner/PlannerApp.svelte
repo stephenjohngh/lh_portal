@@ -71,6 +71,49 @@
   function onWindowClick(e) {
     if (openDropdown && toolbar && !toolbar.contains(e.target)) openDropdown = null;
   }
+
+  // ── Fullscreen, for the wallplanner ───────────────────────────────────────
+  // A year is 37 columns wide and is meant to be looked at from across a room.
+  // The browser chrome and the portal's own nav are perhaps 200px of height and
+  // the page padding some width, none of which says anything about the year.
+  //
+  // The element made fullscreen is the WHOLE app, not just the grid. Only the
+  // fullscreen element's subtree is painted, so a fullscreened grid would leave
+  // every dialog — edit, move, promote, the confirmations — invisible while
+  // still capturing clicks. That is the trap in this API, and wrapping
+  // everything is the way past it rather than a compromise: the toolbar has to
+  // be reachable in there anyway.
+  let shell = null;
+  let isFullscreen = false;
+
+  /**
+   * Whether the browser can do this at all.
+   *
+   * iPhone Safari has no Element.requestFullscreen — only video goes
+   * fullscreen there — so the button is hidden rather than offered and broken.
+   */
+  const canFullscreen = typeof document !== 'undefined'
+    && !!(document.fullscreenEnabled ?? document.webkitFullscreenEnabled);
+
+  function toggleFullscreen() {
+    if (!shell) return;
+
+    if (isFullscreen) {
+      (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
+    } else {
+      (shell.requestFullscreen ?? shell.webkitRequestFullscreen)?.call(shell);
+    }
+  }
+
+  /**
+   * Read from the browser, never assumed.
+   *
+   * Escape exits fullscreen and cannot be intercepted, so the button's label
+   * would be a lie within one keypress if this tracked our own clicks instead.
+   */
+  function onFullscreenChange() {
+    isFullscreen = !!(document.fullscreenElement ?? document.webkitFullscreenElement);
+  }
   let showDone = false;
 
   // ── Which view ────────────────────────────────────────────────────────────
@@ -300,7 +343,12 @@
      are parent-controlled so that only one can be open at a time, which leaves
      the parent owning the dismissal too. -->
 <svelte:window on:click={onWindowClick} />
+<svelte:document on:fullscreenchange={onFullscreenChange}
+                 on:webkitfullscreenchange={onFullscreenChange} />
 
+<!-- The fullscreen element. Everything is inside it — including the dialogs
+     below — because only the fullscreen subtree is painted. -->
+<div bind:this={shell} class="planner-shell">
 <div class="p-4">
 
   {#if error}
@@ -383,6 +431,20 @@
           <input type="checkbox" bind:checked={showLinked} class="accent-purple-500" />
           Other apps
         </label>
+      {/if}
+
+      <!-- Year only. The agenda is a list that gains nothing from the extra
+           room, and the month already fits. -->
+      {#if view === 'year' && canFullscreen}
+        <button
+          type="button"
+          class="bg-slate-700 border border-slate-600 hover:border-slate-500 rounded
+                 px-2.5 py-1.5 text-xs text-white transition-colors"
+          title={isFullscreen
+            ? 'Leave fullscreen (or press Esc)'
+            : 'Fill the screen — the whole planner, without the browser or the portal nav'}
+          on:click={toggleFullscreen}
+        >{isFullscreen ? '⤡ Exit' : '⤢ Fullscreen'}</button>
       {/if}
 
       {#if $permissions.isAdmin}
@@ -678,3 +740,22 @@
     <Button variant="primary" disabled={!moveTo} on:click={confirmMove}>Move</Button>
   </div>
 </Modal>
+</div>
+
+<style>
+  /*
+   * The fullscreen element paints nothing of its own by default, and the
+   * browser's backdrop behind it is black — so without this the planner sits in
+   * a black surround with the portal's slate nowhere to be seen.
+   *
+   * `:fullscreen` rather than a class alone, because Escape leaves fullscreen
+   * without going through our button; the class is only there for anything that
+   * wants to react in JS-visible ways.
+   */
+  .planner-shell:fullscreen {
+    background: rgb(15 23 42);          /* slate-900, the portal's own ground */
+    overflow-y: auto;
+    width: 100%;
+    height: 100%;
+  }
+</style>
