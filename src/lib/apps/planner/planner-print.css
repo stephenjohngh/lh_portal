@@ -127,8 +127,28 @@ body.planner-print-portrait  { page: planner-portrait; }
     padding: 0 1mm;
     vertical-align: middle;
   }
-  .print-year .day       { font-size: 6.5pt; line-height: 1.05; padding-top: 0.4mm; }
+  .print-year .day       { font-size: 7.5pt; line-height: 1.05; padding-top: 0.5mm; }
   .print-year .outside   { background: #f2f2f2 !important; }
+
+  /* ── Every row the same height, and that height fills the sheet ──────────
+     Left to the content, a row was as tall as its busiest day: one day with
+     six dots stretched a whole month while the other eleven stayed thin, and
+     a third of the page went unused below them. On a wallplanner that reads as
+     a mistake — the rows are months, not measurements.
+
+     The arithmetic, so it can be redone if the furniture changes. A4 landscape
+     is 210mm tall, less 10mm margins each side leaves 190mm. Heading ~10mm,
+     column letters ~3.5mm, legend ~6mm, footnote ~8mm — call it 27mm. That
+     leaves 163mm for twelve rows, so 13mm each with a little in hand.
+
+     The slack is deliberate and the legend is what eats it: enough categories
+     to wrap it onto a third line is what would push this over, and the symptom
+     would be a second sheet. If that happens, this number comes down. */
+  .print-year tbody td { height: 13mm; }
+
+  /* Room now to be seen from across a room. Two per line at this size in a
+     7mm column, so six dots make three tidy rows inside 13mm. */
+  .print-year .print-dot { width: 2mm; height: 2mm; }
 
   /* Weekends as a light stripe. Without this the chart loses the one thing
      that makes twelve rows readable at a glance. */
