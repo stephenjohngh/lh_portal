@@ -13,7 +13,7 @@
 // time. scrypt exists only in Node, so it would have forced the plaintext
 // passphrase through an extra endpoint purely to be hashed. PBKDF2 is in Web
 // Crypto, which is native in browsers AND in Node 19+ — the same reasoning that
-// put morVerificationCode on Web Crypto. One implementation, both sides, and
+// put caseVerificationCode on Web Crypto. One implementation, both sides, and
 // the passphrase never travels except when it is actually being answered.
 //
 // 600,000 iterations of PBKDF2-SHA256 is the current OWASP guidance. It costs

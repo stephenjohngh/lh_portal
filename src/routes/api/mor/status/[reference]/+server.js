@@ -19,7 +19,7 @@ import { PUBLIC_SUPABASE_URL }        from '$env/static/public';
 import { env } from '$env/dynamic/private';
 import { checkRateLimit }             from '$lib/server/publicRateLimit.js';
 import { isSameOrigin }               from '$lib/server/verifyOrigin.js';
-import { normalizeVerificationCode }  from '$lib/utils/morVerificationCode';
+import { normalizeVerificationCode }  from '$lib/utils/caseVerificationCode';
 import { getLogger }                  from '$lib/utils/logger';
 
 const logger = getLogger('mor/status');

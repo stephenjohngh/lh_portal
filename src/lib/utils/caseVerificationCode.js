@@ -1,10 +1,17 @@
-// src/lib/utils/morVerificationCode.js
-// Verification-code helpers used by Phase 2b (resident status lookup).
+// src/lib/utils/caseVerificationCode.js
+// Verification-code helpers — a short bearer credential for a public lookup.
 //
-// The code is a 6-character token from a 31-symbol alphabet, generated at
-// case creation, stored on mor_cases.verification_code, and given to the
-// reporter alongside the case reference. Together the pair acts as a bearer
-// credential for /mor/status.
+// The code is a 6-character token from a 31-symbol alphabet, generated when a
+// case is created, stored on the case, and given to the reporter alongside its
+// reference. Together the pair let somebody with no account check their own
+// case and nobody else's.
+//
+// ── Why the name is not mor* any more (renamed 2026-09-03) ─────────────────
+// It was written for MOR and named for it, but nothing in here is about
+// occurrence reporting — and Dossier had already started importing it for
+// publication passphrases and tokens, which made the name actively misleading.
+// A complaints system (BSA s.93) is the next caller. See
+// docs/requirements/Case_Systems_Common_Core.md §4.
 //
 // Alphabet: A-Z + 2-9, minus I, L, O — chars that look like other chars
 // when handwritten on a Post-it. 31^6 ≈ 887 million combinations; combined

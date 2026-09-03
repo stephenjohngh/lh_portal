@@ -5,7 +5,7 @@ import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
-import { generateVerificationCode } from '$lib/utils/morVerificationCode';
+import { generateVerificationCode } from '$lib/utils/caseVerificationCode';
 import { listDocumentsCiting } from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('morStore');

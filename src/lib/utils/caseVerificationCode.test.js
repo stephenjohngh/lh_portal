@@ -1,9 +1,9 @@
-// src/lib/utils/morVerificationCode.test.js
+// src/lib/utils/caseVerificationCode.test.js
 import { describe, it, expect } from 'vitest';
 import {
   generateVerificationCode, formatVerificationCode,
   normalizeVerificationCode, isValidVerificationCode,
-} from './morVerificationCode.js';
+} from './caseVerificationCode.js';
 
 describe('generateVerificationCode', () => {
   it('always produces a valid 6-char code from the safe alphabet', () => {

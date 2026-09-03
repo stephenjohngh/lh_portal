@@ -32,7 +32,7 @@
     CHANNEL_LABEL, REPORTER_TYPE_LABEL,
     DECISION_LABEL, TRIAGE_LABEL, TRIAGE_COLOUR,
   } from '$lib/apps/mor/utils/morHelpers';
-  import { formatVerificationCode } from '$lib/utils/morVerificationCode';
+  import { formatVerificationCode } from '$lib/utils/caseVerificationCode';
   import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
 

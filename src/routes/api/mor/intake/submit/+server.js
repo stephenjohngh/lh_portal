@@ -25,7 +25,7 @@ import { isSameOrigin,
          isTrustedStorageUrl }        from '$lib/server/verifyOrigin.js';
 import { verifyUrlSignature }         from '$lib/server/urlSignature.js';
 import { generateVerificationCode,
-         formatVerificationCode }      from '$lib/utils/morVerificationCode';
+         formatVerificationCode }      from '$lib/utils/caseVerificationCode';
 import { logAudit,
          getIpAddress,
          getUserAgent }                from '$lib/server/auditLogger';

@@ -10,7 +10,7 @@
   import {
     normalizeVerificationCode,
     formatVerificationCode,
-  } from '$lib/utils/morVerificationCode';
+  } from '$lib/utils/caseVerificationCode';
 
   // ── Form state ───────────────────────────────────────────────────────
   let reference   = '';

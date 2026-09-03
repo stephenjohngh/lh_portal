@@ -55,7 +55,7 @@ vi.mock('$lib/supabaseClient',            () => ({ supabase: h.supabase }));
 vi.mock('$lib/utils/api',                 () => ({ api: h.api }));
 vi.mock('$lib/utils/auditLogger',         () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',              () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/utils/morVerificationCode', () => ({ generateVerificationCode: () => 'R7PQK2' }));
+vi.mock('$lib/utils/caseVerificationCode', () => ({ generateVerificationCode: () => 'R7PQK2' }));
 
 const { morStore } = await import('./morStore.js');
 

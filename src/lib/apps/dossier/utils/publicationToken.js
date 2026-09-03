@@ -4,7 +4,7 @@
 // Runs in BOTH contexts: the browser generates a token when publishing, the
 // server hashes an incoming one on every reader request. So it uses Web Crypto
 // only, which is native in browsers and in Node 19+ (Netlify Functions and
-// Northflank both run Node 20+) — the same reasoning as morVerificationCode.
+// Northflank both run Node 20+) — the same reasoning as caseVerificationCode.
 //
 // ── Why the token is hashed at rest ──────────────────────────────────────────
 // The obvious objection is that anyone who can read dossier_publications also
