@@ -130,6 +130,24 @@
         complaint only, not as a resident record.</span>
       </p>
 
+      <!-- UK GDPR Article 13: when personal data is collected DIRECTLY from
+           somebody, they must be told what happens to it AT THE POINT OF
+           COLLECTION — not in a policy they could go and look up.
+
+           Whoever is typing this is usually relaying it on the phone, so the
+           wording is what a person can read aloud. The basis is a LEGAL
+           OBLIGATION (the s.93 duty), not consent: consent must be withdrawable,
+           and a complaint cannot be investigated and then un-investigated
+           because the complainant changed their mind about the data. -->
+      <p class="text-[11px] text-slate-500 p-2 rounded border border-slate-700 bg-slate-800/40">
+        <span class="text-slate-400 font-medium">Tell them this if you are taking it live:</span>
+        their details are used only to investigate and reply to this complaint,
+        are kept with it, and are not added to any resident list. We hold them
+        because the law requires us to operate a complaints system — not because
+        they agreed — so they cannot be withdrawn while the complaint is open,
+        but they can ask what we hold and ask us to correct it.
+      </p>
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <FormInput label="Name" bind:value={complainantName} placeholder="Optional" />
         <FormInput label="How to reply" bind:value={complainantContact}
