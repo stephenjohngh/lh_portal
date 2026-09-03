@@ -133,6 +133,15 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    id: 'complaints',
+    name: 'Complaints',
+    icon: 'comment',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: 'Building-safety complaints (BSA s.93) — receive, investigate, respond'
+  },
+
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'settings',
@@ -160,6 +169,7 @@ export const APP_IDS = {
   GOLDEN_THREAD:   'golden_thread',
   DOSSIER:         'dossier',
   PLANNER:         'planner',
+  COMPLAINTS:      'complaints',
   SETTINGS:        'settings'
 };
 
