@@ -117,9 +117,10 @@ export async function POST({ request, url }) {
   const verificationCode = generateVerificationCode();
 
   // ── Insert case ──────────────────────────────────────────────────────────
-  // `reference` is omitted — the DB DEFAULT (mor_next_reference(), migration
-  // 150) stamps MOR-YYYY-NNNNNN atomically, GT-style; the old client-side
-  // count(*)+1 raced under concurrent submissions (M3).
+  // `reference` is omitted — the DB DEFAULT stamps MOR-YYYY-NNNNNN atomically,
+  // GT-style; the old client-side count(*)+1 raced under concurrent
+  // submissions (M3). Migration 150 introduced mor_next_reference(); 186
+  // replaced it with the shared case_next_reference('MOR').
   let caseRow;
   try {
     const { data, error } = await svc

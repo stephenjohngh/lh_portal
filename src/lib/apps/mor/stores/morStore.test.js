@@ -102,7 +102,7 @@ describe('createCase', () => {
       status: 'submitted',
       created_by: 'u1',
     });
-    // reference is DB-stamped via mor_next_reference() — the client must NOT send one
+    // reference is DB-stamped by the column default — the client must NOT send one
     expect(arg.reference).toBeUndefined();
     // opening timeline entry: status_change null → submitted
     const tl = h.api.create.mock.calls.find(c => c[0] === 'mor_timeline_entries')[1];

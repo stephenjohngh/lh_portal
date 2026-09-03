@@ -176,8 +176,11 @@ function createMorStore() {
       const profile = await currentUserProfile();
       const now = new Date().toISOString();
 
-      // `reference` is omitted — the DB DEFAULT (mor_next_reference(), migration
-      // 150) stamps it atomically, GT-style (the old count(*)+1 raced).
+      // `reference` is omitted — the DB DEFAULT stamps it atomically, GT-style
+      // (the old count(*)+1 raced). Migration 150 introduced it as
+      // mor_next_reference(); 186 replaced that with the shared
+      // case_next_reference('MOR'), so every case system gets the same
+      // advisory-lock fix rather than a copy of it.
       const row = await api.create('mor_cases', {
         verification_code:   generateVerificationCode(),
         status:              'submitted',
