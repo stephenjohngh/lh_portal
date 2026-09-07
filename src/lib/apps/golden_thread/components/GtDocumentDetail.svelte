@@ -25,6 +25,7 @@
   import FormTextarea    from '$lib/components/common/FormTextarea.svelte';
   import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import { logAudit } from '$lib/utils/auditLogger';
 
   /** @type {any} */
   export let doc;
@@ -43,6 +44,23 @@
   $: if (doc?.id && doc.id !== loadedLinksFor) {
     loadedLinksFor = doc.id;
     gtStore.loadLinks(doc.id);
+  }
+
+  // ── View logging for sensitive documents (EXT-15.R3) ────────────────────────
+  // Access to sensitive material is logged, not just changes to it — RLS
+  // (188) controls who CAN see it; this records that someone DID. Keyed on
+  // id, fire-and-forget, and only for the classification that actually
+  // matters — logging every routine 'official' view would just be noise.
+  let loggedViewFor = null;
+  $: if (doc?.id && doc.id !== loggedViewFor
+         && (doc.security_classification === 'official_sensitive' || doc.contains_pii)) {
+    loggedViewFor = doc.id;
+    logAudit('view', 'gt_document', doc.id, doc.reference ?? doc.title, {
+      appId: 'golden_thread',
+      eventCategory: 'golden_thread',
+      severity: 'info',
+      afterData: { security_classification: doc.security_classification, contains_pii: doc.contains_pii }
+    });
   }
 
   // ── Audit history (admin-only; RLS blocks non-admins) ───────────────────────
