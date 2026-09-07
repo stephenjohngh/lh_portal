@@ -23,6 +23,8 @@
   let editBuilding = '';
   let editFloorId  = '';
   let editDesc     = '';
+  let editClassification = 'official';   // 'official' | 'official_sensitive'
+  let editContainsPii    = false;
   let imageFile    = null;
   let imagePreview = null;  // object URL for preview thumbnail
   let dragOver     = false;
@@ -91,24 +93,32 @@
         editBuilding       = plan.building    ?? '';
         editFloorId        = plan.floor_id    ?? '';
         editDesc           = plan.description ?? '';
+        editClassification = plan.security_classification ?? 'official';
+        editContainsPii    = plan.contains_pii ?? false;
         importTargetPlanId = '';
       } else if (mode === 'copy' && plan) {
         editName           = `Copy of ${plan.name ?? plan.building ?? 'Plan'}`;
         editBuilding       = plan.building ?? '';
         editFloorId        = plan.floor_id ?? '';
         editDesc           = '';
+        editClassification = plan.security_classification ?? 'official';
+        editContainsPii    = plan.contains_pii ?? false;
         importTargetPlanId = '';
       } else if (mode === 'import' && plan) {
         editName           = '';
         editBuilding       = '';
         editFloorId        = '';
         editDesc           = '';
+        editClassification = 'official';
+        editContainsPii    = false;
         importTargetPlanId = '';
       } else {
         editName           = '';
         editBuilding       = '';
         editFloorId        = '';
         editDesc           = '';
+        editClassification = 'official';
+        editContainsPii    = false;
         importTargetPlanId = '';
       }
       copyTypeCode = '';   // default to "all types" every open
@@ -162,6 +172,8 @@
         building:    editBuilding.trim(),
         floor_id:    editFloorId      || null,
         description: editDesc.trim()  || null,
+        security_classification: editClassification,
+        contains_pii: editContainsPii,
       }, imageFile);
       dispatch('done', { plan: created, action: 'created' });
       show = false;
@@ -181,6 +193,8 @@
         building:    editBuilding.trim(),
         floor_id:    editFloorId      || null,
         description: editDesc.trim()  || null,
+        security_classification: editClassification,
+        contains_pii: editContainsPii,
       });
       if (imageFile) {
         updated = await buildingAssetsStore.replacePlanImage(plan.id, imageFile);
@@ -470,6 +484,32 @@
                  focus:outline-none focus:border-purple-500 disabled:opacity-50 resize-none"
         ></textarea>
       </div>
+
+      <!-- -- Security classification (drives RLS — see migration 190) ---- -->
+      <div class="flex flex-col gap-1">
+        <label for="pa-classification" class="text-xs text-slate-400">Security classification</label>
+        <select
+          id="pa-classification"
+          bind:value={editClassification}
+          disabled={saving}
+          class="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-white
+                 focus:outline-none focus:border-purple-500 disabled:opacity-50"
+        >
+          <option value="official">Official</option>
+          <option value="official_sensitive">Official-Sensitive</option>
+        </select>
+        {#if editClassification === 'official_sensitive'}
+          <p class="text-[11px] text-amber-400/90">
+            Only visible to admins and to Building Assets / Inspection / Mobile
+            Plan users — hidden from every other app's users.
+          </p>
+        {/if}
+      </div>
+
+      <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-400">
+        <input type="checkbox" bind:checked={editContainsPii} disabled={saving} />
+        Contains personal data
+      </label>
     {/if}
 
     <!-- -- Image upload (new, and replace section for edit) ----- -->

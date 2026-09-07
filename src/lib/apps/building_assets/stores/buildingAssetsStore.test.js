@@ -291,6 +291,32 @@ describe('planActions', () => {
     expect(get(store).plans).toContainEqual(plan);
   });
 
+  it('createPlan defaults to official, non-PII when no classification is given', async () => {
+    const file = { name: 'floor.png' };
+    await store.createPlan({ building: 'Block A' }, file);
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'plans')[1];
+    expect(arg).toMatchObject({ security_classification: 'official', contains_pii: false });
+  });
+
+  it('createPlan passes through an explicit official_sensitive classification', async () => {
+    const file = { name: 'floor.png' };
+    await store.createPlan({ building: 'Block A', security_classification: 'official_sensitive', contains_pii: true }, file);
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'plans')[1];
+    expect(arg).toMatchObject({ security_classification: 'official_sensitive', contains_pii: true });
+  });
+
+  it('copyPlan inherits the source plan\'s classification rather than resetting it', async () => {
+    h.setTables({
+      plans: [{ id: 'p1', building: 'A', floor_id: 'f1', image_url: 'img', name: 'Src',
+                security_classification: 'official_sensitive', contains_pii: true }],
+      floors: [{ id: 'f1', short_name: 'L1' }, { id: 'f2', short_name: 'L2' }],
+    });
+    await store.load();
+    await store.copyPlan('p1', { name: 'Copy', floor_id: 'f2' });
+    const arg = h.api.create.mock.calls.find(c => c[0] === 'plans')[1];
+    expect(arg).toMatchObject({ security_classification: 'official_sensitive', contains_pii: true });
+  });
+
   it('updatePlanScale writes the scale ref + aspect ratio', async () => {
     await loadCompsPlan([{ id: 'p1', building: 'A' }]);
     await store.updatePlanScale('p1', { x1: 0, y1: 0, x2: 1, y2: 1, metres: 5 }, 1.5);

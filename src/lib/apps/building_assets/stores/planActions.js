@@ -53,7 +53,7 @@ export function createPlanActions(update, supabase) {
   }
 
   // -- Create a new plan (uploads image first) ---------------------------
-  // data: { name, building, floor_id, description }
+  // data: { name, building, floor_id, description, security_classification, contains_pii }
   async function createPlan(data, file) {
     const userId = requireUserId();
     const imageUrl = await uploadPlanImage(file);
@@ -62,6 +62,8 @@ export function createPlanActions(update, supabase) {
       building:    data.building?.trim()    || '',
       floor_id:    data.floor_id            || null,
       description: data.description?.trim() || null,
+      security_classification: data.security_classification || 'official',
+      contains_pii: data.contains_pii ?? false,
       image_url:   imageUrl,
       created_by:  userId,
       updated_by:  userId
@@ -79,6 +81,7 @@ export function createPlanActions(update, supabase) {
   }
 
   // -- Update plan metadata (no image change) ----------------------------
+  // data: { name, building, floor_id, description, security_classification, contains_pii }
   async function updatePlanInfo(planId, data) {
     const userId = requireUserId();
     const updated = await api.update('plans', planId, {
@@ -86,6 +89,8 @@ export function createPlanActions(update, supabase) {
       building:    data.building?.trim()    || '',
       floor_id:    data.floor_id            || null,
       description: data.description?.trim() || null,
+      security_classification: data.security_classification || 'official',
+      contains_pii: data.contains_pii ?? false,
       updated_by:  userId
     });
     update(s => ({
@@ -168,6 +173,12 @@ export function createPlanActions(update, supabase) {
       image_url:          sourcePlan.image_url,
       image_aspect_ratio: sourcePlan.image_aspect_ratio                  || null,
       scale_ref:          sourcePlan.scale_ref                           || null,
+      // Inherit classification from the source — a copy of a sensitive plan
+      // stays sensitive by default. The admin can loosen it afterwards via
+      // Edit; a copy silently defaulting to 'official' would be the wrong
+      // direction to fail in.
+      security_classification: sourcePlan.security_classification        || 'official',
+      contains_pii:       sourcePlan.contains_pii                        ?? false,
       created_by:         userId,
       updated_by:         userId
     });
