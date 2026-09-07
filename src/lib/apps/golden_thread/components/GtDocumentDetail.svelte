@@ -26,6 +26,7 @@
   import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
   import { logAudit } from '$lib/utils/auditLogger';
+  import { shouldLogView } from '$lib/apps/golden_thread/utils/gtAccessLog.js';
 
   /** @type {any} */
   export let doc;
@@ -48,12 +49,13 @@
 
   // ── View logging for sensitive documents (EXT-15.R3) ────────────────────────
   // Access to sensitive material is logged, not just changes to it — RLS
-  // (188) controls who CAN see it; this records that someone DID. Keyed on
-  // id, fire-and-forget, and only for the classification that actually
-  // matters — logging every routine 'official' view would just be noise.
+  // (188) controls who CAN see it; this records that someone DID. The
+  // predicate (which documents, and the once-per-id dedup) is a tested pure
+  // function — see gtAccessLog.test.js — rather than inline in this `$:`,
+  // because that shape has already caused real bugs elsewhere in the
+  // codebase when it re-fired on every re-render instead of once per id.
   let loggedViewFor = null;
-  $: if (doc?.id && doc.id !== loggedViewFor
-         && (doc.security_classification === 'official_sensitive' || doc.contains_pii)) {
+  $: if (shouldLogView(doc, loggedViewFor)) {
     loggedViewFor = doc.id;
     logAudit('view', 'gt_document', doc.id, doc.reference ?? doc.title, {
       appId: 'golden_thread',
