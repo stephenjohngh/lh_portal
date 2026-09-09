@@ -20,6 +20,7 @@
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import InspectionDefinitionsTab from './components/InspectionDefinitionsTab.svelte';
+  import DisplayRegisterTab from './components/DisplayRegisterTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
@@ -41,6 +42,7 @@
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
+    { id: 'display-register', icon: '📌', label: 'Display Register' },
   ];
   
   // Modal states
@@ -311,6 +313,9 @@
 
   {:else if activeTab === 'documents'}
     <DocumentsTab />
+
+  {:else if activeTab === 'display-register'}
+    <DisplayRegisterTab />
   {/if}
 </div>
 
