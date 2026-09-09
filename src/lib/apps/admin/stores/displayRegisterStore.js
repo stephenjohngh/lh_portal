@@ -24,6 +24,8 @@ function byLocationThenTitle(a, b) {
     || (a.title ?? '').localeCompare(b.title ?? '');
 }
 
+export const SINGLETON_CATEGORIES = ['ap_notice', 'bac'];
+
 function toRow(data, uid, { isCreate }) {
   const row = {
     title:                 (data.title ?? '').trim(),
@@ -31,7 +33,7 @@ function toRow(data, uid, { isCreate }) {
     current_version:       data.current_version?.trim() || null,
     approval_date:         data.approval_date || null,
     review_date:           data.review_date || null,
-    display_location:      (data.display_location ?? '').trim(),
+    display_location:      (data.display_location ?? '').trim() || null,
     accessible_format:     data.accessible_format?.trim() || null,
     responsible_person_id: data.responsible_person_id || null,
     inspection_frequency_days: data.inspection_frequency_days === '' || data.inspection_frequency_days == null
@@ -40,6 +42,9 @@ function toRow(data, uid, { isCreate }) {
     updated_by:            uid,
   };
   if (isCreate) row.created_by = uid;
+  // Filling in a seeded not_set singleton (or any freshly-created item) with
+  // real content means it's now on display — see migration 199's header.
+  if (data.previousStatus === 'not_set') row.status = 'displayed';
   return row;
 }
 
@@ -117,6 +122,10 @@ function createDisplayRegisterStore() {
   }
 
   async function remove(id) {
+    const existing = _snapshot.find(i => i.id === id);
+    if (existing && SINGLETON_CATEGORIES.includes(existing.category)) {
+      throw new Error(`${existing.category === 'ap_notice' ? 'The AP notice' : 'The BAC'} slot cannot be deleted — s.82 requires it. Clear its fields instead if it no longer applies.`);
+    }
     const name = getTitle(id);
     await api.delete('display_items', id);
     update(s => ({ ...s, items: s.items.filter(i => i.id !== id) }));

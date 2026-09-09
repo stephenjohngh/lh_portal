@@ -1,7 +1,14 @@
 <!-- src/lib/apps/admin/components/DisplayItemModal.svelte -->
 <!-- Create / edit a display_items row (BSA s.82 register). Registration fields
      only (R5) — refresh/exception handling (R6) is done from the register row
-     itself via displayRegisterStore.setStatus, not here. -->
+     itself via displayRegisterStore.setStatus, not here.
+
+     Category is fixed context, not a field the user picks here: for ap_notice
+     /bac this is always an EDIT of the seeded singleton row (see migration
+     199); for compliance_notice/other it's whichever "+ Add" button in
+     DisplayRegisterTab opened this modal. There is no category picker because
+     there is nothing to pick — s.82 names the three categories, the register
+     doesn't ask the user to reclassify a slot. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import Modal        from '$lib/components/common/Modal.svelte';
@@ -13,21 +20,22 @@
 
   /** @typedef {import('$lib/database.types').Tables<'display_items'>} DisplayItem */
   /** @type {DisplayItem|null} */
-  export let item = null;   // row or null (create)
+  export let item = null;   // row or null (create — only for compliance_notice/other)
+  /** @type {'ap_notice'|'bac'|'compliance_notice'|'other'} */
+  export let category;
   export let saving = false;
 
   const dispatch = createEventDispatcher();
   const isEdit = !!item;
 
-  const CATEGORY_OPTIONS = [
-    { value: 'ap_notice',         label: 'Accountable Persons notice' },
-    { value: 'bac',                label: 'Building Assessment Certificate' },
-    { value: 'compliance_notice', label: 'Compliance notice' },
-    { value: 'other',              label: 'Other' },
-  ];
+  const CATEGORY_TITLE = {
+    ap_notice:         'Accountable Persons notice',
+    bac:               'Building Assessment Certificate',
+    compliance_notice: isEdit ? 'Edit compliance notice' : 'New compliance notice',
+    other:             isEdit ? 'Edit display item' : 'New display item',
+  };
 
   let title             = item?.title ?? '';
-  let category          = item?.category ?? 'other';
   let currentVersion    = item?.current_version ?? '';
   let approvalDate      = item?.approval_date ?? '';
   let reviewDate        = item?.review_date ?? '';
@@ -57,6 +65,7 @@
       id: item?.id ?? null,
       data: {
         title, category,
+        previousStatus: item?.status ?? null,
         current_version: currentVersion,
         approval_date: approvalDate,
         review_date: reviewDate,
@@ -70,10 +79,16 @@
   }
 </script>
 
-<Modal show={true} title={isEdit ? 'Edit display item' : 'New display item'} size="medium" on:close={() => dispatch('close')}>
+<Modal show={true} title={CATEGORY_TITLE[category]} size="medium" on:close={() => dispatch('close')}>
   <div class="flex flex-col gap-1">
+    {#if item?.status === 'not_set'}
+      <p class="not-set-hint">
+        BSA s.82 requires this to be displayed in the building. Fill in its
+        details below to mark it as displayed.
+      </p>
+    {/if}
+
     <FormInput label="Title" required bind:value={title} placeholder="e.g. Accountable Persons Notice" disabled={saving} />
-    <FormSelect label="Category" options={CATEGORY_OPTIONS} bind:value={category} placeholder="" disabled={saving} />
     <FormInput label="Current version" bind:value={currentVersion} placeholder="e.g. v3" disabled={saving} />
 
     <div class="grid grid-cols-2 gap-3">
@@ -108,3 +123,11 @@
     </div>
   </svelte:fragment>
 </Modal>
+
+<style>
+  .not-set-hint {
+    font-size: 0.8rem; color: rgb(251 191 36); background: rgb(251 191 36 / 0.1);
+    border: 1px solid rgb(251 191 36 / 0.3); border-radius: 6px; padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+</style>
