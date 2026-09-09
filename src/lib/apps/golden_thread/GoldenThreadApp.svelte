@@ -79,6 +79,8 @@
   ];
 
   $: accountablePersons = $gtStore.accountablePersons;
+  $: safetyCaseNotifications = $gtStore.safetyCaseNotifications;
+  $: gtCanEdit = $permissions.isAdmin || $permissions.canModify;
 
   // Safety Case — reads register + completeness + MOR occurrences into one model
   // (the same shape as the Word export). MOR cases are loaded lazily on open.
@@ -107,6 +109,14 @@
     } finally {
       scExporting = false;
     }
+  }
+
+  async function logSafetyCaseRevision(e) {
+    await gtStore.addSafetyCaseNotification(e.detail);
+  }
+  async function markSafetyCaseNotified(e) {
+    const { id, notification_reference } = e.detail;
+    await gtStore.notifyRegulator(id, { notification_reference });
   }
 
   // What the register table shows: time-travel snapshot if a date is set,
@@ -199,6 +209,7 @@
         morCasesLoaded = true;
         try { morCases = await listMorCases(); } catch { morCases = []; }
       }
+      if (safetyCaseNotifications.length === 0) await gtStore.loadSafetyCaseNotifications();
     }
     // Auto-run the read-only tick on first open so the admin sees the current
     // summary without a click; the button remains for a manual refresh.
@@ -399,7 +410,12 @@
       model={safetyCaseModel}
       exporting={scExporting}
       exportError={scExportError}
+      notifications={safetyCaseNotifications}
+      notifying={$gtStore.saving}
+      canEdit={gtCanEdit}
       on:export={exportSafetyCase}
+      on:logRevision={logSafetyCaseRevision}
+      on:markNotified={markSafetyCaseNotified}
     />
 
   {:else if activeTab === 'risks'}

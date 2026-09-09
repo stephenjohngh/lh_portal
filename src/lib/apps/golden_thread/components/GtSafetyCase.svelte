@@ -6,19 +6,41 @@
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/common/Button.svelte';
-  import Badge  from '$lib/components/common/Badge.svelte';
+  import Button      from '$lib/components/common/Button.svelte';
+  import Badge        from '$lib/components/common/Badge.svelte';
+  import FormInput    from '$lib/components/common/FormInput.svelte';
   import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE, AP_ROLE_LABEL, AP_ROLE_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
+  import { pendingNotifications, daysPending } from '$lib/apps/golden_thread/utils/gtSafetyCaseNotification.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
 
   /** @type {any} */
   export let model;
   export let exporting = false;
   export let exportError = '';
+  /** @type {any[]} */
+  export let notifications = [];
+  export let notifying = false;
+  export let canEdit = false;
 
   const dispatch = createEventDispatcher();
 
   $: s = model?.summary ?? {};
+  $: todayISO = (model?.generatedAt ?? new Date().toISOString()).slice(0, 10);
+  $: pending  = pendingNotifications(notifications);
+  $: notified = notifications.filter((n) => n.notified_at);
+
+  let description = '';
+  let reason = '';
+  function logRevision() {
+    if (!description.trim()) return;
+    dispatch('logRevision', { description: description.trim(), reason: reason.trim() || null });
+    description = ''; reason = '';
+  }
+
+  let referenceById = {};   // notification id -> in-progress reference text
+  function markNotified(n) {
+    dispatch('markNotified', { id: n.id, notification_reference: (referenceById[n.id] ?? '').trim() || null });
+  }
   $: tiles = [
     { label: 'Current documents', value: s.current ?? 0 },
     { label: 'Safety-critical',   value: s.safetyCritical ?? 0 },
@@ -46,6 +68,70 @@
       {#if exportError}<p class="text-xs text-red-400 max-w-xs text-right">{exportError}</p>{/if}
     </div>
   </div>
+
+  <!-- Regulator notification (EXT-13.R2 / s.86) -->
+  <section class="rounded-lg border border-slate-700 bg-slate-800/40 p-4 space-y-3">
+    <div>
+      <h3 class="text-sm font-semibold text-slate-300">Regulator notification</h3>
+      <p class="text-xs text-slate-500 mt-0.5">
+        When the safety case has been revised, log it here so the PAP can notify
+        the regulator as soon as reasonably practicable. The duty is the PAP's —
+        this just tracks that it hasn't been forgotten.
+      </p>
+    </div>
+
+    {#if pending.length > 0}
+      <ul class="space-y-2">
+        {#each pending as n (n.id)}
+          <li class="rounded-lg border border-amber-700/40 bg-amber-900/10 px-3 py-2">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="text-sm text-white">{n.description}</p>
+                {#if n.reason}<p class="text-xs text-slate-400 mt-0.5">{n.reason}</p>{/if}
+                <p class="text-[11px] text-amber-400/90 mt-1">
+                  Logged {fmtDate(n.created_at)} · pending {daysPending(n, todayISO)} day{daysPending(n, todayISO) === 1 ? '' : 's'}
+                </p>
+              </div>
+              {#if canEdit}
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <input type="text" placeholder="Reference (optional)"
+                    bind:value={referenceById[n.id]}
+                    class="w-36 text-xs bg-slate-900 border border-slate-600 rounded px-2 py-1 text-slate-200
+                           focus:outline-none focus:border-purple-500" />
+                  <Button variant="secondary" size="small" loading={notifying} disabled={notifying}
+                    on:click={() => markNotified(n)}>Mark notified</Button>
+                </div>
+              {/if}
+            </div>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="text-sm text-slate-500 italic">Nothing pending notification.</p>
+    {/if}
+
+    {#if canEdit}
+      <form class="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end pt-1" on:submit|preventDefault={logRevision}>
+        <FormInput label="What changed" bind:value={description} placeholder="e.g. Annual safety case update" />
+        <FormInput label="Reason (optional)" bind:value={reason} placeholder="e.g. Post-MOR revision" />
+        <Button type="submit" variant="secondary" disabled={!description.trim() || notifying}>Log revision</Button>
+      </form>
+    {/if}
+
+    {#if notified.length > 0}
+      <details class="text-xs text-slate-500">
+        <summary class="cursor-pointer select-none">Notified ({notified.length})</summary>
+        <ul class="mt-2 space-y-1">
+          {#each notified as n (n.id)}
+            <li>
+              {n.description} — notified {fmtDate(n.notified_at)}
+              {#if n.notification_reference}(ref {n.notification_reference}){/if}
+            </li>
+          {/each}
+        </ul>
+      </details>
+    {/if}
+  </section>
 
   <!-- Overview tiles -->
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">

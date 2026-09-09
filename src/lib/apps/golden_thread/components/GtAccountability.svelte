@@ -32,6 +32,8 @@
   let appointed_on = '';
   let duties = '';
   let contact = '';
+  let building_part = 'Whole building';
+  let legal_basis = '';
   let formError = '';
 
   async function add() {
@@ -44,9 +46,12 @@
       appointed_on: appointed_on || null,
       duties: duties.trim() || null,
       contact: contact.trim() || null,
+      building_part: building_part.trim() || 'Whole building',
+      legal_basis: legal_basis.trim() || null,
     });
     if (r.success) {
       role = 'pap'; name = ''; organisation = ''; appointed_on = ''; duties = ''; contact = '';
+      building_part = 'Whole building'; legal_basis = '';
     } else {
       formError = r.error ?? 'Failed to add.';
     }
@@ -80,9 +85,13 @@
       <FormInput label="Organisation" bind:value={organisation} placeholder="optional" />
       <FormInput label="Appointed on" type="date" bind:value={appointed_on} />
       <FormInput label="Contact" bind:value={contact} placeholder="optional" />
+      <FormInput label="Part of the building" bind:value={building_part}
+        placeholder="e.g. Whole building, or Block A" />
+      <FormInput label="Legal basis" bind:value={legal_basis}
+        placeholder="e.g. Freeholder, RMC, lease clause 4.2" />
       <div class="sm:col-span-2">
         <FormTextarea label="Duties / scope" bind:value={duties} rows={2}
-          placeholder="Parts of the building / systems this person is accountable for" />
+          placeholder="What this person is accountable for, day to day" />
       </div>
       <div class="sm:col-span-2">
         <Button type="submit" variant="primary" loading={saving} disabled={saving}>Add to register</Button>
@@ -105,8 +114,10 @@
                 <Badge color={AP_ROLE_BADGE[p.role] ?? 'bg-slate-500'}>{AP_ROLE_LABEL[p.role] ?? p.role}</Badge>
                 <span class="text-sm text-white">{p.name}</span>
                 {#if p.organisation}<span class="text-xs text-slate-500">· {p.organisation}</span>{/if}
+                {#if p.building_part}<span class="text-xs text-slate-500">· {p.building_part}</span>{/if}
               </div>
               {#if p.duties}<p class="text-xs text-slate-400 mt-1">{p.duties}</p>{/if}
+              {#if p.legal_basis}<p class="text-[11px] text-slate-500 mt-0.5">Legal basis: {p.legal_basis}</p>{/if}
               <p class="text-[11px] text-slate-500 mt-1">
                 {#if p.appointed_on}Appointed {fmtDate(p.appointed_on)}{/if}
                 {#if p.contact}{#if p.appointed_on} · {/if}{p.contact}{/if}

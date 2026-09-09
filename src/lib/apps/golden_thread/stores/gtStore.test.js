@@ -24,7 +24,10 @@ const { api, getUser, logAudit, pub } = vi.hoisted(() => ({
     removeLink: vi.fn(),
     listPersons: vi.fn(async () => []),
     createPerson: vi.fn(),
-    listAuditHistory: vi.fn(async () => [])
+    listAuditHistory: vi.fn(async () => []),
+    listSafetyCaseNotifications: vi.fn(async () => []),
+    createSafetyCaseNotification: vi.fn(),
+    markSafetyCaseNotified: vi.fn(),
   }
 }));
 
@@ -152,6 +155,22 @@ describe('gtStore people & audit', () => {
     expect(res.success).toBe(true);
     expect(pub.createPerson).toHaveBeenCalledWith({ full_name: 'Jo Bloggs', role: 'author' }, 'user-1');
     expect(get(gtStore).persons).toHaveLength(1);
+  });
+
+  it('addSafetyCaseNotification logs the revision and refreshes the list', async () => {
+    pub.createSafetyCaseNotification.mockResolvedValueOnce({ id: 'n1', description: 'Annual update' });
+    pub.listSafetyCaseNotifications.mockResolvedValueOnce([{ id: 'n1', description: 'Annual update', notified_at: null }]);
+    const res = await gtStore.addSafetyCaseNotification({ description: 'Annual update', reason: null });
+    expect(res.success).toBe(true);
+    expect(pub.createSafetyCaseNotification).toHaveBeenCalledWith({ description: 'Annual update', reason: null }, 'user-1');
+    expect(get(gtStore).safetyCaseNotifications).toHaveLength(1);
+  });
+
+  it('notifyRegulator marks it notified and refreshes the list', async () => {
+    pub.listSafetyCaseNotifications.mockResolvedValueOnce([]);
+    const res = await gtStore.notifyRegulator('n1', { notification_reference: 'REF-1' });
+    expect(res.success).toBe(true);
+    expect(pub.markSafetyCaseNotified).toHaveBeenCalledWith('n1', { notification_reference: 'REF-1' }, 'user-1');
   });
 
   it('loadAuditHistory falls back to empty when RLS blocks a non-admin', async () => {

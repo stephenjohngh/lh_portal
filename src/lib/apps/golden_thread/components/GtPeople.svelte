@@ -8,8 +8,9 @@
   import { gtStore } from '$lib/apps/golden_thread/stores/gtStore';
   import { PERSON_ROLES } from '$lib/apps/golden_thread/utils/gtConstants.js';
   import { COMPETENCIES, COMPETENCE_LABELS, competenceExpired } from '$lib/apps/golden_thread/utils/gtCompetence.js';
-  import FormInput  from '$lib/components/common/FormInput.svelte';
-  import FormSelect from '$lib/components/common/FormSelect.svelte';
+  import FormInput    from '$lib/components/common/FormInput.svelte';
+  import FormSelect   from '$lib/components/common/FormSelect.svelte';
+  import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import Button     from '$lib/components/common/Button.svelte';
   import Badge      from '$lib/components/common/Badge.svelte';
   import Modal      from '$lib/components/common/Modal.svelte';
@@ -49,9 +50,25 @@
   let editing = null;
   let editComp = new Set();
   let editExpiry = '';
-  function openEdit(p) { editing = p; editComp = new Set(p.competencies ?? []); editExpiry = p.competence_expiry ?? ''; }
+  let editLimitations = '';
+  let editSupervision = '';
+  let editReassessment = '';
+  function openEdit(p) {
+    editing = p;
+    editComp = new Set(p.competencies ?? []);
+    editExpiry = p.competence_expiry ?? '';
+    editLimitations = p.limitations ?? '';
+    editSupervision = p.supervision_requirements ?? '';
+    editReassessment = p.reassessment_triggers ?? '';
+  }
   async function saveEdit() {
-    const r = await gtStore.editPerson(editing.id, { competencies: [...editComp], competence_expiry: editExpiry || null });
+    const r = await gtStore.editPerson(editing.id, {
+      competencies: [...editComp],
+      competence_expiry: editExpiry || null,
+      limitations: editLimitations.trim() || null,
+      supervision_requirements: editSupervision.trim() || null,
+      reassessment_triggers: editReassessment.trim() || null,
+    });
     if (r.success) editing = null;
   }
 </script>
@@ -100,6 +117,8 @@
             {:else}
               <p class="text-[11px] text-slate-600 mt-0.5">No competencies recorded</p>
             {/if}
+            {#if p.limitations}<p class="text-[11px] text-amber-400/90 mt-1">Limitations: {p.limitations}</p>{/if}
+            {#if p.supervision_requirements}<p class="text-[11px] text-slate-500 mt-0.5">Supervision: {p.supervision_requirements}</p>{/if}
           </div>
           <Button variant="secondary" size="small" on:click={() => openEdit(p)}>Competence</Button>
         </li>
@@ -122,6 +141,12 @@
         </div>
       </div>
       <FormInput label="Competence expiry (optional)" type="date" bind:value={editExpiry} />
+      <FormTextarea label="Limitations (optional)" bind:value={editLimitations} rows={2}
+        placeholder="Anything this person's competence does NOT extend to" />
+      <FormTextarea label="Supervision requirements (optional)" bind:value={editSupervision} rows={2}
+        placeholder="e.g. Sign-off required from a senior reviewer" />
+      <FormTextarea label="Reassessment triggers (optional)" bind:value={editReassessment} rows={2}
+        placeholder="What should prompt a fresh competence check, besides a fixed expiry date" />
       <div class="flex justify-end gap-2">
         <Button variant="secondary" on:click={() => (editing = null)}>Cancel</Button>
         <Button variant="primary" loading={saving} disabled={saving} on:click={saveEdit}>Save</Button>

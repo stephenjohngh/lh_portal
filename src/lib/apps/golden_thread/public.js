@@ -323,6 +323,34 @@ export function updateAccountablePerson(id, patch, userId) {
   }, true);
 }
 
+// ── Safety-case revision -> regulator notification (EXT-13.R2) ───────────────
+
+/** List safety-case notification log rows, newest first. */
+export function listSafetyCaseNotifications() {
+  return api.get('gt_safety_case_notifications', { orderBy: 'created_at', ascending: false });
+}
+
+/**
+ * Log a safety-case revision, pending notification to the regulator.
+ * @param {{ description: string, reason?: string|null }} data
+ * @param {string} userId
+ */
+export function createSafetyCaseNotification(data, userId) {
+  return api.create('gt_safety_case_notifications', { ...data, created_by: userId }, true);
+}
+
+/**
+ * Mark a notification as done — the PAP has told the regulator.
+ * @param {string} id
+ * @param {{ notification_reference?: string|null }} patch
+ * @param {string} userId
+ */
+export function markSafetyCaseNotified(id, patch, userId) {
+  return api.update('gt_safety_case_notifications', id, {
+    ...patch, notified_at: new Date().toISOString(), notified_by: userId,
+  }, true);
+}
+
 // ── Audit history (read; admin-gated by RLS) ─────────────────────────────────
 
 /**

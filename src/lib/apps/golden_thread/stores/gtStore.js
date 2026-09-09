@@ -21,7 +21,8 @@ import {
   scheduleOneCompleteness, registerDocument,
   listCitations, listDocumentLinks, cite, removeLink,
   listPersons, createPerson, updatePerson, listAuditHistory,
-  listAccountablePersons, createAccountablePerson, updateAccountablePerson
+  listAccountablePersons, createAccountablePerson, updateAccountablePerson,
+  listSafetyCaseNotifications, createSafetyCaseNotification, markSafetyCaseNotified
 } from '$lib/apps/golden_thread/public.js';
 
 const logger = getLogger('gtStore');
@@ -47,6 +48,7 @@ function createGtStore() {
     categories:       /** @type {any[]} */ ([]),   // applicable Schedule-1 categories (for the ingest form)
     persons:          /** @type {any[]} */ ([]),   // gt_persons registry (authors/reviewers)
     accountablePersons: /** @type {any[]} */ ([]), // gt_accountable_persons (AP/PAP register)
+    safetyCaseNotifications: /** @type {any[]} */ ([]), // gt_safety_case_notifications (EXT-13.R2)
     links:            /** @type {{ outgoing: any[], incoming: any[] }} */ ({ outgoing: [], incoming: [] }),
     auditHistory:     /** @type {any[]} */ ([]),   // gt_audit rows for the selected document (admin-readable)
     loading:          false,
@@ -216,6 +218,42 @@ function createGtStore() {
         appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info', afterData: patch
       });
       await loadAccountablePersons();
+    });
+  }
+
+  // ── Safety-case revision -> regulator notification (EXT-13.R2) ───────────────
+
+  /** Load the notification log. */
+  async function loadSafetyCaseNotifications() {
+    try {
+      const safetyCaseNotifications = await listSafetyCaseNotifications();
+      update((s) => ({ ...s, safetyCaseNotifications }));
+      return safetyCaseNotifications;
+    } catch (err) {
+      update((s) => ({ ...s, error: err.message }));
+      throw err;
+    }
+  }
+
+  /** Log a safety-case revision, then refresh. */
+  async function addSafetyCaseNotification(data) {
+    return run(async (userId) => {
+      const n = await createSafetyCaseNotification(data, userId);
+      logAudit('create', 'gt_safety_case_notification', n.id, n.description, {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
+      });
+      await loadSafetyCaseNotifications();
+    });
+  }
+
+  /** Mark a notification as told to the regulator, then refresh. */
+  async function notifyRegulator(id, patch) {
+    return run(async (userId) => {
+      await markSafetyCaseNotified(id, patch, userId);
+      logAudit('update', 'gt_safety_case_notification', id, patch?.notification_reference ?? '', {
+        appId: 'golden_thread', eventCategory: 'golden_thread', severity: 'info'
+      });
+      await loadSafetyCaseNotifications();
     });
   }
 
@@ -407,9 +445,13 @@ function createGtStore() {
     loadCompleteness,
     loadPersons,
     addPerson,
+    editPerson,
     loadAccountablePersons,
     addAccountablePerson,
     editAccountablePerson,
+    loadSafetyCaseNotifications,
+    addSafetyCaseNotification,
+    notifyRegulator,
     loadAuditHistory,
     loadLinks,
     addLink,
