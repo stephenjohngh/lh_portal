@@ -15,6 +15,7 @@
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import InspectionDefinitionModal from './InspectionDefinitionModal.svelte';
+  import StatutoryTemplatePanel from './StatutoryTemplatePanel.svelte';
 
   $: ({ definitions, loading, error } = $inspectionDefinitionsStore);
   $: bas = $buildingAssetsStore;
@@ -26,7 +27,12 @@
   let pendingDelete = null;
   let deletingId = null;
 
-  onMount(() => { if (definitions.length === 0) inspectionDefinitionsStore.load(); });
+  onMount(() => {
+    if (definitions.length === 0) inspectionDefinitionsStore.load();
+    // Which template entries this building has declared it does not have.
+    // Never fatal — without it the gap report simply asks about everything.
+    inspectionDefinitionsStore.loadTemplateDismissals();
+  });
 
   function matchCount(def) {
     if (!bas.components?.length) return null;
@@ -74,6 +80,10 @@
 
   {#if error}<ErrorDisplay message={error} />{/if}
 
+  <!-- The gap report sits ABOVE the list deliberately: what is absent is the
+       thing a list of what exists can never show you. -->
+  <StatutoryTemplatePanel {definitions} />
+
   {#if loading && definitions.length === 0}
     <LoadingSpinner />
   {:else if definitions.length === 0}
@@ -90,6 +100,9 @@
               {#if d.mode === 'rotating'}<span class="badge rot">Rotating</span>{/if}
               {#if !isWalkEvidenced(d)}<span class="badge job">Contractor job</span>
               {:else if isJobEvidenced(d)}<span class="badge job">Either route</span>{/if}
+              {#if d.template_key}
+                <span class="badge tmpl" title="Counts towards the statutory template above">Statutory</span>
+              {/if}
             </div>
             {#if d.description}<p class="desc">{d.description}</p>{/if}
             <div class="meta">
@@ -149,6 +162,7 @@
   .badge.off { background: rgb(71 85 105 / 0.4); color: rgb(148 163 184); }
   .badge.rot { background: rgb(251 146 60 / 0.2); color: rgb(251 146 60); }
   .badge.job { background: rgb(56 189 248 / 0.18); color: rgb(125 211 252); }
+  .badge.tmpl { background: rgb(248 113 113 / 0.16); color: rgb(252 165 165); }
   .desc { font-size: 0.8rem; color: rgb(148 163 184); margin-top: 0.2rem; }
   .meta { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgb(148 163 184); margin-top: 0.3rem; }
   .freq { color: rgb(203 213 225); }

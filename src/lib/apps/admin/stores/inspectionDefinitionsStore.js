@@ -12,8 +12,12 @@ import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { logAudit }  from '$lib/utils/auditLogger';
 import { EVIDENCE_ROUTES } from '$lib/utils/obligationEvidence.js';
+import { TEMPLATE_KEYS, templateEntry, templateToObligation } from '$lib/utils/statutoryTemplate.js';
 
 const logger = getLogger('InspectionDefinitions');
+
+/** portal_settings key holding the template entries this building has no such system for. */
+const TEMPLATE_DISMISSED_KEY = 'statutory_template_not_applicable';
 
 /** Numeric field from a form: '' / null / undefined / NaN all mean "not set". */
 function numOrNull(v) {
@@ -24,7 +28,7 @@ function numOrNull(v) {
 
 /**
  * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
- * @typedef {{ definitions: InspectionDefinition[], loading: boolean, error: string|null }} State
+ * @typedef {{ definitions: InspectionDefinition[], dismissedKeys: string[], loading: boolean, error: string|null }} State
  */
 
 function byOrderThenName(a, b) {
@@ -53,6 +57,13 @@ function toRow(data, uid, { isCreate }) {
     // Which occurrence stack discharges this (migration 203). Anything
     // unrecognised falls back to 'inspection' — the pre-203 behaviour.
     evidenced_by:       EVIDENCE_ROUTES.includes(data.evidenced_by) ? data.evidenced_by : 'inspection',
+    // G3 statutory reference + test type (migration 167). These were collected
+    // by the editor modal and dispatched in `data` but never written here, so
+    // typing a reference appeared to save and silently vanished — and the
+    // Building Assets inspections report, which prints `statutory_ref`
+    // per definition, has had nothing to print since G3 shipped.
+    statutory_ref:  data.statutory_ref?.trim() || null,
+    test_type:      data.test_type?.trim()     || null,
     // EXT-10.R1 statutory detail. All optional; null rather than '' so an
     // untouched field reads as "not recorded" and not as "recorded as blank".
     max_interval_days:       numOrNull(data.max_interval_days),
@@ -63,12 +74,17 @@ function toRow(data, uid, { isCreate }) {
     updated_by:         uid,
   };
   if (isCreate) row.created_by = uid;
+  // Only written when the caller actually supplies it. The edit modal has no
+  // template field, so folding a `?? null` in here would silently unlink an
+  // obligation from the statutory template every time someone edited it —
+  // turning a covered entry back into a gap for no reason the user can see.
+  if (data.template_key !== undefined) row.template_key = data.template_key;
   return row;
 }
 
 function createInspectionDefinitionsStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
-    definitions: [], loading: false, error: null,
+    definitions: [], dismissedKeys: [], loading: false, error: null,
   }));
 
   async function userId() {
@@ -126,12 +142,139 @@ function createInspectionDefinitionsStore() {
     logger('Deleted definition:', id);
   }
 
+  // ── M4 · the statutory template ────────────────────────────────────────
+  // See src/lib/utils/statutoryTemplate.js. Applying an entry creates an
+  // ordinary obligation carrying `template_key`; nothing about it is special
+  // afterwards, so it can be edited, rescoped or deleted like any other.
+
+  /**
+   * Create obligations from template entries, in template order.
+   *
+   * Applied one at a time rather than as a `createMany`: a template entry that
+   * fails (a name collision, say) should not take the other nineteen with it.
+   * The caller gets back what was created and what failed, so a partial apply
+   * can be reported honestly rather than as a blanket error.
+   * @param {string[]} keys
+   */
+  async function applyTemplate(keys) {
+    const uid = await userId();
+    const wanted = TEMPLATE_KEYS.filter(k => keys?.includes(k));   // template order, de-duplicated
+    // Keep applied entries below anything already ordered by hand.
+    const base = _snapshot.reduce((m, d) => Math.max(m, d.presentation_order ?? 0), 0);
+
+    const created = [];
+    const failed = [];
+    for (const [i, key] of wanted.entries()) {
+      const entry = templateEntry(key);
+      if (!entry) continue;
+      try {
+        const data = templateToObligation(entry, { presentationOrder: base + i + 1 });
+        const def = await api.create('statutory_obligations', toRow(data, uid, { isCreate: true }));
+        created.push(def);
+        logAudit('create', 'inspection_definition', def.id, def.name, {
+          appId: 'admin', eventCategory: 'admin', severity: 'info',
+          afterData: { template_key: key, frequency_days: def.frequency_days, evidenced_by: def.evidenced_by },
+        });
+      } catch (err) {
+        failed.push({ key, name: entry.name, message: err.message });
+        logger('⚠ Could not apply template entry', key, err.message);
+      }
+    }
+
+    if (created.length > 0) {
+      update(s => ({ ...s, definitions: [...s.definitions, ...created].sort(byOrderThenName) }));
+    }
+    logger('Applied', created.length, 'of', wanted.length, 'template entries');
+    return { created, failed };
+  }
+
+  /**
+   * Record that an existing obligation satisfies a template entry (or, with
+   * `key: null`, that it no longer does). This is the only way an obligation
+   * written by hand comes to count as coverage — deliberately a human action,
+   * because a guessed link would report a statutory gap as closed.
+   * @param {string} id
+   * @param {string|null} key
+   */
+  async function linkToTemplate(id, key) {
+    const uid = await userId();
+    const updated = await api.update('statutory_obligations', id, {
+      template_key: key ?? null, updated_by: uid,
+    });
+    update(s => ({
+      ...s,
+      definitions: s.definitions.map(d => d.id === id ? { ...d, ...updated } : d).sort(byOrderThenName),
+    }));
+    logAudit('update', 'inspection_definition', id, updated.name, {
+      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      afterData: { template_key: key ?? null },
+    });
+    logger(key ? `Linked ${id} to template entry ${key}` : `Unlinked ${id} from the template`);
+    return updated;
+  }
+
+  /**
+   * Template entries this building says it does not have — a block with no
+   * lift should not carry a permanent LOLER gap, because a report that is
+   * always red stops being read.
+   *
+   * Kept in `portal_settings` (the withdrawn-specifications precedent in
+   * worksSchedulesStore): it is one fact about the building, true for everyone
+   * who looks, and it costs no migration. Never fatal — without it every entry
+   * is simply still asked about.
+   */
+  async function loadTemplateDismissals() {
+    try {
+      const rows = await api.get('portal_settings', {
+        select: 'key, value', filters: { key: TEMPLATE_DISMISSED_KEY },
+      });
+      const value = rows[0]?.value;
+      const dismissedKeys = Array.isArray(value) ? value.filter(k => TEMPLATE_KEYS.includes(k)) : [];
+      update(s => ({ ...s, dismissedKeys }));
+      return dismissedKeys;
+    } catch (err) {
+      logger('⚠ Could not read template dismissals:', err.message);
+      return [];
+    }
+  }
+
+  /**
+   * @param {string} key
+   * @param {boolean} dismissed
+   * @param {string} [reason] free text — why this building has no such system
+   */
+  async function setTemplateDismissed(key, dismissed, reason = '') {
+    const uid = await userId();
+    const current = _dismissed;
+    const next = dismissed
+      ? [...new Set([...current, key])]
+      : current.filter(k => k !== key);
+
+    await api.upsert('portal_settings',
+      { key: TEMPLATE_DISMISSED_KEY, value: next, updated_by: uid },
+      { onConflict: 'key' });
+
+    update(s => ({ ...s, dismissedKeys: next }));
+    // Warning, not info: declaring a statutory obligation inapplicable is a
+    // compliance decision someone may later have to justify.
+    logAudit('update', 'portal_setting', TEMPLATE_DISMISSED_KEY, 'Statutory template — not applicable', {
+      appId: 'admin', eventCategory: 'admin', severity: 'warning',
+      afterData: { template_key: key, not_applicable: dismissed, reason: reason || null },
+    });
+    logger(dismissed ? `Template entry ${key} marked not applicable` : `Template entry ${key} reinstated`);
+    return next;
+  }
+
   // Read the current cached name for a definition (for audit before delete).
   let _snapshot = [];
-  subscribe(s => { _snapshot = s.definitions; });
+  let _dismissed = [];
+  subscribe(s => { _snapshot = s.definitions; _dismissed = s.dismissedKeys; });
   function getName(id) { return _snapshot.find(d => d.id === id)?.name ?? null; }
 
-  return { subscribe, load, create, save, remove };
+  return {
+    subscribe, load, create, save, remove,
+    applyTemplate, linkToTemplate, loadTemplateDismissals, setTemplateDismissed,
+  };
 }
 
 export const inspectionDefinitionsStore = createInspectionDefinitionsStore();

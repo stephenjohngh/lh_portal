@@ -63,13 +63,29 @@ export function computeInspectionSchedule(definitions, sessions, opts = {}) {
 /**
  * Human label for a frequency_days value. Mirrors the preset chips in the
  * Admin definition editor; null = on-demand (no cadence).
+ *
+ * ⚠ `maintenance/utils/maintenanceHelpers.js` has its own `frequencyLabel`.
+ * The two are kept in agreement — same labels for the same day counts — but
+ * they are still two implementations of one job, which is the shape that
+ * produced the addDaysISO bug. Worth consolidating; until then, change both.
+ * The longer cadences below exist because the statutory template introduces
+ * them (six-monthly servicing, five-yearly EICRs), and "Every 1825 days" is
+ * not how anyone describes an EICR.
  * @param {number|null|undefined} days
  * @returns {string}
  */
 export function frequencyLabel(days) {
   if (days == null) return 'On demand';
-  return { 7: 'Weekly', 30: 'Monthly', 90: 'Quarterly', 365: 'Annual' }[days]
-    ?? `Every ${days} days`;
+  return {
+    7: 'Weekly',
+    30: 'Monthly',    31: 'Monthly',
+    60: '2-Monthly',
+    90: 'Quarterly',  91: 'Quarterly',
+    180: '6-Monthly', 182: '6-Monthly', 183: '6-Monthly',
+    365: 'Annual',    366: 'Annual',
+    730: '2-Yearly',
+    1825: '5-Yearly',
+  }[days] ?? `Every ${days} days`;
 }
 
 /**

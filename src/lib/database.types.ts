@@ -4079,6 +4079,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           statutory_ref: string | null
+          template_key: string | null
           test_type: string | null
           max_interval_days: number | null
           responsible_party: string | null
@@ -4106,6 +4107,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           statutory_ref?: string | null
+          template_key?: string | null
           test_type?: string | null
           max_interval_days?: number | null
           responsible_party?: string | null
@@ -4133,6 +4135,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           statutory_ref?: string | null
+          template_key?: string | null
           test_type?: string | null
           max_interval_days?: number | null
           responsible_party?: string | null

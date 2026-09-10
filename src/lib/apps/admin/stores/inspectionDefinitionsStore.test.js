@@ -13,6 +13,7 @@ const h = vi.hoisted(() => {
     create: vi.fn((t, d) => Promise.resolve({ id: 'd-new', ...d })),
     update: vi.fn((t, id, d) => Promise.resolve({ id, ...d })),
     delete: vi.fn(() => Promise.resolve()),
+    upsert: vi.fn(() => Promise.resolve()),
   };
   const supabase = { auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'u1' } } })) } };
   const logAudit = vi.fn();
@@ -141,6 +142,22 @@ describe('create', () => {
     });
   });
 
+  // G3 (migration 167). The modal has always collected these two; toRow never
+  // wrote them, so a typed statutory reference vanished on save and the
+  // inspections report printed nothing. Regression-pinned here.
+  it('persists the G3 statutory reference and test type', async () => {
+    await defs.create(form({ statutory_ref: '  BS 5266-1  ', test_type: '  Duration  ' }));
+    expect(h.api.create.mock.calls[0][1]).toMatchObject({
+      statutory_ref: 'BS 5266-1',
+      test_type: 'Duration',
+    });
+  });
+
+  it('nulls a blank statutory reference rather than storing an empty string', async () => {
+    await defs.create(form({ statutory_ref: '   ', test_type: '' }));
+    expect(h.api.create.mock.calls[0][1]).toMatchObject({ statutory_ref: null, test_type: null });
+  });
+
   // EXT-10.R1 statutory detail (migration 203). All optional: an untouched
   // field must persist as null ("not recorded"), never as '' or 0.
   it('normalises the statutory-detail fields, blanks to null', async () => {
@@ -203,6 +220,144 @@ describe('remove', () => {
     expect(h.logAudit).toHaveBeenCalledWith(
       'delete', 'inspection_definition', 'd1', 'Emergency Lighting',
       expect.objectContaining({ appId: 'admin', severity: 'warning' }),
+    );
+  });
+});
+
+// ── M4 · the statutory template ────────────────────────────────────────────
+// The gap report is only as trustworthy as the link between an obligation and
+// a template entry, so these pin how that link is written and unwritten.
+
+describe('applyTemplate', () => {
+  // The store is a module singleton, so definitions carry over between tests.
+  // Load an empty list first, then clear the call log, so each test below sees
+  // an empty library and can index into the mock calls from zero.
+  beforeEach(async () => {
+    h.api.get.mockResolvedValueOnce([]);
+    await defs.load();
+    vi.clearAllMocks();
+  });
+
+  it('creates one obligation per key, carrying the template key and statutory detail', async () => {
+    const { created, failed } = await defs.applyTemplate(['gas_safety_check']);
+    expect(failed).toEqual([]);
+    expect(created).toHaveLength(1);
+
+    const row = h.api.create.mock.calls[0][1];
+    expect(h.api.create.mock.calls[0][0]).toBe('statutory_obligations');
+    expect(row).toMatchObject({
+      name: 'Gas safety check',
+      template_key: 'gas_safety_check',
+      frequency_days: 365,
+      evidenced_by: 'maintenance_job',
+      created_by: 'u1',
+      updated_by: 'u1',
+    });
+    expect(row.statutory_ref).toMatch(/Gas Safety/);
+  });
+
+  it('applies in template order regardless of the order asked for, and ignores unknown keys', async () => {
+    await defs.applyTemplate(['gas_safety_check', 'fser_communal_fire_doors', 'not_a_key']);
+    const keys = h.api.create.mock.calls.map(c => c[1].template_key);
+    expect(keys).toEqual(['fser_communal_fire_doors', 'gas_safety_check']);
+  });
+
+  // One failing entry must not take the rest of the template with it.
+  it('reports a partial apply rather than failing the whole batch', async () => {
+    h.api.create
+      .mockRejectedValueOnce(new Error('duplicate name'))
+      .mockResolvedValueOnce({ id: 'd2', name: 'Gas safety check' });
+
+    const { created, failed } = await defs.applyTemplate(['fser_communal_fire_doors', 'gas_safety_check']);
+    expect(created).toHaveLength(1);
+    expect(failed).toEqual([
+      expect.objectContaining({ key: 'fser_communal_fire_doors', message: 'duplicate name' }),
+    ]);
+    expect(get(defs).definitions).toHaveLength(1);
+  });
+
+  it('orders applied entries below anything already ordered by hand', async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'd1', name: 'Existing', presentation_order: 7 }]);
+    await defs.load();
+    await defs.applyTemplate(['gas_safety_check']);
+    expect(h.api.create.mock.calls[0][1].presentation_order).toBe(8);
+  });
+
+  it('audits each creation with the template key', async () => {
+    await defs.applyTemplate(['gas_safety_check']);
+    expect(h.logAudit).toHaveBeenCalledWith(
+      'create', 'inspection_definition', expect.any(String), 'Gas safety check',
+      expect.objectContaining({ afterData: expect.objectContaining({ template_key: 'gas_safety_check' }) }),
+    );
+  });
+});
+
+describe('linkToTemplate', () => {
+  it('writes the key onto an existing obligation', async () => {
+    await defs.linkToTemplate('d1', 'gas_safety_check');
+    expect(h.api.update).toHaveBeenCalledWith('statutory_obligations', 'd1',
+      { template_key: 'gas_safety_check', updated_by: 'u1' });
+  });
+
+  it('unlinks with null', async () => {
+    await defs.linkToTemplate('d1', null);
+    expect(h.api.update.mock.calls[0][2].template_key).toBeNull();
+  });
+});
+
+// The edit modal carries no template field. If save() defaulted the column to
+// null, editing a covered obligation would silently reopen a statutory gap.
+describe('save must not disturb an existing template link', () => {
+  it('omits template_key entirely when the caller did not supply one', async () => {
+    await defs.save('d1', form());
+    expect(h.api.update.mock.calls[0][2]).not.toHaveProperty('template_key');
+  });
+
+  it('still writes it when a caller does supply one', async () => {
+    await defs.save('d1', form({ template_key: 'gas_safety_check' }));
+    expect(h.api.update.mock.calls[0][2].template_key).toBe('gas_safety_check');
+  });
+});
+
+describe('template dismissals', () => {
+  it('reads them from portal_settings and drops keys not in the template', async () => {
+    h.api.get.mockResolvedValueOnce([{ key: 'x', value: ['gas_safety_check', 'stale_key'] }]);
+    const keys = await defs.loadTemplateDismissals();
+    expect(h.api.get).toHaveBeenCalledWith('portal_settings',
+      { select: 'key, value', filters: { key: 'statutory_template_not_applicable' } });
+    expect(keys).toEqual(['gas_safety_check']);
+    expect(get(defs).dismissedKeys).toEqual(['gas_safety_check']);
+  });
+
+  // Never fatal: without the setting every entry is simply still asked about.
+  it('degrades to an empty list rather than throwing', async () => {
+    h.api.get.mockRejectedValueOnce(new Error('offline'));
+    await expect(defs.loadTemplateDismissals()).resolves.toEqual([]);
+  });
+
+  it('upserts the key on, and off again, without duplicating', async () => {
+    h.api.get.mockResolvedValueOnce([{ key: 'x', value: ['gas_safety_check'] }]);
+    await defs.loadTemplateDismissals();
+
+    await defs.setTemplateDismissed('lift_maintenance', true, 'No lift');
+    expect(h.api.upsert).toHaveBeenCalledWith('portal_settings',
+      { key: 'statutory_template_not_applicable', value: ['gas_safety_check', 'lift_maintenance'], updated_by: 'u1' },
+      { onConflict: 'key' });
+
+    await defs.setTemplateDismissed('gas_safety_check', false);
+    expect(h.api.upsert.mock.calls[1][1].value).toEqual(['lift_maintenance']);
+  });
+
+  // Declaring a statutory obligation inapplicable is a decision someone may
+  // later have to justify, so it is not logged as routine config noise.
+  it('audits a dismissal as a warning, with the reason', async () => {
+    await defs.setTemplateDismissed('lift_maintenance', true, 'No lift — four storeys');
+    expect(h.logAudit).toHaveBeenCalledWith(
+      'update', 'portal_setting', 'statutory_template_not_applicable', expect.any(String),
+      expect.objectContaining({
+        severity: 'warning',
+        afterData: expect.objectContaining({ template_key: 'lift_maintenance', not_applicable: true, reason: 'No lift — four storeys' }),
+      }),
     );
   });
 });

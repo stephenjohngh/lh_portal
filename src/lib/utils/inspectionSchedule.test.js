@@ -221,6 +221,22 @@ describe('frequencyLabel', () => {
     expect(frequencyLabel(365)).toBe('Annual');
   });
 
+  it('names the longer cadences the statutory template uses', () => {
+    expect(frequencyLabel(182)).toBe('6-Monthly');
+    expect(frequencyLabel(730)).toBe('2-Yearly');
+    expect(frequencyLabel(1825)).toBe('5-Yearly');
+  });
+
+  // Two implementations of one label map is the shape that produced the
+  // addDaysISO bug, so pin them as agreeing rather than trusting they do.
+  it('agrees with the Maintenance app’s copy on every shared day count', async () => {
+    const { frequencyLabel: maintenanceLabel } =
+      await import('$lib/apps/maintenance/utils/maintenanceHelpers.js');
+    for (const d of [30, 31, 60, 90, 91, 180, 182, 183, 365, 366, 730, 1825]) {
+      expect(frequencyLabel(d), `${d} days`).toBe(maintenanceLabel(d));
+    }
+  });
+
   it('falls back to "Every N days" and handles null as on-demand', () => {
     expect(frequencyLabel(14)).toBe('Every 14 days');
     expect(frequencyLabel(null)).toBe('On demand');
