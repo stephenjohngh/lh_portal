@@ -429,3 +429,86 @@ describe('exclusion decisions', () => {
     );
   });
 });
+
+// Repealed, superseded, or the standard withdrawn. A FLAG, never a delete: the
+// walks and jobs done under it are still evidence, and obligation_id is
+// ON DELETE SET NULL, so deleting would orphan that history.
+describe('retire / unretire', () => {
+  beforeEach(async () => {
+    h.api.get.mockResolvedValueOnce([{ id: 'd1', name: 'Old check', presentation_order: 0 }]);
+    await defs.load();
+    vi.clearAllMocks();
+  });
+
+  // The point of the whole flag: retiring must stop NEW work while leaving the
+  // record alone, so it also switches the obligation off.
+  it('records the date and reason, and stops it being offered for new work', async () => {
+    await defs.retire('d1', { retiredOn: '2026-04-01', reason: '  Repealed by SI 2026/123  ' });
+    expect(h.api.update).toHaveBeenCalledWith('statutory_obligations', 'd1', {
+      retired_on: '2026-04-01',
+      retired_reason: 'Repealed by SI 2026/123',
+      retired_by: 'u1',
+      active: false,
+      updated_by: 'u1',
+    });
+    expect(h.api.delete).not.toHaveBeenCalled();
+  });
+
+  it('defaults the date to today when none is given', async () => {
+    await defs.retire('d1', { reason: 'Standard withdrawn' });
+    expect(h.api.update.mock.calls[0][2].retired_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  // "It just stopped" is not an answer to why a statutory check ended.
+  it('refuses without a reason, and never touches the database', async () => {
+    await expect(defs.retire('d1', { reason: '  ' })).rejects.toThrow(/reason is required/i);
+    await expect(defs.retire('d1', {})).rejects.toThrow(/reason is required/i);
+    expect(h.api.update).not.toHaveBeenCalled();
+  });
+
+  it('audits a retirement as a warning', async () => {
+    h.api.update.mockResolvedValueOnce({ id: 'd1', name: 'Old check' });
+    await defs.retire('d1', { retiredOn: '2026-04-01', reason: 'Repealed' });
+    expect(h.logAudit).toHaveBeenCalledWith(
+      'update', 'inspection_definition', 'd1', 'Old check',
+      expect.objectContaining({
+        severity: 'warning',
+        afterData: expect.objectContaining({ retired_on: '2026-04-01', retired_reason: 'Repealed' }),
+      }),
+    );
+  });
+
+  it('clears the retirement and switches it back on, with its own reason', async () => {
+    await defs.unretire('d1', 'Reinstated by SI 2028/44');
+    expect(h.api.update).toHaveBeenCalledWith('statutory_obligations', 'd1', {
+      retired_on: null, retired_reason: null, retired_by: null,
+      active: true, updated_by: 'u1',
+    });
+  });
+
+  it('refuses to un-retire without a reason', async () => {
+    await expect(defs.unretire('d1', '')).rejects.toThrow(/reason is required/i);
+    expect(h.api.update).not.toHaveBeenCalled();
+  });
+});
+
+// An obligation the register does not name carries its own basis (migration
+// 209). The undefined-guard is the same lesson as template_key: a caller that
+// does not mention it must not blank it.
+describe('basis on a bespoke obligation', () => {
+  it('writes basis and interval basis when supplied', async () => {
+    await defs.create(form({ basis: 'statute', interval_basis: 'stated' }));
+    expect(h.api.create.mock.calls[0][1]).toMatchObject({ basis: 'statute', interval_basis: 'stated' });
+  });
+
+  it('stores an empty selection as null, not as an empty string', async () => {
+    await defs.create(form({ basis: '', interval_basis: '' }));
+    expect(h.api.create.mock.calls[0][1]).toMatchObject({ basis: null, interval_basis: null });
+  });
+
+  it('omits them entirely when the caller says nothing, so an edit cannot blank them', async () => {
+    await defs.save('d1', form());
+    expect(h.api.update.mock.calls[0][2]).not.toHaveProperty('basis');
+    expect(h.api.update.mock.calls[0][2]).not.toHaveProperty('interval_basis');
+  });
+});

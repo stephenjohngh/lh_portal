@@ -42,6 +42,26 @@
 // A maintenance job does not require a contractor, so it is the route for any
 // dated task with an owner — including desk reviews.
 
+// ── When a requirement is WITHDRAWN ────────────────────────────────────────
+// A repealed or superseded requirement is FLAGGED, never deleted:
+//
+//   supersededOn:   'YYYY-MM-DD'   the date it stopped being required
+//   supersededBy:   'other_key'    the entry that replaced it, if one did
+//   supersededNote: 'why'          the instrument that repealed it
+//
+// It stays in the register forever. Three reasons, and the third is the one
+// that matters most:
+//   1. Work done under it BEFORE that date is still valid evidence, and the
+//      history report must still be able to describe what it was for.
+//   2. An assessor looking at a 2027 report of 2026 work needs the requirement
+//      to still exist to make sense of it.
+//   3. Deleting the entry would strand every obligation carrying its
+//      `template_key`, silently turning discharged work into an orphan.
+//
+// This is a fact about the LAW, not about this building — which is why it
+// lives here in version control rather than in `statutory_exclusions`, where a
+// second building would need its own row repeating it.
+
 /** Defaults so an entry only states what is true of it. */
 function entry(e) {
   return {
@@ -51,6 +71,9 @@ function entry(e) {
     trigger: null,
     frequencyDays: null,
     handlingNote: '',
+    supersededOn: null,
+    supersededBy: null,
+    supersededNote: '',
     ...e,
   };
 }

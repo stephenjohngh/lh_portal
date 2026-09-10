@@ -30,13 +30,16 @@ const STATUS_COLOUR = {
   ok:        COLOURS.passGreen,
   elsewhere: '3B82F6',
   unhomed:   COLOURS.failRed,
-  excluded:  '9CA3AF',
+  excluded:   '9CA3AF',
+  superseded: '6B7280',
+  retired:    '6B7280',
 };
 
 const STATUS_LABEL = {
   breach: 'In breach', gap: 'Not scheduled', attention: 'Needs attention',
   ok: 'On schedule', elsewhere: 'Tracked in another app',
   unhomed: 'Nothing deals with it', excluded: 'Recorded as not applicable',
+  superseded: 'No longer required', retired: 'Retired',
 };
 
 const BASIS_LABEL = {
@@ -69,7 +72,7 @@ export const HISTORY_COLS   = [1900, 4400, 4400, 2200, 2498];
 export const EXCLUSION_COLS = [5000, 2000, 6398, 2000];
 
 export function summarySection(summary, total) {
-  const order = ['breach', 'gap', 'attention', 'ok', 'elsewhere', 'unhomed', 'excluded'];
+  const order = ['breach', 'gap', 'attention', 'ok', 'elsewhere', 'unhomed', 'excluded', 'superseded', 'retired'];
   const present = order.filter(k => (summary?.[k] ?? 0) > 0);
   if (present.length === 0) return para([run(`${total} requirements.`)]);
   const w = Math.floor(CONTENT_W_L / present.length);
@@ -110,6 +113,9 @@ export function positionTable(rows) {
       nameLines.push(`Not applicable — “${r.exclusionReason}” (${d(r.exclusionDecidedAt)})`);
       if (r.exclusionReviewDue) nameLines.push(`Review this decision ${d(r.exclusionReviewDue)}`);
     }
+    // A withdrawn requirement still prints, with what withdrew it. Work done
+    // under it before that date is still evidence and still has to make sense.
+    if (r.retiredReason) nameLines.push(r.retiredReason);
 
     // Two columns, never one: the gap between them is where compliance fails.
     const attempted = r.lastAttempted

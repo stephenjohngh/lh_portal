@@ -61,6 +61,13 @@
   let passFailRule     = definition?.pass_fail_rule ?? 'manual';
   // Statutory provenance (G3) — descriptive metadata, not logic.
   let statutoryRef     = definition?.statutory_ref ?? '';
+  // Where the requirement comes from, for an obligation the shipped register
+  // does not name (migration 209). An obligation LINKED to a register entry
+  // leaves these blank — the register supplies them, and two sources for one
+  // fact is how they drift apart.
+  let basis            = definition?.basis ?? '';
+  let intervalBasis    = definition?.interval_basis ?? '';
+  $: linkedToRegister  = Boolean(definition?.template_key);
   let testType         = definition?.test_type ?? '';
 
   // Which occurrence stack discharges this obligation (migration 203). Drives
@@ -169,6 +176,8 @@
         presentation_order: Number(presentationOrder) || 0,
         statutory_ref: statutoryRef.trim() || null,
         test_type:     testType.trim() || null,
+        basis:          linkedToRegister ? undefined : (basis || null),
+        interval_basis: linkedToRegister ? undefined : (intervalBasis || null),
         evidenced_by:  evidencedBy,
         max_interval_days:       maxIntervalDays,
         responsible_party:       responsibleParty,
@@ -230,6 +239,43 @@
         </label>
       </div>
       <p class="hint">Optional. Records the compliance basis — appears on the inspection report and the Golden Thread entry.</p>
+
+      <!-- Where the requirement COMES FROM. Only asked for an obligation the
+           shipped register does not name: a linked one takes its basis from the
+           register, and asking twice is how two answers to one question drift
+           apart. This is what lets a NEW legal duty — an SI laid after the
+           register was written — read as "Legislation" in the compliance
+           report instead of as a sourceless row. -->
+      {#if !linkedToRegister}
+        <div class="stat-row">
+          <label class="stat-fld">
+            Where does this come from?
+            <select bind:value={basis}>
+              <option value="">Not stated</option>
+              <option value="statute">Legislation — an Act or SI imposes it</option>
+              <option value="standard">Standard / code — a BS or approved code</option>
+              <option value="contract">Contract or scheme — insurer, scheme, manufacturer</option>
+              <option value="management">Management decision — we chose it</option>
+            </select>
+          </label>
+          <label class="stat-fld">
+            Where does the interval come from?
+            <select bind:value={intervalBasis}>
+              <option value="">Not stated</option>
+              <option value="stated">Set by the reference above</option>
+              <option value="practice">Established practice, not the reference</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint">
+          A British Standard is not an Act, and an interval that is established practice is not one the
+          instrument states. Saying so is what stops the report claiming more authority than it has.
+        </p>
+      {:else}
+        <p class="hint">
+          Source and interval basis come from the statutory register entry this is linked to.
+        </p>
+      {/if}
     </div>
 
     <!-- How this obligation is discharged (migration 203). Not cosmetic: a

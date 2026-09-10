@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   compliancePosition, positionSummary, filterRows, sortRows, groupRows,
-  evidenceHistory, outcomeText, ROW_STATUS,
+  evidenceHistory, outcomeText, ROW_STATUS, ROW_STATUS_LABEL, NON_FAILING,
 } from './obligationReport.js';
 import { STATUTORY_TEMPLATE } from './statutoryTemplate.js';
 
@@ -213,6 +213,88 @@ describe('summary, filter, sort, group', () => {
     const g = groupRows(rows, 'group');
     expect([...g.values()].reduce((n, r) => n + r.length, 0)).toBe(rows.length);
     expect(groupRows(rows, 'none').size).toBe(1);
+  });
+});
+
+
+// The two ends of a requirement's life, for obligations the register does not
+// name. Migration 209.
+describe('a requirement added by hand', () => {
+  // Before 209 a brand-new statutory duty came through with Source "—" —
+  // the most important row in the report displaying as the most anonymous.
+  it('can declare itself legislation', () => {
+    const rows = compliancePosition({
+      obligations: [ob({ id: 'n', name: 'New SI check', template_key: null, basis: 'statute', interval_basis: 'stated' })],
+      events: [],
+    }, opts);
+    const r = rowFor(rows, 'obligation:n');
+    expect(r.basis).toBe('statute');
+    expect(r.intervalBasis).toBe('stated');
+  });
+
+  it('still reads as unstated when it says nothing', () => {
+    const rows = compliancePosition({
+      obligations: [ob({ id: 'n', template_key: null })], events: [],
+    }, opts);
+    expect(rowFor(rows, 'obligation:n').basis).toBeNull();
+  });
+});
+
+describe('a requirement no longer required', () => {
+  const retired = (over = {}) => ob({
+    id: 'r', name: 'Repealed check', template_key: null,
+    retired_on: '2026-04-01', retired_reason: 'Repealed by SI 2026/123', ...over,
+  });
+
+  // The distinction the whole flag exists for: switched off is a GAP, withdrawn
+  // is not. Colouring a repeal as a breach would make the report cry wolf.
+  it('reads as retired, not as a gap or a breach', () => {
+    const rows = compliancePosition({ obligations: [retired()], events: [] }, opts);
+    const r = rowFor(rows, 'obligation:r');
+    expect(r.status).toBe('retired');
+    expect(r.retiredReason).toBe('Repealed by SI 2026/123');
+  });
+
+  it('is retired even though retiring also switches it off', () => {
+    const rows = compliancePosition({ obligations: [retired({ active: false })], events: [] }, opts);
+    expect(rowFor(rows, 'obligation:r').status).toBe('retired');
+  });
+
+  // Switched off WITHOUT being retired must still shout.
+  it('leaves a merely inactive obligation reading as a gap', () => {
+    const rows = compliancePosition({
+      obligations: [ob({ id: 'r', template_key: null, active: false })], events: [],
+    }, opts);
+    expect(rowFor(rows, 'obligation:r').status).toBe('gap');
+  });
+
+  // A report of last year's position must not retrospectively excuse work that
+  // was genuinely missed at the time.
+  it('was NOT retired before its retirement date', () => {
+    const rows = compliancePosition(
+      { obligations: [retired({ retired_on: '2027-01-01' })], events: [] },
+      { ...opts, asOf: '2026-09-10' });
+    expect(rowFor(rows, 'obligation:r').status).not.toBe('retired');
+  });
+
+  it('is counted, labelled, and not held against the building', () => {
+    const rows = compliancePosition({ obligations: [retired()], events: [] }, opts);
+    expect(positionSummary(rows).retired).toBe(1);
+    expect(ROW_STATUS_LABEL.retired).toBe('Retired');
+    expect(NON_FAILING.has('retired')).toBe(true);
+    expect(NON_FAILING.has('superseded')).toBe(true);
+    expect(NON_FAILING.has('gap')).toBe(false);
+    expect(NON_FAILING.has('breach')).toBe(false);
+  });
+
+  // Deleting would orphan the history; flagging keeps it reachable.
+  it('keeps its evidence readable in the history report', () => {
+    const obligations = [retired()];
+    const events = [done('r', '2026-01-15T00:00:00Z', { reference: 'CERT-1' })];
+    const h = evidenceHistory({ events, obligations }, { from: '2025-01-01', to: '2026-12-31' });
+    expect(h).toHaveLength(1);
+    expect(h[0].obligationName).toBe('Repealed check');
+    expect(h[0].reference).toBe('CERT-1');
   });
 });
 

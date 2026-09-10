@@ -77,6 +77,11 @@ function toRow(data, uid, { isCreate }) {
   // obligation from the statutory template every time someone edited it —
   // turning a covered entry back into a gap for no reason the user can see.
   if (data.template_key !== undefined) row.template_key = data.template_key;
+  // Same guard, same reason (migration 209): an obligation NOT linked to a
+  // register entry carries its own basis, and a caller that does not mention
+  // it — the Component Types quick-add, say — must not blank it.
+  if (data.basis !== undefined) row.basis = data.basis || null;
+  if (data.interval_basis !== undefined) row.interval_basis = data.interval_basis || null;
   return row;
 }
 
@@ -138,6 +143,73 @@ function createInspectionDefinitionsStore() {
       appId: 'admin', eventCategory: 'admin', severity: 'warning',
     });
     logger('Deleted definition:', id);
+  }
+
+  // ── The end of a requirement's life ────────────────────────────────────
+  // Repealed, superseded, or the standard withdrawn. A FLAG, never a delete:
+  // walk sessions and maintenance jobs carried out under it are still evidence,
+  // and `maintenance_jobs.obligation_id` is ON DELETE SET NULL, so deleting the
+  // obligation would orphan that history and erase proof of real work.
+
+  /**
+   * Retire an obligation because it is no longer required.
+   *
+   * ⚠ Also sets `active = false`, deliberately. Retiring must stop it being
+   * offered for NEW work — the mobile walk list and the job scheduler both
+   * filter on `active` — while the compliance report still shows it as
+   * *Retired* rather than as a gap, because `statusOf` tests retirement before
+   * it tests activity.
+   *
+   * @param {string} id
+   * @param {{ retiredOn?: string, reason: string }} opts
+   */
+  async function retire(id, { retiredOn, reason } = {}) {
+    if (!isRecordableReason(reason)) {
+      throw new Error('A reason is required — say what withdrew this requirement.');
+    }
+    const uid = await userId();
+    const on = retiredOn || new Date().toISOString().slice(0, 10);
+    const updated = await api.update('statutory_obligations', id, {
+      retired_on: on,
+      retired_reason: reason.trim(),
+      retired_by: uid,
+      active: false,
+      updated_by: uid,
+    });
+    update(s => ({
+      ...s,
+      definitions: s.definitions.map(d => d.id === id ? { ...d, ...updated } : d).sort(byOrderThenName),
+    }));
+    // Warning, not info: a statutory check stopping is something someone may
+    // later have to justify, exactly like an exclusion.
+    logAudit('update', 'inspection_definition', id, updated.name, {
+      appId: 'admin', eventCategory: 'admin', severity: 'warning',
+      afterData: { retired_on: on, retired_reason: reason.trim() },
+    });
+    logger('Retired obligation', id, 'from', on);
+    return updated;
+  }
+
+  /** Bring a retired obligation back — the requirement returned, or it was a mistake. */
+  async function unretire(id, reason) {
+    if (!isRecordableReason(reason)) {
+      throw new Error('A reason is required — say why it applies again.');
+    }
+    const uid = await userId();
+    const updated = await api.update('statutory_obligations', id, {
+      retired_on: null, retired_reason: null, retired_by: null,
+      active: true, updated_by: uid,
+    });
+    update(s => ({
+      ...s,
+      definitions: s.definitions.map(d => d.id === id ? { ...d, ...updated } : d).sort(byOrderThenName),
+    }));
+    logAudit('update', 'inspection_definition', id, updated.name, {
+      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      afterData: { retired_on: null, reason: reason.trim() },
+    });
+    logger('Un-retired obligation', id);
+    return updated;
   }
 
   // ── M4 · the statutory template ────────────────────────────────────────
@@ -290,6 +362,7 @@ function createInspectionDefinitionsStore() {
   return {
     subscribe, load, create, save, remove,
     applyTemplate, linkToTemplate, loadExclusions, recordExclusionDecision,
+    retire, unretire,
   };
 }
 

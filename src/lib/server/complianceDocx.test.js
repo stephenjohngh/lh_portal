@@ -136,6 +136,16 @@ describe('building the document', () => {
     }));
   });
 
+  it('renders a withdrawn requirement, which still prints with what withdrew it', async () => {
+    await packs(payload({
+      rows: [row({
+        name: 'Repealed check', status: 'retired', statusLabel: 'Retired',
+        retiredOn: '2026-04-01', retiredReason: 'Repealed by SI 2026/123',
+      })],
+      summary: { retired: 1 },
+    }));
+  });
+
   it('handles an interval breach, which appends to the status cell', async () => {
     await packs(payload({ rows: [row({ intervalBreached: true })] }));
   });

@@ -17,25 +17,41 @@
 // Word export so the printed report can never disagree with what was on it.
 
 import {
-  STATUTORY_TEMPLATE, templateEntry, isSchedulable, isUnhomed, BASIS_RANK, GROUPS,
+  STATUTORY_TEMPLATE, templateEntry, isSchedulable, isUnhomed, isSuperseded,
+  supersededNote, BASIS_RANK, GROUPS,
 } from './statutoryTemplate.js';
 import { computeObligationSchedule } from './obligationSchedule.js';
 import { currentDecisions } from './statutoryExclusions.js';
 
 const BAND_RANK = { never_run: 0, overdue: 1, due_soon: 2, ok: 3, on_demand: 4 };
 
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
 /** Row status, worst first — the order the summary counts read in. */
-export const ROW_STATUS = ['breach', 'gap', 'attention', 'ok', 'elsewhere', 'unhomed', 'excluded'];
+export const ROW_STATUS = [
+  'breach', 'gap', 'attention', 'ok', 'elsewhere', 'unhomed', 'excluded',
+  'superseded', 'retired',
+];
 
 export const ROW_STATUS_LABEL = {
-  breach:    'In breach',
-  gap:       'Not scheduled',
-  attention: 'Needs attention',
-  ok:        'On schedule',
-  elsewhere: 'Tracked in another app',
-  unhomed:   'Nothing deals with it',
-  excluded:  'Recorded as not applicable',
+  breach:     'In breach',
+  gap:        'Not scheduled',
+  attention:  'Needs attention',
+  ok:         'On schedule',
+  elsewhere:  'Tracked in another app',
+  unhomed:    'Nothing deals with it',
+  excluded:   'Recorded as not applicable',
+  superseded: 'No longer required',
+  retired:    'Retired',
 };
+
+/**
+ * Statuses that are NOT a failing. Kept as a named set because the difference
+ * between "we are not doing this" and "this is no longer required" is the whole
+ * point of flagging rather than deleting, and three surfaces need to agree on
+ * it: the summary colours, the Word document, and anyone reading either.
+ */
+export const NON_FAILING = new Set(['ok', 'elsewhere', 'excluded', 'superseded', 'retired']);
 
 /** Latest completed and latest attempted evidence per obligation id. */
 function latestEvidence(events) {
@@ -94,7 +110,11 @@ function oldestCompletion(events) {
   return done.sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0))[0];
 }
 
-function statusOf({ entry, obligations, state, excluded }) {
+function statusOf({ entry, obligations, state, excluded, retired, superseded }) {
+  // Withdrawn beats everything: if the law no longer requires it, whether we
+  // happen to be doing it is not a compliance question.
+  if (superseded) return 'superseded';
+  if (retired) return 'retired';
   if (excluded) return 'excluded';
   if (entry && !isSchedulable(entry)) return isUnhomed(entry) ? 'unhomed' : 'elsewhere';
   const active = obligations.filter(o => o.active !== false);
@@ -140,6 +160,7 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
     const linked = byKey.get(entry.key) ?? [];
     const decision = decisions.get(entry.key);
     const excluded = decision?.decision === 'not_applicable';
+    const withdrawn = isSuperseded(entry, opts.asOf);
     const linkedStates = linked.map(o => states.get(o.id)).filter(Boolean);
     const state = worstState(linkedStates);
 
@@ -167,7 +188,9 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
       nextDue: state?.nextDue ?? null,
       intervalBreached: Boolean(state?.intervalBreached),
       exclusion: decision ?? null,
-      status: statusOf({ entry, obligations: linked, state, excluded }),
+      retiredOn: entry.supersededOn ?? null,
+      retiredReason: withdrawn ? supersededNote(entry) : null,
+      status: statusOf({ entry, obligations: linked, state, excluded, superseded: withdrawn }),
     });
   }
 
@@ -176,11 +199,16 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
     if (o?.template_key && templateEntry(o.template_key)) continue;
     const state = states.get(o.id) ?? null;
     const ev = evidence.get(o.id);
+    // An obligation created by hand for a NEW legal duty must be able to say
+    // it is legislation. Before migration 209 it could not, so the most
+    // important row in the report displayed as the most anonymous.
+    const retired = Boolean(o.retired_on) && o.retired_on <= (opts.asOf ?? todayISO());
     rows.push({
       key: `obligation:${o.id}`,
       name: o.name,
       entry: null,
-      basis: null,
+      basis: o.basis ?? null,
+      intervalBasis: o.interval_basis ?? null,
       group: 'unlisted',
       statutoryRef: o.statutory_ref ?? null,
       frequencyDays: o.frequency_days ?? null,
@@ -194,7 +222,9 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
       nextDue: state?.nextDue ?? null,
       intervalBreached: Boolean(state?.intervalBreached),
       exclusion: null,
-      status: statusOf({ entry: null, obligations: [o], state, excluded: false }),
+      retiredOn: o.retired_on ?? null,
+      retiredReason: o.retired_reason ?? null,
+      status: statusOf({ entry: null, obligations: [o], state, excluded: false, retired }),
     });
   }
 

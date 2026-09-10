@@ -4131,6 +4131,11 @@ export type Database = {
           updated_by: string | null
           statutory_ref: string | null
           template_key: string | null
+          basis: string | null
+          interval_basis: string | null
+          retired_on: string | null
+          retired_reason: string | null
+          retired_by: string | null
           test_type: string | null
           max_interval_days: number | null
           responsible_party: string | null
@@ -4159,6 +4164,11 @@ export type Database = {
           updated_by?: string | null
           statutory_ref?: string | null
           template_key?: string | null
+          basis?: string | null
+          interval_basis?: string | null
+          retired_on?: string | null
+          retired_reason?: string | null
+          retired_by?: string | null
           test_type?: string | null
           max_interval_days?: number | null
           responsible_party?: string | null
@@ -4187,6 +4197,11 @@ export type Database = {
           updated_by?: string | null
           statutory_ref?: string | null
           template_key?: string | null
+          basis?: string | null
+          interval_basis?: string | null
+          retired_on?: string | null
+          retired_reason?: string | null
+          retired_by?: string | null
           test_type?: string | null
           max_interval_days?: number | null
           responsible_party?: string | null

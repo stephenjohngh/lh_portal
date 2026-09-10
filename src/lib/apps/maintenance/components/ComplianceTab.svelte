@@ -164,6 +164,8 @@
             exclusionReason: r.exclusion?.reason ?? null,
             exclusionDecidedAt: r.exclusion?.decided_at ?? null,
             exclusionReviewDue: r.exclusion?.review_due ?? null,
+            retiredOn: r.retiredOn ?? null,
+            retiredReason: r.retiredReason ?? null,
           })),
           history: optIncludeHistory || report === 'history' ? history : [],
           historyWindow: { from: histFrom, to: histTo, mode: histMode },
@@ -290,6 +292,9 @@
                   {#if r.exclusion}
                     <span class="excl">Not applicable — “{r.exclusion.reason}” ({fmtDate(r.exclusion.decided_at)})</span>
                   {/if}
+                  {#if r.retiredReason}
+                    <span class="excl">{r.retiredReason}{#if r.retiredOn && !r.retiredReason.includes(r.retiredOn)} · from {fmtDate(r.retiredOn)}{/if}</span>
+                  {/if}
                 </div>
                 <div>{r.basis ? BASIS_LABEL[r.basis] : '—'}</div>
                 <div>{r.frequencyDays ? frequencyLabel(r.frequencyDays) : 'On event'}</div>
@@ -405,6 +410,7 @@
   .sum.st-gap .sum-n { color: rgb(252 211 77); }
   .sum.st-attention .sum-n { color: rgb(251 191 36); }
   .sum.st-ok .sum-n { color: rgb(134 239 172); }
+  .sum.st-superseded .sum-n, .sum.st-retired .sum-n { color: rgb(148 163 184); }
 
   .degraded { font-size: 0.8rem; color: rgb(252 211 77); background: rgb(251 191 36 / 0.1);
               border-radius: 6px; padding: 0.5rem 0.7rem; line-height: 1.45; }
@@ -444,7 +450,7 @@
   .tr:hover { background: rgb(51 65 85 / 0.2); }
   .tr.st-breach { border-left: 3px solid rgb(248 113 113 / 0.8); }
   .tr.st-gap { border-left: 3px solid rgb(251 191 36 / 0.7); }
-  .tr.st-excluded { opacity: 0.62; }
+  .tr.st-excluded, .tr.st-superseded, .tr.st-retired { opacity: 0.62; }
 
   .c-name { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .nm { color: rgb(226 232 240); font-weight: 500; }
@@ -463,6 +469,7 @@
   .pill.st-elsewhere { background: rgb(56 189 248 / 0.14); color: rgb(125 211 252); }
   .pill.st-unhomed { background: rgb(248 113 113 / 0.25); color: rgb(254 202 202); }
   .pill.st-excluded { background: rgb(71 85 105 / 0.5); color: rgb(148 163 184); }
+  .pill.st-superseded, .pill.st-retired { background: rgb(100 116 139 / 0.35); color: rgb(203 213 225); }
   .pill.breach { background: rgb(248 113 113 / 0.25); color: rgb(254 202 202); margin-left: 0.25rem; }
 
   .empty { font-size: 0.85rem; color: rgb(100 116 139); padding: 1.2rem 0; }

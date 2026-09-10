@@ -107,6 +107,34 @@ export function isUnhomed(entry) {
 }
 
 /**
+ * Has this requirement been withdrawn — repealed, superseded, or the standard
+ * withdrawn — as at a given date?
+ *
+ * Date-aware on purpose. A report of last year's position must still treat a
+ * requirement repealed this March as having been LIVE last year, or it would
+ * retrospectively excuse work that was genuinely missed at the time.
+ *
+ * @param {TemplateEntry|null} entry
+ * @param {string} [asOf] YYYY-MM-DD; defaults to today
+ */
+export function isSuperseded(entry, asOf) {
+  const on = entry?.supersededOn;
+  if (!on) return false;
+  return on <= (asOf ?? new Date().toISOString().slice(0, 10));
+}
+
+/** One line describing the withdrawal, for the row that still shows it. */
+export function supersededNote(entry) {
+  if (!entry?.supersededOn) return '';
+  const successor = entry.supersededBy ? templateEntry(entry.supersededBy) : null;
+  return [
+    `No longer required from ${entry.supersededOn}`,
+    entry.supersededNote || null,
+    successor ? `Replaced by: ${successor.name}` : null,
+  ].filter(Boolean).join(' · ');
+}
+
+/**
  * Short note on where the interval comes from — shown next to the frequency so
  * a conventional interval is never read as a legal one.
  * @param {TemplateEntry|null} entry
@@ -134,7 +162,7 @@ export function intervalNote(entry) {
  * @param {{ presentationOrder?: number }} [opts]
  */
 export function templateToObligation(entry, opts = {}) {
-  if (!entry || !isSchedulable(entry)) return null;
+  if (!entry || !isSchedulable(entry) || isSuperseded(entry)) return null;
   return {
     name:                    entry.name,
     description:             entry.description,
@@ -190,10 +218,19 @@ export function templateCoverage(obligations, opts = {}) {
   const notApplicable = [];
   const elsewhere = [];      // another app owns its cycle
   const unhomed = [];        // nothing in the portal deals with it
+  const superseded = [];     // withdrawn — kept, but no longer counted
 
   for (const entry of REGISTER) {
     const linked = byKey.get(entry.key) ?? [];
     const active = linked.filter(o => o.active !== false);
+
+    // A withdrawn requirement is neither covered nor a gap. It stays visible,
+    // with its date and successor, because the evidence gathered under it is
+    // still real and still has to make sense to whoever reads it later.
+    if (isSuperseded(entry, opts.asOf)) {
+      superseded.push({ entry, obligations: linked });
+      continue;
+    }
 
     if (!isSchedulable(entry)) {
       if (dismissed.has(entry.key)) notApplicable.push({ entry, obligations: linked });
@@ -219,6 +256,7 @@ export function templateCoverage(obligations, opts = {}) {
     notApplicable,
     elsewhere,
     unhomed,
+    superseded,
     coveredCount: covered.length,
     applicableCount,
     // The percentage is over what this library is responsible for AND what the
@@ -348,7 +386,7 @@ export function suggestMatches(obligations) {
   if (unlinked.length === 0) return out;
 
   for (const entry of REGISTER) {
-    if (!isSchedulable(entry)) continue;
+    if (!isSchedulable(entry) || isSuperseded(entry)) continue;
     const entryRef  = normaliseRef(entry.statutoryRef);
     const entryHead = refHead(entry.statutoryRef);
     const candidates = [];

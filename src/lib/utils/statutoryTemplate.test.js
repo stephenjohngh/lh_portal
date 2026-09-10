@@ -5,7 +5,7 @@ import {
   templateToObligation, templateCoverage, suggestMatches,
   BASIS, BASIS_LABEL, BASIS_DESCRIPTION, BASIS_RANK, GROUPS, GROUP_LABEL,
   HANDLED_BY_LABEL, isSchedulable, isRecurring, isUnhomed,
-  registerByGroup, basisTally,
+  isSuperseded, supersededNote, registerByGroup, basisTally,
 } from './statutoryTemplate.js';
 import { EVIDENCE_ROUTES } from './obligationEvidence.js';
 
@@ -334,6 +334,44 @@ describe('suggestMatches', () => {
     expect(suggestMatches([{ id: 'x', name: 'Gas safety check', template_key: 'gas_safety_check' }]).size).toBe(0);
     expect(suggestMatches([]).size).toBe(0);
     expect(suggestMatches(null).size).toBe(0);
+  });
+});
+
+
+// A repealed requirement is FLAGGED, never removed. Work done under it before
+// the repeal is still evidence, and an assessor reading a 2027 report of 2026
+// work needs the requirement to still exist for it to make sense.
+describe('withdrawal', () => {
+  const withdrawn = { supersededOn: '2027-03-01', supersededBy: 'gas_safety_check', supersededNote: 'Repealed by SI 2027/9' };
+
+  it('is date-aware — a requirement repealed later was still live before it', () => {
+    expect(isSuperseded(withdrawn, '2026-09-10')).toBe(false);
+    expect(isSuperseded(withdrawn, '2027-02-28')).toBe(false);
+    expect(isSuperseded(withdrawn, '2027-03-01')).toBe(true);
+    expect(isSuperseded(withdrawn, '2028-01-01')).toBe(true);
+  });
+
+  it('treats an entry with no withdrawal date as live', () => {
+    expect(isSuperseded({}, '2030-01-01')).toBe(false);
+    expect(isSuperseded(null)).toBe(false);
+  });
+
+  it('describes the withdrawal, naming the successor', () => {
+    const note = supersededNote(withdrawn);
+    expect(note).toMatch(/No longer required from 2027-03-01/);
+    expect(note).toMatch(/Repealed by SI 2027\/9/);
+    expect(note).toMatch(/Replaced by: Gas safety check/);
+    expect(supersededNote({})).toBe('');
+  });
+
+  // Nothing in the shipped register is withdrawn yet; this pins that the
+  // machinery is wired, not that the data uses it.
+  it('reports none withdrawn today, and keeps the bucket', () => {
+    const c = templateCoverage([]);
+    expect(c.superseded).toEqual([]);
+    const seen = c.covered.length + c.missing.length + c.notApplicable.length
+      + c.elsewhere.length + c.unhomed.length + c.superseded.length;
+    expect(seen).toBe(STATUTORY_TEMPLATE.length);
   });
 });
 
