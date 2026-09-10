@@ -61,12 +61,13 @@ export const BASIS_DESCRIPTION = {
 export const BASIS_RANK = { statute: 0, standard: 1, contract: 2, management: 3 };
 
 // ── The groups the register is organised into ──────────────────────────────
-export const GROUPS = ['fire_safety', 'other_statutory', 'bsa_cycle', 'governance'];
+export const GROUPS = ['fire_safety', 'other_statutory', 'bsa_cycle', 'building_specific', 'governance'];
 
 export const GROUP_LABEL = {
   fire_safety:     'Statutory fire safety',
   other_statutory: 'Other statutory checks',
   bsa_cycle:       'Building Safety Act cycles',
+  building_specific: 'This building’s own cycles',
   governance:      'Governance and review',
 };
 

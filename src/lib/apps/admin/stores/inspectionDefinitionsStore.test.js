@@ -319,45 +319,113 @@ describe('save must not disturb an existing template link', () => {
   });
 });
 
-describe('template dismissals', () => {
-  it('reads them from portal_settings and drops keys not in the template', async () => {
-    h.api.get.mockResolvedValueOnce([{ key: 'x', value: ['gas_safety_check', 'stale_key'] }]);
-    const keys = await defs.loadTemplateDismissals();
-    expect(h.api.get).toHaveBeenCalledWith('portal_settings',
-      { select: 'key, value', filters: { key: 'statutory_template_not_applicable' } });
-    expect(keys).toEqual(['gas_safety_check']);
-    expect(get(defs).dismissedKeys).toEqual(['gas_safety_check']);
+describe('exclusion decisions', () => {
+  // The store is a module singleton, so decisions carry over between tests.
+  // Start each one from an empty log.
+  beforeEach(async () => {
+    h.api.get.mockResolvedValueOnce([]);
+    await defs.loadExclusions();
+    vi.clearAllMocks();
   });
 
-  // Never fatal: without the setting every entry is simply still asked about.
+  it('reads the whole append-only log and reduces it to the current position', async () => {
+    h.api.get.mockResolvedValueOnce([
+      { id: '2', template_key: 'lift_maintenance', decision: 'applicable',     reason: 'lift fitted', decided_at: '2026-06-01T00:00:00Z' },
+      { id: '1', template_key: 'lift_maintenance', decision: 'not_applicable', reason: 'no lift',     decided_at: '2026-01-01T00:00:00Z' },
+      { id: '3', template_key: 'gas_safety_check', decision: 'not_applicable', reason: 'all electric', decided_at: '2026-02-01T00:00:00Z' },
+    ]);
+    const rows = await defs.loadExclusions();
+    expect(h.api.get).toHaveBeenCalledWith('statutory_exclusions',
+      { orderBy: 'decided_at', ascending: false });
+    expect(rows).toHaveLength(3);
+    // A reinstated key is no longer excluded, but its history is still held.
+    expect(get(defs).dismissedKeys).toEqual(['gas_safety_check']);
+    expect(get(defs).exclusions).toHaveLength(3);
+  });
+
+  // Without them the register asks about everything, which is the safe way to
+  // fail: over-asking beats silently hiding statutory checks.
   it('degrades to an empty list rather than throwing', async () => {
     h.api.get.mockRejectedValueOnce(new Error('offline'));
-    await expect(defs.loadTemplateDismissals()).resolves.toEqual([]);
+    await expect(defs.loadExclusions()).resolves.toEqual([]);
   });
 
-  it('upserts the key on, and off again, without duplicating', async () => {
-    h.api.get.mockResolvedValueOnce([{ key: 'x', value: ['gas_safety_check'] }]);
-    await defs.loadTemplateDismissals();
-
-    await defs.setTemplateDismissed('lift_maintenance', true, 'No lift');
-    expect(h.api.upsert).toHaveBeenCalledWith('portal_settings',
-      { key: 'statutory_template_not_applicable', value: ['gas_safety_check', 'lift_maintenance'], updated_by: 'u1' },
-      { onConflict: 'key' });
-
-    await defs.setTemplateDismissed('gas_safety_check', false);
-    expect(h.api.upsert.mock.calls[1][1].value).toEqual(['lift_maintenance']);
+  it('inserts a decision with the reason, decider and timestamp', async () => {
+    h.api.create.mockResolvedValueOnce({ id: 'x1', template_key: 'lift_maintenance', decision: 'not_applicable' });
+    await defs.recordExclusionDecision('lift_maintenance', 'not_applicable', '  No lift — four storeys  ');
+    expect(h.api.create).toHaveBeenCalledWith('statutory_exclusions', {
+      template_key: 'lift_maintenance',
+      decision: 'not_applicable',
+      reason: 'No lift — four storeys',
+      review_due: null,
+      decided_by: 'u1',
+      created_by: 'u1',
+    });
+    expect(get(defs).dismissedKeys).toEqual(['lift_maintenance']);
   });
 
-  // Declaring a statutory obligation inapplicable is a decision someone may
-  // later have to justify, so it is not logged as routine config noise.
-  it('audits a dismissal as a warning, with the reason', async () => {
-    await defs.setTemplateDismissed('lift_maintenance', true, 'No lift — four storeys');
+  it('carries an optional review date', async () => {
+    await defs.recordExclusionDecision('eicr_dwellings', 'not_applicable', 'All long leases', { reviewDue: '2027-04-01' });
+    expect(h.api.create.mock.calls[0][1].review_due).toBe('2027-04-01');
+  });
+
+  // The reason is what an assessor is shown. A blank one is not a decision, and
+  // the check is here as well as at the database so the user hears it first.
+  it('refuses a decision with no real reason, without touching the database', async () => {
+    await expect(defs.recordExclusionDecision('lift_maintenance', 'not_applicable', '   '))
+      .rejects.toThrow(/reason is required/i);
+    expect(h.api.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a key that is not in the register', async () => {
+    await expect(defs.recordExclusionDecision('invented', 'not_applicable', 'because'))
+      .rejects.toThrow(/Unknown register entry/);
+    expect(h.api.create).not.toHaveBeenCalled();
+  });
+
+  // Reversing a decision appends beside it — the original must survive.
+  it('records a reinstatement without erasing the exclusion', async () => {
+    h.api.get.mockResolvedValueOnce([
+      { id: '1', template_key: 'lift_maintenance', decision: 'not_applicable', reason: 'no lift', decided_at: '2026-01-01T00:00:00Z' },
+    ]);
+    await defs.loadExclusions();
+    h.api.create.mockResolvedValueOnce({
+      id: '2', template_key: 'lift_maintenance', decision: 'applicable',
+      reason: 'lift installed', decided_at: '2026-06-01T00:00:00Z',
+    });
+    await defs.recordExclusionDecision('lift_maintenance', 'applicable', 'lift installed');
+
+    expect(h.api.delete).not.toHaveBeenCalled();
+    expect(h.api.update).not.toHaveBeenCalled();
+    expect(get(defs).exclusions).toHaveLength(2);
+    expect(get(defs).dismissedKeys).toEqual([]);
+  });
+
+  // Declaring a legal requirement inapplicable is a decision someone may later
+  // have to justify, so it is not logged as routine config noise.
+  it('audits an exclusion as a warning, with the reason and the basis', async () => {
+    h.api.create.mockResolvedValueOnce({ id: 'x9' });
+    await defs.recordExclusionDecision('gas_safety_check', 'not_applicable', 'Building is all electric');
     expect(h.logAudit).toHaveBeenCalledWith(
-      'update', 'portal_setting', 'statutory_template_not_applicable', expect.any(String),
+      'create', 'statutory_exclusion', 'x9', 'Gas safety check',
       expect.objectContaining({
         severity: 'warning',
-        afterData: expect.objectContaining({ template_key: 'lift_maintenance', not_applicable: true, reason: 'No lift — four storeys' }),
+        afterData: expect.objectContaining({
+          template_key: 'gas_safety_check',
+          decision: 'not_applicable',
+          reason: 'Building is all electric',
+          basis: 'statute',
+        }),
       }),
+    );
+  });
+
+  it('audits a reinstatement as ordinary information, not a warning', async () => {
+    h.api.create.mockResolvedValueOnce({ id: 'x8' });
+    await defs.recordExclusionDecision('gas_safety_check', 'applicable', 'Communal boiler installed');
+    expect(h.logAudit).toHaveBeenCalledWith(
+      'create', 'statutory_exclusion', 'x8', 'Gas safety check',
+      expect.objectContaining({ severity: 'info' }),
     );
   });
 });

@@ -29,9 +29,10 @@
 
   onMount(() => {
     if (definitions.length === 0) inspectionDefinitionsStore.load();
-    // Which template entries this building has declared it does not have.
-    // Never fatal — without it the gap report simply asks about everything.
-    inspectionDefinitionsStore.loadTemplateDismissals();
+    // The recorded decisions about which register entries apply to this
+    // building. Never fatal — without them the gap report asks about everything,
+    // which is the safe direction to fail in.
+    inspectionDefinitionsStore.loadExclusions();
   });
 
   function matchCount(def) {

@@ -8,14 +8,18 @@
      Coverage comes from statutory_obligations.template_key only — never from
      matching names. See src/lib/utils/statutoryTemplate.js. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
   import {
     templateCoverage, suggestMatches, intervalNote, registerByGroup, basisTally,
     BASIS, BASIS_LABEL, BASIS_DESCRIPTION, GROUP_LABEL, HANDLED_BY_LABEL,
     isSchedulable, isRecurring, isUnhomed, STATUTORY_TEMPLATE,
   } from '$lib/utils/statutoryTemplate.js';
+  import { currentDecisions, isRecordableReason } from '$lib/utils/statutoryExclusions.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
+  import { fmtDate } from '$lib/utils/dates.js';
+  import { profiles, profilesStore } from '$lib/stores/profiles.js';
+  import FormInput from '$lib/components/common/FormInput.svelte';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -28,8 +32,15 @@
   const dispatch = createEventDispatcher();
 
   $: dismissedKeys = $inspectionDefinitionsStore.dismissedKeys ?? [];
+  $: exclusions  = $inspectionDefinitionsStore.exclusions ?? [];
+  $: decisions   = currentDecisions(exclusions);
   $: coverage    = templateCoverage(definitions, { dismissedKeys });
   $: suggestions = suggestMatches(definitions);
+
+  // Who decided, by name — a decision record that only says "a uuid decided
+  // this" answers the question badly.
+  $: personName = new Map(($profiles.list ?? []).map(p => [p.id, p.full_name]));
+  onMount(() => { profilesStore.load(); });
 
   const grouped = registerByGroup();
   const tally   = basisTally();
@@ -50,25 +61,32 @@
   let autoOpened = false;
   $: if (!autoOpened && coverage.missing.length > 0) { open = true; autoOpened = true; }
 
-  // -- Not applicable ----------------------------------------------------------
-  let naEntry = null;
-  let naReason = '';
+  // -- The recorded decision ---------------------------------------------------
+  // Marking a check inapplicable, and reversing that, are BOTH decisions someone
+  // may later have to justify, so both go through the same form and both demand
+  // a reason. Nothing is edited or deleted — each is a new row in the log.
+  let decisionEntry = null;      // register entry the decision is about
+  let decisionKind = 'not_applicable';
+  let decisionReason = '';
+  let decisionReviewDue = '';
 
-  function askNotApplicable(entry) { naEntry = entry; naReason = ''; }
-
-  async function confirmNotApplicable() {
-    const entry = naEntry, reason = naReason;
-    busy = true; panelError = '';
-    try {
-      await inspectionDefinitionsStore.setTemplateDismissed(entry.key, true, reason);
-      naEntry = null;
-    } catch (err) { panelError = err.message; } finally { busy = false; }
+  function askDecision(entry, kind) {
+    decisionEntry = entry;
+    decisionKind = kind;
+    decisionReason = '';
+    decisionReviewDue = '';
   }
 
-  async function reinstate(key) {
+  $: reasonOk = isRecordableReason(decisionReason);
+
+  async function confirmDecision() {
+    const entry = decisionEntry, kind = decisionKind;
+    const reason = decisionReason, reviewDue = decisionReviewDue;
     busy = true; panelError = '';
-    try { await inspectionDefinitionsStore.setTemplateDismissed(key, false); }
-    catch (err) { panelError = err.message; } finally { busy = false; }
+    try {
+      await inspectionDefinitionsStore.recordExclusionDecision(entry.key, kind, reason, { reviewDue });
+      decisionEntry = null;
+    } catch (err) { panelError = err.message; } finally { busy = false; }
   }
 
   // -- Apply -------------------------------------------------------------------
@@ -266,7 +284,7 @@
                   <ProtectedButton requireAdmin={true} variant="primary" size="small"
                     disabled={busy} on:click={() => apply([entry.key])}>Add</ProtectedButton>
                   <Button variant="secondary" size="small"
-                    disabled={busy} on:click={() => askNotApplicable(entry)}>Not applicable</Button>
+                    disabled={busy} on:click={() => askDecision(entry, 'not_applicable')}>Not applicable</Button>
                 </div>
               </div>
             {/each}
@@ -362,17 +380,27 @@
           {#if showNotApplicable}
             <div class="rows tight">
               {#each coverage.notApplicable as { entry } (entry.key)}
+                {@const d = decisions.get(entry.key)}
                 <div class="row na">
                   <div class="row-main">
                     <div class="row-title">
                       <span class="nm">{entry.name}</span>
                       <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
+                      {#if d?.review_due}<span class="badge n">Review {fmtDate(d.review_due)}</span>{/if}
                     </div>
                     <p class="ref">{entry.statutoryRef}</p>
+                    {#if d}
+                      <p class="decision">“{d.reason}”</p>
+                      <p class="decision-by">
+                        Decided {fmtDate(d.decided_at)}{#if personName.get(d.decided_by)} by {personName.get(d.decided_by)}{/if}
+                      </p>
+                    {:else}
+                      <p class="decision-by">No decision record found for this exclusion.</p>
+                    {/if}
                   </div>
                   <div class="row-actions">
                     <Button variant="secondary" size="small" disabled={busy}
-                      on:click={() => reinstate(entry.key)}>Reinstate</Button>
+                      on:click={() => askDecision(entry, 'applicable')}>Reinstate</Button>
                   </div>
                 </div>
               {/each}
@@ -384,29 +412,65 @@
   {/if}
 </div>
 
-<!-- Declaring a check inapplicable is a compliance decision, so it asks for a
-     reason and records it in the audit log as a warning. -->
-<Modal show={!!naEntry} title="Not applicable to this building" size="medium"
-       on:close={() => (naEntry = null)}>
-  {#if naEntry}
+<!-- Deciding that a legal requirement does not apply to this building is a
+     compliance decision someone may later be asked to justify. So it demands a
+     reason, names the decider, timestamps itself, and is never edited or
+     deleted — reversing it writes a second decision beside the first. -->
+<Modal show={!!decisionEntry} size="medium"
+       title={decisionKind === 'not_applicable' ? 'Record: not applicable to this building' : 'Record: applies after all'}
+       on:close={() => (decisionEntry = null)}>
+  {#if decisionEntry}
     <div class="na-body">
-      <p class="na-name">{naEntry.name}</p>
-      <p class="na-ref">{naEntry.statutoryRef}</p>
-      <p class="na-applies">This entry applies when: <em>{naEntry.appliesWhen}</em></p>
-      <p class="na-warn">
-        It will stop counting as a gap. If the building does have one, add the obligation instead —
-        a check that is genuinely required and simply absent is what this report exists to find.
-      </p>
+      <p class="na-name">{decisionEntry.name}</p>
+      <p class="na-ref">{decisionEntry.statutoryRef}</p>
+      <div class="na-badges">
+        <span class="badge {decisionEntry.basis}">{BASIS_LABEL[decisionEntry.basis]}</span>
+        <span class="na-basis">{BASIS_DESCRIPTION[decisionEntry.basis]}</span>
+      </div>
+      <p class="na-applies">This entry applies when: <em>{decisionEntry.appliesWhen}</em></p>
+
+      {#if decisionKind === 'not_applicable'}
+        {#if decisionEntry.basis === 'statute'}
+          <p class="na-warn statute-warn">
+            ⚠ This is a <strong>legal requirement</strong>. Recording it as not applicable is a decision
+            about the law’s application to this building, not a preference. Your reason is what a BSR
+            assessor, a new director or an insurer will be shown if they ask why it is absent.
+          </p>
+        {:else}
+          <p class="na-warn">
+            It will stop counting as a gap. If the building does have one, add the obligation instead —
+            a check that is genuinely required and simply absent is what this report exists to find.
+          </p>
+        {/if}
+      {:else}
+        <p class="na-warn">
+          This reinstates the check. The earlier decision stays in the record; this is recorded beside it,
+          not in place of it.
+        </p>
+      {/if}
+
       <FormTextarea
-        label="Why does this not apply?"
-        bind:value={naReason}
+        label={decisionKind === 'not_applicable' ? 'Why does this not apply?' : 'Why does it apply after all?'}
+        bind:value={decisionReason}
         rows={3}
-        placeholder="e.g. No lift — four storeys, stairs only"
-        helpText="Recorded in the audit log. Optional, but this is the note that answers the question later." />
+        required={true}
+        placeholder={decisionKind === 'not_applicable'
+          ? 'e.g. No lift — four storeys, stairs only'
+          : 'e.g. Passenger lift installed March 2027'}
+        helpText="Required. This is the decision record, not a note to yourself — write what would answer the question in three years." />
+
+      {#if decisionKind === 'not_applicable'}
+        <FormInput
+          label="Review this decision on (optional)"
+          type="date"
+          bind:value={decisionReviewDue}
+          helpText="Use it where the answer could change. “No lift” is stable; “no dwelling is let on a relevant tenancy” is not." />
+      {/if}
+
       <div class="na-actions">
-        <Button variant="secondary" disabled={busy} on:click={() => (naEntry = null)}>Cancel</Button>
-        <Button variant="primary" disabled={busy} on:click={confirmNotApplicable}>
-          {busy ? 'Saving…' : 'Mark not applicable'}
+        <Button variant="secondary" disabled={busy} on:click={() => (decisionEntry = null)}>Cancel</Button>
+        <Button variant="primary" disabled={busy || !reasonOk} on:click={confirmDecision}>
+          {busy ? 'Recording…' : 'Record decision'}
         </Button>
       </div>
     </div>
@@ -515,4 +579,9 @@
   .na-applies { font-size: 0.82rem; color: rgb(203 213 225); }
   .na-warn { font-size: 0.8rem; color: rgb(252 211 77); background: rgb(251 191 36 / 0.1); border-radius: 6px; padding: 0.5rem 0.65rem; line-height: 1.45; }
   .na-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
+  .na-badges { display: flex; align-items: flex-start; gap: 0.5rem; }
+  .na-basis { font-size: 0.76rem; color: rgb(148 163 184); line-height: 1.45; }
+  .statute-warn { color: rgb(252 165 165); background: rgb(248 113 113 / 0.12); }
+  .decision { font-size: 0.8rem; color: rgb(203 213 225); margin-top: 0.3rem; font-style: italic; }
+  .decision-by { font-size: 0.72rem; color: rgb(100 116 139); margin-top: 0.15rem; }
 </style>

@@ -77,6 +77,7 @@ export function computeInspectionSchedule(definitions, sessions, opts = {}) {
 export function frequencyLabel(days) {
   if (days == null) return 'On demand';
   return {
+    1: 'Daily',
     7: 'Weekly',
     30: 'Monthly',    31: 'Monthly',
     60: '2-Monthly',

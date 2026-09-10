@@ -13,11 +13,9 @@ import { getLogger } from '$lib/utils/logger';
 import { logAudit }  from '$lib/utils/auditLogger';
 import { EVIDENCE_ROUTES } from '$lib/utils/obligationEvidence.js';
 import { TEMPLATE_KEYS, templateEntry, templateToObligation } from '$lib/utils/statutoryTemplate.js';
+import { excludedKeys, isRecordableReason } from '$lib/utils/statutoryExclusions.js';
 
 const logger = getLogger('InspectionDefinitions');
-
-/** portal_settings key holding the template entries this building has no such system for. */
-const TEMPLATE_DISMISSED_KEY = 'statutory_template_not_applicable';
 
 /** Numeric field from a form: '' / null / undefined / NaN all mean "not set". */
 function numOrNull(v) {
@@ -28,7 +26,7 @@ function numOrNull(v) {
 
 /**
  * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
- * @typedef {{ definitions: InspectionDefinition[], dismissedKeys: string[], loading: boolean, error: string|null }} State
+ * @typedef {{ definitions: InspectionDefinition[], exclusions: object[], dismissedKeys: string[], loading: boolean, error: string|null }} State
  */
 
 function byOrderThenName(a, b) {
@@ -84,7 +82,7 @@ function toRow(data, uid, { isCreate }) {
 
 function createInspectionDefinitionsStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
-    definitions: [], dismissedKeys: [], loading: false, error: null,
+    definitions: [], exclusions: [], dismissedKeys: [], loading: false, error: null,
   }));
 
   async function userId() {
@@ -214,66 +212,84 @@ function createInspectionDefinitionsStore() {
   }
 
   /**
-   * Template entries this building says it does not have — a block with no
-   * lift should not carry a permanent LOLER gap, because a report that is
-   * always red stops being read.
+   * Every recorded decision that a register entry does or does not apply to
+   * this building (migration 208). Append-only, so this reads the whole log and
+   * `excludedKeys` reduces it to the current position.
    *
-   * Kept in `portal_settings` (the withdrawn-specifications precedent in
-   * worksSchedulesStore): it is one fact about the building, true for everyone
-   * who looks, and it costs no migration. Never fatal — without it every entry
-   * is simply still asked about.
+   * Never fatal: without it every entry is simply still asked about, which is
+   * the safe direction — a register that silently hid entries because a read
+   * failed would be worse than one that over-asks.
    */
-  async function loadTemplateDismissals() {
+  async function loadExclusions() {
     try {
-      const rows = await api.get('portal_settings', {
-        select: 'key, value', filters: { key: TEMPLATE_DISMISSED_KEY },
-      });
-      const value = rows[0]?.value;
-      const dismissedKeys = Array.isArray(value) ? value.filter(k => TEMPLATE_KEYS.includes(k)) : [];
-      update(s => ({ ...s, dismissedKeys }));
-      return dismissedKeys;
+      const exclusions = await api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
+      update(s => ({ ...s, exclusions, dismissedKeys: excludedKeys(exclusions) }));
+      return exclusions;
     } catch (err) {
-      logger('⚠ Could not read template dismissals:', err.message);
+      logger('⚠ Could not read statutory exclusions:', err.message);
       return [];
     }
   }
 
   /**
-   * @param {string} key
-   * @param {boolean} dismissed
-   * @param {string} [reason] free text — why this building has no such system
+   * Record a decision that an entry does not apply to this building, or that it
+   * applies again. A COMPLIANCE DECISION, not a UI preference: someone may
+   * later have to say who decided a statutory check did not apply, when, and
+   * why, so the reason is mandatory here as well as at the database.
+   *
+   * Nothing is updated or deleted — a reversal is a new row, and the original
+   * decision stays in the log.
+   *
+   * @param {string} templateKey
+   * @param {'not_applicable'|'applicable'} decision
+   * @param {string} reason        required, and must say something
+   * @param {{ reviewDue?: string|null }} [opts]
    */
-  async function setTemplateDismissed(key, dismissed, reason = '') {
+  async function recordExclusionDecision(templateKey, decision, reason, opts = {}) {
+    if (!TEMPLATE_KEYS.includes(templateKey)) {
+      throw new Error(`Unknown register entry: ${templateKey}`);
+    }
+    if (!isRecordableReason(reason)) {
+      throw new Error('A reason is required — this decision is a compliance record.');
+    }
     const uid = await userId();
-    const current = _dismissed;
-    const next = dismissed
-      ? [...new Set([...current, key])]
-      : current.filter(k => k !== key);
-
-    await api.upsert('portal_settings',
-      { key: TEMPLATE_DISMISSED_KEY, value: next, updated_by: uid },
-      { onConflict: 'key' });
-
-    update(s => ({ ...s, dismissedKeys: next }));
-    // Warning, not info: declaring a statutory obligation inapplicable is a
-    // compliance decision someone may later have to justify.
-    logAudit('update', 'portal_setting', TEMPLATE_DISMISSED_KEY, 'Statutory template — not applicable', {
-      appId: 'admin', eventCategory: 'admin', severity: 'warning',
-      afterData: { template_key: key, not_applicable: dismissed, reason: reason || null },
+    const row = await api.create('statutory_exclusions', {
+      template_key: templateKey,
+      decision,
+      reason:       reason.trim(),
+      review_due:   opts.reviewDue || null,
+      decided_by:   uid,
+      created_by:   uid,
     });
-    logger(dismissed ? `Template entry ${key} marked not applicable` : `Template entry ${key} reinstated`);
-    return next;
+
+    update(s => {
+      const exclusions = [row, ...s.exclusions];
+      return { ...s, exclusions, dismissedKeys: excludedKeys(exclusions) };
+    });
+
+    const entry = templateEntry(templateKey);
+    // Warning, not info: declaring a legal requirement inapplicable is a
+    // decision someone may later have to justify.
+    logAudit('create', 'statutory_exclusion', row.id, entry?.name ?? templateKey, {
+      appId: 'admin', eventCategory: 'admin',
+      severity: decision === 'not_applicable' ? 'warning' : 'info',
+      afterData: {
+        template_key: templateKey, decision, reason: reason.trim(),
+        basis: entry?.basis ?? null, review_due: opts.reviewDue || null,
+      },
+    });
+    logger(`Recorded ${decision} for ${templateKey}`);
+    return row;
   }
 
   // Read the current cached name for a definition (for audit before delete).
   let _snapshot = [];
-  let _dismissed = [];
-  subscribe(s => { _snapshot = s.definitions; _dismissed = s.dismissedKeys; });
+  subscribe(s => { _snapshot = s.definitions; });
   function getName(id) { return _snapshot.find(d => d.id === id)?.name ?? null; }
 
   return {
     subscribe, load, create, save, remove,
-    applyTemplate, linkToTemplate, loadTemplateDismissals, setTemplateDismissed,
+    applyTemplate, linkToTemplate, loadExclusions, recordExclusionDecision,
   };
 }
 

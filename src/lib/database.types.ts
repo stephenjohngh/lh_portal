@@ -4059,6 +4059,57 @@ export type Database = {
             }
           ]
       }
+      statutory_exclusions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          decided_at: string
+          decided_by: string | null
+          decision: string
+          id: string
+          reason: string
+          review_due: string | null
+          template_key: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision: string
+          id?: string
+          reason: string
+          review_due?: string | null
+          template_key: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          reason?: string
+          review_due?: string | null
+          template_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statutory_exclusions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statutory_exclusions_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       statutory_obligations: {
         Row: {
           id: string
