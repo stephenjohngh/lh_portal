@@ -31,6 +31,24 @@
 // one genuinely exists, and `planExceedsCeiling` in obligationSchedule.js
 // catches a plan set looser than it.
 //
+// ── Where these came from, and how far to trust the citations ──────────────
+// The recurring PPM regime is NOT in the supplied BSA documents. Those cover
+// s.87 MOR, s.88 golden thread, s.93 complaints and resident engagement, whose
+// secondary legislation is SI 2023/907 — cited there at reg 6 (MOR) and reg 10
+// (engagement strategy). ⚠ Those are DIFFERENT regs 6 and 10 from the Fire
+// Safety (England) Regulations 2022 ones below: same numbers, different
+// instrument, unrelated subject. Do not cross-reference them.
+//
+// Two of our own docs already carried this ground and agree with the cadences
+// here — Commercial_Landscape_and_Gaps.md §4.4 (the FSER cadence table) and
+// §4.5 (the certificate register), and inspection_user_guide.md, which
+// corroborates FSER **reg 6** for the firefighting-equipment duty. The other
+// sub-paragraph numbers — FSER reg 5 and reg 10, LOLER reg 9(3) — are written
+// from knowledge and have NOT been checked against legislation.gov.uk. Where a
+// doc records a duty without a sub-paragraph (the secure information box, the
+// plans held by the fire and rescue service), this file cites the instrument
+// alone: a guessed regulation number is worse than none.
+//
 // ── Deliberate omissions ───────────────────────────────────────────────────
 // · The BSA s.83/85 SAFETY CASE REPORT review is owned by the Golden Thread
 //   app (gtSafetyCase.js, and the s.86 revision notification log added with
@@ -44,6 +62,13 @@
 // · Monthly VISUAL checks of extinguishers and similar fold into the Fire
 //   Safety (England) Regulations 2022 reg 6 monthly check below, rather than
 //   being listed separately, so one walk discharges one obligation.
+// · The **24-hour report to the fire and rescue service** when a fault cannot
+//   be fixed (FSER 2022 reg 6) is named in the monthly check's evidence, but it
+//   is NOT an entry of its own — it is an event-driven deadline, not a
+//   recurring obligation, and nothing in the portal owns it.
+//   Commercial_Landscape_and_Gaps.md §4.4 flags it as "a legal obligation with
+//   a deadline and no home anywhere in the system"; that remains true, and it
+//   belongs with the MOR-shaped clock work, not here.
 
 /**
  * @typedef {object} TemplateEntry
@@ -133,6 +158,46 @@ export const STATUTORY_TEMPLATE = [
     responsibleParty: 'Responsible person',
     competencyRequired: 'Briefed site staff',
     evidenceRequired: 'Dated check record per floor, with any missing or illegible signs',
+    retentionPeriodMonths: 36,
+    evidencedBy: 'inspection',
+    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+  },
+
+  {
+    key: 'fser_secure_information_box',
+    name: 'Secure information box — check contents',
+    description:
+      'Check the secure information box is present, secure and accessible, and that its contents are '
+      + 'current — the responsible person’s contact details and hard-copy floor plans.',
+    // Cited at instrument level on purpose: Commercial_Landscape_and_Gaps.md
+    // §4.4 records the duty as "maintained" without a sub-paragraph, and a
+    // guessed regulation number is worse than none.
+    statutoryRef: 'Fire Safety (England) Regulations 2022 — secure information box',
+    basis: 'statute',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    maxIntervalDays: null,
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Briefed site staff',
+    evidenceRequired: 'Dated check record confirming the box is secure and its contents current',
+    retentionPeriodMonths: 36,
+    evidencedBy: 'inspection',
+    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+  },
+  {
+    key: 'fser_frs_plans_current',
+    name: 'Fire and rescue service plans — confirm current',
+    description:
+      'Confirm the floor plans and single-page building plan held by the fire and rescue service still '
+      + 'reflect the building, and re-issue them if anything has changed.',
+    statutoryRef: 'Fire Safety (England) Regulations 2022 — information to the fire and rescue service',
+    basis: 'statute',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    maxIntervalDays: null,
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person who can confirm the plans against the building as built',
+    evidenceRequired: 'Record of the check, and of any re-issue to the fire and rescue service',
     retentionPeriodMonths: 36,
     evidencedBy: 'inspection',
     appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
