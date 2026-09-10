@@ -14,6 +14,7 @@
   import { lastDefinitionInspections } from '../public.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { computeInspectionSchedule, sortByDisplayOrder, scheduleDueText } from '$lib/utils/inspectionSchedule';
+  import { isWalkEvidenced } from '$lib/utils/obligationEvidence.js';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkInput  from '$lib/apps/inspection/components/common/WalkInput.svelte';
   import WalkSelect from '$lib/apps/inspection/components/common/WalkSelect.svelte';
@@ -48,7 +49,12 @@
 
   // -- Scheduled inspection definitions -------------------------------------------
   /** @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition */
-  $: definitions = /** @type {InspectionDefinition[]} */ ($inspectionStore.definitions ?? []).filter(d => d.active);
+  // `isWalkEvidenced` keeps contractor-evidenced obligations out: since the
+  // obligation library is shared with Maintenance (migration 203), this table
+  // also holds work discharged by a contractor job, which nobody can tick off
+  // on a walk — and which would otherwise sit here reading "never run".
+  $: definitions = /** @type {InspectionDefinition[]} */ ($inspectionStore.definitions ?? [])
+    .filter(d => d.active && isWalkEvidenced(d));
   // Display order (Admin → Inspections) — the same sequence as the Building
   // Assets Upcoming/Due panel and Inspections filter, so an inspection is always
   // in the position the admin put it. Each row still shows its own due state.

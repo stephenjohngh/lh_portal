@@ -125,6 +125,7 @@ describe('create', () => {
       checklist_mode: 'bogus',
       pass_fail_rule: 'bogus',
       link_source: 'bogus',
+      evidenced_by: 'bogus',
       checklist_attr_ids: 'not-an-array',
       frequency_days: '',
     }));
@@ -134,8 +135,31 @@ describe('create', () => {
       checklist_mode:     'type_driven',
       pass_fail_rule:     'manual',
       link_source:        'component_links',
+      evidenced_by:       'inspection',    // unknown route → the pre-203 default
       checklist_attr_ids: [],
       frequency_days:     null,           // empty string → null
+    });
+  });
+
+  // EXT-10.R1 statutory detail (migration 203). All optional: an untouched
+  // field must persist as null ("not recorded"), never as '' or 0.
+  it('normalises the statutory-detail fields, blanks to null', async () => {
+    await defs.create(form({
+      evidenced_by: 'maintenance_job',
+      max_interval_days: '180',
+      retention_period_months: '',
+      responsible_party: '  Principal Accountable Person  ',
+      competency_required: '',
+      evidence_required: '  Signed certificate  ',
+    }));
+    const row = h.api.create.mock.calls[0][1];
+    expect(row).toMatchObject({
+      evidenced_by:            'maintenance_job',
+      max_interval_days:       180,        // string coerced
+      retention_period_months: null,       // blank → null, not 0
+      responsible_party:       'Principal Accountable Person',
+      competency_required:     null,
+      evidence_required:       'Signed certificate',
     });
   });
 });

@@ -30,6 +30,7 @@
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
   import { deleteWalkSession, listWalkSessions, loadSessionInspections, listInspectionDefinitions, listComponentsAwaitingAccess } from '$lib/apps/inspection/public.js';
+  import { isWalkEvidenced } from '$lib/utils/obligationEvidence.js';
 
   const logger = getLogger('InspectionsTab');
 
@@ -129,7 +130,12 @@
 
   // Active definitions drive the Upcoming/Due panel; the full list resolves a
   // session's definition name (inactive definitions still label past sessions).
-  $: activeDefs = definitions.filter(d => d.active);
+  // Walk-evidenced only: the shared obligation library also holds contractor
+  // work (migration 203), which is discharged by a maintenance job and has no
+  // business in an inspection due panel. defById stays over the FULL list —
+  // it resolves a past session's definition name, and filtering it would blank
+  // the label on any session whose definition later changed route.
+  $: activeDefs = definitions.filter(d => d.active && isWalkEvidenced(d));
   $: defById    = new Map(definitions.map(d => [d.id, d]));
 
   // The Inspection filter follows the Display order set in Admin → Inspections,
@@ -137,7 +143,7 @@
   // decoration: definitions created before the Display order input existed all
   // sit at 0, and equal orders would otherwise come back in whatever sequence
   // the DB chose — which could differ between loads.
-  $: definitionsInOrder = [...definitions].sort((a, b) =>
+  $: definitionsInOrder = definitions.filter(isWalkEvidenced).sort((a, b) =>
     (a.presentation_order ?? 0) - (b.presentation_order ?? 0)
     || (a.name ?? '').localeCompare(b.name ?? ''));
 

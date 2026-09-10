@@ -8,6 +8,7 @@
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
+  import { isWalkEvidenced, isJobEvidenced } from '$lib/utils/obligationEvidence.js';
   import Button        from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
@@ -87,6 +88,8 @@
               <span class="nm">{d.name}</span>
               {#if !d.active}<span class="badge off">Inactive</span>{/if}
               {#if d.mode === 'rotating'}<span class="badge rot">Rotating</span>{/if}
+              {#if !isWalkEvidenced(d)}<span class="badge job">Contractor job</span>
+              {:else if isJobEvidenced(d)}<span class="badge job">Either route</span>{/if}
             </div>
             {#if d.description}<p class="desc">{d.description}</p>{/if}
             <div class="meta">
@@ -145,6 +148,7 @@
   .badge { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.1rem 0.4rem; border-radius: 4px; }
   .badge.off { background: rgb(71 85 105 / 0.4); color: rgb(148 163 184); }
   .badge.rot { background: rgb(251 146 60 / 0.2); color: rgb(251 146 60); }
+  .badge.job { background: rgb(56 189 248 / 0.18); color: rgb(125 211 252); }
   .desc { font-size: 0.8rem; color: rgb(148 163 184); margin-top: 0.2rem; }
   .meta { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgb(148 163 184); margin-top: 0.3rem; }
   .freq { color: rgb(203 213 225); }

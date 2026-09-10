@@ -11,8 +11,16 @@ import { api }       from '$lib/utils/api';
 import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { logAudit }  from '$lib/utils/auditLogger';
+import { EVIDENCE_ROUTES } from '$lib/utils/obligationEvidence.js';
 
 const logger = getLogger('InspectionDefinitions');
+
+/** Numeric field from a form: '' / null / undefined / NaN all mean "not set". */
+function numOrNull(v) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
 /**
  * @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition
@@ -42,6 +50,16 @@ function toRow(data, uid, { isCreate }) {
     link_source:        data.link_source === 'self_only' ? 'self_only' : 'component_links',
     link_type_filter:   data.link_type_filter?.trim() || null,
     presentation_order: data.presentation_order ?? 0,
+    // Which occurrence stack discharges this (migration 203). Anything
+    // unrecognised falls back to 'inspection' — the pre-203 behaviour.
+    evidenced_by:       EVIDENCE_ROUTES.includes(data.evidenced_by) ? data.evidenced_by : 'inspection',
+    // EXT-10.R1 statutory detail. All optional; null rather than '' so an
+    // untouched field reads as "not recorded" and not as "recorded as blank".
+    max_interval_days:       numOrNull(data.max_interval_days),
+    responsible_party:       data.responsible_party?.trim()   || null,
+    competency_required:     data.competency_required?.trim() || null,
+    evidence_required:       data.evidence_required?.trim()   || null,
+    retention_period_months: numOrNull(data.retention_period_months),
     updated_by:         uid,
   };
   if (isCreate) row.created_by = uid;

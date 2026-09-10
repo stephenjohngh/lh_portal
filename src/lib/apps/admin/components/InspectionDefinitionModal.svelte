@@ -62,6 +62,21 @@
   // Statutory provenance (G3) — descriptive metadata, not logic.
   let statutoryRef     = definition?.statutory_ref ?? '';
   let testType         = definition?.test_type ?? '';
+
+  // Which occurrence stack discharges this obligation (migration 203). Drives
+  // real behaviour, not just display: a 'maintenance_job' obligation is kept
+  // out of the mobile walk list and the inspection due panel entirely.
+  let evidencedBy      = definition?.evidenced_by ?? 'inspection';
+
+  // EXT-10.R1 statutory detail — all optional, all descriptive. Collapsed by
+  // default: five more always-visible inputs would crowd out the fields that
+  // actually drive the walk.
+  let maxIntervalDays  = definition?.max_interval_days ?? '';
+  let responsibleParty = definition?.responsible_party ?? '';
+  let competencyRequired = definition?.competency_required ?? '';
+  let evidenceRequired = definition?.evidence_required ?? '';
+  let retentionMonths  = definition?.retention_period_months ?? '';
+  let showStatutoryDetail = false;
   // Display order. A new definition goes to the END of the list rather than
   // defaulting to 0 — previously every new definition landed on 0, so they all
   // tied and their order was whatever the DB happened to return.
@@ -154,6 +169,12 @@
         presentation_order: Number(presentationOrder) || 0,
         statutory_ref: statutoryRef.trim() || null,
         test_type:     testType.trim() || null,
+        evidenced_by:  evidencedBy,
+        max_interval_days:       maxIntervalDays,
+        responsible_party:       responsibleParty,
+        competency_required:     competencyRequired,
+        evidence_required:       evidenceRequired,
+        retention_period_months: retentionMonths,
       },
     });
   }
@@ -209,6 +230,69 @@
         </label>
       </div>
       <p class="hint">Optional. Records the compliance basis — appears on the inspection report and the Golden Thread entry.</p>
+    </div>
+
+    <!-- How this obligation is discharged (migration 203). Not cosmetic: a
+         contractor-evidenced obligation is excluded from the mobile walk list
+         and the inspection due panel, because it can never have a walk
+         session and would otherwise read "never run" forever. -->
+    <div class="block">
+      <p class="block-lbl">How is this discharged?</p>
+      <div class="mode-row">
+        <button type="button" class="mode-chip" class:on={evidencedBy === 'inspection'} on:click={() => evidencedBy = 'inspection'}>
+          Inspection walk <span class="mode-sub">someone walks round and ticks components</span>
+        </button>
+        <button type="button" class="mode-chip" class:on={evidencedBy === 'maintenance_job'} on:click={() => evidencedBy = 'maintenance_job'}>
+          Contractor job <span class="mode-sub">a maintenance job + its certificate</span>
+        </button>
+        <button type="button" class="mode-chip" class:on={evidencedBy === 'either'} on:click={() => evidencedBy = 'either'}>
+          Either <span class="mode-sub">satisfied by whichever happens</span>
+        </button>
+      </div>
+      {#if evidencedBy === 'maintenance_job'}
+        <p class="hint">
+          Won’t appear in the mobile app or the inspection due list — it is
+          scheduled and evidenced in Maintenance. The scope, checklist and
+          rotation settings below don’t apply to it.
+        </p>
+      {/if}
+    </div>
+
+    <!-- EXT-10.R1 statutory detail — optional, collapsed by default. -->
+    <div class="block">
+      <button type="button" class="disclose" on:click={() => showStatutoryDetail = !showStatutoryDetail}>
+        {showStatutoryDetail ? '▾' : '▸'} Statutory detail
+        <span class="disclose-sub">maximum interval, responsible party, competence, evidence, retention</span>
+      </button>
+      {#if showStatutoryDetail}
+        <div class="stat-grid">
+          <label class="stat-fld">
+            Maximum interval (days)
+            <input type="number" min="1" bind:value={maxIntervalDays} placeholder="—" />
+          </label>
+          <label class="stat-fld">
+            Retention period (months)
+            <input type="number" min="1" bind:value={retentionMonths} placeholder="—" />
+          </label>
+          <label class="stat-fld">
+            Responsible party
+            <input bind:value={responsibleParty} placeholder="e.g. Principal Accountable Person" />
+          </label>
+          <label class="stat-fld">
+            Competence required
+            <input bind:value={competencyRequired} placeholder="e.g. BAFE SP203-certified engineer" />
+          </label>
+          <label class="stat-fld wide">
+            Evidence required
+            <input bind:value={evidenceRequired} placeholder="e.g. Signed test certificate naming the engineer" />
+          </label>
+        </div>
+        <p class="hint">
+          <strong>Maximum interval</strong> is the legal ceiling, separate from the
+          frequency above: a quarterly plan against a six-monthly maximum is still
+          compliant when one quarter slips — a six-monthly plan against it is not.
+        </p>
+      {/if}
     </div>
 
     <!-- Mode -->
@@ -363,6 +447,18 @@
   .stat-fld { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 12rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgb(148 163 184); }
   .stat-fld input { text-transform: none; letter-spacing: normal; padding: 0.4rem 0.55rem; background: rgb(15 23 42); border: 1px solid rgb(71 85 105); border-radius: 6px; color: rgb(226 232 240); font-size: 0.85rem; }
   .stat-fld input:focus { outline: none; border-color: rgb(60 150 131); }
+
+  /* Statutory detail — collapsed by default, two columns when open. */
+  .disclose {
+    display: flex; align-items: baseline; gap: 0.5rem; width: 100%; text-align: left;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: rgb(148 163 184); font-weight: 600; cursor: pointer;
+    background: none; border: none; padding: 0;
+  }
+  .disclose:hover { color: rgb(203 213 225); }
+  .disclose-sub { font-size: 0.65rem; text-transform: none; letter-spacing: normal; color: rgb(100 116 139); font-weight: 400; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+  .stat-grid .wide { grid-column: 1 / -1; }
 
   .mode-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .mode-chip { border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; }
