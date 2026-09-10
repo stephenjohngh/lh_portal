@@ -184,13 +184,62 @@ describe('suggestMatches', () => {
   });
 
   it('falls back to a name match when there is no reference', () => {
-    const s = suggestMatches([{ id: 'n', name: 'Gas safety check' }]);
+    const s = suggestMatches([{ id: 'n', name: 'Gas safety check', evidenced_by: 'maintenance_job' }]);
     expect(s.get('gas_safety_check')[0].reason).toBe('Similar name');
+  });
+
+  // These five are the obligations actually in the live database (migration
+  // 153's seeds). Substring matching offered NOTHING for three of them, which
+  // is how the name matcher came to be token-based — worth pinning against the
+  // real names rather than invented ones.
+  describe('against the real seeded obligations', () => {
+    const live = [
+      { id: '1', name: 'Emergency Lighting',    evidenced_by: 'inspection' },
+      { id: '2', name: 'Fire Doors',            evidenced_by: 'inspection' },
+      { id: '3', name: 'Apartment Doors',       evidenced_by: 'inspection' },
+      { id: '4', name: 'Wayfinding Sign Check', evidenced_by: 'inspection' },
+      { id: '5', name: 'Every Component',       evidenced_by: 'inspection' },
+    ];
+    const s = suggestMatches(live);
+    const names = key => (s.get(key) ?? []).map(c => c.obligation.name);
+
+    // "Fire Doors" vs "Fire door checks — communal doors": a plural and an
+    // inserted verb, which substring matching cannot see past.
+    it('matches a short existing name to the fuller template name', () => {
+      expect(names('fser_communal_fire_doors')).toContain('Fire Doors');
+    });
+
+    it('treats apartment and flat as the same thing', () => {
+      expect(names('fser_flat_entrance_doors')).toContain('Apartment Doors');
+    });
+
+    it('treats sign and signage as the same thing', () => {
+      expect(names('fser_wayfinding_signage')).toEqual(['Wayfinding Sign Check']);
+    });
+
+    // The annual full-duration test is a contractor job an inspection-route
+    // obligation can never discharge; offering it is an inviting wrong answer.
+    it('offers an inspection-route obligation only against inspection entries', () => {
+      expect(names('emergency_lighting_monthly')).toEqual(['Emergency Lighting']);
+      expect(names('emergency_lighting_annual')).toEqual([]);
+    });
+
+    it('matches nothing for an obligation that describes nothing statutory', () => {
+      for (const [, cands] of s) {
+        expect(cands.map(c => c.obligation.name)).not.toContain('Every Component');
+      }
+    });
+  });
+
+  // The all-tokens-must-agree rule is what keeps the loosened matching honest.
+  it('does not match on a shared word alone', () => {
+    const s = suggestMatches([{ id: 'x', name: 'Riser cupboard doors', evidenced_by: 'inspection' }]);
+    expect(s.has('fser_communal_fire_doors')).toBe(false);
   });
 
   it('ranks an exact reference above a name match', () => {
     const s = suggestMatches([
-      { id: 'weak', name: 'Gas safety check' },
+      { id: 'weak', name: 'Gas safety check', evidenced_by: 'maintenance_job' },
       { id: 'strong', name: 'CP12', statutory_ref: 'Gas Safety (Installation and Use) Regulations 1998, reg 36(3)' },
     ]);
     expect(s.get('gas_safety_check').map(c => c.obligation.id)).toEqual(['strong', 'weak']);

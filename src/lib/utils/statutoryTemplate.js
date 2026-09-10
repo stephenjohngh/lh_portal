@@ -117,6 +117,27 @@ export const STATUTORY_TEMPLATE = [
     appliesWhen: 'Building is over 11 metres (always true for an HRB)',
   },
 
+  {
+    key: 'fser_wayfinding_signage',
+    name: 'Wayfinding signage — check',
+    description:
+      'Check that wayfinding signage identifying floor numbers and flat numbers is in place, '
+      + 'legible and visible in low light or smoky conditions.',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 5',
+    basis: 'statute',
+    // The regulation requires the signage to be installed and maintained; it
+    // does not name a checking interval. Annual is practice.
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    maxIntervalDays: null,
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Briefed site staff',
+    evidenceRequired: 'Dated check record per floor, with any missing or illegible signs',
+    retentionPeriodMonths: 36,
+    evidencedBy: 'inspection',
+    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+  },
+
   // ── Fire detection and alarm ─────────────────────────────────────────────
   {
     key: 'fire_alarm_weekly_test',
@@ -551,6 +572,71 @@ function refHead(s) {
   return m ? m[0] : n.split(/\s+/).slice(0, 4).join(' ');
 }
 
+// Words that say how a thing is done rather than what it is. Dropping them is
+// what lets an existing "Fire Doors" match "Fire door checks — communal doors":
+// substring matching does not, because of the plural and the inserted verb.
+const NAME_NOISE = new Set([
+  'check', 'checks', 'checking', 'test', 'tests', 'testing', 'service',
+  'servicing', 'inspection', 'inspections', 'review', 'monitoring',
+  'annual', 'monthly', 'weekly', 'quarterly', 'periodic', 'routine', 'basic',
+  'full', 'duration', 'function', 'and', 'the', 'of', 'for', 'system', 'systems',
+]);
+
+/** Significant, singularised words of a name. */
+function nameTokens(s) {
+  return new Set(
+    normaliseRef(s)
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(w => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w))   // doors -> door
+      .filter(w => w.length > 1 && !NAME_NOISE.has(w)),
+  );
+}
+
+/**
+ * Does the obligation's name describe this entry? True when every significant
+ * word of the obligation's name appears in the entry's — "Fire Doors" describes
+ * "Fire door checks — communal doors", but "Apartment Doors" does not, because
+ * "apartment" is not in it.
+ *
+ * Deliberately one-directional: a SHORTER, vaguer existing name matching a
+ * fuller template name is the realistic case (the seeded definitions are called
+ * "Fire Doors" and "Emergency Lighting"). Going the other way would match
+ * almost everything to almost everything.
+ */
+function nameDescribes(obligationName, entryName) {
+  const o = nameTokens(obligationName);
+  const e = nameTokens(entryName);
+  if (o.size === 0 || e.size === 0) return false;
+  for (const w of o) if (![...e].some(x => tokensAgree(w, x))) return false;
+  return true;
+}
+
+/**
+ * Two words naming the same thing. Equality, or one a prefix of the other with
+ * at least four characters — so "sign" agrees with "signage" (the seeded
+ * definition is "Wayfinding Sign Check"; the regulation says signage). The
+ * four-character floor and the all-tokens-must-agree rule above are what stop
+ * this being a licence to match anything to anything.
+ */
+function tokensAgree(a, b) {
+  if (a === b) return true;
+  if (SYNONYM.get(a) === SYNONYM.get(b) && SYNONYM.has(a)) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  return short.length >= 4 && long.startsWith(short);
+}
+
+/**
+ * UK housing vocabulary for the same thing — NOT a general thesaurus, and it
+ * should stay this short. The regulation says "flat entrance door"; the
+ * building's own seeded definition is called "Apartment Doors", and that is
+ * the single most important door check there is, so failing to offer the link
+ * would invite a duplicate for exactly the obligation you least want two of.
+ */
+const SYNONYM = new Map([
+  ['flat', 'dwelling'], ['apartment', 'dwelling'], ['dwelling', 'dwelling'],
+]);
+
 const SUGGESTION_RANK = {
   'Same statutory reference': 0,
   'Same standard and evidence route': 1,
@@ -575,22 +661,25 @@ export function suggestMatches(obligations) {
   for (const entry of STATUTORY_TEMPLATE) {
     const entryRef  = normaliseRef(entry.statutoryRef);
     const entryHead = refHead(entry.statutoryRef);
-    const entryName = normaliseRef(entry.name);
     const candidates = [];
 
     for (const o of unlinked) {
-      const oRef  = normaliseRef(o.statutory_ref);
-      const oName = normaliseRef(o.name);
+      const oRef   = normaliseRef(o.statutory_ref);
+      const oRoute = o.evidenced_by ?? 'inspection';
       let reason = null;
 
       if (oRef && oRef === entryRef) {
         reason = 'Same statutory reference';
       } else if (oRef && entryHead && refHead(o.statutory_ref) === entryHead
-                 && (o.evidenced_by ?? 'inspection') === entry.evidencedBy) {
+                 && oRoute === entry.evidencedBy) {
         // Several entries share a standard (BS 5839-1 covers both the weekly
         // test and the service), so the evidence route has to agree too.
         reason = 'Same standard and evidence route';
-      } else if (oName && (oName === entryName || oName.includes(entryName) || entryName.includes(oName))) {
+      } else if (oRoute === entry.evidencedBy && nameDescribes(o.name, entry.name)) {
+        // The route must agree here too. Without it, an inspection-route
+        // "Emergency Lighting" is offered against the annual full-duration
+        // test, which is a contractor job it can never discharge — an
+        // inviting, wrong answer.
         reason = 'Similar name';
       }
 
