@@ -1,7 +1,7 @@
 // src/lib/database.types.ts
 //
 // AUTO-GENERATED — do not edit by hand.
-// Source: docs/supabase_lhportal_schema8.csv
+// Source: docs/supabase_lhportal_schema11.csv
 // Regenerate: node scripts/gen-db-types.mjs
 //
 // Mirrors the shape of `supabase gen types typescript`. See
@@ -348,6 +348,297 @@ export type Database = {
             {
               foreignKeyName: "building_systems_updated_by_fkey"
               columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      case_reference_counters: {
+        Row: {
+          prefix: string
+          year: number
+          last_seq: number
+          updated_at: string
+        }
+        Insert: {
+          prefix: string
+          year: number
+          last_seq?: number
+          updated_at?: string
+        }
+        Update: {
+          prefix?: string
+          year?: number
+          last_seq?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      complaint_actions: {
+        Row: {
+          id: string
+          case_id: string
+          description: string
+          owner: string | null
+          target_date: string | null
+          status: string
+          completed_at: string | null
+          notes: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          description: string
+          owner?: string | null
+          target_date?: string | null
+          status?: string
+          completed_at?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          description?: string
+          owner?: string | null
+          target_date?: string | null
+          status?: string
+          completed_at?: string | null
+          notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "complaint_actions_case_id_fkey"
+              columns: ["case_id"]
+              isOneToOne: false
+              referencedRelation: "complaint_cases"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "complaint_actions_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "complaint_actions_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      complaint_cases: {
+        Row: {
+          id: string
+          reference: string
+          status: string
+          subject: string
+          description: string
+          category: string | null
+          in_scope: boolean
+          scope_rationale: string | null
+          complainant_name: string | null
+          complainant_contact: string | null
+          complainant_type: string
+          entitlement_basis: string | null
+          dwelling_ref: string | null
+          channel: string
+          received_at: string
+          acknowledged_at: string | null
+          responded_at: string | null
+          closed_at: string | null
+          ack_due_at: string | null
+          response_due_at: string | null
+          sla_paused_at: string | null
+          sla_paused_ms: number
+          assigned_to: string | null
+          outcome: string | null
+          response_text: string | null
+          escalation_told_at: string | null
+          escalated_at: string | null
+          bsr_reference: string | null
+          verification_code: string | null
+          raised_from_type: string | null
+          raised_from_id: string | null
+          promoted_type: string | null
+          promoted_id: string | null
+          component_id: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          reference?: string
+          status?: string
+          subject: string
+          description: string
+          category?: string | null
+          in_scope?: boolean
+          scope_rationale?: string | null
+          complainant_name?: string | null
+          complainant_contact?: string | null
+          complainant_type?: string
+          entitlement_basis?: string | null
+          dwelling_ref?: string | null
+          channel?: string
+          received_at?: string
+          acknowledged_at?: string | null
+          responded_at?: string | null
+          closed_at?: string | null
+          ack_due_at?: string | null
+          response_due_at?: string | null
+          sla_paused_at?: string | null
+          sla_paused_ms?: number
+          assigned_to?: string | null
+          outcome?: string | null
+          response_text?: string | null
+          escalation_told_at?: string | null
+          escalated_at?: string | null
+          bsr_reference?: string | null
+          verification_code?: string | null
+          raised_from_type?: string | null
+          raised_from_id?: string | null
+          promoted_type?: string | null
+          promoted_id?: string | null
+          component_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          reference?: string
+          status?: string
+          subject?: string
+          description?: string
+          category?: string | null
+          in_scope?: boolean
+          scope_rationale?: string | null
+          complainant_name?: string | null
+          complainant_contact?: string | null
+          complainant_type?: string
+          entitlement_basis?: string | null
+          dwelling_ref?: string | null
+          channel?: string
+          received_at?: string
+          acknowledged_at?: string | null
+          responded_at?: string | null
+          closed_at?: string | null
+          ack_due_at?: string | null
+          response_due_at?: string | null
+          sla_paused_at?: string | null
+          sla_paused_ms?: number
+          assigned_to?: string | null
+          outcome?: string | null
+          response_text?: string | null
+          escalation_told_at?: string | null
+          escalated_at?: string | null
+          bsr_reference?: string | null
+          verification_code?: string | null
+          raised_from_type?: string | null
+          raised_from_id?: string | null
+          promoted_type?: string | null
+          promoted_id?: string | null
+          component_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "complaint_cases_assigned_to_fkey"
+              columns: ["assigned_to"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "complaint_cases_component_id_fkey"
+              columns: ["component_id"]
+              isOneToOne: false
+              referencedRelation: "components"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "complaint_cases_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "complaint_cases_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      complaint_timeline_entries: {
+        Row: {
+          id: string
+          case_id: string
+          entry_type: string
+          from_status: string | null
+          to_status: string | null
+          content: string | null
+          author_id: string | null
+          author_name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          entry_type: string
+          from_status?: string | null
+          to_status?: string | null
+          content?: string | null
+          author_id?: string | null
+          author_name?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          entry_type?: string
+          from_status?: string | null
+          to_status?: string | null
+          content?: string | null
+          author_id?: string | null
+          author_name?: string
+          created_at?: string
+        }
+        Relationships: [
+            {
+              foreignKeyName: "complaint_timeline_entries_case_id_fkey"
+              columns: ["case_id"]
+              isOneToOne: false
+              referencedRelation: "complaint_cases"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "complaint_timeline_entries_author_id_fkey"
+              columns: ["author_id"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
@@ -741,6 +1032,111 @@ export type Database = {
               columns: ["floor_id"]
               isOneToOne: false
               referencedRelation: "floors"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      display_items: {
+        Row: {
+          id: string
+          title: string
+          category: string
+          current_version: string | null
+          approval_date: string | null
+          review_date: string | null
+          display_location: string | null
+          accessible_format: string | null
+          responsible_person_id: string | null
+          inspection_frequency_days: number | null
+          status: string
+          status_notes: string | null
+          status_since: string
+          last_refreshed_at: string | null
+          refreshed_by: string | null
+          linked_gt_document_id: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          category?: string
+          current_version?: string | null
+          approval_date?: string | null
+          review_date?: string | null
+          display_location?: string | null
+          accessible_format?: string | null
+          responsible_person_id?: string | null
+          inspection_frequency_days?: number | null
+          status?: string
+          status_notes?: string | null
+          status_since?: string
+          last_refreshed_at?: string | null
+          refreshed_by?: string | null
+          linked_gt_document_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          category?: string
+          current_version?: string | null
+          approval_date?: string | null
+          review_date?: string | null
+          display_location?: string | null
+          accessible_format?: string | null
+          responsible_person_id?: string | null
+          inspection_frequency_days?: number | null
+          status?: string
+          status_notes?: string | null
+          status_since?: string
+          last_refreshed_at?: string | null
+          refreshed_by?: string | null
+          linked_gt_document_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "display_items_responsible_person_id_fkey"
+              columns: ["responsible_person_id"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "display_items_refreshed_by_fkey"
+              columns: ["refreshed_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "display_items_linked_gt_document_id_fkey"
+              columns: ["linked_gt_document_id"]
+              isOneToOne: false
+              referencedRelation: "gt_documents"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "display_items_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "display_items_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
               referencedColumns: ["id"]
             }
           ]
@@ -1442,6 +1838,8 @@ export type Database = {
           created_by: string | null
           updated_at: string | null
           updated_by: string | null
+          building_part: string
+          legal_basis: string | null
         }
         Insert: {
           id?: string
@@ -1457,6 +1855,8 @@ export type Database = {
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          building_part?: string
+          legal_basis?: string | null
         }
         Update: {
           id?: string
@@ -1472,6 +1872,8 @@ export type Database = {
           created_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          building_part?: string
+          legal_basis?: string | null
         }
         Relationships: [
             {
@@ -1746,6 +2148,9 @@ export type Database = {
           competencies: string[]
           competence_expiry: string | null
           competence_notes: string | null
+          limitations: string | null
+          supervision_requirements: string | null
+          reassessment_triggers: string | null
         }
         Insert: {
           id?: string
@@ -1764,6 +2169,9 @@ export type Database = {
           competencies?: string[]
           competence_expiry?: string | null
           competence_notes?: string | null
+          limitations?: string | null
+          supervision_requirements?: string | null
+          reassessment_triggers?: string | null
         }
         Update: {
           id?: string
@@ -1782,6 +2190,9 @@ export type Database = {
           competencies?: string[]
           competence_expiry?: string | null
           competence_notes?: string | null
+          limitations?: string | null
+          supervision_requirements?: string | null
+          reassessment_triggers?: string | null
         }
         Relationships: [
             {
@@ -1977,6 +2388,54 @@ export type Database = {
             }
           ]
       }
+      gt_safety_case_notifications: {
+        Row: {
+          id: string
+          description: string
+          reason: string | null
+          notified_at: string | null
+          notified_by: string | null
+          notification_reference: string | null
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          description: string
+          reason?: string | null
+          notified_at?: string | null
+          notified_by?: string | null
+          notification_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          description?: string
+          reason?: string | null
+          notified_at?: string | null
+          notified_by?: string | null
+          notification_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "gt_safety_case_notifications_notified_by_fkey"
+              columns: ["notified_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "gt_safety_case_notifications_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       gt_schedule1_categories: {
         Row: {
           code: number
@@ -2118,87 +2577,6 @@ export type Database = {
             },
             {
               foreignKeyName: "info_sections_updated_by_fkey"
-              columns: ["updated_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            }
-          ]
-      }
-      statutory_obligations: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          active: boolean
-          mode: string
-          scope: Json
-          checklist_mode: string
-          checklist_attr_ids: string[]
-          pass_fail_rule: string
-          frequency_days: number | null
-          link_source: string
-          link_type_filter: string | null
-          presentation_order: number
-          created_at: string
-          created_by: string | null
-          updated_at: string | null
-          updated_by: string | null
-          statutory_ref: string | null
-          test_type: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          active?: boolean
-          mode?: string
-          scope?: Json
-          checklist_mode?: string
-          checklist_attr_ids?: string[]
-          pass_fail_rule?: string
-          frequency_days?: number | null
-          link_source?: string
-          link_type_filter?: string | null
-          presentation_order?: number
-          created_at?: string
-          created_by?: string | null
-          updated_at?: string | null
-          updated_by?: string | null
-          statutory_ref?: string | null
-          test_type?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          active?: boolean
-          mode?: string
-          scope?: Json
-          checklist_mode?: string
-          checklist_attr_ids?: string[]
-          pass_fail_rule?: string
-          frequency_days?: number | null
-          link_source?: string
-          link_type_filter?: string | null
-          presentation_order?: number
-          created_at?: string
-          created_by?: string | null
-          updated_at?: string | null
-          updated_by?: string | null
-          statutory_ref?: string | null
-          test_type?: string | null
-        }
-        Relationships: [
-            {
-              foreignKeyName: "statutory_obligations_created_by_fkey"
-              columns: ["created_by"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "statutory_obligations_updated_by_fkey"
               columns: ["updated_by"]
               isOneToOne: false
               referencedRelation: "profiles"
@@ -2537,7 +2915,7 @@ export type Database = {
               foreignKeyName: "maintenance_jobs_obligation_id_fkey"
               columns: ["obligation_id"]
               isOneToOne: false
-              referencedRelation: "maintenance_regime"
+              referencedRelation: "statutory_obligations"
               referencedColumns: ["id"]
             },
             {
@@ -2557,51 +2935,6 @@ export type Database = {
             {
               foreignKeyName: "maintenance_jobs_contractor_id_fkey"
               columns: ["contractor_id"]
-              isOneToOne: false
-              referencedRelation: "profiles"
-              referencedColumns: ["id"]
-            }
-          ]
-      }
-      maintenance_regime: {
-        Row: {
-          id: string
-          type_id: string
-          attribute_filter: string | null
-          task_name: string
-          frequency_days: number
-          created_at: string
-          created_by: string | null
-        }
-        Insert: {
-          id?: string
-          type_id: string
-          attribute_filter?: string | null
-          task_name: string
-          frequency_days: number
-          created_at?: string
-          created_by?: string | null
-        }
-        Update: {
-          id?: string
-          type_id?: string
-          attribute_filter?: string | null
-          task_name?: string
-          frequency_days?: number
-          created_at?: string
-          created_by?: string | null
-        }
-        Relationships: [
-            {
-              foreignKeyName: "maintenance_regime_type_id_fkey"
-              columns: ["type_id"]
-              isOneToOne: false
-              referencedRelation: "component_types"
-              referencedColumns: ["id"]
-            },
-            {
-              foreignKeyName: "maintenance_regime_created_by_fkey"
-              columns: ["created_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
@@ -3105,6 +3438,289 @@ export type Database = {
             }
           ]
       }
+      planner_categories: {
+        Row: {
+          id: string
+          slug: string
+          name: string
+          colour: string
+          system: boolean
+          position: number
+          archived: boolean
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+          hands_to_maintenance: boolean
+        }
+        Insert: {
+          id?: string
+          slug: string
+          name: string
+          colour?: string
+          system?: boolean
+          position?: number
+          archived?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          hands_to_maintenance?: boolean
+        }
+        Update: {
+          id?: string
+          slug?: string
+          name?: string
+          colour?: string
+          system?: boolean
+          position?: number
+          archived?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          hands_to_maintenance?: boolean
+        }
+        Relationships: [
+            {
+              foreignKeyName: "planner_categories_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_categories_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      planner_day_marks: {
+        Row: {
+          date: string
+          label: string
+          colour: string
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          date: string
+          label: string
+          colour?: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          date?: string
+          label?: string
+          colour?: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "planner_day_marks_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_day_marks_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      planner_events: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          category: string | null
+          location: string | null
+          start_date: string
+          all_day: boolean
+          start_time: string | null
+          end_time: string | null
+          recurrence: Json
+          drifts: boolean
+          lead_days: number | null
+          owner_id: string | null
+          archived: boolean
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+          promoted_type: string | null
+          promoted_id: string | null
+          promoted_at: string | null
+          promoted_by: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          category?: string | null
+          location?: string | null
+          start_date: string
+          all_day?: boolean
+          start_time?: string | null
+          end_time?: string | null
+          recurrence?: Json
+          drifts?: boolean
+          lead_days?: number | null
+          owner_id?: string | null
+          archived?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          promoted_type?: string | null
+          promoted_id?: string | null
+          promoted_at?: string | null
+          promoted_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          category?: string | null
+          location?: string | null
+          start_date?: string
+          all_day?: boolean
+          start_time?: string | null
+          end_time?: string | null
+          recurrence?: Json
+          drifts?: boolean
+          lead_days?: number | null
+          owner_id?: string | null
+          archived?: boolean
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          promoted_type?: string | null
+          promoted_id?: string | null
+          promoted_at?: string | null
+          promoted_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "planner_events_owner_id_fkey"
+              columns: ["owner_id"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_events_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_events_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_events_promoted_by_fkey"
+              columns: ["promoted_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      planner_occurrences: {
+        Row: {
+          id: string
+          event_id: string
+          occurs_on: string
+          moved_to: string | null
+          status: string
+          completed_on: string | null
+          completed_by: string | null
+          note: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          occurs_on: string
+          moved_to?: string | null
+          status?: string
+          completed_on?: string | null
+          completed_by?: string | null
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          occurs_on?: string
+          moved_to?: string | null
+          status?: string
+          completed_on?: string | null
+          completed_by?: string | null
+          note?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "planner_occurrences_event_id_fkey"
+              columns: ["event_id"]
+              isOneToOne: false
+              referencedRelation: "planner_events"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_occurrences_completed_by_fkey"
+              columns: ["completed_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_occurrences_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "planner_occurrences_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       plans: {
         Row: {
           id: string
@@ -3122,6 +3738,8 @@ export type Database = {
           floor_id: string | null
           scale_ref: Json | null
           image_aspect_ratio: number | null
+          security_classification: string
+          contains_pii: boolean
         }
         Insert: {
           id?: string
@@ -3139,6 +3757,8 @@ export type Database = {
           floor_id?: string | null
           scale_ref?: Json | null
           image_aspect_ratio?: number | null
+          security_classification?: string
+          contains_pii?: boolean
         }
         Update: {
           id?: string
@@ -3156,6 +3776,8 @@ export type Database = {
           floor_id?: string | null
           scale_ref?: Json | null
           image_aspect_ratio?: number | null
+          security_classification?: string
+          contains_pii?: boolean
         }
         Relationships: [
             {
@@ -3437,6 +4059,105 @@ export type Database = {
             }
           ]
       }
+      statutory_obligations: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          active: boolean
+          mode: string
+          scope: Json
+          checklist_mode: string
+          checklist_attr_ids: string[]
+          pass_fail_rule: string
+          frequency_days: number | null
+          link_source: string
+          link_type_filter: string | null
+          presentation_order: number
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+          statutory_ref: string | null
+          test_type: string | null
+          max_interval_days: number | null
+          responsible_party: string | null
+          competency_required: string | null
+          evidence_required: string | null
+          retention_period_months: number | null
+          evidenced_by: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          active?: boolean
+          mode?: string
+          scope?: Json
+          checklist_mode?: string
+          checklist_attr_ids?: string[]
+          pass_fail_rule?: string
+          frequency_days?: number | null
+          link_source?: string
+          link_type_filter?: string | null
+          presentation_order?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          statutory_ref?: string | null
+          test_type?: string | null
+          max_interval_days?: number | null
+          responsible_party?: string | null
+          competency_required?: string | null
+          evidence_required?: string | null
+          retention_period_months?: number | null
+          evidenced_by?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          active?: boolean
+          mode?: string
+          scope?: Json
+          checklist_mode?: string
+          checklist_attr_ids?: string[]
+          pass_fail_rule?: string
+          frequency_days?: number | null
+          link_source?: string
+          link_type_filter?: string | null
+          presentation_order?: number
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          statutory_ref?: string | null
+          test_type?: string | null
+          max_interval_days?: number | null
+          responsible_party?: string | null
+          competency_required?: string | null
+          evidence_required?: string | null
+          retention_period_months?: number | null
+          evidenced_by?: string
+        }
+        Relationships: [
+            {
+              foreignKeyName: "statutory_obligations_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "statutory_obligations_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
       type_attribute_options: {
         Row: {
           id: string
@@ -3645,6 +4366,169 @@ export type Database = {
               columns: ["trigger_component_id"]
               isOneToOne: false
               referencedRelation: "components"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      works_schedule_items: {
+        Row: {
+          id: string
+          schedule_id: string
+          component_id: string
+          action: string
+          target_type_code: string | null
+          spec: string | null
+          target_attributes: Json | null
+          notes: string | null
+          position: number
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          schedule_id: string
+          component_id: string
+          action?: string
+          target_type_code?: string | null
+          spec?: string | null
+          target_attributes?: Json | null
+          notes?: string | null
+          position?: number
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          schedule_id?: string
+          component_id?: string
+          action?: string
+          target_type_code?: string | null
+          spec?: string | null
+          target_attributes?: Json | null
+          notes?: string | null
+          position?: number
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "works_schedule_items_schedule_id_fkey"
+              columns: ["schedule_id"]
+              isOneToOne: false
+              referencedRelation: "works_schedules"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "works_schedule_items_component_id_fkey"
+              columns: ["component_id"]
+              isOneToOne: false
+              referencedRelation: "components"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "works_schedule_items_applied_by_fkey"
+              columns: ["applied_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "works_schedule_items_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "works_schedule_items_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            }
+          ]
+      }
+      works_schedules: {
+        Row: {
+          id: string
+          title: string
+          reference: string | null
+          purpose: string
+          status: string
+          contractor_id: string | null
+          contractor_name: string | null
+          notes: string | null
+          issued_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          reference?: string | null
+          purpose?: string
+          status?: string
+          contractor_id?: string | null
+          contractor_name?: string | null
+          notes?: string | null
+          issued_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          reference?: string | null
+          purpose?: string
+          status?: string
+          contractor_id?: string | null
+          contractor_name?: string | null
+          notes?: string | null
+          issued_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+            {
+              foreignKeyName: "works_schedules_contractor_id_fkey"
+              columns: ["contractor_id"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "works_schedules_created_by_fkey"
+              columns: ["created_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "works_schedules_updated_by_fkey"
+              columns: ["updated_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
               referencedColumns: ["id"]
             }
           ]
