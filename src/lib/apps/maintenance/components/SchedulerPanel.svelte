@@ -1,9 +1,14 @@
 <!-- src/lib/apps/maintenance/components/SchedulerPanel.svelte -->
-<!-- Admin-only: bulk job generator from regime tasks, plus schedule report download. -->
+<!-- Admin-only: bulk job generator from the shared statutory-obligation
+     library, plus schedule report download. Obligations are owned by the
+     Inspection app and read through its public.js by maintenanceStore; only
+     the contractor-evidenced ones with a cadence appear here. -->
 <script>
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { authHeaders } from '$lib/utils/authHeaders';
   import { frequencyLabel, scopeTypeLabel, toDateString, addDays, today } from '../utils/maintenanceHelpers.js';
+  import { obligationJobScope, scopeSummary } from '../utils/obligationJobScope.js';
+  import { planExceedsCeiling } from '$lib/utils/obligationSchedule.js';
   import { fmtDate, fmtToday } from '$lib/utils/dates.js';
   import { downloadResponse } from '$lib/utils/download.js';
   import Button from '$lib/components/common/Button.svelte';
@@ -11,48 +16,57 @@
 
   export let jobs = [];   // store.jobs — for computing last/next dates
 
-  $: store = $maintenanceStore;
-  $: regime = store.regime;
-  $: types  = store.types;
+  $: store       = $maintenanceStore;
+  // Obligations come from the shared library (owned by Inspection, read through
+  // its public.js by the store), filtered to the job-evidenced ones. Only those
+  // with a cadence can be laid out as a series — an on-demand obligation is
+  // scheduled by hand.
+  $: obligations = store.obligations.filter(o => o.frequency_days);
+  $: types       = store.types;
+  $: systems     = store.systems;
 
-  // -- Regime table computed data -----------------------------------------------
-  $: regimeRows = regime.map(r => {
-    const type = types.find(t => t.id === r.type_id);
-    const typeName   = type?.name ?? 'Building-wide';
-    const scopeType  = r.type_id ? 'type' : 'building';
-    const scopeId    = r.type_id ?? null;
-    const scopeLabel = typeName;
+  // -- Obligation table computed data -------------------------------------------
+  $: obligationRows = obligations.map(o => {
+    // The obligation's jsonb scope can cover several types, a system, or the
+    // whole building, so the job scope is derived rather than copied — see
+    // obligationJobScope for why a job is a visit, not a checklist.
+    const { scope_type, scope_id, scope_label } = obligationJobScope(o, { types, systems });
 
-    // Last job for this regime
-    const regimeJobs = jobs
-      .filter(j => j.regime_id === r.id)
+    const obligationJobs = jobs
+      .filter(j => j.regime_id === o.id)
       .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
 
-    const lastJob      = regimeJobs[regimeJobs.length - 1] ?? null;
+    const lastJob      = obligationJobs[obligationJobs.length - 1] ?? null;
     const lastDate     = lastJob?.scheduled_date ?? null;
     const nextCalcDate = lastDate
-      ? toDateString(addDays(new Date(lastDate + 'T00:00:00'), r.frequency_days))
+      ? toDateString(addDays(new Date(lastDate + 'T00:00:00'), o.frequency_days))
       : today();
 
-    return { ...r, typeName, scopeType, scopeId, scopeLabel, lastJob, lastDate, nextCalcDate };
+    return {
+      ...o,
+      scopeType: scope_type, scopeId: scope_id, scopeLabel: scope_label,
+      scopeText: scopeSummary(o, { types, systems }),
+      lastJob, lastDate, nextCalcDate,
+      ceilingBreached: planExceedsCeiling(o),
+    };
   });
 
   // -- Selection state ----------------------------------------------------------
-  let selected = {};   // { [regime_id]: bool }
+  let selected = {};   // { [obligation id]: bool }
 
-  $: allSelected = regime.length > 0 && regime.every(r => selected[r.id]);
+  $: allSelected = obligations.length > 0 && obligations.every(o => selected[o.id]);
 
   function toggleAll() {
     if (allSelected) {
       selected = {};
     } else {
       const next = {};
-      for (const r of regime) next[r.id] = true;
+      for (const o of obligations) next[o.id] = true;
       selected = next;
     }
   }
 
-  $: selectedRegimeRows = regimeRows.filter(r => selected[r.id]);
+  $: selectedRows = obligationRows.filter(r => selected[r.id]);
 
   // -- Date range for generation ------------------------------------------------
   // Default: today → today + 12 months
@@ -63,7 +77,6 @@
 
   // -- Preview count ------------------------------------------------------------
   function countJobsForRow(row, from, to) {
-    if (!row.regime_id) return 0;
     const existingDates = new Set(
       jobs
         .filter(j => j.regime_id === row.id && j.scope_type === row.scopeType && j.scope_id === row.scopeId)
@@ -83,7 +96,7 @@
     return count;
   }
 
-  $: previewCount = selectedRegimeRows.reduce(
+  $: previewCount = selectedRows.reduce(
     (sum, row) => sum + countJobsForRow(row, fromDate, toDate),
     0
   );
@@ -93,12 +106,13 @@
   let generateResult = null;   // { count, error }
 
   async function handleGenerate() {
-    if (selectedRegimeRows.length === 0) return;
+    if (selectedRows.length === 0) return;
     generating = true; generateResult = null;
     try {
-      const selections = selectedRegimeRows.map(r => ({
+      const selections = selectedRows.map(r => ({
+        // Column keeps its name until the table rename (plan P5).
         regime_id:   r.id,
-        title:       r.task_name,
+        title:       r.name,
         scope_type:  r.scopeType,
         scope_id:    r.scopeId,
         scope_label: r.scopeLabel,
@@ -166,7 +180,7 @@
     <div>
       <p class="text-sm font-semibold text-slate-300">Bulk job generator</p>
       <p class="text-xs text-slate-500 mt-0.5">
-        Select regime tasks and a date range. Jobs are created at each frequency interval, skipping dates that already have a job.
+        Select obligations and a date range. Jobs are created at each frequency interval, skipping dates that already have a job.
       </p>
     </div>
 
@@ -186,10 +200,12 @@
       </div>
     </div>
 
-    <!-- Regime table -->
-    {#if regimeRows.length === 0}
+    <!-- Obligation table -->
+    {#if obligationRows.length === 0}
       <p class="text-sm text-slate-500 italic py-4">
-        No maintenance regime tasks configured. Add them in Building Assets → Type Browser.
+        No contractor-evidenced obligations with a frequency. Add them in
+        Admin → Inspections, setting “How is this discharged?” to
+        <span class="text-slate-400">Contractor job</span>.
       </p>
     {:else}
       <div class="rounded-lg border border-slate-700 overflow-hidden">
@@ -201,8 +217,8 @@
             <input type="checkbox" checked={allSelected} on:change={toggleAll}
               class="accent-purple-500" />
           </div>
-          <div>Task</div>
-          <div>Type / scope</div>
+          <div>Obligation</div>
+          <div>Scope</div>
           <div>Frequency</div>
           <div>Last job</div>
           <div>Next due</div>
@@ -210,7 +226,7 @@
 
         <!-- Rows -->
         <div class="divide-y divide-slate-700/40">
-          {#each regimeRows as row (row.id)}
+          {#each obligationRows as row (row.id)}
             {@const preview = countJobsForRow(row, fromDate, toDate)}
             <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
             <div
@@ -226,14 +242,18 @@
                   class="accent-purple-500" />
               </div>
               <div>
-                <span class="text-sm text-slate-200">{row.task_name}</span>
+                <span class="text-sm text-slate-200">{row.name}</span>
                 {#if preview > 0 && selected[row.id]}
                   <span class="ml-2 text-xs text-purple-400">+{preview}</span>
                 {/if}
+                <!-- The plan is looser than the statutory ceiling: this can read
+                     as fully up to date while already in breach. -->
+                {#if row.ceilingBreached}
+                  <span class="ml-2 text-xs text-amber-400"
+                        title="Frequency is longer than the maximum interval — generated jobs would breach the ceiling">⚠ exceeds max interval</span>
+                {/if}
               </div>
-              <div class="text-xs text-slate-400">
-                {row.scopeType === 'building' ? 'Building-wide' : row.typeName}
-              </div>
+              <div class="text-xs text-slate-400">{row.scopeText}</div>
               <div class="text-xs text-slate-400">{frequencyLabel(row.frequency_days)}</div>
               <div class="text-xs {row.lastDate ? 'text-slate-400' : 'text-slate-600'}">
                 {row.lastDate ? fmtDate(row.lastDate) : 'Never'}
@@ -249,13 +269,13 @@
       <!-- Preview + generate -->
       <div class="flex items-center gap-4 flex-wrap">
         <div class="text-sm text-slate-400">
-          {selectedRegimeRows.length === 0
-            ? 'Select regime tasks above'
-            : `${selectedRegimeRows.length} task${selectedRegimeRows.length === 1 ? '' : 's'} selected — will create ${previewCount} job${previewCount === 1 ? '' : 's'}`}
+          {selectedRows.length === 0
+            ? 'Select obligations above'
+            : `${selectedRows.length} obligation${selectedRows.length === 1 ? '' : 's'} selected — will create ${previewCount} job${previewCount === 1 ? '' : 's'}`}
         </div>
         <Button variant="primary" size="small"
           on:click={handleGenerate}
-          disabled={generating || selectedRegimeRows.length === 0 || previewCount === 0}>
+          disabled={generating || selectedRows.length === 0 || previewCount === 0}>
           {generating ? 'Generating…' : 'Generate jobs'}
         </Button>
       </div>

@@ -1,7 +1,14 @@
 // src/lib/apps/maintenance/stores/maintenanceStore.js
 // State store for the Maintenance app.
 // Tables: maintenance_jobs, maintenance_documents, maintenance_job_components
-// Lookup data loaded independently: building_systems, component_types, maintenance_regime
+// Lookup data loaded independently: building_systems, component_types
+//
+// OBLIGATIONS (what used to be maintenance_regime) are NOT ours: they live in
+// the shared statutory-obligation library owned by the Inspection app, and are
+// read through inspection/public.js — never queried directly. See
+// docs/requirements/Obligation_Library_Promotion_Build_Plan.md. We take only
+// the job-evidenced ones; walk-evidenced obligations are discharged by an
+// inspection and have no business generating contractor jobs.
 
 import { writable, get } from 'svelte/store';
 import { getLogger }     from '$lib/utils/logger';
@@ -12,6 +19,8 @@ import { uploadMedia }   from '$lib/utils/mediaUpload.js';
 import { deleteStorageFiles } from '$lib/utils/driveUtils.js';
 import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary } from '$lib/utils/documentApi.js';
 import { jobRag, addDays, toDateString } from '../utils/maintenanceHelpers.js';
+import { listInspectionDefinitions } from '$lib/apps/inspection/public.js';
+import { isJobEvidenced } from '$lib/utils/obligationEvidence.js';
 
 const logger = getLogger('maintenanceStore');
 
@@ -39,7 +48,7 @@ function createMaintenanceStore() {
     jobComponents: {},    // { [jobId]: maintenance_job_components[] }
     systems:       [],    // building_systems
     types:         [],    // component_types
-    regime:        [],    // maintenance_regime (flat)
+    obligations:   [],    // job-evidenced rows from the shared obligation library
     contractors:   [],    // profiles[] where is_contractor=true (for job assignment)
     isContractor:  false, // true when the current user is a contractor
     loading:       false,
@@ -62,15 +71,22 @@ function createMaintenanceStore() {
         } catch { /* profile fetch failure is non-fatal */ }
       }
 
-      const [jobs, systems, types, regime, allDocs, contractors] = await Promise.all([
+      const [jobs, systems, types, obligations, allDocs, contractors] = await Promise.all([
+        // No PostgREST embed of the definition any more: maintenance_regime is
+        // gone (migration 204) and the obligation library belongs to another
+        // app, so it is fetched through its public.js and joined in memory by
+        // regime_id — an embed would be this app reaching into another's table.
         api.get('maintenance_jobs', {
-          select:    '*, regime:maintenance_regime(id, task_name, frequency_days, type_id)',
           orderBy:   'scheduled_date',
           ascending: true,
         }),
         api.get('building_systems',  { orderBy: 'name' }),
         api.get('component_types',   { orderBy: 'name' }),
-        api.get('maintenance_regime', { orderBy: 'task_name' }),
+        // Only obligations a contractor job can actually discharge. A
+        // walk-evidenced one belongs to the Inspection app's due list, not here.
+        listInspectionDefinitions({ activeOnly: true })
+          .then(defs => defs.filter(isJobEvidenced))
+          .catch(() => []),   // non-fatal: the scheduler just offers nothing
         api.get('maintenance_documents', {
           select:    '*, job:maintenance_jobs(id, title, scope_label, scheduled_date)',
           orderBy:   'created_at',
@@ -90,7 +106,7 @@ function createMaintenanceStore() {
         allDocs,
         systems,
         types,
-        regime,
+        obligations,
         contractors,
         isContractor,
         loading: false,
@@ -336,10 +352,17 @@ function createMaintenanceStore() {
 
     let nextJob = null;
     if (createNextJob && updated.regime_id) {
-      const s      = get({ subscribe });
-      const regime = s.regime.find(r => r.id === updated.regime_id);
-      if (regime) {
-        const calculatedDate = toDateString(addDays(new Date(completedDate + 'T00:00:00'), regime.frequency_days));
+      const s          = get({ subscribe });
+      // regime_id now points at the shared obligation library (migration 204).
+      // The column keeps its name until the table rename (plan P5).
+      const obligation = s.obligations.find(o => o.id === updated.regime_id);
+      // An obligation with no cadence (frequency_days null = on demand) has no
+      // next date to compute, so there is nothing to spawn unless the user
+      // named one themselves.
+      if (obligation && (obligation.frequency_days || nextJobDate)) {
+        const calculatedDate = obligation.frequency_days
+          ? toDateString(addDays(new Date(completedDate + 'T00:00:00'), obligation.frequency_days))
+          : null;
         const scheduledDate  = nextJobDate || calculatedDate;
 
         nextJob = await api.create('maintenance_jobs', {
@@ -419,10 +442,12 @@ function createMaintenanceStore() {
   // ── Bulk job generator ─────────────────────────────────────────────────────
 
   /**
-   * Generate jobs for selected regimes within a date range.
+   * Generate jobs for selected obligations within a date range.
    * selections: [{ regime_id, title, scope_type, scope_id, scope_label }]
+   *   — `regime_id` keeps its name until the column is renamed with the table
+   *     (plan P5); it now holds an obligation id.
    * fromDate / toDate: YYYY-MM-DD strings
-   * Skips dates where a job for that regime + scope already exists.
+   * Skips dates where a job for that obligation + scope already exists.
    */
   async function generateJobs(selections, fromDate, toDate) {
     const userId  = await currentUserId();
@@ -430,10 +455,12 @@ function createMaintenanceStore() {
     const s       = get({ subscribe });
 
     for (const sel of selections) {
-      const regime = s.regime.find(r => r.id === sel.regime_id);
-      if (!regime) continue;
+      const obligation = s.obligations.find(o => o.id === sel.regime_id);
+      // No cadence means no series to lay out — an on-demand obligation is
+      // scheduled by hand, not generated.
+      if (!obligation?.frequency_days) continue;
 
-      // All existing scheduled_dates for this regime+scope combo
+      // All existing scheduled_dates for this obligation+scope combo
       const existingDates = new Set(
         s.jobs
           .filter(j =>
@@ -449,7 +476,7 @@ function createMaintenanceStore() {
       let nextDate = fromDate;
       if (existingArr.length > 0) {
         const afterLast = toDateString(
-          addDays(new Date(existingArr[existingArr.length - 1] + 'T00:00:00'), regime.frequency_days)
+          addDays(new Date(existingArr[existingArr.length - 1] + 'T00:00:00'), obligation.frequency_days)
         );
         if (afterLast > nextDate) nextDate = afterLast;
       }
@@ -461,7 +488,7 @@ function createMaintenanceStore() {
             scope_type:     sel.scope_type,
             scope_id:       sel.scope_id || null,
             scope_label:    sel.scope_label,
-            title:          sel.title || regime.task_name,
+            title:          sel.title || obligation.name,
             status:         'scheduled',
             scheduled_date: nextDate,
             created_by:     userId,
@@ -470,7 +497,7 @@ function createMaintenanceStore() {
           existingDates.add(nextDate);
         }
         nextDate = toDateString(
-          addDays(new Date(nextDate + 'T00:00:00'), regime.frequency_days)
+          addDays(new Date(nextDate + 'T00:00:00'), obligation.frequency_days)
         );
       }
     }

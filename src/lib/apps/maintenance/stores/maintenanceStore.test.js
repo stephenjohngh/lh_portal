@@ -3,12 +3,13 @@
 // CHARACTERIZATION tests for maintenanceStore. Pins the contract: load enriches
 // jobs with a RAG status + detects contractor identity; job CRUD writes the
 // right status transitions and audits; completeJob spawns the next recurrence
-// from the regime frequency and links it back; saveJobComponents is a
+// from the OBLIGATION frequency and links it back; saveJobComponents is a
 // delete-then-insert of non-empty results; generateJobs walks the date range
 // and skips dates that already have a job.
 //
 // Seams mocked: supabaseClient (auth), api, auditLogger, logger, mediaUpload,
-// driveUtils. The pure date/RAG helpers (maintenanceHelpers) are left REAL so
+// driveUtils, and inspection/public.js — obligations live in another app's
+// library now (migration 204) and are read through its public interface. The pure date/RAG helpers (maintenanceHelpers) are left REAL so
 // the recurrence-date arithmetic is exercised for real. The creator id comes from
 // supabase.auth.getSession() (mocked below).
 
@@ -19,6 +20,7 @@ const h = vi.hoisted(() => {
   let tables = {};
   let profile = { is_contractor: false };
   let updateExtra = {};   // extra fields merged into api.update return (e.g. regime_id)
+  let obligations = [];   // what inspection/public.js hands back
 
   const api = {
     get:        vi.fn((table) => Promise.resolve(tables[table] ?? [])),
@@ -41,6 +43,8 @@ const h = vi.hoisted(() => {
     setTables:      (t) => { tables = t; },
     setProfile:     (p) => { profile = p; },
     setUpdateExtra: (e) => { updateExtra = e; },
+    setObligations: (o) => { obligations = o; },
+    listInspectionDefinitions: vi.fn(() => Promise.resolve(obligations)),
   };
 });
 
@@ -50,6 +54,7 @@ vi.mock('$lib/utils/auditLogger',   () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',        () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/utils/mediaUpload.js',() => ({ uploadMedia: h.uploadMedia }));
 vi.mock('$lib/utils/driveUtils.js', () => ({ deleteStorageFiles: vi.fn(() => Promise.resolve()) }));
+vi.mock('$lib/apps/inspection/public.js', () => ({ listInspectionDefinitions: h.listInspectionDefinitions }));
 
 const { maintenanceStore } = await import('./maintenanceStore.js');
 
@@ -64,6 +69,7 @@ beforeEach(() => {
   h.setTables({});
   h.setProfile({ is_contractor: false });
   h.setUpdateExtra({});
+  h.setObligations([]);
 });
 
 describe('load', () => {
@@ -102,8 +108,8 @@ describe('createJob', () => {
 });
 
 describe('completeJob', () => {
-  it('marks the job completed and spawns the next recurrence from the regime frequency', async () => {
-    h.setTables({ maintenance_regime: [{ id: 'reg1', task_name: 'Service', frequency_days: 30, type_id: 'ty1' }] });
+  it('marks the job completed and spawns the next recurrence from the obligation frequency', async () => {
+    h.setObligations([{ id: 'reg1', name: 'Service', frequency_days: 30, evidenced_by: 'maintenance_job' }]);
     await maintenanceStore.load();
     // the completed job carries a regime_id so a recurrence is due
     h.setUpdateExtra({ regime_id: 'reg1', scope_type: 'system', scope_id: 'sys1', scope_label: 'Fire', title: 'Service', description: 'd' });
@@ -115,7 +121,7 @@ describe('completeJob', () => {
     expect(nextCreate).toMatchObject({ regime_id: 'reg1', status: 'scheduled', scheduled_date: '2026-01-31' }); // +30 days
   });
 
-  it('does NOT spawn a recurrence when the job has no regime', async () => {
+  it('does NOT spawn a recurrence when the job has no obligation link', async () => {
     h.setUpdateExtra({});   // no regime_id on the returned row
     await maintenanceStore.completeJob('j1', { result: 'pass', completedDate: '2026-01-01', createNextJob: true });
     expect(jobCreates()).toHaveLength(0);
@@ -162,11 +168,11 @@ describe('generateJobs', () => {
   const sel = [{ regime_id: 'reg1', scope_type: 'system', scope_id: 'sys1', scope_label: 'Fire', title: 'Service' }];
 
   beforeEach(async () => {
-    h.setTables({ maintenance_regime: [{ id: 'reg1', task_name: 'Service', frequency_days: 30, type_id: 'ty1' }] });
+    h.setObligations([{ id: 'reg1', name: 'Service', frequency_days: 30, evidenced_by: 'maintenance_job' }]);
     await maintenanceStore.load();
   });
 
-  it('walks the date range at the regime frequency', async () => {
+  it('walks the date range at the obligation frequency', async () => {
     const created = await maintenanceStore.generateJobs(sel, '2026-01-01', '2026-02-15');
     // 2026-01-01, +30 = 2026-01-31, +30 = 2026-03-02 (> toDate, stop) → 2 jobs
     expect(created.map(j => j.scheduled_date)).toEqual(['2026-01-01', '2026-01-31']);
@@ -176,5 +182,39 @@ describe('generateJobs', () => {
     await maintenanceStore.generateJobs(sel, '2026-01-01', '2026-02-15');
     const second = await maintenanceStore.generateJobs(sel, '2026-01-01', '2026-02-15');
     expect(second).toHaveLength(0);
+  });
+
+  // An on-demand obligation has no cadence, so there is no series to lay out —
+  // it is scheduled by hand, not generated.
+  it('generates nothing for an obligation with no frequency', async () => {
+    h.setObligations([{ id: 'reg1', name: 'Ad-hoc', frequency_days: null, evidenced_by: 'maintenance_job' }]);
+    await maintenanceStore.load();
+    expect(await maintenanceStore.generateJobs(sel, '2026-01-01', '2026-12-31')).toHaveLength(0);
+  });
+});
+
+describe('load — obligations come from the shared library', () => {
+  // The Maintenance app must never query the obligation table directly: it
+  // belongs to Inspection and is read through its public.js.
+  it('reads job-evidenced obligations only, and never queries the table itself', async () => {
+    h.setObligations([
+      { id: 'o1', name: 'Alarm service',  frequency_days: 180, evidenced_by: 'maintenance_job' },
+      { id: 'o2', name: 'Either route',   frequency_days: 90,  evidenced_by: 'either' },
+      { id: 'o3', name: 'Door walk',      frequency_days: 90,  evidenced_by: 'inspection' },
+    ]);
+    await maintenanceStore.load();
+
+    expect(get(maintenanceStore).obligations.map(o => o.id)).toEqual(['o1', 'o2']);
+    expect(h.listInspectionDefinitions).toHaveBeenCalledWith({ activeOnly: true });
+    const queried = h.api.get.mock.calls.map(c => c[0]);
+    expect(queried).not.toContain('inspection_definitions');
+    expect(queried).not.toContain('maintenance_regime');
+  });
+
+  it('degrades to no obligations rather than failing the whole load', async () => {
+    h.listInspectionDefinitions.mockRejectedValueOnce(new Error('RLS says no'));
+    await maintenanceStore.load();
+    expect(get(maintenanceStore).obligations).toEqual([]);
+    expect(get(maintenanceStore).error).toBeNull();
   });
 });

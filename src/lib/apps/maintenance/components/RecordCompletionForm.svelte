@@ -17,7 +17,9 @@
   const dispatch = createEventDispatcher();
 
   $: store  = $maintenanceStore;
-  $: regime = job?.regime_id ? store.regime.find(r => r.id === job.regime_id) : null;
+  // regime_id points at the shared obligation library (migration 204); the
+  // column keeps its name until the table rename (plan P5).
+  $: obligation = job?.regime_id ? store.obligations.find(o => o.id === job.regime_id) : null;
   $: docs   = store.docsByJob[job?.id] ?? [];
 
   // -- Form state ---------------------------------------------------------------
@@ -29,12 +31,14 @@
   let notes          = '';
 
   // Recurrence
-  let createNext     = !!regime;
+  // Only an obligation with a cadence can produce a next occurrence; an
+  // on-demand one is scheduled by hand.
+  let createNext     = !!(job?.regime_id);
   let useHardDate    = false;
   let hardDate       = '';
 
-  $: calcNextDate = regime && completedDate
-    ? toDateString(addDays(new Date(completedDate + 'T00:00:00'), regime.frequency_days))
+  $: calcNextDate = obligation?.frequency_days && completedDate
+    ? toDateString(addDays(new Date(completedDate + 'T00:00:00'), obligation.frequency_days))
     : null;
   $: nextDateDisplay = useHardDate ? (hardDate || '—') : (calcNextDate ?? '—');
 
@@ -246,7 +250,7 @@
     </div>
 
     <!-- Next recurrence -->
-    {#if regime}
+    {#if obligation}
       <div class="rounded-lg border border-slate-700 bg-slate-800/40 p-4 space-y-3">
         <div class="flex items-start gap-3">
           <Checkbox
@@ -256,8 +260,8 @@
           <div class="flex-1">
             <p class="text-sm text-slate-200 font-medium">Auto-schedule next recurrence</p>
             <p class="text-xs text-slate-400 mt-0.5">
-              Regime: <span class="text-slate-300">{regime.task_name}</span>
-              · {frequencyLabel(regime.frequency_days)}
+              Obligation: <span class="text-slate-300">{obligation.name}</span>
+              · {frequencyLabel(obligation.frequency_days)}
             </p>
           </div>
         </div>

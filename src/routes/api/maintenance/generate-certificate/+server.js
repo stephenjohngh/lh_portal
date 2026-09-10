@@ -1,11 +1,11 @@
 // src/routes/api/maintenance/generate-certificate/+server.js
 // Generate a completion certificate Word document for a single maintenance job.
 //
-// POST body: { job, jobComponents, docs, regime, building, generatedAt }
+// POST body: { job, jobComponents, docs, obligation, building, generatedAt }
 //   job:           maintenance_jobs row enriched with .rag
 //   jobComponents: maintenance_job_components[] with embedded .component
 //   docs:          maintenance_documents[] for this job
-//   regime:        maintenance_regime row (or null)
+//   obligation:    the statutory obligation this job discharges (or null)
 //   building:      string
 //   generatedAt:   string
 
@@ -153,7 +153,7 @@ export async function POST({ request }) {
   try {
     const body = await request.json();
     const {
-      job, jobComponents = [], docs = [], regime = null,
+      job, jobComponents = [], docs = [], obligation = null,
       building = 'Lonsdale House', generatedAt = '',
     } = body;
 
@@ -190,8 +190,8 @@ export async function POST({ request }) {
       ['Engineer',             job.engineer_name   ?? '—'],
       ['Reference / cert no.', job.reference_number ?? '—'],
     ];
-    if (regime) {
-      detailRows.push(['Regime task', regime.task_name]);
+    if (obligation) {
+      detailRows.push(['Obligation', obligation.name]);
     }
 
     children.push(para('Job details', { bold: true, size: 22, before: 0, after: 120 }));

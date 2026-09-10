@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { maintenanceStore }      from '../stores/maintenanceStore.js';
   import { frequencyLabel, scopeTypeLabel, today } from '../utils/maintenanceHelpers.js';
+  import { scopeSummary } from '../utils/obligationJobScope.js';
   import Modal       from '$lib/components/common/Modal.svelte';
   import Button      from '$lib/components/common/Button.svelte';
   import FormInput   from '$lib/components/common/FormInput.svelte';
@@ -18,7 +19,7 @@
   $: store       = $maintenanceStore;
   $: systems     = store.systems;
   $: types       = store.types;
-  $: regime      = store.regime;
+  $: obligations = store.obligations;
   $: contractors = store.contractors;
 
   // -- Form state ------------------------------------------------------------
@@ -28,6 +29,7 @@
   let scopeId         = job?.scope_id        ?? '';
   let scheduledDate   = job?.scheduled_date  ?? today();
   let hardExpiryDate  = job?.hard_expiry_date ?? '';
+  // Column is still `regime_id`; it holds an obligation id (renamed in plan P5).
   let regimeId        = job?.regime_id       ?? '';
   let contractorId    = job?.contractor_id   ?? '';
   let contractorName  = job?.contractor_name ?? '';
@@ -39,10 +41,10 @@
 
   $: isEdit = !!job;
 
-  // Auto-populate title when regime selected and title is blank
+  // Auto-populate title when an obligation is selected and title is blank
   $: if (regimeId && !title) {
-    const r = regime.find(r => r.id === regimeId);
-    if (r) title = r.task_name;
+    const o = obligations.find(o => o.id === regimeId);
+    if (o) title = o.name;
   }
 
   // Clear scope_id when scope_type changes
@@ -62,15 +64,12 @@
     return opt?.label ?? '';
   }
 
-  // Regime select options
-  $: regimeOptions = regime.map(r => {
-    const type = types.find(t => t.id === r.type_id);
-    const typeName = type?.name ?? '?';
-    return {
-      value: r.id,
-      label: `${typeName} — ${r.task_name} (${frequencyLabel(r.frequency_days)})`,
-    };
-  });
+  // Obligation select options. Scope is a jsonb filter now rather than a single
+  // type id, so it is summarised rather than named.
+  $: regimeOptions = obligations.map(o => ({
+    value: o.id,
+    label: `${o.name} — ${scopeSummary(o, { types, systems })} (${frequencyLabel(o.frequency_days)})`,
+  }));
 
   function validate() {
     errors = {};
@@ -132,11 +131,11 @@
 
     <!-- Regime link -->
     <div>
-      <p class="text-xs text-slate-400 mb-1.5">Link to regime task <span class="text-slate-500">(optional — enables auto-scheduling)</span></p>
+      <p class="text-xs text-slate-400 mb-1.5">Link to obligation <span class="text-slate-500">(optional — enables auto-scheduling)</span></p>
       <select bind:value={regimeId}
         class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm text-white
                focus:outline-none focus:border-purple-500">
-        <option value="">— Ad-hoc / no regime link —</option>
+        <option value="">— Ad-hoc / not linked to an obligation —</option>
         {#each regimeOptions as opt}
           <option value={opt.value}>{opt.label}</option>
         {/each}

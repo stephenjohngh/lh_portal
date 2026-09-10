@@ -27,7 +27,9 @@
 
   $: store         = $maintenanceStore;
   $: docs          = store.docsByJob[job?.id] ?? [];
-  $: regime        = job?.regime_id ? store.regime.find(r => r.id === job.regime_id) : null;
+  // regime_id points at the shared obligation library (migration 204); the
+  // column keeps its name until the table rename (plan P5).
+  $: obligation    = job?.regime_id ? store.obligations.find(o => o.id === job.regime_id) : null;
   $: rag           = ragConfig(job?.rag ?? 'scheduled');
   $: res           = resultConfig(job?.result);
   $: canEdit       = $permissions.isAdmin;
@@ -104,7 +106,7 @@
         job,
         jobComponents: jobComponents ?? [],
         docs,
-        regime: regime ?? null,
+        obligation: obligation ?? null,
         building: 'Lonsdale House',
         generatedAt: fmtToday(),
       };
@@ -216,11 +218,11 @@
       {/if}
 
       <!-- Regime link -->
-      {#if regime}
+      {#if obligation}
         <div class="rounded-lg bg-slate-800/40 border border-slate-700 p-3 text-sm">
           <p class="text-xs text-slate-500 mb-1">Regime task</p>
-          <p class="text-slate-200">{regime.task_name}</p>
-          <p class="text-xs text-slate-400 mt-0.5">{frequencyLabel(regime.frequency_days)}</p>
+          <p class="text-slate-200">{obligation.name}</p>
+          <p class="text-xs text-slate-400 mt-0.5">{frequencyLabel(obligation.frequency_days)}</p>
         </div>
       {/if}
 
