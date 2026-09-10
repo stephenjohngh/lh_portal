@@ -23,7 +23,6 @@
   $: attrDefs         = store.attrDefs;          // { [typeId]: effective attrs with _scope }
   $: systemAttrDefs   = store.systemAttrDefs;    // { [systemId]: system-level attrs only }
   $: attrOptions      = store.attrOptions;       // { [attrDefId]: type_attribute_options[] }
-  $: regime           = store.regime;            // { [typeId]: maintenance_regime[] }
 
   $: typesForSystem = selectedSystemId
     ? types.filter(t => t.building_system_id === selectedSystemId)
@@ -49,9 +48,9 @@
   $: showOptionsPanel = selectedAttrDef &&
     (selectedAttrDef.display_type === 'dropdown' || selectedAttrDef.display_type === 'radio');
 
-  $: regimeForType   = selectedTypeId ? (regime[selectedTypeId] ?? []) : [];
-  $: primaryAttrDef  = attrDefsForPanel.find(d => d.is_primary) ?? null;
-  $: primaryOptions  = primaryAttrDef ? (attrOptions[primaryAttrDef.id] ?? []) : [];
+  // (primaryAttrDef / primaryOptions used to feed the regime panel's
+  // attribute_filter dropdown. Obligations scope by a jsonb filter built in
+  // Admin → Inspections, so both are gone with maintenance_regime.)
 
   // -- Selection handlers ---------------------------------------------
   function selectSystem(id) {
@@ -177,14 +176,12 @@
 
   </div>
 
-  <!-- -- Maintenance regime (only when a type is selected) ----------- -->
+  <!-- -- Statutory obligations for this type (shared library) --------- -->
   {#if selectedTypeId}
     {@const selectedType = types.find(t => t.id === selectedTypeId)}
     <MaintenancePanel
-      regimeRows={regimeForType}
-      typeId={selectedTypeId}
+      typeCode={selectedType?.code ?? ''}
       typeName={selectedType?.name ?? ''}
-      {primaryOptions}
       on:saved={onSaved}
     />
   {/if}

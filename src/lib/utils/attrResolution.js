@@ -7,15 +7,19 @@
 //   attrDefs       — indexed by typeId    (effective = system-inherited + type-own)
 //                    each row carries _scope: 'system' | 'type'
 //   attrOptions    — indexed by attrDefId (all options; empty if options not supplied)
-//   regimeMap      — indexed by typeId    (empty if regime not supplied)
 //
 // Used by: buildingAssetsStore, inspectionStore, mobileplanStore.
+//
+// (A `regimeMap` used to be built here from maintenance_regime. That table was
+// retired when its definitions moved into the shared statutory-obligation
+// library — see docs/requirements/Obligation_Library_Promotion_Build_Plan.md.
+// Obligations are scoped by a jsonb filter, not a single type_id, so they are
+// not resolvable into a per-type map here.)
 
-export function resolveHierarchy(systems, types, defs, options = [], regime = []) {
+export function resolveHierarchy(systems, types, defs, options = []) {
   const systemAttrDefs = {};
   const attrDefs       = {};
   const attrOptions    = {};
-  const regimeMap      = {};
 
   // Partition raw defs by scope
   const systemDefs = defs.filter(d => d.building_system_id != null);
@@ -54,8 +58,6 @@ export function resolveHierarchy(systems, types, defs, options = [], regime = []
       // Type-own attrs that don't shadow an inherited name
       ...newOwn.map(a => ({ ...a, _scope: 'type' }))
     ].sort((a, b) => a.presentation_order - b.presentation_order);
-
-    regimeMap[t.id] = regime.filter(r => r.type_id === t.id);
   }
 
   // Index options by attr def id (works for both system and type attrs)
@@ -63,5 +65,5 @@ export function resolveHierarchy(systems, types, defs, options = [], regime = []
     attrOptions[d.id] = options.filter(o => o.type_attribute_id === d.id);
   }
 
-  return { systemAttrDefs, attrDefs, attrOptions, regimeMap };
+  return { systemAttrDefs, attrDefs, attrOptions };
 }

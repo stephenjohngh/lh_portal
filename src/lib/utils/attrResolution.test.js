@@ -51,20 +51,17 @@ describe('resolveHierarchy', () => {
     expect(attrDefs.ty1.map(d => d.id)).toEqual(['a1', 'a2']);
   });
 
-  it('indexes options by attr def id and regime by type id when supplied', () => {
+  it('indexes options by attr def id when supplied', () => {
     const defs    = [{ id: 'a1', component_type_id: 'ty1', name: 'X', presentation_order: 1 }];
     const options = [{ id: 'o1', type_attribute_id: 'a1' }, { id: 'o2', type_attribute_id: 'a1' }];
-    const regime  = [{ id: 'r1', type_id: 'ty1' }];
-    const { attrOptions, regimeMap } = resolveHierarchy(systems, types, defs, options, regime);
+    const { attrOptions } = resolveHierarchy(systems, types, defs, options);
     expect(attrOptions.a1).toHaveLength(2);
-    expect(regimeMap.ty1).toHaveLength(1);
   });
 
   it('returns empty maps when nothing is supplied', () => {
-    const { attrDefs, attrOptions, regimeMap, systemAttrDefs } = resolveHierarchy([], [], []);
+    const { attrDefs, attrOptions, systemAttrDefs } = resolveHierarchy([], [], []);
     expect(attrDefs).toEqual({});
     expect(attrOptions).toEqual({});
-    expect(regimeMap).toEqual({});
     expect(systemAttrDefs).toEqual({});
   });
 });

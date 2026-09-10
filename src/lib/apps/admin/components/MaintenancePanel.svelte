@@ -1,73 +1,92 @@
-﻿<!-- src/lib/apps/admin/components/MaintenancePanel.svelte -->
-<!-- Sub-panel below the 4 columns. Shows maintenance_regime rows for the
-     selected Type. Admin can add, edit, and DELETE regime rows. -->
+<!-- src/lib/apps/admin/components/MaintenancePanel.svelte -->
+<!-- Sub-panel below the 4 columns: the statutory obligations scoped to the
+     selected component Type.
+
+     These are NOT Building Assets' data any more. maintenance_regime — a
+     per-type "task + frequency" rule this panel used to own through
+     buildingAssetsStore — was retired when its definitions moved into the
+     shared statutory-obligation library (see
+     docs/requirements/Obligation_Library_Promotion_Build_Plan.md). This panel
+     is now a SHORTCUT onto that library, never a rival definition source: a
+     quick add for the common "one obligation, one type" case, with the full
+     editor (scope builder, statutory detail, rotation) in Admin → Inspections.
+
+     An obligation covering more than this type is shown read-only, because
+     editing a multi-type rule from a single type's panel is a footgun — you
+     would be changing something for types you cannot see from here. -->
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
+  import { isWalkEvidenced, isJobEvidenced } from '$lib/utils/obligationEvidence.js';
+  import { frequencyLabel } from '$lib/utils/inspectionSchedule';
   import { inp } from '$lib/apps/building_assets/ui.js';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
-  export let regimeRows    = [];   // maintenance_regime[] for selected type
-  export let typeId        = null;
-  export let typeName      = '';
-  export let primaryOptions = [];  // type_attribute_options[] for is_primary attr def
+  export let typeCode = '';
+  export let typeName = '';
 
   const dispatch = createEventDispatcher();
 
-  let editingId     = null;
-  let form          = {};
-  let saving        = false;
+  onMount(() => {
+    if ($inspectionDefinitionsStore.definitions.length === 0) inspectionDefinitionsStore.load();
+  });
+
+  // Obligations whose scope names this type. One covering several types shows
+  // up under each of them — correct, and useful: this is "what is this type
+  // obliged to have done", not "what did someone create from this screen".
+  $: rows = $inspectionDefinitionsStore.definitions
+    .filter(d => (d.scope?.typeCodes ?? []).includes(typeCode))
+    .map(d => ({
+      ...d,
+      typeCount:  (d.scope?.typeCodes ?? []).length,
+      // Editable here only when this type is the whole of its scope.
+      editableHere: (d.scope?.typeCodes ?? []).length === 1
+        && (d.scope?.systemIds ?? []).length === 0
+        && (d.scope?.floorIds  ?? []).length === 0,
+      routeLabel: !isWalkEvidenced(d) ? 'Contractor job' : (isJobEvidenced(d) ? 'Either route' : 'Inspection walk'),
+    }));
+
+  let editingId = null;
+  let form      = {};
+  let saving    = false;
   let deletingId    = null;
   let pendingDelete = null;
-  let error         = '';
-
-  function frequencyLabel(days) {
-    if (!days) return '';
-    if (days === 1)    return '1 day';
-    if (days < 14)     return `${days} days`;
-    if (days < 60)     return `${Math.round(days / 7)} weeks`;
-    if (days < 400)    return `${Math.round(days / 30)} months`;
-    return `${(days / 365).toFixed(1)} years`;
-  }
+  let error     = '';
 
   function startEdit(row) {
     editingId = row.id;
-    form = {
-      task_name:        row.task_name,
-      frequency_days:   row.frequency_days,
-      attribute_filter: row.attribute_filter ?? ''
-    };
+    form = { name: row.name, frequency_days: row.frequency_days, evidenced_by: row.evidenced_by ?? 'inspection' };
     error = '';
   }
 
   function startNew() {
     editingId = 'new';
-    form = {
-      task_name:        '',
-      frequency_days:   365,
-      attribute_filter: ''
-    };
+    // Defaults to the contractor route: this panel replaced the maintenance
+    // regime, so that is what someone reaching for it is nearly always adding.
+    form  = { name: '', frequency_days: 365, evidenced_by: 'maintenance_job' };
     error = '';
   }
 
-  function cancel() {
-    editingId = null;
-    form      = {};
-    error     = '';
-  }
+  function cancel() { editingId = null; form = {}; error = ''; }
 
   async function save() {
-    if (!form.task_name?.trim())       { error = 'Task name is required'; return; }
+    if (!form.name?.trim())       { error = 'Name is required'; return; }
     if (!form.frequency_days || form.frequency_days < 1) {
       error = 'Frequency must be a positive number of days'; return;
     }
-    saving = true;
-    error  = '';
+    saving = true; error = '';
     try {
       if (editingId === 'new') {
-        await buildingAssetsStore.createRegime({ ...form, type_id: typeId });
+        await inspectionDefinitionsStore.create({
+          ...form,
+          // The whole point of the shortcut: scope is this one type.
+          scope: { typeCodes: [typeCode] },
+        });
       } else {
-        await buildingAssetsStore.updateRegime(editingId, form);
+        const row = rows.find(r => r.id === editingId);
+        // Scope is deliberately NOT sent: this panel never rewrites the scope of
+        // an existing obligation, only its name, cadence and route.
+        await inspectionDefinitionsStore.save(editingId, { ...row, ...form });
       }
       dispatch('saved');
       editingId = null;
@@ -78,26 +97,21 @@
     }
   }
 
-  function deleteRow(id) {
-    pendingDelete = id;
-  }
+  function requestDelete(row) { pendingDelete = row; }
 
   async function confirmDelete() {
-    const id = pendingDelete;
-    if (!id) return;
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
     deletingId = id;
     try {
-      await buildingAssetsStore.deleteRegime(id);
+      await inspectionDefinitionsStore.remove(id);
       dispatch('saved');
     } catch (err) {
       error = err.message;
     } finally {
-      deletingId    = null;
-      pendingDelete = null;
+      deletingId = null; pendingDelete = null;
     }
   }
-
-  const sel = inp + ' cursor-pointer';
 </script>
 
 <div class="rounded-xl border border-slate-700 bg-slate-800/30 overflow-hidden">
@@ -106,12 +120,13 @@
   <div class="px-4 py-3 border-b border-slate-700 bg-slate-800/60 flex items-center justify-between">
     <div>
       <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-        Maintenance Regime
+        Statutory obligations
         <span class="font-normal normal-case text-slate-600">— {typeName}</span>
       </p>
       <p class="text-xs text-slate-600 mt-0.5">
-        Regime rows define recurring tasks. Each task can be filtered to a specific
-        <code>primary_attribute</code> value, or left blank to apply to all components of this type.
+        What this type is obliged to have done, from the shared obligation library.
+        This is a shortcut for the simple case — scope filters, statutory detail
+        and rotation live in <span class="text-slate-500">Admin → Inspections</span>.
       </p>
     </div>
     {#if editingId !== 'new'}
@@ -119,7 +134,7 @@
         on:click={startNew}
         class="ml-4 shrink-0 px-3 py-1.5 text-xs rounded bg-purple-600 hover:bg-purple-500
                text-white transition-colors"
-      >+ Add Task</button>
+      >+ Add obligation</button>
     {/if}
   </div>
 
@@ -130,14 +145,14 @@
     </div>
   {/if}
 
-  <!-- New task form -->
+  <!-- New obligation form -->
   {#if editingId === 'new'}
     <div class="p-4 border-b border-slate-700 bg-slate-700/30">
-      <p class="text-xs font-semibold text-green-400 mb-3">New Maintenance Task</p>
+      <p class="text-xs font-semibold text-green-400 mb-3">New obligation for {typeName}</p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div class="sm:col-span-2">
-          <p class="text-xs text-slate-400 block mb-1">Task name *</p>
-          <input bind:value={form.task_name} class={inp} placeholder="e.g. Monthly emergency lighting functional test" />
+          <p class="text-xs text-slate-400 block mb-1">Name *</p>
+          <input bind:value={form.name} class={inp} placeholder="e.g. Annual fire door inspection" />
         </div>
         <div>
           <p class="text-xs text-slate-400 block mb-1">
@@ -148,38 +163,25 @@
           </p>
           <input type="number" min="1" bind:value={form.frequency_days} class={inp} placeholder="365" />
         </div>
-        {#if primaryOptions.length > 0}
-          <div class="sm:col-span-3">
-            <p class="text-xs text-slate-400 block mb-1">
-              Attribute filter
-              <span class="text-slate-600 font-normal">(leave blank = applies to all components of this type)</span>
-            </p>
-            <select bind:value={form.attribute_filter} class="{sel} max-w-xs">
-              <option value="">All components</option>
-              {#each primaryOptions as opt}
-                <option value={opt.value}>{opt.value}</option>
-              {/each}
-            </select>
-          </div>
-        {:else}
-          <div class="sm:col-span-3">
-            <p class="text-xs text-slate-400 block mb-1">Attribute filter</p>
-            <input
-              bind:value={form.attribute_filter}
-              class="{inp} max-w-xs"
-              placeholder="e.g. Emergency (or leave blank for all)"
-            />
-            <p class="text-xs text-slate-600 mt-0.5">
-              No primary attribute options defined — type a value manually or leave blank.
-            </p>
-          </div>
-        {/if}
+        <div class="sm:col-span-3">
+          <p class="text-xs text-slate-400 block mb-1">
+            How is this discharged?
+            <span class="text-slate-600 font-normal">
+              — a contractor job is scheduled in Maintenance; an inspection walk appears in the mobile app
+            </span>
+          </p>
+          <select bind:value={form.evidenced_by} class="{inp} cursor-pointer max-w-xs">
+            <option value="maintenance_job">Contractor job</option>
+            <option value="inspection">Inspection walk</option>
+            <option value="either">Either route</option>
+          </select>
+        </div>
       </div>
       <div class="flex gap-2 mt-3">
         <button on:click={save} disabled={saving}
           class="px-4 py-1.5 text-xs rounded bg-green-600 hover:bg-green-500
                  disabled:opacity-50 text-white transition-colors">
-          {saving ? 'Creating…' : 'Create Task'}
+          {saving ? 'Creating…' : 'Create obligation'}
         </button>
         <button on:click={cancel}
           class="px-4 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white transition-colors">
@@ -189,23 +191,23 @@
     </div>
   {/if}
 
-  <!-- Regime rows -->
-  {#if regimeRows.length === 0 && editingId !== 'new'}
+  <!-- Obligation rows -->
+  {#if rows.length === 0 && editingId !== 'new'}
     <p class="px-4 py-4 text-xs text-slate-600 italic">
-      No maintenance tasks defined for this type.
+      No obligations scoped to this type.
     </p>
   {:else}
     <div class="divide-y divide-slate-700/50">
-      {#each regimeRows as row (row.id)}
+      {#each rows as row (row.id)}
 
         {#if editingId === row.id}
           <!-- -- Inline edit form -------------------------------- -->
           <div class="p-4 bg-slate-700/30">
-            <p class="text-xs font-semibold text-purple-400 mb-3">Edit Task</p>
+            <p class="text-xs font-semibold text-purple-400 mb-3">Edit obligation</p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div class="sm:col-span-2">
-                <p class="text-xs text-slate-400 block mb-1">Task name *</p>
-                <input bind:value={form.task_name} class={inp} />
+                <p class="text-xs text-slate-400 block mb-1">Name *</p>
+                <input bind:value={form.name} class={inp} />
               </div>
               <div>
                 <p class="text-xs text-slate-400 block mb-1">
@@ -216,23 +218,14 @@
                 </p>
                 <input type="number" min="1" bind:value={form.frequency_days} class={inp} />
               </div>
-              {#if primaryOptions.length > 0}
-                <div class="sm:col-span-3">
-                  <p class="text-xs text-slate-400 block mb-1">Attribute filter</p>
-                  <select bind:value={form.attribute_filter} class="{sel} max-w-xs">
-                    <option value="">All components</option>
-                    {#each primaryOptions as opt}
-                      <option value={opt.value}>{opt.value}</option>
-                    {/each}
-                  </select>
-                </div>
-              {:else}
-                <div class="sm:col-span-3">
-                  <p class="text-xs text-slate-400 block mb-1">Attribute filter</p>
-                  <input bind:value={form.attribute_filter} class="{inp} max-w-xs"
-                         placeholder="leave blank for all" />
-                </div>
-              {/if}
+              <div class="sm:col-span-3">
+                <p class="text-xs text-slate-400 block mb-1">How is this discharged?</p>
+                <select bind:value={form.evidenced_by} class="{inp} cursor-pointer max-w-xs">
+                  <option value="maintenance_job">Contractor job</option>
+                  <option value="inspection">Inspection walk</option>
+                  <option value="either">Either route</option>
+                </select>
+              </div>
             </div>
             <div class="flex gap-2 mt-3">
               <button on:click={save} disabled={saving}
@@ -248,52 +241,51 @@
           </div>
 
         {:else}
-          <!-- -- Normal row --------------------------------------- -->
-          <div class="px-4 py-3 flex items-center gap-3 group hover:bg-slate-700/20 transition-colors">
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-white truncate">{row.task_name}</p>
-              <div class="flex items-center gap-2 mt-0.5">
-                <span class="text-xs text-slate-400">
-                  Every {row.frequency_days}d
-                  <span class="text-slate-600">({frequencyLabel(row.frequency_days)})</span>
-                </span>
-                {#if row.attribute_filter}
-                  <span class="text-xs px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/25">
-                    {row.attribute_filter} only
-                  </span>
-                {:else}
-                  <span class="text-xs text-slate-600 italic">all components</span>
+          <!-- -- Read row ---------------------------------------- -->
+          <div class="px-4 py-2.5 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm text-slate-200">{row.name}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">{row.routeLabel}</span>
+                {#if !row.active}
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-500">Inactive</span>
                 {/if}
               </div>
+              <p class="text-xs text-slate-500 mt-0.5">
+                {frequencyLabel(row.frequency_days)}
+                {#if !row.editableHere}
+                  · <span class="text-amber-500/80">covers {row.typeCount} types — edit in Admin → Inspections</span>
+                {/if}
+              </p>
             </div>
-            <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              <button
-                on:click={() => startEdit(row)}
-                class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-              >Edit</button>
-              <button
-                on:click={() => deleteRow(row.id)}
-                disabled={deletingId === row.id}
-                class="text-xs px-2 py-1 rounded bg-red-600/20 hover:bg-red-600/40 text-red-400
-                       disabled:opacity-50 transition-colors"
-              >{deletingId === row.id ? '…' : 'Delete'}</button>
-            </div>
+            {#if row.editableHere}
+              <div class="flex gap-1.5 shrink-0">
+                <button on:click={() => startEdit(row)}
+                  class="px-2.5 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+                >Edit</button>
+                <button on:click={() => requestDelete(row)} disabled={deletingId === row.id}
+                  class="px-2.5 py-1 text-xs rounded bg-red-900/40 hover:bg-red-800/50 text-red-400
+                         border border-red-800/40 disabled:opacity-40 transition-colors"
+                >Delete</button>
+              </div>
+            {/if}
           </div>
         {/if}
 
       {/each}
     </div>
   {/if}
-
 </div>
 
 <ConfirmDialog
   show={!!pendingDelete}
-  title="Delete maintenance task"
-  message="Delete this maintenance task? This cannot be undone."
-  confirmText="Delete"
   danger={true}
   processing={!!deletingId}
+  title="Delete obligation"
+  message={pendingDelete
+    ? `Delete “${pendingDelete.name}”? Any maintenance jobs or inspections already recorded against it are kept — they just stop pointing at a definition.`
+    : ''}
+  confirmText="Delete"
   on:confirm={confirmDelete}
-  on:cancel={() => pendingDelete = null}
+  on:cancel={() => (pendingDelete = null)}
 />

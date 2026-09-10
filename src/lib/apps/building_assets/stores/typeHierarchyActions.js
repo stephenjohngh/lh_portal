@@ -1,6 +1,12 @@
 ﻿// src/lib/apps/building_assets/stores/typeHierarchyActions.js
 // Type hierarchy domain: building_systems, component_types, type_attributes,
-// type_attribute_options, maintenance_regime and the reload() orchestrator.
+// type_attribute_options and the reload() orchestrator.
+//
+// maintenance_regime USED to live here too — a per-type "task + frequency" rule
+// this app owned despite the name. Its definitions moved into the shared
+// statutory-obligation library (owned by Inspection, edited in Admin →
+// Inspections); see docs/requirements/Obligation_Library_Promotion_Build_Plan.md.
+// Building Assets no longer defines maintenance work at all.
 // Receives the writable `update` function from buildingAssetsStore so all mutations
 // land in the single shared store state.
 
@@ -22,21 +28,19 @@ export function createTypeHierarchyActions(update) {
   async function reload() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [systems, types, defs, options, regime] = await Promise.all([
+      const [systems, types, defs, options] = await Promise.all([
         api.get('building_systems',       { orderBy: 'presentation_order' }),
         api.get('component_types',        { orderBy: 'presentation_order' }),
         api.get('type_attributes',        { orderBy: 'presentation_order' }),
         api.get('type_attribute_options', { orderBy: 'presentation_order' }),
-        api.get('maintenance_regime')
       ]);
 
-      const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
-        resolveHierarchy(systems, types, defs, options, regime);
+      const { attrDefs, systemAttrDefs, attrOptions } =
+        resolveHierarchy(systems, types, defs, options);
 
       update(s => ({
         ...s,
         systems, types, attrDefs, systemAttrDefs, attrOptions,
-        regime: regimeMap,
         loading: false
       }));
       logger('Reloaded type hierarchy');
@@ -246,45 +250,11 @@ export function createTypeHierarchyActions(update) {
     logAudit('delete', 'type_attribute_option', id, id, { ...AUDIT_OPTS });
   }
 
-  // -- Maintenance Regime CRUD -------------------------------------------
-  // maintenance_regime has created_by but no updated_by, no updated_at trigger.
-  async function createRegime(data) {
-    const userId = requireUserId();
-    const row = await api.create('maintenance_regime', {
-      type_id:          data.type_id,
-      attribute_filter: data.attribute_filter?.trim() || null,
-      task_name:        data.task_name?.trim(),
-      frequency_days:   parseInt(data.frequency_days),
-      created_by:       userId
-    });
-    logAudit('create', 'maintenance_regime', row.id, row.task_name,
-      { ...AUDIT_OPTS, afterData: row });
-    return row;
-  }
-
-  async function updateRegime(id, data) {
-    const row = await api.update('maintenance_regime', id, {
-      attribute_filter: data.attribute_filter?.trim() || null,
-      task_name:        data.task_name?.trim(),
-      frequency_days:   parseInt(data.frequency_days)
-    });
-    logAudit('update', 'maintenance_regime', id, row.task_name,
-      { ...AUDIT_OPTS, afterData: row });
-    return row;
-  }
-
-  async function deleteRegime(id) {
-    await api.delete('maintenance_regime', id);
-    logger('Deleted regime:', id);
-    logAudit('delete', 'maintenance_regime', id, id, { ...AUDIT_OPTS });
-  }
-
   return {
     reload,
     createSystem,  updateSystem,  deleteSystem,
     createType,    updateType,    deleteType,
     createAttrDef, updateAttrDef, clearPrimaryForType, deleteAttrDef,
     createOption,  updateOption,  deleteOption,
-    createRegime,  updateRegime,  deleteRegime,
   };
 }

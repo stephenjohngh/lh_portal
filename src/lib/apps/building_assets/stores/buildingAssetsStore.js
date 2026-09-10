@@ -3,7 +3,7 @@
 // then composes all domain action modules into the exported singleton.
 //
 // Domain modules (each receives `update` so they can patch shared state):
-//   typeHierarchyActions  — systems, types, attrs, options, regime, reload
+//   typeHierarchyActions  — systems, types, attrs, options, reload
 //   componentActions      — component CRUD, attributes, inspections
 //   planActions           — plan CRUD, image upload, scale calibration
 //   spaceActions          — spaces CRUD
@@ -33,7 +33,6 @@ function createBuildingAssetsStore() {
     attrDefs:          {},   // { [typeId]: effective attrs (system-inherited + type-own) }
     systemAttrDefs:    {},   // { [systemId]: system-level type_attributes[] }
     attrOptions:       {},   // { [attrDefId]: type_attribute_options[] }
-    regime:            {},   // { [typeId]: maintenance_regime[] }
     // Component data
     components:        [],   // components[]
     componentAttrs:    {},   // { [componentId]: component_attributes[] }
@@ -64,7 +63,7 @@ function createBuildingAssetsStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [facilities, floors, systems, types, defs, options, regime, plans, spaces, spaceOverrides, annotations] =
+      const [facilities, floors, systems, types, defs, options, plans, spaces, spaceOverrides, annotations] =
         await Promise.all([
           api.get('facilities'),
           api.get('floors',              { orderBy: 'level_order',        ascending: true }),
@@ -72,15 +71,14 @@ function createBuildingAssetsStore() {
           api.get('component_types',     { orderBy: 'presentation_order' }),
           api.get('type_attributes',     { orderBy: 'presentation_order' }),
           api.get('type_attribute_options', { orderBy: 'presentation_order' }),
-          api.get('maintenance_regime'),
           api.get('plans',              { orderBy: 'building',           ascending: true }),
           api.get('spaces',             { orderBy: 'created_at',         ascending: false }),
           api.get('space_component_overrides'),
           api.get('plan_annotations',   { orderBy: 'created_at',         ascending: false })
         ]);
 
-      const { attrDefs, systemAttrDefs, attrOptions, regimeMap } =
-        resolveHierarchy(systems, types, defs, options, regime);
+      const { attrDefs, systemAttrDefs, attrOptions } =
+        resolveHierarchy(systems, types, defs, options);
 
       // space_types is loaded separately + gracefully — the table may not
       // exist yet (migrations 163/164), and the UI falls back to the hardcoded list.
@@ -95,7 +93,6 @@ function createBuildingAssetsStore() {
         ...s,
         facilities, floors,
         systems, types, attrDefs, systemAttrDefs, attrOptions,
-        regime: regimeMap,
         plans, spaces, spaceOverrides, spaceTypes, annotations,
         loading: false
       }));
