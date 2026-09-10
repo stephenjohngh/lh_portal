@@ -51,6 +51,19 @@ const DAY_MS = 86_400_000;
  * @property {string} at              ISO timestamp
  * @property {EvidenceStatus} status
  *
+ * The four fields above are ALL the scheduler reads. Everything below is
+ * reporting detail — who did it, what the outcome was, what it produced — and
+ * is deliberately optional: the due-date computation must not acquire an
+ * opinion about it, so adding a field here can never change a due date.
+ * @property {string}  [sourceId]     walk_sessions.id or maintenance_jobs.id
+ * @property {string}  [title]        what the occurrence was called
+ * @property {string}  [result]       job result, where one was recorded
+ * @property {string}  [by]           engineer, contractor or the session's owner
+ * @property {string}  [reference]    certificate or job reference
+ * @property {string}  [notes]        completion notes
+ * @property {number}  [covered]      components actually inspected
+ * @property {number}  [inScope]      components the walk was scoped to
+ *
  * @typedef {Object} ObligationScheduleState
  * @property {any}          definition   the obligation row. The KEY stays
  *                                       `definition` deliberately: every
@@ -108,6 +121,15 @@ export function walkEventsFromSessions(sessions) {
       kind: 'walk',
       at: new Date(t).toISOString(),
       status: total > 0 && inspected >= total ? 'completed' : 'attempted',
+      // Reporting detail. `covered` vs `inScope` is the one that matters most:
+      // flat entrance doors are a BEST-ENDEAVOURS duty, so a report that showed
+      // only "complete" would overstate the position on the single check most
+      // likely to be scrutinised. Both numbers travel so the report can say
+      // "addressed 40 of 40, observed 31".
+      sourceId: s.id,
+      title:    s.name ?? undefined,
+      covered:  inspected,
+      inScope:  total,
     });
   }
   return out;
@@ -134,7 +156,16 @@ export function jobEventsFromJobs(jobs) {
     if (j.completed_date || j.status === 'completed') {
       const t = msOf(j.completed_date ?? j.scheduled_date);
       if (t === null) continue;
-      out.push({ obligationId: j.obligation_id, kind: 'job', at: new Date(t).toISOString(), status: 'completed' });
+      out.push({
+        obligationId: j.obligation_id, kind: 'job',
+        at: new Date(t).toISOString(), status: 'completed',
+        sourceId: j.id,
+        title:     j.title ?? undefined,
+        result:    j.result ?? undefined,
+        by:        j.engineer_name || j.contractor_name || undefined,
+        reference: j.reference_number ?? undefined,
+        notes:     j.completion_notes ?? undefined,
+      });
       continue;
     }
 
@@ -142,7 +173,13 @@ export function jobEventsFromJobs(jobs) {
     const hard      = msOf(j.hard_expiry_date);
     const due       = hard !== null && (scheduled === null || hard < scheduled) ? hard : scheduled;
     if (due === null) continue;
-    out.push({ obligationId: j.obligation_id, kind: 'job', at: new Date(due).toISOString(), status: 'planned' });
+    out.push({
+      obligationId: j.obligation_id, kind: 'job',
+      at: new Date(due).toISOString(), status: 'planned',
+      sourceId: j.id,
+      title:    j.title ?? undefined,
+      by:       j.contractor_name ?? undefined,
+    });
   }
   return out;
 }

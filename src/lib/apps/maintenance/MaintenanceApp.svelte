@@ -1,5 +1,6 @@
 <!-- src/lib/apps/maintenance/MaintenanceApp.svelte -->
-<!-- Maintenance App entry point. Tabs: Diary | All Jobs | Documents | Schedule -->
+<!-- Maintenance App entry point.
+     Tabs: Diary | All Jobs | Documents | Schedule | Compliance | Asset Groups | Capital Plan -->
 <script>
   import { onMount }          from 'svelte';
   import { auth }             from '$lib/stores/auth';
@@ -14,6 +15,7 @@
   import SchedulerPanel from './components/SchedulerPanel.svelte';
   import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
   import TenYearPlanTab       from './components/TenYearPlanTab.svelte';
+  import ComplianceTab        from './components/ComplianceTab.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   $: store   = $maintenanceStore;
@@ -30,7 +32,8 @@
     { key: 'jobs',     label: 'All Jobs' },
     { key: 'documents', label: 'Documents' },
     ...(canEdit ? [
-      { key: 'schedule', label: 'Schedule' },
+      { key: 'schedule',   label: 'Schedule' },
+      { key: 'compliance', label: 'Compliance' },
       { key: 'groups',   label: 'Asset Groups' },
       { key: 'capital',  label: 'Capital Plan' },
     ] : []),
@@ -103,6 +106,8 @@
     <DocumentsTab docs={allDocs} />
   {:else if activeTab === 'schedule'}
     <SchedulerPanel {jobs} />
+  {:else if activeTab === 'compliance'}
+    <ComplianceTab />
   {:else if activeTab === 'groups'}
     {#if $buildingAssetsStore.loading}
       <LoadingSpinner />
