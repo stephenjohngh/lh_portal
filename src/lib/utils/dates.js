@@ -192,6 +192,32 @@ export function addDays(date, days) {
 }
 
 /**
+ * Add days to a 'YYYY-MM-DD' string, returning the same shape. UTC throughout.
+ *
+ * ⚠ Use THIS for date-only arithmetic, never `toDateString(addDays(new
+ * Date(s + 'T00:00:00'), n))`. That combination mixes clocks: `addDays` steps
+ * in LOCAL time (`setDate`) while `toDateString` formats via `toISOString()`
+ * in UTC. In any timezone ahead of UTC — Europe/London for ~7 months a year
+ * under BST — local midnight is the previous day in UTC, so the round trip
+ * comes back a day early, and stepping by 1 returns the SAME date forever.
+ * That is an infinite loop, not an off-by-one: it hung the maintenance job
+ * generator for any daily obligation (found by test, 2026-09-10).
+ *
+ * Mirrors planner/utils/recurrence.js `addDaysISO`, which got this right;
+ * worth consolidating on one of them if the two ever need to change together.
+ *
+ * @param {string} dateStr 'YYYY-MM-DD'
+ * @param {number} days    may be negative
+ * @returns {string|null}  'YYYY-MM-DD', or null if the input is unparseable
+ */
+export function addDaysISO(dateStr, days) {
+  if (!dateStr) return null;
+  const t = Date.parse(`${String(dateStr).slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  return new Date(t + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
  * Converts a UTC ISO timestamp to the `yyyy-MM-ddTHH:mm` string expected
  * by `<input type="datetime-local">`, expressed in the user's local time.
  * Round-trip: `new Date(value).toISOString()` converts back to UTC.

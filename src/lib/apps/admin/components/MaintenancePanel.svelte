@@ -18,6 +18,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
   import { isWalkEvidenced, isJobEvidenced } from '$lib/utils/obligationEvidence.js';
+  import { obligationsForType, scopedToTypeOnly, typeCount } from '../utils/typeScopedObligations.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
   import { inp } from '$lib/apps/building_assets/ui.js';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -34,15 +35,13 @@
   // Obligations whose scope names this type. One covering several types shows
   // up under each of them — correct, and useful: this is "what is this type
   // obliged to have done", not "what did someone create from this screen".
-  $: rows = $inspectionDefinitionsStore.definitions
-    .filter(d => (d.scope?.typeCodes ?? []).includes(typeCode))
+  $: rows = obligationsForType($inspectionDefinitionsStore.definitions, typeCode)
     .map(d => ({
       ...d,
-      typeCount:  (d.scope?.typeCodes ?? []).length,
-      // Editable here only when this type is the whole of its scope.
-      editableHere: (d.scope?.typeCodes ?? []).length === 1
-        && (d.scope?.systemIds ?? []).length === 0
-        && (d.scope?.floorIds  ?? []).length === 0,
+      typeCount:    typeCount(d),
+      // Editable here only when this type is the whole of its scope — see
+      // typeScopedObligations for why that guard matters.
+      editableHere: scopedToTypeOnly(d, typeCode),
       routeLabel: !isWalkEvidenced(d) ? 'Contractor job' : (isJobEvidenced(d) ? 'Either route' : 'Inspection walk'),
     }));
 

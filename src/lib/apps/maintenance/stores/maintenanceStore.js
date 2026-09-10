@@ -18,9 +18,10 @@ import { supabase }      from '$lib/supabaseClient';
 import { uploadMedia }   from '$lib/utils/mediaUpload.js';
 import { deleteStorageFiles } from '$lib/utils/driveUtils.js';
 import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary } from '$lib/utils/documentApi.js';
-import { jobRag, addDays, toDateString } from '../utils/maintenanceHelpers.js';
+import { jobRag, addDaysISO } from '../utils/maintenanceHelpers.js';
 import { listInspectionDefinitions } from '$lib/apps/inspection/public.js';
 import { isJobEvidenced } from '$lib/utils/obligationEvidence.js';
+import { plannedOccurrenceDates } from '../utils/obligationJobScope.js';
 
 const logger = getLogger('maintenanceStore');
 
@@ -360,7 +361,7 @@ function createMaintenanceStore() {
       // named one themselves.
       if (obligation && (obligation.frequency_days || nextJobDate)) {
         const calculatedDate = obligation.frequency_days
-          ? toDateString(addDays(new Date(completedDate + 'T00:00:00'), obligation.frequency_days))
+          ? addDaysISO(completedDate, obligation.frequency_days)
           : null;
         const scheduledDate  = nextJobDate || calculatedDate;
 
@@ -457,45 +458,34 @@ function createMaintenanceStore() {
       // scheduled by hand, not generated.
       if (!obligation?.frequency_days) continue;
 
-      // All existing scheduled_dates for this obligation+scope combo
-      const existingDates = new Set(
-        s.jobs
+      // Which dates to lay out — the SAME pure walk the Scheduler's preview
+      // count uses, so "will create N jobs" and what actually gets created can
+      // never disagree.
+      const dates = plannedOccurrenceDates({
+        existingDates: s.jobs
           .filter(j =>
-            j.obligation_id   === sel.obligation_id  &&
-            j.scope_type  === sel.scope_type &&
-            j.scope_id    === (sel.scope_id ?? null)
+            j.obligation_id === sel.obligation_id  &&
+            j.scope_type    === sel.scope_type &&
+            j.scope_id      === (sel.scope_id ?? null)
           )
-          .map(j => j.scheduled_date)
-      );
+          .map(j => j.scheduled_date),
+        from: fromDate,
+        to:   toDate,
+        frequencyDays: obligation.frequency_days,
+      });
 
-      // Start from fromDate, or from day after the last existing job's date
-      const existingArr = [...existingDates].sort();
-      let nextDate = fromDate;
-      if (existingArr.length > 0) {
-        const afterLast = toDateString(
-          addDays(new Date(existingArr[existingArr.length - 1] + 'T00:00:00'), obligation.frequency_days)
-        );
-        if (afterLast > nextDate) nextDate = afterLast;
-      }
-
-      while (nextDate <= toDate) {
-        if (!existingDates.has(nextDate)) {
-          const job = await api.create('maintenance_jobs', {
-            obligation_id:      sel.obligation_id,
-            scope_type:     sel.scope_type,
-            scope_id:       sel.scope_id || null,
-            scope_label:    sel.scope_label,
-            title:          sel.title || obligation.name,
-            status:         'scheduled',
-            scheduled_date: nextDate,
-            created_by:     userId,
-          }, true);
-          created.push(enrichJob(job));
-          existingDates.add(nextDate);
-        }
-        nextDate = toDateString(
-          addDays(new Date(nextDate + 'T00:00:00'), obligation.frequency_days)
-        );
+      for (const scheduledDate of dates) {
+        const job = await api.create('maintenance_jobs', {
+          obligation_id:  sel.obligation_id,
+          scope_type:     sel.scope_type,
+          scope_id:       sel.scope_id || null,
+          scope_label:    sel.scope_label,
+          title:          sel.title || obligation.name,
+          status:         'scheduled',
+          scheduled_date: scheduledDate,
+          created_by:     userId,
+        }, true);
+        created.push(enrichJob(job));
       }
     }
 

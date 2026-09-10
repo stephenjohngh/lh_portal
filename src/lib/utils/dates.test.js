@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import {
   fmtDate, fmtDateLong, fmtTime, fmtDateTime, fmtDuration,
   isOverdue, wasModified, fmtShortDate, fmtDateOnly,
-  toDateString, addDays, fmtMonthYearCompact,
+  toDateString, addDays, addDaysISO, fmtMonthYearCompact,
 } from './dates.js';
 
 const NOON = '2026-02-23T12:00:00Z';
@@ -112,5 +112,57 @@ describe('toDateString / addDays', () => {
 describe('fmtMonthYearCompact', () => {
   it('produces short month + 2-digit year with no separator', () => {
     expect(fmtMonthYearCompact(new Date(2026, 3, 15))).toBe('Apr26');
+  });
+});
+
+// addDaysISO — UTC-only date arithmetic.
+//
+// These are regression tests for a real bug, not hypotheticals. The previous
+// idiom, toDateString(addDays(new Date(s + 'T00:00:00'), n)), mixed clocks:
+// addDays steps in LOCAL time, toDateString formats in UTC. Under BST (~7
+// months a year in Europe/London) local midnight is the previous day in UTC,
+// so a +1 step returned the SAME string — an infinite loop in the maintenance
+// job generator for any daily obligation, and a silent day-early result for
+// every other cadence.
+describe('addDaysISO', () => {
+  it('advances a plain date', () => {
+    expect(addDaysISO('2026-01-01', 1)).toBe('2026-01-02');
+    expect(addDaysISO('2026-01-01', 30)).toBe('2026-01-31');
+  });
+
+  it('goes backwards with a negative step', () => {
+    expect(addDaysISO('2026-01-01', -1)).toBe('2025-12-31');
+  });
+
+  it('crosses month and year boundaries', () => {
+    expect(addDaysISO('2026-02-27', 3)).toBe('2026-03-02');   // non-leap year
+    expect(addDaysISO('2024-02-27', 3)).toBe('2024-03-01');   // leap year
+    expect(addDaysISO('2026-12-31', 1)).toBe('2027-01-01');
+  });
+
+  // The bug. Every one of these returned the input date under the old idiom.
+  it('ALWAYS advances across a DST boundary and throughout BST', () => {
+    for (const d of ['2026-03-28', '2026-03-29', '2026-03-30', '2026-06-15',
+                     '2026-10-24', '2026-10-25', '2026-10-26']) {
+      expect(addDaysISO(d, 1)).not.toBe(d);
+    }
+    expect(addDaysISO('2026-03-29', 1)).toBe('2026-03-30');   // spring forward
+    expect(addDaysISO('2026-10-25', 1)).toBe('2026-10-26');   // fall back
+  });
+
+  it('stays exact over a long BST run — 365 single-day steps land a year on', () => {
+    let d = '2026-03-01';
+    for (let i = 0; i < 365; i++) d = addDaysISO(d, 1);
+    expect(d).toBe('2027-03-01');
+  });
+
+  it('tolerates a full timestamp by taking its date part', () => {
+    expect(addDaysISO('2026-01-01T23:30:00Z', 1)).toBe('2026-01-02');
+  });
+
+  it('returns null for unusable input rather than an Invalid Date string', () => {
+    expect(addDaysISO(null, 1)).toBeNull();
+    expect(addDaysISO('', 1)).toBeNull();
+    expect(addDaysISO('not-a-date', 1)).toBeNull();
   });
 });

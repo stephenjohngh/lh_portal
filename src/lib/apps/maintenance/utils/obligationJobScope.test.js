@@ -1,6 +1,6 @@
 // src/lib/apps/maintenance/utils/obligationJobScope.test.js
 import { describe, it, expect } from 'vitest';
-import { obligationJobScope, scopeSummary } from './obligationJobScope.js';
+import { obligationJobScope, scopeSummary, plannedOccurrenceDates } from './obligationJobScope.js';
 
 const ctx = {
   types: [
@@ -79,5 +79,58 @@ describe('scopeSummary', () => {
 
   it('says building-wide when nothing narrows it', () => {
     expect(scopeSummary(ob({}), ctx)).toBe('Building-wide');
+  });
+});
+
+// This walk is shared by the Scheduler's preview count and the actual
+// generator. It was two copies before; these tests are what keeps the promise
+// ("will create N jobs") and the outcome from drifting apart.
+describe('plannedOccurrenceDates', () => {
+  const walk = (over = {}) => plannedOccurrenceDates({
+    existingDates: [], from: '2026-01-01', to: '2026-02-15', frequencyDays: 30, ...over,
+  });
+
+  it('lays out from the range start at the given cadence', () => {
+    // 01-01, +30 = 01-31, +30 = 03-02 (past `to`, stop)
+    expect(walk()).toEqual(['2026-01-01', '2026-01-31']);
+  });
+
+  it('is inclusive of the end date', () => {
+    expect(walk({ from: '2026-01-01', to: '2026-01-31' })).toEqual(['2026-01-01', '2026-01-31']);
+  });
+
+  it('resumes one interval after the latest existing job, not at the range start', () => {
+    expect(walk({ existingDates: ['2026-01-05'], to: '2026-03-10' }))
+      .toEqual(['2026-02-04', '2026-03-06']);
+  });
+
+  it('skips a date that is already taken', () => {
+    expect(walk({ existingDates: ['2026-01-01'], from: '2026-01-01', to: '2026-02-15' }))
+      .toEqual(['2026-01-31']);
+  });
+
+  it('is idempotent — a second run over the same range plans nothing new', () => {
+    const first = walk();
+    expect(plannedOccurrenceDates({
+      existingDates: first, from: '2026-01-01', to: '2026-02-15', frequencyDays: 30,
+    })).toEqual([]);
+  });
+
+  // An on-demand obligation has no series; a zero would also spin forever.
+  it('plans nothing without a usable cadence', () => {
+    expect(walk({ frequencyDays: null })).toEqual([]);
+    expect(walk({ frequencyDays: 0 })).toEqual([]);
+    expect(walk({ frequencyDays: -5 })).toEqual([]);
+  });
+
+  it('plans nothing when the range is missing or inverted', () => {
+    expect(walk({ from: null })).toEqual([]);
+    expect(walk({ to: null })).toEqual([]);
+    expect(walk({ from: '2026-06-01', to: '2026-01-01' })).toEqual([]);
+  });
+
+  it('never emits the same date twice within one run', () => {
+    const dates = walk({ from: '2026-01-01', to: '2026-12-31', frequencyDays: 1 });
+    expect(new Set(dates).size).toBe(dates.length);
   });
 });

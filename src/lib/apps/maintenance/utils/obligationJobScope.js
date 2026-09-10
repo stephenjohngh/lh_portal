@@ -16,6 +16,11 @@
 // about one thing, and otherwise scope to the building and put the detail in
 // the label. Over-narrowing would multiply jobs a contractor would only ever
 // do in one trip.
+//
+// Also holds plannedOccurrenceDates — the date walk shared by the Scheduler's
+// preview count and the actual generator, so the two cannot disagree.
+
+import { addDaysISO } from './maintenanceHelpers.js';
 
 /**
  * @param {{ name?: string, scope?: any }} obligation
@@ -55,6 +60,53 @@ export function obligationJobScope(obligation, ctx = {}) {
   // Anything broader or mixed: one building-scoped visit, labelled with what it
   // actually covers so the label still tells a contractor what they are for.
   return { scope_type: 'building', scope_id: null, scope_label: scopeSummary(obligation, ctx) };
+}
+
+/**
+ * The dates a bulk generation run would lay out for one obligation+scope.
+ *
+ * ⚠ This is deliberately shared by BOTH the Scheduler's preview count and
+ * maintenanceStore.generateJobs, because they were two copies of the same
+ * ~15-line date walk. They agreed, but nothing kept them agreeing: edit one
+ * and the UI quietly promises "will create 4 jobs" then creates 3. One
+ * function, one behaviour, one set of tests.
+ *
+ * Start at `from`, or one interval past the latest job that already exists
+ * (whichever is later), then step by `frequencyDays` to `to`, skipping any
+ * date already taken.
+ *
+ * @param {Object} args
+ * @param {string[]} args.existingDates  scheduled_dates already on the books (YYYY-MM-DD)
+ * @param {string} args.from            range start (YYYY-MM-DD)
+ * @param {string} args.to              range end, inclusive (YYYY-MM-DD)
+ * @param {number|null|undefined} args.frequencyDays
+ * @returns {string[]} dates to create, in order — empty when there is no cadence
+ */
+export function plannedOccurrenceDates({ existingDates = [], from, to, frequencyDays }) {
+  // No cadence means no series to lay out: an on-demand obligation is
+  // scheduled by hand. Also guards the infinite loop a 0 would cause.
+  if (!frequencyDays || frequencyDays < 1 || !from || !to) return [];
+
+  const taken = new Set(existingDates);
+  const sorted = [...taken].sort();
+
+  let next = from;
+  if (sorted.length > 0) {
+    const afterLast = addDaysISO(sorted[sorted.length - 1], frequencyDays);
+    if (afterLast > next) next = afterLast;
+  }
+
+  const out = [];
+  while (next <= to) {
+    if (!taken.has(next)) {
+      out.push(next);
+      // Mirrors the generator marking the slot as filled, so a date can never
+      // be emitted twice within one run.
+      taken.add(next);
+    }
+    next = addDaysISO(next, frequencyDays);
+  }
+  return out;
 }
 
 /**

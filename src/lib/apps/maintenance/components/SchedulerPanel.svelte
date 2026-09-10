@@ -6,8 +6,8 @@
 <script>
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { authHeaders } from '$lib/utils/authHeaders';
-  import { frequencyLabel, scopeTypeLabel, toDateString, addDays, today } from '../utils/maintenanceHelpers.js';
-  import { obligationJobScope, scopeSummary } from '../utils/obligationJobScope.js';
+  import { frequencyLabel, scopeTypeLabel, addDaysISO, today } from '../utils/maintenanceHelpers.js';
+  import { obligationJobScope, scopeSummary, plannedOccurrenceDates } from '../utils/obligationJobScope.js';
   import { planExceedsCeiling } from '$lib/utils/obligationSchedule.js';
   import { fmtDate, fmtToday } from '$lib/utils/dates.js';
   import { downloadResponse } from '$lib/utils/download.js';
@@ -39,7 +39,7 @@
     const lastJob      = obligationJobs[obligationJobs.length - 1] ?? null;
     const lastDate     = lastJob?.scheduled_date ?? null;
     const nextCalcDate = lastDate
-      ? toDateString(addDays(new Date(lastDate + 'T00:00:00'), o.frequency_days))
+      ? addDaysISO(lastDate, o.frequency_days)
       : today();
 
     return {
@@ -71,29 +71,21 @@
   // -- Date range for generation ------------------------------------------------
   // Default: today → today + 12 months
   const todayStr = today();
-  const defaultTo = toDateString(addDays(new Date(todayStr + 'T00:00:00'), 365));
+  const defaultTo = addDaysISO(todayStr, 365);
   let fromDate = todayStr;
   let toDate   = defaultTo;
 
   // -- Preview count ------------------------------------------------------------
+  // Same pure walk the generator runs — see plannedOccurrenceDates. Counting
+  // it here separately is how a preview starts lying about what it will do.
   function countJobsForRow(row, from, to) {
-    const existingDates = new Set(
-      jobs
+    return plannedOccurrenceDates({
+      existingDates: jobs
         .filter(j => j.obligation_id === row.id && j.scope_type === row.scopeType && j.scope_id === row.scopeId)
-        .map(j => j.scheduled_date)
-    );
-    const existingArr = [...existingDates].sort();
-    let nextDate = from;
-    if (existingArr.length > 0) {
-      const afterLast = toDateString(addDays(new Date(existingArr[existingArr.length - 1] + 'T00:00:00'), row.frequency_days));
-      if (afterLast > nextDate) nextDate = afterLast;
-    }
-    let count = 0;
-    while (nextDate <= to) {
-      if (!existingDates.has(nextDate)) count++;
-      nextDate = toDateString(addDays(new Date(nextDate + 'T00:00:00'), row.frequency_days));
-    }
-    return count;
+        .map(j => j.scheduled_date),
+      from, to,
+      frequencyDays: row.frequency_days,
+    }).length;
   }
 
   $: previewCount = selectedRows.reduce(

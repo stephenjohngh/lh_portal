@@ -37,7 +37,7 @@
   let hardDate       = '';
 
   $: calcNextDate = obligation?.frequency_days && completedDate
-    ? toDateString(addDays(new Date(completedDate + 'T00:00:00'), obligation.frequency_days))
+    ? addDaysISO(completedDate, obligation.frequency_days)
     : null;
   $: nextDateDisplay = useHardDate ? (hardDate || '—') : (calcNextDate ?? '—');
 

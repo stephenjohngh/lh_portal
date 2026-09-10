@@ -93,7 +93,7 @@ export function daysRelative(dateStr) {
 
 // Date helpers — single source of truth lives in $lib/utils/dates.js.
 // Re-exported here so existing maintenance code keeps working.
-export { addDays, toDateString, today } from '$lib/utils/dates';
+export { addDays, addDaysISO, toDateString, today } from '$lib/utils/dates';
 
 /** Format bytes as human-readable string. */
 export function fmtBytes(bytes) {
