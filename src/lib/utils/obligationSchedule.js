@@ -52,10 +52,12 @@ const DAY_MS = 86_400_000;
  * @property {EvidenceStatus} status
  *
  * @typedef {Object} ObligationScheduleState
- * @property {any}          definition   the obligation row (key kept as
- *                                       `definition` so existing consumers and
- *                                       sort helpers work untouched; renamed
- *                                       with the table itself, plan P5)
+ * @property {any}          definition   the obligation row. The KEY stays
+ *                                       `definition` deliberately: every
+ *                                       consumer and both sort helpers read
+ *                                       `state.definition`, and churning them
+ *                                       buys nothing the table rename didn't
+ *                                       already deliver.
  * @property {string|null}  lastRun
  * @property {string|null}  lastAttempt
  * @property {boolean}      unfinishedAttempt
@@ -121,18 +123,18 @@ export function walkEventsFromSessions(sessions) {
  *
  * Cancelled jobs produce nothing: they neither happened nor are they booked.
  *
- * @param {Array<any>} jobs   maintenance_jobs rows (regime_id = the obligation)
+ * @param {Array<any>} jobs   maintenance_jobs rows (obligation_id = the obligation)
  * @returns {EvidenceEvent[]}
  */
 export function jobEventsFromJobs(jobs) {
   const out = [];
   for (const j of jobs ?? []) {
-    if (!j || !j.regime_id || j.status === 'cancelled') continue;
+    if (!j || !j.obligation_id || j.status === 'cancelled') continue;
 
     if (j.completed_date || j.status === 'completed') {
       const t = msOf(j.completed_date ?? j.scheduled_date);
       if (t === null) continue;
-      out.push({ obligationId: j.regime_id, kind: 'job', at: new Date(t).toISOString(), status: 'completed' });
+      out.push({ obligationId: j.obligation_id, kind: 'job', at: new Date(t).toISOString(), status: 'completed' });
       continue;
     }
 
@@ -140,7 +142,7 @@ export function jobEventsFromJobs(jobs) {
     const hard      = msOf(j.hard_expiry_date);
     const due       = hard !== null && (scheduled === null || hard < scheduled) ? hard : scheduled;
     if (due === null) continue;
-    out.push({ obligationId: j.regime_id, kind: 'job', at: new Date(due).toISOString(), status: 'planned' });
+    out.push({ obligationId: j.obligation_id, kind: 'job', at: new Date(due).toISOString(), status: 'planned' });
   }
   return out;
 }

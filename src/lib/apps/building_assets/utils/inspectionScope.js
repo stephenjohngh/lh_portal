@@ -1,5 +1,5 @@
 // src/lib/apps/building_assets/utils/inspectionScope.js
-// Apply an inspection_definitions.scope (stored as JSON) to the component list.
+// Apply an statutory_obligations.scope (stored as JSON) to the component list.
 //
 // A definition's `scope` is the same multi-criteria filter the Components tab
 // uses — we adapt the stored array shape into the Set-based criteria that the
@@ -34,7 +34,7 @@ export function scopeToCriteria(scope = {}) {
 
 /**
  * @param {Array}  components
- * @param {object} scope  inspection_definitions.scope
+ * @param {object} scope  statutory_obligations.scope
  * @param {object} ctx    { types, attrDefs, componentAttrs, inspections }
  * @returns {Array} components matching the scope
  */

@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/InspectionDefinitionsTab.svelte -->
-<!-- Admin > Inspections: CRUD for inspection_definitions. Reads component/type
+<!-- Admin > Inspections: CRUD for statutory_obligations. Reads component/type
      reference data from buildingAssetsStore (lazy-loaded by AdminApp) to show a
      live match count per definition and to power the scope editor. -->
 <script>

@@ -230,7 +230,7 @@ export function sessionFloorLabel(session, floors) {
 }
 
 // -- Session definition name ---------------------------------------------------
-// The inspection_definitions name driving this session (e.g. "Fire Doors"), or
+// The statutory_obligations name driving this session (e.g. "Fire Doors"), or
 // null for ad-hoc / repair sessions with no definition. Used to build the
 // "{building} {definition} · {scope}" line — e.g. "LH Fire Doors · All Floors".
 // @param {{ definition_id?: string|null }} session
@@ -242,7 +242,7 @@ export function sessionDefinitionName(session, definitions) {
 
 // -- Preset label -------------------------------------------------------------
 // LEGACY. The fixed presets were retired (commit 2ead511) in favour of
-// inspection_definitions; this survives only to label historic sessions. For the
+// statutory_obligations; this survives only to label historic sessions. For the
 // "what kind of inspection is this" line, use sessionKindLabel() below — calling
 // presetLabel() directly on a modern session prints "Custom" for everything.
 export function presetLabel(preset) {

@@ -2125,7 +2125,7 @@ export type Database = {
             }
           ]
       }
-      inspection_definitions: {
+      statutory_obligations: {
         Row: {
           id: string
           name: string
@@ -2191,14 +2191,14 @@ export type Database = {
         }
         Relationships: [
             {
-              foreignKeyName: "inspection_definitions_created_by_fkey"
+              foreignKeyName: "statutory_obligations_created_by_fkey"
               columns: ["created_by"]
               isOneToOne: false
               referencedRelation: "profiles"
               referencedColumns: ["id"]
             },
             {
-              foreignKeyName: "inspection_definitions_updated_by_fkey"
+              foreignKeyName: "statutory_obligations_updated_by_fkey"
               columns: ["updated_by"]
               isOneToOne: false
               referencedRelation: "profiles"
@@ -2462,7 +2462,7 @@ export type Database = {
       maintenance_jobs: {
         Row: {
           id: string
-          regime_id: string | null
+          obligation_id: string | null
           scope_type: string
           scope_id: string | null
           scope_label: string | null
@@ -2486,7 +2486,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          regime_id?: string | null
+          obligation_id?: string | null
           scope_type?: string
           scope_id?: string | null
           scope_label?: string | null
@@ -2510,7 +2510,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          regime_id?: string | null
+          obligation_id?: string | null
           scope_type?: string
           scope_id?: string | null
           scope_label?: string | null
@@ -2534,8 +2534,8 @@ export type Database = {
         }
         Relationships: [
             {
-              foreignKeyName: "maintenance_jobs_regime_id_fkey"
-              columns: ["regime_id"]
+              foreignKeyName: "maintenance_jobs_obligation_id_fkey"
+              columns: ["obligation_id"]
               isOneToOne: false
               referencedRelation: "maintenance_regime"
               referencedColumns: ["id"]
@@ -3637,7 +3637,7 @@ export type Database = {
               foreignKeyName: "walk_sessions_definition_id_fkey"
               columns: ["definition_id"]
               isOneToOne: false
-              referencedRelation: "inspection_definitions"
+              referencedRelation: "statutory_obligations"
               referencedColumns: ["id"]
             },
             {

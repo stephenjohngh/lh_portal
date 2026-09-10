@@ -31,7 +31,7 @@ const SESSION_INSPECTION_SELECT =
 export function listInspectionDefinitions({ activeOnly = false } = {}) {
   const options = { orderBy: 'presentation_order' };
   if (activeOnly) options.filters = { active: true };
-  return api.get('inspection_definitions', options);
+  return api.get('statutory_obligations', options);
 }
 
 /**

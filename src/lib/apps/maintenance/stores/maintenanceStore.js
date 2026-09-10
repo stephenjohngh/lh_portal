@@ -75,7 +75,7 @@ function createMaintenanceStore() {
         // No PostgREST embed of the definition any more: maintenance_regime is
         // gone (migration 204) and the obligation library belongs to another
         // app, so it is fetched through its public.js and joined in memory by
-        // regime_id — an embed would be this app reaching into another's table.
+        // obligation_id — an embed would be this app reaching into another's table.
         api.get('maintenance_jobs', {
           orderBy:   'scheduled_date',
           ascending: true,
@@ -351,11 +351,10 @@ function createMaintenanceStore() {
     }
 
     let nextJob = null;
-    if (createNextJob && updated.regime_id) {
+    if (createNextJob && updated.obligation_id) {
       const s          = get({ subscribe });
-      // regime_id now points at the shared obligation library (migration 204).
-      // The column keeps its name until the table rename (plan P5).
-      const obligation = s.obligations.find(o => o.id === updated.regime_id);
+      // obligation_id points at the shared library (migrations 204/206).
+      const obligation = s.obligations.find(o => o.id === updated.obligation_id);
       // An obligation with no cadence (frequency_days null = on demand) has no
       // next date to compute, so there is nothing to spawn unless the user
       // named one themselves.
@@ -366,7 +365,7 @@ function createMaintenanceStore() {
         const scheduledDate  = nextJobDate || calculatedDate;
 
         nextJob = await api.create('maintenance_jobs', {
-          regime_id:      updated.regime_id,
+          obligation_id:      updated.obligation_id,
           scope_type:     updated.scope_type,
           scope_id:       updated.scope_id,
           scope_label:    updated.scope_label,
@@ -443,9 +442,7 @@ function createMaintenanceStore() {
 
   /**
    * Generate jobs for selected obligations within a date range.
-   * selections: [{ regime_id, title, scope_type, scope_id, scope_label }]
-   *   — `regime_id` keeps its name until the column is renamed with the table
-   *     (plan P5); it now holds an obligation id.
+   * selections: [{ obligation_id, title, scope_type, scope_id, scope_label }]
    * fromDate / toDate: YYYY-MM-DD strings
    * Skips dates where a job for that obligation + scope already exists.
    */
@@ -455,7 +452,7 @@ function createMaintenanceStore() {
     const s       = get({ subscribe });
 
     for (const sel of selections) {
-      const obligation = s.obligations.find(o => o.id === sel.regime_id);
+      const obligation = s.obligations.find(o => o.id === sel.obligation_id);
       // No cadence means no series to lay out — an on-demand obligation is
       // scheduled by hand, not generated.
       if (!obligation?.frequency_days) continue;
@@ -464,7 +461,7 @@ function createMaintenanceStore() {
       const existingDates = new Set(
         s.jobs
           .filter(j =>
-            j.regime_id   === sel.regime_id  &&
+            j.obligation_id   === sel.obligation_id  &&
             j.scope_type  === sel.scope_type &&
             j.scope_id    === (sel.scope_id ?? null)
           )
@@ -484,7 +481,7 @@ function createMaintenanceStore() {
       while (nextDate <= toDate) {
         if (!existingDates.has(nextDate)) {
           const job = await api.create('maintenance_jobs', {
-            regime_id:      sel.regime_id,
+            obligation_id:      sel.obligation_id,
             scope_type:     sel.scope_type,
             scope_id:       sel.scope_id || null,
             scope_label:    sel.scope_label,

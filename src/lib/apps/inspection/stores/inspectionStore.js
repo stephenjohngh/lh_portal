@@ -118,7 +118,7 @@ const INITIAL_STATE = {
 
   // Configurable inspection definitions (admin-maintained config) + the closed
   // sessions that drive their due/overdue state (computeInspectionSchedule).
-  definitions:      [],      // inspection_definitions rows
+  definitions:      [],      // statutory_obligations rows
   scheduleSessions: [],      // closed walk_sessions (lite rows: id, definition_id, status, closed_at)
   latestInspections: {},     // { componentId: latest component_inspections row } — lazy, for
                              // definition scopes with condition-attribute filters
@@ -294,7 +294,7 @@ function createInspectionStore() {
     // definition matters for the schedule, so the 1000-row page is plenty.
     try {
       const [definitions, scheduleSessions] = await Promise.all([
-        api.get('inspection_definitions', { orderBy: 'presentation_order' }),
+        api.get('statutory_obligations', { orderBy: 'presentation_order' }),
         api.get('walk_sessions', {
           // counts drive completeness in computeInspectionSchedule (a finished-early
           // session must not reset the clock).
@@ -439,7 +439,7 @@ function createInspectionStore() {
 
   // -- Start single-floor session -----------------------------------------------
 
-  // `definition` (an inspection_definitions row) supersedes typeFilter +
+  // `definition` (an statutory_obligations row) supersedes typeFilter +
   // emergencyOnly when present: the walk is the definition's scope, and the
   // session is stamped with definition_id so the read-time schedule can key
   // off its closed sessions.
@@ -620,7 +620,7 @@ function createInspectionStore() {
     if (session.definition_id) {
       try {
         const definition = getState().definitions.find(d => d.id === session.definition_id)
-          ?? await api.getById('inspection_definitions', session.definition_id);
+          ?? await api.getById('statutory_obligations', session.definition_id);
         if (definition) walk = { definition };
       } catch (err) {
         logger('⚠ resume: definition fetch failed, using stored type_filter:', err.message);

@@ -24,7 +24,7 @@ import { findComponentByRef }   from '$lib/utils/componentRef.js';
  *   - order: floors.walk_order → inspection_sort_order (nulls last) → asset_id
  *
  * @param {Array}  components  ALL components (flat)
- * @param {object} definition  inspection_definitions row (scope is read)
+ * @param {object} definition  statutory_obligations row (scope is read)
  * @param {object} ctx         { types, attrDefs, componentAttrs, inspections }
  * @param {Array}  floors
  * @returns {Array} ordered trigger pool
@@ -82,7 +82,7 @@ export function deriveNextTrigger(pool, lastTested = {}) {
  * bell inside a riser (sort_order 0) must still be checked.
  *
  * @param {object|null} trigger
- * @param {object} definition      inspection_definitions row
+ * @param {object} definition      statutory_obligations row
  * @param {object} componentLinks  { [fromComponentId]: component_links[] }
  * @param {{ components: Array, floors: Array, types: Array }} refCtx
  * @returns {{ linked: Array, unresolved: string[] }}

@@ -32,10 +32,10 @@ const form = (over = {}) => ({ name: 'Fire Doors', ...over });
 beforeEach(() => { vi.clearAllMocks(); h.api.get.mockResolvedValue([]); });
 
 describe('load', () => {
-  it('reads inspection_definitions ordered by presentation_order and clears loading', async () => {
+  it('reads statutory_obligations ordered by presentation_order and clears loading', async () => {
     h.api.get.mockResolvedValueOnce([{ id: 'd1', name: 'Doors', presentation_order: 0 }]);
     await defs.load();
-    expect(h.api.get).toHaveBeenCalledWith('inspection_definitions', { orderBy: 'presentation_order' });
+    expect(h.api.get).toHaveBeenCalledWith('statutory_obligations', { orderBy: 'presentation_order' });
     expect(get(defs).definitions).toHaveLength(1);
     expect(get(defs).loading).toBe(false);
     expect(get(defs).error).toBe(null);
@@ -63,7 +63,7 @@ describe('create', () => {
   it('trims the name, applies standard defaults, stamps created_by + updated_by', async () => {
     await defs.create(form({ name: '  Fire Doors  ' }));
     const row = h.api.create.mock.calls[0][1];
-    expect(h.api.create.mock.calls[0][0]).toBe('inspection_definitions');
+    expect(h.api.create.mock.calls[0][0]).toBe('statutory_obligations');
     expect(row).toMatchObject({
       name:               'Fire Doors',
       description:        null,
@@ -175,7 +175,7 @@ describe('save', () => {
     await defs.save('d2', form({ name: 'Alpha' }));
 
     expect(h.api.update).toHaveBeenCalledWith(
-      'inspection_definitions', 'd2',
+      'statutory_obligations', 'd2',
       expect.objectContaining({ name: 'Alpha', updated_by: 'u1' }),
     );
     expect(h.api.update.mock.calls[0][2]).not.toHaveProperty('created_by');
@@ -198,7 +198,7 @@ describe('remove', () => {
     await defs.load();
     await defs.remove('d1');
 
-    expect(h.api.delete).toHaveBeenCalledWith('inspection_definitions', 'd1');
+    expect(h.api.delete).toHaveBeenCalledWith('statutory_obligations', 'd1');
     expect(get(defs).definitions).toHaveLength(0);
     expect(h.logAudit).toHaveBeenCalledWith(
       'delete', 'inspection_definition', 'd1', 'Emergency Lighting',

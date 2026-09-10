@@ -17,7 +17,7 @@
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { noAccessReasonLabel } from '$lib/utils/resultConstants.js';
 
-  export let definitions = [];   // active inspection_definitions rows
+  export let definitions = [];   // active statutory_obligations rows
   export let sessions    = [];   // walk_sessions (only closed ones with a definition_id contribute)
   /** Components still awaiting access, from listComponentsAwaitingAccess() (G13).
    *  A completed run can hide unobserved components — this is what stops a

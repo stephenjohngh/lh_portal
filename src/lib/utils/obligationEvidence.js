@@ -4,9 +4,10 @@
 // `evidenced_by`). Pure, no I/O — Type-1 testable, and shared by every surface
 // that lists obligations, the same way inspectionSchedule.js is shared.
 //
-// Why this exists at all: `inspection_definitions` is being promoted to hold
-// BOTH inspection-walk obligations and contractor-job ones (see
-// docs/requirements/Obligation_Library_Promotion_Build_Plan.md §5). The mobile
+// Why this exists at all: `statutory_obligations` (formerly
+// `inspection_definitions`) holds BOTH inspection-walk obligations and
+// contractor-job ones — see
+// docs/requirements/Obligation_Library_Promotion_Build_Plan.md §5. The mobile
 // app loads every row of that table into its start-a-walk list, so without a
 // route filter a "6-monthly fire alarm service" would appear as something an
 // inspector can walk round and tick — and read "never run, due now" forever,

@@ -17,9 +17,8 @@
   const dispatch = createEventDispatcher();
 
   $: store  = $maintenanceStore;
-  // regime_id points at the shared obligation library (migration 204); the
-  // column keeps its name until the table rename (plan P5).
-  $: obligation = job?.regime_id ? store.obligations.find(o => o.id === job.regime_id) : null;
+  // The obligation this job discharges, from the shared library.
+  $: obligation = job?.obligation_id ? store.obligations.find(o => o.id === job.obligation_id) : null;
   $: docs   = store.docsByJob[job?.id] ?? [];
 
   // -- Form state ---------------------------------------------------------------
@@ -33,7 +32,7 @@
   // Recurrence
   // Only an obligation with a cadence can produce a next occurrence; an
   // on-demand one is scheduled by hand.
-  let createNext     = !!(job?.regime_id);
+  let createNext     = !!(job?.obligation_id);
   let useHardDate    = false;
   let hardDate       = '';
 

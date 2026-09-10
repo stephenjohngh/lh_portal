@@ -32,7 +32,7 @@
   // -- Props -----------------------------------------------------------------
   // sessions: already-filtered list shown in the tab
   export let sessions         = [];
-  export let definitions      = [];   // inspection_definitions — for the definition name
+  export let definitions      = [];   // statutory_obligations — for the definition name
   // types + floors: from $buildingAssetsStore — needed for client-side resolution
   export let types            = [];
   export let floors           = [];

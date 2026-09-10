@@ -16,7 +16,7 @@ const closedSession = (definitionId, ago, { inspected = 10, total = 10 } = {}) =
   closed_at: daysAgo(ago), inspected_components_count: inspected, total_components_count: total,
 });
 
-const job = (o) => ({ id: 'j1', regime_id: 'o1', status: 'scheduled', ...o });
+const job = (o) => ({ id: 'j1', obligation_id: 'o1', status: 'scheduled', ...o });
 
 describe('walkEventsFromSessions', () => {
   it('maps a fully-inspected closed session to completed evidence', () => {
@@ -79,7 +79,7 @@ describe('jobEventsFromJobs', () => {
   it('ignores cancelled jobs and jobs with no obligation', () => {
     expect(jobEventsFromJobs([
       job({ status: 'cancelled', scheduled_date: '2026-10-01' }),
-      job({ regime_id: null, scheduled_date: '2026-10-01' }),
+      job({ obligation_id: null, scheduled_date: '2026-10-01' }),
     ])).toEqual([]);
   });
 });

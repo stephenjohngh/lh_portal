@@ -1,5 +1,5 @@
 <!-- src/lib/apps/building_assets/components/inspections/ScopeEditor.svelte -->
-<!-- Builds an inspection_definitions.scope object using the SAME filter UI as
+<!-- Builds an statutory_obligations.scope object using the SAME filter UI as
      the Components tab: multi-select dropdowns (System / Type / Floor / Status)
      and attribute-filter strips (Fixed + Condition) with the chip + popover
      editor. Emits 'change' with the updated scope on every edit; parent owns

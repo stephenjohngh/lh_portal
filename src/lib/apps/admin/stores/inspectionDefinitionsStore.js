@@ -1,5 +1,5 @@
 // src/lib/apps/admin/stores/inspectionDefinitionsStore.js
-// CRUD store for inspection_definitions — used by Admin > Inspections tab.
+// CRUD store for statutory_obligations — used by Admin > Inspections tab.
 //
 // Definitions are portal config (like component_types): admins create/edit them
 // here; the mobile Inspection app and the Building Assets "Inspections" tab READ
@@ -23,7 +23,7 @@ function numOrNull(v) {
 }
 
 /**
- * @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition
+ * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
  * @typedef {{ definitions: InspectionDefinition[], loading: boolean, error: string|null }} State
  */
 
@@ -79,7 +79,7 @@ function createInspectionDefinitionsStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const definitions = await api.get('inspection_definitions', { orderBy: 'presentation_order' });
+      const definitions = await api.get('statutory_obligations', { orderBy: 'presentation_order' });
       definitions.sort(byOrderThenName);
       update(s => ({ ...s, definitions, loading: false }));
       logger('Loaded', definitions.length, 'inspection definitions');
@@ -91,7 +91,7 @@ function createInspectionDefinitionsStore() {
 
   async function create(data) {
     const uid = await userId();
-    const def = await api.create('inspection_definitions', toRow(data, uid, { isCreate: true }));
+    const def = await api.create('statutory_obligations', toRow(data, uid, { isCreate: true }));
     update(s => ({ ...s, definitions: [...s.definitions, def].sort(byOrderThenName) }));
     logAudit('create', 'inspection_definition', def.id, def.name, {
       appId: 'admin', eventCategory: 'admin', severity: 'info',
@@ -103,7 +103,7 @@ function createInspectionDefinitionsStore() {
 
   async function save(id, data) {
     const uid = await userId();
-    const updated = await api.update('inspection_definitions', id, toRow(data, uid, { isCreate: false }));
+    const updated = await api.update('statutory_obligations', id, toRow(data, uid, { isCreate: false }));
     update(s => ({
       ...s,
       definitions: s.definitions.map(d => d.id === id ? { ...d, ...updated } : d).sort(byOrderThenName),
@@ -118,7 +118,7 @@ function createInspectionDefinitionsStore() {
 
   async function remove(id) {
     const name = getName(id);
-    await api.delete('inspection_definitions', id);
+    await api.delete('statutory_obligations', id);
     update(s => ({ ...s, definitions: s.definitions.filter(d => d.id !== id) }));
     logAudit('delete', 'inspection_definition', id, name, {
       appId: 'admin', eventCategory: 'admin', severity: 'warning',

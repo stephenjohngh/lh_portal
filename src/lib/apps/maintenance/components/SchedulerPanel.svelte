@@ -33,7 +33,7 @@
     const { scope_type, scope_id, scope_label } = obligationJobScope(o, { types, systems });
 
     const obligationJobs = jobs
-      .filter(j => j.regime_id === o.id)
+      .filter(j => j.obligation_id === o.id)
       .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
 
     const lastJob      = obligationJobs[obligationJobs.length - 1] ?? null;
@@ -79,7 +79,7 @@
   function countJobsForRow(row, from, to) {
     const existingDates = new Set(
       jobs
-        .filter(j => j.regime_id === row.id && j.scope_type === row.scopeType && j.scope_id === row.scopeId)
+        .filter(j => j.obligation_id === row.id && j.scope_type === row.scopeType && j.scope_id === row.scopeId)
         .map(j => j.scheduled_date)
     );
     const existingArr = [...existingDates].sort();
@@ -110,8 +110,7 @@
     generating = true; generateResult = null;
     try {
       const selections = selectedRows.map(r => ({
-        // Column keeps its name until the table rename (plan P5).
-        regime_id:   r.id,
+        obligation_id:   r.id,
         title:       r.name,
         scope_type:  r.scopeType,
         scope_id:    r.scopeId,

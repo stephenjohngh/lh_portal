@@ -27,9 +27,8 @@
 
   $: store         = $maintenanceStore;
   $: docs          = store.docsByJob[job?.id] ?? [];
-  // regime_id points at the shared obligation library (migration 204); the
-  // column keeps its name until the table rename (plan P5).
-  $: obligation    = job?.regime_id ? store.obligations.find(o => o.id === job.regime_id) : null;
+  // The obligation this job discharges, from the shared library.
+  $: obligation    = job?.obligation_id ? store.obligations.find(o => o.id === job.obligation_id) : null;
   $: rag           = ragConfig(job?.rag ?? 'scheduled');
   $: res           = resultConfig(job?.result);
   $: canEdit       = $permissions.isAdmin;
@@ -217,7 +216,7 @@
         </div>
       {/if}
 
-      <!-- Regime link -->
+      <!-- Linked obligation -->
       {#if obligation}
         <div class="rounded-lg bg-slate-800/40 border border-slate-700 p-3 text-sm">
           <p class="text-xs text-slate-500 mb-1">Regime task</p>

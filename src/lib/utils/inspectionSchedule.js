@@ -19,7 +19,7 @@ import { fmtDate } from '$lib/utils/dates';
 import { computeObligationSchedule, walkEventsFromSessions } from '$lib/utils/obligationSchedule.js';
 
 /**
- * @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition
+ * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
  * @typedef {import('$lib/database.types').Tables<'walk_sessions'>} WalkSession
  *
  * @typedef {Object} ScheduleState
@@ -38,7 +38,7 @@ import { computeObligationSchedule, walkEventsFromSessions } from '$lib/utils/ob
 /**
  * Compute the schedule state for each definition.
  *
- * @param {InspectionDefinition[]} definitions   inspection_definitions rows
+ * @param {InspectionDefinition[]} definitions   statutory_obligations rows
  * @param {WalkSession[]} sessions               walk_sessions rows (only closed ones with a
  *                                               definition_id contribute; others are ignored)
  * @param {Object} [opts]

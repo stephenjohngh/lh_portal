@@ -40,7 +40,7 @@
 
   // -- State ----------------------------------------------------------------
   let sessions    = [];
-  let definitions = [];      // inspection_definitions (all; due list uses active only)
+  let definitions = [];      // statutory_obligations (all; due list uses active only)
   let awaitingAccess = [];   // components attended but not assessed (G13)
   let inspections = {};      // { [sessionId]: flattened inspection[] }
   let showReport  = false;

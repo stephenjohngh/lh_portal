@@ -195,7 +195,7 @@ describe('definition sessions (configurable inspections)', () => {
   });
 
   it('resumeSession on a definition session rebuilds the walk from the definition scope', async () => {
-    h.setTables({ ...FIXTURE, inspection_definitions: [DEFINITION] });
+    h.setTables({ ...FIXTURE, statutory_obligations: [DEFINITION] });
     await inspectionStore.load();
     await inspectionStore.resumeSession({
       id: 'sess1', session_scope: 'single_floor', floor_id: 'f1', status: 'open',
@@ -249,7 +249,7 @@ describe('rotating sessions', () => {
   });
 
   it('resumeSession rebuilds the walk from the STAMPED trigger, not a fresh derivation', async () => {
-    h.setTables({ ...ROT_FIXTURE, inspection_definitions: [ROT_DEF] });
+    h.setTables({ ...ROT_FIXTURE, statutory_obligations: [ROT_DEF] });
     await inspectionStore.load();
     // cp2 has no links → walk is just cp2. A fresh derivation (nothing tested)
     // would pick cp1, so cp2 proves the stored trigger drove it.

@@ -19,7 +19,7 @@ import { get } from 'svelte/store';
 const h = vi.hoisted(() => {
   let tables = {};
   let profile = { is_contractor: false };
-  let updateExtra = {};   // extra fields merged into api.update return (e.g. regime_id)
+  let updateExtra = {};   // extra fields merged into api.update return (e.g. obligation_id)
   let obligations = [];   // what inspection/public.js hands back
 
   const api = {
@@ -111,18 +111,18 @@ describe('completeJob', () => {
   it('marks the job completed and spawns the next recurrence from the obligation frequency', async () => {
     h.setObligations([{ id: 'reg1', name: 'Service', frequency_days: 30, evidenced_by: 'maintenance_job' }]);
     await maintenanceStore.load();
-    // the completed job carries a regime_id so a recurrence is due
-    h.setUpdateExtra({ regime_id: 'reg1', scope_type: 'system', scope_id: 'sys1', scope_label: 'Fire', title: 'Service', description: 'd' });
+    // the completed job carries a obligation_id so a recurrence is due
+    h.setUpdateExtra({ obligation_id: 'reg1', scope_type: 'system', scope_id: 'sys1', scope_label: 'Fire', title: 'Service', description: 'd' });
 
     await maintenanceStore.completeJob('j1', { result: 'pass', completedDate: '2026-01-01', createNextJob: true });
 
     expect(lastJobUpdate()).toMatchObject({ next_job_id: expect.any(String) });
     const nextCreate = jobCreates()[0][1];
-    expect(nextCreate).toMatchObject({ regime_id: 'reg1', status: 'scheduled', scheduled_date: '2026-01-31' }); // +30 days
+    expect(nextCreate).toMatchObject({ obligation_id: 'reg1', status: 'scheduled', scheduled_date: '2026-01-31' }); // +30 days
   });
 
   it('does NOT spawn a recurrence when the job has no obligation link', async () => {
-    h.setUpdateExtra({});   // no regime_id on the returned row
+    h.setUpdateExtra({});   // no obligation_id on the returned row
     await maintenanceStore.completeJob('j1', { result: 'pass', completedDate: '2026-01-01', createNextJob: true });
     expect(jobCreates()).toHaveLength(0);
     expect(h.api.update).toHaveBeenCalledWith('maintenance_jobs', 'j1', expect.objectContaining({ status: 'completed', result: 'pass' }), true);
@@ -165,7 +165,7 @@ describe('saveJobComponents', () => {
 });
 
 describe('generateJobs', () => {
-  const sel = [{ regime_id: 'reg1', scope_type: 'system', scope_id: 'sys1', scope_label: 'Fire', title: 'Service' }];
+  const sel = [{ obligation_id: 'reg1', scope_type: 'system', scope_id: 'sys1', scope_label: 'Fire', title: 'Service' }];
 
   beforeEach(async () => {
     h.setObligations([{ id: 'reg1', name: 'Service', frequency_days: 30, evidenced_by: 'maintenance_job' }]);
@@ -207,7 +207,7 @@ describe('load — obligations come from the shared library', () => {
     expect(get(maintenanceStore).obligations.map(o => o.id)).toEqual(['o1', 'o2']);
     expect(h.listInspectionDefinitions).toHaveBeenCalledWith({ activeOnly: true });
     const queried = h.api.get.mock.calls.map(c => c[0]);
-    expect(queried).not.toContain('inspection_definitions');
+    expect(queried).not.toContain('statutory_obligations');
     expect(queried).not.toContain('maintenance_regime');
   });
 

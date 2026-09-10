@@ -1,5 +1,5 @@
 <!-- src/lib/apps/admin/components/InspectionDefinitionModal.svelte -->
-<!-- Create / edit an inspection_definitions row. Composes the shared ScopeEditor
+<!-- Create / edit an statutory_obligations row. Composes the shared ScopeEditor
      and shows a live "matches N" count via applyInspectionScope. Rotating mode
      shows a live next-trigger + linked-set preview (buildRotatingWalk — the
      same derivation the mobile app runs). checklist_mode ('explicit' narrows
@@ -20,7 +20,7 @@
   import { buildComponentRef } from '$lib/utils/componentRef.js';
 
   /**
-   * @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition
+   * @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition
    * @typedef {import('$lib/database.types').Tables<'type_attributes'>} TypeAttribute
    */
   /** @type {InspectionDefinition|null} */

@@ -4,7 +4,7 @@
 // BSA 2022 s.82 controlled register of what must be physically displayed in
 // the building (prescribed AP notice, latest BAC, any compliance notice in
 // force). Admin-only both ways at RLS (migration 199) — nothing else reads
-// this table yet, unlike inspection_definitions/component_types.
+// this table yet, unlike statutory_obligations/component_types.
 
 import { writable }  from 'svelte/store';
 import { api }       from '$lib/utils/api';

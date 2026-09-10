@@ -36,7 +36,7 @@
   // -- Form state ----------------------------------------------------------------
   let scope      = 'single_floor';   // 'single_floor' | 'building'
   let preset     = '';               // '' (nothing picked yet) | 'custom' (ad-hoc walk)
-  let selectedDefinitionId = '';     // an inspection_definitions id, or '' (ad-hoc mode)
+  let selectedDefinitionId = '';     // an statutory_obligations id, or '' (ad-hoc mode)
   let showCustom = false;
   let selectedFacilityId = '';
   let selectedFloorId    = '';
@@ -48,7 +48,7 @@
   let hiddenTypeCodes = new Set();
 
   // -- Scheduled inspection definitions -------------------------------------------
-  /** @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition */
+  /** @typedef {import('$lib/database.types').Tables<'statutory_obligations'>} InspectionDefinition */
   // `isWalkEvidenced` keeps contractor-evidenced obligations out: since the
   // obligation library is shared with Maintenance (migration 203), this table
   // also holds work discharged by a contractor job, which nobody can tick off
