@@ -7,11 +7,16 @@
 // scheduling: a definition's clock is (its most recent CLOSED session's
 // closed_at) + frequency_days. No cron, no stored next_due to drift.
 //
-// See docs/requirements/Configurable_Inspections_Build_Plan.md §5.
+// ⚠ The due computation itself now lives in obligationSchedule.js, which
+// generalises it across BOTH stacks (an obligation can also be discharged by a
+// contractor job). This file is the walk-shaped door onto it, plus the display
+// helpers. Behaviour here is unchanged — see computeInspectionSchedule's note.
+//
+// See docs/requirements/Configurable_Inspections_Build_Plan.md §5 and
+// docs/requirements/Obligation_Library_Promotion_Build_Plan.md §7.
 
 import { fmtDate } from '$lib/utils/dates';
-
-const DAY_MS = 86_400_000;
+import { computeObligationSchedule, walkEventsFromSessions } from '$lib/utils/obligationSchedule.js';
 
 /**
  * @typedef {import('$lib/database.types').Tables<'inspection_definitions'>} InspectionDefinition
@@ -31,20 +36,6 @@ const DAY_MS = 86_400_000;
  */
 
 /**
- * A closed session counts as a COMPLETED run only when every in-scope component
- * was inspected. `inspected_components_count` is stamped at close time (and
- * backfilled for historic rows — migration 165); `total_components_count` is set
- * at start. A session finished early (fewer inspected than the scope) is NOT a
- * completed run and must not reset the schedule clock.
- * @param {{ inspected_components_count?: number|null, total_components_count?: number|null }} s
- */
-function isCompletedRun(s) {
-  const total     = s.total_components_count ?? 0;
-  const inspected = s.inspected_components_count ?? 0;
-  return total > 0 && inspected >= total;
-}
-
-/**
  * Compute the schedule state for each definition.
  *
  * @param {InspectionDefinition[]} definitions   inspection_definitions rows
@@ -56,72 +47,17 @@ function isCompletedRun(s) {
  * @returns {ScheduleState[]}          one entry per input definition, input order preserved
  */
 export function computeInspectionSchedule(definitions, sessions, opts = {}) {
-  const now         = opts.now ?? new Date();
-  const nowMs       = now.getTime();
-  const dueSoonDays = opts.dueSoonDays ?? 14;
-
-  // Per definition_id: the most recent COMPLETED run (drives the clock) and the
-  // most recent closed session of any completeness (to spot an unfinished attempt).
-  /** @type {Record<string, number>} */
-  const lastCompleteMs = {};
-  /** @type {Record<string, number>} */
-  const lastAttemptMs  = {};
-  for (const s of sessions ?? []) {
-    if (!s || s.status !== 'closed' || !s.definition_id || !s.closed_at) continue;
-    const t = new Date(s.closed_at).getTime();
-    if (Number.isNaN(t)) continue;
-    const id = s.definition_id;
-    if (lastAttemptMs[id] === undefined || t > lastAttemptMs[id]) lastAttemptMs[id] = t;
-    if (isCompletedRun(s) && (lastCompleteMs[id] === undefined || t > lastCompleteMs[id])) {
-      lastCompleteMs[id] = t;
-    }
-  }
-
-  return (definitions ?? []).map((definition) => {
-    const freq      = definition.frequency_days;
-    const lastT     = lastCompleteMs[definition.id];               // completed → the clock
-    const attemptT  = lastAttemptMs[definition.id];               // any closed session
-    const lastRun     = lastT    !== undefined ? new Date(lastT).toISOString()    : null;
-    const lastAttempt = attemptT !== undefined ? new Date(attemptT).toISOString() : null;
-    // The latest attempt was left incomplete when there is a closed session more
-    // recent than the last completed one (or no completed one at all).
-    const unfinishedAttempt = attemptT !== undefined && (lastT === undefined || attemptT > lastT);
-    const common = { lastRun, lastAttempt, unfinishedAttempt };
-
-    // On-demand: no cadence → never "due".
-    if (freq == null) {
-      return {
-        definition, ...common, nextDue: null, overdue: false,
-        daysUntilDue: null, band: /** @type {const} */ ('on_demand'),
-        sortKey: Infinity,
-      };
-    }
-
-    // Has a cadence but no COMPLETED run → due now, most urgent. (An unfinished
-    // attempt does not satisfy this — it stays never_run, which is the fix.)
-    if (lastT === undefined) {
-      return {
-        definition, ...common, nextDue: null, overdue: true,
-        daysUntilDue: null, band: /** @type {const} */ ('never_run'),
-        sortKey: -Infinity,
-      };
-    }
-
-    const nextDueMs    = lastT + freq * DAY_MS;
-    const overdue      = nextDueMs < nowMs;
-    const daysUntilDue = Math.ceil((nextDueMs - nowMs) / DAY_MS);
-    const band = overdue
-      ? 'overdue'
-      : (daysUntilDue <= dueSoonDays ? 'due_soon' : 'ok');
-
-    return {
-      definition, ...common,
-      nextDue: new Date(nextDueMs).toISOString(),
-      overdue, daysUntilDue,
-      band: /** @type {'overdue'|'due_soon'|'ok'} */ (band),
-      sortKey: nextDueMs,
-    };
-  });
+  // Delegates to the generalised obligation scheduler (P2 of the promotion
+  // plan). This is a mapping layer, not a second implementation: walk sessions
+  // become 'completed'/'attempted' evidence events and never 'planned' ones, so
+  // the planned branch there cannot fire and this function's behaviour is
+  // unchanged BY CONSTRUCTION rather than by assertion. The tests below this
+  // file's callers are the regression net for that claim.
+  //
+  // Kept as its own export because "the inspection walk schedule" is a real,
+  // narrower question three surfaces ask, and because every existing caller
+  // passes sessions, not events.
+  return computeObligationSchedule(definitions, walkEventsFromSessions(sessions), opts);
 }
 
 /**
