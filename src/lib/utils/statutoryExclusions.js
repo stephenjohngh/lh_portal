@@ -89,6 +89,38 @@ export function reviewsDue(rows, opts = {}) {
 }
 
 /**
+ * How soon counts as "coming up" for an exclusion review, in days.
+ *
+ * Thirty, matching the compliance report's due-soon horizon, so a review and a
+ * check that fall in the same month read the same way to the same person.
+ */
+export const REVIEW_SOON_DAYS = 30;
+
+/**
+ * The state of ONE exclusion's review date, for display.
+ *
+ * Exists so that the badge on a row and the count in the header cannot drift
+ * apart: both ask this, rather than each re-deriving "is it late?" from a
+ * comparison written twice. Dates are plain 'YYYY-MM-DD' and compared as
+ * strings, which is exact and timezone-free — see the UTC lesson in
+ * `addDaysISO`.
+ *
+ * @param {string|null|undefined} reviewDue
+ * @param {{ today?: string, withinDays?: number }} [opts]
+ * @returns {'none'|'overdue'|'due_soon'|'scheduled'}
+ */
+export function reviewState(reviewDue, opts = {}) {
+  if (!reviewDue) return 'none';
+  const today = opts.today ?? new Date().toISOString().slice(0, 10);
+  if (reviewDue <= today) return 'overdue';
+
+  const withinDays = opts.withinDays ?? REVIEW_SOON_DAYS;
+  const horizon = new Date(Date.parse(`${today}T00:00:00Z`) + withinDays * 86_400_000)
+    .toISOString().slice(0, 10);
+  return reviewDue <= horizon ? 'due_soon' : 'scheduled';
+}
+
+/**
  * Is this reason good enough to record against a legal requirement?
  *
  * Deliberately minimal — it rejects nothing and empty, and that is all. The

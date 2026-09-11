@@ -16,7 +16,9 @@
     isSchedulable, isRecurring, isUnhomed, isSuperseded, supersededNote,
     STATUTORY_TEMPLATE,
   } from '$lib/utils/statutoryTemplate.js';
-  import { currentDecisions, isRecordableReason } from '$lib/utils/statutoryExclusions.js';
+  import {
+    currentDecisions, isRecordableReason, reviewsDue, reviewState, REVIEW_SOON_DAYS,
+  } from '$lib/utils/statutoryExclusions.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
   import { fmtDate } from '$lib/utils/dates.js';
   import { profiles, profilesStore } from '$lib/stores/profiles.js';
@@ -35,6 +37,13 @@
   $: dismissedKeys = $inspectionDefinitionsStore.dismissedKeys ?? [];
   $: exclusions  = $inspectionDefinitionsStore.exclusions ?? [];
   $: decisions   = currentDecisions(exclusions);
+
+  // An exclusion nobody revisits is how a register stays green while the
+  // building changes underneath it — "no dwelling is let on a relevant tenancy"
+  // is exactly the kind of statement that quietly stops being true. The review
+  // date was already being recorded; until now nothing ever showed it back.
+  $: dueReviews = reviewsDue(exclusions, { withinDays: REVIEW_SOON_DAYS });
+  $: overdueReviews = dueReviews.filter(d => reviewState(d.review_due) === 'overdue');
   $: coverage    = templateCoverage(definitions, { dismissedKeys });
   $: suggestions = suggestMatches(definitions);
 
@@ -141,6 +150,12 @@
           {/if}
           {#if coverage.superseded.length > 0}
             <span class="dot">·</span>{coverage.superseded.length} no longer required
+          {/if}
+          {#if dueReviews.length > 0}
+            <span class="dot">·</span><span class="warn-text">
+              {dueReviews.length}
+              {dueReviews.length === 1 ? 'exclusion' : 'exclusions'} to review
+            </span>
           {/if}
         </p>
       </div>
@@ -414,7 +429,15 @@
         {#if coverage.notApplicable.length > 0}
           <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
           <div class="sec-head toggle" on:click={() => (showNotApplicable = !showNotApplicable)}>
-            <h4><span class="chev sm" class:open={showNotApplicable}>▸</span> Not applicable ({coverage.notApplicable.length})</h4>
+            <h4>
+              <span class="chev sm" class:open={showNotApplicable}>▸</span>
+              Not applicable ({coverage.notApplicable.length})
+              {#if dueReviews.length > 0}
+                <span class="rev-flag" class:late={overdueReviews.length > 0}>
+                  {dueReviews.length} to review
+                </span>
+              {/if}
+            </h4>
           </div>
           {#if showNotApplicable}
             <div class="rows tight">
@@ -425,7 +448,14 @@
                     <div class="row-title">
                       <span class="nm">{entry.name}</span>
                       <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                      {#if d?.review_due}<span class="badge n">Review {fmtDate(d.review_due)}</span>{/if}
+                      {#if d?.review_due}
+                        {@const rs = reviewState(d.review_due)}
+                        <span class="badge rev {rs}">
+                          {#if rs === 'overdue'}Review overdue — {fmtDate(d.review_due)}
+                          {:else if rs === 'due_soon'}Review due {fmtDate(d.review_due)}
+                          {:else}Review {fmtDate(d.review_due)}{/if}
+                        </span>
+                      {/if}
                     </div>
                     <p class="ref">{entry.statutoryRef}</p>
                     {#if d}
@@ -586,6 +616,17 @@
   .badge.nohome     { background: rgb(248 113 113 / 0.25); color: rgb(254 202 202); }
   .badge.off        { background: rgb(251 191 36 / 0.18);  color: rgb(252 211 77); }
   .badge.n          { background: rgb(71 85 105 / 0.5);    color: rgb(148 163 184); }
+
+  /* A review date only earns colour once it is close. A future one stays as
+     quiet as any other fact, so that a coloured one means something. */
+  .badge.rev.scheduled { background: rgb(71 85 105 / 0.5);    color: rgb(148 163 184); }
+  .badge.rev.due_soon  { background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }
+  .badge.rev.overdue   { background: rgb(248 113 113 / 0.25); color: rgb(254 202 202); }
+
+  .rev-flag { margin-left: 0.5rem; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em;
+              padding: 0.1rem 0.4rem; border-radius: 4px; white-space: nowrap;
+              background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }
+  .rev-flag.late { background: rgb(248 113 113 / 0.25); color: rgb(254 202 202); }
 
   .status { font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 4px; white-space: nowrap; }
   .status.ok   { background: rgb(34 197 94 / 0.15);  color: rgb(134 239 172); }

@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   currentDecisions, excludedKeys, decisionHistory, reviewsDue, isRecordableReason,
+  reviewState, REVIEW_SOON_DAYS,
 } from './statutoryExclusions.js';
 
 const d = (key, decision, decided_at, over = {}) =>
@@ -100,6 +101,61 @@ describe('reviewsDue', () => {
       d('past', 'applicable', '2026-07-01T00:00:00Z', { review_due: '2026-06-01' }),
     ];
     expect(reviewsDue(reinstated, { today: '2026-09-10' })).toEqual([]);
+  });
+});
+
+// The badge on a row and the count in the header must not be able to disagree,
+// so both ask reviewState rather than each comparing dates itself.
+describe('reviewState', () => {
+  const today = '2026-09-10';
+
+  it('says none when no review date was set', () => {
+    expect(reviewState(null, { today })).toBe('none');
+    expect(reviewState('', { today })).toBe('none');
+    expect(reviewState(undefined, { today })).toBe('none');
+  });
+
+  it('treats a past date as overdue', () => {
+    expect(reviewState('2026-06-01', { today })).toBe('overdue');
+  });
+
+  it('treats TODAY as overdue, not as still to come', () => {
+    // A review due today is due; rendering it as "scheduled" would let it slip
+    // by a day every day.
+    expect(reviewState(today, { today })).toBe('overdue');
+  });
+
+  it('flags the default horizon as due soon, and beyond it as scheduled', () => {
+    expect(reviewState('2026-09-20', { today })).toBe('due_soon');
+    expect(reviewState('2026-12-01', { today })).toBe('scheduled');
+  });
+
+  it('puts the boundary day itself inside the horizon', () => {
+    const boundary = new Date(Date.parse(`${today}T00:00:00Z`) + REVIEW_SOON_DAYS * 86_400_000)
+      .toISOString().slice(0, 10);
+    expect(reviewState(boundary, { today })).toBe('due_soon');
+  });
+
+  it('honours a caller-supplied horizon', () => {
+    expect(reviewState('2026-09-20', { today, withinDays: 5 })).toBe('scheduled');
+    expect(reviewState('2026-09-20', { today, withinDays: 60 })).toBe('due_soon');
+  });
+
+  it('agrees with reviewsDue about which rows are due', () => {
+    // The two are used side by side — a row badged "overdue" that the header
+    // does not count is exactly the kind of quiet disagreement this pins.
+    const sample = [
+      d('past', 'not_applicable', '2026-01-01T00:00:00Z', { review_due: '2026-06-01' }),
+      d('soon', 'not_applicable', '2026-01-01T00:00:00Z', { review_due: '2026-09-20' }),
+      d('far',  'not_applicable', '2026-01-01T00:00:00Z', { review_due: '2027-01-01' }),
+      d('none', 'not_applicable', '2026-01-01T00:00:00Z'),
+    ];
+    const due = new Set(reviewsDue(sample, { today, withinDays: REVIEW_SOON_DAYS })
+      .map(r => r.template_key));
+    for (const r of sample) {
+      const state = reviewState(r.review_due, { today, withinDays: REVIEW_SOON_DAYS });
+      expect(due.has(r.template_key)).toBe(state === 'overdue' || state === 'due_soon');
+    }
   });
 });
 
