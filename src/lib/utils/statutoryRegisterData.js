@@ -6,8 +6,17 @@
 //
 // ── Sources merged here ─────────────────────────────────────────────────────
 // · docs/requirements/BSA_Periodic_Activities_and_Checks.docx — the fullest
-//   list, and the one that supplied the FSER regulation numbers (reg 4, 8, 11)
-//   and the governance/BSA cycles. ⚠ It is written for **Lancaster House,
+//   list, and the one that supplied the FSER regulation numbers and the
+//   governance/BSA cycles. ⚠⚠ **ITS REGULATION NUMBERS WERE WRONG, and we
+//   copied them.** Verified against legislation.gov.uk on 2026-09-11: six of
+//   the nine FSER citations here pointed at the wrong regulation — the monthly
+//   equipment check at reg 6 (that is floor plans; it is reg 7), the premises
+//   information box at reg 11 (it is reg 4), resident information at reg 4 (it
+//   is reg 9), and both fire-door checks at reg 10(1)/(2), which are the
+//   *information to residents* paragraphs, not the check duties at 10(4) and
+//   10(6). **Treat every number in that document as unverified**, and check a
+//   citation against the instrument before trusting it here.
+//   ⚠ It is also written for **Lancaster House,
 //   Manchester**, not Lonsdale House — the only supplied document that names a
 //   building. Its building-specific §5 items (basement Acrow-prop monitoring,
 //   fire-alarm coverage-gap monitoring, the stair-core regime) are NOT included
@@ -121,7 +130,7 @@ export const REGISTER = [
     description: 'Check all fire doors in the common parts, including self-closing devices.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(2)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(6); self-closing devices reg 10(7)',
     intervalBasis: 'stated',
     frequencyDays: 90,
     maxIntervalDays: 92,
@@ -139,7 +148,7 @@ export const REGISTER = [
     description: 'Best endeavours to check every flat entrance door opening onto a common part.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(1)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(4); record of access attempts reg 10(5); self-closing devices reg 10(7)',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -351,7 +360,7 @@ export const REGISTER = [
       + 'A fault that cannot be fixed within 24 hours must be reported to the fire and rescue authority.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 6',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
@@ -387,13 +396,16 @@ export const REGISTER = [
     description: 'Check the box is present, secure and accessible, and that the lock works.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 11',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 4(5) (annual minimum); reg 4(2) for what the box must be',
     intervalBasis: 'practice',
     frequencyDays: 30,
     responsibleParty: 'Responsible person or site staff',
     competencyRequired: 'Briefed site staff',
     evidenceRequired: 'Monthly inspection log',
     handledBy: 'inspection',
+    handlingNote:
+      'Reg 4(5) sets the statutory floor at “at least annually”. Monthly is our own choice and exceeds it — '
+      + 'the annual duty is discharged by the content review below.',
     evidencedBy: 'inspection',
     appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
   }),
@@ -403,8 +415,8 @@ export const REGISTER = [
     description: 'Confirm the contents are current: the responsible person’s contact details and hard-copy floor plans.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 11',
-    intervalBasis: 'practice',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 4(5); contents reg 4(3); access for the fire and rescue authority reg 4(4)',
+    intervalBasis: 'stated',
     frequencyDays: 365,
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person who can confirm the plans against the building as built',
@@ -420,16 +432,48 @@ export const REGISTER = [
     description: 'Confirm the floor plans and building plan held by the fire and rescue service still reflect the building.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022 — information to the fire and rescue service',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 6 (prepare and update the plans); reg 11 (provide them to the fire and rescue authority)',
     intervalBasis: 'practice',
     frequencyDays: 365,
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person who can confirm the plans against the building as built',
     evidenceRequired: 'Record of the check and of any re-issue to the fire and rescue service',
     handledBy: 'building_assets',
-    handlingNote: 'The plans themselves are Building Assets floor plans; re-issue is a manual step.',
+    handlingNote:
+      'The plans themselves are Building Assets floor plans; re-issue is a manual step. '
+      + 'Reg 6 requires updating "as soon as reasonably practicable" after a change — it states NO calendar interval, '
+      + 'so the annual confirmation is our own safety net against a change nobody noticed.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+  }),
+  // Found 2026-09-11 while verifying the FSER citations against
+  // legislation.gov.uk — the register held no entry for reg 5 at all. It is
+  // event-driven rather than a cycle, which is presumably why it was missed:
+  // the register was built from a list of *periodic* activities. A duty that
+  // recurs on an event is still a duty, and an absent one is indistinguishable
+  // from one nobody thought of.
+  entry({
+    key: 'fser_external_wall_record',
+    name: 'External wall record — revise after significant change',
+    description:
+      'Maintain the record of the external walls’ design and materials, and prepare a revised record '
+      + 'after any significant change to them.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 5(1) (the record) and reg 5(3) (revision on significant change)',
+    intervalBasis: 'stated',
+    trigger: 'Any significant change to the external walls — recladding, balcony works, insulation, render',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person able to describe the wall build-up and materials accurately',
+    evidenceRequired: 'The record itself, dated, with each revision retained',
+    retentionPeriodMonths: 120,
+    handledBy: 'golden_thread',
+    handlingNote:
+      'The record is a controlled document and belongs in the Golden Thread register. '
+      + '⚠ Nothing detects the trigger — reg 5(3) fires on a change to the building, and no part of '
+      + 'the portal watches for one. Raise the revision by hand when works complete.',
+    evidencedBy: null,
+    appliesWhen: 'Always — every high-rise residential building has external walls',
   }),
   entry({
     key: 'resident_fire_safety_info',
@@ -437,7 +481,7 @@ export const REGISTER = [
     description: 'Re-issue the fire safety instructions and evacuation information to all residents.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 4',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 9(3) — "within each period of 12 months"; fire door information reg 10(1)–(3)',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -574,7 +618,7 @@ export const REGISTER = [
     description: 'Thorough examination of each passenger lift by a competent person.',
     group: 'other_statutory',
     basis: 'statute',
-    statutoryRef: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)',
+    statutoryRef: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i)',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
