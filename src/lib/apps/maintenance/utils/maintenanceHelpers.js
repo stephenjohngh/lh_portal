@@ -113,3 +113,50 @@ export function expiryRag(dateStr, warningDays = 60) {
   if (exp <= warn) return 'expiring';
   return 'valid';
 }
+
+// -- Certificate expiry (Maintenance review, M5) -------------------------------
+//
+// Expiry was recorded and badged on the Documents tab, and fed nothing: a gas
+// certificate expiring in ten days was invisible everywhere a person actually
+// looks for work. These two make it visible on the Diary and the stats bar.
+//
+// ⚠ Read-only by design. An expiring certificate does NOT move a job's due
+// date — the document expiry and `maintenance_jobs.hard_expiry_date` remain
+// separate concepts, and reconciling them is the open half of M5. Surfacing a
+// fact is safe; silently re-dating someone's schedule is not.
+
+/**
+ * Certificates that are expired or expiring, soonest first.
+ *
+ * @param {Array<{expiry_date?: string|null}>} docs
+ * @param {{ warningDays?: number }} [opts]
+ * @returns {Array<object & { expiryState: 'expired'|'expiring' }>}
+ */
+export function expiringCertificates(docs, opts = {}) {
+  const warningDays = opts.warningDays ?? 60;
+  return (docs ?? [])
+    .filter(d => d?.expiry_date)
+    .map(d => ({ ...d, expiryState: expiryRag(d.expiry_date, warningDays) }))
+    .filter(d => d.expiryState === 'expired' || d.expiryState === 'expiring')
+    .sort((a, b) => String(a.expiry_date).localeCompare(String(b.expiry_date)));
+}
+
+/**
+ * The one-line position on certificate expiry.
+ *
+ * `tracked` is the count of documents that carry an expiry date at all, and it
+ * is the reason this returns a summary rather than a number. **Zero expiring
+ * out of zero tracked is not good news** — it means no certificate in the
+ * building has an expiry date recorded, which should never render like a clean
+ * bill of health. The caller is expected to say "none held" rather than "0".
+ *
+ * @param {Array<{expiry_date?: string|null}>} docs
+ * @param {{ warningDays?: number }} [opts]
+ */
+export function certificateExpirySummary(docs, opts = {}) {
+  const flagged = expiringCertificates(docs, opts);
+  const expired  = flagged.filter(d => d.expiryState === 'expired').length;
+  const expiring = flagged.length - expired;
+  const tracked  = (docs ?? []).filter(d => d?.expiry_date).length;
+  return { tracked, expired, expiring, attention: flagged.length, flagged };
+}

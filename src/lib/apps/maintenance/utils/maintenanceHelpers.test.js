@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   jobRag, ragConfig, resultConfig, frequencyLabel, scopeTypeLabel,
   docTypeLabel, docTypeIcon, daysRelative, expiryRag, fmtBytes,
+  expiringCertificates, certificateExpirySummary,
 } from './maintenanceHelpers.js';
 
 beforeEach(() => {
@@ -133,5 +134,81 @@ describe('fmtBytes', () => {
     expect(fmtBytes(512)).toBe('512 B');
     expect(fmtBytes(2048)).toBe('2.0 KB');
     expect(fmtBytes(5 * 1024 * 1024)).toBe('5.0 MB');
+  });
+});
+
+// M5 · certificate expiry was recorded, badged on one tab, and fed nothing.
+// The clock is frozen at 2026-06-15 by the harness above.
+describe('expiringCertificates', () => {
+  const docs = [
+    { id: 'gone',    expiry_date: '2026-01-01' },  // expired months ago
+    { id: 'lapsed',  expiry_date: '2026-06-14' },  // expired yesterday
+    { id: 'soon',    expiry_date: '2026-06-20' },  // within 60 days
+    { id: 'edge',    expiry_date: '2026-08-14' },  // today + 60, the boundary
+    { id: 'fine',    expiry_date: '2026-12-01' },  // beyond the horizon
+    { id: 'undated', expiry_date: null },          // no expiry recorded
+  ];
+
+  it('returns only what is expired or expiring, soonest first', () => {
+    expect(expiringCertificates(docs).map(d => d.id))
+      .toEqual(['gone', 'lapsed', 'soon', 'edge']);
+  });
+
+  it('tags each with its state', () => {
+    const byId = new Map(expiringCertificates(docs).map(d => [d.id, d.expiryState]));
+    expect(byId.get('gone')).toBe('expired');
+    expect(byId.get('lapsed')).toBe('expired');
+    expect(byId.get('soon')).toBe('expiring');
+  });
+
+  it('ignores documents with no expiry date rather than treating them as expired', () => {
+    expect(expiringCertificates(docs).some(d => d.id === 'undated')).toBe(false);
+  });
+
+  it('honours a narrower warning window', () => {
+    expect(expiringCertificates(docs, { warningDays: 7 }).map(d => d.id))
+      .toEqual(['gone', 'lapsed', 'soon']);
+  });
+
+  it('does not mutate the documents it is given', () => {
+    const input = [{ id: 'a', expiry_date: '2026-06-20' }];
+    expiringCertificates(input);
+    expect(input[0]).not.toHaveProperty('expiryState');
+  });
+
+  it('survives no documents at all', () => {
+    expect(expiringCertificates([])).toEqual([]);
+    expect(expiringCertificates(null)).toEqual([]);
+    expect(expiringCertificates(undefined)).toEqual([]);
+  });
+});
+
+describe('certificateExpirySummary', () => {
+  it('separates expired from expiring', () => {
+    const s = certificateExpirySummary([
+      { id: 'a', expiry_date: '2026-01-01' },
+      { id: 'b', expiry_date: '2026-06-20' },
+      { id: 'c', expiry_date: '2026-12-01' },
+    ]);
+    expect(s).toMatchObject({ expired: 1, expiring: 1, attention: 2, tracked: 3 });
+  });
+
+  // The whole reason this returns `tracked` rather than just a number: a
+  // building with no expiry dates recorded must not read like a clean one.
+  it('distinguishes "nothing expiring" from "nothing tracked"', () => {
+    const nothingTracked = certificateExpirySummary([{ id: 'a', expiry_date: null }]);
+    expect(nothingTracked).toMatchObject({ tracked: 0, attention: 0 });
+
+    const allHealthy = certificateExpirySummary([{ id: 'a', expiry_date: '2027-01-01' }]);
+    expect(allHealthy).toMatchObject({ tracked: 1, attention: 0 });
+
+    // Same attention count, and they must not be presented the same way.
+    expect(nothingTracked.attention).toBe(allHealthy.attention);
+    expect(nothingTracked.tracked).not.toBe(allHealthy.tracked);
+  });
+
+  it('carries the flagged list so a caller need not ask twice', () => {
+    const s = certificateExpirySummary([{ id: 'a', expiry_date: '2026-01-01' }]);
+    expect(s.flagged.map(d => d.id)).toEqual(['a']);
   });
 });

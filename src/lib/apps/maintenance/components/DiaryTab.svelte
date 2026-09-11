@@ -4,14 +4,28 @@
   import { permissions }   from '$lib/stores/permissions';
   import {
     ragConfig, resultConfig, scopeTypeLabel, daysRelative, frequencyLabel,
+    expiringCertificates, docTypeLabel, docTypeIcon,
   } from '../utils/maintenanceHelpers.js';
   import { fmtDate } from '$lib/utils/dates.js';
   import JobDetailPanel       from './JobDetailPanel.svelte';
   import RecordCompletionForm from './RecordCompletionForm.svelte';
 
   export let jobs = [];
+  /** All maintenance_documents, for the certificate band (M5). */
+  export let docs = [];
 
   $: canEdit = $permissions.isAdmin;
+
+  // M5 · a certificate that has expired is a compliance gap whether or not any
+  // job is overdue, and until now it was only visible to someone who opened the
+  // Documents tab. It sits ABOVE the job bands deliberately: an expired gas
+  // certificate outranks a window clean due next week.
+  //
+  // ⚠ Read-only. Nothing here moves a job's date — see the note in
+  // maintenanceHelpers, and M5's open half.
+  $: certs = expiringCertificates(docs);
+  $: certsExpired = certs.filter(c => c.expiryState === 'expired').length;
+  let showCerts = true;
 
   // Group jobs into diary sections
   $: overdue   = jobs.filter(j => j.rag === 'overdue')
@@ -39,6 +53,68 @@
 </script>
 
 <div class="space-y-3">
+
+  <!-- Certificates — expired or expiring (M5) -->
+  {#if certs.length > 0}
+    <div class="rounded-lg border overflow-hidden
+                {certsExpired > 0 ? 'border-red-800/40' : 'border-amber-800/40'}">
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div
+        class="flex items-center justify-between px-4 py-3 cursor-pointer select-none
+               {certsExpired > 0 ? 'bg-red-900/20 border-red-800/40' : 'bg-amber-900/20 border-amber-800/40'}"
+        on:click={() => showCerts = !showCerts}
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-semibold text-slate-200">
+            {#if certsExpired > 0}Certificates — {certsExpired} expired{:else}Certificates expiring{/if}
+          </span>
+          <span class="text-xs text-slate-400">({certs.length})</span>
+        </div>
+        <span class="text-slate-400 text-sm transition-transform duration-150"
+          style="transform: rotate({showCerts ? '180deg' : '0deg'})">▾</span>
+      </div>
+
+      {#if showCerts}
+        <div class="divide-y divide-slate-700/40">
+          {#each certs as doc (doc.id)}
+            <div class="flex items-center gap-3 px-4 py-3">
+              <div class="w-2 h-2 rounded-full flex-shrink-0
+                          {doc.expiryState === 'expired' ? 'bg-red-500' : 'bg-amber-400'}"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm text-slate-200 font-medium truncate">
+                    {docTypeIcon(doc.doc_type)} {doc.filename ?? 'Certificate'}
+                  </span>
+                  <span class="px-1.5 py-0.5 rounded text-xs bg-slate-700/60 text-slate-300">
+                    {docTypeLabel(doc.doc_type)}
+                  </span>
+                </div>
+                {#if doc.job}
+                  <div class="text-xs text-slate-500 mt-0.5 truncate">
+                    {doc.job.title}{#if doc.job.scope_label} · {doc.job.scope_label}{/if}
+                  </div>
+                {/if}
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="text-xs text-slate-300">{fmtDate(doc.expiry_date)}</div>
+                <div class="text-xs mt-0.5 {doc.expiryState === 'expired' ? 'text-red-400' : 'text-amber-400'}">
+                  {#if doc.expiryState === 'expired'}
+                    Expired
+                  {:else}
+                    {daysRelative(doc.expiry_date).replace(/^Due in /, 'Expires in ').replace(/^Due /, 'Expires ')}
+                  {/if}
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+        <p class="px-4 py-2 text-xs text-slate-500 border-t border-slate-700/40">
+          Shown so it is not missed. An expiring certificate does not yet create work
+          or move a job's date — record the replacement against the job that produced it.
+        </p>
+      {/if}
+    </div>
+  {/if}
 
   {#each SECTIONS as sec}
     {@const sJobs = sec.jobs()}

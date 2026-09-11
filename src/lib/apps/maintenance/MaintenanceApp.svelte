@@ -81,7 +81,7 @@
 
   <!-- Stats summary (hidden on documents/schedule tabs) -->
   {#if activeTab === 'diary' || activeTab === 'jobs'}
-    <StatsBar {jobs} />
+    <StatsBar {jobs} docs={allDocs} />
   {/if}
 
   <!-- Tab bar -->
@@ -99,7 +99,7 @@
 
   <!-- Tab content -->
   {#if activeTab === 'diary'}
-    <DiaryTab {jobs} />
+    <DiaryTab {jobs} docs={allDocs} />
   {:else if activeTab === 'jobs'}
     <JobsTab {jobs} />
   {:else if activeTab === 'documents'}
