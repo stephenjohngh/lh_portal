@@ -144,6 +144,28 @@ describe('last completed vs last attempted', () => {
     expect(rowFor(rows, 'gas_safety_check').lastCompleted).toBe('2026-02-01T00:00:00Z');
   });
 
+  // Review finding: filtering out the nulls and returning the oldest of what
+  // remained showed a completion date for a requirement half of which had never
+  // been touched — evidence-shaped, and wrong.
+  it('reports NEVER completed when any one of several obligations never has', () => {
+    const rows = compliancePosition({
+      obligations: [ob({ id: 'a', name: 'Lift A' }), ob({ id: 'b', name: 'Lift B' })],
+      events: [done('a', '2026-08-01T00:00:00Z', { result: 'pass' })],   // b never
+    }, opts);
+    const r = rowFor(rows, 'gas_safety_check');
+    expect(r.lastCompleted).toBeNull();
+    expect(r.lastOutcome).toBeNull();
+    expect(r.status).toBe('breach');
+  });
+
+  it('still reports the oldest once they have ALL been done', () => {
+    const rows = compliancePosition({
+      obligations: [ob({ id: 'a' }), ob({ id: 'b' })],
+      events: [done('a', '2026-08-01T00:00:00Z'), done('b', '2026-02-01T00:00:00Z')],
+    }, opts);
+    expect(rowFor(rows, 'gas_safety_check').lastCompleted).toBe('2026-02-01T00:00:00Z');
+  });
+
   it('takes the worst state when several obligations satisfy one entry', () => {
     const rows = compliancePosition({
       obligations: [ob({ id: 'a' }), ob({ id: 'b' })],
@@ -277,6 +299,26 @@ describe('a requirement no longer required', () => {
     expect(rowFor(rows, 'obligation:r').status).not.toBe('retired');
   });
 
+  // Review finding: asOf governed withdrawal but never reached the scheduler,
+  // so an as-at-date report claimed one date's requirement set and another
+  // date's due state — true of no date at all.
+  it('moves the due dates with asOf, not just the withdrawal test', () => {
+    const obligations = [ob({ id: 'x', template_key: null, frequency_days: 30 })];
+    const events = [done('x', '2026-01-10T00:00:00Z')];   // next due ~2026-02-09
+    const asAtFeb = compliancePosition({ obligations, events }, { asOf: '2026-02-01' });
+    const asAtSep = compliancePosition({ obligations, events }, { asOf: '2026-09-01' });
+    expect(rowFor(asAtFeb, 'obligation:x').state.overdue).toBe(false);
+    expect(rowFor(asAtSep, 'obligation:x').state.overdue).toBe(true);
+  });
+
+  it('lets an explicit now override the asOf-derived one', () => {
+    const obligations = [ob({ id: 'x', template_key: null, frequency_days: 30 })];
+    const events = [done('x', '2026-01-10T00:00:00Z')];
+    const rows = compliancePosition({ obligations, events },
+      { asOf: '2026-02-01', now: new Date('2026-09-01T00:00:00Z') });
+    expect(rowFor(rows, 'obligation:x').state.overdue).toBe(true);
+  });
+
   it('is counted, labelled, and not held against the building', () => {
     const rows = compliancePosition({ obligations: [retired()], events: [] }, opts);
     expect(positionSummary(rows).retired).toBe(1);
@@ -328,6 +370,16 @@ describe('evidenceHistory', () => {
     const due = evidenceHistory({ events, obligations }, { ...window, mode: 'due' });
     expect(due).toHaveLength(1);
     expect(due[0].outcome).toBe('Booked, not yet done');
+  });
+
+  // Review finding: an empty array meant "selected nothing", but was read as
+  // "no filter", so the history widened to everything exactly when the user had
+  // narrowed it to none — e.g. filtering the position report to "Not scheduled",
+  // whose rows have no obligations at all.
+  it('returns nothing when the selection is empty, and everything when there is no selection', () => {
+    expect(evidenceHistory({ events, obligations }, { obligationIds: [] })).toHaveLength(0);
+    expect(evidenceHistory({ events, obligations }, {}).length).toBeGreaterThan(0);
+    expect(evidenceHistory({ events, obligations }, { obligationIds: undefined }).length).toBeGreaterThan(0);
   });
 
   it('narrows to selected obligations', () => {

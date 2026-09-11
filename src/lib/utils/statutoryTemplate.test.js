@@ -351,6 +351,30 @@ describe('withdrawal', () => {
     expect(isSuperseded(withdrawn, '2028-01-01')).toBe(true);
   });
 
+  // Review finding: the Admin panel rendered NONE of these — no "No longer
+  // required" section, and its own statusOf() had no withdrawal branch — so a
+  // repealed requirement read "Not covered" and sat in the gaps list as though
+  // the building were failing it. The bucket is the panel's contract: it must
+  // exist, and every entry must land in exactly one bucket, or a requirement
+  // disappears from the register entirely the day it is withdrawn.
+  it('exposes a superseded bucket, and loses no entry out of the accounting', () => {
+    const c = templateCoverage([]);
+    expect(Array.isArray(c.superseded)).toBe(true);
+
+    const counted = [...c.covered, ...c.missing, ...c.notApplicable,
+                     ...c.elsewhere, ...c.unhomed, ...c.superseded];
+    expect(counted).toHaveLength(STATUTORY_TEMPLATE.length);
+    expect(new Set(counted.map(x => x.entry.key)).size).toBe(STATUTORY_TEMPLATE.length);
+  });
+
+  // The date-awareness the report depends on: last year's position must treat a
+  // requirement repealed this March as having been live at the time.
+  it('only counts a withdrawal once its date has passed', () => {
+    const entry = { ...STATUTORY_TEMPLATE[0], supersededOn: '2026-03-01' };
+    expect(isSuperseded(entry, '2026-09-11')).toBe(true);
+    expect(isSuperseded(entry, '2025-09-11')).toBe(false);
+  });
+
   it('treats an entry with no withdrawal date as live', () => {
     expect(isSuperseded({}, '2030-01-01')).toBe(false);
     expect(isSuperseded(null)).toBe(false);

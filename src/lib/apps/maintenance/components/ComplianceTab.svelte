@@ -16,8 +16,9 @@
 <script>
   import { onMount } from 'svelte';
   import { maintenanceStore } from '../stores/maintenanceStore.js';
-  import { listWalkSessions, listInspectionDefinitions } from '$lib/apps/inspection/public.js';
-  import { api } from '$lib/utils/api';
+  import {
+    listWalkSessions, listInspectionDefinitions, listStatutoryExclusions,
+  } from '$lib/apps/inspection/public.js';
   import { permissions } from '$lib/stores/permissions';
   import { authHeaders } from '$lib/utils/authHeaders';
   import { downloadResponse } from '$lib/utils/download';
@@ -87,7 +88,7 @@
     }
 
     try {
-      exclusions = await api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
+      exclusions = await listStatutoryExclusions();
     } catch (err) {
       logger('⚠ exclusions unavailable:', err.message);
     }

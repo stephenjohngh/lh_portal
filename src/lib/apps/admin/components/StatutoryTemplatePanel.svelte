@@ -13,7 +13,8 @@
   import {
     templateCoverage, suggestMatches, intervalNote, registerByGroup, basisTally,
     BASIS, BASIS_LABEL, BASIS_DESCRIPTION, GROUP_LABEL, HANDLED_BY_LABEL,
-    isSchedulable, isRecurring, isUnhomed, STATUTORY_TEMPLATE,
+    isSchedulable, isRecurring, isUnhomed, isSuperseded, supersededNote,
+    STATUTORY_TEMPLATE,
   } from '$lib/utils/statutoryTemplate.js';
   import { currentDecisions, isRecordableReason } from '$lib/utils/statutoryExclusions.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
@@ -51,6 +52,7 @@
   let showCovered = false;
   let showElsewhere = false;
   let showNotApplicable = false;
+  let showSuperseded = false;
   let busy = false;
   let panelError = '';
   let applyReport = null;
@@ -111,7 +113,11 @@
   $: dismissedSet = new Set(dismissedKeys);
 
   function statusOf(entry) {
-    if (coveredKeys.has(entry.key)) return { cls: 'ok',   text: 'Scheduled here' };
+    // Withdrawn first: whether we happen to be doing something the law no
+    // longer requires is not a compliance question, and without this branch a
+    // repealed requirement fell through and read as a gap.
+    if (isSuperseded(entry))         return { cls: 'na',   text: 'No longer required' };
+    if (coveredKeys.has(entry.key))  return { cls: 'ok',   text: 'Scheduled here' };
     if (dismissedSet.has(entry.key)) return { cls: 'na',   text: 'Not applicable' };
     if (!isSchedulable(entry))       return isUnhomed(entry)
       ? { cls: 'gap', text: 'Nothing deals with it' }
@@ -132,6 +138,9 @@
           <span class="dot">·</span>{coverage.coveredCount} of {coverage.applicableCount} scheduled here
           {#if coverage.unhomed.length > 0}
             <span class="dot">·</span><span class="warn-text">{coverage.unhomed.length} with no home</span>
+          {/if}
+          {#if coverage.superseded.length > 0}
+            <span class="dot">·</span>{coverage.superseded.length} no longer required
           {/if}
         </p>
       </div>
@@ -338,6 +347,36 @@
                       <span class="badge app">{HANDLED_BY_LABEL[entry.handledBy]}</span>
                     </div>
                     {#if entry.handlingNote}<p class="hnote">{entry.handlingNote}</p>{/if}
+                  </div>
+                  <div class="row-facts"><span class="freq">{cadence(entry)}</span></div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        {/if}
+
+        <!-- No longer required — withdrawn, but still shown. Deleting the
+             entry is what we are deliberately not doing. -->
+        {#if coverage.superseded.length > 0}
+          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+          <div class="sec-head toggle" on:click={() => (showSuperseded = !showSuperseded)}>
+            <h4><span class="chev sm" class:open={showSuperseded}>▸</span> No longer required ({coverage.superseded.length})</h4>
+          </div>
+          {#if showSuperseded}
+            <p class="sub-blurb">
+              Withdrawn — repealed, superseded, or the standard withdrawn. Kept in the register because
+              work done under them before that date is still evidence and still has to make sense.
+            </p>
+            <div class="rows tight">
+              {#each coverage.superseded as { entry } (entry.key)}
+                <div class="row na">
+                  <div class="row-main">
+                    <div class="row-title">
+                      <span class="nm">{entry.name}</span>
+                      <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
+                    </div>
+                    <p class="ref">{entry.statutoryRef}</p>
+                    <p class="hnote">{supersededNote(entry)}</p>
                   </div>
                   <div class="row-facts"><span class="freq">{cadence(entry)}</span></div>
                 </div>

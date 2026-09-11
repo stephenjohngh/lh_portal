@@ -50,12 +50,18 @@ describe('deleteWalkSession', () => {
 });
 
 describe('listWalkSessions', () => {
-  it('reads walk_sessions newest-first with the inspector joined', async () => {
+  // Review finding: this used api.get, which stops at PostgREST's 1000-row cap
+  // WITHOUT error. A building past its thousandth walk would simply lose its
+  // oldest evidence from the compliance report — and because the read is
+  // newest-first, the loss is invisible on screen while every "last completed"
+  // date silently moves.
+  it('reads EVERY walk_session, newest-first, with the inspector joined', async () => {
     await listWalkSessions();
-    expect(h.api.get).toHaveBeenCalledWith('walk_sessions', {
+    expect(h.api.getAll).toHaveBeenCalledWith('walk_sessions', {
       select: '*, inspector:profiles!created_by(full_name)',
       orderBy: 'started_at', ascending: false,
     });
+    expect(h.api.get).not.toHaveBeenCalledWith('walk_sessions', expect.anything());
   });
 });
 

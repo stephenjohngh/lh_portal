@@ -66,11 +66,29 @@ export async function lastDefinitionInspections(definitionId) {
  * own store reads its own, user-scoped, subset directly).
  */
 export function listWalkSessions() {
-  return api.get('walk_sessions', {
+  // getAll, not get: `get` stops at PostgREST's 1000-row cap and says nothing.
+  // The compliance report derives "last completed" from these, so a truncated
+  // read would make it print "Never · In breach" for a requirement that was
+  // genuinely discharged — a silent lie in the document handed to an assessor.
+  return api.getAll('walk_sessions', {
     select:    '*, inspector:profiles!created_by(full_name)',
     orderBy:   'started_at',
     ascending: false,
   });
+}
+
+/**
+ * Recorded decisions about which register entries apply to this building
+ * (migration 208). Append-only, so this returns the whole log, newest first;
+ * reduce it with `statutoryExclusions.currentDecisions()`.
+ *
+ * Cross-app read: it explains something ABSENT from the obligation list, so
+ * Maintenance's compliance report needs it. It belongs here rather than as a
+ * raw table read in that app — reading this file has to tell you every
+ * cross-app consumer, which is what went stale before.
+ */
+export function listStatutoryExclusions() {
+  return api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
 }
 
 /**

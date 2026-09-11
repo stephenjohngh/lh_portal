@@ -103,11 +103,20 @@ function worstState(states) {
     || (a.sortKey ?? 0) - (b.sortKey ?? 0))[0];
 }
 
-/** Oldest completion across the obligations satisfying one requirement. */
-function oldestCompletion(events) {
-  const done = events.filter(Boolean);
-  if (done.length === 0) return null;
-  return done.sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0))[0];
+/**
+ * The oldest event across every obligation satisfying one requirement — or
+ * NULL if any one of them has none.
+ *
+ * A requirement discharged by several obligations (two lifts, risers in two
+ * cores) is only discharged when they ALL are. Dropping the nulls and returning
+ * the oldest of what remained would print a completion date for a requirement
+ * half of which had never been touched — the precise flattering this exists to
+ * prevent, and worse than showing nothing because it reads as evidence.
+ */
+function oldestAcrossAll(events) {
+  if (!events || events.length === 0) return null;
+  if (events.some(e => !e)) return null;
+  return [...events].sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0))[0];
 }
 
 function statusOf({ entry, obligations, state, excluded, retired, superseded }) {
@@ -137,13 +146,25 @@ function statusOf({ entry, obligations, state, excluded, retired, superseded }) 
  * @param {Array<any>} input.obligations   statutory_obligations rows
  * @param {Array<any>} input.events        EvidenceEvent[] from walks and jobs
  * @param {Array<any>} [input.exclusions]  statutory_exclusions rows
- * @param {{ now?: Date, dueSoonDays?: number }} [opts]
+ * @param {object} [opts]
+ * @param {Date}   [opts.now]          reference time for due dates
+ * @param {number} [opts.dueSoonDays]  window counted as "due soon"
+ * @param {string} [opts.asOf]         YYYY-MM-DD — reproduce the position as at
+ *   that date. Governs which requirements had been withdrawn AND, unless an
+ *   explicit `now` is also given, the due dates: a report that claimed January's
+ *   requirement set with today's due state would be true of no date at all.
  */
 export function compliancePosition({ obligations = [], events = [], exclusions = [] }, opts = {}) {
   const decisions = currentDecisions(exclusions);
   const evidence  = latestEvidence(events);
-  const states    = new Map(
-    computeObligationSchedule(obligations, events, opts).map(st => [st.definition.id, st]),
+
+  // End of the as-at day, so work due ON that date still counts as due, not late.
+  const scheduleOpts = (opts.asOf && !opts.now)
+    ? { ...opts, now: new Date(`${opts.asOf}T23:59:59Z`) }
+    : opts;
+
+  const states = new Map(
+    computeObligationSchedule(obligations, events, scheduleOpts).map(st => [st.definition.id, st]),
   );
 
   const byKey = new Map();
@@ -164,11 +185,11 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
     const linkedStates = linked.map(o => states.get(o.id)).filter(Boolean);
     const state = worstState(linkedStates);
 
-    // Oldest completion, not newest: a requirement satisfied by two obligations
-    // (two lifts, risers in two cores) is only discharged when BOTH are done,
-    // so the newest would flatter the position.
-    const completed = oldestCompletion(linked.map(o => evidence.get(o.id)?.completed ?? null));
-    const attempted = oldestCompletion(linked.map(o => evidence.get(o.id)?.attempted ?? null));
+    // Oldest across ALL of them, and null if any has never happened — see
+    // oldestAcrossAll. The newest would flatter the position; ignoring the
+    // never-done ones would flatter it just as much.
+    const completed = oldestAcrossAll(linked.map(o => evidence.get(o.id)?.completed ?? null));
+    const attempted = oldestAcrossAll(linked.map(o => evidence.get(o.id)?.attempted ?? null));
 
     rows.push({
       key: entry.key,
@@ -333,7 +354,10 @@ export function evidenceHistory({ events = [], obligations = [] }, opts = {}) {
   const mode = HISTORY_MODES.includes(opts.mode) ? opts.mode : 'completed';
   const from = opts.from ? Date.parse(`${opts.from}T00:00:00Z`) : -Infinity;
   const to   = opts.to   ? Date.parse(`${opts.to}T23:59:59Z`)   : Infinity;
-  const only = opts.obligationIds?.length ? new Set(opts.obligationIds) : null;
+  // An EMPTY array means "the caller selected nothing", not "no filter". The
+  // two are opposite answers and conflating them made the history widen to
+  // every occurrence exactly when the user had narrowed it to none.
+  const only = Array.isArray(opts.obligationIds) ? new Set(opts.obligationIds) : null;
 
   const byId = new Map((obligations ?? []).map(o => [o.id, o]));
 
