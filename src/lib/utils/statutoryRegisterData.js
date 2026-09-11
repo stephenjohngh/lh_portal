@@ -6,16 +6,24 @@
 //
 // ── Sources merged here ─────────────────────────────────────────────────────
 // · docs/requirements/BSA_Periodic_Activities_and_Checks.docx — the fullest
-//   list, and the one that supplied the FSER regulation numbers and the
-//   governance/BSA cycles. ⚠⚠ **ITS REGULATION NUMBERS WERE WRONG, and we
-//   copied them.** Verified against legislation.gov.uk on 2026-09-11: six of
-//   the nine FSER citations here pointed at the wrong regulation — the monthly
-//   equipment check at reg 6 (that is floor plans; it is reg 7), the premises
-//   information box at reg 11 (it is reg 4), resident information at reg 4 (it
-//   is reg 9), and both fire-door checks at reg 10(1)/(2), which are the
-//   *information to residents* paragraphs, not the check duties at 10(4) and
-//   10(6). **Treat every number in that document as unverified**, and check a
-//   citation against the instrument before trusting it here.
+//   list, and the source of some of the FSER regulation numbers and the
+//   governance/BSA cycles.
+//
+//   ⚠⚠ **SIX FSER CITATIONS HERE WERE WRONG — verified against
+//   legislation.gov.uk, 2026-09-11. THREE WERE OURS AND THREE WERE ITS.**
+//   The split matters; do not repeat the version of this note that blamed the
+//   document for all six.
+//     **Ours, invented here and not in that document at all:** both fire-door
+//     checks cited reg 10(1)/(2) — the *information to residents* paragraphs —
+//     when the checks are reg 10(4) and 10(6); and the monthly equipment check
+//     cited reg 6, which is floor plans, when it is reg 7. (That document
+//     cites the fire-door row as "Practice; BS 8214" and has no monthly
+//     equipment row.)
+//     **Its, and copied here unchecked:** the premises information box at
+//     reg 11 (it is reg 4), and resident fire safety information at reg 4 (it
+//     is reg 9).
+//   **Check any citation against the instrument before trusting it** — from
+//   that document OR from us.
 //   ⚠ It is also written for **Lancaster House,
 //   Manchester**, not Lonsdale House — the only supplied document that names a
 //   building. Its building-specific §5 items (basement Acrow-prop monitoring,
@@ -931,14 +939,18 @@ export const REGISTER = [
     description: 'Each controlled document reaches its own review date and is confirmed, revised or superseded.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Higher-Risk Buildings (Keeping and Provision of Information etc.) Regs 2024 (SI 2024/41), reg 6',
+    statutoryRef: 'SI 2024/41 reg 4 (what the golden thread information IS — Schedule 1); SI 2023/907 reg 7 (the standards for keeping it)',
     intervalBasis: 'practice',
     trigger: 'Each document’s own review date',
     responsibleParty: 'Information manager',
     evidenceRequired: 'Per-document supersession records',
     retentionPeriodMonths: 120,
     handledBy: 'golden_thread',
-    handlingNote: 'Built: gtReview.js computes review-due per document. Not a single building-wide cycle.',
+    handlingNote:
+      'Built: gtReview.js computes review-due per document. Not a single building-wide cycle. '
+      + '⚠ RE-CITED 2026-09-11. It read "SI 2024/41 reg 6", which is provision of information to ANOTHER AP on '
+      + 'handover — unrelated. Neither instrument states a review interval, so the cycle itself remains our own '
+      + 'practice; the statute says the information must be kept to a standard, not how often to look at it.',
     evidencedBy: null,
     appliesWhen: 'Always for an HRB',
   }),
@@ -1030,17 +1042,29 @@ export const REGISTER = [
     name: 'Complaints — annual performance report',
     description: 'Publish the annual complaints performance report to residents.',
     group: 'bsa_cycle',
-    basis: 'statute',
-    statutoryRef: 'Higher-Risk Buildings (Management of Safety Risks etc.) Regs 2023 (SI 2023/909), reg 12',
+    // 'standard', not 'management': the register reserves management for things
+    // WE chose with no external source, and this has one — an approved code
+    // that sets both the duty and the interval. A test enforces that
+    // distinction and caught this when it was first mis-filed as management.
+    basis: 'standard',
+    statutoryRef: 'Housing Ombudsman Complaint Handling Code — annual complaints performance and service improvement report',
     intervalBasis: 'stated',
     frequencyDays: 365,
     responsibleParty: 'Principal accountable person',
     evidenceRequired: 'Published report and the resident communications record',
     retentionPeriodMonths: 120,
     handledBy: 'complaints',
-    handlingNote: 'The Complaints app holds the cases; the report itself is not generated yet.',
+    handlingNote:
+      '⚠ RE-BASED 2026-09-11 after checking the citation. It read "SI 2023/909 reg 12" — but SI 2023/909 is the '
+      + 'Building (Higher-Risk Buildings Procedures) Regs, a construction/gateway instrument whose reg 12 is about '
+      + 'building control approval applications. The complaints instrument is SI 2023/907, and ITS reg 12 (PAP '
+      + 'complaints procedures) sets out how complaints must be handled but does NOT require an annual performance '
+      + 'report. The annual report is a Housing Ombudsman Code duty, so this is recorded as a management cycle. '
+      + '❓ FOR CONFIRMATION: whether that Code binds a private leasehold RTM company is a question for the duty '
+      + 'holder — if it does not, this becomes a candidate for a recorded "not applicable" decision rather than a '
+      + 'cycle. Do not silently promote it back to statute without an answer.',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Always',
+    appliesWhen: 'The building is within the scope of the Housing Ombudsman Complaint Handling Code — to be confirmed',
   }),
   entry({
     key: 'res_strategy_review',
@@ -1048,7 +1072,7 @@ export const REGISTER = [
     description: 'Review the residents’ engagement strategy, at least every two years.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022, s.91; SI 2023/907 reg 11',
+    statutoryRef: 'Building Safety Act 2022, s.91; SI 2023/907 reg 10 — "at least every two years"',
     intervalBasis: 'stated',
     frequencyDays: 730,
     maxIntervalDays: 730,
