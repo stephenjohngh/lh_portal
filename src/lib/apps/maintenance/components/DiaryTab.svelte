@@ -21,8 +21,8 @@
   // Documents tab. It sits ABOVE the job bands deliberately: an expired gas
   // certificate outranks a window clean due next week.
   //
-  // ⚠ Read-only. Nothing here moves a job's date — see the note in
-  // maintenanceHelpers, and M5's open half.
+  // ⚠ Read-only, deliberately and permanently — nothing here moves a job's
+  // date. See the note in maintenanceHelpers for why that was decided.
   $: certs = expiringCertificates(docs);
   $: certsExpired = certs.filter(c => c.expiryState === 'expired').length;
   let showCerts = true;
@@ -109,8 +109,9 @@
           {/each}
         </div>
         <p class="px-4 py-2 text-xs text-slate-500 border-t border-slate-700/40">
-          Shown so it is not missed. An expiring certificate does not yet create work
-          or move a job's date — record the replacement against the job that produced it.
+          Shown so it is not missed. A certificate's expiry does not move a job's
+          date — the two are kept separate on purpose — so record the replacement
+          against the job that produced it.
         </p>
       {/if}
     </div>

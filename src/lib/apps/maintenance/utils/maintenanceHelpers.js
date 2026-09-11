@@ -120,10 +120,13 @@ export function expiryRag(dateStr, warningDays = 60) {
 // certificate expiring in ten days was invisible everywhere a person actually
 // looks for work. These two make it visible on the Diary and the stats bar.
 //
-// ⚠ Read-only by design. An expiring certificate does NOT move a job's due
-// date — the document expiry and `maintenance_jobs.hard_expiry_date` remain
-// separate concepts, and reconciling them is the open half of M5. Surfacing a
-// fact is safe; silently re-dating someone's schedule is not.
+// ⚠ Read-only, and that is a DECISION, not a stopping point (2026-09-11).
+// An expiring certificate does NOT move a job's due date: `expiry_date` and
+// `maintenance_jobs.hard_expiry_date` stay separate and both are shown.
+// Arbitrating between them would silently re-date work a person scheduled, and
+// a certificate filed against the wrong job would move the wrong date. Same
+// rule as the capital plan's R0 — derivation assists, the person decides.
+// Do not "finish" this by wiring expiry into the scheduler.
 
 /**
  * Certificates that are expired or expiring, soonest first.
