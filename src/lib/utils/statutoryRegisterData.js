@@ -1130,24 +1130,7 @@ export const REGISTER = [
   entry({
     key: 'lift_loler_examination',
     reviewerNote:
-      '❓ APPLICABILITY QUESTION FOR THE DUTY HOLDER, open and not yet answered. LOLER bites on WORK '
-      + 'equipment. HSE is explicit that a passenger lift provided '
-      + 'principally for residents or the public is generally not work equipment, so LOLER may not apply '
-      + 'to this lift at all — in which case six-monthly is not a statutory maximum and nothing in law '
-      + 'sets one. HSE is equally explicit that the duty does not vanish: where the lift is operated by '
-      + 'or under the control of an employer, s.3 of the Health and Safety at Work etc. Act 1974 applies, '
-      + 'and HSE says a regime of maintenance, inspection and examination similar to LOLER may be '
-      + 'entirely reasonably practicable. The examination therefore STAYS. What changes is the badge: it '
-      + 'is not presented as a stated statutory interval until someone establishes whether staff, '
-      + 'contractors or the managing agent use or control the lift in a way that brings LOLER into '
-      + 'scope. If they do, record why. '
-      + '⛔ THE INTERIM POSITION, so this does not drift: the six-monthly independent thorough '
-      + 'examination CONTINUES as the adopted safety control until the decision is recorded — nothing '
-      + 'stops on account of an unanswered question. The decision belongs to the duty holder; what '
-      + 'settles it is who operates, controls and uses the lift, and the cleaning, maintenance, '
-      + 'concierge and contractor arrangements that put people at work in it. It is re-opened by any '
-      + 'change to those arrangements. ❓ A DEADLINE is missing and cannot be set from here — it is '
-      + 'asked for in the statement’s open questions.',
+      'APPLICABILITY SETTLED 2026-09-13 on the duty holder’s facts: the lift is provided primarily for residents, but cleaners, the caretaker and contractors use it in the course of their work. **LOLER applies.** The test is not who the lift is mainly FOR — it is whether it is provided for, or used by, people at work; HSE’s example of a lift outside LOLER is a stair lift in a private dwelling, one nobody works with. A residents’ lift that staff and contractors work from is work equipment under PUWER reg 3, and the company controlling it holds the duty to the extent of that control. Reg 9(3)(a)(i) then sets SIX MONTHS as a statutory maximum for equipment used to lift persons, not as an adopted interval — and the examiner must be independent of the maintenance contractor, because a service visit is not a thorough examination. ⚠ RE-TEST THIS if the arrangements change so that nobody uses the lift in the course of work: the answer turns on that fact and nothing else. The alternative to the fixed six months is an examination scheme drawn up by a competent person under reg 9(3)(a)(iii) — available, and not currently used.',
     name: 'Lift — thorough examination',
     description:
       'Thorough examination of each passenger lift by a competent person, independent of the '
@@ -1159,10 +1142,10 @@ export const REGISTER = [
     // wrong for this building — see reviewerNote. The duty is real either way;
     // which instrument supplies it, and therefore whether six months is a legal
     // maximum or our adopted interval, is an open question.
-    statutoryRef: 'LOLER 1998 reg 9(3)(a)(i) WHERE the lift is work equipment (six-monthly for equipment carrying people); otherwise Health and Safety at Work etc. Act 1974 s.3, with the examination regime adopted as reasonably practicable. ❓ Which applies here is unresolved',
-    intervalBasis: 'practice',
+    statutoryRef: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i) — thorough examination at least every 6 months for lifting equipment used to lift persons. LOLER applies because the lift is used by people at work (see the note), so this is a statutory maximum rather than an adopted interval. Reg 9(3)(a)(iii) permits an examination scheme drawn up by a competent person instead of the fixed interval',
+    intervalBasis: 'stated',
     frequencyDays: 182,
-    maxIntervalDays: null,
+    maxIntervalDays: 183,
     triggerType: 'calendar',
     responsibleParty: 'Insurance inspection body or independent examiner',
     competencyRequired:
@@ -1170,7 +1153,7 @@ export const REGISTER = [
     evidenceRequired: 'Report of thorough examination, with any defect notified to the duty holder',
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Building has a lift carrying people — but see the note on whether LOLER itself applies',
+    appliesWhen: 'Always — the building has a lift carrying people, and it is used by people at work (cleaners, the caretaker and contractors), which is what brings it within LOLER',
   }),
   entry({
     key: 'lift_maintenance',
