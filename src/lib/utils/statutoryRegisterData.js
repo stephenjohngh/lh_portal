@@ -126,7 +126,7 @@ export const REGISTER = [
     handledBy: 'golden_thread',
     handlingNote: 'The FRA itself is a Golden Thread document with its own review-due date.',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Always — art 9 applies to every building with common parts',
+    appliesWhen: 'Wherever the premises are subject to the Regulatory Reform (Fire Safety) Order 2005 and we are the responsible person or have an agreed role supporting that duty. ⚠ The accountable person, the managing agent and the responsible person are NOT automatically the same party',
   }),
   entry({
     key: 'fra_action_plan_review',
@@ -202,10 +202,13 @@ export const REGISTER = [
   entry({
     key: 'fire_alarm_weekly_test',
     name: 'Fire alarm — weekly test',
-    description: 'Operate one manual call point (a different one each week) and confirm the alarm sounds.',
+    description:
+      'Carry out the weekly user test required by the adopted fire alarm standard and the system’s '
+      + 'cause-and-effect arrangement — normally operating a manual call point and rotating the point '
+      + 'tested so that all are covered over an appropriate period.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, weekly testing by the user',
+    statutoryRef: 'BS 5839-1, weekly testing by the user — the precise test follows the system’s category, design and log book, and the edition of the standard adopted for this installation',
     intervalBasis: 'stated',
     frequencyDays: 7,
     maxIntervalDays: 7,
@@ -363,7 +366,7 @@ export const REGISTER = [
       + 'vents, the control panel and any smoke shaft.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS EN 12101 / BS 7346-8, periodic servicing',
+    statutoryRef: 'BS EN 12101 (product and system series) and BS 7346-8 (smoke control), periodic servicing. ⚠ Neither alone prescribes the service interval for a particular installation — six-monthly is the building’s adopted interval, to be confirmed against the design specification, the commissioning information, the manufacturer’s requirements and the fire strategy',
     intervalBasis: 'practice',
     frequencyDays: 182,
     // ⚠ `maxIntervalDays: 366` removed 2026-09-13 on external review, which
@@ -378,9 +381,12 @@ export const REGISTER = [
     evidenceRequired: 'Service certificate recording each vent and control panel tested',
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
-    // Confirmed 2026-09-13: the building has an AOV system serving one of its
-    // two staircases. No longer conditional.
-    appliesWhen: 'Always — the building has an AOV system serving one staircase',
+    // Confirmed 2026-09-13 by the duty holder: two staircases, and the AOV
+    // serves ONE of them. The other stair has no smoke ventilation — which is
+    // what the daily and weekly stair checks in the building-specific group
+    // exist for, and the only reason left for their cadence.
+    reviewerNote: 'Scope confirmed 2026-09-13: the building has two staircases and this AOV serves one of them. The other stair has no smoke ventilation. Six-monthly servicing is our adopted interval, not a figure either standard sets for every installation — confirm it against this system’s design, commissioning record, manufacturer requirements and the fire strategy.',
+    appliesWhen: 'Always — the building has two staircases and an AOV system serving one of them',
   }),
   entry({
     key: 'fser_monthly_equipment_check',
@@ -1437,7 +1443,10 @@ export const REGISTER = [
       + 'residents, owners of residential units, a relevant landlord, a client, the relevant responsible '
       + 'person, and a fire and rescue authority, plus resident requests for further information. '
       + 'Regs 15–19 set the limitations and exemptions — WITHHOLDING is a decision that has to be '
-      + 'recorded with its ground, not a silence.',
+      + 'recorded with its ground, not a silence. ⚠ This is a CONTROL HEADING, not one uniform legal '
+      + 'workflow: the trigger, the recipient, the information category, the deadline, the format and '
+      + 'the applicable limitation all differ by regulation, and each request has to be classified '
+      + 'against the specific one rather than handled generically.',
     name: 'Golden thread information — provision on request or trigger',
     description:
       'Respond to each statutory trigger or request for golden thread information and documents. Record '
@@ -1467,8 +1476,10 @@ export const REGISTER = [
     reviewerNote: 'The five-year figure is a planning assumption. What actually starts this is a direction from the regulator, which can come sooner after significant change, a safety-management concern, an incident, or completed improvement work.',
     name: 'Building assessment certificate — track validity and reassessment',
     description:
-      'Track the current building assessment certificate, and apply when the regulator directs. '
-      + 'Reassessment is normally no later than five years, and can be sooner.',
+      'Track the current building assessment certificate and any direction or reassessment request '
+      + 'from the regulator, and apply when directed. A five-year planning reminder may be carried '
+      + 'where that is consistent with current regulator guidance, but it is not a statutory maximum '
+      + 'and it is not a substitute for a direction.',
     group: 'bsa_cycle',
     // ⚠ Corrected 2026-09-13 after external review. Three things were wrong:
     //   · it cited s.86, which is safety-case-report notification. The BAC is
@@ -1483,7 +1494,7 @@ export const REGISTER = [
     //     reassess at least every five years, sooner where circumstances
     //     warrant. So the cycle is a planning assumption, not a deadline.
     basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022, ss.79–81; five-year reassessment is regulator policy, not a statutory maximum',
+    statutoryRef: 'Building Safety Act 2022, ss.79–81. ⚠ NO statutory reassessment period exists — s.81 leaves it to regulations and SI 2023/907 reg 3 sets none. Any five-year figure is a regulator planning cycle, carried here only as a reminder',
     intervalBasis: 'practice',
     frequencyDays: 1825,
     triggerType: 'direction',
@@ -1762,10 +1773,14 @@ export const REGISTER = [
   entry({
     key: 'res_strategy_review',
     name: 'Residents’ engagement strategy — review',
-    description: 'Review the residents’ engagement strategy, at least every two years.',
+    description:
+      'Review the residents’ engagement strategy at least every two years, and earlier where an event '
+      + 'calls for it — after a mandatory occurrence report, after significant material alterations, '
+      + 'or where a consultation shows the strategy is not working. Record why resident views were '
+      + 'not adopted where they were not.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022, s.91; SI 2023/907 reg 10 — "at least every two years"',
+    statutoryRef: 'Building Safety Act 2022, s.91; SI 2023/907 reg 10 — "at least every two years", which is a FLOOR and not the only trigger',
     intervalBasis: 'stated',
     frequencyDays: 730,
     maxIntervalDays: 730,
@@ -2104,15 +2119,23 @@ export const REGISTER = [
   // Cycles this building needs because of its own characteristics and its own
   // open findings. From BSA_Periodic_Activities_and_Checks §5.
   //
-  // ⚠⚠ READ THIS BEFORE TOUCHING ANY STAIR ROW BELOW. The supplied source
-  // document described a SINGLE protected staircase with no smoke ventilation,
-  // and three rows below were written from it. The building description given
-  // on 2026-09-13 says TWO staircases, with an AOV serving one of them. The
-  // fourth review round caught the contradiction; it is NOT resolved, and it is
-  // not an editorial detail — it bears on the fire risk assessment, the
-  // evacuation strategy, the AOV scope and whether a daily stair walk is
-  // proportionate. The rows are left at the more cautious cadence, and say so,
-  // until someone states the real position. Do not quietly relax them.
+  // ⚠ READ THIS BEFORE TOUCHING ANY STAIR ROW BELOW.
+  //
+  // The supplied source document described a SINGLE protected staircase with no
+  // smoke ventilation, and three rows below were written from it — which is
+  // where their daily and weekly cadences come from. The fourth review round
+  // caught that this contradicted the building description.
+  //
+  // SETTLED 2026-09-13 by the duty holder: there are TWO staircases, and only
+  // ONE has an AOV. The source was wrong about the count and right about the
+  // ventilation, for one of the two stairs.
+  //
+  // ⚠ The cadences were NOT changed on the strength of that. Daily was chosen
+  // because a single route has no second chance; that reason has gone, and a
+  // weaker one remains — one stair has no smoke ventilation. Whether daily is
+  // still proportionate is a fire-risk-assessment judgement, and relaxing a
+  // safety cadence is not a documentation change. Leave them until someone
+  // competent decides, and record the decision when they do.
   //
   // These are the items that distinguish this building's safety case from a
   // generic one, so they belong in the register — but several are INTERIM,
@@ -2163,12 +2186,15 @@ export const REGISTER = [
     key: 'crack_monitoring',
     reviewerNote: 'Also specify: the reading method, the datum, and the trigger value at which a reading escalates rather than simply being recorded. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Crack monitoring — telltales or strain gauges',
-    description: 'Read and record any crack monitoring devices fitted, at the interval the device specification sets.',
+    description:
+      'Read and record any crack monitoring devices fitted, at the interval the structural engineer’s '
+      + 'monitoring specification sets, and immediately where an event calls for it. Record the '
+      + 'measurement method, the reference datum and the trigger value at which the reading escalates.',
     group: 'building_specific',
     basis: 'management',
     statutoryRef: 'Self-imposed; structural engineer specification',
     intervalBasis: 'practice',
-    trigger: 'The interval set by the monitoring device specification',
+    trigger: 'The interval set by the structural engineer’s monitoring specification; and, separately, any event calling for an immediate reading — movement, a new crack, works nearby, or a reading outside the trigger value',
     responsibleParty: 'Structural engineer or their appointed monitor',
     evidenceRequired: 'Monitoring data series',
     retentionPeriodMonths: 120,
@@ -2212,12 +2238,12 @@ export const REGISTER = [
     evidenceRequired: 'Walk-around log, with an exception report on anything found',
     handledBy: 'inspection',
     handlingNote:
-      'Written for a single-staircase building with simultaneous evacuation and no smoke ventilation — '
-      + 'one protected route and no second chance — which is why it is daily rather than weekly. '
-      + '⚠ Whether that describes this building is unresolved; see the note.',
+      'Inherited a DAILY cadence from a source document that assumed one stair and no smoke '
+      + 'ventilation. The building has two stairs, one of them unventilated. ⚠ Daily is retained '
+      + 'pending a decision — relaxing a safety cadence is not a documentation change.',
     evidencedBy: 'inspection',
-    reviewerNote: '⚠⚠ UNRESOLVED CONTRADICTION, raised by the fourth review and not yet settled. The building description says two staircases, with an AOV serving one of them; this row and two others beside it were written from the supplied source document, which described a SINGLE protected route with no smoke ventilation. Both cannot be true. Until the position is stated — how many stairs, which are protected, which serve which floors, which are available under the evacuation strategy, and whether one is out of use or under remediation — the row is kept at its current cadence, because this is the direction in which it is safer to be wrong. ❓ This is not an editorial point: it bears on the fire risk assessment, the evacuation strategy, the AOV scope and whether a daily stair walk is proportionate. Also specify the escalation triggers, so a finding is not left to judgement: doors wedged or propped open, failed self-closers, smoke leakage, damaged seals, obstructions, water ingress, and fire-stopping defects. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    appliesWhen: '⚠ UNRESOLVED — written for a single protected stair, while the building description says two. Kept at the more cautious cadence until the position is stated',
+    reviewerNote: 'RESOLVED 2026-09-13 by the duty holder: the building has TWO staircases, and only ONE has an AOV. The source document this row came from assumed a single protected route with no smoke ventilation — wrong about the count, right about the ventilation, for one of the two stairs. ⚠ THE CADENCE HAS NOT BEEN CHANGED, and that is a decision left open rather than quietly taken: DAILY was chosen because a single route has no second chance, and that reason has gone. What remains is that one stair has no smoke ventilation, so smoke entering it clears only with time. Whether that still warrants daily rather than weekly belongs to the fire risk assessment, not to this register. Also specify the escalation triggers, so a finding is not left to judgement: doors wedged or propped open, failed self-closers, smoke leakage, damaged seals, obstructions, water ingress, and fire-stopping defects. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    appliesWhen: 'Always — the building has two staircases, one with AOV smoke ventilation and one without',
   }),
   entry({
     key: 'lobby_to_stair_door_check',
@@ -2232,10 +2258,10 @@ export const REGISTER = [
     competencyRequired: 'Briefed site staff',
     evidenceRequired: 'Visual check log',
     handledBy: 'inspection',
-    handlingNote: 'Written on the basis of a single staircase, which makes these doors disproportionately important; cadence is open to review. ⚠ See the stair-core row.',
+    handlingNote: 'Weekly, between the quarterly statutory door rounds. The doors to the UNVENTILATED stair are the ones this exists for.',
     evidencedBy: 'inspection',
-    reviewerNote: 'The same unresolved staircase question as the stair-core walk-around — see that row. The weekly cadence follows from there being one protected route. Also specify the escalation triggers — wedged or propped doors, failed self-closers, damaged seals, smoke leakage — and who may take a door out of service. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    appliesWhen: '⚠ UNRESOLVED — written for a single protected stair; see the stair-core row',
+    reviewerNote: 'RESOLVED 2026-09-13: two staircases, only one with an AOV. The weekly cadence was set assuming a single route; it is retained because the doors to the UNVENTILATED stair are what hold smoke out of it, and the quarterly statutory round alone would leave a defect unseen for up to three months. Also specify the escalation triggers — wedged or propped doors, failed self-closers, damaged seals, smoke leakage — and who may take a door out of service. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    appliesWhen: 'Always — the building has two staircases, one with AOV smoke ventilation and one without. The unventilated stair is why this is not left to the quarterly round alone',
   }),
   entry({
     key: 'stair_lighting_check',
@@ -2251,8 +2277,8 @@ export const REGISTER = [
     evidenceRequired: 'Walk-around log',
     handledBy: 'inspection',
     evidencedBy: 'inspection',
-    reviewerNote: 'The same unresolved staircase question as the stair-core walk-around — see that row. Also specify what happens when a failure is found in the protected route, and whether temporary lighting or a compensatory control is required until it is fixed. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    appliesWhen: '⚠ UNRESOLVED — written for a single protected stair; see the stair-core row',
+    reviewerNote: 'RESOLVED 2026-09-13: two staircases, only one with an AOV. Also specify what happens when a failure is found in the protected route, and whether temporary lighting or a compensatory control is required until it is fixed. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    appliesWhen: 'Always — the building has two staircases, one with AOV smoke ventilation and one without. The unventilated stair is why this is not left to the quarterly round alone',
   }),
   entry({
     key: 'alarm_coverage_gap_monitoring',

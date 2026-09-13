@@ -13,6 +13,7 @@
 		"check": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./tsconfig.check.json",
 		"check:js": "cross-env NODE_OPTIONS=--max-old-space-size=4096 svelte-check --tsconfig ./jsconfig.json",
 		"check:obligations": "node scripts/check-obligations-statement.mjs",
+		"check:register": "node scripts/check-register-claims.mjs",
 		"test": "vitest run",
 		"db:push:dev": "node scripts/db-push.mjs dev",
 		"db:push:test": "node scripts/db-push.mjs test",
