@@ -18,11 +18,11 @@ const sum = a => a.reduce((x, y) => x + y, 0);
 
 // Rows in the shape ComplianceTab actually posts.
 const row = (over = {}) => ({
-  name: 'Gas safety check',
+  name: 'Lift — LOLER thorough examination',
   basis: 'statute',
   group: 'other_statutory',
-  statutoryRef: 'Gas Safety (Installation and Use) Regulations 1998, reg 36(3)',
-  owner: 'Gas Safe registered engineer',
+  statutoryRef: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i)',
+  owner: 'Insurance inspection body or independent examiner',
   frequencyLabel: 'Annual',
   lastCompleted: '2026-03-01T00:00:00Z',
   lastAttempted: '2026-03-01T00:00:00Z',

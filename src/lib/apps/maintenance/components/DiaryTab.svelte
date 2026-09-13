@@ -18,8 +18,8 @@
 
   // M5 · a certificate that has expired is a compliance gap whether or not any
   // job is overdue, and until now it was only visible to someone who opened the
-  // Documents tab. It sits ABOVE the job bands deliberately: an expired gas
-  // certificate outranks a window clean due next week.
+  // Documents tab. It sits ABOVE the job bands deliberately: an expired EICR
+  // outranks a window clean due next week.
   //
   // ⚠ Read-only, deliberately and permanently — nothing here moves a job's
   // date. See the note in maintenanceHelpers for why that was decided.

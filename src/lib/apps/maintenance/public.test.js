@@ -24,7 +24,7 @@ beforeEach(() => vi.clearAllMocks());
 describe('registerCertificateToGoldenThread', () => {
   it('maps a certificate to the GT draft + produced_by link (defaults: cat 10)', async () => {
     h.api.getById.mockResolvedValueOnce({
-      id: 'md-1', job_id: 'job-9', library_doc_id: 'lib-7', doc_type: 'certificate', filename: 'gas-cert.pdf',
+      id: 'md-1', job_id: 'job-9', library_doc_id: 'lib-7', doc_type: 'certificate', filename: 'eicr-cert.pdf',
     });
 
     await registerCertificateToGoldenThread('md-1', {}, 'user-1');
@@ -34,7 +34,7 @@ describe('registerCertificateToGoldenThread', () => {
         sourceDocId: 'lib-7',
         schedule1_category: 10,
         document_type: 'Test / inspection certificate', // mapped from doc_type 'certificate'
-        title: 'gas-cert.pdf',
+        title: 'eicr-cert.pdf',
       }),
       { producedBy: { type: 'maintenance_document', id: 'md-1' } },
       'user-1',

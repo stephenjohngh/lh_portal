@@ -13,11 +13,11 @@ describe('currentDecisions', () => {
     const rows = [
       d('lift_maintenance', 'not_applicable', '2026-01-01T00:00:00Z'),
       d('lift_maintenance', 'applicable',     '2026-06-01T00:00:00Z'),
-      d('gas_safety_check', 'not_applicable', '2026-03-01T00:00:00Z'),
+      d('lift_loler_examination', 'not_applicable', '2026-03-01T00:00:00Z'),
     ];
     const cur = currentDecisions(rows);
     expect(cur.get('lift_maintenance').decision).toBe('applicable');
-    expect(cur.get('gas_safety_check').decision).toBe('not_applicable');
+    expect(cur.get('lift_loler_examination').decision).toBe('not_applicable');
   });
 
   // Order of arrival must not decide the answer — the log comes back newest

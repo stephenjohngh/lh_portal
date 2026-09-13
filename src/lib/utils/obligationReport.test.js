@@ -10,8 +10,8 @@ const NOW = new Date('2026-09-10T12:00:00Z');
 const opts = { now: NOW };
 
 const ob = (over = {}) => ({
-  id: 'o1', name: 'Gas safety check', active: true, frequency_days: 365,
-  evidenced_by: 'maintenance_job', template_key: 'gas_safety_check', ...over,
+  id: 'o1', name: 'Lift — LOLER thorough examination', active: true, frequency_days: 365,
+  evidenced_by: 'maintenance_job', template_key: 'lift_loler_examination', ...over,
 });
 
 const done = (id, at, over = {}) =>
@@ -23,7 +23,7 @@ describe('compliancePosition — one row per requirement', () => {
   it('covers every register entry even with nothing held', () => {
     const rows = compliancePosition({ obligations: [], events: [] }, opts);
     expect(rows).toHaveLength(STATUTORY_TEMPLATE.length);
-    expect(rowFor(rows, 'gas_safety_check').status).toBe('gap');
+    expect(rowFor(rows, 'lift_loler_examination').status).toBe('gap');
   });
 
   // A bespoke obligation is still work the building committed to. Leaving it
@@ -53,10 +53,10 @@ describe('compliancePosition — one row per requirement', () => {
   });
 
   it('carries the basis, reference and owner onto the row', () => {
-    const r = rowFor(compliancePosition({ obligations: [], events: [] }, opts), 'gas_safety_check');
+    const r = rowFor(compliancePosition({ obligations: [], events: [] }, opts), 'lift_loler_examination');
     expect(r.basis).toBe('statute');
-    expect(r.statutoryRef).toMatch(/Gas Safety/);
-    expect(r.owner).toMatch(/Gas Safe/);
+    expect(r.statutoryRef).toMatch(/Lifting Operations/);
+    expect(r.owner).toMatch(/examiner/);
   });
 });
 
@@ -65,25 +65,25 @@ describe('status', () => {
     const rows = compliancePosition({
       obligations: [ob()], events: [done('o1', '2026-08-01T00:00:00Z')],
     }, opts);
-    expect(rowFor(rows, 'gas_safety_check').status).toBe('ok');
+    expect(rowFor(rows, 'lift_loler_examination').status).toBe('ok');
   });
 
   it('is a breach when overdue, and when never run', () => {
     const overdue = compliancePosition({
       obligations: [ob()], events: [done('o1', '2024-01-01T00:00:00Z')],
     }, opts);
-    expect(rowFor(overdue, 'gas_safety_check').status).toBe('breach');
+    expect(rowFor(overdue, 'lift_loler_examination').status).toBe('breach');
 
     const never = compliancePosition({ obligations: [ob()], events: [] }, opts);
-    expect(rowFor(never, 'gas_safety_check').state.band).toBe('never_run');
-    expect(rowFor(never, 'gas_safety_check').status).toBe('breach');
+    expect(rowFor(never, 'lift_loler_examination').state.band).toBe('never_run');
+    expect(rowFor(never, 'lift_loler_examination').status).toBe('breach');
   });
 
   // An obligation switched off is not coverage — the same rule the gap report
   // applies, so the two never disagree.
   it('is a gap when the only obligation is inactive', () => {
     const rows = compliancePosition({ obligations: [ob({ active: false })], events: [] }, opts);
-    expect(rowFor(rows, 'gas_safety_check').status).toBe('gap');
+    expect(rowFor(rows, 'lift_loler_examination').status).toBe('gap');
   });
 
   it('is excluded when a decision says so, and carries the decision', () => {
@@ -141,7 +141,7 @@ describe('last completed vs last attempted', () => {
       obligations: [ob({ id: 'a' }), ob({ id: 'b' })],
       events: [done('a', '2026-08-01T00:00:00Z'), done('b', '2026-02-01T00:00:00Z')],
     }, opts);
-    expect(rowFor(rows, 'gas_safety_check').lastCompleted).toBe('2026-02-01T00:00:00Z');
+    expect(rowFor(rows, 'lift_loler_examination').lastCompleted).toBe('2026-02-01T00:00:00Z');
   });
 
   // Review finding: filtering out the nulls and returning the oldest of what
@@ -152,7 +152,7 @@ describe('last completed vs last attempted', () => {
       obligations: [ob({ id: 'a', name: 'Lift A' }), ob({ id: 'b', name: 'Lift B' })],
       events: [done('a', '2026-08-01T00:00:00Z', { result: 'pass' })],   // b never
     }, opts);
-    const r = rowFor(rows, 'gas_safety_check');
+    const r = rowFor(rows, 'lift_loler_examination');
     expect(r.lastCompleted).toBeNull();
     expect(r.lastOutcome).toBeNull();
     expect(r.status).toBe('breach');
@@ -163,7 +163,7 @@ describe('last completed vs last attempted', () => {
       obligations: [ob({ id: 'a' }), ob({ id: 'b' })],
       events: [done('a', '2026-08-01T00:00:00Z'), done('b', '2026-02-01T00:00:00Z')],
     }, opts);
-    expect(rowFor(rows, 'gas_safety_check').lastCompleted).toBe('2026-02-01T00:00:00Z');
+    expect(rowFor(rows, 'lift_loler_examination').lastCompleted).toBe('2026-02-01T00:00:00Z');
   });
 
   it('takes the worst state when several obligations satisfy one entry', () => {
@@ -171,7 +171,7 @@ describe('last completed vs last attempted', () => {
       obligations: [ob({ id: 'a' }), ob({ id: 'b' })],
       events: [done('a', '2026-09-01T00:00:00Z')],   // b has never run
     }, opts);
-    expect(rowFor(rows, 'gas_safety_check').state.band).toBe('never_run');
+    expect(rowFor(rows, 'lift_loler_examination').state.band).toBe('never_run');
   });
 });
 
@@ -202,7 +202,7 @@ describe('summary, filter, sort, group', () => {
   it('filters by group, basis, status and free text', () => {
     expect(filterRows(rows, { groups: ['governance'] }).every(r => r.group === 'governance')).toBe(true);
     expect(filterRows(rows, { bases: ['statute'] }).every(r => r.basis === 'statute')).toBe(true);
-    expect(filterRows(rows, { statuses: ['ok'] }).map(r => r.key)).toEqual(['gas_safety_check']);
+    expect(filterRows(rows, { statuses: ['ok'] }).map(r => r.key)).toEqual(['lift_loler_examination']);
     expect(filterRows(rows, { search: 'lightning' }).map(r => r.key)).toEqual(['lightning_protection']);
   });
 
@@ -391,7 +391,7 @@ describe('evidenceHistory', () => {
     const h = evidenceHistory({ events, obligations }, {});
     expect(h[0].basis).toBe('statute');
     expect(h[0].group).toBe('other_statutory');
-    expect(h[0].obligationName).toBe('Gas safety check');
+    expect(h[0].obligationName).toBe('Lift — LOLER thorough examination');
   });
 
   it('names an occurrence whose obligation has been deleted rather than dropping it', () => {

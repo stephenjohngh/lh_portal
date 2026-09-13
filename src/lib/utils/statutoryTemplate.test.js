@@ -60,7 +60,7 @@ describe('the register itself', () => {
   });
 
   it('looks entries up by key and returns null for anything else', () => {
-    expect(templateEntry('gas_safety_check')?.name).toBe('Gas safety check');
+    expect(templateEntry('lift_loler_examination')?.name).toBe('Lift — LOLER thorough examination');
     expect(templateEntry('nope')).toBeNull();
     expect(templateEntry(undefined)).toBeNull();
   });
@@ -120,7 +120,7 @@ describe('grouping and display', () => {
 
 describe('intervalNote', () => {
   it('distinguishes a stated interval from established practice', () => {
-    expect(intervalNote(templateEntry('gas_safety_check'))).toMatch(/set by the reference/i);
+    expect(intervalNote(templateEntry('lift_loler_examination'))).toMatch(/set by the reference/i);
     expect(intervalNote(templateEntry('fra_refresh'))).toMatch(/established practice/i);
     expect(intervalNote(null)).toBe('');
   });
@@ -195,10 +195,10 @@ describe('templateCoverage', () => {
   });
 
   it('counts a linked, active obligation as covering its entry', () => {
-    const c = templateCoverage([{ template_key: 'gas_safety_check', active: true }]);
+    const c = templateCoverage([{ template_key: 'lift_loler_examination', active: true }]);
     expect(c.coveredCount).toBe(1);
-    expect(c.covered[0].entry.key).toBe('gas_safety_check');
-    expect(c.missing.some(m => m.entry.key === 'gas_safety_check')).toBe(false);
+    expect(c.covered[0].entry.key).toBe('lift_loler_examination');
+    expect(c.missing.some(m => m.entry.key === 'lift_loler_examination')).toBe(false);
   });
 
   // Several obligations may satisfy one entry — two lifts, risers in two cores.
@@ -213,9 +213,9 @@ describe('templateCoverage', () => {
 
   // Switching an obligation off is precisely what a gap report must catch.
   it('treats an inactive obligation as a gap, and says it was switched off', () => {
-    const c = templateCoverage([{ template_key: 'gas_safety_check', active: false }]);
+    const c = templateCoverage([{ template_key: 'lift_loler_examination', active: false }]);
     expect(c.coveredCount).toBe(0);
-    expect(c.missing.find(m => m.entry.key === 'gas_safety_check').inactiveOnly).toBe(true);
+    expect(c.missing.find(m => m.entry.key === 'lift_loler_examination').inactiveOnly).toBe(true);
   });
 
   it('ignores a template_key that is not in the register', () => {
@@ -228,8 +228,8 @@ describe('templateCoverage', () => {
   // permanently red and gets ignored.
   it('removes a dismissed entry from the denominator rather than failing it', () => {
     const dismissedKeys = STATUTORY_TEMPLATE.filter(isSchedulable)
-      .map(e => e.key).filter(k => k !== 'gas_safety_check');
-    const c = templateCoverage([{ template_key: 'gas_safety_check', active: true }], { dismissedKeys });
+      .map(e => e.key).filter(k => k !== 'lift_loler_examination');
+    const c = templateCoverage([{ template_key: 'lift_loler_examination', active: true }], { dismissedKeys });
     expect(c.applicableCount).toBe(1);
     expect(c.percent).toBe(100);
   });
@@ -238,8 +238,8 @@ describe('templateCoverage', () => {
   // "not applicable" is only an assertion.
   it('counts an entry as covered even if it was also dismissed', () => {
     const c = templateCoverage(
-      [{ template_key: 'gas_safety_check', active: true }],
-      { dismissedKeys: ['gas_safety_check'] },
+      [{ template_key: 'lift_loler_examination', active: true }],
+      { dismissedKeys: ['lift_loler_examination'] },
     );
     expect(c.coveredCount).toBe(1);
     expect(c.notApplicable).toHaveLength(0);
@@ -260,9 +260,9 @@ describe('templateCoverage', () => {
 describe('suggestMatches', () => {
   it('matches on an identical statutory reference', () => {
     const s = suggestMatches([
-      { id: 'x', name: 'Annual gas check', statutory_ref: 'Gas Safety (Installation and Use) Regulations 1998, reg 36(3)' },
+      { id: 'x', name: 'Annual lift examination', statutory_ref: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i)' },
     ]);
-    expect(s.get('gas_safety_check')[0].reason).toBe('Same statutory reference');
+    expect(s.get('lift_loler_examination')[0].reason).toBe('Same statutory reference');
   });
 
   // BS 5839-1 covers both the weekly user test and the six-monthly service,
@@ -282,10 +282,10 @@ describe('suggestMatches', () => {
 
   it('ranks an exact reference above a name match', () => {
     const s = suggestMatches([
-      { id: 'weak', name: 'Gas safety check', evidenced_by: 'maintenance_job' },
-      { id: 'strong', name: 'CP12', statutory_ref: 'Gas Safety (Installation and Use) Regulations 1998, reg 36(3)' },
+      { id: 'weak', name: 'Lift — LOLER thorough examination', evidenced_by: 'maintenance_job' },
+      { id: 'strong', name: 'CP12', statutory_ref: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i)' },
     ]);
-    expect(s.get('gas_safety_check').map(c => c.obligation.id)).toEqual(['strong', 'weak']);
+    expect(s.get('lift_loler_examination').map(c => c.obligation.id)).toEqual(['strong', 'weak']);
   });
 
   // These five are the obligations actually in the live database (migration
@@ -332,7 +332,7 @@ describe('suggestMatches', () => {
   });
 
   it('never suggests an obligation that is already linked, or for no input', () => {
-    expect(suggestMatches([{ id: 'x', name: 'Gas safety check', template_key: 'gas_safety_check' }]).size).toBe(0);
+    expect(suggestMatches([{ id: 'x', name: 'Lift — LOLER thorough examination', template_key: 'lift_loler_examination' }]).size).toBe(0);
     expect(suggestMatches([]).size).toBe(0);
     expect(suggestMatches(null).size).toBe(0);
   });
@@ -343,7 +343,7 @@ describe('suggestMatches', () => {
 // the repeal is still evidence, and an assessor reading a 2027 report of 2026
 // work needs the requirement to still exist for it to make sense.
 describe('withdrawal', () => {
-  const withdrawn = { supersededOn: '2027-03-01', supersededBy: 'gas_safety_check', supersededNote: 'Repealed by SI 2027/9' };
+  const withdrawn = { supersededOn: '2027-03-01', supersededBy: 'lift_loler_examination', supersededNote: 'Repealed by SI 2027/9' };
 
   it('is date-aware — a requirement repealed later was still live before it', () => {
     expect(isSuperseded(withdrawn, '2026-09-10')).toBe(false);
@@ -385,7 +385,7 @@ describe('withdrawal', () => {
     const note = supersededNote(withdrawn);
     expect(note).toMatch(/No longer required from 2027-03-01/);
     expect(note).toMatch(/Repealed by SI 2027\/9/);
-    expect(note).toMatch(/Replaced by: Gas safety check/);
+    expect(note).toMatch(/Replaced by: Lift — LOLER thorough examination/);
     expect(supersededNote({})).toBe('');
   });
 

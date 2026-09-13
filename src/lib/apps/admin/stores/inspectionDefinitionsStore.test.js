@@ -239,36 +239,36 @@ describe('applyTemplate', () => {
   });
 
   it('creates one obligation per key, carrying the template key and statutory detail', async () => {
-    const { created, failed } = await defs.applyTemplate(['gas_safety_check']);
+    const { created, failed } = await defs.applyTemplate(['lift_loler_examination']);
     expect(failed).toEqual([]);
     expect(created).toHaveLength(1);
 
     const row = h.api.create.mock.calls[0][1];
     expect(h.api.create.mock.calls[0][0]).toBe('statutory_obligations');
     expect(row).toMatchObject({
-      name: 'Gas safety check',
-      template_key: 'gas_safety_check',
-      frequency_days: 365,
+      name: 'Lift — LOLER thorough examination',
+      template_key: 'lift_loler_examination',
+      frequency_days: 182,   // six-monthly for lifting equipment carrying people
       evidenced_by: 'maintenance_job',
       created_by: 'u1',
       updated_by: 'u1',
     });
-    expect(row.statutory_ref).toMatch(/Gas Safety/);
+    expect(row.statutory_ref).toMatch(/Lifting Operations/);
   });
 
   it('applies in template order regardless of the order asked for, and ignores unknown keys', async () => {
-    await defs.applyTemplate(['gas_safety_check', 'fser_communal_fire_doors', 'not_a_key']);
+    await defs.applyTemplate(['lift_loler_examination', 'fser_communal_fire_doors', 'not_a_key']);
     const keys = h.api.create.mock.calls.map(c => c[1].template_key);
-    expect(keys).toEqual(['fser_communal_fire_doors', 'gas_safety_check']);
+    expect(keys).toEqual(['fser_communal_fire_doors', 'lift_loler_examination']);
   });
 
   // One failing entry must not take the rest of the template with it.
   it('reports a partial apply rather than failing the whole batch', async () => {
     h.api.create
       .mockRejectedValueOnce(new Error('duplicate name'))
-      .mockResolvedValueOnce({ id: 'd2', name: 'Gas safety check' });
+      .mockResolvedValueOnce({ id: 'd2', name: 'Lift — LOLER thorough examination' });
 
-    const { created, failed } = await defs.applyTemplate(['fser_communal_fire_doors', 'gas_safety_check']);
+    const { created, failed } = await defs.applyTemplate(['fser_communal_fire_doors', 'lift_loler_examination']);
     expect(created).toHaveLength(1);
     expect(failed).toEqual([
       expect.objectContaining({ key: 'fser_communal_fire_doors', message: 'duplicate name' }),
@@ -279,24 +279,24 @@ describe('applyTemplate', () => {
   it('orders applied entries below anything already ordered by hand', async () => {
     h.api.get.mockResolvedValueOnce([{ id: 'd1', name: 'Existing', presentation_order: 7 }]);
     await defs.load();
-    await defs.applyTemplate(['gas_safety_check']);
+    await defs.applyTemplate(['lift_loler_examination']);
     expect(h.api.create.mock.calls[0][1].presentation_order).toBe(8);
   });
 
   it('audits each creation with the template key', async () => {
-    await defs.applyTemplate(['gas_safety_check']);
+    await defs.applyTemplate(['lift_loler_examination']);
     expect(h.logAudit).toHaveBeenCalledWith(
-      'create', 'inspection_definition', expect.any(String), 'Gas safety check',
-      expect.objectContaining({ afterData: expect.objectContaining({ template_key: 'gas_safety_check' }) }),
+      'create', 'inspection_definition', expect.any(String), 'Lift — LOLER thorough examination',
+      expect.objectContaining({ afterData: expect.objectContaining({ template_key: 'lift_loler_examination' }) }),
     );
   });
 });
 
 describe('linkToTemplate', () => {
   it('writes the key onto an existing obligation', async () => {
-    await defs.linkToTemplate('d1', 'gas_safety_check');
+    await defs.linkToTemplate('d1', 'lift_loler_examination');
     expect(h.api.update).toHaveBeenCalledWith('statutory_obligations', 'd1',
-      { template_key: 'gas_safety_check', updated_by: 'u1' });
+      { template_key: 'lift_loler_examination', updated_by: 'u1' });
   });
 
   it('unlinks with null', async () => {
@@ -314,8 +314,8 @@ describe('save must not disturb an existing template link', () => {
   });
 
   it('still writes it when a caller does supply one', async () => {
-    await defs.save('d1', form({ template_key: 'gas_safety_check' }));
-    expect(h.api.update.mock.calls[0][2].template_key).toBe('gas_safety_check');
+    await defs.save('d1', form({ template_key: 'lift_loler_examination' }));
+    expect(h.api.update.mock.calls[0][2].template_key).toBe('lift_loler_examination');
   });
 });
 
@@ -332,14 +332,14 @@ describe('exclusion decisions', () => {
     h.api.get.mockResolvedValueOnce([
       { id: '2', template_key: 'lift_maintenance', decision: 'applicable',     reason: 'lift fitted', decided_at: '2026-06-01T00:00:00Z' },
       { id: '1', template_key: 'lift_maintenance', decision: 'not_applicable', reason: 'no lift',     decided_at: '2026-01-01T00:00:00Z' },
-      { id: '3', template_key: 'gas_safety_check', decision: 'not_applicable', reason: 'all electric', decided_at: '2026-02-01T00:00:00Z' },
+      { id: '3', template_key: 'lift_loler_examination', decision: 'not_applicable', reason: 'all flats on long leases', decided_at: '2026-02-01T00:00:00Z' },
     ]);
     const rows = await defs.loadExclusions();
     expect(h.api.get).toHaveBeenCalledWith('statutory_exclusions',
       { orderBy: 'decided_at', ascending: false });
     expect(rows).toHaveLength(3);
     // A reinstated key is no longer excluded, but its history is still held.
-    expect(get(defs).dismissedKeys).toEqual(['gas_safety_check']);
+    expect(get(defs).dismissedKeys).toEqual(['lift_loler_examination']);
     expect(get(defs).exclusions).toHaveLength(3);
   });
 
@@ -405,15 +405,15 @@ describe('exclusion decisions', () => {
   // have to justify, so it is not logged as routine config noise.
   it('audits an exclusion as a warning, with the reason and the basis', async () => {
     h.api.create.mockResolvedValueOnce({ id: 'x9' });
-    await defs.recordExclusionDecision('gas_safety_check', 'not_applicable', 'Building is all electric');
+    await defs.recordExclusionDecision('lift_loler_examination', 'not_applicable', 'No dwelling let on a relevant tenancy');
     expect(h.logAudit).toHaveBeenCalledWith(
-      'create', 'statutory_exclusion', 'x9', 'Gas safety check',
+      'create', 'statutory_exclusion', 'x9', 'Lift — LOLER thorough examination',
       expect.objectContaining({
         severity: 'warning',
         afterData: expect.objectContaining({
-          template_key: 'gas_safety_check',
+          template_key: 'lift_loler_examination',
           decision: 'not_applicable',
-          reason: 'Building is all electric',
+          reason: 'No dwelling let on a relevant tenancy',
           basis: 'statute',
         }),
       }),
@@ -422,9 +422,9 @@ describe('exclusion decisions', () => {
 
   it('audits a reinstatement as ordinary information, not a warning', async () => {
     h.api.create.mockResolvedValueOnce({ id: 'x8' });
-    await defs.recordExclusionDecision('gas_safety_check', 'applicable', 'Communal boiler installed');
+    await defs.recordExclusionDecision('lift_loler_examination', 'applicable', 'A flat is now let on an AST');
     expect(h.logAudit).toHaveBeenCalledWith(
-      'create', 'statutory_exclusion', 'x8', 'Gas safety check',
+      'create', 'statutory_exclusion', 'x8', 'Lift — LOLER thorough examination',
       expect.objectContaining({ severity: 'info' }),
     );
   });

@@ -358,7 +358,9 @@ export const REGISTER = [
   entry({
     key: 'smoke_control_service',
     name: 'Smoke control / AOV system — service',
-    description: 'Service and functional test of the smoke control system, including AOVs and any smoke shafts.',
+    description:
+      'Service and functional test of the AOV smoke control system serving the staircase, including the '
+      + 'vents, the control panel and any smoke shaft.',
     group: 'fire_safety',
     basis: 'standard',
     statutoryRef: 'BS EN 12101 / BS 7346-8, periodic servicing',
@@ -376,7 +378,9 @@ export const REGISTER = [
     evidenceRequired: 'Service certificate recording each vent and control panel tested',
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Building has a smoke control system, smoke shaft or automatic opening vents',
+    // Confirmed 2026-09-13: the building has an AOV system serving one of its
+    // two staircases. No longer conditional.
+    appliesWhen: 'Always — the building has an AOV system serving one staircase',
   }),
   entry({
     key: 'fser_monthly_equipment_check',
@@ -739,29 +743,15 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'There are portable appliances in the common parts — concierge desk, communal kitchen, plant room',
   }),
-  entry({
-    key: 'gas_safety_check',
-    name: 'Gas safety check',
-    description: 'Annual safety check of gas appliances and flues for which the landlord is responsible.',
-    group: 'other_statutory',
-    basis: 'statute',
-    statutoryRef: 'Gas Safety (Installation and Use) Regulations 1998, reg 36(3)',
-    intervalBasis: 'stated',
-    frequencyDays: 365,
-    maxIntervalDays: 366,
-    responsibleParty: 'Gas Safe registered engineer',
-    competencyRequired: 'Gas Safe registered, with the correct appliance categories',
-    evidenceRequired: 'Landlord gas safety record (CP12); copy to each affected tenant',
-    retentionPeriodMonths: 24,
-    handledBy: 'maintenance',
-    evidencedBy: 'maintenance_job',
-    // Closed as a question 2026-09-13 — not being pursued with the reviewer.
-    // ⚠ The ENTRY stays: nothing is removed from the register. If this building
-    // has no landlord gas, that is a compliance decision and belongs in the
-    // append-only exclusion log with a reason and a name against it — recorded
-    // in the app, not asserted here. Until then it reads as applying.
-    appliesWhen: 'Landlord is responsible for any gas appliance, flue or pipework',
-  }),
+  // ── Gas: REMOVED 2026-09-13 on the user's explicit instruction.
+  //
+  // There is no gas in this building, so there is no landlord gas duty to hold.
+  // Noted because it is a deliberate departure from this register's usual rule
+  // (identified requirements are kept and excluded by a recorded decision,
+  // never deleted): the user directed removal for this one, having considered
+  // that rule. If gas is ever installed, the entry comes back — Gas Safety
+  // (Installation and Use) Regulations 1998 reg 36(3), annual, Gas Safe
+  // registered engineer, CP12 record.
   entry({
     key: 'lift_loler_examination',
     name: 'Lift — LOLER thorough examination',
