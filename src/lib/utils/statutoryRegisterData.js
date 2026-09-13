@@ -447,7 +447,7 @@ export const REGISTER = [
       + 'in efficient working order and good repair.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1); "essential fire-fighting equipment" defined at reg 7(5)(a)–(c); fault reporting reg 7(3); record and resident access reg 7(4)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1); reg 7(5) defines "essential fire-fighting equipment" as key fire-fighting equipment (reg 6(7)) "and any of the following located within the common parts of the building — (a) fire detection and fire alarm systems including any detectors linked to ancillary equipment such as smoke control systems, (b) evacuation alert systems, (c) automatic door release mechanisms linked to fire alarm systems"; "routine check" is defined in the same paragraph as a check that the equipment is in efficient working order and good repair, carried out in accordance with the relevant industry standard or the manufacturer\'s recommendations; fault reporting reg 7(3); record and resident access reg 7(4)',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
@@ -458,7 +458,13 @@ export const REGISTER = [
       + 'servicing, and they do not replace it — those are maintenance under their own standards, this '
       + 'is a statutory monthly check by the responsible person. The record must be made accessible to '
       + 'residents (reg 7(4)); a fault not rectified within 24 hours must be reported to the fire and '
-      + 'rescue authority, and its rectification reported when fixed (reg 7(3)).',
+      + 'rescue authority, and its rectification reported when fixed (reg 7(3)). '
+      + '⚠ A fourth review asked for these three systems to be moved OUT of the statutory row and '
+      + 'recast as a standard or internal control. That was declined: reg 7(5)(a)–(c) names all three '
+      + 'expressly, so they are part of the statutory monthly check, not an addition to it. The real '
+      + 'qualifier is narrower and is now in the applicability — the definition reaches these systems '
+      + '"located within the common parts of the building", so it is the location of each installed '
+      + 'system that decides, not its safety-criticality.',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Competent person familiar with the installed systems',
     evidenceRequired:
@@ -467,7 +473,7 @@ export const REGISTER = [
     handledBy: 'inspection',
     handlingNote: 'An inspection walk scoped to the alarm panel, linked detectors, evacuation alert and door releases.',
     evidencedBy: 'inspection',
-    appliesWhen: 'Always — the building has a detection and alarm system in the common parts',
+    appliesWhen: 'Where each system is located within the COMMON PARTS — that is the test in reg 7(5), applied per installed system. The building has a detection and alarm system in the common parts',
   }),
   entry({
     key: 'fser_wayfinding_signage',
@@ -639,7 +645,7 @@ export const REGISTER = [
       + 'confirmation channel, which is X1/X2 work, not code here. The annual cadence is OURS — the '
       + 'Regulations state no interval for regs 5–6, the duty is continuous.',
     evidencedBy: null,
-    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3. The duty to OPERATE the process is unconditional; the resident-specific steps within it arise as relevant residents are identified or engage',
   }),
   entry({
     key: 'evac_mitigation_statements',
@@ -666,7 +672,7 @@ export const REGISTER = [
     handledBy: 'none',
     handlingNote: '⛔ INTERFACE ONLY. No home in the portal; the annual cadence is ours, the underlying duty is continuous.',
     evidencedBy: null,
-    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3. The duty to OPERATE the process is unconditional; the resident-specific steps within it arise as relevant residents are identified or engage',
   }),
   entry({
     key: 'evac_frs_information',
@@ -695,7 +701,7 @@ export const REGISTER = [
     handledBy: 'none',
     handlingNote: '⛔ INTERFACE ONLY. No home in the portal; the annual cadence is ours, the underlying duty is continuous.',
     evidencedBy: null,
-    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3. The duty to OPERATE the process is unconditional; the resident-specific steps within it arise as relevant residents are identified or engage',
   }),
   // The PREPARATION half of reg 13. The review half is the row after it. These
   // are separated because the reviewer was right that a review row alone reads
@@ -723,7 +729,7 @@ export const REGISTER = [
     handledBy: 'golden_thread',
     handlingNote: 'A controlled document — it belongs in the Golden Thread register alongside its reviews. It holds no resident personal data.',
     evidencedBy: null,
-    appliesWhen: 'Always — the building has two or more sets of domestic premises and at least seven storeys',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3 — two or more sets of domestic premises AND at least 18 metres, or at least seven storeys, or more than 11 metres with a simultaneous evacuation strategy',
   }),
   entry({
     key: 'evac_building_plan_review',
@@ -751,7 +757,7 @@ export const REGISTER = [
       + '⚠ Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the '
       + '12-month cycle is a floor, not the only trigger.',
     evidencedBy: null,
-    appliesWhen: 'Always — the building has two or more sets of domestic premises and at least seven storeys',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3 — two or more sets of domestic premises AND at least 18 metres, or at least seven storeys, or more than 11 metres with a simultaneous evacuation strategy',
   }),
   entry({
     key: 'evac_person_centred_review',
@@ -782,7 +788,7 @@ export const REGISTER = [
       + '⚠ Reg 9 also triggers on reason to believe an assessment needs amending and **at the reasonable '
       + 'request of the resident**, and an early review restarts the 12 months. Nothing here detects either.',
     evidencedBy: null,
-    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3. The duty to OPERATE the process is unconditional; the resident-specific steps within it arise as relevant residents are identified or engage',
   }),
   // Found 2026-09-11 while verifying the FSER citations against
   // legislation.gov.uk — the register held no entry for reg 5 at all. It is
@@ -822,7 +828,11 @@ export const REGISTER = [
     handlingNote:
       'The record is a controlled document and belongs in the Golden Thread register. '
       + '⚠ Nothing detects the trigger — reg 5(3) fires on a change to the building, and no part of '
-      + 'the portal watches for one. Raise the revision by hand when works complete.',
+      + 'the portal watches for one. The building-work screening row is where it must be caught: '
+      + 'whoever proposes or approves work to the external walls has to decide whether it is a '
+      + 'significant change and route the completed work to this record and to the re-provision to '
+      + 'the fire and rescue authority. Until those two rows are wired together it depends on a '
+      + 'person remembering.',
     evidencedBy: null,
     appliesWhen: 'Always — every high-rise residential building has external walls',
   }),
@@ -1590,6 +1600,36 @@ export const REGISTER = [
     appliesWhen: 'Always for an HRB',
   }),
   entry({
+    key: 'mor_reportability_triage',
+    reviewerNote:
+      'Our other MOR rows are assurance controls over the workflow — open-case review, lessons '
+      + 'learned, annual system effectiveness. This is the duty itself, and it was missing: on each '
+      + 'occurrence, decide whether it is reportable, record the reasoning either way, and report in '
+      + 'time if it is. ⚠ A decision NOT to report is the one most worth evidencing, because it is the '
+      + 'one that will be questioned.',
+    name: 'Safety occurrence — triage and reportability decision',
+    description:
+      'On becoming aware of a safety occurrence: log it promptly, assess whether it is reportable, '
+      + 'record the reasoned decision either way with the competent person who made it, start the '
+      + 'statutory reporting clock where it is reportable, and carry the outcome into remediation, the '
+      + 'golden thread and any safety case revision.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Building Safety Act 2022 s.87 and the mandatory occurrence reporting regime — the duty arises on the occurrence, not on a cycle',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'Becoming aware of any safety occurrence, however it arrives — report, complaint, inspection finding, contractor, resident',
+    triggerType: 'event',
+    responsibleParty: 'Principal accountable person',
+    competencyRequired: 'Person competent to judge reportability, with escalation where the judgement is finely balanced',
+    evidenceRequired: 'Per-occurrence record: what was reported, when awareness arose, the reportability decision AND its reasoning, who made it, and the resulting report or the recorded reason for not reporting',
+    retentionPeriodMonths: 120,
+    handledBy: 'mor',
+    handlingNote: 'The MOR app holds the case lifecycle and the 10-day clock. What it does not hold is the decision NOT to open a case — an occurrence judged non-reportable leaves no record at all today.',
+    evidencedBy: null,
+    appliesWhen: 'Always for an HRB in occupation',
+  }),
+  entry({
     key: 'mor_open_case_review',
     name: 'MOR — open case review',
     description: 'Review every open mandatory occurrence report against its statutory clocks.',
@@ -1638,6 +1678,39 @@ export const REGISTER = [
     handlingNote: 'A duty on the SYSTEM, not on a case — surfaced by BSA_V2_Mapping.md EXT-12.R1.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always for an HRB',
+  }),
+  entry({
+    key: 'complaint_intake_triage',
+    reviewerNote:
+      'The two annual complaints rows are assurance controls. This is the per-complaint duty, and the '
+      + 'part that matters most is the link outward: does this complaint indicate a BUILDING SAFETY '
+      + 'RISK, and does it therefore reach mandatory occurrence reporting, the risk assessment or the '
+      + 'safety case? A complaints process that only answers the complainant satisfies the resident '
+      + 'and misses the signal.',
+    name: 'Building safety complaint — receive, classify and escalate',
+    description:
+      'On each building safety complaint: receive and acknowledge it, classify it, investigate, '
+      + 'respond, and decide explicitly whether it indicates a building safety risk — and therefore '
+      + 'whether it requires a mandatory occurrence report, a revision to the risk assessment or the '
+      + 'safety case, or escalation to the regulator. Record recurrence analysis across complaints.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Building Safety Act 2022 s.93 — the duty to operate a complaints system, applied per complaint rather than as a cycle',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'Receipt of a building safety complaint by any route',
+    triggerType: 'event',
+    responsibleParty: 'Principal accountable person',
+    competencyRequired: 'Person able to judge whether a complaint discloses a building safety risk, with escalation where it may',
+    evidenceRequired: 'Per-case record: receipt date, classification, investigation, response, the building-safety-risk determination and its consequences, and any escalation to the regulator',
+    retentionPeriodMonths: 120,
+    handledBy: 'complaints',
+    handlingNote:
+      'The Complaints app holds the seven-state case lifecycle. ⚠ Two things it does not hold: the two '
+      + 'SLA clocks (columns exist, no code reads them) and the building-safety-risk determination that '
+      + 'links a complaint to MOR or the safety case.',
+    evidencedBy: null,
+    appliesWhen: 'Always for an HRB in occupation',
   }),
   entry({
     key: 'complaints_self_assessment',
@@ -1703,6 +1776,36 @@ export const REGISTER = [
     handlingNote: '⚠ No home. Also triggered by a submitted MOR and by significant alterations.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always for an HRB',
+  }),
+  entry({
+    key: 'dwelling_access_request',
+    reviewerNote:
+      'Distinct from information provision, and absent until the fourth review. What makes this worth '
+      + 'a row is the failure case rather than the success case: a REFUSAL has to be evidenced — what '
+      + 'was requested, what endeavours were made, what could not be inspected as a result, and what '
+      + 'that unexamined part of the building means for the safety case. An access request that is '
+      + 'quietly dropped leaves a hole in the evidence that nobody can later see.',
+    name: 'Access to a dwelling — request, refusal and escalation',
+    description:
+      'Where access to a dwelling is needed to assess or manage a building safety risk: make the '
+      + 'request in the required form and with the required notice, record refusals and repeated '
+      + 'attempts, escalate where the law allows, and record what could not be examined and its effect '
+      + 'on the risk assessment and the safety case.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Building Safety Act 2022 — the accountable person’s rights and duties of entry to assess and manage building safety risks, with escalation where access is refused',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'Needing access to a dwelling to assess or manage a building safety risk',
+    triggerType: 'event',
+    responsibleParty: 'Accountable person',
+    competencyRequired: 'Person able to serve a request in the required form and to judge when escalation is warranted',
+    evidenceRequired: 'Per-request record: what was requested and why, the notice given, the response, repeated attempts, any escalation, and what remained unexamined with its consequence for the safety case',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⛔ INTERFACE — resident identity and addressing belong to the resident system (X1 R12). What this register needs back is the request, its outcome and what stayed unexamined.',
+    evidencedBy: null,
+    appliesWhen: 'Always for an HRB in occupation',
   }),
   entry({
     key: 'res_consultation',
@@ -1803,11 +1906,22 @@ export const REGISTER = [
   }),
   entry({
     key: 'building_work_change_control',
-    name: 'Building work — screen for the higher-risk building work regime',
+    name: 'Building work — screen for the regime, and update every record it touches',
+    // ⚠ WIDENED 2026-09-13, fourth review. It asked for a general change-control
+    // row alongside the gateway screen. Made it one row instead: both fire on
+    // the same event and are completed by the same person, so two rows would
+    // produce two records of one decision and a gap between them. The screen
+    // now owns the consequential updates, which is where they were being lost.
     description:
       'Before work begins, determine whether it engages the higher-risk building work regime and its '
-      + 'gateway procedures, follow the applicable route, and capture the outcome in the building safety '
-      + 'record.',
+      + 'gateway procedures, follow the applicable route, and capture the outcome in the building '
+      + 'safety record. The same screen carries the consequential updates, because they all fall due '
+      + 'on the same event: the effect on fire and structural risk, on key building information, on '
+      + 'the golden thread, on the fire risk assessment, on the evacuation strategy and plans, on the '
+      + 'external wall record where the walls are touched, on the plans held by the fire and rescue '
+      + 'authority where layout or key equipment moves, on resident engagement, and whether the work '
+      + 'is itself a reportable occurrence. Record contractor competence, the approval, and the '
+      + 'post-completion verification that each affected record was actually updated.',
     group: 'bsa_cycle',
     basis: 'statute',
     statutoryRef: 'The higher-risk building work regime under the Building Safety Act 2022 and the Building (Higher-Risk Buildings Procedures) (England) Regulations 2023 (SI 2023/909)',
@@ -1988,8 +2102,17 @@ export const REGISTER = [
   }),
   // ══ 5 · Building-specific cycles ════════════════════════════════════════
   // Cycles this building needs because of its own characteristics and its own
-  // open findings — a single staircase with no smoke ventilation, and the
-  // basement structural concerns. From BSA_Periodic_Activities_and_Checks §5.
+  // open findings. From BSA_Periodic_Activities_and_Checks §5.
+  //
+  // ⚠⚠ READ THIS BEFORE TOUCHING ANY STAIR ROW BELOW. The supplied source
+  // document described a SINGLE protected staircase with no smoke ventilation,
+  // and three rows below were written from it. The building description given
+  // on 2026-09-13 says TWO staircases, with an AOV serving one of them. The
+  // fourth review round caught the contradiction; it is NOT resolved, and it is
+  // not an editorial detail — it bears on the fire risk assessment, the
+  // evacuation strategy, the AOV scope and whether a daily stair walk is
+  // proportionate. The rows are left at the more cautious cadence, and say so,
+  // until someone states the real position. Do not quietly relax them.
   //
   // These are the items that distinguish this building's safety case from a
   // generic one, so they belong in the register — but several are INTERIM,
@@ -1998,6 +2121,7 @@ export const REGISTER = [
   // not to quietly delete the entry.
   entry({
     key: 'acrow_prop_check',
+    reviewerNote: 'Also specify: the acceptable position and tolerance, what counts as prohibited movement or damage, what triggers immediate isolation or evacuation, whether every finding goes to a structural engineer, whether photographs are date-stamped, and how long the props may remain before a permanent repair decision is forced. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Acrow props — position and integrity check',
     description: 'Check the temporary props supporting the basement mezzanine are in position, plumb and undamaged.',
     group: 'building_specific',
@@ -2018,6 +2142,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'cracked_column_check',
+    reviewerNote: 'Also specify: the crack-width measurement method, the reference datum, the measurement tolerance, the corrosion progression criteria and the trigger values. ⚠ A monthly visual comparison is not a monitoring regime unless it is tied to the structural engineer’s specification — a photograph that shows change with no stated trigger value leaves the decision to whoever is looking. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Cracked columns — visual check',
     description: 'Visual check of the cracked mezzanine columns and rusting beams against comparison photographs.',
     group: 'building_specific',
@@ -2036,6 +2161,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'crack_monitoring',
+    reviewerNote: 'Also specify: the reading method, the datum, and the trigger value at which a reading escalates rather than simply being recorded. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Crack monitoring — telltales or strain gauges',
     description: 'Read and record any crack monitoring devices fitted, at the interval the device specification sets.',
     group: 'building_specific',
@@ -2055,6 +2181,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'structural_interim_review',
+    reviewerNote: 'Also specify: what the interim measures are protecting against, and the condition on which they end. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Structural engineer — interim review',
     description: 'Engineer reviews the monitoring record and confirms the interim measures remain adequate.',
     group: 'building_specific',
@@ -2077,7 +2204,7 @@ export const REGISTER = [
     description: 'Walk the stair core end to end, looking for anything that compromises the protected route.',
     group: 'building_specific',
     basis: 'management',
-    statutoryRef: 'Self-imposed; protection of the single protected route',
+    statutoryRef: 'Self-imposed; protection of the stair core as an escape route',
     intervalBasis: 'practice',
     frequencyDays: 1,
     responsibleParty: 'Site staff',
@@ -2085,10 +2212,12 @@ export const REGISTER = [
     evidenceRequired: 'Walk-around log, with an exception report on anything found',
     handledBy: 'inspection',
     handlingNote:
-      'A single-staircase building with simultaneous evacuation and no smoke ventilation has one protected '
-      + 'route and no second chance — which is why this is daily rather than weekly.',
+      'Written for a single-staircase building with simultaneous evacuation and no smoke ventilation — '
+      + 'one protected route and no second chance — which is why it is daily rather than weekly. '
+      + '⚠ Whether that describes this building is unresolved; see the note.',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building has a single staircase',
+    reviewerNote: '⚠⚠ UNRESOLVED CONTRADICTION, raised by the fourth review and not yet settled. The building description says two staircases, with an AOV serving one of them; this row and two others beside it were written from the supplied source document, which described a SINGLE protected route with no smoke ventilation. Both cannot be true. Until the position is stated — how many stairs, which are protected, which serve which floors, which are available under the evacuation strategy, and whether one is out of use or under remediation — the row is kept at its current cadence, because this is the direction in which it is safer to be wrong. ❓ This is not an editorial point: it bears on the fire risk assessment, the evacuation strategy, the AOV scope and whether a daily stair walk is proportionate. Also specify the escalation triggers, so a finding is not left to judgement: doors wedged or propped open, failed self-closers, smoke leakage, damaged seals, obstructions, water ingress, and fire-stopping defects. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    appliesWhen: '⚠ UNRESOLVED — written for a single protected stair, while the building description says two. Kept at the more cautious cadence until the position is stated',
   }),
   entry({
     key: 'lobby_to_stair_door_check',
@@ -2103,9 +2232,10 @@ export const REGISTER = [
     competencyRequired: 'Briefed site staff',
     evidenceRequired: 'Visual check log',
     handledBy: 'inspection',
-    handlingNote: 'A single staircase makes these doors disproportionately important; cadence is open to review.',
+    handlingNote: 'Written on the basis of a single staircase, which makes these doors disproportionately important; cadence is open to review. ⚠ See the stair-core row.',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building has a single staircase protected by fire doors',
+    reviewerNote: 'The same unresolved staircase question as the stair-core walk-around — see that row. The weekly cadence follows from there being one protected route. Also specify the escalation triggers — wedged or propped doors, failed self-closers, damaged seals, smoke leakage — and who may take a door out of service. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    appliesWhen: '⚠ UNRESOLVED — written for a single protected stair; see the stair-core row',
   }),
   entry({
     key: 'stair_lighting_check',
@@ -2121,10 +2251,12 @@ export const REGISTER = [
     evidenceRequired: 'Walk-around log',
     handledBy: 'inspection',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building has a single staircase',
+    reviewerNote: 'The same unresolved staircase question as the stair-core walk-around — see that row. Also specify what happens when a failure is found in the protected route, and whether temporary lighting or a compensatory control is required until it is fixed. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    appliesWhen: '⚠ UNRESOLVED — written for a single protected stair; see the stair-core row',
   }),
   entry({
     key: 'alarm_coverage_gap_monitoring',
+    reviewerNote: '⚠ This row ages an open action; it does not close one. It must be tied to the specific open finding: the action owner, the original finding, the survey required, its due date, the interim mitigation relied on meanwhile, the decision-maker, the target completion date, the residual risk accepted, and what follows if the survey slips. A monthly ageing log is not a mitigation for a coverage gap that is safety-critical. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Fire alarm coverage — gap monitoring',
     description: 'Review the open action to establish fire alarm coverage, and age it.',
     group: 'building_specific',
@@ -2144,6 +2276,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'alarm_audibility_spot_check',
+    reviewerNote: '⚠ Same as the coverage row: this is an ageing log over an open finding, not a substitute for the survey. Tie it to the action, its owner and its date. What this row does NOT yet carry, and should before it is relied on: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Fire alarm audibility — per-floor spot check',
     description: 'Spot-check audibility on each floor during the alarm test.',
     group: 'building_specific',
