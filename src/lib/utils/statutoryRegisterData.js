@@ -107,6 +107,19 @@ function entry(e) {
     // prevent. Declared per row, because only the citation can settle which it
     // is and nothing can infer it.
     maxIsSchedulingTolerance: false,
+    // A row that is not yet a usable control — an interim mitigation with no
+    // escalation threshold and no end condition, say. TRUE renders a visible
+    // "Completion action" line in the outward-facing statement, and that line
+    // says NOT ASSIGNED until `completionAction` is filled in.
+    //
+    // The point of the pair is that a warning written in prose reads the same
+    // on the day it is written and two years later, whereas an unassigned
+    // action is conspicuous every time the document is produced. Do not clear
+    // `operationallyIncomplete` to tidy the output; clear it by assigning the
+    // action and populating the fields the row says it lacks.
+    operationallyIncomplete: false,
+    /** @type {string|null} Action id, owner, technical authority, due date, interim risk owner, status. */
+    completionAction: null,
     competencyRequired: null,
     retentionPeriodMonths: 36,
     trigger: null,
@@ -128,7 +141,7 @@ export const REGISTER = [
     description: 'Refresh the fire risk assessment and record it in full.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Regulatory Reform (Fire Safety) Order 2005, art 9',
+    statutoryRef: 'Regulatory Reform (Fire Safety) Order 2005, art 9. THE DUTY is to make and keep up to date a suitable and sufficient assessment, reviewing it regularly and whenever there is reason to suspect it is no longer valid or there has been a significant change. THE ANNUAL FREQUENCY shown here is our adopted control — art 9 states no interval',
     intervalBasis: 'practice',
     frequencyDays: 365,
     responsibleParty: 'Responsible person, via a competent fire risk assessor',
@@ -237,7 +250,7 @@ export const REGISTER = [
     description: 'Periodic inspection and servicing of the fire detection and alarm system by a competent engineer.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, periodic inspection and servicing',
+    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
@@ -306,7 +319,7 @@ export const REGISTER = [
     description: 'Annual service and test of the sprinkler or residential suppression system.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 9251 (residential) / BS EN 12845; LPC Rules',
+    statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -324,7 +337,7 @@ export const REGISTER = [
     description: 'Annual wet pressure test of the riser main, landing valves and inlet breeching.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 9990, annual test',
+    statutoryRef: 'BS 9990, annual test. ⚠ THE ADOPTED EDITION AND SYSTEM-SPECIFIC METHOD ARE NOT RECORDED. ❓ Confirm the BS 9990 edition adopted for this installation, whether the annual test is correctly described as a wet pressure test and at what pressure and duration, the treatment of landing valves and the inlet breeching, the visual inspection interval, any fire and rescue service expectation, and the relationship to the statutory monthly reg 7 check — the riser is reg 6(7) key fire-fighting equipment, so the same asset is touched by both rows',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -469,13 +482,16 @@ export const REGISTER = [
       + 'so that "show me the monthly statutory check for the dry riser" has one unambiguous answer. '
       + 'Two things attach to the check and are easy to lose: the record must be made ACCESSIBLE TO '
       + 'RESIDENTS (reg 7(4)), and a fault not rectified within 24 hours must be reported to the fire and '
-      + 'rescue authority electronically — AND its rectification reported when it is fixed (reg 7(3)).',
+      + 'rescue authority electronically — AND its rectification reported when it is fixed (reg 7(3)).'
+      + ' ⚠ The 31-day figure is an INTERNAL SCHEDULING LIMIT and does not alter the statutory requirement, which is to carry out the check monthly. Do not copy it into a procedure as though it were the legal interval.',
     name: 'Monthly check — firefighters’ lifts, evacuation lifts, rising mains, smoke control and suppression',
     description:
       'Monthly routine check of each INSTALLED item falling within the reg 6(7) key fire-fighting '
-      + 'equipment definition — dry and wet rising main inlets and outlets, smoke control, suppression '
-      + '— together with each lift for use by firefighters and each evacuation lift, recording the '
-      + 'asset identifier and location of each. Where a fault '
+      + 'equipment definition, together with each lift for use by firefighters and each evacuation '
+      + 'lift. The asset schedule must name the precise reg 6(7) sub-paragraph for every item it '
+      + 'lists — (a) to (f) — with its asset identifier and location, so that scope is settled by '
+      + 'the '
+      + 'definition rather than by a general description of what seems important. Where a fault '
       + 'cannot be rectified within 24 hours it must be reported to the fire and rescue authority by '
       + 'electronic means, and its rectification reported in the same way once fixed.',
     group: 'fire_safety',
@@ -485,7 +501,7 @@ export const REGISTER = [
     // reg 6(7) — rising main inlets and outlets, smoke control, suppression —
     // PLUS the common-parts systems on the next row. Verified against
     // legislation.gov.uk 2026-09-13; reg 7(1)(a)–(b) alone did not reach them.
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1); "essential fire-fighting equipment" defined at reg 7(5) by reference to the key fire-fighting equipment at reg 6(7); fault reporting reg 7(3); record and resident access reg 7(4)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1). "Essential fire-fighting equipment" is defined at reg 7(5) by reference to reg 6(7), which reads: "In this regulation \'key fire-fighting equipment\' INCLUDES — (a) inlets for dry-rising mains; (b) inlets for wet-rising mains; (c) outlets for dry-rising mains; (d) outlets for wet-rising mains; (e) smoke control systems; (f) suppression systems." ⚠ "Includes" — the list is a floor, not a ceiling. Fault reporting reg 7(3); record and resident access reg 7(4)',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
@@ -547,7 +563,8 @@ export const REGISTER = [
       + 'reg 7(5)(a)–(c) names all three expressly. The qualifier that does apply is narrower and is '
       + 'in the applicability — the definition reaches them "located within the common parts of the '
       + 'building", so it is the location of each installed system that decides, not how '
-      + 'safety-critical it is.',
+      + 'safety-critical it is.'
+      + ' ⚠ The 31-day figure is an INTERNAL SCHEDULING LIMIT and does not alter the statutory requirement, which is to carry out the check monthly. Do not copy it into a procedure as though it were the legal interval.',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Competent person familiar with the installed systems',
     evidenceRequired:
@@ -1239,7 +1256,7 @@ export const REGISTER = [
     description: 'Re-inspect known and presumed asbestos-containing materials and update the register.',
     group: 'other_statutory',
     basis: 'statute',
-    statutoryRef: 'Control of Asbestos Regulations 2012, reg 4',
+    statutoryRef: 'Control of Asbestos Regulations 2012, reg 4. THE DUTY is to manage the risk from asbestos, which includes keeping the assessment and management plan under review and monitoring the condition of known or presumed asbestos-containing materials. THE ANNUAL FREQUENCY shown here is our adopted control — reg 4 states no interval',
     intervalBasis: 'practice',
     frequencyDays: 365,
     responsibleParty: 'Asbestos surveyor',
@@ -2250,6 +2267,7 @@ export const REGISTER = [
   // not to quietly delete the entry.
   entry({
     key: 'acrow_prop_check',
+    operationallyIncomplete: true,
     reviewerNote: 'Also specify: the acceptable position and tolerance, what counts as prohibited movement or damage, what triggers immediate isolation or evacuation, whether every finding goes to a structural engineer, whether photographs are date-stamped, and how long the props may remain before a permanent repair decision is forced. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Acrow props — position and integrity check',
     description: 'Check the temporary props supporting the basement mezzanine are in position, plumb and undamaged.',
@@ -2271,6 +2289,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'cracked_column_check',
+    operationallyIncomplete: true,
     reviewerNote: 'Also specify: the crack-width measurement method, the reference datum, the measurement tolerance, the corrosion progression criteria and the trigger values. ⚠ A monthly visual comparison is not a monitoring regime unless it is tied to the structural engineer’s specification — a photograph that shows change with no stated trigger value leaves the decision to whoever is looking. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Cracked columns — visual check',
     description: 'Visual check of the cracked mezzanine columns and rusting beams against comparison photographs.',
@@ -2290,6 +2309,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'crack_monitoring',
+    operationallyIncomplete: true,
     reviewerNote: 'Also specify: the reading method, the datum, and the trigger value at which a reading escalates rather than simply being recorded. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Crack monitoring — telltales or strain gauges',
     description:
@@ -2313,6 +2333,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'structural_interim_review',
+    operationallyIncomplete: true,
     reviewerNote: 'Also specify: what the interim measures are protecting against, and the condition on which they end. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Structural engineer — interim review',
     description: 'Engineer reviews the monitoring record and confirms the interim measures remain adequate.',
@@ -2332,6 +2353,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'stair_core_walk_around',
+    operationallyIncomplete: true,
     name: 'Stair core — walk-around',
     description: 'Walk the stair core end to end, looking for anything that compromises the protected route.',
     group: 'building_specific',
@@ -2354,6 +2376,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'lobby_to_stair_door_check',
+    operationallyIncomplete: true,
     name: 'Lobby-to-stair doors — visual check',
     description: 'Visual check of the doors protecting the stair core, between the quarterly full door rounds.',
     group: 'building_specific',
@@ -2372,6 +2395,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'stair_lighting_check',
+    operationallyIncomplete: true,
     name: 'Stair lighting — check',
     description: 'Check normal and emergency lighting in the stair core is working.',
     group: 'building_specific',
@@ -2389,6 +2413,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'alarm_coverage_gap_monitoring',
+    operationallyIncomplete: true,
     reviewerNote: '⚠ This row ages an open action; it does not close one. It must be tied to the specific open finding: the action owner, the original finding, the survey required, its due date, the interim mitigation relied on meanwhile, the decision-maker, the target completion date, the residual risk accepted, and what follows if the survey slips. A monthly ageing log is not a mitigation for a coverage gap that is safety-critical. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Fire alarm coverage — gap monitoring',
     description: 'Review the open action to establish fire alarm coverage, and age it.',
@@ -2409,6 +2434,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'alarm_audibility_spot_check',
+    operationallyIncomplete: true,
     reviewerNote: '⚠ Same as the coverage row: this is an ageing log over an open finding, not a substitute for the survey. Tie it to the action, its owner and its date. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     name: 'Fire alarm audibility — per-floor spot check',
     description: 'Spot-check audibility on each floor during the alarm test.',
