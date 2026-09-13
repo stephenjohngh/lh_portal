@@ -160,7 +160,7 @@ export const REGISTER = [
     handledBy: 'inspection',
     handlingNote: 'An inspection walk scoped to communal fire doors.',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+    appliesWhen: 'Always — the building is above 11 metres, the threshold in reg 10 itself',
   }),
   entry({
     key: 'fser_flat_entrance_doors',
@@ -178,7 +178,7 @@ export const REGISTER = [
     handledBy: 'inspection',
     handlingNote: 'The walk’s “No access” outcome exists for this duty — best endeavours, evidenced.',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building is over 11 metres and has flat entrance doors onto common parts',
+    appliesWhen: 'Always — the building is above 11 metres (the reg 10 threshold) and has flat entrance doors onto common parts',
   }),
   entry({
     key: 'fdis_scheme_inspection',
@@ -364,7 +364,13 @@ export const REGISTER = [
     statutoryRef: 'BS EN 12101 / BS 7346-8, periodic servicing',
     intervalBasis: 'practice',
     frequencyDays: 182,
-    maxIntervalDays: 366,
+    // ⚠ `maxIntervalDays: 366` removed 2026-09-13 on external review, which
+    // caught the contradiction: a six-monthly chosen cycle cannot have a
+    // twelve-month "maximum permitted interval" — nothing permits it, because
+    // no instrument sets one. A servicing standard is not a legal ceiling, and
+    // printing one invented a limit that does not exist.
+    triggerType: 'calendar',
+    reviewerNote: 'Six-monthly servicing is the technical regime and is not a legal maximum. Separately, the detectors linked to this system fall within the MONTHLY statutory check — servicing does not discharge that.',
     responsibleParty: 'Smoke control contractor',
     competencyRequired: 'Competent smoke control engineer (Smoke Control Association member firm recommended)',
     evidenceRequired: 'Service certificate recording each vent and control panel tested',
@@ -375,13 +381,14 @@ export const REGISTER = [
   entry({
     key: 'fser_monthly_equipment_check',
     reviewerNote: 'The 24-hour fault report to the fire and rescue authority is an event-driven deadline attached to this check, not a cycle of its own.',
-    name: 'Monthly check — firefighting equipment and facilities',
+    name: 'Monthly check — firefighters’ lifts and evacuation lifts',
     description:
-      'Monthly check of firefighting lifts, evacuation lifts and other firefighting equipment and facilities. '
-      + 'A fault that cannot be fixed within 24 hours must be reported to the fire and rescue authority.',
+      'Monthly routine check that lifts for use by firefighters and any evacuation lifts are in efficient '
+      + 'working order and good repair. A fault that cannot be rectified within 24 hours must be reported '
+      + 'to the fire and rescue authority.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1)(a)–(b)',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
@@ -393,7 +400,42 @@ export const REGISTER = [
       '⚠ The 24-hour FAULT REPORT to the fire and rescue service has no home in the portal — '
       + 'it is an event-driven deadline, not a cycle. Still open.',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building is over 11 metres (always true for an HRB)',
+    appliesWhen: 'Always — the building is a high-rise residential building for these Regulations',
+  }),
+  // ⚠ SPLIT OUT 2026-09-13 on external review, which called this the largest
+  // operational omission — and it was right. One row named "firefighting
+  // equipment and facilities" read as though reg 7 covered lifts and hose
+  // reels. It does not: reg 7(5) defines essential fire-fighting equipment as
+  // key fire-fighting equipment (reg 6(7)) PLUS, in the common parts, fire
+  // detection and alarm systems including detectors linked to smoke control,
+  // evacuation alert systems, and automatic door release mechanisms.
+  //
+  // ⚠ AND THE TRAP THE REVIEWER NAMED: the weekly alarm test, the six-monthly
+  // alarm service and the six-monthly smoke-control service DO NOT discharge
+  // this. They are maintenance under their own standards. The monthly check is
+  // a separate statutory duty on the responsible person.
+  entry({
+    key: 'fser_monthly_systems_check',
+    name: 'Monthly check — detection, alarm and linked systems',
+    description:
+      'Monthly routine check that the fire detection and alarm system, any detectors linked to smoke '
+      + 'control, evacuation alert systems and automatic door release mechanisms in the common parts are '
+      + 'in efficient working order and good repair.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1) and the definition of essential fire-fighting equipment at reg 7(5)',
+    intervalBasis: 'stated',
+    frequencyDays: 30,
+    maxIntervalDays: 31,
+    triggerType: 'calendar',
+    reviewerNote: 'This does NOT replace the weekly alarm test or the six-monthly alarm and smoke-control servicing, and they do not replace it — those are maintenance under their own standards, this is a statutory monthly check by the responsible person. A fault that cannot be rectified within 24 hours must be reported to the fire and rescue authority.',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Competent person familiar with the installed systems',
+    evidenceRequired: 'Monthly check record per system; separate record of any 24-hour fault report',
+    handledBy: 'inspection',
+    handlingNote: 'An inspection walk scoped to the alarm panel, linked detectors, evacuation alert and door releases.',
+    evidencedBy: 'inspection',
+    appliesWhen: 'Always — the building has a detection and alarm system in the common parts',
   }),
   entry({
     key: 'fser_wayfinding_signage',
@@ -409,7 +451,7 @@ export const REGISTER = [
     evidenceRequired: 'Walk-around log per floor, with any missing or illegible signs',
     handledBy: 'inspection',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+    appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
   }),
   entry({
     key: 'pib_monthly_check',
@@ -428,7 +470,7 @@ export const REGISTER = [
       'Reg 4(5) sets the statutory floor at “at least annually”. Monthly is our own choice and exceeds it — '
       + 'the annual duty is discharged by the content review below.',
     evidencedBy: 'inspection',
-    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+    appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
   }),
   entry({
     key: 'pib_content_review',
@@ -445,7 +487,7 @@ export const REGISTER = [
     handledBy: 'golden_thread',
     handlingNote: 'The plans and contact sheet are controlled documents; the box holds the current version.',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+    appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
   }),
   entry({
     key: 'frs_plans_current',
@@ -465,7 +507,7 @@ export const REGISTER = [
       + 'Reg 6 requires updating "as soon as reasonably practicable" after a change — it states NO calendar interval, '
       + 'so the annual confirmation is our own safety net against a change nobody noticed.',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+    appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
   }),
   // ── The 2025 residential evacuation regime (SI 2025/797, in force 6 Apr 2026)
   // Added 2026-09-13 after external review. See the header note on why the
@@ -571,7 +613,10 @@ export const REGISTER = [
     handledBy: 'info',
     handlingNote: 'Published through the Info app; per-resident issue on move-in has no home (resident data is out of scope).',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
+    // reg 9 has NO height threshold — it binds any building with two or more
+    // sets of domestic premises and common parts. Applying the high-rise test
+    // here would have narrowed a duty that is in fact wider.
+    appliesWhen: 'Always — reg 9 applies to any building with two or more sets of domestic premises and common parts, with no height threshold',
   }),
   entry({
     key: 'escape_route_obstruction',
@@ -710,7 +755,12 @@ export const REGISTER = [
     retentionPeriodMonths: 24,
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Landlord is responsible for any gas appliance, flue or pipework — confirm there is a communal supply',
+    // Closed as a question 2026-09-13 — not being pursued with the reviewer.
+    // ⚠ The ENTRY stays: nothing is removed from the register. If this building
+    // has no landlord gas, that is a compliance decision and belongs in the
+    // append-only exclusion log with a reason and a name against it — recorded
+    // in the app, not asserted here. Until then it reads as applying.
+    appliesWhen: 'Landlord is responsible for any gas appliance, flue or pipework',
   }),
   entry({
     key: 'lift_loler_examination',
@@ -771,9 +821,16 @@ export const REGISTER = [
     description: 'Review the water system risk assessment and confirm the written control scheme is still valid.',
     group: 'other_statutory',
     basis: 'statute',
-    statutoryRef: 'Health and Safety at Work etc. Act 1974 / COSHH, via ACOP L8 and HSG274',
+    // ⚠ Corrected 2026-09-13 on external review. The two years was presented as
+    // though it came from the guidance. It does not: ACOP L8 says review
+    // "regularly" and particularly where there is reason to suspect the
+    // assessment is no longer valid or the system has changed. Two-yearly is
+    // OUR adopted interval, and the real trigger is change.
+    statutoryRef: 'Health and Safety at Work etc. Act 1974 / COSHH, via ACOP L8 and HSG274 — review "regularly" and on change; no fixed interval is prescribed',
     intervalBasis: 'practice',
     frequencyDays: 730,
+    triggerType: 'risk',
+    reviewerNote: 'Two-yearly is this building’s adopted interval, not a prescribed one. The governing trigger is change to the water system, or reason to suspect the assessment is no longer valid — either can require a review sooner.',
     responsibleParty: 'Duty holder, via a competent water hygiene assessor',
     competencyRequired: 'Competent legionella risk assessor (Legionella Control Association registered)',
     evidenceRequired: 'Reviewed risk assessment and written control scheme',
@@ -853,7 +910,9 @@ export const REGISTER = [
     handledBy: 'maintenance',
     handlingNote: 'Often run on an 11-month rolling cycle so the test season varies year to year.',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Building has a lightning protection system — confirm whether one is installed',
+    // Confirmed applicable 2026-09-13 — the building has a lightning protection
+    // system. This was an open question in revision 2 and is now settled.
+    appliesWhen: 'Always — the building has a lightning protection system',
   }),
   entry({
     key: 'structural_inspection',
@@ -977,10 +1036,16 @@ export const REGISTER = [
       + 'has been identified and notified to the regulator within the required period.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Higher-Risk Buildings (Keeping and Provision of Information etc.) Regs 2024 (SI 2024/41), reg 5 — the duty is to notify CHANGES, not to review annually',
+    // ⚠ Instrument corrected 2026-09-13 on external review — and this is the
+    // second time this row has been wrong. It cited SI 2024/41 reg 5 (provision
+    // of information to the regulator), which is a real provision but not the
+    // KBI regime. KBI is its own instrument: SI 2023/396, whose reg 21 sets the
+    // 28-day clock. The statutory duty is a CHANGE notification, not a review.
+    statutoryRef: 'Higher-Risk Buildings (Key Building Information etc.) (England) Regulations 2023 (SI 2023/396), reg 21 — "notify the regulator of any change to the key building information within 28 days of the PAP becoming aware of the change"',
     intervalBasis: 'practice',
     frequencyDays: 365,
     triggerType: 'calendar',
+    reviewerNote: 'The statutory duty is a 28-day change notification, not an annual review. The annual pass is our assurance control — it exists to catch a change nobody noticed at the time, and it does not extend the 28 days.',
     responsibleParty: 'Principal accountable person',
     evidenceRequired: 'KBI submission record, and the dated confirmation that no unnotified change exists',
     retentionPeriodMonths: 120,
@@ -1182,7 +1247,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'complaints_report_publication',
-    reviewerNote: 'FOR CONFIRMATION: whether the Housing Ombudsman Complaint Handling Code binds a private leasehold company. If it does not, this becomes a candidate for a recorded decision that it does not apply, rather than a cycle.',
+
     name: 'Complaints — annual performance report',
     description: 'Publish the annual complaints performance report to residents.',
     group: 'bsa_cycle',
@@ -1204,11 +1269,12 @@ export const REGISTER = [
       + 'building control approval applications. The complaints instrument is SI 2023/907, and ITS reg 12 (PAP '
       + 'complaints procedures) sets out how complaints must be handled but does NOT require an annual performance '
       + 'report. The annual report is a Housing Ombudsman Code duty, so this is recorded as a management cycle. '
-      + '❓ FOR CONFIRMATION: whether that Code binds a private leasehold RTM company is a question for the duty '
-      + 'holder — if it does not, this becomes a candidate for a recorded "not applicable" decision rather than a '
-      + 'cycle. Do not silently promote it back to statute without an answer.',
+      + 'Closed as a question 2026-09-13 — not being pursued with the reviewer. '
+      + '⚠ The ENTRY stays. If the Code does not bind a private leasehold company, that is a compliance '
+      + 'decision and belongs in the append-only exclusion log with a reason and a name against it, recorded '
+      + 'in the app. Do not delete the row, and do not promote it back to statute without an answer.',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'The building is within the scope of the Housing Ombudsman Complaint Handling Code — to be confirmed',
+    appliesWhen: 'The building is within the scope of the Housing Ombudsman Complaint Handling Code',
   }),
   entry({
     key: 'res_strategy_review',
@@ -1295,15 +1361,76 @@ export const REGISTER = [
     evidencedBy: null,
     appliesWhen: 'Contractors are engaged on safety-critical work',
   }),
+  // ➕ Added 2026-09-13 on external review. Both answer the same criticism:
+  // the register was overwhelmingly calendar-driven, and a calendar cannot
+  // raise the things that actually change a building's risk picture. These two
+  // sit ABOVE the individual inspection rows — they are the catch-alls that
+  // stop "not due yet" being mistaken for "nothing to do".
   entry({
-    key: 'cooperation_arrangements_review',
-    name: 'Cooperation arrangements — review',
-    description: 'Review the arrangements for cooperation between accountable persons and other duty holders.',
+    key: 'bsa_risk_assessment_trigger',
+    name: 'Building safety risk assessment — event and risk trigger',
+    description:
+      'Assess whether a further building safety risk assessment is required, and carry one out where it is. '
+      + 'This is the standing control over every other row: it fires on circumstance, not on a date.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022, s.156',
+    statutoryRef: 'Building Safety Act 2022, s.83(2) — further assessment at regular intervals, at any time there is reason to suspect the current assessment is no longer valid, and at the regulator’s direction',
+    intervalBasis: 'stated',
+    trigger:
+      'Significant change, incident, newly identified hazard, significant defect, change of evacuation '
+      + 'strategy, material building work, new information, or any reason to believe the current assessment '
+      + 'may no longer be valid — or a direction from the regulator',
+    triggerType: 'risk',
+    reviewerNote: 'Two of the three statutory triggers are not calendar events, and no schedule will raise them. A completed inspection cycle is not evidence that this duty has been discharged.',
+    responsibleParty: 'Accountable person',
+    competencyRequired: 'Competent person for the risk in question',
+    evidenceRequired: 'The decision on whether a further assessment was required, its reasoning, and the assessment where one was made',
+    retentionPeriodMonths: 120,
+    handledBy: 'golden_thread',
+    handlingNote: '⚠ Nothing detects these triggers automatically. It depends on somebody raising it.',
+    evidencedBy: null,
+    appliesWhen: 'Always for an HRB',
+  }),
+  entry({
+    key: 'building_work_change_control',
+    name: 'Building work — screen for the higher-risk building work regime',
+    description:
+      'Before work begins, determine whether it engages the higher-risk building work regime and its '
+      + 'gateway procedures, follow the applicable route, and capture the outcome in the building safety '
+      + 'record.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'The higher-risk building work regime under the Building Safety Act 2022 and the Building (Higher-Risk Buildings Procedures) (England) Regulations 2023 (SI 2023/909)',
+    intervalBasis: 'stated',
+    trigger: 'Any proposed building work, before it starts',
+    triggerType: 'event',
+    reviewerNote: 'The control is screen → determine applicability → follow the applicable route → record the outcome. It does NOT mean every maintenance job is a gateway project; it means the question is asked and the answer is recorded.',
+    responsibleParty: 'Principal accountable person',
+    competencyRequired: 'Person able to judge whether work is in scope; competent advice where it is',
+    evidenceRequired: 'The screening decision and its reasoning, and any gateway correspondence',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⚠ No home. Event-driven, and it belongs at the point work is instructed.',
+    evidencedBy: null,
+    appliesWhen: 'Whenever building work is contemplated',
+  }),
+  entry({
+    key: 'cooperation_arrangements_review',
+    name: 'Cooperation and information-sharing arrangements — review',
+    description:
+      'Review the arrangements for cooperation and information-sharing between accountable persons, and '
+      + 'with the responsible person under the fire safety order.',
+    group: 'bsa_cycle',
+    // ⚠ Corrected 2026-09-13 on external review. This cited s.156, which is
+    // principally an amendment to the Fire Safety Order — not a general duty to
+    // review cooperation arrangements annually. The duties are spread across
+    // BSA Part 4 and the Fire Safety Order's own cooperation provisions, and
+    // the annual review over them is ours.
+    basis: 'statute',
+    statutoryRef: 'Cooperation and information-sharing duties in BSA 2022 Part 4, and the cooperation duties in the Regulatory Reform (Fire Safety) Order 2005',
     intervalBasis: 'practice',
     frequencyDays: 365,
+    reviewerNote: 'The annual cycle is our own. The real trigger is event-driven: any change to the accountable-person structure, to responsibilities, or to what has to be shared.',
     responsibleParty: 'Principal accountable person',
     evidenceRequired: 'Reviewed cooperation arrangement document',
     retentionPeriodMonths: 120,
