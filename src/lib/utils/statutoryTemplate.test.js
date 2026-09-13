@@ -1,6 +1,7 @@
 // src/lib/utils/statutoryTemplate.test.js
 import { describe, it, expect } from 'vitest';
 import {
+  triggerTypeOf, TRIGGER_TYPE_LABEL,
   STATUTORY_TEMPLATE, TEMPLATE_KEYS, templateEntry, intervalNote,
   templateToObligation, templateCoverage, suggestMatches,
   BASIS, BASIS_LABEL, BASIS_DESCRIPTION, BASIS_RANK, GROUPS, GROUP_LABEL,
@@ -407,5 +408,52 @@ describe('the PEEP exclusion', () => {
     for (const e of STATUTORY_TEMPLATE) {
       expect(`${e.key} ${e.name} ${e.description}`.toLowerCase(), e.key).not.toMatch(/\bpeep|pcfra/);
     }
+  });
+});
+
+// Added 2026-09-13 on an external reviewer's point: "Interval" hid four
+// different mechanisms. What starts an obligation is not the same question as
+// how often it recurs, and for a couple of rows the honest answer is "someone
+// else tells us".
+describe('triggerTypeOf', () => {
+  it('calls a plain frequency a calendar cycle', () => {
+    expect(triggerTypeOf({ frequencyDays: 365 })).toBe('calendar');
+  });
+
+  it('calls a trigger with no frequency an event', () => {
+    expect(triggerTypeOf({ trigger: 'Before every intrusive work order' })).toBe('event');
+  });
+
+  it('recognises a direction from outside as its own thing', () => {
+    // The distinction that matters: until the regulator directs, there is
+    // nothing to schedule — so this must not read as a calendar cycle.
+    expect(triggerTypeOf({ trigger: 'When the regulator directs an application' })).toBe('direction');
+  });
+
+  it('lets an entry override the derivation', () => {
+    // PAT looks like a calendar and is legally a risk judgement.
+    expect(triggerTypeOf({ frequencyDays: 365, triggerType: 'risk' })).toBe('risk');
+    // The BAC has a nominal five years that is really a direction.
+    expect(triggerTypeOf({ frequencyDays: 1825, triggerType: 'direction' })).toBe('direction');
+  });
+
+  it('never returns undefined, whatever it is handed', () => {
+    for (const e of [null, undefined, {}, { frequencyDays: null }]) {
+      expect(TRIGGER_TYPE_LABEL[triggerTypeOf(e)]).toBeTruthy();
+    }
+  });
+
+  it('classifies every entry in the real register', () => {
+    for (const e of STATUTORY_TEMPLATE) {
+      expect(TRIGGER_TYPE_LABEL[triggerTypeOf(e)], e.key).toBeTruthy();
+    }
+  });
+
+  it('agrees with the register that some obligations are NOT calendar-driven', () => {
+    // If everything came out "calendar" the field would be decoration.
+    const kinds = new Set(STATUTORY_TEMPLATE.map(triggerTypeOf));
+    expect(kinds.has('calendar')).toBe(true);
+    expect(kinds.has('event')).toBe(true);
+    expect(kinds.size).toBeGreaterThan(2);
   });
 });

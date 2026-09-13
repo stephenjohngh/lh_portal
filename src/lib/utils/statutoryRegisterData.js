@@ -39,10 +39,22 @@
 // 10 from the Fire Safety (England) Regulations 2022 ones below — same numbers,
 // different instrument, unrelated subject. Never cross-reference the two.
 //
-// ⛔ DELIBERATELY EXCLUDED: PEEPs / PCFRAs. Decided 2026-09-10, reaffirmed
-// after the Lancaster document listed them. Resident personal data stays out of
-// this portal (Resident_System_Interface.md), and a PEEP is special-category
-// health data about a named person. Do not re-add.
+// ⛔ DELIBERATELY EXCLUDED: the CONTENT of PEEPs / PCFRAs. Decided 2026-09-10.
+// Resident personal data stays out of this portal (Resident_System_Interface.md),
+// and a personal evacuation plan is special-category health data about a named
+// person. Do not re-add the content.
+//
+// ⚠ BUT THE DUTIES ARE IN, and the distinction is the whole point — added
+// 2026-09-13 after external review found this the single biggest omission.
+// The Fire Safety (Residential Evacuation Plans) (England) Regulations 2025
+// (SI 2025/797) came into force **6 April 2026** and bind this building (reg 3:
+// two or more sets of domestic premises and at least seven storeys — we have
+// eight above ground). Excluding the DATA is a decision about where records
+// live. Excluding the DUTY would have been a hole in the register, and a
+// register that omits a live statutory duty is exactly what it exists to
+// prevent. See `evac_building_plan_review` and `evac_person_centred_review`:
+// the first holds no personal data at all, the second is recorded as an
+// interface to the responsible person's own process.
 //
 // ── The four fields that make an entry legible ──────────────────────────────
 // `basis`         WHERE THE REQUIREMENT COMES FROM — see BASIS in the logic
@@ -362,6 +374,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_monthly_equipment_check',
+    reviewerNote: 'The 24-hour fault report to the fire and rescue authority is an event-driven deadline attached to this check, not a cycle of its own.',
     name: 'Monthly check — firefighting equipment and facilities',
     description:
       'Monthly check of firefighting lifts, evacuation lifts and other firefighting equipment and facilities. '
@@ -454,6 +467,65 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Building is over 11 metres in height (always true for an HRB)',
   }),
+  // ── The 2025 residential evacuation regime (SI 2025/797, in force 6 Apr 2026)
+  // Added 2026-09-13 after external review. See the header note on why the
+  // PEEP-content exclusion does NOT exclude these duties.
+  entry({
+    key: 'evac_building_plan_review',
+    reviewerNote: 'Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the 12-month cycle is a floor, not the only trigger. The plan holds no resident personal data.',
+    name: 'Building emergency evacuation plan — review',
+    description:
+      'Review the building-level emergency evacuation plan and confirm it remains consistent with the '
+      + 'current evacuation strategy and the information held by the fire and rescue authority. Amended '
+      + 'plans go to the fire and rescue authority and into the secure information box.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 13 — "no later than 12 months after the date on which the plan is first prepared, and before the end of every period of 12 months thereafter"',
+    intervalBasis: 'stated',
+    frequencyDays: 365,
+    maxIntervalDays: 366,
+    triggerType: 'calendar',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person able to confirm the plan against the current fire strategy',
+    evidenceRequired: 'Dated reviewed plan; proof of issue to the fire and rescue authority and of the copy placed in the secure information box',
+    retentionPeriodMonths: 120,
+    handledBy: 'golden_thread',
+    handlingNote:
+      'A controlled document — it belongs in the register with its own review date. **It holds no resident '
+      + 'personal data**: it records whether relevant residents exist, not who they are. '
+      + '⚠ Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the '
+      + '12-month cycle is a floor, not the only trigger.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the building has two or more sets of domestic premises and at least seven storeys',
+  }),
+  entry({
+    key: 'evac_person_centred_review',
+    reviewerNote: 'INTERFACE ONLY — an RP-controlled record, deliberately not held in this system; what crosses is the dated confirmation that the review happened. Reg 9 also triggers on reason to believe an assessment needs amending and at the reasonable request of the resident, and an early review restarts the 12 months.',
+    name: 'Person-centred evacuation arrangements — review',
+    description:
+      'Confirm that the responsible person has reviewed each person-centred fire risk assessment, the '
+      + 'mitigating measures required with it, and each emergency evacuation statement.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), regs 5–10 — review at reg 9, every 12 months; information to the fire and rescue authority at reg 10',
+    intervalBasis: 'stated',
+    frequencyDays: 365,
+    maxIntervalDays: 366,
+    triggerType: 'calendar',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person competent to carry out a person-centred fire risk assessment',
+    evidenceRequired: 'Confirmation that the review happened and when — NOT the assessments themselves',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote:
+      '⛔ INTERFACE ONLY — an RP-controlled record, deliberately not held in this system. What crosses is '
+      + 'the fact that the review is due, and the dated confirmation that it happened; the assessments, the '
+      + 'statements and the residents they concern stay in the system that governs health data. '
+      + '⚠ Reg 9 also triggers on reason to believe an assessment needs amending and **at the reasonable '
+      + 'request of the resident**, and an early review restarts the 12 months. Nothing here detects either.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+  }),
   // Found 2026-09-11 while verifying the FSER citations against
   // legislation.gov.uk — the register held no entry for reg 5 at all. It is
   // event-driven rather than a cycle, which is presumably why it was missed:
@@ -462,6 +534,7 @@ export const REGISTER = [
   // from one nobody thought of.
   entry({
     key: 'fser_external_wall_record',
+    reviewerNote: 'Reg 5(3) fires on a significant change to the external walls. Nothing detects that automatically — it depends on someone raising it when works complete.',
     name: 'External wall record — revise after significant change',
     description:
       'Maintain the record of the external walls’ design and materials, and prepare a revised record '
@@ -539,11 +612,18 @@ export const REGISTER = [
     name: 'EICR — common parts and landlord supply',
     description: 'Periodic inspection and testing of the common-parts electrical installation.',
     group: 'other_statutory',
+    // The DUTY is statutory; the FIVE YEARS is not. EAWR 1989 requires the
+    // installation to be maintained so as to prevent danger and says nothing
+    // about intervals — HSE is explicit that no inspection frequency is set in
+    // law. BS 7671 supplies the recommended period. `intervalBasis: practice`
+    // already said this; the reference now says it too, because the badge on
+    // its own read as though five-yearly were the legal requirement.
     basis: 'statute',
-    statutoryRef: 'Electricity at Work Regulations 1989; BS 7671',
+    statutoryRef: 'Electricity at Work Regulations 1989 (the duty — maintain so as to prevent danger; NO interval in law); BS 7671 (the five-year recommended period)',
     intervalBasis: 'practice',
     frequencyDays: 1825,
     maxIntervalDays: 1826,
+    triggerType: 'calendar',
     responsibleParty: 'Electrical contractor',
     competencyRequired: 'Qualified electrician; NICEIC / NAPIT registered firm recommended',
     evidenceRequired: 'Electrical Installation Condition Report with observation codes and remedial actions',
@@ -588,17 +668,29 @@ export const REGISTER = [
   }),
   entry({
     key: 'pat_testing',
+    reviewerNote: 'OPEN QUESTION: annual testing should follow from a risk-based judgement about these appliances in this environment. If no such judgement has been made, the options are to make one and record it, lengthen the interval, or record a decision that it does not apply here.',
     name: 'Portable appliance testing',
     description: 'In-service inspection and testing of portable appliances in the common parts.',
     group: 'other_statutory',
+    // ⚠ Re-referenced 2026-09-13 after external review. HSE is unusually blunt
+    // here: the Regulations "don't make inspection or testing of electrical
+    // appliances a legal requirement, nor do they make it a legal requirement
+    // to undertake this annually." The duty is to maintain equipment so it does
+    // not give rise to danger; frequency is risk-based.
     basis: 'statute',
-    statutoryRef: 'Provision and Use of Work Equipment Regulations 1998; IET Code of Practice',
+    statutoryRef: 'Electricity at Work Regulations 1989 / PUWER 1998 (the duty — maintain so as to prevent danger); IET Code of Practice (the method). ⚠ There is NO legal requirement to PAT test, and none to do so annually',
     intervalBasis: 'practice',
     frequencyDays: 365,
+    triggerType: 'risk',
     responsibleParty: 'Managing agent',
     competencyRequired: 'Competent person for in-service testing',
     evidenceRequired: 'PAT log per appliance',
     handledBy: 'maintenance',
+    handlingNote:
+      '❓ OPEN QUESTION, raised by the external reviewer and not yet answered: annual testing should follow '
+      + 'from a risk-based judgement about these appliances in this environment. If no such judgement has '
+      + 'been made, the honest options are to make one and record it, lengthen the interval, or record a '
+      + 'decision that this does not apply here — not to keep an annual cycle because it sounds prudent.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'There are portable appliances in the common parts — concierge desk, communal kitchen, plant room',
   }),
@@ -817,30 +909,53 @@ export const REGISTER = [
   // ══ 3 · BSA-specific cycles ═════════════════════════════════════════════
   entry({
     key: 'scr_review',
-    name: 'Safety case report — review',
-    description: 'Full review of the safety case report, recording “no material change” where that is the finding.',
+    reviewerNote: 'This annual cycle must not displace the statutory trigger: a further risk assessment can be required at any time there is reason to suspect the current one is no longer valid, or at the regulator’s direction.',
+    name: 'Safety case report — annual governance review',
+    description:
+      'Our own scheduled review of the safety case report, recording “no material change” where that is '
+      + 'the finding. This is an assurance control, not a statutory cycle.',
     group: 'bsa_cycle',
-    basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022, s.83',
+    // ⚠ Corrected 2026-09-13 after external review. This cited s.83 and read as
+    // a statutory annual cycle. Both were wrong:
+    //   · s.83 is "Assessment of building safety risks" — the risk-assessment
+    //     duty, not the safety case report. The report is s.85.
+    //   · NOTHING prescribes an annual SCR review. s.83(2) requires further
+    //     assessment "at regular intervals", on reason to suspect the current
+    //     assessment is no longer valid, and on the regulator's direction —
+    //     event- and risk-driven, not a calendar year.
+    // The annual review is a good control. It is OURS, and is labelled so.
+    basis: 'management',
+    statutoryRef: 'Self-imposed governance cycle over the BSA 2022 ss.83–85 duties; no statutory annual review exists',
     intervalBasis: 'practice',
     frequencyDays: 365,
+    triggerType: 'calendar',
     responsibleParty: 'Principal accountable person',
     evidenceRequired: 'Reviewed safety case report and the review record',
     retentionPeriodMonths: 120,
     handledBy: 'golden_thread',
-    handlingNote: 'The Safety Case tab builds the report on demand; migration 202 logs each revision.',
+    handlingNote:
+      'The Safety Case tab builds the report on demand; migration 202 logs each revision. '
+      + '⚠ Do not let this annual cycle displace the statutory trigger: s.83(2) can require a further '
+      + 'assessment at any time, and the report must be revised when the risk picture changes.',
     evidencedBy: null,
     appliesWhen: 'Always for an HRB',
   }),
   entry({
     key: 'scr_resubmission',
-    name: 'Safety case report — notify the regulator of a revision',
-    description: 'Notify the BSR when the safety case report is revised, and record the reference given.',
+    name: 'Safety case report — notify the regulator on preparation or revision',
+    description:
+      'Notify the regulator as soon as reasonably practicable after preparing OR revising the safety case '
+      + 'report, and record the reference given.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022, s.86',
+    statutoryRef: 'Building Safety Act 2022, s.86 — "as soon as reasonably practicable after preparing or revising a safety case report"',
     intervalBasis: 'stated',
-    trigger: 'On material change, or on BSR direction',
+    // ⚠ Corrected 2026-09-13. The trigger read "on material change, or on BSR
+    // direction", which is narrower than the section and would have let a
+    // revision go unnotified: s.86 fires on ANY preparation or revision,
+    // whether or not we judged the change material and whether or not the
+    // regulator asked. A separate duty at s.86(2) supplies a copy on request.
+    trigger: 'Whenever the safety case report is prepared or revised — not only on a change we judge material',
     responsibleParty: 'Principal accountable person',
     evidenceRequired: 'BSR receipt and the safety case version record',
     retentionPeriodMonths: 120,
@@ -851,15 +966,23 @@ export const REGISTER = [
   }),
   entry({
     key: 'kbi_update',
-    name: 'Key building information — review',
-    description: 'Review the key building information held by the regulator and resubmit on change.',
+    name: 'Key building information — assurance review',
+    // ⚠ Reworded 2026-09-13 after external review. The statutory duty is to
+    // notify a CHANGE within the required period — there is no statutory
+    // annual KBI review. Our annual pass is the control that catches a change
+    // nobody noticed at the time, so it is described as checking our own record
+    // and confirming notifications went out, not as reviewing the regulator's.
+    description:
+      'Review the key building information held in our own controlled record, and confirm that any change '
+      + 'has been identified and notified to the regulator within the required period.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Higher-Risk Buildings (Keeping and Provision of Information etc.) Regs 2024 (SI 2024/41), reg 5',
+    statutoryRef: 'Higher-Risk Buildings (Keeping and Provision of Information etc.) Regs 2024 (SI 2024/41), reg 5 — the duty is to notify CHANGES, not to review annually',
     intervalBasis: 'practice',
     frequencyDays: 365,
+    triggerType: 'calendar',
     responsibleParty: 'Principal accountable person',
-    evidenceRequired: 'KBI submission record',
+    evidenceRequired: 'KBI submission record, and the dated confirmation that no unnotified change exists',
     retentionPeriodMonths: 120,
     handledBy: 'none',
     handlingNote: '⚠ No home. KBI is not modelled anywhere in the portal.',
@@ -868,18 +991,38 @@ export const REGISTER = [
   }),
   entry({
     key: 'bac_renewal',
-    name: 'Building assessment certificate — renewal',
-    description: 'Track the building assessment certificate and its renewal or re-direction by the regulator.',
+    reviewerNote: 'The five-year figure is a planning assumption. What actually starts this is a direction from the regulator, which can come sooner after significant change, a safety-management concern, an incident, or completed improvement work.',
+    name: 'Building assessment certificate — track validity and reassessment',
+    description:
+      'Track the current building assessment certificate, and apply when the regulator directs. '
+      + 'Reassessment is normally no later than five years, and can be sooner.',
     group: 'bsa_cycle',
+    // ⚠ Corrected 2026-09-13 after external review. Three things were wrong:
+    //   · it cited s.86, which is safety-case-report notification. The BAC is
+    //     ss.79–81 (79 duty to apply, 80 applications, 81 certificates).
+    //   · "renewal" implies we drive it. We do not — **the regulator DIRECTS a
+    //     PAP to apply; a PAP cannot self-nominate.** The duty at s.79 is to
+    //     apply when directed.
+    //   · the five years is **regulator policy, not a statutory maximum.** The
+    //     reviewer described it as provided by the regulations; that could not
+    //     be verified — s.81 leaves the period to regulations and sets none,
+    //     and SI 2023/907 reg 3 does not state one. BSR states it aims to
+    //     reassess at least every five years, sooner where circumstances
+    //     warrant. So the cycle is a planning assumption, not a deadline.
     basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022, s.86',
+    statutoryRef: 'Building Safety Act 2022, ss.79–81; five-year reassessment is regulator policy, not a statutory maximum',
     intervalBasis: 'practice',
     frequencyDays: 1825,
+    triggerType: 'direction',
     responsibleParty: 'Principal accountable person',
-    evidenceRequired: 'BAC certificate and BSR correspondence',
+    evidenceRequired: 'BAC certificate and regulator correspondence, including any direction to apply',
     retentionPeriodMonths: 120,
     handledBy: 'admin',
-    handlingNote: 'The BAC is one of the s.82 display register’s guaranteed slots.',
+    handlingNote:
+      'The BAC is one of the s.82 display register’s guaranteed slots. '
+      + '⚠ The five-year figure is a planning assumption only — what actually starts this is a direction '
+      + 'from the regulator, which can come sooner after significant change, a safety-management concern, '
+      + 'an incident, or completed improvement work.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always for an HRB',
   }),
@@ -1039,6 +1182,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'complaints_report_publication',
+    reviewerNote: 'FOR CONFIRMATION: whether the Housing Ombudsman Complaint Handling Code binds a private leasehold company. If it does not, this becomes a candidate for a recorded decision that it does not apply, rather than a cycle.',
     name: 'Complaints — annual performance report',
     description: 'Publish the annual complaints performance report to residents.',
     group: 'bsa_cycle',

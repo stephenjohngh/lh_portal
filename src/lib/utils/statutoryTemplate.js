@@ -135,6 +135,51 @@ export function supersededNote(entry) {
 }
 
 /**
+ * What actually makes this obligation fall due.
+ *
+ * Added 2026-09-13 on an external reviewer's point: `intervalBasis` says where
+ * a frequency came FROM, but nothing said what *starts* the obligation, and
+ * there are four different mechanisms hiding behind one "Interval" column:
+ *
+ *   calendar  — a clock. Weekly, monthly, five-yearly.
+ *   event     — something happens. Works begin, the walls change, a report is
+ *               revised, an occurrence is identified.
+ *   risk      — a judgement. Condition, deterioration, or a previous finding
+ *               says look again, and how often is ours to justify.
+ *   direction — someone external tells us to, and until they do there is
+ *               nothing to schedule. The regulator directing a BAC application
+ *               is the clear case, and it is NOT a five-year clock.
+ *
+ * **Why this is derived rather than a field on all eighty entries:** the answer
+ * is already implicit in `trigger` and `frequencyDays`, and a hand-tagged
+ * duplicate of a fact we already hold is a fact that can disagree with itself.
+ * An entry may still set `triggerType` explicitly where the derivation would be
+ * wrong — PAT is a calendar in practice but a risk judgement in law, and the
+ * BAC has a nominal five years that is really a direction.
+ *
+ * @param {TemplateEntry|null} entry
+ * @returns {'calendar'|'event'|'risk'|'direction'}
+ */
+export function triggerTypeOf(entry) {
+  if (!entry) return 'event';
+  if (entry.triggerType) return entry.triggerType;
+  if (entry.trigger) {
+    return /direct|instruct|when the regulator|on request/i.test(entry.trigger)
+      ? 'direction'
+      : 'event';
+  }
+  return entry.frequencyDays ? 'calendar' : 'event';
+}
+
+/** Display labels for the four trigger types. */
+export const TRIGGER_TYPE_LABEL = {
+  calendar:  'Calendar',
+  event:     'Event',
+  risk:      'Risk or condition',
+  direction: 'On direction',
+};
+
+/**
  * Short note on where the interval comes from — shown next to the frequency so
  * a conventional interval is never read as a legal one.
  * @param {TemplateEntry|null} entry
