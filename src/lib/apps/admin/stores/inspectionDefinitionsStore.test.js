@@ -6,6 +6,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
+// Read register values rather than transcribing them — a corrected citation or
+// a renamed entry must not fail a test about store behaviour. See the note at
+// the top of src/lib/utils/statutoryTemplate.test.js.
+import { templateEntry } from '$lib/utils/statutoryTemplate.js';
 
 const h = vi.hoisted(() => {
   const api = {
@@ -245,15 +249,16 @@ describe('applyTemplate', () => {
 
     const row = h.api.create.mock.calls[0][1];
     expect(h.api.create.mock.calls[0][0]).toBe('statutory_obligations');
+    const entry = templateEntry('lift_loler_examination');
     expect(row).toMatchObject({
-      name: 'Lift — LOLER thorough examination',
-      template_key: 'lift_loler_examination',
-      frequency_days: 182,   // six-monthly for lifting equipment carrying people
-      evidenced_by: 'maintenance_job',
+      name: entry.name,
+      template_key: entry.key,
+      frequency_days: entry.frequencyDays,
+      evidenced_by: entry.evidencedBy,
       created_by: 'u1',
       updated_by: 'u1',
     });
-    expect(row.statutory_ref).toMatch(/Lifting Operations/);
+    expect(row.statutory_ref).toBe(entry.statutoryRef);
   });
 
   it('applies in template order regardless of the order asked for, and ignores unknown keys', async () => {
@@ -266,7 +271,7 @@ describe('applyTemplate', () => {
   it('reports a partial apply rather than failing the whole batch', async () => {
     h.api.create
       .mockRejectedValueOnce(new Error('duplicate name'))
-      .mockResolvedValueOnce({ id: 'd2', name: 'Lift — LOLER thorough examination' });
+      .mockResolvedValueOnce({ id: 'd2', name: templateEntry('lift_loler_examination').name });
 
     const { created, failed } = await defs.applyTemplate(['fser_communal_fire_doors', 'lift_loler_examination']);
     expect(created).toHaveLength(1);
@@ -286,7 +291,7 @@ describe('applyTemplate', () => {
   it('audits each creation with the template key', async () => {
     await defs.applyTemplate(['lift_loler_examination']);
     expect(h.logAudit).toHaveBeenCalledWith(
-      'create', 'inspection_definition', expect.any(String), 'Lift — LOLER thorough examination',
+      'create', 'inspection_definition', expect.any(String), templateEntry('lift_loler_examination').name,
       expect.objectContaining({ afterData: expect.objectContaining({ template_key: 'lift_loler_examination' }) }),
     );
   });
@@ -407,7 +412,7 @@ describe('exclusion decisions', () => {
     h.api.create.mockResolvedValueOnce({ id: 'x9' });
     await defs.recordExclusionDecision('lift_loler_examination', 'not_applicable', 'No dwelling let on a relevant tenancy');
     expect(h.logAudit).toHaveBeenCalledWith(
-      'create', 'statutory_exclusion', 'x9', 'Lift — LOLER thorough examination',
+      'create', 'statutory_exclusion', 'x9', templateEntry('lift_loler_examination').name,
       expect.objectContaining({
         severity: 'warning',
         afterData: expect.objectContaining({
@@ -424,7 +429,7 @@ describe('exclusion decisions', () => {
     h.api.create.mockResolvedValueOnce({ id: 'x8' });
     await defs.recordExclusionDecision('lift_loler_examination', 'applicable', 'A flat is now let on an AST');
     expect(h.logAudit).toHaveBeenCalledWith(
-      'create', 'statutory_exclusion', 'x8', 'Lift — LOLER thorough examination',
+      'create', 'statutory_exclusion', 'x8', templateEntry('lift_loler_examination').name,
       expect.objectContaining({ severity: 'info' }),
     );
   });

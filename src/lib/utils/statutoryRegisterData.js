@@ -384,25 +384,45 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_monthly_equipment_check',
-    reviewerNote: 'The 24-hour fault report to the fire and rescue authority is an event-driven deadline attached to this check, not a cycle of its own.',
-    name: 'Monthly check — firefighters’ lifts and evacuation lifts',
+    reviewerNote:
+      'Reg 7(1) is ONE statutory duty over three things — firefighters’ lifts, evacuation lifts and '
+      + '"essential fire-fighting equipment". It is carried on two rows here because two different walks '
+      + 'do it, NOT because there are two legal cycles. This row names the reg 6(7) equipment explicitly '
+      + 'so that "show me the monthly statutory check for the dry riser" has one unambiguous answer. '
+      + 'Two things attach to the check and are easy to lose: the record must be made ACCESSIBLE TO '
+      + 'RESIDENTS (reg 7(4)), and a fault not rectified within 24 hours must be reported to the fire and '
+      + 'rescue authority electronically — AND its rectification reported when it is fixed (reg 7(3)).',
+    name: 'Monthly check — firefighters’ lifts, evacuation lifts, rising mains, smoke control and suppression',
     description:
-      'Monthly routine check that lifts for use by firefighters and any evacuation lifts are in efficient '
-      + 'working order and good repair. A fault that cannot be rectified within 24 hours must be reported '
-      + 'to the fire and rescue authority.',
+      'Monthly routine check that lifts for use by firefighters, any evacuation lifts, and the key '
+      + 'fire-fighting equipment — dry and wet rising main inlets and outlets, the smoke control system '
+      + 'and the suppression system — are in efficient working order and good repair. Where a fault '
+      + 'cannot be rectified within 24 hours it must be reported to the fire and rescue authority by '
+      + 'electronic means, and its rectification reported in the same way once fixed.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1)(a)–(b)',
+    // Named per reg 6(7) after the third review round. "Essential fire-fighting
+    // equipment" at reg 7(5) is key fire-fighting equipment as defined by
+    // reg 6(7) — rising main inlets and outlets, smoke control, suppression —
+    // PLUS the common-parts systems on the next row. Verified against
+    // legislation.gov.uk 2026-09-13; reg 7(1)(a)–(b) alone did not reach them.
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1); "essential fire-fighting equipment" defined at reg 7(5) by reference to the key fire-fighting equipment at reg 6(7); fault reporting reg 7(3); record and resident access reg 7(4)',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
+    triggerType: 'calendar',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Competent person familiar with the installed equipment',
-    evidenceRequired: 'Monthly check record; separate record of any 24-hour fault report to the fire and rescue authority',
+    evidenceRequired:
+      'Monthly check record naming each item checked, made accessible to residents (reg 7(4)); separate '
+      + 'record of any 24-hour fault report to the fire and rescue authority AND of the rectification '
+      + 'report that closes it',
     handledBy: 'inspection',
     handlingNote:
-      '⚠ The 24-hour FAULT REPORT to the fire and rescue service has no home in the portal — '
-      + 'it is an event-driven deadline, not a cycle. Still open.',
+      '⚠ Two things attached to this check have NO home in the portal: the 24-hour FAULT REPORT and the '
+      + 'RECTIFICATION report that closes it (both event-driven deadlines, not cycles), and the duty to '
+      + 'make the record accessible to residents — the Info app could publish it, nothing does today. '
+      + 'Still open.',
     evidencedBy: 'inspection',
     appliesWhen: 'Always — the building is a high-rise residential building for these Regulations',
   }),
@@ -427,15 +447,23 @@ export const REGISTER = [
       + 'in efficient working order and good repair.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1) and the definition of essential fire-fighting equipment at reg 7(5)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 7(1); "essential fire-fighting equipment" defined at reg 7(5)(a)–(c); fault reporting reg 7(3); record and resident access reg 7(4)',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
     triggerType: 'calendar',
-    reviewerNote: 'This does NOT replace the weekly alarm test or the six-monthly alarm and smoke-control servicing, and they do not replace it — those are maintenance under their own standards, this is a statutory monthly check by the responsible person. A fault that cannot be rectified within 24 hours must be reported to the fire and rescue authority.',
+    reviewerNote:
+      'The other half of the single reg 7(1) duty — see the preceding row; two walks, not two legal '
+      + 'cycles. This does NOT replace the weekly alarm test or the six-monthly alarm and smoke-control '
+      + 'servicing, and they do not replace it — those are maintenance under their own standards, this '
+      + 'is a statutory monthly check by the responsible person. The record must be made accessible to '
+      + 'residents (reg 7(4)); a fault not rectified within 24 hours must be reported to the fire and '
+      + 'rescue authority, and its rectification reported when fixed (reg 7(3)).',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Competent person familiar with the installed systems',
-    evidenceRequired: 'Monthly check record per system; separate record of any 24-hour fault report',
+    evidenceRequired:
+      'Monthly check record per system, made accessible to residents (reg 7(4)); separate record of any '
+      + '24-hour fault report AND of the rectification report that closes it',
     handledBy: 'inspection',
     handlingNote: 'An inspection walk scoped to the alarm panel, linked detectors, evacuation alert and door releases.',
     evidencedBy: 'inspection',
@@ -493,29 +521,210 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
   }),
+  // ⚠ SPLIT INTO TWO 2026-09-13, third review round, and the reviewer's reason
+  // is the important part: an annual confirmation must not be allowed to read
+  // as the trigger. Reg 6(6) requires the plans to be updated as soon as
+  // reasonably practicable after a change to the LAYOUT of the building or the
+  // LOCATION of key fire-fighting equipment. That is the duty. The annual pass
+  // is ours, and it is a net for a change nobody told us about — not the
+  // obligation itself. This also connects visibly to the building-work
+  // screening control, which exists to catch such changes before they happen.
   entry({
-    key: 'frs_plans_current',
-    name: 'Fire and rescue service plans — confirm current',
-    description: 'Confirm the floor plans and building plan held by the fire and rescue service still reflect the building.',
+    key: 'frs_plans_update_on_change',
+    reviewerNote:
+      'This is the statutory duty; the annual confirmation on the next row is our own assurance net and '
+      + 'must not be mistaken for the trigger. ⚠ Reg 11 requires the reg 6 plans to be provided to the '
+      + 'fire and rescue authority by electronic means. Read with reg 6(6) an updated plan is the reg 6 '
+      + 'plan and so goes the same way — but note that reg 11 does not in terms spell out re-provision '
+      + 'of a revised version, so we treat re-issue as required rather than relying on it being stated.',
+    name: 'Fire and rescue service plans — update on change',
+    description:
+      'Update the floor plans and the building plan as soon as reasonably practicable after any change '
+      + 'to the layout of the building or to the location of key fire-fighting equipment, place the '
+      + 'revised hard copies in the secure information box, and re-issue to the fire and rescue '
+      + 'authority by electronic means.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 6 (prepare and update the plans); reg 11 (provide them to the fire and rescue authority)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 6(6) (update as soon as reasonably practicable after a change of layout or of the location of key fire-fighting equipment); reg 6(5) (hard copies in the secure information box); reg 11 (provide to the fire and rescue authority by electronic means)',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'Any change to the layout of the building, or to the location of key fire-fighting equipment — rising main inlets and outlets, smoke control, suppression',
+    triggerType: 'event',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person who can confirm the plans against the building as built',
+    evidenceRequired: 'The revised plans, dated; proof of electronic re-issue to the fire and rescue authority; record of the hard copies placed in the secure information box',
+    retentionPeriodMonths: 120,
+    handledBy: 'building_assets',
+    handlingNote:
+      '⚠ Nothing detects the trigger. The plans are Building Assets floor plans and the building-work '
+      + 'screening control is meant to catch layout changes before they happen — but the two are not '
+      + 'wired together, so this depends on a person raising it.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
+  }),
+  entry({
+    key: 'frs_plans_current',
+    reviewerNote: 'This annual pass is OUR control, not a statutory cycle — the statutory duty is the event-driven update on the preceding row. It exists to catch a change nobody told us about.',
+    name: 'Fire and rescue service plans — annual confirmation',
+    description: 'Confirm the floor plans and building plan held by the fire and rescue service still reflect the building.',
+    group: 'fire_safety',
+    // Re-based 2026-09-13: reg 6 states no calendar interval, so calling this
+    // row "statute" put a legal badge on a cycle we invented. The duty is the
+    // event-driven row above; this is the assurance control over it.
+    basis: 'management',
+    statutoryRef: 'Our own assurance control over the duty at FSER 2022 reg 6(6); no interval is stated anywhere in the Regulations',
     intervalBasis: 'practice',
     frequencyDays: 365,
+    triggerType: 'calendar',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person who can confirm the plans against the building as built',
     evidenceRequired: 'Record of the check and of any re-issue to the fire and rescue service',
     handledBy: 'building_assets',
-    handlingNote:
-      'The plans themselves are Building Assets floor plans; re-issue is a manual step. '
-      + 'Reg 6 requires updating "as soon as reasonably practicable" after a change — it states NO calendar interval, '
-      + 'so the annual confirmation is our own safety net against a change nobody noticed.',
+    handlingNote: 'The plans themselves are Building Assets floor plans; re-issue is a manual step.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always — the building is a high-rise residential building (FSER 2022 reg 3: at least 18 metres or at least 7 storeys, with two or more sets of domestic premises)',
   }),
   // ── The 2025 residential evacuation regime (SI 2025/797, in force 6 Apr 2026)
   // Added 2026-09-13 after external review. See the header note on why the
   // PEEP-content exclusion does NOT exclude these duties.
+  //
+  // ⚠ WIDENED in the third review round, and the reviewer's framing was exact:
+  // "your current row starts at step 6." SI 2025/797 is a PROCESS, not a pair
+  // of annual reviews. Verified against the instrument's own contents page:
+  //
+  //   reg 5  identification of relevant residents
+  //   reg 6  person-centred fire risk assessment
+  //   reg 7  mitigation of risks
+  //   reg 8  emergency evacuation statement
+  //   reg 9  review by the responsible person        ← we had only this
+  //   reg 10 provision of information to the local fire and rescue authority
+  //   reg 11 relevant resident's representative
+  //   reg 12 data protection
+  //   reg 13 building emergency evacuation plan      ← and the review half of this
+  //
+  // The four rows below close regs 5–8, 10 and 13's preparation duty.
+  //
+  // ⛔ THEY DO NOT REOPEN THE RESIDENT-DATA DECISION, and must not be built as
+  // if they did. Each is an INTERFACE row: this system holds only whether the
+  // process exists, whether it is current, who owns it, the date it was last
+  // confirmed, and any recorded exception. The assessments themselves, the
+  // statements, the residents they concern and the flat/floor/assistance
+  // details that reg 10 puts into the fire and rescue authority's hands stay in
+  // the system that governs health data — which is the whole point of reg 12.
+  entry({
+    key: 'evac_resident_identification',
+    reviewerNote:
+      'The duty begins long before the annual review: reasonable endeavours to identify relevant '
+      + 'residents (reg 5), an offer of a person-centred fire risk assessment, and one carried out where '
+      + 'the resident asks (reg 6). We confirm the process is operated; we do not hold its contents.',
+    name: 'Residential evacuation — identification and assessment interface',
+    description:
+      'Confirm that the responsible person operates the statutory process for identifying relevant '
+      + 'residents and for offering and carrying out person-centred fire risk assessments. What crosses '
+      + 'to this system is that the process exists, is current, who owns it and the date last confirmed '
+      + '— never who the residents are or what any assessment says.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 5 (identification of relevant residents) and reg 6 (person-centred fire risk assessment)',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    triggerType: 'calendar',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person able to confirm the process is operated, without seeing its contents',
+    evidenceRequired: 'Dated confirmation from the responsible person that the process is operated — NOT the resident list and NOT any assessment',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote:
+      '⛔ INTERFACE ONLY — see Resident_System_Interface.md. No home in the portal: it needs the '
+      + 'confirmation channel, which is X1/X2 work, not code here. The annual cadence is OURS — the '
+      + 'Regulations state no interval for regs 5–6, the duty is continuous.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+  }),
+  entry({
+    key: 'evac_mitigation_statements',
+    reviewerNote:
+      'Regs 7 and 8 are where the process produces something: mitigating measures that are reasonable '
+      + 'and proportionate, and an emergency evacuation statement agreed and recorded where that is '
+      + 'possible. A register that jumps from "assessment offered" to "reviewed annually" skips the part '
+      + 'that actually protects the resident.',
+    name: 'Residential evacuation — mitigation and evacuation statement interface',
+    description:
+      'Confirm that required mitigating measures and emergency evacuation statements are being '
+      + 'determined, recorded and kept current by the responsible person. This system holds the fact and '
+      + 'the date, not the measures or the statements.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 7 (mitigation of risks) and reg 8 (emergency evacuation statement)',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    triggerType: 'calendar',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person able to confirm the process is operated, without seeing its contents',
+    evidenceRequired: 'Dated confirmation that measures and statements are in place and current, with any recorded exception — NOT the measures or the statements',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⛔ INTERFACE ONLY. No home in the portal; the annual cadence is ours, the underlying duty is continuous.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+  }),
+  entry({
+    key: 'evac_frs_information',
+    reviewerNote:
+      '⚠ CONSENT IS PART OF THE DUTY, not a courtesy. Reg 10 requires prescribed information to reach '
+      + 'the fire and rescue authority — flat and floor number, the degree of assistance the resident '
+      + 'may need, and whether an emergency evacuation statement exists — but only where the resident '
+      + 'has explicitly consented to it being provided. Operating this without consent is a data '
+      + 'protection failure as well as a compliance one; reg 12 is there for exactly this.',
+    name: 'Residential evacuation — fire and rescue authority information interface',
+    description:
+      'Confirm that the statutory information-sharing process with the fire and rescue authority is '
+      + 'operated, including obtaining and recording the resident’s explicit consent where the '
+      + 'information can only be provided with it. This system records that the process runs and when it '
+      + 'was last confirmed; the prescribed resident details never enter it.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 10 (provision of information to the local fire and rescue authority), with reg 12 (data protection)',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    triggerType: 'calendar',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person able to confirm the process is operated, without seeing its contents',
+    evidenceRequired: 'Dated confirmation that the information-sharing process is operated and that consent is obtained and recorded where required — NOT the information itself',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⛔ INTERFACE ONLY. No home in the portal; the annual cadence is ours, the underlying duty is continuous.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the duty exists whether or not any relevant resident is currently identified',
+  }),
+  // The PREPARATION half of reg 13. The review half is the row after it. These
+  // are separated because the reviewer was right that a review row alone reads
+  // as though the plan already exists — and for a building that has not yet
+  // prepared one, the first duty is not a review.
+  entry({
+    key: 'evac_building_plan_prepare',
+    reviewerNote: 'Distinct from the annual review: reg 13 first requires the plan to be PREPARED, provided to the local fire and rescue authority, and a copy placed in the secure information box where the building has one.',
+    name: 'Building emergency evacuation plan — prepare and issue',
+    description:
+      'Prepare the building emergency evacuation plan, provide it to the local fire and rescue '
+      + 'authority, and place a copy in the secure information box. The same steps follow every '
+      + 'amendment made as a result of a review.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 13 — prepare the plan, provide it to the local fire and rescue authority, and place a copy in the secure information box',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'First preparation of the plan, and every amendment arising from a review',
+    triggerType: 'event',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person competent to write the plan against the building’s evacuation strategy',
+    evidenceRequired: 'The plan itself, dated; proof of issue to the fire and rescue authority; record of the copy placed in the secure information box',
+    retentionPeriodMonths: 120,
+    handledBy: 'golden_thread',
+    handlingNote: 'A controlled document — it belongs in the Golden Thread register alongside its reviews. It holds no resident personal data.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the building has two or more sets of domestic premises and at least seven storeys',
+  }),
   entry({
     key: 'evac_building_plan_review',
     reviewerNote: 'Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the 12-month cycle is a floor, not the only trigger. The plan holds no resident personal data.',
@@ -553,7 +762,10 @@ export const REGISTER = [
       + 'mitigating measures required with it, and each emergency evacuation statement.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), regs 5–10 — review at reg 9, every 12 months; information to the fire and rescue authority at reg 10',
+    // Narrowed 2026-09-13: this row used to cite "regs 5–10", which claimed
+    // coverage of the whole process while describing only the review. Regs 5–8
+    // and reg 10 now have their own rows; this is reg 9 and nothing else.
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 9 — review by the responsible person, every 12 months',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -580,19 +792,31 @@ export const REGISTER = [
   // from one nobody thought of.
   entry({
     key: 'fser_external_wall_record',
-    reviewerNote: 'Reg 5(3) fires on a significant change to the external walls. Nothing detects that automatically — it depends on someone raising it when works complete.',
+    reviewerNote:
+      'Reg 5(3) fires on a significant change to the external walls. Nothing detects that automatically '
+      + '— it depends on someone raising it when works complete. ⚠ The record is not just a description '
+      + 'of the build-up: reg 5(2) requires it to carry the level of risk the fire risk assessment '
+      + 'identifies from that design and those materials, and the mitigating steps taken. A record '
+      + 'without those two is incomplete as a matter of law.',
     name: 'External wall record — revise after significant change',
     description:
-      'Maintain the record of the external walls’ design and materials, and prepare a revised record '
-      + 'after any significant change to them.',
+      'Maintain the record of the external walls’ design and materials, INCLUDING the level of risk that '
+      + 'the fire risk assessment identifies as arising from that design and those materials and the '
+      + 'steps taken to mitigate it, and prepare a revised record after any significant change to them. '
+      + 'The record goes to the fire and rescue authority by electronic means.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 5(1) (the record) and reg 5(3) (revision on significant change)',
+    // The risk level and mitigating steps are reg 5(2) and were missing until
+    // the third review round — a content omission, not a wording one. Verified
+    // against legislation.gov.uk 2026-09-13: 5(1) the record, 5(2) what it must
+    // contain, 5(3) revision on significant change, reg 11 provision to the
+    // fire and rescue authority by electronic means.
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 5(1) (the record), reg 5(2) (risk level from the FRA and mitigating steps), reg 5(3) (revision on significant change), reg 11 (provide to the fire and rescue authority by electronic means)',
     intervalBasis: 'stated',
     trigger: 'Any significant change to the external walls — recladding, balcony works, insulation, render',
     responsibleParty: 'Responsible person',
-    competencyRequired: 'Person able to describe the wall build-up and materials accurately',
-    evidenceRequired: 'The record itself, dated, with each revision retained',
+    competencyRequired: 'Person able to describe the wall build-up and materials accurately, working from the current fire risk assessment',
+    evidenceRequired: 'The record itself, dated, carrying the design and materials, the FRA risk level and the mitigating steps, with each revision retained and proof of electronic provision to the fire and rescue authority',
     retentionPeriodMonths: 120,
     handledBy: 'golden_thread',
     handlingNote:
@@ -608,7 +832,7 @@ export const REGISTER = [
     description: 'Re-issue the fire safety instructions and evacuation information to all residents.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 9(3) — "within each period of 12 months"; fire door information reg 10(1)–(3)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 9(3) — "within each period of 12 months"',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -621,6 +845,46 @@ export const REGISTER = [
     // sets of domestic premises and common parts. Applying the high-rise test
     // here would have narrowed a duty that is in fact wider.
     appliesWhen: 'Always — reg 9 applies to any building with two or more sets of domestic premises and common parts, with no height threshold',
+  }),
+  // ⚠ SPLIT OUT 2026-09-13, third review round. This used to be four words
+  // appended to the reg 9(3) row's citation ("fire door information reg
+  // 10(1)–(3)") while that row's task said only "re-issue the fire safety
+  // instructions" — the citation was doing work the task did not describe,
+  // which is how a duty gets cited and then not done. Reg 10(1)–(3) is its own
+  // duty with its own content and its own timing, so it is its own row.
+  entry({
+    key: 'fire_door_resident_information',
+    reviewerNote:
+      'Three specific things must be conveyed, and a general fire safety leaflet does not do it: fire '
+      + 'doors are to be kept shut when not in use, self-closing devices are not to be tampered with, '
+      + 'and faults or damage are to be reported immediately. Reg 10(3) also requires it to reach a new '
+      + 'resident on becoming a resident, not only on the annual cycle.',
+    name: 'Fire door information to residents',
+    description:
+      'Give every resident the prescribed fire door information: that fire doors should be kept shut '
+      + 'when not in use, that self-closing devices must not be tampered with, and that any fault or '
+      + 'damage to a fire door should be reported immediately. Issued at least every 12 months, and to '
+      + 'each new resident on becoming a resident.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(1)–(2) (the information) and reg 10(3) (when it must be given)',
+    intervalBasis: 'stated',
+    frequencyDays: 365,
+    maxIntervalDays: 366,
+    triggerType: 'calendar',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person issuing resident communications',
+    evidenceRequired: 'The issued wording, dated, with the distribution record; separate record of issue to each new resident',
+    retentionPeriodMonths: 36,
+    handledBy: 'info',
+    handlingNote:
+      'Publishable through the Info app alongside the reg 9 instructions. ⚠ The per-resident issue on '
+      + 'becoming a resident has no home — it needs the resident system, not this one.',
+    evidencedBy: 'maintenance_job',
+    // Same reasoning as reg 9: reg 10(1) keys on a building containing two or
+    // more sets of domestic premises, not on a height threshold. The 11 m test
+    // in reg 10(8) governs the CHECKS at 10(4)/10(6), not this information.
+    appliesWhen: 'Always — reg 10(1) applies to a building with two or more sets of domestic premises; the 11-metre test governs the door checks, not the information',
   }),
   entry({
     key: 'escape_route_obstruction',
@@ -671,7 +935,12 @@ export const REGISTER = [
     statutoryRef: 'Electricity at Work Regulations 1989 (the duty — maintain so as to prevent danger; NO interval in law); BS 7671 (the five-year recommended period)',
     intervalBasis: 'practice',
     frequencyDays: 1825,
-    maxIntervalDays: 1826,
+    // Deliberately NULL. Nothing permits five years, so there is no maximum
+    // permitted interval to state — carrying one contradicted this row's own
+    // reference and put a legal ceiling on an interval we chose. Third review
+    // round. ⚠ Do NOT apply this to eicr_dwellings: SI 2020/312 reg 3 really
+    // does set a five-year statutory maximum for a rented dwelling.
+    maxIntervalDays: null,
     triggerType: 'calendar',
     responsibleParty: 'Electrical contractor',
     competencyRequired: 'Qualified electrician; NICEIC / NAPIT registered firm recommended',
@@ -726,8 +995,14 @@ export const REGISTER = [
     // appliances a legal requirement, nor do they make it a legal requirement
     // to undertake this annually." The duty is to maintain equipment so it does
     // not give rise to danger; frequency is risk-based.
-    basis: 'statute',
-    statutoryRef: 'Electricity at Work Regulations 1989 / PUWER 1998 (the duty — maintain so as to prevent danger); IET Code of Practice (the method). ⚠ There is NO legal requirement to PAT test, and none to do so annually',
+    // Re-based 2026-09-13, third review round, and the reviewer was plainly
+    // right: the row's own text said there is NO legal requirement to PAT test
+    // and none to do so annually, while the badge said Legislation. The
+    // underlying duty — maintain electrical equipment so as to prevent danger —
+    // is statutory and is named in the reference. The testing PROGRAMME is our
+    // risk-based choice, so that is what the basis now says.
+    basis: 'management',
+    statutoryRef: 'Our own risk-based control. Underlying duty: Electricity at Work Regulations 1989 / PUWER 1998 — maintain equipment so as to prevent danger. Method: IET Code of Practice. ⚠ There is NO legal requirement to PAT test, and none to do so annually',
     intervalBasis: 'practice',
     frequencyDays: 365,
     triggerType: 'risk',
@@ -754,21 +1029,41 @@ export const REGISTER = [
   // registered engineer, CP12 record.
   entry({
     key: 'lift_loler_examination',
-    name: 'Lift — LOLER thorough examination',
-    description: 'Thorough examination of each passenger lift by a competent person.',
+    reviewerNote:
+      '❓ APPLICABILITY QUESTION FOR THE DUTY HOLDER, raised in the third review round and not yet '
+      + 'answered. LOLER bites on WORK equipment. HSE is explicit that a passenger lift provided '
+      + 'principally for residents or the public is generally not work equipment, so LOLER may not apply '
+      + 'to this lift at all — in which case six-monthly is not a statutory maximum and nothing in law '
+      + 'sets one. HSE is equally explicit that the duty does not vanish: where the lift is operated by '
+      + 'or under the control of an employer, s.3 of the Health and Safety at Work etc. Act 1974 applies, '
+      + 'and HSE says a regime of maintenance, inspection and examination similar to LOLER may be '
+      + 'entirely reasonably practicable. The examination therefore STAYS. What changes is the badge: it '
+      + 'is not presented as a stated statutory interval until someone establishes whether staff, '
+      + 'contractors or the managing agent use or control the lift in a way that brings LOLER into '
+      + 'scope. If they do, record why.',
+    name: 'Lift — thorough examination',
+    description:
+      'Thorough examination of each passenger lift by a competent person, independent of the '
+      + 'maintenance contractor.',
     group: 'other_statutory',
     basis: 'statute',
-    statutoryRef: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i)',
-    intervalBasis: 'stated',
+    // Re-based 2026-09-13. The previous row asserted LOLER reg 9(3)(a)(i) and a
+    // stated six-month interval for a residents' lift, which is very likely
+    // wrong for this building — see reviewerNote. The duty is real either way;
+    // which instrument supplies it, and therefore whether six months is a legal
+    // maximum or our adopted interval, is an open question.
+    statutoryRef: 'LOLER 1998 reg 9(3)(a)(i) WHERE the lift is work equipment (six-monthly for equipment carrying people); otherwise Health and Safety at Work etc. Act 1974 s.3, with the examination regime adopted as reasonably practicable. ❓ Which applies here is unresolved',
+    intervalBasis: 'practice',
     frequencyDays: 182,
-    maxIntervalDays: 183,
+    maxIntervalDays: null,
+    triggerType: 'calendar',
     responsibleParty: 'Insurance inspection body or independent examiner',
     competencyRequired:
       'Competent person INDEPENDENT of the maintenance contractor — a lift service visit is not a thorough examination',
     evidenceRequired: 'Report of thorough examination, with any defect notified to the duty holder',
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Building has a lift carrying people',
+    appliesWhen: 'Building has a lift carrying people — but see the note on whether LOLER itself applies',
   }),
   entry({
     key: 'lift_maintenance',
@@ -793,10 +1088,12 @@ export const REGISTER = [
     description: 'Routine monitoring of hot and cold water temperatures at sentinel outlets.',
     group: 'other_statutory',
     basis: 'standard',
-    statutoryRef: 'HSE ACOP L8 / HSG274 Part 2, routine monitoring',
+    statutoryRef: 'HSE ACOP L8 / HSG274 Part 2, routine monitoring — HSG274 gives monthly for the sentinel hot and cold checks, but the monitoring programme follows the system and the risk assessment, so the interval is ours',
     intervalBasis: 'practice',
     frequencyDays: 30,
-    maxIntervalDays: 31,
+    // NULL for the same reason as the EICR row: nothing sets 31 days as a
+    // ceiling, and printing one made an adopted interval look prescribed.
+    maxIntervalDays: null,
     responsibleParty: 'Site staff or water hygiene contractor',
     competencyRequired: 'Briefed staff working to the written control scheme',
     evidenceRequired: 'Monitoring log with temperatures and outlets, and action on out-of-range readings',
@@ -885,14 +1182,19 @@ export const REGISTER = [
   }),
   entry({
     key: 'lightning_protection',
+    reviewerNote:
+      '❓ OPEN: annual is our selected interval, and it should be confirmed against the installed '
+      + 'system. BS EN 62305-3 sets inspection periodicity by protection level and LPS classification; '
+      + 'annual VISUAL inspection is common, but the complete inspection and test interval is not '
+      + 'universally annual. Record the LPS class for this building and the reason annual was chosen.',
     name: 'Lightning protection — test and inspection',
     description: 'Inspection and earth-resistance testing of the lightning protection system.',
     group: 'other_statutory',
     basis: 'standard',
-    statutoryRef: 'BS EN 62305-3, periodic inspection and testing',
-    intervalBasis: 'stated',
+    statutoryRef: 'BS EN 62305-3, periodic inspection and testing — the periodicity depends on the protection level and the classification of the installed LPS, so the annual cycle is our selection, not a figure the standard states for every system',
+    intervalBasis: 'practice',
     frequencyDays: 365,
-    maxIntervalDays: 366,
+    maxIntervalDays: null,
     responsibleParty: 'Lightning protection contractor',
     competencyRequired: 'Competent lightning protection engineer (ATLAS member firm recommended)',
     evidenceRequired: 'Test certificate recording earth resistance readings per down conductor',
@@ -1044,6 +1346,112 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always for an HRB',
   }),
+  // ⚠ ADDED 2026-09-13, third review round. The reviewer's point is the one
+  // that makes this worth a row of its own: registration information and key
+  // building information are DIFFERENT datasets with DIFFERENT clocks, and
+  // treating them as one is exactly how the shorter of the two gets lost. KBI
+  // is 28 days under SI 2023/396 reg 21; registration information is 14
+  // relevant days under SI 2023/315 reg 4. Verified against legislation.gov.uk.
+  entry({
+    key: 'hrb_registration_information_update',
+    reviewerNote:
+      'Do not fold this into the key building information duty. They are separate datasets with '
+      + 'separate deadlines — 14 relevant days here, 28 days for KBI — and the shorter one is the one '
+      + 'that gets missed when they are treated as a single submission.',
+    name: 'Higher-risk building registration — notify a change',
+    description:
+      'Notify the regulator of any change to the registration information, and provide any certificate '
+      + 'more recent than the one already given, within 14 relevant days of the principal accountable '
+      + 'person becoming aware of it.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Building Safety (Registration of Higher-Risk Buildings and Review of Decisions) (England) Regulations 2023 (SI 2023/315), reg 4 — "within the period of 14 relevant days beginning with the day that the PAP becomes aware of a change"',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'Becoming aware of any change to the registration information, or a more recent certificate becoming available',
+    triggerType: 'event',
+    responsibleParty: 'Principal accountable person',
+    competencyRequired: 'Person who holds the registration account with the regulator',
+    evidenceRequired: 'The submission to the regulator, dated, with the date awareness arose so the 14 relevant days can be evidenced',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⚠ No home. Nothing in the portal models registration information or watches for a change to it — and the clock is short.',
+    evidencedBy: null,
+    appliesWhen: 'Always for a registered HRB',
+  }),
+  // ⚠ ADDED 2026-09-13, third review round. A change of accountable person is
+  // not merely a notification — SI 2024/41 reg 13 governs the handover of
+  // information and documents on a change in AP, and the registration regime
+  // captures the change too. Without this row a handover could be completed
+  // with nothing recording that the incoming AP actually received the
+  // prescribed information.
+  entry({
+    key: 'ap_change_handover',
+    reviewerNote:
+      'The failure this guards against is a silent one: an AP changes, the notification is made, and '
+      + 'nobody records that the incoming AP received the prescribed information. The evidence that '
+      + 'matters is the incoming AP’s confirmation, not the outgoing AP’s assertion.',
+    name: 'Accountable person change — notification and golden thread handover',
+    description:
+      'On any change of accountable person or principal accountable person: identify the outgoing and '
+      + 'incoming parties, notify or update the regulator, hand over the prescribed information and '
+      + 'documents, record the date responsibility changes, and obtain the incoming party’s confirmation '
+      + 'that the information has been received.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Higher-Risk Buildings (Keeping and Provision of Information etc.) (England) Regulations 2024 (SI 2024/41), reg 13 (provision of information and documents etc on change in AP); registration change notified under SI 2023/315 reg 4',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'Any change to who is an accountable person or the principal accountable person',
+    triggerType: 'event',
+    responsibleParty: 'Outgoing and incoming accountable persons',
+    competencyRequired: 'Person able to identify the full prescribed information set and confirm its transfer',
+    evidenceRequired: 'Handover record listing what was transferred, the date responsibility changed, the regulator notification, and the incoming party’s written confirmation of receipt',
+    retentionPeriodMonths: 120,
+    handledBy: 'golden_thread',
+    handlingNote: 'The Golden Thread register holds the AP records and the document set; the handover itself is a manual, evidenced step with no built workflow.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the duty exists whether or not a change is currently in prospect',
+  }),
+  // ⚠ ADDED 2026-09-13, third review round. SI 2024/41 is not only about
+  // KEEPING information — Part 3 is a set of duties to PROVIDE it, each to a
+  // different person and in different circumstances. One controlled row rather
+  // than eight: the shape of the obligation is identical every time (a request
+  // or trigger arrives, a route applies, information is supplied or withheld
+  // for a stated reason, and the whole thing is recorded), and eight rows would
+  // read as eight cycles when none of them is a cycle at all.
+  entry({
+    key: 'gt_information_provision',
+    reviewerNote:
+      'Regs 5–12 and 14 of SI 2024/41 cover provision to the regulator, another accountable person, '
+      + 'residents, owners of residential units, a relevant landlord, a client, the relevant responsible '
+      + 'person, and a fire and rescue authority, plus resident requests for further information. '
+      + 'Regs 15–19 set the limitations and exemptions — WITHHOLDING is a decision that has to be '
+      + 'recorded with its ground, not a silence.',
+    name: 'Golden thread information — provision on request or trigger',
+    description:
+      'Respond to each statutory trigger or request for golden thread information and documents. Record '
+      + 'the request, who it came from, the route that applies, what was supplied or withheld and on '
+      + 'what ground, the date, and the recipient.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Higher-Risk Buildings (Keeping and Provision of Information etc.) (England) Regulations 2024 (SI 2024/41), regs 5–12 (provision to the regulator, another AP, residents, owners, a relevant landlord, a client, the relevant RP, a fire and rescue authority), reg 14 (resident requests for further information), regs 15–19 (limitations)',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'A statutory trigger or a request from any prescribed person',
+    triggerType: 'event',
+    responsibleParty: 'Accountable person',
+    competencyRequired: 'Person able to identify the applicable route and any limitation that applies',
+    evidenceRequired: 'Per-request record: requester, route, date, what was provided or withheld, and the ground for any withholding',
+    retentionPeriodMonths: 120,
+    handledBy: 'golden_thread',
+    handlingNote:
+      '⚠ Partially homed. The Golden Thread app holds the documents and can produce a share pack, but '
+      + 'there is no register of REQUESTS — who asked, what was sent, what was withheld and why. That '
+      + 'record is the evidence, and it does not exist yet.',
+    evidencedBy: null,
+    appliesWhen: 'Always for an HRB in occupation',
+  }),
   entry({
     key: 'bac_renewal',
     reviewerNote: 'The five-year figure is a planning assumption. What actually starts this is a direction from the regulator, which can come sooner after significant change, a safety-management concern, an incident, or completed improvement work.',
@@ -1117,13 +1525,25 @@ export const REGISTER = [
   }),
   entry({
     key: 'gt_register_audit',
+    reviewerNote:
+      'Keep the two apart. The STATUTORY duty is to keep the prescribed golden thread information to '
+      + 'the prescribed standards — electronic, transferable, accurate, intelligible, accessible, '
+      + 'secure, and controlled when changed. Nothing in law requires a quarterly audit of the '
+      + 'register. The quarterly audit is OUR control for demonstrating that the standards are being '
+      + 'met, and its interval is ours to change.',
     name: 'Golden Thread document register — audit',
-    description: 'Audit the document register for completeness, currency and correct classification.',
+    description:
+      'Audit the document register for completeness, currency and correct classification — our control '
+      + 'for demonstrating that the golden thread information is being kept to the prescribed standards.',
     group: 'bsa_cycle',
-    basis: 'statute',
-    statutoryRef: 'Higher-Risk Buildings (Keeping and Provision of Information etc.) Regs 2024 (SI 2024/41)',
+    // Re-based 2026-09-13: "statute" put a legal badge on a quarterly cycle we
+    // invented. The duty underneath is statutory and is named in the reference;
+    // the audit is the assurance control over it.
+    basis: 'management',
+    statutoryRef: 'Our own assurance control. Underlying duty: keep golden thread information to the prescribed standards — SI 2024/41 reg 4 (what the information is) and SI 2023/907 reg 7 (the standards). Neither states an audit interval',
     intervalBasis: 'practice',
     frequencyDays: 90,
+    triggerType: 'calendar',
     responsibleParty: 'Information manager',
     evidenceRequired: 'Register audit report',
     retentionPeriodMonths: 120,

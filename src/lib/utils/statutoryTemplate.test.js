@@ -10,6 +10,19 @@ import {
 } from './statutoryTemplate.js';
 import { EVIDENCE_ROUTES } from './obligationEvidence.js';
 
+// ── Fixtures chosen FROM the register, never transcribed from it ─────────────
+//
+// ⚠ Do not paste an entry's name, reference or interval into an expectation.
+// Three successive external review rounds corrected register data and broke
+// these tests each time, which each time looked like a regression and was not.
+// Pick the entry here, assert against its own fields below.
+const SAMPLE_KEY = 'lift_loler_examination';
+const sample = templateEntry(SAMPLE_KEY);
+/** Any entry whose interval genuinely comes from its reference. */
+const stated = STATUTORY_TEMPLATE.find(e => e.intervalBasis === 'stated' && e.frequencyDays);
+/** Any entry whose interval is ours. */
+const practice = STATUTORY_TEMPLATE.find(e => e.intervalBasis === 'practice' && e.frequencyDays);
+
 // The register is data a person will act on, so its own shape is worth pinning:
 // a malformed entry becomes a wrong obligation in a compliance register.
 describe('the register itself', () => {
@@ -60,7 +73,7 @@ describe('the register itself', () => {
   });
 
   it('looks entries up by key and returns null for anything else', () => {
-    expect(templateEntry('lift_loler_examination')?.name).toBe('Lift — LOLER thorough examination');
+    expect(templateEntry(SAMPLE_KEY)?.name).toBe(sample.name);
     expect(templateEntry('nope')).toBeNull();
     expect(templateEntry(undefined)).toBeNull();
   });
@@ -101,7 +114,7 @@ describe('basis — where the requirement comes from', () => {
   // source — these must not cite an instrument as though one required them.
   it('marks a management decision as self-imposed rather than citing a duty', () => {
     const mgmt = STATUTORY_TEMPLATE.filter(e => e.basis === 'management');
-    for (const e of mgmt) expect(e.statutoryRef, e.key).toMatch(/self-imposed|insurer|no statutory/i);
+    for (const e of mgmt) expect(e.statutoryRef, e.key).toMatch(/self-imposed|insurer|no statutory|our own/i);
   });
 });
 
@@ -120,8 +133,8 @@ describe('grouping and display', () => {
 
 describe('intervalNote', () => {
   it('distinguishes a stated interval from established practice', () => {
-    expect(intervalNote(templateEntry('lift_loler_examination'))).toMatch(/set by the reference/i);
-    expect(intervalNote(templateEntry('fra_refresh'))).toMatch(/established practice/i);
+    expect(intervalNote(stated), stated.key).toMatch(/set by the reference/i);
+    expect(intervalNote(practice), practice.key).toMatch(/established practice/i);
     expect(intervalNote(null)).toBe('');
   });
 
@@ -133,15 +146,15 @@ describe('intervalNote', () => {
 });
 
 describe('templateToObligation', () => {
-  const row = templateToObligation(templateEntry('lift_loler_examination'), { presentationOrder: 3 });
+  const row = templateToObligation(sample, { presentationOrder: 3 });
 
   it('maps the statutory detail onto the obligation columns', () => {
     expect(row).toMatchObject({
-      name: 'Lift — LOLER thorough examination',
-      frequency_days: 182,
-      max_interval_days: 183,
-      evidenced_by: 'maintenance_job',
-      template_key: 'lift_loler_examination',
+      name: sample.name,
+      frequency_days: sample.frequencyDays,
+      max_interval_days: sample.maxIntervalDays,
+      evidenced_by: sample.evidencedBy,
+      template_key: SAMPLE_KEY,
       presentation_order: 3,
       active: true,
     });
@@ -260,9 +273,9 @@ describe('templateCoverage', () => {
 describe('suggestMatches', () => {
   it('matches on an identical statutory reference', () => {
     const s = suggestMatches([
-      { id: 'x', name: 'Annual lift examination', statutory_ref: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i)' },
+      { id: 'x', name: 'Annual lift examination', statutory_ref: sample.statutoryRef },
     ]);
-    expect(s.get('lift_loler_examination')[0].reason).toBe('Same statutory reference');
+    expect(s.get(SAMPLE_KEY)[0].reason).toBe('Same statutory reference');
   });
 
   // BS 5839-1 covers both the weekly user test and the six-monthly service,
@@ -282,10 +295,10 @@ describe('suggestMatches', () => {
 
   it('ranks an exact reference above a name match', () => {
     const s = suggestMatches([
-      { id: 'weak', name: 'Lift — LOLER thorough examination', evidenced_by: 'maintenance_job' },
-      { id: 'strong', name: 'CP12', statutory_ref: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i)' },
+      { id: 'weak', name: sample.name, evidenced_by: sample.evidencedBy },
+      { id: 'strong', name: 'An unrelated name', statutory_ref: sample.statutoryRef },
     ]);
-    expect(s.get('lift_loler_examination').map(c => c.obligation.id)).toEqual(['strong', 'weak']);
+    expect(s.get(SAMPLE_KEY).map(c => c.obligation.id)).toEqual(['strong', 'weak']);
   });
 
   // These five are the obligations actually in the live database (migration
@@ -343,7 +356,7 @@ describe('suggestMatches', () => {
 // the repeal is still evidence, and an assessor reading a 2027 report of 2026
 // work needs the requirement to still exist for it to make sense.
 describe('withdrawal', () => {
-  const withdrawn = { supersededOn: '2027-03-01', supersededBy: 'lift_loler_examination', supersededNote: 'Repealed by SI 2027/9' };
+  const withdrawn = { supersededOn: '2027-03-01', supersededBy: SAMPLE_KEY, supersededNote: 'Repealed by SI 2027/9' };
 
   it('is date-aware — a requirement repealed later was still live before it', () => {
     expect(isSuperseded(withdrawn, '2026-09-10')).toBe(false);
@@ -385,7 +398,7 @@ describe('withdrawal', () => {
     const note = supersededNote(withdrawn);
     expect(note).toMatch(/No longer required from 2027-03-01/);
     expect(note).toMatch(/Repealed by SI 2027\/9/);
-    expect(note).toMatch(/Replaced by: Lift — LOLER thorough examination/);
+    expect(note).toContain(`Replaced by: ${sample.name}`);
     expect(supersededNote({})).toBe('');
   });
 

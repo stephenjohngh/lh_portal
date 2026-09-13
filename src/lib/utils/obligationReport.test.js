@@ -4,7 +4,7 @@ import {
   compliancePosition, positionSummary, filterRows, sortRows, groupRows,
   evidenceHistory, outcomeText, ROW_STATUS, ROW_STATUS_LABEL, NON_FAILING,
 } from './obligationReport.js';
-import { STATUTORY_TEMPLATE } from './statutoryTemplate.js';
+import { STATUTORY_TEMPLATE, templateEntry } from './statutoryTemplate.js';
 
 const NOW = new Date('2026-09-10T12:00:00Z');
 const opts = { now: NOW };
@@ -52,11 +52,15 @@ describe('compliancePosition — one row per requirement', () => {
     expect(rowFor(rows, 'res_consultation').status).toBe('unhomed');
   });
 
+  // Asserted against the entry's OWN fields, not against transcribed copies of
+  // them — see the note in statutoryTemplate.test.js. Correcting a citation in
+  // the register must not fail a test about whether the row carries it across.
   it('carries the basis, reference and owner onto the row', () => {
-    const r = rowFor(compliancePosition({ obligations: [], events: [] }, opts), 'lift_loler_examination');
-    expect(r.basis).toBe('statute');
-    expect(r.statutoryRef).toMatch(/Lifting Operations/);
-    expect(r.owner).toMatch(/examiner/);
+    const e = templateEntry('lift_loler_examination');
+    const r = rowFor(compliancePosition({ obligations: [], events: [] }, opts), e.key);
+    expect(r.basis).toBe(e.basis);
+    expect(r.statutoryRef).toBe(e.statutoryRef);
+    expect(r.owner).toBe(e.responsibleParty);
   });
 });
 
