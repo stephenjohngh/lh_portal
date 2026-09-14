@@ -91,6 +91,50 @@
 // lives here in version control rather than in `statutory_exclusions`, where a
 // second building would need its own row repeating it.
 
+// ══ WHAT MAY BE WRITTEN IN THIS FILE ════════════════════════════════════════
+//
+// Settled with the duty holder on 2026-09-14, after the register was found to
+// be encoding this building's CURRENT position in several places.
+//
+//   This file is a CATALOGUE: what CAN apply to a building of this kind.
+//   What applies TODAY is data — the applied obligations, and the append-only
+//   statutory_exclusions decision log.
+//
+// Three rules, and the distinction between the first two is the whole point:
+//
+//   1. DELETE only for NEVER. Gas was deleted because this building will never
+//      have a gas supply — a permanent fact about the building. It is the only
+//      deletion this register has made, and the bar stays that high.
+//
+//   2. CONDITION, do not assert, for NOT TODAY. An entry whose applicability
+//      turns on a building feature states that condition in appliesWhen and
+//      stays here whether or not the feature exists. It is switched off by a
+//      recorded, reasoned, attributed decision carrying a review date, and
+//      switched back on the same way. NO CODE CHANGE either way — that is what
+//      the exclusion log being append-only and reversible is for.
+//
+//      The worked example is smoke ventilation. A stair is ventilated
+//      mechanically (an AOV) or naturally (openable windows). BOTH rows are
+//      here permanently; the decision log says which is live. This building
+//      relies on windows today and expects an AOV, and that transition will be
+//      two recorded decisions and no edit to this file.
+//
+//   3. NEVER encode a transient position. "Acrow props to the basement
+//      mezzanine" and "the cracked mezzanine columns" describe what is wrong
+//      with the building this month. Repair them and the rows describe nothing.
+//      The durable entry is the general one — monitoring of temporary
+//      structural support, monitoring of a defect under an engineer's
+//      specification — with WHICH prop and WHICH column living in the applied
+//      obligation's scope and the job record.
+//
+// ⚠ THE TEST, applied to every word of a new entry:
+//   WOULD THIS STILL BE TRUE IF THE BUILDING WERE REPAIRED, OR ALTERED,
+//   TOMORROW?  If not, it belongs in the data and not in this file.
+//
+// The corollary matters too: a row being currently inapplicable is NOT a
+// reason to leave it out. A register holding only what applies today cannot
+// tell you what you stopped doing, or what you would need to start.
+
 /** Defaults so an entry only states what is true of it. */
 function entry(e) {
   return {
@@ -443,17 +487,13 @@ export const REGISTER = [
     evidenceRequired: 'Service certificate recording each vent and control panel tested',
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
-    // Confirmed 2026-09-13 by the duty holder: two staircases, and the AOV
-    // serves ONE of them. The other is ventilated by OPENABLE WINDOWS, accepted
-    // as sufficient. So both stairs are ventilated and they differ in kind, not
-    // in whether they are ventilated at all.
-    //
-    // ⚠ That has a consequence this register nearly missed: if the windows ARE
-    // the ventilation provision then they are a fire safety measure, and a
-    // window painted shut, obstructed or fitted with a restrictor is a failed
-    // one. This row covers the AOV only — the windows have their own row below.
-    reviewerNote: 'Scope confirmed 2026-09-13: the building has two staircases and this AOV serves one of them. The other is ventilated by openable windows, accepted as sufficient — so both stairs are ventilated, by different means, and the windows have their own check row. Six-monthly servicing is our adopted interval, not a figure either standard sets for every installation — confirm it against this system’s design, commissioning record, manufacturer requirements and the fire strategy.',
-    appliesWhen: 'Always — the building has two staircases and an AOV system serving one of them',
+    // ⚠ NOT INSTALLED TODAY. The building's two staircases are ventilated by
+    // openable windows; a mechanical smoke control system is expected but is
+    // not in place. This row therefore states the CONDITION and is switched off
+    // by a recorded exclusion, not deleted and not asserted — see the paired
+    // row for openable windows, and the header of this file on why.
+    reviewerNote: 'PAIRED WITH the openable-window row: a stair is smoke-ventilated mechanically or naturally, and this register carries both so that either can be switched on. ⚠ No mechanical smoke control system is installed at present, so this row is currently recorded as not applicable; that decision carries a review date and is reversed — not re-written — when a system is commissioned. Six-monthly servicing is our adopted interval and not a figure either standard sets for every installation; confirm it against the system’s design, commissioning record, manufacturer requirements and the fire strategy at that point.',
+    appliesWhen: 'A mechanical smoke control or automatic opening vent system serves a stair, lobby or corridor. ⚠ Not the case today — recorded as not applicable, to be reinstated when a system is commissioned',
   }),
   // ⚠ ADDED 2026-09-13. It emerged from a fact rather than from a review: the
   // second staircase is ventilated by OPENABLE WINDOWS, and that is accepted as
@@ -479,7 +519,7 @@ export const REGISTER = [
       + '❓ Separately: whether these windows fall within the FSER reg 7 monthly check as part of the '
       + 'smoke control provision. ⛔ Do NOT classify them as reg 7 equipment until the responsible '
       + 'person or a competent fire engineer has made and recorded that determination.',
-    name: 'Stair smoke ventilation — openable windows',
+    name: 'Stair smoke ventilation — natural, by openable windows',
     description:
       'Check that the openable windows relied on for smoke ventilation of the staircase still open '
       + 'fully and freely, are not painted, sealed or locked shut, are not obstructed, and achieve the '
@@ -508,7 +548,7 @@ export const REGISTER = [
       + 'do the same job and there is no reason to verify one more often than the other. The interval '
       + 'is ours; nothing sets it.',
     evidencedBy: 'inspection',
-    appliesWhen: 'The building has a staircase whose smoke ventilation is provided by openable windows',
+    appliesWhen: 'A staircase relies on openable windows for smoke ventilation. ⚠ True of both staircases today; reconsider per stair if a mechanical system is commissioned for either',
   }),
   entry({
     key: 'fser_monthly_equipment_check',
@@ -2306,11 +2346,15 @@ export const REGISTER = [
     key: 'acrow_prop_check',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: the acceptable position and tolerance, what counts as prohibited movement or damage, what triggers immediate isolation or evacuation, whether every finding goes to a structural engineer, whether photographs are date-stamped, and how long the props may remain before a permanent repair decision is forced. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    name: 'Acrow props — position and integrity check',
-    description: 'Check the temporary props supporting the basement mezzanine are in position, plumb and undamaged.',
+    name: 'Temporary structural support — position and integrity check',
+    description:
+      'Check that every item of temporary structural support — props, shoring, needling or falsework '
+      + '— is in its designed position, plumb, undamaged, correctly loaded and undisturbed. What is '
+      + 'supported, where, and to whose design belongs to the applied obligation and the engineer’s '
+      + 'specification, not to this entry.',
     group: 'building_specific',
     basis: 'management',
-    statutoryRef: 'Self-imposed; structural engineer recommendation pending permanent fix',
+    statutoryRef: 'Our own control, on a structural engineer’s recommendation, for as long as temporary support remains in place',
     intervalBasis: 'practice',
     frequencyDays: 7,
     responsibleParty: 'Site staff',
@@ -2328,11 +2372,15 @@ export const REGISTER = [
     key: 'cracked_column_check',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: the crack-width measurement method, the reference datum, the measurement tolerance, the corrosion progression criteria and the trigger values. ⚠ A monthly visual comparison is not a monitoring regime unless it is tied to the structural engineer’s specification — a photograph that shows change with no stated trigger value leaves the decision to whoever is looking. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    name: 'Cracked columns — visual check',
-    description: 'Visual check of the cracked mezzanine columns and rusting beams against comparison photographs.',
+    name: 'Structural defect — visual comparison check',
+    description:
+      'Visual check of each structural element under monitoring against the engineer’s reference '
+      + 'record — dated comparison photographs or an equivalent datum — looking for change in a '
+      + 'crack, a deflection, corrosion or a bearing. Which elements, and what counts as change, '
+      + 'come from the monitoring specification.',
     group: 'building_specific',
     basis: 'management',
-    statutoryRef: 'Self-imposed pending permanent fix',
+    statutoryRef: 'Our own control, under a structural engineer’s monitoring specification, for as long as the defect is under monitoring',
     intervalBasis: 'practice',
     frequencyDays: 30,
     responsibleParty: 'Structural engineer or competent surveyor',
@@ -2348,14 +2396,14 @@ export const REGISTER = [
     key: 'crack_monitoring',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: the reading method, the datum, and the trigger value at which a reading escalates rather than simply being recorded. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    name: 'Crack monitoring — telltales or strain gauges',
+    name: 'Structural movement — instrumented monitoring',
     description:
       'Read and record any crack monitoring devices fitted, at the interval the structural engineer’s '
       + 'monitoring specification sets, and immediately where an event calls for it. Record the '
       + 'measurement method, the reference datum and the trigger value at which the reading escalates.',
     group: 'building_specific',
     basis: 'management',
-    statutoryRef: 'Self-imposed; structural engineer specification',
+    statutoryRef: 'Our own control, under a structural engineer’s monitoring specification which sets the device, the datum, the reading interval and the trigger value',
     intervalBasis: 'practice',
     trigger: 'The interval set by the structural engineer’s monitoring specification; and, separately, any event calling for an immediate reading — movement, a new crack, works nearby, or a reading outside the trigger value',
     responsibleParty: 'Structural engineer or their appointed monitor',
@@ -2372,11 +2420,14 @@ export const REGISTER = [
     key: 'structural_interim_review',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: what the interim measures are protecting against, and the condition on which they end. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    name: 'Structural engineer — interim review',
-    description: 'Engineer reviews the monitoring record and confirms the interim measures remain adequate.',
+    name: 'Structural engineer — review of interim measures',
+    description:
+      'The engineer reviews the monitoring record and confirms whether the interim measures remain '
+      + 'adequate, states what would change that, and says whether the permanent remedy is still on '
+      + 'the timescale assumed when the measures were accepted.',
     group: 'building_specific',
     basis: 'management',
-    statutoryRef: 'Self-imposed pending permanent fix',
+    statutoryRef: 'Our own control, for as long as interim structural measures stand in place of a permanent remedy',
     intervalBasis: 'practice',
     frequencyDays: 90,
     responsibleParty: 'Structural engineer',
@@ -2409,7 +2460,7 @@ export const REGISTER = [
       + 'is not a documentation change; but nothing in this register now justifies it.',
     evidencedBy: 'inspection',
     reviewerNote: '⚠ THE DAILY CADENCE HAS NO STATED REASON, and is deliberately left in place anyway. It was set on the basis of a single protected route with no smoke ventilation and no second chance. The building has TWO staircases, one ventilated by an AOV and the other by openable windows accepted as sufficient (confirmed by the duty holder, 2026-09-13), so **nothing written in this register now supports a daily walk**. It has not been reduced here because relaxing a safety cadence belongs to whoever owns the fire risk assessment, not to a documentation exercise — but a control nobody can state a reason for is a cost as well as a comfort, and we would like the reason recorded or the cadence changed. Also specify the escalation triggers, so a finding is not left to judgement: doors wedged or propped open, failed self-closers, smoke leakage, damaged seals, obstructions, water ingress, and fire-stopping defects. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    appliesWhen: 'Always — the building has two staircases, one ventilated by an AOV and one by openable windows',
+    appliesWhen: 'The fire risk assessment or fire strategy calls for checks of an escape stair beyond the statutory escape-route and fire-door rounds',
   }),
   entry({
     key: 'lobby_to_stair_door_check',
@@ -2428,7 +2479,7 @@ export const REGISTER = [
     handlingNote: 'Weekly, between the quarterly statutory door rounds. ⚠ See the stair-core row: the reason for exceeding the statutory round has weakened considerably now that both stairs are ventilated.',
     evidencedBy: 'inspection',
     reviewerNote: 'The weekly cadence was set assuming a single unventilated route, and that assumption does not hold — there are two staircases, one AOV-ventilated and one with openable windows accepted as sufficient (confirmed 2026-09-13). What can still be said for weekly is general rather than specific to this building: the quarterly statutory round alone would leave a wedged door or a failed closer unseen for up to three months. Whether that justifies weekly is a judgement for the fire risk assessment. Also specify the escalation triggers — wedged or propped doors, failed self-closers, damaged seals, smoke leakage — and who may take a door out of service. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    appliesWhen: 'Always — the building has two staircases, one ventilated by an AOV and one by openable windows',
+    appliesWhen: 'The fire risk assessment or fire strategy calls for checks of an escape stair beyond the statutory escape-route and fire-door rounds',
   }),
   entry({
     key: 'stair_lighting_check',
@@ -2446,7 +2497,7 @@ export const REGISTER = [
     handledBy: 'inspection',
     evidencedBy: 'inspection',
     reviewerNote: 'Two staircases, one ventilated by an AOV and the other by openable windows accepted as sufficient (confirmed 2026-09-13) — see the stair-core row on what that does to the cadence. Also specify what happens when a failure is found in the protected route, and whether temporary lighting or a compensatory control is required until it is fixed. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
-    appliesWhen: 'Always — the building has two staircases, one ventilated by an AOV and one by openable windows',
+    appliesWhen: 'The fire risk assessment or fire strategy calls for checks of an escape stair beyond the statutory escape-route and fire-door rounds',
   }),
   entry({
     key: 'alarm_coverage_gap_monitoring',

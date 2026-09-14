@@ -67,7 +67,11 @@ export const GROUP_LABEL = {
   fire_safety:     'Statutory fire safety',
   other_statutory: 'Other statutory checks',
   bsa_cycle:       'Building Safety Act cycles',
-  building_specific: 'This building’s own cycles',
+  // Renamed 2026-09-14: 'This building's own cycles' invited exactly the
+  // mistake the register data header forbids — writing the current position
+  // into a general catalogue. These rows switch ON when a condition holds and
+  // OFF when it stops, by recorded decision.
+  building_specific: 'Conditional and interim measures',
   governance:      'Governance and review',
 };
 
