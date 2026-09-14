@@ -194,6 +194,37 @@ function entry(e) {
     // missed by anyone who does not reach the note.
     /** @type {string|null} What the operative duty is, where this row is only assurance over it. */
     assuranceOnly: null,
+    // ⛔ WHO BEARS THE DUTY IN LAW — which is NOT who performs the task.
+    //
+    // The register carried one "Responsible" field doing both jobs, and on
+    // eight rows it read "Site staff". A reader could take that as the
+    // Responsible Person's statutory duty having been transferred to a cleaner.
+    // It cannot be: the duty stays where the instrument puts it, however the
+    // work is arranged. That is a misstatement the register was making, not a
+    // field it was missing.
+    //
+    // ⚠ THIS FIELD IS DERIVABLE AND THE OTHER FOUR ARE NOT. Who bears a duty in
+    // law follows from the instrument, so a catalogue can hold it. Who arranges
+    // it, who holds the evidence, who assures it and who escalates a failure
+    // are facts about THIS BUILDING's arrangements — they belong to the live
+    // obligation, not here, and inventing them would be fiction.
+    /** @type {string|null} Who bears the duty in law, from the instrument cited. */
+    statutoryDutyHolder: null,
+    // ⛔ WHAT NOTICES THE EVENT — the half of every event row that was missing.
+    //
+    // The register named what FIRES each duty and never named what DETECTS it,
+    // so a perfectly-described trigger still rested on somebody remembering to
+    // notice. That is not a control; it is a hope with a citation.
+    //
+    // ⚠ Where the honest answer is "nothing, today", SAY SO. A row reading
+    // "NO SOURCE" is worth more than a plausible one, because it is the finding.
+    /** @type {string|null} The system or process that must generate the event. */
+    triggerSource: null,
+    // Why a record is kept for as long as it is. Without this, a bare "10
+    // years" reads as a statutory minimum — and no instrument cited anywhere in
+    // this register sets a retention period at all.
+    /** @type {string|null} Legislation, regulator guidance, contract/insurer, golden thread, or internal policy. */
+    retentionBasis: null,
     // A row that is not yet a usable control — an interim mitigation with no
     // escalation threshold and no end condition, say. TRUE renders a visible
     // "Completion action" line in the outward-facing statement, and that line
@@ -224,6 +255,8 @@ export const REGISTER = [
   // ══ 1 · Statutory fire safety ═══════════════════════════════════════════
   entry({
     key: 'fra_refresh',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Fire risk assessment — refresh',
     description: 'Refresh the fire risk assessment and record it in full.',
     group: 'fire_safety',
@@ -242,6 +275,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'fra_review_on_trigger',
+    triggerSource: 'The building work change-control screen, the occurrence triage, and the fire risk assessor’s own reporting. ⛔ NOTHING WATCHES FOR "reason to suspect" — that limb has no source at all and depends on a person raising it',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'The statutory trigger, as distinct from our annual pass on the next row. Art 9(3) requires the '
       + 'assessment to be reviewed "regularly so as to keep it up to date and particularly if — (a) '
@@ -279,6 +315,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fra_action_plan_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'FRA action plan — review',
     description: 'Review progress against the fire risk assessment’s action plan and re-prioritise what is open.',
     group: 'fire_safety',
@@ -295,6 +333,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_communal_fire_doors',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'at least every 3 months (FSER reg 10(6))',
     name: 'Fire door checks — communal doors',
     description: 'Check all fire doors in the common parts, including self-closing devices.',
@@ -314,6 +354,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_flat_entrance_doors',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'at least every 12 months (FSER reg 10(4))',
     name: 'Fire door checks — flat entrance doors',
     reviewerNote:
@@ -349,6 +391,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fdis_scheme_inspection',
+    statutoryDutyHolder: 'None — binding by agreement rather than by law',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Fire door inspection — certificated scheme round',
     description:
       'Third-party certificated fire door inspection. Distinct from the responsible person’s own reg 10 check: '
@@ -377,6 +421,8 @@ export const REGISTER = [
   // in both senses.
   entry({
     key: 'compartmentation_inspection',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ THE MEASURE THE FIRE DOORS ARE PART OF. This register checked the doors quarterly and '
       + 'annually and never checked the compartment lines they close — walls, floors, risers, ceiling '
@@ -429,6 +475,9 @@ export const REGISTER = [
   // how penetrations are permitted and reinstated. This is that control.
   entry({
     key: 'compartmentation_penetration_control',
+    triggerSource: '⛔ NO SOURCE EXISTS TODAY. There is no permit gate, so nothing generates this event. Until one exists the row describes a control that cannot fire — see the actions schedule',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ THE ANNUAL SURVEY FINDS; THIS PREVENTS. Compartmentation is not breached by neglect, it is '
       + 'breached by authorised work carried out competently by trades who are not thinking about '
@@ -469,6 +518,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fire_damper_test',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ AN UNTESTED DAMPER LOOKS EXACTLY LIKE A WORKING ONE, from both sides of the wall, for its '
       + 'whole life. There is no symptom, no alarm and no degraded performance to notice — it either '
@@ -505,6 +556,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fire_alarm_weekly_test',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Fire alarm — weekly test',
     description:
       'Carry out the weekly user test required by the adopted fire alarm standard and the system’s '
@@ -525,6 +578,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fire_alarm_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Fire alarm — periodic inspection and service',
     description:
       'Periodic inspection and servicing of the fire detection and alarm system by a competent '
@@ -533,7 +588,7 @@ export const REGISTER = [
       + 'is easy to leave unstated and therefore unverified.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ THE SIX MONTHS IS A MAXIMUM STATED BY THE STANDARD, NOT A TARGET — BS 5839-1 sets it as the longest permissible period between service visits, and we schedule to it. That is why this row reads "stated in the reference" and not "established practice": the figure is the standard’s, and only the decision to sit at the ceiling rather than inside it is ours. BS 5839-1 contemplates the fire risk assessment calling for more frequent attendance, and for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ SIX-MONTHLY IS NOT TO BE TREATED AS A UNIVERSAL INTERVAL, and this row states less than it used to on purpose. THE ADOPTED BS 5839-1 EDITION AND SYSTEM CATEGORY MUST BE CONFIRMED: the relevant edition, the system category and the installation’s own documentation are what determine the permitted inspection and service interval, and until they are known the most that can honestly be said is that six-monthly is the conventional period between service visits and the one we schedule to. ⚠ The fire risk assessment may require more frequent attendance, and for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. BS 5839-1 contemplates the fire risk assessment calling for more frequent attendance, and for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
@@ -546,6 +601,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'emergency_lighting_monthly',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Emergency lighting — monthly function test',
     description: 'Short-duration function test of every emergency luminaire and exit sign.',
     group: 'fire_safety',
@@ -563,6 +620,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'emergency_lighting_annual',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Emergency lighting — annual full-duration test',
     description:
       'Full rated-duration discharge test (normally three hours), with luminaires recharged '
@@ -584,6 +643,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'emergency_lighting_central_battery',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ THIS IS NOT DISCHARGED BY THE ANNUAL LIGHTING TEST, and it is easy to believe it is. The '
       + 'full-duration test proves the system delivered its rated duration on the day; it does not '
@@ -618,6 +679,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'standby_power_supply_check',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'Written generally because the asset varies and the building is expected to gain one: a '
       + 'standby generator, a UPS, a second incoming supply, or a battery serving a lift. What they '
@@ -651,6 +714,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'sprinkler_weekly_test',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     name: 'Suppression system — weekly test',
     description: 'Weekly test routine on the sprinkler or suppression system, including any pump run.',
     group: 'fire_safety',
@@ -677,6 +742,8 @@ export const REGISTER = [
   // rather than a figure from a standard we have not yet identified.
   entry({
     key: 'sprinkler_periodic_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     reviewerNote:
       '⛔ INTERIM ADOPTED CONTROL, PENDING CONFIRMATION OF THE GOVERNING DESIGN AND MAINTENANCE '
       + 'BASIS — an adopted interval, not a confirmed regime, and not to be presented as one. '
@@ -712,6 +779,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'sprinkler_annual_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     name: 'Suppression system — annual service',
     description: 'Annual service and test of the sprinkler or residential suppression system.',
     group: 'fire_safety',
@@ -730,6 +799,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'dry_riser_annual_test',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     reviewerNote: '⛔ TECHNICALLY UNVERIFIED, and it matters more here than for most rows because the dry riser is expressly within the STATUTORY monthly check as essential fire-fighting equipment under FSER reg 6(7), so four rows touch one asset and the relationship between them has never been settled. What is unresolved: the BS 9990 edition adopted · whether an annual wet pressure test is the correct test for THIS installation and at what pressure and duration · what the six-monthly visual adds to it · and what, if anything, the fire and rescue service or the insurer requires on top. Until that is answered the servicing regime is what we inherited rather than what was specified.',
     name: 'Dry riser — annual test, method and interval pending confirmation',
     description: 'Annual wet pressure test of the riser main, landing valves and inlet breeching.',
@@ -748,6 +819,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'dry_riser_visual',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Dry riser — six-monthly visual inspection',
     description: 'Visual inspection of inlets, outlets, cabinets and padlocks between annual tests.',
     group: 'fire_safety',
@@ -765,6 +838,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'extinguishers_annual_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Fire extinguishers — annual basic service',
     description: 'Basic service of every portable extinguisher by a competent technician.',
     group: 'fire_safety',
@@ -783,6 +858,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'smoke_control_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Stair smoke control / AOV system — service',
     description:
       'Service and functional test of a mechanical smoke control or automatic opening vent system '
@@ -820,6 +897,8 @@ export const REGISTER = [
   // is a failed smoke ventilation provision that looks like a window.
   entry({
     key: 'stair_openable_vent_check',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'This row exists because a staircase is ventilated by openable windows rather than by a mechanical system, '
       + 'and that arrangement is accepted as sufficient. Acceptance is conditional on the windows '
@@ -876,6 +955,8 @@ export const REGISTER = [
   // not assert a system, because nobody has confirmed one either way.
   entry({
     key: 'corridor_smoke_control_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ RAISED ON REVIEW AND NOT YET ANSWERED. This register described the ventilation of the two '
       + 'staircases and was silent about the residential corridors and lobbies — and a silence in a '
@@ -911,6 +992,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_monthly_equipment_check',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     // ⚠ Reg 7(4) is UNCONDITIONAL — "must make a record ... and make that record
     // accessible to the residents of the building". Not on request. Verified
     // against legislation.gov.uk 2026-09-14. The record is made and is not
@@ -929,7 +1012,8 @@ export const REGISTER = [
       + ' ⚠ The 31-day figure is an INTERNAL SCHEDULING LIMIT and does not alter the statutory requirement, which is to carry out the check monthly. Do not copy it into a procedure as though it were the legal interval.',
     name: 'Monthly check — firefighters’ lifts, evacuation lifts, rising mains, smoke control and suppression',
     description:
-      'Monthly routine check of each INSTALLED item falling within the reg 6(7) key fire-fighting '
+      'Monthly routine check of each INSTALLED item of key fire-fighting equipment listed in reg 6(7) '
+      + 'and brought into the monthly routine-check duty through reg 7(1) and reg 7(5) — the '
       + 'equipment definition, together with each lift for use by firefighters and each evacuation '
       + 'lift. The asset schedule must name the precise reg 6(7) sub-paragraph for every item it '
       + 'lists — (a) to (f) — with its asset identifier and location, so that scope is settled by '
@@ -981,6 +1065,8 @@ export const REGISTER = [
   // a separate statutory duty on the responsible person.
   entry({
     key: 'fser_monthly_systems_check',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
     name: 'Monthly check — detection, alarm and linked systems',
     description:
@@ -1021,6 +1107,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'carpark_smoke_ventilation_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'PAIRED WITH the natural-ventilation row below: a car park is ventilated mechanically or '
       + 'naturally, and the register carries both so that either can be switched on. ⚠ This building '
@@ -1050,6 +1138,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'carpark_natural_ventilation_check',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ IF THE OPENINGS ARE THE PROVISION, THE OPENINGS ARE THE FIRE SAFETY MEASURE — the same '
       + 'point as the staircase windows, and the same failure mode. Being "open to outside air" is a '
@@ -1084,6 +1174,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'evacuation_alert_system_service',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'NOT INSTALLED, and there is no duty to install one. An evacuation alert system is the secure '
       + 'means by which the FIRE AND RESCUE SERVICE evacuates chosen floors or cores — it is their '
@@ -1122,6 +1214,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_wayfinding_signage',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Wayfinding signage — check',
     description: 'Check wayfinding signage identifying floor and flat numbers is present, legible and visible in low light.',
     group: 'fire_safety',
@@ -1138,11 +1232,13 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_monthly_check',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Secure information box — monthly check',
     description: 'Check the box is present, secure and accessible, and that the lock works.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 4(5) (annual minimum); reg 4(2) for what the box must be',
+    statutoryRef: 'MONTHLY IS OUR INTERNAL CHECK FREQUENCY. Fire Safety (England) Regulations 2022 reg 4(5) requires the responsible person to inspect the secure information box AT LEAST ANNUALLY and ensure it continues to meet reg 4(2) — that is the statutory duty and the statutory interval. We check monthly because a box that has been forced, blocked or re-keyed is discovered by looking at it, and an annual cycle can leave that unnoticed for eleven months. Reg 4(2) sets what the box must be: readily accessible to the fire and rescue authority, capable of holding the documents these Regulations require in it, and reasonably secure against unauthorised access and vandalism',
     intervalBasis: 'practice',
     frequencyDays: 30,
     responsibleParty: 'Responsible person or site staff',
@@ -1157,11 +1253,13 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_content_review',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Secure information box — content review',
     description: 'Confirm the contents are current: the responsible person’s contact details and hard-copy floor plans.',
     group: 'fire_safety',
     basis: 'statute',
-    statutoryRef: 'Fire Safety (England) Regulations 2022, reg 4(5); contents reg 4(3); access for the fire and rescue authority reg 4(4)',
+    statutoryRef: 'Fire Safety (England) Regulations 2022 — reg 4(3) prescribes the CONTENTS of the box: the responsible person’s name, UK address and telephone number, the names and contact information of such other persons permitted to access the building as the responsible person considers appropriate, and such documents as these Regulations require to be placed in it. Reg 4(4) requires the fire and rescue authority to be given whatever it needs to open the box, and anything further as soon as reasonably practicable when that changes. Reg 4(5) is the at-least-annual inspection duty. ⚠ THE PLANS IN THE BOX ARE NOT PRESCRIBED BY REG 4 — their content comes from reg 6, and reg 6(5) is what puts the hard copies in the box. Reg 4 says the box must hold what the Regulations require; reg 6 says what those plans must show. Do not read reg 4 as the source of the plan content',
     intervalBasis: 'stated',
     frequencyDays: 365,
     responsibleParty: 'Responsible person',
@@ -1182,12 +1280,21 @@ export const REGISTER = [
   // screening control, which exists to catch such changes before they happen.
   entry({
     key: 'frs_plans_update_on_change',
+    triggerSource: 'Building Assets — a change to floor plans, component locations or a lift designation. ⚠ A layout change made on site and not drawn generates nothing',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'This is the statutory duty; the annual confirmation on the next row is our own assurance net and '
       + 'must not be mistaken for the trigger. ⚠ Reg 11 requires the reg 6 plans to be provided to the '
-      + 'fire and rescue authority by electronic means. Read with reg 6(6) an updated plan is the reg 6 '
-      + 'plan and so goes the same way — but note that reg 11 does not in terms spell out re-provision '
-      + 'of a revised version, so we treat re-issue as required rather than relying on it being stated.',
+      + 'fire and rescue authority by electronic means. '
+      + '⛔ WHAT FOLLOWS IS OUR LEGAL INTERPRETATION AND CONTROL DECISION, NOT THE EXPRESS WORDS OF THE '
+      + 'INSTRUMENT, and it is labelled so that nobody later cites it back as statute. Reg 6(6) '
+      + 'requires the plans to be UPDATED after the specified change; reg 11 requires the prescribed '
+      + 'information to be PROVIDED to the fire and rescue authority electronically. Reg 11 does not IN '
+      + 'TERMS spell out re-provision of a revised version. OUR CONTROL is to re-issue each revised '
+      + 'plan electronically and retain proof of transmission — because an authority holding a '
+      + 'SUPERSEDED plan is worse placed than one holding none, and the safe course costs an email. '
+      + '❓ Obtain legal confirmation before adopting any narrower reading.',
     name: 'Fire and rescue service plans — update on change',
     description:
       'Update the floor plans and the building plan as soon as reasonably practicable after any change '
@@ -1215,6 +1322,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'frs_plans_current',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     assuranceOnly: 'the update-on-change row — FSER reg 6(6) fires on a change to the layout or to the location of key fire-fighting equipment',
     reviewerNote: 'This annual pass is OUR control, not a statutory cycle — the statutory duty is the event-driven update on the preceding row. It exists to catch a change nobody told us about. ⚠ Deliberately framed as confirming what WE sent and what the box holds, not what the fire and rescue authority currently holds: we cannot see their records, and nothing requires them to reconfirm annually. Writing it the other way would invent a duty for them and a dependency for us.',
     name: 'Fire and rescue service plans — annual confirmation',
@@ -1270,6 +1379,8 @@ export const REGISTER = [
   // the system that governs health data — which is the whole point of reg 12.
   entry({
     key: 'evac_resident_identification',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     assuranceOnly: 'the event and request row — SI 2025/797 regs 5 and 6 fire on identification and on a resident\u2019s request, not on a date',
     reviewerNote:
       'The duty begins long before the annual review: reasonable endeavours to identify relevant '
@@ -1301,6 +1412,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_mitigation_statements',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     assuranceOnly: 'the event and request row — SI 2025/797 regs 7 and 8 follow an assessment, not a calendar',
     reviewerNote:
       'Regs 7 and 8 are where the process produces something: mitigating measures that are reasonable '
@@ -1329,6 +1442,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_frs_information',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     assuranceOnly: 'the event and request row — SI 2025/797 reg 10 follows consent being given, changed or withdrawn',
     reviewerNote:
       '⚠ CONSENT IS PART OF THE DUTY, not a courtesy — but it does not gate everything equally, and '
@@ -1387,6 +1502,9 @@ export const REGISTER = [
   // row is the duty.
   entry({
     key: 'evac_process_events',
+    triggerSource: '⛔ NO SOURCE IN THIS SYSTEM. The events arise in the responsible person’s person-centred process, which is deliberately held elsewhere; today they reach us only if that party relays them. The interface needs a defined route, not goodwill',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⛔ THE ANNUAL INTERFACE ROWS ARE THE ASSURANCE PASS. THIS ROW IS THE DUTY. SI 2025/797 runs on '
       + 'events and requests, not on a calendar: a resident may REQUEST a person-centred assessment '
@@ -1431,6 +1549,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_building_plan_prepare',
+    triggerSource: 'Golden Thread document control, on first issue and on each amendment arising from a review',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     reviewerNote: 'Distinct from the annual review: reg 13 first requires the plan to be PREPARED, provided to the local fire and rescue authority, and a copy placed in the secure information box where the building has one. ⚠ REG 13(2) ALSO PRESCRIBES WHAT THE PLAN MUST CONTAIN, so a plan that is prepared, issued and boxed can still be non-compliant on its face. Three things: the instructions to residents relating to the EVACUATION STRATEGY for the building required by FSER reg 9 · confirmation of WHETHER OR NOT there are relevant residents, the negative being as much a required statement as the positive · and information about ANY OTHER ARRANGEMENTS for evacuating the building. ⛔ THE FIRST IS BLOCKED HERE: this building\u2019s evacuation strategy is not settled, and a plan cannot state instructions relating to a strategy nobody has determined. That makes the strategy a dependency of a statutory document rather than a question that can wait, which is why it now heads the actions schedule instead of sitting in a list of things we would like to know.',
     name: 'Building emergency evacuation plan — prepare and issue',
     description:
@@ -1455,6 +1576,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_building_plan_review',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     statutoryIntervalWords: 'within 12 months of the plan first being prepared, and every 12 months thereafter (SI 2025/797 reg 13)',
     reviewerNote: 'Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the 12-month cycle is a floor, not the only trigger. The plan holds no resident personal data.',
     name: 'Building emergency evacuation plan — review',
@@ -1484,6 +1607,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_person_centred_review',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'no later than 12 months after the emergency evacuation statement was first recorded, and every 12 months thereafter (SI 2025/797 reg 9(3))',
     reviewerNote: 'INTERFACE ONLY — an RP-controlled record, deliberately not held in this system; what crosses is the dated confirmation that the review happened. ⚠ THIS ROW IS THE ANNUAL PASS AT REG 9(3) AND NOTHING MORE. Reg 9(4) requires a review EARLIER wherever there is reason to believe an assessment or statement needs amending, or at the reasonable request of the resident — those live on the event and request row, because a calendar cannot raise them. An early review RESTARTS the 12 months rather than sitting alongside them: a scheduler anchored to the original date will call the next review early and will log the triggered one as an extra, when it was the duty being discharged.',
     name: 'Person-centred evacuation arrangements — review',
@@ -1522,6 +1647,9 @@ export const REGISTER = [
   // from one nobody thought of.
   entry({
     key: 'fser_external_wall_record',
+    triggerSource: 'The building work change-control screen, on completion of any works touching the external walls. ⚠ It is the ONLY source, so works that bypass the screen bypass this duty',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     reviewerNote:
       'Reg 5(3) fires on a significant change to the external walls. Nothing detects that automatically '
       + '— it depends on someone raising it when works complete. ⚠ The record is not just a description '
@@ -1571,6 +1699,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'resident_fire_safety_info',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'within each period of 12 months (FSER reg 9(3)(b)) — and to a new resident as soon as reasonably practicable after they move in',
     name: 'Fire safety instructions to residents — refresh',
     description: 'Re-issue the fire safety instructions and evacuation information to all residents.',
@@ -1598,6 +1728,8 @@ export const REGISTER = [
   // duty with its own content and its own timing, so it is its own row.
   entry({
     key: 'fire_door_resident_information',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'within each period of 12 months (FSER reg 10(3)) — and to a new resident as soon as reasonably practicable after they move in',
     reviewerNote:
       'Three specific things must be conveyed, and a general fire safety leaflet does not do it: fire '
@@ -1633,6 +1765,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'escape_route_obstruction',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Escape routes — obstruction check',
     description: 'Walk the escape routes and stair cores and clear anything obstructing them.',
     group: 'fire_safety',
@@ -1654,6 +1788,8 @@ export const REGISTER = [
   // positive and their conclusion was right anyway: there was no row.
   entry({
     key: 'refuse_store_check',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'Bin stores are among the most common ignition points in residential blocks — deliberate '
       + 'ignition and discarded smoking materials both — and they usually sit against or beneath the '
@@ -1690,6 +1826,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'tabletop_fire_exercise',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Tabletop fire exercise',
     description: 'Desktop exercise walking a fire scenario through with those who would have to act.',
     group: 'fire_safety',
@@ -1707,6 +1845,8 @@ export const REGISTER = [
   // ══ 2 · Other statutory checks ══════════════════════════════════════════
   entry({
     key: 'eicr_common_parts',
+    statutoryDutyHolder: 'The duty holder under the Electricity at Work Regulations 1989 — the employer, self-employed person or manager, to the extent of their control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'EICR — common parts and landlord supply',
     description: 'Periodic inspection and testing of the common-parts electrical installation.',
     group: 'other_statutory',
@@ -1758,6 +1898,8 @@ export const REGISTER = [
   // the responsible person. The line falls at the door.
   entry({
     key: 'ev_charging_inspection',
+    statutoryDutyHolder: 'The duty holder under the Electricity at Work Regulations 1989 — the employer, self-employed person or manager, to the extent of their control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'No charge points are installed today; they are expected. The row is here so that installing '
       + 'them is a recorded switch-on rather than a gap nobody notices. '
@@ -1795,6 +1937,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'communal_electrics_visual',
+    statutoryDutyHolder: 'The duty holder under the Electricity at Work Regulations 1989 — the employer, self-employed person or manager, to the extent of their control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Communal electrics — annual visual inspection',
     description: 'Visual inspection of communal electrical installations between full EICRs.',
     group: 'other_statutory',
@@ -1811,6 +1955,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'pat_testing',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote: 'OPEN QUESTION: annual testing should follow from a risk-based judgement about these appliances in this environment. If no such judgement has been made, the options are to make one and record it, lengthen the interval, or record a decision that it does not apply here.',
     name: 'Portable appliance testing',
     description: 'In-service inspection and testing of portable appliances in the common parts.',
@@ -1854,6 +2000,8 @@ export const REGISTER = [
   // registered engineer, CP12 record.
   entry({
     key: 'lift_loler_examination',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'at least every 6 months (LOLER reg 9(3)(a)(i))',
     reviewerNote:
       'APPLICABILITY SETTLED 2026-09-13 on the duty holder’s facts: the lift is provided primarily for residents, but cleaners, the caretaker and contractors use it in the course of their work. **LOLER applies.** The test is not who the lift is mainly FOR — it is whether it is provided for, or used by, people at work; HSE’s example of a lift outside LOLER is a stair lift in a private dwelling, one nobody works with. A residents’ lift that staff and contractors work from is work equipment under PUWER reg 3, and the company controlling it holds the duty to the extent of that control. Reg 9(3)(a)(i) then sets SIX MONTHS as a statutory maximum for equipment used to lift persons, not as an adopted interval — and the examiner must be independent of the maintenance contractor, because a service visit is not a thorough examination. ⚠ RE-TEST THIS if the arrangements change so that nobody uses the lift in the course of work: the answer turns on that fact and nothing else. The alternative to the fixed six months is an examination scheme drawn up by a competent person under reg 9(3)(a)(iii) — available, and not currently used.',
@@ -1883,6 +2031,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'firefighting_lift_weekly_test',
+    statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ THIS IS NOT THE STATUTORY MONTHLY CHECK, AND NEITHER REPLACES THE OTHER. FSER reg 7 asks '
       + 'whether the lift is in efficient working order and good repair; a lift running normally '
@@ -1924,6 +2074,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'lift_maintenance',
+    statutoryDutyHolder: 'None — binding by agreement rather than by law',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Lift — routine maintenance service',
     description: 'Routine preventive maintenance visit under the lift service contract.',
     group: 'other_statutory',
@@ -1944,6 +2096,8 @@ export const REGISTER = [
   // register mentioned one. Whether this one does is not recorded either way.
   entry({
     key: 'powered_gate_inspection',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ A POWERED GATE IS MACHINERY, and it has a recognised history of killing residents and '
       + 'children in exactly this setting. It is also the asset most likely to have been installed '
@@ -1978,6 +2132,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'water_temperature_monitoring',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Water temperature monitoring',
     description: 'Routine monitoring of hot and cold water temperatures at sentinel outlets.',
     group: 'other_statutory',
@@ -2002,6 +2158,8 @@ export const REGISTER = [
   // still in a dead leg. The word "flush" appeared nowhere.
   entry({
     key: 'legionella_outlet_flushing',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ TEMPERATURE MONITORING DOES NOT COVER THIS. Monitoring proves the system is running hot and '
       + 'cold where it is measured; it says nothing about an outlet nobody has opened for a month, '
@@ -2041,6 +2199,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'legionella_risk_review',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Legionella risk assessment — review',
     description: 'Review the water system risk assessment and confirm the written control scheme is still valid.',
     group: 'other_statutory',
@@ -2065,6 +2225,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'water_tank_inspection',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Water tanks — inspection and clean',
     description: 'Inspect and, where required, clean and disinfect cold water storage tanks.',
     group: 'other_statutory',
@@ -2082,6 +2244,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'asbestos_reinspection',
+    statutoryDutyHolder: 'The duty holder under reg 4 of the Control of Asbestos Regulations 2012 — the person with an obligation for the maintenance or repair of the premises',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Asbestos — re-inspection',
     description: 'Re-inspect known and presumed asbestos-containing materials and update the register.',
     group: 'other_statutory',
@@ -2100,6 +2264,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'asbestos_register_on_works',
+    triggerSource: '⛔ NO AUTOMATED SOURCE. Every work order must be gated against the asbestos register by the person raising it; nothing in the portal enforces that today',
+    statutoryDutyHolder: 'The duty holder under reg 4 of the Control of Asbestos Regulations 2012 — the person with an obligation for the maintenance or repair of the premises',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Asbestos register — check before works',
     description: 'Consult and annotate the asbestos register before any work that could disturb the fabric.',
     group: 'other_statutory',
@@ -2119,6 +2286,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'lightning_protection',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '❓ OPEN: annual is our selected interval, and it should be confirmed against the installed '
       + 'system. BS EN 62305-3 sets inspection periodicity by protection level and LPS classification; '
@@ -2145,6 +2314,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'structural_inspection',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Structural inspection — visual',
     description: 'Visual structural inspection by a structural engineer or competent surveyor.',
     group: 'other_statutory',
@@ -2163,6 +2334,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'roof_facade_check',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Roof and façade — visual check',
     description: 'Visual check of roof and façade condition, repeated after any severe weather.',
     group: 'other_statutory',
@@ -2189,6 +2362,8 @@ export const REGISTER = [
   // obligation for equipment exposed to conditions causing deterioration.
   entry({
     key: 'roof_anchor_inspection',
+    statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ THE ONE ASSET ON A ROOF THAT NOBODY OWNS. Anchors are installed by a roofing or façade '
       + 'contractor, used by window cleaners, aerial engineers and anyone surveying the roof, and '
@@ -2225,6 +2400,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'drainage_gutter_clearance',
+    statutoryDutyHolder: 'None — binding by agreement rather than by law',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Drainage and gutter clearance',
     description: 'Clear gutters, hoppers and drainage runs.',
     group: 'other_statutory',
@@ -2259,6 +2436,8 @@ export const REGISTER = [
   //     common parts, in plain English.
   entry({
     key: 'display_prescribed_information',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⛔ THIS IS THE ONLY ROW IN THE REGISTER WHOSE BREACH IS AN IMPRISONABLE OFFENCE ON ITS OWN '
       + 'TERMS — s.82(6) makes failing to comply, without reasonable excuse, punishable by up to two '
@@ -2302,6 +2481,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'scr_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     reviewerNote: 'This annual cycle must not displace the statutory trigger: a further risk assessment can be required at any time there is reason to suspect the current one is no longer valid, or at the regulator’s direction.',
     name: 'Safety case report — annual governance review',
     description:
@@ -2335,6 +2516,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'scr_resubmission',
+    triggerSource: 'Golden Thread document approval — the safety case report reaching approved status, on first preparation and on every revision',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Safety case report — notify the regulator on preparation or revision',
     description:
       'Notify the regulator as soon as reasonably practicable after preparing OR revising the safety case '
@@ -2359,6 +2543,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'kbi_update',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     assuranceOnly: 'the change-notification row — SI 2023/396 reg 21 runs 28 days from AWARENESS of a change',
     name: 'Key building information — assurance review',
     // ⚠ Reworded 2026-09-13 after external review. The statutory duty is to
@@ -2403,6 +2589,9 @@ export const REGISTER = [
   // question to keep asking of every calendar row is "where is the trigger?"
   entry({
     key: 'kbi_update_on_change',
+    triggerSource: '⛔ NO SOURCE. KBI is not modelled anywhere in the portal, so neither the dataset nor the moment of awareness has a home. The 28 days run from awareness, which is precisely what nothing here can evidence',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⛔ AN ANNUAL ASSURANCE REVIEW CANNOT DISCHARGE THIS AND MUST NOT LOOK AS THOUGH IT DOES. The '
       + 'clock is 28 days from AWARENESS, so if the annual pass on the preceding row is what finds a '
@@ -2443,6 +2632,9 @@ export const REGISTER = [
   // relevant days under SI 2023/315 reg 4. Verified against legislation.gov.uk.
   entry({
     key: 'hrb_registration_information_update',
+    triggerSource: '⛔ NO SOURCE. As with KBI, and on a shorter clock — 14 relevant days',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'Do not fold this into the key building information duty. They are separate datasets with '
       + 'separate deadlines — 14 relevant days here, 28 days for KBI — and the shorter one is the one '
@@ -2476,6 +2668,9 @@ export const REGISTER = [
   // prescribed information.
   entry({
     key: 'ap_change_handover',
+    triggerSource: 'Golden Thread accountable-persons register, on any change to who holds an AP or PAP role',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     reviewerNote:
       'The failure this guards against is a silent one: an AP changes, the notification is made, and '
       + 'nobody records that the incoming AP received the prescribed information. An incoming '
@@ -2513,6 +2708,9 @@ export const REGISTER = [
   // read as eight cycles when none of them is a cycle at all.
   entry({
     key: 'gt_information_provision',
+    triggerSource: 'Golden Thread — an inbound request from a prescribed person, or a statutory trigger raised against a document',
+    statutoryDutyHolder: 'Accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     reviewerNote:
       'Regs 5–12 and 14 of SI 2024/41 cover provision to the regulator, another accountable person, '
       + 'residents, owners of residential units, a relevant landlord, a client, the relevant responsible '
@@ -2548,6 +2746,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'bac_renewal',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote: 'Track the certificate by its validity, its conditions, any direction and the correspondence with the regulator — NOT by an assumed cycle. What starts a reassessment is a direction, which can come sooner after significant change, a safety-management concern, an incident, or completed improvement work. A five-year planning reminder may be carried where that is consistent with current regulator guidance; it is not a statutory deadline and it is not a substitute for a direction.',
     name: 'Building assessment certificate — track validity and reassessment',
     description:
@@ -2600,6 +2800,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'reasonable_steps_register_review',
+    statutoryDutyHolder: 'Accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Reasonable steps register — review',
     description: 'Review the record of reasonable steps taken to manage building safety risks.',
     group: 'bsa_cycle',
@@ -2617,6 +2819,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'persons_register_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Competence register — review',
     description: 'Review each person’s competence record, limitations and reassessment triggers.',
     group: 'bsa_cycle',
@@ -2634,6 +2838,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'gt_register_audit',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     reviewerNote:
       'Keep the two apart. The STATUTORY duty is to keep the prescribed golden thread information to '
       + 'the prescribed standards — kept electronically in a form capable of being transferred to '
@@ -2664,6 +2870,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'gt_cyclical_document_review',
+    triggerSource: 'Golden Thread review-due tick (api/cron/review-tick)',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     reviewerNote: 'The statutory duty is that the information is KEPT to the prescribed standards and is accurate — not that every document carries a review date. Some golden thread information is event-driven, some is current-state, and some is better kept current through a risk or management process than by an arbitrary calendar. A universal document-review calendar is our control for achieving currency, so the row asks for an APPROPRIATE currency trigger per record rather than imposing one shape on all of them.',
     name: 'Golden Thread — currency of each controlled record',
     description:
@@ -2691,6 +2900,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'audit_chain_verification',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Audit chain — verification',
     description: 'Verify the hash-chained audit log has not been altered.',
     group: 'bsa_cycle',
@@ -2708,6 +2919,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'mor_reportability_triage',
+    triggerSource: 'MOR intake — the public reporting form, and any occurrence raised internally by any route',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'Our other MOR rows are assurance controls over the workflow — open-case review, lessons '
       + 'learned, annual system effectiveness. This is the duty itself, and it was missing: on each '
@@ -2738,6 +2952,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'mor_open_case_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'MOR — open case review',
     description: 'Review every open mandatory occurrence report against its statutory clocks.',
     group: 'bsa_cycle',
@@ -2755,6 +2971,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'mor_lessons_learned',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'MOR — closed case review (lessons learned)',
     description: 'Review closed occurrences for systemic causes and revise procedures where indicated.',
     group: 'bsa_cycle',
@@ -2771,6 +2989,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'mor_system_effectiveness_review',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'MOR system — effectiveness review',
     description: 'Review the mandatory occurrence reporting system itself, to confirm it remains effective and accessible.',
     group: 'bsa_cycle',
@@ -2788,6 +3008,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'complaint_intake_triage',
+    triggerSource: 'Complaints intake, by any route the building safety complaints procedure recognises',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       'The two annual complaints rows are assurance controls. This is the per-complaint duty, and the '
       + 'part that matters most is the link outward: does this complaint indicate a BUILDING SAFETY '
@@ -2821,6 +3044,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'complaints_self_assessment',
+    statutoryDutyHolder: 'None under the instruments in this register — the Housing Ombudsman Complaint Handling Code binds member landlords. The STATUTORY complaints duty is the principal accountable person’s under Building Safety Act 2022 s.93, and it has its own row',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Complaints — annual performance self-assessment',
     description: 'Self-assess complaint handling against the Complaint Handling Code.',
     group: 'bsa_cycle',
@@ -2837,6 +3062,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'complaints_report_publication',
+    statutoryDutyHolder: 'None under the instruments in this register — the Housing Ombudsman Complaint Handling Code binds member landlords. The STATUTORY complaints duty is the principal accountable person’s under Building Safety Act 2022 s.93, and it has its own row',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
 
     name: 'Complaints — annual performance report',
     description: 'Publish the annual complaints performance report to residents.',
@@ -2868,6 +3095,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'res_strategy_review',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     statutoryIntervalWords: 'at least every two years (SI 2023/907 reg 10(a))',
     name: 'Residents’ engagement strategy — review',
     description:
@@ -2891,6 +3120,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'dwelling_access_request',
+    triggerSource: '⛔ NO SOURCE. The need for access arises from the risk assessment or an apparent resident-duty contravention; nothing raises it automatically',
+    statutoryDutyHolder: 'Accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '⚠ A POWER EXERCISED FOR A PURPOSE — NEVER A PERIODIC INSPECTION, and the distinction decides '
       + 'the shape of this whole register. Checked against the instruments 2026-09-14, because '
@@ -2936,6 +3168,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'res_consultation',
+    triggerSource: '⛔ NO SOURCE. It depends on whoever takes a building safety decision recognising that it requires consultation — which is the judgement most likely to be missed',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Residents’ engagement — consultation on a building safety decision',
     description: 'Consult residents on a building safety decision, for no less than three weeks.',
     group: 'bsa_cycle',
@@ -2953,6 +3188,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'res_bulletin',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Residents’ safety bulletin',
     description: 'Regular safety bulletin to residents.',
     group: 'bsa_cycle',
@@ -2970,6 +3207,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'engagement_effectiveness',
+    statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Engagement effectiveness — measurement',
     description: 'Measure and report whether resident engagement is actually working.',
     group: 'bsa_cycle',
@@ -2987,6 +3226,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'contractor_certification_refresh',
+    triggerSource: '⛔ NO SOURCE. Certificate expiry dates are not tracked anywhere in the portal',
+    statutoryDutyHolder: 'None — binding by agreement rather than by law',
+    retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     name: 'Approved contractors — certification refresh',
     description: 'Confirm each approved contractor’s scheme certification and insurance are still in date.',
     group: 'bsa_cycle',
@@ -3008,6 +3250,8 @@ export const REGISTER = [
   // stop "not due yet" being mistaken for "nothing to do".
   entry({
     key: 'bsa_risk_assessment_trigger',
+    statutoryDutyHolder: 'Accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Building safety risk assessment — event and risk trigger',
     description:
       'Assess whether a further building safety risk assessment is required, and carry one out where it is. '
@@ -3033,6 +3277,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'building_work_change_control',
+    triggerSource: '⛔ NO SOURCE, AND IT IS THE MOST LOAD-BEARING OF ALL OF THEM. Four other rows name this screen as THEIR trigger source, so anything that bypasses it bypasses them too',
+    statutoryDutyHolder: 'Accountable person (Building Safety Act 2022, Part 4)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Building work — screen for the regime, and update every record it touches',
     // ⚠ WIDENED 2026-09-13, fourth review. It asked for a general change-control
     // row alongside the gateway screen. Made it one row instead: both fire on
@@ -3067,6 +3314,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'cooperation_arrangements_review',
+    statutoryDutyHolder: 'Shared: the accountable person under Building Safety Act 2022 Part 4, AND the responsible person under art 22 of the Fire Safety Order — each to the extent of their own role. Neither discharges the other’s duty',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Cooperation and information-sharing arrangements — review',
     description:
       'Review the arrangements for cooperation and information-sharing between accountable persons, and '
@@ -3094,6 +3343,8 @@ export const REGISTER = [
   // ══ 4 · Governance and review cycles ════════════════════════════════════
   entry({
     key: 'board_safety_standing_item',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Board meeting — building safety standing item',
     description: 'Building safety as a standing item on the board agenda.',
     group: 'governance',
@@ -3111,6 +3362,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'quarterly_safety_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Quarterly safety review',
     description: 'Operational review of what is open and what is closing — the first line of assurance.',
     group: 'governance',
@@ -3127,6 +3380,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'annual_safety_case_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Annual safety case review (full)',
     description: 'Governance review of whether the operational picture still supports the safety case as a whole.',
     group: 'governance',
@@ -3143,6 +3398,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'external_audit',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'External audit — third-line assurance',
     description: 'Independent check that what is being claimed is what is actually happening.',
     group: 'governance',
@@ -3161,6 +3418,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'agm_safety_report',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Annual residents’ safety meeting / AGM safety report',
     description: 'Report on building safety to residents at the AGM or an equivalent meeting.',
     group: 'governance',
@@ -3178,6 +3437,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'insurance_renewal_briefing',
+    statutoryDutyHolder: 'None — binding by agreement rather than by law',
+    retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     name: 'Insurance renewal — safety case briefing',
     description: 'Brief the insurer or broker on the building safety position at renewal.',
     group: 'governance',
@@ -3195,6 +3456,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'bsl_performance_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Building safety lead — performance review',
     description: 'Annual review of the named building safety lead’s performance and continued competence.',
     group: 'governance',
@@ -3212,6 +3475,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'regulator_informal_contact',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Regulator — informal contact',
     description: 'Keep a line open to the Building Safety Regulator outside formal submissions.',
     group: 'governance',
@@ -3265,6 +3530,8 @@ export const REGISTER = [
   // not to quietly delete the entry.
   entry({
     key: 'acrow_prop_check',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: the acceptable position and tolerance, what counts as prohibited movement or damage, what triggers immediate isolation or evacuation, whether every finding goes to a structural engineer, whether photographs are date-stamped, and how long the props may remain before a permanent repair decision is forced. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Temporary structural support — position and integrity check',
@@ -3291,6 +3558,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'cracked_column_check',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: the crack-width measurement method, the reference datum, the measurement tolerance, the corrosion progression criteria and the trigger values. ⚠ A monthly visual comparison is not a monitoring regime unless it is tied to the structural engineer’s specification — a photograph that shows change with no stated trigger value leaves the decision to whoever is looking. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Structural defect — visual comparison check',
@@ -3315,6 +3584,9 @@ export const REGISTER = [
   }),
   entry({
     key: 'crack_monitoring',
+    triggerSource: 'The structural engineer’s monitoring specification, at the interval it sets',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: the reading method, the datum, and the trigger value at which a reading escalates rather than simply being recorded. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Structural movement — instrumented monitoring',
@@ -3339,6 +3611,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'structural_interim_review',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     reviewerNote: 'Also specify: what the interim measures are protecting against, and the condition on which they end. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Structural engineer — review of interim measures',
@@ -3362,6 +3636,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'stair_core_walk_around',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     name: 'Stair core — walk-around',
     description: 'Walk the stair core end to end, looking for anything that compromises the protected route.',
@@ -3385,6 +3661,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'lobby_to_stair_door_check',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     name: 'Lobby-to-stair doors — visual check',
     description: 'Visual check of the doors protecting the stair core, between the quarterly full door rounds.',
@@ -3404,6 +3682,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'stair_lighting_check',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     name: 'Stair lighting — check',
     description: 'Check normal and emergency lighting in the stair core is working.',
@@ -3422,6 +3702,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'alarm_coverage_gap_monitoring',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     reviewerNote: '⚠ This row ages an open action; it does not close one. It must be tied to the specific open finding: the action owner, the original finding, the survey required, its due date, the interim mitigation relied on meanwhile, the decision-maker, the target completion date, the residual risk accepted, and what follows if the survey slips. A monthly ageing log is not a mitigation for a coverage gap that is safety-critical. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Fire alarm coverage — gap monitoring',
@@ -3443,6 +3725,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'alarm_audibility_spot_check',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
     reviewerNote: '⚠ Same as the coverage row: this is an ageing log over an open finding, not a substitute for the survey. Tie it to the action, its owner and its date. ⛔ OPERATIONALLY INCOMPLETE — this row is not yet a complete control. §5 sets out, once, the seven things every row in this group still lacks and why a frequent check standing beside an open defect is not assurance. The Completion action line below is the one that has to change.',
     name: 'Fire alarm audibility — per-floor spot check',
@@ -3463,6 +3747,8 @@ export const REGISTER = [
 
   entry({
     key: 'leaseholder_safety_update',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Leaseholder safety update',
     description: 'Written update to leaseholders on the building safety position.',
     group: 'governance',
