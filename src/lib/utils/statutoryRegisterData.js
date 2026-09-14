@@ -328,7 +328,11 @@ export const REGISTER = [
   entry({
     key: 'fire_alarm_service',
     name: 'Fire alarm — periodic inspection and service',
-    description: 'Periodic inspection and servicing of the fire detection and alarm system by a competent engineer.',
+    description:
+      'Periodic inspection and servicing of the fire detection and alarm system by a competent '
+      + 'engineer, INCLUDING the standby power supply the system depends on — battery condition, '
+      + 'charger operation and the fault alarms — which BS 5839-1 covers within servicing but which '
+      + 'is easy to leave unstated and therefore unverified.',
     group: 'fire_safety',
     basis: 'standard',
     statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
@@ -362,7 +366,11 @@ export const REGISTER = [
   entry({
     key: 'emergency_lighting_annual',
     name: 'Emergency lighting — annual full-duration test',
-    description: 'Full rated-duration discharge test (normally three hours), with luminaires recharged afterwards.',
+    description:
+      'Full rated-duration discharge test (normally three hours), with luminaires recharged '
+      + 'afterwards. ⚠ Where the supply is a CENTRAL battery system, this proves the outcome on the '
+      + 'day but is not its maintenance — that has its own row, and the two do not substitute for '
+      + 'one another.',
     group: 'fire_safety',
     basis: 'standard',
     statutoryRef: 'BS 5266-1, annual full-duration test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
@@ -375,6 +383,73 @@ export const REGISTER = [
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Building has emergency escape lighting',
+  }),
+  entry({
+    key: 'emergency_lighting_central_battery',
+    reviewerNote:
+      '⚠ THIS IS NOT DISCHARGED BY THE ANNUAL LIGHTING TEST, and it is easy to believe it is. The '
+      + 'full-duration test proves the system delivered its rated duration on the day; it does not '
+      + 'check the charger, the individual cell or block voltages, terminal condition, the battery '
+      + 'room temperature and ventilation, or that the fault alarms still work. A battery can pass a '
+      + 'discharge test while months from failing. '
+      + 'The reason to treat it separately is the failure mode: with self-contained luminaires a '
+      + 'failed battery loses ONE light, and with a central system it loses EVERY light at once. '
+      + '❓ Confirm the manufacturer\'s service schedule for the installed system, whether the cells '
+      + 'are sealed or vented — vented cells need battery-room ventilation and electrolyte checks '
+      + 'that sealed ones do not — and the design duration the system is supposed to deliver.',
+    name: 'Emergency lighting central battery system — inspection and maintenance',
+    description:
+      'Inspect and maintain the central power supply system feeding the emergency lighting: the '
+      + 'charger and its operation, battery condition and cell or block voltages, terminals and '
+      + 'connections, the battery enclosure or room including its temperature and ventilation, and '
+      + 'the fault and mains-failure alarms.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BS EN 50171 (central power supply systems) with BS 5266-1 and BS EN 50172 for the emergency lighting regime it serves; the interval follows the manufacturer\'s service schedule, commonly six-monthly. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices to be "maintained in an efficient state, in efficient working order and in good repair"',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Emergency lighting or central battery contractor',
+    competencyRequired: 'Engineer competent in central battery systems — not the same skill as testing self-contained luminaires',
+    evidenceRequired: 'Service record showing charger operation, measured cell or block voltages against the expected values, connection and enclosure condition, and alarms proved',
+    retentionPeriodMonths: 60,
+    handledBy: 'maintenance',
+    handlingNote: 'A distinct asset from the luminaires, and worth scheduling as one. The annual duration test stays where it is — this does not replace it either.',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'Emergency lighting is fed from a central battery or central power supply system rather than from self-contained luminaires',
+  }),
+  entry({
+    key: 'standby_power_supply_check',
+    reviewerNote:
+      'Written generally because the asset varies and the building is expected to gain one: a '
+      + 'standby generator, a UPS, a second incoming supply, or a battery serving a lift. What they '
+      + 'have in common is that a life safety system depends on them and nothing exercises them in '
+      + 'normal use — so the failure is silent until the day it matters. '
+      + '❓ TWO THINGS TO ESTABLISH, and the first may already apply: whether any lift here is a '
+      + 'firefighters\' or evacuation lift, because those require a secondary power supply and its '
+      + 'regime comes with them; and whether the lift emergency communication unit has its own '
+      + 'battery, since it has to work during exactly the power failure that traps someone. '
+      + 'A passenger lift battery is expected in due course, at which point this switches on.',
+    name: 'Secondary and standby power supplies — test and maintain',
+    description:
+      'Test and maintain each secondary or standby power supply on which a life safety system '
+      + 'depends — standby generator, uninterruptible supply, second incoming supply or dedicated '
+      + 'battery — including a load test proving it carries the load it exists for, the changeover, '
+      + 'the fuel or battery condition, and the alarms that report its failure.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BS 9999 and the design basis of the system being supported set what the secondary supply must achieve; BS EN 50171 where it is a central power supply, and the manufacturer\'s schedule otherwise. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1), which reaches the facilities and equipment a fire safety measure depends on as much as the measure itself',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Contractor for the supply concerned',
+    competencyRequired: 'Engineer competent in the supply type — a generator, a UPS and a lift battery are three different regimes',
+    evidenceRequired: 'Test record per supply showing the changeover proved, the load carried and for how long, and the fault alarms proved',
+    retentionPeriodMonths: 60,
+    handledBy: 'maintenance',
+    handlingNote: 'Nothing to schedule until such a supply exists. Record the not-applicable decision with a review date — this is one that is expected to change.',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'A life safety system depends on a standby generator, an uninterruptible supply, a second incoming supply or a dedicated battery',
   }),
   entry({
     key: 'sprinkler_weekly_test',
