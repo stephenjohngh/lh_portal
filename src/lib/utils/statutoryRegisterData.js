@@ -151,6 +151,22 @@ function entry(e) {
     // prevent. Declared per row, because only the citation can settle which it
     // is and nothing can infer it.
     maxIsSchedulingTolerance: false,
+    // The PERIOD AS THE INSTRUMENT EXPRESSES IT — "at least every 3 months",
+    // "within each period of 12 months". Verbatim, not converted.
+    //
+    // Why this field exists, and it is the register's own principle turned on
+    // itself: no instrument anywhere says 92 days, or 366, or 183. Those are
+    // OUR arithmetic on a calendar word, and printing one under the heading
+    // "Maximum permitted interval" told the reader the legislation contained a
+    // 92-day ceiling. It does not. A document built to stop a convention being
+    // read as law had been dressing its own arithmetic as law.
+    //
+    // So where this is set, the statutory period is shown IN WORDS, and the day
+    // count moves to "Our scheduling tolerance" where it belongs — the two are
+    // then impossible to confuse, and the day count stays available for a
+    // scheduler that can only count days.
+    /** @type {string|null} The interval in the instrument's own words, verbatim. */
+    statutoryIntervalWords: null,
     // A row that is not yet a usable control — an interim mitigation with no
     // escalation threshold and no end condition, say. TRUE renders a visible
     // "Completion action" line in the outward-facing statement, and that line
@@ -252,6 +268,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_communal_fire_doors',
+    statutoryIntervalWords: 'at least every 3 months (FSER reg 10(6))',
     name: 'Fire door checks — communal doors',
     description: 'Check all fire doors in the common parts, including self-closing devices.',
     group: 'fire_safety',
@@ -270,6 +287,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_flat_entrance_doors',
+    statutoryIntervalWords: 'at least every 12 months (FSER reg 10(4))',
     name: 'Fire door checks — flat entrance doors',
     reviewerNote:
       'The flat entrance door is a COMMON PARTS measure, whatever side of it the occupier lives on: '
@@ -371,6 +389,50 @@ export const REGISTER = [
   // ventilation" — this car park is naturally ventilated and has none. The row
   // is conditional on ducted ventilation actually crossing a compartment line,
   // which is a question nobody has answered either way.
+  // ⚠ ADDED 2026-09-14 on review, and the reviewer put it better than the
+  // question did: an annual sample finds historic damage; only a control at the
+  // point of work prevents new damage. The compartmentation row could only ASK
+  // how penetrations are permitted and reinstated. This is that control.
+  entry({
+    key: 'compartmentation_penetration_control',
+    reviewerNote:
+      '⚠ THE ANNUAL SURVEY FINDS; THIS PREVENTS. Compartmentation is not breached by neglect, it is '
+      + 'breached by authorised work carried out competently by trades who are not thinking about '
+      + 'fire — a cable pulled through a riser wall, a pipe re-routed, a duct enlarged. The hole is '
+      + 'concealed the same day, and nothing downstream reveals it. A survey once a year cannot keep '
+      + 'pace with work carried out weekly, so the two controls are not alternatives and the survey is '
+      + 'not the primary one. '
+      + '⛔ THIS ROW IS ONLY AS GOOD AS ITS REACH. It has to bind every route by which someone puts a '
+      + 'hole in a compartment line — the managing agent\u2019s own contractors, utility and telecoms '
+      + 'providers, a leaseholder\u2019s fit-out, and emergency repairs out of hours, which is the route '
+      + 'that most often escapes a permit system. A control that covers only planned works records the '
+      + 'penetrations that were least likely to be wrong. '
+      + '❓ Confirm what exists today: is there a permit-to-work or similar gate, who may authorise a '
+      + 'penetration, what proprietary system and installer certification is required for reinstatement, '
+      + 'who verifies it before the opening is closed up, and where the record goes. If no gate exists, '
+      + 'that is the finding — and it is a more urgent one than any defect the annual survey will find.',
+    name: 'Compartmentation — penetration permit and reinstatement',
+    description:
+      'Before any penetration, alteration or service installation affecting a compartment wall, floor, '
+      + 'riser or cavity barrier: authorise it against the compartmentation drawings, specify the '
+      + 'proprietary fire-stopping system and the installer certification required, verify and '
+      + 'photograph the reinstatement before the opening is closed up, and record it against the '
+      + 'compartment line so the next survey inherits it rather than rediscovering it.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair"; art 11 (arrangements for the effective planning, organisation, control, monitoring and review of the preventive and protective measures). Building Safety Act 2022 s.84 — all reasonable steps to prevent a building safety risk materialising, and s.84\u2019s prescribed principles at SI 2023/907 reg 4(c), combating risks "at source ... at the earliest opportunity". ⚠ No instrument states a method or a form; the permit gate and the reinstatement standard are ours to set',
+    intervalBasis: 'stated',
+    trigger: 'Any penetration, alteration or service installation affecting a compartment wall, floor, riser or cavity barrier — planned or emergency, by any party, including utilities, telecoms and leaseholder fit-out',
+    triggerType: 'event',
+    responsibleParty: 'Responsible person, through whoever controls access for works',
+    competencyRequired: 'Authoriser able to read the compartmentation drawings and specify a tested system; reinstatement by a third-party certificated fire-stopping installer',
+    evidenceRequired: 'Per-penetration record: location against the compartment line, who authorised it, the proprietary system and its tested application, installer certification, photographs before closing up, and the verification signature',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⚠ No home. This is the half of compartmentation control that nothing in the portal touches — the works screen catches building work, not a contractor drilling a riser wall.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the building is compartmented and the fire strategy relies on it',
+  }),
   entry({
     key: 'fire_damper_test',
     reviewerNote:
@@ -582,7 +644,8 @@ export const REGISTER = [
   entry({
     key: 'sprinkler_periodic_service',
     reviewerNote:
-      'The weekly test and the annual service were the whole regime, and neither candidate standard '
+      '⛔ TECHNICALLY UNVERIFIED — an adopted interval, not a confirmed regime. '
+      + 'The weekly test and the annual service were the whole regime, and neither candidate standard '
       + 'works that way — each sets cycles inside the year for the pump, the water supply, the tanks, '
       + 'the valves and the alarm and flow devices. '
       + '⚠ THE ADOPTED SIX MONTHS REFLECTS SUPPRESSION IN THE CAR PARK ONLY (confirmed by the duty '
@@ -621,7 +684,7 @@ export const REGISTER = [
     statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED, SO THE INTERVAL SOURCE IS UNKNOWN RATHER THAN STATED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. Annual is therefore OUR adopted cycle until the governing standard is identified, not a figure read out of it — and each candidate standard sets a TIERED programme with shorter cycles inside the year, so identifying the standard is more likely to add cycles than to confirm this one. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'practice',
     frequencyDays: 365,
-    reviewerNote: 'The interval is ours, and it cannot be the reference’s while the governing standard is unrecorded — the row said both things at once until this was corrected. ⚠ Both candidate standards set a tiered servicing programme rather than a single annual visit; the paired intermediate-service row is where that detail lands once the design basis is confirmed.',
+    reviewerNote: '⛔ TECHNICALLY UNVERIFIED — this row records what we do, not a regime anyone has confirmed is the right one for this installation. The interval is ours, and it cannot be the reference’s while the governing standard is unrecorded — the row said both things at once until this was corrected. ⚠ Both candidate standards set a tiered servicing programme rather than a single annual visit; the paired intermediate-service row is where that detail lands once the design basis is confirmed.',
     responsibleParty: 'Suppression system contractor',
     competencyRequired: 'Competent sprinkler engineer (LPCB or BAFE SP203-4 certificated)',
     evidenceRequired: 'Annual service certificate, and pump test results where a pump is fitted',
@@ -632,6 +695,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'dry_riser_annual_test',
+    reviewerNote: '⛔ TECHNICALLY UNVERIFIED, and it matters more here than for most rows because the dry riser is expressly within the STATUTORY monthly check as essential fire-fighting equipment under FSER reg 6(7), so four rows touch one asset and the relationship between them has never been settled. What is unresolved: the BS 9990 edition adopted · whether an annual wet pressure test is the correct test for THIS installation and at what pressure and duration · what the six-monthly visual adds to it · and what, if anything, the fire and rescue service or the insurer requires on top. Until that is answered the servicing regime is what we inherited rather than what was specified.',
     name: 'Dry riser — annual pressure test',
     description: 'Annual wet pressure test of the riser main, landing valves and inlet breeching.',
     group: 'fire_safety',
@@ -812,6 +876,13 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_monthly_equipment_check',
+    // ⚠ Reg 7(4) is UNCONDITIONAL — "must make a record ... and make that record
+    // accessible to the residents of the building". Not on request. Verified
+    // against legislation.gov.uk 2026-09-14. The record is made and is not
+    // accessible, which is a control deficiency rather than an open question,
+    // and it is tracked as an action rather than as something we would like to
+    // know. The METHOD is ours to choose; the duty is not.
+    statutoryIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
     reviewerNote:
       'Reg 7(1) is ONE statutory duty over three things — firefighters’ lifts, evacuation lifts and '
       + '"essential fire-fighting equipment". It is carried on two rows here because two different walks '
@@ -875,6 +946,7 @@ export const REGISTER = [
   // a separate statutory duty on the responsible person.
   entry({
     key: 'fser_monthly_systems_check',
+    statutoryIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
     name: 'Monthly check — detection, alarm and linked systems',
     description:
       'Monthly routine check that the fire detection and alarm system, any detectors linked to smoke '
@@ -1253,9 +1325,74 @@ export const REGISTER = [
   // are separated because the reviewer was right that a review row alone reads
   // as though the plan already exists — and for a building that has not yet
   // prepared one, the first duty is not a review.
+  // ⚠ ADDED 2026-09-14, ninth review round — and this is the SIXTH time the
+  // same shape has been found in this register. The five before it: FSER reg
+  // 6(6) plans, the MOR and complaints workflows our annual rows audited, the
+  // fire risk assessment's art 9(3) triggers, and the KBI 28-day notification.
+  //
+  // The irony is the sharp part of the finding. Rounds 3 and 4 added four
+  // interface rows for SI 2025/797 precisely BECAUSE the regime was reduced to
+  // an annual review — and then gave three of them frequencyDays 365 and a
+  // calendar trigger. The duties were captured and the control mechanism
+  // reproduced the very defect it was added to cure.
+  //
+  // Verified against the instrument 2026-09-14:
+  //   reg 6(a)  offer a PCFRA to each relevant resident identified under reg 5
+  //   reg 6(b)  MUST carry one out for each relevant resident who REQUESTS one
+  //   reg 9(4)  review earlier than the 12 months where there is reason to
+  //             believe the assessment or statement requires amending, OR at
+  //             the reasonable request of the relevant resident
+  //   reg 9     an earlier triggered review RESETS the 12-month clock
+  //
+  // None of that is a date. The annual rows stay as the assurance pass; this
+  // row is the duty.
+  entry({
+    key: 'evac_process_events',
+    reviewerNote:
+      '⛔ THE ANNUAL INTERFACE ROWS ARE THE ASSURANCE PASS. THIS ROW IS THE DUTY. SI 2025/797 runs on '
+      + 'events and requests, not on a calendar: a resident may REQUEST a person-centred assessment '
+      + 'and one must then be carried out (reg 6(b)); a review must happen earlier than the twelve '
+      + 'months wherever there is reason to believe the assessment or statement needs amending, or at '
+      + 'the resident\u2019s reasonable request (reg 9(4)). An annual pass cannot discharge either, and '
+      + 'must not be allowed to look as though it does. '
+      + '⚠ A DETAIL THAT IS EASY TO LOSE: an earlier triggered review RESETS the twelve months. A '
+      + 'scheduler that keeps the original anniversary will show the next review as due too early and, '
+      + 'worse, will make the triggered review look like an extra rather than the duty discharged. '
+      + '⛔ THIS DOES NOT REOPEN THE RESIDENT-DATA DECISION. Like the other four, this is an INTERFACE '
+      + 'row: what crosses to us is that an event occurred, that the process ran, who owns it and when '
+      + 'it was confirmed. The assessments, the statements and the residents they concern stay in the '
+      + 'system that governs health data — which is what reg 12 is for. '
+      + '❓ The question this row asks of the arrangements is not "who does the assessment" but "by '
+      + 'what route does a resident\u2019s request reach the responsible person at all, and what starts '
+      + 'the clock when it does?" A duty that fires on a request fails silently if nobody can receive '
+      + 'one.',
+    name: 'Residential evacuation — event and request interface',
+    description:
+      'On any event in the residential evacuation process, confirm through the owning system that the '
+      + 'required step was taken and recorded: a new relevant resident identified · a resident '
+      + 'requesting a person-centred fire risk assessment · an assessment completed · mitigating '
+      + 'measures required or put in place · an emergency evacuation statement agreed, amended or '
+      + 'withdrawn · a resident requesting a review · reason arising to believe an assessment or '
+      + 'statement needs amending · consent for the fire and rescue authority information given or '
+      + 'withdrawn · a relevant resident\u2019s status changing or the resident leaving.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797) — reg 5 (identification, by reasonable endeavours), reg 6(a) (offer an assessment to each relevant resident identified) and reg 6(b) ("ensure a person-centred fire risk assessment is carried out for each relevant resident who requests one"), reg 7 (mitigation of risks), reg 8 (emergency evacuation statement, by reasonable endeavours to agree), reg 9(4) (review where there is reason to believe amendment is required, or at the reasonable request of the relevant resident), reg 10 (information to the local fire and rescue authority, with consent), reg 11 (relevant resident\u2019s representative). ⚠ None of these is a calendar duty. Reg 9(3)\u2019s twelve months is the only period the instrument states, and an earlier triggered review under reg 9(4) restarts it',
+    intervalBasis: 'stated',
+    trigger: 'Any event or request in the residential evacuation process — identification, a request for an assessment, an assessment or mitigation completed, a statement agreed, amended or withdrawn, a request for review, reason to believe amendment is required, consent given or withdrawn, or a change in a resident\u2019s relevant status',
+    triggerType: 'event',
+    responsibleParty: 'Responsible person, through the system that owns the person-centred process',
+    competencyRequired: 'Person able to recognise which events start a statutory step, and to confirm the step was taken without holding the personal data behind it',
+    evidenceRequired: 'Per-event record: what occurred, the date it became known, which regulation it engaged, that the required step was taken and by whom, and the date — with no personal or health data crossing into this register',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⚠ No home. The 2025 regime is held as an interface and nothing in the portal receives these events, so today this depends on a person relaying them.',
+    evidencedBy: null,
+    appliesWhen: 'Always — the building is a specified residential building within SI 2025/797',
+  }),
   entry({
     key: 'evac_building_plan_prepare',
-    reviewerNote: 'Distinct from the annual review: reg 13 first requires the plan to be PREPARED, provided to the local fire and rescue authority, and a copy placed in the secure information box where the building has one.',
+    reviewerNote: 'Distinct from the annual review: reg 13 first requires the plan to be PREPARED, provided to the local fire and rescue authority, and a copy placed in the secure information box where the building has one. ⚠ REG 13(2) ALSO PRESCRIBES WHAT THE PLAN MUST CONTAIN, so a plan that is prepared, issued and boxed can still be non-compliant on its face. Three things: the instructions to residents relating to the EVACUATION STRATEGY for the building required by FSER reg 9 · confirmation of WHETHER OR NOT there are relevant residents, the negative being as much a required statement as the positive · and information about ANY OTHER ARRANGEMENTS for evacuating the building. ⛔ THE FIRST IS BLOCKED HERE: this building\u2019s evacuation strategy is not settled, and a plan cannot state instructions relating to a strategy nobody has determined. That makes the strategy a dependency of a statutory document rather than a question that can wait, which is why it now heads the actions schedule instead of sitting in a list of things we would like to know.',
     name: 'Building emergency evacuation plan — prepare and issue',
     description:
       'Prepare the building emergency evacuation plan, provide it to the local fire and rescue '
@@ -1279,6 +1416,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_building_plan_review',
+    statutoryIntervalWords: 'within 12 months of the plan first being prepared, and every 12 months thereafter (SI 2025/797 reg 13)',
     reviewerNote: 'Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the 12-month cycle is a floor, not the only trigger. The plan holds no resident personal data.',
     name: 'Building emergency evacuation plan — review',
     description:
@@ -1307,7 +1445,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_person_centred_review',
-    reviewerNote: 'INTERFACE ONLY — an RP-controlled record, deliberately not held in this system; what crosses is the dated confirmation that the review happened. Reg 9 also triggers on reason to believe an assessment needs amending and at the reasonable request of the resident, and an early review restarts the 12 months.',
+    statutoryIntervalWords: 'no later than 12 months after the emergency evacuation statement was first recorded, and every 12 months thereafter (SI 2025/797 reg 9(3))',
+    reviewerNote: 'INTERFACE ONLY — an RP-controlled record, deliberately not held in this system; what crosses is the dated confirmation that the review happened. ⚠ THIS ROW IS THE ANNUAL PASS AT REG 9(3) AND NOTHING MORE. Reg 9(4) requires a review EARLIER wherever there is reason to believe an assessment or statement needs amending, or at the reasonable request of the resident — those live on the event and request row, because a calendar cannot raise them. An early review RESTARTS the 12 months rather than sitting alongside them: a scheduler anchored to the original date will call the next review early and will log the triggered one as an extra, when it was the duty being discharged.',
     name: 'Person-centred evacuation arrangements — review',
     description:
       'Confirm that the responsible person has reviewed each person-centred fire risk assessment, the '
@@ -1393,6 +1532,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'resident_fire_safety_info',
+    statutoryIntervalWords: 'within each period of 12 months (FSER reg 9(3)(b)) — and to a new resident as soon as reasonably practicable after they move in',
     name: 'Fire safety instructions to residents — refresh',
     description: 'Re-issue the fire safety instructions and evacuation information to all residents.',
     group: 'fire_safety',
@@ -1419,6 +1559,7 @@ export const REGISTER = [
   // duty with its own content and its own timing, so it is its own row.
   entry({
     key: 'fire_door_resident_information',
+    statutoryIntervalWords: 'within each period of 12 months (FSER reg 10(3)) — and to a new resident as soon as reasonably practicable after they move in',
     reviewerNote:
       'Three specific things must be conveyed, and a general fire safety leaflet does not do it: fire '
       + 'doors are to be kept shut when not in use, self-closing devices are not to be tampered with, '
@@ -1674,6 +1815,7 @@ export const REGISTER = [
   // registered engineer, CP12 record.
   entry({
     key: 'lift_loler_examination',
+    statutoryIntervalWords: 'at least every 6 months (LOLER reg 9(3)(a)(i))',
     reviewerNote:
       'APPLICABILITY SETTLED 2026-09-13 on the duty holder’s facts: the lift is provided primarily for residents, but cleaners, the caretaker and contractors use it in the course of their work. **LOLER applies.** The test is not who the lift is mainly FOR — it is whether it is provided for, or used by, people at work; HSE’s example of a lift outside LOLER is a stair lift in a private dwelling, one nobody works with. A residents’ lift that staff and contractors work from is work equipment under PUWER reg 3, and the company controlling it holds the duty to the extent of that control. Reg 9(3)(a)(i) then sets SIX MONTHS as a statutory maximum for equipment used to lift persons, not as an adopted interval — and the examiner must be independent of the maintenance contractor, because a service visit is not a thorough examination. ⚠ RE-TEST THIS if the arrangements change so that nobody uses the lift in the course of work: the answer turns on that fact and nothing else. The alternative to the fixed six months is an examination scheme drawn up by a competent person under reg 9(3)(a)(iii) — available, and not currently used.',
     name: 'Lift — thorough examination',
@@ -2627,6 +2769,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'res_strategy_review',
+    statutoryIntervalWords: 'at least every two years (SI 2023/907 reg 10(a))',
     name: 'Residents’ engagement strategy — review',
     description:
       'Review the residents’ engagement strategy at least every two years, and earlier where an event '
