@@ -154,6 +154,43 @@ export const REGISTER = [
     appliesWhen: 'Wherever the premises are subject to the Regulatory Reform (Fire Safety) Order 2005 and we are the responsible person or have an agreed role supporting that duty. ⚠ The accountable person, the managing agent and the responsible person are NOT automatically the same party',
   }),
   entry({
+    key: 'fra_review_on_trigger',
+    reviewerNote:
+      'The statutory trigger, as distinct from our annual pass on the next row. Art 9(3) requires the '
+      + 'assessment to be reviewed "regularly so as to keep it up to date and particularly if — (a) '
+      + 'there is reason to suspect that it is no longer valid; or (b) there has been a significant '
+      + 'change", including where the premises, the technical or organisational measures, or the '
+      + 'organisation of the work undergo significant changes, extensions or conversions. ⚠ Neither '
+      + 'limb is a date, and an annual refresh standing alone lets a calendar read as the trigger. '
+      + 'Note also that the fire safety order reaches the STRUCTURE, the EXTERNAL WALLS and the FLAT '
+      + 'ENTRANCE DOORS of a building of this kind, by the amendment made by the Fire Safety Act 2021 '
+      + '— so a change to any of those can be the significant change that fires this row.',
+    name: 'Fire risk assessment — review on trigger',
+    description:
+      'Review the fire risk assessment as soon as there is reason to suspect it is no longer valid, '
+      + 'or after any significant change — to the premises, the structure, the external walls, the '
+      + 'flat entrance doors, the fire safety measures, the occupancy or the way the building is '
+      + 'used — and make any change to the assessment that the review shows is needed.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Regulatory Reform (Fire Safety) Order 2005, art 9(3) — review "regularly so as to keep it up to date and particularly if (a) there is reason to suspect that it is no longer valid; or (b) there has been a significant change". The Order applies to the structure, external walls and flat entrance doors of a building containing two or more sets of domestic premises, by the amendment made by the Fire Safety Act 2021',
+    intervalBasis: 'stated',
+    frequencyDays: null,
+    trigger: 'Reason to suspect the assessment is no longer valid, or a significant change to the premises, the structure, the external walls, the fire safety measures, the occupancy or the organisation of the work',
+    triggerType: 'event',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Person competent to judge whether a change is significant, escalating to the fire risk assessor where it may be',
+    evidenceRequired: 'Record of what triggered the review, when awareness arose, who judged it, the review carried out and any change made to the assessment — including a reasoned record where a change was judged NOT significant',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote:
+      '⚠ No home, and nothing detects the trigger. The building-work screening row should catch a '
+      + 'planned change; an unplanned one — an incident, a new occupancy pattern, a defect found on '
+      + 'another check — depends on a person raising it.',
+    evidencedBy: null,
+    appliesWhen: 'Wherever the premises are subject to the Regulatory Reform (Fire Safety) Order 2005 and we are the responsible person or have an agreed role supporting that duty',
+  }),
+  entry({
     key: 'fra_action_plan_review',
     name: 'FRA action plan — review',
     description: 'Review progress against the fire risk assessment’s action plan and re-prioritise what is open.',
@@ -233,7 +270,7 @@ export const REGISTER = [
       + 'tested so that all are covered over an appropriate period.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, weekly testing by the user — the precise test follows the system’s category, design and log book, and the edition of the standard adopted for this installation',
+    statutoryRef: 'BS 5839-1, weekly testing by the user — the precise test follows the system’s category, design and log book, and the edition of the standard adopted for this installation. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 7,
     maxIntervalDays: 7,
@@ -250,7 +287,7 @@ export const REGISTER = [
     description: 'Periodic inspection and servicing of the fire detection and alarm system by a competent engineer.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test',
+    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
@@ -267,7 +304,7 @@ export const REGISTER = [
     description: 'Short-duration function test of every emergency luminaire and exit sign.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5266-1 / BS EN 50172, monthly function test',
+    statutoryRef: 'BS 5266-1 / BS EN 50172, monthly function test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
@@ -284,7 +321,7 @@ export const REGISTER = [
     description: 'Full rated-duration discharge test (normally three hours), with luminaires recharged afterwards.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5266-1, annual full-duration test',
+    statutoryRef: 'BS 5266-1, annual full-duration test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -319,7 +356,7 @@ export const REGISTER = [
     description: 'Annual service and test of the sprinkler or residential suppression system.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check',
+    statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -337,7 +374,7 @@ export const REGISTER = [
     description: 'Annual wet pressure test of the riser main, landing valves and inlet breeching.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 9990, annual test. ⚠ THE ADOPTED EDITION AND SYSTEM-SPECIFIC METHOD ARE NOT RECORDED. ❓ Confirm the BS 9990 edition adopted for this installation, whether the annual test is correctly described as a wet pressure test and at what pressure and duration, the treatment of landing valves and the inlet breeching, the visual inspection interval, any fire and rescue service expectation, and the relationship to the statutory monthly reg 7 check — the riser is reg 6(7) key fire-fighting equipment, so the same asset is touched by both rows',
+    statutoryRef: 'BS 9990, annual test. ⚠ THE ADOPTED EDITION AND SYSTEM-SPECIFIC METHOD ARE NOT RECORDED. ❓ Confirm the BS 9990 edition adopted for this installation, whether the annual test is correctly described as a wet pressure test and at what pressure and duration, the treatment of landing valves and the inlet breeching, the visual inspection interval, any fire and rescue service expectation, and the relationship to the statutory monthly reg 7 check — the riser is reg 6(7) key fire-fighting equipment, so the same asset is touched by both rows. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -354,7 +391,7 @@ export const REGISTER = [
     description: 'Visual inspection of inlets, outlets, cabinets and padlocks between annual tests.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 9990, six-monthly visual inspection',
+    statutoryRef: 'BS 9990, six-monthly visual inspection. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
@@ -371,7 +408,7 @@ export const REGISTER = [
     description: 'Basic service of every portable extinguisher by a competent technician.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5306-3, basic service',
+    statutoryRef: 'BS 5306-3, basic service. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
@@ -391,7 +428,7 @@ export const REGISTER = [
       + 'vents, the control panel and any smoke shaft.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS EN 12101 (product and system series) and BS 7346-8 (smoke control), periodic servicing. ⚠ Neither alone prescribes the service interval for a particular installation — six-monthly is the building’s adopted interval, to be confirmed against the design specification, the commissioning information, the manufacturer’s requirements and the fire strategy',
+    statutoryRef: 'BS EN 12101 (product and system series) and BS 7346-8 (smoke control), periodic servicing. ⚠ Neither alone prescribes the service interval for a particular installation — six-monthly is the building’s adopted interval, to be confirmed against the design specification, the commissioning information, the manufacturer’s requirements and the fire strategy. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'practice',
     frequencyDays: 182,
     // ⚠ `maxIntervalDays: 366` removed 2026-09-13 on external review, which
