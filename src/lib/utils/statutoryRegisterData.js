@@ -164,6 +164,33 @@ function entry(e) {
     operationallyIncomplete: false,
     /** @type {string|null} Action id, owner, technical authority, due date, interim risk owner, status. */
     completionAction: null,
+    // ⛔ OUT OF THIS REGISTER'S REMIT — a real duty that somebody else holds
+    // entirely, and that this register therefore does not track.
+    //
+    // A THIRD STATE, not to be confused with either of the other two.
+    // "Not applicable to this building" is a fact about the BUILDING, recorded
+    // as a dated, reasoned exclusion decision with a review date. "Applies"
+    // means we hold it. OUT OF SCOPE means the duty exists, always will, and is
+    // simply not ours — so there is no decision to make and nothing to review.
+    //
+    // The row stays visible so the duty reads as CONSIDERED AND PLACED rather
+    // than forgotten, and so a reviewer asking "what about X?" finds an answer
+    // instead of a silence. An out-of-scope row must not be schedulable: set
+    // evidencedBy to null alongside it, or it shows up in a work list as
+    // something nobody ever does.
+    //
+    // THE BOUNDARY: THE INTERIOR OF A PRIVATE DWELLING IS OUT OF SCOPE.
+    // Confirmed by the duty holder 2026-09-14. This register covers the common
+    // parts, the structure and the building's own systems. It does not cover
+    // inspections inside individual flats, whose duties sit with each
+    // leaseholder or their landlord separately.
+    //
+    // ⚠ The flat ENTRANCE DOOR is in scope, and that is not an inconsistency:
+    // the door is the compartment boundary between the dwelling and the common
+    // escape route, and FSER reg 10(4) puts the duty on the responsible person
+    // expressly. The line falls at the door.
+    /** @type {string|null} Why this duty is outside this register's remit, and who holds it. */
+    outOfScope: null,
     competencyRequired: null,
     retentionPeriodMonths: 36,
     trigger: null,
@@ -271,6 +298,17 @@ export const REGISTER = [
   entry({
     key: 'fser_flat_entrance_doors',
     name: 'Fire door checks — flat entrance doors',
+    reviewerNote:
+      '⚠ IN SCOPE, AND THE CONTRAST WITH THE DWELLING INTERIOR IS DELIBERATE RATHER THAN '
+      + 'INCONSISTENT. This register does not schedule inspections inside private flats — those '
+      + 'duties sit with each leaseholder separately. The flat entrance door differs on both counts: '
+      + 'it is the compartment boundary between the dwelling and the common escape route, so its '
+      + 'failure is a common-parts failure; and FSER reg 10(4) places the duty on the RESPONSIBLE '
+      + 'PERSON expressly, not on the occupier. The line falls at the door. '
+      + '⚠ "Best endeavours" is the statutory standard, and it is not a lower one. Reg 10(5) requires '
+      + 'the ATTEMPTS to be recorded, so a door that could not be reached produces a record rather '
+      + 'than a blank — and a year of unrecorded refusals is exactly the failure this row exists to '
+      + 'make visible.',
     description: 'Best endeavours to check every flat entrance door opening onto a common part.',
     group: 'fire_safety',
     basis: 'statute',
@@ -1549,6 +1587,21 @@ export const REGISTER = [
   entry({
     key: 'eicr_dwellings',
     name: 'EICR — rented dwellings',
+    outOfScope:
+      'The duty sits with the landlord of each privately rented dwelling — that is, with individual '
+      + 'leaseholders who let their flats, separately and one by one. It is not the accountable '
+      + 'person’s duty and not the managing agent’s, and neither is in a position to discharge it or '
+      + 'to evidence that it was discharged. Confirmed by the duty holder 2026-09-14: this register '
+      + 'covers the COMMUNAL electrical installation, and the interior of a private dwelling is '
+      + 'outside its remit. '
+      + '⚠ Kept rather than deleted, so the duty reads as considered and placed rather than as '
+      + 'forgotten — a reviewer who asks "what about the rented flats?" should find this answer and '
+      + 'not a silence. '
+      + '⚠ WHAT IS RETAINED IS THE RISK, NOT THE INSPECTION. An unsafe installation inside a flat is '
+      + 'still a building safety risk capable of spreading beyond it, and it reaches us by three '
+      + 'routes that ARE in this register: the building safety risk assessment, the occurrence '
+      + 'triage, and the right to request access to a dwelling. What is out of scope is scheduling '
+      + 'and evidencing another party’s five-yearly test — not caring what it finds.',
     description: 'Five-yearly inspection and testing of the electrical installation in each rented dwelling.',
     group: 'other_statutory',
     basis: 'statute',
@@ -1558,10 +1611,12 @@ export const REGISTER = [
     maxIntervalDays: 1826,
     responsibleParty: 'Electrical contractor',
     competencyRequired: 'Qualified and competent electrician',
-    evidenceRequired: 'EICR per dwelling; copy to the tenant within 28 days',
+    evidenceRequired: 'EICR per dwelling; copy to the tenant within 28 days — held by that dwelling’s landlord, not by us',
     retentionPeriodMonths: 120,
-    handledBy: 'maintenance',
-    evidencedBy: 'maintenance_job',
+    handledBy: 'none',
+    // Out of scope, so NOT schedulable — a row nobody owns must not appear in a
+    // work list, where it would read as something never done.
+    evidencedBy: null,
     appliesWhen: 'Any dwelling is let on a relevant tenancy — long leases alone do NOT trigger this',
   }),
   entry({
@@ -1819,13 +1874,19 @@ export const REGISTER = [
       + 'changed, a tap installed for a works project and left in place, a guest suite between '
       + 'bookings — each creates a dead leg that no monitoring regime will reveal, and none of them '
       + 'announces itself to whoever maintains the list. '
-      + '❓ Confirm that the written scheme names the little-used outlets, who keeps that list current, '
-      + 'what flush duration and temperature it specifies, and how a newly vacant flat reaches it.',
+      + '❓ Confirm that the written scheme names the little-used outlets, who keeps that list '
+      + 'current, and what flush duration and temperature it specifies. '
+      + '⛔ SCOPE: this row reaches the COMMUNAL system only, up to each dwelling’s point of supply. '
+      + 'Pipework and outlets inside a flat belong to the leaseholder, and this register does not '
+      + 'schedule work inside private dwellings. ⚠ The boundary does not make the risk go away: a '
+      + 'flat standing empty for months is a dead leg hanging off the communal system, and where the '
+      + 'risk assessment identifies that, the control belongs in the written scheme and with the '
+      + 'leaseholder rather than on this row. Name it there rather than leaving the gap unstated.',
     name: 'Little-used outlets — flushing',
     description:
-      'Flush the outlets the written scheme identifies as little-used — communal cleaners’ '
-      + 'cupboards and sluices, plant room and guest taps, showers, hose bibs and outlets serving '
-      + 'vacant dwellings — running each to temperature for the period the scheme specifies, and '
+      'Flush the outlets the written scheme identifies as little-used IN THE COMMUNAL SYSTEM — '
+      + 'cleaners’ cupboards and sluices, plant room, guest and landlord’s taps, communal showers '
+      + 'and hose bibs — running each to temperature for the period the scheme specifies, and '
       + 'recording it per outlet rather than per round.',
     group: 'other_statutory',
     basis: 'statute',
