@@ -151,6 +151,18 @@ function entry(e) {
     // prevent. Declared per row, because only the citation can settle which it
     // is and nothing can infer it.
     maxIsSchedulingTolerance: false,
+    // ⚠ WHERE A ROW CARRIES BOTH `statutoryIntervalWords` AND `maxIntervalDays`, THE DAY
+    // COUNT MUST BE THE SHORTEST REAL CALENDAR REALISATION OF THE PERIOD.
+    //
+    // "At least every 3 months" is not 92 days. Measured across real months it
+    // is anything from 89 to 92 — so a scheduler adding 92 days to 1 February
+    // produces 4 May, three days past the statutory 1 May. The same held for
+    // six months (183 against a shortest 181) and twelve (366 against 365).
+    // Each ceiling is now the SHORTEST realisation, so a day-counting scheduler
+    // cannot overshoot whatever date the last completion fell on.
+    //
+    // Being a few days early is a scheduling cost. Being one day late is a
+    // breach, and the register must not be the thing that causes it.
     // The PERIOD AS THE INSTRUMENT EXPRESSES IT — "at least every 3 months",
     // "within each period of 12 months". Verbatim, not converted.
     //
@@ -167,6 +179,21 @@ function entry(e) {
     // scheduler that can only count days.
     /** @type {string|null} The interval in the instrument's own words, verbatim. */
     statutoryIntervalWords: null,
+    // ⛔ THIS ROW IS AN ASSURANCE PASS, NOT THE DUTY — and the table must say
+    // so, not only the note beneath it.
+    //
+    // The register has split six duties now into an event-driven statutory row
+    // and an annual confirmation over it. The split is correct, but a reader
+    // skimming the annual row sees "Calendar / Annual" and concludes that the
+    // statutory process is checked annually. It is not: the duty fires when a
+    // resident is identified, or requests an assessment, or circumstances
+    // change. The annual pass exists to catch what nobody noticed at the time.
+    //
+    // Set this to a short phrase naming the OPERATIVE control. It changes the
+    // two table lines a skimmer actually reads, so the qualification cannot be
+    // missed by anyone who does not reach the note.
+    /** @type {string|null} What the operative duty is, where this row is only assurance over it. */
+    assuranceOnly: null,
     // A row that is not yet a usable control — an interim mitigation with no
     // escalation threshold and no end condition, say. TRUE renders a visible
     // "Completion action" line in the outward-facing statement, and that line
@@ -275,8 +302,8 @@ export const REGISTER = [
     basis: 'statute',
     statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(6); self-closing devices reg 10(7)',
     intervalBasis: 'stated',
-    frequencyDays: 90,
-    maxIntervalDays: 92,
+    frequencyDays: 84,
+    maxIntervalDays: 89,
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person trained in fire door inspection; formal certification not required by the regulation',
     evidenceRequired: 'Dated check record per door, with defects and remedial action',
@@ -304,7 +331,7 @@ export const REGISTER = [
     statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(4); record of access attempts reg 10(5); self-closing devices reg 10(7)',
     intervalBasis: 'stated',
     frequencyDays: 365,
-    maxIntervalDays: 366,
+    maxIntervalDays: 365,
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person trained in fire door inspection',
     evidenceRequired: 'Dated check record per door, plus a record of access attempts where entry was refused',
@@ -1180,6 +1207,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'frs_plans_current',
+    assuranceOnly: 'the update-on-change row — FSER reg 6(6) fires on a change to the layout or to the location of key fire-fighting equipment',
     reviewerNote: 'This annual pass is OUR control, not a statutory cycle — the statutory duty is the event-driven update on the preceding row. It exists to catch a change nobody told us about. ⚠ Deliberately framed as confirming what WE sent and what the box holds, not what the fire and rescue authority currently holds: we cannot see their records, and nothing requires them to reconfirm annually. Writing it the other way would invent a duty for them and a dependency for us.',
     name: 'Fire and rescue service plans — annual confirmation',
     description:
@@ -1234,6 +1262,7 @@ export const REGISTER = [
   // the system that governs health data — which is the whole point of reg 12.
   entry({
     key: 'evac_resident_identification',
+    assuranceOnly: 'the event and request row — SI 2025/797 regs 5 and 6 fire on identification and on a resident\u2019s request, not on a date',
     reviewerNote:
       'The duty begins long before the annual review: reasonable endeavours to identify relevant '
       + 'residents (reg 5), an offer of a person-centred fire risk assessment, and one carried out where '
@@ -1264,6 +1293,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_mitigation_statements',
+    assuranceOnly: 'the event and request row — SI 2025/797 regs 7 and 8 follow an assessment, not a calendar',
     reviewerNote:
       'Regs 7 and 8 are where the process produces something: mitigating measures that are reasonable '
       + 'and proportionate, and an emergency evacuation statement agreed and recorded where that is '
@@ -1291,6 +1321,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'evac_frs_information',
+    assuranceOnly: 'the event and request row — SI 2025/797 reg 10 follows consent being given, changed or withdrawn',
     reviewerNote:
       '⚠ CONSENT IS PART OF THE DUTY, not a courtesy — but it does not gate everything equally, and '
       + 'the workflow has to tell the limbs apart. It must identify which prescribed information the '
@@ -1428,7 +1459,7 @@ export const REGISTER = [
     statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 13 — "no later than 12 months after the date on which the plan is first prepared, and before the end of every period of 12 months thereafter"',
     intervalBasis: 'stated',
     frequencyDays: 365,
-    maxIntervalDays: 366,
+    maxIntervalDays: 365,
     triggerType: 'calendar',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person able to confirm the plan against the current fire strategy',
@@ -1459,7 +1490,7 @@ export const REGISTER = [
     statutoryRef: 'Fire Safety (Residential Evacuation Plans) (England) Regulations 2025 (SI 2025/797), reg 9 — review by the responsible person, every 12 months',
     intervalBasis: 'stated',
     frequencyDays: 365,
-    maxIntervalDays: 366,
+    maxIntervalDays: 365,
     triggerType: 'calendar',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person competent to carry out a person-centred fire risk assessment',
@@ -1540,7 +1571,7 @@ export const REGISTER = [
     statutoryRef: 'Fire Safety (England) Regulations 2022, reg 9(3) — "within each period of 12 months"',
     intervalBasis: 'stated',
     frequencyDays: 365,
-    maxIntervalDays: 366,
+    maxIntervalDays: 365,
     responsibleParty: 'Responsible person',
     evidenceRequired: 'Distribution record and communications log; also issued to new residents on move-in',
     handledBy: 'info',
@@ -1576,7 +1607,7 @@ export const REGISTER = [
     statutoryRef: 'Fire Safety (England) Regulations 2022, reg 10(1)–(2) (the information) and reg 10(3) (when it must be given)',
     intervalBasis: 'stated',
     frequencyDays: 365,
-    maxIntervalDays: 366,
+    maxIntervalDays: 365,
     triggerType: 'calendar',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person issuing resident communications',
@@ -1831,8 +1862,8 @@ export const REGISTER = [
     // maximum or our adopted interval, is an open question.
     statutoryRef: 'Lifting Operations and Lifting Equipment Regulations 1998, reg 9(3)(a)(i) — thorough examination at least every 6 months for lifting equipment used to lift persons. LOLER applies because the lift is used by people at work (see the note), so this is a statutory maximum rather than an adopted interval. Reg 9(3)(a)(iii) permits an examination scheme drawn up by a competent person instead of the fixed interval',
     intervalBasis: 'stated',
-    frequencyDays: 182,
-    maxIntervalDays: 183,
+    frequencyDays: 175,
+    maxIntervalDays: 181,
     triggerType: 'calendar',
     responsibleParty: 'Insurance inspection body or independent examiner',
     competencyRequired:
@@ -2261,6 +2292,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'kbi_update',
+    assuranceOnly: 'the change-notification row — SI 2023/396 reg 21 runs 28 days from AWARENESS of a change',
     name: 'Key building information — assurance review',
     // ⚠ Reworded 2026-09-13 after external review. The statutory duty is to
     // notify a CHANGE within the required period — there is no statutory
