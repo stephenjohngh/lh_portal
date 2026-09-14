@@ -716,6 +716,44 @@ export const REGISTER = [
     appliesWhen: 'The car park relies on permanent openings to outside air for its ventilation rather than on a mechanical system',
   }),
   entry({
+    key: 'evacuation_alert_system_service',
+    reviewerNote:
+      'NOT INSTALLED, and there is no duty to install one. An evacuation alert system is the secure '
+      + 'means by which the FIRE AND RESCUE SERVICE evacuates chosen floors or cores — it is their '
+      + 'tool, not a building alarm, and it exists because a building operating stay-put has no other '
+      + 'way to move part of itself. Approved Document B has required one in NEW high-rise '
+      + 'residential buildings over 18 metres in England since December 2022; government considered '
+      + 'and DECLINED to mandate retrofit to existing buildings. BS 8629 treats existing buildings as '
+      + 'best practice. '
+      + '⚠ WHETHER ONE IS NEEDED HERE FOLLOWS FROM THE EVACUATION STRATEGY, and that is a fire risk '
+      + 'assessment question rather than a register one. Under stay-put, the alert system is how a '
+      + 'floor gets evacuated. Under simultaneous evacuation the common alarm does that job — which '
+      + 'is a coherent reason not to have one, and is worth recording as the reason rather than '
+      + 'leaving the absence unexplained. '
+      + '❓ Record the decision against the strategy actually in force. If one is ever installed this '
+      + 'row switches on, and it also joins the STATUTORY monthly check automatically — reg 7(5)(b) '
+      + 'names evacuation alert systems in the common parts, so no separate decision is needed there.',
+    name: 'Evacuation alert system — inspection and servicing',
+    description:
+      'Inspection, testing and servicing of the evacuation alert system used by the fire and rescue '
+      + 'service to signal evacuation of selected floors or cores, including the alert panel, its '
+      + 'secure enclosure and the circuits to each floor.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BS 8629 (design, installation, commissioning and maintenance of evacuation alert systems in buildings containing flats), which sets the servicing regime. ⚠ THE UNDERLYING DUTY IS STATUTORY where a system exists: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires it to be "maintained in an efficient state, in efficient working order and in good repair", and FSER 2022 reg 7(5)(b) brings it into the monthly routine check when located in the common parts',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Fire alarm or evacuation alert contractor',
+    competencyRequired: 'Engineer competent in BS 8629 — an evacuation alert system is not a fire alarm and is not serviced as one',
+    evidenceRequired: 'Service certificate covering the panel, its security, and the alert circuit to every floor',
+    retentionPeriodMonths: 60,
+    handledBy: 'maintenance',
+    handlingNote: 'Nothing to schedule — no system is installed. Record the not-applicable decision against the evacuation strategy rather than leaving the row unanswered.',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'An evacuation alert system to BS 8629 is installed. ⚠ Not the case today, and no duty requires one to be retrofitted to an existing building',
+  }),
+  entry({
     key: 'fser_wayfinding_signage',
     name: 'Wayfinding signage — check',
     description: 'Check wayfinding signage identifying floor and flat numbers is present, legible and visible in low light.',
