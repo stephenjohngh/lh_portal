@@ -9,7 +9,7 @@ import { get } from 'svelte/store';
 // Read register values rather than transcribing them — a corrected citation or
 // a renamed entry must not fail a test about store behaviour. See the note at
 // the top of src/lib/utils/statutoryTemplate.test.js.
-import { templateEntry } from '$lib/utils/statutoryTemplate.js';
+import { templateEntry, TEMPLATE_KEYS } from '$lib/utils/statutoryTemplate.js';
 
 const h = vi.hoisted(() => {
   const api = {
@@ -370,7 +370,10 @@ describe('exclusion decisions', () => {
   });
 
   it('carries an optional review date', async () => {
-    await defs.recordExclusionDecision('eicr_dwellings', 'not_applicable', 'All long leases', { reviewDue: '2027-04-01' });
+    // Any real register key will do — naming one here would make this test fail
+    // whenever that entry is corrected or removed, which is data, not behaviour.
+    const [someKey] = TEMPLATE_KEYS;
+    await defs.recordExclusionDecision(someKey, 'not_applicable', 'A recorded reason', { reviewDue: '2027-04-01' });
     expect(h.api.create.mock.calls[0][1].review_due).toBe('2027-04-01');
   });
 
