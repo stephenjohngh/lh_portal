@@ -317,10 +317,17 @@ export const REGISTER = [
     statutoryIntervalWords: 'at least every 12 months (FSER reg 10(4))',
     name: 'Fire door checks — flat entrance doors',
     reviewerNote:
-      'The flat entrance door is a COMMON PARTS measure, whatever side of it the occupier lives on: '
-      + 'it is the compartment boundary between the dwelling and the common escape route, so its '
-      + 'failure is a common-parts failure — and FSER reg 10(4) places the duty on the RESPONSIBLE '
-      + 'PERSON expressly, not on the occupier. '
+      'The flat entrance fire door forms part of the COMPARTMENT BOUNDARY and affects the COMMON '
+      + 'ESCAPE ROUTE, and FSER reg 10(4) places the specified duty on the RESPONSIBLE PERSON rather '
+      + 'than on the occupier. ⚠ That is the accurate framing, and deliberately not "it is a common '
+      + 'parts measure" — the inside face of the door and the leaseholder\u2019s repairing obligations '
+      + 'are a separate question this register does not need to answer in order to hold the duty. '
+      + '⛔ DO NOT CONFLATE THE TWO ACCESS ROUTES. The reg 10(4) duty is best endeavours with reg '
+      + '10(5) requiring a record of the ATTEMPTS where access is not obtained; the Building Safety '
+      + 'Act s.97 power is a separate mechanism with its own purpose test, written request, 48 hours '
+      + '\u2019 notice and county court route. A refused door check evidences reg 10(5); it does not '
+      + 'automatically become an s.97 case, and an s.97 request is not a substitute for best '
+      + 'endeavours. ❓ Record which route is used when, and how the two records are kept apart. '
       + '⚠ "Best endeavours" is the statutory standard and it is not a lower one. Reg 10(5) requires '
       + 'the ATTEMPTS to be recorded, so a door that could not be reached produces a record rather '
       + 'than a blank — and a year of unrecorded refusals is exactly the failure this row exists to '
@@ -671,7 +678,8 @@ export const REGISTER = [
   entry({
     key: 'sprinkler_periodic_service',
     reviewerNote:
-      '⛔ TECHNICALLY UNVERIFIED — an adopted interval, not a confirmed regime. '
+      '⛔ INTERIM ADOPTED CONTROL, PENDING CONFIRMATION OF THE GOVERNING DESIGN AND MAINTENANCE '
+      + 'BASIS — an adopted interval, not a confirmed regime, and not to be presented as one. '
       + 'The weekly test and the annual service were the whole regime, and neither candidate standard '
       + 'works that way — each sets cycles inside the year for the pump, the water supply, the tanks, '
       + 'the valves and the alarm and flow devices. '
@@ -711,7 +719,7 @@ export const REGISTER = [
     statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED, SO THE INTERVAL SOURCE IS UNKNOWN RATHER THAN STATED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. Annual is therefore OUR adopted cycle until the governing standard is identified, not a figure read out of it — and each candidate standard sets a TIERED programme with shorter cycles inside the year, so identifying the standard is more likely to add cycles than to confirm this one. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'practice',
     frequencyDays: 365,
-    reviewerNote: '⛔ TECHNICALLY UNVERIFIED — this row records what we do, not a regime anyone has confirmed is the right one for this installation. The interval is ours, and it cannot be the reference’s while the governing standard is unrecorded — the row said both things at once until this was corrected. ⚠ Both candidate standards set a tiered servicing programme rather than a single annual visit; the paired intermediate-service row is where that detail lands once the design basis is confirmed.',
+    reviewerNote: '⛔ INTERIM ADOPTED CONTROL, PENDING CONFIRMATION OF THE GOVERNING DESIGN AND MAINTENANCE BASIS. Technically unverified: this row records what we do, not a regime anyone has confirmed is the right one for this installation, and it must not be presented as a technically complete one. The interval is ours, and it cannot be the reference’s while the governing standard is unrecorded — the row said both things at once until this was corrected. ⚠ Both candidate standards set a tiered servicing programme rather than a single annual visit; the paired intermediate-service row is where that detail lands once the design basis is confirmed.',
     responsibleParty: 'Suppression system contractor',
     competencyRequired: 'Competent sprinkler engineer (LPCB or BAFE SP203-4 certificated)',
     evidenceRequired: 'Annual service certificate, and pump test results where a pump is fitted',
@@ -723,7 +731,7 @@ export const REGISTER = [
   entry({
     key: 'dry_riser_annual_test',
     reviewerNote: '⛔ TECHNICALLY UNVERIFIED, and it matters more here than for most rows because the dry riser is expressly within the STATUTORY monthly check as essential fire-fighting equipment under FSER reg 6(7), so four rows touch one asset and the relationship between them has never been settled. What is unresolved: the BS 9990 edition adopted · whether an annual wet pressure test is the correct test for THIS installation and at what pressure and duration · what the six-monthly visual adds to it · and what, if anything, the fire and rescue service or the insurer requires on top. Until that is answered the servicing regime is what we inherited rather than what was specified.',
-    name: 'Dry riser — annual pressure test',
+    name: 'Dry riser — annual test, method and interval pending confirmation',
     description: 'Annual wet pressure test of the riser main, landing valves and inlet breeching.',
     group: 'fire_safety',
     basis: 'standard',
@@ -1130,7 +1138,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_monthly_check',
-    name: 'Premises information box — monthly check',
+    name: 'Secure information box — monthly check',
     description: 'Check the box is present, secure and accessible, and that the lock works.',
     group: 'fire_safety',
     basis: 'statute',
@@ -1149,7 +1157,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_content_review',
-    name: 'Premises information box — content review',
+    name: 'Secure information box — content review',
     description: 'Confirm the contents are current: the responsible person’s contact details and hard-copy floor plans.',
     group: 'fire_safety',
     basis: 'statute',
@@ -1443,7 +1451,7 @@ export const REGISTER = [
     handledBy: 'golden_thread',
     handlingNote: 'A controlled document — it belongs in the Golden Thread register alongside its reviews. It holds no resident personal data.',
     evidencedBy: null,
-    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3 — two or more sets of domestic premises AND at least 18 metres, or at least seven storeys, or more than 11 metres with a simultaneous evacuation strategy',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3: two or more sets of domestic premises, AND ANY ONE OF (a) at least 18 metres, (b) at least seven storeys, or (c) more than 11 metres with a simultaneous evacuation strategy. ⚠ The three are ALTERNATIVES. This building qualifies under (a) and (b) on height and storeys alone, so limb (c) is not relied on and a simultaneous evacuation strategy is NOT a precondition of these Regulations applying here',
   }),
   entry({
     key: 'evac_building_plan_review',
@@ -1472,7 +1480,7 @@ export const REGISTER = [
       + '⚠ Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the '
       + '12-month cycle is a floor, not the only trigger.',
     evidencedBy: null,
-    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3 — two or more sets of domestic premises AND at least 18 metres, or at least seven storeys, or more than 11 metres with a simultaneous evacuation strategy',
+    appliesWhen: 'The building is a "specified residential building" under SI 2025/797 reg 3: two or more sets of domestic premises, AND ANY ONE OF (a) at least 18 metres, (b) at least seven storeys, or (c) more than 11 metres with a simultaneous evacuation strategy. ⚠ The three are ALTERNATIVES. This building qualifies under (a) and (b) on height and storeys alone, so limb (c) is not relied on and a simultaneous evacuation strategy is NOT a precondition of these Regulations applying here',
   }),
   entry({
     key: 'evac_person_centred_review',
@@ -2233,6 +2241,65 @@ export const REGISTER = [
   }),
 
   // ══ 3 · BSA-specific cycles ═════════════════════════════════════════════
+  // ⚠ ADDED 2026-09-14, tenth review round, and it is the most telling omission
+  // any round has produced: THE PORTAL HAS BUILT A DISPLAY REGISTER FOR THIS
+  // DUTY (Admin → Display Register, migrations 199–200, three guaranteed
+  // statutory slots) AND THE REGISTER NEVER LISTED THE DUTY AT ALL. The software
+  // knew about a statutory obligation the compliance register did not.
+  //
+  // Verified against legislation.gov.uk 2026-09-14. There are TWO display
+  // duties and they are not the same one:
+  //   BSA 2022 s.82 — the PAP must display, TOGETHER in a conspicuous position,
+  //     a notice in the PRESCRIBED FORM about accountable persons, the most
+  //     recent building assessment certificate, and any relevant compliance
+  //     notice. Failure without reasonable excuse is an OFFENCE carrying up to
+  //     two years' imprisonment on indictment.
+  //   SI 2023/907 reg 8 — the identity, address, telephone number and email of
+  //     the PAP and of each other accountable person must be displayed in the
+  //     common parts, in plain English.
+  entry({
+    key: 'display_prescribed_information',
+    reviewerNote:
+      '⛔ THIS IS THE ONLY ROW IN THE REGISTER WHOSE BREACH IS AN IMPRISONABLE OFFENCE ON ITS OWN '
+      + 'TERMS — s.82(6) makes failing to comply, without reasonable excuse, punishable by up to two '
+      + 'years on indictment. It is also the cheapest duty here to discharge and the easiest to lose: '
+      + 'a notice is taken down during redecoration, a certificate is superseded and not swapped, a '
+      + 'compliance notice is withdrawn and the old one stays up. None of that announces itself. '
+      + '⚠ TWO DUTIES, NOT ONE. s.82 requires the accountable-persons notice, the most recent building '
+      + 'assessment certificate and any relevant compliance notice to be displayed TOGETHER in ONE '
+      + 'conspicuous position. SI 2023/907 reg 8 separately requires the PAP\u2019s and each AP\u2019s '
+      + 'identity, address, telephone number and email to be displayed in the common parts, in plain '
+      + 'English. Satisfying one does not satisfy the other. '
+      + '⚠ A SPECIAL MEASURES ORDER CHANGES WHAT MAY BE DISPLAYED: while one is in force the building '
+      + 'assessment certificate must NOT be displayed and the notice requirement falls away. A row '
+      + 'that only ever adds things to a wall will get this backwards. '
+      + '❓ Confirm where the PRESCRIBED FORM of the s.82 notice is prescribed — it is not in '
+      + 'SI 2023/907 reg 8, and a notice in the wrong form is a notice not given. Confirm also the '
+      + 'display location against "conspicuous", and who replaces the certificate when a new one '
+      + 'issues.',
+    name: 'Displayed information — accountable persons, certificate and compliance notices',
+    description:
+      'Keep displayed, together in a conspicuous position in the building, the notice in the '
+      + 'prescribed form about the accountable persons, the most recent building assessment '
+      + 'certificate, and any relevant compliance notice — replacing each when it is superseded, '
+      + 'removing the certificate while a special measures order is in force, and separately keeping '
+      + 'the accountable persons\u2019 contact details displayed in the common parts. Confirm at each '
+      + 'routine pass that all of it is present, current and legible.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Building Safety Act 2022, s.82 — the principal accountable person must display, together in a conspicuous position in the building, (a) a notice in the prescribed form containing prescribed information about accountable persons, (b) the most recent building assessment certificate, and (c) any relevant compliance notice; while a special measures order is in force the certificate must not be displayed and the notice duty does not apply. Failure to comply without reasonable excuse is an OFFENCE. Separately, Higher-Risk Buildings (Management of Safety Risks etc.) (England) Regulations 2023 (SI 2023/907) reg 8 requires the identity, address, telephone number and email address of the PAP and of each other accountable person to be displayed in the common parts, in plain English. ⚠ NEITHER STATES AN INTERVAL — the duty is continuous, and the monthly confirmation is ours',
+    intervalBasis: 'practice',
+    frequencyDays: 30,
+    triggerType: 'calendar',
+    responsibleParty: 'Principal accountable person',
+    competencyRequired: 'Person who knows which certificate is current, which compliance notices are live, and that a special measures order REMOVES the certificate from display',
+    evidenceRequired: 'Dated photograph or record of what is displayed and where, retained on each change, with the date each item went up and each superseded item came down',
+    retentionPeriodMonths: 120,
+    handledBy: 'admin',
+    handlingNote: '⚠ The portal HAS this: Admin → Other Config → Display Register, with the three statutory items as guaranteed slots (migrations 199–200). The register did not list the duty until now, which is the wrong way round.',
+    evidencedBy: 'inspection',
+    appliesWhen: 'Always for an occupied higher-risk building',
+  }),
   entry({
     key: 'scr_review',
     reviewerNote: 'This annual cycle must not displace the statutory trigger: a further risk assessment can be required at any time there is reason to suspect the current one is no longer valid, or at the regulator’s direction.',
