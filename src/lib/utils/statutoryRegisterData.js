@@ -653,6 +653,69 @@ export const REGISTER = [
     appliesWhen: 'Where each system is located within the COMMON PARTS — that is the test in reg 7(5), applied per installed system. The building has a detection and alarm system in the common parts',
   }),
   entry({
+    key: 'carpark_smoke_ventilation_service',
+    reviewerNote:
+      'PAIRED WITH the natural-ventilation row below: a car park is ventilated mechanically or '
+      + 'naturally, and the register carries both so that either can be switched on. ⚠ This building '
+      + 'has NO mechanical car park ventilation — the basement is open to outside air — so this row '
+      + 'is one to record as not applicable, with that reason. It is here so the absence reads as a '
+      + 'decision rather than an oversight, and so it can be switched on without re-drafting if the '
+      + 'perimeter is ever enclosed.',
+    name: 'Car park smoke ventilation — mechanical system service',
+    description:
+      'Service and functional test of a mechanical car park smoke ventilation system — impulse or '
+      + 'ducted fans, dampers, the control panel and the fire-mode changeover — against the design '
+      + 'and commissioning basis.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BS 7346-7 (smoke control in car parks) and the system’s design and commissioning basis, which set the servicing regime. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices to be "maintained in an efficient state, in efficient working order and in good repair"',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Smoke control contractor',
+    competencyRequired: 'Competent smoke control engineer familiar with car park systems',
+    evidenceRequired: 'Service certificate recording each fan, damper and control tested, and the fire-mode changeover proved',
+    retentionPeriodMonths: 60,
+    handledBy: 'maintenance',
+    handlingNote: 'Nothing to schedule while the car park is naturally ventilated. Record the not-applicable decision rather than leaving the row unanswered.',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'The car park has a mechanical smoke ventilation system. ⚠ Not the case today — the basement is open to outside air',
+  }),
+  entry({
+    key: 'carpark_natural_ventilation_check',
+    reviewerNote:
+      '⚠ IF THE OPENINGS ARE THE PROVISION, THE OPENINGS ARE THE FIRE SAFETY MEASURE — the same '
+      + 'point as the staircase windows, and the same failure mode. Being "open to outside air" is a '
+      + 'designed free area at designed locations, not a general impression: it is lost by degrees, '
+      + 'to stored items and bin stores and bike racks against a grille, to security mesh or '
+      + 'hoarding, to a later enclosure of the perimeter, or to a cladding or landscaping change that '
+      + 'nobody connected with ventilation. None of that announces itself. '
+      + '❓ Confirm what the fire strategy or the Building Regulations approval actually requires — '
+      + 'the free area, at which locations, and whether the car park qualifies as open-sided — '
+      + 'because "unobstructed" cannot be checked until there is a figure to check against. If the '
+      + 'openings are permanent structural voids that genuinely cannot be obstructed, record that as '
+      + 'the reason and exclude the row.',
+    name: 'Car park natural ventilation — openings remain as designed',
+    description:
+      'Confirm that the permanent ventilation openings the car park relies on remain open, '
+      + 'unobstructed and of the free area the design requires, and that nothing stored, built or '
+      + 'fixed has reduced them.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Regulatory Reform (Fire Safety) Order 2005, art 17(1) — the premises and any facilities, equipment and devices provided in respect of them must be "maintained in an efficient state, in efficient working order and in good repair". The free area and its locations come from the fire strategy and the Building Regulations approval, not from the Order, and the interval is ours',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Site staff or fire safety contractor',
+    competencyRequired: 'Person who knows the required free area and its locations — not simply that the space feels open',
+    evidenceRequired: 'Record per opening of what was found and of any obstruction cleared, against the designed free area',
+    retentionPeriodMonths: 60,
+    handledBy: 'inspection',
+    handlingNote: 'Suits an inspection walk of the basement perimeter. Six-monthly matches the service interval a mechanical system would carry — the two provisions do the same job.',
+    evidencedBy: 'inspection',
+    appliesWhen: 'The car park relies on permanent openings to outside air for its ventilation rather than on a mechanical system',
+  }),
+  entry({
     key: 'fser_wayfinding_signage',
     name: 'Wayfinding signage — check',
     description: 'Check wayfinding signage identifying floor and flat numbers is present, legible and visible in low light.',
@@ -1161,6 +1224,43 @@ export const REGISTER = [
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Any dwelling is let on a relevant tenancy — long leases alone do NOT trigger this',
+  }),
+  entry({
+    key: 'ev_charging_inspection',
+    reviewerNote:
+      'No charge points are installed today; they are expected. The row is here so that installing '
+      + 'them is a recorded switch-on rather than a gap nobody notices. '
+      + '⚠ THREE THINGS THAT FOLLOW ON INSTALLATION, and are easy to miss because they belong to '
+      + 'other rows: it is a significant change, so it fires the fire risk assessment review trigger '
+      + '· it goes through the building-work screen, which carries the consequential record updates '
+      + '· and EV charging in a car park is a live fire-safety question in its own right — the '
+      + 'assessment has to address the location of the points, separation, detection and the '
+      + 'fire service’s access to them, which is a matter for the fire risk assessor and not for '
+      + 'this row. '
+      + '❓ The interval is ours: BS 7671 prescribes none, and the IET Code of Practice points at '
+      + 'roughly annual for commercial and shared installations against five-yearly for a domestic '
+      + 'one. Confirm it against the equipment actually installed, its duty cycle and the '
+      + 'manufacturer’s requirements when the time comes.',
+    name: 'EV charging equipment — periodic inspection and test',
+    description:
+      'Periodic inspection and testing of the electric vehicle charging equipment and the circuits '
+      + 'supplying it — protective devices, earthing arrangement and the charge points themselves — '
+      + 'separately from the general installation report, because the duty cycle and the environment '
+      + 'are not those of the rest of the installation.',
+    group: 'other_statutory',
+    basis: 'statute',
+    statutoryRef: 'Electricity at Work Regulations 1989 (the duty — maintain so as to prevent danger; NO interval in law); BS 7671 section 722 (requirements for electric vehicle charging installations) and the IET Code of Practice for Electric Vehicle Charging Equipment Installation supply the method and the recommended periodicity',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    triggerType: 'calendar',
+    responsibleParty: 'Competent electrical contractor',
+    competencyRequired: 'Electrician competent in BS 7671 section 722 — EV charging has its own earthing and protection requirements',
+    evidenceRequired: 'Inspection and test report per charge point and its circuit, with any remedial work recorded',
+    retentionPeriodMonths: 60,
+    handledBy: 'maintenance',
+    handlingNote: 'Nothing to schedule until charge points exist. Record the not-applicable decision with a review date rather than leaving the row unanswered — this is one that WILL change.',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'Electric vehicle charging equipment is installed in the car park or elsewhere on the premises. ⚠ Not the case today, and expected to change',
   }),
   entry({
     key: 'communal_electrics_visual',
