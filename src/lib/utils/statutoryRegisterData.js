@@ -907,7 +907,7 @@ export const REGISTER = [
     statutoryRef: 'Fire Safety (England) Regulations 2022, reg 6(6) (update as soon as reasonably practicable after a change of layout or of the location of key fire-fighting equipment); reg 6(5) (hard copies in the secure information box); reg 11 (provide to the fire and rescue authority by electronic means)',
     intervalBasis: 'stated',
     frequencyDays: null,
-    trigger: 'Any change to the layout of the building, or to the location of key fire-fighting equipment — rising main inlets and outlets, smoke control, suppression',
+    trigger: 'Any change to the layout of the building, or to the location of key fire-fighting equipment — rising main inlets and outlets, smoke control, suppression — and any change that makes what the plans must SHOW inaccurate, including the installation, removal or re-designation of a lift, since reg 6(2) requires the plans to identify all lifts and note which are firefighters’ or evacuation lifts',
     triggerType: 'event',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person who can confirm the plans against the building as built',
@@ -1461,6 +1461,47 @@ export const REGISTER = [
     handledBy: 'maintenance',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always — the building has a lift carrying people, and it is used by people at work (cleaners, the caretaker and contractors), which is what brings it within LOLER',
+  }),
+  entry({
+    key: 'firefighting_lift_weekly_test',
+    reviewerNote:
+      '⚠ THIS IS NOT THE STATUTORY MONTHLY CHECK, AND NEITHER REPLACES THE OTHER. FSER reg 7 asks '
+      + 'whether the lift is in efficient working order and good repair; a lift running normally '
+      + 'passes that. This asks whether it still responds to the FIRE CONTROL — the one function '
+      + 'nobody exercises in ordinary use, and the only one that matters on the day. A lift can '
+      + 'carry passengers faultlessly for a year with a dead firefighting switch. '
+      + '⚠ FOUR THINGS ARRIVE WITH THE DESIGNATION, and they are easy to miss because each belongs '
+      + 'to a different row: the lift needs a SECONDARY POWER SUPPLY, which switches on the standby '
+      + 'supply row · the FSER reg 6(2) FLOOR PLANS must identify which lifts are firefighters\' or '
+      + 'evacuation lifts, so plans showing the old arrangement become wrong and have to be re-issued '
+      + 'to the fire and rescue authority and replaced in the secure information box · the reg 7 '
+      + 'monthly check already names both designations, so no separate decision is needed there · '
+      + 'and installing or re-designating a lift is a significant change, which fires the fire risk '
+      + 'assessment review trigger and goes through the building-work screen. '
+      + '❓ Confirm from the installation which designation applies, and take the detailed weekly '
+      + 'schedule from BS 8899 clause 8 rather than from this row — it is more specific than a '
+      + 'register entry should be.',
+    name: 'Firefighting or evacuation lift — weekly operational test under fire control',
+    description:
+      'Weekly test that a designated lift still operates under fire or evacuation control: operate '
+      + 'the landing interface switch at the fire service access level, confirm the car answers the '
+      + 'call and comes under firefighter or evacuation control, and confirm the car communication '
+      + 'works. Record any failure as an immediate defect, not as a note for the next service.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BS 9999:2017 Annex I (weekly, monthly and annual checks for lifts under fire or evacuation control) and BS 8899:2016 clause 8 (routine inspection, maintenance and thorough examination of lifts for use by firefighters and evacuation lifts), with BS EN 81-72 for the firefighters\' lift itself. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices to be "maintained in an efficient state, in efficient working order and in good repair"',
+    intervalBasis: 'stated',
+    frequencyDays: 7,
+    maxIntervalDays: 7,
+    triggerType: 'calendar',
+    responsibleParty: 'Site staff or lift contractor',
+    competencyRequired: 'Briefed person who knows what correct fire-control behaviour looks like for this installation — not simply that the lift moved',
+    evidenceRequired: 'Weekly log per designated lift recording the switch operated, the behaviour observed and any defect raised',
+    retentionPeriodMonths: 36,
+    handledBy: 'inspection',
+    handlingNote: 'Suits an inspection walk. ⚠ Nothing to schedule until a lift carries the designation — record the not-applicable decision with a review date. Replacing a lift, or re-designating one, switches this on.',
+    evidencedBy: 'inspection',
+    appliesWhen: 'A lift is designated as a firefighters\' lift or an evacuation lift. ⚠ Not the case today',
   }),
   entry({
     key: 'lift_maintenance',
