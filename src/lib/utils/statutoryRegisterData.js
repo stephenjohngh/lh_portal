@@ -2650,7 +2650,22 @@ export const REGISTER = [
   entry({
     key: 'dwelling_access_request',
     reviewerNote:
-      'Distinct from information provision. What makes this worth a row is the failure case rather '
+      '⚠ A POWER EXERCISED FOR A PURPOSE — NEVER A PERIODIC INSPECTION, and the distinction decides '
+      + 'the shape of this whole register. Checked against the instruments 2026-09-14, because '
+      + '"management can enter a flat" is easily misread as "management should be inspecting flats". '
+      + 'Nothing imposes a periodic duty to inspect the interior of a dwelling on the accountable '
+      + 'person or the managing agent: s.83 requires the risk assessment to be made at regular '
+      + 'intervals, but only "as regards the part of the building for which they are responsible"; '
+      + 'SI 2023/907 reg 4 requires systems for the inspection, testing and maintenance of THE '
+      + 'MEASURES TAKEN, not of dwellings; and that instrument contains no dwelling-inspection '
+      + 'regulation at all. What s.97 gives is a keyed power — it opens on suspicion, on a complaint, '
+      + 'on a change, or on a resident duty apparently contravened, and it opens for one stated '
+      + 'purpose at a time. '
+      + '⚠ THE ONE PERIODIC DUTY THAT DOES REACH THROUGH A FRONT DOOR IS THE FLAT ENTRANCE DOOR — '
+      + 'FSER 2022 reg 10(4), best endeavours at least every 12 months — and it is held on its own '
+      + 'row. It is a common parts measure reached through a door, not an inspection of the home '
+      + 'behind it. '
+      + 'Distinct from information provision. What makes this worth a row is the failure case rather '
       + 'than the success case: a REFUSAL has to be evidenced — what '
       + 'was requested, what endeavours were made, what could not be inspected as a result, and what '
       + 'that unexamined part of the building means for the safety case. An access request that is '
@@ -2663,7 +2678,7 @@ export const REGISTER = [
       + 'on the risk assessment and the safety case.',
     group: 'bsa_cycle',
     basis: 'statute',
-    statutoryRef: 'Building Safety Act 2022 — the accountable person’s rights and duties of entry to assess and manage building safety risks, with escalation where access is refused',
+    statutoryRef: 'Building Safety Act 2022, s.97 (access to premises) — verified against legislation.gov.uk 2026-09-14. The power arises only for a stated PURPOSE: facilitating performance of a duty under s.83 or s.84 (assessment and management of building safety risks), or determining whether a duty under s.95 (duties on residents and owners) has been contravened. s.97(2) sets the form: the request must be IN WRITING, state the purpose, explain why entry is necessary for it, propose a reasonable time, and be given at least 48 HOURS before that time. Where entry is not given, s.97(3) allows an application to the county court for an order requiring access, which under s.97(4) may be made only where the court is satisfied entry is necessary for that purpose, and may authorise measurements, photographs, recordings or samples. s.97(5) defines "relevant premises" as premises in the part of the building for which the accountable person is responsible that are occupied or controlled by residents or owners of residential units',
     intervalBasis: 'stated',
     frequencyDays: null,
     trigger: 'Needing access to a dwelling to assess or manage a building safety risk',
