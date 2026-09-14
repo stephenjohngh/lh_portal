@@ -305,6 +305,99 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'The building commissions scheme inspections in addition to its own checks',
   }),
+  // ⚠ ADDED 2026-09-14, eighth review round, and it is the largest single gap
+  // any round has found: the word "compartment" appeared nowhere in 103 rows.
+  // The register inspected fire DOORS and never the walls, floors, risers and
+  // service penetrations the doors sit in — that is, the measure the doors are
+  // part of. Compartmentation is the primary passive measure and the one that
+  // degrades invisibly: every cable pull, every new pipe, every re-route leaves
+  // a hole, and nothing about a breached compartment line is visible from the
+  // corridor. A safety case that cannot evidence its condition has a hole in it
+  // in both senses.
+  entry({
+    key: 'compartmentation_inspection',
+    reviewerNote:
+      '⚠ THE MEASURE THE FIRE DOORS ARE PART OF. This register checked the doors quarterly and '
+      + 'annually and never checked the compartment lines they close — walls, floors, risers, ceiling '
+      + 'and service voids, and the fire-stopping around every cable, pipe and duct that crosses them. '
+      + 'The failure mode is what makes it worth a row: compartmentation is breached by ordinary, '
+      + 'authorised work by competent trades who are not thinking about fire, it is concealed above a '
+      + 'ceiling or behind a riser door as soon as it is done, and nothing downstream ever reveals it. '
+      + '⛔ PRECONDITION, not an improvement: this row needs a compartmentation drawing or schedule to '
+      + 'inspect AGAINST. Without one there is no datum, and a report saying "compartmentation '
+      + 'inspected" records an opinion rather than a finding. '
+      + '⚠ It is a SAMPLING regime — nobody opens every void every year — so the sample basis has to be '
+      + 'recorded too: what proportion, chosen how, and on what cycle the whole building is covered. '
+      + 'An unrecorded sample cannot be built on by the next survey. '
+      + '❓ Confirm whether a compartmentation survey has ever been done, whether the drawings exist, '
+      + 'and how a contractor penetration is permitted, recorded and reinstated today — that last one '
+      + 'is the control that decides how fast this degrades between surveys.',
+    name: 'Compartmentation — periodic inspection',
+    description:
+      'Inspect the compartment walls and floors and the fire-stopping of the service penetrations, '
+      + 'risers, ceiling voids and cavity barriers that cross them, sampling behind access panels and '
+      + 'in risers, against the compartmentation drawings; record every breach found, its reinstatement '
+      + 'and the sample the survey covered.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Regulatory Reform (Fire Safety) Order 2005, art 17(1) — "the premises and any facilities, equipment and devices provided in respect of them" must be "maintained in an efficient state, in efficient working order and in good repair"; art 9 (the fire risk assessment, which sets the scope and the cycle). Compartmentation is also load-bearing evidence for the safety case under Building Safety Act 2022 s.85 and for the reasonable steps duty at s.84. ⚠ No instrument states an interval — annual sampling is ours, and the fire risk assessment is what should set it',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    triggerType: 'calendar',
+    responsibleParty: 'Responsible person',
+    competencyRequired: 'Competent passive fire protection surveyor, third-party certificated (FIRAS, IFC or equivalent)',
+    evidenceRequired: 'Survey report identifying each compartment line sampled and the basis of the sample, with photographs, defects, risk rating and the reinstatement record for each breach',
+    retentionPeriodMonths: 120,
+    handledBy: 'maintenance',
+    handlingNote: 'A contractor survey. ⚠ The permit-to-work half belongs with the building-work change control row — a survey every twelve months cannot keep up with penetrations made weekly. See docs/requirements/Compartments_and_Zones_Spec.md for the unbuilt data model.',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'Always — the building is compartmented and the fire strategy relies on it',
+  }),
+  // Dampers are where compartmentation and ventilation meet, and they are the
+  // part of both that nobody sees. Added with the compartmentation row because
+  // a breach and a failed damper are the same failure wearing different labels.
+  //
+  // ⚠ THE REVIEWER'S REASON DOES NOT HOLD HERE, THE ROW STILL DOES. They
+  // inferred dampers from "a two-level basement car park will have mechanical
+  // ventilation" — this car park is naturally ventilated and has none. The row
+  // is conditional on ducted ventilation actually crossing a compartment line,
+  // which is a question nobody has answered either way.
+  entry({
+    key: 'fire_damper_test',
+    reviewerNote:
+      '⚠ AN UNTESTED DAMPER LOOKS EXACTLY LIKE A WORKING ONE, from both sides of the wall, for its '
+      + 'whole life. There is no symptom, no alarm and no degraded performance to notice — it either '
+      + 'closes on the day or it does not, and the day is the fire. '
+      + '⛔ ACCESS IS A FINDING, NOT AN EXEMPTION. The most common outcome of a first damper inspection '
+      + 'is that a proportion cannot be reached at all; "no access" recorded against a damper is an '
+      + 'open defect requiring an access panel, not a line item that can be repeated annually. BESA '
+      + 'revised DW145 in 2024–25 precisely because inspections were finding dampers damaged, wrongly '
+      + 'installed against the manufacturer’s instructions, never tested, or impossible to access. '
+      + '⚠ Requires an asset register of every damper with location, type and orientation. Without one, '
+      + '"all dampers tested" cannot be verified by anybody, including the person who signs it. '
+      + '❓ Confirm whether any ducted ventilation, smoke extract or pressurisation crosses a compartment '
+      + 'line in this building. If none does, record that as the reason and exclude the row; if the '
+      + 'answer is not known, that is not the same as none.',
+    name: 'Fire and smoke dampers — test and inspection',
+    description:
+      'Manually test and inspect every fire and smoke damper — drop-test the blade, confirm the fusible '
+      + 'link or actuator and any control signal, reinstate and prove reset, clean the housing, and '
+      + 'record the condition of each damper by location against the damper asset register.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BESA DW145 (2nd edition, 2025) — fire and smoke dampers to be manually tested and inspected at least annually, more frequently where the risk assessment requires; BS 9999:2017 aligns. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    intervalBasis: 'stated',
+    frequencyDays: 365,
+    maxIntervalDays: 366,
+    triggerType: 'calendar',
+    responsibleParty: 'Ventilation or fire damper contractor',
+    competencyRequired: 'Competent damper engineer as defined by DW145',
+    evidenceRequired: 'Test record per damper — reference, location, type, result, defects, and the reason recorded against any damper that could not be accessed',
+    retentionPeriodMonths: 120,
+    handledBy: 'maintenance',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'Ducted ventilation, smoke extract or pressurisation crosses a compartment line, or the fire strategy relies on dampers at a compartment boundary',
+  }),
   entry({
     key: 'fire_alarm_weekly_test',
     name: 'Fire alarm — weekly test',
@@ -335,7 +428,7 @@ export const REGISTER = [
       + 'is easy to leave unstated and therefore unverified.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ THE SIX MONTHS IS THE STANDARD’S MAXIMUM PERIOD BETWEEN SERVICE VISITS, ADOPTED BY US — not a recommended target, and not a figure the standard sets for every building regardless. BS 5839-1 contemplates the fire risk assessment calling for more frequent attendance, and for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
@@ -456,11 +549,12 @@ export const REGISTER = [
     name: 'Suppression system — weekly test',
     description: 'Weekly test routine on the sprinkler or suppression system, including any pump run.',
     group: 'fire_safety',
-    basis: 'contract',
-    statutoryRef: 'LPC Rules; insurance policy condition',
+    basis: 'standard',
+    statutoryRef: 'The weekly routine is specified by the suppression standard itself (BS EN 12845 or BS 9251, per the installed design basis), with the LPC Rules and the insurance policy condition on top. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 7,
     maxIntervalDays: 7,
+    reviewerNote: 'Reclassified from "Contract or scheme" to "Standard" on review, and the reasoning is worth keeping: the insurance condition is real, but it is not why the test has to happen. The suppression standards specify the weekly routine, and a suppression system is a fire safety measure, so art 17(1) applies to it. An insurer can waive its own policy condition; art 17 is not waivable.',
     responsibleParty: 'Site staff',
     competencyRequired: 'Briefed site staff working to the system’s own test routine',
     evidenceRequired: 'Weekly test log with sign-off',
@@ -469,16 +563,56 @@ export const REGISTER = [
     evidencedBy: 'inspection',
     appliesWhen: 'Building has a sprinkler or other fixed suppression system',
   }),
+  // ⚠ ADDED 2026-09-14 on review. The register held a weekly test and an annual
+  // service and nothing between, while both candidate standards set a TIERED
+  // programme. The reviewer proposed quarterly from BS EN 12845; the duty
+  // holder confirmed the installed regime is six-monthly and that this is
+  // considered right for a car park system. Both can be true — which is why the
+  // row records the adopted interval AND the condition that would change it,
+  // rather than a figure from a standard we have not yet identified.
+  entry({
+    key: 'sprinkler_periodic_service',
+    reviewerNote:
+      'The weekly test and the annual service were the whole regime, and neither candidate standard '
+      + 'works that way — each sets cycles inside the year for the pump, the water supply, the tanks, '
+      + 'the valves and the alarm and flow devices. '
+      + '⚠ THE ADOPTED SIX MONTHS REFLECTS SUPPRESSION IN THE CAR PARK ONLY (confirmed by the duty '
+      + 'holder, 2026-09-14), and that is the judgement to revisit rather than the interval to copy. '
+      + '⛔ If suppression is ever extended to residential accommodation, this interval and the annual '
+      + 'row both have to be re-derived from the governing standard rather than carried across — the '
+      + 'consequence of a dormant defect is different where people sleep. '
+      + '❓ The standing question is the same one the annual row asks: identify the governing standard, '
+      + 'and this row can state its tiers instead of our adopted figure.',
+    name: 'Suppression system — intermediate periodic service',
+    description:
+      'The servicing the governing suppression standard sets between annual visits — pump run and '
+      + 'performance against the design duty, water supply and tank condition, valve and alarm tests, '
+      + 'gauges and flow switches, and the trace-heating or antifreeze arrangements where the system '
+      + 'is exposed.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BS EN 12845 or BS 9251 per the installed design basis, each of which sets a tiered servicing programme rather than a single annual visit, with any LPC Rules requirement on top. ⚠ WHICH GOVERNS IS NOT RECORDED, so the tier structure cannot be stated here and six-monthly is the interval adopted for this installation. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Suppression system contractor',
+    competencyRequired: 'Competent sprinkler engineer (LPCB or BAFE SP203-4 certificated)',
+    evidenceRequired: 'Service report per visit recording the pump run, water supply and valve tests, with any defect and its rectification',
+    retentionPeriodMonths: 120,
+    handledBy: 'maintenance',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'Building has a sprinkler or other fixed suppression system',
+  }),
   entry({
     key: 'sprinkler_annual_service',
     name: 'Suppression system — annual service',
     description: 'Annual service and test of the sprinkler or residential suppression system.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
-    intervalBasis: 'stated',
+    statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED, SO THE INTERVAL SOURCE IS UNKNOWN RATHER THAN STATED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. Annual is therefore OUR adopted cycle until the governing standard is identified, not a figure read out of it — and each candidate standard sets a TIERED programme with shorter cycles inside the year, so identifying the standard is more likely to add cycles than to confirm this one. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    intervalBasis: 'practice',
     frequencyDays: 365,
-    maxIntervalDays: 366,
+    reviewerNote: 'The interval is ours, and it cannot be the reference’s while the governing standard is unrecorded — the row said both things at once until this was corrected. ⚠ Both candidate standards set a tiered servicing programme rather than a single annual visit; the paired intermediate-service row is where that detail lands once the design basis is confirmed.',
     responsibleParty: 'Suppression system contractor',
     competencyRequired: 'Competent sprinkler engineer (LPCB or BAFE SP203-4 certificated)',
     evidenceRequired: 'Annual service certificate, and pump test results where a pump is fitted',
@@ -543,8 +677,10 @@ export const REGISTER = [
     key: 'smoke_control_service',
     name: 'Smoke control / AOV system — service',
     description:
-      'Service and functional test of the AOV smoke control system serving the staircase, including the '
-      + 'vents, the control panel and any smoke shaft.',
+      'Service and functional test of a mechanical smoke control or automatic opening vent system '
+      + 'serving a stair, lobby or corridor — the vents or dampers, the smoke shaft, the fans where '
+      + 'the system is powered, the control panel, the fire-mode changeover, and the cause-and-effect '
+      + 'proved against the fire strategy.',
     group: 'fire_safety',
     basis: 'standard',
     statutoryRef: 'BS EN 12101 (product and system series) and BS 7346-8 (smoke control), periodic servicing. ⚠ Neither alone prescribes the service interval for a particular installation — six-monthly is the building’s adopted interval, to be confirmed against the design specification, the commissioning information, the manufacturer’s requirements and the fire strategy. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance. The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
@@ -556,7 +692,6 @@ export const REGISTER = [
     // no instrument sets one. A servicing standard is not a legal ceiling, and
     // printing one invented a limit that does not exist.
     triggerType: 'calendar',
-    reviewerNote: 'Six-monthly servicing is the technical regime and is not a legal maximum. Separately, the detectors linked to this system fall within the MONTHLY statutory check — servicing does not discharge that.',
     responsibleParty: 'Smoke control contractor',
     competencyRequired: 'Competent smoke control engineer (Smoke Control Association member firm recommended)',
     evidenceRequired: 'Service certificate recording each vent and control panel tested',
@@ -567,19 +702,18 @@ export const REGISTER = [
     // not in place. This row therefore states the CONDITION and is switched off
     // by a recorded exclusion, not deleted and not asserted — see the paired
     // row for openable windows, and the header of this file on why.
-    reviewerNote: 'PAIRED WITH the openable-window row: a stair is smoke-ventilated mechanically or naturally, and this register carries both so that either can be switched on. ⚠ No mechanical smoke control system is installed at present, so this row is currently recorded as not applicable; that decision carries a review date and is reversed — not re-written — when a system is commissioned. Six-monthly servicing is our adopted interval and not a figure either standard sets for every installation; confirm it against the system’s design, commissioning record, manufacturer requirements and the fire strategy at that point.',
+    reviewerNote: 'Six-monthly servicing is the technical regime and is not a legal maximum. Separately, any detectors linked to this system fall within the MONTHLY statutory check — servicing does not discharge that. PAIRED WITH the openable-window row: a stair is smoke-ventilated mechanically or naturally, and this register carries both so that either can be switched on. ⚠ No mechanical smoke control system is installed at present, so this row is currently recorded as not applicable; that decision carries a review date and is reversed — not re-written — when a system is commissioned. Six-monthly servicing is our adopted interval and not a figure either standard sets for every installation; confirm it against the system’s design, commissioning record, manufacturer requirements and the fire strategy at that point.',
     appliesWhen: 'A mechanical smoke control or automatic opening vent system serves a stair, lobby or corridor. ⚠ Not the case today — recorded as not applicable, to be reinstated when a system is commissioned',
   }),
   // ⚠ ADDED 2026-09-13. It emerged from a fact rather than from a review: the
   // second staircase is ventilated by OPENABLE WINDOWS, and that is accepted as
   // sufficient. A provision that is relied on has to be verified, and nothing
-  // in this register verified it — the smoke control row covers the AOV on the
-  // other stair only. A window painted shut, obstructed, locked or restricted
+  // in this register verified it. A window painted shut, obstructed, locked or restricted
   // is a failed smoke ventilation provision that looks like a window.
   entry({
     key: 'stair_openable_vent_check',
     reviewerNote:
-      'This row exists because one staircase is ventilated by openable windows rather than by an AOV, '
+      'This row exists because a staircase is ventilated by openable windows rather than by a mechanical system, '
       + 'and that arrangement is accepted as sufficient. Acceptance is conditional on the windows '
       + 'still opening. ⚠ The failure modes are quiet and cumulative — paint, sealant, a replaced '
       + 'handle, a security restrictor fitted in good faith, furniture or stored items in front of '
@@ -619,11 +753,53 @@ export const REGISTER = [
     handledBy: 'inspection',
     handlingNote:
       'Suits an inspection walk scoped to the stair windows, alongside the existing stair checks. '
-      + '⚠ Six-monthly matches the AOV servicing on the other stair deliberately — the two provisions '
+      + '⚠ Six-monthly matches the interval a mechanical system would carry deliberately — the two provisions '
       + 'do the same job and there is no reason to verify one more often than the other. The interval '
       + 'is ours; nothing sets it.',
     evidencedBy: 'inspection',
     appliesWhen: 'A staircase relies on openable windows for smoke ventilation. ⚠ True of both staircases today; reconsider per stair if a mechanical system is commissioned for either',
+  }),
+  // ⚠ ADDED 2026-09-14, and the question behind it is unanswered rather than
+  // answered. §2 of the statement described smoke ventilation of the two STAIRS
+  // and said nothing about the residential CORRIDORS; the reviewer noticed the
+  // silence. A corridor smoke control system is a separate installation from
+  // stair ventilation, and it is the one a firefighting operation in a lobby
+  // depends on. The row states the condition and asks the question — it does
+  // not assert a system, because nobody has confirmed one either way.
+  entry({
+    key: 'corridor_smoke_control_service',
+    reviewerNote:
+      '⚠ RAISED ON REVIEW AND NOT YET ANSWERED. This register described the ventilation of the two '
+      + 'staircases and was silent about the residential corridors and lobbies — and a silence in a '
+      + 'register reads as "nothing here" when it may mean "nobody asked". A corridor system is a '
+      + 'separate installation with its own shaft, per-floor dampers, extract fans, control panel, '
+      + 'cause-and-effect and standby power; it is not covered by the stair rows and it would not be '
+      + 'caught by any of them. '
+      + '❓ Confirm from the APPROVED FIRE STRATEGY what the residential corridors are provided with. '
+      + 'If the answer is that they have no mechanical system, that is itself a fire strategy '
+      + 'statement — record it as the reason this row does not apply, so the absence reads as a '
+      + 'decision. ⚠ If there IS a system, it does not arrive alone: it brings the damper row, the '
+      + 'secondary and standby power row, and the FSER reg 7 monthly check, which reaches smoke '
+      + 'control located within the common parts.',
+    name: 'Corridor and lobby smoke control — system service',
+    description:
+      'Service and functional test of a mechanical smoke ventilation system serving the residential '
+      + 'corridors or lobbies — the extract fans, the shaft, the per-floor dampers, the control panel '
+      + 'and its fire-mode changeover, the standby power supply, and the cause-and-effect proved '
+      + 'against the fire strategy rather than against the panel’s own configuration.',
+    group: 'fire_safety',
+    basis: 'standard',
+    statutoryRef: 'BS 7346-8 and the BS EN 12101 series (smoke and heat control systems), periodic servicing; Smoke Control Association guidance for the method. ⚠ Neither prescribes the interval for a particular installation — six-monthly is our adopted interval, to be confirmed against the design specification, the commissioning record, the manufacturer’s requirements and the fire strategy. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) requires the premises and any facilities, equipment and devices provided in respect of them to be "maintained in an efficient state, in efficient working order and in good repair", under a suitable system of maintenance',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Smoke control contractor',
+    competencyRequired: 'Competent smoke control engineer (Smoke Control Association member firm recommended)',
+    evidenceRequired: 'Service certificate recording each fan, damper and control tested, the fire-mode changeover proved, and the cause-and-effect verified against the fire strategy',
+    retentionPeriodMonths: 120,
+    handledBy: 'maintenance',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'A mechanical smoke control system serves the residential corridors or lobbies. ⚠ Not established either way — confirm against the approved fire strategy and record the answer as a decision rather than leaving it silent',
   }),
   entry({
     key: 'fser_monthly_equipment_check',
@@ -926,7 +1102,8 @@ export const REGISTER = [
     reviewerNote: 'This annual pass is OUR control, not a statutory cycle — the statutory duty is the event-driven update on the preceding row. It exists to catch a change nobody told us about. ⚠ Deliberately framed as confirming what WE sent and what the box holds, not what the fire and rescue authority currently holds: we cannot see their records, and nothing requires them to reconfirm annually. Writing it the other way would invent a duty for them and a dependency for us.',
     name: 'Fire and rescue service plans — annual confirmation',
     description:
-      'Confirm that the current floor plans and building plan have been provided to the fire and '
+      'OUR ASSURANCE CONTROL OVER THE PRECEDING DUTY, NOT A DUTY IN ITSELF. '
+      + 'Confirm that the current floor plans and building plan have been provided to the fire and '
       + 'rescue authority, that the transmission was acknowledged where an acknowledgement is '
       + 'obtainable, and that the hard copies in the secure information box match the current approved '
       + 'versions.',
@@ -1163,7 +1340,16 @@ export const REGISTER = [
       + '— it depends on someone raising it when works complete. ⚠ The record is not just a description '
       + 'of the build-up: reg 5(2) requires it to carry the level of risk the fire risk assessment '
       + 'identifies from that design and those materials, and the mitigating steps taken. A record '
-      + 'without those two is incomplete as a matter of law.',
+      + 'without those two is incomplete as a matter of law. '
+      + '⚠ ASKED ON REVIEW, AND THE ANSWER IS DELIBERATE: there is NO periodic external wall fire '
+      + 'appraisal in this register because no instrument imposes one. A PAS 9980 appraisal (an FRAEW) '
+      + 'is commissioned to answer a question, not on a cycle — once it is done, what brings it back '
+      + 'is a change, and the change is caught here and by the art 9(3) fire risk assessment trigger, '
+      + 'which since the Fire Safety Act 2021 expressly reaches the external walls. Adding a periodic '
+      + 'row would invent a duty and, worse, would imply the trigger rows were not enough. ⚠ Two things '
+      + 'do carry forward from an appraisal and belong elsewhere: any interim measure it recommends is '
+      + 'a conditional row with an end condition, and the risk level and mitigating steps it produces '
+      + 'are what reg 5(2) requires this record to carry.',
     name: 'External wall record — revise after significant change',
     description:
       'Maintain the record of the external walls’ design and materials, INCLUDING the level of risk that '
@@ -1272,6 +1458,46 @@ export const REGISTER = [
     handlingNote: 'A single-staircase building should consider daily rather than weekly.',
     evidencedBy: 'inspection',
     appliesWhen: 'Always — art 14 applies wherever there are escape routes',
+  }),
+  // ⚠ ADDED 2026-09-14 on review. The reviewer said "refuse appears four times
+  // and there is no bin store row" — the four hits are the word "refused" (a
+  // refused access request, a refused consent), so their evidence was a false
+  // positive and their conclusion was right anyway: there was no row.
+  entry({
+    key: 'refuse_store_check',
+    reviewerNote:
+      'Bin stores are among the most common ignition points in residential blocks — deliberate '
+      + 'ignition and discarded smoking materials both — and they usually sit against or beneath the '
+      + 'building, so a fire that starts in one starts OUTSIDE the compartmentation the strategy '
+      + 'relies on and works inwards. '
+      + '⚠ The recurring failure is not the store, it is what is left outside it: bags stacked against '
+      + 'the wall on collection day, a bulky item nobody will take, a bin wheeled under a window or up '
+      + 'against a ventilation opening. That is why this is a frequent walk rather than a service. '
+      + '❓ Confirm where the stores are, whether any is within or beneath the building, whether there '
+      + 'is a chute and whether it has a damper or a sprinkler head, and what separation distance the '
+      + 'fire strategy assumed — the last one is what decides whether bins against the wall are '
+      + 'untidy or dangerous.',
+    name: 'Refuse and bin stores — fire safety check',
+    description:
+      'Check each refuse store, chute room and external bin enclosure: that it is secure against '
+      + 'casual access, that its door self-closes and latches, that combustible material is not '
+      + 'accumulating outside the containers or against the building, that bins stand where the fire '
+      + 'strategy assumes and not under openings, and that any chute, damper or sprinkler head is '
+      + 'clear and undamaged.',
+    group: 'fire_safety',
+    basis: 'statute',
+    statutoryRef: 'Regulatory Reform (Fire Safety) Order 2005 — art 9 (the fire risk assessment, which sets the control and the separation assumed), art 11 (fire safety arrangements for the effective planning and review of preventive and protective measures), and art 17(1) for the store enclosure, its door and any chute damper as fire safety measures that must be maintained. ⚠ No interval is stated anywhere — weekly is ours, chosen against the rate at which the hazard actually accumulates',
+    intervalBasis: 'practice',
+    frequencyDays: 7,
+    triggerType: 'calendar',
+    responsibleParty: 'Site staff',
+    competencyRequired: 'Briefed site staff who know what the fire strategy assumes about bin positions and separation',
+    evidenceRequired: 'Check record per store, with an exception report on anything found and what was done about it',
+    retentionPeriodMonths: 36,
+    handledBy: 'inspection',
+    handlingNote: 'Suits an inspection walk, and sits naturally alongside the escape route obstruction round.',
+    evidencedBy: 'inspection',
+    appliesWhen: 'The building has a refuse store, bin chute or external bin enclosure',
   }),
   entry({
     key: 'tabletop_fire_exercise',
@@ -1520,6 +1746,43 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Building has a lift',
   }),
+  // ⚠ ADDED 2026-09-14 on review, as a conditional row: a two-level basement
+  // car park usually has a powered gate, barrier or shutter, and nothing in the
+  // register mentioned one. Whether this one does is not recorded either way.
+  entry({
+    key: 'powered_gate_inspection',
+    reviewerNote:
+      '⚠ A POWERED GATE IS MACHINERY, and it has a recognised history of killing residents and '
+      + 'children in exactly this setting. It is also the asset most likely to have been installed '
+      + 'without a force test and never tested since, because it goes on working perfectly while '
+      + 'being unsafe — the two are unrelated. '
+      + '⚠ The control is NOT "does it open and close". It is whether the closing and crushing forces '
+      + 'are within the permitted limits when measured, whether every safety edge and photocell still '
+      + 'stops and reverses it, and whether the manual release works and someone on site knows where '
+      + 'it is. '
+      + '❓ Confirm whether the car park has a powered gate, barrier, roller shutter or automatic '
+      + 'pedestrian door; whether a force-test record exists and when it was last measured; and who '
+      + 'holds the risk assessment. If there is none, record that as the reason and exclude the row.',
+    name: 'Powered gates, barriers and doors — safety inspection',
+    description:
+      'Inspect and test each powered gate, barrier, shutter or automatic door: closing and crushing '
+      + 'forces measured against the permitted limits, safety edges and photocells proved to stop and '
+      + 'reverse, obstacle detection confirmed, manual release proved and its location known on site, '
+      + 'and the installation’s risk assessment and force-test records confirmed current.',
+    group: 'other_statutory',
+    basis: 'statute',
+    statutoryRef: 'Provision and Use of Work Equipment Regulations 1998, reg 5 (maintenance) and reg 6 (inspection); Health and Safety at Work etc. Act 1974 s.3 (the duty to persons not at work — here residents, visitors and children); Supply of Machinery (Safety) Regulations 2008 for the equipment as supplied and for the responsibilities that follow a modification. BS EN 12453 and BS EN 12604 with the Door and Hardware Federation code of practice supply the method and the force measurements. ⚠ No instrument states an interval — six-monthly is ours',
+    intervalBasis: 'practice',
+    frequencyDays: 182,
+    triggerType: 'calendar',
+    responsibleParty: 'Automatic gate contractor',
+    competencyRequired: 'Competent automatic gate engineer, DHF or equivalent scheme trained, with calibrated force-measuring equipment',
+    evidenceRequired: 'Service and force-test record per installation, with the measured forces at the specified points, the safety devices proved, and any defect and its rectification',
+    retentionPeriodMonths: 120,
+    handledBy: 'maintenance',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'The site has a powered gate, barrier, roller shutter or automatic pedestrian door',
+  }),
   entry({
     key: 'water_temperature_monitoring',
     name: 'Water temperature monitoring',
@@ -1539,6 +1802,44 @@ export const REGISTER = [
     handledBy: 'inspection',
     evidencedBy: 'inspection',
     appliesWhen: 'Building has a communal hot or cold water system',
+  }),
+  // ⚠ ADDED 2026-09-14 on review, and the gap is specific rather than general:
+  // the register had temperature monitoring, tank inspection and the risk
+  // assessment review — three controls, none of which reaches water standing
+  // still in a dead leg. The word "flush" appeared nowhere.
+  entry({
+    key: 'legionella_outlet_flushing',
+    reviewerNote:
+      '⚠ TEMPERATURE MONITORING DOES NOT COVER THIS. Monitoring proves the system is running hot and '
+      + 'cold where it is measured; it says nothing about an outlet nobody has opened for a month, '
+      + 'which is the specific condition legionella needs. The three water rows already in this '
+      + 'register all miss it in the same direction. '
+      + '⛔ THE LIST OF LITTLE-USED OUTLETS IS A PRECONDITION, AND IT IS A LIVING LIST. A flat that '
+      + 'falls vacant, a cleaners’ cupboard that stopped being used when a cleaning contract '
+      + 'changed, a tap installed for a works project and left in place, a guest suite between '
+      + 'bookings — each creates a dead leg that no monitoring regime will reveal, and none of them '
+      + 'announces itself to whoever maintains the list. '
+      + '❓ Confirm that the written scheme names the little-used outlets, who keeps that list current, '
+      + 'what flush duration and temperature it specifies, and how a newly vacant flat reaches it.',
+    name: 'Little-used outlets — flushing',
+    description:
+      'Flush the outlets the written scheme identifies as little-used — communal cleaners’ '
+      + 'cupboards and sluices, plant room and guest taps, showers, hose bibs and outlets serving '
+      + 'vacant dwellings — running each to temperature for the period the scheme specifies, and '
+      + 'recording it per outlet rather than per round.',
+    group: 'other_statutory',
+    basis: 'statute',
+    statutoryRef: 'Health and Safety at Work etc. Act 1974 ss.2 and 3; Control of Substances Hazardous to Health Regulations 2002, reg 7 (prevention or control of exposure); ACOP L8 and HSG274 Part 2 supply the method, and HSE guidance is to flush infrequently used outlets at least weekly. ⚠ The BINDING document is this building’s own written scheme — it names the outlets and sets the frequency and duration, and weekly is the guidance figure we have adopted pending confirmation of what the scheme says',
+    intervalBasis: 'practice',
+    frequencyDays: 7,
+    triggerType: 'calendar',
+    responsibleParty: 'Site staff or water hygiene contractor',
+    competencyRequired: 'Person briefed to the written scheme, working from the current list of little-used outlets',
+    evidenceRequired: 'Flushing record per outlet, with date, duration and temperature achieved, and a dated record of any change to the list of outlets',
+    retentionPeriodMonths: 60,
+    handledBy: 'inspection',
+    evidencedBy: 'inspection',
+    appliesWhen: 'The written scheme identifies outlets that are used infrequently',
   }),
   entry({
     key: 'legionella_risk_review',
@@ -1678,6 +1979,52 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always',
   }),
+  // ⚠ ADDED 2026-09-14 on review. The register had a roof and façade visual
+  // check and nothing about the equipment people rely on to get up there.
+  //
+  // ⚠ THE REVIEWER'S CITATION IS WRONG AND THE DUTY IS REAL — verified against
+  // legislation.gov.uk 2026-09-14. They cited Work at Height Regs 2005 reg 12;
+  // reg 12 applies to "work equipment to which regulation 8 and Schedules 2 to
+  // 6 apply" — working platforms and the like — and states no 12-month period.
+  // What actually carries it is Schedule 5, which makes each anchor's strength
+  // and suitability the duty, and PUWER reg 6, which is the inspection
+  // obligation for equipment exposed to conditions causing deterioration.
+  entry({
+    key: 'roof_anchor_inspection',
+    reviewerNote:
+      '⚠ THE ONE ASSET ON A ROOF THAT NOBODY OWNS. Anchors are installed by a roofing or façade '
+      + 'contractor, used by window cleaners, aerial engineers and anyone surveying the roof, and '
+      + 'inspected by nobody unless somebody schedules it — while sitting in exactly the exposure '
+      + 'PUWER reg 6 is written about. The person who trusts it is rarely the person who could have '
+      + 'checked it. '
+      + '⚠ ON THE LEGAL ROUTE, because it is commonly mis-cited: Work at Height Regulations 2005 '
+      + 'Schedule 5 makes the anchor’s suitability and strength the duty, and PUWER reg 6 is the '
+      + 'inspection obligation. Regulation 12 of the Work at Height Regulations, sometimes offered for '
+      + 'this, applies to the work equipment in reg 8 and Schedules 2 to 6 and does not carry it. '
+      + '❓ Confirm what is installed and where, who holds the installation and load-test records, '
+      + 'whether it is an eyebolt array or a lifeline system, and whether any part is used for rope '
+      + 'access, abseil or rescue — that last one shortens the interval below twelve months.',
+    name: 'Roof anchors and fall-arrest systems — inspection and recertification',
+    description:
+      'Inspect and recertify the permanent anchor devices, horizontal lifelines and man-safe systems '
+      + 'on the roof and any façade access they serve — each anchor tested or inspected by the method '
+      + 'the standard sets, the structural fixing and its substrate examined, and the system record, '
+      + 'user information and rescue arrangements confirmed current.',
+    group: 'other_statutory',
+    basis: 'statute',
+    statutoryRef: 'Work at Height Regulations 2005, Schedule 5 — "each anchor and the means of attachment thereto shall be suitable and of sufficient strength and stability for the purpose of supporting any foreseeable loading"; Provision and Use of Work Equipment Regulations 1998, reg 5 (maintenance) and reg 6 (inspection at suitable intervals where the equipment is exposed to conditions causing deterioration liable to result in dangerous situations). BS 7883:2019 supplies the method and the interval, and sets them by risk rather than as one fixed period. ⚠ Twelve months is the common cycle and is ours; a manufacturer’s requirement or rope-access use can make it shorter',
+    intervalBasis: 'practice',
+    frequencyDays: 365,
+    triggerType: 'calendar',
+    responsibleParty: 'Height safety contractor',
+    competencyRequired: 'Competent person as defined by BS 7883:2019, independent of the installer where practicable',
+    evidenceRequired: 'Certificate per anchor or system, identifying each device by location, the test or inspection applied, the result, and the date the next inspection falls due',
+    retentionPeriodMonths: 120,
+    handledBy: 'maintenance',
+    handlingNote: '⚠ Nobody currently owns this asset class in the portal — it is neither a building component nor a lift. It needs a home before it can be scheduled properly.',
+    evidencedBy: 'maintenance_job',
+    appliesWhen: 'Permanent anchor devices, lifelines or man-safe systems are installed on the roof or façade',
+  }),
   entry({
     key: 'drainage_gutter_clearance',
     name: 'Drainage and gutter clearance',
@@ -1765,17 +2112,22 @@ export const REGISTER = [
       'Review the key building information held in our own controlled record, and confirm that any change '
       + 'has been identified and notified to the regulator within the required period.',
     group: 'bsa_cycle',
-    basis: 'statute',
+    // Re-based 2026-09-14 on external review, for the same reason the fire and
+    // rescue service plans row was re-based a round earlier: SI 2023/396 reg 21
+    // states no calendar interval, so a "Legislation" badge on an annual pass
+    // let the annual date read as the obligation. The duty is the event-driven
+    // row that follows; this is the assurance control over it.
+    basis: 'management',
     // ⚠ Instrument corrected 2026-09-13 on external review — and this is the
     // second time this row has been wrong. It cited SI 2024/41 reg 5 (provision
     // of information to the regulator), which is a real provision but not the
     // KBI regime. KBI is its own instrument: SI 2023/396, whose reg 21 sets the
     // 28-day clock. The statutory duty is a CHANGE notification, not a review.
-    statutoryRef: 'Higher-Risk Buildings (Key Building Information etc.) (England) Regulations 2023 (SI 2023/396), reg 21 — "notify the regulator of any change to the key building information within 28 days of the PAP becoming aware of the change"',
+    statutoryRef: 'Our own assurance control over the duty at SI 2023/396 reg 21; the Regulations state no review interval, and the annual cycle is ours',
     intervalBasis: 'practice',
     frequencyDays: 365,
     triggerType: 'calendar',
-    reviewerNote: 'The statutory duty is a 28-day change notification, not an annual review. The annual pass is our assurance control — it exists to catch a change nobody noticed at the time, and it does not extend the 28 days.',
+    reviewerNote: 'This annual pass is OUR control, not a statutory cycle — the statutory duty is the event-driven notification on the row that follows, and it fires on the accountable person becoming AWARE of a change, not on a date. ⛔ An annual review cannot discharge a 28-day clock and must not be allowed to look as though it does: if this pass is the thing that finds a change, the duty was already late. It exists to catch what nobody noticed at the time, and to prove that nothing went unnotified.',
     responsibleParty: 'Principal accountable person',
     evidenceRequired: 'KBI submission record, and the dated confirmation that no unnotified change exists',
     retentionPeriodMonths: 120,
@@ -1784,7 +2136,48 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always for an HRB',
   }),
-  // ⚠ ADDED 2026-09-13, third review round. The reviewer's point is the one
+  // ⚠ ADDED 2026-09-14, eighth review round — and this is the FIFTH time the
+  // same shape has been found in this register: a calendar row standing where a
+  // statutory trigger belongs. The others were FSER reg 6(6) plans, the 2025
+  // evacuation process, the MOR and complaints workflows our annual rows
+  // audited, and the fire risk assessment's art 9(3) triggers. A register
+  // assembled from periodic activities is structurally blind to this, so the
+  // question to keep asking of every calendar row is "where is the trigger?"
+  entry({
+    key: 'kbi_update_on_change',
+    reviewerNote:
+      '⛔ AN ANNUAL ASSURANCE REVIEW CANNOT DISCHARGE THIS AND MUST NOT LOOK AS THOUGH IT DOES. The '
+      + 'clock is 28 days from AWARENESS, so if the annual pass on the preceding row is what finds a '
+      + 'change, the duty expired months earlier and the pass records the breach rather than '
+      + 'preventing it. '
+      + '⚠ The real control is upstream of this row: a change to the key building information is '
+      + 'almost never announced as one. It arrives as a completed works order, a new energy supply, a '
+      + 'changed use of a floor, a lift replacement or re-designation, a structural alteration — and '
+      + 'the person who knows it happened is usually not the person who owes the notification. '
+      + '❓ Confirm who in the chain, from contractor to managing agent to accountable person, is '
+      + 'required to raise a change that might be KBI-relevant, by what route, and how the date '
+      + 'awareness arose is captured. That date is what proves the 28 days were met, and it is the '
+      + 'one thing nobody records by habit.',
+    name: 'Key building information — notify a change',
+    description:
+      'On becoming aware of a change to the key building information, notify the regulator within 28 '
+      + 'days, and record both the change and the date awareness of it arose.',
+    group: 'bsa_cycle',
+    basis: 'statute',
+    statutoryRef: 'Higher-Risk Buildings (Key Building Information etc.) (England) Regulations 2023 (SI 2023/396), reg 21 — notify the regulator of any change to the key building information within 28 days of the principal accountable person becoming aware of the change',
+    intervalBasis: 'stated',
+    trigger: 'The principal accountable person becomes aware of a change to the key building information — the 28 days run from awareness, not from the change itself',
+    triggerType: 'event',
+    responsibleParty: 'Principal accountable person',
+    competencyRequired: 'Person who knows what the key building information dataset contains, and can therefore recognise a change to it in an ordinary works record',
+    evidenceRequired: 'The submission record AND the dated record of when awareness arose — the second is what evidences the 28 days, and it is the half that is routinely missing',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⚠ No home. KBI is not modelled anywhere in the portal, so neither the dataset nor the awareness date has anywhere to live.',
+    evidencedBy: null,
+    appliesWhen: 'Always for an HRB',
+  }),
+  // ⚠ ADDED 2026-09-13, third review round. The reviewer's point is the one  // ⚠ ADDED 2026-09-13, third review round. The reviewer's point is the one
   // that makes this worth a row of its own: registration information and key
   // building information are DIFFERENT datasets with DIFFERENT clocks, and
   // treating them as one is exactly how the shorter of the two gets lost. KBI
@@ -2709,11 +3102,11 @@ export const REGISTER = [
     handledBy: 'inspection',
     handlingNote:
       'Inherited a DAILY cadence from a source document that assumed one stair and no smoke '
-      + 'ventilation. The building has two stairs and both are ventilated — one by AOV, one by '
-      + 'openable windows. ⚠ Daily is retained pending a decision, because relaxing a safety cadence '
+      + 'ventilation. The building has two stairs and both are ventilated, by openable windows. '
+      + '⚠ Daily is retained pending a decision, because relaxing a safety cadence '
       + 'is not a documentation change; but nothing in this register now justifies it.',
     evidencedBy: 'inspection',
-    reviewerNote: '⚠ THE DAILY CADENCE HAS NO STATED REASON, and is deliberately left in place anyway. It was set on the basis of a single protected route with no smoke ventilation and no second chance. The building has TWO staircases, one ventilated by an AOV and the other by openable windows accepted as sufficient (confirmed by the duty holder, 2026-09-13), so **nothing written in this register now supports a daily walk**. It has not been reduced here because relaxing a safety cadence belongs to whoever owns the fire risk assessment, not to a documentation exercise — but a control nobody can state a reason for is a cost as well as a comfort, and we would like the reason recorded or the cadence changed. Also specify the escalation triggers, so a finding is not left to judgement: doors wedged or propped open, failed self-closers, smoke leakage, damaged seals, obstructions, water ingress, and fire-stopping defects. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    reviewerNote: '⚠ THE DAILY CADENCE HAS NO STATED REASON, and is deliberately left in place anyway. It was set on the basis of a single protected route with no smoke ventilation and no second chance. The building has TWO staircases, both ventilated by openable windows accepted as sufficient (confirmed by the duty holder, 2026-09-13; a mechanical system is expected but is not installed), so **nothing written in this register now supports a daily walk**. It has not been reduced here because relaxing a safety cadence belongs to whoever owns the fire risk assessment, not to a documentation exercise — but a control nobody can state a reason for is a cost as well as a comfort, and we would like the reason recorded or the cadence changed. Also specify the escalation triggers, so a finding is not left to judgement: doors wedged or propped open, failed self-closers, smoke leakage, damaged seals, obstructions, water ingress, and fire-stopping defects. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     appliesWhen: 'The fire risk assessment or fire strategy calls for checks of an escape stair beyond the statutory escape-route and fire-door rounds',
   }),
   entry({
@@ -2732,7 +3125,7 @@ export const REGISTER = [
     handledBy: 'inspection',
     handlingNote: 'Weekly, between the quarterly statutory door rounds. ⚠ See the stair-core row: the reason for exceeding the statutory round has weakened considerably now that both stairs are ventilated.',
     evidencedBy: 'inspection',
-    reviewerNote: 'The weekly cadence was set assuming a single unventilated route, and that assumption does not hold — there are two staircases, one AOV-ventilated and one with openable windows accepted as sufficient (confirmed 2026-09-13). What can still be said for weekly is general rather than specific to this building: the quarterly statutory round alone would leave a wedged door or a failed closer unseen for up to three months. Whether that justifies weekly is a judgement for the fire risk assessment. Also specify the escalation triggers — wedged or propped doors, failed self-closers, damaged seals, smoke leakage — and who may take a door out of service. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    reviewerNote: 'The weekly cadence was set assuming a single unventilated route, and that assumption does not hold — there are two staircases, both with openable windows accepted as sufficient (confirmed 2026-09-13). What can still be said for weekly is general rather than specific to this building: the quarterly statutory round alone would leave a wedged door or a failed closer unseen for up to three months. Whether that justifies weekly is a judgement for the fire risk assessment. Also specify the escalation triggers — wedged or propped doors, failed self-closers, damaged seals, smoke leakage — and who may take a door out of service. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     appliesWhen: 'The fire risk assessment or fire strategy calls for checks of an escape stair beyond the statutory escape-route and fire-door rounds',
   }),
   entry({
@@ -2750,7 +3143,7 @@ export const REGISTER = [
     evidenceRequired: 'Walk-around log',
     handledBy: 'inspection',
     evidencedBy: 'inspection',
-    reviewerNote: 'Two staircases, one ventilated by an AOV and the other by openable windows accepted as sufficient (confirmed 2026-09-13) — see the stair-core row on what that does to the cadence. Also specify what happens when a failure is found in the protected route, and whether temporary lighting or a compensatory control is required until it is fixed. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
+    reviewerNote: 'Two staircases, both ventilated by openable windows accepted as sufficient (confirmed 2026-09-13) — see the stair-core row on what that does to the cadence. Also specify what happens when a failure is found in the protected route, and whether temporary lighting or a compensatory control is required until it is fixed. ⛔ OPERATIONAL READINESS: INCOMPLETE — do not rely on this row as sole assurance until the fields below are populated. A frequent inspection creates false assurance while the underlying defect stays open, which is precisely the risk here. What it does NOT yet carry: the underlying hazard and the finding it comes from · the risk it reduces and the residual risk accepted · the named technical authority · the threshold that forces escalation rather than another observation · who may declare the situation unsafe and stop occupation or use · the permanent solution and its target date · whether the measure is a condition of the safety case or the fire risk assessment · and whether residents, contractors and the fire and rescue service have been told. ⚠ Without an escalation threshold and an end condition, a frequent check can run for years beside an open defect and make the register look controlled.',
     appliesWhen: 'The fire risk assessment or fire strategy calls for checks of an escape stair beyond the statutory escape-route and fire-door rounds',
   }),
   entry({
