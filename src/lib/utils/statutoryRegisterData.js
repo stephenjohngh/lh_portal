@@ -598,9 +598,11 @@ export const REGISTER = [
       + 'installed against the manufacturer’s instructions, never tested, or impossible to access. '
       + '⚠ Requires an asset register of every damper with location, type and orientation. Without one, '
       + '"all dampers tested" cannot be verified by anybody, including the person who signs it. '
-      + '❓ Confirm whether any ducted ventilation, smoke extract or pressurisation crosses a compartment '
-      + 'line in this building. If none does, record that as the reason and exclude the row; if the '
-      + 'answer is not known, that is not the same as none.',
+      + '❓ WHAT REMAINS OPEN is whether there are OTHERS, which is held for the next fire strategy '
+      + 'survey: any further ducted ventilation, smoke extract or pressurisation crossing a '
+      + 'compartment line. ⚠ The row applies either way now — one damper is a regime — so the question '
+      + 'is no longer whether to keep the row but how many assets it covers. ⚠ "Not known" is still '
+      + 'not the same as "none": the asset register records what has been surveyed, never what exists.',
     name: 'Fire and smoke dampers — test and inspection',
     description:
       'Manually test and inspect every fire and smoke damper — drop-test the blade, confirm the fusible '
@@ -2250,9 +2252,11 @@ export const REGISTER = [
       + 'are within the permitted limits when measured, whether every safety edge and photocell still '
       + 'stops and reverses it, and whether the manual release works and someone on site knows where '
       + 'it is. '
-      + '❓ Confirm whether the car park has a powered gate, barrier, roller shutter or automatic '
-      + 'pedestrian door; whether a force-test record exists and when it was last measured; and who '
-      + 'holds the risk assessment. If there is none, record that as the reason and exclude the row.',
+      + '❓ WHAT REMAINS OPEN is not whether the gate exists but what is known about it: whether a '
+      + 'force-test record exists at all and when the forces were last measured, who holds the '
+      + 'installation\u2019s risk assessment, and whether the shutters are permanently immobilised or '
+      + 'merely unused. ⚠ A gate in service with no force-test record is the normal finding, not an '
+      + 'unusual one.',
     name: 'Powered gates, barriers and doors — safety inspection',
     description:
       'Inspect and test each powered gate, barrier, shutter or automatic door: closing and crushing '
@@ -2535,9 +2539,12 @@ export const REGISTER = [
       + 'Schedule 5 makes the anchor’s suitability and strength the duty, and PUWER reg 6 is the '
       + 'inspection obligation. Regulation 12 of the Work at Height Regulations, sometimes offered for '
       + 'this, applies to the work equipment in reg 8 and Schedules 2 to 6 and does not carry it. '
-      + '❓ Confirm what is installed and where, who holds the installation and load-test records, '
-      + 'whether it is an eyebolt array or a lifeline system, and whether any part is used for rope '
-      + 'access, abseil or rescue — that last one shortens the interval below twelve months.',
+      + '❓ WHAT REMAINS OPEN, now that the answer on anchors is "none": what fixed access equipment '
+      + 'there is and where, its condition and fixings, who installed it and whether any load or '
+      + 'stability test was ever done, and how the roof is reached for each job that needs it. ⚠ If '
+      + 'anchors, a lifeline or a man-safe system are ever installed, the BS 7883 regime and its '
+      + 'shorter intervals for rope access or rescue use come with them — the row already covers that '
+      + 'case and does not need rewriting.',
     name: 'Roof access equipment — inspection and recertification',
     description:
       'Inspect the fixed means of getting onto and around the roof — access ladders, step-overs, '
@@ -2553,8 +2560,8 @@ export const REGISTER = [
     frequencyDays: 365,
     triggerType: 'calendar',
     responsibleParty: 'Height safety contractor',
-    competencyRequired: 'Competent person as defined by BS 7883:2019, independent of the installer where practicable',
-    evidenceRequired: 'Certificate per anchor or system, identifying each device by location, the test or inspection applied, the result, and the date the next inspection falls due',
+    competencyRequired: 'Competent person for the equipment in question — for fixed ladders, step-overs, walkways and guarding, someone able to assess the fixings and the substrate as well as the ladder; and where anchor devices, lifelines or man-safe systems exist, a competent person as defined by BS 7883:2019, independent of the installer where practicable',
+    evidenceRequired: 'Record per item of access equipment and per anchor or system, identifying each by location, the inspection or test applied, its condition and fixings, the result, and the date the next inspection falls due',
     retentionPeriodMonths: 120,
     handledBy: 'maintenance',
     handlingNote: '⚠ Nobody currently owns this asset class in the portal — it is neither a building component nor a lift. It needs a home before it can be scheduled properly.',
