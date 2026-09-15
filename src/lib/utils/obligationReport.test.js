@@ -19,6 +19,91 @@ const done = (id, at, over = {}) =>
 
 const rowFor = (rows, key) => rows.find(r => r.key === key);
 
+// ⛔ AN ASSURANCE CONTROL ON SCHEDULE IS NOT THE STATUTORY DUTY MET.
+//
+// Six duties are held as two rows: the event-driven statutory duty, and an
+// annual confirmation that it is being operated. Completing the confirmation
+// says the confirmation happened — nothing more. If it rendered green, the
+// report would rebuild in software the conflation the two rows exist to
+// prevent, and would do it with more authority than any prose, because a green
+// row is read as an answer.
+//
+// These tests exist so that specific lie cannot be told again.
+describe('assurance-only rows never read as the duty being met', () => {
+  // Read the key OUT of the register rather than naming one: which rows are
+  // assurance-only is data, and a test that transcribes data fails when the
+  // data is corrected. See feedback_assert-the-rule-not-the-sentence.
+  const assuranceKey = STATUTORY_TEMPLATE.find(e => e.assuranceOnly)?.key;
+  const assuranceObligation = (over = {}) => ob({
+    id: 'a1', template_key: assuranceKey, frequency_days: 365, ...over,
+  });
+
+  it('the register still holds at least one assurance-only row', () => {
+    // If this fails the rest of the describe is vacuous rather than passing.
+    expect(assuranceKey).toBeTruthy();
+  });
+
+  it('is "assured", not "ok", when the confirmation is on schedule', () => {
+    const rows = compliancePosition({
+      obligations: [assuranceObligation()],
+      events: [done('a1', '2026-09-01')],
+    }, opts);
+    const r = rowFor(rows, assuranceKey);
+    expect(r.status).toBe('assured');
+    expect(r.status).not.toBe('ok');
+  });
+
+  it('names the operative control, so the caveat can point somewhere', () => {
+    const rows = compliancePosition({
+      obligations: [assuranceObligation()], events: [done('a1', '2026-09-01')],
+    }, opts);
+    expect(rowFor(rows, assuranceKey).assuranceOnly)
+      .toBe(templateEntry(assuranceKey).assuranceOnly);
+  });
+
+  // The reinterpretation applies ONLY to the green outcome. Softening a failing
+  // assurance control would be the same error pointed the other way.
+  it('is still a breach when the confirmation itself is overdue', () => {
+    const rows = compliancePosition({
+      obligations: [assuranceObligation()],
+      events: [done('a1', '2023-01-01')],
+    }, opts);
+    expect(rowFor(rows, assuranceKey).status).toBe('breach');
+  });
+
+  it('is still a gap when nothing is scheduled for it', () => {
+    const rows = compliancePosition({ obligations: [], events: [] }, opts);
+    expect(rowFor(rows, assuranceKey).status).toBe('gap');
+  });
+
+  it('counts as not-failing, because the control IS operating', () => {
+    expect(NON_FAILING.has('assured')).toBe(true);
+  });
+
+  it('is a status of its own, present in the summary', () => {
+    expect(ROW_STATUS).toContain('assured');
+    const s = positionSummary(compliancePosition({
+      obligations: [assuranceObligation()], events: [done('a1', '2026-09-01')],
+    }, opts));
+    expect(s.assured).toBe(1);
+  });
+
+  // The label is the only thing a reader sees in the status column, so it has
+  // to carry the caveat by itself.
+  it('says in the label that it is not the duty', () => {
+    expect(ROW_STATUS_LABEL.assured).toMatch(/NOT the statutory duty/);
+  });
+
+  it('leaves ordinary rows alone', () => {
+    const rows = compliancePosition({
+      obligations: [ob({ id: 'o1', template_key: 'lift_loler_examination' })],
+      events: [done('o1', '2026-09-01')],
+    }, opts);
+    expect(rowFor(rows, 'lift_loler_examination').status).toBe('ok');
+    expect(rowFor(rows, 'lift_loler_examination').assuranceOnly).toBeNull();
+  });
+});
+
 describe('compliancePosition — one row per requirement', () => {
   it('covers every register entry even with nothing held', () => {
     const rows = compliancePosition({ obligations: [], events: [] }, opts);

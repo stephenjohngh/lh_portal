@@ -28,6 +28,8 @@ const STATUS_COLOUR = {
   gap:       COLOURS.warnAmber,
   attention: COLOURS.warnAmber,
   ok:        COLOURS.passGreen,
+  // ⛔ NOT passGreen. An assurance control on schedule is not the duty met.
+  assured:   '7C3AED',
   elsewhere: '3B82F6',
   unhomed:   COLOURS.failRed,
   excluded:   '9CA3AF',
@@ -37,7 +39,8 @@ const STATUS_COLOUR = {
 
 const STATUS_LABEL = {
   breach: 'In breach', gap: 'Not scheduled', attention: 'Needs attention',
-  ok: 'On schedule', elsewhere: 'Tracked in another app',
+  ok: 'On schedule', assured: 'Assurance confirmed — NOT the statutory duty',
+  elsewhere: 'Tracked in another app',
   unhomed: 'Nothing deals with it', excluded: 'Recorded as not applicable',
   superseded: 'No longer required', retired: 'Retired',
 };
@@ -109,6 +112,12 @@ export function positionTable(rows) {
     const nameLines = [r.name];
     if (r.statutoryRef) nameLines.push(r.statutoryRef);
     if (r.owner) nameLines.push(r.owner);
+    // ⛔ An assurance-only row prints its caveat, and prints it under the NAME
+    // rather than in the status cell — a reader scanning the status column for
+    // red is exactly the reader who would miss it there.
+    if (r.assuranceOnly) {
+      nameLines.push(`Assurance control only — does NOT discharge the statutory duty. The operative control is ${r.assuranceOnly}`);
+    }
     if (r.exclusionReason) {
       nameLines.push(`Not applicable — “${r.exclusionReason}” (${d(r.exclusionDecidedAt)})`);
       if (r.exclusionReviewDue) nameLines.push(`Review this decision ${d(r.exclusionReviewDue)}`);

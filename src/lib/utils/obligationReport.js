@@ -29,7 +29,7 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 
 /** Row status, worst first — the order the summary counts read in. */
 export const ROW_STATUS = [
-  'breach', 'gap', 'attention', 'ok', 'elsewhere', 'unhomed', 'excluded',
+  'breach', 'gap', 'attention', 'ok', 'assured', 'elsewhere', 'unhomed', 'excluded',
   'superseded', 'retired',
 ];
 
@@ -38,6 +38,7 @@ export const ROW_STATUS_LABEL = {
   gap:        'Not scheduled',
   attention:  'Needs attention',
   ok:         'On schedule',
+  assured:    'Assurance confirmed — NOT the statutory duty',
   elsewhere:  'Tracked in another app',
   unhomed:    'Nothing deals with it',
   excluded:   'Recorded as not applicable',
@@ -51,7 +52,26 @@ export const ROW_STATUS_LABEL = {
  * point of flagging rather than deleting, and three surfaces need to agree on
  * it: the summary colours, the Word document, and anyone reading either.
  */
-export const NON_FAILING = new Set(['ok', 'elsewhere', 'excluded', 'superseded', 'retired']);
+export const NON_FAILING = new Set(['ok', 'assured', 'elsewhere', 'excluded', 'superseded', 'retired']);
+
+/**
+ * ⛔ An ASSURANCE-ONLY row must never render as "On schedule".
+ *
+ * Six duties in the register are held as two rows: the event-driven statutory
+ * duty, and an annual confirmation that it is being operated. The split is the
+ * point — a calendar cannot raise a resident's request for an assessment, or
+ * the day somebody becomes aware of a change.
+ *
+ * But completing the annual confirmation says only that the confirmation
+ * happened. If that renders green, the report has rebuilt in software the exact
+ * conflation the two rows were separated to prevent, and does it with more
+ * authority than prose ever could — because a green row is read as an answer.
+ *
+ * So "assured" is a status of its own: not a failing, because the control IS
+ * operating; not a pass, because the duty it assures is evidenced elsewhere or
+ * not at all. assuranceOnly on the register entry names where.
+ */
+export const ASSURANCE_ONLY_STATUS = 'assured';
 
 /** Latest completed and latest attempted evidence per obligation id. */
 function latestEvidence(events) {
@@ -131,7 +151,10 @@ function statusOf({ entry, obligations, state, excluded, retired, superseded }) 
   if (state?.intervalBreached) return 'breach';
   if (state?.band === 'never_run' || state?.band === 'overdue') return 'breach';
   if (state?.band === 'due_soon') return 'attention';
-  return 'ok';
+  // ⚠ Only the GREEN outcome is reinterpreted. An assurance row that is overdue
+  // or has never run is still a breach of that control, and says so — softening
+  // that would be the opposite mistake.
+  return entry?.assuranceOnly ? ASSURANCE_ONLY_STATUS : 'ok';
 }
 
 /**
@@ -200,6 +223,8 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
       statutoryRef: entry.statutoryRef,
       frequencyDays: entry.frequencyDays,
       owner: entry.responsibleParty,
+      statutoryDutyHolder: entry.statutoryDutyHolder ?? null,
+      assuranceOnly: entry.assuranceOnly ?? null,
       handledBy: entry.handledBy,
       obligations: linked,
       state,

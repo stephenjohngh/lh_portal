@@ -160,6 +160,7 @@
             lastCompleted: r.lastCompleted, lastAttempted: r.lastAttempted,
             lastOutcome: r.lastOutcome, nextDue: r.nextDue,
             status: r.status, statusLabel: ROW_STATUS_LABEL[r.status],
+            assuranceOnly: r.assuranceOnly ?? null,
             handledBy: HANDLED_BY_LABEL[r.handledBy] ?? r.handledBy,
             intervalBreached: r.intervalBreached,
             exclusionReason: r.exclusion?.reason ?? null,
@@ -309,6 +310,9 @@
                 <div>{r.nextDue ? fmtDate(r.nextDue) : '—'}</div>
                 <div>
                   <span class="pill {statusCls(r.status)}">{ROW_STATUS_LABEL[r.status]}</span>
+                  {#if r.assuranceOnly}
+                    <span class="assurance-note">Does not discharge the duty — the operative control is {r.assuranceOnly}</span>
+                  {/if}
                   {#if r.intervalBreached}<span class="pill breach">Max interval</span>{/if}
                 </div>
               </div>
@@ -411,6 +415,7 @@
   .sum.st-gap .sum-n { color: rgb(252 211 77); }
   .sum.st-attention .sum-n { color: rgb(251 191 36); }
   .sum.st-ok .sum-n { color: rgb(134 239 172); }
+  .sum.st-assured .sum-n { color: rgb(196 181 253); }
   .sum.st-superseded .sum-n, .sum.st-retired .sum-n { color: rgb(148 163 184); }
 
   .degraded { font-size: 0.8rem; color: rgb(252 211 77); background: rgb(251 191 36 / 0.1);
@@ -467,7 +472,15 @@
   .pill.st-gap { background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }
   .pill.st-attention { background: rgb(251 146 60 / 0.18); color: rgb(253 186 116); }
   .pill.st-ok { background: rgb(34 197 94 / 0.16); color: rgb(134 239 172); }
+  /* Violet, and deliberately outside the pass/fail palette: green would claim
+     the statutory duty is met, amber would claim this control is failing.
+     Neither is true — it is running, and it answers a different question. */
+  .pill.st-assured { background: rgb(139 92 246 / 0.18); color: rgb(196 181 253); }
   .pill.st-elsewhere { background: rgb(56 189 248 / 0.14); color: rgb(125 211 252); }
+  .assurance-note {
+    display: block; margin-top: 3px; font-size: 0.68rem; line-height: 1.35;
+    color: rgb(196 181 253); max-width: 46ch;
+  }
   .pill.st-unhomed { background: rgb(248 113 113 / 0.25); color: rgb(254 202 202); }
   .pill.st-excluded { background: rgb(71 85 105 / 0.5); color: rgb(148 163 184); }
   .pill.st-superseded, .pill.st-retired { background: rgb(100 116 139 / 0.35); color: rgb(203 213 225); }
