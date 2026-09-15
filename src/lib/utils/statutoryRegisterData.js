@@ -576,11 +576,12 @@ export const REGISTER = [
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
       '✅ PARTLY ANSWERED 2026-09-15: ONE DAMPER IS CONFIRMED, AT THE FOOT OF THE REFUSE CHUTE in '
-      + 'the upper basement, and it is inspected and serviced with the chute. ⚠ Whether that is annual '
-      + 'or six-monthly is not yet confirmed — either satisfies DW145, whose annual is a FLOOR and not '
-      + 'a ceiling, so a six-monthly contract exceeds it rather than conflicting with it. ⚠ Keep this '
-      + 'record separate from the chute service record even when one visit produces both, or a chute '
-      + 'clean will eventually be produced as evidence that a damper was tested. That alone makes '
+      + 'the upper basement. ✅ ANNUAL, CONFIRMED 2026-09-15, by the same company that services the '
+      + 'chute and in the same visit — which satisfies DW145, whose annual is the minimum frequency. '
+      + '⚠ ONE VISIT, TWO ACTIVITIES, DIFFERENT COMPONENTS: the damper is one component in the upper '
+      + 'basement; the chute service covers eight hoppers and the shaft. Scope each row to its own '
+      + 'components and the records cannot merge — a single certificate covering "the chute" is how a '
+      + 'clean ends up standing as evidence that a damper was tested. That alone makes '
       + 'this row apply — a single damper is a regime, not an exception. ⚠ Whether there are OTHERS '
       + 'remains open and is expressly held for the next fire strategy survey; the asset register is '
       + 'evidence of what has been recorded, never of what exists. '
@@ -1922,18 +1923,18 @@ export const REGISTER = [
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
-      '⚠ SIX-MONTHLY IS AN INTERIM ADOPTED INTERVAL, PENDING CONFIRMATION OF THE CONTRACT. The duty '
-      + 'holder confirms the hoppers and damper are inspected and serviced but not yet whether that is '
-      + 'annual or six-monthly. ⛔ Where two candidate intervals are known and the actual one is not, '
-      + 'this register adopts the SHORTER until it is confirmed: inspecting too often costs money, '
-      + 'inspecting too rarely costs compliance, and only one of those is recoverable. Correct it to '
-      + 'annual if that is what the contract says. '
-      + '⚠ THIS ROW AND THE DAMPER ROW TOUCH THE SAME ASSET AND ARE NOT THE SAME DUTY. The damper test '
-      + 'is DW145 — drop the blade, prove the fusible link, reinstate. This is the chute system: the '
-      + 'hopper doors, their seals and self-closing action, the chute interior, and the cleaning that '
-      + 'stops residue accumulating in a shaft that runs past eight floors. ⚠ If one contractor does '
-      + 'both in one visit, that is efficient and fine — but the two records must stay separate, or a '
-      + 'chute clean will one day be produced as evidence that a fire damper was tested. '
+      '✅ ANNUAL, CONFIRMED BY THE DUTY HOLDER 2026-09-15. The interval is the contract\u2019s and ours '
+      + 'rather than any standard\u2019s — neither BS 5906 nor BS 1703 sets one for a particular '
+      + 'installation — so it is recorded as established practice and would change if the contract did. '
+      + '⚠ THIS ROW AND THE DAMPER ROW ARE ONE VISIT BY ONE COMPANY AND TWO SEPARATE ACTIVITIES ON '
+      + 'DIFFERENT COMPONENTS, which is what keeps them separable. The damper test is DW145 on ONE '
+      + 'component in the upper basement — drop the blade, prove the fusible link, reinstate. This row '
+      + 'is the chute system across NINE: eight hopper doors with their seals and self-closing action, '
+      + 'and the chute interior with the cleaning that stops residue accumulating in a shaft running '
+      + 'past eight floors. '
+      + '⚠ Scope each row to ITS OWN components rather than to "the chute system", and the records '
+      + 'cannot merge by accident. One visit, one invoice and one certificate covering both is the way '
+      + 'a chute clean ends up standing as evidence that a fire damper was tested. '
       + '⚠ THE HOPPERS ARE THE FIRE-SAFETY PART. Each is an opening into a shaft that breaches eight '
       + 'compartment floors and ends at the bins. A hopper that no longer closes, or whose seal has '
       + 'gone, is an open route from a dwelling floor to a fire in the store. '
@@ -1946,9 +1947,9 @@ export const REGISTER = [
       + 'of the chute damper — recording each hopper separately, floor by floor.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5906:2005, Waste management in buildings — Code of practice, which refers to BS 1703 for the cleaning of chutes. ⚠ NEITHER SETS A SERVICING INTERVAL THAT APPLIES TO EVERY INSTALLATION, and the BS 1703 edition adopted here is not recorded — six-monthly is our interim figure pending confirmation of the contract. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". A hopper that no longer closes is a failed fire safety measure, whatever the waste code says about cleaning',
+    statutoryRef: 'BS 5906:2005, Waste management in buildings — Code of practice, which refers to BS 1703 for the cleaning of chutes. ⚠ NEITHER SETS A SERVICING INTERVAL THAT APPLIES TO EVERY INSTALLATION, so the ANNUAL cycle is the contract’s and ours rather than either standard’s — confirmed by the duty holder 2026-09-15. ❓ The BS 1703 edition being worked to is still not recorded. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". A hopper that no longer closes is a failed fire safety measure, whatever the waste code says about cleaning',
     intervalBasis: 'practice',
-    frequencyDays: 182,
+    frequencyDays: 365,
     triggerType: 'calendar',
     responsibleParty: 'Refuse chute service contractor',
     competencyRequired: 'Competent chute service engineer; the damper element requires a competent damper engineer as defined by DW145',
