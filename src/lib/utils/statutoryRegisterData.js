@@ -575,7 +575,14 @@ export const REGISTER = [
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
-      '⚠ AN UNTESTED DAMPER LOOKS EXACTLY LIKE A WORKING ONE, from both sides of the wall, for its '
+      '✅ PARTLY ANSWERED 2026-09-15: ONE DAMPER IS CONFIRMED, ON THE BIN CHUTE. That alone makes '
+      + 'this row apply — a single damper is a regime, not an exception. ⚠ Whether there are OTHERS '
+      + 'remains open and is expressly held for the next fire strategy survey; the asset register is '
+      + 'evidence of what has been recorded, never of what exists. '
+      + '⚠ The bin chute damper is worth noting in its own right: it sits between a refuse store, '
+      + 'which is among the most common ignition points in a residential block, and the rest of the '
+      + 'building. It is exactly the damper you would least want to find seized. '
+      + '⚠ AN UNTESTED DAMPER LOOKS EXACTLY LIKE A WORKING ONE, from both sides of the wall, for its '
       + 'whole life. There is no symptom, no alarm and no degraded performance to notice — it either '
       + 'closes on the day or it does not, and the day is the fire. '
       + '⛔ ACCESS IS A FINDING, NOT AN EXEMPTION. The most common outcome of a first damper inspection '
@@ -960,6 +967,11 @@ export const REGISTER = [
       + 'handle, a security restrictor fitted in good faith, furniture or stored items in front of '
       + 'the opening, a stiff mechanism nobody reports because nobody opens it in the ordinary way. '
       + 'None of them announces itself, and none is visible in a check that only looks at the stair. '
+      + '⛔ THE WINDOWS ARE NOT YET MODELLED AS COMPONENTS (confirmed 2026-09-15 — they were not '
+      + 'considered important when the asset register was built, and are to be added). Until they are, '
+      + 'this row has nothing to be scheduled against and no per-window record can exist. ⚠ That is an '
+      + 'asset-data gap rather than a compliance one, but it has the same effect: the provision this '
+      + 'building relies on for stair smoke ventilation is currently checked by nothing. '
       + '⛔ PRECONDITION, not an improvement: this row cannot be relied on until the approved fire '
       + 'strategy’s requirements are recorded — which storeys carry the windows, the free area and the '
       + 'opening each must achieve, whether they are manual or automatic, how they operate in a fire, '
@@ -2154,7 +2166,15 @@ export const REGISTER = [
     statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
-      '⚠ A POWERED GATE IS MACHINERY, and it has a recognised history of killing residents and '
+      '✅ CONFIRMED BY THE DUTY HOLDER 2026-09-15: THIS ROW APPLIES. The site has four gate-like '
+      + 'assets and they are not equally in scope — **the powered CAR PARK gate is the one this row '
+      + 'is about**. The second gate is manual and decorative, so it is not machinery and carries no '
+      + 'force-limitation duty. The shutters are recorded as existing but unused. '
+      + '⚠ "UNUSED" IS NOT "OUT OF SCOPE" WHILE IT CAN STILL BE OPERATED. A shutter nobody uses is a '
+      + 'shutter nobody maintains, and the duty attaches to equipment that could be put into service, '
+      + 'not to equipment somebody intends to use. Either confirm it is permanently immobilised and '
+      + 'record that, or keep it in the regime. '
+      + '⚠ A POWERED GATE IS MACHINERY, and it has a recognised history of killing residents and '
       + 'children in exactly this setting. It is also the asset most likely to have been installed '
       + 'without a force test and never tested since, because it goes on working perfectly while '
       + 'being unsafe — the two are unrelated. '
@@ -2344,7 +2364,20 @@ export const REGISTER = [
     statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
-      '❓ OPEN: annual is our selected interval, and it should be confirmed against the installed '
+      '⛔ THE SYSTEM PROTECTING THIS BUILDING BELONGS TO THE ADJOINING ONE (confirmed by the duty '
+      + 'holder, 2026-09-15), and that changes who can act on it rather than whether it matters. We '
+      + 'rely on a protective measure we do not own, cannot unilaterally maintain, and would not be '
+      + 'told about if it were altered or removed. '
+      + '⚠ THE FAILURE MODE HERE IS LEGAL AND ADMINISTRATIVE RATHER THAN TECHNICAL. The likeliest way '
+      + 'this protection is lost is not a failed earth test — it is the neighbour reroofing, '
+      + 'redeveloping, or simply decommissioning a system they have no reason to think anyone else '
+      + 'depends on. No inspection regime detects that. '
+      + '❓ Confirm who owns and maintains it · whether any agreement, easement or lease term secures '
+      + 'it · whether the test results reach us · who would tell us if it changed · and what this '
+      + 'building would need if it were withdrawn. ⚠ Until then the row can be scheduled but the duty '
+      + 'behind it cannot be discharged by us alone, which is a different kind of gap from an overdue '
+      + 'test. '
+      + '❓ OPEN: annual is our selected interval, and it should be confirmed against the installed '
       + 'system. BS EN 62305-3 sets inspection periodicity by protection level and LPS classification; '
       + 'annual VISUAL inspection is common, but the complete inspection and test interval is not '
       + 'universally annual. Record the LPS class for this building and the reason annual was chosen.',
@@ -2420,7 +2453,12 @@ export const REGISTER = [
     statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
-      '⚠ THE ONE ASSET ON A ROOF THAT NOBODY OWNS. Anchors are installed by a roofing or façade '
+      '✅ CONFIRMED BY THE DUTY HOLDER 2026-09-15: there are NO roof anchors, lifelines or man-safe '
+      + 'systems here. The row was WIDENED rather than excluded, on the duty holder\u2019s direction, and '
+      + 'that is the better answer — the hazard was never "anchors", it was reaching the roof safely, '
+      + 'and the fixed ladders and steps that do exist are work equipment under PUWER reg 6 exactly as '
+      + 'an eyebolt would be. An excluded row would have left them inspected by nobody. '
+      + '⚠ THE ONE ASSET ON A ROOF THAT NOBODY OWNS. Anchors are installed by a roofing or façade '
       + 'contractor, used by window cleaners, aerial engineers and anyone surveying the roof, and '
       + 'inspected by nobody unless somebody schedules it — while sitting in exactly the exposure '
       + 'PUWER reg 6 is written about. The person who trusts it is rarely the person who could have '
@@ -2432,9 +2470,11 @@ export const REGISTER = [
       + '❓ Confirm what is installed and where, who holds the installation and load-test records, '
       + 'whether it is an eyebolt array or a lifeline system, and whether any part is used for rope '
       + 'access, abseil or rescue — that last one shortens the interval below twelve months.',
-    name: 'Roof anchors and fall-arrest systems — inspection and recertification',
+    name: 'Roof access equipment — inspection and recertification',
     description:
-      'Inspect and recertify the permanent anchor devices, horizontal lifelines and man-safe systems '
+      'Inspect the fixed means of getting onto and around the roof — access ladders, step-overs, '
+      + 'walkways, handrails and guarding — together with any permanent anchor devices, horizontal '
+      + 'lifelines and man-safe systems '
       + 'on the roof and any façade access they serve — each anchor tested or inspected by the method '
       + 'the standard sets, the structural fixing and its substrate examined, and the system record, '
       + 'user information and rescue arrangements confirmed current.',
@@ -2451,7 +2491,7 @@ export const REGISTER = [
     handledBy: 'maintenance',
     handlingNote: '⚠ Nobody currently owns this asset class in the portal — it is neither a building component nor a lift. It needs a home before it can be scheduled properly.',
     evidencedBy: 'maintenance_job',
-    appliesWhen: 'Permanent anchor devices, lifelines or man-safe systems are installed on the roof or façade',
+    appliesWhen: 'The roof is reached by fixed access equipment — a ladder, steps, a walkway or guarding — or permanent anchor devices, lifelines or man-safe systems are installed on the roof or façade',
   }),
   entry({
     key: 'drainage_gutter_clearance',
