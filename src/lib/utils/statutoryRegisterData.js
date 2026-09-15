@@ -575,7 +575,8 @@ export const REGISTER = [
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
-      '✅ PARTLY ANSWERED 2026-09-15: ONE DAMPER IS CONFIRMED, ON THE BIN CHUTE. That alone makes '
+      '✅ PARTLY ANSWERED 2026-09-15: ONE DAMPER IS CONFIRMED, AT THE FOOT OF THE REFUSE CHUTE in '
+      + 'the upper basement. That alone makes '
       + 'this row apply — a single damper is a regime, not an exception. ⚠ Whether there are OTHERS '
       + 'remains open and is expressly held for the next fire strategy survey; the asset register is '
       + 'evidence of what has been recorded, never of what exists. '
@@ -1875,8 +1876,14 @@ export const REGISTER = [
       + '⚠ The recurring failure is not the store, it is what is left outside it: bags stacked against '
       + 'the wall on collection day, a bulky item nobody will take, a bin wheeled under a window or up '
       + 'against a ventilation opening. That is why this is a frequent walk rather than a service. '
-      + '❓ Confirm where the stores are, whether any is within or beneath the building, whether there '
-      + 'is a chute and whether it has a damper or a sprinkler head, and what separation distance the '
+      + '✅ CONFIRMED 2026-09-15: THERE IS A REFUSE CHUTE, with access hoppers on every floor from '
+      + 'the ground to the seventh, a vent stack, and a fire damper at its foot in the upper basement. '
+      + '⚠ THE CHUTE IS A VERTICAL SHAFT BREACHING EIGHT COMPARTMENT FLOORS and ending in a refuse '
+      + 'store. That is what makes the damper at its foot the one you would least want to find seized, '
+      + 'and why the HOPPERS belong in this check rather than beside it: a hopper propped, damaged or '
+      + 'missing its seal is an open route between a dwelling floor and a fire in the bins. '
+      + '❓ Confirm where the stores are, whether any is within or beneath the building, whether the '
+      + 'chute has a sprinkler head as well as the damper, and what separation distance the '
       + 'fire strategy assumed — the last one is what decides whether bins against the wall are '
       + 'untidy or dangerous.',
     name: 'Refuse and bin stores — fire safety check',
