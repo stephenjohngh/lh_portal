@@ -273,6 +273,60 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Wherever the premises are subject to the Regulatory Reform (Fire Safety) Order 2005 and we are the responsible person or have an agreed role supporting that duty. ⚠ The accountable person, the managing agent and the responsible person are NOT automatically the same party',
   }),
+  // ⚠ ADDED 2026-09-15 on review, and it is the answer to a gap this register
+  // itself reported. The FRA review row said, honestly, that NOTHING WATCHES for
+  // art 9(3)(a)'s "reason to suspect the assessment is no longer valid". A
+  // finding is not a final state: an honest note that nobody is watching is
+  // still nobody watching.
+  //
+  // The reviewer's framing is the right one — the system does not have to
+  // automate the legal judgement, it has to guarantee the concern REACHES a
+  // competent decision-maker. That is a control, and it is this row.
+  entry({
+    key: 'fire_safety_concern_triage',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it feeds is the responsible person’s review of the fire risk assessment under art 9(3)(a)',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
+    reviewerNote:
+      '⛔ THIS ROW EXISTS BECAUSE THE REGISTER REPORTED ITS OWN BLIND SPOT. FSO art 9(3)(a) fires the '
+      + 'fire risk assessment review on "reason to suspect that it is no longer valid" — and nothing '
+      + 'generates that. A defect, an incident, a complaint, a contractor\u2019s remark, a fire and rescue '
+      + 'service observation, a change of occupancy or use, an occurrence report or a safety case '
+      + 'finding can each BE that reason, and each arrives somewhere different. '
+      + '⚠ THE POINT IS THE QUEUE, NOT THE JUDGEMENT. Nothing here decides whether the assessment is '
+      + 'still valid — that is the fire risk assessor\u2019s. What this guarantees is that the concern '
+      + 'reaches a competent decision-maker and that the decision, including a decision that NO review '
+      + 'is needed, is recorded with its reasoning. ⚠ An unrecorded "we considered it and it was '
+      + 'nothing" is indistinguishable afterwards from never having considered it. '
+      + '⚠ The existing triage rows are NOT this. Occurrence triage asks whether something is '
+      + 'reportable to the regulator; complaint triage asks whether a complaint concerns a building '
+      + 'safety risk. Both are narrower, and a contractor mentioning a propped-open door on the way '
+      + 'out fits neither. '
+      + '❓ Confirm the routes in: site staff, contractors, residents, the managing agent, the fire and '
+      + 'rescue service, and the assessor. A route nobody knows about is not a route.',
+    name: 'Fire safety concern — intake, triage and routing to the FRA trigger',
+    description:
+      'Receive any fire safety concern by any route — defect, incident, complaint, contractor or fire '
+      + 'and rescue service observation, change of occupancy or use, occurrence report, safety case '
+      + 'finding, or information that contradicts the fire risk assessment — log it, route it to a '
+      + 'competent decision-maker, and record the decision on whether it gives reason to suspect the '
+      + 'assessment is no longer valid, including where the decision is that it does not.',
+    group: 'fire_safety',
+    basis: 'management',
+    statutoryRef: 'Our own control, and the route by which the statutory trigger at Regulatory Reform (Fire Safety) Order 2005 art 9(3)(a) — "reason to suspect that it is no longer valid" — can actually be raised. Nothing in the Order says how a responsible person is to become aware of such a reason; that is left to the arrangements art 11 requires for the effective planning, organisation, control, monitoring and review of the preventive and protective measures. ⚠ No interval is stated anywhere, because this is a queue rather than a cycle: the working figure below is how often an empty queue is confirmed to be genuinely empty',
+    intervalBasis: 'practice',
+    frequencyDays: 30,
+    triggerType: 'event',
+    trigger: 'Any fire safety concern arising by any route, at the moment it arises',
+    triggerSource: 'Every route a concern can arrive by, converging on one queue: occurrence triage, complaint triage, the building work change-control screen, inspection and walk findings, contractor reports, resident contact, and correspondence from the fire and rescue service. ⛔ NONE OF THOSE IS WIRED TO A SINGLE QUEUE TODAY — building the queue is the action, and it is what makes the fire risk assessment\u2019s statutory trigger capable of firing at all',
+    responsibleParty: 'Building safety lead, escalating to the fire risk assessor',
+    competencyRequired: 'Person able to recognise which concerns may bear on the validity of the fire risk assessment, and to escalate rather than resolve where that is in doubt',
+    evidenceRequired: 'Per concern: what was raised, by whom, when, how it arrived, who decided, the decision and its reasoning — including a reasoned record where the decision is that no review is required',
+    retentionPeriodMonths: 120,
+    handledBy: 'none',
+    handlingNote: '⚠ No home. The nearest things are MOR and complaints intake, and both are narrower than this by design.',
+    evidencedBy: null,
+    appliesWhen: 'Always — wherever the premises are subject to the Fire Safety Order',
+  }),
   entry({
     key: 'fra_review_on_trigger',
     triggerSource: 'The building work change-control screen, the occurrence triage, and the fire risk assessor’s own reporting. ⛔ NOTHING WATCHES FOR "reason to suspect" — that limb has no source at all and depends on a person raising it',
@@ -588,7 +642,7 @@ export const REGISTER = [
       + 'is easy to leave unstated and therefore unverified.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ SIX-MONTHLY IS NOT TO BE TREATED AS A UNIVERSAL INTERVAL, and this row states less than it used to on purpose. THE ADOPTED BS 5839-1 EDITION AND SYSTEM CATEGORY MUST BE CONFIRMED: the relevant edition, the system category and the installation’s own documentation are what determine the permitted inspection and service interval, and until they are known the most that can honestly be said is that six-monthly is the conventional period between service visits and the one we schedule to. ⚠ The fire risk assessment may require more frequent attendance, and for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. BS 5839-1 contemplates the fire risk assessment calling for more frequent attendance, and for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. ⚠ THE ADOPTED EDITION AND SYSTEM CATEGORY ARE NOT RECORDED. ❓ Confirm the BS 5839-1 edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ SIX-MONTHLY IS NOT TO BE TREATED AS A UNIVERSAL INTERVAL. THE ADOPTED BS 5839-1 EDITION AND SYSTEM CATEGORY ARE NOT RECORDED, and until they are, the most that can honestly be said is that six-monthly is the conventional period between service visits and the one we schedule to: the edition, the system category and the installation’s own documentation are what determine the permitted interval, and BS 5839-1 contemplates the fire risk assessment calling for more frequent attendance — for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. ❓ Confirm the edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
@@ -1253,6 +1307,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_content_review',
+    reviewerNote: '⚠ "BOX INSPECTED" IS NOT EVIDENCE THAT ITS CONTENTS ARE CURRENT, and the two must be separate records. The monthly row looks at the box — present, secure, accessible, lock working, which is reg 4(2) and reg 4(5). This row looks at what is INSIDE it, and the contents come from two different places: reg 4(3) prescribes the contact information and requires the box to hold such documents as the Regulations require, while what those plans must SHOW comes from reg 6, and reg 6(5) is what puts the hard copies there. ⛔ A box that passes inspection while holding last year\u2019s floor plans passes nothing that matters.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
     name: 'Secure information box — content review',
@@ -1751,7 +1806,7 @@ export const REGISTER = [
     triggerType: 'calendar',
     responsibleParty: 'Responsible person',
     competencyRequired: 'Person issuing resident communications',
-    evidenceRequired: 'The issued wording, dated, with the distribution record; separate record of issue to each new resident',
+    evidenceRequired: 'Per issue: the content given, the audience it reached, the date, the delivery method, and how it was made accessible to any resident who needs it in another form — plus a separate record of issue to each new resident, dated against when they became a resident',
     retentionPeriodMonths: 36,
     handledBy: 'info',
     handlingNote:
