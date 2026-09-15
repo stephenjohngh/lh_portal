@@ -1304,6 +1304,16 @@ export const REGISTER = [
     description: 'Check the box is present, secure and accessible, and that the lock works.',
     group: 'fire_safety',
     basis: 'statute',
+    reviewerNote:
+      '✅ THE BOX IS MODELLED as a component (confirmed 2026-09-15). ⚠ But it shares a component type '
+      + 'with the resident fire safety information and the fire alarm zone plan, and an obligation '
+      + 'scope cannot name an individual component — so scoping this row to that type would attribute '
+      + 'a "secure information box check" to a notice board and a zone plan as well. '
+      + '⛔ The evidence would read as compliant and be about the wrong asset, which is worse than no '
+      + 'evidence. Give the box a type or an attribute of its own before scheduling this row. '
+      + '⚠ Worth noting the three are genuinely three duties: the box is FSER reg 4, the resident '
+      + 'information is reg 9, and the zone plan belongs to the detection and alarm system. The type '
+      + 'is doing the work of a category and is too coarse for any of them.',
     statutoryRef: 'MONTHLY IS OUR INTERNAL CHECK FREQUENCY. Fire Safety (England) Regulations 2022 reg 4(5) requires the responsible person to inspect the secure information box AT LEAST ANNUALLY and ensure it continues to meet reg 4(2) — that is the statutory duty and the statutory interval. We check monthly because a box that has been forced, blocked or re-keyed is discovered by looking at it, and an annual cycle can leave that unnoticed for eleven months. Reg 4(2) sets what the box must be: readily accessible to the fire and rescue authority, capable of holding the documents these Regulations require in it, and reasonably secure against unauthorised access and vandalism',
     intervalBasis: 'practice',
     frequencyDays: 30,
