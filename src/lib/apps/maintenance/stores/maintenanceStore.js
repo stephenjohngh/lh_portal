@@ -6,7 +6,7 @@
 // OBLIGATIONS (what used to be maintenance_regime) are NOT ours: they live in
 // the shared statutory-obligation library owned by the Inspection app, and are
 // read through inspection/public.js — never queried directly. See
-// docs/requirements/Obligation_Library_Promotion_Build_Plan.md. We take only
+// docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md. We take only
 // the job-evidenced ones; walk-evidenced obligations are discharged by an
 // inspection and have no business generating contractor jobs.
 

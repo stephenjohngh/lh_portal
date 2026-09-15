@@ -3,7 +3,7 @@
 // What scope should a maintenance job get when it is generated from a shared
 // obligation? Pure, no I/O — Type-1 testable.
 //
-// P3 of docs/requirements/Obligation_Library_Promotion_Build_Plan.md. Before
+// P3 of docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md. Before
 // the promotion, `maintenance_regime` was one row per component TYPE, so a
 // generated job was always scope_type='type' with that type's id. The promoted
 // obligation carries a richer jsonb `scope` (typeCodes / systemIds / floorIds /

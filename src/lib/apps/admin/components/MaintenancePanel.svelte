@@ -6,7 +6,7 @@
      per-type "task + frequency" rule this panel used to own through
      buildingAssetsStore — was retired when its definitions moved into the
      shared statutory-obligation library (see
-     docs/requirements/Obligation_Library_Promotion_Build_Plan.md). This panel
+     docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md). This panel
      is now a SHORTCUT onto that library, never a rival definition source: a
      quick add for the common "one obligation, one type" case, with the full
      editor (scope builder, statutory detail, rotation) in Admin → Inspections.

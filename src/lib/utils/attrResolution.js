@@ -12,7 +12,7 @@
 //
 // (A `regimeMap` used to be built here from maintenance_regime. That table was
 // retired when its definitions moved into the shared statutory-obligation
-// library — see docs/requirements/Obligation_Library_Promotion_Build_Plan.md.
+// library — see docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md.
 // Obligations are scoped by a jsonb filter, not a single type_id, so they are
 // not resolvable into a per-type map here.)
 

@@ -5,7 +5,7 @@
 // maintenance_regime USED to live here too — a per-type "task + frequency" rule
 // this app owned despite the name. Its definitions moved into the shared
 // statutory-obligation library (owned by Inspection, edited in Admin →
-// Inspections); see docs/requirements/Obligation_Library_Promotion_Build_Plan.md.
+// Inspections); see docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md.
 // Building Assets no longer defines maintenance work at all.
 // Receives the writable `update` function from buildingAssetsStore so all mutations
 // land in the single shared store state.

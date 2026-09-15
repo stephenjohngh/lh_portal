@@ -17,7 +17,7 @@
 // OAuth2 mode takes priority when GOOGLE_OAUTH_REFRESH_TOKEN is set.
 // Service account mode is used as fallback.
 //
-// See docs/google_drive_storage_setup.md for setup instructions.
+// See docs/ops/google_drive_storage_setup.md for setup instructions.
 
 import { google }  from 'googleapis';
 import { Readable } from 'stream';

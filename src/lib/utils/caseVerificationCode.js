@@ -11,7 +11,7 @@
 // occurrence reporting — and Dossier had already started importing it for
 // publication passphrases and tokens, which made the name actively misleading.
 // A complaints system (BSA s.93) is the next caller. See
-// docs/requirements/Case_Systems_Common_Core.md §4.
+// docs/requirements/app_designs/Case_Systems_Common_Core.md §4.
 //
 // Alphabet: A-Z + 2-9, minus I, L, O — chars that look like other chars
 // when handwritten on a Post-it. 31^6 ≈ 887 million combinations; combined

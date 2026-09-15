@@ -12,8 +12,8 @@
 // contractor job). This file is the walk-shaped door onto it, plus the display
 // helpers. Behaviour here is unchanged — see computeInspectionSchedule's note.
 //
-// See docs/requirements/Configurable_Inspections_Build_Plan.md §5 and
-// docs/requirements/Obligation_Library_Promotion_Build_Plan.md §7.
+// See docs/requirements/build_plans/Configurable_Inspections_Build_Plan.md §5 and
+// docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md §7.
 
 import { fmtDate } from '$lib/utils/dates';
 import { computeObligationSchedule, walkEventsFromSessions } from '$lib/utils/obligationSchedule.js';

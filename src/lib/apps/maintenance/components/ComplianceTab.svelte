@@ -1,6 +1,6 @@
 <!-- src/lib/apps/maintenance/components/ComplianceTab.svelte -->
 <!-- The periodic compliance position, and the evidence behind it.
-     M4/M7 — docs/requirements/Maintenance_Review.md.
+     M4/M7 — docs/requirements/registers/Maintenance_Review.md.
 
      Two reports over the same data. The FILTERS define what is on screen; the
      Word export prints exactly what the filters produced, plus a few options

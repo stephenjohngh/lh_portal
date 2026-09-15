@@ -3,7 +3,7 @@
 // MOR app's cross-app interface (stateless). Other apps read MOR-owned cases
 // through these accessors rather than querying mor_cases directly — e.g. the
 // Golden Thread citation picker lists cases here to link a register document to
-// the occurrence report it evidences. See docs/Inter_App_Interfaces.md.
+// the occurrence report it evidences. See docs/design/Inter_App_Interfaces.md.
 
 import { api } from '$lib/utils/api';
 

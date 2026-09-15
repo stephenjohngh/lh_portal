@@ -1,6 +1,6 @@
 <!-- src/lib/apps/complaints/ComplaintsApp.svelte -->
 <!-- Complaints — BSA 2022 s.93.
-     Design: docs/requirements/Complaints_App_Design.md.
+     Design: docs/requirements/app_designs/Complaints_App_Design.md.
 
      P0: staff-logged intake, the seven states, the append-only timeline, the
      case view and the open queue. That is what discharges the duty — a system

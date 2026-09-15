@@ -6,7 +6,7 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
 // repoint the BROWSER at another Supabase project. Removed 2026-07-17: it only
 // swapped the client side, so /api/* routes kept talking to the env DB — reads
 // and writes could hit different databases. Run a second server in its own env
-// instead: `npm run dev:devdb`, docs/dev_db_refresh.md §5.7.)
+// instead: `npm run dev:devdb`, docs/ops/dev_db_refresh.md §5.7.)
 if (typeof localStorage !== 'undefined') {
   try { localStorage.removeItem('lh_db_override'); } catch { /* private mode etc. */ }
 }

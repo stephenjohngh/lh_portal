@@ -1,6 +1,6 @@
 // src/lib/apps/complaints/stores/complaintsStore.js
 //
-// BSA s.93 complaints. Design: docs/requirements/Complaints_App_Design.md.
+// BSA s.93 complaints. Design: docs/requirements/app_designs/Complaints_App_Design.md.
 //
 // Follows morStore's shape deliberately — a case, an append-only timeline, a
 // transition method that stamps dates and writes the timeline in one place —

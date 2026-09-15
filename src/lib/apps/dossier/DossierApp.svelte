@@ -1,7 +1,7 @@
 <!-- src/lib/apps/dossier/DossierApp.svelte -->
 <!-- Dossier — author briefing Packs for people outside the portal.
      P0: internal authoring only. Nothing published, nothing leaves the portal.
-     Plan: docs/requirements/Dossier_P0_Build_Plan.md -->
+     Plan: docs/requirements/build_plans/Dossier_P0_Build_Plan.md -->
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { auth }        from '$lib/stores/auth';

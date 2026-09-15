@@ -5,7 +5,7 @@
 //
 // The Admin → Component Types sub-panel is a SHORTCUT onto the shared
 // statutory-obligation library, not a rival editor (see
-// docs/requirements/Obligation_Library_Promotion_Build_Plan.md D5). That makes
+// docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md D5). That makes
 // one rule load-bearing: an obligation covering several types must be visible
 // there but NOT editable, because changing its name, cadence or route from one
 // type's screen would silently change it for every other type it covers —

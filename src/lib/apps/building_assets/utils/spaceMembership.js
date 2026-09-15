@@ -1,6 +1,6 @@
 // src/lib/apps/building_assets/utils/spaceMembership.js
 // Pure, derive-at-read component ↔ space membership.
-// See docs/requirements/Spaces_Enhancement_Design.md §4.3.
+// See docs/requirements/app_designs/Spaces_Enhancement_Design.md §4.3.
 //
 // "Within = any part of the marker": a component (its point x,y plus a small
 // marker footprint of radius `tolerance`) is IN a space when its point is inside

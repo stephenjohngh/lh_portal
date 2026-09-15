@@ -2,7 +2,7 @@
 // State for the Dossier app — authored briefing Packs.
 //
 // P0 scope: Pack CRUD only. Docs, blocks and revisions land in the next steps
-// of the P0 plan (docs/requirements/Dossier_P0_Build_Plan.md §5).
+// of the P0 plan (docs/requirements/build_plans/Dossier_P0_Build_Plan.md §5).
 //
 // Note on `created_by`: the RLS INSERT policy on dossier_packs pins created_by
 // to auth.uid(), so a pack cannot be created already owned by somebody else.

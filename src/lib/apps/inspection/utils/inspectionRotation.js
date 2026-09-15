@@ -10,7 +10,7 @@
 // session used IS stored — walk_sessions.trigger_component_id, migration 154 —
 // so resuming never re-derives mid-walk.)
 //
-// See docs/requirements/Configurable_Inspections_Build_Plan.md §6.
+// See docs/requirements/build_plans/Configurable_Inspections_Build_Plan.md §6.
 
 import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
 import { findComponentByRef }   from '$lib/utils/componentRef.js';

@@ -15,6 +15,7 @@
 		"check:obligations": "node scripts/check-obligations-statement.mjs",
 		"check:register": "node scripts/check-register-claims.mjs",
 		"check:delivery": "node scripts/check-delivery-plan.mjs",
+		"check:docs": "node scripts/check-doc-links.mjs",
 		"test": "vitest run",
 		"db:push:dev": "node scripts/db-push.mjs dev",
 		"db:push:test": "node scripts/db-push.mjs test",

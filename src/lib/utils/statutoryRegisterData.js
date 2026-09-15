@@ -5,7 +5,7 @@
 // Data only; the logic that reads it is in statutoryTemplate.js.
 //
 // ── Sources merged here ─────────────────────────────────────────────────────
-// · docs/requirements/BSA_Periodic_Activities_and_Checks.docx — the fullest
+// · docs/requirements/supplied/BSA_Periodic_Activities_and_Checks.docx — the fullest
 //   list, and the source of some of the FSER regulation numbers and the
 //   governance/BSA cycles.
 //
@@ -30,9 +30,9 @@
 //   fire-alarm coverage-gap monitoring, the stair-core regime) are NOT included
 //   here: they are interim mitigations tied to that building's own open
 //   findings, not a general register.
-// · docs/requirements/Commercial_Landscape_and_Gaps.md §4.4 / §4.5 — our own
+// · docs/requirements/registers/Commercial_Landscape_and_Gaps.md §4.4 / §4.5 — our own
 //   FSER cadence table and certificate register.
-// · docs/inspection_user_guide.md — corroborates FSER reg 6.
+// · docs/guides/inspection_user_guide.md — corroborates FSER reg 6.
 //
 // ⚠ THE REGULATION-NUMBER TRAP. The BSA documents cite **SI 2023/907** at
 // reg 6 (MOR) and reg 10 (engagement strategy). Those are DIFFERENT regs 6 and
@@ -510,7 +510,7 @@ export const REGISTER = [
     evidenceRequired: 'Survey report identifying each compartment line sampled and the basis of the sample, with photographs, defects, risk rating and the reinstatement record for each breach',
     retentionPeriodMonths: 120,
     handledBy: 'maintenance',
-    handlingNote: 'A contractor survey. ⚠ The permit-to-work half belongs with the building-work change control row — a survey every twelve months cannot keep up with penetrations made weekly. See docs/requirements/Compartments_and_Zones_Spec.md for the unbuilt data model.',
+    handlingNote: 'A contractor survey. ⚠ The permit-to-work half belongs with the building-work change control row — a survey every twelve months cannot keep up with penetrations made weekly. See docs/requirements/unbuilt/Compartments_and_Zones_Spec.md for the unbuilt data model.',
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always — the building is compartmented and the fire strategy relies on it',
   }),

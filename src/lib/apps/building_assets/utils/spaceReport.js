@@ -1,7 +1,7 @@
 // src/lib/apps/building_assets/utils/spaceReport.js
 // Pure reporting helpers for spaces (P3). Status rollups + CSV serialisers for a
 // single space's members and for the building-wide spaces register.
-// See docs/requirements/Spaces_Enhancement_Design.md §4.4. Type-1 testable.
+// See docs/requirements/app_designs/Spaces_Enhancement_Design.md §4.4. Type-1 testable.
 
 import { csvEsc } from './componentsCsv.js';
 import { buildSpaceRef } from '$lib/utils/spaceRef.js';

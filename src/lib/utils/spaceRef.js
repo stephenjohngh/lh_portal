@@ -8,7 +8,7 @@
 //
 // Only spaces.assigned_id is stored on the row; the full ref is built at read
 // time so renaming a floor never leaves a stale string (mirrors buildComponentRef).
-// See docs/requirements/Spaces_Enhancement_Design.md §4.2.
+// See docs/requirements/app_designs/Spaces_Enhancement_Design.md §4.2.
 
 /** kind -> reference "Type" segment. */
 export const KIND_INITIAL = { space: 'S', slot: 'SL' };

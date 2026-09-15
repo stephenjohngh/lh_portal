@@ -1,6 +1,6 @@
 <!-- src/lib/apps/planner/PlannerApp.svelte -->
 <!-- The Planner: the building's recurring year, and what is outstanding.
-     Design and decisions: docs/requirements/Planner_App_Analysis.md.
+     Design and decisions: docs/requirements/app_designs/Planner_App_Analysis.md.
 
      P0 is the agenda. The year grid (P1) and reading other apps' dated items
      (P2) come next, and the model was built first on purpose — the hard part is

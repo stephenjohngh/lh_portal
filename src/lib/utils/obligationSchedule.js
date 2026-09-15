@@ -2,7 +2,7 @@
 //
 // ONE due answer for a statutory obligation, across BOTH the stacks that can
 // discharge it — an inspection walk or a contractor job. Pure, no I/O.
-// P2 of docs/requirements/Obligation_Library_Promotion_Build_Plan.md §7;
+// P2 of docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md §7;
 // answers Maintenance_Review.md's M3 (the undefined Inspection↔Maintenance
 // boundary), which is the same gap as EXT-10 seen from the other side.
 //

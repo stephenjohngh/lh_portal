@@ -2,7 +2,7 @@
 // The Components-tab Fixed/Condition attribute filters. The interesting parts
 // are the value-source branching (fixed → componentAttrs; condition →
 // inspection checklist) and the two "unset" special cases documented in
-// docs/_design_fixed_condition_attributes.md.
+// docs/design/_design_fixed_condition_attributes.md.
 
 import { describe, it, expect } from 'vitest';
 import {

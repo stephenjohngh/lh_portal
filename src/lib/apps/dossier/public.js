@@ -1,5 +1,5 @@
 // src/lib/apps/dossier/public.js
-// Cross-app interface for the Dossier app — see docs/Inter_App_Interfaces.md.
+// Cross-app interface for the Dossier app — see docs/design/Inter_App_Interfaces.md.
 //
 // Nothing is exposed yet. Dossier owns dossier_packs / dossier_docs /
 // dossier_doc_revisions, and in P0 no other app reads or writes them.

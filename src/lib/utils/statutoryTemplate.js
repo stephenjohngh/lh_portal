@@ -2,7 +2,7 @@
 //
 // M4 · the statutory PPM template — logic over the periodic activity register
 // in statutoryRegisterData.js. Pure, no I/O — Type-1 testable.
-// (docs/requirements/Maintenance_Review.md §M4.)
+// (docs/requirements/registers/Maintenance_Review.md §M4.)
 //
 // ── What this answers ──────────────────────────────────────────────────────
 // For every recurring check identified for a higher-risk residential building:

@@ -26,7 +26,7 @@ import { listAttachments } from '$lib/utils/mediaAttachments.js';
 import { deleteWalkSession, lastDefinitionInspections } from '../public.js';   // session-delete cascade + rotation inputs (shared)
 // Offline read cache (IndexedDB) — lets a walk start when the network is down.
 // Network-first: a successful fetch always refreshes the cache; the cache is only
-// read as a fallback. See docs/requirements/Inspection_Offline_Walk_Design.md.
+// read as a fallback. See docs/requirements/app_designs/Inspection_Offline_Walk_Design.md.
 import {
   openQueue, isOfflineAvailable, readCache, writeCache,
   enqueue, enqueueInspectionSave, putPhoto, dropSession,
