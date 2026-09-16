@@ -101,6 +101,52 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
 
 // -- Initial state -------------------------------------------------------------
 
+/**
+ * Store state, typed so consumers get Row types instead of `never`.
+ *
+ * ⚠ `& Record<string, any>` on every row type is deliberate. Nearly every query
+ * in this store joins or derives — a walk component carries its attributes, a
+ * session carries its definition, a floor carries progress — so a bare
+ * `Tables<>` would swap "does not exist on type 'never'" for "does not exist on
+ * type 'Component'" and clear nothing. The intersection keeps the real column
+ * types, which is the benefit worth having, and tolerates the rest.
+ *
+ * @typedef {Record<string, any>} Loose
+ * @typedef {import('$lib/database.types').Tables<'components'> & Loose} Component
+ * @typedef {import('$lib/database.types').Tables<'floors'> & Loose} Floor
+ * @typedef {import('$lib/database.types').Tables<'walk_sessions'> & Loose} WalkSession
+ * @typedef {import('$lib/database.types').Tables<'component_inspections'> & Loose} Inspection
+ * @typedef {{
+ *   facilities: (import('$lib/database.types').Tables<'facilities'> & Loose)[],
+ *   floors: Floor[],
+ *   systems: (import('$lib/database.types').Tables<'building_systems'> & Loose)[],
+ *   types: (import('$lib/database.types').Tables<'component_types'> & Loose)[],
+ *   attrDefs: Record<string, (import('$lib/database.types').Tables<'type_attributes'> & Loose)[]>,
+ *   attrOptions: Record<string, (import('$lib/database.types').Tables<'type_attribute_options'> & Loose)[]>,
+ *   plans: (import('$lib/database.types').Tables<'plans'> & Loose)[],
+ *   allComponents: Record<string, Component[]>,
+ *   allComponentAttrs: Record<string, (import('$lib/database.types').Tables<'component_attributes'> & Loose)[]>,
+ *   componentLinks: Record<string, (import('$lib/database.types').Tables<'component_links'> & Loose)[]>,
+ *   definitions: (import('$lib/database.types').Tables<'statutory_obligations'> & Loose)[],
+ *   scheduleSessions: WalkSession[],
+ *   latestInspections: Record<string, Inspection>,
+ *   sessions: WalkSession[],
+ *   activeSession: WalkSession | null,
+ *   walkComponents: Component[],
+ *   currentIndex: number,
+ *   inspections: Record<string, Inspection>,
+ *   statusBefore: Record<string, string>,
+ *   buildingFloors: Floor[],
+ *   currentFloor: Floor | null,
+ *   floorProgress: Record<string, { inspected: number, total: number }>,
+ *   usingCache: boolean,
+ *   cachedAt: string | null,
+ *   loading: boolean,
+ *   error: string | null
+ * }} InspectionState
+ */
+
+/** @type {InspectionState} */
 const INITIAL_STATE = {
   // Static data loaded once
   facilities:       [],

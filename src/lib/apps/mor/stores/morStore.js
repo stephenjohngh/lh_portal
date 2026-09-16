@@ -23,8 +23,34 @@ const CASE_SELECT = `
   component:components!component_id(id, label, type_code, asset_id)
 `.trim();
 
+/**
+ * Store state, typed so consumers get Row types instead of `never`.
+ *
+ * ⚠ The `& Record<string, any>` on each row type is deliberate and is NOT
+ * laziness: `CASE_SELECT` above joins profile and component aliases
+ * (`created_by_profile`, `component`, …) that are not columns of the table, so a
+ * bare `Tables<'mor_cases'>` would trade every "does not exist on type 'never'"
+ * for a "does not exist on type 'MorCase'". The intersection keeps the real
+ * column types — which is the whole benefit — while tolerating the joins.
+ *
+ * @typedef {import('$lib/database.types').Tables<'mor_cases'> & Record<string, any>} MorCase
+ * @typedef {import('$lib/database.types').Tables<'mor_timeline_entries'> & Record<string, any>} TimelineEntry
+ * @typedef {import('$lib/database.types').Tables<'mor_mitigations'> & Record<string, any>} Mitigation
+ * @typedef {{
+ *   cases: MorCase[],
+ *   selectedCase: MorCase | null,
+ *   timelineEntries: TimelineEntry[],
+ *   mitigations: Mitigation[],
+ *   gtCitations: Record<string, any>[],
+ *   reporterContactsByCase: Record<string, TimelineEntry[]>,
+ *   loading: boolean,
+ *   saving: boolean,
+ *   error: string
+ * }} MorState
+ */
+
 function createMorStore() {
-  const { subscribe, update } = writable({
+  const { subscribe, update } = writable(/** @type {MorState} */ ({
     cases:                  [],
     selectedCase:           null,
     timelineEntries:        [],
@@ -39,7 +65,7 @@ function createMorStore() {
     loading:                false,
     saving:                 false,
     error:                  '',
-  });
+  }));
 
   // ── Internal helpers ───────────────────────────────────────────────────────
 

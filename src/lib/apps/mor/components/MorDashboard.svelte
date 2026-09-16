@@ -59,7 +59,7 @@
   $: thirtyDaysAgo = (tick, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
   $: recentlyClosed = [...cases]
     .filter(c => c.status === 'closed' && c.closed_at && c.closed_at >= thirtyDaysAgo)
-    .sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at))
+    .sort((a, b) => new Date(b.closed_at ?? 0).getTime() - new Date(a.closed_at ?? 0).getTime())
     .slice(0, 6);
 
   // Open cases by status (workflow order, non-zero only).

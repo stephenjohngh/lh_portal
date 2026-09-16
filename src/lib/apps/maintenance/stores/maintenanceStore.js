@@ -42,7 +42,30 @@ function enrichJob(job) {
 }
 
 function createMaintenanceStore() {
-  const { subscribe, update } = writable({
+  /**
+   * Store state, typed so consumers get Row types instead of `never`.
+   * `& Record<string, any>` tolerates joined aliases and derived fields the
+   * queries add (a job carries `.rag`, documents carry embedded job info) —
+   * without it, every such read would swap one error for another.
+   *
+   * @typedef {import('$lib/database.types').Tables<'maintenance_jobs'> & Record<string, any>} Job
+   * @typedef {import('$lib/database.types').Tables<'maintenance_documents'> & Record<string, any>} MaintDoc
+   * @typedef {import('$lib/database.types').Tables<'maintenance_job_components'> & Record<string, any>} JobComponent
+   * @typedef {{
+   *   jobs: Job[],
+   *   allDocs: MaintDoc[],
+   *   docsByJob: Record<string, MaintDoc[]>,
+   *   jobComponents: Record<string, JobComponent[]>,
+   *   systems: (import('$lib/database.types').Tables<'building_systems'> & Record<string, any>)[],
+   *   types: (import('$lib/database.types').Tables<'component_types'> & Record<string, any>)[],
+   *   obligations: (import('$lib/database.types').Tables<'statutory_obligations'> & Record<string, any>)[],
+   *   contractors: (import('$lib/database.types').Tables<'profiles'> & Record<string, any>)[],
+   *   isContractor: boolean,
+   *   loading: boolean,
+   *   error: string | null
+   * }} MaintenanceState
+   */
+  const { subscribe, update } = writable(/** @type {MaintenanceState} */ ({
     jobs:          [],    // maintenance_jobs enriched with .rag
     allDocs:       [],    // ALL maintenance_documents with job info embedded
     docsByJob:     {},    // { [jobId]: maintenance_documents[] } — lazy per-job cache
@@ -54,7 +77,7 @@ function createMaintenanceStore() {
     isContractor:  false, // true when the current user is a contractor
     loading:       false,
     error:         null,
-  });
+  }));
 
   // ── Load ───────────────────────────────────────────────────────────────────
 

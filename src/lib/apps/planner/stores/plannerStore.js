@@ -26,7 +26,27 @@ function errMessage(err) {
 }
 
 function createPlannerStore() {
-  const store = writable({
+  /**
+   * Store state, typed so consumers get Row types instead of `never`.
+   * `& Record<string, any>` tolerates joined aliases and the derived fields the
+   * planner adds when it composes occurrences with their series.
+   *
+   * ⚠ `linked` is deliberately loose: it holds OTHER apps' dated items, read
+   * through their `public.js`, and they are four different shapes. Typing it as
+   * one Row type would assert a uniformity that does not exist.
+   *
+   * @typedef {{
+   *   events: (import('$lib/database.types').Tables<'planner_events'> & Record<string, any>)[],
+   *   occurrences: (import('$lib/database.types').Tables<'planner_occurrences'> & Record<string, any>)[],
+   *   categories: (import('$lib/database.types').Tables<'planner_categories'> & Record<string, any>)[],
+   *   dayMarks: (import('$lib/database.types').Tables<'planner_day_marks'> & Record<string, any>)[],
+   *   linked: Record<string, any>[],
+   *   loadingLinked: boolean,
+   *   loading: boolean,
+   *   error: string | null
+   * }} PlannerState
+   */
+  const store = writable(/** @type {PlannerState} */ ({
     events: [],
     occurrences: [],
     /** The building's own categories — see migration 179. */
@@ -38,7 +58,7 @@ function createPlannerStore() {
     loadingLinked: false,
     loading: false,
     error: null,
-  });
+  }));
 
   const { subscribe, update } = store;
   const getState = () => get(store);
