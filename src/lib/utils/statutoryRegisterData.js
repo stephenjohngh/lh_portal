@@ -151,7 +151,7 @@ function entry(e) {
     // prevent. Declared per row, because only the citation can settle which it
     // is and nothing can infer it.
     maxIsSchedulingTolerance: false,
-    // ⚠ WHERE A ROW CARRIES BOTH `statutoryIntervalWords` AND `maxIntervalDays`, THE DAY
+    // ⚠ WHERE A ROW CARRIES BOTH `sourceIntervalWords` AND `maxIntervalDays`, THE DAY
     // COUNT MUST BE THE SHORTEST REAL CALENDAR REALISATION OF THE PERIOD.
     //
     // "At least every 3 months" is not 92 days. Measured across real months it
@@ -178,7 +178,7 @@ function entry(e) {
     // then impossible to confuse, and the day count stays available for a
     // scheduler that can only count days.
     /** @type {string|null} The interval in the instrument's own words, verbatim. */
-    statutoryIntervalWords: null,
+    sourceIntervalWords: null,
     // ⛔ THIS ROW IS AN ASSURANCE PASS, NOT THE DUTY — and the table must say
     // so, not only the note beneath it.
     //
@@ -389,7 +389,7 @@ export const REGISTER = [
     key: 'fser_communal_fire_doors',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'at least every 3 months (FSER reg 10(6))',
+    sourceIntervalWords: 'at least every 3 months (FSER reg 10(6))',
     name: 'Fire door checks — communal doors',
     description: 'Check all fire doors in the common parts, including self-closing devices.',
     group: 'fire_safety',
@@ -410,7 +410,7 @@ export const REGISTER = [
     key: 'fser_flat_entrance_doors',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'at least every 12 months (FSER reg 10(4))',
+    sourceIntervalWords: 'at least every 12 months (FSER reg 10(4))',
     name: 'Fire door checks — flat entrance doors',
     reviewerNote:
       'The flat entrance fire door forms part of the COMPARTMENT BOUNDARY and affects the COMMON '
@@ -602,7 +602,8 @@ export const REGISTER = [
       + 'survey: any further ducted ventilation, smoke extract or pressurisation crossing a '
       + 'compartment line. ⚠ The row applies either way now — one damper is a regime — so the question '
       + 'is no longer whether to keep the row but how many assets it covers. ⚠ "Not known" is still '
-      + 'not the same as "none": the asset register records what has been surveyed, never what exists.',
+      + 'not the same as "none": the asset register records what has been surveyed, never what exists.'
+      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     name: 'Fire and smoke dampers — test and inspection',
     description:
       'Manually test and inspect every fire and smoke damper — drop-test the blade, confirm the fusible '
@@ -610,10 +611,12 @@ export const REGISTER = [
       + 'record the condition of each damper by location against the damper asset register.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BESA DW145 (2nd edition, 2025) — fire and smoke dampers to be manually tested and inspected at least annually, more frequently where the risk assessment requires; BS 9999:2017 aligns. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    statutoryRef: 'BESA DW145 (2nd edition, 2025) — fire and smoke dampers to be manually tested and inspected at least annually, more frequently where the risk assessment requires; BS 9999:2017 aligns. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'at least annually (BESA DW145, 2nd ed. 2025)',
     triggerType: 'calendar',
     responsibleParty: 'Ventilation or fire damper contractor',
     competencyRequired: 'Competent damper engineer as defined by DW145',
@@ -634,10 +637,13 @@ export const REGISTER = [
       + 'tested so that all are covered over an appropriate period.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, weekly testing by the user — the precise test follows the system’s category, design and log book, and the edition of the standard adopted for this installation. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 5839-1, weekly testing by the user — the precise test follows the system’s category, design and log book, and the edition of the standard adopted for this installation. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 7,
     maxIntervalDays: 7,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'weekly (BS 5839-1)',
+    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     responsibleParty: 'Responsible person or site staff',
     competencyRequired: 'Briefed site staff; no formal qualification required',
     evidenceRequired: 'Logbook entry naming the call point tested and the result',
@@ -657,10 +663,13 @@ export const REGISTER = [
       + 'is easy to leave unstated and therefore unverified.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ SIX-MONTHLY IS NOT TO BE TREATED AS A UNIVERSAL INTERVAL. THE ADOPTED BS 5839-1 EDITION AND SYSTEM CATEGORY ARE NOT RECORDED, and until they are, the most that can honestly be said is that six-monthly is the conventional period between service visits and the one we schedule to: the edition, the system category and the installation’s own documentation are what determine the permitted interval, and BS 5839-1 contemplates the fire risk assessment calling for more frequent attendance — for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. ❓ Confirm the edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    statutoryRef: 'BS 5839-1, periodic inspection and servicing. ⚠ SIX-MONTHLY IS NOT TO BE TREATED AS A UNIVERSAL INTERVAL. THE ADOPTED BS 5839-1 EDITION AND SYSTEM CATEGORY ARE NOT RECORDED, and until they are, the most that can honestly be said is that six-monthly is the conventional period between service visits and the one we schedule to: the edition, the system category and the installation’s own documentation are what determine the permitted interval, and BS 5839-1 contemplates the fire risk assessment calling for more frequent attendance — for a higher-risk building with systems linked to smoke control that is a live possibility rather than a theoretical one. ❓ Confirm the edition adopted, the system category, the cause-and-effect schedule, whether the installation includes detectors linked to smoke control, who carries testing responsibility and how defects escalate. ⚠ This servicing does NOT discharge the statutory monthly reg 7 check, nor the weekly user test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'six months between service visits (BS 5839-1)',
+    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     responsibleParty: 'Fire alarm service contractor',
     competencyRequired: 'Competent fire alarm engineer; BAFE SP203-1 certificated firm recommended',
     evidenceRequired: 'Servicing certificate listing devices tested and any non-compliances',
@@ -676,10 +685,13 @@ export const REGISTER = [
     description: 'Short-duration function test of every emergency luminaire and exit sign.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5266-1 / BS EN 50172, monthly function test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 5266-1 / BS EN 50172, monthly function test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 30,
     maxIntervalDays: 31,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'monthly (BS 5266-1 / BS EN 50172)',
+    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     responsibleParty: 'Responsible person or site staff',
     competencyRequired: 'Briefed site staff',
     evidenceRequired: 'Logbook entry per test, with any failed luminaires identified',
@@ -699,10 +711,13 @@ export const REGISTER = [
       + 'one another.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5266-1, annual full-duration test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 5266-1, annual full-duration test. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'annual full-duration test (BS 5266-1)',
+    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     responsibleParty: 'Emergency lighting contractor',
     competencyRequired: 'Competent electrical contractor',
     evidenceRequired: 'Annual test certificate recording the duration achieved per luminaire',
@@ -733,7 +748,7 @@ export const REGISTER = [
       + 'the fault and mains-failure alarms.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS EN 50171 (central power supply systems) with BS 5266-1 and BS EN 50172 for the emergency lighting regime it serves; the interval follows the manufacturer\'s service schedule, commonly six-monthly. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    statutoryRef: 'BS EN 50171 (central power supply systems) with BS 5266-1 and BS EN 50172 for the emergency lighting regime it serves; the interval follows the manufacturer\'s service schedule, commonly six-monthly. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all',
     intervalBasis: 'practice',
     frequencyDays: 182,
     triggerType: 'calendar',
@@ -789,11 +804,14 @@ export const REGISTER = [
     description: 'Weekly test routine on the sprinkler or suppression system, including any pump run.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'The weekly routine is specified by the suppression standard itself (BS EN 12845 or BS 9251, per the installed design basis), with the LPC Rules and the insurance policy condition on top. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'The weekly routine is specified by the suppression standard itself (BS EN 12845 or BS 9251, per the installed design basis), with the LPC Rules and the insurance policy condition on top. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 7,
     maxIntervalDays: 7,
-    reviewerNote: 'Reclassified from "Contract or scheme" to "Standard" on review, and the reasoning is worth keeping: the insurance condition is real, but it is not why the test has to happen. The suppression standards specify the weekly routine, and a suppression system is a fire safety measure, so art 17(1) applies to it. An insurer can waive its own policy condition; art 17 is not waivable.',
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'weekly (BS EN 12845 or BS 9251, per the installed design basis)',
+    reviewerNote: 'Reclassified from "Contract or scheme" to "Standard" on review, and the reasoning is worth keeping: the insurance condition is real, but it is not why the test has to happen. The suppression standards specify the weekly routine, and a suppression system is a fire safety measure, so art 17(1) applies to it. An insurer can waive its own policy condition; art 17 is not waivable.'
+      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     responsibleParty: 'Site staff',
     competencyRequired: 'Briefed site staff working to the system’s own test routine',
     evidenceRequired: 'Weekly test log with sign-off',
@@ -834,7 +852,7 @@ export const REGISTER = [
       + 'is exposed.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS EN 12845 or BS 9251 per the installed design basis, each of which sets a tiered servicing programme rather than a single annual visit, with any LPC Rules requirement on top. ⚠ WHICH GOVERNS IS NOT RECORDED, so the tier structure cannot be stated here and six-monthly is the interval adopted for this installation. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    statutoryRef: 'BS EN 12845 or BS 9251 per the installed design basis, each of which sets a tiered servicing programme rather than a single annual visit, with any LPC Rules requirement on top. ⚠ WHICH GOVERNS IS NOT RECORDED, so the tier structure cannot be stated here and six-monthly is the interval adopted for this installation. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all',
     intervalBasis: 'practice',
     frequencyDays: 182,
     triggerType: 'calendar',
@@ -854,7 +872,7 @@ export const REGISTER = [
     description: 'Annual service and test of the sprinkler or residential suppression system.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED, SO THE INTERVAL SOURCE IS UNKNOWN RATHER THAN STATED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. Annual is therefore OUR adopted cycle until the governing standard is identified, not a figure read out of it — and each candidate standard sets a TIERED programme with shorter cycles inside the year, so identifying the standard is more likely to add cycles than to confirm this one. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: '⚠ THE INSTALLED DESIGN BASIS IS NOT RECORDED, SO THE INTERVAL SOURCE IS UNKNOWN RATHER THAN STATED. One of BS 9251 (residential sprinkler) or BS EN 12845 will govern, with any LPC Rules requirement on top — which applies here depends on how the system was designed and commissioned, and alternatives must not be left in a live row. Annual is therefore OUR adopted cycle until the governing standard is identified, not a figure read out of it — and each candidate standard sets a TIERED programme with shorter cycles inside the year, so identifying the standard is more likely to add cycles than to confirm this one. ❓ Confirm the standard used for design and commissioning, the pump and tank arrangement, the servicing regime it sets, any insurer requirement, and whether any part falls within the statutory monthly reg 7 check. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'practice',
     frequencyDays: 365,
     reviewerNote: '⛔ INTERIM ADOPTED CONTROL, PENDING CONFIRMATION OF THE GOVERNING DESIGN AND MAINTENANCE BASIS. Technically unverified: this row records what we do, not a regime anyone has confirmed is the right one for this installation, and it must not be presented as a technically complete one. The interval is ours, and it cannot be the reference’s while the governing standard is unrecorded — the row said both things at once until this was corrected. ⚠ Both candidate standards set a tiered servicing programme rather than a single annual visit; the paired intermediate-service row is where that detail lands once the design basis is confirmed.',
@@ -870,15 +888,18 @@ export const REGISTER = [
     key: 'dry_riser_annual_test',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
-    reviewerNote: '⛔ TECHNICALLY UNVERIFIED, and it matters more here than for most rows because the dry riser is expressly within the STATUTORY monthly check as essential fire-fighting equipment under FSER reg 6(7), so four rows touch one asset and the relationship between them has never been settled. What is unresolved: the BS 9990 edition adopted · whether an annual wet pressure test is the correct test for THIS installation and at what pressure and duration · what the six-monthly visual adds to it · and what, if anything, the fire and rescue service or the insurer requires on top. Until that is answered the servicing regime is what we inherited rather than what was specified.',
+    reviewerNote: '⛔ TECHNICALLY UNVERIFIED, and it matters more here than for most rows because the dry riser is expressly within the STATUTORY monthly check as essential fire-fighting equipment under FSER reg 6(7), so four rows touch one asset and the relationship between them has never been settled. What is unresolved: the BS 9990 edition adopted · whether an annual wet pressure test is the correct test for THIS installation and at what pressure and duration · what the six-monthly visual adds to it · and what, if anything, the fire and rescue service or the insurer requires on top. Until that is answered the servicing regime is what we inherited rather than what was specified.'
+      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     name: 'Dry riser — annual test, method and interval pending confirmation',
     description: 'Annual wet pressure test of the riser main, landing valves and inlet breeching.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 9990, annual test. ⚠ THE ADOPTED EDITION AND SYSTEM-SPECIFIC METHOD ARE NOT RECORDED. ❓ Confirm the BS 9990 edition adopted for this installation, whether the annual test is correctly described as a wet pressure test and at what pressure and duration, the treatment of landing valves and the inlet breeching, the visual inspection interval, any fire and rescue service expectation, and the relationship to the statutory monthly reg 7 check — the riser is reg 6(7) key fire-fighting equipment, so the same asset is touched by both rows. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 9990, annual test. ⚠ THE ADOPTED EDITION AND SYSTEM-SPECIFIC METHOD ARE NOT RECORDED. ❓ Confirm the BS 9990 edition adopted for this installation, whether the annual test is correctly described as a wet pressure test and at what pressure and duration, the treatment of landing valves and the inlet breeching, the visual inspection interval, any fire and rescue service expectation, and the relationship to the statutory monthly reg 7 check — the riser is reg 6(7) key fire-fighting equipment, so the same asset is touched by both rows. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'annual (BS 9990)',
     responsibleParty: 'Riser service contractor',
     competencyRequired: 'Competent dry riser engineer',
     evidenceRequired: 'Annual test certificate recording pressure held and duration',
@@ -894,10 +915,13 @@ export const REGISTER = [
     description: 'Visual inspection of inlets, outlets, cabinets and padlocks between annual tests.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 9990, six-monthly visual inspection. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 9990, six-monthly visual inspection. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 182,
     maxIntervalDays: 183,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'six-monthly (BS 9990)',
+    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     responsibleParty: 'Responsible person or riser contractor',
     competencyRequired: 'Briefed site staff or riser engineer',
     evidenceRequired: 'Inspection record noting condition and any missing components',
@@ -913,10 +937,13 @@ export const REGISTER = [
     description: 'Basic service of every portable extinguisher by a competent technician.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 5306-3, basic service. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS 5306-3, basic service. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'stated',
     frequencyDays: 365,
     maxIntervalDays: 366,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'annual basic service (BS 5306-3)',
+    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     responsibleParty: 'Extinguisher service contractor',
     competencyRequired: 'Competent extinguisher technician (BAFE SP101 registered)',
     evidenceRequired: 'Service certificate and per-unit service labels',
@@ -937,7 +964,7 @@ export const REGISTER = [
       + 'against the fire strategy.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS EN 12101 (product and system series) and BS 7346-8 (smoke control), periodic servicing. ⚠ Neither alone prescribes the service interval for a particular installation — six-monthly is the building’s adopted interval, to be confirmed against the design specification, the commissioning information, the manufacturer’s requirements and the fire strategy. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all.',
+    statutoryRef: 'BS EN 12101 (product and system series) and BS 7346-8 (smoke control), periodic servicing. ⚠ Neither alone prescribes the service interval for a particular installation — six-monthly is the building’s adopted interval, to be confirmed against the design specification, the commissioning information, the manufacturer’s requirements and the fire strategy. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all.',
     intervalBasis: 'practice',
     frequencyDays: 182,
     // ⚠ `maxIntervalDays: 366` removed 2026-09-13 on external review, which
@@ -1052,7 +1079,7 @@ export const REGISTER = [
       + 'against the fire strategy rather than against the panel’s own configuration.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 7346-8 and the BS EN 12101 series (smoke and heat control systems), periodic servicing; Smoke Control Association guidance for the method. ⚠ Neither prescribes the interval for a particular installation — six-monthly is our adopted interval, to be confirmed against the design specification, the commissioning record, the manufacturer’s requirements and the fire strategy. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    statutoryRef: 'BS 7346-8 and the BS EN 12101 series (smoke and heat control systems), periodic servicing; Smoke Control Association guidance for the method. ⚠ Neither prescribes the interval for a particular installation — six-monthly is our adopted interval, to be confirmed against the design specification, the commissioning record, the manufacturer’s requirements and the fire strategy. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all',
     intervalBasis: 'practice',
     frequencyDays: 182,
     triggerType: 'calendar',
@@ -1074,7 +1101,7 @@ export const REGISTER = [
     // accessible, which is a control deficiency rather than an open question,
     // and it is tracked as an action rather than as something we would like to
     // know. The METHOD is ours to choose; the duty is not.
-    statutoryIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
+    sourceIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
     reviewerNote:
       'Reg 7(1) is ONE statutory duty over three things — firefighters’ lifts, evacuation lifts and '
       + '"essential fire-fighting equipment". It is carried on two rows here because two different walks '
@@ -1141,7 +1168,7 @@ export const REGISTER = [
     key: 'fser_monthly_systems_check',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
+    sourceIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
     name: 'Monthly check — detection, alarm and linked systems',
     description:
       'Monthly routine check that the fire detection and alarm system, any detectors linked to smoke '
@@ -1197,7 +1224,7 @@ export const REGISTER = [
       + 'and commissioning basis.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 7346-7 (smoke control in car parks) and the system’s design and commissioning basis, which set the servicing regime. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    statutoryRef: 'BS 7346-7 (smoke control in car parks) and the system’s design and commissioning basis, which set the servicing regime. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all',
     intervalBasis: 'practice',
     frequencyDays: 182,
     triggerType: 'calendar',
@@ -1663,7 +1690,7 @@ export const REGISTER = [
     key: 'evac_building_plan_review',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
-    statutoryIntervalWords: 'within 12 months of the plan first being prepared, and every 12 months thereafter (SI 2025/797 reg 13)',
+    sourceIntervalWords: 'within 12 months of the plan first being prepared, and every 12 months thereafter (SI 2025/797 reg 13)',
     reviewerNote: 'Reg 13 also requires a review whenever there is reason to believe the plan needs amending — the 12-month cycle is a floor, not the only trigger. The plan holds no resident personal data.',
     name: 'Building emergency evacuation plan — review',
     description:
@@ -1694,7 +1721,7 @@ export const REGISTER = [
     key: 'evac_person_centred_review',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'no later than 12 months after the emergency evacuation statement was first recorded, and every 12 months thereafter (SI 2025/797 reg 9(3))',
+    sourceIntervalWords: 'no later than 12 months after the emergency evacuation statement was first recorded, and every 12 months thereafter (SI 2025/797 reg 9(3))',
     reviewerNote: 'INTERFACE ONLY — an RP-controlled record, deliberately not held in this system; what crosses is the dated confirmation that the review happened. ⚠ THIS ROW IS THE ANNUAL PASS AT REG 9(3) AND NOTHING MORE. Reg 9(4) requires a review EARLIER wherever there is reason to believe an assessment or statement needs amending, or at the reasonable request of the resident — those live on the event and request row, because a calendar cannot raise them. An early review RESTARTS the 12 months rather than sitting alongside them: a scheduler anchored to the original date will call the next review early and will log the triggered one as an extra, when it was the duty being discharged.',
     name: 'Person-centred evacuation arrangements — review',
     description:
@@ -1786,7 +1813,7 @@ export const REGISTER = [
     key: 'resident_fire_safety_info',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'within each period of 12 months (FSER reg 9(3)(b)) — and to a new resident as soon as reasonably practicable after they move in',
+    sourceIntervalWords: 'within each period of 12 months (FSER reg 9(3)(b)) — and to a new resident as soon as reasonably practicable after they move in',
     name: 'Fire safety instructions to residents — refresh',
     description: 'Re-issue the fire safety instructions and evacuation information to all residents.',
     group: 'fire_safety',
@@ -1815,7 +1842,7 @@ export const REGISTER = [
     key: 'fire_door_resident_information',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'within each period of 12 months (FSER reg 10(3)) — and to a new resident as soon as reasonably practicable after they move in',
+    sourceIntervalWords: 'within each period of 12 months (FSER reg 10(3)) — and to a new resident as soon as reasonably practicable after they move in',
     reviewerNote:
       'Three specific things must be conveyed, and a general fire safety leaflet does not do it: fire '
       + 'doors are to be kept shut when not in use, self-closing devices are not to be tampered with, '
@@ -2139,7 +2166,7 @@ export const REGISTER = [
     key: 'lift_loler_examination',
     statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'at least every 6 months (LOLER reg 9(3)(a)(i))',
+    sourceIntervalWords: 'at least every 6 months (LOLER reg 9(3)(a)(i))',
     reviewerNote:
       'APPLICABILITY SETTLED 2026-09-13 on the duty holder’s facts: the lift is provided primarily for residents, but cleaners, the caretaker and contractors use it in the course of their work. **LOLER applies.** The test is not who the lift is mainly FOR — it is whether it is provided for, or used by, people at work; HSE’s example of a lift outside LOLER is a stair lift in a private dwelling, one nobody works with. A residents’ lift that staff and contractors work from is work equipment under PUWER reg 3, and the company controlling it holds the duty to the extent of that control. Reg 9(3)(a)(i) then sets SIX MONTHS as a statutory maximum for equipment used to lift persons, not as an adopted interval — and the examiner must be independent of the maintenance contractor, because a service visit is not a thorough examination. ⚠ RE-TEST THIS if the arrangements change so that nobody uses the lift in the course of work: the answer turns on that fact and nothing else. The alternative to the fixed six months is an examination scheme drawn up by a competent person under reg 9(3)(a)(iii) — available, and not currently used.',
     name: 'Lift — thorough examination',
@@ -2186,7 +2213,8 @@ export const REGISTER = [
       + 'assessment review trigger and goes through the building-work screen. '
       + '❓ Confirm from the installation which designation applies, and take the detailed weekly '
       + 'schedule from BS 8899 clause 8 rather than from this row — it is more specific than a '
-      + 'register entry should be.',
+      + 'register entry should be.'
+      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
     name: 'Firefighting or evacuation lift — weekly operational test under fire control',
     description:
       'Weekly test that a designated lift still operates under fire or evacuation control: operate '
@@ -2195,10 +2223,12 @@ export const REGISTER = [
       + 'works. Record any failure as an immediate defect, not as a note for the next service.',
     group: 'fire_safety',
     basis: 'standard',
-    statutoryRef: 'BS 9999:2017 Annex I (weekly, monthly and annual checks for lifts under fire or evacuation control) and BS 8899:2016 clause 8 (routine inspection, maintenance and thorough examination of lifts for use by firefighters and evacuation lifts), with BS EN 81-72 for the firefighters\' lift itself. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL; art 17 is why the measure must work at all',
+    statutoryRef: 'BS 9999:2017 Annex I (weekly, monthly and annual checks for lifts under fire or evacuation control) and BS 8899:2016 clause 8 (routine inspection, maintenance and thorough examination of lifts for use by firefighters and evacuation lifts), with BS EN 81-72 for the firefighters\' lift itself. ⚠ THE UNDERLYING DUTY IS STATUTORY: Regulatory Reform (Fire Safety) Order 2005 art 17(1) — "where necessary in order to safeguard the safety of relevant persons", the premises and any facilities, equipment and devices "provided in respect of the premises" under the Order or any other enactment must be "subject to a suitable system of maintenance and are maintained in an efficient state, in efficient working order and in good repair". The standard supplies the METHOD and the INTERVAL — subject to the edition adopted, the system’s design, category and configuration, the manufacturer’s requirements and the building’s fire risk assessment; art 17 is why the measure must work at all',
     intervalBasis: 'stated',
     frequencyDays: 7,
     maxIntervalDays: 7,
+    maxIsSchedulingTolerance: true,
+    sourceIntervalWords: 'weekly (BS 9999:2017 Annex I; BS 8899:2016 clause 8)',
     triggerType: 'calendar',
     responsibleParty: 'Site staff or lift contractor',
     competencyRequired: 'Briefed person who knows what correct fire-control behaviour looks like for this installation — not simply that the lift moved',
@@ -3267,7 +3297,7 @@ export const REGISTER = [
     key: 'res_strategy_review',
     statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
-    statutoryIntervalWords: 'at least every two years (SI 2023/907 reg 10(a))',
+    sourceIntervalWords: 'at least every two years (SI 2023/907 reg 10(a))',
     name: 'Residents’ engagement strategy — review',
     description:
       'Review the residents’ engagement strategy at least every two years, and earlier where an event '
