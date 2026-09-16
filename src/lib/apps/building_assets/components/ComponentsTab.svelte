@@ -206,7 +206,7 @@
     try {
       const preset = await createPreset(name, filters, columns, report, $auth.user.id, sortOrder, description);
       presets = [...presets, preset];
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = `Could not save preset: ${err.message}`;
     } finally {
       savingPreset = false;
@@ -217,7 +217,7 @@
     try {
       await removePreset(e.detail.id);
       presets = presets.filter(p => p.id !== e.detail.id);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = `Could not delete preset: ${err.message}`;
     }
   }
@@ -371,7 +371,7 @@
           }));
         },
       });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       reportError = err.message;
     } finally {
       generatingReport = false;
@@ -418,7 +418,7 @@
         typeOfFn:   typeOf,
         systemOfFn: systemOf,
       });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       reportError = err.message;
     } finally {
       generatingXlsx = false;
@@ -470,7 +470,7 @@
       await buildingAssetsStore.createComponent(fields, attrValues);
       showForm = false;
       await buildingAssetsStore.loadComponents();
-    } catch (err) { errorMsg = err.message; }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
     finally       { saving = false; }
   }
 
@@ -490,7 +490,7 @@
       await buildingAssetsStore.deleteComponent(e.detail.component.id);
       if (editingComponent?.id    === e.detail.component.id) editingComponent    = null;
       if (inspectingComponent?.id === e.detail.component.id) inspectingComponent = null;
-    } catch (err) { errorMsg = err.message; }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
   }
 
   // Types for the dropdown: filtered to selected system when one is set,

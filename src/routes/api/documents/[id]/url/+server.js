@@ -10,7 +10,7 @@ export async function GET({ request, params }) {
   try {
     const url = await getDocumentUrl(params.id);
     return json({ url });
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     return json({ error: err.message }, { status: 500 });
   }
 }

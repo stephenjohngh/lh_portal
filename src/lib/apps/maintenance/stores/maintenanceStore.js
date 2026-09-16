@@ -136,7 +136,7 @@ function createMaintenanceStore() {
         loading: false,
       }));
       logger('✅ Loaded', jobs.length, 'jobs,', allDocs.length, 'docs,', contractors.length, 'contractors');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Load failed:', err.message);
       update(s => ({ ...s, loading: false, error: err.message }));
       throw err;
@@ -224,7 +224,7 @@ function createMaintenanceStore() {
         const { data: sessionData } = await supabase.auth.getSession();
         await deleteStorageFiles([storagePath], sessionData?.session?.access_token);
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ file delete (non-fatal):', err.message);
     }
     await api.delete('maintenance_documents', docId);

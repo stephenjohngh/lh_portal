@@ -105,7 +105,7 @@
   // Open sessions always float to top; within each status group, latest first.
   $: sorted = [...sessions].sort((a, b) => {
     if (a.status !== b.status) return a.status === 'open' ? -1 : 1;
-    return new Date(b.started_at) - new Date(a.started_at);
+    return new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
   });
 
   $: filtered = sorted.filter(s => {
@@ -153,7 +153,7 @@
     try {
       sessions = await listWalkSessions();
       logger('✅ Loaded', sessions.length, 'sessions');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ loadSessions:', err.message);
       error = err.message;
     } finally {
@@ -164,7 +164,7 @@
   async function loadDefinitions() {
     try {
       definitions = await listInspectionDefinitions();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       // Non-fatal: the due panel just stays hidden.
       logger('❌ loadDefinitions:', err.message);
     }
@@ -173,7 +173,7 @@
   async function loadAwaitingAccess() {
     try {
       awaitingAccess = await listComponentsAwaitingAccess();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       // Non-fatal: the due panel just omits the awaiting-access flag.
       logger('❌ loadAwaitingAccess:', err.message);
     }
@@ -187,7 +187,7 @@
       try {
         const rows = await loadSessionInspections(session.id, { withPhotos: true });
         inspections = { ...inspections, [session.id]: flattenInspectionRows(rows) };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ load inspections:', err.message);
         inspections = { ...inspections, [session.id]: [] };
       } finally {
@@ -210,7 +210,7 @@
       const { [session.id]: _, ...rest } = inspections;
       inspections = rest;
       logger('✅ Session deleted');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ deleteSession:', err.message);
       error = err.message;
     } finally {
@@ -444,7 +444,7 @@
 
               {:else}
                 {@const groups = groupByComponent(rowInspections).sort((a, b) =>
-                  new Date(a.rows[0].inspected_at) - new Date(b.rows[0].inspected_at)
+                  new Date(a.rows[0].inspected_at).getTime() - new Date(b.rows[0].inspected_at).getTime()
                 )}
 
                 <!-- Stats summary -->

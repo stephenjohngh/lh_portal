@@ -162,7 +162,7 @@
       await onSave(docId, blocks);
       savedAt = new Date();
       dirty = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       saveError = err.message;
       // Re-arm so the next edit (or page switch) retries rather than dropping
       // the user's work on the floor.

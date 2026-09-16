@@ -116,7 +116,7 @@
     }
     try {
       await dossierStore.applyMove(plan, $auth.user.id);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     }
   }
@@ -149,7 +149,7 @@
       }
       showDocModal = false;
       docModalRef?.done();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       docModalRef?.fail(err.message);
     }
   }
@@ -254,14 +254,14 @@
     if (!record) return;
     try {
       await dossierStore.updateRecord(selectedDataset, record.id, patch, $auth.user.id);
-    } catch (err) { treeError = err.message; }
+    } catch (/** @type {any} */ err) { treeError = err.message; }
   }
 
   async function clearRecordLink(record) {
     try {
       await dossierStore.updateRecord(
         selectedDataset, record.id, { doc_id: null, document_id: null }, $auth.user.id);
-    } catch (err) { treeError = err.message; }
+    } catch (/** @type {any} */ err) { treeError = err.message; }
   }
 
   /** Follow a row's reference — to the page, or by opening the file. */
@@ -386,7 +386,7 @@
     try {
       const dataset = await dossierStore.createDataset(pack.id, key, $auth.user.id);
       await openDataset(dataset);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     }
   }
@@ -394,7 +394,7 @@
   async function handleRecordCreate(e) {
     try {
       await dossierStore.createRecord(selectedDataset, e.detail.fields, $auth.user.id);
-    } catch (err) { treeError = err.message; }
+    } catch (/** @type {any} */ err) { treeError = err.message; }
   }
 
   // Pasting a thread. The modal owns the preview and which rows survive it;
@@ -408,7 +408,7 @@
       await dossierStore.createRecords(
         dataset, e.detail.rows.map(fields => ({ fields })), $auth.user.id);
       emailPasteRef?.done();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       emailPasteRef?.fail(err.message);
     }
   }
@@ -420,14 +420,14 @@
     if (!rows.length) return;
     try {
       await dossierStore.createRecords(dataset, rows, $auth.user.id);
-    } catch (err) { treeError = err.message; }
+    } catch (/** @type {any} */ err) { treeError = err.message; }
   }
 
   async function handleRecordUpdate(e) {
     const { id, fields } = e.detail;
     try {
       await dossierStore.updateRecord(selectedDataset, id, { fields }, $auth.user.id);
-    } catch (err) { treeError = err.message; }
+    } catch (/** @type {any} */ err) { treeError = err.message; }
   }
 
   // Deleting a row goes through the same confirmation as a pack, a page or a
@@ -444,7 +444,7 @@
     try {
       await dossierStore.deleteRecord(record.id);
       pendingRecordDelete = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       deletingRecordId = null;
@@ -467,7 +467,7 @@
       await dossierStore.deleteDataset(id, title);
       selectedDatasetId = null;
       pendingDatasetDelete = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       deletingDatasetId = null;
@@ -587,7 +587,7 @@
     loadingRevisions = true;
     try {
       revisions = await dossierStore.loadRevisions(docId);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       loadingRevisions = false;
@@ -602,7 +602,7 @@
       revisions = await dossierStore.loadRevisions(docId);
       historyModalRef?.done();
       showHistory = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       historyModalRef?.fail(err.message);
     }
   }
@@ -616,7 +616,7 @@
       await dossierStore.saveVersion(
         docId, current?.blocks, $auth.user.id, 'Saved by hand');
       notice = 'Version saved.';
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     }
   }
@@ -654,7 +654,7 @@
       // Revoked on a later turn: Safari has not begun the download when click()
       // returns, and revoking synchronously yields an empty file.
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       archiving = false;
@@ -726,7 +726,7 @@
         expiresAt: expiryFromDays(expiryDays), checksums: assets,
       }, $auth.user.id);
       publishRef?.done(result);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       publishRef?.fail(err.message);
     }
   }
@@ -746,7 +746,7 @@
       const body = await postJson(`/api/dossier/publications/${id}/verify`, {},
         'Could not check the files');
       verifyResult = { id, message: body.message };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       verifyingId = null;
@@ -762,7 +762,7 @@
       // unrecoverable as the first one.
       showPublish = true;
       publishRef?.done(result);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       pubBusyId = null;
@@ -777,7 +777,7 @@
     try {
       await dossierStore.deletePublication(publication);
       pendingPubDelete = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       pubBusyId = null;
@@ -790,7 +790,7 @@
     try {
       await dossierStore.revokePublication(publication.id, $auth.user.id);
       pendingRevoke = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       pubBusyId = null;
@@ -824,7 +824,7 @@
       await dossierStore.deleteDoc(id, title, subtree);
       if (id === selectedId || subtree.includes(selectedId)) selectedId = null;
       pendingDelete = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
       deletingId = null;

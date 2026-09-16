@@ -55,7 +55,7 @@
         activity_type: newActivity.activity_type,
       });
       setNewField('summary', data.summary || '');
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       newSummaryError = e.message || 'Could not generate summary';
     } finally {
       newSummaryGenerating = false;
@@ -156,7 +156,7 @@
       docFile = null;
       docInputRef?.reset();
       dispatch('added');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       mutationError = err.message ?? `Failed to add ${newTypeConfig.label.toLowerCase()}`;
     } finally {
       saving = false;

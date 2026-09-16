@@ -52,7 +52,7 @@
       await createSpaceType({ value, presentation_order: order, userId: $auth.user?.id ?? null });
       newValue = ''; newOrder = '';
       dispatch('saved');
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       logger('❌ add type:', e.message); errorMsg = e.message;
     } finally { adding = false; }
   }
@@ -72,7 +72,7 @@
     try {
       await updateSpaceType(row.id, { value, presentation_order: order });
       dispatch('saved');
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       logger('❌ save type:', e.message);
       rows = rows.map(r => r.id === row.id ? { ...r, _saving: false, _error: e.message } : r);
     }
@@ -87,7 +87,7 @@
     try {
       await deleteSpaceType(id);
       dispatch('saved');
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       logger('❌ delete type:', e.message); errorMsg = e.message;
     } finally {
       deletingId = null; pendingDelete = null;

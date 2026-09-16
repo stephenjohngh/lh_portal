@@ -151,7 +151,7 @@ export async function POST({ request, url }) {
 
     if (error) throw error;
     caseRow = data;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ mor_cases insert failed:', err.message);
     return json({ error: 'Could not create case. Please try again.' }, { status: 500 });
   }
@@ -186,7 +186,7 @@ export async function POST({ request, url }) {
       created_at:  now,
     });
     if (tErr) logger('⚠ timeline insert failed:', tErr.message);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠ timeline insert exception:', err.message);
   }
 

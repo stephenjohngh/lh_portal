@@ -51,7 +51,7 @@
   // -- Activity helpers -------------------------------------------------
   $: allActivities = (issue.activities ?? [])
     .slice()
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   $: visibleActivities = showHistoric
     ? allActivities

@@ -92,7 +92,7 @@ export async function POST({ params, request }) {
   let doc;
   try {
     doc = builder(caseRow);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ template builder failed:', err.message);
     return jsonErr('Could not build the letter.', 500);
   }

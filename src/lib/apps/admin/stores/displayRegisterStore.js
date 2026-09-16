@@ -65,7 +65,7 @@ function createDisplayRegisterStore() {
       items.sort(byLocationThenTitle);
       update(s => ({ ...s, items, loading: false }));
       logger('Loaded', items.length, 'display items');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message, loading: false }));
       throw err;
     }

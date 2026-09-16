@@ -437,7 +437,7 @@
         activity_type: editingActivity.activity_type,
       });
       setEditField('summary', data.summary || '');
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       modalSummaryError = e.message || 'Could not generate summary';
     } finally {
       modalSummaryGenerating = false;

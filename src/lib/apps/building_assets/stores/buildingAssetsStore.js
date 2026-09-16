@@ -85,7 +85,7 @@ function createBuildingAssetsStore() {
       let spaceTypes = [];
       try {
         spaceTypes = await api.get('space_types', { orderBy: 'presentation_order', ascending: true });
-      } catch (e) {
+      } catch (/** @type {any} */ e) {
         logger('space_types unavailable (pre-migration?) — using fallback list:', e.message);
       }
 
@@ -97,7 +97,7 @@ function createBuildingAssetsStore() {
         loading: false
       }));
       logger('Loaded hierarchy, plans, spaces and annotations');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Load error:', err.message);
       update(s => ({ ...s, loading: false, error: err.message }));
     }
@@ -109,7 +109,7 @@ function createBuildingAssetsStore() {
     try {
       const spaceTypes = await api.get('space_types', { orderBy: 'presentation_order', ascending: true });
       update(s => ({ ...s, spaceTypes }));
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       logger('loadSpaceTypes failed:', e.message);
     }
   }

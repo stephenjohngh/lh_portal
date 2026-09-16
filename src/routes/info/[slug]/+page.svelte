@@ -30,7 +30,7 @@
       } else {
         article = data;
       }
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       error = e.message ?? 'Failed to load article';
     } finally {
       loading = false;

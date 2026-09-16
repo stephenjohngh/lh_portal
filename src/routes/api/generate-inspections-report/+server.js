@@ -111,7 +111,7 @@ async function fetchImageBuffer(url) {
     const response = await fetch(url);
     if (!response.ok) { logger('⚠️ Image fetch failed:', response.status, url); return null; }
     return Buffer.from(await response.arrayBuffer());
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Image fetch error:', err.message, url); return null;
   }
 }
@@ -651,7 +651,7 @@ export async function POST({ request }) {
       },
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error:', err.message, err.stack);
     return json({ error: err.message }, { status: 500 });
   }

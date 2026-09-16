@@ -9,13 +9,25 @@ import { getLogger }  from '$lib/utils/logger';
 const logger = getLogger('MaintenanceGroups');
 
 function createMaintenanceGroupsStore() {
-  const { subscribe, update } = writable({
+  /**
+ * Store state, typed so consumers get Row types instead of `never`.
+ * `& Record<string, any>` tolerates the joined aliases these queries select.
+   *
+   * @typedef {{
+   *   groups: (import('$lib/database.types').Tables<'maintenance_groups'> & Record<string, any>)[],
+   *   loading: boolean,
+   *   error: string | null,
+   *   jobHistory: (import('$lib/database.types').Tables<'maintenance_jobs'> & Record<string, any>)[],
+   *   jobHistoryLoaded: boolean
+   * }} MaintenanceGroupsState
+   */
+  const { subscribe, update } = writable(/** @type {MaintenanceGroupsState} */ ({
     groups:  [],
     loading: false,
     error:   null,
     jobHistory:        [],      // completed maintenance_jobs (enriched w/ componentIds) — R2 suggestions
     jobHistoryLoaded:  false,
-  });
+  }));
 
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
@@ -23,7 +35,7 @@ function createMaintenanceGroupsStore() {
       const groups = await api.get('maintenance_groups', { orderBy: 'name' });
       update(s => ({ ...s, groups, loading: false }));
       logger('Loaded', groups.length, 'maintenance groups');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message, loading: false }));
       throw err;
     }
@@ -54,7 +66,7 @@ function createMaintenanceGroupsStore() {
       const jobHistory = jobs.map(j => ({ ...j, componentIds: byJob[j.id] ?? [] }));
       update(s => ({ ...s, jobHistory, jobHistoryLoaded: true }));
       logger('Loaded', jobHistory.length, 'completed jobs for renewal suggestions');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, jobHistoryLoaded: true }));
       logger('Job history load failed (suggestions disabled):', err.message);
     }

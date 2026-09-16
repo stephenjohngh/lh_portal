@@ -88,7 +88,7 @@ function createGtRiskStore() {
       }
       update((s) => ({ ...s, risks, alertsByRisk, loading: false }));
       return risks;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, loading: false, error: err.message }));
       throw err;
     }
@@ -101,7 +101,7 @@ function createGtRiskStore() {
       const [risk, riskLinks] = await Promise.all([getRisk(id), listRiskLinks(id)]);
       update((s) => ({ ...s, selectedRisk: risk, riskLinks }));
       return risk;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }

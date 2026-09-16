@@ -88,7 +88,7 @@
     deletingId = id;
     try {
       await buildingAssetsStore.deleteSpace(id);
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       errorMsg = e.message;
     } finally {
       deletingId = null; pendingDelete = null;

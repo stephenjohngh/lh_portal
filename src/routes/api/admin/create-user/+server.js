@@ -111,7 +111,7 @@ export async function POST({ request }) {
       }
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Unexpected error:', err.message);
     return json({ error: 'Internal server error', message: err.message }, { status: 500 });
   }

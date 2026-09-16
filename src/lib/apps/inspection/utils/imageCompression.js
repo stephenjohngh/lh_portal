@@ -32,7 +32,7 @@ export async function compressImage(imageBlob, options = {}) {
     const after         = (compressedBlob.size / 1024).toFixed(2);
     logger(`Compressed ${before} KB → ${after} KB`);
     return compressedBlob;
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     logger('❌ Compression failed:', error.message);
     throw new Error('Failed to compress image: ' + error.message);
   }

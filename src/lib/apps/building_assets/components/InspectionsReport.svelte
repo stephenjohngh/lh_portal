@@ -185,7 +185,7 @@
         appId: 'building_assets', eventCategory: 'golden_thread', severity: 'info',
         afterData: { producedBy: 'walk_session', walk_session_id: session.id },
       });
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       genError = e.message;
     } finally {
       registeringId = null;
@@ -231,7 +231,7 @@
       await downloadResponse(response, filename);
 
       dispatch('close');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Report failed:', err.message);
       genError = err.message;
     } finally {

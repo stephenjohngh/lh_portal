@@ -94,7 +94,7 @@
       });
       dispatch('completed');
       dispatch('close');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       saving = false;

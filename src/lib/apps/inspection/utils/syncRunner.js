@@ -48,7 +48,7 @@ async function refreshState(patch = {}) {
         sessionId:    o.sessionId ?? o.payload?.row?.walk_session_id ?? null,
         inspectionId: o.type === 'inspection_save' ? (o.payload?.row?.id ?? null) : null,
       }));
-    } catch (e) { logger('⚠ refreshState:', e.message); }
+    } catch (/** @type {any} */ e) { logger('⚠ refreshState:', e.message); }
   }
   _state.update(v => ({ ...v, pending: counts.pending, syncing: counts.syncing, error: counts.error, items, ...patch }));
 }
@@ -100,7 +100,7 @@ export async function drain() {
     }
     await pruneDone(handle);
     await refreshState();
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger('⚠ drain error:', e.message);
   } finally {
     draining = false;
@@ -120,7 +120,7 @@ export async function retryErrors() {
     const handle = await openQueue();
     for (const o of await listOps(handle)) if (o.status === OP_ERROR) await setOpStatus(handle, o.seq, OP_PENDING);
     await refreshState();
-  } catch (e) { logger('⚠ retryErrors:', e.message); }
+  } catch (/** @type {any} */ e) { logger('⚠ retryErrors:', e.message); }
   kickSync();
 }
 

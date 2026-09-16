@@ -80,7 +80,7 @@
       addRef      = '';
       addLinkType = '';
       showAddForm = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       addError = err.message;
     } finally {
       addSaving = false;

@@ -37,7 +37,7 @@ export function createAnnotationDragController({ getCanvas, setError }) {
     const pos = get(annotationDragPos)[id];
     if (pos) {
       try { await buildingAssetsStore.moveAnnotation(id, pos.x, pos.y); }
-      catch (err) { setError(err.message); }
+      catch (/** @type {any} */ err) { setError(err.message); }
     }
     annotationDraggingId.set(null);
     annotationDragPos.set({});

@@ -208,7 +208,7 @@
       a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       exportError = `Could not export: ${err.message}`;
     } finally {
       exporting = false;

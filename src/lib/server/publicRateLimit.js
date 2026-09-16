@@ -136,7 +136,7 @@ export async function checkKeyRateLimit(key, action) {
       .then(() => {}).catch(() => {});
 
     return true;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠ Rate limit check failed:', err.message, '— allowing request');
     return true; // Fail open so a DB hiccup doesn't block legitimate reports
   }

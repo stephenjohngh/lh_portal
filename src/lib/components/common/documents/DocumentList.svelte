@@ -12,7 +12,7 @@
 
   const dispatch = createEventDispatcher();
 
-  $: sorted = [...docs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  $: sorted = [...docs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   function expiryClass(status) {
     if (status === 'expired')      return 'text-red-400';

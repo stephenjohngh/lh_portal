@@ -54,7 +54,7 @@
         cachedCanEdit = p.isAdmin || p.canModify;
         setPref('inspection_can_edit', cachedCanEdit ? '1' : '0');
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Init error:', err.message);
       initError = err.message;
     } finally {
@@ -68,7 +68,7 @@
     try {
       await inspectionStore.resumeSession(e.detail.session);
       screen = 'walk';
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Resume failed:', err.message);
     }
   }
@@ -94,7 +94,7 @@
       if (state.activeSession?.status === 'open') {
         await inspectionStore.closeSession(state.activeSession.id);
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Close repair session (non-fatal):', err.message);
     }
     await inspectionStore.loadSessions();

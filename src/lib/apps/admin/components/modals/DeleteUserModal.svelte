@@ -35,7 +35,7 @@
       resetForm();
       show = false;
 
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Failed to delete user:', err);
       error = err.message;
     } finally {

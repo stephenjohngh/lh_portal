@@ -54,7 +54,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 function diffHours(later, earlier) {
   if (!later || !earlier) return null;
-  const ms = new Date(later) - new Date(earlier);
+  const ms = new Date(later).getTime() - new Date(earlier).getTime();
   return Number.isFinite(ms) ? ms / (60 * 60 * 1000) : null;
 }
 
@@ -214,7 +214,7 @@ export async function POST({ request }) {
   // 10-day BSR submission compliance among reports filed in the period.
   let withinDeadline = 0;
   for (const c of bsrReportsInPeriod) {
-    const ms = new Date(c.bsr_report_submitted_at) - new Date(c.identification_date);
+    const ms = new Date(c.bsr_report_submitted_at).getTime() - new Date(c.identification_date).getTime();
     if (ms <= 10 * DAY_MS) withinDeadline++;
   }
   const bsrCompliancePct = bsrReportsInPeriod.length

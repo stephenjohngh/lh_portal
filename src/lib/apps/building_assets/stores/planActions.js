@@ -259,7 +259,7 @@ export function createPlanActions(update, supabase) {
       let srcLinks = [];
       try {
         srcLinks = await api.getAllIn('component_links', 'from_component_id', srcIds);
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('component_links not available — skipping link copy', err.message);
       }
 

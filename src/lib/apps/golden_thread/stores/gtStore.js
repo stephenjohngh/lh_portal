@@ -105,7 +105,7 @@ function createGtStore() {
     try {
       const documents = await api.getAll('gt_documents', { orderBy: 'created_at', ascending: false });
       update((s) => ({ ...s, documents, loading: false }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message, loading: false }));
       throw err;
     }
@@ -118,7 +118,7 @@ function createGtStore() {
       const doc = await api.getById('gt_documents', id);
       update((s) => ({ ...s, selectedDocument: doc }));
       return doc;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
@@ -132,7 +132,7 @@ function createGtStore() {
       });
       update((s) => ({ ...s, categories }));
       return categories;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
@@ -143,7 +143,7 @@ function createGtStore() {
     try {
       const completeness = await scheduleOneCompleteness();
       update((s) => ({ ...s, completeness }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
@@ -157,7 +157,7 @@ function createGtStore() {
       const persons = await listPersons();
       update((s) => ({ ...s, persons }));
       return persons;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
@@ -193,7 +193,7 @@ function createGtStore() {
       const accountablePersons = await listAccountablePersons();
       update((s) => ({ ...s, accountablePersons }));
       return accountablePersons;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
@@ -229,7 +229,7 @@ function createGtStore() {
       const safetyCaseNotifications = await listSafetyCaseNotifications();
       update((s) => ({ ...s, safetyCaseNotifications }));
       return safetyCaseNotifications;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }
@@ -269,7 +269,7 @@ function createGtStore() {
     try {
       const auditHistory = await listAuditHistory(documentId);
       update((s) => ({ ...s, auditHistory }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, auditHistory: [], error: `Audit history failed to load: ${err.message}` }));
     }
   }
@@ -284,7 +284,7 @@ function createGtStore() {
         listCitations(documentId)
       ]);
       update((s) => ({ ...s, links: { outgoing, incoming } }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update((s) => ({ ...s, error: err.message }));
       throw err;
     }

@@ -53,7 +53,7 @@ export function createComponentActions(update) {
       const allInspections = await api.latestInspections(components.map(c => c.id));
 
       // Restore created_at-desc order on the components list
-      components.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      components.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Index component_attributes by component_id in one pass
       const componentAttrs = {};
@@ -69,7 +69,7 @@ export function createComponentActions(update) {
       }
 
       // Index component_links by from_component_id (created_at asc within each)
-      allLinks.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      allLinks.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const componentLinks = {};
       for (const link of allLinks) {
         if (!componentLinks[link.from_component_id]) componentLinks[link.from_component_id] = [];
@@ -78,7 +78,7 @@ export function createComponentActions(update) {
 
       update(s => ({ ...s, components, componentAttrs, componentLinks, inspections, loadingComponents: false }));
       logger(`Loaded ${components.length} components`);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Load components error:', err.message);
       update(s => ({ ...s, loadingComponents: false, error: err.message }));
     }

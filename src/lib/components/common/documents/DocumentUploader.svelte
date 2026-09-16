@@ -82,7 +82,7 @@
       }
       dispatch('uploaded', results);
       reset();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       uploading = false;

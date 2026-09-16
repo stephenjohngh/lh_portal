@@ -81,7 +81,7 @@
       if (id) await displayRegisterStore.save(id, data);
       else    await displayRegisterStore.create(data);
       closeModal();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       saveError = err.message;
       saving = false;
     }
@@ -114,7 +114,7 @@
     try {
       await displayRegisterStore.remove(pendingDelete.id);
       pendingDelete = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       actionError = err.message;
     } finally {
       deletingId = null;

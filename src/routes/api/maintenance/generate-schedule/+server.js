@@ -254,7 +254,7 @@ export async function POST({ request }) {
       },
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error:', err.message, err.stack?.slice(0, 300));
     return json({ error: err.message }, { status: 500 });
   }

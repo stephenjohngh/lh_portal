@@ -68,7 +68,7 @@
       docs = docs.map(d => d.id === id ? { ...d, ...updated } : d);
       dispatch('updated', updated);
       editingId = null;
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       error = e.message;
     } finally {
       savingEdit = false;
@@ -80,7 +80,7 @@
     loading = true; error = '';
     try {
       docs = await docApi.listDocuments({ entity_type: entityType, entity_id: entityId });
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       error = e.message;
     } finally {
       loading = false;
@@ -113,7 +113,7 @@
       docs = [doc, ...docs];
       cancelUpload();
       dispatch('uploaded', doc);
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       error = e.message;
     } finally {
       uploading = false;
@@ -128,7 +128,7 @@
       await docApi.deleteDocument(target.id);
       docs = docs.filter(d => d.id !== target.id);
       dispatch('deleted', target);
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       error = e.message;
     } finally {
       deleting = false;

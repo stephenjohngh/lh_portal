@@ -60,12 +60,12 @@ const CACHE_KEY_PROFILE  = `profile_v${CACHE_VERSION}`;      // { userId, fullNa
 async function cacheGet(key) {
   if (!isOfflineAvailable()) return null;
   try { return await readCache(await openQueue(), key); }
-  catch (e) { logger('⚠ cache read failed:', e.message); return null; }
+  catch (/** @type {any} */ e) { logger('⚠ cache read failed:', e.message); return null; }
 }
 async function cachePut(key, data) {
   if (!isOfflineAvailable()) return;
   try { await writeCache(await openQueue(), key, data); }
-  catch (e) { logger('⚠ cache write failed:', e.message); }
+  catch (/** @type {any} */ e) { logger('⚠ cache write failed:', e.message); }
 }
 
 // ── Shared photo helper ───────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ async function mergePhotosIntoRows(rows) {
   let photos;
   try {
     photos = await listAttachments('component_inspection', ids);
-  } catch (e) { logger('⚠ mergePhotos error:', e.message); return; }
+  } catch (/** @type {any} */ e) { logger('⚠ mergePhotos error:', e.message); return; }
 
   const byId = {};
   for (const p of (photos ?? [])) {
@@ -311,7 +311,7 @@ function createInspectionStore() {
     try {
       built = await fetchHierarchyBuilt();
       void cachePut(CACHE_KEY_LOAD, built);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ hierarchy fetch failed, trying offline cache:', err.message);
       const cached = await cacheGet(CACHE_KEY_LOAD);
       if (cached) {
@@ -353,7 +353,7 @@ function createInspectionStore() {
       update(s => ({ ...s, definitions, scheduleSessions }));
       void cachePut(CACHE_KEY_DEFS, { definitions, scheduleSessions });
       logger('✅ definitions loaded:', definitions.length);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ definitions load (non-fatal), trying cache:', err.message);
       const cached = await cacheGet(CACHE_KEY_DEFS);
       if (cached) update(s => ({ ...s, definitions: cached.data.definitions ?? [], scheduleSessions: cached.data.scheduleSessions ?? [] }));
@@ -385,7 +385,7 @@ function createInspectionStore() {
       for (const r of rows ?? []) map[r.component_id] = r;
       latestInspectionsLoaded = true;
       update(s => ({ ...s, latestInspections: map }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ latestInspections load:', err.message);
     }
   }
@@ -413,7 +413,7 @@ function createInspectionStore() {
         ascending: false,
       });
       void cachePut(CACHE_KEY_SESSIONS, base);   // cache the SERVER truth
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       // Offline — fall back to the last cached list so Home + Resume still work.
       const cached = await cacheGet(CACHE_KEY_SESSIONS);
       if (cached) { logger('📦 using cached sessions list'); base = cached.data; usingCache = true; }
@@ -442,7 +442,7 @@ function createInspectionStore() {
       }
       return [...byId.values()].sort((a, b) =>
         new Date(b.started_at ?? 0).getTime() - new Date(a.started_at ?? 0).getTime());
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       logger('⚠ mergeOutboxSessions:', e.message);
       return sessions ?? [];
     }
@@ -475,7 +475,7 @@ function createInspectionStore() {
         await enqueue(await openQueue(), { type: 'session_create', sessionId: row.id, payload });
         kickSync();
         return;
-      } catch (e) {
+      } catch (/** @type {any} */ e) {
         logger('⚠ enqueue session_create failed, syncing inline:', e.message);
       }
     }
@@ -668,7 +668,7 @@ function createInspectionStore() {
         const definition = getState().definitions.find(d => d.id === session.definition_id)
           ?? await api.getById('statutory_obligations', session.definition_id);
         if (definition) walk = { definition };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('⚠ resume: definition fetch failed, using stored type_filter:', err.message);
       }
     }
@@ -680,7 +680,7 @@ function createInspectionStore() {
     let inspRows = [];
     try {
       inspRows = await api.getAll('component_inspections', { filters: { walk_session_id: session.id } });
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       logger('⚠ resume: server inspections fetch failed (offline?):', e.message);
     }
     // Overlay any un-synced inspections for this session (walked offline) — client
@@ -691,7 +691,7 @@ function createInspectionStore() {
       for (const r of queuedRows) byId.set(r.id, r);
       inspRows = [...byId.values()];
     }
-    inspRows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
+    inspRows.sort((a, b) => new Date(a.inspected_at).getTime() - new Date(b.inspected_at).getTime());
     // Attach photo URLs from media_attachments (replaces JSONB photo_urls column)
     await mergePhotosIntoRows(inspRows);
     const inspections = {};
@@ -712,7 +712,7 @@ function createInspectionStore() {
           select: 'component_id, inspection_result, inspected_at',
         });
         statusBefore = statusBeforeSession(history, session.started_at);
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('⚠ resume: statusBefore history load (non-fatal):', err.message);
       }
     }
@@ -815,14 +815,14 @@ function createInspectionStore() {
 
     if (get(online)) {
       // Online: push queued inspections first, then stamp the true server count.
-      try { await flushQueue(); } catch (e) { logger('⚠ completeSession flush:', e.message); }
+      try { await flushQueue(); } catch (/** @type {any} */ e) { logger('⚠ completeSession flush:', e.message); }
       let inspectedCount = localCount;
       try { inspectedCount = await api.count('component_inspections', { walk_session_id: sessionId }); }
-      catch (e) { logger('⚠ completeSession count (using local):', e.message); }
+      catch (/** @type {any} */ e) { logger('⚠ completeSession count (using local):', e.message); }
       const fields = { status: 'closed', closed_at: closedAt, inspected_components_count: inspectedCount, notes: notes || null, updated_by: userId };
       try {
         await api.update('walk_sessions', sessionId, fields, false);
-      } catch (e) {
+      } catch (/** @type {any} */ e) {
         // Lost the connection between the count and the update — don't drop the
         // completion; queue it so it syncs on reconnect.
         logger('⚠ completeSession update failed, queueing:', e.message);
@@ -843,7 +843,7 @@ function createInspectionStore() {
     const payload = { sessionId, fields };
     if (isOfflineAvailable()) {
       try { await enqueue(await openQueue(), { type: 'session_complete', sessionId, payload }); kickSync(); return; }
-      catch (e) { logger('⚠ enqueue session_complete failed, syncing inline:', e.message); }
+      catch (/** @type {any} */ e) { logger('⚠ enqueue session_complete failed, syncing inline:', e.message); }
     }
     const res = await syncOne({ type: 'session_complete', payload }, makeSyncDeps());
     if (!res.ok) throw new Error(res.error || 'Failed to complete session');
@@ -1045,7 +1045,7 @@ function createInspectionStore() {
         }
         await enqueueInspectionSave(handle, payload);
         queued = true;
-      } catch (e) {
+      } catch (/** @type {any} */ e) {
         logger('⚠ enqueue failed, syncing inline:', e.message);
       }
     }
@@ -1234,7 +1234,7 @@ function createInspectionStore() {
   async function outboxInspectionRows(sessionId) {
     if (!isOfflineAvailable()) return [];
     try { return await listQueuedInspectionRows(await openQueue(), sessionId); }
-    catch (e) { logger('⚠ outboxInspectionRows:', e.message); return []; }
+    catch (/** @type {any} */ e) { logger('⚠ outboxInspectionRows:', e.message); return []; }
   }
   async function isUnsyncedSession(sessionId) {
     if (!isOfflineAvailable()) return false;

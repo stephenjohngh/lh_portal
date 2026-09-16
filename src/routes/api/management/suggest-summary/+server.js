@@ -70,7 +70,7 @@ async function getConfiguredModel() {
       .maybeSingle();
     const v = data?.value;
     if (typeof v === 'string' && ALLOWED_MODELS.has(v)) return v;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠️ Failed to read ai_model; using default:', err.message);
   }
   return DEFAULT_MODEL;
@@ -152,7 +152,7 @@ export async function POST({ request }) {
           }
         ]
       });
-    } catch (apiErr) {
+    } catch (/** @type {any} */ apiErr) {
       logger('❌ Anthropic API error:', apiErr.message);
       recordAudit('failed', 'error', { reason: 'anthropic_api_error', error: (apiErr.message || '').slice(0, 200) });
       return json({ error: 'AI service error' }, { status: 502 });
@@ -177,7 +177,7 @@ export async function POST({ request }) {
 
     return json({ summary });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Unexpected error:', err.message);
     recordAudit('failed', 'error', { reason: 'unexpected_error', error: (err.message || '').slice(0, 200) });
     return json({ error: 'Internal server error' }, { status: 500 });

@@ -66,7 +66,7 @@
         severity:      'info',
         afterData:     { order: ids }
       });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       orderError = err.message;
       logger('❌ Save order failed:', err.message);
     } finally {
@@ -118,7 +118,7 @@
       // Default to Haiku if no row exists or an unknown value is stored
       aiModel         = AI_MODELS.find(m => m.value === v)?.value ?? 'claude-haiku-4-5';
       aiModelPrevious = aiModel;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠️ Failed to load ai_model setting:', err.message);
       aiError = 'Failed to load: ' + err.message;
       aiModel         = 'claude-haiku-4-5';
@@ -153,7 +153,7 @@
         });
         aiModelPrevious = aiModel;
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       aiError = 'Save failed: ' + err.message;
       logger('❌ Save failed:', err.message);
     } finally {
@@ -211,7 +211,7 @@
       await portalSettings.save(topbarIds);
       saved = true;
       logger('✅ Topbar config saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
       logger('❌ Save failed:', err.message);
     } finally {

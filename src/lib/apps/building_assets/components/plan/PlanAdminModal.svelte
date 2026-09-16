@@ -177,7 +177,7 @@
       }, imageFile);
       dispatch('done', { plan: created, action: 'created' });
       show = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = err.message;
     } finally {
       saving = false;
@@ -201,7 +201,7 @@
       }
       dispatch('done', { plan: { ...plan, ...updated }, action: 'updated' });
       show = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = err.message;
     } finally {
       saving = false;
@@ -225,7 +225,7 @@
       );
       dispatch('done', { plan: newPlan, action: 'copied', copied });
       show = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg     = err.message;
       copyProgress = null;
     } finally {
@@ -245,7 +245,7 @@
       );
       dispatch('done', { plan: targetPlan, action: 'imported', copied });
       show = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg     = err.message;
       copyProgress = null;
     } finally {
@@ -264,7 +264,7 @@
       );
       dispatch('done', { plan: targetPlan, action: 'imported', copied });
       show = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = err.message;
     } finally {
       saving = false;
@@ -283,7 +283,7 @@
       await buildingAssetsStore.deletePlan(planId);
       dispatch('deleted', { planId });
       show = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg   = err.message;
       saving     = false;
       confirming = false;

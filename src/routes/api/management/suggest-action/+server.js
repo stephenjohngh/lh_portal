@@ -141,7 +141,7 @@ async function getConfiguredModel() {
     if (error) throw error;
     const v = data?.value;
     if (typeof v === 'string' && ALLOWED_MODELS.has(v)) return v;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠️ Failed to read ai_model setting; using default:', err.message);
   }
   return DEFAULT_MODEL;
@@ -311,7 +311,7 @@ Use the suggest_action tool.`;
           { role: 'user', content: userMessage }
         ]
       });
-    } catch (apiErr) {
+    } catch (/** @type {any} */ apiErr) {
       logger('❌ Anthropic API error:', apiErr.message);
       recordAudit('failed', 'error', {
         reason: 'anthropic_api_error',
@@ -352,7 +352,7 @@ Use the suggest_action tool.`;
       reasoning
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Unexpected error:', err.message);
     recordAudit('failed', 'error', {
       reason: 'unexpected_error',

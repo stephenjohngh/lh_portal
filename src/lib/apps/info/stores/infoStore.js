@@ -21,12 +21,28 @@ const NOTE_DETAIL_SELECT =
 function sortNotes(notes) {
   return [...notes].sort((a, b) => {
     if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
-    return new Date(b.updated_at) - new Date(a.updated_at);
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
   });
 }
 
 function createInfoStore() {
-  const { subscribe, update } = writable({
+  /**
+ * Store state, typed so consumers get Row types instead of `never`.
+ * `& Record<string, any>` tolerates the joined aliases these queries select;
+ * without it a bare Tables<> swaps one error message for another.
+   *
+   * @typedef {import('$lib/database.types').Tables<'info_notes'> & Record<string, any>} Note
+   * @typedef {{
+   *   sections: (import('$lib/database.types').Tables<'info_sections'> & Record<string, any>)[],
+   *   notes: Note[],
+   *   selectedNote: Note | null,
+   *   loadingSections: boolean,
+   *   loadingNotes: boolean,
+   *   loadingNote: boolean,
+   *   error: string | null
+   * }} InfoState
+   */
+  const { subscribe, update } = writable(/** @type {InfoState} */ ({
     sections:        [],
     notes:           [],
     selectedNote:    null,   // full note + documents loaded on select
@@ -34,7 +50,7 @@ function createInfoStore() {
     loadingNotes:    false,
     loadingNote:     false,
     error:           null,
-  });
+  }));
 
   // ── Sections ─────────────────────────────────────────────────────────────
 
@@ -45,7 +61,7 @@ function createInfoStore() {
         orderBy: 'display_order', ascending: true,
       });
       update(s => ({ ...s, sections, loadingSections: false }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message, loadingSections: false }));
       throw err;
     }
@@ -99,7 +115,7 @@ function createInfoStore() {
         ascending: false,
       });
       update(s => ({ ...s, notes: sortNotes(notes), loadingNotes: false }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message, loadingNotes: false }));
       throw err;
     }
@@ -112,7 +128,7 @@ function createInfoStore() {
       const note = await api.getById('info_notes', noteId, NOTE_DETAIL_SELECT);
       update(s => ({ ...s, selectedNote: note, loadingNote: false }));
       return note;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message, loadingNote: false }));
       throw err;
     }
@@ -190,7 +206,7 @@ function createInfoStore() {
     let docs = [];
     try {
       docs = await docApi.listDocuments({ entity_type: 'info_note', entity_id: id });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ could not list attachments before note delete:', err.message);
     }
     if (docs.length) {

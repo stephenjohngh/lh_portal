@@ -35,7 +35,7 @@ export async function GET({ request, url }) {
   try {
     const docs = await listDocuments(opts);
     return json(docs);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     return json({ error: err.message }, { status: 500 });
   }
 }

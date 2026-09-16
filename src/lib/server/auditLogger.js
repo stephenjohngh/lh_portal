@@ -139,7 +139,7 @@ export async function logAudit(event) {
     logger('✅ Audit log saved:', data.id);
     return data.id;
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Exception:', err.message);
     // Don't throw - audit logging should never break main functionality
     return null;
@@ -462,7 +462,7 @@ export async function flagAuditLog(logId, reason) {
 
     logger('✅ Audit log flagged successfully');
     return true;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Exception flagging audit log:', err.message);
     return false;
   }

@@ -41,7 +41,7 @@
         floor:     c._floor,
         type:      types.find(t => t.code === c.type_code),
       }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       loadingList = false;
@@ -66,7 +66,7 @@
         targetComponentId: component.id,
       });
       dispatch('started');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Start repair:', err.message);
       error = err.message;
     } finally {

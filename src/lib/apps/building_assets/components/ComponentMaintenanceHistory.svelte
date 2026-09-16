@@ -26,7 +26,7 @@
         ascending: false,
         limit:     20,
       });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       loading = false;

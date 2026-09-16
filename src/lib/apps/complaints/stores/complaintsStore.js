@@ -32,7 +32,23 @@ const CASE_SELECT = `
 `.trim();
 
 function createComplaintsStore() {
-  const { subscribe, update } = writable({
+  /**
+ * Store state, typed so consumers get Row types instead of `never`.
+ * `& Record<string, any>` tolerates the joined aliases these queries select;
+ * without it a bare Tables<> swaps one error message for another.
+   *
+   * @typedef {import('$lib/database.types').Tables<'complaint_cases'> & Record<string, any>} ComplaintCase
+   * @typedef {{
+   *   cases: ComplaintCase[],
+   *   selected: ComplaintCase | null,
+   *   timeline: (import('$lib/database.types').Tables<'complaint_timeline_entries'> & Record<string, any>)[],
+   *   actions: (import('$lib/database.types').Tables<'complaint_actions'> & Record<string, any>)[],
+   *   loading: boolean,
+   *   saving: boolean,
+   *   error: string | null
+   * }} ComplaintsState
+   */
+  const { subscribe, update } = writable(/** @type {ComplaintsState} */ ({
     cases:      [],
     selected:   null,
     timeline:   [],
@@ -40,7 +56,7 @@ function createComplaintsStore() {
     loading:    false,
     saving:     false,
     error:      null,
-  });
+  }));
 
   // ── Who is acting ─────────────────────────────────────────────────────────
 
@@ -84,7 +100,7 @@ function createComplaintsStore() {
       });
       update(s => ({ ...s, cases, loading: false }));
       return cases;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger(`✖ load failed: ${err.message}`);
       update(s => ({ ...s, loading: false, error: err.message }));
       throw err;
@@ -110,7 +126,7 @@ function createComplaintsStore() {
       ]);
       update(s => ({ ...s, selected, timeline, actions, loading: false }));
       return selected;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger(`✖ select(${id}) failed: ${err.message}`);
       update(s => ({ ...s, loading: false, error: err.message }));
       throw err;
@@ -166,7 +182,7 @@ function createComplaintsStore() {
 
       update(s => ({ ...s, cases: [row, ...s.cases], saving: false }));
       return row;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger(`✖ create failed: ${err.message}`);
       update(s => ({ ...s, saving: false, error: err.message }));
       throw err;
@@ -189,7 +205,7 @@ function createComplaintsStore() {
       const row = await refresh(id);
       update(s => ({ ...s, saving: false }));
       return row;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger(`✖ save(${id}) failed: ${err.message}`);
       update(s => ({ ...s, saving: false, error: err.message }));
       throw err;
@@ -233,7 +249,7 @@ function createComplaintsStore() {
       });
       update(s => ({ ...s, timeline, saving: false }));
       return row;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger(`✖ transition(${id} -> ${to}) failed: ${err.message}`);
       update(s => ({ ...s, saving: false, error: err.message }));
       throw err;

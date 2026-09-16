@@ -43,7 +43,7 @@
         name: name.trim(), description: description.trim() || null,
         colour, display_order: Number(display_order) || 0,
       });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
       saving = false;
     }

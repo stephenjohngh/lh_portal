@@ -86,7 +86,7 @@
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       downloadError = `Could not generate ${label}: ${err.message}`;
     } finally {
       downloading = null;

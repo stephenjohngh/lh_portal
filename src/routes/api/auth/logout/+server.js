@@ -41,7 +41,7 @@ export async function POST({ request }) {
       message: 'Logged out successfully'
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Logout error:', err.message);
     return json({ error: 'An error occurred during logout' }, { status: 500 });
   }

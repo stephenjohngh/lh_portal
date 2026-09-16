@@ -30,7 +30,7 @@ export async function GET({ request, params }) {
     // being told they may not see it.
     if (!allowed.ok) return NOT_FOUND;
     return json(doc);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     return json({ error: err.message }, { status: 500 });
   }
 }
@@ -67,7 +67,7 @@ export async function PATCH({ request, params }) {
 
     const doc = await updateDocument(params.id, clean, auth.user.id);
     return json(doc);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     return json({ error: err.message }, { status: 500 });
   }
 }
@@ -79,7 +79,7 @@ export async function DELETE({ request, params }) {
   try {
     await deleteDocument(params.id);
     return json({ ok: true });
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     return json({ error: err.message }, { status: 500 });
   }
 }

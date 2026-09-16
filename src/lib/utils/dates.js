@@ -86,7 +86,7 @@ export function fmtGenerated() {
  */
 export function fmtDuration(startIso, endIso) {
   if (!endIso) return 'Open';
-  const min = Math.round((new Date(endIso) - new Date(startIso)) / 60000);
+  const min = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000);
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 

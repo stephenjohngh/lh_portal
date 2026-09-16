@@ -89,7 +89,7 @@
       }
       dispatch('saved');
       editingId = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       saving = false;
@@ -105,7 +105,7 @@
     try {
       await inspectionDefinitionsStore.remove(id);
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       deletingId = null; pendingDelete = null;

@@ -28,6 +28,42 @@ const FETCH_TIMEOUT_MS    = 8000;
 
 // -- Initial state -------------------------------------------------------------
 
+/**
+ * Store state, typed so consumers get Row types instead of `never`.
+ * `& Record<string, any>` tolerates the joined aliases these queries select.
+ *
+ * ⚠ `hiddenTypes` / `hiddenStatuses` are Sets, not arrays — they are membership
+ * tests on every marker render, and the filter is persisted to localStorage as
+ * an array and rehydrated. Typing them as arrays would be wrong in both places.
+ *
+ * @typedef {Record<string, any>} Loose
+ * @typedef {{
+ *   building: Loose | null,
+ *   floors: (import('$lib/database.types').Tables<'floors'> & Record<string, any>)[],
+ *   systems: (import('$lib/database.types').Tables<'building_systems'> & Record<string, any>)[],
+ *   types: (import('$lib/database.types').Tables<'component_types'> & Record<string, any>)[],
+ *   attrDefs: Record<string, Loose[]>,
+ *   plans: (import('$lib/database.types').Tables<'plans'> & Record<string, any>)[],
+ *   currentFloor: Loose | null,
+ *   currentPlan: Loose | null,
+ *   components: (import('$lib/database.types').Tables<'components'> & Record<string, any>)[],
+ *   spaces: Loose[],
+ *   annotations: Loose[],
+ *   inspections: Record<string, Loose>,
+ *   componentAttrs: Record<string, Loose[]>,
+ *   allComponents: (import('$lib/database.types').Tables<'components'> & Record<string, any>)[],
+ *   loadingAll: boolean,
+ *   hiddenTypes: Set<string>,
+ *   hiddenStatuses: Set<string>,
+ *   showSpaces: boolean,
+ *   usingCache: boolean,
+ *   cachedAt: string | null,
+ *   loading: boolean,
+ *   error: string | null
+ * }} MobilePlanState
+ */
+
+/** @type {MobilePlanState} */
 const INITIAL = {
   // Static — loaded once
   building:       null,
@@ -75,7 +111,7 @@ const { subscribe, update, set } = writable({ ...INITIAL, hiddenTypes: new Set()
 function writeCache(key, data) {
   try {
     localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger('⚠️ Cache write failed:', e.message);
   }
 }
@@ -197,7 +233,7 @@ async function load() {
   try {
     hierarchyData = await fetchHierarchy();
     writeCache(CACHE_KEY_HIERARCHY, hierarchyData);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠️ Hierarchy fetch failed, trying cache:', err.message);
     const cached = readCache(CACHE_KEY_HIERARCHY, TTL_HIERARCHY_MS * 10); // accept any age
     if (cached) {
@@ -271,7 +307,7 @@ async function selectFloor(floorId, forceRefresh = false) {
     try {
       floorData = await fetchFloorForPlan(plan?.id, floorId);
       writeCache(CACHE_KEY_FLOOR(floorId), floorData);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠️ Floor fetch failed, trying cache:', err.message);
       const cached = readCache(CACHE_KEY_FLOOR(floorId), Infinity);
       if (cached) {
@@ -408,7 +444,7 @@ async function loadComponentAttrs(componentId) {
       ...s,
       componentAttrs: { ...s.componentAttrs, [componentId]: attrs },
     }));
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠️ loadComponentAttrs failed:', err.message);
   }
 }
@@ -446,7 +482,7 @@ async function loadAllComponents(forceRefresh = false) {
       select: 'id,asset_id,label,notes,status,type_code,plan_id,x_position,y_position,floor_id',
     });
     writeCache(CACHE_KEY_ALLCOMPS, rows);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠️ all-components fetch failed, trying cache:', err.message);
     const cached = readCache(CACHE_KEY_ALLCOMPS, Infinity);
     if (cached) rows = cached.data;

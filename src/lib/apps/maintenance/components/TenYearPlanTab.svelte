@@ -117,7 +117,7 @@
         plan_overrides,
       });
       showModal = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       modalError = err.message;
     } finally {
       saving = false;
@@ -183,7 +183,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const date = new Date().toISOString().slice(0, 10);
       await downloadResponse(res, `10_Year_Capital_Plan_${date}.docx`);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       exportError = 'Export failed: ' + err.message;
     } finally {
       exporting = false;

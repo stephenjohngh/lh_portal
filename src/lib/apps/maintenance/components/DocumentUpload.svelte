@@ -37,7 +37,7 @@
       dispatch('uploaded');
       expiryDate = '';
       fileInput.value = '';
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       uploadError = err.message;
     } finally {
       uploading = false;
@@ -49,7 +49,7 @@
     try {
       await maintenanceStore.deleteDocument(doc.id, doc.storage_path);
       dispatch('deleted', { id: doc.id });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       uploadError = err.message;
     } finally {
       const next = { ...deleting };

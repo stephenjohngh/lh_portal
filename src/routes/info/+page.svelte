@@ -23,7 +23,7 @@
         .order('published_at', { ascending: false });
       if (err) throw err;
       articles = data ?? [];
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       error = e.message ?? 'Failed to load articles';
     } finally {
       loading = false;

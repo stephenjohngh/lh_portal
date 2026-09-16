@@ -23,7 +23,7 @@ function createDocumentsStore() {
     try {
       const data = await docApi.listDocuments(opts);
       update(s => ({ ...s, docs: data, loading: false }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message, loading: false }));
     }
   }
@@ -39,7 +39,7 @@ function createDocumentsStore() {
       const data = await docApi.uploadDocument(file, meta);
       update(s => ({ ...s, docs: [data, ...s.docs] }));
       return data;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message }));
       throw err;
     }
@@ -73,7 +73,7 @@ function createDocumentsStore() {
     try {
       await docApi.deleteDocument(id);
       update(s => ({ ...s, docs: s.docs.filter(d => d.id !== id) }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message }));
       throw err;
     }

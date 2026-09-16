@@ -160,7 +160,7 @@ function createMorStore() {
         (byCase[row.case_id] ??= []).push(row);
       }
       update(s => ({ ...s, reporterContactsByCase: byCase }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ loadReporterContactsForCases (non-fatal):', err.message);
     }
   }
@@ -178,7 +178,7 @@ function createMorStore() {
       // Reporter-contact map is dashboard-only; load it in the background
       // and don't block the case list on it.
       loadReporterContactsForCases(cases.map(c => c.id));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ fetchCases:', err.message);
       update(s => ({ ...s, error: err.message, loading: false }));
     }
@@ -189,7 +189,7 @@ function createMorStore() {
     try {
       await refreshCase(id);
       update(s => ({ ...s, loading: false }));
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ fetchCase:', err.message);
       update(s => ({ ...s, error: err.message, loading: false }));
     }
@@ -241,7 +241,7 @@ function createMorStore() {
       await refreshCase(row.id);
       update(s => ({ ...s, saving: false }));
       return { success: true, case: row };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ createCase:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -296,7 +296,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ transitionStatus:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -352,7 +352,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ submitTriage:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -390,7 +390,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ recordAssessment:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -431,7 +431,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ proposeDecision:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -486,7 +486,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ approveDecision:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -540,7 +540,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ recordBsrNotice:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -579,7 +579,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ addNote:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -616,7 +616,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ recordReporterContact:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -679,7 +679,7 @@ function createMorStore() {
     try {
       const current = await api.getById('mor_cases', caseId, 'status');
       toStatus = current.status === 'awaiting_bsr' ? 'bsr_report' : 'in_remediation';
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message }));
       return { success: false, error: err.message };
     }
@@ -727,7 +727,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ addMitigation:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -751,7 +751,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ updateMitigation:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };
@@ -765,7 +765,7 @@ function createMorStore() {
       await refreshCase(caseId);
       update(s => ({ ...s, saving: false }));
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ deleteMitigation:', err.message);
       update(s => ({ ...s, saving: false, error: err.message }));
       return { success: false, error: err.message };

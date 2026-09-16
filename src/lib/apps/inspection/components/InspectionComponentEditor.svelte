@@ -80,7 +80,7 @@
         type_code: form.type_code,
       }, attrValues);
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Save failed:', err.message);
       error = err.message;
     } finally {

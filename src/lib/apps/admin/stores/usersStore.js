@@ -47,7 +47,7 @@ function createUsersStore() {
         update(state => ({ ...state, users, loading: false }));
         return users;
 
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('Failed to fetch users:', err);
         update(state => ({ ...state, loading: false, error: err.message }));
         throw err;

@@ -79,7 +79,7 @@
         const n = state.notes.find(x => x.id === savedNote);
         if (n) await selectNote(n);
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       appError = err.message;
     }
   });
@@ -120,7 +120,7 @@
     setPref(LS_NOTE, note.id);
     try {
       await infoStore.loadNote(note.id);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       appError = err.message;
     }
   }
@@ -146,7 +146,7 @@
       }
       showSectionModal = false;
       sectionModalRef?.done();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       sectionModalRef?.fail(err.message);
     }
   }
@@ -157,7 +157,7 @@
       if (selectedSectionId === section.id) selectSection(null);
       // The section's notes were cascade-deleted in the DB — refresh the full set.
       await infoStore.loadNotes(null);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       appError = err.message;
     }
   }
@@ -186,7 +186,7 @@
       }
       showNoteModal = false;
       noteModalRef?.done();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       noteModalRef?.fail(err.message);
     }
   }
@@ -196,7 +196,7 @@
       await infoStore.deleteNote(note.id, note.title);
       viewingNoteId = null;
       setPref(LS_NOTE, null);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       appError = err.message;
     }
   }
@@ -204,7 +204,7 @@
   async function handleTogglePin(note) {
     try {
       await infoStore.togglePin(note.id, note.is_pinned);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       appError = err.message;
     }
   }
@@ -229,7 +229,7 @@
     try {
       await infoStore.setArchived(note, archived);
       pendingArchive = null;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       appError = err.message;
     } finally {
       archiving = false;

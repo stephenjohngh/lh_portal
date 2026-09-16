@@ -166,7 +166,7 @@
       await buildingAssetsStore.updateComponentAttrs(component.id, attrValues);
       dirty = false;
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = err.message;
     } finally {
       saving = false;
@@ -178,7 +178,7 @@
     try {
       await buildingAssetsStore.deleteComponent(component.id);
       dispatch('deleted');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = err.message;
       confirmDel = false;
     } finally {

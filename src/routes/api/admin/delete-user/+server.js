@@ -129,7 +129,7 @@ export async function POST({ request }) {
       }
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Server error:', err.message);
     return json(
       { error: err.message || 'Internal server error' },

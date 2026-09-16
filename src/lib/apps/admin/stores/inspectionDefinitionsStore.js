@@ -102,7 +102,7 @@ function createInspectionDefinitionsStore() {
       definitions.sort(byOrderThenName);
       update(s => ({ ...s, definitions, loading: false }));
       logger('Loaded', definitions.length, 'inspection definitions');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       update(s => ({ ...s, error: err.message, loading: false }));
       throw err;
     }
@@ -245,7 +245,7 @@ function createInspectionDefinitionsStore() {
           appId: 'admin', eventCategory: 'admin', severity: 'info',
           afterData: { template_key: key, frequency_days: def.frequency_days, evidenced_by: def.evidenced_by },
         });
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         failed.push({ key, name: entry.name, message: err.message });
         logger('⚠ Could not apply template entry', key, err.message);
       }
@@ -297,7 +297,7 @@ function createInspectionDefinitionsStore() {
       const exclusions = await api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
       update(s => ({ ...s, exclusions, dismissedKeys: excludedKeys(exclusions) }));
       return exclusions;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ Could not read statutory exclusions:', err.message);
       return [];
     }

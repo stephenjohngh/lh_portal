@@ -82,7 +82,7 @@
   async function handleExport() {
     try {
       await auditLogsStore.exportToCSV(filters);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       localError = err.message;
     }
   }
@@ -133,7 +133,7 @@
       } else {
         await auditLogsStore.deleteLog(pendingDelete.logId);
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       localError = err.message;
     } finally {
       pendingDelete = null;
@@ -142,12 +142,12 @@
 
   async function handleFlagLog(logId, reason) {
     try { await auditLogsStore.flagLog(logId, reason); }
-    catch (err) { localError = err.message; }
+    catch (/** @type {any} */ err) { localError = err.message; }
   }
 
   async function handleUnflagLog(logId) {
     try { await auditLogsStore.unflagLog(logId); }
-    catch (err) { localError = err.message; }
+    catch (/** @type {any} */ err) { localError = err.message; }
   }
 </script>
 

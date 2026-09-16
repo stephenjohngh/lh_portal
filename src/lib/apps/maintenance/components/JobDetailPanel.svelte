@@ -118,7 +118,7 @@
       const safe  = (job.title ?? 'job').replace(/[^a-z0-9]/gi, '_');
       const date  = new Date().toISOString().slice(0, 10);
       await downloadResponse(res, `Maintenance_Certificate_${safe}_${date}.docx`);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       downloadError = 'Download failed: ' + err.message;
     } finally {
       downloading = false;

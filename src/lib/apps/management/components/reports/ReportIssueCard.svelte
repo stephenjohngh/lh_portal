@@ -23,14 +23,14 @@
   $: sortedActivities = (issue.activities || [])
     .filter(a => !filterDateTime || (a.created_at && new Date(a.created_at).getTime() >= filterDateTime))
     .slice()
-    .sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
+    .sort((a, b) => dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
 
   // Actions: outstanding before completed; within each group sort by direction.
   $: sortedActions = (issue.outstandingActions || []).slice().sort((a, b) => {
     const aC = a.status === ACTION_STATUS.COMPLETED ? 1 : 0;
     const bC = b.status === ACTION_STATUS.COMPLETED ? 1 : 0;
     if (aC !== bC) return aC - bC;
-    return dir * (new Date(a.created_at) - new Date(b.created_at));
+    return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   });
 
   // Fallback config for unknown/missing activity types.

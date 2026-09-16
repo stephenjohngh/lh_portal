@@ -87,7 +87,7 @@ function createAuditLogsStore() {
           hasMore:    (offset + limit) < (count || 0)
         }));
 
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('Error fetching logs:', err);
         update(state => ({
           ...state,
@@ -183,7 +183,7 @@ function createAuditLogsStore() {
 
         logger('CSV export complete:', data.length, 'logs');
         return { success: true, count: data.length };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('Error exporting CSV:', err);
         throw new Error(err.message || 'Failed to export audit logs');
       }
@@ -204,7 +204,7 @@ function createAuditLogsStore() {
           )
         }));
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         throw new Error(err.message || 'Failed to flag audit log');
       }
     },
@@ -219,7 +219,7 @@ function createAuditLogsStore() {
           logs: state.logs.map(log => log.id === logId ? { ...log, flagged: false } : log)
         }));
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         throw new Error(err.message || 'Failed to unflag audit log');
       }
     },
@@ -235,7 +235,7 @@ function createAuditLogsStore() {
           totalCount: state.totalCount - 1
         }));
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         throw new Error(err.message || 'Failed to delete audit log');
       }
     },
@@ -251,7 +251,7 @@ function createAuditLogsStore() {
           totalCount: state.totalCount - logIds.length
         }));
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         throw new Error(err.message || 'Failed to delete audit logs');
       }
     },
@@ -291,7 +291,7 @@ function createAuditLogsStore() {
 
         logger('Stats:', stats);
         return stats;
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('Error fetching stats:', err);
         throw new Error(err.message || 'Failed to fetch statistics');
       }

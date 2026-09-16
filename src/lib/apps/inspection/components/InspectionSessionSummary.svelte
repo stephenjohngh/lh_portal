@@ -39,7 +39,7 @@
   onMount(async () => {
     try {
       inspections = await inspectionStore.loadSessionInspections(session.id);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       loading = false;

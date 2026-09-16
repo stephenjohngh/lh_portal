@@ -174,12 +174,12 @@ export function filterIssues(issues, filterDate, options = {}) {
           const aC = a.status === ACTION_STATUS.COMPLETED ? 1 : 0;
           const bC = b.status === ACTION_STATUS.COMPLETED ? 1 : 0;
           if (aC !== bC) return aC - bC;
-          return new Date(a.created_at) - new Date(b.created_at);
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         })
     }))
     .sort((a, b) => {
       if (a.priority !== b.priority) return a.priority - b.priority;
-      return new Date(a.created_at) - new Date(b.created_at);
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 }
 

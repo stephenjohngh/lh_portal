@@ -29,7 +29,7 @@
         markerFill: '#0d0d14',
       });
       imageLoaded = true;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     }
   });

@@ -11,7 +11,7 @@ export async function GET({ request, url }) {
     const path    = url.searchParams.get('path') || '';
     const folders = await listFolders(path);
     return json(folders);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     return json({ error: err.message }, { status: 500 });
   }
 }

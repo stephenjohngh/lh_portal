@@ -35,7 +35,7 @@ export function createComponentDragController({ getCanvas, getPlanId, setError }
     const pos = get(dragPos)[id];
     if (pos) {
       try { await buildingAssetsStore.moveComponent(id, getPlanId(), pos.x, pos.y); }
-      catch (err) { setError(err.message); }
+      catch (/** @type {any} */ err) { setError(err.message); }
     }
     draggingId.set(null);
     dragPos.set({});

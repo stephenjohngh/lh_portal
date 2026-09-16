@@ -40,7 +40,7 @@ export async function POST({ request }) {
         'Content-Disposition': 'attachment; filename="Compliance_Position.docx"',
       },
     });
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ compliance report failed:', err);
     return json({ error: err.message }, { status: 500 });
   }

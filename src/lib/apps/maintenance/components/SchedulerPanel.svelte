@@ -111,7 +111,7 @@
       const created = await maintenanceStore.generateJobs(selections, fromDate, toDate);
       generateResult = { count: created.length };
       selected = {};   // clear selection after success
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       generateResult = { error: err.message };
     } finally {
       generating = false;
@@ -138,7 +138,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const date = new Date().toISOString().slice(0, 10);
       await downloadResponse(res, `Maintenance_Schedule_${date}.docx`);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       downloadError = 'Download failed: ' + err.message;
     } finally {
       downloading = false;

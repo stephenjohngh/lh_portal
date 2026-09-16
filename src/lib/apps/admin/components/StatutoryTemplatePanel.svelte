@@ -97,7 +97,7 @@
     try {
       await inspectionDefinitionsStore.recordExclusionDecision(entry.key, kind, reason, { reviewDue });
       decisionEntry = null;
-    } catch (err) { panelError = err.message; } finally { busy = false; }
+    } catch (/** @type {any} */ err) { panelError = err.message; } finally { busy = false; }
   }
 
   // -- Apply -------------------------------------------------------------------
@@ -107,13 +107,13 @@
       const report = await inspectionDefinitionsStore.applyTemplate(keys);
       applyReport = report;
       if (report.created.length > 0) dispatch('applied', report);
-    } catch (err) { panelError = err.message; } finally { busy = false; }
+    } catch (/** @type {any} */ err) { panelError = err.message; } finally { busy = false; }
   }
 
   async function link(obligationId, key) {
     busy = true; panelError = '';
     try { await inspectionDefinitionsStore.linkToTemplate(obligationId, key); }
-    catch (err) { panelError = err.message; } finally { busy = false; }
+    catch (/** @type {any} */ err) { panelError = err.message; } finally { busy = false; }
   }
 
   // -- Display helpers ---------------------------------------------------------

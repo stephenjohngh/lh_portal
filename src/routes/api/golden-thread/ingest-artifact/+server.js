@@ -76,7 +76,7 @@ export async function POST({ request }) {
       sizeBytes:     copy.file_size,
       mimeType:      copy.mime_type,
     });
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌', err.message);
     return json({ error: err.message }, { status: 500 });
   }

@@ -44,7 +44,7 @@
       const db = new Date(b.date_deadline).setHours(0, 0, 0, 0);
       if (da !== db) return da - db;
     }
-    return new Date(a.created_at) - new Date(b.created_at);
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   }
 
   function earliestDeadline(actions) {
@@ -163,7 +163,7 @@
       const filename = `Actions_Report_${suffix}_${today}.docx`;
       await downloadResponse(response, filename);
       logger('✅ Downloaded:', filename);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌', err.message);
       downloadError = err.message;
     } finally {

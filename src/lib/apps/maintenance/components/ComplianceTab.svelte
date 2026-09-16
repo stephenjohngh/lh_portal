@@ -61,7 +61,7 @@
       // ALL obligations, not the job-evidenced subset the store keeps: this
       // report is about the whole register, both evidence routes.
       obligations = await listInspectionDefinitions();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       loadError = `Could not read the obligation library: ${err.message}`;
     }
 
@@ -77,7 +77,7 @@
     if (canReadWalks) {
       try {
         sessions = await listWalkSessions();
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         walkEvidenceAvailable = false;
         walkEvidenceNote = 'Inspection evidence could not be loaded, so walk-evidenced requirements below show only what jobs prove.';
         logger('⚠ walk sessions unavailable:', err.message);
@@ -89,7 +89,7 @@
 
     try {
       exclusions = await listStatutoryExclusions();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ exclusions unavailable:', err.message);
     }
     loading = false;
@@ -184,7 +184,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await downloadResponse(res, `Compliance_Position_${today()}.docx`);
       showExport = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       downloadError = `Download failed: ${err.message}`;
     } finally {
       downloading = false;

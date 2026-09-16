@@ -47,7 +47,7 @@ async function load({ force = false } = {}) {
       });
       _state.set({ loaded: true, list: list || [], error: null });
       return list || [];
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Failed to load profiles:', err.message);
       _state.set({ loaded: true, list: [], error: err.message });
       return [];

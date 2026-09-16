@@ -44,7 +44,7 @@ export function createTypeHierarchyActions(update) {
         loading: false
       }));
       logger('Reloaded type hierarchy');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Reload error:', err.message);
       update(s => ({ ...s, loading: false, error: err.message }));
     }

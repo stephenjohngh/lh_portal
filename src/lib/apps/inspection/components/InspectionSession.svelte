@@ -175,7 +175,7 @@
   }
 
   async function handlePause() {
-    try { await inspectionStore.pauseSession(); } catch (err) { logger('Pause:', err.message); }
+    try { await inspectionStore.pauseSession(); } catch (/** @type {any} */ err) { logger('Pause:', err.message); }
     dispatch('paused');
   }
 
@@ -184,7 +184,7 @@
     try {
       await inspectionStore.completeSession(session.id, closeNotes);
       dispatch('closed');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Close failed:', err.message);
       closeError = err.message;
     } finally { closing = false; }
@@ -213,7 +213,7 @@
     try {
       await inspectionStore.deleteSession(session.id);
       dispatch('closed');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Delete failed:', err.message);
       closeError = err.message;
       confirmDelete = false;

@@ -144,12 +144,12 @@
   async function setOverride(cid, mode) {
     const sid = space.id;                       // capture before await (Svelte 5)
     try { await buildingAssetsStore.setMemberOverride(sid, cid, mode); }
-    catch (err) { errorMsg = err.message; }
+    catch (/** @type {any} */ err) { errorMsg = err.message; }
   }
   async function clearOverride(cid) {
     const sid = space.id;
     try { await buildingAssetsStore.removeMemberOverride(sid, cid); }
-    catch (err) { errorMsg = err.message; }
+    catch (/** @type {any} */ err) { errorMsg = err.message; }
   }
   function onPinSelect(e) {
     const cid = e.currentTarget.value;
@@ -183,7 +183,7 @@
       // Without this, the space prop stays as the pre-save object and dirty
       // immediately flips back to true (parsedHeight vs old space.height_m).
       dispatch('saved', { space: updated });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = err.message;
     } finally {
       saving = false;
@@ -195,7 +195,7 @@
     try {
       await buildingAssetsStore.deleteSpace(space.id);
       dispatch('deleted');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errorMsg = err.message;
       confirming = false;
     }

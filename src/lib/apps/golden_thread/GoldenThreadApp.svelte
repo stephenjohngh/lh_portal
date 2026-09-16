@@ -153,7 +153,7 @@
     reviewError = '';
     try {
       reviewSummary = await postJson('/api/cron/review-tick', {}, 'Review tick failed');
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       reviewError = e.message;
     } finally {
       reviewRunning = false;

@@ -28,7 +28,7 @@ export async function isAdmin(userId) {
     }
 
     return data?.is_admin || false;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Exception checking admin status:', err.message);
     return false;
   }
@@ -58,7 +58,7 @@ export async function isReadOnly(userId) {
     if (data?.is_admin) return false;
 
     return data?.is_read_only || false;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Exception checking read-only status:', err.message);
     return false;
   }
@@ -89,7 +89,7 @@ export async function canModify(userId) {
 
     // Regular users can modify if not read-only
     return !data?.is_read_only;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Exception checking modify permission:', err.message);
     return false;
   }
@@ -118,7 +118,7 @@ export async function getPermissionLevel(userId) {
     if (data?.is_admin) return 'admin';
     if (data?.is_read_only) return 'read-only';
     return 'read-write';
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Exception getting permission level:', err.message);
     return 'read-only';
   }
@@ -133,7 +133,7 @@ export async function isCurrentUserAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     return await isAdmin(user.id);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error checking current user admin status:', err.message);
     return false;
   }
@@ -148,7 +148,7 @@ export async function isCurrentUserReadOnly() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     return await isReadOnly(user.id);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error checking current user read-only status:', err.message);
     return false;
   }
@@ -163,7 +163,7 @@ export async function currentUserCanModify() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     return await canModify(user.id);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error checking current user modify permission:', err.message);
     return false;
   }
@@ -178,7 +178,7 @@ export async function getCurrentUserPermissionLevel() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return 'read-only';
     return await getPermissionLevel(user.id);
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error getting current user permission level:', err.message);
     return 'read-only';
   }
@@ -193,7 +193,7 @@ export async function getCurrentUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) throw error;
     return user;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error getting current user:', err.message);
     return null;
   }
@@ -275,7 +275,7 @@ export async function canPerformAction(action, resource = null, userId = null) {
     }
     
     return false;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error checking action permission:', err.message);
     return false;
   }
@@ -298,7 +298,7 @@ export async function getUserProfile(userId) {
 
     if (error) throw error;
     return data;
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error getting user profile:', err.message);
     return null;
   }

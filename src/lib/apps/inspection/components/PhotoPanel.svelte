@@ -54,7 +54,7 @@
       });
       videoElement.srcObject = stream;
       videoElement.play();
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Camera error:', err);
       captureError = 'Could not access camera: ' + err.message;
       capturing = false;

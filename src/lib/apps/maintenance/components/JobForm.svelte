@@ -105,7 +105,7 @@
         dispatch('saved', { mode: 'create', job: created });
       }
       dispatch('close');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       errors.general = err.message;
     } finally {
       saving = false;

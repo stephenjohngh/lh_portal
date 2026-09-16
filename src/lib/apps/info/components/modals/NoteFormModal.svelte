@@ -109,7 +109,7 @@
         summary:    summary.trim() || null,
         visibility,
       });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
       saving = false;
     }

@@ -28,11 +28,18 @@ function activeMeetingId() {
 }
 
 function createIssuesStore() {
-  const { subscribe, set, update } = writable({
+  /**
+ * Store state, typed so consumers get Row types instead of `never`.
+ * `& Record<string, any>` tolerates the joined aliases these queries select;
+ * without it a bare Tables<> swaps one error message for another.
+   *
+   * @typedef {{ issues: (import('$lib/database.types').Tables<'issues'> & Record<string, any>)[], loading: boolean, error: string }} IssuesState
+   */
+  const { subscribe, set, update } = writable(/** @type {IssuesState} */ ({
     issues: [],
     loading: true,
     error: ''
-  });
+  }));
 
   let realtimeChannel = null;
 
@@ -80,7 +87,7 @@ function createIssuesStore() {
           issues: data,
           loading: false
         }));
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         update(state => ({
           ...state,
           error: err.message,
@@ -204,7 +211,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error adding issue:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -263,7 +270,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error updating issue:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -307,7 +314,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error deleting issue:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -378,7 +385,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error adding activity:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -440,7 +447,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -486,7 +493,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
       }
@@ -556,7 +563,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error adding action:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -622,7 +629,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error updating action:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -674,7 +681,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error deleting action:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -727,7 +734,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error assigning to meeting:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };
@@ -780,7 +787,7 @@ function createIssuesStore() {
 
         await this.fetchIssues();
         return { success: true };
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error moving activity:', err);
         update(state => ({ ...state, error: err.message }));
         return { success: false, error: err.message };

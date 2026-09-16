@@ -29,7 +29,23 @@ function errMessage(err) {
 }
 
 function createWorksSchedulesStore() {
-  const store = writable({
+  /**
+ * Store state, typed so consumers get Row types instead of `never`.
+ * `& Record<string, any>` tolerates the joined aliases these queries select;
+ * without it a bare Tables<> swaps one error message for another.
+   *
+   * @typedef {{
+   *   schedules: (import('$lib/database.types').Tables<'works_schedules'> & Record<string, any>)[],
+   *   loading: boolean,
+   *   error: string | null,
+   *   items: (import('$lib/database.types').Tables<'works_schedule_items'> & Record<string, any>)[],
+   *   loadingItems: boolean,
+   *   attributes: Record<string, Record<string, any>>,
+   *   specs: Record<string, any>[],
+   *   hiddenSpecs: Record<string, any>[]
+   * }} WorksSchedulesState
+   */
+  const store = writable(/** @type {WorksSchedulesState} */ ({
     schedules: [],
     loading:   false,
     error:     null,
@@ -42,7 +58,7 @@ function createWorksSchedulesStore() {
     specs: [],
     /** Wordings withdrawn from the suggestion list. */
     hiddenSpecs: [],
-  });
+  }));
 
   const { subscribe, update } = store;
   const getState = () => get(store);

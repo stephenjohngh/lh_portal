@@ -147,7 +147,7 @@ export function createSpaceEditController(ctx) {
         const updated = get(buildingAssetsStore).spaces.find(s => s.id === poly.spaceId);
         const sel     = ctx.getSelectedSpace();
         if (updated && sel?.id === updated.id) ctx.setSelectedSpace(updated);
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         ctx.setError(err.message);
       }
 
@@ -162,7 +162,7 @@ export function createSpaceEditController(ctx) {
         const updated = get(buildingAssetsStore).spaces.find(s => s.id === poly.spaceId);
         const sel     = ctx.getSelectedSpace();
         if (updated && sel?.id === updated.id) ctx.setSelectedSpace(updated);
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         ctx.setError(err.message);
       }
       // Clear live copy only when not simultaneously in vertex-edit mode.

@@ -7,10 +7,16 @@ import { getLogger } from '$lib/utils/logger';
 const logger = getLogger('authStore');
 
 function createAuthStore() {
-  const { subscribe, set, update } = writable({
+  /**
+   * ⚠ `user` is Supabase's own User, not one of our rows — this store holds the
+   * AUTH identity, and `profiles` is a different thing entirely.
+   *
+   * @typedef {{ user: import('@supabase/supabase-js').User | null, loading: boolean }} AuthState
+   */
+  const { subscribe, set, update } = writable(/** @type {AuthState} */ ({
     user: null,
     loading: true
-  });
+  }));
 
   return {
     subscribe,
@@ -65,7 +71,7 @@ function createAuthStore() {
 
         logger('✅ Login successful:', email);
         return { success: true, data: body };
-      } catch (error) {
+      } catch (/** @type {any} */ error) {
         logger('❌ Login exception:', error.message);
         return { success: false, error: error.message };
       }
@@ -90,7 +96,7 @@ function createAuthStore() {
         
         logger('✅ Signup successful:', email);
         return { success: true, data };
-      } catch (error) {
+      } catch (/** @type {any} */ error) {
         logger('❌ Signup exception:', error.message);
         return { success: false, error: error.message };
       }
@@ -140,7 +146,7 @@ function createAuthStore() {
         window.location.href = '/login';
 
         return { success: true };
-      } catch (error) {
+      } catch (/** @type {any} */ error) {
         logger('❌ Logout exception:', error.message);
         // Force clear even on error
         set({ user: null, loading: false });

@@ -135,7 +135,7 @@
       const filename = `Issues_Report_${new Date().toISOString().split('T')[0]}.docx`;
       await downloadResponse(response, filename);
       logger('✅ Downloaded:', filename);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌', err.message);
       downloadError = err.message;
     } finally {

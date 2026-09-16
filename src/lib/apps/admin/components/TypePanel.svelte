@@ -34,7 +34,7 @@
     try {
       await buildingAssetsStore.deleteType(id);
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       deletingId    = null;
@@ -121,7 +121,7 @@
         dispatch('saved');
         editingId = null;
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       saving = false;

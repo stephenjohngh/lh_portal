@@ -114,7 +114,7 @@
         await maintenanceGroupsStore.save(editId, data);
       }
       showModal = false;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       modalError = err.message;
     } finally {
       saving = false;

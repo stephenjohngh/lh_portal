@@ -133,7 +133,7 @@ export async function POST({ request }) {
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error:', err.message, err.stack);
     return json({ error: err.message }, { status: 500 });
   }

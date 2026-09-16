@@ -60,7 +60,7 @@ export async function POST({ request }) {
         'Content-Length': buffer.length.toString()
       }
     });
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌', err.message);
     return json({ error: err.message }, { status: 500 });
   }
@@ -273,7 +273,7 @@ function buildContent(meeting, issues, attendees) {
       }));
 
       const sorted = [...comments].sort(
-        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       for (const c of sorted) {
         content.push(p(htmlToText(c.body), {
@@ -297,7 +297,7 @@ function buildContent(meeting, issues, attendees) {
       }));
 
       const sortedDecisions = [...decisions].sort(
-        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       for (const d of sortedDecisions) {
         content.push(p(htmlToText(d.body), {
@@ -321,7 +321,7 @@ function buildContent(meeting, issues, attendees) {
       }));
 
       const sortedNotes = [...notes].sort(
-        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       for (const n of sortedNotes) {
         content.push(p(htmlToText(n.body), {
@@ -345,7 +345,7 @@ function buildContent(meeting, issues, attendees) {
       }));
 
       const sortedEmails = [...emails].sort(
-        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       for (const e of sortedEmails) {
         if (e.body) {
@@ -373,7 +373,7 @@ function buildContent(meeting, issues, attendees) {
       }));
 
       const sortedLetters = [...letters].sort(
-        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       for (const l of sortedLetters) {
         if (l.body) {
@@ -401,7 +401,7 @@ function buildContent(meeting, issues, attendees) {
       }));
 
       const sortedDocs = [...documents].sort(
-        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       for (const d of sortedDocs) {
         const fieldLine = buildFieldSummary('document', d.fields);
@@ -426,7 +426,7 @@ function buildContent(meeting, issues, attendees) {
       }));
 
       const sorted = [...actions].sort(
-        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       for (const a of sorted) {
         content.push(p(a.action_text, {

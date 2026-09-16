@@ -43,7 +43,7 @@ function createPortalSettingsStore() {
 
       set({ loaded: true, ids, order });
       logger('✅ Loaded portal settings — topbar:', ids ?? 'all', '— order:', order ?? 'default');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('⚠ Failed to load portal settings (non-fatal):', err.message);
       // Treat failure as "show all, default order" rather than blocking the app
       set({ loaded: true, ids: null, order: null });

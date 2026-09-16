@@ -55,7 +55,7 @@
     try {
       await inspectionDefinitionsStore.retire(d.id, { retiredOn: on, reason });
       retiring = null;
-    } catch (err) { retireError = err.message; } finally { retireBusy = false; }
+    } catch (/** @type {any} */ err) { retireError = err.message; } finally { retireBusy = false; }
   }
 
   async function confirmUnretire() {
@@ -64,7 +64,7 @@
     try {
       await inspectionDefinitionsStore.unretire(d.id, reason);
       unretiring = null;
-    } catch (err) { retireError = err.message; } finally { retireBusy = false; }
+    } catch (/** @type {any} */ err) { retireError = err.message; } finally { retireBusy = false; }
   }
 
   onMount(() => {

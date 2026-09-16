@@ -673,7 +673,7 @@ export async function POST({ request }) {
       },
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error:', err.message, err.stack);
     return json({ error: err.message }, { status: 500 });
   }

@@ -105,7 +105,7 @@ export async function loadSessionInspections(sessionId, { withPhotos = true } = 
     select:  SESSION_INSPECTION_SELECT,
     filters: { walk_session_id: sessionId },
   });
-  rows.sort((a, b) => new Date(a.inspected_at) - new Date(b.inspected_at));
+  rows.sort((a, b) => new Date(a.inspected_at).getTime() - new Date(b.inspected_at).getTime());
 
   if (withPhotos && rows.length > 0) {
     const attachments = await listAttachments('component_inspection', rows.map((r) => r.id));

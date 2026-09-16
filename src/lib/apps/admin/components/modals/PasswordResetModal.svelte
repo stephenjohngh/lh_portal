@@ -52,7 +52,7 @@
       resetForm();
       show = false;
 
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       resetting = false;

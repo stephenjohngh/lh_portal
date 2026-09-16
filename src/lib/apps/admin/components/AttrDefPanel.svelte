@@ -42,7 +42,7 @@
     try {
       await buildingAssetsStore.deleteAttrDef(id);
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       deletingId    = null;
@@ -129,7 +129,7 @@
         dispatch('saved');
         editingId = null;
       }
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       saving = false;
@@ -170,7 +170,7 @@
       }
       cancelOverride();
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       overrideError = err.message;
     } finally {
       savingOverride = false;
@@ -187,7 +187,7 @@
     try {
       await buildingAssetsStore.deleteAttrDef(def._overrideId);
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       overrideError = err.message;
     } finally {
       pendingOverride = null;

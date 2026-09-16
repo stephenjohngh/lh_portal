@@ -53,7 +53,7 @@
         appId: 'maintenance', eventCategory: 'golden_thread', severity: 'info',
         afterData: { producedBy: 'maintenance_document', maintenance_document_id: doc.id },
       });
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       error = e.message;
     } finally {
       registering = false;

@@ -119,7 +119,7 @@ export async function safeSearchScan(buffer) {
 
     return { safe: true };
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('⚠ Vision scan exception:', err.message, '— allowing upload');
     return { safe: true, skipped: true };
   }

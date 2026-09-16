@@ -150,7 +150,7 @@ export async function POST({ request }) {
       }
     });
 
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌ Error generating DOCX:', err.message);
     logger('Stack:', err.stack);
     
@@ -226,7 +226,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
       try {
         content.push(...await generateIssueContent(issue, issueNumber, sortOrder, summaryOnly));
         issueNumber++;
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
         throw err;
       }
@@ -247,7 +247,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
       try {
         content.push(...await generateIssueContent(issue, issueNumber, sortOrder, summaryOnly));
         issueNumber++;
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
         throw err;
       }
@@ -268,7 +268,7 @@ async function generateReportContent(issues, filterDate, includeCurrent, include
       try {
         content.push(...await generateIssueContent(issue, issueNumber, sortOrder, summaryOnly));
         issueNumber++;
-      } catch (err) {
+      } catch (/** @type {any} */ err) {
         logger('❌ Error processing issue', issueNumber, ':', err.message);
         throw err;
       }
@@ -409,7 +409,7 @@ async function generateIssueContent(issue, number, sortOrder = 'desc', summaryOn
   const dir = sortOrder === 'asc' ? 1 : -1;
   const sortedActivities = (issue.activities || [])
     .slice()
-    .sort((a, b) => dir * (new Date(a.created_at) - new Date(b.created_at)));
+    .sort((a, b) => dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
 
   if (sortedActivities.length > 0) {
     content.push(new Paragraph({
@@ -476,7 +476,7 @@ async function generateIssueContent(issue, number, sortOrder = 'desc', summaryOn
     );
 
     const sortedActions = [...issue.outstandingActions].sort(
-      (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
     for (const action of sortedActions) {

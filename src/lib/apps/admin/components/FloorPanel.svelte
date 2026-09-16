@@ -41,7 +41,7 @@
         : r
       );
       dispatch('saved');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ save floor:', err.message);
       rows = rows.map(r => r.id === row.id ? { ...r, _saving: false, _error: err.message } : r);
     }

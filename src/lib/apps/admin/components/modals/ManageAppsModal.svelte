@@ -103,7 +103,7 @@
       // from the store reactively, so the prop updates automatically once
       // setUserRole() commits. Mutating the prop locally would (a) cause a
       // second loadUserData() call and (b) be overwritten by the parent anyway.
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Failed to set role:', err);
       error = `Failed to set role: ${err.message}`;
     } finally {
@@ -116,7 +116,7 @@
     error = '';
     try {
       await usersStore.setAppAccessLevel(user.id, appId, level);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Failed to set access level:', err);
       error = `Failed to update ${appId} access: ${err.message}`;
     }
@@ -129,7 +129,7 @@
     try {
       await usersStore.toggleContractor(user.id, user.is_contractor || false);
       // Parent prop updates from the store — no local mutation needed.
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('Failed to toggle contractor status:', err);
       error = `Failed to update contractor status: ${err.message}`;
     } finally {

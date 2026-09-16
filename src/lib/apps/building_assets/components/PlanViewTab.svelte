@@ -386,7 +386,7 @@
       }, attrValues);
       await buildingAssetsStore.loadComponents();
       sidebarMode = 'none'; newPos = null;
-    } catch (err) { errorMsg = err.message; }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
     finally       { saving = false; }
   }
 
@@ -408,7 +408,7 @@
       cancelSpaceDrawing();
       drawingMode = 'off';
       if (newSpace) { selectedSpace = newSpace; sidebarMode = 'space-detail'; }
-    } catch (err) { errorMsg = err.message; }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
     finally       { saving = false; }
   }
 
@@ -422,7 +422,7 @@
         { x1: scalePoint1.x, y1: scalePoint1.y, x2: scalePoint2.x, y2: scalePoint2.y, metres }, ar);
       clearScaleDrawing();
       drawingMode = 'off';
-    } catch (err) { errorMsg = err.message; }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
     finally       { scaleSaving = false; }
   }
 
@@ -439,7 +439,7 @@
     confirmClearScale = false;
     if (!$permissions.isAdmin) return;
     try { await buildingAssetsStore.updatePlanScale(selectedPlanId, null, null); }
-    catch (err) { errorMsg = err.message; }
+    catch (/** @type {any} */ err) { errorMsg = err.message; }
   }
 
   // -- Component detail panel callbacks -----------------------------
@@ -464,7 +464,7 @@
       });
       selectedAnnotation = ann;
       sidebarMode        = 'annotation-detail';
-    } catch (err) { errorMsg = err.message; }
+    } catch (/** @type {any} */ err) { errorMsg = err.message; }
   }
 
   // -- Plan admin ----------------------------------------------------
@@ -725,7 +725,7 @@
         try {
           await buildingAssetsStore.deleteComponent(component.id);
           if (selectedComponent?.id === component.id) { selectedComponent = null; sidebarMode = 'none'; }
-        } catch (err) { errorMsg = err.message; }
+        } catch (/** @type {any} */ err) { errorMsg = err.message; }
       }}
     />
   {/if}

@@ -62,7 +62,7 @@
         notes,
       });
       dispatch('saved', { annotation: updated });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
     } finally {
       saving = false;
@@ -78,7 +78,7 @@
     try {
       await buildingAssetsStore.deleteAnnotation(annotation.id);
       dispatch('deleted');
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       error = err.message;
       deleting = false;
     } finally {

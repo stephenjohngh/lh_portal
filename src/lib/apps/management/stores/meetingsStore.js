@@ -43,12 +43,19 @@ function audit(eventType, targetType, targetId, targetName, data = {}) {
 }
 
 function createMeetingsStore() {
-  const _state = writable({
+  /**
+ * Store state, typed so consumers get Row types instead of `never`.
+ * `& Record<string, any>` tolerates the joined aliases these queries select.
+   *
+   * @typedef {import('$lib/database.types').Tables<'meetings'> & Record<string, any>} Meeting
+   * @typedef {{ list: Meeting[], current: Meeting | null, loaded: boolean, error: string | null }} MeetingsState
+   */
+  const _state = writable(/** @type {MeetingsState} */ ({
     list:    [],     // newest-first
     current: null,   // the single open meeting, or null
     loaded:  false,
     error:   null
-  });
+  }));
 
   let realtimeChannel = null;
 
@@ -63,16 +70,16 @@ function createMeetingsStore() {
       // Stable secondary sort: created_at desc when dates tie.
       list.sort((a, b) => {
         if (a.meeting_date !== b.meeting_date) {
-          return new Date(b.meeting_date) - new Date(a.meeting_date);
+          return new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime();
         }
-        return new Date(b.created_at) - new Date(a.created_at);
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
       const current = list.find(m => m.status === 'open') ?? null;
       _state.set({ list, current, loaded: true, error: null });
       logger('✅ Loaded', list.length, 'meetings;', current ? `open: ${current.title}` : 'none open');
       return list;
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Failed to load meetings:', err.message);
       _state.update(s => ({ ...s, loaded: true, error: err.message }));
       return [];
@@ -126,7 +133,7 @@ function createMeetingsStore() {
 
       await load();
       return { success: true, meeting: row };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ create failed:', err.message);
       // Friendly message for the partial-unique-index conflict
       const msg = /meetings_one_open/.test(err.message)
@@ -163,7 +170,7 @@ function createMeetingsStore() {
 
       await load();
       return { success: true, meeting: row };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ update failed:', err.message);
       return { success: false, error: err.message };
     }
@@ -182,7 +189,7 @@ function createMeetingsStore() {
       });
       await load();
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ open failed:', err.message);
       const msg = /meetings_one_open/.test(err.message)
         ? 'Another meeting is already open. Close it first.'
@@ -203,7 +210,7 @@ function createMeetingsStore() {
       });
       await load();
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ close failed:', err.message);
       return { success: false, error: err.message };
     }
@@ -224,7 +231,7 @@ function createMeetingsStore() {
       });
       await load();
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ delete failed:', err.message);
       return { success: false, error: err.message };
     }
@@ -252,7 +259,7 @@ function createMeetingsStore() {
         eventAction: 'untag_meeting'
       });
       return { success: true };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ untag failed:', err.message);
       return { success: false, error: err.message };
     }

@@ -55,7 +55,7 @@ export async function POST({ request }) {
         'Content-Length': buffer.length.toString(),
       },
     });
-  } catch (err) {
+  } catch (/** @type {any} */ err) {
     logger('❌', err.message);
     return json({ error: err.message }, { status: 500 });
   }

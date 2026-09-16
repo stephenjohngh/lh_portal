@@ -41,7 +41,7 @@
       if (updateError) throw updateError;
       passwordSuccess = 'Password updated successfully!';
       setTimeout(() => { resetPasswordForm(); showPasswordModal = false; }, 2000);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       logger('❌ Password change error:', err);
       passwordErrors.newPassword = err.message || 'Failed to update password';
     } finally {
