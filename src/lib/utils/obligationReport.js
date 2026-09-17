@@ -17,7 +17,7 @@
 // Word export so the printed report can never disagree with what was on it.
 
 import {
-  STATUTORY_TEMPLATE, templateEntry, isSchedulable, isUnhomed, isSuperseded,
+  activeRegister, templateEntry, isSchedulable, isUnhomed, isSuperseded,
   supersededNote, BASIS_RANK, GROUPS,
 } from './statutoryTemplate.js';
 import { computeObligationSchedule } from './obligationSchedule.js';
@@ -200,7 +200,10 @@ export function compliancePosition({ obligations = [], events = [], exclusions =
 
   const rows = [];
 
-  for (const entry of STATUTORY_TEMPLATE) {
+  // ⚠ The register IN FORCE, not the shipped seed — the compliance position
+  // must be computed against what this building's catalogue says, including
+  // anything added or edited here. Falls back to the seed inside the helper.
+  for (const entry of activeRegister()) {
     const linked = byKey.get(entry.key) ?? [];
     const decision = decisions.get(entry.key);
     const excluded = decision?.decision === 'not_applicable';

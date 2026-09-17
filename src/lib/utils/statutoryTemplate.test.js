@@ -6,7 +6,7 @@ import {
   templateToObligation, templateCoverage, suggestMatches,
   BASIS, BASIS_LABEL, BASIS_DESCRIPTION, BASIS_RANK, GROUPS, GROUP_LABEL,
   HANDLED_BY_LABEL, isSchedulable, isRecurring, isUnhomed,
-  isSuperseded, supersededNote, registerByGroup, basisTally,
+  isSuperseded, supersededNote, basisTally,
 } from './statutoryTemplate.js';
 import { EVIDENCE_ROUTES } from './obligationEvidence.js';
 
@@ -118,18 +118,6 @@ describe('basis — where the requirement comes from', () => {
   });
 });
 
-describe('grouping and display', () => {
-  it('groups every entry, ordered least-discretionary first within a group', () => {
-    const grouped = registerByGroup();
-    const total = [...grouped.values()].reduce((n, es) => n + es.length, 0);
-    expect(total).toBe(STATUTORY_TEMPLATE.length);
-    for (const [g, entries] of grouped) {
-      expect(GROUP_LABEL[g]).toBeTruthy();
-      const ranks = entries.map(e => BASIS_RANK[e.basis]);
-      expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
-    }
-  });
-});
 
 describe('intervalNote', () => {
   it('distinguishes a stated interval from established practice', () => {

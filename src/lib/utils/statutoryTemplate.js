@@ -24,10 +24,53 @@ import { REGISTER } from './statutoryRegisterData.js';
 
 /** @typedef {typeof REGISTER[number]} TemplateEntry */
 
+/**
+ * THE SEED — the standard register, as shipped in code. 116 entries, verified
+ * across fourteen rounds of external review, guarded by `check:register`.
+ *
+ * ⚠ This is NOT necessarily what the building is running on. Once the app has
+ * imported the register into `statutory_register`, the DATABASE is the
+ * catalogue and this is the starting point it was seeded from — see
+ * `docs/requirements/build_plans/Register_In_The_App_Build_Plan.md` §3.
+ *
+ * Tests and claims assert against THIS, deliberately: they are assertions about
+ * what the standard register says, not about what one building has edited.
+ * Runtime consumers want `activeRegister()`.
+ */
 export const STATUTORY_TEMPLATE = REGISTER;
 export const TEMPLATE_KEYS = REGISTER.map(e => e.key);
 
-const BY_KEY = new Map(REGISTER.map(e => [e.key, e]));
+// ── The active register ───────────────────────────────────────────
+// What the helpers below actually read. The seed until the store loads the
+// table, then the table.
+//
+// ⚠ It FALLS BACK to the seed for an empty or absent list, and that is
+// load-bearing rather than defensive: before the import has run, and if the
+// table is ever unreachable, every compliance screen keeps showing the standard
+// register rather than an empty one. ⛔ An empty register would render as "no
+// requirements", which is the most dangerous thing this screen could say.
+
+let ACTIVE = REGISTER;
+let BY_KEY = new Map(REGISTER.map(e => [e.key, e]));
+
+/**
+ * Point the helpers at the register held in the database.
+ * @param {Array|null|undefined} rows  entries (camelCase), or null to reset
+ */
+export function setActiveRegister(rows) {
+  ACTIVE = Array.isArray(rows) && rows.length > 0 ? rows : REGISTER;
+  BY_KEY = new Map(ACTIVE.map(e => [e.key, e]));
+}
+
+/** The register in force. Use this at runtime, not STATUTORY_TEMPLATE. */
+export function activeRegister() {
+  return ACTIVE;
+}
+
+/** True when the helpers are reading the shipped seed rather than the table. */
+export function isUsingSeed() {
+  return ACTIVE === REGISTER;
+}
 
 /** @param {string} key */
 export function templateEntry(key) {
@@ -296,7 +339,7 @@ export function templateCoverage(obligations, opts = {}) {
   const unhomed = [];        // nothing in the portal deals with it
   const superseded = [];     // withdrawn — kept, but no longer counted
 
-  for (const entry of REGISTER) {
+  for (const entry of ACTIVE) {
     const linked = byKey.get(entry.key) ?? [];
     const active = linked.filter(o => o.active !== false);
 
@@ -343,20 +386,9 @@ export function templateCoverage(obligations, opts = {}) {
   };
 }
 
-/** Every entry, grouped for display: group -> entries, basis-ranked within. */
-export function registerByGroup() {
-  const out = new Map();
-  for (const g of GROUPS) {
-    const entries = REGISTER
-      .filter(e => e.group === g)
-      .sort((a, b) => (BASIS_RANK[a.basis] - BASIS_RANK[b.basis]) || a.name.localeCompare(b.name));
-    if (entries.length > 0) out.set(g, entries);
-  }
-  return out;
-}
 
 /** How many entries sit under each basis — the "where does this all come from" summary. */
-export function basisTally(entries = REGISTER) {
+export function basisTally(entries = ACTIVE) {
   const tally = Object.fromEntries(BASIS.map(b => [b, 0]));
   for (const e of entries) if (e.basis in tally) tally[e.basis] += 1;
   return tally;
@@ -461,7 +493,7 @@ export function suggestMatches(obligations) {
   const unlinked = (obligations ?? []).filter(o => !o?.template_key);
   if (unlinked.length === 0) return out;
 
-  for (const entry of REGISTER) {
+  for (const entry of ACTIVE) {
     if (!isSchedulable(entry) || isSuperseded(entry)) continue;
     const entryRef  = normaliseRef(entry.statutoryRef);
     const entryHead = refHead(entry.statutoryRef);

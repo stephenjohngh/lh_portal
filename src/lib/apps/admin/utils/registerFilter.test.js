@@ -7,7 +7,7 @@
 // the 116 entries currently say.
 
 import { describe, it, expect } from 'vitest';
-import { STATUTORY_TEMPLATE, isSchedulable, isUnhomed, isSuperseded }
+import { STATUTORY_TEMPLATE, isSchedulable, isUnhomed, isSuperseded, BASIS_RANK }
   from '$lib/utils/statutoryTemplate.js';
 import {
   registerStatus, filterRegister, registerStatusTally, groupRegisterRows,
@@ -144,6 +144,17 @@ describe('groupRegisterRows', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].group).toBe('fire_safety');
     expect(groups[0].label).toBeTruthy();
+  });
+
+  it('orders least-discretionary FIRST within a group', () => {
+    // Moved here from registerByGroup()'s test when that function was removed
+    // in R1 — the ordering it guaranteed had been silently lost when the two
+    // view tabs became one list, and this is what caught it.
+    const groups = groupRegisterRows(filterRegister(ALL, {}, noCtx));
+    for (const g of groups) {
+      const ranks = g.rows.map(r => BASIS_RANK[r.entry.basis]);
+      expect(ranks, g.group).toEqual([...ranks].sort((a, b) => a - b));
+    }
   });
 
   it('keeps every row, and only once', () => {

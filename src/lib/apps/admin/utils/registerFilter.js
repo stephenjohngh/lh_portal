@@ -17,7 +17,8 @@
 
 import {
   isSchedulable, isRecurring, isUnhomed, isSuperseded, triggerTypeOf,
-  GROUPS, GROUP_LABEL, BASIS, BASIS_LABEL, HANDLED_BY_LABEL, TRIGGER_TYPE_LABEL,
+  GROUPS, GROUP_LABEL, BASIS, BASIS_LABEL, BASIS_RANK, HANDLED_BY_LABEL,
+  TRIGGER_TYPE_LABEL,
 } from '$lib/utils/statutoryTemplate.js';
 import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
 
@@ -147,9 +148,22 @@ export function groupRegisterRows(rows) {
     if (!byGroup.has(row.entry.group)) byGroup.set(row.entry.group, list);
     list.push(row);
   }
+  // ⚠ Least-discretionary FIRST within a group — legislation, then standards,
+  // then contract, then our own controls. A compliance reader opening a section
+  // should meet the legal duties before the conventions.
+  //
+  // This was `registerByGroup()`'s behaviour and had its own test. Replacing the
+  // two view tabs with one list on 2026-09-17 dropped it silently; removing that
+  // dead function in R1 is what surfaced the loss. Restored here, with the test
+  // moved across rather than deleted.
+  const byRank = (a, b) =>
+    (BASIS_RANK[a.entry.basis] ?? 99) - (BASIS_RANK[b.entry.basis] ?? 99);
+
   return [...byGroup]
     .filter(([, list]) => list.length > 0)
-    .map(([group, list]) => ({ group, label: GROUP_LABEL[group] ?? group, rows: list }));
+    .map(([group, list]) => ({
+      group, label: GROUP_LABEL[group] ?? group, rows: [...list].sort(byRank),
+    }));
 }
 
 /** Facet definitions for the register bar — the options a person can pick.

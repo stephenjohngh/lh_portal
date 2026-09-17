@@ -13,7 +13,7 @@
   import {
     templateCoverage, suggestMatches, intervalNote, basisTally,
     BASIS, BASIS_LABEL, BASIS_DESCRIPTION, HANDLED_BY_LABEL,
-    isRecurring, supersededNote, STATUTORY_TEMPLATE,
+    isRecurring, supersededNote,
   } from '$lib/utils/statutoryTemplate.js';
   import {
     currentDecisions, isRecordableReason, reviewsDue, reviewState, REVIEW_SOON_DAYS,
@@ -21,6 +21,7 @@
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
   import { fmtDate } from '$lib/utils/dates.js';
   import { profiles, profilesStore } from '$lib/stores/profiles.js';
+  import { statutoryRegister } from '$lib/stores/statutoryRegister.js';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
@@ -56,7 +57,18 @@
   // Who decided, by name — a decision record that only says "a uuid decided
   // this" answers the question badly.
   $: personName = new Map(($profiles.list ?? []).map(p => [p.id, p.full_name]));
-  onMount(() => { profilesStore.load(); });
+  onMount(() => {
+    profilesStore.load();
+    // R1: the catalogue comes from the database where it has been imported, and
+    // from the shipped seed until then. The store handles the fallback; nothing
+    // here has to care which it got.
+    statutoryRegister.load();
+  });
+
+  // ⚠ Read through the store rather than the seed constant, so the panel
+  // re-renders when the register loads. `$statutoryRegister.entries` IS the
+  // active register — the pure helpers are pointed at the same list.
+  $: REG = $statutoryRegister.entries;
 
   const tally   = basisTally();
 
@@ -174,17 +186,17 @@
   $: awaitingKeys = new Set(
     coverage.missing.filter(m => m.inactiveOnly).map(m => m.entry.key));
   $: statusCtx = { coveredKeys, dismissedKeys: dismissedSet, awaitingKeys };
-  $: tallies   = registerStatusTally(STATUTORY_TEMPLATE, statusCtx);
-  $: dutyTally    = dutyHolderTally(STATUTORY_TEMPLATE);
-  $: citationTally = STATUTORY_TEMPLATE.reduce((m, e) => {
+  $: tallies   = registerStatusTally(REG, statusCtx);
+  $: dutyTally    = dutyHolderTally(REG);
+  $: citationTally = REG.reduce((m, e) => {
     const k = citationState(e); m[k] = (m[k] ?? 0) + 1; return m;
   }, /** @type {Record<string, number>} */ ({}));
   $: filterFields = registerFilterFields(tallies, dutyTally, citationTally);
-  $: shown     = filterRegister(STATUTORY_TEMPLATE, { ...filters, q: search }, statusCtx);
+  $: shown     = filterRegister(REG, { ...filters, q: search }, statusCtx);
   $: groups    = groupRegisterRows(shown);
 
   // "N of M" per group heading needs the unfiltered total for that group.
-  $: groupTotals = STATUTORY_TEMPLATE.reduce((m, e) => {
+  $: groupTotals = REG.reduce((m, e) => {
     m[e.group] = (m[e.group] ?? 0) + 1; return m;
   }, /** @type {Record<string, number>} */ ({}));
 
@@ -208,7 +220,7 @@
       <div>
         <p class="th-title">Periodic activity register</p>
         <p class="th-sub">
-          {STATUTORY_TEMPLATE.length} checks identified
+          {REG.length} checks identified
           <span class="dot">·</span>{coverage.coveredCount} of {coverage.applicableCount} scheduled here
           {#if coverage.unhomed.length > 0}
             <span class="dot">·</span><span class="warn-text">{coverage.unhomed.length} with no home</span>
@@ -324,7 +336,7 @@
         bind:values={filters}
         bind:query={search}
         searchPlaceholder="Name, reference, description…"
-        resultLabel="{shown.length} of {STATUTORY_TEMPLATE.length}"
+        resultLabel="{shown.length} of {REG.length}"
       />
 
       <!-- Bulk apply acts on WHAT IS SHOWN, not on every gap in the register.
