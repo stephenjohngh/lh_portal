@@ -5,9 +5,15 @@
 // only HTTP verbs — an extra export passes `npm run check` and fails
 // `npm run build` — and because the bounds below are worth reading on their own.
 
+import { createClient }                from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL }          from '$env/static/public';
+import { env }                          from '$env/dynamic/private';
 import { listDocuments, copyDocument } from './documentLibrary.js';
 import { friendlyStorageError }        from './storage/storageErrors.js';
 import { getLogger }                   from '$lib/utils/logger';
+import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
+
+const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
 
 const logger = getLogger('DossierPackFiles');
 
@@ -21,8 +27,30 @@ const logger = getLogger('DossierPackFiles');
 export const MAX_COPY_FILES = 25;
 export const MAX_COPY_BYTES = 60 * 1024 * 1024;
 
-/** Where a pack's shelf lives, matching what PackWorkspace uploads into. */
-const SHELF_FOLDER = 'Dossier Packs';
+/**
+ * Where the TARGET pack's shelf lives — the same folder PackWorkspace uploads
+ * that pack's own files into, which is why both go through the one helper
+ * rather than repeating a string literal. The title is looked up here because
+ * the route is given ids only, and a copy landing in the source pack's folder
+ * (or in a flat one shared with every other pack) is exactly what this file
+ * previously did.
+ *
+ * Falls back to the bare parent if the pack cannot be read: a copy in the
+ * wrong folder still beats a copy that does not happen.
+ *
+ * @param {string} packId
+ * @returns {Promise<string>}
+ */
+async function shelfFolderFor(packId) {
+  try {
+    const { data } = await db
+      .from('dossier_packs').select('title').eq('id', packId).single();
+    return entityFolderPath(DOC_FOLDERS.DOSSIER_PACKS, data?.title, packId);
+  } catch (/** @type {any} */ err) {
+    logger('⚠ could not read pack title for', packId, '—', err?.message);
+    return DOC_FOLDERS.DOSSIER_PACKS;
+  }
+}
 
 /**
  * Give `targetPackId` its own copy of every file on `sourcePackId`'s shelf.
@@ -43,6 +71,7 @@ export async function copyPackFiles(sourcePackId, targetPackId, userId) {
   const files = await listDocuments({
     entity_type: 'dossier_pack', entity_id: sourcePackId,
   });
+  const shelfFolder = await shelfFolderFor(targetPackId);
 
   /** @type {Record<string, { id: string, provider_file_id: string }>} */
   const map = {};
@@ -62,7 +91,7 @@ export async function copyPackFiles(sourcePackId, targetPackId, userId) {
       const copy = await copyDocument(file.id, {
         entity_type:  'dossier_pack',
         entity_id:    targetPackId,
-        folder_path:  SHELF_FOLDER,
+        folder_path:  shelfFolder,
         display_name: file.display_name ?? file.filename,
         title:        file.title       ?? null,
         description:  file.description ?? null,

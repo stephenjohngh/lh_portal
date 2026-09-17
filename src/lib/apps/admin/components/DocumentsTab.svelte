@@ -16,7 +16,7 @@
   import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
   import { permissions }    from '$lib/stores/permissions';
   import { debounce }       from '$lib/utils/debounce';
-  import { DOC_TYPES, CATEGORIES } from '$lib/utils/documentUtils';
+  import { DOC_TYPES, CATEGORIES, DOC_FOLDERS } from '$lib/utils/documentUtils';
 
   $: ({ docs, loading, error } = $documentsStore);
 
@@ -141,7 +141,7 @@
     <p class="text-xs text-slate-400 mb-3">Added to the library unattached to any entity.</p>
     <DocumentUploader
       extended={true}
-      folderPath="Documents"
+      folderPath={DOC_FOLDERS.LOOSE}
       on:uploaded={handleUploaded}
     />
   </div>

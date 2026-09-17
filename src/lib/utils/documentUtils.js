@@ -212,6 +212,75 @@ export function categoryFromFilename(filename) {
 // document_library.folder_path holds the whole hierarchy as one string
 // ("Issues/Issue 49"), so the folder a document is in is only meaningful read
 // as a path. These helpers display and order it as one.
+//
+// ⚠ It is NOT a label. The server splits it on '/' and walks it through the
+// provider's ensurePath(), which CREATES each level — so a folder_path is a
+// real Google Drive folder, and an unsanitised title reaching it would
+// silently invent folder levels.
+
+/**
+ * The portal's top-level storage folders, declared in ONE place.
+ *
+ * ⚠ They were previously five string literals spread across five callers, and
+ * that is how two of them stayed flat for a year without anyone noticing:
+ * Maintenance and Issues nested per entity, Dossier and Info did not, and no
+ * single file showed both. `dossierPackFiles.js` had to carry a comment saying
+ * its copy "matches what PackWorkspace uploads into" — a coupling a shared
+ * constant makes structural instead of remembered.
+ */
+export const DOC_FOLDERS = {
+  DOSSIER_PACKS: 'Dossier Packs',
+  INFO_NOTES:    'Info Notes',
+  MAINTENANCE:   'Maintenance',
+  ISSUES:        'Issues',
+  LOOSE:         'Documents',      // uploaded in the admin tab, attached to nothing
+};
+
+/** Characters that cannot appear in a Drive / Windows / POSIX folder name. */
+const FOLDER_UNSAFE = /[/\\:*?"<>|]/g;
+
+/**
+ * Make one path segment safe to use as a folder name. Unsafe characters become
+ * spaces rather than vanishing, so "Flat 3/4" reads as "Flat 3 4" and not
+ * "Flat 34". Capped, because the name comes from a free-text title.
+ * @param {string|null|undefined} value
+ * @param {number} [maxLength]
+ * @returns {string}  '' when nothing usable survives
+ */
+export function sanitiseFolderSegment(value, maxLength = 60) {
+  return String(value ?? '')
+    .replace(FOLDER_UNSAFE, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^\.+|\.+$/g, '')     // a name made only of dots is not a name
+    .trim()
+    .slice(0, maxLength)
+    .trim();
+}
+
+/**
+ * The storage folder for ONE entity's documents: `Parent/Title (shortid)`.
+ *
+ * ⭐ The short id is what makes it durable, and is why this is not just the
+ * title. Two packs may share a title, and a pack may be renamed after its
+ * files are uploaded — without the id the first collides and the second
+ * orphans the folder its files are already in. An id-only name would be
+ * unreadable to anyone browsing Drive, which is most of the point of folders.
+ *
+ * Falls back to the bare parent when there is nothing to name the child with,
+ * which is what a flat folder was before this existed.
+ *
+ * @param {string} parent   the fixed top-level folder, e.g. 'Dossier Packs'
+ * @param {string|null|undefined} title  the entity's user-facing title
+ * @param {string|null|undefined} id     the entity's uuid
+ * @returns {string}
+ */
+export function entityFolderPath(parent, title, id) {
+  const name  = sanitiseFolderSegment(title);
+  const short = String(id ?? '').replace(/-/g, '').slice(0, 8);
+  if (!name && !short) return parent;
+  if (!short)          return `${parent}/${name}`;
+  return `${parent}/${name ? `${name} (${short})` : short}`;
+}
 
 const folderCollator = new Intl.Collator('en-GB', { numeric: true, sensitivity: 'base' });
 

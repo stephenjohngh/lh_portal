@@ -8,6 +8,7 @@ import {
   getExpiryStatus, isExpired, isExpiringSoon,
   docTypeLabel, categoryLabel, categoryFromFilename,
   folderSegments, folderLabel, compareFolderPath, sortDocsByFolder, docName,
+  sanitiseFolderSegment, entityFolderPath, DOC_FOLDERS,
 } from './documentUtils.js';
 
 describe('formatFileSize', () => {
@@ -174,5 +175,80 @@ describe('folder hierarchy', () => {
     expect(docName({ filename: 'a.pdf' })).toBe('a.pdf');
     expect(docName({ display_name: 'A', filename: 'a.pdf' })).toBe('A');
     expect(docName(null)).toBe('');
+  });
+});
+
+describe('sanitiseFolderSegment', () => {
+  it('replaces path-unsafe characters with a space rather than deleting them', () => {
+    // "Flat 3/4" must not become "Flat 34" — and the slash must never survive,
+    // because folder_path is SPLIT on it to create real folders.
+    expect(sanitiseFolderSegment('Flat 3/4')).toBe('Flat 3 4');
+    expect(sanitiseFolderSegment('a:b*c?d"e<f>g|h\\i')).toBe('a b c d e f g h i');
+  });
+
+  it('refuses to produce a name made only of dots or whitespace', () => {
+    expect(sanitiseFolderSegment('..')).toBe('');
+    expect(sanitiseFolderSegment('  ')).toBe('');
+    expect(sanitiseFolderSegment('/')).toBe('');
+    expect(sanitiseFolderSegment(null)).toBe('');
+  });
+
+  it('caps the length, because the name comes from a free-text title', () => {
+    expect(sanitiseFolderSegment('x'.repeat(200))).toHaveLength(60);
+    expect(sanitiseFolderSegment('abc', 2)).toBe('ab');
+  });
+});
+
+describe('entityFolderPath', () => {
+  it('nests one entity under its parent, named and uniquely identified', () => {
+    expect(entityFolderPath('Dossier Packs', 'Smith solicitor pack',
+      'a1b2c3d4-5e6f-7890-abcd-ef1234567890'))
+      .toBe('Dossier Packs/Smith solicitor pack (a1b2c3d4)');
+  });
+
+  it('separates two packs that share a title', () => {
+    // The whole reason the id is in the name.
+    const a = entityFolderPath('Dossier Packs', 'Freehold enquiry', 'aaaaaaaa-1111-2222-3333-444444444444');
+    const b = entityFolderPath('Dossier Packs', 'Freehold enquiry', 'bbbbbbbb-1111-2222-3333-444444444444');
+    expect(a).not.toBe(b);
+  });
+
+  it('cannot invent a folder level from a title containing a slash', () => {
+    const path = entityFolderPath('Info Notes', 'Fire/Safety', '12345678-aaaa-bbbb-cccc-dddddddddddd');
+    expect(path.split('/')).toHaveLength(2);
+    expect(path).toBe('Info Notes/Fire Safety (12345678)');
+  });
+
+  it('falls back to the bare parent when there is nothing to name a child with', () => {
+    expect(entityFolderPath('Dossier Packs', null, null)).toBe('Dossier Packs');
+    expect(entityFolderPath('Dossier Packs', '   ', '')).toBe('Dossier Packs');
+  });
+
+  it('uses whichever half it has', () => {
+    expect(entityFolderPath('Maintenance', 'Annual service', null))
+      .toBe('Maintenance/Annual service');
+    expect(entityFolderPath('Maintenance', null, '99887766-aaaa-bbbb-cccc-dddddddddddd'))
+      .toBe('Maintenance/99887766');
+  });
+
+  it('produces a path the folder helpers can read back', () => {
+    const path = entityFolderPath('Dossier Packs', 'Smith pack', 'a1b2c3d4-0000-0000-0000-000000000000');
+    expect(folderSegments(path)).toEqual(['Dossier Packs', 'Smith pack (a1b2c3d4)']);
+    expect(folderLabel(path)).toBe('Dossier Packs / Smith pack (a1b2c3d4)');
+  });
+});
+
+describe('DOC_FOLDERS', () => {
+  it('declares every top-level folder in one place', () => {
+    // These were five literals in five files, which is how two of them stayed
+    // flat without anyone seeing both at once.
+    expect(Object.values(DOC_FOLDERS)).toEqual(
+      expect.arrayContaining(['Dossier Packs', 'Info Notes', 'Maintenance', 'Issues', 'Documents']));
+  });
+
+  it('has no folder name that would split into two levels', () => {
+    for (const name of Object.values(DOC_FOLDERS)) {
+      expect(folderSegments(name)).toHaveLength(1);
+    }
   });
 });

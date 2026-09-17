@@ -11,8 +11,16 @@
   import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
   import { VISIBILITY_BADGES } from '../utils/infoHelpers.js';
   import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
+  import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
 
-  export let note    = null;  // full note with documents + creator
+  /**
+   * The full note, with its section and creator joined on. `& Record<string,
+   * any>` is deliberate — the query adds `section` and `creator`, which a bare
+   * Tables<> would reject. Without the annotation the prop infers `never` and
+   * every property read on it is an error.
+   * @type {(import('$lib/database.types').Tables<'info_notes'> & Record<string, any>)|null}
+   */
+  export let note    = null;
   export let loading = false;
 
   const dispatch = createEventDispatcher();
@@ -175,7 +183,7 @@
         entityId={note.id}
         canEdit={$permissions.canModify}
         canDelete={$permissions.isAdmin}
-        folderPath="Info Notes"
+        folderPath={entityFolderPath(DOC_FOLDERS.INFO_NOTES, note.title, note.id)}
         on:uploaded={(e) => dispatch('docUploaded', e.detail)}
         on:deleted={(e) => dispatch('docDeleted', e.detail)}
       />

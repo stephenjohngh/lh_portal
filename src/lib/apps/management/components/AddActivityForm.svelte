@@ -9,6 +9,7 @@
   import { createEventDispatcher } from 'svelte';
   import { issuesStore }      from '../stores/issuesStore';
   import { uploadDocument }   from '$lib/utils/documentApi';
+  import { DOC_FOLDERS }      from '$lib/utils/documentUtils.js';
   import { postJson }         from '$lib/utils/request';
   import { parseEmailPaste }  from '$lib/utils/emailParser';
   import { ACTIVITY_TYPE, ACTIVITY_TYPES, ACTIVITY_TYPE_CONFIG } from '$lib/utils/constants';
@@ -120,7 +121,12 @@
         const doc = await uploadDocument(docFile, {
           entity_type:  'issue',
           entity_id:    issueId,
-          folder_path:  issueNumber ? `Issues/Issue ${issueNumber}` : 'Issues',
+          // Keeps the issue NUMBER rather than a uuid fragment: it is already
+          // unique and already what a person calls the issue, so a short id
+          // would make the folder less readable, not more.
+          folder_path:  issueNumber
+            ? `${DOC_FOLDERS.ISSUES}/Issue ${issueNumber}`
+            : DOC_FOLDERS.ISSUES,
           display_name: docFile.name,
           // doc_type omitted on purpose: the server derives it from the MIME
           // type. Hardcoding 'other' here is why every issue attachment in the

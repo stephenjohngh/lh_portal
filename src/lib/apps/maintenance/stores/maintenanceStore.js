@@ -18,6 +18,7 @@ import { supabase }      from '$lib/supabaseClient';
 import { uploadMedia }   from '$lib/utils/mediaUpload.js';
 import { deleteStorageFiles } from '$lib/utils/driveUtils.js';
 import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary } from '$lib/utils/documentApi.js';
+import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
 import { jobRag, addDaysISO } from '../utils/maintenanceHelpers.js';
 import { listInspectionDefinitions } from '$lib/apps/inspection/public.js';
 import { isJobEvidenced } from '$lib/utils/obligationEvidence.js';
@@ -158,11 +159,12 @@ function createMaintenanceStore() {
   async function uploadDocument(jobId, file, docType, expiryDate = null) {
     const userId  = await currentUserId();
 
-    // Build a human-readable folder path: Maintenance / Job Title
+    // Maintenance / Job title (shortid). This folder already nested, but on the
+    // title alone — so two jobs sharing a title shared a folder, and renaming
+    // one orphaned the folder its certificates were already in. The shared
+    // helper does the sanitising that used to be a private copy here.
     const s       = get({ subscribe });
     const jobInfo = s.jobs.find(j => j.id === jobId);
-    const sanitize = str => str?.replace(/[/\\:*?"<>|]/g, '').trim() ?? '';
-    const jobLabel = sanitize(jobInfo?.title ?? '');
 
     // Store the file in the shared document_library (unified storage). The
     // returned row carries a web_view_url (for display) + a SHA-256 checksum,
@@ -173,7 +175,7 @@ function createMaintenanceStore() {
       display_name: file.name,
       doc_type:     docType,
       expiry_date:  expiryDate || null,
-      folder_path:  jobLabel ? `Maintenance/${jobLabel}` : 'Maintenance',
+      folder_path:  entityFolderPath(DOC_FOLDERS.MAINTENANCE, jobInfo?.title, jobId),
     });
 
     const doc = await api.create('maintenance_documents', {

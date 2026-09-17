@@ -8,6 +8,7 @@
   import { getPref, setPref } from '$lib/utils/prefs';
   import { logAudit }    from '$lib/utils/auditLogger';
   import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
+  import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
   import Button          from '$lib/components/common/Button.svelte';
   import LoadingSpinner  from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay    from '$lib/components/common/ErrorDisplay.svelte';
@@ -1040,7 +1041,7 @@
               entityId={pack.id}
               canEdit={canEdit}
               canDelete={$permissions.isAdmin}
-              folderPath="Dossier Packs"
+              folderPath={entityFolderPath(DOC_FOLDERS.DOSSIER_PACKS, pack.title, pack.id)}
               title="Files"
               on:uploaded={(e) => auditDoc('create', e.detail)}
               on:updated={(e)  => auditDoc('update', e.detail)}
