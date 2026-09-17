@@ -170,6 +170,17 @@
     } finally { diffBusy = false; }
   }
 
+  async function verifyCitation(ev) {
+    const { key, url, on } = ev.detail;
+    savingEntry = true; panelError = '';
+    try {
+      await statutoryRegister.recordCitationVerification(key, { url, on });
+      showEntryModal = false; editing = null;
+    } catch (/** @type {any} */ err) {
+      panelError = err.message;
+    } finally { savingEntry = false; }
+  }
+
   function editFromDiff(ev) {
     const entry = $statutoryRegister.entries.find(e => e.key === ev.detail);
     if (entry) editRequirement(entry);
@@ -719,6 +730,7 @@
     provenance={editing ? provenanceOf(editing.key) : {}}
     saving={savingEntry}
     on:save={saveEntry}
+    on:verify={verifyCitation}
     on:close={() => { showEntryModal = false; editing = null; }}
   />
 {/if}

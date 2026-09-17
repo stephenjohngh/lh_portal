@@ -44,6 +44,14 @@
 
   const dispatch = createEventDispatcher();
 
+  // -- Recording that the citation has been checked ----------------------------
+  // ⚠ Its own act, not two fields among thirty-five. The register's established
+  // shape for a decision someone may later have to justify is source + name +
+  // date, append-only — the same shape `statutory_exclusions` uses.
+  let verifying = false;
+  let verifyUrl = '';
+  let verifyOn = new Date().toISOString().slice(0, 10);
+
   const isNew = !entry;
   let e = {
     key: '', name: '', description: '', group: 'fire_safety', basis: 'statute',
@@ -112,6 +120,34 @@
           </p>
         {:else}
           <p class="prov-warn">⚠ This row’s citation has not been individually recorded.</p>
+        {/if}
+
+        {#if !verifying}
+          <button class="prov-act" on:click={() => { verifying = true; verifyUrl = ''; }}>
+            {e.citationVerifiedAgainst ? 'Record a fresh check' : 'Record a citation check'}
+          </button>
+        {:else}
+          <div class="verify">
+            <p class="verify-h">Record that this citation has been checked</p>
+            <p class="verify-note">
+              ⚠ This records that the <strong>reference</strong> was read against its source and
+              found correct. It says nothing about whether the interval is right or whether the
+              requirement applies to this building — those are different questions and must not
+              be implied by this one.
+            </p>
+            <FormInput label="Source checked against" bind:value={verifyUrl} required
+              placeholder="https://www.legislation.gov.uk/uksi/2022/547/regulation/10"
+              helpText="Where a reader can go and check it again. A verification with nothing to re-check against is not a verification." />
+            <FormInput label="Checked on" type="date" bind:value={verifyOn} />
+            <div class="verify-actions">
+              <Button variant="secondary" size="small" disabled={saving}
+                on:click={() => verifying = false}>Cancel</Button>
+              <Button variant="primary" size="small" disabled={saving || !verifyUrl.trim()}
+                on:click={() => dispatch('verify', { key: entry?.key, url: verifyUrl, on: verifyOn })}>
+                Record
+              </Button>
+            </div>
+          </div>
         {/if}
 
         {#if provenance.seedModifiedAt}
@@ -290,6 +326,19 @@
   .prov a { color: rgb(134 239 172); text-decoration: underline; }
   .prov-scope { color: rgb(100 116 139); }
   .prov-warn { color: rgb(252 211 77); }
+  .prov-act {
+    align-self: flex-start; margin-top: 0.2rem; background: none; border: none;
+    padding: 0; font-size: 0.76rem; color: rgb(125 211 252);
+    text-decoration: underline; cursor: pointer;
+  }
+  .verify {
+    margin-top: 0.4rem; padding-top: 0.5rem;
+    border-top: 1px solid rgb(71 85 105 / 0.6);
+    display: flex; flex-direction: column; gap: 0.2rem;
+  }
+  .verify-h { font-weight: 700; color: rgb(226 232 240); font-size: 0.8rem; }
+  .verify-note { font-size: 0.74rem; color: rgb(148 163 184); line-height: 1.5; margin-bottom: 0.3rem; }
+  .verify-actions { display: flex; justify-content: flex-end; gap: 0.4rem; margin-top: 0.2rem; }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
   .sec {
     cursor: pointer; user-select: none; margin-top: 0.5rem;
