@@ -178,7 +178,10 @@ describe('templateToObligation', () => {
       evidenced_by: sample.evidencedBy,
       template_key: SAMPLE_KEY,
       presentation_order: 3,
-      active: true,
+      // ⛔ Changed deliberately 2026-09-17: applied entries are created
+      // SWITCHED OFF. Active + an empty scope put them straight onto the mobile
+      // start list matching every component in the building.
+      active: false,
     });
     expect(row.statutory_ref).toMatch(/LOLER|Lifting Operations/);
     expect(row.competency_required).toMatch(/INDEPENDENT/);
@@ -490,5 +493,80 @@ describe('triggerTypeOf', () => {
     expect(kinds.has('calendar')).toBe(true);
     expect(kinds.has('event')).toBe(true);
     expect(kinds.size).toBeGreaterThan(2);
+  });
+});
+
+describe('applying a register entry', () => {
+  const schedulable = STATUTORY_TEMPLATE.filter(e => isSchedulable(e) && !isSuperseded(e));
+
+  it('⛔ creates it SWITCHED OFF', () => {
+    // An applied entry starts matching every component in the building unless
+    // the register proposes a scope. Active, that put 23 obligations onto the
+    // mobile start list each offering a walk of 1,092 components.
+    for (const e of schedulable) {
+      expect(templateToObligation(e).active, e.key).toBe(false);
+    }
+  });
+
+  it('carries the register’s proposed scope where there is one', () => {
+    const scoped = schedulable.filter(e => e.suggestedScope);
+    expect(scoped.length).toBeGreaterThan(0);
+    for (const e of scoped) {
+      expect(templateToObligation(e).scope, e.key).toEqual(e.suggestedScope);
+    }
+  });
+
+  it('falls back to an empty scope rather than inventing one', () => {
+    const unscoped = schedulable.filter(e => !e.suggestedScope);
+    for (const e of unscoped) expect(templateToObligation(e).scope, e.key).toEqual({});
+  });
+});
+
+describe('the proposed scopes', () => {
+  const scoped = STATUTORY_TEMPLATE.filter(e => e.suggestedScope);
+
+  it('only use keys the scope engine understands', () => {
+    // A typo'd key is silently ignored by scopeToCriteria, which turns a
+    // proposed scope into "every component" — the exact thing it exists to
+    // prevent, wearing the appearance of being configured.
+    const KNOWN = new Set(['typeCodes', 'systemIds', 'floorIds', 'statuses',
+                           'spaceIds', 'fixedAttrFilters', 'conditionAttrFilters']);
+    for (const e of scoped) {
+      for (const k of Object.keys(e.suggestedScope)) {
+        expect(KNOWN.has(k), `${e.key}: unknown scope key "${k}"`).toBe(true);
+      }
+    }
+  });
+
+  it('are never empty — an empty proposal is the absence of one', () => {
+    for (const e of scoped) {
+      const values = Object.values(e.suggestedScope);
+      expect(values.length, e.key).toBeGreaterThan(0);
+      expect(values.some(v => Array.isArray(v) && v.length > 0), e.key).toBe(true);
+    }
+  });
+
+  it('name attribute filters by NAME, which is what makes them portable', () => {
+    for (const e of scoped) {
+      for (const f of e.suggestedScope.fixedAttrFilters ?? []) {
+        expect(f.name, e.key).toBeTruthy();
+        expect(f.value ?? f.values, e.key).toBeDefined();
+      }
+    }
+  });
+
+  it('a row either proposes a scope or explains why it cannot — never both', () => {
+    // Both would be contradictory: a verified scope and an outstanding
+    // obstacle to scoping. Same shape as the row that once said it applied and
+    // offered to exclude itself.
+    const both = STATUTORY_TEMPLATE.filter(e => e.suggestedScope && e.scopeNote);
+    expect(both.map(e => e.key)).toEqual([]);
+  });
+
+  it('every scope note belongs to a schedulable row', () => {
+    // A note about scoping on a row that can never be scheduled is noise.
+    const noted = STATUTORY_TEMPLATE.filter(e => e.scopeNote);
+    expect(noted.length).toBeGreaterThan(0);
+    for (const e of noted) expect(isSchedulable(e), e.key).toBe(true);
   });
 });

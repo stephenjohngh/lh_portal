@@ -332,3 +332,43 @@ describe('dutyHolderRole — who bears the duty IN LAW', () => {
     expect(rows.length).toBeGreaterThan(0);
   });
 });
+
+describe('awaiting_setup — added but not yet live', () => {
+  const gapKey = ALL.find(e => registerStatus(e, noCtx) === 'not_covered').key;
+
+  it('separates "apply created it" from "somebody switched it off"', () => {
+    // Both are `active: false` and both were shown identically. One is a work
+    // queue, the other is a decision.
+    const ctx = { ...noCtx, awaitingKeys: new Set([gapKey]) };
+    expect(registerStatus({ ...ALL.find(e => e.key === gapKey) }, ctx)).toBe('awaiting_setup');
+  });
+
+  it('⛔ never reads as covered — the duty is not being discharged', () => {
+    // The rule the compliance report already enforces for `assured`: a third
+    // state, not a softened one.
+    expect(REGISTER_STATUS_CLASS.awaiting_setup).not.toBe('ok');
+    expect(REGISTER_STATUS_LABEL.awaiting_setup).not.toMatch(/covered|compliant|scheduled/i);
+  });
+
+  it('is outranked by every state that is a real answer', () => {
+    const entry = ALL.find(e => e.key === gapKey);
+    const awaiting = new Set([gapKey]);
+    expect(registerStatus(entry, { coveredKeys: new Set([gapKey]), awaitingKeys: awaiting }))
+      .toBe('scheduled');
+    expect(registerStatus(entry, { dismissedKeys: new Set([gapKey]), awaitingKeys: awaiting }))
+      .toBe('not_applicable');
+  });
+
+  it('is filterable and tallied like any other status', () => {
+    const ctx = { ...noCtx, awaitingKeys: new Set([gapKey]) };
+    const rows = filterRegister(ALL, { status: new Set(['awaiting_setup']) }, ctx);
+    expect(rows.map(r => r.entry.key)).toEqual([gapKey]);
+    expect(registerStatusTally(ALL, ctx).awaiting_setup).toBe(1);
+  });
+
+  it('still accounts for every entry exactly once', () => {
+    const ctx = { ...noCtx, awaitingKeys: new Set([gapKey]) };
+    const tally = registerStatusTally(ALL, ctx);
+    expect(Object.values(tally).reduce((a, b) => a + b, 0)).toBe(ALL.length);
+  });
+});

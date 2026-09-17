@@ -26,11 +26,13 @@ import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
  * the order the sections used to appear in, and it drives the count strip.
  */
 export const REGISTER_STATUS = [
-  'not_covered', 'no_home', 'elsewhere', 'scheduled', 'not_applicable', 'superseded',
+  'not_covered', 'awaiting_setup', 'no_home', 'elsewhere',
+  'scheduled', 'not_applicable', 'superseded',
 ];
 
 export const REGISTER_STATUS_LABEL = {
   not_covered:    'Not covered',
+  awaiting_setup: 'Added — needs scope',
   no_home:        'Nothing deals with it',
   elsewhere:      'Tracked in another app',
   scheduled:      'Scheduled here',
@@ -40,7 +42,7 @@ export const REGISTER_STATUS_LABEL = {
 
 /** Row tint class per status — kept beside the labels so they cannot diverge. */
 export const REGISTER_STATUS_CLASS = {
-  not_covered: 'gap', no_home: 'gap', elsewhere: 'else',
+  not_covered: 'gap', awaiting_setup: 'part', no_home: 'gap', elsewhere: 'else',
   scheduled: 'ok', not_applicable: 'na', superseded: 'na',
 };
 
@@ -52,16 +54,26 @@ export const REGISTER_STATUS_CLASS = {
  * without that branch a repealed requirement falls through and reads as a gap.
  *
  * @param {Object} entry
- * @param {{coveredKeys?: Set<string>, dismissedKeys?: Set<string>}} [ctx]
+ * @param {{coveredKeys?: Set<string>, dismissedKeys?: Set<string>, awaitingKeys?: Set<string>}} [ctx]
  * @returns {string} a REGISTER_STATUS value
  */
 export function registerStatus(entry, ctx = {}) {
   const covered   = ctx.coveredKeys   ?? new Set();
   const dismissed = ctx.dismissedKeys ?? new Set();
+  const awaiting  = ctx.awaitingKeys  ?? new Set();
   if (isSuperseded(entry))       return 'superseded';
   if (covered.has(entry.key))    return 'scheduled';
   if (dismissed.has(entry.key))  return 'not_applicable';
   if (!isSchedulable(entry))     return isUnhomed(entry) ? 'no_home' : 'elsewhere';
+  // ⚠ AFTER the three above and BEFORE 'not_covered'. An obligation that
+  // exists but is switched off is NOT covered — `templateCoverage` says so
+  // deliberately and that stays true. This only separates two things that were
+  // being shown identically: one somebody switched OFF, and one that apply
+  // created and nobody has finished. The second is a work queue; the first is a
+  // decision. ⛔ It is styled as a gap, never as covered — the duty is not
+  // being discharged either way. Same shape as `assured` vs `ok` in the
+  // compliance report: a third state, not a softened one.
+  if (awaiting.has(entry.key))   return 'awaiting_setup';
   return 'not_covered';
 }
 

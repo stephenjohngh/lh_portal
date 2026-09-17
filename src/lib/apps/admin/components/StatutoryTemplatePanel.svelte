@@ -147,6 +147,17 @@
   // -- Display helpers ---------------------------------------------------------
   const cadence = e => (isRecurring(e) ? frequencyLabel(e.frequencyDays) : 'On event');
 
+  /** A proposed scope, in words. Deliberately terse — the authority is the
+   *  scope editor in the obligation, this is only a statement of intent. */
+  function scopeSummary(scope) {
+    const bits = [];
+    if (scope?.typeCodes?.length) bits.push(scope.typeCodes.join(', '));
+    for (const f of scope?.fixedAttrFilters ?? []) bits.push(`${f.name} = ${f.value}`);
+    if (scope?.systemIds?.length) bits.push(`${scope.systemIds.length} system(s)`);
+    if (scope?.floorIds?.length)  bits.push(`${scope.floorIds.length} floor(s)`);
+    return bits.join(' · ') || 'building-level — no component scope';
+  }
+
   /** Months → the way a person says it. No instrument here sets a retention
    *  period, which is exactly why a bare number must not read as a minimum. */
   const retentionLabel = (months) =>
@@ -156,7 +167,12 @@
 
   // One status function for the whole panel, in registerFilter.js — see its
   // header for why this is not a set of hand-written sections any more.
-  $: statusCtx = { coveredKeys, dismissedKeys: dismissedSet };
+  // Applied but not finished: an obligation exists, none of them is switched on.
+  // ⚠ `templateCoverage` still counts these as MISSING, which is right — the
+  // duty is not being discharged. This only tells the two apart on screen.
+  $: awaitingKeys = new Set(
+    coverage.missing.filter(m => m.inactiveOnly).map(m => m.entry.key));
+  $: statusCtx = { coveredKeys, dismissedKeys: dismissedSet, awaitingKeys };
   $: tallies   = registerStatusTally(STATUTORY_TEMPLATE, statusCtx);
   $: dutyTally    = dutyHolderTally(STATUTORY_TEMPLATE);
   $: filterFields = registerFilterFields(tallies, dutyTally);
@@ -169,7 +185,8 @@
   }, /** @type {Record<string, number>} */ ({}));
 
   // Only entries that can actually be created — bulk apply must never offer to
-  // add something the scheduler cannot date.
+  // add something the scheduler cannot date, nor a SECOND copy of one that
+  // apply already created and left switched off.
   $: shownAddable = shown.filter(r => r.status === 'not_covered');
 
   // Per-row extras the coverage report knows and the register entry does not.
@@ -256,8 +273,17 @@
       {#if applyReport}
         <div class="report" class:bad={applyReport.failed.length > 0}>
           {#if applyReport.created.length > 0}
-            <p>✓ Added {applyReport.created.length} obligation{applyReport.created.length === 1 ? '' : 's'}.
-              Each needs a scope — they currently match every component.</p>
+            <p>
+              ✓ Added {applyReport.created.length} obligation{applyReport.created.length === 1 ? '' : 's'},
+              <strong>switched off</strong>. Nothing reaches the mobile app or the job scheduler until
+              you turn each one on.
+            </p>
+            <p class="report-next">
+              They are listed below as <em>Added — needs scope</em>. Where the register proposes a
+              scope it has been applied; the rest match <strong>every component</strong> and are
+              badged <em>Matches everything</em> in the list beneath this panel — filter Scope to
+              <em>Matches everything</em> to work through them.
+            </p>
           {/if}
           {#each applyReport.failed as f (f.key)}<p class="fail">⚠ {f.name} — {f.message}</p>{/each}
         </div>
@@ -398,6 +424,18 @@
                     </p>
                     <p class="note">{intervalNote(entry)}</p>
                     <p class="applies"><span class="applies-k">Applies when:</span> {entry.appliesWhen}</p>
+                    {#if entry.suggestedScope}
+                      <p class="applies">
+                        <span class="applies-k">Proposed scope:</span>
+                        {scopeSummary(entry.suggestedScope)}
+                        <span class="scope-ok">verified against this building’s component types</span>
+                      </p>
+                    {:else if entry.scopeNote}
+                      <p class="applies">
+                        <span class="applies-k">Scoping:</span> {entry.scopeNote}
+                      </p>
+                    {/if}
+
                     {#if entry.triggerSource}
                       <p class="applies">
                         <span class="applies-k">What detects it:</span> {entry.triggerSource}
@@ -591,6 +629,10 @@
   .tally.ok .tally-n   { color: rgb(134 239 172); }
   .tally.else .tally-n { color: rgb(125 211 252); }
 
+  .status.part { background: rgb(251 191 36 / 0.16); color: rgb(252 211 77); }
+  .tally.part .tally-n { color: rgb(252 211 77); }
+  .row.part { border-color: rgb(251 191 36 / 0.35); }
+  .report-next { margin-top: 0.3rem; color: rgb(148 163 184); }
   .badge.incomplete { background: rgb(248 113 113 / 0.18); color: rgb(252 165 165); text-transform: none; letter-spacing: 0; }
   .incomplete-box {
     margin-top: 0.35rem; padding: 0.5rem 0.65rem; border-radius: 6px;
@@ -601,6 +643,7 @@
   .incomplete-h { font-weight: 700; color: rgb(252 165 165); }
   .incomplete-action { margin-top: 0.1rem; }
   .not-assigned { font-weight: 700; color: rgb(252 165 165); letter-spacing: 0.03em; }
+  .scope-ok { color: rgb(134 239 172); font-size: 0.72rem; }
   .party { font-size: 0.76rem; color: rgb(148 163 184); line-height: 1.45; }
   .party-k { color: rgb(203 213 225); font-weight: 600; }
   .bulk { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }

@@ -387,6 +387,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_communal_fire_doors',
+    suggestedScope: {'typeCodes': ['door_fire_door']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     sourceIntervalWords: 'at least every 3 months (FSER reg 10(6))',
@@ -408,6 +409,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_flat_entrance_doors',
+    suggestedScope: {'typeCodes': ['door_apartment_door']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     sourceIntervalWords: 'at least every 12 months (FSER reg 10(4))',
@@ -572,6 +574,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fire_damper_test',
+    suggestedScope: {'typeCodes': ['fires_fire_damper']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -628,6 +631,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fire_alarm_weekly_test',
+    suggestedScope: {'typeCodes': ['firedet_call_point', 'firedet_accallpoint']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Fire alarm — weekly test',
@@ -679,6 +683,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'emergency_lighting_monthly',
+    suggestedScope: {'fixedAttrFilters': [{'name': 'Emergency', 'value': 'true'}]},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Emergency lighting — monthly function test',
@@ -798,6 +803,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'sprinkler_weekly_test',
+    suggestedScope: {'typeCodes': ['fires_sprinkler']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     name: 'Suppression system — weekly test',
@@ -909,6 +915,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'dry_riser_visual',
+    suggestedScope: {'typeCodes': ['fires_dry_riser', 'fires_riser_inlet']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Dry riser — six-monthly visual inspection',
@@ -993,6 +1000,7 @@ export const REGISTER = [
   // is a failed smoke ventilation provision that looks like a window.
   entry({
     key: 'stair_openable_vent_check',
+    scopeNote: '⛔ BLOCKED on D12. The stair windows are not modelled as components — typeCodes: arch_window_in matches 0 today.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -1093,6 +1101,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_monthly_equipment_check',
+    scopeNote: 'Spans four systems — risers, sprinkler, lift. ⚠ Scope it from the reg 6(7) asset schedule rather than by type, so the row cannot silently miss an item the schedule names.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     // ⚠ Reg 7(4) is UNCONDITIONAL — "must make a record ... and make that record
@@ -1166,6 +1175,7 @@ export const REGISTER = [
   // a separate statutory duty on the responsible person.
   entry({
     key: 'fser_monthly_systems_check',
+    scopeNote: 'Scope to the Fire Detection & Alarm system (118 components). ⚠ A system id is this building’s own uuid, so it cannot be carried in the catalogue — pick the system here.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     sourceIntervalWords: 'monthly routine checks (FSER reg 7(1)) — the Regulations state no permitted maximum',
@@ -1239,6 +1249,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'carpark_natural_ventilation_check',
+    scopeNote: 'typeCodes: ventilation_vent (32). ⚠ Confirm these vents ARE the car park openings before relying on it — the row is about a designed free area, not about vents generally.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -1315,6 +1326,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_wayfinding_signage',
+    suggestedScope: {'typeCodes': ['signage_wayfinding']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Wayfinding signage — check',
@@ -1333,6 +1345,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_monthly_check',
+    scopeNote: '⛔ BLOCKED on D14. typeCodes: fires_info holds three different things and only one of them IS the secure information box. A scope cannot name one component.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Secure information box — monthly check',
@@ -1877,6 +1890,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'escape_route_obstruction',
+    scopeNote: 'Building-level BY DESIGN — a route walk, not a component check. Leave the scope empty.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Escape routes — obstruction check',
@@ -1900,6 +1914,7 @@ export const REGISTER = [
   // positive and their conclusion was right anyway: there was no row.
   entry({
     key: 'refuse_store_check',
+    scopeNote: 'typeCodes: waste_bin (11) + fires_hopper (8). ⚠ Bins are not stores, so a space scope may suit this better. Add the chute once D16 lands.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -1949,6 +1964,7 @@ export const REGISTER = [
   // not yet known.
   entry({
     key: 'refuse_chute_service',
+    suggestedScope: {'typeCodes': ['fires_hopper']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -2195,6 +2211,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'firefighting_lift_weekly_test',
+    scopeNote: 'typeCodes: lift_fire_controls — correctly 0 today, because no lift is yet designated. Scope it when one is.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -2309,6 +2326,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'water_temperature_monitoring',
+    scopeNote: 'Scope to the SENTINEL taps only — typeCodes: water_sink plus a sentinel attribute. ⚠ The type alone is all 8 taps, which over-scopes it. Needs D18.',
     statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     name: 'Water temperature monitoring',
@@ -2335,6 +2353,7 @@ export const REGISTER = [
   // still in a dead leg. The word "flush" appeared nowhere.
   entry({
     key: 'legionella_outlet_flushing',
+    scopeNote: 'Scope from the written scheme’s list of little-used outlets — typeCodes: water_sink plus a little-used attribute, never every tap. Needs A14 and D18.',
     statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -2636,6 +2655,7 @@ export const REGISTER = [
   //     common parts, in plain English.
   entry({
     key: 'display_prescribed_information',
+    scopeNote: 'Building-level; there is no component. Consider modelling the notice position if the display itself needs inspecting.',
     statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     reviewerNote:
@@ -3730,6 +3750,7 @@ export const REGISTER = [
   // not to quietly delete the entry.
   entry({
     key: 'acrow_prop_check',
+    scopeNote: 'Building-level BY DESIGN — there is no component type for temporary support, and correctly so.',
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
@@ -3836,6 +3857,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'stair_core_walk_around',
+    suggestedScope: {'typeCodes': ['arch_stairwell']},
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
@@ -3861,6 +3883,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'lobby_to_stair_door_check',
+    scopeNote: '⛔ BLOCKED on D17. typeCodes: door_fire_door over-scopes — these doors need separating from the other 129 before this row can be scoped.',
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
@@ -3882,6 +3905,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'stair_lighting_check',
+    scopeNote: 'fixedAttrFilters: Emergency, narrowed by floorIds to the stair floors — or by a location attribute. A subset of the emergency luminaires, not all of them.',
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,
@@ -3925,6 +3949,7 @@ export const REGISTER = [
   }),
   entry({
     key: 'alarm_audibility_spot_check',
+    suggestedScope: {'typeCodes': ['firedet_sounder']},
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     operationallyIncomplete: true,

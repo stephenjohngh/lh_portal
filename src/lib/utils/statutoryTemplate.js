@@ -233,9 +233,18 @@ export function templateToObligation(entry, opts = {}) {
   return {
     name:                    entry.name,
     description:             entry.description,
-    active:                  true,
+    // ⛔ Created SWITCHED OFF, deliberately. An applied entry starts with a
+    // scope that matches every component in the building, and `active: true`
+    // put it straight onto the mobile start list — so "Add all" offered a walk
+    // of 1,092 components, 23 times over, before anyone had scoped anything.
+    // Off is the only honest starting state: the duty is identified and not yet
+    // being discharged, which is exactly what the gap report should say.
+    active:                  false,
     mode:                    'standard',
-    scope:                   {},
+    // The scope the register proposes, where one has been verified against this
+    // portal's component types. `{}` still means "every component" — which is
+    // why they are created switched off.
+    scope:                   entry.suggestedScope ?? {},
     checklist_mode:          'type_driven',
     checklist_attr_ids:      [],
     pass_fail_rule:          'manual',

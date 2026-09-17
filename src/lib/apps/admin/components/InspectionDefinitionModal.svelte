@@ -13,6 +13,7 @@
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import ScopeEditor  from '$lib/apps/building_assets/components/inspections/ScopeEditor.svelte';
+  import { templateEntry } from '$lib/utils/statutoryTemplate.js';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
   import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
   import { applyChecklistMode } from '$lib/apps/inspection/utils/checklistRules.js';
@@ -53,6 +54,12 @@
   let mode        = definition?.mode ?? 'standard';
   /** @typedef {{ typeCodes?: string[], systemIds?: string[], floorIds?: string[], statuses?: string[], fixedAttrFilters?: any[], conditionAttrFilters?: any[] }} ScopeShape */
   let scope = /** @type {ScopeShape} */ (definition?.scope ? structuredClone(definition.scope) : {});
+  // What the register says about scoping THIS obligation. It exists because the
+  // work was done once — row by row, against the real component data — and then
+  // written into a planning document the app could not reach, so it was being
+  // re-derived by hand in this very modal, 23 times over.
+  $: registerEntry = definition?.template_key ? templateEntry(definition.template_key) : null;
+
   let frequencyDays = definition?.frequency_days ?? null;
   let linkSource    = definition?.link_source ?? 'component_links';
   let linkTypeFilter = definition?.link_type_filter ?? '';
@@ -398,6 +405,12 @@
     <!-- Scope -->
     <div class="block">
       <p class="block-lbl">What is inspected</p>
+
+      {#if registerEntry?.scopeNote}
+        <p class="scope-note">
+          <strong>From the register:</strong> {registerEntry.scopeNote}
+        </p>
+      {/if}
       <ScopeEditor
         {scope} {types} {systems} {floors} {attrDefs} {attrOptions}
         matchCount={matchCount} totalCount={components.length}
@@ -477,6 +490,11 @@
   .order-fld input { width: 5rem; padding: 0.3rem 0.5rem; background: rgb(15 23 42); border: 1px solid rgb(71 85 105); border-radius: 6px; color: rgb(226 232 240); font-size: 0.85rem; }
   .order-fld input:focus { outline: none; border-color: rgb(60 150 131); }
   .order-hint { font-size: 0.72rem; color: rgb(100 116 139); line-height: 1.5; margin-top: -0.25rem; }
+  .scope-note {
+    font-size: 0.78rem; line-height: 1.45; color: rgb(203 213 225);
+    background: rgb(56 189 248 / 0.1); border-radius: 6px;
+    padding: 0.5rem 0.65rem; margin-bottom: 0.5rem;
+  }
   .block-lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(100 116 139); font-weight: 600; margin-bottom: 0.5rem; }
   .hint { font-size: 0.75rem; color: rgb(100 116 139); margin-top: 0.4rem; }
 
