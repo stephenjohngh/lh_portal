@@ -1,7 +1,8 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { documentsStore } from '$lib/stores/documentsStore';
-  import { docTypeFromMime, formatFileSize, DOC_TYPES, CATEGORIES } from '$lib/utils/documentUtils';
+  import { docTypeFromMime, categoryFromFilename, formatFileSize, DOC_TYPES, CATEGORIES } from '$lib/utils/documentUtils';
+  import { resolveMimeType } from '$lib/utils/mimeTypes';
 
   /** @type {string|null} Pre-set entity type (optional) */
   export let entityType  = null;
@@ -48,7 +49,12 @@
 
   function autofill(file) {
     displayName = displayName || file.name;
-    docType     = docTypeFromMime(file.type) || docType;
+    // File.type is empty often enough to matter, and the server resolves the
+    // same way — so the type shown here matches the one that gets stored.
+    docType     = docTypeFromMime(resolveMimeType(file.type, file.name));
+    // A suggestion only, and only when the person hasn't already chosen one —
+    // they see it in the select and can change it before uploading.
+    if (!category) category = categoryFromFilename(file.name);
   }
 
   async function handleUpload() {

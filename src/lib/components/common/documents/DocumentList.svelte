@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { mimeIcon, formatFileSize, docTypeLabel, categoryLabel, getExpiryStatus } from '$lib/utils/documentUtils';
+  import { mimeIcon, formatFileSize, docTypeLabel, categoryLabel, getExpiryStatus,
+           folderLabel, sortDocsByFolder } from '$lib/utils/documentUtils';
   import { fmtDate } from '$lib/utils/dates';
 
   /** @type {Object[]} document_library rows */
@@ -12,7 +13,11 @@
 
   const dispatch = createEventDispatcher();
 
-  $: sorted = [...docs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  // Ordered by the WHOLE folder path, then by name within the folder — a
+  // document's folder is only meaningful read as a hierarchy, so that is what
+  // the list is grouped by. (This is the global admin view; the per-entity
+  // panel uses DocumentCard, where every document shares one folder.)
+  $: sorted = sortDocsByFolder(docs);
 
   function expiryClass(status) {
     if (status === 'expired')      return 'text-red-400';
@@ -34,6 +39,9 @@
       <thead>
         <tr class="border-b border-slate-700 text-xs text-slate-400 uppercase tracking-wide">
           <th class="pb-2 pr-4 font-medium">Name</th>
+          {#if extended}
+            <th class="pb-2 pr-4 font-medium">Folder</th>
+          {/if}
           <th class="pb-2 pr-4 font-medium">Type</th>
           {#if extended}
             <th class="pb-2 pr-4 font-medium">Category</th>
@@ -59,6 +67,14 @@
                 >{doc.display_name ?? doc.filename}</button>
               </div>
             </td>
+
+            {#if extended}
+              <!-- Folder — the full hierarchy, not just the leaf -->
+              <td class="py-2 pr-4 text-slate-400 max-w-xs">
+                <span class="block truncate" title={folderLabel(doc.folder_path)}
+                  >{folderLabel(doc.folder_path)}</span>
+              </td>
+            {/if}
 
             <!-- Type -->
             <td class="py-2 pr-4 text-slate-400 whitespace-nowrap">{docTypeLabel(doc.doc_type)}</td>

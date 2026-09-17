@@ -33,7 +33,9 @@ export async function POST({ request }) {
     // Metadata from form fields
     const meta = {
       display_name:    formData.get('display_name')    || filename,
-      doc_type:        formData.get('doc_type')        || 'other',
+      // Left undefined when unstated so uploadDocument can derive it from the
+      // MIME type — every caller used to send the literal 'other'.
+      doc_type:        formData.get('doc_type')        || undefined,
       category:        formData.get('category')        || null,
       entity_type:     formData.get('entity_type')     || null,
       entity_id:       formData.get('entity_id')       || null,

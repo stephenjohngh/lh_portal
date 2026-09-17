@@ -122,7 +122,9 @@
           entity_id:    issueId,
           folder_path:  issueNumber ? `Issues/Issue ${issueNumber}` : 'Issues',
           display_name: docFile.name,
-          doc_type:     'other',
+          // doc_type omitted on purpose: the server derives it from the MIME
+          // type. Hardcoding 'other' here is why every issue attachment in the
+          // library was unclassified.
         });
 
         fields = {

@@ -20,13 +20,17 @@
   import Icon             from '$lib/components/icons/Icon.svelte';
   import { fmtDate }      from '$lib/utils/dates.js';
   import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
+  import FormSelect      from '$lib/components/common/FormSelect.svelte';
+  import { CATEGORIES, categoryFromFilename } from '$lib/utils/documentUtils.js';
 
   /** @type {string} */ export let entityType;
   /** @type {string} */ export let entityId;
   export let canEdit    = false;   // show the upload affordance
   export let canDelete  = false;   // show per-document delete
   export let folderPath = '';      // storage folder for uploads
-  export let docType    = 'other';
+  // '' = let the server derive it from the MIME type. A host that genuinely
+  // knows (a certificate panel, say) can still state one.
+  export let docType    = '';
   export let title      = 'Documents';
 
   const dispatch = createEventDispatcher();
@@ -39,8 +43,21 @@
   let showUpload  = false;
   let file        = null;
   let description = '';
+  let category    = '';
   let uploading   = false;
   let attachRef;
+
+  // Suggest a category from the filename as soon as a file is picked, for the
+  // person to confirm or change. This panel is where most of the library comes
+  // from and it never asked for a category at all, so every row read '—'.
+  // ⚠ Keyed on the filename, not on `file` — an object prop is always "dirty"
+  // to Svelte, so a plain `$: if (file)` would overwrite a hand-picked category
+  // on every parent update. (CLAUDE.md § Reactive statements + object props.)
+  let suggestedFor = null;
+  $: if (file?.name && file.name !== suggestedFor) {
+    suggestedFor = file.name;
+    category = categoryFromFilename(file.name);
+  }
 
   // Delete state
   let pendingDelete = null;
@@ -95,7 +112,8 @@
   export function reload() { return load(); }
 
   function cancelUpload() {
-    showUpload = false; file = null; description = ''; attachRef?.reset?.();
+    showUpload = false; file = null; description = ''; category = '';
+    suggestedFor = null; attachRef?.reset?.();
   }
 
   async function doUpload() {
@@ -106,7 +124,10 @@
         entity_type:  entityType,
         entity_id:    entityId,
         display_name: file.name,
-        doc_type:     docType,
+        // Left out when the host states nothing, so the server derives it from
+        // the MIME type rather than recording a blanket 'other'.
+        doc_type:     docType || undefined,
+        category:     category || undefined,
         folder_path:  folderPath || undefined,
         description:  description.trim() || undefined,
       });
@@ -163,6 +184,16 @@
       <div class={uploading ? 'opacity-50 pointer-events-none' : ''}>
         <DocAttachInput bind:this={attachRef} bind:file />
       </div>
+      <FormSelect
+        label="Category (optional)"
+        bind:value={category}
+        options={CATEGORIES}
+        placeholder="— none —"
+        disabled={uploading}
+        helpText={category && category === categoryFromFilename(file?.name)
+          ? 'Suggested from the filename — change it if it is wrong.'
+          : ''}
+      />
       <FormInput
         label="Description (optional)"
         bind:value={description}

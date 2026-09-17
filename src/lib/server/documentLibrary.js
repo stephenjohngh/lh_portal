@@ -9,6 +9,7 @@ import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
 import { storageProvider }            from './storage/index.js';
 import { sanitizeIlikeTerm }          from '$lib/utils/pgFilter.js';
+import { docTypeFromMime, isUnclassifiedDocType } from '$lib/utils/documentUtils.js';
 import { getLogger }                  from '$lib/utils/logger';
 
 const logger = getLogger('DocumentLibrary');
@@ -56,7 +57,14 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
       file_checksum,
       web_view_url:       result.webViewUrl,
       thumbnail_url:      result.thumbnailUrl,
-      doc_type:           meta.doc_type          ?? 'other',
+      // Derived here rather than at each call site, because every call site got
+      // it wrong: the whole library was 'other' — an .odt, a .pdf and a .jpg
+      // indistinguishable in the list — while docTypeFromMime sat unused
+      // outside one admin form. 'other' counts as unstated (see
+      // isUnclassifiedDocType); a caller with a real classification keeps it.
+      doc_type:           isUnclassifiedDocType(meta.doc_type)
+                            ? docTypeFromMime(mimeType)
+                            : meta.doc_type,
       category:           meta.category          ?? null,
       entity_type:        meta.entity_type       ?? null,
       entity_id:          meta.entity_id         ?? null,
