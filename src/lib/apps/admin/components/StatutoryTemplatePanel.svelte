@@ -22,6 +22,7 @@
   import { fmtDate } from '$lib/utils/dates.js';
   import { profiles, profilesStore } from '$lib/stores/profiles.js';
   import { statutoryRegister } from '$lib/stores/statutoryRegister.js';
+  import RegisterEntryModal from './RegisterEntryModal.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
@@ -124,6 +125,32 @@
     } catch (/** @type {any} */ err) {
       panelError = err.message;
     } finally { importing = false; }
+  }
+
+  // -- Adding and editing requirements (R2) ------------------------------------
+  // ⛔ Only once the catalogue is in the database. While the app is reading the
+  // shipped seed there is nothing here that could be saved, and offering the
+  // affordance anyway would be a button that cannot work.
+  let editing = null;          // entry | null-for-new sentinel
+  let showEntryModal = false;
+  let savingEntry = false;
+
+  $: canEditRegister = $statutoryRegister.source === 'database';
+  $: provenanceOf = (key) => $statutoryRegister.provenance?.[key] ?? {};
+
+  function addRequirement()  { editing = null; showEntryModal = true; }
+  function editRequirement(entry) { editing = entry; showEntryModal = true; }
+
+  async function saveEntry(ev) {
+    const { key, entry: draft, isNew } = ev.detail;
+    savingEntry = true; panelError = '';
+    try {
+      if (isNew) await statutoryRegister.create(draft);
+      else       await statutoryRegister.edit(key, draft);
+      showEntryModal = false; editing = null;
+    } catch (/** @type {any} */ err) {
+      panelError = err.message;
+    } finally { savingEntry = false; }
   }
 
   let autoOpened = false;
@@ -364,6 +391,16 @@
       <!-- The count strip doubles as the filter: the numbers you read are the
            control you click. It counts the WHOLE register, never the filtered
            view, because it is how a filter gets chosen. -->
+      {#if canEditRegister}
+        <div class="reg-actions">
+          <ProtectedButton requireAdmin={true} variant="primary" size="small"
+            on:click={addRequirement}>+ Add a requirement</ProtectedButton>
+          <span class="reg-actions-note">
+            For a duty this building must meet that the register does not yet carry.
+          </span>
+        </div>
+      {/if}
+
       <div class="tally-strip">
         {#each REGISTER_STATUS as s (s)}
           <button
@@ -440,6 +477,14 @@
                       {/if}
                       {#if status === 'elsewhere'}
                         <span class="badge app">{HANDLED_BY_LABEL[entry.handledBy]}</span>
+                      {/if}
+                      {#if provenanceOf(entry.key).origin === 'local'}
+                        <span class="badge local"
+                          title="Added in this building, not from the standard register">Added here</span>
+                      {/if}
+                      {#if provenanceOf(entry.key).seedModifiedAt}
+                        <span class="badge modified"
+                          title="Edited here — no longer matches the standard register">Edited</span>
                       {/if}
                       {#if entry.operationallyIncomplete}
                         <span class="badge incomplete"
@@ -618,6 +663,10 @@
                         <Button variant="secondary" size="small" disabled={busy}
                           on:click={() => askDecision(entry, 'applicable')}>Reinstate</Button>
                       {/if}
+                      {#if canEditRegister}
+                        <ProtectedButton requireAdmin={true} variant="secondary" size="small"
+                          on:click={() => editRequirement(entry)}>Edit requirement</ProtectedButton>
+                      {/if}
                     </div>
                   </div>
                 {/if}
@@ -629,6 +678,16 @@
     </div>
   {/if}
 </div>
+
+{#if showEntryModal}
+  <RegisterEntryModal
+    entry={editing}
+    provenance={editing ? provenanceOf(editing.key) : {}}
+    saving={savingEntry}
+    on:save={saveEntry}
+    on:close={() => { showEntryModal = false; editing = null; }}
+  />
+{/if}
 
 <!-- Deciding that a legal requirement does not apply to this building is a
      compliance decision someone may later be asked to justify. So it demands a
@@ -723,6 +782,10 @@
   .tally.part .tally-n { color: rgb(252 211 77); }
   .row.part { border-color: rgb(251 191 36 / 0.35); }
   .report-next { margin-top: 0.3rem; color: rgb(148 163 184); }
+  .reg-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .reg-actions-note { font-size: 0.74rem; color: rgb(148 163 184); }
+  .badge.local { background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }
+  .badge.modified { background: rgb(148 163 184 / 0.22); color: rgb(203 213 225); }
   .badge.incomplete { background: rgb(248 113 113 / 0.18); color: rgb(252 165 165); text-transform: none; letter-spacing: 0; }
   .incomplete-box {
     margin-top: 0.35rem; padding: 0.5rem 0.65rem; border-radius: 6px;

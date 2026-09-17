@@ -60,9 +60,18 @@ export const REGISTER_COLUMNS = [
   'citation_verified_on', 'citation_verified_against',
 ];
 
+/**
+ * Provenance columns the DATABASE owns but the editor must be able to SHOW.
+ * ⚠ Not in REGISTER_COLUMNS: `toRow()` must never write them from an entry,
+ * because they record how a row came to be here rather than what it says.
+ */
+export const PROVENANCE_COLUMNS = [
+  'origin', 'seed_modified_at', 'citation_verified_by',
+];
+
 /** Columns the database owns; never written back onto an entry. */
 const DB_ONLY = new Set([
-  'origin', 'seed_modified_at', 'active',
+  'origin', 'seed_modified_at', 'active', 'citation_verified_by',
   'created_at', 'created_by', 'updated_at', 'updated_by',
 ]);
 

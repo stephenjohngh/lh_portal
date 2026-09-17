@@ -13,12 +13,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 
 const h = vi.hoisted(() => ({
-  getAll: vi.fn(), createMany: vi.fn(),
+  getAll: vi.fn(), createMany: vi.fn(), create: vi.fn(), updateMany: vi.fn(),
   getUser: vi.fn(async () => ({ data: { user: { id: 'u1' } } })),
   logAudit: vi.fn(),
 }));
 
-vi.mock('$lib/utils/api', () => ({ api: { getAll: h.getAll, createMany: h.createMany } }));
+vi.mock('$lib/utils/api', () => ({ api: {
+  getAll: h.getAll, createMany: h.createMany, create: h.create, updateMany: h.updateMany,
+} }));
 vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getUser: h.getUser } } }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
 // ⚠ logger touches localStorage at module load, so it is one of the seams
@@ -161,5 +163,140 @@ describe('importSeed', () => {
     h.getAll.mockResolvedValueOnce([]).mockResolvedValue([]);
     await statutoryRegister.importSeed();
     expect(h.logAudit).toHaveBeenCalled();
+  });
+});
+
+describe('R2 — writing to the register', () => {
+  /** Load the store from a fake table so `update` has something to patch. */
+  const loadWith = async (rows) => {
+    h.getAll.mockResolvedValue(rows);
+    await statutoryRegister.load();
+  };
+  const seedRow = (i = 0, over = {}) => asRow(STATUTORY_TEMPLATE[i], over);
+
+  describe('create', () => {
+    it('⛔ marks it LOCAL and records no verification', async () => {
+      // An entry checked against legislation.gov.uk over fourteen review rounds
+      // is not the same object as one typed on a Tuesday, and in one table they
+      // look identical unless the provenance says otherwise.
+      await loadWith([seedRow(0)]);
+      await statutoryRegister.create({
+        key: 'new_thing', name: 'A new duty', description: 'What it involves.',
+        group: 'fire_safety', basis: 'statute', statutoryRef: 'Some Act 2027 s.1',
+        appliesWhen: 'Always', evidencedBy: 'maintenance_job', frequencyDays: 365,
+      });
+
+      const [table, row] = h.create.mock.calls[0];
+      expect(table).toBe('statutory_register');
+      expect(row.origin).toBe('local');
+      expect(row.citation_verified_against).toBeUndefined();
+      expect(row.citation_verified_on).toBeUndefined();
+      expect(row.template_key).toBe('new_thing');
+    });
+
+    it('⛔ REFUSES a malformed row rather than storing it', async () => {
+      // check:register guards the seed at build time and does not ship. These
+      // are the invariants that do.
+      await loadWith([seedRow(0)]);
+      await expect(statutoryRegister.create({
+        key: 'no_citation', name: 'Nameless duty', description: 'x',
+        group: 'fire_safety', basis: 'statute', statutoryRef: '', appliesWhen: 'Always',
+      })).rejects.toThrow(/statutoryRef/);
+      expect(h.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a key already in the register', async () => {
+      await loadWith([seedRow(0)]);
+      await expect(statutoryRegister.create({
+        key: STATUTORY_TEMPLATE[0].key, name: 'Clash', description: 'x',
+        group: 'fire_safety', basis: 'statute', statutoryRef: 'y',
+        appliesWhen: 'Always', evidencedBy: null,
+      })).rejects.toThrow(/key/);
+    });
+
+    it('audits it as a compliance change, not a routine one', async () => {
+      await loadWith([seedRow(0)]);
+      await statutoryRegister.create({
+        key: 'audited_thing', name: 'X', description: 'y',
+        group: 'governance', basis: 'management', statutoryRef: 'z',
+        appliesWhen: 'Always', evidencedBy: null,
+      });
+      const [, , , , opts] = h.logAudit.mock.calls.at(-1);
+      expect(opts.severity).toBe('warning');
+      expect(opts.eventCategory).toBe('compliance');
+    });
+  });
+
+  describe('update', () => {
+    it('⚠ stamps seed_modified_at when a SEEDED row is edited', async () => {
+      // It stops claiming to be the standard register's version, and a later
+      // import must report the divergence rather than overwrite it.
+      await loadWith([seedRow(0, { origin: 'seed' })]);
+      await statutoryRegister.edit(STATUTORY_TEMPLATE[0].key, { name: 'Corrected name' });
+
+      const [table, filters, row] = h.updateMany.mock.calls[0];
+      expect(table).toBe('statutory_register');
+      expect(filters).toEqual({ template_key: STATUTORY_TEMPLATE[0].key });
+      expect(row.seed_modified_at).toBeTruthy();
+      expect(row.name).toBe('Corrected name');
+    });
+
+    it('does NOT stamp seed_modified_at on a locally-added row', async () => {
+      await loadWith([seedRow(0, { origin: 'local' })]);
+      await statutoryRegister.edit(STATUTORY_TEMPLATE[0].key, { name: 'Edited' });
+      expect(h.updateMany.mock.calls[0][2].seed_modified_at).toBeUndefined();
+    });
+
+    it('⛔ never moves the identity', async () => {
+      // template_key is what statutory_obligations and statutory_exclusions
+      // link on; changing it would orphan both.
+      await loadWith([seedRow(0)]);
+      await statutoryRegister.edit(STATUTORY_TEMPLATE[0].key, { name: 'Y', key: 'something_else' });
+      expect(h.updateMany.mock.calls[0][2].template_key).toBeUndefined();
+    });
+
+    it('validates the MERGED row, not just the patch', async () => {
+      // A patch that is fine alone can still make the row malformed.
+      await loadWith([seedRow(0)]);
+      await expect(statutoryRegister.edit(STATUTORY_TEMPLATE[0].key, { statutoryRef: '   ' }))
+        .rejects.toThrow(/statutoryRef/);
+      expect(h.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('recordCitationVerification', () => {
+    it('records the source, the date AND the person', async () => {
+      // The register's shape for a decision someone may later have to justify
+      // is reason + name + date. A verification is one of those.
+      await loadWith([seedRow(0)]);
+      await statutoryRegister.recordCitationVerification(STATUTORY_TEMPLATE[0].key, {
+        url: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/10',
+      });
+
+      const [, filters, row] = h.updateMany.mock.calls[0];
+      expect(filters.template_key).toBe(STATUTORY_TEMPLATE[0].key);
+      expect(row.citation_verified_against).toContain('legislation.gov.uk');
+      expect(row.citation_verified_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(row.citation_verified_by).toBe('u1');
+    });
+
+    it('refuses a verification with no source', async () => {
+      // "Verified" with nothing to re-check against is not a verification.
+      await loadWith([seedRow(0)]);
+      await expect(statutoryRegister.recordCitationVerification(STATUTORY_TEMPLATE[0].key, { url: '  ' }))
+        .rejects.toThrow(/source/i);
+      expect(h.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('provenance', () => {
+    it('is kept BESIDE the entries, never merged into them', async () => {
+      // An entry must stay exactly what the seed would produce, or the
+      // round-trip guarantee stops meaning anything.
+      await loadWith([seedRow(0, { origin: 'local', seed_modified_at: null })]);
+      const s = get(statutoryRegister);
+      expect(s.provenance[STATUTORY_TEMPLATE[0].key].origin).toBe('local');
+      expect('origin' in s.entries[0]).toBe(false);
+    });
   });
 });
