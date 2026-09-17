@@ -21,7 +21,7 @@
   import { fmtDate }      from '$lib/utils/dates.js';
   import { fmtBytes, mimeIcon } from '$lib/utils/files.js';
   import FormSelect      from '$lib/components/common/FormSelect.svelte';
-  import { CATEGORIES, categoryFromFilename } from '$lib/utils/documentUtils.js';
+  import { CATEGORIES, categoryFromFilename, categoryLabel } from '$lib/utils/documentUtils.js';
 
   /** @type {string} */ export let entityType;
   /** @type {string} */ export let entityId;
@@ -89,6 +89,30 @@
       error = e.message;
     } finally {
       savingEdit = false;
+    }
+  }
+
+  // Inline category edit, for exactly the reason the description edit above
+  // exists: the panel asked for a category at upload and then showed it
+  // nowhere, which is indistinguishable — to the person who chose it — from not
+  // having saved it. And a category chosen wrongly, or skipped because the
+  // right one was not obvious yet, had no route back in.
+  let editingCatId = null;
+  let savingCat    = false;
+
+  async function saveCategory(doc, value) {
+    const id = doc.id;                 // capture before the await
+    editingCatId = null;
+    if ((doc.category ?? '') === value) return;
+    savingCat = true; error = '';
+    try {
+      const updated = await docApi.updateDocument(id, { category: value || null });
+      docs = docs.map(d => d.id === id ? { ...d, ...updated } : d);
+      dispatch('updated', updated);
+    } catch (/** @type {any} */ e) {
+      error = e.message;
+    } finally {
+      savingCat = false;
     }
   }
 
@@ -219,7 +243,43 @@
         <div class="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 group">
           <span class="text-lg shrink-0">{mimeIcon(doc.mime_type)}</span>
           <div class="flex-1 min-w-0">
-            <p class="text-sm text-slate-200 truncate">{doc.display_name || doc.filename}</p>
+            <div class="flex items-center gap-2 min-w-0">
+              <p class="text-sm text-slate-200 truncate">{doc.display_name || doc.filename}</p>
+
+              <!-- Category. Shown whenever set; settable in place, because the
+                   upload form asks for it and this list is where it is looked for. -->
+              {#if editingCatId === doc.id}
+                <!-- svelte-ignore a11y-no-onchange -->
+                <select
+                  class="shrink-0 bg-slate-900 text-xs text-slate-200 rounded px-1 py-0.5
+                         border border-slate-600 outline-none"
+                  disabled={savingCat}
+                  value={doc.category ?? ''}
+                  on:change={(e) => saveCategory(doc, e.currentTarget.value)}
+                  on:blur={() => editingCatId = null}
+                >
+                  <option value="">— no category —</option>
+                  {#each CATEGORIES as c}
+                    <option value={c.value}>{c.label}</option>
+                  {/each}
+                </select>
+              {:else if doc.category}
+                <button
+                  class="shrink-0 rounded px-1.5 py-0.5 text-[11px] leading-tight
+                         bg-purple-900/40 text-purple-200 border border-purple-800/60
+                         {canEdit ? 'hover:border-purple-500' : 'cursor-default'}"
+                  disabled={!canEdit}
+                  title={canEdit ? 'Change the category' : categoryLabel(doc.category)}
+                  on:click={() => { if (canEdit) editingCatId = doc.id; }}
+                >{categoryLabel(doc.category)}</button>
+              {:else if canEdit}
+                <button
+                  class="shrink-0 text-[11px] text-slate-600 hover:text-purple-300 transition-colors"
+                  title="Set a category"
+                  on:click={() => editingCatId = doc.id}
+                >+ category</button>
+              {/if}
+            </div>
             {#if editingId === doc.id}
               <!-- svelte-ignore a11y-autofocus -->
               <input
