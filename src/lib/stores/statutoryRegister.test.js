@@ -97,6 +97,27 @@ describe('load — and the fallback that is not merely defensive', () => {
   });
 });
 
+describe('⚠ every read names its order', () => {
+  it('⛔ never lets api.getAll fall back to ordering by id', async () => {
+    // The mock in this file returns whatever it is told, so it cannot exercise
+    // api.getAll's own default — which is `orderBy: 'id'`, because every other
+    // table in the portal has one. This table is keyed on template_key and has
+    // no surrogate id, so the default fails outright at the database.
+    //
+    // ⭐ A store-contract test that mocks `api` cannot catch an api-level
+    // assumption. This asserts the call shape instead, which it can.
+    h.getAll.mockResolvedValue([]);
+    await statutoryRegister.load();
+    await statutoryRegister.importSeed();
+
+    expect(h.getAll.mock.calls.length).toBeGreaterThan(0);
+    for (const [table, opts] of h.getAll.mock.calls) {
+      expect(table).toBe('statutory_register');
+      expect(opts?.orderBy, 'getAll must name its order for this table').toBeTruthy();
+    }
+  });
+});
+
 describe('importSeed', () => {
   it('inserts every entry into an empty table', async () => {
     h.getAll.mockResolvedValueOnce([]).mockResolvedValue([]);

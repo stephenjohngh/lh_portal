@@ -88,7 +88,14 @@ function createStatutoryRegisterStore() {
    * @returns {Promise<{ added: string[], present: number }>}
    */
   async function importSeed() {
-    const existing = await api.getAll('statutory_register', { select: 'template_key' });
+    // ⚠ orderBy is REQUIRED on every getAll against this table. `api.getAll`
+    // forces a stable order so its pages are consistent, and defaults to 'id' —
+    // the house assumption, because every other table has one. This table's
+    // identity is `template_key` and there is no surrogate id, so the default
+    // fails with "column statutory_register.id does not exist".
+    const existing = await api.getAll('statutory_register', {
+      select: 'template_key', orderBy: 'template_key',
+    });
     const have = new Set((existing ?? []).map(r => r.template_key));
     const missing = STATUTORY_TEMPLATE.filter(e => !have.has(e.key));
 
