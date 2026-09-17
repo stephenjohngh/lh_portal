@@ -39,10 +39,17 @@
   }
 
   // ⚠ Every derived value below reads `values` DIRECTLY rather than through a
-  // helper. Svelte tracks the variables a reactive statement mentions, so
-  // `fields.reduce((n, f) => n + setOf(f.key).size, 0)` depends on `fields` and
-  // never on `values` — the counts and pills simply stop updating when a
-  // selection changes. Caught by a test; it is invisible by reading.
+  // helper, and the reason is narrower than it looks. Svelte DOES normally
+  // track a variable read inside a local helper called from a reactive
+  // statement — verified with controlled probes for `function`, arrow-`const`
+  // and template-expression forms.
+  //
+  // What it does NOT survive is this combination: a CHILD COMPONENT binding
+  // into an object member (`bind:selected={values[field.key]}` below) while a
+  // derived value reads that object through a helper. Then the helper-read
+  // version stays stale and a direct read updates — proved both ways.
+  // Nothing about the markup looks wrong either way, which is why it is a test
+  // and not a comment on its own.
   $: facets = fields.map(f => ({
     field:    f,
     selected: values[f.key] instanceof Set ? values[f.key] : new Set(),

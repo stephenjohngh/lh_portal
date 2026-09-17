@@ -42,9 +42,11 @@ describe('FilterBar', () => {
   });
 
   it('recomputes what is active when a selection changes', async () => {
-    // The regression this pins: reading `values` through a helper function
-    // hides it from Svelte's dependency tracking, so the pills and the Clear
-    // button never updated. Nothing about the markup looks wrong.
+    // The regression this pins: a child component binding into an object member
+    // (`bind:selected={values[field.key]}`) does not reach a derived value that
+    // reads that object THROUGH A HELPER — the pills and the Clear button never
+    // updated. ⚠ Not the general rule: a helper read is normally tracked fine.
+    // It is this combination. Nothing about the markup looks wrong either way.
     render(FilterBar, { fields: FIELDS, values: {}, query: '' });
     expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
 
