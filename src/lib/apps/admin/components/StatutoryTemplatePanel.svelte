@@ -23,6 +23,7 @@
   import { profiles, profilesStore } from '$lib/stores/profiles.js';
   import { statutoryRegister } from '$lib/stores/statutoryRegister.js';
   import RegisterEntryModal from './RegisterEntryModal.svelte';
+  import RegisterImportDiff from './RegisterImportDiff.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
@@ -151,6 +152,27 @@
     } catch (/** @type {any} */ err) {
       panelError = err.message;
     } finally { savingEntry = false; }
+  }
+
+  // -- Checking the shipped standard register for changes (R3) -----------------
+  let diff = null;
+  let diffBusy = false;
+
+  function checkForUpdates() { panelError = ''; diff = statutoryRegister.previewImport(); }
+
+  async function applyDiff(ev) {
+    diffBusy = true; panelError = '';
+    try {
+      await statutoryRegister.applyFromSeed(ev.detail);
+      diff = statutoryRegister.previewImport();      // re-read, never assume
+    } catch (/** @type {any} */ err) {
+      panelError = err.message;
+    } finally { diffBusy = false; }
+  }
+
+  function editFromDiff(ev) {
+    const entry = $statutoryRegister.entries.find(e => e.key === ev.detail);
+    if (entry) editRequirement(entry);
   }
 
   let autoOpened = false;
@@ -395,9 +417,21 @@
         <div class="reg-actions">
           <ProtectedButton requireAdmin={true} variant="primary" size="small"
             on:click={addRequirement}>+ Add a requirement</ProtectedButton>
+          <Button variant="secondary" size="small" on:click={checkForUpdates}>
+            Check against the standard register
+          </Button>
           <span class="reg-actions-note">
-            For a duty this building must meet that the register does not yet carry.
+            Add a duty this building must meet that the register does not carry — or see what the
+            shipped standard register has that this one does not.
           </span>
+        </div>
+      {/if}
+
+      {#if diff}
+        <div class="diff-wrap">
+          <RegisterImportDiff {diff} busy={diffBusy}
+            on:apply={applyDiff} on:edit={editFromDiff} />
+          <button class="diff-close" on:click={() => diff = null}>Close</button>
         </div>
       {/if}
 
@@ -782,6 +816,16 @@
   .tally.part .tally-n { color: rgb(252 211 77); }
   .row.part { border-color: rgb(251 191 36 / 0.35); }
   .report-next { margin-top: 0.3rem; color: rgb(148 163 184); }
+  .diff-wrap {
+    border: 1px solid rgb(71 85 105 / 0.7); border-radius: 8px;
+    background: rgb(15 23 42 / 0.5); padding: 0.75rem 0.85rem;
+    display: flex; flex-direction: column; gap: 0.6rem;
+  }
+  .diff-close {
+    align-self: flex-end; font-size: 0.75rem; color: rgb(148 163 184);
+    background: none; border: none; cursor: pointer;
+  }
+  .diff-close:hover { color: rgb(226 232 240); }
   .reg-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .reg-actions-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .badge.local { background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }

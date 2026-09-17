@@ -28,6 +28,7 @@ import { logAudit } from '$lib/utils/auditLogger';
 import { STATUTORY_TEMPLATE, setActiveRegister } from '$lib/utils/statutoryTemplate.js';
 import { toRow, fromRow } from '$lib/utils/registerRowMapping.js';
 import { validateRegisterEntry } from '$lib/utils/registerEntryRules.js';
+import { diffRegister } from '$lib/utils/registerDiff.js';
 
 const logger = getLogger('statutoryRegister');
 
@@ -129,6 +130,73 @@ function createStatutoryRegisterStore() {
 
     await load();
     return { added: missing.map(e => e.key), present: have.size + missing.length };
+  }
+
+  /**
+   * What a re-import of the shipped seed would do. R3.
+   *
+   * ⛔ Reports; changes nothing. R1's import only ADDED, which is safe and
+   * insufficient — a corrected citation shipped in a later release would be
+   * silently declined. Overwriting would be worse. So it is a diff, and a
+   * person decides.
+   *
+   * @returns {ReturnType<typeof diffRegister>}
+   */
+  function previewImport() {
+    const s = get({ subscribe });
+    const held = s.entries.map(entry => ({
+      entry, provenance: s.provenance?.[entry.key] ?? {},
+    }));
+    return diffRegister(STATUTORY_TEMPLATE, held);
+  }
+
+  /**
+   * Take named changes from the shipped seed.
+   *
+   * @param {{add?: string[], update?: string[]}} choice  keys, chosen by a person
+   *
+   * ⛔ Nothing is implicit. A key must be named to be acted on, so a divergent
+   * row cannot be swept along by an "update all" over a list that happened to
+   * include it. The caller decides what goes in `update`; the UI only offers
+   * the untouched ones by default, and a divergent row one at a time.
+   */
+  async function applyFromSeed(choice = {}) {
+    const addKeys    = new Set(choice.add ?? []);
+    const updateKeys = new Set(choice.update ?? []);
+    if (addKeys.size === 0 && updateKeys.size === 0) {
+      return { added: 0, updated: 0 };
+    }
+
+    const uid = await currentUserId();
+    const now = new Date().toISOString();
+    const bySeedKey = new Map(STATUTORY_TEMPLATE.map(e => [e.key, e]));
+
+    const toAdd = [...addKeys].map(k => bySeedKey.get(k)).filter(Boolean);
+    if (toAdd.length) {
+      await api.createMany('statutory_register', toAdd.map(e => ({
+        ...toRow(e), origin: 'seed', created_by: uid,
+      })));
+    }
+
+    for (const key of updateKeys) {
+      const entry = bySeedKey.get(key);
+      if (!entry) continue;
+      const row = { ...toRow(entry), updated_by: uid, updated_at: now };
+      delete row.template_key;
+      // ⚠ Taking the standard register's version makes the row match it again,
+      // so the "edited here" mark is cleared. It would otherwise claim a
+      // divergence that no longer exists.
+      row.seed_modified_at = null;
+      await api.updateMany('statutory_register', { template_key: key }, row, false);
+    }
+
+    logAudit('update', 'statutory_register', null, 'imported from the standard register', {
+      appId: 'admin', eventCategory: 'compliance', severity: 'warning',
+      afterData: { added: toAdd.length, updated: updateKeys.size },
+    });
+    logger('✅ applied', toAdd.length, 'additions and', updateKeys.size, 'updates');
+    await load();
+    return { added: toAdd.length, updated: updateKeys.size };
   }
 
   /** The rows the app is showing, keyed — for uniqueness checks and edits. */
@@ -260,6 +328,7 @@ function createStatutoryRegisterStore() {
   return {
     subscribe, load, importSeed, usingSeed,
     create, edit, recordCitationVerification,
+    previewImport, applyFromSeed,
   };
 }
 

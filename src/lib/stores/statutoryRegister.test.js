@@ -300,3 +300,91 @@ describe('R2 — writing to the register', () => {
     });
   });
 });
+
+describe('R3 — import as a diff', () => {
+  const loadWith = async (rows) => { h.getAll.mockResolvedValue(rows); await statutoryRegister.load(); };
+
+  it('reports nothing to do when the table matches the seed', async () => {
+    await loadWith(STATUTORY_TEMPLATE.map(e => asRow(e)));
+    const d = statutoryRegister.previewImport();
+    expect(d.hasAnything).toBe(false);
+    expect(d.unchanged).toHaveLength(STATUTORY_TEMPLATE.length);
+  });
+
+  it('⛔ preview CHANGES NOTHING', async () => {
+    await loadWith([asRow(STATUTORY_TEMPLATE[0])]);
+    statutoryRegister.previewImport();
+    expect(h.createMany).not.toHaveBeenCalled();
+    expect(h.updateMany).not.toHaveBeenCalled();
+    expect(h.create).not.toHaveBeenCalled();
+  });
+
+  it('separates the seed having moved from somebody having edited here', async () => {
+    // The only thing that distinguishes them is seed_modified_at, because we do
+    // not hold the seed as it was at import time.
+    await loadWith([
+      asRow(STATUTORY_TEMPLATE[0], { statutory_ref: 'changed in the database', seed_modified_at: null }),
+      asRow(STATUTORY_TEMPLATE[1], { statutory_ref: 'changed in the database', seed_modified_at: '2026-09-17T10:00:00Z' }),
+    ]);
+    const d = statutoryRegister.previewImport();
+    expect(d.updatable.map(r => r.key)).toEqual([STATUTORY_TEMPLATE[0].key]);
+    expect(d.divergent.map(r => r.key)).toEqual([STATUTORY_TEMPLATE[1].key]);
+  });
+
+  describe('applyFromSeed', () => {
+    it('does nothing at all when nothing is named', async () => {
+      await loadWith([asRow(STATUTORY_TEMPLATE[0])]);
+      const r = await statutoryRegister.applyFromSeed({});
+      expect(r).toEqual({ added: 0, updated: 0 });
+      expect(h.createMany).not.toHaveBeenCalled();
+      expect(h.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('⛔ acts ONLY on keys named explicitly', async () => {
+      // So a divergent row cannot be swept along by an "update all" over a list
+      // that happened to include it.
+      await loadWith([asRow(STATUTORY_TEMPLATE[0], { statutory_ref: 'x' }), asRow(STATUTORY_TEMPLATE[1], { statutory_ref: 'y' })]);
+      await statutoryRegister.applyFromSeed({ update: [STATUTORY_TEMPLATE[0].key] });
+
+      expect(h.updateMany).toHaveBeenCalledTimes(1);
+      expect(h.updateMany.mock.calls[0][1]).toEqual({ template_key: STATUTORY_TEMPLATE[0].key });
+    });
+
+    it('⚠ clears the edited-here mark when the standard version is taken', async () => {
+      // The row matches the standard register again, so it must stop claiming a
+      // divergence that no longer exists.
+      await loadWith([asRow(STATUTORY_TEMPLATE[0], { statutory_ref: 'x', seed_modified_at: '2026-09-17T10:00:00Z' })]);
+      await statutoryRegister.applyFromSeed({ update: [STATUTORY_TEMPLATE[0].key] });
+      expect(h.updateMany.mock.calls[0][2].seed_modified_at).toBeNull();
+    });
+
+    it('⛔ never moves the identity when updating', async () => {
+      await loadWith([asRow(STATUTORY_TEMPLATE[0], { statutory_ref: 'x' })]);
+      await statutoryRegister.applyFromSeed({ update: [STATUTORY_TEMPLATE[0].key] });
+      expect(h.updateMany.mock.calls[0][2].template_key).toBeUndefined();
+    });
+
+    it('adds named new entries as seeded, not local', async () => {
+      await loadWith([asRow(STATUTORY_TEMPLATE[0])]);
+      await statutoryRegister.applyFromSeed({ add: [STATUTORY_TEMPLATE[1].key] });
+      const [, rows] = h.createMany.mock.calls[0];
+      expect(rows).toHaveLength(1);
+      expect(rows[0].template_key).toBe(STATUTORY_TEMPLATE[1].key);
+      expect(rows[0].origin).toBe('seed');
+    });
+
+    it('ignores a key the seed does not carry', async () => {
+      await loadWith([asRow(STATUTORY_TEMPLATE[0])]);
+      const r = await statutoryRegister.applyFromSeed({ add: ['not_in_the_seed'] });
+      expect(r.added).toBe(0);
+      expect(h.createMany).not.toHaveBeenCalled();
+    });
+
+    it('audits it as a compliance change', async () => {
+      await loadWith([asRow(STATUTORY_TEMPLATE[0])]);
+      await statutoryRegister.applyFromSeed({ add: [STATUTORY_TEMPLATE[1].key] });
+      const [, , , , opts] = h.logAudit.mock.calls.at(-1);
+      expect(opts.severity).toBe('warning');
+    });
+  });
+});
