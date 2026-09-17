@@ -14,12 +14,14 @@ import { get } from 'svelte/store';
 
 const h = vi.hoisted(() => ({
   getAll: vi.fn(), createMany: vi.fn(), create: vi.fn(), updateMany: vi.fn(),
+  get: vi.fn(async () => []), deleteMany: vi.fn(),
   getUser: vi.fn(async () => ({ data: { user: { id: 'u1' } } })),
   logAudit: vi.fn(),
 }));
 
 vi.mock('$lib/utils/api', () => ({ api: {
   getAll: h.getAll, createMany: h.createMany, create: h.create, updateMany: h.updateMany,
+  get: h.get, deleteMany: h.deleteMany,
 } }));
 vi.mock('$lib/supabaseClient', () => ({ supabase: { auth: { getUser: h.getUser } } }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
@@ -386,5 +388,89 @@ describe('R3 — import as a diff', () => {
       const [, , , , opts] = h.logAudit.mock.calls.at(-1);
       expect(opts.severity).toBe('warning');
     });
+  });
+});
+
+describe('withdrawLocal — removing a requirement added in error', () => {
+  const loadWith = async (rows) => { h.getAll.mockResolvedValue(rows); await statutoryRegister.load(); };
+  const KEY = STATUTORY_TEMPLATE[0].key;
+  const REASON = 'Added by mistake during the tutorial run.';
+
+  beforeEach(() => { h.get.mockResolvedValue([]); h.deleteMany.mockResolvedValue(undefined); });
+
+  it('removes a locally-added requirement nothing links to', async () => {
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
+    await statutoryRegister.withdrawLocal(KEY, REASON);
+
+    expect(h.deleteMany).toHaveBeenCalledWith('statutory_register', { template_key: KEY });
+  });
+
+  it('⛔ REFUSES a seeded row, and says what to do instead', async () => {
+    // The register's rule is delete only for NEVER. A requirement that exists in
+    // law but does not apply here gets a recorded decision, not a delete — and
+    // deleting a seeded row would be undone by the next import anyway.
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'seed' })]);
+
+    await expect(statutoryRegister.withdrawLocal(KEY, REASON))
+      .rejects.toThrow(/not applicable|retire|standard register/i);
+    expect(h.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('⛔ REFUSES when an obligation links to it', async () => {
+    // An obligation whose template_key points at nothing is skipped by
+    // templateCoverage entirely: its walks and jobs still exist while the
+    // register can no longer say what they were for.
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
+    h.get.mockImplementation(async (table) =>
+      table === 'statutory_obligations' ? [{ id: 'o1', name: 'Linked' }] : []);
+
+    await expect(statutoryRegister.withdrawLocal(KEY, REASON))
+      .rejects.toThrow(/1 obligation still link/i);
+    expect(h.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('⛔ REFUSES when an applicability decision links to it', async () => {
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
+    h.get.mockImplementation(async (table) =>
+      table === 'statutory_exclusions' ? [{ id: 'x1' }] : []);
+
+    await expect(statutoryRegister.withdrawLocal(KEY, REASON))
+      .rejects.toThrow(/applicability decision/i);
+  });
+
+  it('names BOTH when both link', async () => {
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
+    h.get.mockResolvedValue([{ id: 'x' }]);
+    await expect(statutoryRegister.withdrawLocal(KEY, REASON))
+      .rejects.toThrow(/obligation and .*applicability decision/i);
+  });
+
+  it('requires a reason worth reading', async () => {
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
+    await expect(statutoryRegister.withdrawLocal(KEY, '')).rejects.toThrow(/reason/i);
+    await expect(statutoryRegister.withdrawLocal(KEY, 'oops')).rejects.toThrow(/reason/i);
+    expect(h.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('⚠ puts the removed row in the audit log, which outlives it', async () => {
+    // The answer to "a delete orphans the evidence": what was removed is
+    // recoverable from the one place that survives the row.
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
+    await statutoryRegister.withdrawLocal(KEY, REASON);
+
+    const [action, table, id, name, opts] = h.logAudit.mock.calls.at(-1);
+    expect(action).toBe('delete');
+    expect(table).toBe('statutory_register');
+    expect(id).toBe(KEY);
+    expect(opts.severity).toBe('warning');
+    expect(opts.beforeData.template_key).toBe(KEY);
+    expect(opts.beforeData.name).toBe(STATUTORY_TEMPLATE[0].name);
+    expect(opts.afterData.withdrawn_reason).toBe(REASON);
+  });
+
+  it('refuses a key that is not there at all', async () => {
+    await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
+    await expect(statutoryRegister.withdrawLocal('never_existed', REASON))
+      .rejects.toThrow(/No register entry/);
   });
 });

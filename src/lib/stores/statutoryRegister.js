@@ -315,6 +315,72 @@ function createStatutoryRegisterStore() {
     await load();
   }
 
+  /**
+   * Remove a requirement that was added here by mistake.
+   *
+   * ⛔ `origin: 'local'` ONLY, and the restriction is not timidity.
+   * · The register's rule is **delete only for NEVER**, which is about
+   *   requirements that exist in law and do not apply to this building — those
+   *   get a recorded applicability decision, not a delete. **An entry added by
+   *   mistake has no legal existence at all**, which is the same category as
+   *   the gas row that was knowingly deleted.
+   * · And deleting a SEEDED row would be futile as well as wrong: the next
+   *   import would simply bring it back.
+   *
+   * ⛔ Refuses if anything links to the key. An obligation whose `template_key`
+   * points at nothing is skipped by `templateCoverage()` entirely — its walks
+   * and jobs still exist while the register can no longer say what they were
+   * for. An applicability decision for a key that does not exist is a recorded
+   * decision about nothing.
+   *
+   * ⚠ The removed row goes into the audit log as `beforeData`, so the delete is
+   * recoverable in the one place that outlives it.
+   *
+   * @param {string} key
+   * @param {string} reason
+   */
+  async function withdrawLocal(key, reason) {
+    const state = get({ subscribe });
+    const entry = state.entries.find(e => e.key === key);
+    if (!entry) throw new Error(`No register entry ${key}`);
+
+    if (state.provenance?.[key]?.origin !== 'local') {
+      throw new Error(
+        'Only a requirement added here can be withdrawn. This one came from the standard '
+        + 'register — if it does not apply to this building, record it as not applicable; '
+        + 'if it has been withdrawn in law, retire it. Deleting it would also be undone by '
+        + 'the next import.');
+    }
+    if (!reason?.trim() || reason.trim().length < 8) {
+      throw new Error('A reason is required — it is what the audit log will carry in place of the row.');
+    }
+
+    const [obligations, decisions] = await Promise.all([
+      api.get('statutory_obligations', { select: 'id, name', filters: { template_key: key } }),
+      api.get('statutory_exclusions',  { select: 'id',       filters: { template_key: key } }),
+    ]);
+
+    const links = [];
+    if (obligations?.length) links.push(`${obligations.length} obligation${obligations.length === 1 ? '' : 's'}`);
+    if (decisions?.length)   links.push(`${decisions.length} applicability decision${decisions.length === 1 ? '' : 's'}`);
+    if (links.length) {
+      throw new Error(
+        `${links.join(' and ')} still link to this requirement. Removing it would leave that `
+        + 'evidence pointing at a requirement nothing can describe. Retire or delete those first.');
+    }
+
+    const uid = await currentUserId();
+    await api.deleteMany('statutory_register', { template_key: key });
+
+    logAudit('delete', 'statutory_register', key, entry.name, {
+      appId: 'admin', eventCategory: 'compliance', severity: 'warning',
+      beforeData: { ...toRow(entry), origin: 'local' },
+      afterData:  { withdrawn_reason: reason.trim(), withdrawn_by: uid },
+    });
+    logger('✅ withdrew local requirement', key);
+    await load();
+  }
+
   /** True when the row came from the shipped seed rather than being added here. */
   function wasSeeded(key) {
     return get({ subscribe }).provenance?.[key]?.origin === 'seed';
@@ -328,7 +394,7 @@ function createStatutoryRegisterStore() {
   return {
     subscribe, load, importSeed, usingSeed,
     create, edit, recordCitationVerification,
-    previewImport, applyFromSeed,
+    previewImport, applyFromSeed, withdrawLocal,
   };
 }
 

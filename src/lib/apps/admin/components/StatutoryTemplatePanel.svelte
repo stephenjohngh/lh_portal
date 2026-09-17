@@ -170,6 +170,30 @@
     } finally { diffBusy = false; }
   }
 
+  // -- Withdrawing a requirement added here in error ---------------------------
+  // ⚠ The affordance has to say when NOT to use it. A requirement that exists in
+  // law but does not apply to this building is a RECORDED DECISION, not a
+  // delete — that distinction is the register's own rule and the easiest thing
+  // for a hurried person to get wrong.
+  let withdrawing = null;
+  let withdrawReason = '';
+  let withdrawBusy = false;
+
+  function askWithdraw(entry) { withdrawing = entry; withdrawReason = ''; panelError = ''; }
+
+  async function confirmWithdraw() {
+    const target = withdrawing, reason = withdrawReason;
+    withdrawBusy = true; panelError = '';
+    try {
+      await statutoryRegister.withdrawLocal(target.key, reason);
+      withdrawing = null;
+      if (diff) diff = statutoryRegister.previewImport();
+    } catch (/** @type {any} */ err) {
+      panelError = err.message;
+      withdrawing = null;          // the reason is in the error; the panel shows it
+    } finally { withdrawBusy = false; }
+  }
+
   async function verifyCitation(ev) {
     const { key, url, on } = ev.detail;
     savingEntry = true; panelError = '';
@@ -712,6 +736,11 @@
                         <ProtectedButton requireAdmin={true} variant="secondary" size="small"
                           on:click={() => editRequirement(entry)}>Edit requirement</ProtectedButton>
                       {/if}
+                      {#if canEditRegister && provenanceOf(entry.key).origin === 'local'}
+                        <ProtectedButton requireAdmin={true} variant="danger" size="small"
+                          title="Only for a requirement added here by mistake"
+                          on:click={() => askWithdraw(entry)}>Withdraw</ProtectedButton>
+                      {/if}
                     </div>
                   </div>
                 {/if}
@@ -723,6 +752,44 @@
     </div>
   {/if}
 </div>
+
+<!-- ⛔ A delete in a compliance register. The modal's job is to stop it being
+     used for the thing it looks like it is for. -->
+<Modal show={!!withdrawing} title="Withdraw a requirement added here" size="medium"
+       on:close={() => (withdrawing = null)}>
+  {#if withdrawing}
+    <div class="wd-body">
+      <p class="wd-name">{withdrawing.name}</p>
+      <p class="text-muted">{withdrawing.statutoryRef}</p>
+
+      <p class="wd-warn">
+        This is for a requirement <strong>added here by mistake</strong> — a duplicate, a typo,
+        something entered while learning the screen. It has no legal existence, so removing it
+        removes nothing real.
+        <br /><br />
+        ⛔ <strong>It is NOT how you say a requirement does not apply.</strong> If the duty is
+        real and this building simply does not have the thing — no lift, no gas, no EV charging
+        — close this and record it as <em>Not applicable</em> instead. That keeps the requirement
+        visible with a reason and a name against it, which is what a reviewer needs to see. A
+        deleted row answers nothing.
+        <br /><br />
+        ⚠ It will refuse if any obligation or applicability decision links to this requirement.
+        Removing it then would leave that evidence pointing at something nothing can describe.
+      </p>
+
+      <FormTextarea label="Why is it being removed?" bind:value={withdrawReason} rows={3} required
+        placeholder="e.g. Entered twice while working through the tutorial"
+        helpText="Required. The row itself goes into the audit log, and this is what explains it." />
+
+      <div class="wd-actions">
+        <Button variant="secondary" disabled={withdrawBusy}
+          on:click={() => (withdrawing = null)}>Cancel</Button>
+        <Button variant="danger" disabled={withdrawBusy || withdrawReason.trim().length < 8}
+          on:click={confirmWithdraw}>{withdrawBusy ? 'Removing…' : 'Withdraw'}</Button>
+      </div>
+    </div>
+  {/if}
+</Modal>
 
 {#if showEntryModal}
   <RegisterEntryModal
@@ -828,6 +895,14 @@
   .tally.part .tally-n { color: rgb(252 211 77); }
   .row.part { border-color: rgb(251 191 36 / 0.35); }
   .report-next { margin-top: 0.3rem; color: rgb(148 163 184); }
+  .wd-body { display: flex; flex-direction: column; gap: 0.6rem; }
+  .wd-name { font-weight: 600; color: rgb(226 232 240); }
+  .wd-warn {
+    font-size: 0.8rem; color: rgb(203 213 225); line-height: 1.5;
+    background: rgb(248 113 113 / 0.1); border: 1px solid rgb(248 113 113 / 0.3);
+    border-radius: 6px; padding: 0.6rem 0.7rem;
+  }
+  .wd-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.3rem; }
   .diff-wrap {
     border: 1px solid rgb(71 85 105 / 0.7); border-radius: 8px;
     background: rgb(15 23 42 / 0.5); padding: 0.75rem 0.85rem;
