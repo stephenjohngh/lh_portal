@@ -32,6 +32,34 @@ const RENAMED = {
 const RENAMED_BACK = Object.fromEntries(
   Object.entries(RENAMED).map(([field, column]) => [column, field]));
 
+/**
+ * ⛔ EVERY column `toRow()` may emit, declared once.
+ *
+ * The round-trip test asserts the MAPPING is self-consistent — and it passed
+ * while `handling_note` had no column in migration 211, because nothing checked
+ * the mapping against the SCHEMA. The import would have failed at insert.
+ *
+ * So this list is the one authoritative statement of the column set. A test
+ * asserts `toRow()` emits exactly it, which means **adding a register field
+ * fails that test until this list is updated** — and updating it is the prompt
+ * to write the migration. Diff a new DDL against this, not against the field
+ * list.
+ */
+export const REGISTER_COLUMNS = [
+  'template_key', 'name', 'description', 'group_key', 'basis', 'statutory_ref',
+  'applies_when', 'trigger_event', 'trigger_type', 'trigger_source',
+  'frequency_days', 'max_interval_days', 'interval_basis',
+  'source_interval_words', 'max_is_scheduling_tolerance',
+  'evidenced_by', 'handled_by', 'responsible_party', 'statutory_duty_holder',
+  'competency_required', 'evidence_required', 'retention_basis',
+  'retention_period_months',
+  'suggested_scope', 'scope_note',
+  'operationally_incomplete', 'completion_action', 'assurance_only',
+  'reviewer_note', 'handling_note',
+  'superseded_on', 'superseded_by', 'superseded_note',
+  'citation_verified_on', 'citation_verified_against',
+];
+
 /** Columns the database owns; never written back onto an entry. */
 const DB_ONLY = new Set([
   'origin', 'seed_modified_at', 'active',

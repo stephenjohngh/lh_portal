@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { STATUTORY_TEMPLATE } from './statutoryTemplate.js';
-import { toRow, fromRow, toColumn, toField } from './registerRowMapping.js';
+import { toRow, fromRow, toColumn, toField, REGISTER_COLUMNS } from './registerRowMapping.js';
 
 describe('column naming', () => {
   it('renames only the three that cannot take their own name', () => {
@@ -79,6 +79,18 @@ describe('entry → row → entry', () => {
 
     const flagged = STATUTORY_TEMPLATE.find(e => e.maxIsSchedulingTolerance);
     expect(fromRow(toRow(flagged)).maxIsSchedulingTolerance).toBe(true);
+  });
+
+  it('⛔ emits EXACTLY the declared column set — the guard the schema needed', () => {
+    // The round trip above passed while `handling_note` had no column in
+    // migration 211: it proves the mapping is self-consistent, not that the
+    // schema can hold it. This is the list a new DDL gets diffed against, and a
+    // new register field fails here until it is added — which is the prompt to
+    // write the migration.
+    const emitted = new Set(STATUTORY_TEMPLATE.flatMap(e => Object.keys(toRow(e))));
+    const declared = new Set(REGISTER_COLUMNS);
+    expect([...emitted].filter(c => !declared.has(c)), 'emitted but not declared').toEqual([]);
+    expect([...declared].filter(c => !emitted.has(c)), 'declared but never emitted').toEqual([]);
   });
 
   it('every register field has a column, and no column is invented', () => {
