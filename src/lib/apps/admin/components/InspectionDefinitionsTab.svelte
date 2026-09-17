@@ -21,10 +21,22 @@
   import { fmtDate } from '$lib/utils/dates.js';
   import InspectionDefinitionModal from './InspectionDefinitionModal.svelte';
   import StatutoryTemplatePanel from './StatutoryTemplatePanel.svelte';
+  import FilterBar from '$lib/components/common/FilterBar.svelte';
+  import {
+    filterObligations, obligationFilterFields, hasEmptyScope,
+  } from '../utils/registerFilter.js';
 
   $: ({ definitions, loading, error } = $inspectionDefinitionsStore);
   $: bas = $buildingAssetsStore;
   $: ctx = { types: bas.types, attrDefs: bas.attrDefs, componentAttrs: bas.componentAttrs, inspections: bas.inspections };
+
+  // Five rows today, ~84 the moment the register above is applied — so the
+  // filters go in now rather than after the list has already become unusable.
+  let search = '';
+  /** @type {Record<string, Set<string>>} */
+  let filters = {};
+  $: filterFields = obligationFilterFields(definitions);
+  $: shown = filterObligations(definitions, { ...filters, q: search });
 
   let editing = null;      // definition row or null-for-new sentinel
   let showModal = false;
@@ -130,8 +142,20 @@
   {:else if definitions.length === 0}
     <p class="empty">No inspections defined yet. Create one to get started.</p>
   {:else}
+    <FilterBar
+      fields={filterFields}
+      bind:values={filters}
+      bind:query={search}
+      searchPlaceholder="Name, reference…"
+      resultLabel="{shown.length} of {definitions.length}"
+    />
+
+    {#if shown.length === 0}
+      <p class="empty">No inspections match these filters.</p>
+    {/if}
+
     <div class="rows">
-      {#each definitions as d (d.id)}
+      {#each shown as d (d.id)}
         {@const n = matchCount(d)}
         <div class="row" class:inactive={!d.active}>
           <div class="row-main">
@@ -143,6 +167,10 @@
               {:else if isJobEvidenced(d)}<span class="badge job">Either route</span>{/if}
               {#if d.template_key}
                 <span class="badge tmpl" title="Counts towards the statutory template above">Statutory</span>
+              {/if}
+              {#if hasEmptyScope(d)}
+                <span class="badge unscoped"
+                  title="No scope set — this matches EVERY component in the building">Matches everything</span>
               {/if}
               {#if d.retired_on}
                 <span class="badge retired" title={d.retired_reason ?? ''}>
@@ -270,6 +298,7 @@
   .badge.rot { background: rgb(251 146 60 / 0.2); color: rgb(251 146 60); }
   .badge.job { background: rgb(56 189 248 / 0.18); color: rgb(125 211 252); }
   .badge.tmpl { background: rgb(248 113 113 / 0.16); color: rgb(252 165 165); }
+  .badge.unscoped { background: rgb(251 191 36 / 0.16); color: rgb(252 211 77); }
   .badge.retired { background: rgb(148 163 184 / 0.22); color: rgb(203 213 225); text-transform: none; letter-spacing: 0; }
   .rt-body { display: flex; flex-direction: column; gap: 0.6rem; }
   .rt-name { font-weight: 600; color: rgb(226 232 240); }

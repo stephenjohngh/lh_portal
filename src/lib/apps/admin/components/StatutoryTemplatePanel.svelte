@@ -11,10 +11,9 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
   import {
-    templateCoverage, suggestMatches, intervalNote, registerByGroup, basisTally,
-    BASIS, BASIS_LABEL, BASIS_DESCRIPTION, GROUP_LABEL, HANDLED_BY_LABEL,
-    isSchedulable, isRecurring, isUnhomed, isSuperseded, supersededNote,
-    STATUTORY_TEMPLATE,
+    templateCoverage, suggestMatches, intervalNote, basisTally,
+    BASIS, BASIS_LABEL, BASIS_DESCRIPTION, HANDLED_BY_LABEL,
+    isRecurring, supersededNote, STATUTORY_TEMPLATE,
   } from '$lib/utils/statutoryTemplate.js';
   import {
     currentDecisions, isRecordableReason, reviewsDue, reviewState, REVIEW_SOON_DAYS,
@@ -23,6 +22,11 @@
   import { fmtDate } from '$lib/utils/dates.js';
   import { profiles, profilesStore } from '$lib/stores/profiles.js';
   import FormInput from '$lib/components/common/FormInput.svelte';
+  import FilterBar from '$lib/components/common/FilterBar.svelte';
+  import {
+    filterRegister, registerStatusTally, groupRegisterRows, registerFilterFields,
+    REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS,
+  } from '../utils/registerFilter.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -52,19 +56,41 @@
   $: personName = new Map(($profiles.list ?? []).map(p => [p.id, p.full_name]));
   onMount(() => { profilesStore.load(); });
 
-  const grouped = registerByGroup();
   const tally   = basisTally();
 
   let open = false;
-  let view = 'gaps';            // 'gaps' | 'all'
   let showLegend = false;
-  let showCovered = false;
-  let showElsewhere = false;
-  let showNotApplicable = false;
-  let showSuperseded = false;
   let busy = false;
   let panelError = '';
   let applyReport = null;
+
+  // -- Filtering ---------------------------------------------------------------
+  // Status is a FILTER, not a view mode: "Gaps and coverage" and "Full register"
+  // were two renderings of these same entries, and the gap list is simply
+  // `status = not_covered`. It starts there because that is the work.
+  let search = '';
+  let filters = { status: new Set(['not_covered']) };
+  let expanded = new Set();          // keys whose detail is showing
+  let collapsedGroups = new Set();   // group keys the user has folded away
+
+  function toggleRow(key) {
+    const next = new Set(expanded);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    expanded = next;
+  }
+
+  function toggleGroup(group) {
+    const next = new Set(collapsedGroups);
+    if (next.has(group)) next.delete(group); else next.add(group);
+    collapsedGroups = next;
+  }
+
+  /** The count strip is also the control — clicking a number filters to it. */
+  function toggleStatus(s) {
+    const next = new Set(filters.status ?? []);
+    if (next.has(s)) next.delete(s); else next.add(s);
+    filters = { ...filters, status: next };
+  }
 
   // Open by itself the first time there is something to answer for, then leave
   // it under the user's control — a panel that keeps reopening is one people
@@ -77,6 +103,7 @@
   // may later have to justify, so both go through the same form and both demand
   // a reason. Nothing is edited or deleted — each is a new row in the log.
   let decisionEntry = null;      // register entry the decision is about
+  /** @type {'not_applicable'|'applicable'} */
   let decisionKind = 'not_applicable';
   let decisionReason = '';
   let decisionReviewDue = '';
@@ -121,18 +148,28 @@
   $: coveredKeys = new Set(coverage.covered.map(c => c.entry.key));
   $: dismissedSet = new Set(dismissedKeys);
 
-  function statusOf(entry) {
-    // Withdrawn first: whether we happen to be doing something the law no
-    // longer requires is not a compliance question, and without this branch a
-    // repealed requirement fell through and read as a gap.
-    if (isSuperseded(entry))         return { cls: 'na',   text: 'No longer required' };
-    if (coveredKeys.has(entry.key))  return { cls: 'ok',   text: 'Scheduled here' };
-    if (dismissedSet.has(entry.key)) return { cls: 'na',   text: 'Not applicable' };
-    if (!isSchedulable(entry))       return isUnhomed(entry)
-      ? { cls: 'gap', text: 'Nothing deals with it' }
-      : { cls: 'else', text: HANDLED_BY_LABEL[entry.handledBy] };
-    return { cls: 'gap', text: 'Not covered' };
-  }
+  // One status function for the whole panel, in registerFilter.js — see its
+  // header for why this is not a set of hand-written sections any more.
+  $: statusCtx = { coveredKeys, dismissedKeys: dismissedSet };
+  $: tallies   = registerStatusTally(STATUTORY_TEMPLATE, statusCtx);
+  $: filterFields = registerFilterFields(tallies);
+  $: shown     = filterRegister(STATUTORY_TEMPLATE, { ...filters, q: search }, statusCtx);
+  $: groups    = groupRegisterRows(shown);
+
+  // "N of M" per group heading needs the unfiltered total for that group.
+  $: groupTotals = STATUTORY_TEMPLATE.reduce((m, e) => {
+    m[e.group] = (m[e.group] ?? 0) + 1; return m;
+  }, /** @type {Record<string, number>} */ ({}));
+
+  // Only entries that can actually be created — bulk apply must never offer to
+  // add something the scheduler cannot date.
+  $: shownAddable = shown.filter(r => r.status === 'not_covered');
+
+  // Per-row extras the coverage report knows and the register entry does not.
+  $: rowMeta = new Map(/** @type {[string, {inactiveOnly?: boolean, activeCount?: number}][]} */ ([
+    ...coverage.missing.map(m => [m.entry.key, { inactiveOnly: m.inactiveOnly }]),
+    ...coverage.covered.map(c => [c.entry.key, { activeCount: c.activeCount }]),
+  ]));
 </script>
 
 <div class="tmpl" class:has-gaps={coverage.missing.length > 0}>
@@ -152,9 +189,9 @@
             <span class="dot">·</span>{coverage.superseded.length} no longer required
           {/if}
           {#if dueReviews.length > 0}
-            <span class="dot">·</span><span class="warn-text">
+            <span class="dot">·</span><span class="warn-text" class:late={overdueReviews.length > 0}>
               {dueReviews.length}
-              {dueReviews.length === 1 ? 'exclusion' : 'exclusions'} to review
+              {dueReviews.length === 1 ? 'exclusion' : 'exclusions'} to review{#if overdueReviews.length > 0}, {overdueReviews.length} overdue{/if}
             </span>
           {/if}
         </p>
@@ -206,10 +243,6 @@
         </div>
       {/if}
 
-      <div class="views">
-        <button class="view-btn" class:on={view === 'gaps'} on:click={() => (view = 'gaps')}>Gaps and coverage</button>
-        <button class="view-btn" class:on={view === 'all'}  on:click={() => (view = 'all')}>Full register ({STATUTORY_TEMPLATE.length})</button>
-      </div>
 
       {#if panelError}<ErrorDisplay message={panelError} onDismiss={() => (panelError = '')} />{/if}
 
@@ -223,260 +256,192 @@
         </div>
       {/if}
 
-      {#if view === 'all'}
-        <!-- ══ Full register ══════════════════════════════════════════════ -->
-        {#each [...grouped] as [group, entries] (group)}
-          <div class="sec-head"><h4>{GROUP_LABEL[group]} ({entries.length})</h4></div>
-          <div class="rows tight">
-            {#each entries as entry (entry.key)}
-              {@const st = statusOf(entry)}
-              <div class="row compact">
-                <div class="row-main">
-                  <div class="row-title">
-                    <span class="nm">{entry.name}</span>
-                    <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                  </div>
-                  <p class="ref">{entry.statutoryRef}</p>
-                </div>
-                <div class="row-facts">
-                  <span class="freq">{cadence(entry)}</span>
-                  <span class="status {st.cls}">{st.text}</span>
-                </div>
-              </div>
-            {/each}
-          </div>
+
+      <!-- ══ The list ═══════════════════════════════════════════════════
+           ONE list, one row template. "Gaps" and "Full register" used to be
+           two views over these same 116 entries, differing only in row
+           density — so a status could be computed one way for the badge and
+           implied another way by which view you were in. Status is now a
+           FILTER, and density is a per-row disclosure. -->
+
+      <!-- The count strip doubles as the filter: the numbers you read are the
+           control you click. It counts the WHOLE register, never the filtered
+           view, because it is how a filter gets chosen. -->
+      <div class="tally-strip">
+        {#each REGISTER_STATUS as s (s)}
+          <button
+            class="tally {REGISTER_STATUS_CLASS[s]}"
+            class:on={filters.status?.has(s)}
+            disabled={tallies[s] === 0}
+            title={tallies[s] === 0 ? 'None in this state' : `Show only: ${REGISTER_STATUS_LABEL[s]}`}
+            on:click={() => toggleStatus(s)}
+          >
+            <span class="tally-n">{tallies[s]}</span>
+            <span class="tally-l">{REGISTER_STATUS_LABEL[s]}</span>
+          </button>
         {/each}
+      </div>
 
-      {:else}
-        <!-- ══ Gaps ═══════════════════════════════════════════════════════ -->
-        {#if coverage.missing.length > 0}
-          <div class="sec-head">
-            <h4>Not covered ({coverage.missing.length})</h4>
-            <ProtectedButton requireAdmin={true} variant="primary" size="small"
-              disabled={busy}
-              on:click={() => apply(coverage.missing.map(m => m.entry.key))}>
-              Add all {coverage.missing.length}
-            </ProtectedButton>
-          </div>
+      <FilterBar
+        fields={filterFields}
+        bind:values={filters}
+        bind:query={search}
+        searchPlaceholder="Name, reference, description…"
+        resultLabel="{shown.length} of {STATUTORY_TEMPLATE.length}"
+      />
 
-          <div class="rows">
-            {#each coverage.missing as { entry, inactiveOnly } (entry.key)}
-              {@const candidates = suggestions.get(entry.key) ?? []}
-              <div class="row gap">
-                <div class="row-main">
-                  <div class="row-title">
-                    <span class="nm">{entry.name}</span>
-                    <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                    {#if isUnhomed(entry)}
-                      <span class="badge nohome" title="Nothing in the portal deals with this today">No home</span>
-                    {/if}
-                    {#if inactiveOnly}
-                      <span class="badge off" title="An obligation exists for this but is switched off">Switched off</span>
-                    {/if}
-                  </div>
-                  <p class="ref">{entry.statutoryRef}</p>
-                  <p class="desc">{entry.description}</p>
-                  <div class="meta">
-                    <span class="freq">{cadence(entry)}</span>
-                    <span class="dot">·</span>
-                    <span>{EVIDENCE_ROUTE_LABEL[entry.evidencedBy]}</span>
-                    <span class="dot">·</span>
-                    <span>{entry.responsibleParty}</span>
-                  </div>
-                  <p class="note">{intervalNote(entry)}</p>
-                  <p class="applies"><span class="applies-k">Applies when:</span> {entry.appliesWhen}</p>
-                  {#if entry.handlingNote}<p class="hnote">{entry.handlingNote}</p>{/if}
+      <!-- Bulk apply acts on WHAT IS SHOWN, not on every gap in the register.
+           With filters that is the more useful of the two and the safer one:
+           you can see exactly what you are about to create. -->
+      {#if shownAddable.length > 0}
+        <div class="bulk">
+          <ProtectedButton requireAdmin={true} variant="primary" size="small"
+            disabled={busy}
+            on:click={() => apply(shownAddable.map(r => r.entry.key))}>
+            Add {shownAddable.length} shown
+          </ProtectedButton>
+          <span class="bulk-note">
+            Each is created matching every component until you give it a scope.
+          </span>
+        </div>
+      {/if}
 
-                  {#if candidates.length > 0}
-                    <div class="suggest">
-                      <p class="suggest-h">Already have one of these?</p>
-                      {#each candidates.slice(0, 3) as c (c.obligation.id)}
-                        <div class="suggest-row">
-                          <span class="sug-nm">{c.obligation.name}</span>
-                          <span class="sug-why">{c.reason}</span>
-                          <ProtectedButton requireAdmin={true} variant="secondary" size="small"
-                            disabled={busy} on:click={() => link(c.obligation.id, entry.key)}>
-                            This one covers it
-                          </ProtectedButton>
-                        </div>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
+      {#if shown.length === 0}
+        <p class="all-clear">Nothing matches these filters.</p>
+      {/if}
 
-                <div class="row-actions">
-                  <ProtectedButton requireAdmin={true} variant="primary" size="small"
-                    disabled={busy} on:click={() => apply([entry.key])}>Add</ProtectedButton>
-                  <Button variant="secondary" size="small"
-                    disabled={busy} on:click={() => askDecision(entry, 'not_applicable')}>Not applicable</Button>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <p class="all-clear">✓ Every applicable entry this library schedules has an active obligation.</p>
-        {/if}
+      {#each groups as section (section.group)}
+        {@const collapsed = collapsedGroups.has(section.group)}
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+        <div class="sec-head toggle" on:click={() => toggleGroup(section.group)}>
+          <h4>
+            <span class="chev sm" class:open={!collapsed}>▸</span>
+            {section.label}
+            <span class="sec-n">{section.rows.length} of {groupTotals[section.group] ?? section.rows.length}</span>
+          </h4>
+        </div>
 
-        <!-- Nothing in the portal deals with these — the honest system-level gap -->
-        {#if coverage.unhomed.length > 0}
-          <div class="sec-head"><h4>Nothing deals with these ({coverage.unhomed.length})</h4></div>
-          <p class="sub-blurb">
-            Identified, real, and outside what any sub-app currently covers. They are not schedulable
-            here either — recorded so they are not mistaken for an oversight.
-          </p>
+        {#if !collapsed}
           <div class="rows tight">
-            {#each coverage.unhomed as { entry } (entry.key)}
-              <div class="row nohome-row">
-                <div class="row-main">
-                  <div class="row-title">
-                    <span class="nm">{entry.name}</span>
-                    <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                  </div>
-                  <p class="ref">{entry.statutoryRef}</p>
-                  {#if entry.handlingNote}<p class="hnote">{entry.handlingNote}</p>{/if}
-                </div>
-                <div class="row-facts"><span class="freq">{cadence(entry)}</span></div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-
-        <!-- Handled by another app's own cycle -->
-        {#if coverage.elsewhere.length > 0}
-          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-          <div class="sec-head toggle" on:click={() => (showElsewhere = !showElsewhere)}>
-            <h4><span class="chev sm" class:open={showElsewhere}>▸</span> Tracked in another app ({coverage.elsewhere.length})</h4>
-          </div>
-          {#if showElsewhere}
-            <p class="sub-blurb">
-              These already have their own cycle elsewhere in the portal. Adding an obligation would put a
-              second, competing due date on the same thing.
-            </p>
-            <div class="rows tight">
-              {#each coverage.elsewhere as { entry } (entry.key)}
-                <div class="row else-row">
+            {#each section.rows as { entry, status } (entry.key)}
+              {@const meta = rowMeta.get(entry.key) ?? {}}
+              {@const open = expanded.has(entry.key)}
+              {@const decision = decisions.get(entry.key)}
+              <div class="row {REGISTER_STATUS_CLASS[status]}" class:expanded={open}>
+                <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+                <div class="row-head" on:click={() => toggleRow(entry.key)}>
+                  <span class="chev sm" class:open>▸</span>
                   <div class="row-main">
                     <div class="row-title">
                       <span class="nm">{entry.name}</span>
                       <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                      <span class="badge app">{HANDLED_BY_LABEL[entry.handledBy]}</span>
-                    </div>
-                    {#if entry.handlingNote}<p class="hnote">{entry.handlingNote}</p>{/if}
-                  </div>
-                  <div class="row-facts"><span class="freq">{cadence(entry)}</span></div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        {/if}
-
-        <!-- No longer required — withdrawn, but still shown. Deleting the
-             entry is what we are deliberately not doing. -->
-        {#if coverage.superseded.length > 0}
-          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-          <div class="sec-head toggle" on:click={() => (showSuperseded = !showSuperseded)}>
-            <h4><span class="chev sm" class:open={showSuperseded}>▸</span> No longer required ({coverage.superseded.length})</h4>
-          </div>
-          {#if showSuperseded}
-            <p class="sub-blurb">
-              Withdrawn — repealed, superseded, or the standard withdrawn. Kept in the register because
-              work done under them before that date is still evidence and still has to make sense.
-            </p>
-            <div class="rows tight">
-              {#each coverage.superseded as { entry } (entry.key)}
-                <div class="row na">
-                  <div class="row-main">
-                    <div class="row-title">
-                      <span class="nm">{entry.name}</span>
-                      <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                    </div>
-                    <p class="ref">{entry.statutoryRef}</p>
-                    <p class="hnote">{supersededNote(entry)}</p>
-                  </div>
-                  <div class="row-facts"><span class="freq">{cadence(entry)}</span></div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        {/if}
-
-        <!-- Covered -->
-        {#if coverage.covered.length > 0}
-          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-          <div class="sec-head toggle" on:click={() => (showCovered = !showCovered)}>
-            <h4><span class="chev sm" class:open={showCovered}>▸</span> Covered ({coverage.covered.length})</h4>
-          </div>
-          {#if showCovered}
-            <div class="rows tight">
-              {#each coverage.covered as { entry, activeCount } (entry.key)}
-                <div class="row done">
-                  <div class="row-main">
-                    <div class="row-title">
-                      <span class="tick">✓</span>
-                      <span class="nm">{entry.name}</span>
-                      <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                      {#if activeCount > 1}<span class="badge n">{activeCount} obligations</span>{/if}
-                    </div>
-                    <p class="ref">{entry.statutoryRef}</p>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        {/if}
-
-        <!-- Not applicable -->
-        {#if coverage.notApplicable.length > 0}
-          <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-          <div class="sec-head toggle" on:click={() => (showNotApplicable = !showNotApplicable)}>
-            <h4>
-              <span class="chev sm" class:open={showNotApplicable}>▸</span>
-              Not applicable ({coverage.notApplicable.length})
-              {#if dueReviews.length > 0}
-                <span class="rev-flag" class:late={overdueReviews.length > 0}>
-                  {dueReviews.length} to review
-                </span>
-              {/if}
-            </h4>
-          </div>
-          {#if showNotApplicable}
-            <div class="rows tight">
-              {#each coverage.notApplicable as { entry } (entry.key)}
-                {@const d = decisions.get(entry.key)}
-                <div class="row na">
-                  <div class="row-main">
-                    <div class="row-title">
-                      <span class="nm">{entry.name}</span>
-                      <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
-                      {#if d?.review_due}
-                        {@const rs = reviewState(d.review_due)}
+                      {#if meta.inactiveOnly}
+                        <span class="badge off" title="An obligation exists for this but is switched off">Switched off</span>
+                      {/if}
+                      {#if meta.activeCount > 1}
+                        <span class="badge n">{meta.activeCount} obligations</span>
+                      {/if}
+                      {#if status === 'elsewhere'}
+                        <span class="badge app">{HANDLED_BY_LABEL[entry.handledBy]}</span>
+                      {/if}
+                      {#if decision?.review_due}
+                        {@const rs = reviewState(decision.review_due)}
                         <span class="badge rev {rs}">
-                          {#if rs === 'overdue'}Review overdue — {fmtDate(d.review_due)}
-                          {:else if rs === 'due_soon'}Review due {fmtDate(d.review_due)}
-                          {:else}Review {fmtDate(d.review_due)}{/if}
+                          {#if rs === 'overdue'}Review overdue — {fmtDate(decision.review_due)}
+                          {:else if rs === 'due_soon'}Review due {fmtDate(decision.review_due)}
+                          {:else}Review {fmtDate(decision.review_due)}{/if}
                         </span>
                       {/if}
                     </div>
-                    <p class="ref">{entry.statutoryRef}</p>
-                    {#if d}
-                      <p class="decision">“{d.reason}”</p>
-                      <p class="decision-by">
-                        Decided {fmtDate(d.decided_at)}{#if personName.get(d.decided_by)} by {personName.get(d.decided_by)}{/if}
-                      </p>
-                    {:else}
-                      <p class="decision-by">No decision record found for this exclusion.</p>
-                    {/if}
+                    {#if !open}<p class="ref">{entry.statutoryRef}</p>{/if}
                   </div>
-                  <div class="row-actions">
-                    <Button variant="secondary" size="small" disabled={busy}
-                      on:click={() => askDecision(entry, 'applicable')}>Reinstate</Button>
+                  <div class="row-facts">
+                    <span class="freq">{cadence(entry)}</span>
+                    <span class="status {REGISTER_STATUS_CLASS[status]}">{REGISTER_STATUS_LABEL[status]}</span>
                   </div>
                 </div>
-              {/each}
-            </div>
-          {/if}
+
+                {#if open}
+                  <div class="row-detail">
+                    <p class="ref">{entry.statutoryRef}</p>
+                    <p class="desc">{entry.description}</p>
+                    <div class="meta">
+                      <span class="freq">{cadence(entry)}</span>
+                      <span class="dot">·</span>
+                      <span>{EVIDENCE_ROUTE_LABEL[entry.evidencedBy] ?? 'Not schedulable here'}</span>
+                      <span class="dot">·</span>
+                      <span>{entry.responsibleParty}</span>
+                    </div>
+                    <p class="note">{intervalNote(entry)}</p>
+                    <p class="applies"><span class="applies-k">Applies when:</span> {entry.appliesWhen}</p>
+                    {#if entry.handlingNote}<p class="hnote">{entry.handlingNote}</p>{/if}
+
+                    {#if status === 'superseded'}
+                      <p class="hnote">{supersededNote(entry)}</p>
+                    {/if}
+
+                    {#if status === 'no_home'}
+                      <p class="hnote">
+                        Identified, real, and outside what any sub-app currently covers — recorded so it
+                        is not mistaken for an oversight. It cannot be scheduled here.
+                      </p>
+                    {/if}
+
+                    {#if status === 'elsewhere'}
+                      <p class="hnote">
+                        Already has its own cycle in {HANDLED_BY_LABEL[entry.handledBy]}. Adding an
+                        obligation would put a second, competing due date on the same thing.
+                      </p>
+                    {/if}
+
+                    {#if status === 'not_applicable'}
+                      {#if decision}
+                        <p class="decision">“{decision.reason}”</p>
+                        <p class="decision-by">
+                          Decided {fmtDate(decision.decided_at)}{#if personName.get(decision.decided_by)} by {personName.get(decision.decided_by)}{/if}
+                        </p>
+                      {:else}
+                        <p class="decision-by">No decision record found for this exclusion.</p>
+                      {/if}
+                    {/if}
+
+                    {#if status === 'not_covered'}
+                      {@const candidates = suggestions.get(entry.key) ?? []}
+                      {#if candidates.length > 0}
+                        <div class="suggest">
+                          <p class="suggest-h">Already have one of these?</p>
+                          {#each candidates.slice(0, 3) as c (c.obligation.id)}
+                            <div class="suggest-row">
+                              <span class="sug-nm">{c.obligation.name}</span>
+                              <span class="sug-why">{c.reason}</span>
+                              <ProtectedButton requireAdmin={true} variant="secondary" size="small"
+                                disabled={busy} on:click={() => link(c.obligation.id, entry.key)}>
+                                This one covers it
+                              </ProtectedButton>
+                            </div>
+                          {/each}
+                        </div>
+                      {/if}
+                    {/if}
+
+                    <div class="row-actions">
+                      {#if status === 'not_covered'}
+                        <ProtectedButton requireAdmin={true} variant="primary" size="small"
+                          disabled={busy} on:click={() => apply([entry.key])}>Add</ProtectedButton>
+                        <Button variant="secondary" size="small"
+                          disabled={busy} on:click={() => askDecision(entry, 'not_applicable')}>Not applicable</Button>
+                      {:else if status === 'not_applicable'}
+                        <Button variant="secondary" size="small" disabled={busy}
+                          on:click={() => askDecision(entry, 'applicable')}>Reinstate</Button>
+                      {/if}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
         {/if}
-      {/if}
+      {/each}
     </div>
   {/if}
 </div>
@@ -547,6 +512,38 @@
 </Modal>
 
 <style>
+  /* ── The count strip: a summary that is also the control ───────────────── */
+  .tally-strip { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .tally {
+    display: flex; align-items: baseline; gap: 0.35rem; cursor: pointer;
+    padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.72rem;
+    border: 1px solid rgb(71 85 105 / 0.6); background: rgb(30 41 59 / 0.4);
+    color: rgb(148 163 184); transition: border-color 0.12s, color 0.12s;
+  }
+  .tally:hover:not(:disabled) { border-color: rgb(148 163 184 / 0.8); color: rgb(226 232 240); }
+  .tally:disabled { opacity: 0.4; cursor: default; }
+  .tally.on { background: rgb(var(--lh-accent-rgb) / 0.15); border-color: rgb(var(--lh-accent-rgb) / 0.6); color: rgb(226 232 240); }
+  .tally-n { font-weight: 700; font-size: 0.9rem; color: rgb(226 232 240); }
+  .tally.gap .tally-n  { color: rgb(252 165 165); }
+  .tally.ok .tally-n   { color: rgb(134 239 172); }
+  .tally.else .tally-n { color: rgb(125 211 252); }
+
+  .bulk { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .bulk-note { font-size: 0.74rem; color: rgb(148 163 184); }
+  .sec-n { font-weight: 400; color: rgb(100 116 139); font-size: 0.78rem; margin-left: 0.3rem; }
+
+  /* ── Rows: compact, expanding in place ─────────────────────────────────── */
+  .row-head { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; width: 100%; }
+  .row-head .row-main { flex: 1; min-width: 0; }
+  .row.expanded { border-color: rgb(var(--lh-accent-rgb) / 0.4); }
+  .row-detail {
+    margin-top: 0.55rem; padding-top: 0.55rem; padding-left: 1.1rem;
+    border-top: 1px solid rgb(71 85 105 / 0.4);
+    display: flex; flex-direction: column; gap: 0.3rem;
+  }
+  .row-detail .row-actions { margin-top: 0.4rem; display: flex; gap: 0.4rem; }
+  .warn-text.late { color: rgb(248 113 113); font-weight: 600; }
+
   .tmpl { border: 1px solid rgb(71 85 105 / 0.5); border-radius: 10px; background: rgb(30 41 59 / 0.3); overflow: hidden; }
   .tmpl.has-gaps { border-color: rgb(251 191 36 / 0.4); }
 
@@ -581,8 +578,6 @@
   .legend-note { font-size: 0.74rem; color: rgb(100 116 139); border-top: 1px solid rgb(71 85 105 / 0.4); padding-top: 0.45rem; }
 
   .views { display: flex; gap: 0.4rem; }
-  .view-btn { font-size: 0.76rem; padding: 0.3rem 0.7rem; border-radius: 6px; border: 1px solid rgb(71 85 105 / 0.6); background: transparent; color: rgb(148 163 184); cursor: pointer; }
-  .view-btn.on { background: rgb(var(--lh-accent-rgb) / 0.15); border-color: rgb(var(--lh-accent-rgb) / 0.5); color: rgb(226 232 240); }
 
   .report { font-size: 0.82rem; color: rgb(134 239 172); background: rgb(34 197 94 / 0.1); border-radius: 6px; padding: 0.6rem 0.75rem; }
   .report.bad { color: rgb(203 213 225); background: rgb(251 191 36 / 0.1); }
