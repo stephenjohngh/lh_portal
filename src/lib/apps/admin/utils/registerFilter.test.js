@@ -13,6 +13,8 @@ import {
   registerStatus, filterRegister, registerStatusTally, groupRegisterRows,
   registerFilterFields, REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS,
   obligationState, hasEmptyScope, filterObligations, obligationFilterFields,
+  dutyHolderRole, dutyHolderTally, unclassifiedDutyHolders,
+  DUTY_HOLDER_ROLES, DUTY_HOLDER_ROLE_LABEL,
 } from './registerFilter.js';
 
 const ALL = STATUTORY_TEMPLATE;
@@ -164,14 +166,15 @@ describe('registerFilterFields', () => {
     // is information. This asserts the options come from the register's own
     // vocabularies rather than a hand-typed list.
     const tally = registerStatusTally(ALL, noCtx);
-    for (const field of registerFilterFields(tally)) {
+    const dutyTally = dutyHolderTally(ALL);
+    for (const field of registerFilterFields(tally, dutyTally)) {
       for (const opt of field.options) {
         const n = filterRegister(ALL, { [field.key]: new Set([opt.value]) }, noCtx).length;
         expect(n).toBeGreaterThanOrEqual(0);
       }
     }
     // and at least one option per facet actually matches something
-    for (const field of registerFilterFields(tally)) {
+    for (const field of registerFilterFields(tally, dutyTally)) {
       const anyMatch = field.options.some(opt =>
         filterRegister(ALL, { [field.key]: new Set([opt.value]) }, noCtx).length > 0);
       expect(anyMatch, `facet ${field.key} matches nothing at all`).toBe(true);
@@ -247,5 +250,85 @@ describe('obligationFilterFields', () => {
     const state = obligationFilterFields(defs).find(f => f.key === 'state');
     expect(state?.options.find(o => o.value === 'active')?.label).toContain('(1)');
     expect(state?.options.find(o => o.value === 'retired')?.label).toContain('(1)');
+  });
+});
+
+describe('dutyHolderRole — who bears the duty IN LAW', () => {
+  it('⛔ classifies EVERY entry — the derivation must stay total', () => {
+    // A category inferred from prose silently drops rows out of its facet when
+    // someone rewords the source. This is the guard against that: reword a
+    // statutoryDutyHolder into a shape the classifier does not know and this
+    // fails, rather than the row quietly vanishing from the filter.
+    const stray = unclassifiedDutyHolders(ALL);
+    expect(stray.map(e => `${e.key}: ${e.statutoryDutyHolder}`)).toEqual([]);
+  });
+
+  it('accounts for all 116 across the declared roles', () => {
+    const tally = dutyHolderTally(ALL);
+    expect(Object.keys(tally).every(k => DUTY_HOLDER_ROLES.includes(k))).toBe(true);
+    expect(Object.values(tally).reduce((a, b) => a + b, 0)).toBe(ALL.length);
+  });
+
+  it('every declared role has a label', () => {
+    for (const r of DUTY_HOLDER_ROLES) expect(DUTY_HOLDER_ROLE_LABEL[r]).toBeTruthy();
+  });
+
+  it('keeps the two accountable-person roles apart', () => {
+    // "Principal accountable person" CONTAINS "accountable person", so a naive
+    // substring test collapses them — and they are different duty holders.
+    expect(dutyHolderRole({ statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)' }))
+      .toBe('principal_accountable_person');
+    expect(dutyHolderRole({ statutoryDutyHolder: 'Accountable person (Building Safety Act 2022, Part 4)' }))
+      .toBe('accountable_person');
+  });
+
+  it('does not let a SHARED duty read as one party’s', () => {
+    // The shared row names both roles; classifying it as either would say one
+    // party discharges the other's duty, which the row exists to deny.
+    expect(dutyHolderRole({ statutoryDutyHolder:
+      'Shared: the accountable person under Building Safety Act 2022 Part 4, AND the responsible person under art 22' }))
+      .toBe('shared_ap_rp');
+  });
+
+  it('separates the three reasons there is no statutory duty holder', () => {
+    expect(dutyHolderRole({ statutoryDutyHolder: 'None — this is our own control, not a statutory duty' }))
+      .toBe('none_own_control');
+    expect(dutyHolderRole({ statutoryDutyHolder: 'None — binding by agreement rather than by law' }))
+      .toBe('none_contract');
+    expect(dutyHolderRole({ statutoryDutyHolder: 'None under the instruments in this register — the Housing Ombudsman Complaint Handling Code binds member landlords' }))
+      .toBe('none_code');
+  });
+
+  it('flags an unknown wording rather than guessing', () => {
+    expect(dutyHolderRole({ statutoryDutyHolder: 'The window cleaner' })).toBe('other');
+  });
+
+  it('is a real filter facet, and it is NOT responsibleParty', () => {
+    const rp = filterRegister(ALL, { dutyHolder: new Set(['responsible_person']) }, noCtx);
+    expect(rp.length).toBeGreaterThan(0);
+    expect(rp.every(r => dutyHolderRole(r.entry) === 'responsible_person')).toBe(true);
+
+    // The distinction the field exists for: rows whose statutory duty is the
+    // responsible person's but whose WORK is done by someone else.
+    const performedByOthers = rp.filter(r =>
+      !/responsible person/i.test(r.entry.responsibleParty ?? ''));
+    expect(performedByOthers.length).toBeGreaterThan(0);
+  });
+
+  it('offers only roles that actually occur, each with its count', () => {
+    const dutyTally = dutyHolderTally(ALL);
+    const field = registerFilterFields(registerStatusTally(ALL, noCtx), dutyTally)
+      .find(f => f.key === 'dutyHolder');
+    expect(field).toBeDefined();
+    for (const opt of field?.options ?? []) {
+      expect(dutyTally[opt.value]).toBeGreaterThan(0);
+      expect(filterRegister(ALL, { dutyHolder: new Set([opt.value]) }, noCtx).length)
+        .toBe(dutyTally[opt.value]);
+    }
+  });
+
+  it('search reaches the duty holder text', () => {
+    const rows = filterRegister(ALL, { q: 'principal accountable person' }, noCtx);
+    expect(rows.length).toBeGreaterThan(0);
   });
 });

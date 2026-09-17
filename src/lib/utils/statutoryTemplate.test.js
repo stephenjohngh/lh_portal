@@ -19,7 +19,7 @@ import { EVIDENCE_ROUTES } from './obligationEvidence.js';
 const SAMPLE_KEY = 'lift_loler_examination';
 const sample = templateEntry(SAMPLE_KEY);
 /** Any entry whose interval genuinely comes from its reference. */
-const stated = STATUTORY_TEMPLATE.find(e => e.intervalBasis === 'stated' && e.frequencyDays);
+const stated = STATUTORY_TEMPLATE.find(e => e.intervalBasis === 'stated' && e.frequencyDays && !e.maxIsSchedulingTolerance);
 /** Any entry whose interval is ours. */
 const practice = STATUTORY_TEMPLATE.find(e => e.intervalBasis === 'practice' && e.frequencyDays);
 
@@ -136,6 +136,28 @@ describe('intervalNote', () => {
     expect(intervalNote(stated), stated.key).toMatch(/set by the reference/i);
     expect(intervalNote(practice), practice.key).toMatch(/established practice/i);
     expect(intervalNote(null)).toBe('');
+  });
+
+  it('⚠ never lets OUR day count read as the source’s period', () => {
+    // The error round 14 removed from the statement, asserted here so it
+    // cannot come back on screen: where maxIsSchedulingTolerance is declared,
+    // the note must say the day figure is ours, and must not claim the
+    // reference set the interval.
+    const tolerance = STATUTORY_TEMPLATE.filter(e => e.maxIsSchedulingTolerance);
+    expect(tolerance.length).toBeGreaterThan(0);
+    for (const e of tolerance) {
+      const note = intervalNote(e);
+      expect(note, e.key).toMatch(/our scheduling tolerance/i);
+      expect(note, e.key).not.toMatch(/interval set by the reference/i);
+    }
+  });
+
+  it('quotes the period in the source’s own words where the register has them', () => {
+    const worded = STATUTORY_TEMPLATE.filter(e => e.sourceIntervalWords && isRecurring(e));
+    expect(worded.length).toBeGreaterThan(0);
+    for (const e of worded) {
+      expect(intervalNote(e), e.key).toContain(e.sourceIntervalWords);
+    }
   });
 
   it('names the trigger for an event-driven entry instead of an interval', () => {

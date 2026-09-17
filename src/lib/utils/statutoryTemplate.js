@@ -191,9 +191,27 @@ export const TRIGGER_TYPE_LABEL = {
 export function intervalNote(entry) {
   if (!entry) return '';
   if (!isRecurring(entry)) return entry.trigger ? `Triggered by: ${entry.trigger}` : '';
-  return entry.intervalBasis === 'stated'
-    ? 'Interval set by the reference above.'
-    : 'Interval is established practice; the reference sets the duty, not the frequency.';
+
+  const parts = [];
+
+  // ⚠ The period AS THE INSTRUMENT STATES IT, verbatim. No instrument
+  // anywhere says "366 days" — that is our arithmetic on the word "annual".
+  // Round 14 stopped the outward-facing statement presenting one as the other;
+  // this function was still doing it on screen, which is the same error in the
+  // place people actually work.
+  if (entry.sourceIntervalWords) {
+    parts.push(`The source states the period as “${entry.sourceIntervalWords}”.`);
+  }
+
+  if (entry.maxIsSchedulingTolerance) {
+    parts.push('⚠ The day figure is OUR scheduling tolerance, not a maximum the source sets — it does not alter the duty.');
+  } else if (entry.intervalBasis === 'stated') {
+    parts.push('Interval set by the reference above.');
+  } else {
+    parts.push('Interval is established practice; the reference sets the duty, not the frequency.');
+  }
+
+  return parts.join(' ');
 }
 
 /**

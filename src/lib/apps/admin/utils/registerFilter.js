@@ -70,7 +70,7 @@ export function registerStatus(entry, ctx = {}) {
 function haystack(entry) {
   return [
     entry.name, entry.statutoryRef, entry.description,
-    entry.appliesWhen, entry.responsibleParty, entry.key,
+    entry.appliesWhen, entry.responsibleParty, entry.statutoryDutyHolder, entry.key,
   ].filter(Boolean).join(' ').toLowerCase();
 }
 
@@ -82,7 +82,8 @@ function matches(entry, filters, status) {
       && has(filters.basis,    entry.basis)
       && has(filters.group,    entry.group)
       && has(filters.evidence, entry.evidencedBy ?? 'none')
-      && has(filters.trigger,  triggerTypeOf(entry));
+      && has(filters.trigger,  triggerTypeOf(entry))
+      && has(filters.dutyHolder, dutyHolderRole(entry));
 }
 
 /**
@@ -141,7 +142,7 @@ export function groupRegisterRows(rows) {
 /** Facet definitions for the register bar — the options a person can pick.
  *  Built from the register's own vocabularies, so a new basis or group cannot
  *  appear in the data without appearing in the filter. */
-export function registerFilterFields(tally) {
+export function registerFilterFields(tally, dutyTally) {
   return [
     { key: 'status', label: 'Status', placeholder: 'All statuses', noun: 'statuses', minWidth: '150px',
       options: REGISTER_STATUS.map(s => ({
@@ -159,7 +160,101 @@ export function registerFilterFields(tally) {
       ] },
     { key: 'trigger', label: 'Trigger', placeholder: 'Any trigger', noun: 'triggers',
       options: Object.entries(TRIGGER_TYPE_LABEL).map(([v, label]) => ({ value: v, label })) },
+    // ⚠ Labelled "Duty holder", never "Responsible" — the register keeps who
+    // bears a duty in law apart from who performs the work, deliberately.
+    { key: 'dutyHolder', label: 'Duty holder', placeholder: 'Any duty holder',
+      noun: 'duty holders', minWidth: '170px',
+      // Roles with no entries are dropped rather than shown as (0) — there are
+      // nine possible and this building uses most of them, so a dead option is
+      // noise. Falls back to all roles if no tally is supplied, so a caller
+      // forgetting it loses the counts, never the facet.
+      options: (dutyTally ? DUTY_HOLDER_ROLES.filter(r => (dutyTally[r] ?? 0) > 0) : DUTY_HOLDER_ROLES)
+        .map(r => ({
+          value: r,
+          label: dutyTally ? `${DUTY_HOLDER_ROLE_LABEL[r]} (${dutyTally[r]})` : DUTY_HOLDER_ROLE_LABEL[r],
+          short: DUTY_HOLDER_ROLE_LABEL[r],
+        })) },
   ];
+}
+
+// ── Who bears the duty IN LAW ────────────────────────────────────────────────
+//
+// ⚠ `statutoryDutyHolder` is NOT `responsibleParty`, and keeping them apart is
+// the whole reason the field exists. Round 12 of the external review found
+// "Responsible: Site staff" standing on eight rows whose statutory duty is the
+// Responsible Person's — the register asserting that a legal duty had been
+// transferred to a cleaner. `statutoryDutyHolder` says who bears it in law
+// (which follows from the INSTRUMENT, so a catalogue can hold it);
+// `responsibleParty` says who performs the work.
+//
+// The stored values are full sentences, each carrying its own citation — right
+// for a document, useless as a dropdown. So a short ROLE is derived for
+// filtering only; the sentence is what gets displayed.
+//
+// ⛔ The derivation must stay TOTAL. `assertDutyHolderRolesTotal()` fails if any
+// entry lands on 'other', so rewording a duty holder cannot silently drop a row
+// out of its facet — the failure mode of every "infer a category from prose"
+// scheme, and one this project has already been bitten by.
+
+export const DUTY_HOLDER_ROLES = [
+  'responsible_person', 'principal_accountable_person', 'accountable_person',
+  'shared_ap_rp', 'employer_or_controller', 'asbestos_duty_holder',
+  'none_own_control', 'none_contract', 'none_code',
+];
+
+export const DUTY_HOLDER_ROLE_LABEL = {
+  responsible_person:           'Responsible person (Fire Safety Order)',
+  principal_accountable_person: 'Principal accountable person (BSA)',
+  accountable_person:           'Accountable person (BSA)',
+  shared_ap_rp:                 'Shared — AP and responsible person',
+  employer_or_controller:       'Employer / person in control',
+  asbestos_duty_holder:         'Asbestos duty holder',
+  none_own_control:             'No statutory duty holder — our own control',
+  none_contract:                'No statutory duty holder — contract',
+  none_code:                    'No statutory duty holder — a code, not statute',
+};
+
+/**
+ * Derive the short role from the stored sentence. Ordered: the more specific
+ * tests come first, because "Principal accountable person" contains
+ * "accountable person" and "Shared:" mentions both roles.
+ * @param {Object} entry
+ * @returns {string} a DUTY_HOLDER_ROLES value, or 'other' if nothing matches
+ */
+export function dutyHolderRole(entry) {
+  const t = String(entry?.statutoryDutyHolder ?? '').toLowerCase();
+  if (!t)                                 return 'none_own_control';
+  if (t.startsWith('shared'))             return 'shared_ap_rp';
+  if (t.startsWith('none'))               return t.includes('agreement') ? 'none_contract'
+                                               : t.includes('code')      ? 'none_code'
+                                               : 'none_own_control';
+  if (t.startsWith('principal accountable person')) return 'principal_accountable_person';
+  if (t.startsWith('accountable person'))  return 'accountable_person';
+  if (t.startsWith('responsible person'))  return 'responsible_person';
+  if (t.includes('control of asbestos'))   return 'asbestos_duty_holder';
+  if (t.includes('employer'))              return 'employer_or_controller';
+  return 'other';
+}
+
+/**
+ * ⛔ Guard for the derivation above. Returns the entries it could not classify;
+ * empty means the facet still covers the whole register.
+ * @param {Object[]} entries
+ * @returns {Object[]}
+ */
+export function unclassifiedDutyHolders(entries) {
+  return entries.filter(e => dutyHolderRole(e) === 'other');
+}
+
+/** @param {Object[]} entries */
+export function dutyHolderTally(entries) {
+  /** @type {Record<string, number>} */
+  const tally = Object.fromEntries(DUTY_HOLDER_ROLES.map(r => [r, 0]));
+  for (const e of entries) {
+    const role = dutyHolderRole(e);
+    tally[role] = (tally[role] ?? 0) + 1;
+  }
+  return tally;
 }
 
 // ── The obligations list ─────────────────────────────────────────────────────

@@ -26,6 +26,7 @@
   import {
     filterRegister, registerStatusTally, groupRegisterRows, registerFilterFields,
     REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS,
+    dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
   } from '../utils/registerFilter.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
@@ -145,6 +146,11 @@
 
   // -- Display helpers ---------------------------------------------------------
   const cadence = e => (isRecurring(e) ? frequencyLabel(e.frequencyDays) : 'On event');
+
+  /** Months → the way a person says it. No instrument here sets a retention
+   *  period, which is exactly why a bare number must not read as a minimum. */
+  const retentionLabel = (months) =>
+    months % 12 === 0 ? `${months / 12} year${months === 12 ? '' : 's'}` : `${months} months`;
   $: coveredKeys = new Set(coverage.covered.map(c => c.entry.key));
   $: dismissedSet = new Set(dismissedKeys);
 
@@ -152,7 +158,8 @@
   // header for why this is not a set of hand-written sections any more.
   $: statusCtx = { coveredKeys, dismissedKeys: dismissedSet };
   $: tallies   = registerStatusTally(STATUTORY_TEMPLATE, statusCtx);
-  $: filterFields = registerFilterFields(tallies);
+  $: dutyTally    = dutyHolderTally(STATUTORY_TEMPLATE);
+  $: filterFields = registerFilterFields(tallies, dutyTally);
   $: shown     = filterRegister(STATUTORY_TEMPLATE, { ...filters, q: search }, statusCtx);
   $: groups    = groupRegisterRows(shown);
 
@@ -344,6 +351,10 @@
                       {#if status === 'elsewhere'}
                         <span class="badge app">{HANDLED_BY_LABEL[entry.handledBy]}</span>
                       {/if}
+                      {#if entry.operationallyIncomplete}
+                        <span class="badge incomplete"
+                          title="A frequent inspection beside an open defect reads as control it does not provide">⛔ Operationally incomplete</span>
+                      {/if}
                       {#if decision?.review_due}
                         {@const rs = reviewState(decision.review_due)}
                         <span class="badge rev {rs}">
@@ -369,11 +380,63 @@
                       <span class="freq">{cadence(entry)}</span>
                       <span class="dot">·</span>
                       <span>{EVIDENCE_ROUTE_LABEL[entry.evidencedBy] ?? 'Not schedulable here'}</span>
-                      <span class="dot">·</span>
-                      <span>{entry.responsibleParty}</span>
                     </div>
+
+                    <!-- ⚠ Two different questions, and the register keeps them
+                         apart on purpose: who bears the duty IN LAW, and who
+                         does the work. Round 12 found "Responsible: Site staff"
+                         standing on rows whose duty is the responsible
+                         person's — the register asserting a statutory duty had
+                         moved to a cleaner. Shown as two labelled lines so the
+                         screen cannot reintroduce that. -->
+                    <p class="party">
+                      <span class="party-k">Duty holder in law:</span>
+                      {entry.statutoryDutyHolder ?? DUTY_HOLDER_ROLE_LABEL[dutyHolderRole(entry)]}
+                    </p>
+                    <p class="party">
+                      <span class="party-k">Performed by:</span> {entry.responsibleParty}
+                    </p>
                     <p class="note">{intervalNote(entry)}</p>
                     <p class="applies"><span class="applies-k">Applies when:</span> {entry.appliesWhen}</p>
+                    {#if entry.triggerSource}
+                      <p class="applies">
+                        <span class="applies-k">What detects it:</span> {entry.triggerSource}
+                      </p>
+                    {/if}
+
+                    <!-- ⛔ Round 6: "the warning itself can become permanent".
+                         An unassigned completion action is conspicuous every
+                         time the row is read; a paragraph is not. The register
+                         has carried both fields since then and NOTHING in the
+                         app showed either, so on screen these nine rows read
+                         as ordinary ones. -->
+                    {#if entry.operationallyIncomplete}
+                      <div class="incomplete-box">
+                        <p class="incomplete-h">⛔ Operationally incomplete</p>
+                        <p>
+                          An interim measure against an open finding. It lacks the hazard, the residual
+                          risk, the technical authority, the escalation threshold, who may declare it
+                          unsafe, the permanent solution and its date.
+                        </p>
+                        <p class="incomplete-action">
+                          <span class="applies-k">Completion action:</span>
+                          {#if entry.completionAction}
+                            {entry.completionAction}
+                          {:else}
+                            <span class="not-assigned">NOT ASSIGNED</span>
+                          {/if}
+                        </p>
+                      </div>
+                    {/if}
+
+                    {#if entry.retentionBasis || entry.retentionPeriodMonths}
+                      <p class="applies">
+                        <span class="applies-k">Evidence retention:</span>
+                        {#if entry.retentionPeriodMonths}{retentionLabel(entry.retentionPeriodMonths)} — {/if}
+                        {entry.retentionBasis ?? 'basis not stated'}
+                      </p>
+                    {/if}
+
                     {#if entry.handlingNote}<p class="hnote">{entry.handlingNote}</p>{/if}
 
                     {#if status === 'superseded'}
@@ -528,6 +591,18 @@
   .tally.ok .tally-n   { color: rgb(134 239 172); }
   .tally.else .tally-n { color: rgb(125 211 252); }
 
+  .badge.incomplete { background: rgb(248 113 113 / 0.18); color: rgb(252 165 165); text-transform: none; letter-spacing: 0; }
+  .incomplete-box {
+    margin-top: 0.35rem; padding: 0.5rem 0.65rem; border-radius: 6px;
+    background: rgb(248 113 113 / 0.08); border: 1px solid rgb(248 113 113 / 0.35);
+    font-size: 0.76rem; color: rgb(203 213 225); line-height: 1.45;
+    display: flex; flex-direction: column; gap: 0.3rem;
+  }
+  .incomplete-h { font-weight: 700; color: rgb(252 165 165); }
+  .incomplete-action { margin-top: 0.1rem; }
+  .not-assigned { font-weight: 700; color: rgb(252 165 165); letter-spacing: 0.03em; }
+  .party { font-size: 0.76rem; color: rgb(148 163 184); line-height: 1.45; }
+  .party-k { color: rgb(203 213 225); font-weight: 600; }
   .bulk { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .bulk-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .sec-n { font-weight: 400; color: rgb(100 116 139); font-size: 0.78rem; margin-left: 0.3rem; }
