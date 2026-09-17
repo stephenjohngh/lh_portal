@@ -27,6 +27,7 @@
     filterRegister, registerStatusTally, groupRegisterRows, registerFilterFields,
     REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS,
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
+    citationState,
   } from '../utils/registerFilter.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
@@ -175,7 +176,10 @@
   $: statusCtx = { coveredKeys, dismissedKeys: dismissedSet, awaitingKeys };
   $: tallies   = registerStatusTally(STATUTORY_TEMPLATE, statusCtx);
   $: dutyTally    = dutyHolderTally(STATUTORY_TEMPLATE);
-  $: filterFields = registerFilterFields(tallies, dutyTally);
+  $: citationTally = STATUTORY_TEMPLATE.reduce((m, e) => {
+    const k = citationState(e); m[k] = (m[k] ?? 0) + 1; return m;
+  }, /** @type {Record<string, number>} */ ({}));
+  $: filterFields = registerFilterFields(tallies, dutyTally, citationTally);
   $: shown     = filterRegister(STATUTORY_TEMPLATE, { ...filters, q: search }, statusCtx);
   $: groups    = groupRegisterRows(shown);
 
@@ -401,6 +405,25 @@
                 {#if open}
                   <div class="row-detail">
                     <p class="ref">{entry.statutoryRef}</p>
+
+                    <!-- ⚠ CITATION verified, not the row. The review that
+                         produced these says in terms that the intervals and the
+                         applicability conditions were NOT checked, so the label
+                         says exactly what was done and no more. A bare
+                         "verified" would be the overstatement this register
+                         exists to prevent. -->
+                    {#if entry.citationVerifiedAgainst}
+                      <p class="cite-ok">
+                        ✓ Citation verified against
+                        <a href={entry.citationVerifiedAgainst} target="_blank" rel="noopener">
+                          legislation.gov.uk</a>, {fmtDate(entry.citationVerifiedOn)}
+                        <span class="cite-scope">— the citation only; not the interval or whether it applies here</span>
+                      </p>
+                    {:else}
+                      <p class="cite-none">
+                        From the standard register — this row’s citation has not been individually recorded
+                      </p>
+                    {/if}
                     <p class="desc">{entry.description}</p>
                     <div class="meta">
                       <span class="freq">{cadence(entry)}</span>
@@ -643,6 +666,10 @@
   .incomplete-h { font-weight: 700; color: rgb(252 165 165); }
   .incomplete-action { margin-top: 0.1rem; }
   .not-assigned { font-weight: 700; color: rgb(252 165 165); letter-spacing: 0.03em; }
+  .cite-ok { font-size: 0.75rem; color: rgb(134 239 172); line-height: 1.45; }
+  .cite-ok a { color: rgb(134 239 172); text-decoration: underline; }
+  .cite-scope { color: rgb(100 116 139); }
+  .cite-none { font-size: 0.75rem; color: rgb(100 116 139); line-height: 1.45; }
   .scope-ok { color: rgb(134 239 172); font-size: 0.72rem; }
   .party { font-size: 0.76rem; color: rgb(148 163 184); line-height: 1.45; }
   .party-k { color: rgb(203 213 225); font-weight: 600; }

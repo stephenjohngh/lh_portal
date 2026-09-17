@@ -387,6 +387,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_communal_fire_doors',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/10',
     suggestedScope: {'typeCodes': ['door_fire_door']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
@@ -409,6 +411,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_flat_entrance_doors',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/10',
     suggestedScope: {'typeCodes': ['door_apartment_door']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
@@ -1101,6 +1105,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_monthly_equipment_check',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/7',
     scopeNote: 'Spans four systems — risers, sprinkler, lift. ⚠ Scope it from the reg 6(7) asset schedule rather than by type, so the row cannot silently miss an item the schedule names.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
@@ -1175,6 +1181,8 @@ export const REGISTER = [
   // a separate statutory duty on the responsible person.
   entry({
     key: 'fser_monthly_systems_check',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/7',
     scopeNote: 'Scope to the Fire Detection & Alarm system (118 components). ⚠ A system id is this building’s own uuid, so it cannot be carried in the catalogue — pick the system here.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
@@ -1326,6 +1334,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'fser_wayfinding_signage',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/8',
     suggestedScope: {'typeCodes': ['signage_wayfinding']},
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
@@ -1345,6 +1355,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_monthly_check',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/4',
     scopeNote: '⛔ BLOCKED on D14. typeCodes: fires_info holds three different things and only one of them IS the secure information box. A scope cannot name one component.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
@@ -1377,6 +1389,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'pib_content_review',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/4',
     reviewerNote: '⚠ "BOX INSPECTED" IS NOT EVIDENCE THAT ITS CONTENTS ARE CURRENT, and the two must be separate records. The monthly row looks at the box — present, secure, accessible, lock working, which is reg 4(2) and reg 4(5). This row looks at what is INSIDE it, and the contents come from two different places: reg 4(3) prescribes the contact information and requires the box to hold such documents as the Regulations require, while what those plans must SHOW comes from reg 6, and reg 6(5) is what puts the hard copies there. ⛔ A box that passes inspection while holding last year\u2019s floor plans passes nothing that matters.',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
@@ -1772,6 +1786,8 @@ export const REGISTER = [
   // from one nobody thought of.
   entry({
     key: 'fser_external_wall_record',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/5',
     triggerSource: 'The building work change-control screen, on completion of any works touching the external walls. ⚠ It is the ONLY source, so works that bypass the screen bypass this duty',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
@@ -1824,6 +1840,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'resident_fire_safety_info',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/9',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     sourceIntervalWords: 'within each period of 12 months (FSER reg 9(3)(b)) — and to a new resident as soon as reasonably practicable after they move in',
@@ -1853,6 +1871,8 @@ export const REGISTER = [
   // duty with its own content and its own timing, so it is its own row.
   entry({
     key: 'fire_door_resident_information',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2022/547/regulation/10',
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     sourceIntervalWords: 'within each period of 12 months (FSER reg 10(3)) — and to a new resident as soon as reasonably practicable after they move in',
@@ -2180,6 +2200,8 @@ export const REGISTER = [
   // registered engineer, CP12 record.
   entry({
     key: 'lift_loler_examination',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/1998/2307/regulation/9',
     statutoryDutyHolder: 'The employer, or the person who has control of the premises or work equipment, to the extent of that control',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     sourceIntervalWords: 'at least every 6 months (LOLER reg 9(3)(a)(i))',
@@ -3090,6 +3112,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'gt_cyclical_document_review',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2024/41/regulation/4',
     triggerSource: 'Golden Thread review-due tick (api/cron/review-tick)',
     statutoryDutyHolder: 'None — this is our own control, not a statutory duty. The statutory duty it assures sits elsewhere in this register',
     retentionBasis: 'Golden thread — kept while it remains the CURRENT record (SI 2023/907 reg 7), with superseded versions retained in the change history. The year figure is a floor, not the rule',
@@ -3315,6 +3339,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'res_strategy_review',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2023/907/regulation/10',
     statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
     sourceIntervalWords: 'at least every two years (SI 2023/907 reg 10(a))',
@@ -3388,6 +3414,8 @@ export const REGISTER = [
   }),
   entry({
     key: 'res_consultation',
+    citationVerifiedOn: '2026-09-11',
+    citationVerifiedAgainst: 'https://www.legislation.gov.uk/uksi/2023/907/regulation/10',
     triggerSource: '⛔ NO SOURCE. It depends on whoever takes a building safety decision recognising that it requires consultation — which is the judgement most likely to be missed',
     statutoryDutyHolder: 'Principal accountable person (Building Safety Act 2022, Part 4)',
     retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',

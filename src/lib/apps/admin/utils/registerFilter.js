@@ -95,7 +95,8 @@ function matches(entry, filters, status) {
       && has(filters.group,    entry.group)
       && has(filters.evidence, entry.evidencedBy ?? 'none')
       && has(filters.trigger,  triggerTypeOf(entry))
-      && has(filters.dutyHolder, dutyHolderRole(entry));
+      && has(filters.dutyHolder, dutyHolderRole(entry))
+      && has(filters.citation, citationState(entry));
 }
 
 /**
@@ -154,7 +155,7 @@ export function groupRegisterRows(rows) {
 /** Facet definitions for the register bar — the options a person can pick.
  *  Built from the register's own vocabularies, so a new basis or group cannot
  *  appear in the data without appearing in the filter. */
-export function registerFilterFields(tally, dutyTally) {
+export function registerFilterFields(tally, dutyTally, citationTally) {
   return [
     { key: 'status', label: 'Status', placeholder: 'All statuses', noun: 'statuses', minWidth: '150px',
       options: REGISTER_STATUS.map(s => ({
@@ -170,6 +171,10 @@ export function registerFilterFields(tally, dutyTally) {
         { value: 'maintenance_job', label: EVIDENCE_ROUTE_LABEL.maintenance_job },
         { value: 'none',            label: 'Neither — not schedulable' },
       ] },
+    { key: 'citation', label: 'Citation', placeholder: 'Any', noun: 'states', minWidth: '170px',
+      options: Object.entries(CITATION_STATE_LABEL).map(([v, label]) => ({
+        value: v, label: citationTally ? `${label} (${citationTally[v] ?? 0})` : label, short: label,
+      })) },
     { key: 'trigger', label: 'Trigger', placeholder: 'Any trigger', noun: 'triggers',
       options: Object.entries(TRIGGER_TYPE_LABEL).map(([v, label]) => ({ value: v, label })) },
     // ⚠ Labelled "Duty holder", never "Responsible" — the register keeps who
@@ -268,6 +273,27 @@ export function dutyHolderTally(entries) {
   }
   return tally;
 }
+
+/**
+ * Whether this row’s CITATION has been checked against the instrument.
+ *
+ * ⚠ The citation only. The review that produced the evidence says in terms that
+ * the intervals and the applicability conditions were NOT checked, so this must
+ * never be read — or named — as "the row is verified".
+ *
+ * ⚠ Two states today because every row is seeded. The third, `local` and never
+ * checked by anyone, arrives with the in-app editor; see the build plan §4.1.
+ * @param {Object} entry
+ * @returns {'verified'|'not_recorded'}
+ */
+export function citationState(entry) {
+  return entry?.citationVerifiedAgainst ? 'verified' : 'not_recorded';
+}
+
+export const CITATION_STATE_LABEL = {
+  verified:     'Citation verified',
+  not_recorded: 'Citation not individually recorded',
+};
 
 // ── The obligations list ─────────────────────────────────────────────────────
 // Five rows today and ~84 the moment the register is applied, which is the next

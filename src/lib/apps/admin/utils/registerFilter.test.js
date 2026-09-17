@@ -15,6 +15,7 @@ import {
   obligationState, hasEmptyScope, filterObligations, obligationFilterFields,
   dutyHolderRole, dutyHolderTally, unclassifiedDutyHolders,
   DUTY_HOLDER_ROLES, DUTY_HOLDER_ROLE_LABEL,
+  citationState, CITATION_STATE_LABEL,
 } from './registerFilter.js';
 
 const ALL = STATUTORY_TEMPLATE;
@@ -370,5 +371,83 @@ describe('awaiting_setup — added but not yet live', () => {
     const ctx = { ...noCtx, awaitingKeys: new Set([gapKey]) };
     const tally = registerStatusTally(ALL, ctx);
     expect(Object.values(tally).reduce((a, b) => a + b, 0)).toBe(ALL.length);
+  });
+});
+
+describe('R0 — citation verification evidence', () => {
+  const verified = ALL.filter(e => e.citationVerifiedAgainst);
+
+  it('stamps only rows the review actually covered', () => {
+    expect(verified.length).toBe(14);
+  });
+
+  it('every stamp carries BOTH a date and the source it was checked against', () => {
+    // A date with no URL cannot be re-checked; a URL with no date cannot be aged.
+    for (const e of verified) {
+      expect(e.citationVerifiedOn, e.key).toBe('2026-09-11');
+      expect(e.citationVerifiedAgainst, e.key).toMatch(/^https:\/\/www\.legislation\.gov\.uk\//);
+    }
+  });
+
+  it('⛔ never stamps a row whose citation CHANGED after the review', () => {
+    // The trap this harvest was built to avoid: the review confirmed
+    // SI 2024/41 reg 5 for KBI on 11 Sep; round 8 moved the citation to
+    // SI 2023/396 reg 21 on 14 Sep. Stamping by row identity would assert a
+    // verification of something nobody checked.
+    for (const key of ['kbi_update', 'kbi_update_on_change']) {
+      const e = ALL.find(x => x.key === key);
+      expect(e, key).toBeDefined();
+      expect(e.citationVerifiedAgainst, key).toBeUndefined();
+    }
+  });
+
+  it('⛔ never stamps a row whose basis the review REJECTED', () => {
+    // §4.3 rejected SI 2023/907 reg 12 as the basis for the annual complaints
+    // report. Its contribution there was a removal, not a verification.
+    for (const key of ['complaints_report_publication', 'complaints_self_assessment']) {
+      const e = ALL.find(x => x.key === key);
+      if (e) expect(e.citationVerifiedAgainst, key).toBeUndefined();
+    }
+  });
+
+  it('does not stamp a row that merely MENTIONS a verified provision', () => {
+    // evacuation_alert_system_service cites BS 8629 and mentions FSER reg 7(5)
+    // in passing. The standard was not verified.
+    const e = ALL.find(x => x.key === 'evacuation_alert_system_service');
+    if (e) expect(e.citationVerifiedAgainst).toBeUndefined();
+  });
+
+  it('the URL points at the instrument the row actually cites', () => {
+    const expectPair = (key, fragment) => {
+      const e = ALL.find(x => x.key === key);
+      expect(e?.citationVerifiedAgainst, key).toContain(fragment);
+    };
+    expectPair('fser_communal_fire_doors',  '/uksi/2022/547/regulation/10');
+    expectPair('fser_wayfinding_signage',   '/uksi/2022/547/regulation/8');
+    expectPair('lift_loler_examination',    '/uksi/1998/2307/regulation/9');
+    expectPair('res_consultation',          '/uksi/2023/907/regulation/10');
+  });
+});
+
+describe('citationState', () => {
+  it('splits the register into checked and not-individually-recorded', () => {
+    const v = ALL.filter(e => citationState(e) === 'verified');
+    const n = ALL.filter(e => citationState(e) === 'not_recorded');
+    expect(v.length + n.length).toBe(ALL.length);
+    expect(v.length).toBe(14);
+  });
+
+  it('⚠ says CITATION, never "verified" on its own', () => {
+    // The review's own §6: the intervals and the applicability conditions were
+    // not checked. The label must not imply they were.
+    for (const label of Object.values(CITATION_STATE_LABEL)) {
+      expect(label).toMatch(/citation/i);
+    }
+  });
+
+  it('is a filter facet', () => {
+    const rows = filterRegister(ALL, { citation: new Set(['not_recorded']) }, noCtx);
+    expect(rows.length).toBe(ALL.length - 14);
+    expect(rows.every(r => !r.entry.citationVerifiedAgainst)).toBe(true);
   });
 });
