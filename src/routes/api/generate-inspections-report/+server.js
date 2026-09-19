@@ -223,6 +223,7 @@ function buildSummaryTable(sessionData, cols = SUM_COLS) {
 
   return new Table({
     width:        { size: totalW, type: WidthType.DXA },
+    layout:       TableLayoutType.FIXED,
     columnWidths: cols,
     rows:         [headerRow, ...dataRows],
   });
@@ -406,6 +407,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
 
   children.push(new Table({
     width:        { size: CONTENT_W, type: WidthType.DXA },
+    layout:       TableLayoutType.FIXED,
     columnWidths: [META_L, META_R],
     rows:         metaRows,
   }));
@@ -550,6 +552,7 @@ async function buildDetailedSession({ session: s, inspections }, isFirst, includ
 
   children.push(new Table({
     width:        { size: CONTENT_W, type: WidthType.DXA },
+    layout:       TableLayoutType.FIXED,
     columnWidths: DET_COLS,
     rows:         [headerRow, ...dataRows],
   }));

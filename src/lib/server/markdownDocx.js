@@ -239,17 +239,24 @@ export function markdownToDocx(markdown, opts = {}) {
         })),
       }));
 
+      // ⛔ A FIXED-LAYOUT TABLE NEEDS BOTH OF THESE, AND EITHER ALONE IS USELESS.
+      //
+      // Without `layout`, a table defaults to AUTOFIT and the renderer sizes
+      // columns from their content. With `layout` but without `columnWidths`,
+      // the library emits a PLACEHOLDER `<w:tblGrid>` of 100 DXA per column —
+      // and the renderer honours the GRID, not the per-cell `w:tcW`. Equal grid,
+      // equal columns, whatever each cell declares.
+      //
+      // ⚠ This took three passes to find, and each pass asserted something one
+      // level short of what the reader sees: first the `w:tcW` values (correct
+      // all along), then `w:tblLayout` (added, still wrong), and only then the
+      // grid. Eight table builders in this codebase already pass both; three did
+      // not, and all three rendered evenly. `tableGridGuard.test.js` now makes
+      // it a rule instead of something each new builder rediscovers.
       out.push(new Table({
         width: { size: width, type: WidthType.DXA },
-        // ⛔ WITHOUT THIS, EVERY COLUMN WIDTH ABOVE IS A SUGGESTION WORD
-        // IGNORES. A table with no `w:tblLayout` defaults to AUTOFIT: Word
-        // recomputes the columns from their content and the `w:tcW` values
-        // become advisory at best. The first generated statement had correct
-        // widths in its XML and visibly wrong ones on the page, and a test
-        // that read the declared numbers passed throughout — it was comparing
-        // what it had been told to compare rather than what the reader sees.
-        // `registerDocx.js` has always set this; the precedent was there.
         layout: TableLayoutType.FIXED,
+        columnWidths: widths,
         borders: BORDERS,
         rows: trs,
       }));

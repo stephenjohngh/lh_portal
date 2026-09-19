@@ -27,6 +27,7 @@ function docTable(headers, widths, rows) {
   }));
   return new Table({
     width: { size: CONTENT_W, type: WidthType.DXA },
+    layout: TableLayoutType.FIXED,
     columnWidths: widths,
     borders: BORDERS,
     rows: [head, ...body],

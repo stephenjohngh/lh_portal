@@ -142,6 +142,12 @@ export function extractTable(rows) {
   return new Table({
     width: { size: CONTENT_W_L, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
+    // ⛔ `columnWidths` IS WHAT PRODUCES THE `<w:tblGrid>`, and the renderer
+    // sizes columns from the GRID — not from each cell's `w:tcW`. Without it
+    // the library emits a placeholder grid of 100 DXA per column, and
+    // EXTRACT_COLS above is ignored entirely: every extract produced before
+    // 2026-09-19 had seven equal columns. See `tableGridGuard.test.js`.
+    columnWidths: EXTRACT_COLS,
     borders: BORDERS,
     rows: [header, ...body],
   });

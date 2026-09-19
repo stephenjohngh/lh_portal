@@ -83,6 +83,9 @@ export function summarySection(summary, total) {
   return new Table({
     width: { size: CONTENT_W_L, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
+    // ⚠ Equal columns here are deliberate — one per status present — but
+    // the grid still has to SAY so, or the renderer invents its own.
+    columnWidths: present.map(() => w),
     borders: BORDERS,
     rows: [
       new TableRow({ children: present.map(k => hCell(STATUS_LABEL[k], w)) }),
@@ -156,6 +159,11 @@ export function positionTable(rows) {
   return new Table({
     width: { size: CONTENT_W_L, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
+    // ⛔ `columnWidths` produces the `<w:tblGrid>`, and the renderer sizes
+    // columns from the GRID rather than from each cell's `w:tcW`. Without it
+    // the library emits a placeholder grid of 100 DXA per column and POSITION_COLS
+    // is ignored entirely — see `tableGridGuard.test.js`.
+    columnWidths: POSITION_COLS,
     borders: BORDERS,
     rows: [header, ...body],
   });
@@ -182,6 +190,11 @@ export function historyTable(history) {
   return new Table({
     width: { size: CONTENT_W_L, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
+    // ⛔ `columnWidths` produces the `<w:tblGrid>`, and the renderer sizes
+    // columns from the GRID rather than from each cell's `w:tcW`. Without it
+    // the library emits a placeholder grid of 100 DXA per column and HISTORY_COLS
+    // is ignored entirely — see `tableGridGuard.test.js`.
+    columnWidths: HISTORY_COLS,
     borders: BORDERS,
     rows: [header, ...body],
   });
@@ -192,6 +205,11 @@ export function exclusionTable(excluded) {
   return new Table({
     width: { size: CONTENT_W_L, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
+    // ⛔ `columnWidths` produces the `<w:tblGrid>`, and the renderer sizes
+    // columns from the GRID rather than from each cell's `w:tcW`. Without it
+    // the library emits a placeholder grid of 100 DXA per column and EXCLUSION_COLS
+    // is ignored entirely — see `tableGridGuard.test.js`.
+    columnWidths: EXCLUSION_COLS,
     borders: BORDERS,
     rows: [
       new TableRow({

@@ -149,6 +149,10 @@ export async function POST({ request }) {
             rows,
             width: { size: CONTENT_W, type: WidthType.DXA },
             layout: TableLayoutType.FIXED,
+            // ⛔ Without this the library emits a placeholder <w:tblGrid> and
+            // COLS above is ignored: six equal columns, whatever each cell
+            // declares. See tableGridGuard.test.js.
+            columnWidths: widths(),
             borders: BORDERS,
           }),
 

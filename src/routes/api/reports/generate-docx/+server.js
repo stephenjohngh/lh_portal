@@ -345,6 +345,7 @@ async function generateIssueContent(issue, number, sortOrder = 'desc', summaryOn
   content.push(
     new Table({
       width: { size: titleWidth + priorityWidth, type: WidthType.DXA },
+      layout: TableLayoutType.FIXED,
       columnWidths: [titleWidth, priorityWidth],
       rows: [
         new TableRow({
