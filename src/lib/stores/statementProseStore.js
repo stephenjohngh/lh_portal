@@ -22,6 +22,7 @@ import { getLogger } from '$lib/utils/logger';
 import { logAudit } from '$lib/utils/auditLogger';
 import { STATEMENT_PROSE } from '$lib/utils/statementProse.js';
 import { normaliseMarkdown } from '$lib/utils/statementProseParse.js';
+import { diffProse } from '$lib/utils/proseDiff.js';
 
 const logger = getLogger('statementProse');
 
@@ -176,7 +177,77 @@ function createStatementProseStore() {
     await load();
   }
 
-  return { subscribe, load, importSeed, edit };
+  /**
+   * What a re-import of the shipped prose would do. Reports; changes nothing.
+   *
+   * ⛔ `importSeed` above only ADDS, which is safe and insufficient — a
+   * corrected §3 or §4 shipped in a later release is silently declined, and the
+   * only sign is that the shipped text and the stored text quietly disagree.
+   * Overwriting would be worse: it discards wording somebody settled here, in a
+   * document that has been through fourteen rounds of external review. So
+   * neither. It reports, and a person decides.
+   *
+   * @returns {Promise<ReturnType<typeof diffProse>>}
+   */
+  async function previewImport() {
+    const rows = await api.getAll('statement_prose', { orderBy: 'position' });
+    const held = (rows ?? []).map(r => ({
+      section: fromRow(r),
+      provenance: { origin: r.origin, seedModifiedAt: r.seed_modified_at },
+    }));
+    return diffProse(STATEMENT_PROSE, held);
+  }
+
+  /**
+   * Apply chosen additions and updates from the shipped prose.
+   *
+   * ⛔ ACTS ONLY ON KEYS NAMED EXPLICITLY. A divergent section — one the shipped
+   * text changed AND somebody edited here — must never be swept along by an
+   * "update all" over a list that happened to include it. Each of those is a
+   * judgement between two considered wordings, and the caller offers them one
+   * at a time.
+   *
+   * @param {{add?: string[], update?: string[]}} choice
+   * @returns {Promise<{added: number, updated: number}>}
+   */
+  async function applyFromSeed(choice = {}) {
+    const addKeys = new Set(choice.add ?? []);
+    const updateKeys = new Set(choice.update ?? []);
+    if (addKeys.size === 0 && updateKeys.size === 0) return { added: 0, updated: 0 };
+
+    const uid = await currentUserId();
+    const now = new Date().toISOString();
+    const bySeedKey = new Map(STATEMENT_PROSE.map(s => [s.key, s]));
+
+    const toAdd = [...addKeys].map(k => bySeedKey.get(k)).filter(Boolean);
+    if (toAdd.length) {
+      await api.createMany('statement_prose', toAdd.map(s => ({
+        ...toRow(s), origin: 'seed', created_by: uid,
+      })));
+    }
+
+    for (const key of updateKeys) {
+      const section = bySeedKey.get(key);
+      if (!section) continue;
+      const row = { ...toRow(section), updated_by: uid, updated_at: now };
+      delete row.section_key;
+      // ⚠ Taking the shipped version makes the section match it again, so the
+      // "edited here" mark is cleared — it would otherwise claim a divergence
+      // that no longer exists.
+      row.seed_modified_at = null;
+      await api.updateMany('statement_prose', { section_key: key }, row, false);
+    }
+
+    logAudit('update', 'statement_prose', null, 'imported from the shipped prose', {
+      appId: 'admin', eventCategory: 'compliance', severity: 'warning',
+      afterData: { added: toAdd.length, updated: updateKeys.size },
+    });
+    logger('✅ applied', toAdd.length, 'additions and', updateKeys.size, 'updates');
+    await load();
+    return { added: toAdd.length, updated: updateKeys.size };
+  }
+
+  return { subscribe, load, importSeed, edit, previewImport, applyFromSeed };
 }
 
 export const statementProse = createStatementProseStore();

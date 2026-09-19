@@ -29,11 +29,17 @@
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import { statementProse } from '$lib/stores/statementProseStore.js';
+  import ProseImportDiff from './ProseImportDiff.svelte';
   import { fmtDateTime } from '$lib/utils/dates.js';
 
   let panelError = '';
   let importing = false;
   let importReport = null;
+
+  /** The diff a re-import would produce. Null until somebody asks for it. */
+  let diff = null;
+  let checking = false;
+  let applying = false;
 
   /** The section open for editing, and the text in the box. */
   let editingKey = null;
@@ -102,6 +108,34 @@
     } catch (/** @type {any} */ err) {
       panelError = err.message;
     } finally { importing = false; }
+  }
+
+  // ⛔ Checking is separate from applying, and reports rather than acts. The
+  // shipped text moving and somebody editing a section here are indistinguishable
+  // by comparison alone — see `proseDiff.js`.
+  async function runCheck() {
+    checking = true; panelError = ''; diff = null;
+    try {
+      diff = await statementProse.previewImport();
+    } catch (/** @type {any} */ err) {
+      panelError = err.message ?? 'Could not compare against the shipped text.';
+    } finally { checking = false; }
+  }
+
+  async function applyChoice(e) {
+    applying = true; panelError = '';
+    try {
+      await statementProse.applyFromSeed(e.detail);
+      diff = await statementProse.previewImport();
+    } catch (/** @type {any} */ err) {
+      panelError = err.message ?? 'Could not apply the change.';
+    } finally { applying = false; }
+  }
+
+  /** Open a section named by the diff, so a judgement can be made by reading it. */
+  function openFromDiff(e) {
+    const s = sections.find(x => x.key === e.detail);
+    if (s) open(s);
   }
 </script>
 
@@ -193,6 +227,31 @@
       </li>
     {/each}
   </ul>
+
+  {#if !usingSeed}
+    <!-- ⚠ Below the list, not above it: this is a rare, deliberate act, and it
+         should not be the first thing on the panel. -->
+    <div class="reimport">
+      <div class="re-head">
+        <div>
+          <p class="re-title">Compare against the text that ships</p>
+          <p class="re-sub">
+            A later release may correct one of these sections. The import adds
+            only what is missing, so a correction is declined unless somebody
+            takes it — this is where you see what changed.
+          </p>
+        </div>
+        <Button variant="secondary" size="small" disabled={checking || applying}
+          on:click={runCheck}>
+          {checking ? 'Comparing…' : 'Check for updates'}
+        </Button>
+      </div>
+      {#if diff}
+        <ProseImportDiff {diff} busy={applying}
+          on:apply={applyChoice} on:open={openFromDiff} />
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <ConfirmDialog
@@ -248,4 +307,9 @@
   .editor { padding: 0 0.7rem 0.7rem; }
   .hint { margin: 0.35rem 0 0; font-size: 0.72rem; color: rgb(148 163 184); }
   .editor-actions { display: flex; gap: 0.5rem; margin-top: 0.55rem; }
+
+  .reimport { border-top: 1px solid rgb(51 65 85); padding-top: 0.7rem; margin-top: 0.3rem; }
+  .re-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
+  .re-title { margin: 0; font-size: 0.82rem; font-weight: 600; color: rgb(226 232 240); }
+  .re-sub { margin: 0.15rem 0 0.5rem; font-size: 0.74rem; color: rgb(148 163 184); max-width: 46rem; }
 </style>
