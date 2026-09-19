@@ -13,11 +13,12 @@
 // of telling which was right. Both say "extract" on their first page and carry
 // an "N of 116" so they cannot be read as the whole picture.
 //
-// `downloadStatementSection6` is the opposite and must stay that way. It is §6
-// of the obligations statement — the real section, generated from the whole
-// register, never a subset. A filtered statement would be the exact confusion
-// the extracts are labelled to prevent, and it would be a document going to an
-// outside reviewer, which is where that confusion costs most.
+// `downloadStatementSection6` and `downloadStatement` are the opposite and must
+// stay that way. They are the obligations statement — §6 of it, and the whole
+// of it — generated from the WHOLE register and never a subset. A filtered
+// statement would be the exact confusion the extracts are labelled to prevent,
+// and it would be a document going to an outside reviewer, which is where that
+// confusion costs most.
 
 import { authHeaders } from '$lib/utils/authHeaders';
 import { downloadResponse } from '$lib/utils/download.js';
@@ -121,6 +122,59 @@ export async function downloadStatementSection6(params) {
   }
 
   const filename = `statement-section-6-${new Date().toISOString().slice(0, 10)}.md`;
+  await downloadResponse(res, filename);
+  return { filename };
+}
+
+/**
+ * The WHOLE statement as a Word document. R5.
+ *
+ * ⭐ The artefact the build plan exists for: an accountable person can produce
+ * the obligations statement from the deployed app rather than from one
+ * particular laptop.
+ *
+ * ⚠ BOTH SOURCES ARE SENT, and the document prints a refusal banner if either
+ * fell back to what ships. The two stores fall back deliberately — a compliance
+ * screen showing the standard register is right where one showing nothing is a
+ * lie — but a DOCUMENT assembled from the shipped defaults describes a
+ * higher-risk building in general and would be read as describing this one.
+ *
+ * @param {Object} params
+ * @param {Object[]} params.wholeRegister
+ * @param {Object[]} params.prose
+ * @param {Record<string, Object>} [params.provenance]
+ * @param {'database'|'seed'} [params.registerSource]
+ * @param {'database'|'seed'} [params.proseSource]
+ * @param {string} [params.building]
+ * @returns {Promise<{filename: string}>}
+ */
+export async function downloadStatement(params) {
+  const {
+    wholeRegister, prose, provenance = {},
+    registerSource = 'database', proseSource = 'database',
+    building = 'Lancaster House',
+  } = params;
+
+  const res = await fetch('/api/reports/generate-statement', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({
+      building,
+      generatedAt: fmtGenerated(),
+      entries: wholeRegister,
+      prose,
+      provenance,
+      registerSource,
+      proseSource,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error ${res.status}`);
+  }
+
+  const filename = `safety-obligations-statement-${new Date().toISOString().slice(0, 10)}.docx`;
   await downloadResponse(res, filename);
   return { filename };
 }

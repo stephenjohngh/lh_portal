@@ -21,6 +21,10 @@
   import { fmtDate } from '$lib/utils/dates.js';
   import InspectionDefinitionModal from './InspectionDefinitionModal.svelte';
   import StatutoryTemplatePanel from './StatutoryTemplatePanel.svelte';
+  import StatementProsePanel from './StatementProsePanel.svelte';
+
+  /** ⚠ Closed by default — see the note at the panel. */
+  let proseOpen = false;
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
     filterObligations, obligationFilterFields, hasEmptyScope,
@@ -136,6 +140,27 @@
   <!-- The gap report sits ABOVE the list deliberately: what is absent is the
        thing a list of what exists can never show you. -->
   <StatutoryTemplatePanel {definitions} />
+
+  <!-- R5. The statement's explanatory sections, beneath the register they
+       explain. ⚠ Collapsed by default and deliberately quiet: this is text
+       edited a few times a year, and it sits next to a panel used daily. -->
+  <div class="prose-block">
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="prose-head" class:closed={!proseOpen} on:click={() => (proseOpen = !proseOpen)}>
+      <span class="chev" class:open={proseOpen}>▸</span>
+      <div>
+        <p class="ph-title">Obligations statement — explanatory sections</p>
+        <p class="ph-sub">
+          §1–§5 and §7–§8 of the statement. §6 is generated from the register above.
+        </p>
+      </div>
+    </div>
+    {#if proseOpen}
+      <div class="prose-body">
+        <StatementProsePanel />
+      </div>
+    {/if}
+  </div>
 
   {#if loading && definitions.length === 0}
     <LoadingSpinner />
@@ -287,6 +312,22 @@
 </Modal>
 
 <style>
+  /* ⛔ NO overflow:hidden here. Rounding is on the head itself, because a
+     clipped container cuts off any popup a child opens — the fault found three
+     times over in this codebase. */
+  .prose-block { border: 1px solid rgb(51 65 85); border-radius: 0.5rem; background: rgb(15 23 42); }
+  .prose-head {
+    display: flex; align-items: center; gap: 0.6rem; cursor: pointer;
+    padding: 0.6rem 0.8rem; border-radius: 0.5rem;
+  }
+  .prose-head:not(.closed) { border-radius: 0.5rem 0.5rem 0 0; }
+  .prose-head:hover { background: rgb(30 41 59); }
+  .chev { transition: transform 0.15s; color: rgb(100 116 139); font-size: 0.8rem; }
+  .chev.open { transform: rotate(90deg); }
+  .ph-title { margin: 0; font-size: 0.85rem; font-weight: 600; color: rgb(226 232 240); }
+  .ph-sub { margin: 0.1rem 0 0; font-size: 0.74rem; color: rgb(148 163 184); }
+  .prose-body { padding: 0 0.8rem 0.8rem; }
+
   .insp-defs { display: flex; flex-direction: column; gap: 1rem; }
   .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   .empty { color: rgb(148 163 184); font-size: 0.9rem; padding: 1.5rem 0; }

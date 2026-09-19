@@ -32,8 +32,11 @@
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
     citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
-  import { downloadRegisterXlsx, downloadRegisterDocx, downloadStatementSection6 }
-    from '../utils/registerDownloads.js';
+  import {
+    downloadRegisterXlsx, downloadRegisterDocx,
+    downloadStatementSection6, downloadStatement,
+  } from '../utils/registerDownloads.js';
+  import { statementProse } from '$lib/stores/statementProseStore.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -67,6 +70,9 @@
     // from the shipped seed until then. The store handles the fallback; nothing
     // here has to care which it got.
     statutoryRegister.load();
+    // R5: the statement's prose, on the same terms — database where imported,
+    // the shipped text until then, and the export says which it used.
+    statementProse.load();
   });
 
   // ⚠ Read through the store rather than the seed constant, so the panel
@@ -129,7 +135,7 @@
   // EXTRACT for showing somebody. It says so on its own first page, because the
   // thing it must never be mistaken for is the obligations statement.
 
-  /** @type {'xlsx'|'docx'|'section6'|null} */
+  /** @type {'xlsx'|'docx'|'section6'|'statement'|null} */
   let exporting = null;
 
   async function runExport(kind) {
@@ -167,6 +173,27 @@
       });
     } catch (/** @type {any} */ err) {
       panelError = err.message ?? 'Could not generate the section.';
+    } finally {
+      exporting = null;
+    }
+  }
+
+  // ⭐ THE WHOLE STATEMENT. What the build plan exists for: an accountable
+  // person producing the obligations statement from the deployed app.
+  // ⚠ Both sources go with it, and the document prints a refusal banner if
+  // either fell back to the text that ships — see `statementDocx.js`.
+  async function runStatement() {
+    exporting = 'statement'; panelError = '';
+    try {
+      await downloadStatement({
+        wholeRegister: REG,
+        prose: $statementProse.sections,
+        provenance: $statutoryRegister.provenance ?? {},
+        registerSource: $statutoryRegister.source,
+        proseSource: $statementProse.source,
+      });
+    } catch (/** @type {any} */ err) {
+      panelError = err.message ?? 'Could not generate the statement.';
     } finally {
       exporting = null;
     }
@@ -577,13 +604,21 @@
           on:click={runStatementSection6}>
           {exporting === 'section6' ? 'Generating…' : `⬇ Statement §6 (all ${REG.length})`}
         </Button>
+        <Button variant="secondary" size="small" disabled={!!exporting || REG.length === 0}
+          on:click={runStatement}>
+          {exporting === 'statement' ? 'Generating…' : '⬇ Full statement (Word)'}
+        </Button>
         <span class="export-note">
-          §6 of the <strong>obligations statement</strong> — the register section
-          itself, as markdown, to replace §6 in that document. Ignores the
-          filters: it is always every entry.
-          {#if $statutoryRegister.source !== 'database'}
-            <strong class="warn">⛔ Reading the shipped standard register, not this
-            building’s — the file will say so.</strong>
+          The <strong>obligations statement</strong> — the whole document, or just
+          its §6 as markdown to paste into an existing copy. Both ignore the
+          filters: they are always every entry.
+          {#if $statutoryRegister.source !== 'database' || $statementProse.source !== 'database'}
+            <strong class="warn">⛔ Reading the shipped standard text, not this
+            building’s own{$statutoryRegister.source !== 'database'
+              && $statementProse.source !== 'database' ? '' :
+              ($statutoryRegister.source !== 'database'
+                ? ' (the register)' : ' (the explanatory sections)')}.
+            The file will say so, and says not to send it.</strong>
           {/if}
         </span>
       </div>
