@@ -21,6 +21,9 @@ import {
   TRIGGER_TYPE_LABEL,
 } from '$lib/utils/statutoryTemplate.js';
 import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
+import {
+  DUTY_HOLDER_ROLES, dutyHolderRole, unclassifiedDutyHolders, dutyHolderTally,
+} from '$lib/utils/dutyHolderRole.js';
 
 /**
  * Every state a register entry can be in, most-actionable first. The order is
@@ -232,11 +235,13 @@ export function registerFilterFields(tally, dutyTally, citationTally) {
 // out of its facet — the failure mode of every "infer a category from prose"
 // scheme, and one this project has already been bitten by.
 
-export const DUTY_HOLDER_ROLES = [
-  'responsible_person', 'principal_accountable_person', 'accountable_person',
-  'shared_ap_rp', 'employer_or_controller', 'asbestos_duty_holder',
-  'none_own_control', 'none_contract', 'none_code',
-];
+// ⚠ The roles and the derivation moved to `$lib/utils/dutyHolderRole.js`, which
+// imports nothing — so `check:obligations` runs under plain node and checks the
+// counts §4 of the statement quotes against the SAME classifier this facet uses.
+// A second copy of the rule would let the app's facet and the document's prose
+// disagree about what a role is, over the same register.
+// Re-exported here so every existing import site is unchanged.
+export { DUTY_HOLDER_ROLES, dutyHolderRole, unclassifiedDutyHolders, dutyHolderTally };
 
 export const DUTY_HOLDER_ROLE_LABEL = {
   responsible_person:           'Responsible person (Fire Safety Order)',
@@ -274,49 +279,6 @@ export const DUTY_HOLDER_ROLE_SHORT = {
   none_contract:                'No duty holder in law',
   none_code:                    'No duty holder in law',
 };
-
-/**
- * Derive the short role from the stored sentence. Ordered: the more specific
- * tests come first, because "Principal accountable person" contains
- * "accountable person" and "Shared:" mentions both roles.
- * @param {Object} entry
- * @returns {string} a DUTY_HOLDER_ROLES value, or 'other' if nothing matches
- */
-export function dutyHolderRole(entry) {
-  const t = String(entry?.statutoryDutyHolder ?? '').toLowerCase();
-  if (!t)                                 return 'none_own_control';
-  if (t.startsWith('shared'))             return 'shared_ap_rp';
-  if (t.startsWith('none'))               return t.includes('agreement') ? 'none_contract'
-                                               : t.includes('code')      ? 'none_code'
-                                               : 'none_own_control';
-  if (t.startsWith('principal accountable person')) return 'principal_accountable_person';
-  if (t.startsWith('accountable person'))  return 'accountable_person';
-  if (t.startsWith('responsible person'))  return 'responsible_person';
-  if (t.includes('control of asbestos'))   return 'asbestos_duty_holder';
-  if (t.includes('employer'))              return 'employer_or_controller';
-  return 'other';
-}
-
-/**
- * ⛔ Guard for the derivation above. Returns the entries it could not classify;
- * empty means the facet still covers the whole register.
- * @param {Object[]} entries
- * @returns {Object[]}
- */
-export function unclassifiedDutyHolders(entries) {
-  return entries.filter(e => dutyHolderRole(e) === 'other');
-}
-
-/** @param {Object[]} entries */
-export function dutyHolderTally(entries) {
-  /** @type {Record<string, number>} */
-  const tally = Object.fromEntries(DUTY_HOLDER_ROLES.map(r => [r, 0]));
-  for (const e of entries) {
-    const role = dutyHolderRole(e);
-    tally[role] = (tally[role] ?? 0) + 1;
-  }
-  return tally;
-}
 
 /**
  * Whether this row’s CITATION has been checked against the instrument.

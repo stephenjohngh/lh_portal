@@ -338,9 +338,9 @@ instrument anywhere setting an outer bound on it.
 **"Statutory dutyholder" and "Operationally responsible" are different questions, and on 38 of these
 rows they are different people** — a figure computed from the register and checked by
 `npm run check:obligations`, not an estimate. The first is who the instrument binds: the
-responsible person under the Fire Safety Order (44 rows), the accountable person or principal
+responsible person under the Fire Safety Order (45 rows), the accountable person or principal
 accountable person under the Building Safety Act (17), the employer or person in control under
-health and safety law (13), the asbestos duty holder (2). The second is who does the work — often a
+health and safety law (11), the asbestos duty holder (2). The second is who does the work — often a
 contractor or site staff. **Engaging a contractor discharges the task, never the duty.** Where a row
 says *"None — this is our own control"*, nothing external requires it at all.
 
