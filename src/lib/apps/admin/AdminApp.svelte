@@ -75,7 +75,24 @@
     if ($auth.user) {
       await permissions.init($auth.user.id, 'admin');
     }
-    
+
+    // ⛔ ADMINS ONLY, and the gate is the point rather than caution: the
+    // Inspections tab is inside `{#if $permissions.isAdmin}`, so a non-admin
+    // defaulted onto it would land on a tab that is not in their tab bar and
+    // whose content they cannot reach. They keep Users, which is the only tab
+    // they have. ⚠ It cannot be decided before `permissions.init` resolves,
+    // which is why it is here and not in the `activeTab` initialiser.
+    //
+    // ⚠ THE COST, accepted deliberately: `activateTab('inspections')` loads the
+    // whole component set (types, attributes, latest inspections), so every
+    // admin now pays for the register on opening Admin whether or not they came
+    // for it. That is the trade the default IS — the register is what this tab
+    // group is mostly opened for, and the content block already shows a spinner
+    // while it arrives.
+    if ($permissions.isAdmin) {
+      await activateTab('inspections');
+    }
+
     // Fetch users
     await usersStore.fetchUsers();
   });
@@ -163,13 +180,12 @@
     </div>
 
     <!-- Tab Navigation -->
-    <!-- ⚠ Inspections leads. It is where the compliance register and the
-         building's obligations live, which is the work this tab group is
-         mostly opened for; Users is administration that happens rarely.
-         ⛔ It does NOT become the default tab — `activeTab` stays 'users'.
-         Selecting Inspections loads the whole component set (see
-         `activateTab`), and making that happen every time anyone opens Admin
-         would pay for the register whether or not they came for it. -->
+    <!-- ⚠ Inspections leads, and for an ADMIN it also opens by default (see
+         onMount). It is where the compliance register and the building's
+         obligations live, which is the work this tab group is mostly opened
+         for; Users is administration that happens rarely.
+         ⚠ `activeTab` still initialises to 'users' — that is what a non-admin
+         gets and what shows for the moment before permissions resolve. -->
     <div class="flex space-x-2 border-b border-slate-600">
       {#if $permissions.isAdmin}
         <button
