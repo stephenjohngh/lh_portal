@@ -12,8 +12,10 @@
   ⛔ §6 IS SHOWN AS A SLOT, NOT AS AN EMPTY BOX. It appears in the running order
   with its position and is not editable, because it is rendered from the
   register every time the document is assembled. A blank textarea there would
-  invite somebody to paste 2,348 lines into it, and the document would then
-  carry the register twice — once fixed, once live.
+  invite somebody to paste the whole rendered register into it, and the document
+  would then carry it twice — once fixed, once live.
+  ⚠ No line count is written here: it moves with every requirement added, and
+  the figure that used to be here was stale in two other places as well.
 
   ⚠ THE TEXTAREA IS DELIBERATELY PLAIN MARKDOWN, not a rich editor. The portal
   has two Tiptap editors and neither is right here: this text is assembled

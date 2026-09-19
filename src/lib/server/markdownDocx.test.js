@@ -224,6 +224,74 @@ describe('inline', () => {
   });
 });
 
+describe('emphasis inside emphasis', () => {
+  const text = rs => rs.map(r => textOf(r)).join('');
+
+  /**
+   * Whether a run carries a mark, read off its `w:rPr`.
+   *
+   * ⚠ docx writes the element BARE when the mark is on (`<w:b/>`) and with an
+   * explicit `val: false` when it is off — so "on" is the absence of that
+   * attribute, not `val === true`. Testing for `true` finds nothing and every
+   * assertion here passes or fails for the wrong reason.
+   */
+  function mark(runNode, key) {
+    const rPr = (runNode.root ?? []).find(c => c?.rootKey === 'w:rPr');
+    const node = (rPr?.root ?? []).find(c => c?.rootKey === key);
+    if (!node) return false;
+    const attr = (node.root ?? []).find(c => c?.rootKey === '_attr');
+    return attr?.root?.val !== false;
+  }
+  const boldOf   = r => mark(r, 'w:b');
+  const italicOf = r => mark(r, 'w:i');
+
+  // ⛔ THE FAULT: the bold alternative matched only content with NO asterisk in
+  // it, so a bold span wrapping an italic one did not match bold at all. It
+  // fell through to the italic branch, which started from the SECOND asterisk.
+  // The reader got a stray `*`, the bold gone, and emphasis on the wrong words.
+  // Three paragraphs of the real statement rendered that way.
+  it('renders a bold span that contains an italic one, with no stray markers', () => {
+    const runs = inlineRuns('**Five rows are marked *assurance control only*, and it matters.**');
+    const out = text(runs);
+    expect(out).toBe('Five rows are marked assurance control only, and it matters.');
+    // ⚠ The assertion the old code would fail on. Presence was never the issue.
+    expect(out).not.toContain('*');
+  });
+
+  it('makes the inner span bold AND italic, not one or the other', () => {
+    const runs = inlineRuns('**outer *inner* outer**');
+    expect(text(runs)).toBe('outer inner outer');
+    // Every run is bold — the whole span is inside the bold markers.
+    expect(runs.every(boldOf)).toBe(true);
+    // ⭐ And exactly the inner words are also italic. Before the fix the bold
+    // was lost and the italic landed on "outer " instead.
+    const italic = runs.filter(italicOf).map(r => textOf(r)).join('');
+    expect(italic).toBe('inner');
+  });
+
+  it('does not let one bold span run on into the next', () => {
+    expect(text(inlineRuns('**a** and **b**'))).toBe('a and b');
+    const runs = inlineRuns('**a** and **b**');
+    expect(runs.filter(boldOf).map(r => textOf(r)).join('|')).toBe('a|b');
+  });
+
+  // ⚠ The real document, not a sample: this is what made it worth fixing, and
+  // it is what would tell us a future edit has reintroduced it.
+  it('leaves no stray asterisk anywhere in the statement’s own prose', () => {
+    for (const section of STATEMENT_PROSE.filter(s => !s.generated)) {
+      // Paragraphs as the converter sees them: blank-line separated, trimmed.
+      for (const block of section.markdown.split(/\n\s*\n/)) {
+        const joined = block.split('\n').map(l => l.trim()).filter(Boolean).join(' ');
+        // Tables, rules and list markers carry their own syntax; this is about
+        // emphasis, so only look at blocks that actually use it.
+        if (!joined.includes('**') || joined.startsWith('|')) continue;
+        expect(text(inlineRuns(joined)), `${section.key}: ${joined.slice(0, 80)}`)
+          .not.toContain('*');
+      }
+    }
+  });
+});
+
 describe('how source wrapping is handled', () => {
   // ⛔ THE FAULT THIS CATCHES WAS VISIBLE IN THE FIRST GENERATED DOCUMENT and
   // no test saw it: a markdown source line carries indentation that means

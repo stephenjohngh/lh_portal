@@ -302,11 +302,17 @@ export function renderSection6(entries, provenance = {}) {
 /**
  * §6 as a file somebody can put into the statement.
  *
- * ⭐ R4's deliverable. The statement is hand-maintained markdown that lives in
- * `docs/` — which is gitignored and does NOT ship, so today producing it needs
- * one particular laptop. This is the half of that problem the register can
- * solve on its own: §6 is 2,348 of the document's 2,895 lines, and it is the
- * only part that is data rather than prose.
+ * ⭐ R4's deliverable, and the larger half of the document by far — §6 is the
+ * only part that is DATA rather than prose, and it runs to roughly four fifths
+ * of the whole. (No line count is written here: it moves with every requirement
+ * added, and the figure that stood here was stale in three places at once.)
+ *
+ * ⚠ THE SENTENCE THAT USED TO BE HERE SAID the statement was hand-maintained
+ * markdown in gitignored `docs/`, so producing it "needs one particular
+ * laptop". **R5 closed that, and this module is half of how** — the prose is
+ * held in `statement_prose` and the whole document assembles in
+ * `statementDocument.js`. The problem is worth remembering; stating it in the
+ * present tense, in the fix for it, is not.
  *
  * ⛔ THE BANNER IS NOT DECORATION. Three things about a generated section are
  * invisible once the file is in somebody's inbox, and each of them changes what
