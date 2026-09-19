@@ -24,7 +24,7 @@
 
 import {
   Paragraph, Table, TableRow, TableCell,
-  WidthType, AlignmentType, ShadingType, VerticalAlign,
+  WidthType, AlignmentType, ShadingType, VerticalAlign, TableLayoutType,
 } from 'docx';
 import {
   run, para, CONTENT_W, COLOURS, BORDERS, CELL_PAD,
@@ -241,6 +241,15 @@ export function markdownToDocx(markdown, opts = {}) {
 
       out.push(new Table({
         width: { size: width, type: WidthType.DXA },
+        // ⛔ WITHOUT THIS, EVERY COLUMN WIDTH ABOVE IS A SUGGESTION WORD
+        // IGNORES. A table with no `w:tblLayout` defaults to AUTOFIT: Word
+        // recomputes the columns from their content and the `w:tcW` values
+        // become advisory at best. The first generated statement had correct
+        // widths in its XML and visibly wrong ones on the page, and a test
+        // that read the declared numbers passed throughout — it was comparing
+        // what it had been told to compare rather than what the reader sees.
+        // `registerDocx.js` has always set this; the precedent was there.
+        layout: TableLayoutType.FIXED,
         borders: BORDERS,
         rows: trs,
       }));

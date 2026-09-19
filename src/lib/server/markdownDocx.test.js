@@ -329,3 +329,44 @@ describe('column widths', () => {
     expect(Math.max(...w) - Math.min(...w)).toBeLessThanOrEqual(2);
   });
 });
+
+describe('the widths are BINDING, not advisory', () => {
+  // ⛔ THE FAULT THIS EXISTS FOR. Every width assertion above reads the number
+  // the table declares. A docx table with no `w:tblLayout` defaults to AUTOFIT,
+  // where Word recomputes the columns from their content and those numbers are
+  // ignored — so the first generated statement carried correct widths in its
+  // XML and visibly wrong ones on the page, while the tests stayed green.
+  // A check compares only what it was told to compare.
+  const layoutOf = (table) => {
+    const props = table.root.find(n => n?.rootKey === 'w:tblPr');
+    const layout = props?.root?.find(n => n?.rootKey === 'w:tblLayout');
+    // ⚠ docx stores this attribute as a bare string, where tcW stores a
+    // { key, value } pair. Both shapes are read so the test cannot pass
+    // vacuously if the library changes which one it uses.
+    const t = layout?.root?.[0]?.root?.type;
+    return (typeof t === 'string' ? t : t?.value) ?? null;
+  };
+
+  it('fixes the layout on a label/value table', () => {
+    const [t] = markdownToDocx('| | |\n|---|---|\n| **A** | B |\n');
+    expect(layoutOf(t)).toBe('fixed');
+  });
+
+  it('fixes the layout on a multi-column table', () => {
+    const [t] = markdownToDocx('| A | B | C |\n|---|---|---|\n| 1 | 2 | 3 |\n');
+    expect(layoutOf(t)).toBe('fixed');
+  });
+
+  it('fixes the layout on every table in the real prose and in a register entry', () => {
+    const sources = [
+      ...STATEMENT_PROSE.filter(s => !s.generated).map(s => [s.key, s.markdown]),
+      ...STATUTORY_TEMPLATE.filter(e => !e.supersededOn).slice(0, 12)
+        .map(e => [e.key, renderEntry(e)]),
+    ];
+    for (const [key, md] of sources) {
+      for (const block of markdownToDocx(md)) {
+        if (block instanceof Table) expect(layoutOf(block), key).toBe('fixed');
+      }
+    }
+  });
+});
