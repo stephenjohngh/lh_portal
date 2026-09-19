@@ -272,7 +272,7 @@ to claim more legal force than it has.
 | **Legislation** (53) | An Act or statutory instrument imposes this. Not doing it is unlawful |
 | **Standard or code** (25) | A British Standard or approved code sets the method and usually the interval. The standard is not itself the law — **but read the reference before concluding nothing legal is at stake.** For a fire safety measure, **article 17 of the Fire Safety Order** requires it to be kept in an efficient state, in efficient working order and in good repair, and those rows now name that duty. The standard says *how often and how*; the Order says *that it must work* |
 | **Contract or scheme** (5) | An insurer, certification scheme or maintenance contract requires it. Binding by agreement, not by law |
-| **Our own decision** (33) | Nothing external requires this. We chose it, and it is ours to change |
+| **Our own decision** (35) | Nothing external requires this. We chose it, and it is ours to change |
 
 **"Where the interval comes from" — whether the frequency is law or convention.** This is the
 distinction this document exists to hold. A fire risk assessment must be
@@ -384,8 +384,8 @@ statement, and is not yet on the rows.**
 
 | | | |
 |---|---|---|
-| **Calendar** | 91 | A clock. Weekly, monthly, five-yearly |
-| **Event** | 21 | Something happens — works begin, the walls change, a report is revised |
+| **Calendar** | 92 | A clock. Weekly, monthly, five-yearly |
+| **Event** | 22 | Something happens — works begin, the walls change, a report is revised |
 | **Risk or condition** | 3 | A judgement: condition, deterioration, or a previous finding says look again |
 | **On direction** | 1 | Someone external tells us to, and until they do there is nothing to schedule |
 
@@ -398,7 +398,7 @@ confirmation"**, and carry a line naming the operative control: **⚠ Does NOT d
 fires when a resident is identified or asks for an assessment, when the layout changes, when
 somebody becomes aware of a change to the key building information — never on a date.
 
-⚠ **91 of 116 are calendar-driven.** That is an honest picture of how this register was
+⚠ **92 of 118 are calendar-driven.** That is an honest picture of how this register was
 built — around recurring activities — and it is exactly why the second principle below now sits
 above every row. The point holds from the other end too: the duties most likely to be missed are the
 ones that fire on an event or run through an interface, not the ones with a date — and several rows

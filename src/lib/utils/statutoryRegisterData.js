@@ -4016,4 +4016,61 @@ export const REGISTER = [
     evidencedBy: 'maintenance_job',
     appliesWhen: 'Always',
   }),
+
+  // ── Keeping the register itself current ────────────────────────────────────
+  // ⭐ TWO ROWS, NOT ONE, AND THE SPLIT IS THE WHOLE POINT. The duty holder’s
+  // own answer when asked what the review cadence should be was *"could add an
+  // annual check for new legislation that has been missed — but expect external
+  // factors to trigger the need"*. That is exactly the distinction this register
+  // has found SIX times and states as a governing principle: a calendar pass
+  // standing where an event belongs. So the event is the operative control and
+  // the annual pass is an assurance control over it, marked `assuranceOnly` so
+  // completing the sweep can never read as discharging the review.
+  entry({
+    key: 'register_legal_change_review',
+    name: 'Register review on a change in the law',
+    description: 'Assess whether a new or amended legal requirement, code or standard changes what this register must carry — a duty added, a duty withdrawn, a cited provision renumbered, or a stated period changed. Record the assessment either way, including where the answer is that nothing changes.',
+    group: 'governance',
+    basis: 'management',
+    statutoryRef: 'Self-imposed. ⚠ No instrument requires a register of duties to be reviewed for legal change. What makes it necessary is that every other row here cites one, and ⛔ a citation that has been superseded reads exactly like a citation that has not — the register goes on looking correct.',
+    appliesWhen: 'Always',
+    trigger: 'A new or amended statutory instrument, approved document, code of practice or standard reaching us by any route; the withdrawal or replacement of one this register already cites; or a regulator, insurer, fire risk assessor or adviser telling us a duty has changed.',
+    triggerType: 'event',
+    triggerSource: '⛔ NOTHING SYSTEMATIC WATCHES FOR THIS. There is no subscription, no adviser retainer and no clause in the managing agent interface asking to be told — so a change reaches this register only if it reaches somebody here by chance. ⚠ The annual sweep row is the only backstop, and a backstop is not a detector.',
+    frequencyDays: null,
+    intervalBasis: 'practice',
+    evidencedBy: null,
+    handledBy: 'none',
+    responsibleParty: 'Principal accountable person',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. What it protects is the accuracy of every other row here.',
+    competencyRequired: 'Somebody able to read a statutory instrument against this register — in practice the accountable person with legal advice, not an administrator',
+    evidenceRequired: 'Dated record of the change considered, which rows were examined, and the decision — including where the decision is that no row changes. ⚠ An unrecorded "we looked and it was nothing" is indistinguishable afterwards from never having looked.',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
+    retentionPeriodMonths: 120,
+    handlingNote: '⚠ No home. Nothing in the portal detects a legal change or schedules this assessment; it is carried here so its absence is visible rather than silent.',
+    reviewerNote: 'This register is a catalogue of duties, and a catalogue has the failure mode a schedule does not: it can go quietly out of date while every row in it still reads correctly. ⛔ Nothing systematic watches for a change in the law — that is stated rather than implied, because an honest note that nobody is watching is still nobody watching. The annual sweep beneath this row is a backstop and is marked as an assurance control, so completing it never reads as having discharged this one.',
+  }),
+  entry({
+    key: 'register_annual_legal_sweep',
+    name: 'Register — annual sweep for legal change missed',
+    description: 'A yearly pass over the register looking for requirements that have come into force, been withdrawn or been renumbered since it was last examined, and that no event reached us about.',
+    group: 'governance',
+    basis: 'management',
+    statutoryRef: 'Self-imposed backstop to the review-on-change row above.',
+    appliesWhen: 'Always',
+    triggerType: 'calendar',
+    frequencyDays: 365,
+    intervalBasis: 'practice',
+    evidencedBy: 'maintenance_job',
+    handledBy: 'none',
+    assuranceOnly: 'the review-on-change row — a change in the law falls due when it happens, not on an anniversary',
+    responsibleParty: 'Principal accountable person',
+    statutoryDutyHolder: 'None — this is our own control, not a statutory duty. What it protects is the accuracy of every other row here.',
+    competencyRequired: 'Somebody able to read a statutory instrument against this register — in practice the accountable person with legal advice, not an administrator',
+    evidenceRequired: 'Dated record of the sweep: what was checked, what was found, and confirmation where nothing had changed',
+    retentionBasis: 'Internal policy. ⚠ No instrument cited on this row sets any retention period',
+    retentionPeriodMonths: 120,
+    handlingNote: '⚠ No home in the portal as a distinct task; it is an annual pass somebody performs and records.',
+    reviewerNote: '⚠ This is a BACKSTOP, not the control. A legal change falls due the day it happens, and an annual sweep can be up to a year behind it — so this row exists to catch what the event route missed, never to stand in for it. ⛔ Completing it does not discharge the review-on-change row above, and the register marks it so that it cannot be read that way.',
+  }),
 ];

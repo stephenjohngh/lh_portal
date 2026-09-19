@@ -78,7 +78,13 @@ describe('assembleStatement', () => {
   const doc = assembleStatement({ prose: STATEMENT_PROSE, entries: REGISTER });
 
   it('puts the register into the slot the prose reserves for it', () => {
-    expect(doc).toContain('## 6. The register (116)');
+    // ⛔ COUNTED FROM THE REGISTER, NEVER TYPED. This line said "(116)" until
+    // 2026-09-19, when two rows were added and it failed — a fixture
+    // transcribing register data, which is the fault this project has now
+    // recorded five times. A test that fails when the data is legitimately
+    // corrected was testing the data.
+    const live = REGISTER.filter(e => !e.supersededOn).length;
+    expect(doc).toContain(`## 6. The register (${live})`);
     // ⛔ Once, and in the right place: after §5, before §7.
     expect(doc.match(/^## 6\. The register/gm)).toHaveLength(1);
     expect(doc.indexOf('## 5.')).toBeLessThan(doc.indexOf('## 6. The register'));
