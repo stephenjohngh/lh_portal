@@ -610,7 +610,7 @@ export const REGISTER = [
       + 'compartment line. ⚠ The row applies either way now — one damper is a regime — so the question '
       + 'is no longer whether to keep the row but how many assets it covers. ⚠ "Not known" is still '
       + 'not the same as "none": the asset register records what has been surveyed, never what exists.'
-      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+      + ' The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     name: 'Fire and smoke dampers — test and inspection',
     description:
       'Manually test and inspect every fire and smoke damper — drop-test the blade, confirm the fusible '
@@ -651,7 +651,7 @@ export const REGISTER = [
     maxIntervalDays: 7,
     maxIsSchedulingTolerance: true,
     sourceIntervalWords: 'weekly (BS 5839-1)',
-    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+    reviewerNote: 'The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     responsibleParty: 'Responsible person or site staff',
     competencyRequired: 'Briefed site staff; no formal qualification required',
     evidenceRequired: 'Logbook entry naming the call point tested and the result',
@@ -677,7 +677,7 @@ export const REGISTER = [
     maxIntervalDays: 183,
     maxIsSchedulingTolerance: true,
     sourceIntervalWords: 'six months between service visits (BS 5839-1)',
-    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+    reviewerNote: 'The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     responsibleParty: 'Fire alarm service contractor',
     competencyRequired: 'Competent fire alarm engineer; BAFE SP203-1 certificated firm recommended',
     evidenceRequired: 'Servicing certificate listing devices tested and any non-compliances',
@@ -700,7 +700,7 @@ export const REGISTER = [
     maxIntervalDays: 31,
     maxIsSchedulingTolerance: true,
     sourceIntervalWords: 'monthly (BS 5266-1 / BS EN 50172)',
-    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+    reviewerNote: 'The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     responsibleParty: 'Responsible person or site staff',
     competencyRequired: 'Briefed site staff',
     evidenceRequired: 'Logbook entry per test, with any failed luminaires identified',
@@ -726,7 +726,7 @@ export const REGISTER = [
     maxIntervalDays: 366,
     maxIsSchedulingTolerance: true,
     sourceIntervalWords: 'annual full-duration test (BS 5266-1)',
-    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+    reviewerNote: 'The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     responsibleParty: 'Emergency lighting contractor',
     competencyRequired: 'Competent electrical contractor',
     evidenceRequired: 'Annual test certificate recording the duration achieved per luminaire',
@@ -821,7 +821,7 @@ export const REGISTER = [
     maxIsSchedulingTolerance: true,
     sourceIntervalWords: 'weekly (BS EN 12845 or BS 9251, per the installed design basis)',
     reviewerNote: 'Reclassified from "Contract or scheme" to "Standard" on review, and the reasoning is worth keeping: the insurance condition is real, but it is not why the test has to happen. The suppression standards specify the weekly routine, and a suppression system is a fire safety measure, so art 17(1) applies to it. An insurer can waive its own policy condition; art 17 is not waivable.'
-      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+      + ' The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     responsibleParty: 'Site staff',
     competencyRequired: 'Briefed site staff working to the system’s own test routine',
     evidenceRequired: 'Weekly test log with sign-off',
@@ -899,7 +899,7 @@ export const REGISTER = [
     statutoryDutyHolder: 'Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)',
     retentionBasis: 'Internal policy, with a contract or insurer requirement on top — confirm the policy condition, which may be longer',
     reviewerNote: '⛔ TECHNICALLY UNVERIFIED, and it matters more here than for most rows because the dry riser is expressly within the STATUTORY monthly check as essential fire-fighting equipment under FSER reg 6(7), so four rows touch one asset and the relationship between them has never been settled. What is unresolved: the BS 9990 edition adopted · whether an annual wet pressure test is the correct test for THIS installation and at what pressure and duration · what the six-monthly visual adds to it · and what, if anything, the fire and rescue service or the insurer requires on top. Until that is answered the servicing regime is what we inherited rather than what was specified.'
-      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+      + ' The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     name: 'Dry riser — annual test, method and interval pending confirmation',
     description: 'Annual wet pressure test of the riser main, landing valves and inlet breeching.',
     group: 'fire_safety',
@@ -932,7 +932,7 @@ export const REGISTER = [
     maxIntervalDays: 183,
     maxIsSchedulingTolerance: true,
     sourceIntervalWords: 'six-monthly (BS 9990)',
-    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+    reviewerNote: 'The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     responsibleParty: 'Responsible person or riser contractor',
     competencyRequired: 'Briefed site staff or riser engineer',
     evidenceRequired: 'Inspection record noting condition and any missing components',
@@ -954,7 +954,7 @@ export const REGISTER = [
     maxIntervalDays: 366,
     maxIsSchedulingTolerance: true,
     sourceIntervalWords: 'annual basic service (BS 5306-3)',
-    reviewerNote: '⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+    reviewerNote: 'The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     responsibleParty: 'Extinguisher service contractor',
     competencyRequired: 'Competent extinguisher technician (BAFE SP101 registered)',
     evidenceRequired: 'Service certificate and per-unit service labels',
@@ -2253,7 +2253,7 @@ export const REGISTER = [
       + '❓ Confirm from the installation which designation applies, and take the detailed weekly '
       + 'schedule from BS 8899 clause 8 rather than from this row — it is more specific than a '
       + 'register entry should be.'
-      + ' ⚠ INTERNAL SCHEDULING LIMIT. The day figure on this row is OUR arithmetic on the period the standard states in words, not a figure the standard contains. It exists so a scheduler that can only count days has something to count, and it does not alter what the standard requires.',
+      + ' The day figure exists so a scheduler that can only count days has something to count; it does not alter what the standard requires.',
     name: 'Firefighting or evacuation lift — weekly operational test under fire control',
     description:
       'Weekly test that a designated lift still operates under fire or evacuation control: operate '
