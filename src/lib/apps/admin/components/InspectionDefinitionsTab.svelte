@@ -163,8 +163,14 @@
               <span class="nm">{d.name}</span>
               {#if !d.active}<span class="badge off">Inactive</span>{/if}
               {#if d.mode === 'rotating'}<span class="badge rot">Rotating</span>{/if}
+              <!-- ⚠ All THREE routes are named, including the walk. The
+                   Evidence facet offers three options and this row used to name
+                   only two, so a walk-evidenced obligation was identified by the
+                   ABSENCE of a badge — indistinguishable from a row where
+                   nothing was stated. -->
               {#if !isWalkEvidenced(d)}<span class="badge job">Contractor job</span>
-              {:else if isJobEvidenced(d)}<span class="badge job">Either route</span>{/if}
+              {:else if isJobEvidenced(d)}<span class="badge job">Either route</span>
+              {:else}<span class="badge walk">Inspection walk</span>{/if}
               {#if d.template_key}
                 <span class="badge tmpl" title="Counts towards the statutory template above">Statutory</span>
               {/if}
@@ -297,6 +303,7 @@
   .badge.off { background: rgb(71 85 105 / 0.4); color: rgb(148 163 184); }
   .badge.rot { background: rgb(251 146 60 / 0.2); color: rgb(251 146 60); }
   .badge.job { background: rgb(56 189 248 / 0.18); color: rgb(125 211 252); }
+  .badge.walk { background: rgb(251 146 60 / 0.16); color: rgb(253 186 116); }
   .badge.tmpl { background: rgb(248 113 113 / 0.16); color: rgb(252 165 165); }
   .badge.unscoped { background: rgb(251 191 36 / 0.16); color: rgb(252 211 77); }
   .badge.retired { background: rgb(148 163 184 / 0.22); color: rgb(203 213 225); text-transform: none; letter-spacing: 0; }

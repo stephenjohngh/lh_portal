@@ -13,7 +13,7 @@
   import {
     templateCoverage, suggestMatches, intervalNote, basisTally,
     BASIS, BASIS_LABEL, BASIS_DESCRIPTION, HANDLED_BY_LABEL,
-    isRecurring, supersededNote,
+    isRecurring, supersededNote, triggerTypeOf, TRIGGER_TYPE_LABEL,
   } from '$lib/utils/statutoryTemplate.js';
   import {
     currentDecisions, isRecordableReason, reviewsDue, reviewState, REVIEW_SOON_DAYS,
@@ -30,7 +30,7 @@
     filterRegister, registerStatusTally, groupRegisterRows, registerFilterFields,
     REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS,
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
-    citationState,
+    citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
@@ -503,8 +503,14 @@
             on:click={() => apply(shownAddable.map(r => r.entry.key))}>
             Add {shownAddable.length} shown
           </ProtectedButton>
+          <!-- ⚠ Says "switched off" BEFORE the click, not only in the report
+               after it. The two facts a person needs in order to decide whether
+               to press this are that nothing goes live, and that most of these
+               will still need scoping by hand — 11 entries propose a scope, the
+               rest match every component. -->
           <span class="bulk-note">
-            Each is created matching every component until you give it a scope.
+            Each is created switched off. Where the register proposes a scope it is
+            applied; the rest match every component until you scope them.
           </span>
         </div>
       {/if}
@@ -568,7 +574,23 @@
                         </span>
                       {/if}
                     </div>
-                    {#if !open}<p class="ref">{entry.statutoryRef}</p>{/if}
+                    {#if !open}
+                      <p class="ref">{entry.statutoryRef}</p>
+                      <!-- ⛔ A FACET MUST BE VISIBLE IN WHAT IT FILTERS.
+                           Evidence, Trigger, Duty holder and Citation are all
+                           filterable and none of them was on the row — Trigger
+                           was nowhere in the panel at all. Filtering by one and
+                           seeing no reason for the result is indistinguishable
+                           from a broken filter. Status, Source and Group are
+                           absent from this line ON PURPOSE: they are the pill,
+                           the badge and the section heading. -->
+                      <p class="facets">
+                        {#each rowFacetSummary(entry) as f, i (f.key)}
+                          {#if i > 0}<span class="dot">·</span>{/if}
+                          <span class="facet" class:on={filters[f.key]?.size} title={f.title}>{f.text}</span>
+                        {/each}
+                      </p>
+                    {/if}
                   </div>
                   <div class="row-facts">
                     <span class="freq">{cadence(entry)}</span>
@@ -599,10 +621,18 @@
                       </p>
                     {/if}
                     <p class="desc">{entry.description}</p>
+                    <!-- ⚠ Trigger is here because it was in NO view before —
+                         filterable, and rendered nowhere. `cadence()` says
+                         "On event" for anything non-recurring, which collapses
+                         event, risk and direction into one word. -->
                     <div class="meta">
                       <span class="freq">{cadence(entry)}</span>
                       <span class="dot">·</span>
                       <span>{EVIDENCE_ROUTE_LABEL[entry.evidencedBy] ?? 'Not schedulable here'}</span>
+                      <span class="dot">·</span>
+                      <span title="What makes this fall due">
+                        {TRIGGER_TYPE_LABEL[triggerTypeOf(entry)]}-driven
+                      </span>
                     </div>
 
                     <!-- ⚠ Two different questions, and the register keeps them
@@ -934,6 +964,12 @@
   .scope-ok { color: rgb(134 239 172); font-size: 0.72rem; }
   .party { font-size: 0.76rem; color: rgb(148 163 184); line-height: 1.45; }
   .party-k { color: rgb(203 213 225); font-weight: 600; }
+  /* The facet values on a collapsed row. Muted by default — they are context,
+     not the point of the row — and lifted when that facet is being filtered on,
+     so the reason a row survived the filter is the thing that stands out. */
+  .facets { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.3rem;
+            font-size: 0.7rem; color: rgb(100 116 139); margin-top: 0.15rem; }
+  .facet.on { color: rgb(226 232 240); font-weight: 600; }
   .bulk { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .bulk-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .sec-n { font-weight: 400; color: rgb(100 116 139); font-size: 0.78rem; margin-left: 0.3rem; }

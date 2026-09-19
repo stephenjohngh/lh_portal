@@ -16,6 +16,8 @@ import {
   dutyHolderRole, dutyHolderTally, unclassifiedDutyHolders,
   DUTY_HOLDER_ROLES, DUTY_HOLDER_ROLE_LABEL,
   citationState, CITATION_STATE_LABEL,
+  rowFacetSummary, ROW_VISIBLE_FACETS,
+  DUTY_HOLDER_ROLE_SHORT, CITATION_STATE_SHORT,
 } from './registerFilter.js';
 
 const ALL = STATUTORY_TEMPLATE;
@@ -460,5 +462,81 @@ describe('citationState', () => {
     const rows = filterRegister(ALL, { citation: new Set(['not_recorded']) }, noCtx);
     expect(rows.length).toBe(ALL.length - 14);
     expect(rows.every(r => !r.entry.citationVerifiedAgainst)).toBe(true);
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('⛔ every facet is visible on the row it filters', () => {
+  // Reported by the user, 2026-09-19: "there are a set of filters but i cant
+  // see all those fields in the presentation." Four of the seven facets
+  // filtered on something the row never showed, and Trigger was rendered
+  // nowhere in the panel at all — so narrowing 116 rows to 33 left nothing on
+  // screen saying why, which reads exactly like a broken filter.
+
+  const facetKeys = () =>
+    registerFilterFields(registerStatusTally(ALL, noCtx), dutyHolderTally(ALL))
+      .map(f => f.key);
+
+  it('accounts for EVERY facet — either already visible, or on the facts line', () => {
+    const onRow = new Set(rowFacetSummary(ALL[0]).map(f => f.key));
+    const unaccounted = facetKeys().filter(k => !ROW_VISIBLE_FACETS.has(k) && !onRow.has(k));
+    // ⛔ Adding a facet without showing its value is the defect this pins.
+    expect(unaccounted).toEqual([]);
+  });
+
+  it('gives every entry a complete facts line, with no blanks', () => {
+    for (const entry of ALL) {
+      const facts = rowFacetSummary(entry);
+      expect(facts).toHaveLength(4);
+      for (const f of facts) {
+        expect(f.text, `${entry.key} / ${f.key}`).toBeTruthy();
+        expect(f.text).not.toMatch(/undefined|null/);
+      }
+    }
+  });
+
+  it('⚠ never falls back to a raw key — a code on screen is not an answer', () => {
+    for (const entry of ALL) {
+      const byKey = Object.fromEntries(rowFacetSummary(entry).map(f => [f.key, f.text]));
+      // Raw values that must have been translated into words.
+      expect(byKey.trigger).not.toBe(entry.trigger);
+      expect(byKey.evidence).not.toBe(entry.evidencedBy);
+      expect(byKey.dutyHolder).not.toMatch(/_/);
+      expect(byKey.citation).not.toMatch(/_/);
+    }
+  });
+
+  it('shows the four facets that were previously invisible', () => {
+    expect(rowFacetSummary(ALL[0]).map(f => f.key))
+      .toEqual(['evidence', 'trigger', 'dutyHolder', 'citation']);
+  });
+
+  it('⛔ short and long labels cover the same roles, so row and facet agree', () => {
+    expect(Object.keys(DUTY_HOLDER_ROLE_SHORT).sort())
+      .toEqual(Object.keys(DUTY_HOLDER_ROLE_LABEL).sort());
+    expect(Object.keys(CITATION_STATE_SHORT).sort())
+      .toEqual(Object.keys(CITATION_STATE_LABEL).sort());
+    for (const role of DUTY_HOLDER_ROLES) {
+      expect(DUTY_HOLDER_ROLE_SHORT[role], role).toBeTruthy();
+    }
+  });
+
+  it('⚠ the short citation label still says CITATION', () => {
+    // Same rule as the long one: it must never read as "the row is verified".
+    for (const label of Object.values(CITATION_STATE_SHORT)) {
+      expect(label).toMatch(/citation/i);
+    }
+  });
+
+  it('a filtered facet value matches what the row prints for it', () => {
+    // The point of the line: filter to contractor jobs, and every surviving row
+    // says "Contractor job" in the same words the facet used.
+    const rows = filterRegister(ALL, { evidence: new Set(['maintenance_job']) }, noCtx);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const { entry } of rows) {
+      const evidence = rowFacetSummary(entry).find(f => f.key === 'evidence');
+      expect(evidence.text).toBe('Contractor job');
+    }
   });
 });

@@ -246,6 +246,31 @@ export const DUTY_HOLDER_ROLE_LABEL = {
 };
 
 /**
+ * The same roles, short enough to sit on a collapsed row.
+ *
+ * ⚠ A FACET MUST BE VISIBLE IN WHAT IT FILTERS. Four of the seven register
+ * facets used to filter on something the row never displayed — most of all
+ * Trigger, which appeared nowhere in the panel at all — so picking one narrowed
+ * 116 rows to 33 with nothing on screen saying why. That is indistinguishable
+ * from a broken filter.
+ *
+ * ⛔ These must stay in step with `DUTY_HOLDER_ROLE_LABEL`, because the row and
+ * the facet disagreeing about what a role is called is the same confusion
+ * pointed the other way. A test asserts the two maps carry identical keys.
+ */
+export const DUTY_HOLDER_ROLE_SHORT = {
+  responsible_person:           'Responsible person',
+  principal_accountable_person: 'Principal AP',
+  accountable_person:           'Accountable person',
+  shared_ap_rp:                 'Shared AP + RP',
+  employer_or_controller:       'Employer / controller',
+  asbestos_duty_holder:         'Asbestos duty holder',
+  none_own_control:             'No duty holder in law',
+  none_contract:                'No duty holder in law',
+  none_code:                    'No duty holder in law',
+};
+
+/**
  * Derive the short role from the stored sentence. Ordered: the more specific
  * tests come first, because "Principal accountable person" contains
  * "accountable person" and "Shared:" mentions both roles.
@@ -308,6 +333,57 @@ export const CITATION_STATE_LABEL = {
   verified:     'Citation verified',
   not_recorded: 'Citation not individually recorded',
 };
+
+/** The same two states, short enough for a collapsed row. ⛔ Same keys as
+ *  `CITATION_STATE_LABEL`, asserted by a test — see `DUTY_HOLDER_ROLE_SHORT`. */
+export const CITATION_STATE_SHORT = {
+  verified:     'Citation checked',
+  not_recorded: 'Citation not recorded',
+};
+
+// ── Making the facets visible on the row ─────────────────────────────────────
+//
+// ⛔ THE RULE: a person must be able to see, on the row, the thing they filtered
+// by. Reported by the user on 2026-09-19 — *"there are a set of filters but I
+// cant see all those fields in the presentation"* — and they were right about
+// all four: Evidence, Citation and Duty holder were in the expanded detail only,
+// and TRIGGER was rendered nowhere in the panel at all. Filtering to the 33
+// calendar rows changed the list and left nothing on screen explaining the
+// selection.
+//
+// Three facets are already visible and are NOT repeated here: Status is the
+// right-hand pill, Source is the badge beside the name, and Group is the section
+// heading the row sits under.
+
+/** Facets whose value the row already shows by other means. */
+export const ROW_VISIBLE_FACETS = new Set(['status', 'basis', 'group']);
+
+/**
+ * The facet values to print on a collapsed row, in the facets' OWN words — the
+ * row and the filter must not use different vocabulary for one fact.
+ *
+ * @param {Object} entry
+ * @returns {{key: string, text: string, title: string}[]}
+ */
+export function rowFacetSummary(entry) {
+  const role = dutyHolderRole(entry);
+  const cite = citationState(entry);
+  const trigger = triggerTypeOf(entry);
+  return [
+    { key: 'evidence',
+      text:  EVIDENCE_ROUTE_LABEL[entry?.evidencedBy] ?? 'Not schedulable here',
+      title: 'Evidence route' },
+    { key: 'trigger',
+      text:  TRIGGER_TYPE_LABEL[trigger] ?? trigger,
+      title: 'What makes this fall due' },
+    { key: 'dutyHolder',
+      text:  DUTY_HOLDER_ROLE_SHORT[role] ?? role,
+      title: `Duty holder in law — ${DUTY_HOLDER_ROLE_LABEL[role] ?? role}` },
+    { key: 'citation',
+      text:  CITATION_STATE_SHORT[cite] ?? cite,
+      title: CITATION_STATE_LABEL[cite] ?? cite },
+  ];
+}
 
 // ── The obligations list ─────────────────────────────────────────────────────
 // Five rows today and ~84 the moment the register is applied, which is the next
