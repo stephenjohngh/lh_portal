@@ -1,0 +1,17 @@
+# .gitattributes
+#
+# ⛔ THE STATEMENT'S PROSE SEED MUST CHECK OUT AS LF.
+#
+# `src/lib/content/statementProse.md` is assembled byte-for-byte with §6, which
+# is generated in memory and is therefore always LF. `core.autocrlf=true` — the
+# default on Windows — would hand the app a CRLF seed, the assembled document
+# would carry both endings, and `npm run check:statement-render` would fail on
+# every machine except the one the file was written on. That is precisely the
+# class of fault this project keeps finding: works here, broken there, and
+# nothing in the build can see it.
+#
+# ⚠ Belt and braces only. The parser normalises line endings anyway, because
+# prose also arrives from a browser textarea, where the HTML specification says
+# a submitted value uses CRLF. This pins the checkout so the two never disagree
+# in the first place.
+src/lib/content/*.md text eol=lf
