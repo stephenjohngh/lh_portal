@@ -171,7 +171,8 @@
         : 'Set when the requirement was created and never changed — obligations link on it.'} />
 
     <FormTextarea label="Description" bind:value={e.description} rows={2} required
-      error={show('description')} placeholder="What the check actually involves." />
+      error={show('description')} placeholder="What the check actually involves."
+      helpText="What the check involves, in general. ⚠ Not what this building has today — a description naming a current defect, project or installation stops being true when the building changes, and nothing will tell you." />
 
     <div class="pair">
       <FormSelect label="Group" bind:value={e.group} options={opts(GROUPS, GROUP_LABEL)}
@@ -185,9 +186,17 @@
       placeholder="e.g. Fire Safety (England) Regulations 2022, reg 10(6)"
       helpText="The instrument, standard or contract that requires this. ⛔ A requirement that cannot say what requires it is a note, not a register entry." />
 
+    <!-- ⛔ THE CATALOGUE RULE, WHERE SOMEBODY WOULD BREAK IT. The build plan §10
+         says it must reach the editor, and `appliesWhen` is its mechanism: a
+         requirement that does not apply TODAY is written as a CONDITION and
+         switched off by a recorded decision, never left out and never described
+         in the present tense. This register has been caught by that twice —
+         a row was made unconditional because an AOV was recorded as installed
+         (there is none), and a note justified a row "because a lift replacement
+         is in prospect". Both read as facts and both stopped being true. -->
     <FormTextarea label="Applies when" bind:value={e.appliesWhen} rows={2} required
       error={show('appliesWhen')}
-      helpText="“Always” is a valid answer; an empty box is not. A row with no stated condition claims it always applies without saying so." />
+      helpText="“Always” is a valid answer; an empty box is not. A row with no stated condition claims it always applies without saying so. ⛔ Write the CONDITION, not today’s answer to it — “where a mechanical smoke ventilation system serves a stair”, never “not applicable, none installed”. Whether it is true here is a recorded decision, and it changes without anyone editing this row." />
 
     <!-- ── Cadence ──────────────────────────────────────────────────────── -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
