@@ -51,10 +51,19 @@ export async function generateXlsxDocument(params) {
 
   const fullSummary = includeFullSummary ? buildStatusPivot(pivotRows(filteredComponents)) : null;
 
+  // ⚠ Naming and the status palette are passed EXPLICITLY, though the route
+  // still defaults to them. They were hardcoded there until a second list
+  // needed the same sheet builder; leaving this caller on the defaults would
+  // have meant the route could never change them without silently changing
+  // this document too.
   const res = await fetch('/api/generate-xlsx', {
     method:  'POST',
     headers: await authHeaders(),
-    body:    JSON.stringify({ building, filterSummary, generatedAt, detail, floorSummaries, fullSummary }),
+    body:    JSON.stringify({
+      building, filterSummary, generatedAt, detail, floorSummaries, fullSummary,
+      sheetName: 'Components', reportTitle: 'Component Report', filenameStem: 'Components',
+      statusFill: { ok: 'FF15803D', problem: 'FFB45309', failed: 'FFB91C1C', inactive: 'FF6B7280' },
+    }),
   });
 
   if (!res.ok) {

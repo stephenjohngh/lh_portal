@@ -15,6 +15,7 @@
 -->
 <script>
   import MultiSelectDropdown from './MultiSelectDropdown.svelte';
+  import { filterPills } from './filterSummary.js';
 
   /** @type {{key:string,label:string,placeholder?:string,noun?:string,minWidth?:string,options:{value:string,label:string,short?:string}[]}[]} */
   export let fields = [];
@@ -58,13 +59,10 @@
   $: activeCount =
     facets.reduce((n, x) => n + x.selected.size, 0) + (query.trim() ? 1 : 0);
 
-  /** The label to show in a pill for the values selected in one facet. */
-  function pillText(field, selected) {
-    const names = field.options
-      .filter(o => selected.has(o.value))
-      .map(o => o.short ?? o.label);
-    return `${field.label}: ${names.join(', ')}`;
-  }
+  // ⚠ The pill text is NOT computed here any more. An export prints the same
+  // description at the top of its document, and two implementations would
+  // eventually disagree about what the user had filtered to.
+  $: pills = filterPills(fields, values, query);
 
   function clearAll() {
     for (const f of fields) values[f.key] = new Set();
@@ -113,20 +111,12 @@
 
   {#if activeCount > 0}
     <div class="w-full flex flex-wrap gap-1.5 mt-0.5">
-      {#each facets as { field, selected } (field.key)}
-        {#if selected.size > 0}
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
-                       bg-slate-700 text-slate-300 border border-slate-600">
-            {pillText(field, selected)}
-          </span>
-        {/if}
-      {/each}
-      {#if query.trim()}
+      {#each pills as pill (pill)}
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]
                      bg-slate-700 text-slate-300 border border-slate-600">
-          "{query.trim()}"
+          {pill}
         </span>
-      {/if}
+      {/each}
     </div>
   {/if}
 </div>

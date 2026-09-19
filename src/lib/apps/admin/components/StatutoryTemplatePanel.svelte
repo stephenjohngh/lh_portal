@@ -32,6 +32,7 @@
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
     citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
+  import { downloadRegisterXlsx } from '../utils/registerXlsx.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -118,6 +119,29 @@
   // overwrite. (Nothing — but the question should not arise.)
   let importing = false;
   let importReport = null;
+
+  // ── Excel export ───────────────────────────────────────────────────────────
+  // ⚠ Passes the rows the screen is showing, and the facets it is showing them
+  // under, so the workbook records the filter it was taken from.
+  let exporting = false;
+
+  async function exportXlsx() {
+    exporting = true; panelError = '';
+    try {
+      await downloadRegisterXlsx({
+        rows: shown,
+        total: REG.length,
+        fields: filterFields,
+        values: filters,
+        query: search,
+        provenanceOf,
+      });
+    } catch (/** @type {any} */ err) {
+      panelError = err.message ?? 'Could not build the spreadsheet.';
+    } finally {
+      exporting = false;
+    }
+  }
 
   async function runImport() {
     importing = true; panelError = ''; importReport = null;
@@ -492,6 +516,21 @@
         searchPlaceholder="Name, reference, description…"
         resultLabel="{shown.length} of {REG.length}"
       />
+
+      <!-- Export what is SHOWN. The spreadsheet carries every register field —
+           a reader sorting and pivoting it is the whole point, and a column
+           somebody else left out is one they cannot get back. -->
+      <div class="export-row">
+        <Button variant="secondary" size="small" disabled={exporting || shown.length === 0}
+          on:click={exportXlsx}>
+          {exporting ? 'Building…' : `⬇ Excel (${shown.length})`}
+        </Button>
+        <span class="export-note">
+          {shown.length === REG.length
+            ? 'Every requirement, with all its fields.'
+            : `The ${shown.length} shown, with all their fields — the filter is recorded in the sheet.`}
+        </span>
+      </div>
 
       <!-- Bulk apply acts on WHAT IS SHOWN, not on every gap in the register.
            With filters that is the more useful of the two and the safer one:
@@ -943,6 +982,8 @@
     background: none; border: none; cursor: pointer;
   }
   .diff-close:hover { color: rgb(226 232 240); }
+  .export-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .export-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .reg-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .reg-actions-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .badge.local { background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }
