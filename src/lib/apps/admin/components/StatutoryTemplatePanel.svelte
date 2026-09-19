@@ -315,7 +315,7 @@
 
 <div class="tmpl" class:has-gaps={coverage.missing.length > 0}>
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="tmpl-head" on:click={() => (open = !open)}>
+  <div class="tmpl-head" class:closed={!open} on:click={() => (open = !open)}>
     <div class="th-left">
       <span class="chev" class:open>▸</span>
       <div>
@@ -986,10 +986,23 @@
   .row-detail .row-actions { margin-top: 0.4rem; display: flex; gap: 0.4rem; }
   .warn-text.late { color: rgb(248 113 113); font-weight: 600; }
 
-  .tmpl { border: 1px solid rgb(71 85 105 / 0.5); border-radius: 10px; background: rgb(30 41 59 / 0.3); overflow: hidden; }
+  /* ⛔ NO `overflow: hidden` HERE — it clipped the filter dropdowns.
+     It was only ever keeping `.tmpl-head:hover`'s tint inside the rounded
+     corners, and it did that by clipping EVERY absolutely-positioned
+     descendant to this box. The facet dropdowns hang below their buttons, so
+     as soon as a filter narrowed the list the panel got shorter than the open
+     dropdown and its bottom options were cut off — reported on the Trigger
+     facet (ticking "Event" leaves 14 rows) but true of all seven.
+     The corners are handled by rounding the head itself instead; nothing else
+     in the body reaches an edge, because `.tmpl-body` insets everything by
+     1rem. Do not put it back. */
+  .tmpl { border: 1px solid rgb(71 85 105 / 0.5); border-radius: 10px; background: rgb(30 41 59 / 0.3); }
   .tmpl.has-gaps { border-color: rgb(251 191 36 / 0.4); }
 
-  .tmpl-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; cursor: pointer; }
+  .tmpl-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; cursor: pointer;
+               border-radius: 9px 9px 0 0; }
+  /* Collapsed, the head IS the panel, so it takes all four corners. */
+  .tmpl-head.closed { border-radius: 9px; }
   .tmpl-head:hover { background: rgb(51 65 85 / 0.25); }
   .th-left { display: flex; align-items: center; gap: 0.6rem; }
   .th-title { font-weight: 600; color: rgb(226 232 240); font-size: 0.92rem; }

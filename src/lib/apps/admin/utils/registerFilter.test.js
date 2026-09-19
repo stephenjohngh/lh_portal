@@ -540,3 +540,48 @@ describe('⛔ every facet is visible on the row it filters', () => {
     }
   });
 });
+
+
+describe('⚠ the filter bar must not resize as you use it', () => {
+  // Reported alongside the hidden facets, 2026-09-19: "something odd with
+  // sizing of panels". A facet with no minWidth is sized by its summary, so
+  // choosing a long value widened the button and reflowed every facet after
+  // it. ⭐ Sizing each button to its longest option is NOT the fix — the
+  // longest is "No statutory duty holder — a code, not statute", which would
+  // need ~336px. The bar fixes each button at its declared width and lets the
+  // summary truncate; the full value stays readable in the active pill and on
+  // the button's tooltip.
+  const allFields = () => [
+    ...registerFilterFields(registerStatusTally(ALL, noCtx), dutyHolderTally(ALL)),
+    ...obligationFilterFields([]),
+  ];
+
+  it('every facet declares a minWidth', () => {
+    // With `fixedWidth`, an undeclared width silently becomes the 130px
+    // default and that facet truncates harder than its neighbours.
+    const missing = allFields().filter(f => !f.minWidth).map(f => f.key);
+    expect(missing).toEqual([]);
+  });
+
+  it('⚠ an option whose label carries a count also carries a clean `short`', () => {
+    // The dropdown lists "Not covered (79)" — useful when choosing. The button
+    // and the pill use `short`, so a stale count can never end up frozen in the
+    // summary of a filter you set ten minutes ago.
+    for (const f of allFields()) {
+      for (const o of f.options) {
+        if (/\(\d+\)\s*$/.test(o.label)) {
+          expect(o.short, `${f.key}/${o.value}`).toBeTruthy();
+          expect(o.short).not.toMatch(/\(\d+\)\s*$/);
+        }
+      }
+    }
+  });
+
+  it('a `short` is never longer than the label it stands in for', () => {
+    for (const f of allFields()) {
+      for (const o of f.options) {
+        if (o.short) expect(o.short.length, `${f.key}/${o.value}`).toBeLessThanOrEqual(o.label.length);
+      }
+    }
+  });
+});

@@ -92,6 +92,7 @@
       placeholder={field.placeholder ?? 'All'}
       noun={field.noun ?? 'selected'}
       minWidth={field.minWidth ?? '130px'}
+      fixedWidth={true}
       options={field.options}
       bind:selected={values[field.key]}
       open={openKey === field.key}

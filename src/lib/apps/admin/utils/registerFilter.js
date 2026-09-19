@@ -175,7 +175,12 @@ export function registerFilterFields(tally, dutyTally, citationTally) {
       options: REGISTER_STATUS.map(s => ({
         value: s, label: `${REGISTER_STATUS_LABEL[s]} (${tally?.[s] ?? 0})`, short: REGISTER_STATUS_LABEL[s],
       })) },
-    { key: 'basis', label: 'Source', placeholder: 'Any source', noun: 'sources',
+    // ⚠ Every facet states a minWidth wide enough for its LONGEST option.
+    // Without one the button is sized by its summary, so choosing a long value
+    // ("Risk or condition", "Management decision") widened the button and
+    // reflowed every facet after it — the bar rearranging itself as a side
+    // effect of using it. The summary still truncates rather than growing.
+    { key: 'basis', label: 'Source', placeholder: 'Any source', noun: 'sources', minWidth: '160px',
       options: BASIS.map(b => ({ value: b, label: BASIS_LABEL[b] })) },
     { key: 'group', label: 'Group', placeholder: 'All groups', noun: 'groups', minWidth: '150px',
       options: GROUPS.map(g => ({ value: g, label: GROUP_LABEL[g] })) },
@@ -189,7 +194,7 @@ export function registerFilterFields(tally, dutyTally, citationTally) {
       options: Object.entries(CITATION_STATE_LABEL).map(([v, label]) => ({
         value: v, label: citationTally ? `${label} (${citationTally[v] ?? 0})` : label, short: label,
       })) },
-    { key: 'trigger', label: 'Trigger', placeholder: 'Any trigger', noun: 'triggers',
+    { key: 'trigger', label: 'Trigger', placeholder: 'Any trigger', noun: 'triggers', minWidth: '150px',
       options: Object.entries(TRIGGER_TYPE_LABEL).map(([v, label]) => ({ value: v, label })) },
     // ⚠ Labelled "Duty holder", never "Responsible" — the register keeps who
     // bears a duty in law apart from who performs the work, deliberately.
@@ -456,15 +461,23 @@ export function obligationFilterFields(defs = []) {
         { value: 'inspection',      label: EVIDENCE_ROUTE_LABEL.inspection },
         { value: 'maintenance_job', label: EVIDENCE_ROUTE_LABEL.maintenance_job },
       ] },
+    // ⚠ Every counted option needs a `short` WITHOUT the count. The count is
+    // useful while choosing and wrong afterwards: the button and the pill use
+    // `short`, so without one a figure from the moment you opened the dropdown
+    // sits frozen in the summary of a filter you set ten minutes ago.
     { key: 'source', label: 'Origin', placeholder: 'Any origin', noun: 'origins', minWidth: '150px',
       options: [
-        { value: 'register', label: `From the register (${count(d => !!d.template_key)})` },
-        { value: 'own',      label: `Our own (${count(d => !d.template_key)})` },
+        { value: 'register', label: `From the register (${count(d => !!d.template_key)})`,
+          short: 'From the register' },
+        { value: 'own',      label: `Our own (${count(d => !d.template_key)})`,
+          short: 'Our own' },
       ] },
     { key: 'scope', label: 'Scope', placeholder: 'Any scope', noun: 'scopes', minWidth: '150px',
       options: [
-        { value: 'unscoped', label: `Matches everything (${count(hasEmptyScope)})` },
-        { value: 'scoped',   label: `Scoped (${count(d => !hasEmptyScope(d))})` },
+        { value: 'unscoped', label: `Matches everything (${count(hasEmptyScope)})`,
+          short: 'Matches everything' },
+        { value: 'scoped',   label: `Scoped (${count(d => !hasEmptyScope(d))})`,
+          short: 'Scoped' },
       ] },
   ];
 }

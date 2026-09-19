@@ -22,6 +22,22 @@
   export let selected    = new Set();      // bindable Set of values
   export let open        = false;          // controlled by parent
   export let minWidth    = '130px';
+  /**
+   * Make the button EXACTLY `minWidth` instead of growing with its summary.
+   *
+   * ⚠ Opt-in, because the original caller (the Components tab) lays its
+   * dropdowns out by hand and has always let them grow. In a data-driven bar
+   * growing is a fault: pick "Tracked in another app" and the button widens by
+   * ~40px, shoving every facet after it onto a different position — the bar
+   * rearranging itself as a side effect of being used. The summary's `truncate`
+   * was already in the markup for this and was inert, because nothing ever
+   * constrained the width.
+   *
+   * Safe only where the full value is still readable somewhere else: the
+   * FilterBar prints it in full in the active pills, and it is on the button's
+   * own tooltip.
+   */
+  export let fixedWidth  = false;
 
   // When `groups` is non-empty the dropdown renders grouped (headers + options);
   // otherwise it renders the flat `options`. `options` is always the source for
@@ -52,13 +68,15 @@
   {/if}
   <button
     on:click={() => dispatch('toggle')}
-    style="min-width: {minWidth}"
-    {title}
+    style="min-width: {minWidth}{fixedWidth ? `; width: ${minWidth}` : ''}"
+    title={title || (selected.size > 0 ? summary : '')}
     class="bg-slate-700 border rounded px-3 py-1.5 text-xs text-white
            focus:outline-none flex items-center justify-between gap-2 text-left
            {selected.size > 0 ? 'border-purple-500/70' : 'border-slate-600 hover:border-slate-500'}"
   >
-    <span class="truncate">{summary}</span>
+    <!-- `min-w-0` is what lets a flex child shrink below its content and so
+         actually truncate; without it `truncate` does nothing here. -->
+    <span class="truncate min-w-0">{summary}</span>
     <span class="text-slate-500 shrink-0 text-[10px]">▾</span>
   </button>
   {#if open}
