@@ -163,7 +163,27 @@
     </div>
 
     <!-- Tab Navigation -->
+    <!-- ⚠ Inspections leads. It is where the compliance register and the
+         building's obligations live, which is the work this tab group is
+         mostly opened for; Users is administration that happens rarely.
+         ⛔ It does NOT become the default tab — `activeTab` stays 'users'.
+         Selecting Inspections loads the whole component set (see
+         `activateTab`), and making that happen every time anyone opens Admin
+         would pay for the register whether or not they came for it. -->
     <div class="flex space-x-2 border-b border-slate-600">
+      {#if $permissions.isAdmin}
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'inspections'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('inspections')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>🔎</span>
+            <span>Inspections</span>
+          </span>
+        </button>
+      {/if}
       <button
         class="px-4 py-2 transition-colors {activeTab === 'users'
           ? 'border-b-2 border-purple-500 text-white font-semibold'
@@ -197,17 +217,6 @@
           <span class="flex items-center space-x-2">
             <span>🗂</span>
             <span>Component Types</span>
-          </span>
-        </button>
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'inspections'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('inspections')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>🔎</span>
-            <span>Inspections</span>
           </span>
         </button>
         <TabDropdown

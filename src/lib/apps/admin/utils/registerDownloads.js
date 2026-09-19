@@ -1,6 +1,6 @@
-// src/lib/apps/admin/utils/registerXlsx.js
+// src/lib/apps/admin/utils/registerDownloads.js
 //
-// Downloads the register — as filtered — as a spreadsheet.
+// Downloads the register — as filtered — as a spreadsheet or a Word extract.
 //
 // ⛔ The rows are the ones the SCREEN is showing, passed straight through. The
 // route styles what it is given and re-derives nothing, which is the rule the
@@ -12,6 +12,7 @@ import { authHeaders } from '$lib/utils/authHeaders';
 import { downloadResponse } from '$lib/utils/download.js';
 import { describeFilters } from '$lib/components/common/filterSummary.js';
 import { buildRegisterSheet, STATUS_FILL } from './registerExport.js';
+import { REGISTER_STATUS_LABEL } from './registerFilter.js';
 import { fmtGenerated } from '$lib/utils/dates.js';
 
 /**
@@ -59,6 +60,47 @@ export async function downloadRegisterXlsx(params) {
   }
 
   const filename = `periodic-register-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  await downloadResponse(res, filename);
+  return { filename };
+}
+
+/**
+ * The same selection as a Word document — a curated seven columns rather than
+ * every field, because thirty-five columns of prose is unreadable on a page.
+ *
+ * ⛔ The two exports answer different questions and the guide says so: the
+ * spreadsheet is for working the list, this is for showing somebody. It is an
+ * EXTRACT and says so on its first page — see `registerDocx.js`.
+ *
+ * @param {Object} params  same shape as `downloadRegisterXlsx`
+ * @returns {Promise<{filename: string}>}
+ */
+export async function downloadRegisterDocx(params) {
+  const { rows, total, fields, values, query = '', building = 'Lancaster House' } = params;
+
+  const res = await fetch('/api/reports/generate-register-extract', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({
+      building,
+      total,
+      generatedAt: fmtGenerated(),
+      filterSummary: describeFilters(fields, values, query),
+      // Only what the document prints — the status LABEL, not the code, so the
+      // page and the screen use one vocabulary.
+      rows: rows.map(({ entry, status }) => ({
+        entry,
+        statusLabel: REGISTER_STATUS_LABEL[status] ?? status,
+      })),
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error ${res.status}`);
+  }
+
+  const filename = `register-extract-${new Date().toISOString().slice(0, 10)}.docx`;
   await downloadResponse(res, filename);
   return { filename };
 }

@@ -32,7 +32,7 @@
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
     citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
-  import { downloadRegisterXlsx } from '../utils/registerXlsx.js';
+  import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -120,26 +120,34 @@
   let importing = false;
   let importReport = null;
 
-  // ── Excel export ───────────────────────────────────────────────────────────
-  // ⚠ Passes the rows the screen is showing, and the facets it is showing them
-  // under, so the workbook records the filter it was taken from.
-  let exporting = false;
+  // ── Exports ────────────────────────────────────────────────────────────────
+  // ⚠ Both pass the rows the screen is showing, and the facets it is showing
+  // them under, so each file records the filter it was taken from.
+  // ⭐ They answer different questions: the spreadsheet carries EVERY field and
+  // is for working the list; the Word file is a curated seven columns and is an
+  // EXTRACT for showing somebody. It says so on its own first page, because the
+  // thing it must never be mistaken for is the obligations statement.
 
-  async function exportXlsx() {
-    exporting = true; panelError = '';
+  /** @type {'xlsx'|'docx'|null} */
+  let exporting = null;
+
+  async function runExport(kind) {
+    exporting = kind; panelError = '';
+    const args = {
+      rows: shown,
+      total: REG.length,
+      fields: filterFields,
+      values: filters,
+      query: search,
+      provenanceOf,
+    };
     try {
-      await downloadRegisterXlsx({
-        rows: shown,
-        total: REG.length,
-        fields: filterFields,
-        values: filters,
-        query: search,
-        provenanceOf,
-      });
+      if (kind === 'xlsx') await downloadRegisterXlsx(args);
+      else                 await downloadRegisterDocx(args);
     } catch (/** @type {any} */ err) {
-      panelError = err.message ?? 'Could not build the spreadsheet.';
+      panelError = err.message ?? 'Could not build the document.';
     } finally {
-      exporting = false;
+      exporting = null;
     }
   }
 
@@ -521,14 +529,21 @@
            a reader sorting and pivoting it is the whole point, and a column
            somebody else left out is one they cannot get back. -->
       <div class="export-row">
-        <Button variant="secondary" size="small" disabled={exporting || shown.length === 0}
-          on:click={exportXlsx}>
-          {exporting ? 'Building…' : `⬇ Excel (${shown.length})`}
+        <Button variant="secondary" size="small" disabled={!!exporting || shown.length === 0}
+          on:click={() => runExport('xlsx')}>
+          {exporting === 'xlsx' ? 'Building…' : `⬇ Excel (${shown.length})`}
+        </Button>
+        <Button variant="secondary" size="small" disabled={!!exporting || shown.length === 0}
+          on:click={() => runExport('docx')}>
+          {exporting === 'docx' ? 'Building…' : `⬇ Word (${shown.length})`}
         </Button>
         <span class="export-note">
+          <strong>Excel</strong> carries every field — for working the list.
+          <strong>Word</strong> is seven columns, for showing somebody, and is
+          labelled an extract rather than the obligations statement.
           {shown.length === REG.length
-            ? 'Every requirement, with all its fields.'
-            : `The ${shown.length} shown, with all their fields — the filter is recorded in the sheet.`}
+            ? 'Both cover the whole register.'
+            : `Both cover the ${shown.length} shown, and record the filter.`}
         </span>
       </div>
 
