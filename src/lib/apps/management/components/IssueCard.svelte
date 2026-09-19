@@ -138,7 +138,14 @@
     : borderClass;
 </script>
 
-<div class="{activeBackgroundClass} rounded-lg border-2 {activeBorderClass} overflow-hidden transition-all duration-300 ease-in-out {showActivity || showActions ? 'shadow-lg shadow-purple-500/20' : ''}">
+<!-- ⛔ NO `overflow-hidden` on this card — it clipped MeetingBadge's menu.
+     The badge sits in the header and opens `absolute top-full`; on a short
+     collapsed card the card ended before the menu did, so "Remove from
+     meeting" was cut off. Nothing here needs the clip: every child is either
+     padded (the header) or inset by its own margins (the activity and actions
+     sections), so none of them reaches the rounded corners. Third instance of
+     this fault — see PROJECT_STATUS §6o/§6p. -->
+<div class="{activeBackgroundClass} rounded-lg border-2 {activeBorderClass} transition-all duration-300 ease-in-out {showActivity || showActions ? 'shadow-lg shadow-purple-500/20' : ''}">
   <!-- Issue Header -->
   <div class="p-3">
     <div class="flex-between items-start mb-1">

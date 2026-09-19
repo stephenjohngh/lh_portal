@@ -2,98 +2,219 @@
 //
 // TYPE-1, and unusual: it reads SOURCE TEXT rather than calling anything.
 //
-// ⛔ THE RULE: a component that renders a dropdown or a filter strip must not
-// declare `overflow: hidden` in its own scoped styles.
+// ⛔ THE RULE: a component that opens an overlay — a menu, dropdown or popover
+// drawn over whatever follows it — must not be rendered inside an ancestor that
+// clips. `overflow: hidden` clips every absolutely-positioned descendant to its
+// own box, so a panel that hangs below its button is silently cut off.
 //
-// Twice now, a wrapper has carried `overflow: hidden` for nothing but rounded
-// corners and silently clipped an absolutely-positioned panel to its own box:
+// THREE instances, all written for rounded corners by someone not thinking
+// about popovers, all invisible until a container happened to be short:
 //   · `.tmpl` on the register panel — the facet dropdowns lost their bottom
-//     options as soon as a filter shortened the list (PROJECT_STATUS §6o).
+//     options once a filter shortened the list (PROJECT_STATUS §6o).
 //   · `.attr-strips` in ScopeEditor — the "+ Add filter" popover is `w-80` by
-//     up to 60vh inside a container about 72px tall, so almost none of it was
-//     visible. Found by sweeping for the first one.
+//     up to 60vh inside a container ~72px tall, so almost none of it showed.
+//   · `IssueCard` — MeetingBadge's menu, cut off on a short collapsed card.
 //
-// ⚠ WHY A SOURCE-TEXT CHECK. jsdom computes no layout, so no rendering test can
-// observe clipping; and the fault is invisible until a list happens to be short
-// enough. The only thing that can be checked cheaply is the declaration that
-// causes it. ⚠ It is therefore NARROW: it sees the component's own styles, not
-// a wrapper an ANCESTOR component puts around it. A new panel is still on the
-// author.
+// ⚠ AN EARLIER VERSION OF THIS TEST WOULD HAVE CAUGHT NONE OF THEM. It checked
+// whether a component clipped its OWN styles, and in all three cases the
+// overlay lives in a different component from the wrapper that clips it. The
+// scan is therefore CROSS-COMPONENT: find the components that open an overlay,
+// then check every place each one is rendered.
+//
+// ⚠ What it still cannot see: an ancestor added by a component further up than
+// the direct caller, and anything `position: fixed` escaping a transformed
+// ancestor. Both remain on the author.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const SRC = 'src';
+const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^<>]*?)?)(\/?)>/gs;
+const CLASS = /class(?:Name)?\s*=\s*"([^"]*)"/g;
+const STYLE_ATTR = /style\s*=\s*"([^"]*)"/g;
+// ⚠ `hidden` ONLY, deliberately. `auto` and `scroll` also cut a panel off at
+// the edge, but they leave it REACHABLE — you can scroll to it — and flagging
+// every scroll pane would bury this rule in exemptions for things that are
+// fine. All three real faults were `hidden`, which makes content unreachable.
+const OVERFLOW = /overflow(-[xy])?\s*:\s*hidden/;
+const TW_CLIP = /\boverflow-(x-|y-)?hidden\b/;
+/** Elements that never have a closing tag, so must not go on the stack. */
+const VOID = new Set(['input', 'img', 'br', 'hr', 'meta', 'link', 'source', 'track',
+  'area', 'base', 'col', 'embed', 'param', 'wbr', 'path', 'circle', 'rect', 'line',
+  'polygon', 'polyline', 'use', 'stop', 'ellipse', 'g']);
 
-/** Every .svelte file under src/. */
-function svelteFiles(dir = SRC, out = []) {
+function svelteFiles(dir = 'src', out = []) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) svelteFiles(path, out);
-    else if (name.endsWith('.svelte')) out.push(path);
+    else if (name.endsWith('.svelte')) out.push(path.split('\\').join('/'));
   }
   return out;
 }
 
-/** The contents of a component's <style> block — scoped CSS only, so a
- *  Tailwind `overflow-hidden` in the markup is deliberately NOT matched. Those
- *  are nearly always a segmented button group, which contains no popup. */
-function styleBlock(source) {
-  const m = source.match(/<style[^>]*>([\s\S]*?)<\/style>/);
-  return m ? m[1] : '';
+const read = (p) => readFileSync(p, 'utf8');
+const styleBlock = (src) => (src.match(/<style[^>]*>([\s\S]*?)<\/style>/) ?? [, ''])[1];
+const markup = (src) => src
+  .replace(/<script[\s\S]*?<\/script>/g, '')
+  .replace(/<style[\s\S]*?<\/style>/g, '')
+  .replace(/<!--[\s\S]*?-->/g, '');
+
+/** Class selectors in a component's scoped CSS whose body clips. */
+function clippingClasses(css) {
+  const out = new Set();
+  for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (!OVERFLOW.test(body)) continue;
+    for (const [, cls] of selector.matchAll(/\.([a-zA-Z0-9_-]+)/g)) out.add(cls);
+  }
+  return out;
+}
+
+const attrValues = (attrs, re) => [...attrs.matchAll(re)].map(m => m[1]).join(' ');
+
+/**
+ * Does this component open an overlay, and of which kind? The signature is a
+ * positioned element carrying a z-index — that pairing is what says "draw me
+ * over what follows", and is what separates a menu from an in-flow decoration.
+ *
+ * ⚠ ONLY `absolute` is at risk. A `fixed` element is positioned against the
+ * viewport and an ancestor's `overflow: hidden` does not reach it, which is why
+ * every modal and bottom sheet in this codebase is safe wherever it is put.
+ * (It would be caught by a transformed ancestor — out of scope here.)
+ *
+ * @returns {'absolute'|'fixed'|null}
+ */
+function overlayKind(src) {
+  const m = markup(src);
+  let seen = null;
+  for (const match of m.matchAll(TAG)) {
+    if (match[1]) continue;
+    const classes = attrValues(match[3] ?? '', CLASS).split(/\s+/);
+    if (!classes.some(c => c.startsWith('z-'))) continue;
+    if (classes.includes('absolute')) return 'absolute';
+    if (classes.includes('fixed')) seen = 'fixed';
+  }
+  const css = styleBlock(src);
+  if (/position\s*:\s*absolute[\s\S]{0,160}?z-index/.test(css)) return 'absolute';
+  if (/position\s*:\s*fixed[\s\S]{0,160}?z-index/.test(css)) seen = seen ?? 'fixed';
+  return seen;
+}
+
+/** Component names rendered by this file. */
+function rendersComponents(src) {
+  return new Set([...markup(src).matchAll(/<([A-Z][A-Za-z0-9_]*)/g)].map(m => m[1]));
 }
 
 /**
- * Wrappers allowed to clip, each with the reason it cannot hide a panel.
- * ⛔ An entry here is a claim that the element contains no popup — not a
- * preference. Adding one without checking is how the rule stops working.
+ * Every `<Component>` rendered inside a clipping ancestor in this file.
+ * @returns {{component: string, ancestor: string}[]}
  */
-const ALLOWED = {
-  'src/lib/apps/admin/components/StatutoryTemplatePanel.svelte': [
-    // The coverage progress bar: 6px tall, a fill element and nothing else.
-    '.bar',
-  ],
-};
+function clippedCallSites(src, overlayNames) {
+  const css = clippingClasses(styleBlock(src));
+  const m = markup(src);
+  /** @type {{tag: string, cls: string, clips: boolean}[]} */
+  const stack = [];
+  const out = [];
+  for (const match of m.matchAll(TAG)) {
+    const [, closing, name, rawAttrs, selfClose] = match;
+    const tag = name.toLowerCase();
+    if (closing) {
+      for (let i = stack.length - 1; i >= 0; i--) {
+        if (stack[i].tag === tag) { stack.length = i; break; }
+      }
+      continue;
+    }
+    const attrs = rawAttrs ?? '';
+    const cls = attrValues(attrs, CLASS);
+    const clips = TW_CLIP.test(cls)
+      || OVERFLOW.test(attrValues(attrs, STYLE_ATTR))
+      || cls.split(/\s+/).some(c => css.has(c));
 
-/** Selectors in this file's styles that declare a clipping overflow. */
-function clippingSelectors(css) {
-  const found = [];
-  // Rough but sufficient: a selector, then a body containing overflow:hidden.
-  const rule = /([^{}]+)\{([^{}]*)\}/g;
-  let m;
-  while ((m = rule.exec(css)) !== null) {
-    const [, selector, body] = m;
-    if (/overflow(-[xy])?\s*:\s*hidden/.test(body)) found.push(selector.trim().split('\n').pop().trim());
+    if (overlayNames.has(name) && /^[A-Z]/.test(name)) {
+      const ancestor = stack.find(a => a.clips);
+      if (ancestor) out.push({ component: name, ancestor: ancestor.cls.trim().slice(0, 60) });
+    }
+    if (selfClose !== '/' && !VOID.has(tag)) stack.push({ tag, cls, clips });
   }
-  return found;
+  return out;
 }
 
-describe('⛔ a dropdown must not be clipped by its own wrapper', () => {
-  // Files that render one of the panels that hangs outside its parent.
-  const RENDERS_A_PANEL = /<(MultiSelectDropdown|FilterBar|AttrFilterStrip)\b/;
+/**
+ * Call sites allowed to sit inside a clipping ancestor, each with the reason
+ * the overlay is not in fact clipped.
+ *
+ * ⛔ An entry is a CLAIM, not a preference. The two categories that hold:
+ *   · the overlay is `position: fixed` and no ancestor carries a transform,
+ *     filter or perspective, so it is positioned against the viewport;
+ *   · the "overlay" is an in-flow decoration drawn inside its own box, or a
+ *     canvas whose clipping is the entire point.
+ */
+const ALLOWED = {
+  // Markers drawn ON the plan — clipping to the plan viewport is the point,
+  // and PlanView contains nothing else that opens outward.
+  'src/lib/apps/mobileplan/components/PlanView.svelte': ['MarkerOverlay'],
+  'src/lib/apps/mobileplan/MobilePlanApp.svelte': ['PlanView'],
+  // ⚠ A WEAKER REASON THAN THE OTHERS, and it is recorded as such. The shell is
+  // full height, so it clips at the viewport edge — where a panel would be cut
+  // off anyway. The only outward-opening panel below it is PackSearch's
+  // suggestion list (`max-h-80`), anchored near the TOP of the sidebar. Move
+  // that search to the bottom of a pane and this stops being true.
+  'src/lib/apps/dossier/DossierApp.svelte': ['PackWorkspace'],
+};
 
-  const offenders = [];
-  for (const path of svelteFiles()) {
-    const source = readFileSync(path, 'utf8');
-    if (!RENDERS_A_PANEL.test(source)) continue;
-    const allowed = ALLOWED[path.split('\\').join('/')] ?? [];
-    for (const selector of clippingSelectors(styleBlock(source))) {
-      if (!allowed.includes(selector)) offenders.push(`${path} → ${selector}`);
+describe('⛔ an overlay must not be rendered inside something that clips it', () => {
+  const files = svelteFiles();
+  const sources = new Map(files.map(p => [p, read(p)]));
+
+  const nameOf = (p) => p.split('/').pop().replace(/\.svelte$/, '');
+
+  // ⛔ TRANSITIVE, and this is the part a first attempt got wrong. `FilterBar`
+  // contains no positioned element of its own — it RENDERS MultiSelectDropdown,
+  // which does. So the register panel's `.tmpl` wrapper was clipping an overlay
+  // two components down, and a scan that only looked at direct containment
+  // reported nothing. A component that renders an at-risk overlay is itself at
+  // risk, however many levels deep it sits.
+  const overlayNames = new Set(
+    files.filter(p => overlayKind(sources.get(p)) === 'absolute').map(nameOf),
+  );
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const p of files) {
+      const name = nameOf(p);
+      if (overlayNames.has(name)) continue;
+      for (const child of rendersComponents(sources.get(p))) {
+        if (overlayNames.has(child)) { overlayNames.add(name); changed = true; break; }
+      }
     }
   }
 
-  it('no component that renders one declares a clipping overflow', () => {
+  const offenders = [];
+  for (const [path, src] of sources) {
+    const allowed = ALLOWED[path] ?? [];
+    for (const { component, ancestor } of clippedCallSites(src, overlayNames)) {
+      if (!allowed.includes(component)) offenders.push(`${path} → <${component}> inside "${ancestor}"`);
+    }
+  }
+
+  it('no overlay is rendered inside a clipping ancestor', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('finds the components it is meant to be watching', () => {
-    // A check that matches nothing passes for ever. This asserts the scan
-    // actually reaches the two files the rule exists because of.
-    const scanned = svelteFiles().filter(p => RENDERS_A_PANEL.test(readFileSync(p, 'utf8')));
-    const rel = scanned.map(p => p.split('\\').join('/'));
-    expect(rel).toContain('src/lib/apps/admin/components/StatutoryTemplatePanel.svelte');
-    expect(rel).toContain('src/lib/apps/building_assets/components/inspections/ScopeEditor.svelte');
-    expect(rel.length).toBeGreaterThanOrEqual(5);
+  it('⚠ still recognises the overlays it exists to protect', () => {
+    // A scan that matches nothing passes for ever — round 14's dead claim.
+    for (const name of ['MultiSelectDropdown', 'AttrFilterStrip', 'MeetingBadge', 'PlanToolbar']) {
+      expect(overlayNames, name).toContain(name);
+    }
+    expect(overlayNames.size).toBeGreaterThanOrEqual(20);
+  });
+
+  it('⚠ every allowlist entry still names a real call site', () => {
+    // Otherwise a stale exemption quietly widens the rule.
+    for (const [path, names] of Object.entries(ALLOWED)) {
+      const src = sources.get(path);
+      expect(src, `${path} no longer exists`).toBeTruthy();
+      for (const name of names) {
+        expect(src.includes(`<${name}`), `${path} no longer renders <${name}>`).toBe(true);
+      }
+    }
   });
 });
