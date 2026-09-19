@@ -32,7 +32,8 @@
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
     citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
-  import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
+  import { downloadRegisterXlsx, downloadRegisterDocx, downloadStatementSection6 }
+    from '../utils/registerDownloads.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -128,7 +129,7 @@
   // EXTRACT for showing somebody. It says so on its own first page, because the
   // thing it must never be mistaken for is the obligations statement.
 
-  /** @type {'xlsx'|'docx'|null} */
+  /** @type {'xlsx'|'docx'|'section6'|null} */
   let exporting = null;
 
   async function runExport(kind) {
@@ -146,6 +147,26 @@
       else                 await downloadRegisterDocx(args);
     } catch (/** @type {any} */ err) {
       panelError = err.message ?? 'Could not build the document.';
+    } finally {
+      exporting = null;
+    }
+  }
+
+  // ⛔ NOT AN EXPORT OF WHAT IS SHOWN — this is §6 of the obligations statement
+  // itself, generated from the WHOLE register. It deliberately ignores the
+  // filters: a filtered statement is the confusion the two extracts above are
+  // labelled to prevent, and this is the artefact that goes to an outside
+  // reviewer.
+  async function runStatementSection6() {
+    exporting = 'section6'; panelError = '';
+    try {
+      await downloadStatementSection6({
+        wholeRegister: REG,
+        provenance: $statutoryRegister.provenance ?? {},
+        source: $statutoryRegister.source,
+      });
+    } catch (/** @type {any} */ err) {
+      panelError = err.message ?? 'Could not generate the section.';
     } finally {
       exporting = null;
     }
@@ -544,6 +565,26 @@
           {shown.length === REG.length
             ? 'Both cover the whole register.'
             : `Both cover the ${shown.length} shown, and record the filter.`}
+        </span>
+      </div>
+
+      <!-- A DIFFERENT KIND OF THING, and kept on its own row for that reason.
+           The two above are extracts of what is on screen; this is §6 of the
+           obligations statement, generated from every entry regardless of the
+           filters. -->
+      <div class="export-row statement-row">
+        <Button variant="secondary" size="small" disabled={!!exporting || REG.length === 0}
+          on:click={runStatementSection6}>
+          {exporting === 'section6' ? 'Generating…' : `⬇ Statement §6 (all ${REG.length})`}
+        </Button>
+        <span class="export-note">
+          §6 of the <strong>obligations statement</strong> — the register section
+          itself, as markdown, to replace §6 in that document. Ignores the
+          filters: it is always every entry.
+          {#if $statutoryRegister.source !== 'database'}
+            <strong class="warn">⛔ Reading the shipped standard register, not this
+            building’s — the file will say so.</strong>
+          {/if}
         </span>
       </div>
 
@@ -999,6 +1040,8 @@
   .diff-close:hover { color: rgb(226 232 240); }
   .export-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .export-note { font-size: 0.74rem; color: rgb(148 163 184); }
+  .statement-row { margin-top: 0.35rem; padding-top: 0.6rem; border-top: 1px solid rgb(51 65 85); }
+  .export-note .warn { color: rgb(248 113 113); display: block; margin-top: 0.15rem; }
   .reg-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .reg-actions-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .badge.local { background: rgb(251 191 36 / 0.18); color: rgb(252 211 77); }

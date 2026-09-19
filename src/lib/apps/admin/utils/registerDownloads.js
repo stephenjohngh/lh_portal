@@ -1,12 +1,23 @@
 // src/lib/apps/admin/utils/registerDownloads.js
 //
-// Downloads the register — as filtered — as a spreadsheet or a Word extract.
+// Ways of getting the register out of the screen. TWO KINDS, and the difference
+// between them is the thing to keep straight.
 //
-// ⛔ The rows are the ones the SCREEN is showing, passed straight through. The
-// route styles what it is given and re-derives nothing, which is the rule the
-// compliance Word report already follows: a document that recomputed its own
-// rows could disagree with the list the person was looking at when they asked
-// for it, and they would have no way of telling which was right.
+// ⛔ AN EXTRACT IS FILTERED; THE STATEMENT IS NOT.
+//
+// `downloadRegisterXlsx` and `downloadRegisterDocx` take the rows the SCREEN is
+// showing and pass them straight through. The route styles what it is given and
+// re-derives nothing, which is the rule the compliance Word report already
+// follows: a document that recomputed its own rows could disagree with the list
+// the person was looking at when they asked for it, and they would have no way
+// of telling which was right. Both say "extract" on their first page and carry
+// an "N of 116" so they cannot be read as the whole picture.
+//
+// `downloadStatementSection6` is the opposite and must stay that way. It is §6
+// of the obligations statement — the real section, generated from the whole
+// register, never a subset. A filtered statement would be the exact confusion
+// the extracts are labelled to prevent, and it would be a document going to an
+// outside reviewer, which is where that confusion costs most.
 
 import { authHeaders } from '$lib/utils/authHeaders';
 import { downloadResponse } from '$lib/utils/download.js';
@@ -60,6 +71,56 @@ export async function downloadRegisterXlsx(params) {
   }
 
   const filename = `periodic-register-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  await downloadResponse(res, filename);
+  return { filename };
+}
+
+/**
+ * §6 of the Periodic Obligations Statement, generated from the register.
+ *
+ * ⛔ TAKES THE WHOLE REGISTER, NOT THE FILTERED ROWS, and the parameter is named
+ * to make passing the filtered set feel wrong. The two arguments are checked
+ * against each other server-side as well: the section asserts that every
+ * applicable entry it was handed reached the page.
+ *
+ * ⚠ `source` is not cosmetic. The register store falls back to the shipped seed
+ * when the table is empty or unreachable — deliberately, because a compliance
+ * screen showing the standard register is right where one showing nothing is a
+ * lie. But a DOCUMENT generated from that fallback would present the standard
+ * catalogue as this building's position, so it has to say which it is, and the
+ * banner says so loudly when it is the seed.
+ *
+ * @param {Object} params
+ * @param {Object[]} params.wholeRegister    every entry, unfiltered
+ * @param {Record<string, Object>} [params.provenance]
+ * @param {'database'|'seed'} [params.source]
+ * @param {string} [params.building]
+ * @returns {Promise<{filename: string}>}
+ */
+export async function downloadStatementSection6(params) {
+  const {
+    wholeRegister, provenance = {}, source = 'database',
+    building = 'Lancaster House',
+  } = params;
+
+  const res = await fetch('/api/reports/generate-statement-section6', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({
+      building,
+      source,
+      generatedAt: fmtGenerated(),
+      entries: wholeRegister,
+      provenance,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Server error ${res.status}`);
+  }
+
+  const filename = `statement-section-6-${new Date().toISOString().slice(0, 10)}.md`;
   await downloadResponse(res, filename);
   return { filename };
 }
