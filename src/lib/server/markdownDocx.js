@@ -84,21 +84,88 @@ const isNumbered = l => /^\s*\d+\.\s+/.test(l);
 const isRule = l => /^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(l);
 const isHeading = l => /^#{1,6}\s+/.test(l);
 
+/** Roughly what one character of Arial 9pt occupies, in DXA. */
+const CHAR_W = 105;
+/** `CELL_PAD` left + right. A column narrower than this shows nothing at all. */
+const PAD_W = 240;
+/** At or below this many characters, a column is a label rather than prose. */
+const NARROW_MAX_CHARS = 24;
+/** A label column never needs more than this; its header may wrap. */
+const NARROW_CAP = 1000;
+/** Below this nothing is legible, whatever the content length says. */
+const NARROW_MIN = 620;
+/** Prose columns keep at least this share of the page between them. */
+const MIN_PROSE_SHARE = 0.4;
+
+/** Rendered length — the markup does not take up space on the page. */
+const renderedLength = s => String(s ?? '').replace(/[*`]/g, '').length;
+
 /**
  * Column widths for a table.
  *
- * ⚠ The statement's tables are almost all label/value pairs with an EMPTY
- * header row — that is how every register entry is laid out. An even split
- * wastes most of the page on a column holding two words.
+ * ⚠ AN EVEN SPLIT IS WRONG FOR EVERY TABLE IN THIS DOCUMENT, and the numbers
+ * say so. Of the 124 tables, 121 are label/value pairs with an empty header
+ * row — that is how every register entry is laid out — and the other three have
+ * columns whose longest cell is 9, 14 or 19 characters sitting beside columns
+ * whose longest is 439, 748 and 1635. Splitting six ways evenly gives the
+ * 1,635-character cell the same 1.2 inches as the word "Due".
+ *
+ * So: a column whose content is short is sized to its content and capped; the
+ * columns carrying prose share everything left over, equally.
+ *
+ * ⭐ EQUALLY, NOT IN PROPORTION TO THEIR CONTENT. Proportional allocation is
+ * driven by the single longest cell — one 1,635-character row would squeeze its
+ * neighbour to an inch on the strength of one outlier — and the two prose
+ * columns in these tables are read side by side.
  *
  * @param {number} cols
  * @param {number} width
+ * @param {string[][]} rows   including the header row, if there is one
  * @returns {number[]}
  */
-function columnWidths(cols, width) {
+function columnWidths(cols, width, rows = []) {
+  // ⚠ The label/value case keeps its own rule. Sizing it by content would give
+  // the label column six per cent of the page, because a register entry's value
+  // cell routinely runs to several hundred characters.
   if (cols === 2) return [Math.round(width * 0.3), width - Math.round(width * 0.3)];
-  const each = Math.floor(width / cols);
-  return Array.from({ length: cols }, (_, i) => (i === cols - 1 ? width - each * (cols - 1) : each));
+
+  const longest = Array.from({ length: cols }, (_, c) =>
+    Math.max(0, ...rows.map(r => renderedLength(r[c]))));
+
+  const narrow = longest.map(n => n <= NARROW_MAX_CHARS);
+  if (!narrow.some(Boolean) || narrow.every(Boolean)) {
+    const each = Math.floor(width / cols);
+    return Array.from({ length: cols }, (_, i) => (i === cols - 1 ? width - each * (cols - 1) : each));
+  }
+
+  let sized = longest.map((n, c) => (narrow[c]
+    ? Math.min(NARROW_CAP, Math.max(NARROW_MIN, n * CHAR_W + PAD_W))
+    : 0));
+
+  // ⚠ Enough label columns and they would take the whole page. Scale them back
+  // rather than letting the prose columns collapse.
+  const narrowTotal = sized.reduce((a, b) => a + b, 0);
+  const cap = Math.floor(width * (1 - MIN_PROSE_SHARE));
+  if (narrowTotal > cap) {
+    const scale = cap / narrowTotal;
+    sized = sized.map(w => Math.floor(w * scale));
+  }
+
+  const wideCount = narrow.filter(n => !n).length;
+  const remaining = width - sized.reduce((a, b) => a + b, 0);
+  const each = Math.floor(remaining / wideCount);
+
+  let used = 0;
+  const out = sized.map((w, c) => {
+    const v = narrow[c] ? w : each;
+    used += v;
+    return v;
+  });
+  // The rounding remainder goes to the last prose column, so the row adds up.
+  for (let c = cols - 1; c >= 0; c--) {
+    if (!narrow[c]) { out[c] += width - used; break; }
+  }
+  return out;
 }
 
 /**
@@ -157,7 +224,7 @@ export function markdownToDocx(markdown, opts = {}) {
       if (rows.length === 0) continue;
 
       const cols = Math.max(...rows.map(r => r.length));
-      const widths = columnWidths(cols, width);
+      const widths = columnWidths(cols, width, rows);
 
       // ⛔ An all-empty first row is a LABEL/VALUE table, not a headed one —
       // `| | |` over `|---|---|` is how every register entry is written. Giving
@@ -203,14 +270,30 @@ export function markdownToDocx(markdown, opts = {}) {
     if (isBullet(line) || isNumbered(line)) {
       const numbered = isNumbered(line);
       while (i < lines.length && (numbered ? isNumbered(lines[i]) : isBullet(lines[i]))) {
-        const text = lines[i].replace(/^\s*(?:[-*·]|\d+\.)\s+/, '');
-        const marker = numbered ? `${lines[i].trim().match(/^(\d+)\./)[1]}.  ` : '•  ';
+        const first = lines[i];
+        const marker = numbered ? `${first.trim().match(/^(\d+)\./)[1]}.  ` : '•  ';
+        const parts = [first.replace(/^\s*(?:[-*·]|\d+\.)\s+/, '').trim()];
+        i++;
+
+        // ⛔ AN ITEM'S CONTINUATION LINES BELONG TO THE ITEM. Every numbered
+        // item in §1 wraps across three or four indented lines; without this
+        // they fell through to the paragraph branch and each became a separate
+        // paragraph, so one sentence was broken mid-clause and the rest of it
+        // lost its number. It read as a formatting fault, which is what it was.
+        while (i < lines.length && lines[i].trim() !== ''
+          && /^\s+\S/.test(lines[i])
+          && !isBullet(lines[i]) && !isNumbered(lines[i])
+          && !isTable(lines[i]) && !isHeading(lines[i])
+          && !isQuote(lines[i]) && !isRule(lines[i])) {
+          parts.push(lines[i].trim());
+          i++;
+        }
+
         out.push(new Paragraph({
           indent: { left: 340, hanging: 220 },
           spacing: { before: 0, after: 60 },
-          children: [run(marker), ...inlineRuns(text)],
+          children: [run(marker), ...inlineRuns(parts.join(' '))],
         }));
-        i++;
       }
       continue;
     }
@@ -227,9 +310,13 @@ export function markdownToDocx(markdown, opts = {}) {
     if (block.length === 0) { // a construct that opens a block it cannot own
       out.push(para(lines[i])); i++; continue;
     }
+    // ⚠ EACH LINE IS TRIMMED BEFORE JOINING. A markdown source line may carry
+    // indentation that means nothing on the page; joining raw produced runs of
+    // four and five spaces mid-sentence — `already    had` — which reads as a
+    // broken document rather than as an artefact of how the source is wrapped.
     out.push(new Paragraph({
       spacing: { before: 0, after: 140 },
-      children: inlineRuns(block.join(' ').trim()),
+      children: inlineRuns(block.map(l => l.trim()).join(' ').trim()),
     }));
   }
 
@@ -269,9 +356,9 @@ function splitParagraphs(lines) {
   const out = [];
   let cur = [];
   for (const l of lines) {
-    if (l.trim() === '') { if (cur.length) { out.push(cur.join(' ').trim()); cur = []; } }
-    else cur.push(l);
+    if (l.trim() === '') { if (cur.length) { out.push(cur.join(' ')); cur = []; } }
+    else cur.push(l.trim());          // ⚠ trimmed before joining — see the paragraph branch
   }
-  if (cur.length) out.push(cur.join(' ').trim());
+  if (cur.length) out.push(cur.join(' '));
   return out;
 }

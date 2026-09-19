@@ -223,3 +223,109 @@ describe('inline', () => {
     expect(text(inlineRuns(undefined))).toBe('');
   });
 });
+
+describe('how source wrapping is handled', () => {
+  // ⛔ THE FAULT THIS CATCHES WAS VISIBLE IN THE FIRST GENERATED DOCUMENT and
+  // no test saw it: a markdown source line carries indentation that means
+  // nothing on the page, and joining raw produced `already    had` mid-sentence.
+  it('leaves no run of spaces inside a block’s text', () => {
+    for (const s of STATEMENT_PROSE.filter(x => !x.generated)) {
+      for (const block of markdownToDocx(s.markdown)) {
+        // ⚠ The list marker's own gap is deliberate — `1.  ` and `•  ` sit in a
+        // hanging indent, where the spacing is literal. The invariant is about
+        // the TEXT, so the marker comes off first.
+        const text = textOf(block).replace(/^(?:\d+\.|•)\s+/, '');
+        expect(text.match(/\S {2,}\S/g) ?? [], `${s.key}: ${text.slice(0, 90)}`).toEqual([]);
+      }
+    }
+  });
+
+  it('keeps a wrapped numbered item as ONE paragraph, not one per line', () => {
+    const md = '1. **First.** This item wraps across\n   three indented lines and\n'
+      + '   must stay one paragraph.\n2. **Second.** Short.\n';
+    const blocks = markdownToDocx(md);
+    expect(blocks).toHaveLength(2);
+    expect(textOf(blocks[0])).toBe('1.  First. This item wraps across three indented lines and must stay one paragraph.');
+    expect(textOf(blocks[1]).startsWith('2.')).toBe(true);
+  });
+
+  it('keeps a wrapped bullet as one paragraph too', () => {
+    const blocks = markdownToDocx('- A bullet that wraps\n  onto a second line.\n- Another.\n');
+    expect(blocks).toHaveLength(2);
+    expect(textOf(blocks[0])).toContain('wraps onto a second line.');
+  });
+
+  it('ends a list at a blank line rather than swallowing what follows', () => {
+    const blocks = markdownToDocx('1. An item.\n\nA following paragraph.\n');
+    expect(blocks).toHaveLength(2);
+    expect(textOf(blocks[1])).toBe('A following paragraph.');
+  });
+
+  it('ends a list at an unindented line', () => {
+    const blocks = markdownToDocx('- An item.\nNot indented, so not part of it.\n');
+    expect(blocks).toHaveLength(2);
+  });
+});
+
+describe('column widths', () => {
+  /** Each column's width, in DXA, as the table declares it. */
+  function widthsOf(table) {
+    const firstRow = table.root.find(n => n?.rootKey === 'w:tr');
+    return firstRow.root
+      .filter(n => n?.rootKey === 'w:tc')
+      .map((cell) => {
+        const props = cell.root.find(n => n?.rootKey === 'w:tcPr');
+        const w = props?.root?.find(n => n?.rootKey === 'w:tcW');
+        // docx keeps the value on an _attr node: { size: { key: 'w:w', value } }.
+        return Number(w?.root?.[0]?.root?.size?.value ?? 0);
+      });
+  }
+
+  // ⛔ The §8 actions table: six columns whose longest cells are 9, 439, 1635,
+  // 14, 19 and 14 characters. An even split gives the 1,635-character cell the
+  // same width as the word "Due".
+  const wide = '| Ref | What must be decided or done | Consequence if it is not | Owner | Technical authority | Due |\n'
+    + '|---|---|---|---|---|---|\n'
+    + `| **A1** | ${'x'.repeat(400)} | ${'y'.repeat(900)} | NOT ASSIGNED | NOT ASSIGNED | NOT ASSIGNED |\n`;
+
+  it('gives the prose columns far more than the label columns', () => {
+    const [table] = markdownToDocx(wide);
+    const w = widthsOf(table);
+    expect(w).toHaveLength(6);
+    for (const label of [0, 3, 4, 5]) {
+      for (const prose of [1, 2]) {
+        expect(w[prose], `col ${prose} vs ${label}`).toBeGreaterThan(w[label] * 2);
+      }
+    }
+  });
+
+  it('gives the two prose columns the same width, not one per outlier', () => {
+    const w = widthsOf(markdownToDocx(wide)[0]);
+    expect(Math.abs(w[1] - w[2])).toBeLessThanOrEqual(2);
+  });
+
+  it('adds up to exactly the content width', () => {
+    const w = widthsOf(markdownToDocx(wide)[0]);
+    expect(w.reduce((a, b) => a + b, 0)).toBe(10466);
+  });
+
+  it('keeps a label column legible rather than collapsing it', () => {
+    const w = widthsOf(markdownToDocx(wide)[0]);
+    for (const label of [0, 3, 4, 5]) expect(w[label]).toBeGreaterThanOrEqual(600);
+  });
+
+  // ⚠ The label/value shape keeps its own rule: sizing by content would give
+  // the label column six per cent of the page.
+  it('leaves the two-column register tables at 30/70', () => {
+    const [table] = markdownToDocx(`| | |\n|---|---|\n| **Reference** | ${'z'.repeat(400)} |\n`);
+    const w = widthsOf(table);
+    expect(w[0]).toBe(Math.round(10466 * 0.3));
+    expect(w[0] + w[1]).toBe(10466);
+  });
+
+  it('falls back to an even split when every column is short', () => {
+    const [table] = markdownToDocx('| A | B | C |\n|---|---|---|\n| 1 | 2 | 3 |\n');
+    const w = widthsOf(table);
+    expect(Math.max(...w) - Math.min(...w)).toBeLessThanOrEqual(2);
+  });
+});
