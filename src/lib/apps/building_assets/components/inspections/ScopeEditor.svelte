@@ -255,10 +255,27 @@
   .filter-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
 
   /* Group the two strips into one tidy bordered block (each strip carries its
-     own bottom border, which reads as the divider between Fixed and Condition). */
+     own bottom border, which reads as the divider between Fixed and Condition).
+
+     ⛔ NO `overflow: hidden` HERE — it clipped the "+ Add filter" popover.
+     It was only rounding the strips' backgrounds into the corners, and it did
+     that by clipping every absolutely-positioned descendant to this box. Each
+     AttrFilterStrip anchors its popover `absolute top-full` below that button,
+     and the popover is `w-80` by up to 60vh against a container ~72px tall —
+     so nearly all of it was cut off. Same fault as `.tmpl` on the register
+     panel (PROJECT_STATUS §6o); the corners are rounded on the first and last
+     strip instead. Do not put it back. */
   .attr-strips {
     border: 1px solid rgb(51 65 85 / 0.7);
     border-radius: 0.5rem;
-    overflow: hidden;
+  }
+  /* `:global` because the children are AttrFilterStrip's own root element. */
+  .attr-strips > :global(*:first-child) {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+  }
+  .attr-strips > :global(*:last-child) {
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
   }
 </style>
