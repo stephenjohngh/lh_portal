@@ -110,7 +110,46 @@ export const SECTIONS = [
 
 export const SECTION_KEYS = SECTIONS.map(s => s.key);
 
-export function documentPreamble({ filterSummary, shown, total, sections, building }) {
+/**
+ * ⛔ THE BANNER FOR A DOCUMENT THAT IS NOT THIS BUILDING'S POSITION.
+ *
+ * Every read path falls back to the register that SHIPS — empty table, failed
+ * query, no network — and that fallback is load-bearing rather than defensive:
+ * a compliance SCREEN rendering "no requirements" is the most dangerous thing it
+ * could say, so showing the standard catalogue is right.
+ *
+ * ⛔ A DOCUMENT IS THE OPPOSITE CASE. It leaves the building. Titled *statement
+ * of periodic safety obligations*, filed as `Obligations_Statement_<date>.docx`
+ * and assembled entirely from the shipped catalogue, it describes a higher-risk
+ * building IN GENERAL while reading as a description of this one — and the
+ * reader has no way to tell.
+ *
+ * ⚠ THIS EXISTED AND WAS LOST. It lived in `statementDocx.js` and went with the
+ * prose machinery when the statement stopped being a separate document. For a
+ * day the panel promised *"the file will say so"* and the file said nothing.
+ *
+ * ⚠ Silent when the register IS this building's own. A banner printed on every
+ * copy stops being read, which is the one thing a warning cannot afford — the
+ * same argument as the per-row provenance line.
+ */
+export function fallbackBanner(fromSeed) {
+  if (!fromSeed) return [];
+  return [
+    para([
+      run('⛔ THIS COPY IS NOT THIS BUILDING’S POSITION — DO NOT SEND IT. ',
+        { bold: true, color: COLOURS.failRed }),
+      run(
+        'The register could not be read from this building’s records, so this document was built '
+        + 'from the standard catalogue that ships with the application. That catalogue describes a '
+        + 'higher-risk residential building in general; it says nothing about which duties apply '
+        + 'here, what has been decided, or what discharges them. Reload the page and produce it '
+        + 'again.',
+      ),
+    ], { after: 240 }),
+  ];
+}
+
+export function documentPreamble({ filterSummary, shown, total, sections, building, fromSeed }) {
   const whole = isWholePicture({ shown, total, sections });
   const missing = SECTIONS.filter(s => !sections?.[s.key]).map(s => s.heading.toLowerCase());
 
@@ -146,6 +185,10 @@ export function documentPreamble({ filterSummary, shown, total, sections, buildi
     ];
 
   return [
+    // ⚠ FIRST, above even the title. A reader who opens the file and reads one
+    // line should read this one; a warning under the heading reads as a footnote
+    // to it, and this is more important than what the document is called.
+    ...fallbackBanner(fromSeed),
     ...head,
     para([
       run('Covering: ', { bold: true }),
@@ -288,12 +331,18 @@ export function buildRegisterDocument(input = {}) {
     rows = [], total = 0, filterSummary = '', generatedAt = '',
     building = 'Lancaster House',
     sections = {}, items = {},
+    // ⚠ Defaults to FALSE, which is the safe direction only because the caller
+    // always knows. A missing flag prints no banner; a wrong TRUE prints one
+    // that is merely annoying. Getting it wrong the other way is the fault this
+    // exists to prevent, so the panel passes it explicitly rather than relying
+    // on this default.
+    fromSeed = false,
   } = input;
 
   const whole = isWholePicture({ shown: rows.length, total, sections });
 
   const children = [
-    ...documentPreamble({ filterSummary, shown: rows.length, total, sections, building }),
+    ...documentPreamble({ filterSummary, shown: rows.length, total, sections, building, fromSeed }),
   ];
 
   // ⚠ The caveats come BEFORE the table on purpose. They set what the list does

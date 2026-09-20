@@ -49,7 +49,7 @@ import { fmtGenerated } from '$lib/utils/dates.js';
 export async function downloadRegisterXlsx(params) {
   const {
     rows, total, fields, values, query = '',
-    provenanceOf = () => ({}), building = 'Lancaster House',
+    provenanceOf = () => ({}), building = 'Lancaster House', fromSeed = false,
   } = params;
 
   const detail = buildRegisterSheet(rows, provenanceOf);
@@ -57,7 +57,17 @@ export async function downloadRegisterXlsx(params) {
   // ⚠ The filter description and the count go INTO the workbook, not just the
   // filename. A spreadsheet of 14 rows is indistinguishable from a register of
   // 14 requirements once it is off the screen and in somebody's inbox.
-  const filterSummary = `${describeFilters(fields, values, query)} — ${rows.length} of ${total}`;
+  // ⛔ AND WHETHER THIS IS THIS BUILDING'S REGISTER AT ALL. The read path falls
+  // back to the shipped catalogue on an empty table, a failed query or no
+  // network — right for a screen, wrong for a file that leaves the building. It
+  // goes at the FRONT of the line a reader meets first.
+  const filterSummary = [
+    fromSeed
+      ? '⛔ NOT THIS BUILDING’S REGISTER — built from the standard catalogue that ships, '
+        + 'because this building’s could not be read. Do not send it.'
+      : '',
+    `${describeFilters(fields, values, query)} — ${rows.length} of ${total}`,
+  ].filter(Boolean).join('  ·  ');
 
   const res = await fetch('/api/generate-xlsx', {
     method: 'POST',
@@ -87,7 +97,7 @@ export async function downloadRegisterXlsx(params) {
 export async function downloadRegisterDocx(params) {
   const {
     rows, total, fields, values, query = '', building = 'Lancaster House',
-    sections = {}, items = {},
+    sections = {}, items = {}, fromSeed = false,
   } = params;
 
   const res = await fetch('/api/reports/generate-register-extract', {
@@ -98,6 +108,11 @@ export async function downloadRegisterDocx(params) {
       total,
       generatedAt: fmtGenerated(),
       filterSummary: describeFilters(fields, values, query),
+      // ⛔ The register could not be read from this building's records. A
+      // document built from the shipped catalogue describes a higher-risk
+      // building IN GENERAL and reads as describing this one — see
+      // `fallbackBanner` in registerDocx.js.
+      fromSeed,
       // ⭐ The sections and their rows go with it, and NOTHING here says which
       // document to make. Unfiltered plus every section IS the obligations
       // statement; the builder works that out from what it was handed, so a

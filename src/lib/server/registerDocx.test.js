@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { STATUTORY_TEMPLATE } from '$lib/utils/statutoryTemplate.js';
 import {
   buildRegisterDocument, documentPreamble, isWholePicture, narrativeSection,
-  SECTIONS, extractTable, cadenceText,
+  SECTIONS, extractTable, cadenceText, fallbackBanner,
   EXTRACT_COLS, Packer, CONTENT_W_L,
 } from './registerDocx.js';
 
@@ -80,6 +80,65 @@ describe('what the document calls itself', () => {
   it('states its coverage either way', () => {
     expect(preamble()).toMatch(/all 116 requirements/);
     expect(preamble({ shown: 14 })).toMatch(/14 of 116/);
+  });
+});
+
+describe('⛔ a document built from the shipped catalogue says so', () => {
+  // ⛔ THE REGRESSION THIS PINS, AND IT SHIPPED. Every read path falls back to
+  // the register that SHIPS — empty table, failed query, no network — which is
+  // right for a SCREEN, because "no requirements" is the most dangerous thing a
+  // compliance screen could say. It is the opposite for a FILE that leaves the
+  // building: titled "statement of periodic safety obligations", filed as
+  // Obligations_Statement_<date>.docx and built entirely from the standard
+  // catalogue, it describes a higher-risk building IN GENERAL while reading as a
+  // description of this one.
+  //
+  // ⚠ The banner existed in `statementDocx.js` and was lost with the prose
+  // machinery. For a day the panel promised "the file will say so" and the file
+  // said nothing — a screen asserting something about a document it does not
+  // produce, which no guard could see.
+  const banner = over => preamble({ fromSeed: true, ...over });
+
+  it('prints a refusal banner when the register came from the seed', () => {
+    expect(banner()).toContain('NOT THIS BUILDING’S POSITION');
+    expect(banner()).toContain('DO NOT SEND IT');
+    expect(banner()).toContain('standard catalogue');
+  });
+
+  it('⚠ says nothing at all when the register IS this building’s', () => {
+    // A banner on every copy stops being read, which is the one thing a warning
+    // cannot afford — the same argument as the per-row provenance line.
+    const clean = preamble({ fromSeed: false });
+    expect(clean).not.toContain('NOT THIS BUILDING’S POSITION');
+    expect(clean).not.toContain('DO NOT SEND IT');
+    expect(fallbackBanner(false)).toEqual([]);
+  });
+
+  it('⛔ warns on the STATEMENT too, not only on an extract', () => {
+    // The statement is the dangerous one: an extract at least announces itself
+    // as a slice, where an unfiltered copy carries the full title and filename.
+    const asStatement = banner({ shown: 116, total: 116, sections: ALL });
+    expect(asStatement).toContain('statement of periodic safety obligations');
+    expect(asStatement).toContain('DO NOT SEND IT');
+  });
+
+  it('puts the banner before the title, not under it', () => {
+    const text = banner();
+    expect(text.indexOf('DO NOT SEND IT'))
+      .toBeLessThan(text.indexOf('statement of periodic safety obligations'));
+  });
+
+  it('defaults to silent when the caller says nothing', () => {
+    // ⚠ The safe direction only because the panel passes it explicitly. A
+    // missing flag prints no banner; the panel is what makes that correct.
+    expect(preamble({})).not.toContain('DO NOT SEND IT');
+  });
+
+  it('reaches the whole document, not just the preamble', () => {
+    const doc = buildRegisterDocument({
+      rows: rows(2), total: 2, sections: ALL, items: {}, fromSeed: true,
+    });
+    expect(textOf(doc).join(' ')).toContain('DO NOT SEND IT');
   });
 });
 

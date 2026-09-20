@@ -178,6 +178,12 @@
       query: search,
       provenanceOf,
       sections,
+      // ⛔ WHETHER THIS IS THIS BUILDING'S REGISTER AT ALL, and the file has to
+      // say so. The note beside these buttons has always warned the reader; for
+      // a day it promised "the file will say so" and the file said nothing,
+      // because that banner lived in the statement builder that was deleted
+      // when the statement stopped being a separate document.
+      fromSeed: $statutoryRegister.source !== 'database',
       items: {
         caveats:  inAuthorOrder(ofKind($statutoryRegister.items, 'caveat')),
         absences: inAuthorOrder(ofKind($statutoryRegister.items, 'absence')),
