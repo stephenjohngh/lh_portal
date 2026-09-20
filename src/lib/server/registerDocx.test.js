@@ -7,7 +7,8 @@
 import { describe, it, expect } from 'vitest';
 import { STATUTORY_TEMPLATE } from '$lib/utils/statutoryTemplate.js';
 import {
-  buildRegisterExtract, extractPreamble, extractTable, cadenceText,
+  buildRegisterDocument, documentPreamble, isWholePicture, narrativeSection,
+  SECTIONS, extractTable, cadenceText,
   EXTRACT_COLS, Packer, CONTENT_W_L,
 } from './registerDocx.js';
 
@@ -33,35 +34,86 @@ function textOf(node, out = []) {
 const rows = (n = 3) => STATUTORY_TEMPLATE.slice(0, n)
   .map(entry => ({ entry, statusLabel: 'Not covered' }));
 
-describe('⛔ the document says what it is not', () => {
-  it('states plainly that it is not the obligations statement', () => {
-    // The statement is hand-maintained through fourteen review rounds and
-    // carries a scope statement, a status block and the reasoning behind every
-    // cadence. Once a .docx is in an inbox the two are easy to confuse, and
-    // confusing them puts an unreviewed extract in front of a reviewer.
-    const text = textOf(extractPreamble({ filterSummary: 'x', shown: 3, total: 116 })).join(' ');
-    expect(text).toMatch(/not the obligations statement/i);
-    expect(text).toMatch(/must not be sent in its place/i);
-    expect(text).toMatch(/no scope statement/i);
+// ⭐ THE DOCUMENT DECIDES WHAT IT IS FROM WHAT IT CONTAINS. There used to be
+// two documents and a red warning telling people not to confuse them — a
+// caution that existed only because there were two. With one, an unfiltered
+// copy carrying every section IS the obligations statement, and anything else
+// is honestly an extract of it.
+const ALL = { caveats: true, absences: true, actions: true };
+const preamble = over =>
+  textOf(documentPreamble({
+    filterSummary: '', shown: 116, total: 116, sections: ALL, building: 'Lancaster House', ...over,
+  })).join(' ');
+
+describe('what the document calls itself', () => {
+  it('is the OBLIGATIONS STATEMENT when nothing is filtered and every section is in', () => {
+    expect(isWholePicture({ shown: 116, total: 116, sections: ALL })).toBe(true);
+    const text = preamble();
+    expect(text).toMatch(/statement of periodic safety obligations/i);
+    expect(text, 'the statement must not call itself an extract').not.toMatch(/this is an extract/i);
   });
 
-  it('names itself an extract in the heading', () => {
-    const text = textOf(extractPreamble({ filterSummary: '', shown: 116, total: 116 })).join(' ');
-    expect(text).toMatch(/filtered extract/i);
-  });
-
-  it('⚠ prints the count as N of M whenever it is a subset', () => {
-    // "14 requirements" and "14 of 116 requirements" are different claims, and
-    // only the second is true of an extract.
-    const text = textOf(extractPreamble({ filterSummary: 'Source: Legislation', shown: 14, total: 116 })).join(' ');
+  it('is an EXTRACT the moment a filter is applied', () => {
+    expect(isWholePicture({ shown: 14, total: 116, sections: ALL })).toBe(false);
+    const text = preamble({ shown: 14, filterSummary: 'Source: Legislation' });
+    expect(text).toMatch(/this is an extract/i);
+    // ⚠ "14 requirements" and "14 of 116 requirements" are different claims,
+    // and only the second is true of a subset.
     expect(text).toMatch(/14 of 116/);
     expect(text).toMatch(/Source: Legislation/);
   });
 
-  it('says so explicitly when nothing was filtered out', () => {
-    const text = textOf(extractPreamble({ filterSummary: '', shown: 116, total: 116 })).join(' ');
-    expect(text).toMatch(/all 116 requirements/);
-    expect(text).toMatch(/No filters/i);
+  // ⛔ The subtle one: everything shown, but a section switched off. A reader
+  // has every requirement and no idea what the list does not claim.
+  it('is an EXTRACT when a section is left out, even with every row', () => {
+    const sections = { caveats: true, absences: true, actions: false };
+    expect(isWholePicture({ shown: 116, total: 116, sections })).toBe(false);
+    const text = preamble({ sections });
+    expect(text).toMatch(/this is an extract/i);
+    expect(text, 'it must name what it omits').toMatch(/what is outstanding/i);
+  });
+
+  it('tells a reader how to turn an extract into the statement', () => {
+    expect(preamble({ shown: 14 })).toMatch(/no filter and every section/i);
+  });
+
+  it('states its coverage either way', () => {
+    expect(preamble()).toMatch(/all 116 requirements/);
+    expect(preamble({ shown: 14 })).toMatch(/14 of 116/);
+  });
+});
+
+describe('the sections that used to be prose', () => {
+  const items = [
+    { key: 'a1', name: 'Determine the evacuation strategy', description: 'And approve it.',
+      consequence: 'A statutory deliverable is blocked.', unblocks: 'The evacuation plan.' },
+  ];
+
+  it('prints an action with its consequence and what it unblocks', () => {
+    const text = textOf(narrativeSection(SECTIONS[2], items)).join(' ');
+    expect(text).toMatch(/Determine the evacuation strategy/);
+    expect(text).toMatch(/If it is not:/);
+    expect(text).toMatch(/A statutory deliverable is blocked/);
+    expect(text).toMatch(/Unblocks:/);
+  });
+
+  // ⛔ The blank IS the content. Filling owner and due date with plausible
+  // names would defeat the purpose — an unassigned action with a blank owner is
+  // conspicuous every time the document is produced; a paragraph is not.
+  it('prints NOT ASSIGNED rather than hiding an empty owner', () => {
+    const text = textOf(narrativeSection(SECTIONS[2], items)).join(' ');
+    expect(text).toMatch(/Owner:\s*NOT ASSIGNED/);
+    expect(text).toMatch(/Technical authority:\s*NOT ASSIGNED/);
+    expect(text).toMatch(/Due:\s*NOT ASSIGNED/);
+  });
+
+  it('does not print the assignment line on a caveat, which has no owner', () => {
+    const text = textOf(narrativeSection(SECTIONS[0], [{ key: 'c1', name: 'A caveat', description: 'x' }])).join(' ');
+    expect(text).not.toMatch(/NOT ASSIGNED/);
+  });
+
+  it('renders nothing at all for an empty section', () => {
+    expect(narrativeSection(SECTIONS[1], [])).toEqual([]);
   });
 });
 
@@ -147,26 +199,51 @@ describe('cadenceText', () => {
 });
 
 describe('the whole document', () => {
+  const everyRow = STATUTORY_TEMPLATE.map(entry => ({ entry, statusLabel: 'Not covered' }));
+
   it('⚠ actually packs — the failure that reaches a user', async () => {
-    const doc = buildRegisterExtract({
-      rows: STATUTORY_TEMPLATE.map(entry => ({ entry, statusLabel: 'Not covered' })),
+    const doc = buildRegisterDocument({
+      rows: everyRow,
       total: STATUTORY_TEMPLATE.length,
-      filterSummary: 'No filters — every row',
+      filterSummary: '',
       generatedAt: '19 September 2026',
+      sections: ALL,
+      items: {
+        caveats: [{ key: 'c', name: 'A caveat', description: 'x' }],
+        absences: [{ key: 'b', name: 'An absence', description: 'y' }],
+        actions: [{ key: 'a', name: 'An action', consequence: 'z' }],
+      },
     });
     const buf = await Packer.toBuffer(doc);
     expect(buf.byteLength).toBeGreaterThan(5000);
   });
 
   it('says so rather than producing an empty table when nothing matched', () => {
-    const doc = buildRegisterExtract({ rows: [], total: 116, filterSummary: 'Status: Scheduled here' });
-    expect(textOf(doc).join(' ')).toMatch(/Nothing matched the filter/i);
+    const doc = buildRegisterDocument({ rows: [], total: 116, filterSummary: 'Status: Scheduled here' });
+    expect(textOf(doc).join(' ')).toMatch(/no requirements in it/i);
   });
 
-  it('stamps the building and the generated date in the header', () => {
-    const doc = buildRegisterExtract({ rows: rows(1), total: 116, generatedAt: '19 September 2026' });
-    const text = textOf(doc).join(' ');
-    expect(text).toContain('Lancaster House — register extract');
+  it('titles the header from the same rule as the body', () => {
+    const extract = buildRegisterDocument({ rows: rows(1), total: 116, generatedAt: '19 September 2026' });
+    expect(textOf(extract).join(' ')).toContain('Lancaster House — register extract');
+
+    const statement = buildRegisterDocument({
+      rows: everyRow, total: STATUTORY_TEMPLATE.length,
+      generatedAt: '19 September 2026', sections: ALL,
+    });
+    const text = textOf(statement).join(' ');
+    expect(text).toContain('Lancaster House — obligations statement');
     expect(text).toContain('19 September 2026');
+  });
+
+  // ⚠ A section switched on but with nothing in it must not print a bare
+  // heading — an empty "What is outstanding" reads as "nothing is outstanding",
+  // which is the opposite of what an empty list means here.
+  it('omits a section heading when that section has no rows', () => {
+    const doc = buildRegisterDocument({
+      rows: rows(1), total: 116, sections: ALL, items: {},
+    });
+    const text = textOf(doc).join(' ');
+    expect(text).not.toMatch(/What is outstanding/i);
   });
 });

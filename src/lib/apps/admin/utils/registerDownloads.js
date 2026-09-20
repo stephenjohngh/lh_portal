@@ -1,27 +1,27 @@
 // src/lib/apps/admin/utils/registerDownloads.js
 //
-// Ways of getting the register out of the screen. TWO KINDS, and the difference
-// between them is the thing to keep straight.
+// Ways of getting the register out of the screen. TWO, and both pass the rows
+// the SCREEN is showing straight through.
 //
-// ⛔ AN EXTRACT IS FILTERED; THE STATEMENT IS NOT.
+// ⭐ THERE USED TO BE FOUR, AND THE STATEMENT WAS ONE OF THEM. It is not any
+// more, because it is not a different document: with no filter applied and every
+// section included, the Word file IS this building's obligations statement. The
+// user asked for exactly that, and it is better than two overlapping documents
+// plus a red warning telling people not to mix them up — that warning existed
+// ONLY because there were two.
 //
-// `downloadRegisterXlsx` and `downloadRegisterDocx` take the rows the SCREEN is
-// showing and pass them straight through. The route styles what it is given and
-// re-derives nothing, which is the rule the compliance Word report already
-// follows: a document that recomputed its own rows could disagree with the list
-// the person was looking at when they asked for it, and they would have no way
-// of telling which was right. Both say "extract" on their first page and carry
-// an "N of 116" so they cannot be read as the whole picture.
+// ⛔ NOTHING HERE SAYS WHICH DOCUMENT TO MAKE. The builder decides from what it
+// was handed, so a caller cannot produce a file whose title contradicts its
+// contents. The server names the file by the same rule.
 //
-// `downloadStatement` is the opposite and must stay that way. It is the
-// obligations statement, generated from the WHOLE register and never a subset.
-// A filtered statement would be the exact confusion the extracts are labelled to
-// prevent, and it goes to an outside reviewer, which is where that confusion
-// costs most.
+// ⚠ The route styles what it is given and re-derives nothing, which is the rule
+// the compliance Word report already follows: a document that recomputed its own
+// rows could disagree with the list the person was looking at when they asked
+// for it, and they would have no way of telling which was right.
 //
-// ⛔ THERE WAS A THIRD, `downloadStatementSection6`, AND IT IS DELETED. It
-// produced the register section as markdown to paste into a hand-maintained copy
-// of the statement — so it existed only because a hand-maintained copy existed.
+// ⛔ THE FOURTH WAS `downloadStatementSection6`, AND IT IS DELETED. It produced
+// the register section as markdown to paste into a hand-maintained copy of the
+// statement — so it existed only because a hand-maintained copy existed.
 // ⚠ Its button read "⬇ Statement §6", and the user's objection was exactly
 // right: *"§6 doesn't mean anything to a user."* Nobody on this screen is
 // holding the document, so its internal section numbering is vocabulary from
@@ -84,50 +84,11 @@ export async function downloadRegisterXlsx(params) {
   return { filename };
 }
 
-export async function downloadStatement(params) {
-  const {
-    wholeRegister, prose, provenance = {},
-    registerSource = 'database', proseSource = 'database',
-    building = 'Lancaster House',
-  } = params;
-
-  const res = await fetch('/api/reports/generate-statement', {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({
-      building,
-      generatedAt: fmtGenerated(),
-      entries: wholeRegister,
-      prose,
-      provenance,
-      registerSource,
-      proseSource,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-
-  const filename = `safety-obligations-statement-${new Date().toISOString().slice(0, 10)}.docx`;
-  await downloadResponse(res, filename);
-  return { filename };
-}
-
-/**
- * The same selection as a Word document — a curated seven columns rather than
- * every field, because thirty-five columns of prose is unreadable on a page.
- *
- * ⛔ The two exports answer different questions and the guide says so: the
- * spreadsheet is for working the list, this is for showing somebody. It is an
- * EXTRACT and says so on its first page — see `registerDocx.js`.
- *
- * @param {Object} params  same shape as `downloadRegisterXlsx`
- * @returns {Promise<{filename: string}>}
- */
 export async function downloadRegisterDocx(params) {
-  const { rows, total, fields, values, query = '', building = 'Lancaster House' } = params;
+  const {
+    rows, total, fields, values, query = '', building = 'Lancaster House',
+    sections = {}, items = {},
+  } = params;
 
   const res = await fetch('/api/reports/generate-register-extract', {
     method: 'POST',
@@ -137,6 +98,12 @@ export async function downloadRegisterDocx(params) {
       total,
       generatedAt: fmtGenerated(),
       filterSummary: describeFilters(fields, values, query),
+      // ⭐ The sections and their rows go with it, and NOTHING here says which
+      // document to make. Unfiltered plus every section IS the obligations
+      // statement; the builder works that out from what it was handed, so a
+      // caller cannot ask for a title that contradicts the contents.
+      sections,
+      items,
       // Only what the document prints — the status LABEL, not the code, so the
       // page and the screen use one vocabulary.
       rows: rows.map(({ entry, status }) => ({
@@ -151,7 +118,10 @@ export async function downloadRegisterDocx(params) {
     throw new Error(body.error || `Server error ${res.status}`);
   }
 
-  const filename = `register-extract-${new Date().toISOString().slice(0, 10)}.docx`;
-  await downloadResponse(res, filename);
-  return { filename };
+  // ⚠ The SERVER names the file, from the same rule that titles it. A download
+  // called "extract" holding the full statement is the confusion one document
+  // was meant to end, and a filename outlives the covering email.
+  const fallback = `register-${new Date().toISOString().slice(0, 10)}.docx`;
+  await downloadResponse(res, fallback);
+  return { filename: fallback };
 }

@@ -17,7 +17,7 @@
 import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { getLogger } from '$lib/utils/logger';
-import { buildRegisterExtract, Packer } from '$lib/server/registerDocx.js';
+import { buildRegisterDocument, isWholePicture, Packer } from '$lib/server/registerDocx.js';
 
 const logger = getLogger('reports:generate-register-extract');
 
@@ -27,16 +27,27 @@ export async function POST({ request }) {
 
   try {
     const payload = await request.json();
-    const doc = buildRegisterExtract(payload);
+    const doc = buildRegisterDocument(payload);
     const buf = await Packer.toBuffer(doc);
 
-    logger('✅ register extract:', (payload.rows ?? []).length, 'of', payload.total, 'rows');
+    // ⭐ The FILENAME follows the same rule as the title, from the same
+    // function. A file called "extract" holding the full statement, or the
+    // reverse, is exactly the confusion one document was meant to end — and a
+    // filename outlives the covering email.
+    const whole = isWholePicture({
+      shown: (payload.rows ?? []).length,
+      total: payload.total,
+      sections: payload.sections ?? {},
+    });
+    logger('✅', whole ? 'obligations statement:' : 'register extract:',
+      (payload.rows ?? []).length, 'of', payload.total, 'rows');
 
     const dateSlug = new Date().toISOString().slice(0, 10);
+    const stem = whole ? 'Obligations_Statement' : 'Register_Extract';
     return new Response(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="Register_Extract_${dateSlug}.docx"`,
+        'Content-Disposition': `attachment; filename="${stem}_${dateSlug}.docx"`,
       },
     });
   } catch (/** @type {any} */ err) {

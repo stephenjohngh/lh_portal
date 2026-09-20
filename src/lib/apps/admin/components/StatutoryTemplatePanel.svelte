@@ -32,10 +32,9 @@
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
     citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
-  import {
-    downloadRegisterXlsx, downloadRegisterDocx,
-    downloadStatement,
-  } from '../utils/registerDownloads.js';
+  import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
+  import { ofKind } from '$lib/utils/registerKinds.js';
+  import { inAuthorOrder } from '../utils/registerItemView.js';
   import { statementProse } from '$lib/stores/statementProseStore.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
@@ -145,6 +144,17 @@
   /** @type {'xlsx'|'docx'|'statement'|null} */
   let exporting = null;
 
+  // ⭐ THE SECTIONS, AND THEY ARE WHAT MAKES ONE DOCUMENT DO BOTH JOBS. With
+  // every section on and no filter applied, the Word file IS the obligations
+  // statement; with a filter or a section off, it is honestly an extract of it
+  // and says so. Nothing is passed to the server asking for one or the other —
+  // the document decides from what it contains, so it can never carry a title
+  // that contradicts its own contents.
+  let sections = { caveats: true, absences: true, actions: true };
+
+  $: isStatement = shown.length === REG.length
+    && sections.caveats && sections.absences && sections.actions;
+
   async function runExport(kind) {
     exporting = kind; panelError = '';
     const args = {
@@ -154,50 +164,18 @@
       values: filters,
       query: search,
       provenanceOf,
+      sections,
+      items: {
+        caveats:  inAuthorOrder(ofKind($statutoryRegister.items, 'caveat')),
+        absences: inAuthorOrder(ofKind($statutoryRegister.items, 'absence')),
+        actions:  ofKind($statutoryRegister.items, 'action'),
+      },
     };
     try {
       if (kind === 'xlsx') await downloadRegisterXlsx(args);
       else                 await downloadRegisterDocx(args);
     } catch (/** @type {any} */ err) {
       panelError = err.message ?? 'Could not build the document.';
-    } finally {
-      exporting = null;
-    }
-  }
-
-  // ⛔ NOT AN EXPORT OF WHAT IS SHOWN — this is §6 of the obligations statement
-  // itself, generated from the WHOLE register. It deliberately ignores the
-  // filters: a filtered statement is the confusion the two extracts above are
-  // labelled to prevent, and this is the artefact that goes to an outside
-  // reviewer.
-  // ⛔ THE "STATEMENT §6" BUTTON IS GONE, and the reason is worth keeping.
-  // From the user: *"§6 doesn't mean anything to a user."* They are right, and
-  // it goes further than the wording — that button produced the register
-  // section as markdown TO PASTE INTO A HAND-MAINTAINED COPY of the obligations
-  // statement. Once the whole document is generated, there is no hand-maintained
-  // copy to paste into, so the button had no purpose and "§6" was a piece of the
-  // document's internal numbering leaking onto a screen where nobody is holding
-  // the document.
-  //
-  // ⚠ Same class as the import buttons: a thing that made sense to whoever built
-  // the machinery, shown to somebody who never sees the machinery.
-
-  // ⭐ THE WHOLE STATEMENT. What the build plan exists for: an accountable
-  // person producing the obligations statement from the deployed app.
-  // ⚠ Both sources go with it, and the document prints a refusal banner if
-  // either fell back to the text that ships — see `statementDocx.js`.
-  async function runStatement() {
-    exporting = 'statement'; panelError = '';
-    try {
-      await downloadStatement({
-        wholeRegister: REG,
-        prose: $statementProse.sections,
-        provenance: $statutoryRegister.provenance ?? {},
-        registerSource: $statutoryRegister.source,
-        proseSource: $statementProse.source,
-      });
-    } catch (/** @type {any} */ err) {
-      panelError = err.message ?? 'Could not generate the statement.';
     } finally {
       exporting = null;
     }
@@ -572,33 +550,45 @@
         </Button>
         <span class="export-note">
           <strong>Excel</strong> carries every field — for working the list.
-          <strong>Word</strong> is seven columns, for showing somebody, and is
-          labelled an extract rather than the obligations statement.
+          <strong>Word</strong> is seven columns, laid out to read.
           {shown.length === REG.length
             ? 'Both cover the whole register.'
             : `Both cover the ${shown.length} shown, and record the filter.`}
         </span>
       </div>
 
-      <!-- A DIFFERENT KIND OF THING, and kept on its own row for that reason.
-           The two above are extracts of whatever is on screen; this is the
-           document itself, and it is always every entry. -->
-      <div class="export-row statement-row">
-        <Button variant="secondary" size="small" disabled={!!exporting || REG.length === 0}
-          on:click={runStatement}>
-          {exporting === 'statement' ? 'Generating…' : '⬇ Obligations statement (Word)'}
-        </Button>
-        <span class="export-note">
-          The <strong>obligations statement</strong> — the document you give a
-          reviewer or the regulator. It ignores the filters and always covers
-          every entry.
-          {#if $statutoryRegister.source !== 'database' || $statementProse.source !== 'database'}
-            <strong class="warn">⛔ Reading the shipped standard text, not this
-            building’s own{$statutoryRegister.source !== 'database'
-              && $statementProse.source !== 'database' ? '' :
-              ($statutoryRegister.source !== 'database'
-                ? ' (the register)' : ' (the explanatory sections)')}.
-            The file will say so, and says not to send it.</strong>
+      <!-- ⭐ THE SECTIONS ARE WHAT MAKE THIS ONE DOCUMENT RATHER THAN TWO.
+           There used to be a separate "obligations statement" button beside
+           these, and a red warning on every extract telling people not to
+           confuse the two — a caution that existed only BECAUSE there were two.
+           With no filter and every section on, the Word file IS the statement,
+           and it says so itself. -->
+      <div class="export-row sections-row">
+        <span class="sections-label">Word also includes:</span>
+        <label class="sec"><input type="checkbox" bind:checked={sections.caveats} />
+          what the list does not claim</label>
+        <label class="sec"><input type="checkbox" bind:checked={sections.absences} />
+          reasoned absences</label>
+        <label class="sec"><input type="checkbox" bind:checked={sections.actions} />
+          outstanding actions</label>
+      </div>
+
+      <div class="export-row">
+        <span class="export-note" class:is-statement={isStatement}>
+          {#if isStatement}
+            ⭐ <strong>With no filter and every section included, the Word file is
+            this building’s obligations statement</strong> — the document you give
+            a reviewer or the regulator. It titles and names itself accordingly.
+          {:else}
+            The Word file will call itself an <strong>extract</strong>, because
+            {shown.length !== REG.length
+              ? `it covers ${shown.length} of ${REG.length} requirements`
+              : 'a section is left out'}. Clear the filter and tick every section
+            to produce the full obligations statement.
+          {/if}
+          {#if $statutoryRegister.source !== 'database'}
+            <strong class="warn">⛔ Reading the standard register that ships, not
+            this building’s own. The file will say so.</strong>
           {/if}
         </span>
       </div>
@@ -1057,7 +1047,16 @@
   .diff-close:hover { color: rgb(226 232 240); }
   .export-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .export-note { font-size: 0.74rem; color: rgb(148 163 184); }
-  .statement-row { margin-top: 0.35rem; padding-top: 0.6rem; border-top: 1px solid rgb(51 65 85); }
+  .sections-row {
+    margin-top: 0.35rem; padding-top: 0.6rem; border-top: 1px solid rgb(51 65 85);
+    align-items: center; gap: 0.9rem;
+  }
+  .sections-label { font-size: 0.74rem; color: rgb(148 163 184); font-weight: 600; }
+  .sec {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.74rem; color: rgb(203 213 225); cursor: pointer;
+  }
+  .is-statement { color: rgb(190 242 100); }
   .export-note .warn { color: rgb(248 113 113); display: block; margin-top: 0.15rem; }
   .reg-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .reg-actions-note { font-size: 0.74rem; color: rgb(148 163 184); }

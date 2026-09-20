@@ -1,15 +1,24 @@
 // src/lib/server/registerDocx.js
 //
-// The periodic activity register, as filtered, as a Word document.
+// The register as a Word document — which, with nothing filtered out, IS the
+// obligations statement.
 //
-// ⛔ THIS IS NOT THE OBLIGATIONS STATEMENT, AND THE DOCUMENT SAYS SO ON ITS
-// FIRST PAGE. `Periodic_Obligations_Statement.md` is hand-maintained, has been
-// through fourteen rounds of external review, and carries a scope statement, a
-// status block and the reasoning behind every cadence. This is a table of rows
-// somebody filtered on a screen. The two are easy to confuse once a .docx is in
-// an inbox, and confusing them would put an unreviewed extract in front of a
-// reviewer — so every copy states what it is, what it is not, what it was
-// filtered to, and how many of the register it represents.
+// ⭐ THERE USED TO BE TWO DOCUMENTS AND THE USER WAS RIGHT THAT THERE SHOULD BE
+// ONE. Their words: *"i would like a word doc with no filters and the section
+// options on to be this"* — and that is exactly what the statement is. An
+// extract is the same document with a filter applied or a section left out.
+//
+//   no filter · every section  →  the obligations statement
+//   anything else              →  an extract of it
+//
+// ⛔ AND THAT DELETES A WARNING RATHER THAN REWORDING IT. Every extract used to
+// print, in red, "this is an extract, not the obligations statement" — a caution
+// that existed ONLY because there were two overlapping documents to confuse.
+// With one, the document says what it is from what it contains, and a reader
+// never has to hold two names in their head.
+//
+// ⚠ The caution is not gone, it is earned: a document that IS missing rows says
+// so, because that is when a reader could be misled.
 //
 // ⚠ It lives here rather than in the route because a `+server.js` may only
 // export HTTP verbs, so a builder inside one could never be unit-tested — and
@@ -24,6 +33,7 @@ import {
   CONTENT_W_L, BORDERS, COLOURS, DOC_STYLES,
   run, para, hCell, dCell, makeHeader, makeFooter, pageProps,
 } from './docxHelpers.js';
+import { inlineRuns } from './markdownDocx.js';
 
 const BASIS_LABEL = {
   statute:    'Legislation',
@@ -71,29 +81,79 @@ export function cadenceText(entry) {
 }
 
 /**
- * The block that stops this being mistaken for the statement.
- * @param {{filterSummary: string, shown: number, total: number}} input
+ * Is this the whole picture, or a slice of it?
+ *
+ * ⭐ THE ONLY THING THAT DECIDES WHAT THIS DOCUMENT IS. Nothing is passed in
+ * saying "make me a statement" — a caller that could ask for the statement while
+ * handing over a filtered set is a caller that can produce a document whose
+ * title contradicts its contents, and that is precisely the confusion two
+ * documents used to create.
+ *
+ * @param {{shown: number, total: number, sections: Record<string, boolean>}} p
  */
-export function extractPreamble({ filterSummary, shown, total }) {
-  const filtered = shown !== total;
-  return [
-    para('Periodic activity register — filtered extract', { heading: HeadingLevel.HEADING_1 }),
-    para([
-      run('This is an extract, not the obligations statement. ', { bold: true, color: COLOURS.failRed }),
-      run(
-        'It lists rows selected on screen at the moment it was produced. It carries no scope '
-        + 'statement, no account of what remains unverified, and no reasoning for any cadence. '
-        + 'Where a formal statement of this building’s periodic obligations is needed, that is '
-        + 'a separate, reviewed document and this must not be sent in its place.',
+export function isWholePicture({ shown, total, sections }) {
+  return shown === total && SECTION_KEYS.every(k => sections?.[k]);
+}
+
+/** The optional sections, in the order a reader needs them. */
+export const SECTIONS = [
+  { key: 'caveats',  heading: 'What this list does not claim',
+    lead: 'Stated plainly, because a statement of intent read as a statement of performance '
+        + 'would be the most damaging way for this document to be wrong.' },
+  { key: 'absences', heading: 'Duties deliberately not in this list',
+    lead: 'Each of these is a duty a reader might expect to find, and the reason it is absent.' },
+  { key: 'actions',  heading: 'What is outstanding',
+    lead: 'Decisions and determinations that are not yet made. Owner, technical authority and '
+        + 'due date are deliberately empty — filling them with plausible names would defeat '
+        + 'the purpose, and a blank is conspicuous every time this document is produced.' },
+];
+
+export const SECTION_KEYS = SECTIONS.map(s => s.key);
+
+export function documentPreamble({ filterSummary, shown, total, sections, building }) {
+  const whole = isWholePicture({ shown, total, sections });
+  const missing = SECTIONS.filter(s => !sections?.[s.key]).map(s => s.heading.toLowerCase());
+
+  const head = whole
+    ? [
+      para(`${building} — statement of periodic safety obligations`,
+        { heading: HeadingLevel.HEADING_1 }),
+      para(
+        'Every periodic duty identified for this building, what discharges each one, what is '
+        + 'deliberately not here, and what remains outstanding. It is the position as at the '
+        + 'date in the header above.',
+        { after: 240 },
       ),
-    ], { after: 160 }),
+    ]
+    : [
+      para(`${building} — periodic register extract`, { heading: HeadingLevel.HEADING_1 }),
+      para([
+        run('This is an extract. ', { bold: true, color: COLOURS.failRed }),
+        run(
+          shown !== total
+            ? `It shows ${shown} of ${total} requirements, selected on screen when it was `
+              + 'produced. '
+            : 'It covers every requirement, but ',
+        ),
+        run(missing.length
+          ? `It omits ${missing.join(', ')}. `
+          : ''),
+        run(
+          'Produce it with no filter and every section included and it is the building’s full '
+          + 'statement of its periodic obligations.',
+        ),
+      ], { after: 160 }),
+    ];
+
+  return [
+    ...head,
     para([
-      run('Showing: ', { bold: true }),
-      run(filtered
-        ? `${shown} of ${total} requirements.`
-        : `all ${total} requirements in the register.`),
+      run('Covering: ', { bold: true }),
+      run(shown === total
+        ? `all ${total} requirements in the register.`
+        : `${shown} of ${total} requirements.`),
       run('   Filter: ', { bold: true }),
-      run(filterSummary || 'No filters — every row'),
+      run(filterSummary || 'None — every row'),
     ], { after: 240 }),
   ];
 }
@@ -162,24 +222,101 @@ export function extractTable(rows) {
  * @param {string} [input.building]
  * @returns {Document}
  */
-export function buildRegisterExtract(input = {}) {
+/**
+ * One of the narrative sections — caveats, reasoned absences, outstanding
+ * actions — as blocks.
+ *
+ * ⭐ THESE WERE 550 LINES OF PROSE and are now rows, which is why this is
+ * fifteen lines rather than a document to maintain. An action's owner and due
+ * date print as blanks because they ARE blanks; a paragraph could not have
+ * shown that without somebody remembering to write it.
+ *
+ * @param {{key: string, heading: string, lead: string}} section
+ * @param {Object[]} items  rows of that kind, already ordered
+ */
+export function narrativeSection(section, items) {
+  if (!items?.length) return [];
+  const blocks = [
+    para(section.heading, { heading: HeadingLevel.HEADING_2, before: 360 }),
+    para(section.lead, { italics: true, color: COLOURS.textMuted, after: 200 }),
+  ];
+
+  for (const item of items) {
+    blocks.push(para(inlineRuns(item.name, { bold: true }), { before: 160 }));
+    if (item.description) blocks.push(para(inlineRuns(item.description)));
+    if (item.consequence) {
+      blocks.push(para([
+        run('If it is not: ', { bold: true, color: COLOURS.textMuted }),
+        ...inlineRuns(item.consequence),
+      ]));
+    }
+    if (item.unblocks) {
+      blocks.push(para([
+        run('Unblocks: ', { bold: true, color: COLOURS.textMuted }),
+        ...inlineRuns(item.unblocks),
+      ]));
+    }
+    // ⚠ Printed even when empty, and that is the point — see the section lead.
+    if (section.key === 'actions') {
+      blocks.push(para([
+        run('Owner: ', { bold: true, color: COLOURS.textMuted }),
+        run(item.owner || 'NOT ASSIGNED', item.owner ? {} : { color: COLOURS.failRed }),
+        run('   Technical authority: ', { bold: true, color: COLOURS.textMuted }),
+        run(item.technicalAuthority || 'NOT ASSIGNED',
+          item.technicalAuthority ? {} : { color: COLOURS.failRed }),
+        run('   Due: ', { bold: true, color: COLOURS.textMuted }),
+        run(item.dueDate || 'NOT ASSIGNED', item.dueDate ? {} : { color: COLOURS.failRed }),
+      ], { size: 16 }));
+    }
+  }
+  return blocks;
+}
+
+/**
+ * The document. With nothing filtered and every section on, this IS the
+ * obligations statement — see the file header.
+ *
+ * @param {{
+ *   rows?: Object[], total?: number, filterSummary?: string, generatedAt?: string,
+ *   building?: string,
+ *   sections?: Record<string, boolean>,
+ *   items?: {caveats?: Object[], absences?: Object[], actions?: Object[]},
+ * }} input
+ */
+export function buildRegisterDocument(input = {}) {
   const {
     rows = [], total = 0, filterSummary = '', generatedAt = '',
     building = 'Lancaster House',
+    sections = {}, items = {},
   } = input;
 
+  const whole = isWholePicture({ shown: rows.length, total, sections });
+
   const children = [
-    ...extractPreamble({ filterSummary, shown: rows.length, total }),
+    ...documentPreamble({ filterSummary, shown: rows.length, total, sections, building }),
+  ];
+
+  // ⚠ The caveats come BEFORE the table on purpose. They set what the list does
+  // and does not assert, and a reader who meets them afterwards has already
+  // formed a view.
+  if (sections.caveats) children.push(...narrativeSection(SECTIONS[0], items.caveats ?? []));
+
+  children.push(
+    para('The register', { heading: HeadingLevel.HEADING_2, before: 360 }),
     rows.length
       ? extractTable(rows)
-      : para('Nothing matched the filter, so this extract is empty.', { italics: true }),
+      : para('Nothing matched the filter, so this document has no requirements in it.',
+        { italics: true }),
     para(
       'Evidence routes: '
       + Object.values(EVIDENCE_LABEL).join(' · ')
       + '. A requirement with neither is not schedulable in this portal.',
       { before: 200, size: 16, color: COLOURS.textMuted },
     ),
-  ];
+  );
+
+  if (sections.absences) children.push(...narrativeSection(SECTIONS[1], items.absences ?? []));
+  if (sections.actions) children.push(...narrativeSection(SECTIONS[2], items.actions ?? []));
 
   return new Document({
     styles: DOC_STYLES,
@@ -187,7 +324,11 @@ export function buildRegisterExtract(input = {}) {
       // ⚠ pageProps swaps the dimensions for landscape itself — passing the
       // already-swapped values would double-swap back to portrait.
       properties: pageProps({ landscape: true }),
-      headers: { default: makeHeader(`${building} — register extract`, generatedAt, CONTENT_W_L) },
+      headers: {
+        default: makeHeader(
+          `${building} — ${whole ? 'obligations statement' : 'register extract'}`,
+          generatedAt, CONTENT_W_L),
+      },
       footers: { default: makeFooter() },
       children,
     }],
