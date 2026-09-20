@@ -13,12 +13,20 @@
 // of telling which was right. Both say "extract" on their first page and carry
 // an "N of 116" so they cannot be read as the whole picture.
 //
-// `downloadStatementSection6` and `downloadStatement` are the opposite and must
-// stay that way. They are the obligations statement — §6 of it, and the whole
-// of it — generated from the WHOLE register and never a subset. A filtered
-// statement would be the exact confusion the extracts are labelled to prevent,
-// and it would be a document going to an outside reviewer, which is where that
-// confusion costs most.
+// `downloadStatement` is the opposite and must stay that way. It is the
+// obligations statement, generated from the WHOLE register and never a subset.
+// A filtered statement would be the exact confusion the extracts are labelled to
+// prevent, and it goes to an outside reviewer, which is where that confusion
+// costs most.
+//
+// ⛔ THERE WAS A THIRD, `downloadStatementSection6`, AND IT IS DELETED. It
+// produced the register section as markdown to paste into a hand-maintained copy
+// of the statement — so it existed only because a hand-maintained copy existed.
+// ⚠ Its button read "⬇ Statement §6", and the user's objection was exactly
+// right: *"§6 doesn't mean anything to a user."* Nobody on this screen is
+// holding the document, so its internal section numbering is vocabulary from
+// somewhere they cannot see. The same fault as the import buttons — machinery
+// shown to someone who never sees the machinery.
 
 import { authHeaders } from '$lib/utils/authHeaders';
 import { downloadResponse } from '$lib/utils/download.js';
@@ -76,78 +84,6 @@ export async function downloadRegisterXlsx(params) {
   return { filename };
 }
 
-/**
- * §6 of the Periodic Obligations Statement, generated from the register.
- *
- * ⛔ TAKES THE WHOLE REGISTER, NOT THE FILTERED ROWS, and the parameter is named
- * to make passing the filtered set feel wrong. The two arguments are checked
- * against each other server-side as well: the section asserts that every
- * applicable entry it was handed reached the page.
- *
- * ⚠ `source` is not cosmetic. The register store falls back to the shipped seed
- * when the table is empty or unreachable — deliberately, because a compliance
- * screen showing the standard register is right where one showing nothing is a
- * lie. But a DOCUMENT generated from that fallback would present the standard
- * catalogue as this building's position, so it has to say which it is, and the
- * banner says so loudly when it is the seed.
- *
- * @param {Object} params
- * @param {Object[]} params.wholeRegister    every entry, unfiltered
- * @param {Record<string, Object>} [params.provenance]
- * @param {'database'|'seed'} [params.source]
- * @param {string} [params.building]
- * @returns {Promise<{filename: string}>}
- */
-export async function downloadStatementSection6(params) {
-  const {
-    wholeRegister, provenance = {}, source = 'database',
-    building = 'Lancaster House',
-  } = params;
-
-  const res = await fetch('/api/reports/generate-statement-section6', {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({
-      building,
-      source,
-      generatedAt: fmtGenerated(),
-      entries: wholeRegister,
-      provenance,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Server error ${res.status}`);
-  }
-
-  const filename = `statement-section-6-${new Date().toISOString().slice(0, 10)}.md`;
-  await downloadResponse(res, filename);
-  return { filename };
-}
-
-/**
- * The WHOLE statement as a Word document. R5.
- *
- * ⭐ The artefact the build plan exists for: an accountable person can produce
- * the obligations statement from the deployed app rather than from one
- * particular laptop.
- *
- * ⚠ BOTH SOURCES ARE SENT, and the document prints a refusal banner if either
- * fell back to what ships. The two stores fall back deliberately — a compliance
- * screen showing the standard register is right where one showing nothing is a
- * lie — but a DOCUMENT assembled from the shipped defaults describes a
- * higher-risk building in general and would be read as describing this one.
- *
- * @param {Object} params
- * @param {Object[]} params.wholeRegister
- * @param {Object[]} params.prose
- * @param {Record<string, Object>} [params.provenance]
- * @param {'database'|'seed'} [params.registerSource]
- * @param {'database'|'seed'} [params.proseSource]
- * @param {string} [params.building]
- * @returns {Promise<{filename: string}>}
- */
 export async function downloadStatement(params) {
   const {
     wholeRegister, prose, provenance = {},

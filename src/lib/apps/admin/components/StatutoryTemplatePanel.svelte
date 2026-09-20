@@ -34,7 +34,7 @@
   } from '../utils/registerFilter.js';
   import {
     downloadRegisterXlsx, downloadRegisterDocx,
-    downloadStatementSection6, downloadStatement,
+    downloadStatement,
   } from '../utils/registerDownloads.js';
   import { statementProse } from '$lib/stores/statementProseStore.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
@@ -142,7 +142,7 @@
   // EXTRACT for showing somebody. It says so on its own first page, because the
   // thing it must never be mistaken for is the obligations statement.
 
-  /** @type {'xlsx'|'docx'|'section6'|'statement'|null} */
+  /** @type {'xlsx'|'docx'|'statement'|null} */
   let exporting = null;
 
   async function runExport(kind) {
@@ -170,20 +170,17 @@
   // filters: a filtered statement is the confusion the two extracts above are
   // labelled to prevent, and this is the artefact that goes to an outside
   // reviewer.
-  async function runStatementSection6() {
-    exporting = 'section6'; panelError = '';
-    try {
-      await downloadStatementSection6({
-        wholeRegister: REG,
-        provenance: $statutoryRegister.provenance ?? {},
-        source: $statutoryRegister.source,
-      });
-    } catch (/** @type {any} */ err) {
-      panelError = err.message ?? 'Could not generate the section.';
-    } finally {
-      exporting = null;
-    }
-  }
+  // ⛔ THE "STATEMENT §6" BUTTON IS GONE, and the reason is worth keeping.
+  // From the user: *"§6 doesn't mean anything to a user."* They are right, and
+  // it goes further than the wording — that button produced the register
+  // section as markdown TO PASTE INTO A HAND-MAINTAINED COPY of the obligations
+  // statement. Once the whole document is generated, there is no hand-maintained
+  // copy to paste into, so the button had no purpose and "§6" was a piece of the
+  // document's internal numbering leaking onto a screen where nobody is holding
+  // the document.
+  //
+  // ⚠ Same class as the import buttons: a thing that made sense to whoever built
+  // the machinery, shown to somebody who never sees the machinery.
 
   // ⭐ THE WHOLE STATEMENT. What the build plan exists for: an accountable
   // person producing the obligations statement from the deployed app.
@@ -584,22 +581,17 @@
       </div>
 
       <!-- A DIFFERENT KIND OF THING, and kept on its own row for that reason.
-           The two above are extracts of what is on screen; this is §6 of the
-           obligations statement, generated from every entry regardless of the
-           filters. -->
+           The two above are extracts of whatever is on screen; this is the
+           document itself, and it is always every entry. -->
       <div class="export-row statement-row">
         <Button variant="secondary" size="small" disabled={!!exporting || REG.length === 0}
-          on:click={runStatementSection6}>
-          {exporting === 'section6' ? 'Generating…' : `⬇ Statement §6 (all ${REG.length})`}
-        </Button>
-        <Button variant="secondary" size="small" disabled={!!exporting || REG.length === 0}
           on:click={runStatement}>
-          {exporting === 'statement' ? 'Generating…' : '⬇ Full statement (Word)'}
+          {exporting === 'statement' ? 'Generating…' : '⬇ Obligations statement (Word)'}
         </Button>
         <span class="export-note">
-          The <strong>obligations statement</strong> — the whole document, or just
-          its §6 as markdown to paste into an existing copy. Both ignore the
-          filters: they are always every entry.
+          The <strong>obligations statement</strong> — the document you give a
+          reviewer or the regulator. It ignores the filters and always covers
+          every entry.
           {#if $statutoryRegister.source !== 'database' || $statementProse.source !== 'database'}
             <strong class="warn">⛔ Reading the shipped standard text, not this
             building’s own{$statutoryRegister.source !== 'database'
