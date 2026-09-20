@@ -33,8 +33,9 @@
     citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
   import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
-  import { ofKind } from '$lib/utils/registerKinds.js';
-  import { inAuthorOrder } from '../utils/registerItemView.js';
+  import { ofKind, kindTally, REGISTER_KINDS } from '$lib/utils/registerKinds.js';
+  import { inAuthorOrder, KIND_SECTION } from '../utils/registerItemView.js';
+  import RegisterItemsList from './RegisterItemsList.svelte';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -74,6 +75,22 @@
   // re-renders when the register loads. `$statutoryRegister.entries` IS the
   // active register — the pure helpers are pointed at the same list.
   $: REG = $statutoryRegister.entries;
+
+  // -- Which KIND you are looking at -------------------------------------------
+  // ⭐ "Clear options to the user as to what they are seeing", which is the half
+  // of folding everything in that the export alone did not do. The register
+  // holds four kinds of row and until now the screen showed one of them: the
+  // outstanding actions, the reasoned absences and the caveats reached the Word
+  // file and no place a person could read them.
+  //
+  // ⛔ A KIND IS NEVER COUNTED AS ANOTHER. Each tab carries its own figure and
+  // they are never added up — "118 requirements" must not quietly become 183.
+  // `kindTally` accounts for every row it is given precisely so a kind cannot go
+  // missing from this strip without the number failing to add up.
+  /** @type {'requirement'|'action'|'absence'|'caveat'} */
+  let kind = 'requirement';
+  $: kinds = kindTally($statutoryRegister.items);
+  $: kindBlurb = REGISTER_KINDS.find(k => k.key === kind)?.blurb ?? '';
 
   const tally   = basisTally();
 
@@ -378,6 +395,12 @@
           {#if coverage.superseded.length > 0}
             <span class="dot">·</span>{coverage.superseded.length} no longer required
           {/if}
+          <!-- ⚠ Its own figure, never added to the one on the left. An action is
+               not a duty and the moment the two share a number, satisfying one
+               starts reading as satisfying the other. -->
+          {#if kinds.action > 0}
+            <span class="dot">·</span><span class="warn-text">{kinds.action} outstanding</span>
+          {/if}
           {#if dueReviews.length > 0}
             <span class="dot">·</span><span class="warn-text" class:late={overdueReviews.length > 0}>
               {dueReviews.length}
@@ -401,6 +424,36 @@
 
   {#if open}
     <div class="tmpl-body">
+      <!-- ⭐ WHAT YOU ARE LOOKING AT, said before anything else. The register
+           holds four kinds of row and the screen used to show one; the other
+           three reached the Word file and nowhere a person could read them.
+           Each tab carries its OWN count and they are never summed — see the
+           header of `registerKinds.js` for why that is a safeguard rather than
+           a formatting choice. -->
+      <div class="kinds">
+        {#each REGISTER_KINDS as k (k.key)}
+          <button class="kind" class:on={kind === k.key}
+            disabled={kinds[k.key] === 0}
+            on:click={() => (kind = k.key)}>
+            <span class="kind-n">{kinds[k.key]}</span>
+            <span class="kind-l">{k.label}</span>
+          </button>
+        {/each}
+      </div>
+      <p class="kind-blurb">{kindBlurb}</p>
+
+      <!-- ⚠ Above the tab split, not inside it. An error raised while saving on
+           one tab must not become invisible because the reader moved to another. -->
+      {#if panelError}<ErrorDisplay message={panelError} onDismiss={() => (panelError = '')} />{/if}
+
+      {#if kind !== 'requirement'}
+        <RegisterItemsList
+          {kind}
+          items={$statutoryRegister.items}
+          included={sections[KIND_SECTION[kind]]}
+          on:include={e => (sections = { ...sections, [KIND_SECTION[kind]]: e.detail })}
+        />
+      {:else}
       <p class="blurb">
         Every recurring check identified for a higher-risk residential building in England, from the
         legislation, the British Standards, our contracts and our own decisions. Each says where the
@@ -434,7 +487,6 @@
       {/if}
 
 
-      {#if panelError}<ErrorDisplay message={panelError} onDismiss={() => (panelError = '')} />{/if}
 
       <!-- ⭐ THERE IS NO IMPORT STEP AND NO "reading from application code"
            NOTICE, and their absence is the feature. The store levels the table
@@ -875,6 +927,7 @@
           </div>
         {/if}
       {/each}
+      {/if}
     </div>
   {/if}
 </div>
@@ -994,6 +1047,30 @@
 </Modal>
 
 <style>
+  /* ── Which kind you are looking at ─────────────────────────────────────── */
+  /* Deliberately NOT styled like the tally strip below it, which is a filter
+     over one list. This changes what the list IS, and the two must not look
+     like the same control. */
+  .kinds {
+    display: flex; flex-wrap: wrap; gap: 0.3rem;
+    border-bottom: 1px solid rgb(71 85 105 / 0.5);
+  }
+  .kind {
+    display: flex; align-items: baseline; gap: 0.35rem; cursor: pointer;
+    padding: 0.4rem 0.7rem; border-radius: 6px 6px 0 0; font-size: 0.76rem;
+    border: 1px solid transparent; border-bottom: none;
+    color: rgb(148 163 184); background: transparent; margin-bottom: -1px;
+  }
+  .kind:hover:not(:disabled) { color: rgb(226 232 240); background: rgb(30 41 59 / 0.5); }
+  .kind:disabled { opacity: 0.4; cursor: default; }
+  .kind.on {
+    color: rgb(226 232 240); background: rgb(15 23 42 / 0.6);
+    border-color: rgb(71 85 105 / 0.7); border-bottom: 1px solid rgb(15 23 42 / 0.6);
+  }
+  .kind-n { font-weight: 700; font-size: 0.85rem; color: rgb(226 232 240); }
+  .kind.on .kind-n { color: var(--lh-accent); }
+  .kind-blurb { font-size: 0.76rem; color: rgb(148 163 184); line-height: 1.45; }
+
   /* Shown only when a release and somebody here changed the same requirement. */
   .collision {
     font-size: 0.8rem; line-height: 1.5; color: rgb(253 230 138);

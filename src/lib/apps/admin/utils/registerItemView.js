@@ -77,6 +77,31 @@ export function inAuthorOrder(items) {
 }
 
 /**
+ * The groups a kind is displayed in — categories for actions, one unlabelled
+ * run for everything else.
+ *
+ * ⛔ THIS IS A FUNCTION RATHER THAN TWO LINES IN THE COMPONENT BECAUSE IT CAN
+ * LOSE A ROW. `groupByCategory` works by filtering on a KNOWN category, so an
+ * item whose category is misspelt, renamed or new is simply not in any group —
+ * and an absent row looks exactly like a group that is empty. That is the shape
+ * of the worst fault this register has produced: the statement grouped on
+ * `building_own` while the data said `building_specific`, nothing errored, and
+ * nine entries were missing from every version of the document ever generated,
+ * including the copy an external reviewer assessed.
+ *
+ * Extracted so the invariant can be asserted over the real shipped items rather
+ * than reasoned about in markup.
+ *
+ * @param {string} kind
+ * @param {Object[]} items  already filtered to that kind
+ * @returns {{key: string, label: string, blurb: string, items: Object[]}[]}
+ */
+export function groupItems(kind, items) {
+  if (kind === 'action') return groupByCategory(items);
+  return [{ key: kind, label: '', blurb: '', items: inAuthorOrder(items) }];
+}
+
+/**
  * How many items of a kind sit in each category and priority.
  * ⚠ Counted over the WHOLE kind, never the filtered view — it is how a filter
  * gets chosen, so it has to show what is there.
@@ -124,3 +149,40 @@ export function itemFilterFields(kind, tally) {
         })) },
   ];
 }
+
+/**
+ * The reference a person or a document would cite this item by — `A1`, `D19`,
+ * `H3` — or null where it has none.
+ *
+ * ⚠ NOT EVERY KEY IS A REF. Seven of the actions came from the human backlog as
+ * named items rather than numbered ones (`h_complaints`, `h_mor`), and printing
+ * `H_COMPLAINTS` as though it were a citation would invent an identity nobody
+ * uses. A blank is honest; a manufactured ref is not.
+ *
+ * ⭐ The refs are shown at all because the A/D/H numbering is how these are
+ * cited in the statement, the delivery plan and the backlog — three origins for
+ * one kind of thing, which is exactly why `category` and not the letter is what
+ * the screen groups by.
+ */
+export function citableRef(item) {
+  return /^[adh]\d+$/.test(item?.key ?? '') ? item.key.toUpperCase() : null;
+}
+
+/**
+ * Which optional section of the Word file each kind is.
+ *
+ * ⛔ REQUIREMENTS ARE NOT IN HERE, and that is the statement: a register
+ * document with no register in it is not a thing, so there is no switch for it.
+ * The other three are optional, and whether they are all on is exactly what
+ * decides between the obligations statement and an extract of it.
+ *
+ * ⚠ A kind missing from this map would give the screen a checkbox bound to
+ * nothing — it would render unticked whatever the truth was, and ticking it
+ * would write a section key the document has never heard of. A test asserts it
+ * agrees with the document's own section list.
+ */
+export const KIND_SECTION = {
+  action: 'actions',
+  absence: 'absences',
+  caveat: 'caveats',
+};
