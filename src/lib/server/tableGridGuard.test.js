@@ -75,8 +75,12 @@ describe('every Word table declares its column grid', () => {
   it('finds the table builders it exists for', () => {
     const names = withTables.map(([f]) => f.replace(/\\/g, '/'));
     expect(names.length).toBeGreaterThanOrEqual(5);
+    // ⚠ `markdownDocx.js` was on this list and is not any more, and the guard
+    // is what noticed. Its block-level converter built the obligations
+    // statement's prose tables; that prose became rows, the converter went with
+    // it, and only `inlineRuns` remains — which builds no table at all. Removing
+    // it from the list is keeping the list honest, not weakening the rule.
     for (const expected of [
-      'src/lib/server/markdownDocx.js',
       'src/lib/server/registerDocx.js',
       'src/lib/server/complianceDocx.js',
     ]) {

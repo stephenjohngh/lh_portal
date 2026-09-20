@@ -9,7 +9,7 @@
 // Copying the classifier into the script would be a second copy of a rule, and
 // the two would eventually disagree about what a role is: the app's facet would
 // say one thing and the document's prose another, about the same register.
-// Same reasoning as `statementProseParse.js` and `triggerTypeOf`.
+// Same reasoning as `triggerTypeOf`.
 //
 // ⛔ WHY THIS FIELD IS THE HARDEST-WON ONE IN THE REGISTER. Round 12 added it
 // because *"Responsible: Site staff"* stood on eight rows whose statutory duty

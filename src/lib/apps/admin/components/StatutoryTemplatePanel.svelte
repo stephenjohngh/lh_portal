@@ -35,7 +35,6 @@
   import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
   import { ofKind } from '$lib/utils/registerKinds.js';
   import { inAuthorOrder } from '../utils/registerItemView.js';
-  import { statementProse } from '$lib/stores/statementProseStore.js';
   import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -69,9 +68,6 @@
     // from the shipped seed until then. The store handles the fallback; nothing
     // here has to care which it got.
     statutoryRegister.load();
-    // R5: the statement's prose, on the same terms — database where imported,
-    // the shipped text until then, and the export says which it used.
-    statementProse.load();
   });
 
   // ⚠ Read through the store rather than the seed constant, so the panel
