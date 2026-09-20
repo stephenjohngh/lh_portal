@@ -11,7 +11,7 @@ import { STATUTORY_TEMPLATE, isSchedulable, isUnhomed, isSuperseded, BASIS_RANK 
   from '$lib/utils/statutoryTemplate.js';
 import {
   registerStatus, filterRegister, registerStatusTally, groupRegisterRows,
-  registerFilterFields, REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS,
+  registerFilterFields, REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_EXPLAINED, REGISTER_STATUS_CLASS,
   obligationState, hasEmptyScope, filterObligations, obligationFilterFields,
   dutyHolderRole, dutyHolderTally, unclassifiedDutyHolders,
   DUTY_HOLDER_ROLES, DUTY_HOLDER_ROLE_LABEL,
@@ -583,5 +583,70 @@ describe('⚠ the filter bar must not resize as you use it', () => {
         if (o.short) expect(o.short.length, `${f.key}/${o.value}`).toBeLessThanOrEqual(o.label.length);
       }
     }
+  });
+});
+
+// ⭐ ADDED 2026-09-21, after the user refused to press a button: *"a button says
+// 'add 80 shown' — it's just not something I could click."* The count strip is
+// where somebody meets these seven words for the first time, and a tooltip that
+// repeats the label teaches nothing.
+describe('every state can be explained to somebody who has never seen the screen', () => {
+  it('explains all seven, and none of them by repeating its own label', () => {
+    for (const s of REGISTER_STATUS) {
+      const help = REGISTER_STATUS_EXPLAINED[s];
+      expect(help, s).toBeTruthy();
+      // A sentence, not a restatement of the two-word label.
+      expect(help.split(' ').length, s).toBeGreaterThan(6);
+      expect(help, s).not.toBe(REGISTER_STATUS_LABEL[s]);
+    }
+  });
+
+  it('⚠ keeps each to one sentence — a tooltip nobody finishes is no tooltip', () => {
+    for (const s of REGISTER_STATUS) {
+      expect(REGISTER_STATUS_EXPLAINED[s].length, s).toBeLessThan(110);
+      expect(REGISTER_STATUS_EXPLAINED[s], s).not.toContain('.');
+    }
+  });
+
+  // The pairing is the point: a state with a count and no explanation is the
+  // gap this closes, so the two maps must not drift apart.
+  it('covers exactly the states the strip renders', () => {
+    expect(Object.keys(REGISTER_STATUS_EXPLAINED).sort()).toEqual([...REGISTER_STATUS].sort());
+  });
+});
+
+// ⭐ ADDED 2026-09-21, from the user: *"why would you want to add 80? I think
+// the user wants to slowly go over this list for days, slowly adding in sets of
+// regs."* The panel decides how loudly to offer the bulk add from whether the
+// list has been NARROWED — and "narrowed" deliberately ignores the status
+// facet, because it defaults to *Not covered*, which is what is left rather
+// than a set anybody chose.
+//
+// ⚠ The rule lives in the panel as a one-line `$:`. This asserts the part that
+// would be wrong silently: that a default view does not count as a choice.
+describe('working through the register in sets', () => {
+  const isNarrowed = (filters, search = '') =>
+    search.trim().length > 0
+    || Object.entries(filters).some(([k, v]) => k !== 'status' && v?.size > 0);
+
+  it('does not treat the default work queue as a chosen set', () => {
+    expect(isNarrowed({ status: new Set(['not_covered']) })).toBe(false);
+    expect(isNarrowed({ status: new Set(['not_covered', 'no_home']) })).toBe(false);
+    expect(isNarrowed({})).toBe(false);
+  });
+
+  it('treats any real facet, or a search, as a chosen set', () => {
+    expect(isNarrowed({ status: new Set(['not_covered']), group: new Set(['fire_safety']) })).toBe(true);
+    expect(isNarrowed({ dutyHolder: new Set(['responsible_person']) })).toBe(true);
+    expect(isNarrowed({ status: new Set(['not_covered']) }, 'fire door')).toBe(true);
+  });
+
+  // ⚠ The facets the note names have to exist, or it sends somebody looking for
+  // a control that is not there — the same fault as a filter with no matching
+  // display, pointed the other way.
+  it('names facets the bar actually offers', () => {
+    const keys = registerFilterFields(registerStatusTally(ALL, noCtx), dutyHolderTally(ALL))
+      .map(f => f.key);
+    for (const named of ['group', 'dutyHolder']) expect(keys, named).toContain(named);
   });
 });

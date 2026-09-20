@@ -28,7 +28,7 @@
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
     filterRegister, registerStatusTally, groupRegisterRows, registerFilterFields,
-    REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS,
+    REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS, REGISTER_STATUS_EXPLAINED,
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
     citationState, rowFacetSummary,
   } from '../utils/registerFilter.js';
@@ -41,6 +41,7 @@
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import Modal from '$lib/components/common/Modal.svelte';
+  import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
 
   export let definitions = [];
@@ -96,6 +97,12 @@
 
   let open = false;
   let showLegend = false;
+  // ⛔ A BULK ACTION ON EIGHTY RECORDS HAD NO CONFIRMATION, and the user found it
+  // by refusing to press the button: *"a button says 'add 80 shown' — it's just
+  // not something I could click."* That instinct was reading a real property of
+  // the thing. One click created eighty obligations, and undoing it meant
+  // deleting them one at a time.
+  let confirmBulk = false;
   let showTools = false;
   let busy = false;
   let panelError = '';
@@ -377,6 +384,17 @@
   // Only entries that can actually be created — bulk apply must never offer to
   // add something the scheduler cannot date, nor a SECOND copy of one that
   // apply already created and left switched off.
+  // ⚠ "Narrowed" means a set somebody CHOSE, so the status filter does not count:
+  // it defaults to *Not covered*, which is simply the work that is left rather
+  // than a decision about which part of it to do next.
+  $: narrowed = search.trim().length > 0
+    || Object.entries(filters).some(([k, v]) => k !== 'status' && v?.size > 0);
+
+  // ⚠ Below this, pressing the button just does it — a set of six you filtered
+  // to on purpose does not need defending against. Above it, the confirmation
+  // earns its interruption.
+  const CONFIRM_OVER = 10;
+
   $: shownAddable = shown.filter(r => r.status === 'not_covered');
 
   // Per-row extras the coverage report knows and the register entry does not.
@@ -561,7 +579,7 @@
             class="tally {REGISTER_STATUS_CLASS[s]}"
             class:on={filters.status?.has(s)}
             disabled={tallies[s] === 0}
-            title={tallies[s] === 0 ? 'None in this state' : `Show only: ${REGISTER_STATUS_LABEL[s]}`}
+            title={tallies[s] === 0 ? 'None of these' : `${REGISTER_STATUS_EXPLAINED[s]} — click to show only these`}
             on:click={() => toggleStatus(s)}
           >
             <span class="tally-n">{tallies[s]}</span>
@@ -676,21 +694,41 @@
       <!-- Bulk apply acts on WHAT IS SHOWN, not on every gap in the register.
            With filters that is the more useful of the two and the safer one:
            you can see exactly what you are about to create. -->
+      <!-- ⭐ NOBODY WANTS TO ADD EIGHTY. The user, and it is the best correction
+           this screen has had: *"why would you want to add 80? I think the user
+           wants to slowly go over this list for days, slowly adding in sets of
+           regs."* That is obviously how it is done — a morning on the fire door
+           duties, another on water hygiene — and the screen was built around
+           adopting the lot in one press.
+
+           ⛔ RENAMING THE BUTTON DID NOT FIX THAT, which is why this is a second
+           attempt. A confident primary button offering all eighty invites the
+           one thing nobody does, and makes the considered version — filter to
+           six, add those six — look like the unusual path.
+
+           So the button follows the list: quiet while the set is just "everything
+           left", confident once you have chosen a set. Same action either way;
+           what changes is which one looks like the thing to do. -->
       {#if shownAddable.length > 0}
         <div class="bulk">
-          <ProtectedButton requireAdmin={true} variant="primary" size="small"
-            disabled={busy}
-            on:click={() => apply(shownAddable.map(r => r.entry.key))}>
-            Add {shownAddable.length} shown
+          <ProtectedButton requireAdmin={true} size="small" disabled={busy}
+            variant={narrowed ? 'primary' : 'secondary'}
+            on:click={() => (shownAddable.length > CONFIRM_OVER
+              ? (confirmBulk = true)
+              : apply(shownAddable.map(r => r.entry.key)))}>
+            Add {narrowed ? `these ${shownAddable.length}` : `all ${shownAddable.length}`} to this building
           </ProtectedButton>
-          <!-- ⚠ Says "switched off" BEFORE the click, not only in the report
-               after it. The two facts a person needs in order to decide whether
-               to press this are that nothing goes live, and that most of these
-               will still need scoping by hand — 11 entries propose a scope, the
-               rest match every component. -->
           <span class="bulk-note">
-            Nothing goes live until you turn each one on. Most will then need you to
-            say which parts of the building they cover.
+            {#if narrowed}
+              Nothing goes live until you turn each one on. Most will then need you to
+              say which parts of the building they cover.
+            {:else}
+              ⭐ <strong>Most people work through this over days, a set at a time.</strong>
+              Narrow the list first — by <strong>Group</strong>, or by who the
+              <strong>Duty holder</strong> is — and add that set. The
+              <em>Not covered</em> count above is your place in the queue; it comes
+              down as you go.
+            {/if}
           </span>
         </div>
       {/if}
@@ -935,9 +973,9 @@
                     <div class="row-actions">
                       {#if status === 'not_covered'}
                         <ProtectedButton requireAdmin={true} variant="primary" size="small"
-                          disabled={busy} on:click={() => apply([entry.key])}>Add</ProtectedButton>
+                          disabled={busy} on:click={() => apply([entry.key])}>Add to this building</ProtectedButton>
                         <Button variant="secondary" size="small"
-                          disabled={busy} on:click={() => askDecision(entry, 'not_applicable')}>Not applicable</Button>
+                          disabled={busy} on:click={() => askDecision(entry, 'not_applicable')}>Mark not applicable</Button>
                       {:else if status === 'not_applicable'}
                         <Button variant="secondary" size="small" disabled={busy}
                           on:click={() => askDecision(entry, 'applicable')}>Reinstate</Button>
@@ -963,6 +1001,23 @@
     </div>
   {/if}
 </div>
+
+<!-- ⛔ EIGHTY RECORDS IN ONE CLICK. The three things a person needs before
+     pressing it: what appears, what does NOT happen, and how hard it is to
+     reverse. The last one is the honest reason this dialog exists — there is no
+     bulk remove, so getting it wrong costs eighty visits to a modal. -->
+<ConfirmDialog
+  show={confirmBulk}
+  title="Add {shownAddable.length} checks to this building?"
+  message={`${shownAddable.length} checks will be added to this building's list. None of them goes `
+    + `live: nothing reaches the mobile app or the job scheduler until you turn each one on, and `
+    + `most will then need you to say which parts of the building they cover. `
+    + `If you change your mind afterwards, they have to be removed one at a time.`}
+  confirmText="Add them"
+  processing={busy}
+  on:confirm={() => { confirmBulk = false; apply(shownAddable.map(r => r.entry.key)); }}
+  on:cancel={() => (confirmBulk = false)}
+/>
 
 <!-- ⛔ A delete in a compliance register. The modal's job is to stop it being
      used for the thing it looks like it is for. -->

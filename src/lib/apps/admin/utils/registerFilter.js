@@ -34,6 +34,27 @@ export const REGISTER_STATUS = [
   'scheduled', 'not_applicable', 'superseded',
 ];
 
+/**
+ * The same seven states, said in full.
+ *
+ * ⭐ A LABEL ON A COUNT IS A NAME, NOT AN EXPLANATION. "Added — needs scope"
+ * tells somebody who already knows what a scope is; the count strip is exactly
+ * where a person meets these words for the first time. The tooltip used to read
+ * "Show only: Added — needs scope", which repeats the label and teaches nothing.
+ *
+ * ⚠ Written for somebody who has never seen the screen, and kept to one
+ * sentence — a tooltip nobody finishes reading is the same as no tooltip.
+ */
+export const REGISTER_STATUS_EXPLAINED = {
+  not_covered:    'This building has to do it, and nothing here does it yet',
+  awaiting_setup: 'Added to this building, but nobody has said which parts of the building it covers',
+  no_home:        'A real duty that no part of this portal can schedule or record',
+  elsewhere:      'Another part of the portal already runs this on its own cycle',
+  scheduled:      'A check is set up, switched on, and counts as covering this',
+  not_applicable: 'Somebody recorded a decision that this does not apply to this building',
+  superseded:     'No longer required by law, so it is not counted against you',
+};
+
 export const REGISTER_STATUS_LABEL = {
   not_covered:    'Not covered',
   awaiting_setup: 'Added — needs scope',

@@ -57,7 +57,7 @@
         <h5>New in the standard register ({diff.added.length})</h5>
         <ProtectedButton requireAdmin={true} variant="primary" size="small" disabled={busy}
           on:click={() => dispatch('apply', { add: diff.added.map(e => e.key) })}>
-          Add all {diff.added.length}
+          Add all {diff.added.length} to the list
         </ProtectedButton>
       </div>
       {#each diff.added as e (e.key)}
@@ -73,7 +73,7 @@
         <h5>Updated in the standard register ({diff.updatable.length})</h5>
         <ProtectedButton requireAdmin={true} variant="primary" size="small" disabled={busy}
           on:click={() => dispatch('apply', { update: diff.updatable.map(r => r.key) })}>
-          Take all {diff.updatable.length}
+          Use the new wording on all {diff.updatable.length}
         </ProtectedButton>
       </div>
       <p class="grp-note">
@@ -91,7 +91,7 @@
           <div class="changes">
             {#each r.changes as c (c.field)}
               <p class="fld">{c.field}</p>
-              <p class="was"><span class="lbl">here</span> {short(c.here)}</p>
+              <p class="was"><span class="lbl">ours</span> {short(c.here)}</p>
               <p class="now"><span class="lbl">standard</span> {short(c.seed)}</p>
             {/each}
           </div>
@@ -128,10 +128,10 @@
             <div class="row-actions">
               <ProtectedButton requireAdmin={true} variant="secondary" size="small" disabled={busy}
                 on:click={() => dispatch('apply', { update: [r.key] })}>
-                Take the standard version
+                Use the standard wording
               </ProtectedButton>
               <Button variant="secondary" size="small" disabled={busy}
-                on:click={() => dispatch('edit', r.key)}>Open the requirement</Button>
+                on:click={() => dispatch('edit', r.key)}>Keep ours — open it to edit</Button>
             </div>
           </div>
         {/if}
