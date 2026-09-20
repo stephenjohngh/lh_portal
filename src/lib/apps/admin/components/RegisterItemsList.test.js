@@ -112,11 +112,11 @@ describe('⛔ a row that could not be placed is reported, never silently absent'
     const rogue = { ...forKind('action')[0], key: 'x9', name: 'Rogue', category: 'no_such' };
     render(RegisterItemsList, { kind: 'action', items: [...REGISTER_ITEMS, rogue] });
     expect(screen.queryByText('Rogue')).not.toBeInTheDocument();
-    expect(screen.getByText(/could not be placed in a group/)).toBeInTheDocument();
+    expect(screen.getByText(/could not be shown below/)).toBeInTheDocument();
   });
 
   it('says nothing of the sort on the shipped items', () => {
     render(RegisterItemsList, { kind: 'action', items: REGISTER_ITEMS });
-    expect(screen.queryByText(/could not be placed in a group/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/could not be shown below/)).not.toBeInTheDocument();
   });
 });

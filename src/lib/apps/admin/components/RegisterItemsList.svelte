@@ -100,15 +100,14 @@
         on:change={e => dispatch('include', /** @type {HTMLInputElement} */ (e.currentTarget).checked)} />
       Include these in the Word file
     </label>
-    <span class="include-note">— produced from <strong>Requirements</strong>, which is where the
-      filter that decides between the full statement and an extract lives.</span>
+    <span class="include-note">— the file itself is produced from the
+      <strong>Requirements</strong> tab.</span>
   </p>
 
   {#if dropped !== 0}
     <p class="dropped">
-      ⛔ {dropped} of {shown.length} could not be placed in a group and {dropped === 1 ? 'is' : 'are'}
-      not shown below. This is a fault, not an empty list — report it rather than reading the
-      page as complete.
+      ⚠ {dropped} of {shown.length} could not be shown below. This is a fault — please report it,
+      and do not read this page as a complete list.
     </p>
   {/if}
 
@@ -135,7 +134,7 @@
             <div class="row-main">
               <div class="row-title">
                 {#if item.priority}
-                  <span class="prio {item.priority}" title="{PRIORITY_LABEL[item.priority]} — within this group only">
+                  <span class="prio {item.priority}" title="{PRIORITY_LABEL[item.priority]} priority, compared with the others in this group">
                     {PRIORITY_MARKER[item.priority]}
                   </span>
                 {/if}

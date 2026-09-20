@@ -436,8 +436,8 @@ export function obligationFilterFields(defs = []) {
       ] },
     { key: 'scope', label: 'Scope', placeholder: 'Any scope', noun: 'scopes', minWidth: '150px',
       options: [
-        { value: 'unscoped', label: `Matches everything (${count(hasEmptyScope)})`,
-          short: 'Matches everything' },
+        { value: 'unscoped', label: `No scope set (${count(hasEmptyScope)})`,
+          short: 'No scope set' },
         { value: 'scoped',   label: `Scoped (${count(d => !hasEmptyScope(d))})`,
           short: 'Scoped' },
       ] },

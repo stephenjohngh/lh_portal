@@ -178,7 +178,7 @@
               {/if}
               {#if hasEmptyScope(d)}
                 <span class="badge unscoped"
-                  title="No scope set — this matches EVERY component in the building">Matches everything</span>
+                  title="Nobody has said which parts of the building this covers, so it covers all 1,092 components">No scope set</span>
               {/if}
               {#if d.retired_on}
                 <span class="badge retired" title={d.retired_reason ?? ''}>

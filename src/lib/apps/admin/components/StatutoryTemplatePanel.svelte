@@ -96,6 +96,7 @@
 
   let open = false;
   let showLegend = false;
+  let showTools = false;
   let busy = false;
   let panelError = '';
   let applyReport = null;
@@ -461,11 +462,10 @@
         />
       {:else}
       <p class="blurb">
-        Every recurring check identified for a higher-risk residential building in England, from the
-        legislation, the British Standards, our contracts and our own decisions. Each says where the
-        requirement comes from and how it is dealt with here. Intervals are the conventional ones —
-        your own risk assessment may require more often. Mark anything this building does not have as
-        <em>not applicable</em> so it stops counting against you.
+        Everything a higher-risk residential building in England has to check regularly — from law,
+        British Standards, contracts and our own decisions. <strong>Mark anything this building does
+        not have as <em>not applicable</em></strong>, with a reason, and it stops counting against you.
+        ⚠ The intervals here are the usual ones; your own risk assessment may need them more often.
       </p>
 
       <!-- Where these come from — the legend that makes the badges mean something -->
@@ -486,8 +486,8 @@
             </div>
           {/each}
           <p class="legend-note">
-            A second line on each entry says whether the <em>interval</em> comes from that source or is
-            established practice around a duty whose wording is qualitative.
+            Each entry also says whether its interval comes from that source, or is simply what is
+            normally done where the wording is vague.
           </p>
         </div>
       {/if}
@@ -510,8 +510,8 @@
             the application, and {collisions.length === 1 ? 'was' : 'were'} also edited here
           </p>
           <p>
-            Both versions are considered. Nothing has been overwritten — open each one and
-            decide which wording is right for this building.
+            Nothing has been overwritten. Open each one and pick the wording that is right
+            for this building.
           </p>
           <Button variant="secondary" size="small" on:click={checkForUpdates}>
             Show me the differences
@@ -523,15 +523,13 @@
         <div class="report" class:bad={applyReport.failed.length > 0}>
           {#if applyReport.created.length > 0}
             <p>
-              ✓ Added {applyReport.created.length} obligation{applyReport.created.length === 1 ? '' : 's'},
-              <strong>switched off</strong>. Nothing reaches the mobile app or the job scheduler until
-              you turn each one on.
+              ✓ Added {applyReport.created.length}. <strong>Nothing is live yet</strong> — no walk and no
+              contractor job is created until you turn each one on.
             </p>
             <p class="report-next">
-              They are listed below as <em>Added — needs scope</em>. Where the register proposes a
-              scope it has been applied; the rest match <strong>every component</strong> and are
-              badged <em>Matches everything</em> in the list beneath this panel — filter Scope to
-              <em>Matches everything</em> to work through them.
+              Find them below, marked <em>Added — needs scope</em>. Most still need you to say which
+              parts of the building they cover — in the list under this panel, filter
+              <strong>Scope</strong> to <strong>No scope set</strong> and work through them.
             </p>
           {/if}
           {#each applyReport.failed as f (f.key)}<p class="fail">⚠ {f.name} — {f.message}</p>{/each}
@@ -549,16 +547,6 @@
       <!-- The count strip doubles as the filter: the numbers you read are the
            control you click. It counts the WHOLE register, never the filtered
            view, because it is how a filter gets chosen. -->
-      {#if canEditRegister}
-        <div class="reg-actions">
-          <ProtectedButton requireAdmin={true} variant="primary" size="small"
-            on:click={addRequirement}>+ Add a requirement</ProtectedButton>
-          <span class="reg-actions-note">
-            Add a duty this building must meet that the register does not carry.
-          </span>
-        </div>
-      {/if}
-
       {#if diff}
         <div class="diff-wrap">
           <RegisterImportDiff {diff} busy={diffBusy}
@@ -590,62 +578,100 @@
         resultLabel="{shown.length} of {REG.length}"
       />
 
-      <!-- Export what is SHOWN. The spreadsheet carries every register field —
-           a reader sorting and pivoting it is the whole point, and a column
-           somebody else left out is one they cannot get back. -->
-      <div class="export-row">
-        <Button variant="secondary" size="small" disabled={!!exporting || shown.length === 0}
-          on:click={() => runExport('xlsx')}>
-          {exporting === 'xlsx' ? 'Building…' : `⬇ Excel (${shown.length})`}
-        </Button>
-        <Button variant="secondary" size="small" disabled={!!exporting || shown.length === 0}
-          on:click={() => runExport('docx')}>
-          {exporting === 'docx' ? 'Building…' : `⬇ Word (${shown.length})`}
-        </Button>
-        <span class="export-note">
-          <strong>Excel</strong> carries every field — for working the list.
-          <strong>Word</strong> is seven columns, laid out to read.
-          {shown.length === REG.length
-            ? 'Both cover the whole register.'
-            : `Both cover the ${shown.length} shown, and record the filter.`}
+      <!-- ⭐ FOLDED AWAY, AND THE REASON IS THE WHOLE POINT OF THIS PANEL.
+           The user: *"still very complicated for a user. I come to the first
+           screen and see things like..."* — and counting what stood between the
+           kind tabs and the first row of the list gave NINE separate bands of
+           controls and explanation. Four of them were about producing a
+           document, which is something you do at the END, and one was a button
+           for adding a duty by hand, which is rare.
+
+           ⛔ Copy-editing those bands would not have fixed it. They were mostly
+           well written; there were simply too many of them in front of somebody
+           who came to read a list. **A band that is collapsed costs one line;
+           the same band open costs the reader's place in the page.**
+
+           ⚠ Nothing is removed and nothing moved behind a menu — it opens with
+           one click and the summary says what is inside. -->
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div class="tools-head" on:click={() => (showTools = !showTools)}>
+        <span class="chev sm" class:open={showTools}>▸</span>
+        <span>Download this list, or add a requirement</span>
+        <span class="tools-hint">
+          {isStatement ? 'Word gives you the full obligations statement' : 'Excel · Word'}
         </span>
       </div>
 
-      <!-- ⭐ THE SECTIONS ARE WHAT MAKE THIS ONE DOCUMENT RATHER THAN TWO.
-           There used to be a separate "obligations statement" button beside
-           these, and a red warning on every extract telling people not to
-           confuse the two — a caution that existed only BECAUSE there were two.
-           With no filter and every section on, the Word file IS the statement,
-           and it says so itself. -->
-      <div class="export-row sections-row">
-        <span class="sections-label">Word also includes:</span>
-        <label class="sec"><input type="checkbox" bind:checked={sections.caveats} />
-          what the list does not claim</label>
-        <label class="sec"><input type="checkbox" bind:checked={sections.absences} />
-          reasoned absences</label>
-        <label class="sec"><input type="checkbox" bind:checked={sections.actions} />
-          outstanding actions</label>
-      </div>
+      {#if showTools}
+        <div class="tools">
+        <!-- Export what is SHOWN. The spreadsheet carries every register field —
+             a reader sorting and pivoting it is the whole point, and a column
+             somebody else left out is one they cannot get back. -->
+        <div class="export-row">
+          <Button variant="secondary" size="small" disabled={!!exporting || shown.length === 0}
+            on:click={() => runExport('xlsx')}>
+            {exporting === 'xlsx' ? 'Building…' : `⬇ Excel (${shown.length})`}
+          </Button>
+          <Button variant="secondary" size="small" disabled={!!exporting || shown.length === 0}
+            on:click={() => runExport('docx')}>
+            {exporting === 'docx' ? 'Building…' : `⬇ Word (${shown.length})`}
+          </Button>
+          <span class="export-note">
+            <strong>Excel</strong> has every column, for working through.
+            <strong>Word</strong> is laid out to read.
+            {shown.length === REG.length
+              ? 'Both cover the whole register.'
+              : `Both cover the ${shown.length} shown, and record the filter.`}
+          </span>
+        </div>
 
-      <div class="export-row">
-        <span class="export-note" class:is-statement={isStatement}>
-          {#if isStatement}
-            ⭐ <strong>With no filter and every section included, the Word file is
-            this building’s obligations statement</strong> — the document you give
-            a reviewer or the regulator. It titles and names itself accordingly.
-          {:else}
-            The Word file will call itself an <strong>extract</strong>, because
-            {shown.length !== REG.length
-              ? `it covers ${shown.length} of ${REG.length} requirements`
-              : 'a section is left out'}. Clear the filter and tick every section
-            to produce the full obligations statement.
+        <!-- ⭐ THE SECTIONS ARE WHAT MAKE THIS ONE DOCUMENT RATHER THAN TWO.
+             There used to be a separate "obligations statement" button beside
+             these, and a red warning on every extract telling people not to
+             confuse the two — a caution that existed only BECAUSE there were two.
+             With no filter and every section on, the Word file IS the statement,
+             and it says so itself. -->
+        <div class="export-row sections-row">
+          <span class="sections-label">Word also includes:</span>
+          <label class="sec"><input type="checkbox" bind:checked={sections.caveats} />
+            what the list does not claim</label>
+          <label class="sec"><input type="checkbox" bind:checked={sections.absences} />
+            reasoned absences</label>
+          <label class="sec"><input type="checkbox" bind:checked={sections.actions} />
+            outstanding actions</label>
+        </div>
+
+        <div class="export-row">
+          <span class="export-note" class:is-statement={isStatement}>
+            {#if isStatement}
+              <strong>This Word file will be your obligations statement</strong> — the
+              document you give a reviewer or the regulator. It arrives named
+              <em>Obligations_Statement</em>.
+            {:else}
+              This Word file will be an <strong>extract</strong>, not the full statement,
+              because {shown.length !== REG.length
+                ? `it covers only ${shown.length} of the ${REG.length}`
+                : 'a section is unticked'}. Clear the filters and tick all three boxes to
+              get the statement.
+            {/if}
+            {#if $statutoryRegister.source !== 'database'}
+              <strong class="warn">⚠ This building’s own list could not be read, so this
+              is the standard one. The file will say so on its first page — do not send it.</strong>
+            {/if}
+          </span>
+        </div>
+
+          {#if canEditRegister}
+            <div class="export-row">
+              <ProtectedButton requireAdmin={true} variant="secondary" size="small"
+                on:click={addRequirement}>+ Add a requirement</ProtectedButton>
+              <span class="export-note">
+                For a duty this building has that is not already in the list.
+              </span>
+            </div>
           {/if}
-          {#if $statutoryRegister.source !== 'database'}
-            <strong class="warn">⛔ Reading the standard register that ships, not
-            this building’s own. The file will say so.</strong>
-          {/if}
-        </span>
-      </div>
+        </div>
+      {/if}
 
       <!-- Bulk apply acts on WHAT IS SHOWN, not on every gap in the register.
            With filters that is the more useful of the two and the safer one:
@@ -663,8 +689,8 @@
                will still need scoping by hand — 11 entries propose a scope, the
                rest match every component. -->
           <span class="bulk-note">
-            Each is created switched off. Where the register proposes a scope it is
-            applied; the rest match every component until you scope them.
+            Nothing goes live until you turn each one on. Most will then need you to
+            say which parts of the building they cover.
           </span>
         </div>
       {/if}
@@ -717,7 +743,7 @@
                       {/if}
                       {#if entry.operationallyIncomplete}
                         <span class="badge incomplete"
-                          title="A frequent inspection beside an open defect reads as control it does not provide">⛔ Operationally incomplete</span>
+                          title="A temporary check standing in for a repair that has not happened. Checking often is not the same as fixing it.">⛔ Operationally incomplete</span>
                       {/if}
                       {#if decision?.review_due}
                         {@const rs = reviewState(decision.review_due)}
@@ -1124,6 +1150,17 @@
     background: none; border: none; cursor: pointer;
   }
   .diff-close:hover { color: rgb(226 232 240); }
+  /* One collapsed line in place of four bands of document controls. */
+  .tools-head {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    cursor: pointer; font-size: 0.78rem; color: rgb(148 163 184);
+  }
+  .tools-hint { color: rgb(100 116 139); font-size: 0.74rem; margin-left: auto; }
+  .tools {
+    display: flex; flex-direction: column; gap: 0.6rem;
+    padding: 0.65rem 0.8rem; border-radius: 8px;
+    background: rgb(15 23 42 / 0.5); border: 1px solid rgb(71 85 105 / 0.4);
+  }
   .export-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .export-note { font-size: 0.74rem; color: rgb(148 163 184); }
   .sections-row {

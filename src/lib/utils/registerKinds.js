@@ -42,25 +42,25 @@ export const REGISTER_KINDS = [
     key: 'requirement',
     label: 'Requirements',
     one: 'Requirement',
-    blurb: 'A duty this kind of building has, with a cadence and a way of evidencing it.',
+    blurb: 'Something this building has to do regularly, and how often.',
   },
   {
     key: 'action',
     label: 'Outstanding actions',
     one: 'Action',
-    blurb: 'Something to be decided or done ONCE — not a recurring duty. Each one has a consequence if it is not.',
+    blurb: 'Something to decide or sort out once. Not a recurring job.',
   },
   {
     key: 'absence',
     label: 'Reasoned absences',
     one: 'Reasoned absence',
-    blurb: 'A duty a reader might expect to find here, and why it is deliberately not in the list.',
+    blurb: 'A duty you might expect to see in this list, and why it is not here.',
   },
   {
     key: 'caveat',
     label: 'What this list does not claim',
     one: 'Caveat',
-    blurb: 'A limit on what the register asserts. ⚠ A statement of intent read as a statement of performance is the most damaging way for it to be wrong.',
+    blurb: 'The limits of what this list tells you. Worth reading before you rely on it.',
   },
 ];
 
@@ -86,21 +86,21 @@ export const KIND_KEYS = REGISTER_KINDS.map(k => k.key);
  */
 export const ACTION_CATEGORIES = [
   { key: 'duty_holder_decision',    label: 'Decisions only the duty holder can make',
-    blurb: 'Not technical questions with right answers — choices about how this building is run.' },
+    blurb: 'Choices about how this building is run. There is no technically correct answer — somebody has to decide.' },
   { key: 'technical_determination', label: 'Technical determinations',
-    blurb: 'Needs a competent person. A guess here would be indistinguishable afterwards from a determination.' },
+    blurb: 'Needs a competent person. A guess made now would later be impossible to tell apart from a proper answer.' },
   { key: 'information',             label: 'Information to obtain',
     blurb: 'A document or a fact that exists somewhere and is not held here.' },
   { key: 'process',                 label: 'Processes to establish',
-    blurb: 'An operational control that has to exist before a row relying on it means anything.' },
+    blurb: 'A way of working that has to be in place before the checks relying on it mean anything.' },
   { key: 'record',                  label: 'Records to create',
-    blurb: 'Something to enter in the portal — the half only a person can supply.' },
+    blurb: 'Something to enter in the portal. Only a person can supply it.' },
   { key: 'software',                label: 'Software that does not exist yet',
-    blurb: 'Named here so a row that depends on it cannot read as controlled.' },
+    blurb: 'Listed here so that nothing depending on it looks under control when it is not.' },
   { key: 'interface',               label: 'Interfaces with other parties',
     blurb: 'An arrangement with an agent, a resident system, or the fire and rescue authority.' },
   { key: 'testing',                 label: 'Testing by a person',
-    blurb: 'Built and never exercised by a human. ⚠ Admin pass first, ordinary user later — that is a sequence, not an oversight.' },
+    blurb: 'Built, but nobody has tried it yet.' },
 ];
 
 /** @type {Record<string, string>} */
