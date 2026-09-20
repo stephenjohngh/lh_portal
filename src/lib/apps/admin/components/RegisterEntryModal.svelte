@@ -137,7 +137,7 @@
             </p>
             <FormInput label="Source checked against" bind:value={verifyUrl} required
               placeholder="https://www.legislation.gov.uk/uksi/2022/547/regulation/10"
-              helpText="Where a reader can go and check it again. A verification with nothing to re-check against is not a verification." />
+              helpText="A link to the source, so anyone can check it again later." />
             <FormInput label="Checked on" type="date" bind:value={verifyOn} />
             <div class="verify-actions">
               <Button variant="secondary" size="small" disabled={saving}
@@ -172,7 +172,7 @@
 
     <FormTextarea label="Description" bind:value={e.description} rows={2} required
       error={show('description')} placeholder="What the check actually involves."
-      helpText="What the check involves, in general. ⚠ Not what this building has today — a description naming a current defect, project or installation stops being true when the building changes, and nothing will tell you." />
+      helpText="What the check involves, in general. ⚠ Describe the check, not what this building has today — a description naming a current defect or project stops being true when the building changes, and nothing will tell you." />
 
     <div class="pair">
       <FormSelect label="Group" bind:value={e.group} options={opts(GROUPS, GROUP_LABEL)}
@@ -184,7 +184,7 @@
     <FormTextarea label="Reference" bind:value={e.statutoryRef} rows={3} required
       error={show('statutoryRef')}
       placeholder="e.g. Fire Safety (England) Regulations 2022, reg 10(6)"
-      helpText="The instrument, standard or contract that requires this. ⛔ A requirement that cannot say what requires it is a note, not a register entry." />
+      helpText="The law, standard or contract that requires this. Without one, this is a note rather than a register entry." />
 
     <!-- ⛔ THE CATALOGUE RULE, WHERE SOMEBODY WOULD BREAK IT. The build plan §10
          says it must reach the editor, and `appliesWhen` is its mechanism: a
@@ -196,7 +196,7 @@
          is in prospect". Both read as facts and both stopped being true. -->
     <FormTextarea label="Applies when" bind:value={e.appliesWhen} rows={2} required
       error={show('appliesWhen')}
-      helpText="“Always” is a valid answer; an empty box is not. A row with no stated condition claims it always applies without saying so. ⛔ Write the CONDITION, not today’s answer to it — “where a mechanical smoke ventilation system serves a stair”, never “not applicable, none installed”. Whether it is true here is a recorded decision, and it changes without anyone editing this row." />
+      helpText="When this applies. ⚠ Write the CONDITION, not today’s answer to it — “where a mechanical smoke ventilation system serves a stair”, never “not applicable, none installed”. Whether it is true here is a decision you record separately, and it changes without anyone editing this row. “Always” is a fine answer; an empty box is not." />
 
     <!-- ── Cadence ──────────────────────────────────────────────────────── -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -208,23 +208,23 @@
         <div class="pair">
           <FormInput label="Every (days)" type="number" bind:value={e.frequencyDays}
             error={show('frequencyDays')}
-            helpText="Leave empty for an event-driven requirement, and give a trigger below." />
+            helpText="Leave empty if an event sets this off rather than a date, then fill in Trigger below." />
           <FormSelect label="Evidenced by" bind:value={e.evidencedBy}
             options={opts(['inspection', 'maintenance_job'], EVIDENCE_ROUTE_LABEL)}
             placeholder="Neither — not schedulable here"
-            helpText="⚠ A schedulable requirement with no frequency and no trigger can never fall due, and reads “never run” for ever." />
+            helpText="⚠ With neither a frequency nor a trigger this can never come due, and will read “never run” for ever." />
         </div>
 
         <FormTextarea label="Trigger" bind:value={e.trigger} rows={2}
           placeholder="e.g. On any significant change to the building"
-          helpText="What FIRES the duty, if it is not a cycle." />
+          helpText="What sets this off, if it is not a regular cycle." />
 
         <div class="pair">
           <FormSelect label="Trigger type" bind:value={e.triggerType}
             options={Object.entries(TRIGGER_TYPE_LABEL).map(([value, label]) => ({ value, label }))}
             placeholder="Derived from the frequency" />
           <FormInput label="What detects it" bind:value={e.triggerSource}
-            helpText="⚠ If the honest answer is “nothing”, say so — the register carries nine of those." />
+            helpText="⚠ If nothing does, say so. That is a real answer, and several entries give it." />
         </div>
 
         <div class="pair">
@@ -239,7 +239,7 @@
 
         <FormInput label="The source’s period, in its own words" bind:value={e.sourceIntervalWords}
           placeholder="e.g. at least every 3 months (FSER reg 10(6))"
-          helpText="⛔ No instrument anywhere says “366 days” — that is arithmetic on the word “annual”. Quote the period as the source states it." />
+          helpText="Quote the period in the source’s own words — “annually”, “every 3 months”. ⚠ No law or standard says “366 days”; that is our arithmetic on the word." />
 
         <Checkbox bind:checked={e.maxIsSchedulingTolerance}
           label="The day figure above is OUR scheduling tolerance, not a ceiling the source sets" />
@@ -255,7 +255,7 @@
       <div class="sec-body">
         <FormTextarea label="Duty holder in law" bind:value={e.statutoryDutyHolder} rows={2}
           placeholder="e.g. Responsible person (Regulatory Reform (Fire Safety) Order 2005, art 3)"
-          helpText="⚠ Who bears the duty IN LAW, which follows from the instrument. Not the same as who performs the work — this register once said a statutory duty had moved to a cleaner." />
+          helpText="Who bears the duty in law. ⚠ Not the same as who does the work — this list once said a legal duty belonged to a cleaner." />
 
         <div class="pair">
           <FormInput label="Performed by" bind:value={e.responsibleParty}
@@ -272,7 +272,7 @@
         <div class="pair">
           <FormInput label="Retention (months)" type="number" bind:value={e.retentionPeriodMonths} />
           <FormInput label="Retention basis" bind:value={e.retentionBasis}
-            helpText="⚠ No instrument in this register sets a retention period, so say where the figure comes from." />
+            helpText="Say where the figure comes from. ⚠ Nothing in this list has a retention period set by law." />
         </div>
       </div>
     {/if}
@@ -285,9 +285,9 @@
     {#if showNotes}
       <div class="sec-body">
         <FormTextarea label="Handling note (internal)" bind:value={e.handlingNote} rows={3}
-          helpText="How it is dealt with here. Internal — this does not reach the outward-facing statement." />
+          helpText="How it is dealt with here. Internal only — it never appears in the statement you send out." />
         <FormTextarea label="Reviewer note" bind:value={e.reviewerNote} rows={3}
-          helpText="⛔ The ONLY field the outward-facing statement prints. Declare what a reviewer should see; do not rely on anything else being scraped." />
+          helpText="The only note that appears in the statement you send out. Write what a reviewer should see." />
       </div>
     {/if}
 
@@ -301,7 +301,7 @@
         <Checkbox bind:checked={e.operationallyIncomplete}
           label="Operationally incomplete — an interim measure that is not yet a usable control" />
         <FormTextarea label="Completion action" bind:value={e.completionAction} rows={2}
-          helpText="Action id, owner, technical authority, due date, interim risk owner, status. ⚠ Left empty it renders NOT ASSIGNED, deliberately — an unassigned action is conspicuous every time the row is read, and a paragraph is not." />
+          helpText="Who will close this, by when, and who decides. ⚠ Left empty it prints NOT ASSIGNED, on purpose, so it stays visible until somebody fills it in." />
       </div>
     {/if}
 

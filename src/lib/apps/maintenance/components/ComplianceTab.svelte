@@ -311,7 +311,7 @@
                 <div>
                   <span class="pill {statusCls(r.status)}">{ROW_STATUS_LABEL[r.status]}</span>
                   {#if r.assuranceOnly}
-                    <span class="assurance-note">Does not discharge the duty — the operative control is {r.assuranceOnly}</span>
+                    <span class="assurance-note">This does not discharge the duty — that is done by {r.assuranceOnly}</span>
                   {/if}
                   {#if r.intervalBreached}<span class="pill breach">Max interval</span>{/if}
                 </div>
@@ -336,8 +336,8 @@
         </div>
         <p class="hint">
           Covers the {rows.length} requirement{rows.length === 1 ? '' : 's'} the filters above select.
-          <em>Due in the period</em> is how you find what was booked and never happened —
-          it is invisible in <em>completed</em>.
+          Switch to <em>Due in the period</em> to find work that was booked and never happened;
+          it cannot show under <em>Completed</em>.
         </p>
       </div>
 
@@ -384,8 +384,8 @@
     </p>
     <Checkbox bind:checked={optIncludeExcluded} label="Include requirements recorded as not applicable, with their reasons" />
     <p class="exp-note">
-      Leave this on for anything an assessor will read — a report that silently drops what you decided
-      does not apply is the first thing they will ask about.
+      Leave this on for anything an assessor will read. A report that quietly leaves out what you
+      decided does not apply is the first thing they will ask about.
     </p>
     <Checkbox bind:checked={optIncludeElsewhere} label="Include requirements tracked in another part of the portal" />
     <Checkbox bind:checked={optIncludeHistory} label="Append the evidence history for the selected period" />

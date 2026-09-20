@@ -77,8 +77,8 @@
         </ProtectedButton>
       </div>
       <p class="grp-note">
-        Nobody has edited these here, so the difference is the standard register moving —
-        a correction from a later release. Taking them is the reason to import.
+        Nobody has changed these here, so the difference is a correction that came with a
+        later release. Taking them is the reason to look.
       </p>
       {#each diff.updatable as r (r.key)}
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -105,10 +105,10 @@
     <div class="grp grp-warn">
       <div class="grp-head"><h5>⛔ Edited here, and different ({diff.divergent.length})</h5></div>
       <p class="grp-note">
-        These were changed in this building and the standard register does not agree. There is
-        <strong>no bulk action</strong>, deliberately: taking the standard version discards what
-        somebody decided here, and keeping this version declines a correction that may be right.
-        Each one is a judgement.
+        These were changed here, and the standard version now says something different.
+        <strong>There is no “take all” for these</strong>: taking the standard version throws away
+        what somebody here decided, and keeping yours turns down a correction that may be right.
+        Read each one and choose.
       </p>
       {#each diff.divergent as r (r.key)}
         <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -144,9 +144,9 @@
     <div class="grp">
       <div class="grp-head"><h5>No longer in the standard register ({diff.withdrawn.length})</h5></div>
       <p class="grp-note">
-        Reported, never acted on. The register's own rule is <em>delete only for NEVER</em>, and
-        obligations and applicability decisions may still link to these. If one is genuinely
-        withdrawn, retire it on the row so the evidence keeps its meaning.
+        Shown for information only — nothing here is removed for you. Work and decisions may
+        still point at these, so if one really has gone, retire it on its own row. That keeps the
+        evidence attached to something that can still explain it.
       </p>
       {#each diff.withdrawn as r (r.key)}
         <div class="row"><span class="nm">{r.name}</span><span class="ref">{r.key}</span></div>

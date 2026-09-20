@@ -128,7 +128,7 @@
   <div class="head">
     <div>
       <h3 class="heading-section">Inspections</h3>
-      <p class="text-muted">Define what is inspected, how often, and what is checked. Drives the mobile app’s due list.</p>
+      <p class="text-muted">What gets inspected, how often, and what is checked each time. This is what the mobile app shows as due.</p>
     </div>
     <ProtectedButton requireAdmin={true} variant="primary" on:click={openNew}>+ New inspection</ProtectedButton>
   </div>
@@ -174,7 +174,7 @@
               {:else if isJobEvidenced(d)}<span class="badge job">Either route</span>
               {:else}<span class="badge walk">Inspection walk</span>{/if}
               {#if d.template_key}
-                <span class="badge tmpl" title="Counts towards the statutory template above">Statutory</span>
+                <span class="badge tmpl" title="Linked to a requirement in the register above, so it counts towards coverage">Statutory</span>
               {/if}
               {#if hasEmptyScope(d)}
                 <span class="badge unscoped"
@@ -253,10 +253,10 @@
       </p>
       {#if retireError}<ErrorDisplay message={retireError} onDismiss={() => (retireError = '')} />{/if}
       <FormInput label="No longer required from" type="date" bind:value={retireOn}
-        helpText="The date it stopped applying &mdash; not today, if they differ. Work before this date was still required." />
+        helpText="The date it stopped applying, which may not be today. Anything due before that date was still required." />
       <FormTextarea label="What withdrew it?" bind:value={retireReason} rows={3} required={true}
         placeholder="e.g. Repealed by the Fire Safety (England) (Amendment) Regulations 2027"
-        helpText="Required. This answers &ldquo;why did this check stop?&rdquo; three years from now." />
+        helpText="Required. Somebody asking &ldquo;why did this check stop?&rdquo; in three years needs to find the answer here." />
       <div class="rt-actions">
         <Button variant="secondary" disabled={retireBusy} on:click={() => (retiring = null)}>Cancel</Button>
         <Button variant="primary" disabled={retireBusy || !retireReasonOk} on:click={confirmRetire}>

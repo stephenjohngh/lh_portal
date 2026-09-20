@@ -974,23 +974,22 @@
       <p class="text-muted">{withdrawing.statutoryRef}</p>
 
       <p class="wd-warn">
-        This is for a requirement <strong>added here by mistake</strong> — a duplicate, a typo,
-        something entered while learning the screen. It has no legal existence, so removing it
-        removes nothing real.
+        Use this only for something <strong>added here by mistake</strong> — a duplicate, a typo,
+        an entry made while learning the screen.
         <br /><br />
-        ⛔ <strong>It is NOT how you say a requirement does not apply.</strong> If the duty is
-        real and this building simply does not have the thing — no lift, no gas, no EV charging
-        — close this and record it as <em>Not applicable</em> instead. That keeps the requirement
-        visible with a reason and a name against it, which is what a reviewer needs to see. A
-        deleted row answers nothing.
+        ⛔ <strong>It is NOT how you say a requirement does not apply.</strong> If the duty is real
+        and this building simply does not have the thing — no lift, no gas, no EV charging — close
+        this and record it as <em>Not applicable</em> instead. That leaves the requirement on the
+        list with your reason and your name beside it, which is what a reviewer needs to see.
+        Deleting it answers nobody.
         <br /><br />
-        ⚠ It will refuse if any obligation or applicability decision links to this requirement.
-        Removing it then would leave that evidence pointing at something nothing can describe.
+        ⚠ It will refuse if any work or decision is linked to this requirement, because that
+        evidence would be left pointing at nothing.
       </p>
 
       <FormTextarea label="Why is it being removed?" bind:value={withdrawReason} rows={3} required
         placeholder="e.g. Entered twice while working through the tutorial"
-        helpText="Required. The row itself goes into the audit log, and this is what explains it." />
+        helpText="Required. The whole entry is kept in the audit log, and this is what explains why it went." />
 
       <div class="wd-actions">
         <Button variant="secondary" disabled={withdrawBusy}
@@ -1058,14 +1057,14 @@
         placeholder={decisionKind === 'not_applicable'
           ? 'e.g. No lift — four storeys, stairs only'
           : 'e.g. Passenger lift installed March 2027'}
-        helpText="Required. This is the decision record, not a note to yourself — write what would answer the question in three years." />
+        helpText="Required. This is a record somebody may have to defend — write what would answer the question in three years." />
 
       {#if decisionKind === 'not_applicable'}
         <FormInput
           label="Review this decision on (optional)"
           type="date"
           bind:value={decisionReviewDue}
-          helpText="Use it where the answer could change. “No lift” is stable; “no dwelling is let on a relevant tenancy” is not." />
+          helpText="Set one where the answer could change without anyone telling you. “No lift” will keep; “nothing is let on that kind of tenancy” will not." />
       {/if}
 
       <div class="na-actions">
