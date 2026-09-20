@@ -22,7 +22,7 @@ import { getLogger } from '$lib/utils/logger';
 import { logAudit } from '$lib/utils/auditLogger';
 import { STATEMENT_PROSE } from '$lib/utils/statementProse.js';
 import { normaliseMarkdown } from '$lib/utils/statementProseParse.js';
-import { diffProse } from '$lib/utils/proseDiff.js';
+import { diffProse, sectionChanges } from '$lib/utils/proseDiff.js';
 
 const logger = getLogger('statementProse');
 
@@ -85,13 +85,65 @@ function createStatementProseStore() {
     }));
   }
 
+  /**
+   * Bring the table level with the shipped prose, silently.
+   *
+   * ⭐ Same rule and same reason as the register's `levelWithSeed`: add what is
+   * missing, take a release's correction on any section nobody here has edited,
+   * never touch an edited one. **"Import 9 sections" was deployment plumbing
+   * presented as a step in setting up a compliance register**, and the document
+   * is an OUTPUT — nobody comes to this screen to import the text of it.
+   *
+   * @param {Object[]} rows  what the table currently holds
+   * @returns {Promise<number>} how many rows were written
+   */
+  async function levelWithSeed(rows) {
+    const byKey = new Map((rows ?? []).map(r => [r.section_key, r]));
+
+    const missing = STATEMENT_PROSE.filter(s => !byKey.has(s.key));
+    const updatable = STATEMENT_PROSE.filter((s) => {
+      const row = byKey.get(s.key);
+      if (!row || row.seed_modified_at) return false;   // absent, or edited here
+      return sectionChanges(s, fromRow(row)).length > 0;
+    });
+
+    if (!missing.length && !updatable.length) return 0;
+
+    try {
+      const uid = await currentUserId();
+      if (missing.length) {
+        await api.createMany('statement_prose', missing.map(s => ({
+          ...toRow(s), origin: 'seed', created_by: uid,
+        })));
+      }
+      for (const s of updatable) {
+        const row = { ...toRow(s), updated_by: uid, updated_at: new Date().toISOString() };
+        delete row.section_key;
+        await api.updateMany('statement_prose', { section_key: s.key }, row, false);
+      }
+      logAudit('update', 'statement_prose', null, 'prose levelled with the shipped version', {
+        appId: 'admin', eventCategory: 'compliance', severity: 'info',
+        afterData: { added: missing.length, updated: updatable.length },
+      });
+      logger('✅ levelled:', missing.length, 'added,', updatable.length, 'updated');
+      return missing.length + updatable.length;
+    } catch (/** @type {any} */ err) {
+      // ⚠ Not an error for a reader: only an admin may write this table.
+      logger('could not level with the seed (likely not an admin):', err.message);
+      return 0;
+    }
+  }
+
   /** Load the prose. Falls back to the shipped text — see the header. */
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const rows = await api.getAll('statement_prose', { orderBy: 'position' });
+      let rows = await api.getAll('statement_prose', { orderBy: 'position' });
+      if (await levelWithSeed(rows ?? [])) {
+        rows = await api.getAll('statement_prose', { orderBy: 'position' });
+      }
       if (!rows?.length) {
-        logger('table is empty — using the shipped prose');
+        logger('table is empty and could not be seeded — using the shipped prose');
         adopt(STATEMENT_PROSE, 'seed', { loaded: true, provenance: {} });
         return;
       }
@@ -106,31 +158,10 @@ function createStatementProseStore() {
     }
   }
 
-  /**
-   * Import the shipped prose. Idempotent on `section_key`.
-   *
-   * ⛔ It does NOT overwrite. A section edited here must survive an import —
-   * the same rule as the register, and for the same reason: the edit is
-   * somebody's considered wording, and the import is a release's default.
-   *
-   * @returns {Promise<{ added: string[], present: number }>}
-   */
-  async function importSeed() {
-    const existing = await api.getAll('statement_prose', { orderBy: 'position' });
-    const have = new Set((existing ?? []).map(r => r.section_key));
-    const missing = STATEMENT_PROSE.filter(s => !have.has(s.key));
-    if (missing.length === 0) return { added: [], present: have.size };
-
-    const uid = await currentUserId();
-    await api.createMany('statement_prose', missing.map(s => ({
-      ...toRow(s), origin: 'seed', created_by: uid,
-    })));
-    logAudit('create', 'statement_prose', null, `${missing.length} prose sections`, {
-      appId: 'admin', eventCategory: 'compliance', severity: 'info',
-    });
-    await load();
-    return { added: missing.map(s => s.key), present: have.size + missing.length };
-  }
+  // ⛔ `importSeed()` IS DELETED, like the register's. `levelWithSeed` above
+  // does the same insert on every load, and two write paths for one purpose is
+  // the fault this project keeps finding — a thing written twice goes wrong in
+  // the copy you are not editing.
 
   /**
    * Save one section's markdown.
@@ -247,7 +278,7 @@ function createStatementProseStore() {
     return { added: toAdd.length, updated: updateKeys.size };
   }
 
-  return { subscribe, load, importSeed, edit, previewImport, applyFromSeed };
+  return { subscribe, load, edit, previewImport, applyFromSeed };
 }
 
 export const statementProse = createStatementProseStore();

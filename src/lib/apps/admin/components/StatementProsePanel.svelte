@@ -35,8 +35,6 @@
   import { fmtDateTime } from '$lib/utils/dates.js';
 
   let panelError = '';
-  let importing = false;
-  let importReport = null;
 
   /** The diff a re-import would produce. Null until somebody asks for it. */
   let diff = null;
@@ -103,15 +101,6 @@
     } finally { saving = false; }
   }
 
-  async function runImport() {
-    importing = true; panelError = ''; importReport = null;
-    try {
-      importReport = await statementProse.importSeed();
-    } catch (/** @type {any} */ err) {
-      panelError = err.message;
-    } finally { importing = false; }
-  }
-
   // ⛔ Checking is separate from applying, and reports rather than acts. The
   // shipped text moving and somebody editing a section here are indistinguishable
   // by comparison alone — see `proseDiff.js`.
@@ -155,24 +144,16 @@
   {#if panelError}<ErrorDisplay message={panelError} />{/if}
 
   {#if usingSeed}
-    <!-- ⛔ The same argument as the register: falling back is right, doing so
-         silently is not. The shipped text describes a higher-risk building in
-         general; this building's own text is what a reviewer needs. -->
+    <!-- ⚠ Only reachable by a reader who cannot write the table — an admin's
+         load levels it with the shipped text before this renders. There is no
+         import button: importing was deployment plumbing, and the document is
+         an output rather than something to set up. -->
     <div class="seed-warn">
       <strong>⛔ Reading the standard text that ships with the system.</strong>
-      These sections have not been imported into this building’s records yet, so
-      they cannot be edited — and a statement generated now carries a banner
-      saying it must not be sent.
-      <div class="seed-actions">
-        <Button variant="primary" size="small" disabled={importing} on:click={runImport}>
-          {importing ? 'Importing…' : `Import ${sections.length} sections`}
-        </Button>
-      </div>
-      {#if importReport}
-        <p class="report">
-          {importReport.added.length} added · {importReport.present} now held.
-        </p>
-      {/if}
+      These are the shipped sections, which describe a higher-risk building in
+      general rather than this one. They cannot be edited from here, and a
+      statement generated now carries a banner saying it must not be sent.
+      Sign in as an administrator to hold and edit this building’s own text.
     </div>
   {/if}
 
@@ -276,8 +257,6 @@
     border-radius: 0.5rem; padding: 0.7rem 0.8rem;
     font-size: 0.78rem; color: rgb(253 230 138);
   }
-  .seed-actions { margin-top: 0.5rem; }
-  .report { margin: 0.4rem 0 0; font-size: 0.75rem; color: rgb(190 242 100); }
 
   .sections { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
   .section {

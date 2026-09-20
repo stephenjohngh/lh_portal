@@ -27,6 +27,10 @@ const RENAMED = {
   key:     'template_key',
   group:   'group_key',
   trigger: 'trigger_event',
+  // ⚠ An action's `category` is WHO MUST ACT. The column says `action_` because
+  // a bare `category` beside `group_key` and `basis` would read as a fourth way
+  // of classifying a requirement, which it is not — it applies to one kind.
+  category: 'action_category',
 };
 
 const RENAMED_BACK = Object.fromEntries(
@@ -61,6 +65,25 @@ export const REGISTER_COLUMNS = [
 ];
 
 /**
+ * ⛔ Columns carried by the register's OTHER KINDS — actions, reasoned absences
+ * and caveats — and declared apart from `REGISTER_COLUMNS` on purpose.
+ *
+ * ⭐ `REGISTER_COLUMNS` means "what a REQUIREMENT emits", and the test that
+ * guards it asserts a two-way match against all 118 of them. Folding these in
+ * would break that in the worst way: it would stop failing when a requirement
+ * field lost its column, because the list would no longer be a statement about
+ * requirements at all. Two kinds, two declared sets, two tests.
+ *
+ * ⚠ `kind` is not optional on a stored row — it is what stops an action being
+ * counted as a duty — but it is defaulted in the schema, so the 118 rows that
+ * predate it are requirements without anyone writing it.
+ */
+export const ITEM_COLUMNS = [
+  'kind', 'action_category', 'priority', 'unblocks', 'consequence',
+  'owner', 'technical_authority', 'due_date', 'action_status', 'sort_order',
+];
+
+/**
  * Provenance columns the DATABASE owns but the editor must be able to SHOW.
  * ⚠ Not in REGISTER_COLUMNS: `toRow()` must never write them from an entry,
  * because they record how a row came to be here rather than what it says.
@@ -74,6 +97,49 @@ const DB_ONLY = new Set([
   'origin', 'seed_modified_at', 'active', 'citation_verified_by',
   'created_at', 'created_by', 'updated_at', 'updated_by',
 ]);
+
+/**
+ * One stored cell against one shipped cell.
+ *
+ * ⚠ `null` and `undefined` are the same ABSENCE. PostgREST returns null for a
+ * column with no value while a seed entry simply omits the field; treating them
+ * as different marks every row as changed.
+ * ⚠ jsonb comes back structurally equal but not identically, hence the
+ * stringify — enough for this table's scalars, arrays and small objects.
+ */
+export function sameCell(a, b) {
+  if (a === b) return true;
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  if (typeof a === 'object' || typeof b === 'object') {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+  return false;
+}
+
+/**
+ * Does the SHIPPED version disagree with what is stored, about something the
+ * shipped version actually says?
+ *
+ * ⛔ THE QUESTION IS NOT "ARE THESE TWO IDENTICAL", and getting that wrong cost
+ * a real bug. The first attempt compared the union of both sides' fields — and a
+ * stored row carries schema defaults the seed entry has no opinion about
+ * (`kind` defaults to 'requirement', `action_status` to 'open', `sort_order` to
+ * null). Every requirement therefore differed from itself on a field it does
+ * not declare, and the levelling pass would have rewritten all 118 rows on
+ * every single load, for ever.
+ *
+ * ⚠ A column the shipped version is silent on is not a disagreement. Proved
+ * against real production rows: a settled register is a no-op.
+ *
+ * @param {Object} entry  the shipped entry
+ * @param {Object} row    the stored row
+ * @returns {string[]} the columns that differ, empty when nothing does
+ */
+export function shippedDiffers(entry, row) {
+  const shipped = toRow(entry);
+  return Object.keys(shipped).filter(col => !sameCell(shipped[col], row?.[col]));
+}
 
 /** camelCase → snake_case. */
 export function toColumn(field) {

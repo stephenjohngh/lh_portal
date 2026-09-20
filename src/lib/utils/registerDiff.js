@@ -27,9 +27,25 @@
 // That is the whole basis of the categories below, and it is why R2 stamps
 // `seed_modified_at` on every edit of a seeded row.
 
-/** Fields the diff ignores: provenance is about how a row arrived, not what it says. */
+/**
+ * Fields the diff ignores: provenance is about how a row arrived, not what it
+ * says.
+ *
+ * ⚠ THE LAST THREE ARE SCHEMA DEFAULTS, and leaving them out was a real bug.
+ * A stored row carries `kind`, `action_status` and `sort_order` whether or not
+ * the shipped entry has any opinion about them — so every one of the 118
+ * requirements differed from itself on three fields it does not declare, and
+ * the diff screen reported the whole register as changed.
+ *   · `kind` cannot change after a row is created — a release cannot turn a
+ *     requirement into an action — so a difference here is never a judgement.
+ *   · `actionStatus` is THIS BUILDING'S progress on an action. It is no more
+ *     shipped content than a completion date is.
+ *   · `sortOrder` is presentation. The levelling pass still takes a release's
+ *     new order; it is simply not something a person is asked to decide about.
+ */
 const NOT_CONTENT = new Set([
   'citationVerifiedOn', 'citationVerifiedAgainst',
+  'kind', 'actionStatus', 'sortOrder',
 ]);
 
 /** Deep-ish equality, enough for the register's scalars, arrays and small objects. */

@@ -119,13 +119,20 @@
   // Open by itself the first time there is something to answer for, then leave
   // it under the user's control — a panel that keeps reopening is one people
   // learn to close without reading.
-  // -- Importing the shipped seed into the table -------------------------------
-  // ⚠ Visible only while the app is still reading the SEED. Once the table
-  // holds the register there is nothing to offer, and a button that reads
-  // "import" beside a populated table invites someone to wonder what it would
-  // overwrite. (Nothing — but the question should not arise.)
-  let importing = false;
-  let importReport = null;
+  // -- Collisions with the shipped register ------------------------------------
+  // ⭐ THE ONLY PART OF THE SEED/TABLE RELATIONSHIP A PERSON SHOULD EVER SEE.
+  // The store levels the table with the shipped register on load: it adds what
+  // is missing and takes a release's correction on any row nobody here has
+  // edited. Neither needs telling. What it will NOT do is overwrite a row
+  // somebody here changed — so when a release also changes that same row, two
+  // considered wordings exist and only a person can choose between them.
+  //
+  // ⚠ That is rare. It is zero today, which is exactly why it must not be a
+  // standing button: "Check against the standard register" was on this screen
+  // for every user, every day, to serve a case that had never once occurred.
+  $: collisions = $statutoryRegister.source === 'database' && $statutoryRegister.loaded
+    ? (statutoryRegister.previewImport()?.divergent ?? [])
+    : [];
 
   // ── Exports ────────────────────────────────────────────────────────────────
   // ⚠ Both pass the rows the screen is showing, and the facets it is showing
@@ -197,15 +204,6 @@
     } finally {
       exporting = null;
     }
-  }
-
-  async function runImport() {
-    importing = true; panelError = ''; importReport = null;
-    try {
-      importReport = await statutoryRegister.importSeed();
-    } catch (/** @type {any} */ err) {
-      panelError = err.message;
-    } finally { importing = false; }
   }
 
   // -- Adding and editing requirements (R2) ------------------------------------
@@ -467,34 +465,28 @@
 
       {#if panelError}<ErrorDisplay message={panelError} onDismiss={() => (panelError = '')} />{/if}
 
-      <!-- ⛔ The register is in CODE until this is run. Everything below still
-           works either way — the store falls back to the shipped seed — but
-           nothing can be added or edited here until the catalogue is in the
-           database. -->
-      {#if $statutoryRegister.source === 'seed' && $statutoryRegister.loaded}
-        <div class="seed-notice">
-          <p class="seed-h">This register is being read from the application code</p>
-          <p>
-            {REG.length} requirements, as shipped. They cannot be edited here, and a new
-            requirement cannot be added, until the catalogue is imported into the database.
-            <strong>Importing changes nothing about what the register says</strong> — it
-            copies these same entries in so they can be maintained.
-          </p>
-          <ProtectedButton requireAdmin={true} variant="primary" size="small"
-            disabled={importing} on:click={runImport}>
-            {importing ? 'Importing…' : `Import ${REG.length} requirements`}
-          </ProtectedButton>
-        </div>
-      {/if}
+      <!-- ⭐ THERE IS NO IMPORT STEP AND NO "reading from application code"
+           NOTICE, and their absence is the feature. The store levels the table
+           with the shipped register on load — see `levelWithSeed`. How a row got
+           here is deployment plumbing; the person looking at this screen came to
+           decide which duties apply to this building and what discharges them.
 
-      {#if importReport}
-        <div class="report">
-          {#if importReport.added.length > 0}
-            <p>✓ Imported {importReport.added.length} requirement{importReport.added.length === 1 ? '' : 's'}.
-              The register is now held in the database.</p>
-          {:else}
-            <p>Nothing to import — all {importReport.present} requirements are already there.</p>
-          {/if}
+           ⚠ The one thing that still needs a person is a genuine collision: a
+           release changed a requirement AND somebody here edited the same one.
+           That is the banner below, and it appears only when there is one. -->
+      {#if collisions.length}
+        <div class="collision">
+          <p class="collision-h">
+            {collisions.length} requirement{collisions.length === 1 ? '' : 's'} changed in
+            the application, and {collisions.length === 1 ? 'was' : 'were'} also edited here
+          </p>
+          <p>
+            Both versions are considered. Nothing has been overwritten — open each one and
+            decide which wording is right for this building.
+          </p>
+          <Button variant="secondary" size="small" on:click={checkForUpdates}>
+            Show me the differences
+          </Button>
         </div>
       {/if}
 
@@ -532,12 +524,8 @@
         <div class="reg-actions">
           <ProtectedButton requireAdmin={true} variant="primary" size="small"
             on:click={addRequirement}>+ Add a requirement</ProtectedButton>
-          <Button variant="secondary" size="small" on:click={checkForUpdates}>
-            Check against the standard register
-          </Button>
           <span class="reg-actions-note">
-            Add a duty this building must meet that the register does not carry — or see what the
-            shipped standard register has that this one does not.
+            Add a duty this building must meet that the register does not carry.
           </span>
         </div>
       {/if}
@@ -1028,14 +1016,16 @@
 </Modal>
 
 <style>
-  /* ── The count strip: a summary that is also the control ───────────────── */
-  .seed-notice {
-    font-size: 0.8rem; line-height: 1.5; color: rgb(203 213 225);
-    background: rgb(56 189 248 / 0.1); border: 1px solid rgb(56 189 248 / 0.3);
+  /* Shown only when a release and somebody here changed the same requirement. */
+  .collision {
+    font-size: 0.8rem; line-height: 1.5; color: rgb(253 230 138);
+    background: rgb(69 26 3); border: 1px solid rgb(120 53 15);
     border-radius: 6px; padding: 0.65rem 0.8rem;
     display: flex; flex-direction: column; gap: 0.45rem; align-items: flex-start;
   }
-  .seed-h { font-weight: 700; color: rgb(125 211 252); }
+  .collision-h { font-weight: 700; }
+
+  /* ── The count strip: a summary that is also the control ───────────────── */
   .tally-strip { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .tally {
     display: flex; align-items: baseline; gap: 0.35rem; cursor: pointer;

@@ -36,20 +36,53 @@ const { statutoryRegister } = await import('./statutoryRegister.js');
 const { STATUTORY_TEMPLATE, activeRegister, isUsingSeed, templateEntry, setActiveRegister } =
   await import('$lib/utils/statutoryTemplate.js');
 
-/** A database row for one seed entry, with the columns the DB owns. */
-const asRow = (entry, over = {}) => {
-  const row = {};
-  for (const [k, v] of Object.entries(entry)) {
-    row[k === 'key' ? 'template_key' : k === 'group' ? 'group_key'
-      : k === 'trigger' ? 'trigger_event'
-      : k.replace(/[A-Z]/g, c => '_' + c.toLowerCase())] = v;
-  }
-  return { ...row, origin: 'seed', active: true, created_at: 'x', ...over };
-};
+const { REGISTER_ITEMS } = await import('$lib/utils/registerItemsData.js');
+const { toRow } = await import('$lib/utils/registerRowMapping.js');
+
+/** Everything that ships — what a settled table holds. */
+const SHIPPED = [...STATUTORY_TEMPLATE, ...REGISTER_ITEMS];
+
+/**
+ * A database row for one shipped entry, with the columns the DB owns.
+ *
+ * ⚠ Built with the REAL `toRow`, not a hand-rolled copy of the mapping. This
+ * helper used to reimplement the camelCase→snake_case rule inline, and a second
+ * copy of a rule is the fault this project keeps finding — it would have gone
+ * on renaming `category` to `category` after the mapping started saying
+ * `action_category`, and the test would have passed while the app broke.
+ */
+const asRow = (entry, over = {}) => ({
+  ...toRow(entry),
+  // The schema's own defaults, which the seed entry has no opinion about.
+  kind: entry.kind ?? 'requirement',
+  action_status: 'open',
+  sort_order: entry.sortOrder ?? null,
+  origin: 'seed', active: true, created_at: 'x', seed_modified_at: null,
+  ...over,
+});
+
+/** A table that is already level with the shipped register. */
+const settledTable = () => SHIPPED.map(e => asRow(e));
+
+/**
+ * The audit calls made by the ACT under test.
+ *
+ * ⚠ Levelling writes its own audit entry, and every write path ends with a
+ * `load()` — so `calls.at(-1)` is the levelling entry rather than the act's
+ * whenever a test starts from a table that is not already level. Asserting on
+ * the last call was reading the tidy-up and calling it the act.
+ */
+const LEVELLING = 'register levelled with the shipped version';
+const actAudits = () => h.logAudit.mock.calls.filter(c => c[3] !== LEVELLING);
 
 beforeEach(() => {
   vi.clearAllMocks();
   setActiveRegister(null);          // back to the seed between tests
+  // ⭐ THE DEFAULT IS A SETTLED REGISTER, because that is the normal state and
+  // because `load()` now levels the table on every call. A test about
+  // `applyFromSeed` that started from an empty table would spend its first
+  // assertion on 183 inserts it never asked for.
+  h.getAll.mockResolvedValue(settledTable());
 });
 
 describe('load — and the fallback that is not merely defensive', () => {
@@ -112,7 +145,6 @@ describe('⚠ every read names its order', () => {
     // assumption. This asserts the call shape instead, which it can.
     h.getAll.mockResolvedValue([]);
     await statutoryRegister.load();
-    await statutoryRegister.importSeed();
 
     expect(h.getAll.mock.calls.length).toBeGreaterThan(0);
     for (const [table, opts] of h.getAll.mock.calls) {
@@ -122,49 +154,90 @@ describe('⚠ every read names its order', () => {
   });
 });
 
-describe('importSeed', () => {
-  it('inserts every entry into an empty table', async () => {
-    h.getAll.mockResolvedValueOnce([]).mockResolvedValue([]);
-    const report = await statutoryRegister.importSeed();
+// ⛔ THESE WERE THE `importSeed` TESTS AND THE CONTRACTS ARE UNCHANGED — only
+// what performs them moved. `importSeed` was a button the user had to press;
+// `levelWithSeed` runs on every load and nobody presses anything. The
+// contracts it must still honour are exactly the ones a manual import had to.
+describe('levelling the table with the shipped register, on load', () => {
+  it('inserts everything into an empty table', async () => {
+    h.getAll.mockResolvedValueOnce([]).mockResolvedValue(settledTable());
+    await statutoryRegister.load();
 
-    expect(report.added).toHaveLength(STATUTORY_TEMPLATE.length);
     expect(h.createMany).toHaveBeenCalledOnce();
     const [table, rows] = h.createMany.mock.calls[0];
     expect(table).toBe('statutory_register');
+    expect(rows).toHaveLength(SHIPPED.length);
     expect(rows[0].template_key).toBeTruthy();
     expect(rows[0].origin).toBe('seed');
     expect(rows[0].created_by).toBe('u1');
   });
 
-  it('is idempotent — a second run adds nothing', async () => {
-    h.getAll.mockResolvedValue(STATUTORY_TEMPLATE.map(e => ({ template_key: e.key })));
-    const report = await statutoryRegister.importSeed();
-
-    expect(report.added).toEqual([]);
-    expect(report.present).toBe(STATUTORY_TEMPLATE.length);
+  // ⭐ The one that matters most in ordinary use: opening the screen must not
+  // write to the database. This failed once, on a comparison that walked the
+  // union of both sides' fields and so found every row different from itself.
+  it('⛔ writes NOTHING when the table is already level', async () => {
+    await statutoryRegister.load();
     expect(h.createMany).not.toHaveBeenCalled();
+    expect(h.updateMany).not.toHaveBeenCalled();
   });
 
   it('adds only what is missing, and ⛔ never overwrites what is there', async () => {
-    // A row edited in the app must survive an import. Reporting divergence is
-    // R3; this phase must at minimum not clobber.
-    const present = STATUTORY_TEMPLATE.slice(0, 100).map(e => ({ template_key: e.key }));
-    h.getAll.mockResolvedValueOnce(present).mockResolvedValue([]);
+    const present = settledTable().slice(0, 100);
+    h.getAll.mockResolvedValueOnce(present).mockResolvedValue(settledTable());
 
-    const report = await statutoryRegister.importSeed();
+    await statutoryRegister.load();
 
-    expect(report.added).toHaveLength(STATUTORY_TEMPLATE.length - 100);
     const [, rows] = h.createMany.mock.calls[0];
+    expect(rows).toHaveLength(SHIPPED.length - 100);
     const sent = new Set(rows.map(r => r.template_key));
-    for (const e of STATUTORY_TEMPLATE.slice(0, 100)) {
-      expect(sent.has(e.key), `${e.key} must not be re-sent`).toBe(false);
+    for (const row of present) {
+      expect(sent.has(row.template_key), `${row.template_key} must not be re-sent`).toBe(false);
     }
   });
 
-  it('audits the import', async () => {
-    h.getAll.mockResolvedValueOnce([]).mockResolvedValue([]);
-    await statutoryRegister.importSeed();
+  // ⛔ The rule the whole design turns on: a row somebody edited here is never
+  // touched, however far the shipped version has moved.
+  it('⛔ never updates a row that was edited here', async () => {
+    const rows = settledTable();
+    rows[0] = { ...rows[0], name: 'renamed here', seed_modified_at: '2026-09-20T00:00:00Z' };
+    h.getAll.mockResolvedValue(rows);
+
+    await statutoryRegister.load();
+    expect(h.updateMany).not.toHaveBeenCalled();
+  });
+
+  // ...but it DOES take a release's correction on a row nobody touched, which
+  // is the fault R3 was written for: a corrected citation silently declined.
+  it('takes the shipped version of a row nobody here has edited', async () => {
+    const rows = settledTable();
+    rows[0] = { ...rows[0], name: 'a stale name from an older release' };
+    h.getAll.mockResolvedValue(rows);
+
+    await statutoryRegister.load();
+    expect(h.updateMany).toHaveBeenCalled();
+    const [table, filter] = h.updateMany.mock.calls[0];
+    expect(table).toBe('statutory_register');
+    expect(filter.template_key).toBe(rows[0].template_key);
+  });
+
+  it('audits it', async () => {
+    h.getAll.mockResolvedValueOnce([]).mockResolvedValue(settledTable());
+    await statutoryRegister.load();
     expect(h.logAudit).toHaveBeenCalled();
+  });
+
+  // ⚠ A viewer cannot write this table. That is not an error state for them —
+  // failing loudly would put a compliance screen into an error over something
+  // the reader cannot act on.
+  it('falls back to the shipped register when it cannot write', async () => {
+    h.getAll.mockResolvedValue([]);
+    h.createMany.mockRejectedValueOnce(new Error('permission denied'));
+
+    await statutoryRegister.load();
+    const s = get(statutoryRegister);
+    expect(s.source).toBe('seed');
+    expect(s.entries.length).toBe(STATUTORY_TEMPLATE.length);
+    expect(s.error).toBeFalsy();
   });
 });
 
@@ -223,7 +296,7 @@ describe('R2 — writing to the register', () => {
         group: 'governance', basis: 'management', statutoryRef: 'z',
         appliesWhen: 'Always', evidencedBy: null,
       });
-      const [, , , , opts] = h.logAudit.mock.calls.at(-1);
+      const [, , , , opts] = actAudits().at(-1);
       expect(opts.severity).toBe('warning');
       expect(opts.eventCategory).toBe('compliance');
     });
@@ -304,7 +377,18 @@ describe('R2 — writing to the register', () => {
 });
 
 describe('R3 — import as a diff', () => {
-  const loadWith = async (rows) => { h.getAll.mockResolvedValue(rows); await statutoryRegister.load(); };
+  // The mocks are cleared AFTER the load. `load()` levels the table with the
+  // shipped register, so a test set up with a PARTIAL table sees inserts from
+  // its own arrangement — and an assertion that `createMany` was never called
+  // would be catching the setup rather than the act it names.
+  const loadWith = async (rows) => {
+    h.getAll.mockResolvedValue(rows);
+    await statutoryRegister.load();
+    h.createMany.mockClear();
+    h.updateMany.mockClear();
+    h.create.mockClear();
+    h.logAudit.mockClear();
+  };
 
   it('reports nothing to do when the table matches the seed', async () => {
     await loadWith(STATUTORY_TEMPLATE.map(e => asRow(e)));
@@ -345,7 +429,13 @@ describe('R3 — import as a diff', () => {
     it('⛔ acts ONLY on keys named explicitly', async () => {
       // So a divergent row cannot be swept along by an "update all" over a list
       // that happened to include it.
-      await loadWith([asRow(STATUTORY_TEMPLATE[0], { statutory_ref: 'x' }), asRow(STATUTORY_TEMPLATE[1], { statutory_ref: 'y' })]);
+      // ⚠ BOTH ROWS ARE DIVERGENT — edited here AND changed upstream. That is
+      // the only state `applyFromSeed` exists for now: levelling silently takes
+      // any row nobody here has touched, so an unedited row never reaches this.
+      await loadWith([
+        asRow(STATUTORY_TEMPLATE[0], { statutory_ref: 'x', seed_modified_at: '2026-09-17T10:00:00Z' }),
+        asRow(STATUTORY_TEMPLATE[1], { statutory_ref: 'y', seed_modified_at: '2026-09-17T10:00:00Z' }),
+      ]);
       await statutoryRegister.applyFromSeed({ update: [STATUTORY_TEMPLATE[0].key] });
 
       expect(h.updateMany).toHaveBeenCalledTimes(1);
@@ -376,7 +466,10 @@ describe('R3 — import as a diff', () => {
     });
 
     it('ignores a key the seed does not carry', async () => {
-      await loadWith([asRow(STATUTORY_TEMPLATE[0])]);
+      // ⚠ A SETTLED table, so the `load()` at the end of `applyFromSeed` has
+      // nothing to level. From a partial one this asserted that levelling had
+      // not run, which is not what the test is named after.
+      await loadWith(settledTable());
       const r = await statutoryRegister.applyFromSeed({ add: ['not_in_the_seed'] });
       expect(r.added).toBe(0);
       expect(h.createMany).not.toHaveBeenCalled();
@@ -385,14 +478,25 @@ describe('R3 — import as a diff', () => {
     it('audits it as a compliance change', async () => {
       await loadWith([asRow(STATUTORY_TEMPLATE[0])]);
       await statutoryRegister.applyFromSeed({ add: [STATUTORY_TEMPLATE[1].key] });
-      const [, , , , opts] = h.logAudit.mock.calls.at(-1);
+      const [, , , , opts] = actAudits().at(-1);
       expect(opts.severity).toBe('warning');
     });
   });
 });
 
 describe('withdrawLocal — removing a requirement added in error', () => {
-  const loadWith = async (rows) => { h.getAll.mockResolvedValue(rows); await statutoryRegister.load(); };
+  // The mocks are cleared AFTER the load. `load()` levels the table with the
+  // shipped register, so a test set up with a PARTIAL table sees inserts from
+  // its own arrangement — and an assertion that `createMany` was never called
+  // would be catching the setup rather than the act it names.
+  const loadWith = async (rows) => {
+    h.getAll.mockResolvedValue(rows);
+    await statutoryRegister.load();
+    h.createMany.mockClear();
+    h.updateMany.mockClear();
+    h.create.mockClear();
+    h.logAudit.mockClear();
+  };
   const KEY = STATUTORY_TEMPLATE[0].key;
   const REASON = 'Added by mistake during the tutorial run.';
 
@@ -458,7 +562,7 @@ describe('withdrawLocal — removing a requirement added in error', () => {
     await loadWith([asRow(STATUTORY_TEMPLATE[0], { origin: 'local' })]);
     await statutoryRegister.withdrawLocal(KEY, REASON);
 
-    const [action, table, id, name, opts] = h.logAudit.mock.calls.at(-1);
+    const [action, table, id, name, opts] = actAudits().at(-1);
     expect(action).toBe('delete');
     expect(table).toBe('statutory_register');
     expect(id).toBe(KEY);

@@ -10,15 +10,27 @@
 // DUTY. This is the read path that makes the database the catalogue.
 //
 // ⛔ THE SEED IS NOT A MIGRATION. `supabase/migrations/` is gitignored, so a
-// seed there would never reach a second deployment. The 116 entries stay in
-// `statutoryRegisterData.js` — committed, shipping — and are imported from here,
-// idempotently on `template_key`. The same call serves first-run seeding and
-// importing entries a later release adds.
+// seed there would never reach a second deployment. The requirements stay in
+// `statutoryRegisterData.js` — committed, shipping — and reach the table from
+// here, idempotently on `template_key`.
 //
-// ⚠ Every path falls back to the seed. Before the import has run, and if the
-// table is ever unreachable, the compliance screens show the standard register
-// rather than an empty one — because an empty register renders as "no
-// requirements", which is the most dangerous thing that screen could say.
+// ⭐ AND THAT IS INVISIBLE TO WHOEVER IS LOOKING AT THE SCREEN, which is the
+// point of `levelWithSeed` below. The user's words, and they are the
+// requirement: *"the position the user sees is a ready populated db, whether
+// that came from our initial load or someone used 'Add new' 118 times shouldn't
+// matter and they shouldn't be able to see the difference."*
+//
+// ⚠ IT USED TO BE A BUTTON, and that was the mistake. "Import 118
+// requirements", then "Check against the standard register · 2 new · Add all
+// 2". Every one of those is deployment plumbing dressed as a compliance task —
+// the register has to start in the database rather than in a migration, and I
+// made that the user's problem. The two things they actually came to do are
+// *which of these apply to this building* and *what work discharges each*;
+// nothing else belongs in front of them.
+//
+// ⚠ The seed fallback stays, for a reader who cannot write the table: an empty
+// register renders as "no requirements", which is the most dangerous thing a
+// compliance screen could say.
 
 import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
@@ -26,15 +38,37 @@ import { supabase } from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { logAudit } from '$lib/utils/auditLogger';
 import { STATUTORY_TEMPLATE, setActiveRegister } from '$lib/utils/statutoryTemplate.js';
-import { toRow, fromRow } from '$lib/utils/registerRowMapping.js';
+import { REGISTER_ITEMS } from '$lib/utils/registerItemsData.js';
+import { ofKind, kindOf } from '$lib/utils/registerKinds.js';
+import { toRow, fromRow, shippedDiffers } from '$lib/utils/registerRowMapping.js';
 import { validateRegisterEntry } from '$lib/utils/registerEntryRules.js';
-import { diffRegister } from '$lib/utils/registerDiff.js';
+import { diffRegister, fieldChanges } from '$lib/utils/registerDiff.js';
 
 const logger = getLogger('statutoryRegister');
 
 /**
+ * Everything that ships: the requirements, and the actions, reasoned absences
+ * and caveats that used to be prose in the obligations statement.
+ *
+ * ⚠ Declared once because it is used twice — levelling the table, and as the
+ * fallback when the table cannot be read. Those two falling out of step would
+ * mean a reader who cannot write the table sees a DIFFERENT register from one
+ * who can, which is the worst kind of difference to have.
+ */
+const SHIPPED = [...STATUTORY_TEMPLATE, ...REGISTER_ITEMS];
+
+/**
+ * ⛔ `entries` IS THE REQUIREMENTS AND NOTHING ELSE. `items` is everything the
+ * register holds — requirements, outstanding actions, reasoned absences and
+ * caveats. They are separate fields rather than one list with a filter, and
+ * that is the safeguard rather than a convenience: every consumer written
+ * before actions existed reads `entries`, so an action cannot be counted as a
+ * duty by code that has never heard of actions. "118 checks identified" cannot
+ * quietly become 183.
+ *
  * @typedef {{
  *   entries: Object[],
+ *   items: Object[],
  *   source: 'seed' | 'database',
  *   loading: boolean,
  *   loaded: boolean,
@@ -45,6 +79,7 @@ const logger = getLogger('statutoryRegister');
 function createStatutoryRegisterStore() {
   const { subscribe, update } = writable(/** @type {RegisterState} */ ({
     entries: STATUTORY_TEMPLATE,
+    items:   [...STATUTORY_TEMPLATE, ...REGISTER_ITEMS],
     provenance: /** @type {Record<string, any>} */ ({}),
     source:  'seed',
     loading: false,
@@ -52,23 +87,123 @@ function createStatutoryRegisterStore() {
     error:   null,
   }));
 
-  /** Point the pure helpers at whatever we just read, and record which it was. */
-  function adopt(entries, source, extra = {}) {
+  /**
+   * Point the pure helpers at whatever we just read, and record which it was.
+   *
+   * ⚠ `setActiveRegister` is given the REQUIREMENTS only. It backs
+   * `activeRegister()`, which every coverage, scheduling and statement helper
+   * reads — none of which has any business seeing an action.
+   */
+  function adopt(items, source, extra = {}) {
+    const entries = ofKind(items, 'requirement');
     setActiveRegister(entries);
-    update(s => ({ ...s, entries, source, loading: false, ...extra }));
+    update(s => ({ ...s, entries, items, source, loading: false, ...extra }));
   }
 
   /**
-   * Load the register. Falls back to the seed on an empty table or any error —
-   * see the header for why that is not merely defensive.
+   * Bring the table level with the shipped register, silently.
+   *
+   * ⭐ THE RULE, AND IT IS THE WHOLE OF IT:
+   *   · a requirement the table does not have  → ADD it
+   *   · a requirement nobody here has edited   → take the shipped version
+   *   · a requirement somebody here HAS edited → never touch it
+   *
+   * ⛔ WHY THIS IS SILENT. It used to be a button — "Import 118 requirements",
+   * then "Check against the standard register · 2 new · Add all 2". That is
+   * DEPLOYMENT PLUMBING wearing the clothes of a compliance task. The register
+   * has to start in the database rather than in a migration (migrations are
+   * gitignored and would never reach a second deployment), and I pushed that
+   * fact into the workflow of the person using the screen. From where they sit
+   * the register simply IS the building's list of duties: whether a row arrived
+   * from the shipped seed or somebody typed it should be invisible, and it now
+   * is.
+   *
+   * ⚠ The "nobody here has edited it" test is `seed_modified_at`, set by the
+   * editor on every save. Without it there is no way to tell "the shipped text
+   * moved" from "somebody rewrote this here", because we hold the current seed
+   * and the current row and never the seed as it was at import.
+   *
+   * ⚠ A row the table has and the seed does NOT is left alone — a release
+   * withdrawing a requirement is not a licence to delete one that obligations
+   * and applicability decisions may still link to.
+   *
+   * @param {Object[]} rows  what the table currently holds
+   * @returns {Promise<number>} how many rows were written
+   */
+  async function levelWithSeed(rows) {
+    const byKey = new Map((rows ?? []).map(r => [r.template_key, r]));
+
+    // ⚠ Both kinds. Levelling only the requirements would leave the actions,
+    // absences and caveats permanently a release behind, silently.
+    const missing = SHIPPED.filter(e => !byKey.has(e.key));
+    // ⛔ COMPARED ON WHAT THE SHIPPED VERSION ACTUALLY STATES, column by column,
+    // and NOT through `fieldChanges`. That was the first attempt and it was
+    // wrong in a way worth recording: `fieldChanges` walks the UNION of both
+    // sides' keys, and a stored row carries schema defaults the seed entry has
+    // no opinion about — `kind` defaults to 'requirement', `action_status` to
+    // 'open'. So every requirement differed from itself on a field it does not
+    // declare, and every load would have rewritten all 118 rows, for ever.
+    //
+    // ⚠ The question is not "are these two objects identical" but "does the
+    // shipped version disagree with what is stored, about something the shipped
+    // version says". A column it is silent on is not a disagreement.
+    const updatable = SHIPPED.filter((e) => {
+      const row = byKey.get(e.key);
+      if (!row || row.seed_modified_at) return false;   // absent, or edited here
+      return shippedDiffers(e, row).length > 0;
+    });
+
+    if (!missing.length && !updatable.length) return 0;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (missing.length) {
+        await api.createMany('statutory_register', missing.map(e => ({
+          ...toRow(e), origin: 'seed', created_by: user?.id ?? null,
+        })));
+      }
+      for (const e of updatable) {
+        await api.updateMany('statutory_register', { template_key: e.key }, {
+          ...toRow(e), updated_by: user?.id ?? null, updated_at: new Date().toISOString(),
+        }, false);
+      }
+
+      logAudit('update', 'statutory_register', null, 'register levelled with the shipped version', {
+        appId: 'admin', eventCategory: 'compliance', severity: 'info',
+        afterData: { added: missing.length, updated: updatable.length },
+      });
+      logger('✅ levelled:', missing.length, 'added,', updatable.length, 'updated');
+      return missing.length + updatable.length;
+    } catch (/** @type {any} */ err) {
+      // ⚠ NOT an error condition. Only an admin may write this table, so a
+      // viewer reaching an empty or behind table simply reads the shipped
+      // register instead. Failing loudly here would put a compliance screen
+      // into an error state over something the reader cannot act on.
+      logger('could not level with the seed (likely not an admin):', err.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Load the register, bringing it level with the shipped version first.
+   *
+   * ⚠ The seed fallback stays, and it is not merely defensive: an empty
+   * register renders as "no requirements", which is the most dangerous thing a
+   * compliance screen could say. It is now only reached when the table cannot
+   * be written AND cannot be read — a viewer on a fresh deployment, or no
+   * network.
    */
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const rows = await api.getAll('statutory_register', { orderBy: 'template_key' });
+      let rows = await api.getAll('statutory_register', { orderBy: 'template_key' });
+      if (await levelWithSeed(rows ?? [])) {
+        rows = await api.getAll('statutory_register', { orderBy: 'template_key' });
+      }
       if (!rows?.length) {
-        logger('table is empty — using the shipped seed');
-        adopt(STATUTORY_TEMPLATE, 'seed', { loaded: true });
+        logger('table is empty and could not be seeded — using the shipped register');
+        adopt(SHIPPED, 'seed', { loaded: true });
         return;
       }
       // Provenance is DB-owned, so `fromRow` drops it — but the editor has to
@@ -84,53 +219,23 @@ function createStatutoryRegisterStore() {
       // ⚠ Not fatal, and deliberately so. A compliance screen showing the
       // standard register is right; one showing nothing is a lie.
       logger('⚠ load failed, falling back to the seed:', err.message);
-      adopt(STATUTORY_TEMPLATE, 'seed', { loaded: true, error: err.message });
+      adopt(SHIPPED, 'seed', { loaded: true, error: err.message });
     }
   }
 
-  /**
-   * Import the shipped seed into the table. Idempotent on `template_key`:
-   * entries already present are left alone, so re-running adds only what is new.
-   *
-   * ⛔ It does NOT overwrite. A row edited here must survive an import — see
-   * the build plan §5. Reporting divergence is R3; this phase only adds.
-   *
-   * @returns {Promise<{ added: string[], present: number }>}
-   */
-  async function importSeed() {
-    // ⚠ orderBy is REQUIRED on every getAll against this table. `api.getAll`
-    // forces a stable order so its pages are consistent, and defaults to 'id' —
-    // the house assumption, because every other table has one. This table's
-    // identity is `template_key` and there is no surrogate id, so the default
-    // fails with "column statutory_register.id does not exist".
-    const existing = await api.getAll('statutory_register', {
-      select: 'template_key', orderBy: 'template_key',
-    });
-    const have = new Set((existing ?? []).map(r => r.template_key));
-    const missing = STATUTORY_TEMPLATE.filter(e => !have.has(e.key));
-
-    if (missing.length === 0) {
-      logger('nothing to import —', have.size, 'entries already present');
-      return { added: [], present: have.size };
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    const rows = missing.map(e => ({
-      ...toRow(e),
-      origin:     'seed',
-      created_by: user?.id ?? null,
-    }));
-
-    await api.createMany('statutory_register', rows);
-    logAudit('create', 'statutory_register', null, `${rows.length} register entries`, {
-      appId: 'admin', eventCategory: 'compliance', severity: 'info',
-      afterData: { added: rows.length, from: 'shipped seed' },
-    });
-    logger('✅ imported', rows.length, 'entries');
-
-    await load();
-    return { added: missing.map(e => e.key), present: have.size + missing.length };
-  }
+  // ⛔ `importSeed()` WAS HERE AND IS DELETED, not merely unused.
+  //
+  // It did what `levelWithSeed` now does on every load — insert what the table
+  // is missing — and keeping both meant two code paths that write the same rows
+  // for the same reason. A test caught the overlap honestly: with the table
+  // mocked empty, `importSeed` inserted and then its own call to `load()`
+  // inserted again.
+  //
+  // ⚠ That is this project's most-repeated finding applied to code rather than
+  // prose: a fact written in two places goes wrong in the place you are not
+  // editing, and a CHECK — or a WRITE — written twice is the same shape. The
+  // levelling pass is the one path, it runs without being asked, and there is
+  // nothing left for a person to press.
 
   /**
    * What a re-import of the shipped seed would do. R3.
@@ -392,7 +497,7 @@ function createStatutoryRegisterStore() {
   }
 
   return {
-    subscribe, load, importSeed, usingSeed,
+    subscribe, load, usingSeed,
     create, edit, recordCitationVerification,
     previewImport, applyFromSeed, withdrawLocal,
   };
