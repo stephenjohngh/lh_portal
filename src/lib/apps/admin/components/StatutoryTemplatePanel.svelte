@@ -749,15 +749,26 @@
             Add {narrowed ? `these ${shownAddable.length}` : `all ${shownAddable.length}`} as planned obligations
           </ProtectedButton>
           <span class="bulk-note">
-            {#if narrowed}
-              Nothing goes live until you turn each one on. Most will then need you to
-              say which parts of the building they cover.
-            {:else}
-              ⭐ <strong>Most people work through this over days, a set at a time.</strong>
+            <!-- ⛔ THIS SENTENCE IS SHARED, AND IT USED TO BE IN THE NARROWED
+                 BRANCH ONLY. Adding entries creates them SWITCHED OFF
+                 (`templateToObligation` sets `active: false`, pinned by a test
+                 over every entry) — which is the single fact that makes "Add
+                 all 80" a reasonable thing to press rather than an alarming
+                 one. It was shown only once you had already narrowed to a
+                 handful, i.e. in exactly the case that needed it least, while
+                 the button offering eighty sat next to advice about working in
+                 sets and never mentioned that nothing would start. -->
+            <strong>Nothing goes live until you turn each one on</strong>, and most
+            will then need you to say which parts of the building they cover.
+            {#if !narrowed}
+              <br />
+              ⭐ <strong>Most people still work through this over days, a set at a time.</strong>
               Narrow the list first — by <strong>Group</strong>, or by who the
               <strong>Duty holder</strong> is — and add that set. The
               <em>Not covered</em> count above is your place in the queue; it comes
               down as you go.
+              ⚠ There is no bulk remove, so a set added by mistake comes back out
+              one at a time.
             {/if}
           </span>
         </div>
