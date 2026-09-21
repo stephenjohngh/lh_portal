@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/registerFilter.js
+// src/lib/apps/compliance/utils/registerFilter.js
 //
 // Filtering and grouping for the two lists on Admin > Inspections: the periodic
 // activity REGISTER (116 catalogue entries, in code) and the OBLIGATIONS

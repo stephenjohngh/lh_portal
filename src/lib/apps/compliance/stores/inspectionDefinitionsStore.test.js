@@ -1,4 +1,4 @@
-// src/lib/apps/admin/stores/inspectionDefinitionsStore.test.js
+// src/lib/apps/compliance/stores/inspectionDefinitionsStore.test.js
 // CHARACTERIZATION tests for inspectionDefinitionsStore (Admin > Inspections).
 // Asserts which DB calls each method makes, the persisted row shape built by
 // toRow (defaults + field normalisation), and the resulting store state.

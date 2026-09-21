@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/registerItemView.test.js
+// src/lib/apps/compliance/utils/registerItemView.test.js
 //
 // The screen for the register's non-requirement kinds.
 //

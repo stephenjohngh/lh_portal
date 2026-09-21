@@ -1,4 +1,4 @@
-// src/lib/apps/admin/components/obligationTabsSplit.test.js
+// src/lib/apps/compliance/components/obligationTabsSplit.test.js
 //
 // ⭐ V2 OF docs/design/compliance_vocabulary.md, guarded.
 //
@@ -31,23 +31,36 @@ import { readFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(p, 'utf8');
 
-const ADMIN   = 'src/lib/apps/admin/AdminApp.svelte';
-const REG_TAB = 'src/lib/apps/admin/components/ComplianceObligationsTab.svelte';
-const PLAN_TAB = 'src/lib/apps/admin/components/InspectionDefinitionsTab.svelte';
-const PANEL   = 'src/lib/apps/admin/components/StatutoryTemplatePanel.svelte';
+// ⚠ The shell is the COMPLIANCE app now, not Admin. These two tabs were
+// never portal administration; they lived there because they grew out of
+// `inspection_definitions` CRUD. docs/design/compliance_app_design.md.
+const SHELL   = 'src/lib/apps/compliance/ComplianceApp.svelte';
+const REG_TAB = 'src/lib/apps/compliance/components/ComplianceObligationsTab.svelte';
+const PLAN_TAB = 'src/lib/apps/compliance/components/PlannedObligationsTab.svelte';
+const PANEL   = 'src/lib/apps/compliance/components/StatutoryTemplatePanel.svelte';
 
 const PLANNED_KEY = 'planned-obligations';
 const REGISTER_KEY = 'compliance-obligations';
 
 describe('the two objects stay on two tabs', () => {
   it('gives each its own tab, and the shell renders each one', () => {
-    const admin = read(ADMIN);
+    const shell = read(SHELL);
     for (const key of [REGISTER_KEY, PLANNED_KEY]) {
-      expect(admin, `no tab keyed ${key}`).toContain(`activateTab('${key}')`);
-      expect(admin, `nothing renders for ${key}`).toContain(`activeTab === '${key}'`);
+      expect(shell, `no tab keyed ${key}`).toContain(`'${key}'`);
+      expect(shell, `nothing renders for ${key}`).toContain(`activeTab === '${key}'`);
     }
-    expect(admin).toContain('<ComplianceObligationsTab');
-    expect(admin).toContain('<InspectionDefinitionsTab');
+    expect(shell).toContain('<ComplianceObligationsTab');
+    expect(shell).toContain('<PlannedObligationsTab');
+  });
+
+  // ⛔ AND NEITHER MAY COME BACK TO ADMIN. Admin is portal administration —
+  // users, permissions, audit logs, component types. A building's compliance
+  // register is not that, and it sat there only by accident of growth.
+  it('leaves nothing compliance-shaped in Admin', () => {
+    const admin = read('src/lib/apps/admin/AdminApp.svelte');
+    expect(admin).not.toContain('<ComplianceObligationsTab');
+    expect(admin).not.toContain('<PlannedObligationsTab');
+    expect(admin).not.toContain('<InspectionDefinitionsTab');
   });
 
   // ⛔ The register belongs to ONE tab. Rendering it inside the planned
@@ -74,7 +87,7 @@ describe('the register → plan sequence survives the split', () => {
   // Hop 3: the shell acts on it, and lands on the PLANNED tab specifically —
   // a handler that switched to the wrong tab would be just as silent.
   it('the shell handles goto by switching to the planned obligations tab', () => {
-    expect(read(ADMIN)).toMatch(
+    expect(read(SHELL)).toMatch(
       new RegExp(`<ComplianceObligationsTab[^>]*on:goto=\\{[^}]*activateTab\\('${PLANNED_KEY}'\\)`, 's'),
     );
   });
@@ -92,9 +105,11 @@ describe('the component set loads where it is actually needed', () => {
   });
 
   it('only the planned obligations tab triggers the component load', () => {
-    const admin = read(ADMIN);
-    const call = admin.match(/if \(id === '([^']+)' && !componentsLoaded\)/);
-    expect(call, 'the lazy component load has moved or been renamed').toBeTruthy();
-    expect(call[1]).toBe(PLANNED_KEY);
+    const shell = read(SHELL);
+    const guarded = shell.match(/key === '([^']+)'\) \{[\s\S]*?loadComponents\(\)/);
+    expect(guarded, 'the lazy component load has moved or been renamed').toBeTruthy();
+    expect(guarded[1]).toBe(PLANNED_KEY);
+    // ⚠ And Admin must not have kept a copy — it has no scope editor now.
+    expect(read('src/lib/apps/admin/AdminApp.svelte')).not.toContain('loadComponents()');
   });
 });

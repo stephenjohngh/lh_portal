@@ -1,4 +1,4 @@
-// src/lib/apps/admin/stores/inspectionDefinitionsStore.js
+// src/lib/apps/compliance/stores/inspectionDefinitionsStore.js
 // CRUD store for statutory_obligations — used by Admin > Inspections tab.
 //
 // Definitions are portal config (like component_types): admins create/edit them

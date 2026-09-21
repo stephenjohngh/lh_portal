@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// src/lib/apps/admin/components/RegisterItemsList.test.js
+// src/lib/apps/compliance/components/RegisterItemsList.test.js
 //
 // TYPE-2 — the three kinds that had no screen.
 //

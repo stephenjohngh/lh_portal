@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/RegisterItemsList.svelte -->
+<!-- src/lib/apps/compliance/components/RegisterItemsList.svelte -->
 <!--
   One of the register's non-requirement kinds, on screen: the outstanding
   actions, the reasoned absences, or the caveats about what the list does not

@@ -1,4 +1,4 @@
-// src/lib/apps/admin/components/editorGuidance.test.js
+// src/lib/apps/compliance/components/editorGuidance.test.js
 //
 // The catalogue rule must reach the screen where somebody could break it.
 //
@@ -23,7 +23,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const MODAL = 'src/lib/apps/admin/components/RegisterEntryModal.svelte';
+const MODAL = 'src/lib/apps/compliance/components/RegisterEntryModal.svelte';
 const source = readFileSync(MODAL, 'utf8');
 
 /** The `helpText` a field carries, by the label above it. */
@@ -74,7 +74,7 @@ describe('the requirement editor carries the catalogue rule', () => {
 });
 
 describe('withdrawing carries the other limb of the rule', () => {
-  const PANEL = 'src/lib/apps/admin/components/StatutoryTemplatePanel.svelte';
+  const PANEL = 'src/lib/apps/compliance/components/StatutoryTemplatePanel.svelte';
   const panel = readFileSync(PANEL, 'utf8');
 
   // ⛔ "Delete only for NEVER." A compliance obligation that exists in law and

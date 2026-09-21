@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/ComplianceObligationsTab.svelte -->
+<!-- src/lib/apps/compliance/components/ComplianceObligationsTab.svelte -->
 <!-- Admin > COMPLIANCE OBLIGATIONS: the register — what a higher-risk
      residential building in England must do, whether or not it applies here.
 

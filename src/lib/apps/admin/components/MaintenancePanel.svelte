@@ -16,7 +16,15 @@
      would be changing something for types you cannot see from here. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
+  // ⛔ THROUGH THE OWNING APP'S public.js, not its store. `statutory_obligations`
+  // belongs to the Compliance app now; an app must not write another app's data
+  // (the rule that declined G4). The store is imported for READING only — the
+  // writes go through the named operations.
+  import {
+    plannedObligations,
+    createPlannedObligation, updatePlannedObligation, deletePlannedObligation,
+    loadPlannedObligations,
+  } from '$lib/apps/compliance/public.js';
   import { isWalkEvidenced, isJobEvidenced } from '$lib/utils/obligationEvidence.js';
   import { obligationsForType, scopedToTypeOnly, typeCount } from '../utils/typeScopedObligations.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
@@ -29,13 +37,13 @@
   const dispatch = createEventDispatcher();
 
   onMount(() => {
-    if ($inspectionDefinitionsStore.definitions.length === 0) inspectionDefinitionsStore.load();
+    if ($plannedObligations.definitions.length === 0) loadPlannedObligations();
   });
 
   // Obligations whose scope names this type. One covering several types shows
   // up under each of them — correct, and useful: this is "what is this type
   // obliged to have done", not "what did someone create from this screen".
-  $: rows = obligationsForType($inspectionDefinitionsStore.definitions, typeCode)
+  $: rows = obligationsForType($plannedObligations.definitions, typeCode)
     .map(d => ({
       ...d,
       typeCount:    typeCount(d),
@@ -76,7 +84,7 @@
     saving = true; error = '';
     try {
       if (editingId === 'new') {
-        await inspectionDefinitionsStore.create({
+        await createPlannedObligation({
           ...form,
           // The whole point of the shortcut: scope is this one type.
           scope: { typeCodes: [typeCode] },
@@ -85,7 +93,7 @@
         const row = rows.find(r => r.id === editingId);
         // Scope is deliberately NOT sent: this panel never rewrites the scope of
         // an existing obligation, only its name, cadence and route.
-        await inspectionDefinitionsStore.save(editingId, { ...row, ...form });
+        await updatePlannedObligation(editingId, { ...row, ...form });
       }
       dispatch('saved');
       editingId = null;
@@ -103,7 +111,7 @@
     const id = pendingDelete.id;
     deletingId = id;
     try {
-      await inspectionDefinitionsStore.remove(id);
+      await deletePlannedObligation(id);
       dispatch('saved');
     } catch (/** @type {any} */ err) {
       error = err.message;

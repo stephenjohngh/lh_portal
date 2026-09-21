@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/registerExport.test.js
+// src/lib/apps/compliance/utils/registerExport.test.js
 //
 // TYPE-1. Reads the REAL register rather than fixtures — a fixture transcribing
 // register data is what broke tests four rounds running here.

@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/InspectionDefinitionModal.svelte -->
+<!-- src/lib/apps/compliance/components/PlannedObligationModal.svelte -->
 <!-- Create / edit an statutory_obligations row. Composes the shared ScopeEditor
      and shows a live "matches N" count via applyInspectionScope. Rotating mode
      shows a live next-trigger + linked-set preview (buildRotatingWalk — the

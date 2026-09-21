@@ -133,6 +133,19 @@ export const AVAILABLE_APPS = [
   },
 
   {
+    // ⛔ Admin-only by decision (no new user type). It carries
+    // `requiresPermission` and is simply never granted — admins bypass grants
+    // in getAppsForUser — and ComplianceApp enforces `isAdmin` itself so the
+    // gate does not rest on nobody having granted it.
+    id: 'compliance',
+    name: 'Compliance',
+    icon: 'shield',
+    alwaysVisible: false,
+    requiresPermission: true,
+    description: "This building's compliance obligations, what is planned against them, and the evidence"
+  },
+
+  {
     id: 'complaints',
     name: 'Complaints',
     icon: 'comment',
@@ -169,6 +182,7 @@ export const APP_IDS = {
   GOLDEN_THREAD:   'golden_thread',
   DOSSIER:         'dossier',
   PLANNER:         'planner',
+  COMPLIANCE:      'compliance',
   COMPLAINTS:      'complaints',
   SETTINGS:        'settings'
 };

@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/StatutoryTemplatePanel.svelte -->
+<!-- src/lib/apps/compliance/components/StatutoryTemplatePanel.svelte -->
 <!-- M4 · the periodic activity register and its gap report, on Admin >
      Inspections. Every recurring check identified for a higher-risk residential
      building, each saying WHERE IT COMES FROM (legislation / standard /

@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/registerDownloads.js
+// src/lib/apps/compliance/utils/registerDownloads.js
 //
 // Ways of getting the register out of the screen. TWO, and both pass the rows
 // the SCREEN is showing straight through.

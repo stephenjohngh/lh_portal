@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/RegisterImportDiff.svelte -->
+<!-- src/lib/apps/compliance/components/RegisterImportDiff.svelte -->
 <!--
   What a re-import of the shipped standard register would do. R3.
 

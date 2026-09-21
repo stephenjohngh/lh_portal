@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/registerFilter.test.js
+// src/lib/apps/compliance/utils/registerFilter.test.js
 //
 // TYPE-1 tests for the Admin > Inspections filtering. These read the REAL
 // register rather than fixtures: a fixture transcribing register data is what

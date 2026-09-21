@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/RegisterEntryModal.svelte -->
+<!-- src/lib/apps/compliance/components/RegisterEntryModal.svelte -->
 <!--
   Add or edit a periodic-register requirement. R2 of
   docs/requirements/build_plans/Register_In_The_App_Build_Plan.md.

@@ -1,4 +1,4 @@
-<!-- src/lib/apps/admin/components/InspectionDefinitionsTab.svelte -->
+<!-- src/lib/apps/compliance/components/PlannedObligationsTab.svelte -->
 <!-- Admin > PLANNED OBLIGATIONS: CRUD for statutory_obligations — what THIS
      building does about the duties in the compliance obligations register.
      Reads component/type reference data from buildingAssetsStore (lazy-loaded
@@ -27,7 +27,7 @@
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import { isRecordableReason } from '$lib/utils/statutoryExclusions.js';
   import { fmtDate } from '$lib/utils/dates.js';
-  import InspectionDefinitionModal from './InspectionDefinitionModal.svelte';
+  import PlannedObligationModal from './PlannedObligationModal.svelte';
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
     filterObligations, obligationFilterFields, hasEmptyScope,
@@ -225,7 +225,7 @@
 </div>
 
 {#if showModal}
-  <InspectionDefinitionModal
+  <PlannedObligationModal
     definition={editing}
     types={bas.types} systems={bas.systems} floors={bas.floors} attrDefs={bas.attrDefs}
     attrOptions={bas.attrOptions}

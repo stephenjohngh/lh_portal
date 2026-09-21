@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/registerItemView.js
+// src/lib/apps/compliance/utils/registerItemView.js
 //
 // Filtering and grouping for the register's NON-requirement kinds — the
 // outstanding actions, the reasoned absences and the caveats.

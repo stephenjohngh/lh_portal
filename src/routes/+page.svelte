@@ -65,6 +65,7 @@
     'golden_thread':    () => import('$lib/apps/golden_thread/GoldenThreadApp.svelte'),
     'dossier':          () => import('$lib/apps/dossier/DossierApp.svelte'),
     'planner':          () => import('$lib/apps/planner/PlannerApp.svelte'),
+    'compliance':       () => import('$lib/apps/compliance/ComplianceApp.svelte'),
     'complaints':       () => import('$lib/apps/complaints/ComplaintsApp.svelte'),
   };
 

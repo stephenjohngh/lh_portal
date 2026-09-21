@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/registerExport.js
+// src/lib/apps/compliance/utils/registerExport.js
 //
 // The periodic activity register as a spreadsheet — whatever the filter bar is
 // currently showing.
