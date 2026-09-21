@@ -190,6 +190,63 @@ export function groupRegisterRows(rows) {
     }));
 }
 
+/**
+ * ⭐ HOW EACH REQUIREMENT ACTUALLY GETS DONE — the four-way split the user drew,
+ * and it was already in the data with nothing showing it as one shape.
+ *
+ * The user: *"could the top level be requirements register — the list of
+ * building management requirements — underneath this it splits into inspections
+ * — either in-house or contractor — contractor maintenance visits, and what
+ * else?"* It splits into four, not three, and the field that does it already
+ * existed: `evidencedBy` gives the first two, `handledBy` separates the last two.
+ * Until now the Evidence facet gave you half and the status strip the other
+ * half, so nobody would ever see it as a tree.
+ *
+ * ⛔ IN-HOUSE VERSUS CONTRACTOR IS NOT A FOURTH BRANCH, and it is not recorded.
+ * The only candidate is `responsibleParty`, free text with 47 distinct values,
+ * and 27 of the 57 contractor-route rows name no contractor in it at all —
+ * they name who is ACCOUNTABLE. Deriving it would be the `ventilation_stack`
+ * mistake again: reading what a thing IS off a label describing something else.
+ * Who actually turns up is a fact about this building's arrangements, and it
+ * belongs on the work (where a job already carries a `contractor_id`).
+ */
+export const ROUTE_GROUPS = [
+  { key: 'inspection', label: 'Done by an in-house walk',
+    blurb: 'Somebody here walks round with the phone and records what they find.' },
+  { key: 'maintenance_job', label: 'Done by a booked contractor visit',
+    blurb: 'A visit you book. The certificate or report that comes back is the evidence.' },
+  { key: 'elsewhere', label: 'Tracked in another part of the portal',
+    blurb: 'Already has its own cycle somewhere else. Scheduling it here would give it a second, competing due date.' },
+  { key: 'no_home', label: 'Nothing here can schedule it',
+    blurb: 'A real duty that no part of this portal can put a date on. Named so it is not mistaken for an oversight.' },
+];
+
+/** Which of the four a requirement belongs to. */
+export function routeGroupOf(entry) {
+  if (entry?.evidencedBy === 'inspection') return 'inspection';
+  if (entry?.evidencedBy) return 'maintenance_job';
+  return (!entry?.handledBy || entry.handledBy === 'none') ? 'no_home' : 'elsewhere';
+}
+
+/**
+ * The same rows, grouped by how they get done rather than by subject.
+ *
+ * ⚠ Same shape as `groupRegisterRows` and the same ordering rule inside a
+ * group, so the list markup does not care which it was handed.
+ */
+export function groupRegisterRowsByRoute(rows) {
+  const byRank = (a, b) =>
+    (BASIS_RANK[a.entry.basis] ?? 99) - (BASIS_RANK[b.entry.basis] ?? 99);
+  return ROUTE_GROUPS
+    .map(g => ({
+      group: g.key,
+      label: g.label,
+      blurb: g.blurb,
+      rows: rows.filter(r => routeGroupOf(r.entry) === g.key).sort(byRank),
+    }))
+    .filter(g => g.rows.length > 0);
+}
+
 /** Facet definitions for the register bar — the options a person can pick.
  *  Built from the register's own vocabularies, so a new basis or group cannot
  *  appear in the data without appearing in the filter. */

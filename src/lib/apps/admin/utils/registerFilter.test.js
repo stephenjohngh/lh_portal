@@ -7,11 +7,12 @@
 // the 116 entries currently say.
 
 import { describe, it, expect } from 'vitest';
+import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
 import { STATUTORY_TEMPLATE, isSchedulable, isUnhomed, isSuperseded, BASIS_RANK }
   from '$lib/utils/statutoryTemplate.js';
 import {
   registerStatus, filterRegister, registerStatusTally, groupRegisterRows,
-  registerFilterFields, REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_EXPLAINED, REGISTER_STATUS_CLASS,
+  registerFilterFields, groupRegisterRowsByRoute, routeGroupOf, ROUTE_GROUPS, REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_EXPLAINED, REGISTER_STATUS_CLASS,
   obligationState, hasEmptyScope, filterObligations, obligationFilterFields,
   dutyHolderRole, dutyHolderTally, unclassifiedDutyHolders,
   DUTY_HOLDER_ROLES, DUTY_HOLDER_ROLE_LABEL,
@@ -530,13 +531,20 @@ describe('⛔ every facet is visible on the row it filters', () => {
   });
 
   it('a filtered facet value matches what the row prints for it', () => {
-    // The point of the line: filter to contractor jobs, and every surviving row
-    // says "Contractor job" in the same words the facet used.
-    const rows = filterRegister(ALL, { evidence: new Set(['maintenance_job']) }, noCtx);
-    expect(rows.length).toBeGreaterThan(0);
-    for (const { entry } of rows) {
-      const evidence = rowFacetSummary(entry).find(f => f.key === 'evidence');
-      expect(evidence.text).toBe('Contractor job');
+    // Filter to one evidence route, and every surviving row names that route in
+    // the SAME WORDS the facet used.
+    //
+    // ⚠ The label is READ from the source, not transcribed. This test hardcoded
+    // "Contractor job" and failed the moment the labels were reworded to say who
+    // turns up — a fixture asserting the data rather than the rule, which is the
+    // fault this project has now recorded five times.
+    for (const route of ['inspection', 'maintenance_job']) {
+      const rows = filterRegister(ALL, { evidence: new Set([route]) }, noCtx);
+      expect(rows.length, route).toBeGreaterThan(0);
+      for (const { entry } of rows) {
+        const evidence = rowFacetSummary(entry).find(f => f.key === 'evidence');
+        expect(evidence.text, entry.key).toBe(EVIDENCE_ROUTE_LABEL[route]);
+      }
     }
   });
 });
@@ -648,5 +656,49 @@ describe('working through the register in sets', () => {
     const keys = registerFilterFields(registerStatusTally(ALL, noCtx), dutyHolderTally(ALL))
       .map(f => f.key);
     for (const named of ['group', 'dutyHolder']) expect(keys, named).toContain(named);
+  });
+});
+
+// ⭐ ADDED 2026-09-21. The user drew the shape and asked whether a field already
+// held it: *"could the top level be requirements register ... underneath this it
+// splits into inspections — either in-house or contractor — contractor
+// maintenance visits, and what else?"* It splits into FOUR, and `evidencedBy`
+// plus `handledBy` already held it — the Evidence facet showed half and the
+// status strip the other half, so nobody could see it as one tree.
+describe('how each requirement actually gets done', () => {
+  it('puts every requirement in exactly one of the four, and loses none', () => {
+    const rows = ALL.map(entry => ({ entry, status: 'not_covered' }));
+    const groups = groupRegisterRowsByRoute(rows);
+    const placed = groups.reduce((n, g) => n + g.rows.length, 0);
+    expect(placed).toBe(ALL.length);
+    const keys = groups.flatMap(g => g.rows.map(r => r.entry.key));
+    expect(new Set(keys).size).toBe(ALL.length);
+  });
+
+  // ⛔ The split has to match the one the status strip and the Evidence facet
+  // already report, or the same register would answer the same question two
+  // ways depending on which control you used.
+  it('agrees with the facet and the strip it was derived from', () => {
+    const n = k => ALL.filter(e => routeGroupOf(e) === k).length;
+    expect(n('inspection')).toBe(ALL.filter(e => e.evidencedBy === 'inspection').length);
+    expect(n('maintenance_job')).toBe(ALL.filter(e => e.evidencedBy && e.evidencedBy !== 'inspection').length);
+    expect(n('no_home')).toBe(ALL.filter(e => !e.evidencedBy && isUnhomed(e)).length);
+    expect(n('elsewhere')).toBe(ALL.filter(e => !e.evidencedBy && !isUnhomed(e)).length);
+  });
+
+  it('every branch says what it is, in words a person can act on', () => {
+    for (const g of ROUTE_GROUPS) {
+      expect(g.label, g.key).toBeTruthy();
+      expect(g.blurb, g.key).toBeTruthy();
+      expect(g.blurb.split(' ').length, g.key).toBeGreaterThan(8);
+    }
+  });
+
+  // ⚠ Every branch must be non-empty on the shipped register, or the tree shows
+  // somebody a shape with a hole in it that is nothing to do with their building.
+  it('all four branches have rows in the standard register', () => {
+    for (const g of ROUTE_GROUPS) {
+      expect(ALL.filter(e => routeGroupOf(e) === g.key).length, g.key).toBeGreaterThan(0);
+    }
   });
 });

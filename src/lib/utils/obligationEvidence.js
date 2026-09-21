@@ -18,8 +18,8 @@
 export const EVIDENCE_ROUTES = ['inspection', 'maintenance_job', 'either'];
 
 export const EVIDENCE_ROUTE_LABEL = {
-  inspection:      'Inspection walk',
-  maintenance_job: 'Contractor job',
+  inspection:      'In-house walk',
+  maintenance_job: 'Contractor visit',
   either:          'Either route',
 };
 

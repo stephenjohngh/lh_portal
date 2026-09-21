@@ -127,10 +127,12 @@
 <div class="insp-defs">
   <div class="head">
     <div>
-      <h3 class="heading-section">Inspections</h3>
-      <p class="text-muted">What gets inspected, how often, and what is checked each time. This is what the mobile app shows as due.</p>
+      <h3 class="heading-section">This building's schedule</h3>
+      <p class="text-muted">The work set up to meet the requirements above — in-house walks and booked
+        contractor visits, each with how often it comes round. ⚠ Only the in-house walks reach the
+        phone; a contractor visit is scheduled in Maintenance.</p>
     </div>
-    <ProtectedButton requireAdmin={true} variant="primary" on:click={openNew}>+ New inspection</ProtectedButton>
+    <ProtectedButton requireAdmin={true} variant="primary" on:click={openNew}>+ Add to the schedule</ProtectedButton>
   </div>
 
   {#if error}<ErrorDisplay message={error} />{/if}
@@ -142,7 +144,7 @@
   {#if loading && definitions.length === 0}
     <LoadingSpinner />
   {:else if definitions.length === 0}
-    <p class="empty">No inspections defined yet. Create one to get started.</p>
+    <p class="empty">Nothing is scheduled yet. Add a requirement from the register above, or set something up directly.</p>
   {:else}
     <FilterBar
       fields={filterFields}
@@ -153,7 +155,7 @@
     />
 
     {#if shown.length === 0}
-      <p class="empty">No inspections match these filters.</p>
+      <p class="empty">Nothing in the schedule matches these filters.</p>
     {/if}
 
     <div class="rows">
@@ -228,7 +230,7 @@
   show={!!pendingDelete}
   danger={true}
   processing={!!deletingId}
-  title="Delete inspection"
+  title="Delete — only for something created by mistake, with no history worth keeping"
   message={pendingDelete ? `Delete “${pendingDelete.name}”? Past inspection sessions are kept but DETACHED — their evidence loses what it was for. If this is no longer required because the law changed, use Retire instead: it keeps the link.` : ''}
   confirmText="Delete"
   on:confirm={confirmDelete}

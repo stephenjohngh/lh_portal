@@ -196,7 +196,7 @@
         >
           <span class="flex items-center space-x-2">
             <span>🔎</span>
-            <span>Inspections</span>
+            <span>Requirements</span>
           </span>
         </button>
       {/if}

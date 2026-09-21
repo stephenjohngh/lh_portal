@@ -30,7 +30,7 @@
     filterRegister, registerStatusTally, groupRegisterRows, registerFilterFields,
     REGISTER_STATUS, REGISTER_STATUS_LABEL, REGISTER_STATUS_CLASS, REGISTER_STATUS_EXPLAINED,
     dutyHolderTally, dutyHolderRole, DUTY_HOLDER_ROLE_LABEL,
-    citationState, rowFacetSummary,
+    citationState, rowFacetSummary, groupRegisterRowsByRoute, routeGroupOf,
   } from '../utils/registerFilter.js';
   import { downloadRegisterXlsx, downloadRegisterDocx } from '../utils/registerDownloads.js';
   import { ofKind, kindTally, REGISTER_KINDS } from '$lib/utils/registerKinds.js';
@@ -374,11 +374,20 @@
   }, /** @type {Record<string, number>} */ ({}));
   $: filterFields = registerFilterFields(tallies, dutyTally, citationTally);
   $: shown     = filterRegister(REG, { ...filters, q: search }, statusCtx);
-  $: groups    = groupRegisterRows(shown);
+  // ⭐ TWO WAYS TO CUT THE SAME LIST, and which one you want depends on the job.
+  // By SUBJECT to work through the fire safety duties; by HOW IT IS DONE to see
+  // the shape the user drew — in-house walks, contractor visits, tracked
+  // elsewhere, and the ones nothing here can schedule.
+  /** @type {'group'|'route'} */
+  let groupBy = 'group';
+  $: groups    = groupBy === 'route' ? groupRegisterRowsByRoute(shown) : groupRegisterRows(shown);
 
   // "N of M" per group heading needs the unfiltered total for that group.
+  // ⚠ Keyed on whichever grouping is showing. Left on `e.group`, a route
+  // heading would read "6 of 6" while the register holds 57 of them.
   $: groupTotals = REG.reduce((m, e) => {
-    m[e.group] = (m[e.group] ?? 0) + 1; return m;
+    const k = groupBy === 'route' ? routeGroupOf(e) : e.group;
+    m[k] = (m[k] ?? 0) + 1; return m;
   }, /** @type {Record<string, number>} */ ({}));
 
   // Only entries that can actually be created — bulk apply must never offer to
@@ -412,7 +421,7 @@
       <div>
         <p class="th-title">Periodic activity register</p>
         <p class="th-sub">
-          {REG.length} checks identified
+          {REG.length} requirements identified
           <span class="dot">·</span>{coverage.coveredCount} of {coverage.applicableCount} scheduled here
           {#if coverage.unhomed.length > 0}
             <span class="dot">·</span><span class="warn-text">{coverage.unhomed.length} with no home</span>
@@ -596,6 +605,14 @@
         resultLabel="{shown.length} of {REG.length}"
       />
 
+      <div class="groupby">
+        <span class="groupby-l">Group by</span>
+        <button class="gb" class:on={groupBy === 'group'}
+          on:click={() => (groupBy = 'group')}>Subject</button>
+        <button class="gb" class:on={groupBy === 'route'}
+          on:click={() => (groupBy = 'route')}>How it gets done</button>
+      </div>
+
       <!-- ⭐ FOLDED AWAY, AND THE REASON IS THE WHOLE POINT OF THIS PANEL.
            The user: *"still very complicated for a user. I come to the first
            screen and see things like..."* — and counting what stood between the
@@ -746,6 +763,7 @@
             {section.label}
             <span class="sec-n">{section.rows.length} of {groupTotals[section.group] ?? section.rows.length}</span>
           </h4>
+          {#if section.blurb && !collapsed}<p class="sec-blurb">{section.blurb}</p>{/if}
         </div>
 
         {#if !collapsed}
@@ -1257,6 +1275,14 @@
   .facet.on { color: rgb(226 232 240); font-weight: 600; }
   .bulk { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
   .bulk-note { font-size: 0.74rem; color: rgb(148 163 184); }
+  .groupby { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  .groupby-l { font-size: 0.72rem; color: rgb(100 116 139); text-transform: uppercase; letter-spacing: 0.04em; }
+  .gb {
+    font-size: 0.74rem; padding: 0.2rem 0.55rem; border-radius: 6px; cursor: pointer;
+    border: 1px solid rgb(71 85 105 / 0.6); background: rgb(30 41 59 / 0.4); color: rgb(148 163 184);
+  }
+  .gb.on { color: rgb(226 232 240); border-color: var(--lh-accent); background: rgb(var(--lh-accent-rgb) / 0.12); }
+  .sec-blurb { font-size: 0.74rem; color: rgb(100 116 139); line-height: 1.45; margin: 0.1rem 0 0.2rem 1.1rem; }
   .sec-n { font-weight: 400; color: rgb(100 116 139); font-size: 0.78rem; margin-left: 0.3rem; }
 
   /* ── Rows: compact, expanding in place ─────────────────────────────────── */
