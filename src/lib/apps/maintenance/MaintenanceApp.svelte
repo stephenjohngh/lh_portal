@@ -1,6 +1,20 @@
 <!-- src/lib/apps/maintenance/MaintenanceApp.svelte -->
 <!-- Maintenance App entry point.
-     Tabs: Diary | All Jobs | Documents | Schedule | Compliance | Asset Groups | Capital Plan -->
+     Tabs: Diary | All Jobs | Documents | Schedule | Asset Groups | Capital Plan
+
+     ⛔ THERE IS NO COMPLIANCE TAB HERE ANY MORE, and do not add one back. The
+     compliance position report moved to the Compliance app (C3,
+     docs/design/compliance_app_design.md §6.1): it read walk sessions, jobs
+     and applicability decisions and composed a position from all three, so it
+     was a compliance report living where ONE of its three sources lives. Its
+     presence here also put two things called "Compliance" in the portal
+     meaning different things — the exact fault the vocabulary work exists to
+     end.
+
+     ⭐ What Maintenance IS, now that it is sayable in one sentence: the place
+     where a planned obligation becomes dated contractor work, plus the capital
+     horizon. ⚠ And that is about to matter — 57 of the 80 planned obligations
+     are evidenced by a maintenance job, and this table has never held a row. -->
 <script>
   import { onMount }          from 'svelte';
   import { auth }             from '$lib/stores/auth';
@@ -15,7 +29,6 @@
   import SchedulerPanel from './components/SchedulerPanel.svelte';
   import MaintenanceGroupsTab from './components/MaintenanceGroupsTab.svelte';
   import TenYearPlanTab       from './components/TenYearPlanTab.svelte';
-  import ComplianceTab        from './components/ComplianceTab.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   $: store   = $maintenanceStore;
@@ -33,7 +46,6 @@
     { key: 'documents', label: 'Documents' },
     ...(canEdit ? [
       { key: 'schedule',   label: 'Schedule' },
-      { key: 'compliance', label: 'Compliance' },
       { key: 'groups',   label: 'Asset Groups' },
       { key: 'capital',  label: 'Capital Plan' },
     ] : []),
@@ -106,8 +118,6 @@
     <DocumentsTab docs={allDocs} />
   {:else if activeTab === 'schedule'}
     <SchedulerPanel {jobs} />
-  {:else if activeTab === 'compliance'}
-    <ComplianceTab />
   {:else if activeTab === 'groups'}
     {#if $buildingAssetsStore.loading}
       <LoadingSpinner />

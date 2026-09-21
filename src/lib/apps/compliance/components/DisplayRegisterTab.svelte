@@ -1,5 +1,18 @@
-<!-- src/lib/apps/admin/components/DisplayRegisterTab.svelte -->
-<!-- Admin > Display Register (BSA s.82, EXT-14.R5-R7). What must be physically
+<!-- src/lib/apps/compliance/components/DisplayRegisterTab.svelte -->
+<!-- Compliance > Display Register (BSA s.82, EXT-14.R5-R7).
+
+     ⭐ MOVED HERE FROM ADMIN (C3). The user's read of it was exact: *"i think
+     the displayregister is compliance although not much like anything else."*
+     It is a statutory duty whose discharge is a physical notice board rather
+     than a schedule — which is why it looks unlike the other three tabs and
+     why it was never portal administration. It is also the DISCHARGE SURFACE
+     for a row in the compliance obligations register: s.82 was added in review
+     round 11, and the embarrassment recorded there was that the software had
+     had this screen since migrations 199–200 while the register did not carry
+     the duty. ⚠ The two are still not linked to each other — the register row
+     names the duty, this tab records the wall — and nothing joins them.
+     -->
+<!-- What must be physically
      displayed in the building. The statute names exactly three things: (a) the
      prescribed AP notice, (b) the most recent BAC, (c) any relevant compliance
      notice — (a) and (b) are singular, so migration 199 seeds them as

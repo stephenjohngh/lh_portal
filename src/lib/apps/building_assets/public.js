@@ -220,3 +220,46 @@ export function updateSpaceType(id, fields) {
 export function deleteSpaceType(id) {
   return api.delete('space_types', id);
 }
+
+// -- Open faults + the works schedules covering them ---------------------------
+// Read by the Compliance app's position report, which shows open corrective
+// work ADJACENT to the obligation figures and never inside them (a fault
+// discharges no duty). Two accessors rather than one join, because they answer
+// two questions and the second is only worth asking if the first returns
+// anything.
+
+/**
+ * Components in one of the given statuses.
+ *
+ * `getAllIn` rather than `get`: it chunks the `.in()` and paginates past
+ * PostgREST's 1,000-row cap. ⚠ That cap matters here — this building has 1,092
+ * components, so a plain read is already inside the range where a silent
+ * truncation would under-report the fault list, which is the one direction a
+ * compliance surface must never be wrong in.
+ *
+ * @param {string[]} statuses e.g. ['failed', 'problem']
+ */
+export function listComponentsByStatus(statuses) {
+  if (!statuses?.length) return Promise.resolve([]);
+  return api.getAllIn('components', 'status', statuses, {
+    select: 'id, asset_id, label, type_code, status, floor_id',
+  });
+}
+
+/**
+ * Works schedule lines for the given components, each with its schedule.
+ *
+ * ⚠ Returns lines on schedules of EVERY status, including drafts. Deciding
+ * that a draft is not coverage is the reader's rule, not this accessor's —
+ * `compliance/utils/correctiveWork.js` states it and a test pins it. An
+ * accessor that filtered here would hide the distinction from the one place
+ * that has to make it.
+ *
+ * @param {string[]} componentIds
+ */
+export function listWorksLinesFor(componentIds) {
+  if (!componentIds?.length) return Promise.resolve([]);
+  return api.getAllIn('works_schedule_items', 'component_id', componentIds, {
+    select: 'component_id, action, schedule:works_schedules(id, title, reference, status, issued_at)',
+  });
+}

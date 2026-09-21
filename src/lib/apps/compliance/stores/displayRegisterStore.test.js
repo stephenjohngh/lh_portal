@@ -1,4 +1,4 @@
-// src/lib/apps/admin/stores/displayRegisterStore.test.js
+// src/lib/apps/compliance/stores/displayRegisterStore.test.js
 //
 // CHARACTERIZATION tests for displayRegisterStore (Admin > Display Register,
 // BSA s.82). Pins the parts that carry real rules rather than plumbing:

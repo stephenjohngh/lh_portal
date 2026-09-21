@@ -49,6 +49,18 @@ const payload = (over = {}) => ({
   ...over,
 });
 
+// ⛔ PACKING IS NOT READING. A note that never reached the page packs exactly
+// as happily as one that did — "presence is not shape", and the way to close
+// the gap on a .docx is to unzip it and read the XML. Used only where the
+// assertion is about what the document SAYS.
+const textOf = async (buf) => {
+  const { default: JSZip } = await import('jszip');
+  const entry = (await JSZip.loadAsync(buf)).file('word/document.xml');
+  if (!entry) throw new Error('no word/document.xml in the packed file');
+  const xml = await entry.async('string');
+  return xml.replace(/<[^>]+>/g, '');
+};
+
 const packs = async input => {
   const buf = await Packer.toBuffer(buildComplianceDocument(input));
   // A .docx is a zip — "PK" is its magic number. Anything shorter is not a file.
@@ -180,13 +192,30 @@ describe('building the document', () => {
     }));
   });
 
-  it('renders the note and the degraded-evidence warning', async () => {
-    await packs(payload({
+  // ⚠ BOTH evidence streams can go missing independently since C3 moved this
+  // report into the Compliance app, and the document has to say so for each.
+  // Reporting only the walk gap while silently omitting the job gap would be
+  // the more misleading of the two: 57 of 80 planned obligations are
+  // discharged by a contractor visit.
+  it('renders the note and EVERY degraded-evidence warning', async () => {
+    const buf = await packs(payload({
       options: {
         notes: 'Position as presented to the 14 October board meeting.',
-        walkEvidenceNote: 'You do not have the Inspection app, so walk evidence is not included.',
+        evidenceNotes: [
+          'You do not have the Inspection app, so walk evidence is not included.',
+          'You do not have the Maintenance app, so contractor-visit evidence is not included.',
+        ],
       },
     }));
+    const text = await textOf(buf);
+    expect(text).toContain('Position as presented to the 14 October board meeting.');
+    expect(text).toContain('so walk evidence is not included');
+    expect(text).toContain('so contractor-visit evidence is not included');
+  });
+
+  it('prints no note line when nothing was missing', async () => {
+    const text = await textOf(await packs(payload({ options: { evidenceNotes: [] } })));
+    expect(text).not.toContain('Note:');
   });
 
   // The real five obligations and three closed walks on the live database, as

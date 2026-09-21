@@ -29,7 +29,11 @@
   import UpcomingInspections from './inspections/UpcomingInspections.svelte';
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
-  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listInspectionDefinitions, listComponentsAwaitingAccess } from '$lib/apps/inspection/public.js';
+  import { deleteWalkSession, listWalkSessions, loadSessionInspections, listComponentsAwaitingAccess } from '$lib/apps/inspection/public.js';
+  // ⛔ Planned obligations come from the Compliance app, which owns
+  // `statutory_obligations`. They used to be served by inspection/public.js —
+  // an ownership inversion left behind when migration 206 renamed the table.
+  import { listPlannedObligations } from '$lib/apps/compliance/public.js';
   import { isWalkEvidenced } from '$lib/utils/obligationEvidence.js';
 
   const logger = getLogger('InspectionsTab');
@@ -163,7 +167,7 @@
 
   async function loadDefinitions() {
     try {
-      definitions = await listInspectionDefinitions();
+      definitions = await listPlannedObligations();
     } catch (/** @type {any} */ err) {
       // Non-fatal: the due panel just stays hidden.
       logger('❌ loadDefinitions:', err.message);

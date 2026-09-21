@@ -19,13 +19,64 @@
 // A caller that needs to RENDER the list subscribes to the store it already
 // has — what must not cross an app boundary is a WRITE.
 
+import { api } from '$lib/utils/api';
 import { inspectionDefinitionsStore } from './stores/inspectionDefinitionsStore.js';
 
 /**
- * Load the planned obligations, if they are not already loaded.
- * Safe to call repeatedly — the store no-ops when it already holds them.
+ * Every planned obligation, as rows.
+ *
+ * ⛔ THIS MOVED HERE FROM `inspection/public.js`, WHERE IT WAS CALLED
+ * `listInspectionDefinitions`, AND THAT WAS AN OWNERSHIP INVERSION.
+ * `statutory_obligations` belongs to this app — it stopped being Inspection's
+ * `inspection_definitions` at migration 206 — so serving it through the
+ * Inspection app's door meant the Compliance app would have been reading its
+ * OWN table through another app's public interface. ⚠ The old name is still on
+ * `walk_sessions.definition_id`, deliberately; a column is not renamed to
+ * follow a vocabulary.
+ *
+ * Stateless, so a cross-app reader gets rows without acquiring this app's
+ * store. Presentation order, because that is the order every screen shows them
+ * in and a report that reordered them would not match the screen it came from.
+ *
+ * @param {{ activeOnly?: boolean }} [opts] `activeOnly` for the schedulers:
+ *   an obligation switched off is deliberately still a gap in a REPORT, and
+ *   deliberately not work in a SCHEDULE.
  */
-export async function loadPlannedObligations() {
+export function listPlannedObligations({ activeOnly = false } = {}) {
+  const options = { orderBy: 'presentation_order' };
+  if (activeOnly) options.filters = { active: true };
+  return api.get('statutory_obligations', options);
+}
+
+/**
+ * The recorded applicability decisions — which compliance obligations this
+ * building has decided do not apply to it, with a reason and a name against
+ * each (migration 208).
+ *
+ * ⛔ ALSO MOVED FROM `inspection/public.js`, same inversion. Append-only, so
+ * this is the whole log, newest first; reduce it with
+ * `statutoryExclusions.currentDecisions()`.
+ *
+ * ⚠ It explains something ABSENT from the obligation list, which is why a
+ * report that omitted it would be the more dangerous of the two possible
+ * errors: a duty with no plan and no recorded decision reads as a gap, and a
+ * duty with no plan and a recorded decision reads as a gap too unless somebody
+ * hands the reader this.
+ */
+export function listStatutoryExclusions() {
+  return api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
+}
+
+/**
+ * Load the planned obligations into this app's store, if they are not there.
+ * Safe to call repeatedly — the store no-ops when it already holds them.
+ *
+ * ⚠ Named apart from `listPlannedObligations` on purpose: one fills a store
+ * and returns nothing useful, the other returns rows. Two near-identical names
+ * for two different things is the fault this whole strand of work exists to
+ * end, and it would be silly to introduce one here.
+ */
+export async function ensurePlannedObligationsLoaded() {
   return inspectionDefinitionsStore.load();
 }
 

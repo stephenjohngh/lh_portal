@@ -1,4 +1,5 @@
 <!-- src/lib/apps/admin/components/DisplayItemModal.svelte -->
+<!-- src/lib/apps/compliance/components/DisplayItemModal.svelte -->
 <!-- Create / edit a display_items row (BSA s.82 register). Registration fields
      only (R5) — refresh/exception handling (R6) is done from the register row
      itself via displayRegisterStore.setStatus, not here.

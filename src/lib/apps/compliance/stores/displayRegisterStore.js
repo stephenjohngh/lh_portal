@@ -1,5 +1,7 @@
-// src/lib/apps/admin/stores/displayRegisterStore.js
-// CRUD store for display_items — used by Admin > Display Register.
+// src/lib/apps/compliance/stores/displayRegisterStore.js
+// CRUD store for display_items — used by Compliance > Display Register.
+// ⭐ Moved out of Admin with its tab (C3): the BSA s.82 display duty is a
+// compliance obligation discharged on a wall, not portal administration.
 //
 // BSA 2022 s.82 controlled register of what must be physically displayed in
 // the building (prescribed AP notice, latest BAC, any compliance notice in

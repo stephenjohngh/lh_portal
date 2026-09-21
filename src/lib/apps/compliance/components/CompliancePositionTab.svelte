@@ -1,6 +1,15 @@
-<!-- src/lib/apps/maintenance/components/ComplianceTab.svelte -->
-<!-- The periodic compliance position, and the evidence behind it.
+<!-- src/lib/apps/compliance/components/CompliancePositionTab.svelte -->
+<!-- The compliance position, the evidence behind it, and the open faults beside it.
      M4/M7 — docs/requirements/registers/Maintenance_Review.md.
+
+     ⭐ THIS TAB MOVED OUT OF THE MAINTENANCE APP (C3,
+     docs/design/compliance_app_design.md §6.1). It reads walk sessions
+     (Inspection's), jobs (Maintenance's) and applicability decisions (this
+     app's) and composes a position from all three — so it was a compliance
+     report living where ONE of its three sources lives, placed by adjacency
+     rather than by ownership. ⛔ Moving it also ended the collision the
+     vocabulary work existed to catch: the portal briefly had a Compliance app
+     and a Maintenance → Compliance tab meaning different things.
 
      Two reports over the same data. The FILTERS define what is on screen; the
      Word export prints exactly what the filters produced, plus a few options
@@ -8,17 +17,23 @@
      and schedule reports, so a printed report can never disagree with the
      screen it came from.
 
-     ⚠ CROSS-APP READ. Evidence comes from BOTH streams: maintenance jobs (this
-     app) and inspection walk sessions (Inspection's, through its public.js).
-     Per Cross_App_Aggregation_Spec.md the walk half is gated on the READER
-     holding the Inspection permission, and fails ALONE — losing it degrades the
-     report to job evidence with a notice, rather than emptying it. -->
+     ⚠ CROSS-APP READS, all three gated the way Cross_App_Aggregation_Spec.md
+     requires — on the READER's permission for the OWNING app, and failing
+     ALONE. Losing one degrades the report and says so; it never empties it.
+     ⚠ Both gates are currently moot, because this app is admin-only and admins
+     bypass grants. They stay anyway: a control is not removed because today's
+     configuration makes it redundant, and §5 of the design doc leaves widening
+     the app open. -->
 <script>
   import { onMount } from 'svelte';
-  import { maintenanceStore } from '../stores/maintenanceStore.js';
-  import {
-    listWalkSessions, listInspectionDefinitions, listStatutoryExclusions,
-  } from '$lib/apps/inspection/public.js';
+  import { listWalkSessions } from '$lib/apps/inspection/public.js';
+  import { listJobEvidence } from '$lib/apps/maintenance/public.js';
+  // ⭐ This app's own tables. They used to be read through
+  // `inspection/public.js`, which was an ownership inversion left behind by
+  // migration 206 — see compliance/public.js.
+  import { listPlannedObligations, listStatutoryExclusions } from '../public.js';
+  import { listComponentsByStatus, listWorksLinesFor } from '$lib/apps/building_assets/public.js';
+  import { correctiveSummary, faultLabel, FAULT_STATUSES } from '../utils/correctiveWork.js';
   import { permissions } from '$lib/stores/permissions';
   import { authHeaders } from '$lib/utils/authHeaders';
   import { downloadResponse } from '$lib/utils/download';
@@ -33,7 +48,7 @@
   } from '$lib/utils/statutoryTemplate.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
   import { fmtDate, fmtDateTime, fmtToday } from '$lib/utils/dates.js';
-  import { addDaysISO, today } from '../utils/maintenanceHelpers.js';
+  import { addDaysISO, today } from '$lib/apps/maintenance/utils/maintenanceHelpers.js';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -41,50 +56,72 @@
   import Checkbox from '$lib/components/common/Checkbox.svelte';
   import { getLogger } from '$lib/utils/logger';
 
-  const logger = getLogger('ComplianceTab');
-
-  $: jobs = $maintenanceStore.jobs;
+  const logger = getLogger('CompliancePositionTab');
 
   // -- Cross-app data ----------------------------------------------------------
   let obligations = [];
   let sessions = [];
+  let jobs = [];
   let exclusions = [];
+  let faults = [];
+  let worksLines = [];
   let loading = true;
   let loadError = '';
-  let walkEvidenceAvailable = true;
+  // ⚠ ONE fact per stream, not two: an empty note means the evidence loaded.
+  // A boolean beside the sentence is a second copy that goes stale in whichever
+  // place is not being edited — this file's own project has found that a dozen
+  // times over.
   let walkEvidenceNote = '';
+  let jobEvidenceNote = '';
+  let faultsAvailable = true;
 
   $: canReadWalks = $permissions.isAdmin || Boolean($permissions.appPermissions?.inspection?.hasAccess);
+  $: canReadJobs  = $permissions.isAdmin || Boolean($permissions.appPermissions?.maintenance?.hasAccess);
+  $: canReadAssets = $permissions.isAdmin || Boolean($permissions.appPermissions?.building_assets?.hasAccess);
 
   onMount(async () => {
     try {
-      // ALL obligations, not the job-evidenced subset the store keeps: this
-      // report is about the whole register, both evidence routes.
-      obligations = await listInspectionDefinitions();
+      // ALL planned obligations, not the job-evidenced subset: this report is
+      // about the whole register, both evidence routes.
+      obligations = await listPlannedObligations();
     } catch (/** @type {any} */ err) {
       loadError = `Could not read this building's planned obligations: ${err.message}`;
     }
 
-    // Gate on the READER's Inspection permission, not on the data existing —
-    // the same question `planner/utils/linked.js` visibleSources() asks, read
-    // from the permissions store's own state so it costs no query. The Planner
-    // shipped without asking it and showed one app's records to someone who had
-    // never been granted that app.
+    // Gate on the READER's permission for the owning app, not on the data
+    // existing — the same question `planner/utils/linked.js` visibleSources()
+    // asks, read from the permissions store's own state so it costs no query.
+    // The Planner shipped without asking it and showed one app's records to
+    // someone who had never been granted that app.
     //
-    // ⚠ A UI gate, not a security boundary: walk_sessions still reads as any
-    // signed-in user at RLS. What it fixes is this report PRESENTING Inspection's
-    // records to somebody who was never given Inspection.
+    // ⚠ A UI gate, not a security boundary: these tables still read as any
+    // signed-in user at RLS. What it fixes is this report PRESENTING another
+    // app's records to somebody who was never given that app.
     if (canReadWalks) {
       try {
         sessions = await listWalkSessions();
       } catch (/** @type {any} */ err) {
-        walkEvidenceAvailable = false;
         walkEvidenceNote = 'Inspection evidence could not be loaded, so walk-evidenced compliance obligations below show only what jobs prove.';
         logger('⚠ walk sessions unavailable:', err.message);
       }
     } else {
-      walkEvidenceAvailable = false;
       walkEvidenceNote = 'You do not have the Inspection app, so walk evidence is not included. Compliance obligations discharged by an inspection walk will read as though nothing has been done.';
+    }
+
+    // ⭐ Jobs are a cross-app read NOW, and were not before. While this tab
+    // lived in Maintenance they arrived free on that app's own store; here they
+    // need the same gate and the same fail-alone treatment as walks. ⚠ This is
+    // the larger half of the evidence: 57 of the 80 planned obligations are
+    // discharged by a contractor visit against 23 by a walk.
+    if (canReadJobs) {
+      try {
+        jobs = await listJobEvidence();
+      } catch (/** @type {any} */ err) {
+        jobEvidenceNote = 'Maintenance evidence could not be loaded, so compliance obligations discharged by a contractor visit show only what inspection walks prove.';
+        logger('⚠ maintenance jobs unavailable:', err.message);
+      }
+    } else {
+      jobEvidenceNote = 'You do not have the Maintenance app, so contractor-visit evidence is not included. Most of this building’s compliance obligations are discharged that way and will read as though nothing has been done.';
     }
 
     try {
@@ -92,8 +129,30 @@
     } catch (/** @type {any} */ err) {
       logger('⚠ exclusions unavailable:', err.message);
     }
+
+    // Open faults — the band beside the obligations, never inside them.
+    if (canReadAssets) {
+      try {
+        faults = await listComponentsByStatus(FAULT_STATUSES);
+        worksLines = faults.length ? await listWorksLinesFor(faults.map(c => c.id)) : [];
+      } catch (/** @type {any} */ err) {
+        faultsAvailable = false;
+        logger('⚠ open faults unavailable:', err.message);
+      }
+    } else {
+      faultsAvailable = false;
+    }
+
     loading = false;
   });
+
+  // -- Open faults, beside the position and never in it ------------------------
+  // ⛔ `corrective` is NEVER folded into `summary`. Corrective work discharges
+  // no duty, so adding it to the obligation counts would make an open fault
+  // list look like compliance progress. An invisible open fault is the "reads
+  // plausibly while saying something untrue" failure; a summed one is worse.
+  $: corrective = correctiveSummary({ components: faults, worksItems: worksLines });
+  let showFaults = false;
 
   // -- The two reports ---------------------------------------------------------
   $: events = [...walkEventsFromSessions(sessions), ...jobEventsFromJobs(jobs)];
@@ -177,7 +236,7 @@
             includeElsewhere: optIncludeElsewhere,
             includeHistory: optIncludeHistory || report === 'history',
             notes: optNotes.trim(),
-            walkEvidenceNote,
+            evidenceNotes: [walkEvidenceNote, jobEvidenceNote].filter(Boolean),
           },
         }),
       });
@@ -216,8 +275,61 @@
       {/each}
     </div>
 
-    {#if !walkEvidenceAvailable}
-      <p class="degraded">⚠ {walkEvidenceNote}</p>
+    {#if walkEvidenceNote}<p class="degraded">⚠ {walkEvidenceNote}</p>{/if}
+    {#if jobEvidenceNote}<p class="degraded">⚠ {jobEvidenceNote}</p>{/if}
+
+    <!-- ══ Open faults — ADJACENT to the position, never part of it ══════════
+         ⛔ These figures are NEVER added to the ones above. Corrective work
+         discharges no duty: a building with every cycle on schedule and nine
+         failed components is not compliant-and-tidy, and summing the two would
+         make an open fault list read as compliance progress. The band is
+         styled outside the pass/fail palette for the same reason the
+         `assured` pill is — it is not a third kind of compliant.
+         docs/design/compliance_app_design.md §11. -->
+    {#if faultsAvailable && corrective.open > 0}
+      <div class="faults">
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+        <div class="faults-head" on:click={() => (showFaults = !showFaults)}>
+          <span class="faults-n">{corrective.open}</span>
+          <span class="faults-l">
+            open fault{corrective.open === 1 ? '' : 's'}
+            <span class="faults-sub">
+              {corrective.failed} failed · {corrective.problem} problem ·
+              {corrective.covered} on an issued works schedule ·
+              <strong>{corrective.uncovered} with no works schedule issued</strong>
+            </span>
+          </span>
+          <span class="faults-toggle">{showFaults ? 'Hide' : 'Show'}</span>
+        </div>
+        <p class="faults-why">
+          Corrective work — a component found broken. It discharges no compliance obligation,
+          so it is counted here and not above. ⚠ Coverage means a works schedule that has been
+          <em>issued</em>; a draft has not been sent to anybody, and a corrective maintenance job
+          is not counted at all.
+        </p>
+        {#if showFaults}
+          <div class="tbl faultlist">
+            <div class="th"><div>Component</div><div>Status</div><div>Works schedule</div></div>
+            {#each corrective.rows as f (f.id)}
+              <div class="tr">
+                <div class="c-name"><span class="nm">{faultLabel(f)}</span>
+                  {#if f.type_code}<span class="ref">{f.type_code}</span>{/if}
+                </div>
+                <div><span class="pill {f.status === 'failed' ? 'st-breach' : 'st-attention'}">{f.status === 'failed' ? 'Failed' : 'Problem'}</span></div>
+                <div>
+                  {#if f.schedules.length}
+                    {#each f.schedules as sched (sched.id)}
+                      <span class="sched">{sched.reference ?? sched.title} · {sched.status}</span>
+                    {/each}
+                  {:else}
+                    <span class="none">None issued</span>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
 
     <!-- Report switch + export -->
@@ -446,10 +558,27 @@
          font-weight: 600; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
   .grp-n { font-size: 0.68rem; color: rgb(100 116 139); }
 
+
+  /* Open faults — deliberately OUTSIDE the pass/fail palette. Slate, not red
+     and not green: corrective work is not a third kind of compliant, and a
+     reader scanning for a status colour must not find one here. Same argument
+     as the violet `assured` pill. */
+  .faults { border: 1px solid rgb(100 116 139 / 0.45); border-radius: 8px;
+            background: rgb(51 65 85 / 0.25); padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; }
+  .faults-head { display: flex; align-items: baseline; gap: 0.6rem; cursor: pointer; }
+  .faults-n { font-size: 1.35rem; font-weight: 700; color: rgb(226 232 240); }
+  .faults-l { font-size: 0.85rem; color: rgb(203 213 225); flex: 1; }
+  .faults-sub { display: block; font-size: 0.75rem; color: rgb(148 163 184); margin-top: 0.15rem; }
+  .faults-sub strong { color: rgb(226 232 240); font-weight: 600; }
+  .faults-toggle { font-size: 0.72rem; color: rgb(148 163 184); text-decoration: underline; }
+  .faults-why { font-size: 0.72rem; color: rgb(148 163 184); margin: 0.5rem 0 0; line-height: 1.5; }
+  .faults .tbl { margin-top: 0.6rem; }
+  .sched { display: block; font-size: 0.72rem; color: rgb(203 213 225); }
   .tbl { border: 1px solid rgb(71 85 105 / 0.4); border-radius: 8px; overflow: hidden; }
   .th, .tr { display: grid; grid-template-columns: 2.2fr 0.9fr 0.8fr 0.9fr 1.3fr 0.9fr 1fr; gap: 0.5rem;
              padding: 0.45rem 0.7rem; font-size: 0.76rem; align-items: start; }
   .tbl.hist .th, .tbl.hist .tr { grid-template-columns: 1fr 2fr 1.6fr 1fr 1.2fr; }
+  .tbl.faultlist .th, .tbl.faultlist .tr { grid-template-columns: 2.4fr 0.9fr 1.6fr; }
   .th { background: rgb(30 41 59 / 0.6); color: rgb(100 116 139); font-size: 0.68rem;
         text-transform: uppercase; letter-spacing: 0.04em; }
   .tr { border-top: 1px solid rgb(71 85 105 / 0.25); color: rgb(203 213 225); }

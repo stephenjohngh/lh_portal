@@ -21,18 +21,16 @@ import { resolveAwaitingAccess } from './utils/inspectionHelpers.js';
 const SESSION_INSPECTION_SELECT =
   '*, component:components!component_id(asset_id, label, type_code, floor:floors!floor_id(short_name, level_order))';
 
-/**
- * All inspection definitions (portal config, admin-maintained CRUD lives in the
- * Admin app), presentation order. Read by the Building Assets Inspections tab
- * and the mobile app's session-start list; due/overdue state is derived
- * client-side from these + closed sessions via computeInspectionSchedule.
- * @param {{ activeOnly?: boolean }} [opts]
- */
-export function listInspectionDefinitions({ activeOnly = false } = {}) {
-  const options = { orderBy: 'presentation_order' };
-  if (activeOnly) options.filters = { active: true };
-  return api.get('statutory_obligations', options);
-}
+// ⛔ `listInspectionDefinitions` AND `listStatutoryExclusions` HAVE MOVED to
+// `$lib/apps/compliance/public.js`, as `listPlannedObligations` and
+// `listStatutoryExclusions`. They served `statutory_obligations` and
+// `statutory_exclusions`, which this app has not owned since migration 206
+// renamed `inspection_definitions` — so this file was another app's door onto
+// another app's tables. Do not add them back here: the Inspection app reads
+// planned obligations through Compliance's interface like everybody else.
+//
+// ⚠ `walk_sessions.definition_id` still carries the old word, deliberately. A
+// column is not renamed to follow a vocabulary.
 
 /**
  * Rotating definitions: the most recent inspected_at per component across ALL
@@ -75,20 +73,6 @@ export function listWalkSessions() {
     orderBy:   'started_at',
     ascending: false,
   });
-}
-
-/**
- * Recorded decisions about which register entries apply to this building
- * (migration 208). Append-only, so this returns the whole log, newest first;
- * reduce it with `statutoryExclusions.currentDecisions()`.
- *
- * Cross-app read: it explains something ABSENT from the obligation list, so
- * Maintenance's compliance report needs it. It belongs here rather than as a
- * raw table read in that app — reading this file has to tell you every
- * cross-app consumer, which is what went stale before.
- */
-export function listStatutoryExclusions() {
-  return api.get('statutory_exclusions', { orderBy: 'decided_at', ascending: false });
 }
 
 /**

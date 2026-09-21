@@ -36,6 +36,8 @@
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ComplianceObligationsTab from './components/ComplianceObligationsTab.svelte';
   import PlannedObligationsTab from './components/PlannedObligationsTab.svelte';
+  import CompliancePositionTab from './components/CompliancePositionTab.svelte';
+  import DisplayRegisterTab from './components/DisplayRegisterTab.svelte';
 
   // ⛔ ADMIN ONLY, decided by the user 2026-09-21: "im happy for everything to
   // be admin only. dont want another user type." The app is registered with
@@ -44,7 +46,7 @@
   // tier, no RLS redesign.
   $: isAdmin = $permissions.isAdmin;
 
-  /** @type {'compliance-obligations'|'planned-obligations'} */
+  /** @type {'compliance-obligations'|'planned-obligations'|'compliance-position'|'display-register'} */
   let activeTab = 'compliance-obligations';
   let assetsStoreLoaded = false;   // lazy — types/attrs, for the scope editor
   let componentsLoaded  = false;   // lazy — the 1,092-component set
@@ -52,6 +54,18 @@
   const TABS = [
     { key: 'compliance-obligations', icon: '🔎', label: 'Compliance obligations' },
     { key: 'planned-obligations',    icon: '🗓', label: 'Planned obligations' },
+    // ⭐ Third, and the order is the argument the app makes: what must be done,
+    // what this building plans to do about it, then whether it happened. The
+    // position tab moved here from Maintenance (C3) — it was a compliance
+    // report living where ONE of its three evidence sources lives.
+    { key: 'compliance-position',    icon: '📊', label: 'Compliance position' },
+    // ⚠ LAST, AND UNLIKE THE OTHER THREE. BSA s.82 is a duty discharged on a
+    // notice board rather than by a cycle, so it has no plan, no evidence
+    // stream and no cadence — the user's own read was *"compliance although
+    // not much like anything else."* It is here because it is a statutory
+    // duty of this building and was never portal administration, and it is
+    // last because nothing flows into or out of it.
+    { key: 'display-register',       icon: '📌', label: 'Display register' },
   ];
 
   // ⭐ THE COMPONENT SET LOADS ONLY WHERE IT IS NEEDED. The register reads no
@@ -115,6 +129,14 @@
       {:else}
         <PlannedObligationsTab />
       {/if}
+    {:else if activeTab === 'display-register'}
+      <DisplayRegisterTab />
+    {:else if activeTab === 'compliance-position'}
+      <!-- ⚠ Also no store gate. It loads its own three evidence streams and its
+           own fault list through each owning app's public.js, each failing
+           alone — so a spinner here would be waiting on a store it never
+           reads. -->
+      <CompliancePositionTab />
     {/if}
   {/if}
 </div>

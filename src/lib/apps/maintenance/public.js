@@ -46,6 +46,35 @@ export async function listScheduledWork(from, to) {
 }
 
 /**
+ * Every job, as COMPLIANCE EVIDENCE — what a planned obligation can point at to
+ * say it was discharged.
+ *
+ * ⭐ Why this exists rather than the reader subscribing to `maintenanceStore`:
+ * the compliance position report used to live in this app, so it read the
+ * store's `jobs` for free. It moved to the Compliance app (C3), which makes
+ * this a cross-app read — and the convention is that those go through an
+ * accessor here, so that reading this file still tells you every consumer.
+ *
+ * ⚠ `getAll`, not `get`. `listWalkSessions` carries the same note and the same
+ * reason: the report derives "last completed" from these, so a read truncated
+ * at PostgREST's 1,000-row cap would print "Never · In breach" against a duty
+ * that was genuinely discharged — a silent lie in a document handed to an
+ * assessor. There are zero jobs today and 57 of the 80 planned obligations are
+ * evidenced this way, so this table is about to stop being small.
+ *
+ * Columns are named rather than `*`: these are exactly what `jobEventsFromJobs`
+ * reads, and a joined-or-narrow select makes an unasked-for field simply absent
+ * at the far end instead of silently wrong.
+ */
+export function listJobEvidence() {
+  return api.getAll('maintenance_jobs', {
+    select: 'id, title, obligation_id, status, scheduled_date, completed_date, '
+          + 'hard_expiry_date, result, engineer_name, contractor_name, '
+          + 'reference_number, completion_notes',
+  });
+}
+
+/**
  * Create a job from something the Planner was holding.
  *
  * The Planner cannot write `maintenance_jobs` itself, so this is the door — and

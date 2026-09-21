@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/displayRegisterStatus.test.js
+// src/lib/apps/compliance/utils/displayRegisterStatus.test.js
 import { describe, it, expect } from 'vitest';
 import { daysBetween, attentionReason, attentionLabel } from './displayRegisterStatus.js';
 

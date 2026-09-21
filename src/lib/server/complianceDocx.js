@@ -257,7 +257,12 @@ export function buildComplianceDocument(input = {}) {
     includeElsewhere: options.includeElsewhere !== false,
     includeHistory: Boolean(options.includeHistory),
     notes: options.notes ?? '',
-    walkEvidenceNote: options.walkEvidenceNote ?? '',
+    // ⚠ NOTES, plural, since C3. There are now TWO evidence streams that can
+    // go missing independently — inspection walks and contractor jobs — and a
+    // document that reported only the first while silently omitting the second
+    // would be the more misleading of the two, because most of this building's
+    // compliance obligations are discharged by a contractor.
+    evidenceNotes: (options.evidenceNotes ?? []).filter(Boolean),
   };
 
   const printed  = printedRows(rows, options);
@@ -273,12 +278,12 @@ export function buildComplianceDocument(input = {}) {
     children.push(para([run(opts.notes, { italics: true })]), new Paragraph({ text: '' }));
   }
 
-  // An honest report says what it could not see. This is the same sentence the
-  // screen shows, so a document produced without Inspection evidence can never
-  // be mistaken for a complete one.
-  if (opts.walkEvidenceNote) {
+  // An honest report says what it could not see. These are the same sentences
+  // the screen shows, so a document produced without one of the evidence
+  // streams can never be mistaken for a complete one.
+  for (const note of opts.evidenceNotes) {
     children.push(
-      para([run(`Note: ${opts.walkEvidenceNote}`, { color: COLOURS.warnAmber })]),
+      para([run(`Note: ${note}`, { color: COLOURS.warnAmber })]),
       new Paragraph({ text: '' }),
     );
   }

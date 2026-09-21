@@ -44,7 +44,7 @@ const h = vi.hoisted(() => {
     setProfile:     (p) => { profile = p; },
     setUpdateExtra: (e) => { updateExtra = e; },
     setObligations: (o) => { obligations = o; },
-    listInspectionDefinitions: vi.fn(() => Promise.resolve(obligations)),
+    listPlannedObligations: vi.fn(() => Promise.resolve(obligations)),
   };
 });
 
@@ -54,7 +54,7 @@ vi.mock('$lib/utils/auditLogger',   () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',        () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/utils/mediaUpload.js',() => ({ uploadMedia: h.uploadMedia }));
 vi.mock('$lib/utils/driveUtils.js', () => ({ deleteStorageFiles: vi.fn(() => Promise.resolve()) }));
-vi.mock('$lib/apps/inspection/public.js', () => ({ listInspectionDefinitions: h.listInspectionDefinitions }));
+vi.mock('$lib/apps/compliance/public.js', () => ({ listPlannedObligations: h.listPlannedObligations }));
 
 const { maintenanceStore } = await import('./maintenanceStore.js');
 
@@ -205,14 +205,14 @@ describe('load — obligations come from the shared library', () => {
     await maintenanceStore.load();
 
     expect(get(maintenanceStore).obligations.map(o => o.id)).toEqual(['o1', 'o2']);
-    expect(h.listInspectionDefinitions).toHaveBeenCalledWith({ activeOnly: true });
+    expect(h.listPlannedObligations).toHaveBeenCalledWith({ activeOnly: true });
     const queried = h.api.get.mock.calls.map(c => c[0]);
     expect(queried).not.toContain('statutory_obligations');
     expect(queried).not.toContain('maintenance_regime');
   });
 
   it('degrades to no obligations rather than failing the whole load', async () => {
-    h.listInspectionDefinitions.mockRejectedValueOnce(new Error('RLS says no'));
+    h.listPlannedObligations.mockRejectedValueOnce(new Error('RLS says no'));
     await maintenanceStore.load();
     expect(get(maintenanceStore).obligations).toEqual([]);
     expect(get(maintenanceStore).error).toBeNull();

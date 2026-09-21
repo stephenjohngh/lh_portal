@@ -1,4 +1,4 @@
-// src/lib/apps/admin/utils/displayRegisterStatus.js
+// src/lib/apps/compliance/utils/displayRegisterStatus.js
 //
 // Pure "needs attention" logic for the display register (BSA s.82, EXT-14.R5-R7).
 // No DB, no I/O — Type-1 testable. Deliberately does NOT touch `status`: that

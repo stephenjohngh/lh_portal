@@ -19,7 +19,6 @@
   import SpaceTypesPanel from './components/SpaceTypesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
-  import DisplayRegisterTab from './components/DisplayRegisterTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
@@ -40,7 +39,6 @@
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
-    { id: 'display-register', icon: '📌', label: 'Display Register' },
   ];
   
   // Modal states
@@ -167,8 +165,12 @@
     <!-- ⚠ The compliance obligations register and this building's planned
          obligations USED TO LEAD THIS BAR. They are now their own app — they
          were never portal administration, and they sat here only because they
-         grew out of `inspection_definitions` CRUD. See
-         docs/design/compliance_app_design.md. ⛔ Do not bring them back. -->
+         grew out of `inspection_definitions` CRUD. ⛔ THE BSA s.82 DISPLAY
+         REGISTER HAS GONE THE SAME WAY (C3) — it is a statutory duty
+         discharged on a notice board, which is unlike everything else in the
+         Compliance app and still not portal administration. See
+         docs/design/compliance_app_design.md. ⛔ Do not bring any of them
+         back. -->
     <div class="flex space-x-2 border-b border-slate-600">
       <button
         class="px-4 py-2 transition-colors {activeTab === 'users'
@@ -302,8 +304,6 @@
   {:else if activeTab === 'documents'}
     <DocumentsTab />
 
-  {:else if activeTab === 'display-register'}
-    <DisplayRegisterTab />
   {/if}
 </div>
 

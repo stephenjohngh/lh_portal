@@ -20,7 +20,7 @@ import { deleteStorageFiles } from '$lib/utils/driveUtils.js';
 import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary } from '$lib/utils/documentApi.js';
 import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
 import { jobRag, addDaysISO } from '../utils/maintenanceHelpers.js';
-import { listInspectionDefinitions } from '$lib/apps/inspection/public.js';
+import { listPlannedObligations } from '$lib/apps/compliance/public.js';
 import { isJobEvidenced } from '$lib/utils/obligationEvidence.js';
 import { plannedOccurrenceDates } from '../utils/obligationJobScope.js';
 
@@ -109,7 +109,7 @@ function createMaintenanceStore() {
         api.get('component_types',   { orderBy: 'name' }),
         // Only obligations a contractor job can actually discharge. A
         // walk-evidenced one belongs to the Inspection app's due list, not here.
-        listInspectionDefinitions({ activeOnly: true })
+        listPlannedObligations({ activeOnly: true })
           .then(defs => defs.filter(isJobEvidenced))
           .catch(() => []),   // non-fatal: the scheduler just offers nothing
         api.get('maintenance_documents', {

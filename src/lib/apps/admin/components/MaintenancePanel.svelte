@@ -23,7 +23,7 @@
   import {
     plannedObligations,
     createPlannedObligation, updatePlannedObligation, deletePlannedObligation,
-    loadPlannedObligations,
+    ensurePlannedObligationsLoaded,
   } from '$lib/apps/compliance/public.js';
   import { isWalkEvidenced, isJobEvidenced } from '$lib/utils/obligationEvidence.js';
   import { obligationsForType, scopedToTypeOnly, typeCount } from '../utils/typeScopedObligations.js';
@@ -37,7 +37,7 @@
   const dispatch = createEventDispatcher();
 
   onMount(() => {
-    if ($plannedObligations.definitions.length === 0) loadPlannedObligations();
+    if ($plannedObligations.definitions.length === 0) ensurePlannedObligationsLoaded();
   });
 
   // Obligations whose scope names this type. One covering several types shows
