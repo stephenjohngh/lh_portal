@@ -7,7 +7,11 @@
 
 import { describe, it, expect } from 'vitest';
 import { STATUTORY_TEMPLATE } from './statutoryTemplate.js';
-import { toRow, fromRow, toColumn, toField, REGISTER_COLUMNS } from './registerRowMapping.js';
+import { toRow, fromRow, toColumn, toField, REGISTER_COLUMNS, REQUIRED_COLUMNS } from './registerRowMapping.js';
+// The other three kinds, and the list of kinds itself — read rather than
+// restated, so a new kind cannot be silently unchecked.
+import { REGISTER_ITEMS } from './registerItemsData.js';
+import { KIND_KEYS } from './registerKinds.js';
 
 describe('column naming', () => {
   it('renames only the three that cannot take their own name', () => {
@@ -104,5 +108,48 @@ describe('entry → row → entry', () => {
     expect(columns.has('group')).toBe(false);
     expect(columns.has('trigger')).toBe(false);
     expect(columns.size).toBe(new Set(STATUTORY_TEMPLATE.flatMap(e => Object.keys(e))).size);
+  });
+});
+
+describe('every shipped row is insertable — the 65 that were not', () => {
+  // ⛔ THE FAULT THIS PINS. All 65 actions, absences and caveats violated NOT
+  // NULL on `group_key` and `basis`, so `levelWithSeed`'s insert threw on
+  // every load since the four kinds shipped — and the catch reported it as a
+  // permissions problem. Prod therefore held 118 requirements and zero of the
+  // other three kinds, while both the code and PROJECT_STATUS said they would
+  // "level in on the next load". Migration 217 + REQUIRED_COLUMNS.
+  //
+  // ⚠ It reads the REAL seed, never a fixture — a fixture transcribing
+  // register data is the fault this project has recorded five times.
+  it('supplies every column the table requires for its kind', () => {
+    const offenders = [];
+    for (const entry of [...STATUTORY_TEMPLATE, ...REGISTER_ITEMS]) {
+      const kind = entry.kind ?? 'requirement';
+      const row = toRow(entry);
+      const missing = (REQUIRED_COLUMNS[kind] ?? []).filter(
+        c => row[c] === undefined || row[c] === null || row[c] === '',
+      );
+      if (missing.length) offenders.push(`${kind} ${entry.key}: ${missing.join(', ')}`);
+    }
+    expect(offenders, `${offenders.length} shipped rows the table would reject`).toEqual([]);
+  });
+
+  // ⭐ The rule the migration encodes, asserted as a rule rather than by
+  // listing columns twice: a requirement must say which group it is in and
+  // where it comes from; the other kinds are not asked and must not be.
+  it('asks a requirement for group and basis, and asks no other kind for them', () => {
+    expect(REQUIRED_COLUMNS.requirement).toEqual(
+      expect.arrayContaining(['group_key', 'basis']),
+    );
+    for (const kind of ['action', 'absence', 'caveat']) {
+      expect(REQUIRED_COLUMNS[kind], kind).not.toContain('group_key');
+      expect(REQUIRED_COLUMNS[kind], kind).not.toContain('basis');
+    }
+  });
+
+  // Every kind the register can hold has an entry here, or a new kind would be
+  // silently unchecked — the shape of the original fault.
+  it('covers every kind the register can hold', () => {
+    expect(Object.keys(REQUIRED_COLUMNS).sort()).toEqual([...KIND_KEYS].sort());
   });
 });

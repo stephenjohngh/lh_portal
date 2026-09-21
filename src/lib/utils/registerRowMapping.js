@@ -152,6 +152,30 @@ export function toField(column) {
 }
 
 /**
+ * Columns `statutory_register` will not accept as null, BY KIND.
+ *
+ * ⛔ THIS EXISTS BECAUSE ALL 65 ITEM ROWS WERE UNINSERTABLE AND NOTHING SAID
+ * SO. `group_key` and `basis` were NOT NULL with no default, so every action,
+ * absence and caveat failed on insert, every load, for a week — and the
+ * levelling caught it and blamed the reader's permissions. Migration 217 makes
+ * the two columns nullable and keeps them required for a requirement, which is
+ * where they mean anything. PROJECT_STATUS §6kk.
+ *
+ * ⚠ THIS IS A DECLARED COPY OF A SCHEMA FACT, and a second copy of a fact is
+ * what this project keeps finding stale. It is here because a unit test has no
+ * database to ask, and the alternative — finding out in production that a row
+ * cannot be written — is what just happened. **If migration 217's constraint
+ * changes, change this too**; the test below is what will notice the shipped
+ * seed disagreeing with it, not a schema drift.
+ */
+export const REQUIRED_COLUMNS = {
+  requirement: ['template_key', 'name', 'group_key', 'basis'],
+  action:      ['template_key', 'name'],
+  absence:     ['template_key', 'name'],
+  caveat:      ['template_key', 'name'],
+};
+
+/**
  * A register entry as a database row.
  * @param {Object} entry
  * @returns {Object}

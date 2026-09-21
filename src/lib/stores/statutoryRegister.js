@@ -176,11 +176,26 @@ function createStatutoryRegisterStore() {
       logger('✅ levelled:', missing.length, 'added,', updatable.length, 'updated');
       return missing.length + updatable.length;
     } catch (/** @type {any} */ err) {
-      // ⚠ NOT an error condition. Only an admin may write this table, so a
-      // viewer reaching an empty or behind table simply reads the shipped
-      // register instead. Failing loudly here would put a compliance screen
-      // into an error state over something the reader cannot act on.
-      logger('could not level with the seed (likely not an admin):', err.message);
+      // ⚠ A PERMISSION FAILURE HERE IS NOT AN ERROR CONDITION. Only an admin
+      // may write this table, so a viewer reaching an empty or behind table
+      // simply reads the shipped register instead. Failing loudly would put a
+      // compliance screen into an error state over something the reader cannot
+      // act on.
+      //
+      // ⛔ BUT THIS USED TO SAY "likely not an admin" FOR EVERY FAILURE, AND
+      // THAT SENTENCE HID A REAL DEFECT FOR A WEEK. All 65 actions, absences
+      // and caveats violated NOT NULL on `group_key` and `basis`, so the
+      // insert threw on every single load — and the log line explained it away
+      // as a permissions problem, which reads like an expected non-event.
+      // Migration 217 fixes the schema; this stops the message asserting a
+      // cause it has not established. PROJECT_STATUS §6kk.
+      //
+      // ⭐ A guessed cause in a log is worse than no cause: it stops the next
+      // person looking.
+      const denied = /permission|row-level security|not authoriz|forbidden|401|403/i
+        .test(err?.message ?? '');
+      if (denied) logger('not levelled — this reader may not write the register');
+      else logger('⚠ LEVELLING FAILED, and not because of permissions:', err?.message ?? err);
       return 0;
     }
   }
