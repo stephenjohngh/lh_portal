@@ -24,7 +24,7 @@
   } from '$lib/apps/inspection/utils/inspectionHelpers.js';
   import { fmtDateTime } from '$lib/utils/dates';
   import { downloadResponse } from '$lib/utils/download';
-  import { conditionChecklistDisplay, readingsDisplay } from '../lookups.js';
+  import { conditionChecklistDisplay, readingsDisplay } from '$lib/apps/building_assets/lookups.js';
 
   const logger   = getLogger('InspectionsReport');
   const dispatch = createEventDispatcher();

@@ -35,6 +35,8 @@ const read = (p) => readFileSync(p, 'utf8');
 const SHELL    = 'src/lib/apps/compliance/ComplianceApp.svelte';
 const POSITION = 'src/lib/apps/compliance/components/CompliancePositionTab.svelte';
 const MAINT    = 'src/lib/apps/maintenance/MaintenanceApp.svelte';
+const WALKS    = 'src/lib/apps/compliance/components/InspectionWalksTab.svelte';
+const BA       = 'src/lib/apps/building_assets/BuildingAssetsApp.svelte';
 const ADMIN    = 'src/lib/apps/admin/AdminApp.svelte';
 
 describe('one thing is called Compliance', () => {
@@ -141,5 +143,55 @@ describe('corrective work stays beside the position, never inside it', () => {
     const body = src.match(/body: JSON\.stringify\(\{[\s\S]*?\}\),/)?.[0];
     expect(body, 'the export payload has moved').toBeTruthy();
     expect(body).not.toMatch(/corrective|faults\b/);
+  });
+});
+
+
+// ⭐ C4 — the walk-evidence history, out of Building Assets (design doc §1.1).
+describe('the walk evidence lives with the compliance domain', () => {
+  it('Building Assets has no inspections tab', () => {
+    const ba = read(BA);
+    const tabs = ba.match(/const TABS = \[[\s\S]*?\];/);
+    expect(tabs, 'the Building Assets tab list has moved or been renamed').toBeTruthy();
+    // ⚠ The tab LIST, not the file: its header now explains at length why
+    // there is no such tab, and a bare substring search would match that.
+    expect(tabs[0]).not.toMatch(/inspection/i);
+    expect(ba).not.toContain('<InspectionsTab');
+  });
+
+  it('the Compliance app renders it', () => {
+    const shell = read(SHELL);
+    expect(shell).toContain('<InspectionWalksTab');
+    expect(shell).toMatch(/activeTab === 'inspection-walks'/);
+  });
+
+  // ⛔ The reason it moved. It renders another app's records, so it must keep
+  // reaching them through that app's door — a direct `api.from('walk_sessions')`
+  // here would work perfectly and tell nobody.
+  it('reaches walk sessions only through the Inspection app', () => {
+    const src = read(WALKS);
+    expect(src).toMatch(/from '\$lib\/apps\/inspection\/public\.js'/);
+    // ⚠ Asserts the two things you would NEED to query a table, not the
+    // table's name: the header legitimately says "backed by `walk_sessions`",
+    // and banning the word would be asserting the prose rather than the rule.
+    expect(src, 'a direct api import is a way round the owning app').not.toMatch(/from '\$lib\/utils\/api'/);
+    expect(src, 'a direct supabase client is the same thing').not.toMatch(/from '\$lib\/supabaseClient'/);
+  });
+
+  // ⚠ What it MAY read directly, stated so the rule above cannot be read as
+  // wider than it is: floors and component types are shared reference data,
+  // `lookups.js` is a pure helper that imports nothing, and the chips are
+  // presentational. The line is between REFERENCE DATA and another app's
+  // RECORDS, not between apps.
+  it('lookups stays a pure helper, so importing it crosses nothing', () => {
+    const lookups = read('src/lib/apps/building_assets/lookups.js');
+    expect(lookups, 'lookups.js has acquired an import — it can no longer be shared freely')
+      .not.toMatch(/^\s*import\s/m);
+  });
+
+  // ⚠ The component-shaped question stays in the app that owns components.
+  it('leaves the per-component history in Building Assets', () => {
+    const panel = read('src/lib/apps/building_assets/components/ComponentDetailPanel.svelte');
+    expect(panel).toContain('ComponentInspectionHistory');
   });
 });

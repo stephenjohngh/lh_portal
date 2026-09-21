@@ -13,7 +13,6 @@
   import PlanViewTab      from './components/PlanViewTab.svelte';
   import SpacesTab        from './components/SpacesTab.svelte';
   import WorksTab       from './components/works/WorksTab.svelte';
-  import InspectionsTab from './components/InspectionsTab.svelte';
 
   let activeTab   = 'components';
   let initialized = false;   // true after the first load completes
@@ -51,11 +50,19 @@
     initialized = true;
   });
 
+  // ⛔ THERE IS NO INSPECTIONS TAB HERE ANY MORE (C4, 2026-09-21) and it must
+  // not come back. It rendered the INSPECTION app's `walk_sessions` with the
+  // Inspection app's helpers and deleted through its `public.js` — homeless
+  // rather than misnamed, which is why renaming it would have settled
+  // nothing. It is now **Compliance → Inspection walks**.
+  // ⚠ The component-shaped question stays here and always did:
+  // `ComponentInspectionHistory` in the detail panel answers "what condition
+  // is this component in", which is what a tab in THIS app should be for.
+  // docs/design/compliance_app_design.md §1.1.
   const TABS = [
     { id: 'components',  label: 'Components',     icon: '🧩',  adminOnly: false },
     { id: 'plans',       label: 'Plan View',      icon: '🗺',  adminOnly: false },
     { id: 'spaces',      label: 'Spaces',         icon: '⬡',  adminOnly: false },
-    { id: 'inspections', label: 'Inspections',    icon: '🔍',  adminOnly: false },
     { id: 'works',       label: 'Works',          icon: '🛠',  adminOnly: false },
     { id: 'types',       label: 'Type Browser',   icon: '🗂',  adminOnly: false },
   ];
@@ -108,8 +115,6 @@
     <PlanViewTab />
   {:else if activeTab === 'spaces'}
     <SpacesTab />
-  {:else if activeTab === 'inspections'}
-    <InspectionsTab />
   {:else if activeTab === 'works'}
     <WorksTab />
   {/if}

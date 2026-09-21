@@ -38,6 +38,7 @@
   import PlannedObligationsTab from './components/PlannedObligationsTab.svelte';
   import CompliancePositionTab from './components/CompliancePositionTab.svelte';
   import DisplayRegisterTab from './components/DisplayRegisterTab.svelte';
+  import InspectionWalksTab from './components/InspectionWalksTab.svelte';
 
   // ⛔ ADMIN ONLY, decided by the user 2026-09-21: "im happy for everything to
   // be admin only. dont want another user type." The app is registered with
@@ -46,7 +47,7 @@
   // tier, no RLS redesign.
   $: isAdmin = $permissions.isAdmin;
 
-  /** @type {'compliance-obligations'|'planned-obligations'|'compliance-position'|'display-register'} */
+  /** @type {'compliance-obligations'|'planned-obligations'|'compliance-position'|'inspection-walks'|'display-register'} */
   let activeTab = 'compliance-obligations';
   let assetsStoreLoaded = false;   // lazy — types/attrs, for the scope editor
   let componentsLoaded  = false;   // lazy — the 1,092-component set
@@ -59,6 +60,13 @@
     // position tab moved here from Maintenance (C3) — it was a compliance
     // report living where ONE of its three evidence sources lives.
     { key: 'compliance-position',    icon: '📊', label: 'Compliance position' },
+    // ⭐ The in-house half of the evidence, one row per WALK. ⚠ Not the same
+    // object as the position tab's *Evidence history*, which is a dated list
+    // across BOTH routes per planned obligation — hence naming this after the
+    // walk rather than after the word "evidence". It moved out of Building
+    // Assets in C4: it renders the Inspection app's data with the Inspection
+    // app's helpers, so it was homeless there rather than misnamed.
+    { key: 'inspection-walks',       icon: '🔍', label: 'Inspection walks' },
     // ⚠ LAST, AND UNLIKE THE OTHER THREE. BSA s.82 is a duty discharged on a
     // notice board rather than by a cycle, so it has no plan, no evidence
     // stream and no cadence — the user's own read was *"compliance although
@@ -77,9 +85,17 @@
   // fact belonged to the layout. PROJECT_STATUS §6gg.
   async function activateTab(key) {
     activeTab = key;
-    if (key === 'planned-obligations') {
+    // ⚠ TWO tabs need Building Assets reference data (floors, types,
+    // attribute definitions) and only ONE needs the 1,092-component set. The
+    // split is deliberate: the walks tab renders component names that already
+    // arrive joined on its own query, so dragging in every component to show
+    // a list of five walks would be the cost §6gg removed from the register.
+    if (key === 'planned-obligations' || key === 'inspection-walks') {
       if (!assetsStoreLoaded) { assetsStoreLoaded = true; await buildingAssetsStore.load(); }
-      if (!componentsLoaded)  { componentsLoaded  = true; await buildingAssetsStore.loadComponents(); }
+    }
+    if (key === 'planned-obligations' && !componentsLoaded) {
+      componentsLoaded = true;
+      await buildingAssetsStore.loadComponents();
     }
   }
 
@@ -128,6 +144,15 @@
         <LoadingSpinner />
       {:else}
         <PlannedObligationsTab />
+      {/if}
+    {:else if activeTab === 'inspection-walks'}
+      <!-- ⚠ It reads floors and component types off buildingAssetsStore as
+           shared reference data, so it waits on the same load the planned tab
+           does — but NOT on the 1,092-component set, which it never touches. -->
+      {#if $buildingAssetsStore.loading}
+        <LoadingSpinner />
+      {:else}
+        <InspectionWalksTab />
       {/if}
     {:else if activeTab === 'display-register'}
       <DisplayRegisterTab />

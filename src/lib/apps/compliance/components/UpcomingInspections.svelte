@@ -1,6 +1,6 @@
-<!-- src/lib/apps/building_assets/components/inspections/UpcomingInspections.svelte -->
+<!-- src/lib/apps/compliance/components/UpcomingInspections.svelte -->
 <!-- "Upcoming / Due" — one row per active inspection definition, in the Display
-     order set in Admin → Inspections (matching the mobile start list and the
+     order set in Compliance → Planned obligations (matching the mobile start list and the
      Inspections filter). Urgency is shown per row (band + due text) and
      summarised by the "N due" count rather than reordering the list.
      Due/overdue state is derived read-time by computeInspectionSchedule
@@ -10,7 +10,7 @@
 <script>
   import { computeInspectionSchedule, sortByDisplayOrder, frequencyLabel, scheduleDueText } from '$lib/utils/inspectionSchedule';
   import { fmtDate } from '$lib/utils/dates';
-  import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';
+  import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';
   import { lastDefinitionInspections } from '$lib/apps/inspection/public.js';
   import { awaitingAccessByDefinition } from '$lib/apps/inspection/utils/inspectionHelpers.js';

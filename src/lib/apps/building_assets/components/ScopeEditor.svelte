@@ -1,4 +1,11 @@
-<!-- src/lib/apps/building_assets/components/inspections/ScopeEditor.svelte -->
+<!-- src/lib/apps/building_assets/components/ScopeEditor.svelte -->
+<!-- ⚠ It came out of a folder called `inspections/` in C4. That folder was
+     V1 residue — it held this and the due list, neither of which is an
+     inspection — and the due list left with the rest of the walk surface.
+     ⭐ This stays in Building Assets and is RENDERED by the Compliance app's
+     planned-obligation modal: it is a picker over THIS app's vocabulary
+     (types, systems, floors, statuses, attributes), so it belongs to the app
+     that owns those and not to the one that happens to need a scope. -->
 <!-- Builds an statutory_obligations.scope object using the SAME filter UI as
      the Components tab: multi-select dropdowns (System / Type / Floor / Status)
      and attribute-filter strips (Fixed + Condition) with the chip + popover
@@ -14,9 +21,9 @@
      on apply. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { availableFixedDefs, availableConditionDefs } from '../../utils/attrFilters.js';
+  import { availableFixedDefs, availableConditionDefs } from './utils/attrFilters.js';
   import MultiSelectDropdown from '$lib/components/common/MultiSelectDropdown.svelte';
-  import AttrFilterStrip     from '../AttrFilterStrip.svelte';
+  import AttrFilterStrip     from './AttrFilterStrip.svelte';
 
   export let scope    = {};
   export let types    = [];

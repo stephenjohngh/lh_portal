@@ -104,11 +104,20 @@ describe('the component set loads where it is actually needed', () => {
     expect(panel).not.toMatch(/buildingAssetsStore/);
   });
 
+  // ⚠ Asserts WHICH tab key guards the call, not the shape of the guard.
+  // The first version matched one `if (key === '…') { … loadComponents() }`
+  // block and broke the moment C4 split the reference-data load from the
+  // component-set load — while the rule it exists for was untouched.
+  // [[feedback_assert-the-rule-not-the-sentence]]
   it('only the planned obligations tab triggers the component load', () => {
     const shell = read(SHELL);
-    const guarded = shell.match(/key === '([^']+)'\) \{[\s\S]*?loadComponents\(\)/);
-    expect(guarded, 'the lazy component load has moved or been renamed').toBeTruthy();
-    expect(guarded[1]).toBe(PLANNED_KEY);
+    const at = shell.indexOf('loadComponents()');
+    expect(at, 'the lazy component load has gone or been renamed').toBeGreaterThan(-1);
+    const guard = shell.slice(shell.lastIndexOf('if (', at), at);
+    expect(guard, 'nothing guards the component load').toContain(PLANNED_KEY);
+    for (const other of [REGISTER_KEY, 'compliance-position', 'inspection-walks', 'display-register']) {
+      expect(guard, `${other} must not pull in the component set`).not.toContain(other);
+    }
     // ⚠ And Admin must not have kept a copy — it has no scope editor now.
     expect(read('src/lib/apps/admin/AdminApp.svelte')).not.toContain('loadComponents()');
   });

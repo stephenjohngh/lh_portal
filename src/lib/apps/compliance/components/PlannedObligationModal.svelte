@@ -12,7 +12,7 @@
   import FormInput    from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
-  import ScopeEditor  from '$lib/apps/building_assets/components/inspections/ScopeEditor.svelte';
+  import ScopeEditor  from '$lib/apps/building_assets/components/ScopeEditor.svelte';
   import { templateEntry } from '$lib/utils/statutoryTemplate.js';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
   import { buildRotatingWalk } from '$lib/apps/inspection/utils/inspectionRotation.js';

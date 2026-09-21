@@ -1,10 +1,35 @@
-﻿<!-- src/lib/apps/building_assets/components/InspectionsTab.svelte -->
-<!-- All inspection walk sessions, open first then latest-first.
-     Backed by walk_sessions; expand a row to see per-component detail. -->
+﻿<!-- src/lib/apps/compliance/components/InspectionWalksTab.svelte -->
+<!-- Every in-house inspection walk, open first then latest-first. Backed by
+     `walk_sessions`; expand a row for the per-component detail, and the panel
+     above shows what is due next.
+
+     ⭐ THIS MOVED OUT OF BUILDING ASSETS (C4,
+     docs/design/compliance_app_design.md §1.1), and it was HOMELESS rather
+     than misnamed — which is why renaming it there would have settled
+     nothing. It renders the INSPECTION app's data with the Inspection app's
+     helpers and deletes through that app's `public.js`. Building Assets owns
+     components; it has never owned `walk_sessions`. ⚠ And the
+     component-shaped question it looked like it was answering is already
+     answered elsewhere, by `ComponentInspectionHistory` in the detail panel —
+     this tab is session-centric: what was done, when, by whom.
+
+     ⚠ TWO THINGS HERE ARE CALLED EVIDENCE AND THEY ARE NOT THE SAME.
+     *Compliance position → Evidence history* is a dated list of occurrences
+     across BOTH routes, per planned obligation. This tab is the walks
+     themselves — the in-house route only, one row per session. The tab is
+     named after the object for exactly that reason.
+
+     ⚠ WHAT IT READS FROM BUILDING ASSETS, and why that is allowed: `lookups.js`
+     is a PURE helper module (it takes rows as arguments and imports nothing),
+     `ConditionChecklistChips` is presentational, and floors and component
+     types are shared reference data, which the inter-app convention lets any
+     app read directly. ⛔ What may never be direct is `walk_sessions` and
+     `component_inspections` — those go through `inspection/public.js`, and a
+     guard asserts it. -->
 <script>
   import { onMount }         from 'svelte';
   import { getLogger }       from '$lib/utils/logger';
-  import { buildingAssetsStore }    from '../stores/buildingAssetsStore.js';
+  import { buildingAssetsStore }    from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import {
     flattenInspectionRows,
     groupByComponent,
@@ -23,10 +48,10 @@
   import Button              from '$lib/components/common/Button.svelte';
   import InspectionsReport       from './InspectionsReport.svelte';
   import InspectionDetailModal   from './InspectionDetailModal.svelte';
-  import ConditionChecklistChips from './ConditionChecklistChips.svelte';
+  import ConditionChecklistChips from '$lib/apps/building_assets/components/ConditionChecklistChips.svelte';
   import PhotoLightbox           from '$lib/components/common/PhotoLightbox.svelte';
-  import { typeByCode, conditionChecklistDisplay } from '../lookups.js';
-  import UpcomingInspections from './inspections/UpcomingInspections.svelte';
+  import { typeByCode, conditionChecklistDisplay } from '$lib/apps/building_assets/lookups.js';
+  import UpcomingInspections from './UpcomingInspections.svelte';
   // walk_sessions + component_inspections belong to the Inspection app — read
   // and delete them through its public interface (one owner of the query shape).
   import { deleteWalkSession, listWalkSessions, loadSessionInspections, listComponentsAwaitingAccess } from '$lib/apps/inspection/public.js';
