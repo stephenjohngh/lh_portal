@@ -8,7 +8,7 @@
 import { api } from '$lib/utils/api';
 import { supabase } from '$lib/supabaseClient';
 import { uploadMedia } from '$lib/utils/mediaUpload.js';
-import { purgeAttachments, addAttachments } from '$lib/utils/mediaAttachments.js';
+import { setAttachments } from '$lib/utils/mediaAttachments.js';
 import { updateComponent, upsertComponentInspection } from '$lib/apps/building_assets/public.js';
 
 /**
@@ -16,8 +16,7 @@ import { updateComponent, upsertComponentInspection } from '$lib/apps/building_a
  *   upsertInspection: (row: object) => Promise<any>,
  *   upsertSession:    (row: object) => Promise<any>,
  *   completeSession:  (id: string, fields: object) => Promise<any>,
- *   purgeAttachments: typeof purgeAttachments,
- *   addAttachments:   typeof addAttachments,
+ *   setAttachments:   typeof setAttachments,
  *   applyStatusPatch: (componentId: string, patch: object) => Promise<any>,
  * }}
  */
@@ -26,8 +25,10 @@ export function makeSyncDeps() {
     upsertInspection: (row) => upsertComponentInspection(row),
     upsertSession:    (row) => api.upsert('walk_sessions', row),
     completeSession:  (id, fields) => api.update('walk_sessions', id, fields, false),
-    purgeAttachments,
-    addAttachments,
+    // ⚠ ONE reconcile, not purge-then-add. The pair could not be called
+    // safely in sequence — the purge deleted the files the add was about to
+    // reference. See setAttachments. PROJECT_STATUS §6jj.
+    setAttachments,
     // The patch already carries updated_by (built by inspectionResultPatch);
     // pass it as the userId so updateComponent's stamp stays consistent.
     applyStatusPatch: (componentId, patch) => updateComponent(componentId, patch, patch.updated_by),

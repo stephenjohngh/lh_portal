@@ -33,7 +33,7 @@ const h = vi.hoisted(() => {
 
 vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
 
-const { listAttachments, addAttachments, purgeAttachments, deleteStorageObjects } =
+const { listAttachments, addAttachments, purgeAttachments, setAttachments, deleteStorageObjects } =
   await import('./mediaAttachments.js');
 
 /** The JSON body of the single fetch call made. */
@@ -181,5 +181,74 @@ describe('deleteStorageObjects', () => {
     globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false }));
     const out = await deleteStorageObjects([{ storage_url: 'u1' }], 'tok');
     expect(out.failed).toBe(1);
+  });
+});
+
+describe('setAttachments reconciles instead of rewriting', () => {
+  // ⛔ THE BUG THIS REPLACED. purgeAttachments-then-addAttachments is idempotent
+  // for the ROWS and catastrophic for the FILES: on a replay every url is
+  // already attached, so the purge deleted exactly the storage objects the add
+  // was about to reference. Rows looked perfect, photos were gone, nothing
+  // errored. PROJECT_STATUS §6jj.
+  const existing = (urls) => h.setResult({
+    data: urls.map((u) => ({ entity_id: 'i1', storage_url: u, storage_provider: 'google_drive' })),
+    error: null,
+  });
+
+  it('is a NO-OP when the set is unchanged — the replay case', async () => {
+    existing(['u1', 'u2']);
+    await setAttachments('component_inspection', 'i1', ['u1', 'u2'], 'user-9');
+    // Nothing deleted from storage…
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    // …and nothing re-inserted, because re-inserting means deleting first.
+    const calls = h.supabase.from.mock.results.flatMap(r => [
+      ...r.value.insert.mock.calls, ...r.value.delete.mock.calls,
+    ]);
+    expect(calls).toEqual([]);
+  });
+
+  it('deletes the file only when it is genuinely no longer referenced', async () => {
+    existing(['keep', 'drop']);
+    await setAttachments('component_inspection', 'i1', ['keep'], 'user-9');
+    expect(sentBody().files).toEqual([{ url: 'drop', provider: 'google_drive' }]);
+    const deleteCall = h.supabase.from.mock.results
+      .flatMap(r => r.value.in.mock.calls).find(c => c[0] === 'storage_url');
+    expect(deleteCall[1]).toEqual(['drop']);
+  });
+
+  it('adds only what is new, leaving the rest untouched', async () => {
+    existing(['u1']);
+    await setAttachments('component_inspection', 'i1', [
+      'u1', { url: 'u2', provider: 'supabase' },
+    ], 'user-9');
+    expect(globalThis.fetch).not.toHaveBeenCalled();     // nothing removed
+    const inserted = h.supabase.from.mock.results
+      .flatMap(r => r.value.insert.mock.calls).flatMap(c => c[0]);
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0]).toMatchObject({ storage_url: 'u2', storage_provider: 'supabase' });
+  });
+
+  it('replaces the whole set when every photo changed', async () => {
+    existing(['old1', 'old2']);
+    await setAttachments('component_inspection', 'i1', ['new1'], 'user-9');
+    expect(sentBody().files.map(f => f.url)).toEqual(['old1', 'old2']);
+    const inserted = h.supabase.from.mock.results
+      .flatMap(r => r.value.insert.mock.calls).flatMap(c => c[0]);
+    expect(inserted.map(r => r.storage_url)).toEqual(['new1']);
+  });
+
+  it('empties the set, files and all', async () => {
+    existing(['u1']);
+    await setAttachments('component_inspection', 'i1', [], 'user-9');
+    expect(sentBody().files.map(f => f.url)).toEqual(['u1']);
+  });
+
+  // The same file attached twice is one photo, not two rows.
+  it('dedupes the desired set on url', async () => {
+    existing([]);
+    await setAttachments('x', 'i1', ['u1', 'u1', { url: 'u1' }], 'u');
+    const inserted = h.supabase.from.mock.results
+      .flatMap(r => r.value.insert.mock.calls).flatMap(c => c[0]);
+    expect(inserted).toHaveLength(1);
   });
 });

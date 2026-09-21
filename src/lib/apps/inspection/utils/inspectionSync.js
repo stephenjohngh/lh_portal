@@ -64,10 +64,18 @@ async function syncInspectionSave({ row, photoUrls = [], photoIds = [], statusPa
     urls.push(item);
   }
 
-  // Purge-then-add makes the attachment set idempotent on replay and preserves
-  // the existing re-inspect behaviour (a re-inspection replaces the photo set).
-  await deps.purgeAttachments('component_inspection', row.id);
-  await deps.addAttachments('component_inspection', row.id, urls, row.inspected_by);
+  // ⛔ THIS WAS purgeAttachments THEN addAttachments, AND THAT DELETED FILES IT
+  // WAS ABOUT TO REUSE. Idempotent for the rows, catastrophic for the storage:
+  // on a replay after a partially-completed op, every url below was already
+  // attached from the previous attempt — so the purge deleted those files and
+  // the add re-created rows pointing at nothing. Nothing errored, and the rows
+  // looked perfect. PROJECT_STATUS §6jj.
+  //
+  // ⭐ `setAttachments` reconciles instead: a file is deleted only when it is
+  // no longer referenced, never merely because the set is being rewritten. A
+  // replay is then a genuine no-op, and a re-inspection that really does drop
+  // a photo still removes its file.
+  await deps.setAttachments('component_inspection', row.id, urls, row.inspected_by);
   if (statusPatch) await deps.applyStatusPatch(row.component_id, statusPatch);
 }
 

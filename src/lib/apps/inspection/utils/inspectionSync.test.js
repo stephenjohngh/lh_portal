@@ -13,6 +13,10 @@ function makeDeps() {
     upsertInspection:  vi.fn(() => Promise.resolve()),
     upsertSession:     vi.fn(() => Promise.resolve()),
     completeSession:   vi.fn(() => Promise.resolve()),
+    setAttachments:    vi.fn(() => Promise.resolve()),
+    // ⚠ Still offered so that a regression to purge-then-add would CALL them
+    // and be caught. Asserting they are missing from this fixture would only
+    // test the fixture.
     purgeAttachments:  vi.fn(() => Promise.resolve()),
     addAttachments:    vi.fn(() => Promise.resolve()),
     applyStatusPatch:  vi.fn(() => Promise.resolve()),
@@ -38,19 +42,31 @@ describe('syncOne — inspection_save', () => {
 
     expect(res).toEqual({ ok: true });
     expect(deps.upsertInspection).toHaveBeenCalledWith(PAYLOAD.row);
-    expect(deps.purgeAttachments).toHaveBeenCalledWith('component_inspection', 'i1');
-    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1', ['https://drive/p.jpg'], 'u1');
+    expect(deps.setAttachments).toHaveBeenCalledWith('component_inspection', 'i1', ['https://drive/p.jpg'], 'u1');
     expect(deps.applyStatusPatch).toHaveBeenCalledWith('c1', PAYLOAD.statusPatch);
-    expect(order).toEqual(['upsertInspection', 'purgeAttachments', 'addAttachments', 'applyStatusPatch']);
+    expect(order).toEqual(['upsertInspection', 'setAttachments', 'applyStatusPatch']);
   });
 
   it('is idempotent on replay — running twice repeats the same idempotent calls', async () => {
     const deps = makeDeps();
     await syncOne({ type: 'inspection_save', payload: PAYLOAD }, deps);
     await syncOne({ type: 'inspection_save', payload: PAYLOAD }, deps);
-    expect(deps.upsertInspection).toHaveBeenCalledTimes(2); // upsert-by-id → safe
-    expect(deps.purgeAttachments).toHaveBeenCalledTimes(2); // purge-then-add → converges
-    expect(deps.addAttachments).toHaveBeenCalledTimes(2);
+    expect(deps.upsertInspection).toHaveBeenCalledTimes(2);  // upsert-by-id → safe
+    expect(deps.setAttachments).toHaveBeenCalledTimes(2);    // reconcile → converges
+  });
+
+  // ⛔ THE REPLAY BUG, PINNED AT THE CALL SITE. This used to be a purge
+  // followed by an add, which deletes the storage files the add is about to
+  // re-reference — invisible in the rows, fatal to the photos. There must be
+  // exactly ONE attachment call, and it must be the reconciling one.
+  it('never deletes the attachment set before rewriting it', async () => {
+    const deps = makeDeps();
+    await syncOne({ type: 'inspection_save', payload: PAYLOAD }, deps);
+    expect(deps.setAttachments).toHaveBeenCalledTimes(1);
+    // ⛔ Either of these being called means the files are deleted and then
+    // re-referenced — rows intact, photos gone.
+    expect(deps.purgeAttachments).not.toHaveBeenCalled();
+    expect(deps.addAttachments).not.toHaveBeenCalled();
   });
 
   it('skips the status write when there is no patch', async () => {
@@ -75,7 +91,7 @@ describe('syncOne — inspection_save', () => {
 
   it('a mid-op failure (attachments) still classifies correctly', async () => {
     const deps = makeDeps();
-    deps.addAttachments.mockRejectedValueOnce(new Error('offline'));
+    deps.setAttachments.mockRejectedValueOnce(new Error('offline'));
     const res = await syncOne({ type: 'inspection_save', payload: PAYLOAD }, deps);
     expect(res.ok).toBe(false);
     expect(res.permanent).toBe(false);
@@ -109,7 +125,7 @@ describe('syncOne — queued photo blobs', () => {
     // The provider is persisted offline too, or a replay across a crash loses it.
     expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p1', 'https://drive/p1.jpg', 'google_drive');
     expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p2', 'https://drive/p2.jpg', 'google_drive');
-    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1', [
+    expect(deps.setAttachments).toHaveBeenCalledWith('component_inspection', 'i1', [
       'https://drive/already.jpg',
       { url: 'https://drive/p1.jpg', provider: 'google_drive', sizeBytes: 9 },
       { url: 'https://drive/p2.jpg', provider: 'google_drive', sizeBytes: 9 },
@@ -129,7 +145,7 @@ describe('syncOne — queued photo blobs', () => {
 
     await syncOne({ type: 'inspection_save', payload: withPhotos }, deps);
     expect(deps.uploadPhoto).toHaveBeenCalledTimes(1);   // only p2
-    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1', [
+    expect(deps.setAttachments).toHaveBeenCalledWith('component_inspection', 'i1', [
       'https://drive/already.jpg',
       { url: 'https://drive/p1.jpg', provider: 'google_drive' },   // recorded last time
       { url: 'https://drive/p2.jpg', provider: null },
@@ -141,7 +157,7 @@ describe('syncOne — queued photo blobs', () => {
     deps.getPhoto.mockResolvedValue(null);
     await syncOne({ type: 'inspection_save', payload: withPhotos }, deps);
     expect(deps.uploadPhoto).not.toHaveBeenCalled();
-    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1', ['https://drive/already.jpg'], 'u1');
+    expect(deps.setAttachments).toHaveBeenCalledWith('component_inspection', 'i1', ['https://drive/already.jpg'], 'u1');
   });
 
   it('a photo upload failure is transient — the whole op retries later', async () => {
@@ -150,7 +166,7 @@ describe('syncOne — queued photo blobs', () => {
     deps.uploadPhoto.mockRejectedValueOnce(new Error('Failed to fetch'));
     const res = await syncOne({ type: 'inspection_save', payload: { ...withPhotos, photoIds: ['p1'] } }, deps);
     expect(res).toEqual({ ok: false, permanent: false, error: 'Failed to fetch' });
-    expect(deps.addAttachments).not.toHaveBeenCalled();
+    expect(deps.setAttachments).not.toHaveBeenCalled();
   });
 });
 

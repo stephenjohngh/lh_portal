@@ -92,23 +92,94 @@ export async function addAttachments(
   entityType, entityId, urls, userId, { mimeType = 'image/jpeg', provider = null } = {},
 ) {
   if (!urls || urls.length === 0) return;
-  const now = new Date().toISOString();
-  const rows = urls.map((u) => {
-    const item = typeof u === 'string' ? { url: u } : u;
-    return {
-      entity_type:      entityType,
-      entity_id:        entityId,
-      storage_url:      item.url,
-      // ⛔ The column that makes this row deletable after a provider change.
-      storage_provider: item.provider ?? provider ?? null,
-      size_bytes:       item.sizeBytes ?? null,
-      mime_type:        mimeType,
-      created_at:       now,
-      created_by:       userId,
-    };
-  });
+  const rows = buildRows(entityType, entityId, normaliseItems(urls), userId, { mimeType, provider });
   const { error } = await supabase.from('media_attachments').insert(rows);
   if (error) throw new Error(error.message);
+}
+
+/** A bare url or an object, to one shape. Deduped on url — the same file
+ *  attached twice to one entity is a duplicate row, not two photos. */
+function normaliseItems(items) {
+  const seen = new Set();
+  const out = [];
+  for (const u of items ?? []) {
+    const item = typeof u === 'string' ? { url: u } : u;
+    if (!item?.url || seen.has(item.url)) continue;
+    seen.add(item.url);
+    out.push(item);
+  }
+  return out;
+}
+
+function buildRows(entityType, entityId, items, userId, { mimeType, provider }) {
+  const now = new Date().toISOString();
+  return items.map((item) => ({
+    entity_type:      entityType,
+    entity_id:        entityId,
+    storage_url:      item.url,
+    // ⛔ The column that makes this row deletable after a provider change.
+    storage_provider: item.provider ?? provider ?? null,
+    size_bytes:       item.sizeBytes ?? null,
+    mime_type:        mimeType,
+    created_at:       now,
+    created_by:       userId,
+  }));
+}
+
+/**
+ * Make an entity's attachment set EXACTLY `items`: remove what is no longer
+ * referenced, add what is new, and leave what is unchanged alone.
+ *
+ * ⛔ THIS EXISTS BECAUSE PURGE-THEN-ADD DESTROYED FILES IT WAS ABOUT TO REUSE.
+ * The offline syncer purged an inspection's attachments and re-added the same
+ * urls, which is idempotent for the ROWS and catastrophic for the FILES: on a
+ * replay after a partially-completed op, purge deleted the storage objects the
+ * very next call was about to reference, leaving rows pointing at nothing.
+ * Nothing errored — the rows looked perfect. PROJECT_STATUS §6jj.
+ *
+ * ⭐ The fix is a set reconciliation rather than a delete-and-rewrite, and the
+ * distinction is the whole thing: **a file is deleted only when it is no
+ * longer referenced**, never merely because the set is being rewritten. That
+ * also keeps the behaviour purge-then-add was there for — a re-inspection
+ * genuinely dropping a photo still removes its file.
+ *
+ * @param {string} entityType
+ * @param {string} entityId
+ * @param {Array<string|{ url: string, provider?: string|null, sizeBytes?: number|null }>} items
+ * @param {string} userId
+ * @param {{ mimeType?: string, provider?: string|null }} [opts]
+ */
+export async function setAttachments(
+  entityType, entityId, items, userId, { mimeType = 'image/jpeg', provider = null } = {},
+) {
+  const desired      = normaliseItems(items);
+  const desiredUrls  = new Set(desired.map((d) => d.url));
+  const existing     = await listAttachments(entityType, entityId);
+  const existingUrls = new Set(existing.map((r) => r.storage_url));
+
+  // Gone from the set → the file is genuinely unreferenced, so it goes.
+  const removed = existing.filter((r) => !desiredUrls.has(r.storage_url));
+  if (removed.length > 0) {
+    const { data: { session } } = await supabase.auth.getSession();
+    await deleteStorageObjects(removed, session?.access_token);
+    const { error } = await supabase
+      .from('media_attachments')
+      .delete()
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
+      .in('storage_url', removed.map((r) => r.storage_url));
+    if (error) throw new Error(error.message);
+  }
+
+  // ⚠ Already present → left completely alone. Re-inserting would mean
+  // deleting first, which is the fault this function removes.
+  const toAdd = desired.filter((d) => !existingUrls.has(d.url));
+  if (toAdd.length > 0) {
+    const { error } = await supabase
+      .from('media_attachments')
+      .insert(buildRows(entityType, entityId, toAdd, userId, { mimeType, provider }));
+    if (error) throw new Error(error.message);
+  }
 }
 
 /**
