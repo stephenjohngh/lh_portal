@@ -73,7 +73,7 @@ export async function drain() {
     // the server deps) via the injected object.
     const deps = {
       getPhoto:          (pid) => getPhoto(handle, pid),
-      markPhotoUploaded: (pid, url) => markPhotoUploaded(handle, pid, url),
+      markPhotoUploaded: (pid, url, provider) => markPhotoUploaded(handle, pid, url, provider),
       ...(injectedDeps ?? makeSyncDeps()),
     };
     for (;;) {

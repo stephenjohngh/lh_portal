@@ -49,7 +49,10 @@
  * @property {(fileId: string) => Promise<FileEntry>} getFileMetadata
  *   Return full metadata for a file.
  *
- * @property {(fileId: string) => Promise<void>} deleteFile
+ * @property {(fileId: string, opts?: { bucket?: string }) => Promise<void>} deleteFile
+ *   `opts.bucket` is honoured by the Supabase provider only, and exists because
+ *   a stored URL names the bucket it was written to — which is not necessarily
+ *   the one the provider is configured with today. Ignored elsewhere.
  *   Permanently delete a file from storage.
  *
  * @property {(folderId: string, opts?: {

@@ -31,14 +31,18 @@ export function makeSyncDeps() {
     // The patch already carries updated_by (built by inspectionResultPatch);
     // pass it as the userId so updateComponent's stamp stays consistent.
     applyStatusPatch: (componentId, patch) => updateComponent(componentId, patch, patch.updated_by),
-    // Upload one queued photo blob to Drive; fetches the auth token itself so the
-    // syncer has no token plumbing. Returns the stored URL.
+    // Upload one queued photo blob; fetches the auth token itself so the syncer
+    // has no token plumbing.
+    // ⛔ Returns the PROVIDER as well as the url. The server already told us
+    // which provider took the file and this dropped it on the floor, which is
+    // why `media_attachments.storage_provider` was null on every row ever
+    // written and deleting had to guess. PROJECT_STATUS §6hh.
     uploadPhoto: async (blob, { filename, folderPath }) => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error('No auth token available for photo upload');
-      const { url } = await uploadMedia(blob, { filename, folderPath, token });
-      return url;
+      const { url, provider, sizeBytes } = await uploadMedia(blob, { filename, folderPath, token });
+      return { url, provider, sizeBytes };
     },
   };
 }

@@ -1,6 +1,8 @@
 // src/routes/api/media/file/[fileId]/+server.js
-// GET  /api/media/file/:fileId  — proxy file bytes to browser (unauthenticated)
-// DELETE /api/media/file/:fileId — delete file from storage (requires auth)
+// GET /api/media/file/:fileId — proxy file bytes to browser (unauthenticated)
+//
+// ⚠ GET ONLY. Deleting lives at `../+server.js` — see the note where the DELETE
+// handler used to be, at the foot of this file.
 //
 // GET: Server-side image proxy — fetches a file from the configured storage
 // provider and re-serves the bytes to the browser.
@@ -15,17 +17,11 @@
 // learn any valid ID, so obscurity provides adequate protection for inspection
 // photos and similar non-sensitive internal imagery.
 //
-// Auth (DELETE): requires a valid session.  Called by the inspection store
-// when cleaning up orphaned storage files during session or inspection delete.
-// Storage cleanup failures are non-fatal — the caller always proceeds with
-// DB cleanup regardless.
-//
 // Caching: private, 1-hour max-age.  Browsers re-validate on hard-refresh.
 
 import { json }                 from '@sveltejs/kit';
 import { storageProvider }      from '$lib/server/storage/index.js';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
-import { requireAuth }          from '$lib/server/requireAuth.js';
 import { getLogger }            from '$lib/utils/logger';
 import { declarableMime }       from '$lib/utils/mimeTypes';
 
@@ -72,24 +68,11 @@ export async function GET({ params, url }) {
   }
 }
 
-export async function DELETE({ params, request }) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
-  const { fileId } = params;
-
-  if (!fileId || !/^[A-Za-z0-9_-]+$/.test(fileId)) {
-    return json({ error: 'Invalid file ID' }, { status: 400 });
-  }
-
-  try {
-    await storageProvider.deleteFile(fileId);
-    logger('Deleted storage file:', fileId);
-    return new Response(null, { status: 204 });
-  } catch (err) {
-    logger('⚠ deleteFile failed for', fileId, ':', friendlyStorageError(err));
-    // Return 200 rather than 500 so the caller can treat this as non-fatal.
-    // The file may already have been deleted, or may not exist on this provider.
-    return json({ error: friendlyStorageError(err) }, { status: 200 });
-  }
-}
+// ⛔ THE DELETE HANDLER THAT WAS HERE HAS MOVED TO `../+server.js`, and moving
+// it was the fix rather than a tidy-up. It took one opaque id, guarded it with
+// /^[A-Za-z0-9_-]+$/ — which a Supabase object path fails on both slashes and
+// dots — and handed it to the GLOBALLY ACTIVE provider, which is not
+// necessarily the one that wrote the file. Neither limitation is expressible
+// in this route's shape, because a path cannot be a single `[fileId]` segment.
+// The replacement takes { url, provider } per file and routes each to its own
+// provider. PROJECT_STATUS §6hh. ⚠ Do not re-add a delete here.

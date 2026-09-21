@@ -42,14 +42,26 @@ async function syncInspectionSave({ row, photoUrls = [], photoIds = [], statusPa
   // url, so a retry never double-uploads. The blobs themselves are deleted by the
   // runner only once the whole op is done, so `urls` is always the complete set
   // even across a crash mid-op.
+  // ⛔ Each entry carries WHICH PROVIDER took the file, not just its url. The
+  // server tells us on upload and this used to discard it, which is why every
+  // media_attachments row was written with a null storage_provider and could
+  // only be deleted by guessing. PROJECT_STATUS §6hh.
+  // ⚠ `photoUrls` are bare strings from the panel — already uploaded before
+  // this op was enqueued, with no provider to hand. They are passed through as
+  // strings and fall back to URL inference at delete time.
   const urls = [...photoUrls];
   for (const photoId of photoIds) {
     const photo = await deps.getPhoto(photoId);
     if (!photo) continue;                                   // coalesced away — skip
-    if (photo.uploaded && photo.url) { urls.push(photo.url); continue; }
-    const url = await deps.uploadPhoto(photo.blob, { filename: photo.filename, folderPath: photo.folderPath });
-    await deps.markPhotoUploaded(photoId, url);
-    urls.push(url);
+    if (photo.uploaded && photo.url) {
+      urls.push({ url: photo.url, provider: photo.provider ?? null });
+      continue;
+    }
+    const up = await deps.uploadPhoto(photo.blob, { filename: photo.filename, folderPath: photo.folderPath });
+    // Tolerate a deps implementation that still returns a bare url.
+    const item = typeof up === 'string' ? { url: up, provider: null } : up;
+    await deps.markPhotoUploaded(photoId, item.url, item.provider ?? null);
+    urls.push(item);
   }
 
   // Purge-then-add makes the attachment set idempotent on replay and preserves

@@ -96,30 +96,44 @@ describe('syncOne — queued photo blobs', () => {
     deps.getPhoto.mockImplementation((pid) => Promise.resolve(
       { photoId: pid, blob: new Blob([pid]), filename: `${pid}.jpg`, folderPath: ['Inspections'], uploaded: false, url: null }
     ));
-    deps.uploadPhoto.mockImplementation((_blob, { filename }) => Promise.resolve(`https://drive/${filename}`));
+    // ⛔ The real dep returns { url, provider } — the server says which
+    // provider took the file, and this used to throw it away, which is why
+    // every media_attachments row had a null storage_provider and deleting
+    // had to guess. PROJECT_STATUS §6hh.
+    deps.uploadPhoto.mockImplementation((_blob, { filename }) =>
+      Promise.resolve({ url: `https://drive/${filename}`, provider: 'google_drive', sizeBytes: 9 }));
 
     const res = await syncOne({ type: 'inspection_save', payload: withPhotos }, deps);
     expect(res).toEqual({ ok: true });
     expect(deps.uploadPhoto).toHaveBeenCalledTimes(2);
-    expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p1', 'https://drive/p1.jpg');
-    expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p2', 'https://drive/p2.jpg');
-    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1',
-      ['https://drive/already.jpg', 'https://drive/p1.jpg', 'https://drive/p2.jpg'], 'u1');
+    // The provider is persisted offline too, or a replay across a crash loses it.
+    expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p1', 'https://drive/p1.jpg', 'google_drive');
+    expect(deps.markPhotoUploaded).toHaveBeenCalledWith('p2', 'https://drive/p2.jpg', 'google_drive');
+    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1', [
+      'https://drive/already.jpg',
+      { url: 'https://drive/p1.jpg', provider: 'google_drive', sizeBytes: 9 },
+      { url: 'https://drive/p2.jpg', provider: 'google_drive', sizeBytes: 9 },
+    ], 'u1');
   });
 
   it('skips re-uploading a photo already uploaded on a previous attempt (idempotent replay)', async () => {
     const deps = makeDeps();
     deps.getPhoto.mockImplementation((pid) => Promise.resolve(
       pid === 'p1'
-        ? { photoId: 'p1', uploaded: true, url: 'https://drive/p1.jpg' }              // done last time
+        ? { photoId: 'p1', uploaded: true, url: 'https://drive/p1.jpg', provider: 'google_drive' }
         : { photoId: 'p2', blob: new Blob(['p2']), filename: 'p2.jpg', folderPath: [], uploaded: false, url: null }
     ));
+    // ⚠ A bare url from a dep is still tolerated — the provider is then null
+    // rather than invented, and deletion falls back to inferring it.
     deps.uploadPhoto.mockResolvedValue('https://drive/p2.jpg');
 
     await syncOne({ type: 'inspection_save', payload: withPhotos }, deps);
     expect(deps.uploadPhoto).toHaveBeenCalledTimes(1);   // only p2
-    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1',
-      ['https://drive/already.jpg', 'https://drive/p1.jpg', 'https://drive/p2.jpg'], 'u1');
+    expect(deps.addAttachments).toHaveBeenCalledWith('component_inspection', 'i1', [
+      'https://drive/already.jpg',
+      { url: 'https://drive/p1.jpg', provider: 'google_drive' },   // recorded last time
+      { url: 'https://drive/p2.jpg', provider: null },
+    ], 'u1');
   });
 
   it('skips a photo that was coalesced away (getPhoto returns nothing)', async () => {

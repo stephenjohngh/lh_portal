@@ -6,8 +6,16 @@
 // through /api/media/file/{fileId} to avoid cross-origin 403s triggered by
 // Drive's hotlink protection (Sec-Fetch-Site: cross-site).
 //
-// These three helpers are shared across every app that reads, displays, or
-// deletes media_attachments rows backed by Google Drive storage.
+// These helpers are shared across every app that reads or DISPLAYS
+// media_attachments rows backed by Google Drive storage.
+//
+// ⛔ DELETION IS NOT HERE ANY MORE. `deleteStorageFiles` lived in this file and
+// was Drive-only by construction — it extracted a Drive id and `continue`d on
+// anything else, so a Supabase or OneDrive attachment never produced a request
+// at all and its file was left behind for ever. Deleting is a provider-routing
+// problem, not a Drive one; it lives in $lib/utils/mediaAttachments.js and is
+// resolved server-side by $lib/server/storage/storageRef.js.
+// PROJECT_STATUS §6hh. ⚠ Do not add a deleter back to this module.
 //
 // Non-Drive storage_url values (Supabase public URLs, OneDrive, etc.) pass
 // through unchanged — the helpers are safe to call on any URL.
@@ -45,33 +53,4 @@ export function normalisePhotoUrl(url) {
   const fileId = extractDriveFileId(url);
   if (fileId) return `/api/media/file/${fileId}`;
   return url;
-}
-
-/**
- * Best-effort deletion of Drive storage files via the portal's own
- * DELETE /api/media/file/{fileId} endpoint.
- *
- * Failures are silently swallowed — storage cleanup must never block DB cleanup.
- * Non-Drive URLs (no extractable file ID) are silently skipped.
- *
- * Call this BEFORE deleting the media_attachments DB rows so the URLs are
- * still available to parse.
- *
- * @param {string[]}      urls   — raw storage_url values from media_attachments
- * @param {string|null}   token  — Supabase Bearer token (supabase.auth.getSession())
- */
-export async function deleteStorageFiles(urls, token) {
-  if (!token || !urls?.length) return;
-  for (const url of urls) {
-    const fileId = extractDriveFileId(url);
-    if (!fileId) continue;   // non-Drive provider — skip
-    try {
-      await fetch(`/api/media/file/${fileId}`, {
-        method:  'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch {
-      // Network error — DB cleanup must not be blocked
-    }
-  }
 }

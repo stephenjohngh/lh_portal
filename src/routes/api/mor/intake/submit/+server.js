@@ -30,6 +30,7 @@ import { logAudit,
          getIpAddress,
          getUserAgent }                from '$lib/server/auditLogger';
 import { getLogger }                  from '$lib/utils/logger';
+import { storageProviderName }        from '$lib/server/storage/index.js';
 
 const logger = getLogger('mor/intake/submit');
 
@@ -162,6 +163,13 @@ export async function POST({ request, url }) {
       entity_type: 'mor_case',
       entity_id:   caseRow.id,
       storage_url: p.url,
+      // ⛔ Which provider wrote the file, so it stays deletable if
+      // STORAGE_PROVIDER ever changes. Taken from the SERVER rather than from
+      // the request: these URLs are signature-verified as having come through
+      // /api/mor/intake/upload in this same deployment, so the active provider
+      // is the one that took them — and a client-supplied provider would be
+      // unverified input on a public, unauthenticated endpoint.
+      storage_provider: storageProviderName,
       mime_type:   p.mimeType,
       created_at:  now,
       created_by:  null,

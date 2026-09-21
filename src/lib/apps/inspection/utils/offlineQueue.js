@@ -232,11 +232,18 @@ export async function listPhotosFor(handle, inspectionId) {
   return all.filter(p => p.inspectionId === inspectionId);
 }
 
-/** Mark a photo uploaded (idempotency: a retry then skips the re-upload). */
-export async function markPhotoUploaded(handle, photoId, url) {
+/**
+ * Mark a photo uploaded (idempotency: a retry then skips the re-upload).
+ *
+ * ⚠ `provider` is stored alongside the url because a replay skips the upload
+ * and reuses what is recorded here — so without it, a photo that crossed a
+ * crash would land in media_attachments with no provider and be deletable only
+ * by inference. PROJECT_STATUS §6hh.
+ */
+export async function markPhotoUploaded(handle, photoId, url, provider = null) {
   const p = await handle.get(STORE_PHOTOS, photoId);
   if (!p) return null;
-  const updated = { ...p, uploaded: true, url };
+  const updated = { ...p, uploaded: true, url, provider };
   await handle.put(STORE_PHOTOS, updated);
   return updated;
 }

@@ -86,10 +86,16 @@ export const supabaseStorageProvider = {
     };
   },
 
-  async deleteFile(filePath) {
-    const { error } = await getClient().storage.from(BUCKET).remove([filePath]);
+  // ⚠ `bucket` is an argument because the bucket a file lives in is a property
+  // of WHERE IT WAS WRITTEN, not of this module's configuration. Objects exist
+  // under `inspection-photos` from before this provider was introduced, and
+  // defaulting to BUCKET made them unaddressable — the same class of fault as
+  // using the globally-active provider to delete a file written under another.
+  // The caller resolves the bucket from the URL; see storageRef.js.
+  async deleteFile(filePath, { bucket = BUCKET } = {}) {
+    const { error } = await getClient().storage.from(bucket).remove([filePath]);
     if (error) throw error;
-    logger('Deleted Supabase Storage file:', filePath);
+    logger('Deleted Supabase Storage file:', `${bucket}/${filePath}`);
   },
 
   async listFiles(folderPath, opts = {}) {
