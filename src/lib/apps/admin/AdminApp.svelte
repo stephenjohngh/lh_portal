@@ -19,6 +19,7 @@
   import SpaceTypesPanel from './components/SpaceTypesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
+  import ComplianceObligationsTab from './components/ComplianceObligationsTab.svelte';
   import InspectionDefinitionsTab from './components/InspectionDefinitionsTab.svelte';
   import DisplayRegisterTab from './components/DisplayRegisterTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
@@ -31,7 +32,7 @@
   let searchTerm = '';
   let activeTab = 'users';
   let assetsStoreLoaded = false;   // lazy — load buildingAssetsStore only when a building assets tab is first opened
-  let componentsLoaded = false;    // lazy — components/attrs/inspections (for the Inspections scope preview)
+  let componentsLoaded = false;    // lazy — components/attrs/inspections (for the planned obligations scope preview)
 
   // Grouped tabs — collapsed into dropdowns so the top bar stays short.
   // The ids match the activeTab values handled in the content section below.
@@ -76,21 +77,20 @@
       await permissions.init($auth.user.id, 'admin');
     }
 
-    // ⛔ ADMINS ONLY, and the gate is the point rather than caution: the
-    // Inspections tab is inside `{#if $permissions.isAdmin}`, so a non-admin
-    // defaulted onto it would land on a tab that is not in their tab bar and
+    // ⛔ ADMINS ONLY, and the gate is the point rather than caution: both
+    // compliance tabs are inside `{#if $permissions.isAdmin}`, so a non-admin
+    // defaulted onto one would land on a tab that is not in their tab bar and
     // whose content they cannot reach. They keep Users, which is the only tab
     // they have. ⚠ It cannot be decided before `permissions.init` resolves,
     // which is why it is here and not in the `activeTab` initialiser.
     //
-    // ⚠ THE COST, accepted deliberately: `activateTab('inspections')` loads the
-    // whole component set (types, attributes, latest inspections), so every
-    // admin now pays for the register on opening Admin whether or not they came
-    // for it. That is the trade the default IS — the register is what this tab
-    // group is mostly opened for, and the content block already shows a spinner
-    // while it arrives.
+    // ✅ THE COST THAT USED TO BE RECORDED HERE IS GONE. Defaulting to the old
+    // combined tab loaded the whole component set, so every admin paid for
+    // 1,092 components on opening Admin whether or not they came for it. The
+    // register is the start of the sequence and still opens by default — but
+    // it touches no component data, so the default is now nearly free.
     if ($permissions.isAdmin) {
-      await activateTab('inspections');
+      await activateTab('compliance-obligations');
     }
 
     // Fetch users
@@ -116,14 +116,21 @@
     searchTerm = '';
   }
 
+  // ⭐ THE V2 SPLIT PAID FOR ITSELF HERE. 'inspections' used to be one tab
+  // holding both the register and the work, so opening it loaded the whole
+  // component set — every admin paid for 1,092 components, their attributes
+  // and their latest inspections just to read the register, which does not use
+  // any of it. Now only 'planned-obligations' does, because only its scope
+  // preview and scope editor need components.
   async function activateTab(id) {
     activeTab = id;
-    if ((id === 'types' || id === 'floors' || id === 'space-types' || id === 'inspections') && !assetsStoreLoaded) {
+    if ((id === 'types' || id === 'floors' || id === 'space-types' || id === 'planned-obligations') && !assetsStoreLoaded) {
       assetsStoreLoaded = true;
       await buildingAssetsStore.load();
     }
-    // Inspections scope preview needs the component set (attrs + latest inspections).
-    if (id === 'inspections' && !componentsLoaded) {
+    // The per-row match count and the scope editor need the component set
+    // (attributes + latest inspections). The register tab needs none of it.
+    if (id === 'planned-obligations' && !componentsLoaded) {
       componentsLoaded = true;
       await buildingAssetsStore.loadComponents();
     }
@@ -180,25 +187,40 @@
     </div>
 
     <!-- Tab Navigation -->
-    <!-- ⚠ Inspections leads, and for an ADMIN it also opens by default (see
-         onMount). It is where the compliance register and the building's
-         obligations live, which is the work this tab group is mostly opened
-         for; Users is administration that happens rarely.
+    <!-- ⭐ TWO TABS, NOT ONE STACKED SCREEN (V2). The register and this
+         building's planned obligations are different objects, and they sat on
+         one tab with one scrollbar — which is exactly the conflation the
+         compliance vocabulary exists to end. They lead the bar, in sequence
+         order, because this is the work the tab group is mostly opened for;
+         Users is administration that happens rarely.
          ⚠ `activeTab` still initialises to 'users' — that is what a non-admin
-         gets and what shows for the moment before permissions resolve. -->
+         gets and what shows for the moment before permissions resolve.
+         ⚠ The keys are free to be whatever reads best: nothing persists them
+         and nothing links to them. (A note added here in V1 claimed the old
+         'inspections' key was "persisted and linked to" — it was not, and
+         grepping was all it took to find that out.) -->
     <div class="flex space-x-2 border-b border-slate-600">
       {#if $permissions.isAdmin}
         <button
-          class="px-4 py-2 transition-colors {activeTab === 'inspections'
+          class="px-4 py-2 transition-colors {activeTab === 'compliance-obligations'
             ? 'border-b-2 border-purple-500 text-white font-semibold'
             : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('inspections')}
+          on:click={() => activateTab('compliance-obligations')}
         >
           <span class="flex items-center space-x-2">
             <span>🔎</span>
-            <!-- ⚠ The tab key stays `inspections` (it is persisted and linked to);
-                 only the word a person reads is the vocabulary's. -->
             <span>Compliance obligations</span>
+          </span>
+        </button>
+        <button
+          class="px-4 py-2 transition-colors {activeTab === 'planned-obligations'
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => activateTab('planned-obligations')}
+        >
+          <span class="flex items-center space-x-2">
+            <span>🗓</span>
+            <span>Planned obligations</span>
           </span>
         </button>
       {/if}
@@ -331,7 +353,13 @@
   {:else if activeTab === 'portal'}
     <PortalSettingsPanel />
 
-  {:else if activeTab === 'inspections'}
+  {:else if activeTab === 'compliance-obligations'}
+    <!-- ⚠ No buildingAssetsStore gate: the register reads no component data,
+         so waiting on a load it never uses would be a spinner in front of a
+         screen that was already ready. -->
+    <ComplianceObligationsTab on:goto={() => activateTab('planned-obligations')} />
+
+  {:else if activeTab === 'planned-obligations'}
     {#if $buildingAssetsStore.loading}
       <LoadingSpinner />
     {:else}

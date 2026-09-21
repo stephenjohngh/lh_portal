@@ -95,7 +95,12 @@
 
   const tally   = basisTally();
 
-  let open = false;
+  // ⚠ NO LONGER COLLAPSIBLE, and the reason is V2 rather than taste. This panel
+  // used to sit stacked ABOVE the planned obligations list on one tab, where
+  // folding it away was how you reached the list. It is now the whole of its
+  // own tab, so a collapse would hide the entire screen and reveal nothing —
+  // an affordance whose only outcome is a blank page. The auto-open that
+  // existed to force it back open when there were gaps went with it.
   let showLegend = false;
   // ⛔ A BULK ACTION ON EIGHTY RECORDS HAD NO CONFIRMATION, and the user found it
   // by refusing to press the button: *"a button says 'add 80 shown' — it's just
@@ -290,9 +295,6 @@
     if (entry) editRequirement(entry);
   }
 
-  let autoOpened = false;
-  $: if (!autoOpened && coverage.missing.length > 0) { open = true; autoOpened = true; }
-
   // -- The recorded decision ---------------------------------------------------
   // Marking a check inapplicable, and reversing that, are BOTH decisions someone
   // may later have to justify, so both go through the same form and both demand
@@ -414,10 +416,8 @@
 </script>
 
 <div class="tmpl" class:has-gaps={coverage.missing.length > 0}>
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="tmpl-head" class:closed={!open} on:click={() => (open = !open)}>
+  <div class="tmpl-head">
     <div class="th-left">
-      <span class="chev" class:open>▸</span>
       <div>
         <!-- ⚠ Was "Periodic activity register", which had gone wrong twice over:
              ISO 37301 calls this a compliance obligations register, and since the
@@ -460,7 +460,6 @@
     </div>
   </div>
 
-  {#if open}
     <div class="tmpl-body">
       <!-- ⭐ WHAT YOU ARE LOOKING AT, said before anything else. The register
            holds four kinds of row and the screen used to show one; the other
@@ -557,11 +556,21 @@
               ✓ Added {applyReport.created.length}. <strong>Nothing is live yet</strong> — no walk and no
               contractor job is created until you turn each one on.
             </p>
+            <!-- ⭐ THE HANDOVER BETWEEN THE TWO TABS. Stacked on one screen this
+                 said "find them below"; V2 put the list on its own tab, so the
+                 only thing carrying the register → plan sequence is this. ⛔ It
+                 is a button rather than an automatic jump: the apply can fail
+                 per row, and whisking somebody past `applyReport.failed` to a
+                 screen that cannot show it would be the "reads plausibly while
+                 saying something untrue" fault with navigation. -->
             <p class="report-next">
-              Find them below, marked <em>Added — needs scope</em>. Most still need you to say which
-              parts of the building they cover — in the list under this panel, filter
+              They are on <strong>Planned obligations</strong>, marked <em>Added — needs scope</em>.
+              Most still need you to say which parts of the building they cover — filter
               <strong>Scope</strong> to <strong>No scope set</strong> and work through them.
             </p>
+            <Button variant="primary" size="small" on:click={() => dispatch('goto', 'planned')}>
+              Set them up →
+            </Button>
           {/if}
           {#each applyReport.failed as f (f.key)}<p class="fail">⚠ {f.name} — {f.message}</p>{/each}
         </div>
@@ -1021,7 +1030,6 @@
       {/each}
       {/if}
     </div>
-  {/if}
 </div>
 
 <!-- ⛔ EIGHTY RECORDS IN ONE CLICK. The three things a person needs before
@@ -1303,8 +1311,9 @@
   .warn-text.late { color: rgb(248 113 113); font-weight: 600; }
 
   /* ⛔ NO `overflow: hidden` HERE — it clipped the filter dropdowns.
-     It was only ever keeping `.tmpl-head:hover`'s tint inside the rounded
-     corners, and it did that by clipping EVERY absolutely-positioned
+     It was only ever keeping the head's hover tint inside the rounded corners
+     (a hover that has since gone with the collapse), and it did that by
+     clipping EVERY absolutely-positioned
      descendant to this box. The facet dropdowns hang below their buttons, so
      as soon as a filter narrowed the list the panel got shorter than the open
      dropdown and its bottom options were cut off — reported on the Trigger
@@ -1315,11 +1324,10 @@
   .tmpl { border: 1px solid rgb(71 85 105 / 0.5); border-radius: 10px; background: rgb(30 41 59 / 0.3); }
   .tmpl.has-gaps { border-color: rgb(251 191 36 / 0.4); }
 
-  .tmpl-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; cursor: pointer;
+  /* ⚠ Not a button any more — see the note on `open` in the script. No
+     `cursor: pointer` and no hover tint, because nothing here is clickable. */
+  .tmpl-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem;
                border-radius: 9px 9px 0 0; }
-  /* Collapsed, the head IS the panel, so it takes all four corners. */
-  .tmpl-head.closed { border-radius: 9px; }
-  .tmpl-head:hover { background: rgb(51 65 85 / 0.25); }
   .th-left { display: flex; align-items: center; gap: 0.6rem; }
   .th-title { font-weight: 600; color: rgb(226 232 240); font-size: 0.92rem; }
   .th-sub { font-size: 0.78rem; color: rgb(148 163 184); margin-top: 0.1rem; }

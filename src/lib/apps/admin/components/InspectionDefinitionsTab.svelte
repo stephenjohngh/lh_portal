@@ -1,7 +1,15 @@
 <!-- src/lib/apps/admin/components/InspectionDefinitionsTab.svelte -->
-<!-- Admin > Inspections: CRUD for statutory_obligations. Reads component/type
-     reference data from buildingAssetsStore (lazy-loaded by AdminApp) to show a
-     live match count per definition and to power the scope editor. -->
+<!-- Admin > PLANNED OBLIGATIONS: CRUD for statutory_obligations — what THIS
+     building does about the duties in the compliance obligations register.
+     Reads component/type reference data from buildingAssetsStore (lazy-loaded
+     by AdminApp) for the live match count and the scope editor.
+
+     ⚠ V2 SPLIT THE REGISTER OUT OF HERE. StatutoryTemplatePanel used to sit
+     stacked above this list on one tab; it is now its own tab, rendered by
+     ComplianceObligationsTab. Two different objects on one screen was the
+     conflation the vocabulary work exists to end, so do not render it here
+     again. The register → plan sequence is carried by the apply report's
+     "Set them up →" button rather than by the scroll position. -->
 <script>
   import { onMount } from 'svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
@@ -20,9 +28,6 @@
   import { isRecordableReason } from '$lib/utils/statutoryExclusions.js';
   import { fmtDate } from '$lib/utils/dates.js';
   import InspectionDefinitionModal from './InspectionDefinitionModal.svelte';
-  import StatutoryTemplatePanel from './StatutoryTemplatePanel.svelte';
-
-  /** ⚠ Closed by default — see the note at the panel. */
   import FilterBar from '$lib/components/common/FilterBar.svelte';
   import {
     filterObligations, obligationFilterFields, hasEmptyScope,
@@ -32,7 +37,7 @@
   $: bas = $buildingAssetsStore;
   $: ctx = { types: bas.types, attrDefs: bas.attrDefs, componentAttrs: bas.componentAttrs, inspections: bas.inspections };
 
-  // Five rows today, ~84 the moment the register above is applied — so the
+  // Five rows today, ~84 the moment the register is applied — so the
   // filters go in now rather than after the list has already become unusable.
   let search = '';
   /** @type {Record<string, Set<string>>} */
@@ -133,7 +138,7 @@
            in ISO terms each row is a planned obligation. The calendar lives in
            Maintenance and on the phone. -->
       <h3 class="heading-section">Planned obligations</h3>
-      <p class="text-muted">What this building does about the compliance obligations above — in-house
+      <p class="text-muted">What this building does about the duties on the <strong>Compliance obligations</strong> tab — in-house
         walks and booked contractor visits, each with how often it comes round. ⚠ Only the in-house
         walks reach the phone; a contractor visit is scheduled in Maintenance.</p>
     </div>
@@ -142,14 +147,10 @@
 
   {#if error}<ErrorDisplay message={error} />{/if}
 
-  <!-- The gap report sits ABOVE the list deliberately: what is absent is the
-       thing a list of what exists can never show you. -->
-  <StatutoryTemplatePanel {definitions} />
-
   {#if loading && definitions.length === 0}
     <LoadingSpinner />
   {:else if definitions.length === 0}
-    <p class="empty">No planned obligations yet. Add one from the compliance obligations register above, or set something up directly.</p>
+    <p class="empty">No planned obligations yet. Add one from the <strong>Compliance obligations</strong> tab, or set something up directly here.</p>
   {:else}
     <FilterBar
       fields={filterFields}
@@ -187,7 +188,7 @@
               {:else if isJobEvidenced(d)}<span class="badge job">{EVIDENCE_ROUTE_LABEL.either}</span>
               {:else}<span class="badge walk">{EVIDENCE_ROUTE_LABEL.inspection}</span>{/if}
               {#if d.template_key}
-                <span class="badge tmpl" title="Linked to a compliance obligation in the register above, so it counts towards coverage">Statutory</span>
+                <span class="badge tmpl" title="Linked to a compliance obligation in the register, so it counts towards coverage">Statutory</span>
               {/if}
               {#if hasEmptyScope(d)}
                 <span class="badge unscoped"
