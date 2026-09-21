@@ -419,9 +419,13 @@
     <div class="th-left">
       <span class="chev" class:open>▸</span>
       <div>
-        <p class="th-title">Periodic activity register</p>
+        <!-- ⚠ Was "Periodic activity register", which had gone wrong twice over:
+             ISO 37301 calls this a compliance obligations register, and since the
+             four kinds landed it holds actions, absences and caveats as well as
+             periodic activities. -->
+        <p class="th-title">Compliance obligations register</p>
         <p class="th-sub">
-          {REG.length} requirements identified
+          {REG.length} compliance obligations identified
           <span class="dot">·</span>{coverage.coveredCount} of {coverage.applicableCount} scheduled here
           {#if coverage.unhomed.length > 0}
             <span class="dot">·</span><span class="warn-text">{coverage.unhomed.length} with no home</span>
@@ -499,7 +503,7 @@
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div class="legend-head" on:click={() => (showLegend = !showLegend)}>
         <span class="chev sm" class:open={showLegend}>▸</span>
-        <span>Where these requirements come from</span>
+        <span>Where these compliance obligations come from</span>
         <span class="legend-counts">
           {#each BASIS as b (b)}<span class="badge {b}">{BASIS_LABEL[b]} {tally[b]}</span>{/each}
         </span>
@@ -533,7 +537,7 @@
       {#if collisions.length}
         <div class="collision">
           <p class="collision-h">
-            {collisions.length} requirement{collisions.length === 1 ? '' : 's'} changed in
+            {collisions.length} compliance obligation{collisions.length === 1 ? '' : 's'} changed in
             the application, and {collisions.length === 1 ? 'was' : 'were'} also edited here
           </p>
           <p>
@@ -631,7 +635,7 @@
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div class="tools-head" on:click={() => (showTools = !showTools)}>
         <span class="chev sm" class:open={showTools}>▸</span>
-        <span>Download this list, or add a requirement</span>
+        <span>Download this list, or add a compliance obligation</span>
         <span class="tools-hint">
           {isStatement ? 'Word gives you the full obligations statement' : 'Excel · Word'}
         </span>
@@ -699,7 +703,7 @@
           {#if canEditRegister}
             <div class="export-row">
               <ProtectedButton requireAdmin={true} variant="secondary" size="small"
-                on:click={addRequirement}>+ Add a requirement</ProtectedButton>
+                on:click={addRequirement}>+ Add a compliance obligation</ProtectedButton>
               <span class="export-note">
                 For a duty this building has that is not already in the list.
               </span>
@@ -733,7 +737,7 @@
             on:click={() => (shownAddable.length > CONFIRM_OVER
               ? (confirmBulk = true)
               : apply(shownAddable.map(r => r.entry.key)))}>
-            Add {narrowed ? `these ${shownAddable.length}` : `all ${shownAddable.length}`} to this building
+            Add {narrowed ? `these ${shownAddable.length}` : `all ${shownAddable.length}`} as planned obligations
           </ProtectedButton>
           <span class="bulk-note">
             {#if narrowed}
@@ -781,10 +785,10 @@
                       <span class="nm">{entry.name}</span>
                       <span class="badge {entry.basis}">{BASIS_LABEL[entry.basis]}</span>
                       {#if meta.inactiveOnly}
-                        <span class="badge off" title="An obligation exists for this but is switched off">Switched off</span>
+                        <span class="badge off" title="A planned obligation exists for this but is switched off">Switched off</span>
                       {/if}
                       {#if meta.activeCount > 1}
-                        <span class="badge n">{meta.activeCount} obligations</span>
+                        <span class="badge n" title="Planned obligations covering this">{meta.activeCount} planned</span>
                       {/if}
                       {#if status === 'elsewhere'}
                         <span class="badge app">{HANDLED_BY_LABEL[entry.handledBy]}</span>
@@ -953,8 +957,8 @@
 
                     {#if status === 'elsewhere'}
                       <p class="hnote">
-                        Already has its own cycle in {HANDLED_BY_LABEL[entry.handledBy]}. Adding an
-                        obligation would put a second, competing due date on the same thing.
+                        Already has its own cycle in {HANDLED_BY_LABEL[entry.handledBy]}. Adding a
+                        planned obligation would put a second, competing due date on the same thing.
                       </p>
                     {/if}
 
@@ -1000,11 +1004,11 @@
                       {/if}
                       {#if canEditRegister}
                         <ProtectedButton requireAdmin={true} variant="secondary" size="small"
-                          on:click={() => editRequirement(entry)}>Edit requirement</ProtectedButton>
+                          on:click={() => editRequirement(entry)}>Edit compliance obligation</ProtectedButton>
                       {/if}
                       {#if canEditRegister && provenanceOf(entry.key).origin === 'local'}
                         <ProtectedButton requireAdmin={true} variant="danger" size="small"
-                          title="Only for a requirement added here by mistake"
+                          title="Only for a compliance obligation added here by mistake"
                           on:click={() => askWithdraw(entry)}>Withdraw</ProtectedButton>
                       {/if}
                     </div>
@@ -1026,8 +1030,8 @@
      bulk remove, so getting it wrong costs eighty visits to a modal. -->
 <ConfirmDialog
   show={confirmBulk}
-  title="Add {shownAddable.length} checks to this building?"
-  message={`${shownAddable.length} checks will be added to this building's list. None of them goes `
+  title="Add {shownAddable.length} planned obligations to this building?"
+  message={`${shownAddable.length} planned obligations will be created for this building. None of them goes `
     + `live: nothing reaches the mobile app or the job scheduler until you turn each one on, and `
     + `most will then need you to say which parts of the building they cover. `
     + `If you change your mind afterwards, they have to be removed one at a time.`}
@@ -1039,7 +1043,7 @@
 
 <!-- ⛔ A delete in a compliance register. The modal's job is to stop it being
      used for the thing it looks like it is for. -->
-<Modal show={!!withdrawing} title="Withdraw a requirement added here" size="medium"
+<Modal show={!!withdrawing} title="Withdraw a compliance obligation added here" size="medium"
        on:close={() => (withdrawing = null)}>
   {#if withdrawing}
     <div class="wd-body">
@@ -1050,13 +1054,13 @@
         Use this only for something <strong>added here by mistake</strong> — a duplicate, a typo,
         an entry made while learning the screen.
         <br /><br />
-        ⛔ <strong>It is NOT how you say a requirement does not apply.</strong> If the duty is real
-        and this building simply does not have the thing — no lift, no gas, no EV charging — close
-        this and record it as <em>Not applicable</em> instead. That leaves the requirement on the
-        list with your reason and your name beside it, which is what a reviewer needs to see.
-        Deleting it answers nobody.
+        ⛔ <strong>It is NOT how you say a compliance obligation does not apply.</strong> If the duty
+        is real and this building simply does not have the thing — no lift, no gas, no EV charging —
+        close this and record it as <em>Not applicable</em> instead. That leaves the compliance
+        obligation on the list with your reason and your name beside it, which is what a reviewer
+        needs to see. Deleting it answers nobody.
         <br /><br />
-        ⚠ It will refuse if any work or decision is linked to this requirement, because that
+        ⚠ It will refuse if any work or decision is linked to this compliance obligation, because that
         evidence would be left pointing at nothing.
       </p>
 
@@ -1111,13 +1115,14 @@
           </p>
         {:else}
           <p class="na-warn">
-            It will stop counting as a gap. If the building does have one, add the obligation instead —
-            a check that is genuinely required and simply absent is what this report exists to find.
+            It will stop counting as a gap. If the building does have one, add a planned obligation
+            instead — a duty that is genuinely required and has nothing planned against it is what
+            this report exists to find.
           </p>
         {/if}
       {:else}
         <p class="na-warn">
-          This reinstates the check. The earlier decision stays in the record; this is recorded beside it,
+          This reinstates the compliance obligation. The earlier decision stays in the record; this is recorded beside it,
           not in place of it.
         </p>
       {/if}

@@ -8,7 +8,7 @@
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
-  import { isWalkEvidenced, isJobEvidenced } from '$lib/utils/obligationEvidence.js';
+  import { isWalkEvidenced, isJobEvidenced, EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import Button        from '$lib/components/common/Button.svelte';
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
   import ErrorDisplay  from '$lib/components/common/ErrorDisplay.svelte';
@@ -127,12 +127,17 @@
 <div class="insp-defs">
   <div class="head">
     <div>
-      <h3 class="heading-section">This building's schedule</h3>
-      <p class="text-muted">The work set up to meet the requirements above — in-house walks and booked
-        contractor visits, each with how often it comes round. ⚠ Only the in-house walks reach the
-        phone; a contractor visit is scheduled in Maintenance.</p>
+      <!-- ⚠ Was "This building's schedule", and that was wrong the day it
+           shipped: a SCHEDULE puts work on a calendar with dates and people.
+           This says WHAT we do and the logic for when — which is a plan, and
+           in ISO terms each row is a planned obligation. The calendar lives in
+           Maintenance and on the phone. -->
+      <h3 class="heading-section">Planned obligations</h3>
+      <p class="text-muted">What this building does about the compliance obligations above — in-house
+        walks and booked contractor visits, each with how often it comes round. ⚠ Only the in-house
+        walks reach the phone; a contractor visit is scheduled in Maintenance.</p>
     </div>
-    <ProtectedButton requireAdmin={true} variant="primary" on:click={openNew}>+ Add to the schedule</ProtectedButton>
+    <ProtectedButton requireAdmin={true} variant="primary" on:click={openNew}>+ Add a planned obligation</ProtectedButton>
   </div>
 
   {#if error}<ErrorDisplay message={error} />{/if}
@@ -144,7 +149,7 @@
   {#if loading && definitions.length === 0}
     <LoadingSpinner />
   {:else if definitions.length === 0}
-    <p class="empty">Nothing is scheduled yet. Add a requirement from the register above, or set something up directly.</p>
+    <p class="empty">No planned obligations yet. Add one from the compliance obligations register above, or set something up directly.</p>
   {:else}
     <FilterBar
       fields={filterFields}
@@ -155,7 +160,7 @@
     />
 
     {#if shown.length === 0}
-      <p class="empty">Nothing in the schedule matches these filters.</p>
+      <p class="empty">No planned obligations match these filters.</p>
     {/if}
 
     <div class="rows">
@@ -172,11 +177,17 @@
                    only two, so a walk-evidenced obligation was identified by the
                    ABSENCE of a badge — indistinguishable from a row where
                    nothing was stated. -->
-              {#if !isWalkEvidenced(d)}<span class="badge job">Contractor job</span>
-              {:else if isJobEvidenced(d)}<span class="badge job">Either route</span>
-              {:else}<span class="badge walk">Inspection walk</span>{/if}
+              <!-- ⚠ These read from EVIDENCE_ROUTE_LABEL rather than spelling
+                   themselves out. They used to say "Contractor job" and
+                   "Inspection walk" while the Evidence facet — filtering the
+                   very same rows — said "Contractor visit" and "In-house walk".
+                   Two words for one object is the other half of the fault the
+                   vocabulary work exists to end. -->
+              {#if !isWalkEvidenced(d)}<span class="badge job">{EVIDENCE_ROUTE_LABEL.maintenance_job}</span>
+              {:else if isJobEvidenced(d)}<span class="badge job">{EVIDENCE_ROUTE_LABEL.either}</span>
+              {:else}<span class="badge walk">{EVIDENCE_ROUTE_LABEL.inspection}</span>{/if}
               {#if d.template_key}
-                <span class="badge tmpl" title="Linked to a requirement in the register above, so it counts towards coverage">Statutory</span>
+                <span class="badge tmpl" title="Linked to a compliance obligation in the register above, so it counts towards coverage">Statutory</span>
               {/if}
               {#if hasEmptyScope(d)}
                 <span class="badge unscoped"
@@ -237,15 +248,15 @@
   on:cancel={() => (pendingDelete = null)}
 />
 
-<!-- Retiring is not deleting. The requirement and every walk or job done under
-     it stay exactly where they are; what stops is NEW work. -->
+<!-- Retiring is not deleting. The planned obligation and every walk or job done
+     under it stay exactly where they are; what stops is NEW work. -->
 <Modal show={!!retiring} title="No longer required" size="medium" on:close={() => (retiring = null)}>
   {#if retiring}
     <div class="rt-body">
       <p class="rt-name">{retiring.name}</p>
       {#if retiring.statutory_ref}<p class="text-muted">{retiring.statutory_ref}</p>{/if}
       <p class="rt-warn">
-        This keeps the obligation and everything ever done under it &mdash; the walks, the jobs and the
+        This keeps the planned obligation and everything ever done under it &mdash; the walks, the jobs and the
         certificates stay attached and still print. What stops is <em>new</em> work: it leaves the walk
         list and the job scheduler, and the compliance report shows it as
         <strong>No longer required</strong> rather than as a gap.

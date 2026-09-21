@@ -207,7 +207,7 @@ export function extractTable(rows) {
   const header = new TableRow({
     tableHeader: true,
     children: [
-      hCell('Requirement', W[0]), hCell('Source', W[1]), hCell('Cadence', W[2]),
+      hCell('Compliance obligation', W[0]), hCell('Source', W[1]), hCell('Cadence', W[2]),
       hCell('Duty holder in law', W[3]), hCell('Performed by', W[4]),
       hCell('Evidence required', W[5]), hCell('Status here', W[6]),
     ],

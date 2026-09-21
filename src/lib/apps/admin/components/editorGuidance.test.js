@@ -77,10 +77,19 @@ describe('withdrawing carries the other limb of the rule', () => {
   const PANEL = 'src/lib/apps/admin/components/StatutoryTemplatePanel.svelte';
   const panel = readFileSync(PANEL, 'utf8');
 
-  // ⛔ "Delete only for NEVER." A requirement that exists in law and does not
-  // apply HERE gets a recorded, attributed applicability decision — a deleted
-  // row answers a reviewer nothing at all.
+  // ⛔ "Delete only for NEVER." A compliance obligation that exists in law and
+  // does not apply HERE gets a recorded, attributed applicability decision — a
+  // deleted row answers a reviewer nothing at all.
+  //
+  // ⚠ ASSERT THE RULE, NOT THE SENTENCE. This was pinned to the exact words
+  // "NOT how you say a REQUIREMENT does not apply" and fired the moment V1 of
+  // the compliance vocabulary renamed that noun — the ninth time here a claim
+  // has tested the wording rather than what must be TRUE. Both limbs below are
+  // deliberately blind to what the object is called.
   it('says plainly that it is not how you record "does not apply"', () => {
-    expect(panel).toMatch(/NOT how you say a requirement does not apply/i);
+    // It disclaims the use it most looks like it is for...
+    expect(panel).toMatch(/NOT how you say a[^.]{0,40}does not apply/i);
+    // ...and names what to do instead, or the refusal leaves nowhere to go.
+    expect(panel).toMatch(/<em>Not applicable<\/em>\s+instead/i);
   });
 });

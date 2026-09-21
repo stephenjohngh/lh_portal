@@ -186,7 +186,7 @@ describe('the columns', () => {
   it('is seven columns carrying nine fields', () => {
     const text = textOf(extractTable(rows(1))).join('\n');
     expect(EXTRACT_COLS).toHaveLength(7);
-    for (const header of ['Requirement', 'Source', 'Cadence', 'Duty holder in law',
+    for (const header of ['Compliance obligation', 'Source', 'Cadence', 'Duty holder in law',
       'Performed by', 'Evidence required', 'Status here']) {
       expect(text).toContain(header);
     }

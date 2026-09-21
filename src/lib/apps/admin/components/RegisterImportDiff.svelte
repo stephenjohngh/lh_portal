@@ -42,9 +42,9 @@
 
   {#if !diff.hasAnything}
     <p class="diff-none">
-      Every requirement here matches the standard register, and nothing it carries is missing.
+      Every compliance obligation here matches the standard register, and nothing it carries is missing.
       {#if diff.localOnly.length}
-        {diff.localOnly.length} requirement{diff.localOnly.length === 1 ? ' was' : 's were'} added
+        {diff.localOnly.length} compliance obligation{diff.localOnly.length === 1 ? ' was' : 's were'} added
         in this building — the import leaves those alone.
       {/if}
     </p>

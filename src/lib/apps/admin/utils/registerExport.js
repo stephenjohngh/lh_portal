@@ -26,7 +26,7 @@ import { REGISTER_STATUS_LABEL } from './registerFilter.js';
  */
 const HEADERS = {
   template_key:               'Key',
-  name:                       'Requirement',
+  name:                       'Compliance obligation',
   description:                'What must be done',
   group_key:                  'Group',
   basis:                      'Source',

@@ -196,10 +196,10 @@
   }
 </script>
 
-<Modal show={true} title={isEdit ? 'Edit inspection' : 'New inspection'} size="large" on:close={() => dispatch('close')}>
+<Modal show={true} title={isEdit ? 'Edit planned obligation' : 'New planned obligation'} size="large" on:close={() => dispatch('close')}>
   <div class="def-form">
     <FormInput label="Name" bind:value={name} placeholder="e.g. Fire Doors" required />
-    <FormTextarea label="Description" bind:value={description} rows={2} placeholder="What this inspection covers" />
+    <FormTextarea label="Description" bind:value={description} rows={2} placeholder="What this planned obligation covers" />
 
     <div class="active-row">
       <Checkbox bind:checked={active} label="Active (shown in the mobile app and due list)" />
@@ -230,7 +230,7 @@
         </label>
       </div>
       {#if frequencyDays == null}
-        <p class="hint">On-demand inspections never appear as “due” — available to run any time.</p>
+        <p class="hint">Nothing on demand ever appears as “due” — available to run any time.</p>
       {/if}
 
       <!-- Statutory provenance: why this frequency, and which kind of test.
@@ -350,7 +350,7 @@
 
     <!-- Mode -->
     <div class="block">
-      <p class="block-lbl">Type of inspection</p>
+      <p class="block-lbl">How the components are chosen</p>
       <div class="mode-row">
         <button type="button" class="mode-chip" class:on={mode === 'standard'} on:click={() => mode = 'standard'}>
           Standard <span class="mode-sub">check all matched components</span>
@@ -433,12 +433,12 @@
         {#if attrGroups.length === 0}
           <p class="hint">
             {checklistScoped
-              ? 'The types in this inspection’s scope have no condition attributes to check.'
+              ? 'The types in this planned obligation’s scope have no condition attributes to check.'
               : 'No condition attributes exist yet — add checkable attributes to component types first.'}
           </p>
         {:else}
           {#if checklistScoped}
-            <p class="hint">Showing condition attributes for the types in this inspection’s scope.</p>
+            <p class="hint">Showing condition attributes for the types in this planned obligation’s scope.</p>
           {/if}
           <div class="attr-pick">
             {#each attrGroups as g (g.type.id)}
@@ -452,7 +452,7 @@
             {/each}
           </div>
           {#if checklistAttrIds.size === 0}
-            <p class="hint warn-hint">⚠ No checks selected — every component in this inspection will have an empty checklist.</p>
+            <p class="hint warn-hint">⚠ No checks selected — every component in this planned obligation will have an empty checklist.</p>
           {/if}
         {/if}
       {/if}

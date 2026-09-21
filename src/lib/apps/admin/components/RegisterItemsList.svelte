@@ -101,7 +101,7 @@
       Include these in the Word file
     </label>
     <span class="include-note">— the file itself is produced from the
-      <strong>Requirements</strong> tab.</span>
+      <strong>Compliance obligations</strong> tab.</span>
   </p>
 
   {#if dropped !== 0}

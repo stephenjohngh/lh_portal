@@ -91,14 +91,21 @@
 </script>
 
 <Modal show={true} size="large"
-       title={isNew ? 'Add a requirement to the register' : 'Edit requirement'}
+       title={isNew ? 'Add a compliance obligation to the register' : 'Edit compliance obligation'}
        on:close={() => dispatch('close')}>
   <div class="reg-form">
 
     {#if isNew}
+      <!-- ⭐ The one place "requirement" is still allowed on screen, and it is
+           here on purpose: ISO 14001 defines a compliance obligation as legal
+           requirements AND other requirements the organisation commits to,
+           which is exactly what `basis` distinguishes. Saying so once, where
+           somebody is creating one, is cheaper than a glossary. -->
       <p class="intro">
-        This registers a <strong>requirement</strong> — what this building must do and what
-        says so. It is not the work itself: scheduling follows, from the register panel.
+        This registers a <strong>compliance obligation</strong> — a duty a building of this kind
+        has, and what says so. It covers both legal requirements and other requirements we commit
+        to, which is what <em>Where it comes from</em> records. It is not the work itself: a
+        <strong>planned obligation</strong> follows, from the register panel.
       </p>
     {/if}
 
@@ -132,7 +139,7 @@
             <p class="verify-note">
               ⚠ This records that the <strong>reference</strong> was read against its source and
               found correct. It says nothing about whether the interval is right or whether the
-              requirement applies to this building — those are different questions and must not
+              compliance obligation applies to this building — those are different questions and must not
               be implied by this one.
             </p>
             <FormInput label="Source checked against" bind:value={verifyUrl} required
@@ -167,8 +174,8 @@
       disabled={!isNew}
       on:input={() => keyTouched = true}
       helpText={isNew
-        ? 'Permanent. Obligations and applicability decisions link on this.'
-        : 'Set when the requirement was created and never changed — obligations link on it.'} />
+        ? 'Permanent. Planned obligations and applicability decisions link on this.'
+        : 'Set when the compliance obligation was created and never changed — planned obligations link on it.'} />
 
     <FormTextarea label="Description" bind:value={e.description} rows={2} required
       error={show('description')} placeholder="What the check actually involves."

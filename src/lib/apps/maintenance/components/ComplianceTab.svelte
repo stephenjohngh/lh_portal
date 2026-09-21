@@ -62,7 +62,7 @@
       // report is about the whole register, both evidence routes.
       obligations = await listInspectionDefinitions();
     } catch (/** @type {any} */ err) {
-      loadError = `Could not read the obligation library: ${err.message}`;
+      loadError = `Could not read this building's planned obligations: ${err.message}`;
     }
 
     // Gate on the READER's Inspection permission, not on the data existing —
@@ -79,12 +79,12 @@
         sessions = await listWalkSessions();
       } catch (/** @type {any} */ err) {
         walkEvidenceAvailable = false;
-        walkEvidenceNote = 'Inspection evidence could not be loaded, so walk-evidenced requirements below show only what jobs prove.';
+        walkEvidenceNote = 'Inspection evidence could not be loaded, so walk-evidenced compliance obligations below show only what jobs prove.';
         logger('⚠ walk sessions unavailable:', err.message);
       }
     } else {
       walkEvidenceAvailable = false;
-      walkEvidenceNote = 'You do not have the Inspection app, so walk evidence is not included. Requirements discharged by an inspection walk will read as though nothing has been done.';
+      walkEvidenceNote = 'You do not have the Inspection app, so walk evidence is not included. Compliance obligations discharged by an inspection walk will read as though nothing has been done.';
     }
 
     try {
@@ -282,7 +282,7 @@
           {/if}
           <div class="tbl">
             <div class="th">
-              <div>Requirement</div><div>Source</div><div>Cadence</div>
+              <div>Compliance obligation</div><div>Source</div><div>Cadence</div>
               <div>Last completed</div><div>Last attempted</div><div>Next due</div><div>Status</div>
             </div>
             {#each groupRowsList as r (r.key)}
@@ -335,7 +335,7 @@
           <span class="count">{history.length} occurrence{history.length === 1 ? '' : 's'}</span>
         </div>
         <p class="hint">
-          Covers the {rows.length} requirement{rows.length === 1 ? '' : 's'} the filters above select.
+          Covers the {rows.length} compliance obligation{rows.length === 1 ? '' : 's'} the filters above select.
           Switch to <em>Due in the period</em> to find work that was booked and never happened;
           it cannot show under <em>Completed</em>.
         </p>
@@ -346,7 +346,7 @@
       {:else}
         <div class="tbl hist">
           <div class="th">
-            <div>Date</div><div>Requirement</div><div>Outcome</div><div>By</div><div>Reference</div>
+            <div>Date</div><div>Compliance obligation</div><div>Outcome</div><div>By</div><div>Reference</div>
           </div>
           {#each history as h, i (h.sourceId ?? `${h.obligationId}-${h.at}-${i}`)}
             <div class="tr">
@@ -379,15 +379,15 @@
 <Modal show={showExport} title="Word report" size="medium" on:close={() => (showExport = false)}>
   <div class="exp">
     <p class="exp-what">
-      Prints the {rows.length} requirement{rows.length === 1 ? '' : 's'} currently on screen,
+      Prints the {rows.length} compliance obligation{rows.length === 1 ? '' : 's'} currently on screen,
       in the order shown.
     </p>
-    <Checkbox bind:checked={optIncludeExcluded} label="Include requirements recorded as not applicable, with their reasons" />
+    <Checkbox bind:checked={optIncludeExcluded} label="Include compliance obligations recorded as not applicable, with their reasons" />
     <p class="exp-note">
       Leave this on for anything an assessor will read. A report that quietly leaves out what you
       decided does not apply is the first thing they will ask about.
     </p>
-    <Checkbox bind:checked={optIncludeElsewhere} label="Include requirements tracked in another part of the portal" />
+    <Checkbox bind:checked={optIncludeElsewhere} label="Include compliance obligations tracked in another part of the portal" />
     <Checkbox bind:checked={optIncludeHistory} label="Append the evidence history for the selected period" />
     <label class="exp-lbl" for="comp-notes">Note for this report (optional)</label>
     <textarea id="comp-notes" class="exp-ta" rows="3" bind:value={optNotes}

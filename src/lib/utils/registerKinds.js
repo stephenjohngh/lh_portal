@@ -39,9 +39,16 @@
  */
 export const REGISTER_KINDS = [
   {
+    // ⛔ THE KEY IS THE STORED VALUE AND DOES NOT MOVE. Only the words a person
+    // reads changed (V1 of docs/design/compliance_vocabulary.md): in ISO 37301
+    // and ISO 14001 an OBLIGATION is the duty, which is what this kind holds,
+    // and "requirement" is its sub-term — a compliance obligation comprises
+    // legal requirements and other requirements, which is what `basis` says.
+    // ⚠ Never shortened to "obligation" alone: one word pointing at two objects
+    // is the fault this whole vocabulary exists to end.
     key: 'requirement',
-    label: 'Requirements',
-    one: 'Requirement',
+    label: 'Compliance obligations',
+    one: 'Compliance obligation',
     blurb: 'Something this building has to do regularly, and how often.',
   },
   {

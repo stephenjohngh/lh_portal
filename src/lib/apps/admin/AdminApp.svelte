@@ -196,7 +196,9 @@
         >
           <span class="flex items-center space-x-2">
             <span>🔎</span>
-            <span>Requirements</span>
+            <!-- ⚠ The tab key stays `inspections` (it is persisted and linked to);
+                 only the word a person reads is the vocabulary's. -->
+            <span>Compliance obligations</span>
           </span>
         </button>
       {/if}
