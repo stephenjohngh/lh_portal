@@ -6,6 +6,7 @@
 // the occurrence report it evidences. See docs/design/Inter_App_Interfaces.md.
 
 import { api } from '$lib/utils/api';
+import { bsrReportClock, OPEN_STATUSES } from './utils/morHelpers.js';
 
 // Lightweight case shape for pickers / cross-app references — never the full row.
 const CASE_REF_SELECT = 'id, reference, status, mechanism, description, location_text, identification_date';
@@ -38,4 +39,48 @@ export function morCaseLabel(c) {
   const detail = (c.description || c.location_text || c.mechanism || '').trim();
   const short = detail.length > 60 ? detail.slice(0, 57) + '…' : detail;
   return short ? `${c.reference} — ${short}` : c.reference;
+}
+
+
+/**
+ * The statutory 10-day BSR full-report deadline, for every case it can still
+ * apply to — for the Planner.
+ *
+ * The deadline is `bsrReportClock` — the SAME function the MOR case screen uses,
+ * anchored on identification_date — so the two cannot disagree about the date.
+ *
+ * Which cases:
+ *   · open (not closed or reclassified),
+ *   · full report not yet submitted,
+ *   · and NOT decided as internal remediation or no action. ⚠ A case still in
+ *     triage IS included: the clock runs from identification whether or not
+ *     anybody has decided yet, and a deadline shown that turns out not to apply
+ *     is the safe direction to be wrong in.
+ *
+ * @returns {Promise<Array<{ id: string, reference: string, deadline: string,
+ *   status: string, decided: boolean, label: string }>>}  deadline YYYY-MM-DD
+ */
+export async function listBsrReportDeadlines() {
+  const rows = await api.get('mor_cases', {
+    select: 'id, reference, status, identification_date, decision_outcome, '
+          + 'bsr_report_submitted_at, description, location_text, mechanism',
+  });
+  const open = new Set(OPEN_STATUSES);
+  return (rows ?? [])
+    .filter((c) => open.has(c.status) && !c.bsr_report_submitted_at && c.identification_date
+      && c.decision_outcome !== 'internal' && c.decision_outcome !== 'no_action')
+    .map((c) => {
+      const clock = bsrReportClock(c.identification_date);
+      // UTC date of the deadline, like the portal's own `today()`. Near
+      // midnight in BST that can read a day EARLY — the safe direction for a
+      // statutory deadline, and never late.
+      return {
+        id: c.id,
+        reference: c.reference,
+        deadline: clock.deadline.toISOString().slice(0, 10),
+        status: c.status,
+        decided: c.decision_outcome === 'bsr',
+        label: morCaseLabel(c),
+      };
+    });
 }

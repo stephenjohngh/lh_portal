@@ -76,7 +76,33 @@ export async function listReviewsDue(from, to) {
     filters: { status: 'current' },
     orderBy: 'review_due',
   });
-  return rows.filter(r => r.review_due && r.review_due >= from && r.review_due <= to);
+  // ⛔ No lower bound, deliberately (2026-09-23). A review that fell due before
+  // the window began is OVERDUE, not out of view — filtering on `>= from` made
+  // last year's missed review vanish from the Planner, the one screen that
+  // exists to show it. `from` is kept in the signature for callers.
+  return rows.filter(r => r.review_due && r.review_due <= to);
+}
+
+/**
+ * Risks falling due for review — for the Planner. Closed and superseded risks
+ * are finished and never come due. No lower bound, for the reason above.
+ * @param {string} to ISO date
+ */
+export async function listRiskReviewsDue(to) {
+  const rows = await api.get('gt_risks', { select: 'id, reference, title, status, review_due', orderBy: 'review_due' });
+  return (rows ?? []).filter((r) => r.review_due && r.review_due <= to
+    && r.status !== 'closed' && r.status !== 'superseded');
+}
+
+/**
+ * People whose recorded competence expires — for the Planner. An expired
+ * competence means their authorship or review of a document no longer counts
+ * (gtCompetence.js), so this is a date somebody has to act on.
+ * @param {string} to ISO date
+ */
+export async function listCompetenceExpiries(to) {
+  const rows = await api.get('gt_persons', { select: 'id, full_name, role, competence_expiry', orderBy: 'competence_expiry' });
+  return (rows ?? []).filter((p) => p.competence_expiry && p.competence_expiry <= to);
 }
 
 /**

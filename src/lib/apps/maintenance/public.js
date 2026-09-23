@@ -75,6 +75,25 @@ export function listJobEvidence() {
 }
 
 /**
+ * Every certificate with an expiry date, soonest first — for the Planner.
+ *
+ * The same rows Maintenance's Due work tab reads for its certificate band (M5),
+ * so the two cannot disagree about what is expiring. ⚠ Read-only, and the M5
+ * decision stands: an expiry does NOT move any job's date.
+ *
+ * Not windowed below: an expiry that has already passed is the most urgent one.
+ *
+ * @param {string} to  ISO date — nothing expiring after this is returned
+ */
+export async function listCertificateExpiries(to) {
+  const rows = await api.get('maintenance_documents', {
+    select: 'id, filename, doc_type, expiry_date, job:maintenance_jobs(id, title)',
+    orderBy: 'expiry_date',
+  });
+  return (rows ?? []).filter((r) => r.expiry_date && r.expiry_date <= to);
+}
+
+/**
  * Create a job from something the Planner was holding.
  *
  * The Planner cannot write `maintenance_jobs` itself, so this is the door — and

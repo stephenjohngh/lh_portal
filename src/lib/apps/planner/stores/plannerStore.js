@@ -13,10 +13,11 @@ import { getLogger } from '$lib/utils/logger';
 import { completionPatch, STATUS } from '../utils/agenda.js';
 import { linkedOccurrences } from '../utils/linked.js';
 import { uniqueSlug } from '../utils/categories.js';
-import { listScheduledWork, createJobFromPlanner } from '$lib/apps/maintenance/public.js';
+import { listScheduledWork, createJobFromPlanner, listCertificateExpiries } from '$lib/apps/maintenance/public.js';
 import { listMeetings, listOpenActionDeadlines } from '$lib/apps/management/public.js';
-import { listReviewsDue } from '$lib/apps/golden_thread/public.js';
-import { listObligationDueDates } from '$lib/apps/compliance/public.js';
+import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '$lib/apps/golden_thread/public.js';
+import { listObligationDueDates, listComplianceReviewDates } from '$lib/apps/compliance/public.js';
+import { listBsrReportDeadlines } from '$lib/apps/mor/public.js';
 import { today } from '$lib/utils/dates';
 
 const logger = getLogger('planner');
@@ -126,7 +127,10 @@ function createPlannerStore() {
       return [];
     };
 
-    const [jobs, meetings, actions, gtDocuments, obligations] = await Promise.all([
+    const read = (key, what, fn) => (sources.has(key) ? fn().catch(fellShort(what)) : []);
+
+    const [jobs, meetings, actions, gtDocuments, obligations,
+           certificates, bsrDeadlines, complianceReviews, riskReviews, competences] = await Promise.all([
       sources.has('maintenance')
         ? listScheduledWork(from, to).catch(fellShort('maintenance jobs')) : [],
       sources.has('meeting')
@@ -140,9 +144,19 @@ function createPlannerStore() {
       // agenda must say so. Dates outside the window simply sort to the ends.
       sources.has('obligation')
         ? listObligationDueDates().catch(fellShort('planned obligations')) : [],
+      // Phase 2. Each is bounded at `to` only: anything already past is
+      // overdue, and must not fall out of view for predating the window.
+      read('certificate',       'certificate expiries',   () => listCertificateExpiries(to)),
+      read('mor_bsr',           'MOR report deadlines',   () => listBsrReportDeadlines()),
+      read('compliance_review', 'compliance review dates', () => listComplianceReviewDates(to)),
+      read('gt_risk',           'risk reviews',           () => listRiskReviewsDue(to)),
+      read('gt_competence',     'competence expiries',    () => listCompetenceExpiries(to)),
     ]);
 
-    const linked = linkedOccurrences({ jobs, meetings, actions, gtDocuments, obligations }, today());
+    const linked = linkedOccurrences({
+      jobs, meetings, actions, gtDocuments, obligations,
+      certificates, bsrDeadlines, complianceReviews, riskReviews, competences,
+    }, today());
     update(s => ({ ...s, linked, linkedFailures: failures, loadingLinked: false }));
     return linked;
   }

@@ -39,6 +39,13 @@ export const SOURCES = {
   // ⛔ `adminOnly`: those due dates are derived from walk sessions, which a
   // non-admin can only see their own of, so for them the dates would be wrong.
   obligation:  { key: 'obligation',  label: 'Planned obligation', app: 'Compliance', appId: 'compliance', category: 'compliance', adminOnly: true },
+  // Phase 2, 2026-09-23 — the other dated duties. Each date is computed by the
+  // OWNING app's public.js, never here.
+  certificate:   { key: 'certificate',   label: 'Certificate expiry', app: 'Maintenance',   appId: 'maintenance',   category: 'compliance' },
+  mor_bsr:       { key: 'mor_bsr',       label: 'MOR 10-day report',  app: 'MOR',           appId: 'mor',           category: 'compliance' },
+  compliance_review: { key: 'compliance_review', label: 'Compliance review', app: 'Compliance', appId: 'compliance', category: 'compliance', adminOnly: true },
+  gt_risk:       { key: 'gt_risk',       label: 'Risk review',        app: 'Golden Thread', appId: 'golden_thread', category: 'compliance' },
+  gt_competence: { key: 'gt_competence', label: 'Competence expiry',  app: 'Golden Thread', appId: 'golden_thread', category: 'compliance' },
 };
 
 /** How far ahead a contractor visit needs arranging. A walk is in-house and
@@ -210,19 +217,87 @@ export function fromObligationDue(row, today) {
 }
 
 /**
+ * A certificate expiring. Sixty days' notice — the same window Maintenance's
+ * certificate band uses — because a renewal visit takes arranging. ⚠ It is NOT
+ * put in "Needs arranging": whether a renewal is already booked cannot be told
+ * from the certificate, and saying "nothing booked" without knowing would be a
+ * claim the data does not support.
+ */
+export function fromCertificate(row) {
+  return linkedOccurrence('certificate', {
+    id: row?.id,
+    title: `Certificate expires: ${row?.filename ?? 'certificate'}`,
+    date: row?.expiry_date,
+    detail: row?.job?.title ? `From job: ${row.job.title}` : null,
+    leadDays: 60,
+  });
+}
+
+/**
+ * The statutory 10-day BSR full-report deadline for an MOR case. The whole
+ * clock is ten days, so it is always inside its notice.
+ */
+export function fromBsrDeadline(row) {
+  return linkedOccurrence('mor_bsr', {
+    id: row?.id,
+    title: `BSR full report due: ${row?.label ?? row?.reference ?? 'MOR case'}`,
+    date: row?.deadline,
+    detail: row?.decided ? 'Decided reportable' : 'Applies if the case is reportable — not yet decided',
+    leadDays: 10,
+  });
+}
+
+/** A Display register review or a "not applicable" decision's review date. */
+export function fromComplianceReview(row) {
+  return linkedOccurrence('compliance_review', {
+    id: row?.id,
+    title: row?.title ?? 'Compliance review',
+    date: row?.date,
+  });
+}
+
+/** A Golden Thread risk falling due for review. */
+export function fromRiskReview(row) {
+  return linkedOccurrence('gt_risk', {
+    id: row?.id,
+    title: `Risk review: ${row?.reference ? `${row.reference} ` : ''}${row?.title ?? ''}`.trim(),
+    date: row?.review_due,
+  });
+}
+
+/** A person's recorded competence expiring. */
+export function fromCompetenceExpiry(row) {
+  return linkedOccurrence('gt_competence', {
+    id: row?.id,
+    title: `Competence expires: ${row?.full_name ?? 'person'}`,
+    date: row?.competence_expiry,
+    detail: row?.role ?? null,
+    leadDays: 60,
+  });
+}
+
+/**
  * Everything foreign, in one list.
  *
  * Each source is optional: a portal where somebody has no Golden Thread
  * permission simply passes nothing for it, and the planner shows the rest
  * rather than failing.
  */
-export function linkedOccurrences({ jobs = [], meetings = [], actions = [], gtDocuments = [], obligations = [] } = {}, today = null) {
+export function linkedOccurrences({
+  jobs = [], meetings = [], actions = [], gtDocuments = [], obligations = [],
+  certificates = [], bsrDeadlines = [], complianceReviews = [], riskReviews = [], competences = [],
+} = {}, today = null) {
   return [
     ...jobs.map(fromMaintenanceJob),
     ...meetings.map(fromMeeting),
     ...actions.map(fromAction),
     ...gtDocuments.map(fromGtDocument),
     ...obligations.map((o) => fromObligationDue(o, today)),
+    ...certificates.map(fromCertificate),
+    ...bsrDeadlines.map(fromBsrDeadline),
+    ...complianceReviews.map(fromComplianceReview),
+    ...riskReviews.map(fromRiskReview),
+    ...competences.map(fromCompetenceExpiry),
   ]
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));

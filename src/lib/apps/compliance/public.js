@@ -26,6 +26,8 @@ import { listJobEvidence } from '$lib/apps/maintenance/public.js';
 import {
   computeObligationSchedule, walkEventsFromSessions, jobEventsFromJobs,
 } from '$lib/utils/obligationSchedule.js';
+import { currentDecisions } from '$lib/utils/statutoryExclusions.js';
+import { templateEntry } from '$lib/utils/statutoryTemplate.js';
 
 /**
  * Every planned obligation, as rows.
@@ -95,6 +97,37 @@ export async function listObligationDueDates() {
     band: st.band,
     booked: st.basis === 'planned',
   }));
+}
+
+/**
+ * Review dates this app records — for the Planner. Two kinds, both decisions
+ * somebody set a date to look at again:
+ *
+ *   · a Display register item's `review_date` (BSA s.82 notice board), for
+ *     anything still on the board;
+ *   · a current *not applicable* decision's `review_due` — "no EV chargers
+ *     yet" is exactly the kind of statement that quietly stops being true.
+ *
+ * ⛔ Admin callers only: every register tab is admin-only.
+ *
+ * @param {string} to  ISO date — nothing later is returned; earlier (overdue) is
+ * @returns {Promise<Array<{ kind: 'display'|'exclusion', id: string, title: string, date: string }>>}
+ */
+export async function listComplianceReviewDates(to) {
+  const [items, decisions] = await Promise.all([
+    api.get('display_items', { select: 'id, title, category, status, review_date' }),
+    listStatutoryExclusions(),
+  ]);
+  const display = (items ?? [])
+    .filter((i) => i.review_date && i.status !== 'removed' && i.review_date <= to)
+    .map((i) => ({ kind: /** @type {const} */ ('display'), id: i.id,
+      title: `Review display: ${i.title || 'notice board item'}`, date: i.review_date }));
+  const exclusions = [...currentDecisions(decisions ?? []).values()]
+    .filter((d) => d.decision === 'not_applicable' && d.review_due && d.review_due <= to)
+    .map((d) => ({ kind: /** @type {const} */ ('exclusion'), id: d.id ?? d.template_key,
+      title: `Review “not applicable”: ${templateEntry(d.template_key)?.name ?? d.template_key}`,
+      date: d.review_due }));
+  return [...display, ...exclusions];
 }
 
 /**
