@@ -106,6 +106,20 @@
   // until the check has actually run.
   let permissionsChecked = false;
 
+  // The s.82 link runs both ways between the register and the Display register
+  // (utils/displayRegisterLink.js). `focusKey` is the register row to open on
+  // arrival; a plain tab click clears it, so returning to the tab later does
+  // not re-open a row nobody asked for.
+  let focusKey = null;
+  function openTab(key) {
+    focusKey = null;
+    activateTab(key);
+  }
+  function showObligation(key) {
+    focusKey = key;
+    activateTab('compliance-obligations');
+  }
+
   onMount(async () => {
     try {
       if ($auth.user) await permissions.init($auth.user.id, 'compliance');
@@ -138,7 +152,7 @@
           class="px-4 py-2 transition-colors {activeTab === t.key
             ? 'border-b-2 border-purple-500 text-white font-semibold'
             : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab(t.key)}
+          on:click={() => openTab(t.key)}
         >
           <span class="flex items-center space-x-2">
             <span>{t.icon}</span><span>{t.label}</span>
@@ -151,7 +165,11 @@
       <!-- ⚠ No buildingAssetsStore gate: the register reads no component data,
            so waiting on a load it never uses would be a spinner in front of a
            screen that was already ready. -->
-      <ComplianceObligationsTab on:goto={() => activateTab('planned-obligations')} />
+      <ComplianceObligationsTab
+        on:goto={() => activateTab('planned-obligations')}
+        on:showDisplayRegister={() => openTab('display-register')}
+        {focusKey}
+      />
     {:else if activeTab === 'planned-obligations'}
       {#if $buildingAssetsStore.loading}
         <LoadingSpinner />
@@ -168,7 +186,7 @@
         <InspectionWalksTab />
       {/if}
     {:else if activeTab === 'display-register'}
-      <DisplayRegisterTab />
+      <DisplayRegisterTab on:showObligation={(e) => showObligation(e.detail)} />
     {:else if activeTab === 'compliance-position'}
       <!-- ⚠ Also no store gate. It loads its own three evidence streams and its
            own fault list through each owning app's public.js, each failing

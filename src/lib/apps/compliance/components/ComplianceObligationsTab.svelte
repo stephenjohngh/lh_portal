@@ -27,6 +27,9 @@
 
   const dispatch = createEventDispatcher();
 
+  /** A register row another tab asked to open — passed straight to the panel. */
+  export let focusKey = null;
+
   // The register's coverage is computed against this building's planned
   // obligations, so the list is needed here even though none of it is edited
   // on this tab.
@@ -45,4 +48,4 @@
   });
 </script>
 
-<StatutoryTemplatePanel {definitions} on:goto />
+<StatutoryTemplatePanel {definitions} {focusKey} on:goto on:showDisplayRegister />

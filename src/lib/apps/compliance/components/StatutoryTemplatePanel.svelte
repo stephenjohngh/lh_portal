@@ -8,7 +8,8 @@
      Coverage comes from statutory_obligations.template_key only — never from
      matching names. See src/lib/utils/statutoryTemplate.js. -->
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, tick } from 'svelte';
+  import { isDisplayDuty } from '../utils/displayRegisterLink.js';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
   import {
     templateCoverage, suggestMatches, intervalNote, basisTally,
@@ -45,6 +46,10 @@
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
 
   export let definitions = [];
+  /** A register row another tab asked to see (the Display register's link).
+   *  ⚠ A primitive, guarded below on `focusedFor` — an object here would
+   *  re-run on every parent update (CLAUDE.md, safe_not_equal). */
+  export let focusKey = null;
 
   const dispatch = createEventDispatcher();
 
@@ -133,6 +138,27 @@
     filters = { ...filters, status: new Set() };
   }
   let expanded = new Set();          // keys whose detail is showing
+
+  // Arriving from another tab with a row in mind: show that row and only it.
+  // The filters that could hide it are cleared, the kind switches to
+  // requirements, and the search is set to its name so the reason the list is
+  // short is visible in the bar rather than silent.
+  let focusedFor = null;
+  $: if (focusKey && focusKey !== focusedFor && REG?.length) {
+    focusedFor = focusKey;
+    focusOn(focusKey);
+  }
+  async function focusOn(key) {
+    const entry = REG.find((e) => e.key === key);
+    if (!entry) return;
+    kind = 'requirement';
+    statusIsDefault = false;
+    filters = { status: new Set() };
+    search = entry.name;
+    expanded = new Set([...expanded, key]);
+    await tick();
+    document.getElementById(`reg-row-${key}`)?.scrollIntoView?.({ block: 'center' });
+  }
   let collapsedGroups = new Set();   // group keys the user has folded away
 
   function toggleRow(key) {
@@ -810,7 +836,7 @@
               {@const meta = rowMeta.get(entry.key) ?? {}}
               {@const open = expanded.has(entry.key)}
               {@const decision = decisions.get(entry.key)}
-              <div class="row {REGISTER_STATUS_CLASS[status]}" class:expanded={open}>
+              <div id="reg-row-{entry.key}" class="row {REGISTER_STATUS_CLASS[status]}" class:expanded={open}>
                 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
                 <div class="row-head" on:click={() => toggleRow(entry.key)}>
                   <span class="chev sm" class:open>▸</span>
@@ -875,6 +901,16 @@
                 {#if open}
                   <div class="row-detail">
                     <p class="ref">{entry.statutoryRef}</p>
+                    {#if isDisplayDuty(entry.key)}
+                      <!-- The duty is discharged on a notice board, and the
+                           Display register is where the board is recorded. -->
+                      <p class="display-link">
+                        What is on the notice board is recorded on the Display register.
+                        <button type="button" class="link" on:click|stopPropagation={() => dispatch('showDisplayRegister')}>
+                          Open the Display register →
+                        </button>
+                      </p>
+                    {/if}
 
                     <!-- ⚠ CITATION verified, not the row. The review that
                          produced these says in terms that the intervals and the
@@ -1326,6 +1362,8 @@
   /* ── Rows: compact, expanding in place ─────────────────────────────────── */
   .row-head { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; width: 100%; }
   .row-head .row-main { flex: 1; min-width: 0; }
+  .display-link { font-size: 0.8rem; color: rgb(148 163 184); margin-top: 0.35rem; }
+  .display-link .link { color: var(--lh-accent-light, rgb(94 234 212)); text-decoration: underline; margin-left: 0.25rem; }
   .row.expanded { border-color: rgb(var(--lh-accent-rgb) / 0.4); }
   .row-detail {
     margin-top: 0.55rem; padding-top: 0.55rem; padding-left: 1.1rem;

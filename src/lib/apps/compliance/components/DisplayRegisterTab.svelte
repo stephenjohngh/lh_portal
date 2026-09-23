@@ -10,7 +10,11 @@
      round 11, and the embarrassment recorded there was that the software had
      had this screen since migrations 199–200 while the register did not carry
      the duty. ⚠ The two are still not linked to each other — the register row
-     names the duty, this tab records the wall — and nothing joins them.
+     names the duty, this tab records the wall — and until 2026-09-23 nothing
+     joined them. The duty strip below is that join (utils/displayRegisterLink.js):
+     it names the compliance obligation, says whether a planned obligation
+     prompts the monthly check, and links across. ⛔ It reports the PLAN, never
+     the wall — a scheduled check and a correct board are different facts.
      -->
 <!-- What must be physically
      displayed in the building. The statute names exactly three things: (a) the
@@ -22,7 +26,11 @@
      "Needs attention" (a linked document changed, or a review is due/overdue)
      is computed read-time by displayRegisterStatus.js, not stored. -->
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
+  import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';
+  import { templateEntry } from '$lib/utils/statutoryTemplate.js';
+  import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
+  import { DISPLAY_DUTY_KEY, displayDutyPlan } from '../utils/displayRegisterLink.js';
   import { displayRegisterStore, SINGLETON_CATEGORIES } from '../stores/displayRegisterStore.js';
   import { attentionReason, attentionLabel } from '../utils/displayRegisterStatus.js';
   import { listCurrentDocuments } from '$lib/apps/golden_thread/public.js';
@@ -34,7 +42,15 @@
   import ConfirmDialog  from '$lib/components/common/ConfirmDialog.svelte';
   import DisplayItemModal from './DisplayItemModal.svelte';
 
+  const dispatch = createEventDispatcher();
+
   $: ({ items, loading, error } = $displayRegisterStore);
+
+  // The duty this board discharges, and whether this building plans the check.
+  $: dutyEntry = templateEntry(DISPLAY_DUTY_KEY);
+  $: dutyPlan = displayDutyPlan($inspectionDefinitionsStore.definitions);
+  $: plannedName = dutyPlan.planned[0]?.name ?? '';
+  $: plannedRoute = EVIDENCE_ROUTE_LABEL[dutyPlan.planned[0]?.evidenced_by] ?? '';
 
   $: apNotice = items.find(i => i.category === 'ap_notice') ?? null;
   $: bac      = items.find(i => i.category === 'bac') ?? null;
@@ -46,6 +62,10 @@
 
   onMount(async () => {
     if (items.length === 0) displayRegisterStore.load();
+    // Guarded in the store; needed only for the duty strip, so never fatal.
+    if ($inspectionDefinitionsStore.definitions.length === 0) {
+      inspectionDefinitionsStore.load().catch(() => {});
+    }
     try {
       const docs = await listCurrentDocuments();
       gtDocUpdatedAt = Object.fromEntries(docs.map(d => [d.id, d.updated_at]));
@@ -146,6 +166,35 @@
       </p>
     </div>
   </div>
+
+  {#if dutyEntry}
+    <div class="duty" data-testid="display-duty-link">
+      <div class="duty-text">
+        <p class="duty-name">
+          <span class="duty-k">Compliance obligation:</span> {dutyEntry.name}
+        </p>
+        {#if dutyPlan.state === 'on'}
+          <p class="duty-plan ok">
+            Planned obligation <strong>{plannedName}</strong> is switched on{plannedRoute ? ` (${plannedRoute.toLowerCase()})` : ''},
+            so the check is scheduled. Whether the board is right today is what this tab records.
+          </p>
+        {:else if dutyPlan.state === 'off'}
+          <p class="duty-plan warn">
+            Planned obligation <strong>{plannedName}</strong> exists but is switched off, so nothing
+            prompts the check. Switch it on under Planned obligations.
+          </p>
+        {:else}
+          <p class="duty-plan warn">
+            No planned obligation applies this duty to the building yet, so keeping this board
+            current is not scheduled anywhere.
+          </p>
+        {/if}
+      </div>
+      <Button variant="secondary" size="small" on:click={() => dispatch('showObligation', DISPLAY_DUTY_KEY)}>
+        View compliance obligation →
+      </Button>
+    </div>
+  {/if}
 
   {#if error}<ErrorDisplay message={error} />{/if}
   {#if actionError}<ErrorDisplay message={actionError} onDismiss={() => (actionError = null)} />{/if}
@@ -398,6 +447,17 @@
   .section-title { font-size: 0.85rem; font-weight: 600; color: rgb(203 213 225); text-transform: uppercase; letter-spacing: 0.04em; }
   .count { font-weight: 400; text-transform: none; letter-spacing: normal; color: rgb(148 163 184); }
   .empty { color: rgb(148 163 184); font-size: 0.85rem; }
+  .duty {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 0.6rem 0.9rem; border-radius: 8px;
+    border: 1px solid rgb(71 85 105); background: rgb(30 41 59 / 0.6);
+  }
+  .duty-text { min-width: 0; }
+  .duty-name { font-size: 0.85rem; color: rgb(226 232 240); }
+  .duty-k { color: rgb(148 163 184); }
+  .duty-plan { font-size: 0.78rem; margin-top: 0.2rem; }
+  .duty-plan.ok { color: rgb(148 163 184); }
+  .duty-plan.warn { color: rgb(252 211 77); }
   .not-set-row {
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     padding: 0.75rem 1rem; border-radius: 8px;
