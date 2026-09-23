@@ -40,6 +40,16 @@ const _oauthRefresh  = env.GOOGLE_OAUTH_REFRESH_TOKEN  ?? '';
 const _saEmail       = env.GOOGLE_DRIVE_CLIENT_EMAIL   ?? '';
 const _saKey         = (env.GOOGLE_DRIVE_PRIVATE_KEY   ?? '').replace(/\\n/g, '\n');
 
+// ⛔ The delete guard (2026-09-23). Dev and prod share ONE Drive account; the
+// dev server only points its UPLOADS at a separate folder. A refreshed dev
+// holds prod's rows, whose file ids are prod's real files, and a delete goes by
+// absolute id. So on a server with this set to 'true', a delete is REFUSED
+// unless the file sits inside this server's own GOOGLE_DRIVE_ROOT_FOLDER_ID.
+// Set in .env.devdb. Left off on prod, where every legitimate delete is a prod
+// file and an extra Drive lookup per delete buys nothing.
+const _deleteWithinRootOnly =
+  String(env.STORAGE_DELETE_WITHIN_ROOT_ONLY ?? '').toLowerCase() === 'true';
+
 // Log warnings at startup so missing vars surface immediately.
 if (!_rootFolderId) {
   logger('⚠️  GOOGLE_DRIVE_ROOT_FOLDER_ID not set — ensurePath() will fail at runtime');
@@ -117,6 +127,47 @@ function mapFile(f) {
 }
 
 /**
+ * Is `fileId` inside the folder `rootId`, at any depth?
+ *
+ * Walks UP through each item's parents until it meets the root, runs out of
+ * parents, or gives up at `maxDepth`. Pure apart from `getParents`, which is
+ * injected so the rule can be tested without Drive.
+ *
+ * ⚠ Fails CLOSED: anything it cannot prove is inside the root — no parents, a
+ * lookup error, a cycle, or too deep — answers false, and the delete is
+ * refused. For a guard whose only job is stopping the destruction of prod
+ * files, "could not tell" must mean "do not delete".
+ *
+ * @param {string} fileId
+ * @param {string} rootId
+ * @param {(id: string) => Promise<string[]>} getParents
+ * @param {number} [maxDepth]
+ * @returns {Promise<boolean>}
+ */
+export async function isWithinFolder(fileId, rootId, getParents, maxDepth = 25) {
+  if (!fileId || !rootId) return false;
+  if (fileId === rootId) return false;          // never delete the root itself
+  const seen = new Set();
+  let frontier = [fileId];
+  for (let depth = 0; depth < maxDepth && frontier.length; depth++) {
+    /** @type {string[]} */
+    const next = [];
+    for (const id of frontier) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      let parents;
+      try { parents = await getParents(id); } catch { return false; }
+      for (const p of parents ?? []) {
+        if (p === rootId) return true;
+        next.push(p);
+      }
+    }
+    frontier = next;
+  }
+  return false;
+}
+
+/**
  * Read one header regardless of the shape the HTTP client handed back:
  * a fetch-style `Headers`, or a plain object with unpredictable key casing.
  * @returns {string|undefined}
@@ -188,6 +239,21 @@ export const googleDriveProvider = {
 
   async deleteFile(fileId) {
     const drive = getDrive();
+    if (_deleteWithinRootOnly) {
+      const inside = await isWithinFolder(fileId, _rootFolderId, async (id) => {
+        const res = await drive.files.get({ fileId: id, supportsAllDrives: true, fields: 'parents' });
+        return res.data.parents ?? [];
+      });
+      if (!inside) {
+        // Thrown, not skipped: the caller must know the file is still there, so
+        // a document row is not removed as though its file had gone.
+        throw new Error(
+          'Delete refused: this file is outside this server’s Drive folder. On a copy of '
+          + 'production data it is probably a PRODUCTION file, so it has been left alone '
+          + '(STORAGE_DELETE_WITHIN_ROOT_ONLY).',
+        );
+      }
+    }
     await drive.files.delete({ fileId, supportsAllDrives: true });
     logger('Deleted Drive file:', fileId);
   },
