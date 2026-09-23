@@ -16,7 +16,8 @@ import { uniqueSlug } from '../utils/categories.js';
 import { listScheduledWork, createJobFromPlanner, listCertificateExpiries } from '$lib/apps/maintenance/public.js';
 import { listMeetings, listOpenActionDeadlines } from '$lib/apps/management/public.js';
 import { listReviewsDue, listRiskReviewsDue, listCompetenceExpiries } from '$lib/apps/golden_thread/public.js';
-import { listObligationDueDates, listComplianceReviewDates } from '$lib/apps/compliance/public.js';
+import { listObligationDueDates, listComplianceReviewDates, listUnaddressedFaults } from '$lib/apps/compliance/public.js';
+import { listWorksDue } from '$lib/apps/building_assets/public.js';
 import { listBsrReportDeadlines } from '$lib/apps/mor/public.js';
 import { today } from '$lib/utils/dates';
 
@@ -130,7 +131,8 @@ function createPlannerStore() {
     const read = (key, what, fn) => (sources.has(key) ? fn().catch(fellShort(what)) : []);
 
     const [jobs, meetings, actions, gtDocuments, obligations,
-           certificates, bsrDeadlines, complianceReviews, riskReviews, competences] = await Promise.all([
+           certificates, bsrDeadlines, complianceReviews, riskReviews, competences,
+           worksDue, faults] = await Promise.all([
       sources.has('maintenance')
         ? listScheduledWork(from, to).catch(fellShort('maintenance jobs')) : [],
       sources.has('meeting')
@@ -151,11 +153,14 @@ function createPlannerStore() {
       read('compliance_review', 'compliance review dates', () => listComplianceReviewDates(to)),
       read('gt_risk',           'risk reviews',           () => listRiskReviewsDue(to)),
       read('gt_competence',     'competence expiries',    () => listCompetenceExpiries(to)),
+      read('works_due',         'works schedules',        () => listWorksDue(to)),
+      read('fault',             'open faults',            () => listUnaddressedFaults()),
     ]);
 
     const linked = linkedOccurrences({
       jobs, meetings, actions, gtDocuments, obligations,
       certificates, bsrDeadlines, complianceReviews, riskReviews, competences,
+      worksDue, faults,
     }, today());
     update(s => ({ ...s, linked, linkedFailures: failures, loadingLinked: false }));
     return linked;

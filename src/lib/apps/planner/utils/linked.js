@@ -46,6 +46,11 @@ export const SOURCES = {
   compliance_review: { key: 'compliance_review', label: 'Compliance review', app: 'Compliance', appId: 'compliance', category: 'compliance', adminOnly: true },
   gt_risk:       { key: 'gt_risk',       label: 'Risk review',        app: 'Golden Thread', appId: 'golden_thread', category: 'compliance' },
   gt_competence: { key: 'gt_competence', label: 'Competence expiry',  app: 'Golden Thread', appId: 'golden_thread', category: 'compliance' },
+  // Issued works schedules on their expected completion date (migration 219).
+  works_due:     { key: 'works_due',     label: 'Works due',          app: 'Building Assets', appId: 'building_assets', category: 'maintenance' },
+  // Phase 3: open faults with no works schedule issued. The data is Building
+  // Assets' components; the rule is the compliance position's fault band.
+  fault:         { key: 'fault',         label: 'Open fault',         app: 'Building Assets', appId: 'building_assets', category: 'maintenance' },
 };
 
 /** How far ahead a contractor visit needs arranging. A walk is in-house and
@@ -277,6 +282,41 @@ export function fromCompetenceExpiry(row) {
 }
 
 /**
+ * An issued works schedule, on the date the work is expected to be finished.
+ * It is booked by definition — a contractor holds it — so never "arranging";
+ * past its date with the schedule still open, it is overdue.
+ */
+export function fromWorksDue(row) {
+  return linkedOccurrence('works_due', {
+    id: row?.id,
+    title: `Works due: ${row?.title ?? 'works schedule'}`,
+    date: row?.expected_completion,
+    detail: [row?.reference, row?.contractor_name].filter(Boolean).join(' · ') || null,
+  });
+}
+
+/**
+ * An open fault that no issued works schedule covers.
+ *
+ * ⚠ A fault has no due date. It is dated TODAY and put in Needs arranging,
+ * because that is exactly its state: broken, and nobody has been asked to fix
+ * it. It moves off the list when a works schedule naming it is issued — and
+ * that schedule then appears on its own completion date instead.
+ *
+ * @param {any} row   from compliance/public.js `listUnaddressedFaults`
+ * @param {string} today  YYYY-MM-DD
+ */
+export function fromUnaddressedFault(row, today) {
+  return linkedOccurrence('fault', {
+    id: row?.id,
+    title: `Fault: ${row?.label ?? 'component'}`,
+    date: today,
+    detail: `${row?.status === 'failed' ? 'Failed' : 'Problem'} — no works schedule issued`,
+    needsArranging: true,
+  });
+}
+
+/**
  * Everything foreign, in one list.
  *
  * Each source is optional: a portal where somebody has no Golden Thread
@@ -286,6 +326,7 @@ export function fromCompetenceExpiry(row) {
 export function linkedOccurrences({
   jobs = [], meetings = [], actions = [], gtDocuments = [], obligations = [],
   certificates = [], bsrDeadlines = [], complianceReviews = [], riskReviews = [], competences = [],
+  worksDue = [], faults = [],
 } = {}, today = null) {
   return [
     ...jobs.map(fromMaintenanceJob),
@@ -298,6 +339,8 @@ export function linkedOccurrences({
     ...complianceReviews.map(fromComplianceReview),
     ...riskReviews.map(fromRiskReview),
     ...competences.map(fromCompetenceExpiry),
+    ...worksDue.map(fromWorksDue),
+    ...faults.map((f) => fromUnaddressedFault(f, today)),
   ]
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));

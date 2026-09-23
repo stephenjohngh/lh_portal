@@ -28,6 +28,8 @@ import {
 } from '$lib/utils/obligationSchedule.js';
 import { currentDecisions } from '$lib/utils/statutoryExclusions.js';
 import { templateEntry } from '$lib/utils/statutoryTemplate.js';
+import { listComponentsByStatus, listWorksLinesFor } from '$lib/apps/building_assets/public.js';
+import { correctiveSummary, faultLabel, FAULT_STATUSES } from './utils/correctiveWork.js';
 
 /**
  * Every planned obligation, as rows.
@@ -128,6 +130,27 @@ export async function listComplianceReviewDates(to) {
       title: `Review “not applicable”: ${templateEntry(d.template_key)?.name ?? d.template_key}`,
       date: d.review_due }));
   return [...display, ...exclusions];
+}
+
+/**
+ * Open faults with NO works schedule issued — for the Planner's "needs
+ * arranging". The same rule as the compliance position's open-fault band
+ * (`correctiveSummary`), so the two cannot disagree: a component in failed or
+ * problem status, covered only when an ISSUED or completed schedule names it.
+ * ⛔ A draft is not coverage — it has not been sent to anybody.
+ *
+ * ⚠ It looks at works schedules only, as the band does. A corrective
+ * maintenance job would also be coverage and is not read, which is why the
+ * wording is "no works schedule issued", never "nothing is being done".
+ *
+ * @returns {Promise<Array<{ id: string, status: string, label: string }>>}
+ */
+export async function listUnaddressedFaults() {
+  const components = await listComponentsByStatus(FAULT_STATUSES);
+  const worksItems = await listWorksLinesFor((components ?? []).map((c) => c.id));
+  return correctiveSummary({ components, worksItems }).rows
+    .filter((r) => r.schedules.length === 0)
+    .map((r) => ({ id: r.id, status: r.status, label: faultLabel(r) }));
 }
 
 /**

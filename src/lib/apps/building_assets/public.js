@@ -263,3 +263,22 @@ export function listWorksLinesFor(componentIds) {
     select: 'component_id, action, schedule:works_schedules(id, title, reference, status, issued_at)',
   });
 }
+
+
+/**
+ * Issued works schedules with an expected completion date — for the Planner.
+ *
+ * Only ISSUED ones: a draft has not been sent, so nobody is working to its
+ * date, and a completed or cancelled one is finished. Not windowed below — a
+ * completion date that has passed with the schedule still open is overdue.
+ *
+ * ⚠ `select: '*'` on purpose. `expected_completion` arrives with migration 219;
+ * naming the column before it is applied would fail the whole read, and a
+ * database without it simply returns rows with no date, which show nothing.
+ *
+ * @param {string} to  ISO date — nothing due after this is returned
+ */
+export async function listWorksDue(to) {
+  const rows = await api.get('works_schedules', { select: '*', filters: { status: 'issued' } });
+  return (rows ?? []).filter((w) => w.expected_completion && w.expected_completion <= to);
+}
