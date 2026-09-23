@@ -99,8 +99,19 @@
     }
   }
 
+  // ⚠ `isAdmin` reads false until permissions.init resolves, so without this
+  // the "restricted" notice flashed on every open, even for the admin — and a
+  // first-time tester reads that as a permission fault. Admin never showed it
+  // only because its Users tab is visible to everyone. Nothing is decided
+  // until the check has actually run.
+  let permissionsChecked = false;
+
   onMount(async () => {
-    if ($auth.user) await permissions.init($auth.user.id, 'compliance');
+    try {
+      if ($auth.user) await permissions.init($auth.user.id, 'compliance');
+    } finally {
+      permissionsChecked = true;
+    }
   });
 </script>
 
@@ -113,7 +124,9 @@
     </p>
   </div>
 
-  {#if !isAdmin}
+  {#if !isAdmin && !permissionsChecked}
+    <LoadingSpinner />
+  {:else if !isAdmin}
     <!-- ⚠ Not an error state. There is ONE admin account today, so this is the
          position every other account is in, and it must read as a permission
          rather than as a fault. -->
