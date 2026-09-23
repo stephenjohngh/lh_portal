@@ -21,6 +21,11 @@
 
 import { api } from '$lib/utils/api';
 import { inspectionDefinitionsStore } from './stores/inspectionDefinitionsStore.js';
+import { listWalkSessions } from '$lib/apps/inspection/public.js';
+import { listJobEvidence } from '$lib/apps/maintenance/public.js';
+import {
+  computeObligationSchedule, walkEventsFromSessions, jobEventsFromJobs,
+} from '$lib/utils/obligationSchedule.js';
 
 /**
  * Every planned obligation, as rows.
@@ -46,6 +51,50 @@ export function listPlannedObligations({ activeOnly = false } = {}) {
   const options = { orderBy: 'presentation_order' };
   if (activeOnly) options.filters = { active: true };
   return api.get('statutory_obligations', options);
+}
+
+/**
+ * When each SWITCHED-ON planned obligation is next due — one row per
+ * obligation, from the same scheduler and the same evidence the compliance
+ * position report uses. This is the ONE place that answers "what is due"; the
+ * Planner shows it, and any later summary panel (Notifications) reads it here
+ * rather than deriving it again (user, 2026-09-23: *"we dont duplicate
+ * anything … it gets its data from one place"*).
+ *
+ * ⛔ ADMIN CALLERS ONLY. Due dates are derived from walk sessions, and
+ * walk_sessions RLS shows a non-admin only their OWN walks — so for them a walk
+ * somebody else did would read as never done and the duty as overdue. The
+ * Planner registers this source `adminOnly`, and the Compliance walks tab hides
+ * its due panel from non-admins for the same reason.
+ *
+ * ⚠ Both evidence reads must succeed. A due date computed without the jobs
+ * would call every contractor duty overdue, so a failure here rejects rather
+ * than returning a partial answer; the caller shows it as unreadable.
+ *
+ * @returns {Promise<Array<{
+ *   id: string, name: string, route: string|null,
+ *   nextDue: string|null, overdue: boolean,
+ *   band: 'overdue'|'due_soon'|'ok'|'never_run'|'on_demand',
+ *   booked: boolean,
+ * }>>}  `booked` = the due date is a scheduled job, not a derived one
+ */
+export async function listObligationDueDates() {
+  const [obligations, sessions, jobs] = await Promise.all([
+    listPlannedObligations({ activeOnly: true }),
+    listWalkSessions(),
+    listJobEvidence(),
+  ]);
+  const live = (obligations ?? []).filter((o) => !o.retired_on);
+  const events = [...walkEventsFromSessions(sessions), ...jobEventsFromJobs(jobs)];
+  return computeObligationSchedule(live, events).map((st) => ({
+    id: st.definition.id,
+    name: st.definition.name,
+    route: st.definition.evidenced_by ?? null,
+    nextDue: st.nextDue,
+    overdue: st.overdue,
+    band: st.band,
+    booked: st.basis === 'planned',
+  }));
 }
 
 /**

@@ -166,7 +166,7 @@ describe('agenda', () => {
 
   it('survives an empty planner', () => {
     const groups = agenda([], TODAY);
-    expect(groups).toEqual({ overdue: [], due_soon: [], planned: [], done: [] });
+    expect(groups).toEqual({ overdue: [], arranging: [], due_soon: [], planned: [], done: [] });
   });
 });
 
@@ -288,5 +288,13 @@ describe('firstLine', () => {
     expect(firstLine(undefined)).toBe('');
     expect(firstLine('')).toBe('');
     expect(firstLine('   \n  ')).toBe('');
+  });
+});
+
+
+describe('describeAgenda — needs arranging', () => {
+  it('counts what needs arranging alongside what is overdue', () => {
+    const groups = { overdue: [1], arranging: [1, 2], due_soon: [], planned: [], done: [] };
+    expect(describeAgenda(groups)).toBe('1 overdue · 2 to arrange');
   });
 });

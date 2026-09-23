@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   fromMaintenanceJob, fromMeeting, fromAction, fromGtDocument,
   linkedOccurrences, filterLinked, SOURCES, visibleSources,
+  fromObligationDue, ARRANGING_LEAD_DAYS,
 } from './linked.js';
 import { agenda, bucketOf } from './agenda.js';
 
@@ -216,5 +217,79 @@ describe('visibleSources', () => {
       appPermissions: { management: { hasAccess: true, isReadOnly: true } },
     });
     expect(visible.has('meeting')).toBe(true);
+  });
+});
+
+
+// ── Planned obligations (reopened 2026-09-23) ───────────────────────────────
+// One screen for "overdue, needs arranging, coming up". The due dates come
+// from compliance/public.js listObligationDueDates — the rows below are that
+// accessor's shape, and the rules asserted are the ones the user asked for.
+describe('fromObligationDue', () => {
+  const TODAY = '2026-09-23';
+  const due = (over) => ({
+    id: 'o1', name: 'Fire alarm service', route: 'maintenance_job',
+    nextDue: '2026-10-10T00:00:00.000Z', overdue: false, band: 'ok', booked: false,
+    ...over,
+  });
+  const bucket = (row) => bucketOf(fromObligationDue(row, TODAY), TODAY);
+
+  it('puts an unbooked contractor duty inside its lead time in Needs arranging', () => {
+    expect(bucket(due())).toBe('arranging');
+  });
+
+  it('leaves an unbooked contractor duty beyond its lead time as Planned', () => {
+    const far = new Date(Date.parse(TODAY) + (ARRANGING_LEAD_DAYS + 5) * 864e5).toISOString();
+    expect(bucket(due({ nextDue: far }))).toBe('planned');
+  });
+
+  // ⛔ ONE ITEM PER DUTY. A booked job already appears through the maintenance
+  // source; showing the obligation as well would be one visit read as two.
+  it('drops a duty whose due date is a booked job', () => {
+    expect(fromObligationDue(due({ booked: true }), TODAY)).toBeNull();
+  });
+
+  it('never puts an in-house walk in Needs arranging — nothing to book', () => {
+    // Ten days out: inside a walk's 14-day notice, so Coming up, not arranging.
+    expect(bucket(due({ route: 'inspection', nextDue: '2026-10-03T00:00:00.000Z' }))).toBe('due_soon');
+  });
+
+  // The scheduler calls a never-done duty with a cadence overdue; the Planner
+  // defers to it rather than re-deciding, so the two screens agree.
+  it('shows a never-done duty as overdue today', () => {
+    const item = fromObligationDue(due({ band: 'never_run', nextDue: null, overdue: true }), TODAY);
+    expect(item.date).toBe(TODAY);
+    expect(bucketOf(item, TODAY)).toBe('overdue');
+    expect(item.note).toMatch(/never done/i);
+  });
+
+  it('keeps an overdue unbooked duty in Overdue, saying it is not booked', () => {
+    const item = fromObligationDue(due({ nextDue: '2026-09-01T00:00:00.000Z', overdue: true }), TODAY);
+    expect(bucketOf(item, TODAY)).toBe('overdue');
+    expect(item.note).toMatch(/not booked/i);
+  });
+
+  it('shows nothing for an on-demand duty', () => {
+    expect(fromObligationDue(due({ band: 'on_demand', nextDue: null }), TODAY)).toBeNull();
+  });
+
+  it('comes through linkedOccurrences like any other source', () => {
+    const items = linkedOccurrences({ obligations: [due()] }, TODAY);
+    expect(items).toHaveLength(1);
+    expect(items[0].linked).toBe(true);
+    expect(items[0].ownerApp).toBe('Compliance');
+  });
+});
+
+describe('the planned-obligation source is admin only', () => {
+  // Due dates are derived from walk sessions, and a non-admin can only read
+  // their own — so for them a walk somebody else did would read as overdue.
+  it('is not shown to a non-admin even with the Compliance grant', () => {
+    const visible = visibleSources({ isAdmin: false, appPermissions: { compliance: { hasAccess: true } } });
+    expect(visible.has('obligation')).toBe(false);
+  });
+
+  it('is shown to an admin', () => {
+    expect(visibleSources({ isAdmin: true, appPermissions: {} }).has('obligation')).toBe(true);
   });
 });

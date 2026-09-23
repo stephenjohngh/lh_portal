@@ -16,6 +16,8 @@ import { uniqueSlug } from '../utils/categories.js';
 import { listScheduledWork, createJobFromPlanner } from '$lib/apps/maintenance/public.js';
 import { listMeetings, listOpenActionDeadlines } from '$lib/apps/management/public.js';
 import { listReviewsDue } from '$lib/apps/golden_thread/public.js';
+import { listObligationDueDates } from '$lib/apps/compliance/public.js';
+import { today } from '$lib/utils/dates';
 
 const logger = getLogger('planner');
 
@@ -41,6 +43,7 @@ function createPlannerStore() {
    *   categories: (import('$lib/database.types').Tables<'planner_categories'> & Record<string, any>)[],
    *   dayMarks: (import('$lib/database.types').Tables<'planner_day_marks'> & Record<string, any>)[],
    *   linked: Record<string, any>[],
+   *   linkedFailures: string[],
    *   loadingLinked: boolean,
    *   loading: boolean,
    *   error: string | null
@@ -55,6 +58,9 @@ function createPlannerStore() {
     dayMarks: [],
     /** Other apps' dated items — read-only, never written back. */
     linked: [],
+    /** Sources that could not be read on the last load, by name. ⛔ Shown on
+     *  screen: an unreadable source must never look like an empty one. */
+    linkedFailures: [],
     loadingLinked: false,
     loading: false,
     error: null,
@@ -112,7 +118,15 @@ function createPlannerStore() {
   async function loadLinked(from, to, sources = new Set()) {
     update(s => ({ ...s, loadingLinked: true }));
 
-    const [jobs, meetings, actions, gtDocuments] = await Promise.all([
+    /** @type {string[]} */
+    const failures = [];
+    const fellShort = (what) => (err) => {
+      logger('⚠ could not read', what, '—', errMessage(err));
+      failures.push(what);
+      return [];
+    };
+
+    const [jobs, meetings, actions, gtDocuments, obligations] = await Promise.all([
       sources.has('maintenance')
         ? listScheduledWork(from, to).catch(fellShort('maintenance jobs')) : [],
       sources.has('meeting')
@@ -121,19 +135,16 @@ function createPlannerStore() {
         ? listOpenActionDeadlines(from, to).catch(fellShort('action deadlines')) : [],
       sources.has('gt_review')
         ? listReviewsDue(from, to).catch(fellShort('Golden Thread reviews')) : [],
+      // Every switched-on planned obligation's next due date. Not windowed
+      // at the source: a duty due before `from` is still overdue, and the
+      // agenda must say so. Dates outside the window simply sort to the ends.
+      sources.has('obligation')
+        ? listObligationDueDates().catch(fellShort('planned obligations')) : [],
     ]);
 
-    const linked = linkedOccurrences({ jobs, meetings, actions, gtDocuments });
-    update(s => ({ ...s, linked, loadingLinked: false }));
+    const linked = linkedOccurrences({ jobs, meetings, actions, gtDocuments, obligations }, today());
+    update(s => ({ ...s, linked, linkedFailures: failures, loadingLinked: false }));
     return linked;
-  }
-
-  /** One source being unavailable is a gap in the view, not a failure of it. */
-  function fellShort(what) {
-    return (err) => {
-      logger('⚠ could not read', what, '—', errMessage(err));
-      return [];
-    };
   }
 
   // ── Series ────────────────────────────────────────────────────────────────

@@ -28,6 +28,10 @@ export const STATUS = {
 /** Which bucket an item falls in, and how each is described. */
 export const BUCKETS = [
   { key: 'overdue',   label: 'Overdue' },
+  // ⭐ Added 2026-09-23 with the planned-obligation source: due within its
+  // lead time with NOTHING BOOKED. Distinct from "coming up" because the action
+  // is different — somebody has to book a contractor, not just turn up.
+  { key: 'arranging', label: 'Needs arranging' },
   { key: 'due_soon',  label: 'Coming up' },
   { key: 'planned',   label: 'Planned' },
   { key: 'done',      label: 'Done' },
@@ -125,10 +129,14 @@ export function bucketOf(occurrence, today) {
   if (occurrence.status === STATUS.DONE || occurrence.status === STATUS.SKIPPED) return 'done';
 
   const away = daysBetween(today, occurrence.date);
-  if (away < 0) return 'overdue';
+  // `overdue` is set by a source whose own rules say so on a date that has not
+  // passed (a planned obligation never done). Overdue wins over arranging: an
+  // overdue duty still unbooked is overdue first, and its note says unbooked.
+  if (away < 0 || occurrence.overdue === true) return 'overdue';
 
   const notice = occurrence.series?.lead_days ?? 30;
-  return away <= notice ? 'due_soon' : 'planned';
+  if (away > notice) return 'planned';
+  return occurrence.needsArranging ? 'arranging' : 'due_soon';
 }
 
 /**
@@ -139,7 +147,7 @@ export function bucketOf(occurrence, today) {
  * newest-first because it is a record, not a queue.
  */
 export function agenda(occurrences = [], today) {
-  const groups = { overdue: [], due_soon: [], planned: [], done: [] };
+  const groups = { overdue: [], arranging: [], due_soon: [], planned: [], done: [] };
 
   // Sorted here rather than relied upon. buildOccurrences already returns date
   // order, but a display function that silently depends on its caller having
@@ -160,6 +168,7 @@ export function agenda(occurrences = [], today) {
 export function describeAgenda(groups) {
   const parts = [];
   if (groups.overdue.length)  parts.push(`${groups.overdue.length} overdue`);
+  if (groups.arranging?.length) parts.push(`${groups.arranging.length} to arrange`);
   if (groups.due_soon.length) parts.push(`${groups.due_soon.length} coming up`);
   return parts.join(' · ') || 'Nothing outstanding';
 }

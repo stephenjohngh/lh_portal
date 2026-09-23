@@ -558,6 +558,16 @@
     </div>
   </div>
 
+  <!-- ⛔ An unreadable source must never look like an empty one. This used
+       to be a log line only, which is how a renamed column hid every
+       maintenance job from the year and nobody noticed. -->
+  {#if state.linkedFailures?.length}
+    <p class="text-xs text-amber-300" role="alert" data-testid="linked-failures">
+      ⚠ Could not read {state.linkedFailures.join(', ')} — what is shown is
+      missing them, so do not read their absence as nothing due.
+    </p>
+  {/if}
+
   {#if state.loading && !state.events.length}
     <div class="flex justify-center py-10"><LoadingSpinner /></div>
 
@@ -666,6 +676,7 @@
         </p>
       {/if}
 
+
       {#if selectedDay}
         <div class="border border-slate-700 rounded p-3 bg-slate-800/40">
           <div class="flex items-center gap-2 mb-2">
@@ -723,6 +734,7 @@
               <div class="flex items-center gap-2 mb-2">
                 <h3 class="text-xs uppercase tracking-wide font-semibold
                            {bucket.key === 'overdue' ? 'text-red-400'
+                             : bucket.key === 'arranging' ? 'text-orange-300'
                              : bucket.key === 'due_soon' ? 'text-amber-400' : 'text-slate-500'}">
                   {bucket.label}
                 </h3>
@@ -736,7 +748,7 @@
                     {canEdit}
                     categories={state.categories}
                     owners={$profiles.list}
-                    showLateness={bucket.key === 'overdue'}
+                    showLateness={bucket.key === 'overdue' && daysBetween(occurrence.date, now) > 0}
                     daysLate={daysBetween(occurrence.date, now)}
                     on:toggle={toggleDone}
                     on:skip={toggleSkip}

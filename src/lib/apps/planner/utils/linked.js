@@ -31,7 +31,20 @@ export const SOURCES = {
   meeting:     { key: 'meeting',     label: 'Meeting',     app: 'Management',    appId: 'management',    category: 'meeting' },
   action:      { key: 'action',      label: 'Action',      app: 'Management',    appId: 'management',    category: 'other' },
   gt_review:   { key: 'gt_review',   label: 'Review due',  app: 'Golden Thread', appId: 'golden_thread', category: 'compliance' },
+  // ⭐ Added 2026-09-23, when the user reopened Planner sources: *"one screen,
+  // whats overdue, what needs arranging, what is coming up for everything we
+  // deal with."* One row per switched-on planned obligation, from
+  // compliance/public.js `listObligationDueDates` — the same scheduler the
+  // compliance position report uses, never a second derivation.
+  // ⛔ `adminOnly`: those due dates are derived from walk sessions, which a
+  // non-admin can only see their own of, so for them the dates would be wrong.
+  obligation:  { key: 'obligation',  label: 'Planned obligation', app: 'Compliance', appId: 'compliance', category: 'compliance', adminOnly: true },
 };
+
+/** How far ahead a contractor visit needs arranging. A walk is in-house and
+ *  needs no booking, so it uses the ordinary notice window. */
+export const ARRANGING_LEAD_DAYS = 60;
+const WALK_LEAD_DAYS = 14;
 
 /**
  * Which sources this user may be shown, from the permissions store's own state.
@@ -54,7 +67,7 @@ export function visibleSources(permissions) {
 
   return new Set(
     Object.values(SOURCES)
-      .filter(source => isAdmin || appPermissions[source.appId]?.hasAccess)
+      .filter(source => isAdmin || (!source.adminOnly && appPermissions[source.appId]?.hasAccess))
       .map(source => source.key),
   );
 }
@@ -65,7 +78,7 @@ export function visibleSources(permissions) {
  * `event_id` is namespaced by source so it can never collide with a planner
  * event's id — the two live in one list and are keyed together in `{#each}`.
  */
-function linkedOccurrence(source, { id, title, date, done = false, detail = null }) {
+function linkedOccurrence(source, { id, title, date, done = false, detail = null, overdue = false, needsArranging = false, leadDays = null }) {
   if (!id || !date) return null;
 
   const meta = SOURCES[source];
@@ -85,6 +98,12 @@ function linkedOccurrence(source, { id, title, date, done = false, detail = null
     completed_on: null,
     completed_by: null,
     orphaned: false,
+    // Set by a source whose OWN rules say it is overdue on a date that has not
+    // passed — a planned obligation never done, which the scheduler calls due
+    // now. The planner defers to the owner rather than re-deciding.
+    overdue,
+    // Due within its lead time with nothing booked: "needs arranging".
+    needsArranging,
     // A series-shaped stand-in, so every view that reads `.series` keeps
     // working without knowing this item came from somewhere else.
     series: {
@@ -95,7 +114,7 @@ function linkedOccurrence(source, { id, title, date, done = false, detail = null
       start_time: null,
       end_time: null,
       recurrence: { freq: 'once' },
-      lead_days: null,
+      lead_days: leadDays,
       linked: true,
     },
   };
@@ -154,18 +173,56 @@ export function fromGtDocument(row) {
 }
 
 /**
+ * A switched-on planned obligation, on the date it is next due.
+ *
+ * ⭐ ONE ITEM PER DUTY, NEVER TWO. When the due date is a BOOKED job
+ * (`booked`), that job already appears through the maintenance source, so the
+ * obligation is dropped here: the same visit shown twice would read as two
+ * things to do. On-demand obligations have no due date and are not shown.
+ *
+ * - Contractor route, not booked → **needs arranging** within 60 days.
+ * - In-house walk → due on its date; nothing to arrange.
+ * - Never done → due today, and OVERDUE because the scheduler says so: a duty
+ *   with a cadence that has never been discharged is the most urgent state
+ *   there is, and the compliance position report reads it the same way.
+ *
+ * @param {any} row   from compliance/public.js `listObligationDueDates`
+ * @param {string} today  YYYY-MM-DD
+ */
+export function fromObligationDue(row, today) {
+  if (!row || row.booked || row.band === 'on_demand') return null;
+  const contractor = row.route === 'maintenance_job';
+  const neverDone = row.band === 'never_run';
+  const date = neverDone ? today : row.nextDue?.slice(0, 10);
+  const detail = [
+    neverDone ? 'Never done' : null,
+    contractor ? 'Contractor visit — not booked' : row.route === 'inspection' ? 'In-house walk' : null,
+  ].filter(Boolean).join(' · ') || null;
+  return linkedOccurrence('obligation', {
+    id: row.id,
+    title: row.name ?? 'Planned obligation',
+    date,
+    detail,
+    overdue: !!row.overdue,
+    needsArranging: contractor,
+    leadDays: contractor ? ARRANGING_LEAD_DAYS : WALK_LEAD_DAYS,
+  });
+}
+
+/**
  * Everything foreign, in one list.
  *
  * Each source is optional: a portal where somebody has no Golden Thread
  * permission simply passes nothing for it, and the planner shows the rest
  * rather than failing.
  */
-export function linkedOccurrences({ jobs = [], meetings = [], actions = [], gtDocuments = [] } = {}) {
+export function linkedOccurrences({ jobs = [], meetings = [], actions = [], gtDocuments = [], obligations = [] } = {}, today = null) {
   return [
     ...jobs.map(fromMaintenanceJob),
     ...meetings.map(fromMeeting),
     ...actions.map(fromAction),
     ...gtDocuments.map(fromGtDocument),
+    ...obligations.map((o) => fromObligationDue(o, today)),
   ]
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));
