@@ -1,9 +1,10 @@
 // src/lib/apps/compliance/stores/inspectionDefinitionsStore.js
-// CRUD store for statutory_obligations — used by Admin > Inspections tab.
+// CRUD store for statutory_obligations — used by Compliance > Planned obligations.
 //
 // Definitions are portal config (like component_types): admins create/edit them
-// here; the mobile Inspection app and the Building Assets "Inspections" tab READ
-// them directly (api.get) and derive due/overdue via computeInspectionSchedule.
+// here; the mobile Inspection app, Compliance → Inspection walks and Maintenance
+// READ them (Maintenance through compliance/public.js) and derive due/overdue
+// via computeInspectionSchedule / obligationSchedule.
 // Writes are admin-only at RLS (migration 153).
 
 import { writable }  from 'svelte/store';
@@ -12,7 +13,7 @@ import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { logAudit }  from '$lib/utils/auditLogger';
 import { EVIDENCE_ROUTES } from '$lib/utils/obligationEvidence.js';
-import { TEMPLATE_KEYS, templateEntry, templateToObligation } from '$lib/utils/statutoryTemplate.js';
+import { activeRegister, templateEntry, templateToObligation } from '$lib/utils/statutoryTemplate.js';
 import { excludedKeys, isRecordableReason } from '$lib/utils/statutoryExclusions.js';
 
 const logger = getLogger('InspectionDefinitions');
@@ -113,7 +114,7 @@ function createInspectionDefinitionsStore() {
     const def = await api.create('statutory_obligations', toRow(data, uid, { isCreate: true }));
     update(s => ({ ...s, definitions: [...s.definitions, def].sort(byOrderThenName) }));
     logAudit('create', 'inspection_definition', def.id, def.name, {
-      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
       afterData: { mode: def.mode, frequency_days: def.frequency_days },
     });
     logger('Created definition:', def.id, def.name);
@@ -128,7 +129,7 @@ function createInspectionDefinitionsStore() {
       definitions: s.definitions.map(d => d.id === id ? { ...d, ...updated } : d).sort(byOrderThenName),
     }));
     logAudit('update', 'inspection_definition', id, updated.name, {
-      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
       afterData: { mode: updated.mode, frequency_days: updated.frequency_days, active: updated.active },
     });
     logger('Saved definition:', id, updated.name);
@@ -140,7 +141,7 @@ function createInspectionDefinitionsStore() {
     await api.delete('statutory_obligations', id);
     update(s => ({ ...s, definitions: s.definitions.filter(d => d.id !== id) }));
     logAudit('delete', 'inspection_definition', id, name, {
-      appId: 'admin', eventCategory: 'admin', severity: 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'warning',
     });
     logger('Deleted definition:', id);
   }
@@ -183,7 +184,7 @@ function createInspectionDefinitionsStore() {
     // Warning, not info: a statutory check stopping is something someone may
     // later have to justify, exactly like an exclusion.
     logAudit('update', 'inspection_definition', id, updated.name, {
-      appId: 'admin', eventCategory: 'admin', severity: 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'warning',
       afterData: { retired_on: on, retired_reason: reason.trim() },
     });
     logger('Retired obligation', id, 'from', on);
@@ -205,7 +206,7 @@ function createInspectionDefinitionsStore() {
       definitions: s.definitions.map(d => d.id === id ? { ...d, ...updated } : d).sort(byOrderThenName),
     }));
     logAudit('update', 'inspection_definition', id, updated.name, {
-      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
       afterData: { retired_on: null, reason: reason.trim() },
     });
     logger('Un-retired obligation', id);
@@ -228,7 +229,12 @@ function createInspectionDefinitionsStore() {
    */
   async function applyTemplate(keys) {
     const uid = await userId();
-    const wanted = TEMPLATE_KEYS.filter(k => keys?.includes(k));   // template order, de-duplicated
+    // ⛔ The register IN FORCE, not the shipped key list. Filtering on the seed's
+    // keys meant a compliance obligation added here (tutorial §16) could never
+    // be applied: it was dropped before the loop, so the call "succeeded" with
+    // nothing created and nothing failed — a button that silently did nothing.
+    const wanted = activeRegister().map(e => e.key)
+      .filter(k => keys?.includes(k));                              // register order, de-duplicated
     // Keep applied entries below anything already ordered by hand.
     const base = _snapshot.reduce((m, d) => Math.max(m, d.presentation_order ?? 0), 0);
 
@@ -242,7 +248,7 @@ function createInspectionDefinitionsStore() {
         const def = await api.create('statutory_obligations', toRow(data, uid, { isCreate: true }));
         created.push(def);
         logAudit('create', 'inspection_definition', def.id, def.name, {
-          appId: 'admin', eventCategory: 'admin', severity: 'info',
+          appId: 'compliance', eventCategory: 'compliance', severity: 'info',
           afterData: { template_key: key, frequency_days: def.frequency_days, evidenced_by: def.evidenced_by },
         });
       } catch (/** @type {any} */ err) {
@@ -276,7 +282,7 @@ function createInspectionDefinitionsStore() {
       definitions: s.definitions.map(d => d.id === id ? { ...d, ...updated } : d).sort(byOrderThenName),
     }));
     logAudit('update', 'inspection_definition', id, updated.name, {
-      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
       afterData: { template_key: key ?? null },
     });
     logger(key ? `Linked ${id} to template entry ${key}` : `Unlinked ${id} from the template`);
@@ -318,7 +324,9 @@ function createInspectionDefinitionsStore() {
    * @param {{ reviewDue?: string|null }} [opts]
    */
   async function recordExclusionDecision(templateKey, decision, reason, opts = {}) {
-    if (!TEMPLATE_KEYS.includes(templateKey)) {
+    // ⛔ Same fault as applyTemplate: checked against the shipped keys, so a
+    // compliance obligation added here could not be recorded as not applicable.
+    if (!templateEntry(templateKey)) {
       throw new Error(`Unknown register entry: ${templateKey}`);
     }
     if (!isRecordableReason(reason)) {
@@ -343,7 +351,7 @@ function createInspectionDefinitionsStore() {
     // Warning, not info: declaring a legal requirement inapplicable is a
     // decision someone may later have to justify.
     logAudit('create', 'statutory_exclusion', row.id, entry?.name ?? templateKey, {
-      appId: 'admin', eventCategory: 'admin',
+      appId: 'compliance', eventCategory: 'compliance',
       severity: decision === 'not_applicable' ? 'warning' : 'info',
       afterData: {
         template_key: templateKey, decision, reason: reason.trim(),

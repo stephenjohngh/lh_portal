@@ -60,7 +60,8 @@ export async function lastDefinitionInspections(definitionId) {
 
 /**
  * All walk sessions, newest first, with the inspector's name joined. The
- * cross-app read for the Building Assets Inspections tab (the Inspection app's
+ * cross-app read for Compliance → Inspection walks and the compliance position
+ * report (the Inspection app's
  * own store reads its own, user-scoped, subset directly).
  */
 export function listWalkSessions() {

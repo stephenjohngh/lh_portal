@@ -1,6 +1,6 @@
 <!-- src/lib/apps/compliance/components/StatutoryTemplatePanel.svelte -->
-<!-- M4 · the periodic activity register and its gap report, on Admin >
-     Inspections. Every recurring check identified for a higher-risk residential
+<!-- M4 · the periodic activity register and its gap report, on Compliance >
+     Compliance obligations. Every recurring check identified for a higher-risk residential
      building, each saying WHERE IT COMES FROM (legislation / standard /
      contract / our own decision) and HOW IT IS DEALT WITH HERE (which sub-app,
      or nothing).
@@ -119,6 +119,19 @@
   // `status = not_covered`. It starts there because that is the work.
   let search = '';
   let filters = { status: new Set(['not_covered']) };
+  // ⛔ THE DEFAULT MUST NOT OUTLIVE ITS REASON. *Not covered* is the work — until
+  // there is none. Once every schedulable duty has been applied (true on this
+  // building since 2026-09-21) the default filter showed an EMPTY list on
+  // arrival, and its chip was disabled at 0, so a first-time user could not even
+  // click it off: the screen read as broken. So the untouched default is dropped
+  // the moment it would hide everything; a filter somebody chose is never
+  // second-guessed.
+  let statusIsDefault = true;
+  $: if (statusIsDefault && $statutoryRegister.loaded && tallies.not_covered === 0
+         && filters.status?.size === 1 && filters.status.has('not_covered')) {
+    statusIsDefault = false;
+    filters = { ...filters, status: new Set() };
+  }
   let expanded = new Set();          // keys whose detail is showing
   let collapsedGroups = new Set();   // group keys the user has folded away
 
@@ -136,6 +149,7 @@
 
   /** The count strip is also the control — clicking a number filters to it. */
   function toggleStatus(s) {
+    statusIsDefault = false;
     const next = new Set(filters.status ?? []);
     if (next.has(s)) next.delete(s); else next.add(s);
     filters = { ...filters, status: next };
@@ -600,7 +614,7 @@
           <button
             class="tally {REGISTER_STATUS_CLASS[s]}"
             class:on={filters.status?.has(s)}
-            disabled={tallies[s] === 0}
+            disabled={tallies[s] === 0 && !filters.status?.has(s)}
             title={tallies[s] === 0 ? 'None of these' : `${REGISTER_STATUS_EXPLAINED[s]} — click to show only these`}
             on:click={() => toggleStatus(s)}
           >

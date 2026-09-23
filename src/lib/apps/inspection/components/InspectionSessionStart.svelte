@@ -55,8 +55,8 @@
   // on a walk — and which would otherwise sit here reading "never run".
   $: definitions = /** @type {InspectionDefinition[]} */ ($inspectionStore.definitions ?? [])
     .filter(d => d.active && isWalkEvidenced(d));
-  // Display order (Admin → Inspections) — the same sequence as the Building
-  // Assets Upcoming/Due panel and Inspections filter, so an inspection is always
+  // Display order (Compliance → Planned obligations) — the same sequence as the
+  // upcoming list on Compliance → Inspection walks, so an inspection is always
   // in the position the admin put it. Each row still shows its own due state.
   $: schedStates = sortByDisplayOrder(computeInspectionSchedule(definitions, $inspectionStore.scheduleSessions ?? []));
   $: selectedDefinition = definitions.find(d => d.id === selectedDefinitionId) ?? null;

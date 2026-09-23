@@ -9,7 +9,7 @@
      docs/requirements/build_plans/Obligation_Library_Promotion_Build_Plan.md). This panel
      is now a SHORTCUT onto that library, never a rival definition source: a
      quick add for the common "one obligation, one type" case, with the full
-     editor (scope builder, statutory detail, rotation) in Admin → Inspections.
+     editor (scope builder, statutory detail, rotation) in Compliance → Planned obligations.
 
      An obligation covering more than this type is shown read-only, because
      editing a multi-type rule from a single type's panel is a footgun — you
@@ -133,7 +133,7 @@
       <p class="text-xs text-slate-600 mt-0.5">
         What this type is obliged to have done, from the shared obligation library.
         This is a shortcut for the simple case — scope filters, statutory detail
-        and rotation live in <span class="text-slate-500">Admin → Inspections</span>.
+        and rotation live in <span class="text-slate-500">Compliance → Planned obligations</span>.
       </p>
     </div>
     {#if editingId !== 'new'}
@@ -261,7 +261,7 @@
               <p class="text-xs text-slate-500 mt-0.5">
                 {frequencyLabel(row.frequency_days)}
                 {#if !row.editableHere}
-                  · <span class="text-amber-500/80">covers {row.typeCount} types — edit in Admin → Inspections</span>
+                  · <span class="text-amber-500/80">covers {row.typeCount} types — edit in Compliance → Planned obligations</span>
                 {/if}
               </p>
             </div>

@@ -340,6 +340,11 @@ function createInspectionStore() {
     // definition matters for the schedule, so the 1000-row page is plenty.
     try {
       const [definitions, scheduleSessions] = await Promise.all([
+        // ⚠ Compliance's table, read directly rather than through
+        // compliance/public.js — deliberately. It is read-only config here (the
+        // convention permits that), and importing the Compliance interface would
+        // drag its store and the whole shipped register seed into the phone
+        // app's bundle for one query that returns the same rows.
         api.get('statutory_obligations', { orderBy: 'presentation_order' }),
         api.get('walk_sessions', {
           // counts drive completeness in computeInspectionSchedule (a finished-early

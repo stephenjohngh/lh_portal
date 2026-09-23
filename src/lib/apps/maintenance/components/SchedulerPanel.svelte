@@ -194,9 +194,11 @@
     <!-- Obligation table -->
     {#if obligationRows.length === 0}
       <p class="text-sm text-slate-500 italic py-4">
-        No contractor-evidenced obligations with a frequency. Add them in
-        Admin → Inspections, setting “How is this discharged?” to
-        <span class="text-slate-400">Contractor job</span>.
+        No planned obligation here to schedule yet. Only planned obligations that
+        are <strong>switched on</strong>, have a frequency and are discharged by a
+        <span class="text-slate-400">Contractor visit</span> appear — set those up in
+        Compliance → Planned obligations. ⚠ Applying compliance obligations creates
+        them switched off, so an empty list usually means none has been turned on yet.
       </p>
     {:else}
       <div class="rounded-lg border border-slate-700 overflow-hidden">

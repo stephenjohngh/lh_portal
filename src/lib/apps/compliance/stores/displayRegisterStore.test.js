@@ -84,7 +84,7 @@ describe('create — row shape', () => {
     h.api.create.mockResolvedValueOnce({ id: 'd9', title: 'BAC', category: 'bac' });
     await store.create(form({ title: 'BAC', category: 'bac' }));
     expect(h.logAudit).toHaveBeenCalledWith(
-      'create', 'display_item', 'd9', 'BAC', expect.objectContaining({ appId: 'admin' }));
+      'create', 'display_item', 'd9', 'BAC', expect.objectContaining({ appId: 'compliance' }));
   });
 });
 

@@ -1,5 +1,5 @@
 <!-- src/lib/apps/compliance/components/ComplianceObligationsTab.svelte -->
-<!-- Admin > COMPLIANCE OBLIGATIONS: the register — what a higher-risk
+<!-- Compliance > COMPLIANCE OBLIGATIONS: the register — what a higher-risk
      residential building in England must do, whether or not it applies here.
 
      ⭐ V2 OF docs/design/compliance_vocabulary.md. This and the planned
@@ -19,7 +19,7 @@
      and nothing here touches `components`. So opening the register no longer
      drags in 1,092 components, their attributes and their latest inspections;
      that load moved to the planned obligations tab, where the scope preview
-     actually needs it. See AdminApp's activateTab. -->
+     actually needs it. See ComplianceApp's activateTab. -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { inspectionDefinitionsStore } from '../stores/inspectionDefinitionsStore.js';

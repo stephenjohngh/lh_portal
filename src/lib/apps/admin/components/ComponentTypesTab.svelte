@@ -50,7 +50,7 @@
 
   // (primaryAttrDef / primaryOptions used to feed the regime panel's
   // attribute_filter dropdown. Obligations scope by a jsonb filter built in
-  // Admin → Inspections, so both are gone with maintenance_regime.)
+  // Compliance → Planned obligations, so both are gone with maintenance_regime.)
 
   // -- Selection handlers ---------------------------------------------
   function selectSystem(id) {

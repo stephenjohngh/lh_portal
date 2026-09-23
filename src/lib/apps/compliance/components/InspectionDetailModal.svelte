@@ -1,7 +1,7 @@
 <!-- src/lib/apps/building_assets/components/InspectionDetailModal.svelte -->
 <!-- Read-only detail of a single component inspection (opened from a session row
-     in InspectionsTab): type/floor header, result + meta, condition checklist,
-     notes, and a photo grid with its own lightbox. Extracted from InspectionsTab
+     in InspectionWalksTab): type/floor header, result + meta, condition checklist,
+     notes, and a photo grid with its own lightbox. Extracted from the old Building Assets InspectionsTab
      so the tab stays focused on the session list. -->
 <script>
   import { createEventDispatcher } from 'svelte';

@@ -12,6 +12,8 @@
   import FormInput    from '$lib/components/common/FormInput.svelte';
   import FormTextarea from '$lib/components/common/FormTextarea.svelte';
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
+  import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
   import ScopeEditor  from '$lib/apps/building_assets/components/ScopeEditor.svelte';
   import { templateEntry } from '$lib/utils/statutoryTemplate.js';
   import { applyInspectionScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
@@ -43,6 +45,8 @@
    *  the end of the list (same (n+1)*10 convention as the attribute/option panels). */
   export let definitions    = [];
   export let saving = false;
+  /** Why the last save was refused, or '' — shown in the modal, which stays open. */
+  export let saveError = '';
 
   const dispatch = createEventDispatcher();
   const isEdit = !!definition;
@@ -198,6 +202,7 @@
 
 <Modal show={true} title={isEdit ? 'Edit planned obligation' : 'New planned obligation'} size="large" on:close={() => dispatch('close')}>
   <div class="def-form">
+    {#if saveError}<ErrorDisplay message={saveError} />{/if}
     <FormInput label="Name" bind:value={name} placeholder="e.g. Fire Doors" required />
     <FormTextarea label="Description" bind:value={description} rows={2} placeholder="What this planned obligation covers" />
 
@@ -209,9 +214,8 @@
       </label>
     </div>
     <p class="order-hint">
-      Lowest first. Orders this admin list and the Building Assets Inspection
-      filter. The Upcoming/Due panel and the mobile start list ignore it — they
-      sort by what is due soonest.
+      Lowest first. Orders this list, the upcoming walks on the Inspection walks
+      tab and the start list on the phone.
     </p>
 
     <!-- Frequency -->
@@ -293,10 +297,10 @@
       <p class="block-lbl">How is this discharged?</p>
       <div class="mode-row">
         <button type="button" class="mode-chip" class:on={evidencedBy === 'inspection'} on:click={() => evidencedBy = 'inspection'}>
-          Inspection walk <span class="mode-sub">someone walks round and ticks components</span>
+          {EVIDENCE_ROUTE_LABEL.inspection} <span class="mode-sub">someone walks round and ticks components</span>
         </button>
         <button type="button" class="mode-chip" class:on={evidencedBy === 'maintenance_job'} on:click={() => evidencedBy = 'maintenance_job'}>
-          Contractor job <span class="mode-sub">a maintenance job + its certificate</span>
+          {EVIDENCE_ROUTE_LABEL.maintenance_job} <span class="mode-sub">a maintenance job + its certificate</span>
         </button>
         <button type="button" class="mode-chip" class:on={evidencedBy === 'either'} on:click={() => evidencedBy = 'either'}>
           Either <span class="mode-sub">satisfied by whichever happens</span>
@@ -305,8 +309,9 @@
       {#if evidencedBy === 'maintenance_job'}
         <p class="hint">
           Won’t appear in the mobile app or the inspection due list — it is
-          scheduled and evidenced in Maintenance. The scope, checklist and
-          rotation settings below don’t apply to it.
+          scheduled and evidenced in Maintenance. The scope below still says what
+          the job covers (one type or one system becomes the job’s scope); the
+          checklist and rotation settings don’t apply to it.
         </p>
       {/if}
     </div>

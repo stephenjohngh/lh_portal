@@ -26,7 +26,7 @@
 
   $: awaitingByDef = awaitingAccessByDefinition(awaitingAccess);
 
-  // Display order (Admin → Inspections), so this panel, the mobile start list
+  // Display order (Compliance → Planned obligations), so this panel, the mobile start list
   // and the Inspections filter all show the same sequence. Urgency still reads
   // off each row's band + due text, and the "N due" count summarises it.
   $: states = sortByDisplayOrder(computeInspectionSchedule(definitions, sessions));

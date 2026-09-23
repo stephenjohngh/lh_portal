@@ -1,8 +1,8 @@
 <!-- src/lib/apps/compliance/components/PlannedObligationsTab.svelte -->
-<!-- Admin > PLANNED OBLIGATIONS: CRUD for statutory_obligations — what THIS
+<!-- Compliance > PLANNED OBLIGATIONS: CRUD for statutory_obligations — what THIS
      building does about the duties in the compliance obligations register.
      Reads component/type reference data from buildingAssetsStore (lazy-loaded
-     by AdminApp) for the live match count and the scope editor.
+     by ComplianceApp) for the live match count and the scope editor.
 
      ⚠ V2 SPLIT THE REGISTER OUT OF HERE. StatutoryTemplatePanel used to sit
      stacked above this list on one tab; it is now its own tab, rendered by
@@ -48,6 +48,7 @@
   let editing = null;      // definition row or null-for-new sentinel
   let showModal = false;
   let saving = false;
+  let saveError = '';
   let pendingDelete = null;
   let deletingId = null;
 
@@ -101,17 +102,22 @@
 
   function openNew()  { editing = null; showModal = true; }
   function openEdit(d) { editing = d; showModal = true; }
-  function closeModal() { showModal = false; editing = null; saving = false; }
+  function closeModal() { showModal = false; editing = null; saving = false; saveError = ''; }
 
   async function handleSave(e) {
     const { id, data } = e.detail;
-    saving = true;
+    saving = true; saveError = '';
     try {
       if (id) await inspectionDefinitionsStore.save(id, data);
       else    await inspectionDefinitionsStore.create(data);
       closeModal();
-    } catch (err) {
-      // store surfaces error via state; keep modal open
+    } catch (/** @type {any} */ err) {
+      // ⛔ This used to say "store surfaces error via state", and it does not:
+      // `save` and `create` throw without touching the store's error. So a
+      // refused save — a constraint, a permission, a dropped connection — left
+      // the modal open with nothing said, which reads as "it saved". The modal
+      // stays open and now says why.
+      saveError = err?.message ?? 'Could not save the planned obligation.';
       saving = false;
     }
   }
@@ -233,6 +239,7 @@
     componentLinks={bas.componentLinks}
     {definitions}
     {saving}
+    {saveError}
     on:save={handleSave}
     on:close={closeModal}
   />
@@ -243,7 +250,7 @@
   danger={true}
   processing={!!deletingId}
   title="Delete — only for something created by mistake, with no history worth keeping"
-  message={pendingDelete ? `Delete “${pendingDelete.name}”? Past inspection sessions are kept but DETACHED — their evidence loses what it was for. If this is no longer required because the law changed, use Retire instead: it keeps the link.` : ''}
+  message={pendingDelete ? `Delete “${pendingDelete.name}”? Past inspection walks and contractor jobs are kept but DETACHED — their evidence loses what it was for. If this is no longer required because the law changed, use Retire instead: it keeps the link.` : ''}
   confirmText="Delete"
   on:confirm={confirmDelete}
   on:cancel={() => (pendingDelete = null)}

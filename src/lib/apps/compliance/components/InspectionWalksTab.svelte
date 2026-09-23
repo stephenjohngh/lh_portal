@@ -61,7 +61,7 @@
   import { listPlannedObligations } from '$lib/apps/compliance/public.js';
   import { isWalkEvidenced } from '$lib/utils/obligationEvidence.js';
 
-  const logger = getLogger('InspectionsTab');
+  const logger = getLogger('InspectionWalksTab');
 
   // -- Store refs ----------------------------------------------------------
   $: floors = $buildingAssetsStore.floors;
@@ -167,7 +167,7 @@
   $: activeDefs = definitions.filter(d => d.active && isWalkEvidenced(d));
   $: defById    = new Map(definitions.map(d => [d.id, d]));
 
-  // The Inspection filter follows the Display order set in Admin → Inspections,
+  // The Inspection filter follows the Display order set on Compliance → Planned obligations,
   // so the dropdown matches the order shown there. Name is the tiebreak, not
   // decoration: definitions created before the Display order input existed all
   // sit at 0, and equal orders would otherwise come back in whatever sequence
@@ -306,9 +306,12 @@
            everything. Filter by the inspection definition instead — that is
            what those names mean now. -->
       <div class="fld">
-        <label for="insp-def" class="flbl">Inspection</label>
+        <!-- ⚠ Named for the object: these are PLANNED OBLIGATIONS. "Inspection"
+             here was the old word for them, and one word for two objects is
+             how "the 5 old inspections" came to mean two different things. -->
+        <label for="insp-def" class="flbl">Planned obligation</label>
         <select id="insp-def" class="select text-sm" bind:value={filterDefinition}>
-          <option value="">All inspections</option>
+          <option value="">All planned obligations</option>
           {#each definitionsInOrder as d (d.id)}
             <option value={d.id}>{d.name}{d.active ? '' : ' (inactive)'}</option>
           {/each}

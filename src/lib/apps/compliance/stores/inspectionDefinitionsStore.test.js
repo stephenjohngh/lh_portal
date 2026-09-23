@@ -1,5 +1,5 @@
 // src/lib/apps/compliance/stores/inspectionDefinitionsStore.test.js
-// CHARACTERIZATION tests for inspectionDefinitionsStore (Admin > Inspections).
+// CHARACTERIZATION tests for inspectionDefinitionsStore (Compliance > Planned obligations).
 // Asserts which DB calls each method makes, the persisted row shape built by
 // toRow (defaults + field normalisation), and the resulting store state.
 // Seams mocked: api, supabaseClient (auth.getUser), auditLogger, logger.
@@ -9,7 +9,7 @@ import { get } from 'svelte/store';
 // Read register values rather than transcribing them — a corrected citation or
 // a renamed entry must not fail a test about store behaviour. See the note at
 // the top of src/lib/utils/statutoryTemplate.test.js.
-import { templateEntry, TEMPLATE_KEYS } from '$lib/utils/statutoryTemplate.js';
+import { templateEntry, TEMPLATE_KEYS, STATUTORY_TEMPLATE, setActiveRegister } from '$lib/utils/statutoryTemplate.js';
 
 const h = vi.hoisted(() => {
   const api = {
@@ -98,7 +98,7 @@ describe('create', () => {
     await defs.create(form());
     expect(h.logAudit).toHaveBeenCalledWith(
       'create', 'inspection_definition', 'd9', 'Doors',
-      expect.objectContaining({ appId: 'admin' }),
+      expect.objectContaining({ appId: 'compliance' }),
     );
   });
 
@@ -208,7 +208,7 @@ describe('save', () => {
     await defs.save('d1', form());
     expect(h.logAudit).toHaveBeenCalledWith(
       'update', 'inspection_definition', 'd1', 'Doors',
-      expect.objectContaining({ appId: 'admin' }),
+      expect.objectContaining({ appId: 'compliance' }),
     );
   });
 });
@@ -223,7 +223,7 @@ describe('remove', () => {
     expect(get(defs).definitions).toHaveLength(0);
     expect(h.logAudit).toHaveBeenCalledWith(
       'delete', 'inspection_definition', 'd1', 'Emergency Lighting',
-      expect.objectContaining({ appId: 'admin', severity: 'warning' }),
+      expect.objectContaining({ appId: 'compliance', severity: 'warning' }),
     );
   });
 });
@@ -286,6 +286,20 @@ describe('applyTemplate', () => {
     await defs.load();
     await defs.applyTemplate(['lift_loler_examination']);
     expect(h.api.create.mock.calls[0][1].presentation_order).toBe(8);
+  });
+
+  // ⛔ A compliance obligation ADDED HERE is in the register in force and not
+  // in the shipped key list. Filtering on the shipped keys dropped it before
+  // the loop: no row, no failure, a button that silently did nothing.
+  it('⛔ applies a compliance obligation added here, not only shipped ones', async () => {
+    const local = { ...templateEntry('lift_loler_examination'), key: 'local_widget_check', name: 'Widget check' };
+    setActiveRegister([...STATUTORY_TEMPLATE, local]);
+    try {
+      const { created, failed } = await defs.applyTemplate(['local_widget_check']);
+      expect(failed).toEqual([]);
+      expect(created).toHaveLength(1);
+      expect(h.api.create.mock.calls[0][1].template_key).toBe('local_widget_check');
+    } finally { setActiveRegister(null); }
   });
 
   it('audits each creation with the template key', async () => {
@@ -389,6 +403,20 @@ describe('exclusion decisions', () => {
     await expect(defs.recordExclusionDecision('invented', 'not_applicable', 'because'))
       .rejects.toThrow(/Unknown register entry/);
     expect(h.api.create).not.toHaveBeenCalled();
+  });
+
+  // ⛔ A compliance obligation added here must be excludable too — the check
+  // used to be against the SHIPPED keys, so tutorial §13 on a local row threw
+  // "Unknown register entry".
+  it('⛔ accepts a compliance obligation added here', async () => {
+    const local = { ...templateEntry('lift_loler_examination'), key: 'local_widget_check' };
+    setActiveRegister([...STATUTORY_TEMPLATE, local]);
+    try {
+      h.api.create.mockResolvedValueOnce({ id: 'x1', template_key: 'local_widget_check', decision: 'not_applicable' });
+      await defs.recordExclusionDecision('local_widget_check', 'not_applicable', 'No widgets in this building');
+      expect(h.api.create).toHaveBeenCalledWith('statutory_exclusions',
+        expect.objectContaining({ template_key: 'local_widget_check' }));
+    } finally { setActiveRegister(null); }
   });
 
   // Reversing a decision appends beside it — the original must survive.

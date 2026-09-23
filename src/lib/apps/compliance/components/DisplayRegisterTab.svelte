@@ -138,7 +138,7 @@
 <div class="disp-reg">
   <div class="head">
     <div>
-      <h3 class="heading-section">Display Register</h3>
+      <h3 class="heading-section">Display register</h3>
       <p class="text-muted">
         What BSA s.82 requires to be displayed in the building — the AP notice,
         the latest BAC, and any compliance notice in force. Mark an item

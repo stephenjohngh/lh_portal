@@ -1,8 +1,8 @@
 // src/lib/apps/compliance/utils/registerFilter.js
 //
-// Filtering and grouping for the two lists on Admin > Inspections: the periodic
-// activity REGISTER (116 catalogue entries, in code) and the OBLIGATIONS
-// actually configured for this building (statutory_obligations rows).
+// Filtering and grouping for the two lists in the Compliance app: the
+// compliance obligations REGISTER (statutory_register, seeded from code) and
+// the PLANNED OBLIGATIONS configured for this building (statutory_obligations).
 //
 // Pure — no stores, no DOM — so the awkward part is Type-1 testable and the
 // components stay declarative. See CLAUDE.md "Testing".

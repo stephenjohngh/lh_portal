@@ -220,6 +220,41 @@ describe('levelling the table with the shipped register, on load', () => {
     expect(filter.template_key).toBe(rows[0].template_key);
   });
 
+  // ⛔ A citation check recorded HERE is not an edit, so it never stamps
+  // seed_modified_at — and on the rows that ship with a verification of their
+  // own, levelling used to put the shipped date and URL back on every load.
+  it('⛔ keeps a citation check recorded here on a row that ships with one', async () => {
+    const i = STATUTORY_TEMPLATE.findIndex(e => e.citationVerifiedAgainst);
+    expect(i).toBeGreaterThanOrEqual(0);
+    const rows = settledTable();
+    rows[i] = {
+      ...rows[i],
+      citation_verified_on: '2027-01-05',
+      citation_verified_against: 'https://www.legislation.gov.uk/rechecked',
+      citation_verified_by: 'u9',
+    };
+    h.getAll.mockResolvedValue(rows);
+
+    await statutoryRegister.load();
+    expect(h.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('…but still takes a release’s correction to the rest of that row', async () => {
+    const i = STATUTORY_TEMPLATE.findIndex(e => e.citationVerifiedAgainst);
+    const rows = settledTable();
+    rows[i] = {
+      ...rows[i], name: 'a stale name',
+      citation_verified_on: '2027-01-05', citation_verified_by: 'u9',
+    };
+    h.getAll.mockResolvedValue(rows);
+
+    await statutoryRegister.load();
+    const [, , written] = h.updateMany.mock.calls[0];
+    expect(written.name).toBe(STATUTORY_TEMPLATE[i].name);
+    expect(written).not.toHaveProperty('citation_verified_on');
+    expect(written).not.toHaveProperty('citation_verified_against');
+  });
+
   it('audits it', async () => {
     h.getAll.mockResolvedValueOnce([]).mockResolvedValue(settledTable());
     await statutoryRegister.load();
@@ -314,6 +349,17 @@ describe('R2 — writing to the register', () => {
       expect(filters).toEqual({ template_key: STATUTORY_TEMPLATE[0].key });
       expect(row.seed_modified_at).toBeTruthy();
       expect(row.name).toBe('Corrected name');
+    });
+
+    // ⚠ Tutorial §19 tells people to undo a test edit so the row keeps taking
+    // later releases' corrections. That only works if restoring the shipped
+    // wording clears the mark — stamping it regardless kept *Edited* for ever.
+    it('⚠ CLEARS seed_modified_at when the edit puts the shipped wording back', async () => {
+      const shipped = STATUTORY_TEMPLATE[0];
+      await loadWith([seedRow(0, { name: 'changed here', seed_modified_at: '2026-09-20T00:00:00Z' })]);
+      await statutoryRegister.edit(shipped.key, { name: shipped.name });
+      const row = h.updateMany.mock.calls.at(-1)[2];
+      expect(row.seed_modified_at).toBeNull();
     });
 
     it('does NOT stamp seed_modified_at on a locally-added row', async () => {

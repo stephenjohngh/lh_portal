@@ -78,7 +78,7 @@ function createDisplayRegisterStore() {
     const item = await api.create('display_items', toRow(data, uid, { isCreate: true }));
     update(s => ({ ...s, items: [...s.items, item].sort(byLocationThenTitle) }));
     logAudit('create', 'display_item', item.id, item.title, {
-      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
       afterData: { category: item.category, display_location: item.display_location },
     });
     logger('Created display item:', item.id, item.title);
@@ -93,7 +93,7 @@ function createDisplayRegisterStore() {
       items: s.items.map(i => i.id === id ? { ...i, ...updated } : i).sort(byLocationThenTitle),
     }));
     logAudit('update', 'display_item', id, updated.title, {
-      appId: 'admin', eventCategory: 'admin', severity: 'info',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
       afterData: { status: updated.status, review_date: updated.review_date },
     });
     logger('Saved display item:', id, updated.title);
@@ -116,7 +116,7 @@ function createDisplayRegisterStore() {
       items: s.items.map(i => i.id === id ? { ...i, ...updated } : i).sort(byLocationThenTitle),
     }));
     logAudit('update', 'display_item', id, updated.title, {
-      appId: 'admin', eventCategory: 'admin', severity: status === 'displayed' ? 'info' : 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: status === 'displayed' ? 'info' : 'warning',
       afterData: { status },
     });
     logger('Set status:', id, status);
@@ -132,7 +132,7 @@ function createDisplayRegisterStore() {
     await api.delete('display_items', id);
     update(s => ({ ...s, items: s.items.filter(i => i.id !== id) }));
     logAudit('delete', 'display_item', id, name, {
-      appId: 'admin', eventCategory: 'admin', severity: 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'warning',
     });
     logger('Deleted display item:', id);
   }

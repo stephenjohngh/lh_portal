@@ -1,6 +1,6 @@
 // src/lib/apps/compliance/utils/registerFilter.test.js
 //
-// TYPE-1 tests for the Admin > Inspections filtering. These read the REAL
+// TYPE-1 tests for the Compliance app filtering. These read the REAL
 // register rather than fixtures: a fixture transcribing register data is what
 // has broken tests four rounds running here, every time a legal correction
 // landed. So they assert relationships and invariants that must hold whatever

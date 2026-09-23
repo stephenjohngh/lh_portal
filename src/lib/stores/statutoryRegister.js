@@ -76,6 +76,23 @@ const SHIPPED = [...STATUTORY_TEMPLATE, ...REGISTER_ITEMS];
  * }} RegisterState
  */
 
+/**
+ * Columns a stored row owns even though the shipped version states them.
+ *
+ * ⛔ A CITATION CHECK RECORDED HERE IS NOT A LOCAL EDIT, AND LEVELLING USED TO
+ * UNDO IT. `recordCitationVerification` deliberately does not stamp
+ * `seed_modified_at` — checking a citation changes nothing the row SAYS — so on
+ * the fourteen rows that ship with a verification of their own, the next load
+ * saw the shipped date and URL "disagree" with the stored ones and silently put
+ * the shipped values back, leaving the recorder's name against somebody else's
+ * check. `citation_verified_by` is written only by that act, so it is the proof
+ * the verification is this building's.
+ */
+const CITATION_COLUMNS = new Set(['citation_verified_on', 'citation_verified_against']);
+function keptHere(row, column) {
+  return CITATION_COLUMNS.has(column) && row?.citation_verified_by != null;
+}
+
 function createStatutoryRegisterStore() {
   const { subscribe, update } = writable(/** @type {RegisterState} */ ({
     entries: STATUTORY_TEMPLATE,
@@ -150,7 +167,7 @@ function createStatutoryRegisterStore() {
     const updatable = SHIPPED.filter((e) => {
       const row = byKey.get(e.key);
       if (!row || row.seed_modified_at) return false;   // absent, or edited here
-      return shippedDiffers(e, row).length > 0;
+      return shippedDiffers(e, row).filter(c => !keptHere(row, c)).length > 0;
     });
 
     if (!missing.length && !updatable.length) return 0;
@@ -164,13 +181,16 @@ function createStatutoryRegisterStore() {
         })));
       }
       for (const e of updatable) {
+        const shipped = toRow(e);
+        const row = byKey.get(e.key);
+        for (const c of Object.keys(shipped)) if (keptHere(row, c)) delete shipped[c];
         await api.updateMany('statutory_register', { template_key: e.key }, {
-          ...toRow(e), updated_by: user?.id ?? null, updated_at: new Date().toISOString(),
+          ...shipped, updated_by: user?.id ?? null, updated_at: new Date().toISOString(),
         }, false);
       }
 
       logAudit('update', 'statutory_register', null, 'register levelled with the shipped version', {
-        appId: 'admin', eventCategory: 'compliance', severity: 'info',
+        appId: 'compliance', eventCategory: 'compliance', severity: 'info',
         afterData: { added: missing.length, updated: updatable.length },
       });
       logger('✅ levelled:', missing.length, 'added,', updatable.length, 'updated');
@@ -311,7 +331,7 @@ function createStatutoryRegisterStore() {
     }
 
     logAudit('update', 'statutory_register', null, 'imported from the standard register', {
-      appId: 'admin', eventCategory: 'compliance', severity: 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'warning',
       afterData: { added: toAdd.length, updated: updateKeys.size },
     });
     logger('✅ applied', toAdd.length, 'additions and', updateKeys.size, 'updates');
@@ -365,7 +385,7 @@ function createStatutoryRegisterStore() {
     }, false);
 
     logAudit('create', 'statutory_register', entry.key, entry.name, {
-      appId: 'admin', eventCategory: 'compliance', severity: 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'warning',
       afterData: { origin: 'local', basis: entry.basis, statutory_ref: entry.statutoryRef },
     });
     logger('✅ added local requirement', entry.key);
@@ -397,11 +417,23 @@ function createStatutoryRegisterStore() {
     /** @type {Record<string, any>} */
     const row = { ...toRow(patch), updated_by: uid, updated_at: new Date().toISOString() };
     delete row.template_key;                      // the identity never moves
-    if (wasSeeded(key)) row.seed_modified_at = new Date().toISOString();
+    if (wasSeeded(key)) {
+      // ⚠ An edit that puts the shipped wording BACK is not a divergence, and
+      // must not be recorded as one. Stamping it regardless meant "undo your
+      // edit" left the row badged *Edited* for ever and excluded it from every
+      // later release's corrections — the cost the tutorial tells people they
+      // are avoiding by undoing. Citation columns are left out of the
+      // comparison: a check recorded here is not an edit of what the row says.
+      const shipped = SHIPPED.find(e => e.key === key);
+      const differs = shipped
+        ? shippedDiffers(shipped, toRow(merged)).some(c => !CITATION_COLUMNS.has(c))
+        : true;
+      row.seed_modified_at = differs ? new Date().toISOString() : null;
+    }
 
     await api.updateMany('statutory_register', { template_key: key }, row, false);
     logAudit('update', 'statutory_register', key, merged.name, {
-      appId: 'admin', eventCategory: 'compliance', severity: 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'warning',
       afterData: Object.fromEntries(Object.keys(patch).map(k => [k, patch[k]])),
     });
     logger('✅ updated', key);
@@ -429,7 +461,7 @@ function createStatutoryRegisterStore() {
     }, false);
 
     logAudit('update', 'statutory_register', key, 'citation verified', {
-      appId: 'admin', eventCategory: 'compliance', severity: 'info',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'info',
       afterData: { citation_verified_against: evidence.url },
     });
     await load();
@@ -493,7 +525,7 @@ function createStatutoryRegisterStore() {
     await api.deleteMany('statutory_register', { template_key: key });
 
     logAudit('delete', 'statutory_register', key, entry.name, {
-      appId: 'admin', eventCategory: 'compliance', severity: 'warning',
+      appId: 'compliance', eventCategory: 'compliance', severity: 'warning',
       beforeData: { ...toRow(entry), origin: 'local' },
       afterData:  { withdrawn_reason: reason.trim(), withdrawn_by: uid },
     });

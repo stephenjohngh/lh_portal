@@ -112,7 +112,7 @@ export function scheduleDueText(st) {
 
 /**
  * Order schedule states by the definition's Display order (presentation_order,
- * set in Admin → Inspections), name as tiebreak.
+ * set on Compliance → Planned obligations), name as tiebreak.
  *
  * This is what the UI uses: the mobile start list, the Building Assets
  * Upcoming/Due panel and the Inspections filter all present definitions in the

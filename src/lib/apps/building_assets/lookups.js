@@ -41,7 +41,7 @@ export function isReadingDef(def) {
  * Used by every UI surface that shows the condition results of one
  * inspection (ComponentDetailPanel current state, InspectionPanel
  * last-inspection summary, ComponentInspectionHistory rows,
- * InspectionsTab expandable rows, InspectionsReport Word doc).
+ * Compliance → Inspection walks rows, InspectionsReport Word doc).
  *
  * `passed` is true / false when the inspection recorded a value for
  * that attribute, or null when the attribute exists on the type but
