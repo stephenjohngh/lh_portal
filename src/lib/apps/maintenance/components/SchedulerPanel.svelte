@@ -210,7 +210,7 @@
             <input type="checkbox" checked={allSelected} on:change={toggleAll}
               class="accent-purple-500" />
           </div>
-          <div>Obligation</div>
+          <div>Planned obligation</div>
           <div>Scope</div>
           <div>Frequency</div>
           <div>Last job</div>

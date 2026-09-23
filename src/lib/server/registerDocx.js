@@ -170,9 +170,9 @@ export function documentPreamble({ filterSummary, shown, total, sections, buildi
         run('This is an extract. ', { bold: true, color: COLOURS.failRed }),
         run(
           shown !== total
-            ? `It shows ${shown} of ${total} requirements, selected on screen when it was `
+            ? `It shows ${shown} of ${total} compliance obligations, selected on screen when it was `
               + 'produced. '
-            : 'It covers every requirement, but ',
+            : 'It covers every compliance obligation, but ',
         ),
         run(missing.length
           ? `It omits ${missing.join(', ')}. `
@@ -193,8 +193,8 @@ export function documentPreamble({ filterSummary, shown, total, sections, buildi
     para([
       run('Covering: ', { bold: true }),
       run(shown === total
-        ? `all ${total} requirements in the register.`
-        : `${shown} of ${total} requirements.`),
+        ? `all ${total} compliance obligations in the register.`
+        : `${shown} of ${total} compliance obligations.`),
       run('   Filter: ', { bold: true }),
       run(filterSummary || 'None — every row'),
     ], { after: 240 }),
@@ -354,12 +354,12 @@ export function buildRegisterDocument(input = {}) {
     para('The register', { heading: HeadingLevel.HEADING_2, before: 360 }),
     rows.length
       ? extractTable(rows)
-      : para('Nothing matched the filter, so this document has no requirements in it.',
+      : para('Nothing matched the filter, so this document has no compliance obligations in it.',
         { italics: true }),
     para(
       'Evidence routes: '
       + Object.values(EVIDENCE_LABEL).join(' · ')
-      + '. A requirement with neither is not schedulable in this portal.',
+      + '. A compliance obligation with neither is not schedulable in this portal.',
       { before: 200, size: 16, color: COLOURS.textMuted },
     ),
   );

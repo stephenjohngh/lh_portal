@@ -78,7 +78,7 @@ describe('what the document calls itself', () => {
   });
 
   it('states its coverage either way', () => {
-    expect(preamble()).toMatch(/all 116 requirements/);
+    expect(preamble()).toMatch(/all 116 compliance obligations/);
     expect(preamble({ shown: 14 })).toMatch(/14 of 116/);
   });
 });
@@ -279,7 +279,7 @@ describe('the whole document', () => {
 
   it('says so rather than producing an empty table when nothing matched', () => {
     const doc = buildRegisterDocument({ rows: [], total: 116, filterSummary: 'Status: Scheduled here' });
-    expect(textOf(doc).join(' ')).toMatch(/no requirements in it/i);
+    expect(textOf(doc).join(' ')).toMatch(/no compliance obligations in it/i);
   });
 
   it('titles the header from the same rule as the body', () => {

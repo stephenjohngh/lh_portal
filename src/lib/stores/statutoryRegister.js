@@ -498,7 +498,7 @@ function createStatutoryRegisterStore() {
 
     if (state.provenance?.[key]?.origin !== 'local') {
       throw new Error(
-        'Only a requirement added here can be withdrawn. This one came from the standard '
+        'Only a compliance obligation added here can be withdrawn. This one came from the standard '
         + 'register — if it does not apply to this building, record it as not applicable; '
         + 'if it has been withdrawn in law, retire it. Deleting it would also be undone by '
         + 'the next import.');
@@ -513,12 +513,14 @@ function createStatutoryRegisterStore() {
     ]);
 
     const links = [];
-    if (obligations?.length) links.push(`${obligations.length} obligation${obligations.length === 1 ? '' : 's'}`);
+    if (obligations?.length) links.push(`${obligations.length} planned obligation${obligations.length === 1 ? '' : 's'}`);
     if (decisions?.length)   links.push(`${decisions.length} applicability decision${decisions.length === 1 ? '' : 's'}`);
     if (links.length) {
+      const total = (obligations?.length ?? 0) + (decisions?.length ?? 0);
       throw new Error(
-        `${links.join(' and ')} still link to this requirement. Removing it would leave that `
-        + 'evidence pointing at a requirement nothing can describe. Retire or delete those first.');
+        `${links.join(' and ')} still link${total === 1 ? 's' : ''} to this compliance obligation. `
+        + 'Removing it would leave that evidence pointing at a compliance obligation nothing can '
+        + 'describe. Delete or retire those first.');
     }
 
     const uid = await currentUserId();

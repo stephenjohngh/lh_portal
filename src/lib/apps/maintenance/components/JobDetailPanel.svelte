@@ -219,7 +219,7 @@
       <!-- Linked obligation -->
       {#if obligation}
         <div class="rounded-lg bg-slate-800/40 border border-slate-700 p-3 text-sm">
-          <p class="text-xs text-slate-500 mb-1">Regime task</p>
+          <p class="text-xs text-slate-500 mb-1">Planned obligation</p>
           <p class="text-slate-200">{obligation.name}</p>
           <p class="text-xs text-slate-400 mt-0.5">{frequencyLabel(obligation.frequency_days)}</p>
         </div>

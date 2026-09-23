@@ -130,7 +130,7 @@
 
     <!-- Obligation link -->
     <div>
-      <p class="text-xs text-slate-400 mb-1.5">Link to obligation <span class="text-slate-500">(optional — enables auto-scheduling)</span></p>
+      <p class="text-xs text-slate-400 mb-1.5">Link to a planned obligation <span class="text-slate-500">(optional — enables auto-scheduling)</span></p>
       <select bind:value={obligationId}
         class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm text-white
                focus:outline-none focus:border-purple-500">

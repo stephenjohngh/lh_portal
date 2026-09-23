@@ -575,7 +575,7 @@ describe('withdrawLocal — removing a requirement added in error', () => {
       table === 'statutory_obligations' ? [{ id: 'o1', name: 'Linked' }] : []);
 
     await expect(statutoryRegister.withdrawLocal(KEY, REASON))
-      .rejects.toThrow(/1 obligation still link/i);
+      .rejects.toThrow(/1 planned obligation still links/i);
     expect(h.deleteMany).not.toHaveBeenCalled();
   });
 
