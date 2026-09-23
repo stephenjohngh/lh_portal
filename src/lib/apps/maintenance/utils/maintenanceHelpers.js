@@ -118,7 +118,7 @@ export function expiryRag(dateStr, warningDays = 60) {
 //
 // Expiry was recorded and badged on the Documents tab, and fed nothing: a lift
 // examination report expiring in ten days was invisible everywhere a person
-// actually looks for work. These two make it visible on the Diary and the stats bar.
+// actually looks for work. These two make it visible on the Due work tab and the stats bar.
 //
 // ⚠ Read-only, and that is a DECISION, not a stopping point (2026-09-11).
 // An expiring certificate does NOT move a job's due date: `expiry_date` and

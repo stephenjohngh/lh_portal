@@ -1,6 +1,6 @@
 <!-- src/lib/apps/maintenance/MaintenanceApp.svelte -->
 <!-- Maintenance App entry point.
-     Tabs: Diary | All Jobs | Documents | Schedule | Asset Groups | Capital Plan
+     Tabs: Due work | All Jobs | Documents | Schedule | Asset Groups | Capital Plan
 
      ⛔ THERE IS NO COMPLIANCE TAB HERE ANY MORE, and do not add one back. The
      compliance position report moved to the Compliance app (C3,
@@ -23,7 +23,7 @@
   import { maintenanceGroupsStore } from './stores/maintenanceGroupsStore.js';
   import { buildingAssetsStore }    from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import StatsBar       from './components/StatsBar.svelte';
-  import DiaryTab       from './components/DiaryTab.svelte';
+  import DueWorkTab     from './components/DueWorkTab.svelte';
   import JobsTab        from './components/JobsTab.svelte';
   import DocumentsTab   from './components/DocumentsTab.svelte';
   import SchedulerPanel from './components/SchedulerPanel.svelte';
@@ -36,12 +36,12 @@
   $: allDocs = store.allDocs;
   $: canEdit = $permissions.isAdmin;
 
-  let activeTab = 'diary';
+  let activeTab = 'due';
 
   // Operational horizon (day-to-day servicing) first, then the capital-planning
   // horizon (long-term asset renewal). The capital tabs are admin-only.
   $: TABS = [
-    { key: 'diary',    label: 'Diary' },
+    { key: 'due',      label: 'Due work' },
     { key: 'jobs',     label: 'All Jobs' },
     { key: 'documents', label: 'Documents' },
     ...(canEdit ? [
@@ -92,7 +92,7 @@
   {/if}
 
   <!-- Stats summary (hidden on documents/schedule tabs) -->
-  {#if activeTab === 'diary' || activeTab === 'jobs'}
+  {#if activeTab === 'due' || activeTab === 'jobs'}
     <StatsBar {jobs} docs={allDocs} />
   {/if}
 
@@ -110,8 +110,8 @@
   </div>
 
   <!-- Tab content -->
-  {#if activeTab === 'diary'}
-    <DiaryTab {jobs} docs={allDocs} />
+  {#if activeTab === 'due'}
+    <DueWorkTab {jobs} docs={allDocs} />
   {:else if activeTab === 'jobs'}
     <JobsTab {jobs} />
   {:else if activeTab === 'documents'}

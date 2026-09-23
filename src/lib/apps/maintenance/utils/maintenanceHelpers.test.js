@@ -1,7 +1,7 @@
 // src/lib/apps/maintenance/utils/maintenanceHelpers.test.js
 //
 // Pins the pure RAG / expiry / label / date logic — the boundary-heavy bits the
-// diary + documents views depend on. The clock is frozen to local noon on
+// due-work + documents views depend on. The clock is frozen to local noon on
 // 2026-06-15 so "today", the 30-day due-soon window and the 60-day expiry window
 // land on exact dates. Dates are constructed in LOCAL time (no trailing Z) to
 // match the helpers, which parse `${dateStr}T00:00:00` as local.

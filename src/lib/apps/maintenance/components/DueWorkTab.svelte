@@ -1,5 +1,9 @@
-<!-- src/lib/apps/maintenance/components/DiaryTab.svelte -->
-<!-- RAG-sorted diary view: Overdue → Due Soon → Scheduled → Completed -->
+<!-- src/lib/apps/maintenance/components/DueWorkTab.svelte -->
+<!-- RAG-sorted list of jobs: Overdue → Due Soon → Scheduled → Completed.
+     ⛔ Was "Diary" until 2026-09-23. The Planner is the building's diary and
+     shows these same jobs on a calendar; two tabs called "diary" meaning
+     different things is the one-word-two-objects fault. This is a work list,
+     so it is named for what it holds. -->
 <script>
   import { permissions }   from '$lib/stores/permissions';
   import {
@@ -27,7 +31,7 @@
   $: certsExpired = certs.filter(c => c.expiryState === 'expired').length;
   let showCerts = true;
 
-  // Group jobs into diary sections
+  // Group jobs into sections by urgency
   $: overdue   = jobs.filter(j => j.rag === 'overdue')
                      .sort((a,b) => a.scheduled_date.localeCompare(b.scheduled_date));
   $: dueSoon   = jobs.filter(j => j.rag === 'due_soon')
