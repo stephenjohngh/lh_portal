@@ -53,7 +53,7 @@ vi.mock('$lib/utils/api',           () => ({ api: h.api }));
 vi.mock('$lib/utils/auditLogger',   () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',        () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/utils/mediaUpload.js',() => ({ uploadMedia: h.uploadMedia }));
-vi.mock('$lib/utils/driveUtils.js', () => ({ deleteStorageFiles: vi.fn(() => Promise.resolve()) }));
+vi.mock('$lib/utils/mediaAttachments.js', () => ({ deleteStorageObjects: vi.fn(() => Promise.resolve({ deleted: 1, failed: 0, results: [] })) }));
 vi.mock('$lib/apps/compliance/public.js', () => ({ listPlannedObligations: h.listPlannedObligations }));
 
 const { maintenanceStore } = await import('./maintenanceStore.js');

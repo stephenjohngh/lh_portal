@@ -16,7 +16,7 @@ import { logAudit }      from '$lib/utils/auditLogger';
 import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';
 import { uploadMedia }   from '$lib/utils/mediaUpload.js';
-import { deleteStorageFiles } from '$lib/utils/driveUtils.js';
+import { deleteStorageObjects } from '$lib/utils/mediaAttachments.js';
 import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary } from '$lib/utils/documentApi.js';
 import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
 import { jobRag, addDaysISO } from '../utils/maintenanceHelpers.js';
@@ -224,7 +224,10 @@ function createMaintenanceStore() {
         await deleteFromLibrary(row.library_doc_id);   // storage file + library row
       } else {
         const { data: sessionData } = await supabase.auth.getSession();
-        await deleteStorageFiles([storagePath], sessionData?.session?.access_token);
+        // No provider was ever recorded on these legacy rows, so the server
+        // infers it from the URL's shape (storageRef.js) — which is exactly
+        // the case that routing exists for.
+        await deleteStorageObjects([{ storage_url: storagePath }], sessionData?.session?.access_token);
       }
     } catch (/** @type {any} */ err) {
       logger('⚠ file delete (non-fatal):', err.message);
