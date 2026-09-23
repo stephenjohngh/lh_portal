@@ -7,6 +7,7 @@
 // without PUBLIC_SENTRY_DSN simply runs with Sentry disabled. Errors-only on
 // the client: no tracing or replay integrations, keeping the bundle minimal.
 
+
 import * as Sentry from '@sentry/sveltekit';
 import { env } from '$env/dynamic/public';
 
