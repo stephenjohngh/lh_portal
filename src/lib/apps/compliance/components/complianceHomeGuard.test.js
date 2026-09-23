@@ -195,3 +195,15 @@ describe('the walk evidence lives with the compliance domain', () => {
     expect(panel).toContain('ComponentInspectionHistory');
   });
 });
+
+// ⛔ Non-admins with the Compliance grant see Inspection walks (user,
+// 2026-09-23), and walk_sessions RLS shows them only their OWN walks. Any due
+// state derived from that partial list would call a walk somebody else did
+// "never done". So the due panel must sit behind an admin check.
+describe('a partial walk list never drives a due state', () => {
+  it('renders the upcoming/due panel for admins only', () => {
+    const tab = read('src/lib/apps/compliance/components/InspectionWalksTab.svelte');
+    expect(tab).toMatch(/\{#if \$permissions\.isAdmin\}\s*<UpcomingInspections/);
+    expect(tab.match(/<UpcomingInspections/g)).toHaveLength(1);
+  });
+});

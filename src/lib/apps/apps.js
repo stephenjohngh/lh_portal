@@ -133,10 +133,10 @@ export const AVAILABLE_APPS = [
   },
 
   {
-    // ⛔ Admin-only by decision (no new user type). It carries
-    // `requiresPermission` and is simply never granted — admins bypass grants
-    // in getAppsForUser — and ComplianceApp enforces `isAdmin` itself so the
-    // gate does not rest on nobody having granted it.
+    // Granted per user on Admin → Users, like Building Assets (user,
+    // 2026-09-23). A non-admin with the grant sees ONLY Inspection walks, and
+    // only their own (walk_sessions RLS); every register tab is admin-only,
+    // enforced in ComplianceApp. Admins bypass grants in getAppsForUser.
     id: 'compliance',
     name: 'Compliance',
     icon: 'shield',

@@ -28,6 +28,7 @@
      guard asserts it. -->
 <script>
   import { onMount }         from 'svelte';
+  import { permissions }     from '$lib/stores/permissions';
   import { getLogger }       from '$lib/utils/logger';
   import { buildingAssetsStore }    from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import {
@@ -273,7 +274,15 @@
 <div class="insp-tab">
 
   <!-- -- Upcoming / Due ------------------------------------------------------ -->
-  <UpcomingInspections definitions={activeDefs} {sessions} {awaitingAccess} />
+  <!-- ⛔ ADMIN ONLY, and not for tidiness. Due dates are derived from the
+       sessions this reader can SEE, and walk_sessions RLS shows a non-admin
+       only their own walks — so for them a walk somebody else did would read
+       as never done, and the panel would call it overdue. A due list built on
+       part of the evidence is the "reads plausibly while saying something
+       untrue" failure. What is due belongs to the Planner (PROJECT_STATUS §6ww). -->
+  {#if $permissions.isAdmin}
+    <UpcomingInspections definitions={activeDefs} {sessions} {awaitingAccess} />
+  {/if}
 
   <!-- -- Toolbar ------------------------------------------------------------ -->
   <div class="toolbar">

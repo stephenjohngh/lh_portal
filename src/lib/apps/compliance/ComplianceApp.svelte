@@ -40,26 +40,35 @@
   import DisplayRegisterTab from './components/DisplayRegisterTab.svelte';
   import InspectionWalksTab from './components/InspectionWalksTab.svelte';
 
-  // ⛔ ADMIN ONLY, decided by the user 2026-09-21: "im happy for everything to
-  // be admin only. dont want another user type." The app is registered with
-  // `requiresPermission`, and admins bypass grants — but that is a convention
-  // rather than a guarantee, so the shell enforces it too. No new permission
-  // tier, no RLS redesign.
+  // ⭐ ACCESS, decided by the user 2026-09-23 — the Building Assets pattern:
+  // *"define compliance access from normal user access screen but hide the
+  // compliance registers behind admin only gates. then the caretaker doing
+  // walk can see his own records."*
+  //   · The APP is granted per user on Admin → Users, like any other.
+  //   · Every tab is admin-only EXCEPT Inspection walks.
+  //   · "His own records" is enforced by the DATABASE, not here: walk_sessions
+  //     SELECT is `created_by = auth.uid() OR is_admin`, so a non-admin's list
+  //     holds only the walks they did. Delete stays admin-only (ProtectedButton).
+  // This replaces the 2026-09-21 "everything admin only", which C4 had quietly
+  // extended to the walk record that four Building Assets users used to see.
+  // Still no new user type and no RLS change.
   $: isAdmin = $permissions.isAdmin;
+  $: hasAccess = isAdmin || !!$permissions.appPermissions?.compliance?.hasAccess;
 
   /** @type {'compliance-obligations'|'planned-obligations'|'compliance-position'|'inspection-walks'|'display-register'} */
   let activeTab = 'compliance-obligations';
+  const NON_ADMIN_TAB = 'inspection-walks';
   let assetsStoreLoaded = false;   // lazy — types/attrs, for the scope editor
   let componentsLoaded  = false;   // lazy — the 1,092-component set
 
   const TABS = [
-    { key: 'compliance-obligations', icon: '🔎', label: 'Compliance obligations' },
-    { key: 'planned-obligations',    icon: '🗓', label: 'Planned obligations' },
+    { key: 'compliance-obligations', icon: '🔎', label: 'Compliance obligations', adminOnly: true },
+    { key: 'planned-obligations',    icon: '🗓', label: 'Planned obligations',    adminOnly: true },
     // ⭐ Third, and the order is the argument the app makes: what must be done,
     // what this building plans to do about it, then whether it happened. The
     // position tab moved here from Maintenance (C3) — it was a compliance
     // report living where ONE of its three evidence sources lives.
-    { key: 'compliance-position',    icon: '📊', label: 'Compliance position' },
+    { key: 'compliance-position',    icon: '📊', label: 'Compliance position',    adminOnly: true },
     // ⭐ The in-house half of the evidence, one row per WALK. ⚠ Not the same
     // object as the position tab's *Evidence history*, which is a dated list
     // across BOTH routes per planned obligation — hence naming this after the
@@ -73,8 +82,15 @@
     // not much like anything else."* It is here because it is a statutory
     // duty of this building and was never portal administration, and it is
     // last because nothing flows into or out of it.
-    { key: 'display-register',       icon: '📌', label: 'Display register' },
+    { key: 'display-register',       icon: '📌', label: 'Display register',       adminOnly: true },
   ];
+
+  $: visibleTabs = isAdmin ? TABS : TABS.filter((t) => !t.adminOnly);
+  // ⛔ Enforced on the ACTIVE tab, not only on the buttons: an admin-only tab
+  // reached any other way (a link, a stale value) falls back to the walks.
+  $: if (permissionsChecked && !isAdmin && TABS.find((t) => t.key === activeTab)?.adminOnly) {
+    activateTab(NON_ADMIN_TAB);
+  }
 
   // ⭐ THE COMPONENT SET LOADS ONLY WHERE IT IS NEEDED. The register reads no
   // component data at all — coverage comes from `statutory_obligations.template_key`
@@ -138,16 +154,15 @@
     </p>
   </div>
 
-  {#if !isAdmin && !permissionsChecked}
+  {#if !hasAccess && !permissionsChecked}
     <LoadingSpinner />
-  {:else if !isAdmin}
-    <!-- ⚠ Not an error state. There is ONE admin account today, so this is the
-         position every other account is in, and it must read as a permission
-         rather than as a fault. -->
-    <p class="empty">Compliance is restricted to administrators.</p>
+  {:else if !hasAccess}
+    <!-- ⚠ Not an error state: the app has not been granted to this account.
+         It must read as a permission rather than as a fault. -->
+    <p class="empty">You do not have access to Compliance. An administrator can grant it under Admin → Users.</p>
   {:else}
     <div class="flex space-x-2 border-b border-slate-600">
-      {#each TABS as t (t.key)}
+      {#each visibleTabs as t (t.key)}
         <button
           class="px-4 py-2 transition-colors {activeTab === t.key
             ? 'border-b-2 border-purple-500 text-white font-semibold'
@@ -161,7 +176,7 @@
       {/each}
     </div>
 
-    {#if activeTab === 'compliance-obligations'}
+    {#if isAdmin && activeTab === 'compliance-obligations'}
       <!-- ⚠ No buildingAssetsStore gate: the register reads no component data,
            so waiting on a load it never uses would be a spinner in front of a
            screen that was already ready. -->
@@ -170,7 +185,7 @@
         on:showDisplayRegister={() => openTab('display-register')}
         {focusKey}
       />
-    {:else if activeTab === 'planned-obligations'}
+    {:else if isAdmin && activeTab === 'planned-obligations'}
       {#if $buildingAssetsStore.loading}
         <LoadingSpinner />
       {:else}
@@ -185,9 +200,9 @@
       {:else}
         <InspectionWalksTab />
       {/if}
-    {:else if activeTab === 'display-register'}
+    {:else if isAdmin && activeTab === 'display-register'}
       <DisplayRegisterTab on:showObligation={(e) => showObligation(e.detail)} />
-    {:else if activeTab === 'compliance-position'}
+    {:else if isAdmin && activeTab === 'compliance-position'}
       <!-- ⚠ Also no store gate. It loads its own three evidence streams and its
            own fault list through each owning app's public.js, each failing
            alone — so a spinner here would be waiting on a store it never
