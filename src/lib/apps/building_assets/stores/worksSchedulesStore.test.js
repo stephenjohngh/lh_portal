@@ -59,6 +59,21 @@ describe('createSchedule', () => {
     await worksSchedulesStore.createSchedule({ title: 'x', purpose: 'works' }, [], 'u1');
     expect(h.api.create.mock.calls[0][1].status).toBe('draft');
   });
+
+  // Migration 219. The form collects it; the store must not drop it on the
+  // way to the row — the "modal collects it, store drops it" fault.
+  it('saves the expected completion date when one is given', async () => {
+    await worksSchedulesStore.createSchedule(
+      { title: 'x', purpose: 'works', expected_completion: '2026-11-30' }, [], 'u1');
+    expect(h.api.create.mock.calls[0][1].expected_completion).toBe('2026-11-30');
+  });
+
+  // Until migration 219 is applied the column does not exist, and naming it —
+  // even as null — would fail every new schedule.
+  it('does not send the column at all when no date is given', async () => {
+    await worksSchedulesStore.createSchedule({ title: 'y', purpose: 'quote' }, [], 'u1');
+    expect('expected_completion' in h.api.create.mock.calls[0][1]).toBe(false);
+  });
 });
 
 describe('addItems', () => {

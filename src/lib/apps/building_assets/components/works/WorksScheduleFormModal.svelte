@@ -28,6 +28,7 @@
   let purpose = 'quote';
   let contractorName = '';
   let notes = '';
+  let expectedCompletion = '';
   let action = 'replace';
   let saving = false;
   let error = '';
@@ -42,6 +43,7 @@
     purpose        = schedule?.purpose ?? 'quote';
     contractorName = schedule?.contractor_name ?? '';
     notes          = schedule?.notes ?? '';
+    expectedCompletion = schedule?.expected_completion ?? '';
     action         = 'replace';
     error          = '';
   }
@@ -60,6 +62,8 @@
       purpose,
       contractor_name: contractorName.trim(),
       notes: notes.trim(),
+      // Empty means not agreed, and is stored as null rather than as ''.
+      expected_completion: expectedCompletion || null,
       action,
     });
   }
@@ -88,6 +92,9 @@
       <FormInput label="Contractor (optional)" bind:value={contractorName}
                  placeholder="Who it is going to" />
     </div>
+
+    <FormInput label="Expected completion (optional)" type="date" bind:value={expectedCompletion}
+               helpText="The date agreed with the contractor. It puts this schedule on the Planner, and it shows as overdue there if the work is not marked completed by then." />
 
     <FormSelect label="What this document is" bind:value={purpose}
                 options={SCHEDULE_PURPOSE.map(p => ({ value: p.value, label: p.label }))} />

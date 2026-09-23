@@ -131,6 +131,11 @@
       if (target) await worksSchedulesStore.updateSchedule(target.id, {
         title: data.title, reference: data.reference, purpose: data.purpose,
         contractor_name: data.contractor_name, notes: data.notes,
+        // ⚠ Only when the column can exist: a date was given, or the row already
+        // carries the column (so clearing it to null is safe). Before
+        // migration 219 the key alone would fail every header edit.
+        ...(data.expected_completion || 'expected_completion' in target
+          ? { expected_completion: data.expected_completion ?? null } : {}),
       }, userId);
       else {
         const created = await worksSchedulesStore.createSchedule(data, [], userId);
@@ -392,6 +397,7 @@
               {#if schedule.reference}· {schedule.reference}{/if}
               {#if schedule.contractor_name}· {schedule.contractor_name}{/if}
               · created {fmtDate(schedule.created_at)}
+              {#if schedule.expected_completion}· due {fmtDate(schedule.expected_completion)}{/if}
             </p>
           </div>
           <Badge color={STATUS_BADGE[schedule.status] ?? 'bg-slate-600'}>

@@ -85,7 +85,7 @@ function createWorksSchedulesStore() {
    * the author selected is what they saw, and re-running a filter here could
    * quietly include something that has changed since.
    *
-   * @param {object} data      title, reference, purpose, contractor, notes
+   * @param {object} data      title, reference, purpose, contractor, notes, expected_completion
    * @param {string[]} componentIds
    * @param {string} userId
    */
@@ -98,6 +98,10 @@ function createWorksSchedulesStore() {
       contractor_id:   data.contractor_id || null,
       contractor_name: data.contractor_name || null,
       notes:           data.notes || null,
+      // ⚠ Sent only when set. Migration 219 adds the column; sending the key
+      // (even as null) to a database without it fails the whole insert, and
+      // creating a schedule must keep working until 219 is applied.
+      ...(data.expected_completion ? { expected_completion: data.expected_completion } : {}),
       created_by:      userId,
       ...touch(userId),
     }, true);

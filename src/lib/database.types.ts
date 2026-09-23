@@ -4541,6 +4541,7 @@ export type Database = {
           notes: string | null
           issued_at: string | null
           completed_at: string | null
+          expected_completion: string | null
           created_at: string
           created_by: string | null
           updated_at: string | null
@@ -4557,6 +4558,7 @@ export type Database = {
           notes?: string | null
           issued_at?: string | null
           completed_at?: string | null
+          expected_completion?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
@@ -4573,6 +4575,7 @@ export type Database = {
           notes?: string | null
           issued_at?: string | null
           completed_at?: string | null
+          expected_completion?: string | null
           created_at?: string
           created_by?: string | null
           updated_at?: string | null
