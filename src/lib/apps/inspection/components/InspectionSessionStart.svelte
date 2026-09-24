@@ -248,7 +248,7 @@
     <!-- -- Scope (a rotating inspection derives its own target) ------------------ -->
     {#if !isRotating}
       <section class="grp">
-        <div class="grp-lbl">SCOPE</div>
+        <div class="grp-lbl">AREA</div>
         <div class="scope-row">
           <button class="scope-btn" class:sel={scope === 'single_floor'} on:click={() => scope = 'single_floor'}>
             Single Floor
@@ -362,7 +362,7 @@
         {#if !rotWalk}
           <div class="rot-line">Deriving next trigger…</div>
         {:else if !rotWalk.trigger}
-          <div class="rot-line rot-warn">No component matches this inspection’s scope.</div>
+          <div class="rot-line rot-warn">No component matches what this inspection covers.</div>
         {:else}
           <div class="sum-row">
             <span class="sum-k">NEXT TRIGGER</span>

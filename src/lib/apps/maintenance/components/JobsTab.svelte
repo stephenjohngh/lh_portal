@@ -93,7 +93,7 @@
       <select bind:value={scopeFilter}
         class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-white
                focus:outline-none focus:border-purple-500">
-        <option value="all">All scopes</option>
+        <option value="all">Covers anything</option>
         <option value="building">Building-wide</option>
         <option value="system">System</option>
         <option value="type">Type</option>

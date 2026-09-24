@@ -211,7 +211,7 @@
               class="accent-purple-500" />
           </div>
           <div>Planned obligation</div>
-          <div>Scope</div>
+          <div>Covers</div>
           <div>Frequency</div>
           <div>Last job</div>
           <div>Next due</div>

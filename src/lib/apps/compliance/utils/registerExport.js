@@ -48,8 +48,8 @@ const HEADERS = {
   evidence_required:          'Evidence required',
   retention_basis:            'Retention basis',
   retention_period_months:    'Retention (months)',
-  suggested_scope:            'Proposed scope',
-  scope_note:                 'Scoping note',
+  suggested_scope:            'What it covers (proposed)',
+  scope_note:                 'What it covers (note)',
   operationally_incomplete:   'Operationally incomplete',
   completion_action:          'Completion action',
   assurance_only:             'Assurance only',
@@ -128,7 +128,7 @@ export function buildRegisterSheet(rows, provenanceOf = () => ({})) {
 /**
  * Fill colours for the Status column, keyed by the label the sheet prints.
  *
- * ⛔ The two gap states are coloured the SAME. "Added — needs scope" is not a
+ * ⛔ The two gap states are coloured the SAME. "Added — not switched on" is not a
  * softer kind of covered — it is a work queue, and the compliance report makes
  * the same choice with `assured` vs `ok`. A spreadsheet that shaded it amber
  * between red and green would reintroduce on a page the distinction the status

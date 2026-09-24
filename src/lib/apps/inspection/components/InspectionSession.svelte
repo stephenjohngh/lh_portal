@@ -532,7 +532,7 @@
     {:else}
       <div class="empty-state">
         <div class="empty-icon">◫</div>
-        <div>No components in this walk scope</div>
+        <div>No components in this walk</div>
       </div>
     {/if}
   {/if}

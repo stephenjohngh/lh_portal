@@ -309,9 +309,9 @@
       {#if evidencedBy === 'maintenance_job'}
         <p class="hint">
           Won’t appear in the mobile app or the inspection due list — it is
-          scheduled and evidenced in Maintenance. The scope below still says what
-          the job covers (one type or one system becomes the job’s scope); the
-          checklist and rotation settings don’t apply to it.
+          scheduled and evidenced in Maintenance. “What it covers” below still says
+          what the job covers (one type or one system becomes what the job
+          covers); the checklist and rotation settings don’t apply to it.
         </p>
       {/if}
     </div>
@@ -376,9 +376,9 @@
         <!-- Live preview: pool → next trigger → linked set -->
         {#if rotWalk}
           <div class="rot-preview">
-            <p class="rp-head">Preview — the scope below is the <strong>trigger pool</strong> ({rotWalk.pool.length} component{rotWalk.pool.length === 1 ? '' : 's'}, cycled one per period)</p>
+            <p class="rp-head">Preview — what it covers is the <strong>trigger pool</strong> ({rotWalk.pool.length} component{rotWalk.pool.length === 1 ? '' : 's'}, cycled one per period)</p>
             {#if !rotWalk.trigger}
-              <p class="rp-warn">No component matches the scope — the rotation has nothing to trigger.</p>
+              <p class="rp-warn">No component matches what it covers — the rotation has nothing to trigger.</p>
             {:else}
               <p class="rp-line">Next trigger: <strong>{buildComponentRef(rotWalk.trigger, floors, types)}</strong>{rotWalk.trigger.label ? ` — ${rotWalk.trigger.label}` : ''}</p>
               {#if linkSource === 'self_only'}
@@ -409,7 +409,8 @@
 
     <!-- Scope -->
     <div class="block">
-      <p class="block-lbl">What is inspected</p>
+      <p class="block-lbl">What it covers</p>
+      <p class="hint">Which components this applies to. Choose none and it covers the whole building.</p>
 
       {#if registerEntry?.scopeNote}
         <p class="scope-note">
@@ -438,12 +439,12 @@
         {#if attrGroups.length === 0}
           <p class="hint">
             {checklistScoped
-              ? 'The types in this planned obligation’s scope have no condition attributes to check.'
+              ? 'The types this planned obligation covers have no condition attributes to check.'
               : 'No condition attributes exist yet — add checkable attributes to component types first.'}
           </p>
         {:else}
           {#if checklistScoped}
-            <p class="hint">Showing condition attributes for the types in this planned obligation’s scope.</p>
+            <p class="hint">Showing condition attributes for the types this planned obligation covers.</p>
           {/if}
           <div class="attr-pick">
             {#each attrGroups as g (g.type.id)}

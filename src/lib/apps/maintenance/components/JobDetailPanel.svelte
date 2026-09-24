@@ -155,7 +155,7 @@
       <!-- Key details grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
         <div>
-          <p class="text-xs text-slate-500 mb-0.5">Scope</p>
+          <p class="text-xs text-slate-500 mb-0.5">Covers</p>
           <p class="text-slate-200">
             <span class="text-xs text-slate-400 mr-1">{scopeTypeLabel(job.scope_type)}</span>
             {job.scope_label ?? '—'}

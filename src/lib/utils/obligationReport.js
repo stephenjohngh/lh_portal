@@ -106,10 +106,10 @@ function latestEvidence(events) {
 export function outcomeText(event) {
   if (!event) return null;
   if (event.kind === 'walk') {
-    if (event.status === 'completed') return `Completed — all ${event.inScope ?? 0} in scope`;
+    if (event.status === 'completed') return `Completed — all ${event.inScope ?? 0} checked`;
     const covered = event.covered ?? 0;
     const scope = event.inScope ?? 0;
-    return scope > 0 ? `Partial — ${covered} of ${scope} observed` : 'Closed with nothing in scope';
+    return scope > 0 ? `Partial — ${covered} of ${scope} observed` : 'Closed with nothing to check';
   }
   if (event.status !== 'completed') return 'Booked, not yet done';
   return event.result ? `Completed — ${event.result}` : 'Completed';

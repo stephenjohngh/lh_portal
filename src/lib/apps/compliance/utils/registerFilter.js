@@ -39,7 +39,13 @@ export const REGISTER_STATUS = [
  *
  * ⭐ A LABEL ON A COUNT IS A NAME, NOT AN EXPLANATION. "Added — needs scope"
  * tells somebody who already knows what a scope is; the count strip is exactly
- * where a person meets these words for the first time. The tooltip used to read
+ * where a person meets these words for the first time.
+ *
+ * ⚠ It was "Added — needs scope" until 2026-09-24, and that was wrong twice:
+ * "scope" reads as SCOPE OF WORKS to anyone outside this code, and the state is
+ * not about coverage at all — it is every planned obligation that is SWITCHED
+ * OFF, including the ones that came with their coverage already chosen. On
+ * screen the word is "what it covers"; `scope` stays as the code's name. The tooltip used to read
  * "Show only: Added — needs scope", which repeats the label and teaches nothing.
  *
  * ⚠ Written for somebody who has never seen the screen, and kept to one
@@ -47,7 +53,7 @@ export const REGISTER_STATUS = [
  */
 export const REGISTER_STATUS_EXPLAINED = {
   not_covered:    'This building has to do it, and nothing here does it yet',
-  awaiting_setup: 'Added to this building, but nobody has said which parts of the building it covers',
+  awaiting_setup: 'Added to this building but switched off — choose what it covers, then switch it on',
   no_home:        'A real duty that no part of this portal can schedule or record',
   elsewhere:      'Another part of the portal already runs this on its own cycle',
   scheduled:      'A check is set up, switched on, and counts as covering this',
@@ -57,7 +63,7 @@ export const REGISTER_STATUS_EXPLAINED = {
 
 export const REGISTER_STATUS_LABEL = {
   not_covered:    'Not covered',
-  awaiting_setup: 'Added — needs scope',
+  awaiting_setup: 'Added — not switched on',
   no_home:        'Nothing deals with it',
   elsewhere:      'Tracked in another app',
   scheduled:      'Scheduled here',
@@ -512,12 +518,12 @@ export function obligationFilterFields(defs = []) {
         { value: 'own',      label: `Our own (${count(d => !d.template_key)})`,
           short: 'Our own' },
       ] },
-    { key: 'scope', label: 'Scope', placeholder: 'Any scope', noun: 'scopes', minWidth: '150px',
+    { key: 'scope', label: 'What it covers', placeholder: 'Chosen or not', noun: 'choices', minWidth: '170px',
       options: [
-        { value: 'unscoped', label: `No scope set (${count(hasEmptyScope)})`,
-          short: 'No scope set' },
-        { value: 'scoped',   label: `Scoped (${count(d => !hasEmptyScope(d))})`,
-          short: 'Scoped' },
+        { value: 'unscoped', label: `Not chosen — covers everything (${count(hasEmptyScope)})`,
+          short: 'Not chosen' },
+        { value: 'scoped',   label: `Chosen (${count(d => !hasEmptyScope(d))})`,
+          short: 'Chosen' },
       ] },
   ];
 }

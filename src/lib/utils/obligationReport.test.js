@@ -268,7 +268,7 @@ describe('outcomeText', () => {
   it('says what happened for each kind of occurrence', () => {
     expect(outcomeText({ kind: 'walk', status: 'completed', inScope: 12 })).toMatch(/all 12/);
     expect(outcomeText({ kind: 'walk', status: 'attempted', covered: 3, inScope: 9 })).toBe('Partial — 3 of 9 observed');
-    expect(outcomeText({ kind: 'walk', status: 'attempted', covered: 0, inScope: 0 })).toMatch(/nothing in scope/);
+    expect(outcomeText({ kind: 'walk', status: 'attempted', covered: 0, inScope: 0 })).toMatch(/nothing to check/);
     expect(outcomeText({ kind: 'job', status: 'completed', result: 'pass' })).toBe('Completed — pass');
     expect(outcomeText({ kind: 'job', status: 'completed' })).toBe('Completed');
     expect(outcomeText({ kind: 'job', status: 'planned' })).toBe('Booked, not yet done');

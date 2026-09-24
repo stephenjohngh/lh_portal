@@ -132,7 +132,7 @@
       </p>
       <p class="text-xs text-slate-600 mt-0.5">
         What this type is obliged to have done, from the shared obligation library.
-        This is a shortcut for the simple case — scope filters, statutory detail
+        This is a shortcut for the simple case — choosing what it covers, statutory detail
         and rotation live in <span class="text-slate-500">Compliance → Planned obligations</span>.
       </p>
     </div>
@@ -201,7 +201,7 @@
   <!-- Obligation rows -->
   {#if rows.length === 0 && editingId !== 'new'}
     <p class="px-4 py-4 text-xs text-slate-600 italic">
-      No obligations scoped to this type.
+      No planned obligations cover this type.
     </p>
   {:else}
     <div class="divide-y divide-slate-700/50">

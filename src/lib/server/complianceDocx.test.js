@@ -229,7 +229,7 @@ describe('building the document', () => {
               nextDue: null, status: 'breach', statusLabel: 'In breach' }),
         row({ name: 'Wayfinding Sign Check', basis: null, group: 'unlisted', statutoryRef: null,
               frequencyLabel: 'Annual', lastCompleted: '2026-07-19T12:00:00Z',
-              lastAttempted: '2026-07-19T12:00:00Z', lastOutcome: 'Completed — all 4 in scope',
+              lastAttempted: '2026-07-19T12:00:00Z', lastOutcome: 'Completed — all 4 checked',
               nextDue: '2027-07-19T12:00:00Z', status: 'ok', statusLabel: 'On schedule' }),
         row({ name: 'Every Component', basis: null, group: 'unlisted', statutoryRef: null,
               frequencyLabel: 'On demand', lastCompleted: null, lastAttempted: null,

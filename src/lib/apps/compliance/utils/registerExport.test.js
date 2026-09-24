@@ -111,7 +111,7 @@ describe('the status palette', () => {
     }
   });
 
-  it('⛔ colours "Added — needs scope" exactly as "Not covered"', () => {
+  it('⛔ colours "Added — not switched on" exactly as "Not covered"', () => {
     // It is a work queue, not a softer kind of covered. Shading it amber
     // between red and green would rebuild on a page the very distinction the
     // status function exists to prevent — the `assured` vs `ok` argument again.

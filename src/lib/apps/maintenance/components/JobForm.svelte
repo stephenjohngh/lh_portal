@@ -74,7 +74,7 @@
     errors = {};
     if (!title.trim())        errors.title         = 'Title is required';
     if (!scheduledDate)       errors.scheduledDate = 'Scheduled date is required';
-    if (scopeType !== 'building' && !scopeId) errors.scopeId = 'Please select a scope';
+    if (scopeType !== 'building' && !scopeId) errors.scopeId = 'Choose what this job covers';
     return Object.keys(errors).length === 0;
   }
 
@@ -143,7 +143,7 @@
 
     <!-- Scope type + selector -->
     <div>
-      <p class="text-xs text-slate-400 mb-1.5">Scope — what this job covers</p>
+      <p class="text-xs text-slate-400 mb-1.5">What this job covers</p>
       <div class="flex gap-2 flex-wrap mb-3">
         {#each ['building', 'system', 'type'] as st}
           <button

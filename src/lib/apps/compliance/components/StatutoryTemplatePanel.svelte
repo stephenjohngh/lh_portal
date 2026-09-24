@@ -391,7 +391,7 @@
     for (const f of scope?.fixedAttrFilters ?? []) bits.push(`${f.name} = ${f.value}`);
     if (scope?.systemIds?.length) bits.push(`${scope.systemIds.length} system(s)`);
     if (scope?.floorIds?.length)  bits.push(`${scope.floorIds.length} floor(s)`);
-    return bits.join(' · ') || 'building-level — no component scope';
+    return bits.join(' · ') || 'the whole building';
   }
 
   /** Months → the way a person says it. No instrument here sets a retention
@@ -604,9 +604,9 @@
                  screen that cannot show it would be the "reads plausibly while
                  saying something untrue" fault with navigation. -->
             <p class="report-next">
-              They are on <strong>Planned obligations</strong>, marked <em>Added — needs scope</em>.
-              Most still need you to say which parts of the building they cover — filter
-              <strong>Scope</strong> to <strong>No scope set</strong> and work through them.
+              They are on <strong>Planned obligations</strong>, marked <em>Added — not switched on</em>.
+              Most still need you to choose what they cover — filter
+              <strong>What it covers</strong> to <strong>Not chosen</strong> and work through them.
             </p>
             <Button variant="primary" size="small" on:click={() => dispatch('goto', 'planned')}>
               Set them up →
@@ -963,13 +963,13 @@
                     <p class="applies"><span class="applies-k">Applies when:</span> {entry.appliesWhen}</p>
                     {#if entry.suggestedScope}
                       <p class="applies">
-                        <span class="applies-k">Proposed scope:</span>
+                        <span class="applies-k">Would cover:</span>
                         {scopeSummary(entry.suggestedScope)}
                         <span class="scope-ok">verified against this building’s component types</span>
                       </p>
                     {:else if entry.scopeNote}
                       <p class="applies">
-                        <span class="applies-k">Scoping:</span> {entry.scopeNote}
+                        <span class="applies-k">What it covers:</span> {entry.scopeNote}
                       </p>
                     {/if}
 
