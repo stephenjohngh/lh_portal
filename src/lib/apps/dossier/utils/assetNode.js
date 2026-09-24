@@ -358,6 +358,12 @@ export const Asset = Node.create({
           && previewKind(current.attrs.mime_type, current.attrs.filename) === 'image'
           && Boolean(fileProxyUrl(current.attrs.provider_file_id, current.attrs.mime_type));
         sizes.hidden = !isImage;
+        // Where the strip sits. Over an image it floats in the corner, where
+        // it covers only picture. Over a file card that corner holds the
+        // card's Open link, so the strip was drawn on top of the one thing a
+        // card is for. Anything that is not an image puts the strip BESIDE
+        // the preview instead, where it covers nothing.
+        dom.dataset.layout = isImage ? 'overlay' : 'beside';
         const active = normaliseImageWidth(current.attrs.width);
         for (const button of sizes.children) {
           button.classList.toggle('is-active', button.dataset.width === active);

@@ -485,6 +485,25 @@
     user-select: none;
   }
   :global(.dossier-prose .dossier-asset-host .dossier-asset) { margin: 0; }
+  /* A file card, spreadsheet or missing file: the control strip sits to the
+     right of the preview, not over it. Floated over a card it covered the
+     card's Open link, which sits in exactly that corner. The strip still
+     fades in on hover; it simply takes its own space rather than borrowing
+     the card's. Edit mode only, since only the node view makes a host. */
+  :global(.dossier-prose .dossier-asset-host[data-layout='beside']) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  :global(.dossier-prose .dossier-asset-host[data-layout='beside'] .dossier-asset-inner) {
+    flex: 1;
+    min-width: 0;
+  }
+  :global(.dossier-prose .dossier-asset-host[data-layout='beside'] .dossier-block-controls) {
+    position: static;
+    flex: none;
+    margin-top: 0.4rem;              /* centres 1.5rem buttons on the card row */
+  }
 
   /* How many rows of a spreadsheet to show. A typed number rather than a few
      preset buttons — a schedule and a summary table want very different
