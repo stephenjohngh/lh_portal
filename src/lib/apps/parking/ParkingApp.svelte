@@ -31,6 +31,18 @@
   import RegistrationSearch from './components/RegistrationSearch.svelte';
   import WaitingListTab     from './components/WaitingListTab.svelte';
   import ReportsTab         from './components/ReportsTab.svelte';
+  import { downloadBayPlan } from './utils/bayPlanImage.js';
+  import Button             from '$lib/components/common/Button.svelte';
+
+  // The caretaker's printable plan, from the Bays tab where they look.
+  let printing = false;
+  let printError = '';
+  async function printPlan() {
+    printing = true; printError = '';
+    try { await downloadBayPlan(state); }
+    catch (/** @type {any} */ err) { printError = err.message; }
+    finally { printing = false; }
+  }
 
   const TABS = [
     { key: 'bays',       label: 'Bays' },
@@ -174,7 +186,12 @@
             on:click={() => chooseLevel(f.id)}
           >{f.name} <span class="opacity-70">({state.bays.filter(b => b.floor_id === f.id).length})</span></button>
         {/each}
+        <span class="flex-1"></span>
+        <Button size="small" variant="secondary" loading={printing} disabled={printing} on:click={printPlan}>
+          ⬇ Print bay plan (Word)
+        </Button>
       </div>
+      {#if printError}<ErrorDisplay message={printError} />{/if}
 
       <!-- Summary: what is on this level, and the two setup gaps -->
       <p class="text-sm text-slate-400" data-testid="bay-summary">

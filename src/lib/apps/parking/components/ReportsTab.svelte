@@ -3,6 +3,7 @@
 <script>
   import { parkingStore } from '../stores/parkingStore.js';
   import { REPORTS, downloadParkingReport } from '../utils/parkingReports.js';
+  import { downloadBayPlan } from '../utils/bayPlanImage.js';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
 
@@ -16,6 +17,18 @@
   let busy = null;
   let error = '';
   let done = '';
+
+  async function printPlan() {
+    busy = 'plan'; error = ''; done = '';
+    try {
+      const { levels } = await downloadBayPlan($parkingStore);
+      done = `Bay plan downloaded: ${levels} level${levels === 1 ? '' : 's'} on one page, and the list.`;
+    } catch (/** @type {any} */ err) {
+      error = err.message;
+    } finally {
+      busy = null;
+    }
+  }
 
   async function download(key) {
     busy = key; error = ''; done = '';
@@ -37,6 +50,14 @@
   </p>
   {#if error}<ErrorDisplay message={error} />{/if}
   {#if done}<p class="text-xs text-green-400">{done}</p>{/if}
+  <div class="flex items-center justify-between gap-4 bg-slate-800 border border-slate-700 rounded-lg p-3">
+    <div>
+      <p class="text-sm text-slate-200">Printable bay plan</p>
+      <p class="text-xs text-slate-400">Both basement levels on one page, each bay coloured and labelled with who has
+        it or FREE, then the full list. For the caretaker's wall.</p>
+    </div>
+    <Button size="small" variant="secondary" loading={busy === 'plan'} disabled={!!busy} on:click={printPlan}>⬇ Word</Button>
+  </div>
   {#each Object.entries(REPORTS) as [key, r] (key)}
     <div class="flex items-center justify-between gap-4 bg-slate-800 border border-slate-700 rounded-lg p-3">
       <div>
