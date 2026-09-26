@@ -46,6 +46,9 @@ export const ENTITY_PARENT_TABLE = {
   gt_document:          'gt_documents',
   component_inspection: 'component_inspections',
   maintenance_document: 'maintenance_jobs',
+  // A signed licence names a person who is not staff; parking_agreements is
+  // gated on the `parking` grant, so this follows it (migration 227).
+  parking_agreement:    'parking_agreements',
 };
 
 /**
@@ -132,6 +135,20 @@ export async function canListDocuments(query, { isAdmin, token }) {
   // is the behaviour we want: the caller learns nothing either way.
   if (error || !data) return { ok: false, status: 403, message: 'Not permitted.' };
   return { ok: true };
+}
+
+/**
+ * May this caller attach a file to this thing? The same question as reading
+ * it: you may attach to what you can see. An upload attached to nothing, or to
+ * a type the portal does not know, is left as it was — the list and read
+ * routes refuse unknown types anyway, so such a file is reachable by an admin
+ * only.
+ * @param {{ entity_type?: string|null, entity_id?: string|null }} meta
+ * @param {{ isAdmin: boolean, token: string }} caller
+ */
+export async function canAttachDocument(meta, caller) {
+  if (!meta?.entity_type || !meta?.entity_id || !ENTITY_PARENT_TABLE[meta.entity_type]) return { ok: true };
+  return canListDocuments(meta, caller);
 }
 
 /**

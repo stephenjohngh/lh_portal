@@ -14,6 +14,9 @@
   } from '../utils/agreementModel.js';
   import { fmtDate } from '$lib/utils/dates.js';
   import { HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
+  import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
+  import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
+  import { logAudit } from '$lib/utils/auditLogger';
   import Button        from '$lib/components/common/Button.svelte';
   import FormInput     from '$lib/components/common/FormInput.svelte';
   import FormSelect    from '$lib/components/common/FormSelect.svelte';
@@ -139,6 +142,13 @@
     return run(async () => { await parkingStore.deleteDraft(a); confirmDelete = false; dispatch('close'); }); };
 
   const money = n => (n == null ? '—' : `£${Number(n).toFixed(2)}`);
+
+  // Which agreement, and the document id: never the file name, which may name
+  // the holder.
+  function auditDoc(action, doc) {
+    logAudit(action, 'parking_agreement_document', doc?.id ?? null, agreement?.reference ?? '',
+      { appId: 'parking', eventCategory: 'parking', afterData: { agreement: agreement?.reference } });
+  }
 </script>
 
 {#if agreement}
@@ -304,6 +314,24 @@
         </div>
       {/if}
     {/if}
+
+    <!-- The signed licence, and anything else that belongs with the agreement.
+         Gated on the Parking grant like the agreement itself (migration 227),
+         and removed with it by retention. The folder is named by the
+         reference, never the holder: a Drive folder name is not access-
+         controlled like the row is. -->
+    <div class="border-t border-slate-700 pt-3" data-testid="agreement-documents">
+      <AttachedDocuments
+        entityType="parking_agreement"
+        entityId={agreement.id}
+        {canEdit}
+        canDelete={$permissions.isAdmin}
+        folderPath={entityFolderPath(DOC_FOLDERS.PARKING, agreement.reference, agreement.id)}
+        title="Signed licence and documents"
+        on:uploaded={(e) => auditDoc('create', e.detail)}
+        on:deleted={(e) => auditDoc('delete', e.detail)}
+      />
+    </div>
 
     <!-- Vehicles -->
     <div class="border-t border-slate-700 pt-3 space-y-2">

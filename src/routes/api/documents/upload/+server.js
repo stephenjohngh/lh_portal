@@ -4,6 +4,7 @@ import { uploadDocument }       from '$lib/server/documentLibrary';
 import { requireAuth }          from '$lib/server/requireAuth';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors';
 import { resolveMimeType } from '$lib/utils/mimeTypes';
+import { canAttachDocument, bearerToken } from '$lib/server/documentAccess';
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -48,6 +49,11 @@ export async function POST({ request }) {
       folder_path:     formData.get('folder_path')     || '',
       tags:            JSON.parse(formData.get('tags') || '[]'),
     };
+
+    // You may attach only to what you can read — otherwise anyone signed in
+    // could put a file on, say, a parking licence they cannot see.
+    const allowed = await canAttachDocument(meta, { isAdmin: auth.isAdmin, token: bearerToken(request) });
+    if (!allowed.ok) return json({ error: 'Not permitted.' }, { status: 403 });
 
     // Trusted uploader id from verified session, never from form data
     const doc = await uploadDocument(buffer, filename, mimeType, meta, auth.user.id);

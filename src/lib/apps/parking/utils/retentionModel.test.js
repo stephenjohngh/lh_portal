@@ -30,3 +30,14 @@ describe('retention words', () => {
     expect(retentionParts({ periods, agreements: 0 })).toEqual([]);
   });
 });
+
+describe('licence documents', () => {
+  it('says an agreement is waiting for its documents, and that Remove now deals with it', () => {
+    expect(retentionSummary({ held_back_documents: 1 }, { due: true }))
+      .toMatch(/1 agreement is also due but waiting for its licence documents to be removed: Remove now does that/);
+  });
+  it('reports documents removed and any that would not delete', () => {
+    expect(retentionSummary({ agreements: 1, documents_removed: 2 })).toMatch(/1 ended agreement, 2 licence documents/);
+    expect(retentionSummary({ documents_failed: 1, held_back_documents: 1 })).toMatch(/could not be deleted, so its agreement stays/);
+  });
+});

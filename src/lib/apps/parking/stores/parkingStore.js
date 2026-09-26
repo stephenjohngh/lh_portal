@@ -13,6 +13,7 @@
 
 import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
+import { postJson } from '$lib/utils/request';
 import { auth } from '$lib/stores/auth';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
@@ -578,10 +579,14 @@ function createParkingStore() {
     return api.get('parking_retention_runs', { orderBy: 'ran_at', ascending: false, limit });
   }
 
-  /** Remove what is due now, then re-read everything it may have touched. */
+  /**
+   * Remove what is due now, then re-read everything it may have touched.
+   * Through the server, because a signed licence's file is in storage and must
+   * be deleted before its agreement can go (migration 227).
+   */
   async function runRetention() {
     requireUserId();
-    const counts = await api.rpc('parking_apply_retention', { p_dry_run: false });
+    const counts = await postJson('/api/parking/retention', {});
     await load();
     // Counts only: the audit log must not name what was removed.
     const { periods, ...removed } = counts ?? {};

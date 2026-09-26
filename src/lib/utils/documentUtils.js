@@ -233,6 +233,7 @@ export const DOC_FOLDERS = {
   INFO_NOTES:    'Info Notes',
   MAINTENANCE:   'Maintenance',
   ISSUES:        'Issues',
+  PARKING:       'Parking Licences',
   LOOSE:         'Documents',      // uploaded in the admin tab, attached to nothing
 };
 

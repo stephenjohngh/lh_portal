@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
   },
   listParkingBaySpaces: vi.fn(),
   logAudit: vi.fn(),
+  postJson: vi.fn(),
   auth: { subscribe(fn) { fn({ user: { id: 'u1' } }); return () => {}; } },
 }));
 
@@ -18,6 +19,7 @@ vi.mock('$lib/stores/auth', () => ({ auth: h.auth }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/apps/building_assets/public.js', () => ({ listParkingBaySpaces: h.listParkingBaySpaces }));
+vi.mock('$lib/utils/request', () => ({ postJson: h.postJson }));
 
 const { parkingStore } = await import('./parkingStore.js');
 
@@ -319,9 +321,11 @@ describe('retention', () => {
     expect(h.api.rpc).toHaveBeenCalledWith('parking_apply_retention', { p_dry_run: true });
   });
   it('a run is logged with counts only, never the periods or anything personal', async () => {
-    h.api.rpc.mockResolvedValue({ agreements: 1, holders: 1, periods: { agreement_years: 6 } });
+    h.postJson.mockResolvedValue({ agreements: 1, holders: 1, periods: { agreement_years: 6 } });
     await parkingStore.runRetention();
-    expect(h.api.rpc).toHaveBeenCalledWith('parking_apply_retention', { p_dry_run: false });
+    // Through the server route, which deletes licence files first.
+    expect(h.postJson).toHaveBeenCalledWith('/api/parking/retention', {});
+    expect(h.api.rpc).not.toHaveBeenCalledWith('parking_apply_retention', expect.objectContaining({ p_dry_run: false }));
     const audit = h.logAudit.mock.calls.find(c => c[1] === 'parking_retention');
     expect(audit[4].afterData).toEqual({ agreements: 1, holders: 1 });
   });

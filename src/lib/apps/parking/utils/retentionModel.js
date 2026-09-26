@@ -12,7 +12,8 @@ export function retentionRules(periods) {
   if (!periods) return [];
   const p = periods;
   return [
-    `An ended agreement, with its vehicles, access devices and timeline, is removed ${plural(p.agreement_years, 'year')} after it ended.`,
+    `An ended agreement, with its vehicles, access devices, timeline and signed licence documents, is removed ${plural(p.agreement_years, 'year')} after it ended.`,
+    'An agreement with a licence document attached waits for an administrator to press Remove now, which deletes the file first; the nightly job cannot reach stored files.',
     `A vehicle is removed ${plural(p.vehicle_months, 'month')} after it came off the agreement, or after the agreement ended. Its registration is blanked in the timeline.`,
     `A returned access device is removed ${plural(p.device_months, 'month')} after it was returned, or after the agreement ended.`,
     '⛔ An access device that was never returned is never removed, and neither is its agreement: it still opens the gate.',
@@ -30,6 +31,7 @@ export function retentionParts(counts) {
   if (counts.devices)      parts.push(plural(counts.devices, 'returned device'));
   if (counts.applications) parts.push(plural(counts.applications, 'closed application'));
   if (counts.holders)      parts.push(plural(counts.holders, 'holder'));
+  if (counts.documents_removed) parts.push(plural(counts.documents_removed, 'licence document'));
   return parts;
 }
 
@@ -39,6 +41,12 @@ export function retentionSummary(counts, { due = false } = {}) {
   const held = counts?.held_back_device_out
     ? ` ${plural(counts.held_back_device_out, 'agreement')} past ${counts.held_back_device_out === 1 ? 'its' : 'their'} period ${counts.held_back_device_out === 1 ? 'is' : 'are'} kept because a device is still out.`
     : '';
-  if (!parts.length) return (due ? 'Nothing is due for removal.' : 'Nothing was removed.') + held;
-  return `${due ? 'Due for removal' : 'Removed'}: ${parts.join(', ')}.${held}`;
+  const docs = counts?.held_back_documents
+    ? ` ${plural(counts.held_back_documents, 'agreement')} ${counts.held_back_documents === 1 ? 'is' : 'are'} ${due ? 'also due but waiting' : 'still waiting'} for ${counts.held_back_documents === 1 ? 'its' : 'their'} licence documents to be removed${due ? ': Remove now does that' : ''}.`
+    : '';
+  const failed = counts?.documents_failed
+    ? ` ${plural(counts.documents_failed, 'licence document')} could not be deleted, so ${counts.documents_failed === 1 ? 'its' : 'their'} agreement stays.`
+    : '';
+  if (!parts.length) return (due ? 'Nothing is due for removal.' : 'Nothing was removed.') + held + docs + failed;
+  return `${due ? 'Due for removal' : 'Removed'}: ${parts.join(', ')}.${held}${docs}${failed}`;
 }

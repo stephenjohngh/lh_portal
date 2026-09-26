@@ -12,12 +12,14 @@ const h = vi.hoisted(() => {
     getAuth: () => auth,
     setAuth: (a) => { auth = a; },
     uploadDocument: vi.fn(() => Promise.resolve({ id: 'doc1' })),
+    canAttachDocument: vi.fn(() => Promise.resolve({ ok: true })),
   };
 });
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
 vi.mock('$lib/server/requireAuth', () => ({ requireAuth: () => Promise.resolve(h.getAuth()) }));
 vi.mock('$lib/server/documentLibrary', () => ({ uploadDocument: h.uploadDocument }));
+vi.mock('$lib/server/documentAccess', () => ({ canAttachDocument: h.canAttachDocument, bearerToken: () => 'tok' }));
 
 const { POST } = await import('./+server.js');
 
@@ -63,5 +65,17 @@ describe('POST /api/documents/upload', () => {
     // uploadDocument(buffer, filename, mimeType, meta, userId) — last arg is the trusted id.
     const userIdArg = h.uploadDocument.mock.calls[0][4];
     expect(userIdArg).toBe('real-user');
+  });
+});
+
+describe('attaching to something the caller cannot see', () => {
+  // Otherwise anyone signed in could put a file on a parking licence they
+  // cannot read (migration 227).
+  it('asks whether the caller may attach to the entity, and refuses before uploading', async () => {
+    h.canAttachDocument.mockResolvedValueOnce({ ok: false, status: 403, message: 'Not permitted.' });
+    const res = await POST({ request: uploadReq(10, { entity_type: 'parking_agreement', entity_id: 'a1' }) });
+    expect(res.status).toBe(403);
+    expect(h.uploadDocument).not.toHaveBeenCalled();
+    expect(h.canAttachDocument.mock.calls[0][0]).toMatchObject({ entity_type: 'parking_agreement', entity_id: 'a1' });
   });
 });

@@ -28,7 +28,7 @@ vi.mock('$env/static/public', () => ({
 }));
 
 const {
-  canListDocuments, canAccessDocument, sanitizeDocumentPatch, bearerToken,
+  canListDocuments, canAccessDocument, canAttachDocument, sanitizeDocumentPatch, bearerToken,
   ENTITY_PARENT_TABLE, PATCHABLE_FIELDS,
 } = await import('./documentAccess.js');
 
@@ -135,7 +135,7 @@ describe('ENTITY_PARENT_TABLE', () => {
     // breaks a working panel, so the set is worth pinning.
     expect(Object.keys(ENTITY_PARENT_TABLE).sort()).toEqual([
       'component_inspection', 'dossier_pack', 'gt_document', 'info_note',
-      'issue', 'maintenance_document', 'mor_case',
+      'issue', 'maintenance_document', 'mor_case', 'parking_agreement',
     ]);
   });
 
@@ -221,5 +221,22 @@ describe('bearerToken', () => {
     expect(bearerToken(req('bearer abc123'))).toBe('abc123');
     expect(bearerToken(req(null))).toBe('');
     expect(bearerToken(undefined)).toBe('');
+  });
+});
+
+describe('canAttachDocument', () => {
+  it('a parking licence is gated on the agreement, and so on the parking grant', async () => {
+    hidden();
+    const result = await canAttachDocument({ entity_type: 'parking_agreement', entity_id: 'a1' }, user);
+    expect(result.ok).toBe(false);
+    expect(h.from).toHaveBeenCalledWith('parking_agreements');
+  });
+  it('allows attaching to what the caller can read', async () => {
+    visible();
+    expect((await canAttachDocument({ entity_type: 'issue', entity_id: 'e1' }, user)).ok).toBe(true);
+  });
+  it('leaves an unattached upload as it was', async () => {
+    expect((await canAttachDocument({ entity_type: null, entity_id: null }, user)).ok).toBe(true);
+    expect(h.maybeSingle).not.toHaveBeenCalled();
   });
 });
