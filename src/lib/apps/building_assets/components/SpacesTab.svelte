@@ -152,7 +152,7 @@
     <select bind:value={kindFilter} class={inp} aria-label="Filter by kind">
       <option value="all">All kinds</option>
       <option value="space">Space</option>
-      <option value="slot">Slot</option>
+      <option value="slot">{KIND_LABEL.slot}</option>
     </select>
 
     <select bind:value={floorFilter} class={inp} aria-label="Filter by floor">

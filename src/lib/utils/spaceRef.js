@@ -3,17 +3,25 @@
 // componentRef.js.
 //
 // A space ref is COMPOSED (not stored whole): "{floorShortName}/{Type}/{assignedId}"
-//   Type = kind initial: space -> 'S', slot -> 'SL'
-//   e.g. "B1/SL/017" (a basement Slot) or "G/S/12" (a ground-floor Space)
+//   Type = kind initial: space -> 'SP', slot (a parking bay) -> 'PK'
+//   e.g. "L/PK/22" (a basement parking bay) or "G/SP/12" (a ground-floor Space)
+//
+// ⛔ A space initial is ALWAYS two or more letters, and that is what keeps a
+// space ref from colliding with a component ref. Component type initials are
+// truncated to ONE letter when a type is saved (typeHierarchyActions), so
+// "L/PK/22" can never be a component. Until 2026-09-26 a Space was 'S', which
+// seven component types also use (sprinkler, dry riser, fire damper…), so
+// "G/S/12" was ambiguous. Both halves of the rule are pinned by tests.
 //
 // Only spaces.assigned_id is stored on the row; the full ref is built at read
 // time so renaming a floor never leaves a stale string (mirrors buildComponentRef).
 // See docs/requirements/app_designs/Spaces_Enhancement_Design.md §4.2.
 
 /** kind -> reference "Type" segment. */
-export const KIND_INITIAL = { space: 'S', slot: 'SL' };
-/** kind -> user-facing label. */
-export const KIND_LABEL = { space: 'Space', slot: 'Slot' };
+export const KIND_INITIAL = { space: 'SP', slot: 'PK' };
+/** kind -> user-facing label. The stored kind stays 'slot'; on screen it is a
+ *  parking bay, because that is the only thing a slot has ever been drawn for. */
+export const KIND_LABEL = { space: 'Space', slot: 'Parking bay' };
 
 /** The Type initial for a space's kind (defaults to Space). */
 export function spaceKindInitial(kind) {
@@ -42,7 +50,7 @@ function assignedSegment(space) {
  * Build the canonical ref for a space: "{floorShortName}/{Type}/{assignedId}".
  * @param {object}   space  - space row (kind, assigned_id, floor_id, id)
  * @param {object[]} floors - all floors[]
- * @returns {string} e.g. "B1/SL/017", or "—" when space is missing
+ * @returns {string} e.g. "L/PK/017", or "—" when space is missing
  */
 export function buildSpaceRef(space, floors = []) {
   if (!space) return '—';

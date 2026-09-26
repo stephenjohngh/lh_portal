@@ -76,7 +76,7 @@ export function spacesForComponent(component, spaces = [], overrides = [], opts 
 
 /**
  * Building-wide map of componentId → sorted space labels ("Reference name",
- * e.g. "G/S/12 PlantRoom2"), resolved once with each space's own plan aspect
+ * e.g. "G/SP/12 PlantRoom2"), resolved once with each space's own plan aspect
  * ratio (membership is plan-scoped and AR-sensitive, so we can't use a single
  * AR building-wide). Reverse of componentsInSpace — drives the Components-tab
  * "Space(s)" column + exports. Derive-at-read; call from the store's in-memory

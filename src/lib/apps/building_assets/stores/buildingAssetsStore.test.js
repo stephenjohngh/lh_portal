@@ -255,6 +255,16 @@ describe('typeHierarchyActions', () => {
     expect(arg.initial).toBe('F');
   });
 
+  // ⛔ Half of the rule that keeps a component ref from colliding with a space
+  // ref (spaceRef.js): a component type initial is ONE letter, whatever is
+  // typed, so it can never equal a two-letter space initial such as SP or PK.
+  it('cuts a component type initial to one letter on create and on update', async () => {
+    await store.createType({ building_system_id: 'sys1', code: 'x', name: 'X', initial: 'PK' });
+    expect(h.api.create.mock.calls.find(c => c[0] === 'component_types')[1].initial).toBe('P');
+    await store.updateType('ty1', { name: 'X', initial: 'sp' });
+    expect(h.api.update.mock.calls.find(c => c[0] === 'component_types')[2].initial).toBe('S');
+  });
+
   it('createAttrDef routes to system scope when a building_system_id is given', async () => {
     await store.createAttrDef({ name: 'Fire rating', building_system_id: 'sys1', component_type_id: 'ty1' });
     const arg = h.api.create.mock.calls.find(c => c[0] === 'type_attributes')[1];

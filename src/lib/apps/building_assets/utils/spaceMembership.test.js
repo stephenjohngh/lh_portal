@@ -68,25 +68,25 @@ describe('spacesForComponent', () => {
 describe('componentSpaceRefs', () => {
   // Referenceable variants of the two spaces (kind + assigned_id + floor).
   const floors = [{ id: 'f1', short_name: 'G' }];
-  const Ar = { ...A, kind: 'space', assigned_id: '12', floor_id: 'f1', name: 'PlantRoom2' };  // -> G/S/12 PlantRoom2
-  const Br = { ...B, kind: 'space', assigned_id: '13', floor_id: 'f1', name: 'Lobby' };       // -> G/S/13 Lobby
+  const Ar = { ...A, kind: 'space', assigned_id: '12', floor_id: 'f1', name: 'PlantRoom2' };  // -> G/SP/12 PlantRoom2
+  const Br = { ...B, kind: 'space', assigned_id: '13', floor_id: 'f1', name: 'Lobby' };       // -> G/SP/13 Lobby
   const plans = [{ id: 'p1', image_aspect_ratio: 1 }];
 
   it('maps a boundary component to BOTH space labels "ref name" (sorted)', () => {
     const door = comp('d', 0.5, 0.5);
     const map = componentSpaceRefs([door], [Ar, Br], [], plans, floors);
-    expect(map.get('d')).toEqual(['G/S/12 PlantRoom2', 'G/S/13 Lobby']);
+    expect(map.get('d')).toEqual(['G/SP/12 PlantRoom2', 'G/SP/13 Lobby']);
   });
 
   it('maps an interior component to its single space label', () => {
     const inA = comp('c1', 0.25, 0.5);
     const map = componentSpaceRefs([inA], [Ar, Br], [], plans, floors);
-    expect(map.get('c1')).toEqual(['G/S/12 PlantRoom2']);
+    expect(map.get('c1')).toEqual(['G/SP/12 PlantRoom2']);
   });
 
   it('falls back to the bare reference when a space has no name', () => {
     const map = componentSpaceRefs([comp('c1', 0.25, 0.5)], [{ ...Ar, name: null }], [], plans, floors);
-    expect(map.get('c1')).toEqual(['G/S/12']);
+    expect(map.get('c1')).toEqual(['G/SP/12']);
   });
 
   it('omits components that fall in no space', () => {
@@ -99,7 +99,7 @@ describe('componentSpaceRefs', () => {
     const unplaced = { id: 'u', plan_id: null, x_position: null, y_position: null };
     const overrides = [{ space_id: 'A', component_id: 'u', mode: 'include' }];
     const map = componentSpaceRefs([unplaced], [Ar, Br], overrides, plans, floors);
-    expect(map.get('u')).toEqual(['G/S/12 PlantRoom2']);
+    expect(map.get('u')).toEqual(['G/SP/12 PlantRoom2']);
   });
 });
 

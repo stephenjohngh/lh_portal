@@ -4,7 +4,7 @@
 // floor plans are the same layout (identical images), so polygons line up.
 //
 // assigned_id: preserved so references stay consistent across identical floors
-// (G/S/12 → 1/S/12), but BLANKED when that (kind, assigned_id) already exists on
+// (G/SP/12 → 1/SP/12), but BLANKED when that (kind, assigned_id) already exists on
 // the target floor, to avoid the unique (floor_id, kind, assigned_id) index.
 // Spaces whose polygon already exists on the target plan are skipped, so a
 // re-copy is idempotent (no duplicate outlines).

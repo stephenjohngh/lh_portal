@@ -30,7 +30,7 @@ describe('spaceMembersCsvRows', () => {
     const rows = spaceMembersCsvRows(space, members, floors, types);
     expect(rows[0]).toBe('Space Ref,Space Name,Component Ref,Type,Label,Status');
     expect(rows).toHaveLength(4);
-    expect(rows[1]).toBe('G/S/12,Plant Room,G/FD/FD-1,Fire Door,Door A,OK');
+    expect(rows[1]).toBe('G/SP/12,Plant Room,G/FD/FD-1,Fire Door,Door A,OK');
   });
 });
 
@@ -38,7 +38,7 @@ describe('buildRegisterRow / spacesRegisterCsvRows', () => {
   it('assembles a register row with rollup + supplied area', () => {
     const row = buildRegisterRow(space, members, floors, { area_m2: 42.35 });
     expect(row).toMatchObject({
-      reference: 'G/S/12', name: 'Plant Room', kind: 'space', type: 'Plant Room',
+      reference: 'G/SP/12', name: 'Plant Room', kind: 'space', type: 'Plant Room',
       floor: 'G', area_m2: 42.35, total: 3, ok: 2, failed: 1, problem: 0, inactive: 0,
     });
   });
@@ -48,8 +48,8 @@ describe('buildRegisterRow / spacesRegisterCsvRows', () => {
       buildRegisterRow({ ...space, id: 's2', assigned_id: '13', name: 'Lobby', type: '' }, [], floors, {}),
     ]);
     expect(rows[0]).toBe('Reference,Name,Kind,Type,Floor,Area m2,Components,OK,Problem,Failed,Inactive');
-    expect(rows[1]).toBe('G/S/12,Plant Room,space,Plant Room,G,42.4,3,2,0,1,0');
-    expect(rows[2]).toBe('G/S/13,Lobby,space,,G,,0,0,0,0,0');
+    expect(rows[1]).toBe('G/SP/12,Plant Room,space,Plant Room,G,42.4,3,2,0,1,0');
+    expect(rows[2]).toBe('G/SP/13,Lobby,space,,G,,0,0,0,0,0');
   });
 });
 
@@ -75,7 +75,7 @@ describe('buildSpacesRegisterRows (pure, whole-building)', () => {
     const rows = buildSpacesRegisterRows(state);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
-      reference: 'G/S/12', total: 1, ok: 1, failed: 0, area_m2: null,
+      reference: 'G/SP/12', total: 1, ok: 1, failed: 0, area_m2: null,
     });
   });
 
@@ -104,7 +104,7 @@ describe('buildSpacesRegisterRows (pure, whole-building)', () => {
     });
     // B1 first (level 10): '2' then '10' (numeric); then G (level 20): '2','10', blank last
     expect(rows.map(r => r.reference)).toEqual([
-      'B1/S/2', 'B1/S/10', 'G/S/2', 'G/S/10', 'G/S/c',   // blank assigned_id → ref falls back to id slice ('c')
+      'B1/SP/2', 'B1/SP/10', 'G/SP/2', 'G/SP/10', 'G/SP/c',   // blank assigned_id → ref falls back to id slice ('c')
     ]);
   });
 });

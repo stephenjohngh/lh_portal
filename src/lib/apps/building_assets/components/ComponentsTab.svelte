@@ -789,7 +789,7 @@
           />
         {/if}
 
-        <!-- Kind filter — Space / Slot -->
+        <!-- Kind filter — Space / Parking bay -->
         {#if spaceOptions.length > 0}
           <MultiSelectDropdown
             label="Kind" placeholder="All kinds" noun="kinds" minWidth="90px"
