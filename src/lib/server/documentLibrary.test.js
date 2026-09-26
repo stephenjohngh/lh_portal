@@ -26,6 +26,9 @@ const h = vi.hoisted(() => ({
   getFileUrl:    vi.fn(() => Promise.resolve('https://drive.test/fresh')),
   deleteFile:    vi.fn(() => Promise.resolve()),
   listFiles:     vi.fn(() => Promise.resolve([{ name: 'a folder', isFolder: true }])),
+  sbDelete:      vi.fn(() => Promise.resolve()),
+  sbUrl:         vi.fn(() => Promise.resolve('https://sb.test/object')),
+  sbStream:      vi.fn(() => Promise.resolve({ data: Buffer.from('sb bytes') })),
 
   // Database — the last insert/update/delete the module attempted
   inserted: /** @type {any} */ (null),
@@ -38,6 +41,12 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('./storage/index.js', () => ({
+  // Another provider this deployment knows, holding files written before a
+  // switch. Only its delete/url/stream are called by the provider-routing tests.
+  providerByName: (name) => ({
+    google_drive: { name: 'google_drive', deleteFile: h.deleteFile, getFileUrl: h.getFileUrl, getFileStream: h.getFileStream },
+    supabase:     { name: 'supabase', deleteFile: h.sbDelete, getFileUrl: h.sbUrl, getFileStream: h.sbStream },
+  })[name] ?? null,
   storageProvider: {
     name: 'google_drive',
     ensurePath:    h.ensurePath,
@@ -282,5 +291,40 @@ describe('listFolders', () => {
 
     await listFolders('Dossier Packs');
     expect(h.listFiles).toHaveBeenCalledWith('Dossier Packs', { foldersOnly: true });
+  });
+});
+
+// ⛔ A file's provider is a property of when it was written. Deleting through
+// today's configured provider stranded 30 media files when STORAGE_PROVIDER
+// changed (PROJECT_STATUS §6hh); these pin the same fix for documents.
+describe('an existing file goes through the provider recorded on its row', () => {
+  it('deletes through the recorded provider, not the configured one', async () => {
+    h.selectRow = { id: 'doc1', provider: 'supabase', provider_file_id: 'documents/a.pdf' };
+    await deleteDocument('doc1');
+    expect(h.sbDelete).toHaveBeenCalledWith('documents/a.pdf');
+    expect(h.deleteFile).not.toHaveBeenCalled();
+    expect(h.deletedFrom).toBe(true);
+  });
+
+  it('links and copies through the recorded provider too', async () => {
+    h.selectRow = { id: 'doc1', provider: 'supabase', provider_file_id: 'documents/a.pdf', filename: 'a.pdf' };
+    expect(await getDocumentUrl('doc1')).toBe('https://sb.test/object');
+    await copyDocument('doc1', {}, 'u1');
+    expect(h.sbStream).toHaveBeenCalledWith('documents/a.pdf');
+    expect(h.getFileStream).not.toHaveBeenCalled();
+  });
+
+  it('refuses a provider this deployment does not know, and deletes nothing', async () => {
+    h.selectRow = { id: 'doc1', provider: 'dropbox', provider_file_id: 'x' };
+    await expect(deleteDocument('doc1')).rejects.toThrow(/does not know how to reach/);
+    expect(h.deleteFile).not.toHaveBeenCalled();
+    expect(h.sbDelete).not.toHaveBeenCalled();
+    expect(h.deletedFrom).toBe(null);
+  });
+
+  it('a row with no provider recorded falls back to the configured one', async () => {
+    h.selectRow = { id: 'doc1', provider: null, provider_file_id: 'drive-1' };
+    await deleteDocument('doc1');
+    expect(h.deleteFile).toHaveBeenCalledWith('drive-1');
   });
 });

@@ -1,13 +1,15 @@
 // src/lib/server/documentLibrary.js
 // High-level document library functions used by API routes.
-// All storage operations go through the active storageProvider.
+// A NEW file goes to the active storageProvider. An EXISTING file is read,
+// linked or deleted through the provider recorded on its row (`provider`) —
+// see providerFor() below.
 // All DB index operations use the service-role Supabase client.
 
 import { createHash }                from 'node:crypto';
 import { createClient }              from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { storageProvider }            from './storage/index.js';
+import { storageProvider, providerByName } from './storage/index.js';
 import { sanitizeIlikeTerm }          from '$lib/utils/pgFilter.js';
 import { docTypeFromMime, isUnclassifiedDocType } from '$lib/utils/documentUtils.js';
 import { getLogger }                  from '$lib/utils/logger';
@@ -19,6 +21,34 @@ const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 
 function getDb() {
   return db;
+}
+
+/**
+ * The provider that holds an ALREADY-WRITTEN document.
+ *
+ * ⛔ Not `storageProvider`. That is how this deployment is configured today; a
+ * file's provider is a property of when it was written, and `provider` on the
+ * row records it. Using today's setting for an old file is what stranded 30
+ * media files when STORAGE_PROVIDER changed (PROJECT_STATUS §6hh, §6ii) — the
+ * media fix reached `media_attachments`; this is the same fix for documents.
+ *
+ * · A recorded provider this deployment knows → that one, whatever is
+ *   configured.
+ * · Nothing recorded (a row older than the column being filled) → the
+ *   configured provider, because it is the only information there is.
+ * · A recorded provider this deployment does NOT know → refuse. Guessing would
+ *   send a file id to a provider that never issued it.
+ *
+ * @param {{ provider?: string|null }} doc
+ */
+export function providerFor(doc) {
+  if (!doc?.provider) return storageProvider;
+  const owner = providerByName(doc.provider);
+  if (!owner) {
+    throw new Error(`This document is stored in "${doc.provider}", which this deployment does not `
+      + 'know how to reach. Nothing was changed.');
+  }
+  return owner;
 }
 
 /**
@@ -101,7 +131,7 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
  */
 export async function copyDocument(sourceId, meta = {}, userId) {
   const src = await getDocument(sourceId);
-  const { data: buffer } = await storageProvider.getFileStream(src.provider_file_id);
+  const { data: buffer } = await providerFor(src).getFileStream(src.provider_file_id);
   return uploadDocument(buffer, src.filename, src.mime_type, {
     display_name:     src.display_name,
     doc_type:         src.doc_type,
@@ -175,7 +205,7 @@ export async function getDocument(id) {
  */
 export async function getDocumentUrl(id) {
   const doc = await getDocument(id);
-  return storageProvider.getFileUrl(doc.provider_file_id);
+  return providerFor(doc).getFileUrl(doc.provider_file_id);
 }
 
 /**
@@ -203,7 +233,7 @@ export async function updateDocument(id, patch, userId) {
  */
 export async function deleteDocument(id) {
   const doc = await getDocument(id);
-  await storageProvider.deleteFile(doc.provider_file_id);
+  await providerFor(doc).deleteFile(doc.provider_file_id);
   logger('Deleted from storage:', doc.provider_file_id);
 
   const db = getDb();
