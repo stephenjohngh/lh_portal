@@ -255,3 +255,59 @@ describe('the waiting list', () => {
     expect(h.api.update).not.toHaveBeenCalled();
   });
 });
+
+describe('the price list', () => {
+  const price = { id: 't1', bay_size: 'Car', holder_class: 'all', amount: 60, period: 'month',
+    vat_treatment: 'not_decided', deposit_amount: null, effective_from: '2026-01-01', effective_to: null };
+
+  it('an agreement at the list price records which price it copied; a fee typed over records none', async () => {
+    tables.parking_tariffs = [price];
+    await parkingStore.load();
+    h.api.upsert.mockResolvedValue({ id: 'b1', space_id: 's22', tenure: 'licensable', in_service: true });
+    await parkingStore.createAgreement('s22', 'h1',
+      { basis: 'licence', starts_on: '2026-10-01', max_vehicles: 1, fee_amount: '60.00', fee_period: 'month' });
+    expect(h.api.create.mock.calls.find(c => c[0] === 'parking_agreements')[1].tariff_id).toBe('t1');
+  });
+
+  it('a fee typed by hand is not the list price', async () => {
+    tables.parking_tariffs = [price];
+    await parkingStore.load();
+    h.api.upsert.mockResolvedValue({ id: 'b1', space_id: 's22', tenure: 'licensable', in_service: true });
+    await parkingStore.createAgreement('s22', 'h1',
+      { basis: 'licence', starts_on: '2026-10-01', max_vehicles: 1, fee_amount: '45', fee_period: 'month' });
+    expect(h.api.create.mock.calls.find(c => c[0] === 'parking_agreements')[1].tariff_id).toBeNull();
+  });
+
+  it('changing the fee on an agreement clears the price it came from', async () => {
+    tables.parking_tariffs = [price];
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable', in_service: true }];
+    tables.parking_agreements = [{ id: 'a1', reference: 'PA-0001', bay_id: 'b1', holder_id: 'h1', basis: 'licence',
+      status: 'active', starts_on: '2026-01-01', ends_on: null, fee_amount: 60, fee_period: 'month',
+      max_vehicles: 1, tariff_id: 't1' }];
+    await parkingStore.load();
+    await parkingStore.updateAgreement('a1', { fee_amount: '50' });
+    expect(h.api.update.mock.calls.find(c => c[0] === 'parking_agreements')[2].tariff_id).toBeNull();
+  });
+
+  it('a new price is refused before writing when it overlaps, and a used price cannot be removed', async () => {
+    tables.parking_tariffs = [price];
+    tables.parking_agreements = [{ id: 'a1', reference: 'PA-0001', bay_id: 'b1', holder_id: 'h1', basis: 'licence',
+      status: 'active', starts_on: '2026-01-01', tariff_id: 't1' }];
+    await parkingStore.load();
+    await expect(parkingStore.addTariff({ bay_size: 'Car', amount: '70', period: 'month', effective_from: '2025-12-01' }))
+      .rejects.toThrow(/after that/);
+    await expect(parkingStore.deleteTariff('t1')).rejects.toThrow(/cannot be removed/);
+    expect(h.api.create).not.toHaveBeenCalled();
+    expect(h.api.delete).not.toHaveBeenCalled();
+  });
+
+  it('removing a price added in error reopens the one it had closed', async () => {
+    const closed = { ...price, effective_to: '2026-09-30' };
+    const added = { ...price, id: 't2', amount: 70, effective_from: '2026-10-01' };
+    tables.parking_tariffs = [closed, added];
+    await parkingStore.load();
+    await parkingStore.deleteTariff('t2');
+    expect(h.api.delete).toHaveBeenCalledWith('parking_tariffs', 't2');
+    expect(h.api.update).toHaveBeenCalledWith('parking_tariffs', 't1', { effective_to: null });
+  });
+});

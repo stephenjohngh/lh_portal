@@ -71,13 +71,14 @@ export function agreementsSheet({ agreements = [], holders = [], bays = [] }, { 
     STATUS_LABEL[a.status] ?? a.status, d(a.starts_on), a.ends_on ? d(a.ends_on) : 'Rolling',
     a.notice_days != null ? String(a.notice_days) : '', money(a.fee_amount), a.fee_period ?? '',
     annualFee(a) != null ? annualFee(a).toFixed(2) : '', vat[a.vat_treatment] ?? '',
+    a.tariff_id ? 'List price' : 'Set by hand',
     money(a.deposit_amount), d(a.deposit_refunded_on), a.ended_reason ?? '',
   ]);
   const live = list.filter(a => a.status === 'active' || a.status === 'notice_given');
   const total = live.reduce((t, a) => t + (annualFee(a) ?? 0), 0);
   return {
     headers: ['Reference', 'Bay', 'Holder', 'Kind of holder', 'Basis', 'Status', 'Starts', 'Ends',
-      'Notice (days)', 'Fee (£)', 'Per', 'A year (£)', 'VAT', 'Deposit (£)', 'Deposit refunded', 'Ended because'],
+      'Notice (days)', 'Fee (£)', 'Per', 'A year (£)', 'VAT', 'Fee source', 'Deposit (£)', 'Deposit refunded', 'Ended because'],
     rows,
     total,
   };

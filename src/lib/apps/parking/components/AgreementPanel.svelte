@@ -13,6 +13,7 @@
     EVENT_LABEL, eventSummary, basesForTenure,
   } from '../utils/agreementModel.js';
   import { fmtDate } from '$lib/utils/dates.js';
+  import { HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
   import Button        from '$lib/components/common/Button.svelte';
   import FormInput     from '$lib/components/common/FormInput.svelte';
   import FormSelect    from '$lib/components/common/FormSelect.svelte';
@@ -33,6 +34,7 @@
   $: currentVehicles = vehicles.filter(v => !v.to_date);
   $: pastVehicles = vehicles.filter(v => v.to_date);
   $: isRecord = agreement?.basis === 'demise_record' || agreement?.basis === 'lease_right_record';
+  $: pricedAt = agreement?.tariff_id ? s.tariffs.find(t => t.id === agreement.tariff_id) ?? null : null;
   $: vatLabel = VAT_TREATMENTS.find(v => v.value === agreement?.vat_treatment)?.label ?? '—';
   $: devices = s.devices.filter(d => d.agreement_id === agreement?.id);
   $: devicesOut = outstandingDevices(agreement?.id, s.devices);
@@ -175,7 +177,10 @@
       {#if !isRecord}
         <dt class="text-slate-500">Fee</dt>
         <dd class="text-slate-200">{money(agreement.fee_amount)}{agreement.fee_period ? ' per ' + agreement.fee_period : ''}
-          <span class="text-slate-500"> · VAT: {vatLabel}</span></dd>
+          <span class="text-slate-500"> · VAT: {vatLabel}</span>
+          <span class="block text-xs text-slate-500" data-testid="fee-source">{pricedAt
+            ? `The ${pricedAt.bay_size.toLowerCase()} list price from ${fmtDate(pricedAt.effective_from)} (${HOLDER_CLASS_LABEL[pricedAt.holder_class].toLowerCase()}), copied when the agreement was made. A later price does not change it.`
+            : 'Not from the price list: set by hand, or carried over from a previous bay.'}</span></dd>
         {#if agreement.deposit_amount != null}<dt class="text-slate-500">Deposit</dt>
           <dd class="text-slate-200">{money(agreement.deposit_amount)}
             {#if agreement.deposit_refunded_on}<span class="text-slate-500"> · refunded {fmtDate(agreement.deposit_refunded_on)}</span>{/if}</dd>{/if}

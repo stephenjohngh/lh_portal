@@ -24,6 +24,7 @@ import {
   validateNotice, validateDevice, depositRefundProblem, validateMove,
 } from '../utils/agreementModel.js';
 import { validateApplication, validateOffer, offerBlocks } from '../utils/waitingListModel.js';
+import { validateTariff, tariffRow, tariffFor, matchesTariff, reopenedBy } from '../utils/tariffModel.js';
 
 const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -32,7 +33,7 @@ const AUDIT = { appId: 'parking', eventCategory: 'parking' };
  * @typedef {Record<string, any>} Row
  * @typedef {{
  *   bays: Row[], floors: Row[], plans: Row[],
- *   holders: Row[], agreements: Row[], vehicles: Row[], devices: Row[], applications: Row[],
+ *   holders: Row[], agreements: Row[], vehicles: Row[], devices: Row[], applications: Row[], tariffs: Row[],
  *   loading: boolean, error: string|null
  * }} State
  */
@@ -45,7 +46,7 @@ function requireUserId() {
 
 function createParkingStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
-    bays: [], floors: [], plans: [], holders: [], agreements: [], vehicles: [], devices: [], applications: [],
+    bays: [], floors: [], plans: [], holders: [], agreements: [], vehicles: [], devices: [], applications: [], tariffs: [],
     loading: false, error: null,
   }));
   const state = () => get({ subscribe });
@@ -61,7 +62,7 @@ function createParkingStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [bs, pb, floors, plans, holders, agreements, vehicles, devices, applications] = await Promise.all([
+      const [bs, pb, floors, plans, holders, agreements, vehicles, devices, applications, tariffs] = await Promise.all([
         listParkingBaySpaces(),
         api.get('parking_bays'),
         api.get('floors', { orderBy: 'level_order', ascending: true }),
@@ -71,9 +72,10 @@ function createParkingStore() {
         api.getAll('parking_vehicles', { orderBy: 'registration' }),
         api.getAll('parking_access_devices', { orderBy: 'issued_on' }),
         api.getAll('parking_applications', { orderBy: 'joined_on' }),
+        api.getAll('parking_tariffs', { orderBy: 'effective_from' }),
       ]);
       spaces = bs; rows = pb;
-      update(s => ({ ...s, floors, plans, holders, agreements, vehicles, devices, applications, loading: false,
+      update(s => ({ ...s, floors, plans, holders, agreements, vehicles, devices, applications, tariffs, loading: false,
         bays: mergeBays(spaces, rows, floors, plans, agreements, todayISO(), applications) }));
     } catch (/** @type {any} */ err) {
       logger('load failed:', err.message);
@@ -163,9 +165,13 @@ function createParkingStore() {
     if (problem) throw new Error(problem);
     const userId = requireUserId();
 
+    // Which price the fee was copied from — only if it still matches it.
+    const tariff = tariffFor(s.tariffs, bay.size, holder?.holder_type, terms.starts_on);
+    const tariffId = matchesTariff(terms, tariff) ? tariff.id : null;
+
     const bayRow = await ensureBayRow(spaceId);
     const saved = await api.create('parking_agreements', {
-      ...agreementRow(terms), bay_id: bayRow.id, holder_id: holderId, status: 'draft',
+      ...agreementRow(terms), tariff_id: tariffId, bay_id: bayRow.id, holder_id: holderId, status: 'draft',
       created_by: userId, updated_by: userId,
     }, true);
     update(st => ({ ...st, agreements: [...st.agreements, saved] }));
@@ -194,8 +200,12 @@ function createParkingStore() {
     if (problem) throw new Error(problem);
     const userId = requireUserId();
 
+    // A fee changed by hand is no longer the list price it was copied from.
+    const was = current.tariff_id ? s.tariffs.find(t => t.id === current.tariff_id) : null;
+    const tariffId = was && matchesTariff(next, was) ? was.id : null;
+
     const saved = await api.update('parking_agreements', id,
-      { ...agreementRow(next), updated_by: userId }, true);
+      { ...agreementRow(next), tariff_id: tariffId, updated_by: userId }, true);
     update(st => ({ ...st, agreements: st.agreements.map(a => a.id === id ? saved : a) }));
     remerge();
     logAudit('update', 'parking_agreement', id, saved.reference,
@@ -512,8 +522,51 @@ function createParkingStore() {
     return hits;
   }
 
+  // ── The price list ───────────────────────────────────────────────────────
+
+  /**
+   * Add a price for a bay size from a date. It closes the price it replaces
+   * the day before (migration 225 does that, in the same statement); a price
+   * is never edited.
+   */
+  async function addTariff(t) {
+    const problem = validateTariff(t, state().tariffs);
+    if (problem) throw new Error(problem);
+    const userId = requireUserId();
+    await api.create('parking_tariffs', { ...tariffRow(t), created_by: userId }, true);
+    // Re-read: the insert also closed the row it replaces.
+    const tariffs = await api.getAll('parking_tariffs', { orderBy: 'effective_from' });
+    update(st => ({ ...st, tariffs }));
+    const row = tariffRow(t);
+    logAudit('create', 'parking_tariff', null, `${row.bay_size} from ${row.effective_from}`,
+      { ...AUDIT, afterData: row });
+  }
+
+  /**
+   * Remove a price added in error, reopening the one it had closed. Refused
+   * once any agreement was made at it —
+   * that agreement would lose the price it came from — and the database
+   * refuses it too.
+   */
+  async function deleteTariff(id) {
+    const s = state();
+    const t = s.tariffs.find(x => x.id === id);
+    if (!t) throw new Error('Price not found.');
+    const used = s.agreements.filter(a => a.tariff_id === id).length;
+    if (used) throw new Error(`${used} agreement${used === 1 ? ' was' : 's were'} made at this price, so it cannot be removed.`);
+    const previous = reopenedBy(s.tariffs, t);
+    await api.delete('parking_tariffs', id);
+    // The price it had closed becomes current again, so there is no gap.
+    if (previous && !t.effective_to) await api.update('parking_tariffs', previous.id, { effective_to: null });
+    const tariffs = await api.getAll('parking_tariffs', { orderBy: 'effective_from' });
+    update(st => ({ ...st, tariffs }));
+    logAudit('delete', 'parking_tariff', id, `${t.bay_size} from ${t.effective_from}`,
+      { ...AUDIT, beforeData: tariffRow(t) });
+  }
+
   return {
     subscribe, load, saveBay,
+    addTariff, deleteTariff,
     saveHolder,
     createAgreement, updateAgreement, setStatus, deleteDraft,
     serveNotice, withdrawNotice,

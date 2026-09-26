@@ -17,6 +17,7 @@
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import HolderFields from './HolderFields.svelte';
+  import { tariffFor, termsFromTariff, matchesTariff, priceLabel, HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
 
   export let show = false;
   export let bay = null;
@@ -53,8 +54,28 @@
     };
     vehicles = [{ registration: '', make: '', model: '', colour: '', is_ev: false }];
     error = '';
+    filledFrom = null;
   }
   $: if (!show) openedFor = null;
+
+  // ⭐ The price list fills the fee in — once per price, keyed on its id, so a
+  // fee the person has typed over is not put back while they edit other
+  // fields. The agreement COPIES the price; the list changing later never
+  // reprices it (design §5.7).
+  $: pickedType = holderMode === 'new'
+    ? newHolder.holder_type
+    : $parkingStore.holders.find(h => h.id === holderId)?.holder_type;
+  $: tariff = bay && !isRecord ? tariffFor($parkingStore.tariffs, bay.size, pickedType, terms.starts_on) : null;
+  let filledFrom = null;
+  $: if (!show) filledFrom = null;
+  // In a function, so writing `terms` does not make this depend on itself.
+  function fillFrom(t) {
+    if (!t || t.id === filledFrom) return;
+    filledFrom = t.id;
+    terms = { ...terms, ...termsFromTariff(t) };
+  }
+  $: fillFrom(tariff);
+  $: fromList = matchesTariff(terms, tariff);
 
   // Keep the vehicle lines no longer than the agreement allows.
   $: maxV = Math.max(1, Number(terms.max_vehicles) || 1);
@@ -136,6 +157,19 @@
             <FormInput label="Notice (days)" bind:value={terms.notice_days} />
           </div>
           {#if !isRecord}
+            {#if tariff}
+              <p class="text-xs {fromList ? 'text-slate-400' : 'text-amber-300'}" data-testid="price-note">
+                {fromList ? 'From the price list' : 'Differs from the price list'}: {priceLabel(tariff)} for a
+                {bay.size.toLowerCase()} bay ({HOLDER_CLASS_LABEL[tariff.holder_class].toLowerCase()}).
+                {#if !fromList}<button class="text-purple-400 hover:text-purple-300 ml-1"
+                  on:click={() => terms = { ...terms, ...termsFromTariff(tariff) }}>Use the list price</button>{/if}
+              </p>
+            {:else}
+              <p class="text-xs text-slate-500" data-testid="price-note">
+                {bay.size ? `No price is set for a ${bay.size.toLowerCase()} bay on that date.` : 'This bay has no size, so the price list cannot price it.'}
+                Type the fee.
+              </p>
+            {/if}
             <div class="grid grid-cols-3 gap-3">
               <FormInput label="Fee (£)" bind:value={terms.fee_amount} placeholder="e.g. 60.00" />
               <FormSelect label="Per" bind:value={terms.fee_period} options={FEE_PERIODS} placeholder="" />
