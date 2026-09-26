@@ -229,6 +229,26 @@ export function deleteSpaceType(id) {
   return api.delete('space_types', id);
 }
 
+// -- Parking bays --------------------------------------------------------------
+// Read by the Parking app. A bay is a Space of kind 'slot' drawn on a basement
+// plan, its size is its Type (migration 220), and this app owns all of that:
+// the drawing, the floor, the assigned id that makes the reference L/PK/22.
+// Parking owns only what the drawing cannot say (parking_bays, migration 221).
+// docs/requirements/unbuilt/Parking_App_Design.md §4.
+
+/**
+ * Every drawn Parking bay, with what Parking needs to list it, draw it on the
+ * plan and measure it. `getAll` rather than `get`: bays are few today, but a
+ * cycle rack is ten bays and a truncated list would silently lose some.
+ * @returns {Promise<object[]>}
+ */
+export function listParkingBaySpaces() {
+  return api.getAll('spaces', {
+    select: 'id, plan_id, floor_id, kind, type, name, label, assigned_id, polygon, colour',
+    filters: { kind: 'slot' },
+  });
+}
+
 // -- Open faults + the works schedules covering them ---------------------------
 // Read by the Compliance app's position report, which shows open corrective
 // work ADJACENT to the obligation figures and never inside them (a fault

@@ -67,6 +67,7 @@
     'planner':          () => import('$lib/apps/planner/PlannerApp.svelte'),
     'compliance':       () => import('$lib/apps/compliance/ComplianceApp.svelte'),
     'complaints':       () => import('$lib/apps/complaints/ComplaintsApp.svelte'),
+    'parking':          () => import('$lib/apps/parking/ParkingApp.svelte'),
   };
 
   let appComponents = {};   // appId -> component constructor (loaded chunks)
