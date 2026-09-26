@@ -311,3 +311,18 @@ describe('the price list', () => {
     expect(h.api.update).toHaveBeenCalledWith('parking_tariffs', 't1', { effective_to: null });
   });
 });
+
+describe('retention', () => {
+  it('asks the database what is due without changing anything', async () => {
+    h.api.rpc.mockResolvedValue({ agreements: 0 });
+    await parkingStore.retentionDue();
+    expect(h.api.rpc).toHaveBeenCalledWith('parking_apply_retention', { p_dry_run: true });
+  });
+  it('a run is logged with counts only, never the periods or anything personal', async () => {
+    h.api.rpc.mockResolvedValue({ agreements: 1, holders: 1, periods: { agreement_years: 6 } });
+    await parkingStore.runRetention();
+    expect(h.api.rpc).toHaveBeenCalledWith('parking_apply_retention', { p_dry_run: false });
+    const audit = h.logAudit.mock.calls.find(c => c[1] === 'parking_retention');
+    expect(audit[4].afterData).toEqual({ agreements: 1, holders: 1 });
+  });
+});

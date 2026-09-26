@@ -6,6 +6,7 @@
   import { downloadBayPlan } from '../utils/bayPlanImage.js';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import RetentionPanel from './RetentionPanel.svelte';
 
   const HINT = {
     bays:       'Every bay: where it is, its size and measured dimensions, its state, how it is held, and who holds it today.',
@@ -69,4 +70,5 @@
       </Button>
     </div>
   {/each}
+  <RetentionPanel />
 </div>

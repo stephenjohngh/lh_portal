@@ -564,9 +564,35 @@ function createParkingStore() {
       { ...AUDIT, beforeData: tariffRow(t) });
   }
 
+  // ── Retention (migration 226, decision D8) ───────────────────────────────
+  // The rule and its periods live in the database function; it runs every
+  // night on its own. These let an admin see what is due and run it now.
+
+  /** What would be removed today, and the periods. Changes nothing. */
+  async function retentionDue() {
+    return api.rpc('parking_apply_retention', { p_dry_run: true });
+  }
+
+  /** The last few runs, newest first. Counts only; never what was removed. */
+  async function retentionRuns(limit = 5) {
+    return api.get('parking_retention_runs', { orderBy: 'ran_at', ascending: false, limit });
+  }
+
+  /** Remove what is due now, then re-read everything it may have touched. */
+  async function runRetention() {
+    requireUserId();
+    const counts = await api.rpc('parking_apply_retention', { p_dry_run: false });
+    await load();
+    // Counts only: the audit log must not name what was removed.
+    const { periods, ...removed } = counts ?? {};
+    logAudit('delete', 'parking_retention', null, 'Retention run', { ...AUDIT, afterData: removed });
+    return counts;
+  }
+
   return {
     subscribe, load, saveBay,
     addTariff, deleteTariff,
+    retentionDue, retentionRuns, runRetention,
     saveHolder,
     createAgreement, updateAgreement, setStatus, deleteDraft,
     serveNotice, withdrawNotice,
