@@ -9,6 +9,8 @@
   import {
     STATUS_LABEL, BASIS_LABEL, HOLDER_TYPE_LABEL, VAT_TREATMENTS, FEE_PERIODS,
     canTransition, validateVehicle, todayISO,
+    noticeEndDate, DEVICE_TYPES, DEVICE_LABEL, outstandingDevices, depositRefundProblem,
+    EVENT_LABEL, eventSummary, basesForTenure,
   } from '../utils/agreementModel.js';
   import { fmtDate } from '$lib/utils/dates.js';
   import Button        from '$lib/components/common/Button.svelte';
@@ -32,6 +34,13 @@
   $: pastVehicles = vehicles.filter(v => v.to_date);
   $: isRecord = agreement?.basis === 'demise_record' || agreement?.basis === 'lease_right_record';
   $: vatLabel = VAT_TREATMENTS.find(v => v.value === agreement?.vat_treatment)?.label ?? '—';
+  $: devices = s.devices.filter(d => d.agreement_id === agreement?.id);
+  $: devicesOut = outstandingDevices(agreement?.id, s.devices);
+  $: refundProblem = agreement ? depositRefundProblem(agreement, s.devices) : null;
+  $: live = agreement && ['draft', 'active', 'notice_given'].includes(agreement.status);
+  // Bays this licence could move to: licensable, in use, not this one.
+  $: moveTargets = s.bays.filter(b => b.bay_id !== agreement?.bay_id && b.in_service !== false
+    && basesForTenure(b.tenure).some(x => x.value === agreement?.basis));
 
   let error = '';
   let busy = false;
@@ -48,7 +57,10 @@
   let editing = false;
   let draft = {};
   let shownFor = null;
-  $: if (agreement?.id !== shownFor) { shownFor = agreement?.id; editing = false; ending = null; error = ''; }
+  $: if (agreement?.id !== shownFor) {
+    shownFor = agreement?.id; editing = false; ending = null; noticing = false; moving = false; error = '';
+    refreshTimeline();
+  }
   function startEdit() {
     draft = { ...agreement, ends_on: agreement.ends_on ?? '', notice_days: agreement.notice_days ?? '',
       fee_amount: agreement.fee_amount ?? '', deposit_amount: agreement.deposit_amount ?? '',
@@ -58,9 +70,44 @@
 
   let newVehicle = { registration: '', make: '', model: '', colour: '', is_ev: false };
 
+  // Serving notice: the date, who served it, and the end it produces.
+  let noticing = false;
+  let notice = { served_on: '', served_by: 'holder', ends_on: '' };
+  function askNotice() {
+    const served = todayISO();
+    notice = { served_on: served, served_by: 'holder', ends_on: noticeEndDate(agreement, served) ?? '' };
+    noticing = true; error = '';
+  }
+  // Recompute the end date when the service date changes, unless there is no
+  // notice period to count from.
+  function servedChanged() {
+    const end = noticeEndDate(agreement, notice.served_on);
+    if (end) notice = { ...notice, ends_on: end };
+  }
+
+  let newDevice = { device_type: 'fob', serial: '' };
+
+  let moving = false;
+  let move = { space_id: '', on: '' };
+  function askMove() { move = { space_id: '', on: todayISO() }; moving = true; error = ''; }
+
+  // The timeline is read from the database, which writes it; refreshed after
+  // each change made here.
+  let timeline = [];
+  let timelineFor = null;
+  async function refreshTimeline() {
+    const a = agreement?.id;
+    if (!a) { timeline = []; return; }
+    timelineFor = a;
+    try {
+      const events = await parkingStore.loadEvents(a);
+      if (timelineFor === a) timeline = events;
+    } catch { /* the panel still works without it */ }
+  }
+
   async function run(fn) {
     busy = true; error = '';
-    try { await fn(); }
+    try { await fn(); refreshTimeline(); }
     catch (/** @type {any} */ err) { error = err.message; }
     finally { busy = false; }
   }
@@ -77,6 +124,15 @@
     return run(async () => { await parkingStore.addVehicle(a.id, newVehicle);
       newVehicle = { registration: '', make: '', model: '', colour: '', is_ev: false }; }); };
   const endVehicle = (vid) => run(() => parkingStore.endVehicle(vid));
+  const saveNotice = () => { const a = id(); const n = notice;
+    return run(async () => { await parkingStore.serveNotice(a, n); noticing = false; }); };
+  const issueDevice = () => { const a = id(); const d = newDevice;
+    return run(async () => { await parkingStore.issueDevice(a, d); newDevice = { device_type: d.device_type, serial: '' }; }); };
+  const returnDevice = (did) => run(() => parkingStore.returnDevice(did));
+  const refund = () => { const a = id(); return run(() => parkingStore.refundDeposit(a)); };
+  const saveMove = () => { const a = id(); const m = move;
+    return run(async () => { const newId = await parkingStore.moveToBay(a, m.space_id, m.on);
+      moving = false; dispatch('moved', newId); }); };
   const deleteDraft = () => { const a = id();
     return run(async () => { await parkingStore.deleteDraft(a); confirmDelete = false; dispatch('close'); }); };
 
@@ -120,7 +176,14 @@
         <dt class="text-slate-500">Fee</dt>
         <dd class="text-slate-200">{money(agreement.fee_amount)}{agreement.fee_period ? ' per ' + agreement.fee_period : ''}
           <span class="text-slate-500"> · VAT: {vatLabel}</span></dd>
-        {#if agreement.deposit_amount != null}<dt class="text-slate-500">Deposit</dt><dd class="text-slate-200">{money(agreement.deposit_amount)}</dd>{/if}
+        {#if agreement.deposit_amount != null}<dt class="text-slate-500">Deposit</dt>
+          <dd class="text-slate-200">{money(agreement.deposit_amount)}
+            {#if agreement.deposit_refunded_on}<span class="text-slate-500"> · refunded {fmtDate(agreement.deposit_refunded_on)}</span>{/if}</dd>{/if}
+      {/if}
+      {#if agreement.status === 'notice_given'}
+        <dt class="text-slate-500">Notice</dt>
+        <dd class="text-amber-200">Served by the {agreement.notice_served_by} on {fmtDate(agreement.notice_served_on)};
+          ends {fmtDate(agreement.ends_on)}</dd>
       {/if}
       {#if agreement.ended_reason}<dt class="text-slate-500">Ended</dt><dd class="text-slate-300">{agreement.ended_reason}</dd>{/if}
       {#if agreement.notes}<dt class="text-slate-500">Notes</dt><dd class="text-slate-300 whitespace-pre-wrap">{agreement.notes}</dd>{/if}
@@ -141,6 +204,12 @@
         {#if canTransition(agreement.status, 'terminated')}
           <Button size="small" variant="danger" disabled={busy} on:click={() => askEnd('terminated')}>Terminate</Button>
         {/if}
+        {#if agreement.status === 'active'}
+          <Button size="small" variant="secondary" disabled={busy} on:click={askNotice}>Serve notice</Button>
+          {#if agreement.basis === 'licence' || agreement.basis === 'adjustment'}
+            <Button size="small" variant="secondary" disabled={busy} on:click={askMove}>Move to another bay</Button>
+          {/if}
+        {/if}
         {#if agreement.status !== 'ended' && agreement.status !== 'terminated' && !editing}
           <Button size="small" variant="secondary" disabled={busy} on:click={startEdit}>Edit terms</Button>
         {/if}
@@ -148,7 +217,45 @@
           <Button size="small" variant="danger" disabled={busy} on:click={() => confirmDelete = true}>Delete draft</Button>
         {/if}
       </div>
-      <p class="text-[11px] text-slate-500">Serving notice arrives in the next phase; for now end the agreement on the date it ends.</p>
+      {#if agreement.status === 'notice_given' && agreement.ends_on && agreement.ends_on <= todayISO()}
+        <p class="text-xs text-amber-300">The notice has run out. End the agreement to free the bay.</p>
+      {/if}
+
+      {#if noticing}
+        <div class="rounded-lg border border-slate-600 p-3 space-y-2">
+          <p class="text-sm text-slate-200">Serve notice on {agreement.reference}</p>
+          <div class="grid grid-cols-2 gap-3">
+            <FormInput label="Served on" type="date" bind:value={notice.served_on} on:change={servedChanged} />
+            <FormSelect label="Served by" bind:value={notice.served_by} placeholder=""
+              options={[{ value: 'holder', label: 'The holder' }, { value: 'licensor', label: 'Us (the licensor)' }]} />
+          </div>
+          <FormInput label="Ends on" type="date" bind:value={notice.ends_on}
+            helpText={agreement.notice_days != null
+              ? `${agreement.notice_days} days' notice from the date served, or sooner if the agreement already ends sooner.`
+              : 'This agreement has no notice period, so enter the end date.'} />
+          <div class="flex gap-2">
+            <Button size="small" variant="primary" disabled={busy} on:click={saveNotice}>Serve notice</Button>
+            <Button size="small" variant="secondary" on:click={() => noticing = false}>Cancel</Button>
+          </div>
+        </div>
+      {/if}
+
+      {#if moving}
+        <div class="rounded-lg border border-slate-600 p-3 space-y-2">
+          <p class="text-sm text-slate-200">Move {agreement.reference} to another bay</p>
+          <FormSelect label="To bay" bind:value={move.space_id} placeholder="-- Choose --"
+            options={moveTargets.map(b => ({ value: b.space_id, label: `${b.ref}${b.size ? ' · ' + b.size : ''}${b.current ? ' (held)' : ''}` }))} />
+          <FormInput label="From" type="date" bind:value={move.on} />
+          <p class="text-[11px] text-slate-500">
+            This agreement ends the day before; a new one starts on the new bay with the same holder and terms,
+            and the vehicles and devices go across. All of it happens together, or none of it does.
+          </p>
+          <div class="flex gap-2">
+            <Button size="small" variant="primary" disabled={busy} on:click={saveMove}>Move</Button>
+            <Button size="small" variant="secondary" on:click={() => moving = false}>Cancel</Button>
+          </div>
+        </div>
+      {/if}
 
       {#if ending}
         <div class="rounded-lg border border-slate-600 p-3 space-y-2">
@@ -225,6 +332,53 @@
           <div class="pb-1"><Button size="small" variant="secondary" disabled={busy} on:click={addVehicle}>Add</Button></div>
         </div>
       {/if}
+    </div>
+    <!-- Access devices -->
+    <div class="border-t border-slate-700 pt-3 space-y-2" data-testid="agreement-devices">
+      <p class="text-sm font-semibold text-slate-200">Access devices</p>
+      {#if devicesOut.length && (agreement.status === 'ended' || agreement.status === 'terminated')}
+        <p class="text-xs text-red-300">⚠ {devicesOut.length} still out after the agreement ended. It still opens the gate.</p>
+      {/if}
+      {#each devices as d (d.id)}
+        <div class="flex items-center justify-between text-sm">
+          <span class={d.returned_on ? 'text-slate-500' : 'text-slate-200'}>
+            {DEVICE_LABEL[d.device_type]} <span class="font-mono">{d.serial}</span>
+            <span class="text-xs text-slate-500"> · issued {fmtDate(d.issued_on)}{d.returned_on ? ' · returned ' + fmtDate(d.returned_on) : ''}</span>
+          </span>
+          {#if canEdit && !d.returned_on}
+            <button class="text-xs text-slate-400 hover:text-white" disabled={busy} on:click={() => returnDevice(d.id)}>Returned</button>
+          {/if}
+        </div>
+      {:else}
+        <p class="text-xs text-slate-500 italic">None issued.</p>
+      {/each}
+      {#if canEdit && live}
+        <div class="grid grid-cols-[8rem_1fr_auto] gap-2 items-end">
+          <FormSelect label="Issue" bind:value={newDevice.device_type} options={DEVICE_TYPES} placeholder="" />
+          <FormInput label="Serial / number" bind:value={newDevice.serial} />
+          <div class="pb-1"><Button size="small" variant="secondary" disabled={busy} on:click={issueDevice}>Issue</Button></div>
+        </div>
+      {/if}
+      {#if canEdit && agreement.deposit_amount && !agreement.deposit_refunded_on}
+        <div class="flex items-center gap-3">
+          <Button size="small" variant="secondary" disabled={busy || !!refundProblem} on:click={refund}>Deposit refunded</Button>
+          {#if refundProblem}<span class="text-xs text-slate-500">{refundProblem}</span>{/if}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Timeline: written by the database, never edited -->
+    <div class="border-t border-slate-700 pt-3" data-testid="agreement-timeline">
+      <p class="text-sm font-semibold text-slate-200 mb-2">Timeline</p>
+      {#each timeline as e (e.id)}
+        <div class="text-xs py-1 border-b border-slate-800 last:border-0">
+          <span class="text-slate-500">{fmtDate(e.created_at)}</span>
+          <span class="text-slate-200 ml-1">{EVENT_LABEL[e.event_type] ?? e.event_type}</span>
+          {#if eventSummary(e)}<span class="text-slate-400"> · {eventSummary(e)}</span>{/if}
+        </div>
+      {:else}
+        <p class="text-xs text-slate-500 italic">Nothing recorded yet.</p>
+      {/each}
     </div>
   </div>
 

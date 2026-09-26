@@ -6,7 +6,7 @@ import { get } from 'svelte/store';
 const h = vi.hoisted(() => ({
   api: {
     get: vi.fn(), getAll: vi.fn(), upsert: vi.fn(),
-    create: vi.fn(), update: vi.fn(), delete: vi.fn(),
+    create: vi.fn(), update: vi.fn(), delete: vi.fn(), rpc: vi.fn(),
   },
   listParkingBaySpaces: vi.fn(),
   logAudit: vi.fn(),
@@ -28,7 +28,8 @@ const holder = { id: 'h1', holder_type: 'leaseholder', display_name: 'Alice Exam
 let tables;
 beforeEach(() => {
   vi.clearAllMocks();
-  tables = { parking_bays: [], floors, plans: [], parking_holders: [holder], parking_agreements: [], parking_vehicles: [] };
+  tables = { parking_bays: [], floors, plans: [], parking_holders: [holder], parking_agreements: [],
+    parking_vehicles: [], parking_access_devices: [], parking_events: [] };
   h.listParkingBaySpaces.mockResolvedValue(spaces);
   h.api.get.mockImplementation(async (t) => tables[t] ?? []);
   h.api.getAll.mockImplementation(async (t) => tables[t] ?? []);
@@ -126,5 +127,88 @@ describe('the audit log never carries personal details', () => {
     expect(h.logAudit).toHaveBeenCalledWith('view', 'parking_vehicle', null, 'registration lookup',
       expect.objectContaining({ afterData: { query: 'AB12', results: 1 } }));
     expect(JSON.stringify(h.logAudit.mock.calls)).not.toContain('Alice');
+  });
+});
+
+// ── Phase 2 ────────────────────────────────────────────────────────────────
+
+const activeAg = { id: 'a1', reference: 'PA-0001', bay_id: 'b1', holder_id: 'h1', basis: 'licence',
+  status: 'active', starts_on: '2026-01-01', ends_on: null, notice_days: 28, deposit_amount: 25 };
+
+describe('notice', () => {
+  it('serving notice keeps the old end date so withdrawing it restores the agreement exactly', async () => {
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_agreements = [activeAg];
+    await parkingStore.load();
+
+    await parkingStore.serveNotice('a1', { served_on: '2026-10-01', served_by: 'holder', ends_on: '2026-10-29' });
+    expect(h.api.update).toHaveBeenLastCalledWith('parking_agreements', 'a1', expect.objectContaining({
+      status: 'notice_given', notice_served_on: '2026-10-01', ends_on: '2026-10-29', ends_on_before_notice: null,
+    }), true);
+
+    // The mock returns only the patch, so give the state back what the row now holds.
+    tables.parking_agreements = [{ ...activeAg, status: 'notice_given', ends_on: '2026-10-29', ends_on_before_notice: null }];
+    await parkingStore.load();
+    await parkingStore.setStatus('a1', 'active');        // routed to withdrawNotice
+    expect(h.api.update).toHaveBeenLastCalledWith('parking_agreements', 'a1', expect.objectContaining({
+      status: 'active', ends_on: null, notice_served_on: null,
+    }), true);
+  });
+
+  it('will not move to notice without its date and who served it', async () => {
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_agreements = [activeAg];
+    await parkingStore.load();
+    await expect(parkingStore.setStatus('a1', 'notice_given')).rejects.toThrow(/Serve notice/);
+  });
+});
+
+describe('devices and the deposit', () => {
+  it('refuses to refund a deposit while a device is out, and a serial already out', async () => {
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_agreements = [activeAg];
+    tables.parking_access_devices = [{ id: 'd1', agreement_id: 'a1', device_type: 'fob', serial: 'F-1', issued_on: '2026-01-01', returned_on: null }];
+    await parkingStore.load();
+    await expect(parkingStore.refundDeposit('a1')).rejects.toThrow(/not been returned/);
+    await expect(parkingStore.issueDevice('a1', { device_type: 'fob', serial: 'f-1' })).rejects.toThrow(/still out/);
+    expect(h.api.update).not.toHaveBeenCalled();
+    expect(h.api.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('moving to another bay', () => {
+  it('creates the new bay row if needed, then does the move in ONE database call', async () => {
+    const spaces2 = [...spaces, { id: 's23', kind: 'slot', floor_id: 'L', plan_id: 'p', type: 'Car', assigned_id: '23', polygon: [] }];
+    h.listParkingBaySpaces.mockResolvedValue(spaces2);
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_agreements = [activeAg];
+    await parkingStore.load();
+    h.api.upsert.mockResolvedValue({ id: 'b2', space_id: 's23', tenure: 'licensable', in_service: true });
+    h.api.rpc.mockResolvedValue('a2');
+
+    await parkingStore.moveToBay('a1', 's23', '2026-10-01');
+    expect(h.api.rpc).toHaveBeenCalledWith('parking_move_to_bay', { p_agreement: 'a1', p_new_bay: 'b2', p_on: '2026-10-01' });
+    // No step of the move is done piecemeal from the browser.
+    expect(h.api.update).not.toHaveBeenCalled();
+    expect(h.api.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('the timeline', () => {
+  it("shows the agreement's entries and the bay's own, in time order, and never writes one", async () => {
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_agreements = [activeAg];
+    await parkingStore.load();
+    h.api.get.mockImplementation(async (t, opts) => {
+      if (t !== 'parking_events') return tables[t] ?? [];
+      return opts.filters.agreement_id
+        ? [{ id: 'e1', agreement_id: 'a1', event_type: 'activated', created_at: '2026-01-01T09:00:00Z' }]
+        : [{ id: 'e1', agreement_id: 'a1', event_type: 'activated', created_at: '2026-01-01T09:00:00Z' },
+           { id: 'e0', agreement_id: null, event_type: 'bay_out_of_use', created_at: '2025-12-01T09:00:00Z' }];
+    });
+    const events = await parkingStore.loadEvents('a1');
+    expect(events.map(e => e.id)).toEqual(['e0', 'e1']);
+    const writes = [...h.api.create.mock.calls, ...h.api.update.mock.calls].map(c => c[0]);
+    expect(writes).not.toContain('parking_events');
   });
 });

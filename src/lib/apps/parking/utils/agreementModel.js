@@ -237,3 +237,149 @@ export function findByRegistration(q, { vehicles, agreements, holders, bays }) {
     })
     .sort((a, b) => Number(b.current) - Number(a.current) || a.vehicle.registration.localeCompare(b.vehicle.registration));
 }
+
+// ── Notice (P2) ────────────────────────────────────────────────────────────
+
+/** Add days to a YYYY-MM-DD date, in UTC so no clock change moves it. */
+export function addDaysISO(iso, days) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + Number(days));
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The end date notice produces: served date plus the notice period, unless
+ * the agreement already ends sooner. Null when there is no notice period to
+ * count from — then the person must say when it ends.
+ */
+export function noticeEndDate(agreement, servedOn) {
+  if (!servedOn || agreement?.notice_days == null) return null;
+  const byNotice = addDaysISO(servedOn, agreement.notice_days);
+  return agreement.ends_on && agreement.ends_on < byNotice ? agreement.ends_on : byNotice;
+}
+
+/** The problem with serving notice, or null. Mirrors migration 223. */
+export function validateNotice(agreement, { served_on, served_by, ends_on }) {
+  if (agreement?.status !== 'active') return 'Notice can only be served on an active agreement.';
+  if (!served_on) return 'Enter the date notice was served.';
+  if (served_by !== 'licensor' && served_by !== 'holder') return 'Say who served notice.';
+  if (!ends_on) return 'Enter the date the agreement ends under the notice.';
+  if (served_on < agreement.starts_on) return 'Notice cannot be served before the agreement started.';
+  if (ends_on < served_on) return 'The agreement cannot end before notice was served.';
+  return null;
+}
+
+// ── Access devices (P2) ────────────────────────────────────────────────────
+
+export const DEVICE_TYPES = [
+  { value: 'fob',    label: 'Fob' },
+  { value: 'remote', label: 'Gate remote' },
+  { value: 'card',   label: 'Card' },
+  { value: 'key',    label: 'Key' },
+];
+export const DEVICE_LABEL = Object.fromEntries(DEVICE_TYPES.map(d => [d.value, d.label]));
+
+const serialKey = (type, serial) => `${type}|${String(serial ?? '').trim().toUpperCase()}`;
+
+/**
+ * The problem with issuing a device, or null. ⛔ The same serial cannot be
+ * out twice: an unreturned device still opens the gate. Mirrors the
+ * live-serial index in migration 223, and names who holds it.
+ */
+export function validateDevice(dev, devices = [], agreements = []) {
+  if (!DEVICE_TYPES.some(t => t.value === dev.device_type)) return 'Choose the kind of device.';
+  if (!String(dev.serial ?? '').trim()) return 'Enter its serial or number.';
+  const key = serialKey(dev.device_type, dev.serial);
+  const out = devices.find(d => !d.returned_on && serialKey(d.device_type, d.serial) === key);
+  if (out) {
+    const ref = agreements.find(a => a.id === out.agreement_id)?.reference ?? 'another agreement';
+    return `That ${DEVICE_LABEL[dev.device_type].toLowerCase()} is still out, on ${ref}. Record it returned first.`;
+  }
+  return null;
+}
+
+/** Devices on an agreement that have not come back. */
+export function outstandingDevices(agreementId, devices = []) {
+  return devices.filter(d => d.agreement_id === agreementId && !d.returned_on);
+}
+
+/**
+ * Whether the deposit can be marked refunded, and if not, why. ⛔ Not while a
+ * device it secures is still out — mirrors the trigger.
+ */
+export function depositRefundProblem(agreement, devices = []) {
+  if (!agreement?.deposit_amount) return 'There is no deposit on this agreement.';
+  if (agreement.deposit_refunded_on) return 'The deposit has already been refunded.';
+  const out = outstandingDevices(agreement.id, devices);
+  if (out.length) return `${out.length} device${out.length === 1 ? ' has' : 's have'} not been returned.`;
+  return null;
+}
+
+/**
+ * Ended or terminated agreements with a device still out — a security issue,
+ * not only a lost deposit, because the device still opens the gate.
+ */
+export function unreturnedAfterEnd(agreements = [], devices = []) {
+  return agreements.filter(a =>
+    (a.status === 'ended' || a.status === 'terminated') && outstandingDevices(a.id, devices).length > 0);
+}
+
+// ── Moving to another bay (P2) ─────────────────────────────────────────────
+
+/**
+ * The problem with moving an agreement to another bay on a date, or null.
+ * Mirrors parking_move_to_bay in migration 223, which does the move in one
+ * transaction: the old agreement ends the day before, a new one starts on the
+ * new bay with the same holder and terms, and vehicles and devices go across.
+ */
+export function validateMove(agreement, newBay, onDate, holder, agreements = []) {
+  if (agreement?.status !== 'active') return 'Only an active agreement can be moved to another bay.';
+  if (agreement.basis !== 'licence' && agreement.basis !== 'adjustment') {
+    return 'Only a licence can be moved; a demised bay belongs to its flat.';
+  }
+  if (!newBay) return 'Choose the bay to move to.';
+  if (newBay.bay_id && newBay.bay_id === agreement.bay_id) return 'That is the same bay.';
+  if (!onDate) return 'Enter the date of the move.';
+  if (onDate <= agreement.starts_on) return 'The move must be after the agreement started.';
+  if (agreement.ends_on && onDate > agreement.ends_on) return 'The agreement ends before that date.';
+  if (newBay.in_service === false) return `${newBay.ref} is out of use.`;
+  return validateAgreement({ ...agreement, id: undefined, starts_on: onDate }, newBay, holder, agreements);
+}
+
+// ── The timeline (P2) ─────────────────────────────────────────────────────
+
+/** What each timeline entry says, in words. */
+export const EVENT_LABEL = {
+  created:          'Agreement drawn up',
+  activated:        'Activated',
+  notice_served:    'Notice served',
+  notice_withdrawn: 'Notice withdrawn',
+  ended:            'Ended',
+  terminated:       'Terminated',
+  terms_changed:    'Terms changed',
+  deposit_refunded: 'Deposit refunded',
+  vehicle_added:    'Vehicle added',
+  vehicle_removed:  'Vehicle no longer authorised',
+  device_issued:    'Device issued',
+  device_returned:  'Device returned',
+  bay_out_of_use:   'Bay out of use',
+  bay_back_in_use:  'Bay back in use',
+};
+
+/** One line of detail for a timeline entry. */
+export function eventSummary(e) {
+  const d = e.detail ?? {};
+  switch (e.event_type) {
+    case 'notice_served':    return `by the ${d.notice_served_by ?? '?'} on ${d.notice_served_on ?? '?'}, ending ${d.ends_on ?? '?'}`;
+    case 'ended':
+    case 'terminated':       return [d.ends_on && `on ${d.ends_on}`, d.ended_reason].filter(Boolean).join(' — ');
+    case 'vehicle_added':    return d.registration ?? '';
+    case 'vehicle_removed':  return `${d.registration ?? ''} from ${d.on ?? '?'}`;
+    case 'device_issued':
+    case 'device_returned':  return `${DEVICE_LABEL[d.type] ?? d.type} ${d.serial ?? ''}`;
+    case 'deposit_refunded': return d.amount != null ? `£${Number(d.amount).toFixed(2)}` : '';
+    case 'terms_changed':    return Object.entries(d).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v?.from ?? '—'} → ${v?.to ?? '—'}`).join(' · ');
+    case 'bay_out_of_use':   return [d.reason, d.until && `until ${d.until}`].filter(Boolean).join(' — ');
+    default:                 return '';
+  }
+}

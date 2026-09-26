@@ -21,6 +21,7 @@ import { mergeBays, bayFactsRow, validateBayFacts, BAY_DEFAULTS } from '../utils
 import {
   validateHolder, holderRow, validateAgreement, agreementRow, canTransition,
   normaliseReg, validateVehicle, findByRegistration, todayISO,
+  validateNotice, validateDevice, depositRefundProblem, validateMove,
 } from '../utils/agreementModel.js';
 
 const logger = getLogger('Parking');
@@ -30,7 +31,7 @@ const AUDIT = { appId: 'parking', eventCategory: 'parking' };
  * @typedef {Record<string, any>} Row
  * @typedef {{
  *   bays: Row[], floors: Row[], plans: Row[],
- *   holders: Row[], agreements: Row[], vehicles: Row[],
+ *   holders: Row[], agreements: Row[], vehicles: Row[], devices: Row[],
  *   loading: boolean, error: string|null
  * }} State
  */
@@ -43,7 +44,7 @@ function requireUserId() {
 
 function createParkingStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
-    bays: [], floors: [], plans: [], holders: [], agreements: [], vehicles: [],
+    bays: [], floors: [], plans: [], holders: [], agreements: [], vehicles: [], devices: [],
     loading: false, error: null,
   }));
   const state = () => get({ subscribe });
@@ -59,7 +60,7 @@ function createParkingStore() {
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [bs, pb, floors, plans, holders, agreements, vehicles] = await Promise.all([
+      const [bs, pb, floors, plans, holders, agreements, vehicles, devices] = await Promise.all([
         listParkingBaySpaces(),
         api.get('parking_bays'),
         api.get('floors', { orderBy: 'level_order', ascending: true }),
@@ -67,9 +68,10 @@ function createParkingStore() {
         api.getAll('parking_holders', { orderBy: 'display_name' }),
         api.getAll('parking_agreements', { orderBy: 'reference' }),
         api.getAll('parking_vehicles', { orderBy: 'registration' }),
+        api.getAll('parking_access_devices', { orderBy: 'issued_on' }),
       ]);
       spaces = bs; rows = pb;
-      update(s => ({ ...s, floors, plans, holders, agreements, vehicles, loading: false,
+      update(s => ({ ...s, floors, plans, holders, agreements, vehicles, devices, loading: false,
         bays: mergeBays(spaces, rows, floors, plans, agreements) }));
     } catch (/** @type {any} */ err) {
       logger('load failed:', err.message);
@@ -209,6 +211,9 @@ function createParkingStore() {
     if (!canTransition(current.status, to)) {
       throw new Error(`An agreement cannot go from ${current.status} to ${to}.`);
     }
+    // Notice is its own act, with a date, who served it and an end date.
+    if (to === 'notice_given') throw new Error('Serve notice with its date and who served it.');
+    if (current.status === 'notice_given' && to === 'active') return withdrawNotice(id);
     const ending = to === 'ended' || to === 'terminated';
     const endDate = ending ? (ends_on || current.ends_on || todayISO()) : current.ends_on;
     if (ending && endDate < current.starts_on) throw new Error('The end date is before the start date.');
@@ -230,6 +235,128 @@ function createParkingStore() {
     return saved;
   }
 
+  // ── Notice (P2) ─────────────────────────────────────────────────────────
+
+  /**
+   * Serve notice: the date, who served it, and the date it ends. The end date
+   * the agreement had before is kept, so withdrawing notice restores it.
+   */
+  async function serveNotice(id, { served_on, served_by, ends_on }) {
+    const current = state().agreements.find(a => a.id === id);
+    const problem = validateNotice(current, { served_on, served_by, ends_on });
+    if (problem) throw new Error(problem);
+    const userId = requireUserId();
+    const saved = await api.update('parking_agreements', id, {
+      status: 'notice_given', notice_served_on: served_on, notice_served_by: served_by,
+      ends_on_before_notice: current.ends_on ?? null, ends_on, updated_by: userId,
+    }, true);
+    update(st => ({ ...st, agreements: st.agreements.map(a => a.id === id ? saved : a) }));
+    remerge();
+    logAudit('update', 'parking_agreement', id, saved.reference,
+      { ...AUDIT, eventAction: 'notice_served', afterData: { served_on, served_by, ends_on } });
+    return saved;
+  }
+
+  /** Withdraw notice: back to active, with the end date it had before. */
+  async function withdrawNotice(id) {
+    const current = state().agreements.find(a => a.id === id);
+    if (current?.status !== 'notice_given') throw new Error('No notice has been served on this agreement.');
+    const userId = requireUserId();
+    const saved = await api.update('parking_agreements', id, {
+      status: 'active', ends_on: current.ends_on_before_notice ?? null,
+      notice_served_on: null, notice_served_by: null, ends_on_before_notice: null, updated_by: userId,
+    }, true);
+    update(st => ({ ...st, agreements: st.agreements.map(a => a.id === id ? saved : a) }));
+    remerge();
+    logAudit('update', 'parking_agreement', id, saved.reference, { ...AUDIT, eventAction: 'notice_withdrawn' });
+    return saved;
+  }
+
+  // ── Access devices (P2) ─────────────────────────────────────────────────
+
+  async function issueDevice(agreementId, dev) {
+    const s = state();
+    const agreement = s.agreements.find(a => a.id === agreementId);
+    if (!agreement) throw new Error('Agreement not found.');
+    const problem = validateDevice(dev, s.devices, s.agreements);
+    if (problem) throw new Error(problem);
+    const userId = requireUserId();
+    const saved = await api.create('parking_access_devices', {
+      agreement_id: agreementId, device_type: dev.device_type, serial: String(dev.serial).trim(),
+      issued_on: dev.issued_on || todayISO(), notes: String(dev.notes ?? '').trim() || null,
+      created_by: userId,
+    }, true);
+    update(st => ({ ...st, devices: [...st.devices, saved] }));
+    logAudit('create', 'parking_device', saved.id, agreement.reference, { ...AUDIT });
+    return saved;
+  }
+
+  async function returnDevice(id, onDate = todayISO()) {
+    const dev = state().devices.find(d => d.id === id);
+    if (!dev) throw new Error('Device not found.');
+    if (onDate < dev.issued_on) throw new Error('It cannot come back before it was issued.');
+    const saved = await api.update('parking_access_devices', id, { returned_on: onDate }, true);
+    update(st => ({ ...st, devices: st.devices.map(d => d.id === id ? saved : d) }));
+    return saved;
+  }
+
+  /** Mark the deposit refunded. ⛔ Not while a device it secures is out. */
+  async function refundDeposit(id, onDate = todayISO()) {
+    const s = state();
+    const current = s.agreements.find(a => a.id === id);
+    const problem = depositRefundProblem(current, s.devices);
+    if (problem) throw new Error(problem);
+    const userId = requireUserId();
+    const saved = await api.update('parking_agreements', id,
+      { deposit_refunded_on: onDate, updated_by: userId }, true);
+    update(st => ({ ...st, agreements: st.agreements.map(a => a.id === id ? saved : a) }));
+    return saved;
+  }
+
+  // ── Moving to another bay (P2) ──────────────────────────────────────────
+
+  /**
+   * Move an active licence to another bay from a date. Done by one database
+   * function (parking_move_to_bay) so it cannot half happen: the old
+   * agreement ends the day before, a new one starts on the new bay with the
+   * same holder and terms, and vehicles and devices are carried across.
+   */
+  async function moveToBay(id, newSpaceId, onDate) {
+    const s = state();
+    const current = s.agreements.find(a => a.id === id);
+    const newBay = s.bays.find(b => b.space_id === newSpaceId);
+    const holder = s.holders.find(h => h.id === current?.holder_id);
+    const problem = validateMove(current, newBay, onDate, holder, s.agreements);
+    if (problem) throw new Error(problem);
+
+    const bayRow = await ensureBayRow(newSpaceId);
+    const newId = await api.rpc('parking_move_to_bay',
+      { p_agreement: id, p_new_bay: bayRow.id, p_on: onDate });
+    // Several tables changed at once; read them back rather than guess.
+    await load();
+    logAudit('update', 'parking_agreement', id, current.reference,
+      { ...AUDIT, eventAction: 'moved_bay', afterData: { to_bay: newBay.ref, on: onDate, new_agreement: newId } });
+    return newId;
+  }
+
+  // ── The timeline (P2) ───────────────────────────────────────────────────
+
+  /**
+   * An agreement's timeline, plus the bay's own entries (out of use, back in
+   * use). Written by the database; read-only here.
+   */
+  async function loadEvents(agreementId) {
+    const agreement = state().agreements.find(a => a.id === agreementId);
+    const [own, bay] = await Promise.all([
+      api.get('parking_events', { filters: { agreement_id: agreementId }, orderBy: 'created_at', ascending: true }),
+      agreement
+        ? api.get('parking_events', { filters: { bay_id: agreement.bay_id }, orderBy: 'created_at', ascending: true })
+        : Promise.resolve([]),
+    ]);
+    const bayOnly = (bay ?? []).filter(e => !e.agreement_id);
+    return [...(own ?? []), ...bayOnly].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
+
   /** Delete a mistaken DRAFT. Anything that went live is ended, not deleted. */
   async function deleteDraft(id) {
     const current = state().agreements.find(a => a.id === id);
@@ -240,6 +367,7 @@ function createParkingStore() {
       ...st,
       agreements: st.agreements.filter(a => a.id !== id),
       vehicles: st.vehicles.filter(v => v.agreement_id !== id),   // cascaded in the database
+      devices: st.devices.filter(d => d.agreement_id !== id),
     }));
     remerge();
     logAudit('delete', 'parking_agreement', id, current.reference, { ...AUDIT });
@@ -297,6 +425,9 @@ function createParkingStore() {
     subscribe, load, saveBay,
     saveHolder,
     createAgreement, updateAgreement, setStatus, deleteDraft,
+    serveNotice, withdrawNotice,
+    issueDevice, returnDevice, refundDeposit,
+    moveToBay, loadEvents,
     addVehicle, endVehicle,
     lookupRegistration,
   };

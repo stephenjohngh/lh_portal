@@ -2,14 +2,14 @@
 <!-- Every agreement, live ones first. Selecting one opens its panel. -->
 <script>
   import { parkingStore } from '../stores/parkingStore.js';
-  import { STATUSES, STATUS_LABEL, BASIS_LABEL, LIVE } from '../utils/agreementModel.js';
+  import { STATUSES, STATUS_LABEL, BASIS_LABEL, LIVE, unreturnedAfterEnd } from '../utils/agreementModel.js';
   import { fmtDate } from '$lib/utils/dates.js';
   import AgreementPanel from './AgreementPanel.svelte';
 
   export let canEdit = false;
   export let selectedId = null;
 
-  let status = 'live';          // 'live' | '' (all) | a status
+  let status = 'live';          // 'live' | '' (all) | 'devices_out' | a status
   let q = '';
 
   $: s = $parkingStore;
@@ -19,8 +19,14 @@
   };
   $: bayRef = (bayId) => s.bays.find(b => b.bay_id === bayId)?.ref ?? '—';
 
+  // Ended agreements with a device still out: a security issue, because the
+  // device still opens the gate.
+  $: devicesOutIds = new Set(unreturnedAfterEnd(s.agreements, s.devices).map(a => a.id));
   $: rows = s.agreements
-    .filter(a => status === '' || (status === 'live' ? LIVE.has(a.status) : a.status === status))
+    .filter(a => status === ''
+      || (status === 'live' ? LIVE.has(a.status)
+        : status === 'devices_out' ? devicesOutIds.has(a.id)
+        : a.status === status))
     .filter(a => {
       const needle = q.trim().toLowerCase();
       return !needle || [a.reference, bayRef(a.bay_id), holderName(a.holder_id), a.unit_ref]
@@ -37,6 +43,7 @@
   <select bind:value={status} class="px-2 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded text-slate-200">
     <option value="live">Live (draft, active, notice)</option>
     <option value="">All</option>
+    <option value="devices_out">Ended, device not returned ({devicesOutIds.size})</option>
     {#each STATUSES as st}<option value={st.value}>{st.label}</option>{/each}
   </select>
 </div>
@@ -75,6 +82,7 @@
     {/if}
   </div>
   {#if selected}
-    <AgreementPanel agreement={selected} {canEdit} on:close={() => selectedId = null} on:showBay />
+    <AgreementPanel agreement={selected} {canEdit} on:close={() => selectedId = null} on:showBay
+      on:moved={(e) => selectedId = e.detail} />
   {/if}
 </div>
