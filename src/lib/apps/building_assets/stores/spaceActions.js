@@ -47,6 +47,38 @@ export function createSpaceActions(update) {
     return space;
   }
 
+  /**
+   * Create several spaces in ONE insert — all of them, or none if any row is
+   * refused. Used by "split into a row of parking bays", where half a row
+   * created would leave the rest to be drawn by hand with numbers already
+   * taken.
+   * @param {object[]} rows  the same fields createSpace takes
+   */
+  async function createSpaces(rows) {
+    const userId = requireUserId();
+    const created = await api.createMany('spaces', rows.map(data => ({
+      plan_id:     data.plan_id,
+      floor_id:    data.floor_id || null,
+      label:       data.label ?? null,
+      name:        data.name?.trim() || deriveSpaceName(data.label ?? ''),
+      type:        data.type?.trim() || null,
+      polygon:     roundPoly(data.polygon),
+      colour:      normaliseColour(data.colour),
+      show_label:  data.show_label ?? true,
+      notes:       data.notes?.trim() || null,
+      kind:        data.kind === 'slot' ? 'slot' : 'space',
+      assigned_id: data.assigned_id?.trim() || null,
+      created_by:  userId,
+      updated_by:  userId,
+    })), true);
+    update(s => ({ ...s, spaces: [...s.spaces, ...created] }));
+    logger('Created', created.length, 'spaces in one insert');
+    for (const space of created) {
+      logAudit('create', 'space', space.id, space.name, { ...AUDIT_OPTS, afterData: space });
+    }
+    return created;
+  }
+
   // Updates editable metadata fields (name, type, colour, height_m, notes).
   // Polygon is intentionally excluded — use updateSpacePolygon for geometry changes.
   async function updateSpace(id, data) {
@@ -142,7 +174,7 @@ export function createSpaceActions(update) {
   }
 
   return {
-    createSpace, updateSpace, updateSpacePolygon, deleteSpace,
+    createSpace, createSpaces, updateSpace, updateSpacePolygon, deleteSpace,
     setMemberOverride, removeMemberOverride,
     buildSpacesRegister,
   };

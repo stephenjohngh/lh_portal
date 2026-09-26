@@ -212,6 +212,21 @@ describe('spaceActions', () => {
     expect(get(store).spaces).toContainEqual(space);
   });
 
+  // The row-of-bays helper: all the bays go in ONE insert, so a failure leaves none half-made.
+  it('createSpaces inserts the whole row in one call, as Parking bays, and adds them all', async () => {
+    h.api.createMany.mockClear();
+    const made = await store.createSpaces(['1', '2', '3'].map(n => ({
+      plan_id: 'p1', floor_id: 'L', kind: 'slot', type: 'Car', assigned_id: n, label: n,
+      colour: '#22c55e', polygon: [{ x: 0.1234, y: 0.2 }],
+    })));
+    const calls = h.api.createMany.mock.calls.filter(c => c[0] === 'spaces');
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1]).toHaveLength(3);
+    expect(calls[0][1][0]).toMatchObject({ kind: 'slot', type: 'Car', assigned_id: '1', colour: '22c55e',
+      polygon: [{ x: 0.123, y: 0.2 }], created_by: 'u1', updated_by: 'u1' });
+    for (const s of made) expect(get(store).spaces).toContainEqual(s);
+  });
+
   it('deleteSpace removes it from state', async () => {
     const space = await store.createSpace({ plan_id: 'p1', name: 'R', colour: 'none', polygon: [] });
     await store.deleteSpace(space.id);

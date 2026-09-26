@@ -15,6 +15,11 @@
   import { componentsInSpace } from '../../utils/spaceMembership.js';
   import { spaceRollup } from '../../utils/spaceReport.js';
   import { typesForKind } from '../../utils/spaceTypeOptions.js';
+  import RowOfBaysModal from './RowOfBaysModal.svelte';
+
+  // "Split into a row of parking bays": offered for a four-cornered outline.
+  let splitOpen = false;
+  let splitDone = '';
   import { statusDotCls, statusCfg } from '$lib/utils/resultConstants.js';
   import { permissions } from '$lib/stores/permissions';
 
@@ -545,6 +550,14 @@
       {#if floor}
         <p class="text-xs text-slate-600">Floor: {floor.name}</p>
       {/if}
+      {#if canManage && allowShapeEdit && poly.length === 4 && !vertexEditingActive}
+        <button
+          on:click={() => { splitDone = ''; splitOpen = true; }}
+          class="mt-1 text-xs px-2 py-1 rounded bg-slate-700 text-slate-200 hover:bg-slate-600 text-left"
+          title="Draw a row once as a four-cornered outline, then cut it into numbered parking bays"
+        >▦ Split into a row of parking bays…</button>
+      {/if}
+      {#if splitDone}<p class="text-xs text-green-400">{splitDone}</p>{/if}
       <p class="text-xs text-slate-700 font-mono">id: {space.id.slice(0, 8)}…</p>
     </div>
 
@@ -596,3 +609,14 @@
   </div>
 
 </div>
+
+<RowOfBaysModal
+  show={splitOpen} {space} {floors} {planAR} {metresPerUnit}
+  on:close={() => splitOpen = false}
+  on:done={({ detail }) => {
+    splitOpen = false;
+    splitDone = `${detail.created} parking bays created.`;
+    // The outline was the space this panel shows; once it is gone, so is the panel.
+    if (detail.outlineRemoved) dispatch('deleted');
+  }}
+/>
