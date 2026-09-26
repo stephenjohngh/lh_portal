@@ -206,9 +206,17 @@ export function listSpaceTypes() {
   return api.get('space_types', { orderBy: 'presentation_order', ascending: true });
 }
 
-/** Create a type. @param {{value:string, presentation_order?:number, userId?:string|null}} data */
-export function createSpaceType({ value, presentation_order = 0, userId = null }) {
-  return api.create('space_types', { value: value.trim(), presentation_order, created_by: userId }, true);
+/**
+ * Create a type. `kind` says which kind of space may take it (migration 220):
+ * a room type for a Space, a bay size for a Parking bay ('slot').
+ * @param {{value:string, presentation_order?:number, kind?:'space'|'slot', userId?:string|null}} data
+ */
+export function createSpaceType({ value, presentation_order = 0, kind = 'space', userId = null }) {
+  const row = { value: value.trim(), presentation_order, created_by: userId };
+  // Only name the column when it says something other than its default, so a
+  // Space type can still be created against a database without migration 220.
+  if (kind === 'slot') row.kind = 'slot';
+  return api.create('space_types', row, true);
 }
 
 /** Update a type (value / presentation_order). */

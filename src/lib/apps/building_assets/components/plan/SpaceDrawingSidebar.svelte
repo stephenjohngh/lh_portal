@@ -4,10 +4,11 @@
      parent can also call finish when the user closes the polygon on the canvas. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { SPACE_TYPES, SPACE_COLOURS } from './planMeasure.js';
+  import { SPACE_COLOURS } from './planMeasure.js';
+  import { typesForKind } from '../../utils/spaceTypeOptions.js';
   import { inp } from '../../ui.js';
   import { ACCENT } from '$lib/theme.js';
-  import { deriveSpaceName } from '$lib/utils/spaceRef.js';
+  import { deriveSpaceName, KIND_LABEL } from '$lib/utils/spaceRef.js';
 
   export let vertices    = [];
   export let saving      = false;
@@ -18,11 +19,16 @@
   export let spaceType   = '';
   export let colourHex   = ACCENT;
   export let showLabel   = true;
-  export let types       = [];   // configured type values; falls back to SPACE_TYPES
+  export let spaceKind   = 'space';   // 'space' | 'slot' (a parking bay)
+  export let typeRows    = [];   // space_types rows; the list offered depends on the kind
 
   const dispatch = createEventDispatcher();
 
-  $: typeOptions = types.length ? types : SPACE_TYPES;
+  // A Parking bay takes a bay size and a Space a room type (migration 220), so
+  // switching kind drops a type that no longer fits rather than keeping one
+  // the new kind should never have.
+  $: typeOptions = typesForKind(typeRows, spaceKind);
+  $: if (spaceType && !typeOptions.includes(spaceType)) spaceType = '';
   // Report name defaults to the label stripped to alphanumerics (shown as a hint).
   $: derivedName = deriveSpaceName(spaceLabel);
   $: canFinish   = vertices.length >= 3 && spaceLabel.trim().length > 0;
@@ -32,7 +38,7 @@
 
   <div class="flex items-center justify-between mb-3">
     <div>
-      <p class="font-semibold text-white text-sm">Drawing Space</p>
+      <p class="font-semibold text-white text-sm">Drawing {spaceKind === 'slot' ? KIND_LABEL.slot : KIND_LABEL.space}</p>
       <p class="text-xs text-slate-500 mt-0.5">
         {vertices.length} {vertices.length === 1 ? 'vertex' : 'vertices'} added
       </p>
@@ -74,9 +80,18 @@
     {/if}
   </div>
 
+  <!-- Kind: decides which types are offered -->
+  <div class="flex flex-col gap-1 mb-2">
+    <p class="text-xs text-slate-400">Kind</p>
+    <select bind:value={spaceKind} class={inp}>
+      <option value="space">{KIND_LABEL.space}</option>
+      <option value="slot">{KIND_LABEL.slot}</option>
+    </select>
+  </div>
+
   <!-- Type -->
   <div class="flex flex-col gap-1 mb-2">
-    <p class="text-xs text-slate-400">Type</p>
+    <p class="text-xs text-slate-400">{spaceKind === 'slot' ? 'Bay size' : 'Type'}</p>
     <select bind:value={spaceType} class={inp}>
       <option value="">— select —</option>
       {#each typeOptions as st}

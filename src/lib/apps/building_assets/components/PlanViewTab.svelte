@@ -84,6 +84,7 @@
   let drawingSpaceLabel = '';   // multi-line plan-view display label
   let drawingSpaceName  = '';   // single-line report name (derived when blank)
   let drawingSpaceType = '';
+  let drawingSpaceKind = 'space';   // 'space' | 'slot' (a parking bay)
   let drawingColourHex = ACCENT;
   let drawingShowLabel = true;
 
@@ -250,6 +251,7 @@
     drawingSpaceLabel = '';
     drawingSpaceName = '';
     drawingSpaceType = '';
+    drawingSpaceKind = 'space';
     drawingColourHex = ACCENT;
     drawingShowLabel = true;
     if (sidebarMode === 'space-drawing') sidebarMode = 'none';
@@ -401,6 +403,7 @@
         label:      drawingSpaceLabel,        // multi-line plan display
         name:       drawingSpaceName,         // store derives from label when blank
         type: drawingSpaceType || null,
+        kind:       drawingSpaceKind,
         colour:     drawingColourHex === 'none' ? 'none' : drawingColourHex.replace('#', ''),
         polygon:    $drawingVertices,
         show_label: drawingShowLabel,
@@ -636,7 +639,8 @@
       {:else if sidebarMode === 'space-drawing'}
         <SpaceDrawingSidebar
           vertices={$drawingVertices} {saving}
-          types={(store.spaceTypes ?? []).map(u => u.value)}
+          typeRows={store.spaceTypes ?? []}
+          bind:spaceKind={drawingSpaceKind}
           bind:spaceLabel={drawingSpaceLabel}
           bind:spaceName={drawingSpaceName}
           bind:spaceType={drawingSpaceType}

@@ -11,8 +11,10 @@
   import { getLogger } from '$lib/utils/logger';
   import Button        from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+  import { KIND_LABEL } from '$lib/utils/spaceRef.js';
+  import { typeKind } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
 
-  export let types = [];   // [{ id, value, presentation_order }]
+  export let types = [];   // [{ id, value, presentation_order, kind }]
 
   const dispatch = createEventDispatcher();
   const logger   = getLogger('SpaceTypesPanel');
@@ -23,11 +25,13 @@
     ...u,
     _value: u.value,
     _order: String(u.presentation_order ?? 0),
+    _kind:  typeKind(u),
     _dirty: false, _saving: false, _error: null,
   }));
 
   let newValue = '';
   let newOrder = '';
+  let newKind  = 'space';   // which kind of space may take the new type
   let adding   = false;
   let errorMsg = '';
 
@@ -49,7 +53,7 @@
     adding = true; errorMsg = '';
     try {
       const order = newOrder.trim() === '' ? nextOrder() : (parseInt(newOrder, 10) || 0);
-      await createSpaceType({ value, presentation_order: order, userId: $auth.user?.id ?? null });
+      await createSpaceType({ value, presentation_order: order, kind: newKind, userId: $auth.user?.id ?? null });
       newValue = ''; newOrder = '';
       dispatch('saved');
     } catch (/** @type {any} */ e) {
@@ -70,7 +74,11 @@
     }
     rows = rows.map(r => r.id === row.id ? { ...r, _saving: true, _error: null } : r);
     try {
-      await updateSpaceType(row.id, { value, presentation_order: order });
+      // Only send kind when it changed, so editing a type still works against a
+      // database without migration 220.
+      const fields = { value, presentation_order: order };
+      if (row._kind !== typeKind(row)) fields.kind = row._kind;
+      await updateSpaceType(row.id, fields);
       dispatch('saved');
     } catch (/** @type {any} */ e) {
       logger('❌ save type:', e.message);
@@ -100,9 +108,11 @@
   <div class="mb-3">
     <h3 class="text-sm font-semibold text-slate-200">Space Types</h3>
     <p class="text-xs text-slate-500 mt-0.5">
-      The type categories offered when drawing/editing a space and used to filter
-      the Spaces register. Shown in order. Deleting a type does not change spaces
-      that already use it.
+      The types offered when drawing or editing a space, and used to filter the
+      Spaces register. Each belongs to a kind: a <strong>Space</strong> is offered
+      room types, a <strong>Parking bay</strong> is offered bay sizes, which the
+      Parking app will price on. Shown in order. Deleting a type does not change
+      spaces that already use it.
     </p>
   </div>
 
@@ -116,6 +126,13 @@
       <label class="text-xs text-slate-400" for="new-type">New type</label>
       <input id="new-type" type="text" bind:value={newValue} placeholder="e.g. Protected escape route"
         class="{inp} border-slate-600 w-56" on:keydown={(e) => e.key === 'Enter' && addType()} />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-xs text-slate-400" for="new-kind">For</label>
+      <select id="new-kind" bind:value={newKind} class="{inp} border-slate-600">
+        <option value="space">{KIND_LABEL.space}</option>
+        <option value="slot">{KIND_LABEL.slot}</option>
+      </select>
     </div>
     <div class="flex flex-col gap-1">
       <label class="text-xs text-slate-400" for="new-order">Order</label>
@@ -134,6 +151,7 @@
         <thead>
           <tr class="border-b border-slate-700">
             <th class="text-left text-xs font-medium text-slate-400 pb-2 pr-4">Type</th>
+            <th class="text-left text-xs font-medium text-slate-400 pb-2 pr-4 w-36">For</th>
             <th class="text-left text-xs font-medium text-slate-400 pb-2 pr-4 w-24">Order</th>
             <th class="pb-2 w-32"></th>
           </tr>
@@ -145,6 +163,12 @@
                 <input type="text" bind:value={row._value} on:input={() => markDirty(row)}
                   class="{inp} w-56 {row._error ? 'border-red-500' : 'border-slate-600'}" />
                 {#if row._error}<p class="text-xs text-red-400 mt-0.5">{row._error}</p>{/if}
+              </td>
+              <td class="py-2 pr-4">
+                <select bind:value={row._kind} on:change={() => markDirty(row)} class="{inp} border-slate-600">
+                  <option value="space">{KIND_LABEL.space}</option>
+                  <option value="slot">{KIND_LABEL.slot}</option>
+                </select>
               </td>
               <td class="py-2 pr-4">
                 <input type="text" inputmode="numeric" bind:value={row._order} on:input={() => markDirty(row)}

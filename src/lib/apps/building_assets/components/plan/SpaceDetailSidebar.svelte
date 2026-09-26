@@ -7,13 +7,14 @@
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore }          from '../../stores/buildingAssetsStore.js';
   import { inp } from '../../ui.js';
-  import { SPACE_TYPES, SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
+  import { SPACE_COLOURS, measurePerimeter, measureArea, measureVolume, measureSides, fmt1 }
     from './planMeasure.js';
   import { ACCENT } from '$lib/theme.js';
   import { buildSpaceRef, KIND_LABEL, deriveSpaceName } from '$lib/utils/spaceRef.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { componentsInSpace } from '../../utils/spaceMembership.js';
   import { spaceRollup } from '../../utils/spaceReport.js';
+  import { typesForKind } from '../../utils/spaceTypeOptions.js';
   import { statusDotCls, statusCfg } from '$lib/utils/resultConstants.js';
   import { permissions } from '$lib/stores/permissions';
 
@@ -76,12 +77,13 @@
   // Colour comparison handles 'none' (transparent) correctly.
   $: derivedName = deriveSpaceName(editLabel);
 
-  // Configured type list (admin-managed); fall back to the hardcoded set when
-  // the table is empty/absent. Keep the current value selectable even if it was
-  // since removed from the list.
-  $: typeList    = $buildingAssetsStore.spaceTypes?.length
-    ? $buildingAssetsStore.spaceTypes.map(u => u.value)
-    : SPACE_TYPES;
+  // Types offered for the chosen kind: room types for a Space, bay sizes for a
+  // Parking bay (migration 220). A value the space already has stays selectable
+  // even if it has since left the list, but only while the kind is unchanged;
+  // switching kind drops a type that belongs to the other kind.
+  $: typeList    = typesForKind($buildingAssetsStore.spaceTypes, editKind);
+  $: kindChanged = !!space && editKind !== (space.kind ?? 'space');
+  $: if (kindChanged && editType && !typeList.includes(editType)) editType = '';
   $: typeOptions = editType && !typeList.includes(editType) ? [editType, ...typeList] : typeList;
 
   $: dirty = !!space && (
@@ -298,7 +300,7 @@
 
       <!-- Type (category) -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs text-slate-400" for="sp-type">Type</label>
+        <label class="text-xs text-slate-400" for="sp-type">{editKind === 'slot' ? 'Bay size' : 'Type'}</label>
         <select id="sp-type" bind:value={editType} class={inp}>
           <option value="">— none —</option>
           {#each typeOptions as st}
