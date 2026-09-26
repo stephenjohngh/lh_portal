@@ -2,11 +2,12 @@
 <!-- Parking — the basement bays and, from P1, who holds them.
      Design: docs/requirements/unbuilt/Parking_App_Design.md.
 
-     P0 (this): the bay register. Every Parking bay drawn in Building Assets,
-     on its plan, coloured by state, with the facts the drawing cannot hold:
-     how the bay is held, whether it is in use, accessible, tandem, residents
-     only, headroom. NO PERSONAL DATA yet — holders, agreements, vehicles and
-     the waiting list are P1–P3.
+     P0: the bay register. Every Parking bay drawn in Building Assets, on its
+     plan, coloured by state, with the facts the drawing cannot hold.
+     P1: holders, agreements and vehicles, and "whose car is this?". ⭐ The
+     first place in the portal that holds people who are not staff — a
+     bounded exception to the resident-data rule (design §3). Access devices,
+     notice, swaps and the timeline are P2; the waiting list P3.
 
      Granted per user on Admin → Users. Admins bypass grants. Every parking
      table's RLS is gated on the grant too, so the gate below is the screen's
@@ -24,6 +25,32 @@
   import BayMap   from './components/BayMap.svelte';
   import BayList  from './components/BayList.svelte';
   import BayPanel from './components/BayPanel.svelte';
+  import AgreementModal     from './components/AgreementModal.svelte';
+  import AgreementsTab      from './components/AgreementsTab.svelte';
+  import HoldersTab         from './components/HoldersTab.svelte';
+  import RegistrationSearch from './components/RegistrationSearch.svelte';
+
+  const TABS = [
+    { key: 'bays',       label: 'Bays' },
+    { key: 'agreements', label: 'Agreements' },
+    { key: 'holders',    label: 'Holders' },
+  ];
+  let tab = 'bays';
+  let selectedAgreementId = null;
+  let allocateSpaceId = null;      // the bay the new-agreement form is open for
+
+  function showAgreement(e) { selectedAgreementId = e.detail; tab = 'agreements'; }
+  function showBay(e) {
+    const bay = state.bays.find(b => b.space_id === e.detail);
+    if (bay) { floorId = bay.floor_id; selectedSpaceId = bay.space_id; }
+    tab = 'bays';
+  }
+  function allocated(e) {
+    allocateSpaceId = null;
+    selectedAgreementId = e.detail.id;
+    tab = 'agreements';
+  }
+  $: allocateBay = state.bays.find(b => b.space_id === allocateSpaceId) ?? null;
 
   $: state = $parkingStore;
   $: isAdmin = $permissions.isAdmin;
@@ -73,9 +100,12 @@
 </script>
 
 <div class="space-y-4">
-  <div>
-    <h2 class="heading-page">Parking</h2>
-    <p class="text-muted">The basement bays: where they are, what size they are, and whether each can be allocated.</p>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h2 class="heading-page">Parking</h2>
+      <p class="text-muted">The basement bays, who holds each one, and the vehicles allowed to park.</p>
+    </div>
+    {#if hasAccess && loaded}<RegistrationSearch on:showAgreement={showAgreement} />{/if}
   </div>
 
   {#if !hasAccess && !permissionsChecked}
@@ -87,7 +117,22 @@
   {:else}
     {#if state.error}<ErrorDisplay message={state.error} />{/if}
 
-    {#if state.bays.length === 0 && loaded}
+    <div class="flex space-x-2 border-b border-slate-600">
+      {#each TABS as t (t.key)}
+        <button
+          class="px-4 py-2 transition-colors {tab === t.key
+            ? 'border-b-2 border-purple-500 text-white font-semibold'
+            : 'text-gray-400 hover:text-white'}"
+          on:click={() => tab = t.key}
+        >{t.label}</button>
+      {/each}
+    </div>
+
+    {#if tab === 'agreements'}
+      <AgreementsTab {canEdit} bind:selectedId={selectedAgreementId} on:showBay={showBay} />
+    {:else if tab === 'holders'}
+      <HoldersTab {canEdit} on:showAgreement={showAgreement} />
+    {:else if state.bays.length === 0 && loaded}
       <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-sm text-slate-300">
         No parking bays are drawn yet. Draw each bay in <strong>Building Assets → Plan View</strong>
         as a <strong>Parking bay</strong>, give it a number and a size, and it appears here.
@@ -141,9 +186,13 @@
           <BayList bays={shown} {selectedSpaceId} on:select={select} />
         </div>
         {#if selected}
-          <BayPanel bay={selected} {canEdit} on:close={() => selectedSpaceId = null} />
+          <BayPanel bay={selected} {canEdit} on:close={() => selectedSpaceId = null}
+            on:allocate={(e) => allocateSpaceId = e.detail} on:showAgreement={showAgreement} />
         {/if}
       </div>
     {/if}
   {/if}
 </div>
+
+<AgreementModal show={!!allocateBay} bay={allocateBay}
+  on:close={() => allocateSpaceId = null} on:saved={allocated} />

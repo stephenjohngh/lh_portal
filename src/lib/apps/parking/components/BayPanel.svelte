@@ -14,6 +14,7 @@
   import Checkbox     from '$lib/components/common/Checkbox.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import { fmtDate } from '$lib/utils/dates.js';
+  import { basesForTenure, LIVE, STATUS_LABEL, BASIS_LABEL } from '../utils/agreementModel.js';
 
   export let bay = null;
   export let canEdit = false;
@@ -61,6 +62,18 @@
   }
 
   const m = n => (n == null ? '—' : n.toFixed(2));
+
+  // Who holds the bay: live agreements (a draft holds it too), newest first,
+  // and how many ended ones sit behind them.
+  $: agreements = bay?.bay_id ? $parkingStore.agreements.filter(a => a.bay_id === bay.bay_id) : [];
+  $: live = agreements.filter(a => LIVE.has(a.status)).sort((a, b) => b.starts_on.localeCompare(a.starts_on));
+  $: pastCount = agreements.length - live.length;
+  $: holderName = (id) => {
+    const h = $parkingStore.holders.find(x => x.id === id);
+    return h ? (h.company_name ? `${h.company_name} — ${h.display_name}` : h.display_name) : '—';
+  };
+  $: allocatable = bay && basesForTenure(bay.tenure).length > 0;
+  $: isRecordBay = bay && (bay.tenure === 'demised' || bay.tenure === 'lease_right');
 </script>
 
 {#if bay}
@@ -92,6 +105,31 @@
       Size, number, name and shape are set in Building Assets → Plan View, where the bay is drawn.
       {#if !bay.number}<span class="text-amber-400">This bay has no number yet, so its reference ends in an id fragment.</span>{/if}
     </p>
+
+    <!-- Who holds it -->
+    <div class="border-t border-slate-700 pt-3 space-y-2" data-testid="bay-holders">
+      <p class="text-sm font-semibold text-slate-200">Held by</p>
+      {#each live as a (a.id)}
+        <button class="block w-full text-left rounded-lg bg-slate-900/50 hover:bg-slate-900 p-2 text-sm"
+          on:click={() => dispatch('showAgreement', a.id)}>
+          <span class="text-slate-200">{holderName(a.holder_id)}</span>
+          <span class="block text-xs text-slate-400">
+            <span class="font-mono">{a.reference}</span> · {BASIS_LABEL[a.basis]} · {STATUS_LABEL[a.status]}
+            · {fmtDate(a.starts_on)} → {a.ends_on ? fmtDate(a.ends_on) : 'rolling'}
+          </span>
+        </button>
+      {:else}
+        <p class="text-xs text-slate-500">Nobody.</p>
+      {/each}
+      {#if pastCount}<p class="text-[11px] text-slate-500">{pastCount} earlier agreement{pastCount === 1 ? '' : 's'} on the Agreements tab.</p>{/if}
+      {#if canEdit && allocatable}
+        <Button size="small" variant="primary" on:click={() => dispatch('allocate', bay.space_id)}>
+          {isRecordBay ? 'Record the holder' : live.length ? 'Allocate from another date' : 'Allocate'}
+        </Button>
+      {:else if !allocatable}
+        <p class="text-[11px] text-slate-500">Not for allocation.</p>
+      {/if}
+    </div>
 
     <!-- The parking facts: editable here -->
     {#if canEdit}

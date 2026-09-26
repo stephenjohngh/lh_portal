@@ -14,6 +14,7 @@ import { buildSpaceRef } from '$lib/utils/spaceRef.js';
 import { computeMetresPerUnit, measureArea, measureSides }
   from '$lib/apps/building_assets/components/plan/planMeasure.js';
 import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
+import { currentAgreement, todayISO } from './agreementModel.js';
 
 /** How a bay is held. Only `licensable` may ever be allocated (P1). */
 export const TENURES = [
@@ -29,11 +30,11 @@ export const UNIT_TENURES = new Set(['demised', 'lease_right']);
 
 /**
  * The state a bay is shown in, on the map and in the list. Ordered: the first
- * that applies wins. P1 adds `allocated` and `notice` between out of use and
- * free; nothing else here changes when it does.
+ * that applies wins.
  */
 export const BAY_STATES = [
   { value: 'out_of_use',         label: 'Out of use',         colour: '#ef4444' },
+  { value: 'allocated',          label: 'Allocated',          colour: '#3b82f6' },
   { value: 'demised',            label: 'Belongs to a flat',  colour: '#8b5cf6' },
   { value: 'not_for_allocation', label: 'Not for allocation', colour: '#64748b' },
   { value: 'free',               label: 'Free',               colour: '#22c55e' },
@@ -61,6 +62,9 @@ export const BAY_DEFAULTS = Object.freeze({
  */
 export function bayState(bay) {
   if (bay.in_service === false) return 'out_of_use';
+  // Allocated means licensed to somebody today. A demised bay whose holder is
+  // recorded is still a bay that belongs to a flat, not one we allocated.
+  if (bay.current && (bay.current.basis === 'licence' || bay.current.basis === 'adjustment')) return 'allocated';
   if (UNIT_TENURES.has(bay.tenure)) return 'demised';
   if (bay.tenure === 'not_for_allocation') return 'not_for_allocation';
   return 'free';
@@ -102,9 +106,11 @@ export function measureBay(space, plan) {
  * @param {object[]} rows    parking_bays rows
  * @param {object[]} floors
  * @param {object[]} plans
+ * @param {object[]} [agreements]  to find the agreement holding each bay today
+ * @param {string}   [today]       YYYY-MM-DD
  * @returns {object[]} merged bays, in floor then bay-number order
  */
-export function mergeBays(spaces, rows, floors = [], plans = []) {
+export function mergeBays(spaces, rows, floors = [], plans = [], agreements = [], today = todayISO()) {
   const bySpace = new Map((rows ?? []).map(r => [r.space_id, r]));
   const floorOrder = new Map((floors ?? []).map((f, i) => [f.id, f.level_order ?? i]));
   const planById = new Map((plans ?? []).map(p => [p.id, p]));
@@ -123,6 +129,7 @@ export function mergeBays(spaces, rows, floors = [], plans = []) {
       floor_id:  space.floor_id,
       plan_id:   space.plan_id,
       measured:  measureBay(space, planById.get(space.plan_id)),
+      current:   row ? currentAgreement(row.id, agreements, today) : null,
     };
     bay.state = bayState(bay);
     return bay;
