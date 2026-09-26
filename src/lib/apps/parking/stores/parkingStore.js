@@ -23,6 +23,7 @@ import {
   normaliseReg, validateVehicle, findByRegistration, todayISO,
   validateNotice, validateDevice, depositRefundProblem, validateMove,
 } from '../utils/agreementModel.js';
+import { validateApplication, validateOffer, offerBlocks } from '../utils/waitingListModel.js';
 
 const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -31,7 +32,7 @@ const AUDIT = { appId: 'parking', eventCategory: 'parking' };
  * @typedef {Record<string, any>} Row
  * @typedef {{
  *   bays: Row[], floors: Row[], plans: Row[],
- *   holders: Row[], agreements: Row[], vehicles: Row[], devices: Row[],
+ *   holders: Row[], agreements: Row[], vehicles: Row[], devices: Row[], applications: Row[],
  *   loading: boolean, error: string|null
  * }} State
  */
@@ -44,7 +45,7 @@ function requireUserId() {
 
 function createParkingStore() {
   const { subscribe, update } = writable(/** @type {State} */ ({
-    bays: [], floors: [], plans: [], holders: [], agreements: [], vehicles: [], devices: [],
+    bays: [], floors: [], plans: [], holders: [], agreements: [], vehicles: [], devices: [], applications: [],
     loading: false, error: null,
   }));
   const state = () => get({ subscribe });
@@ -54,13 +55,13 @@ function createParkingStore() {
   let rows = [];
 
   function remerge() {
-    update(s => ({ ...s, bays: mergeBays(spaces, rows, s.floors, s.plans, s.agreements) }));
+    update(s => ({ ...s, bays: mergeBays(spaces, rows, s.floors, s.plans, s.agreements, todayISO(), s.applications) }));
   }
 
   async function load() {
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const [bs, pb, floors, plans, holders, agreements, vehicles, devices] = await Promise.all([
+      const [bs, pb, floors, plans, holders, agreements, vehicles, devices, applications] = await Promise.all([
         listParkingBaySpaces(),
         api.get('parking_bays'),
         api.get('floors', { orderBy: 'level_order', ascending: true }),
@@ -69,10 +70,11 @@ function createParkingStore() {
         api.getAll('parking_agreements', { orderBy: 'reference' }),
         api.getAll('parking_vehicles', { orderBy: 'registration' }),
         api.getAll('parking_access_devices', { orderBy: 'issued_on' }),
+        api.getAll('parking_applications', { orderBy: 'joined_on' }),
       ]);
       spaces = bs; rows = pb;
-      update(s => ({ ...s, floors, plans, holders, agreements, vehicles, devices, loading: false,
-        bays: mergeBays(spaces, rows, floors, plans, agreements) }));
+      update(s => ({ ...s, floors, plans, holders, agreements, vehicles, devices, applications, loading: false,
+        bays: mergeBays(spaces, rows, floors, plans, agreements, todayISO(), applications) }));
     } catch (/** @type {any} */ err) {
       logger('load failed:', err.message);
       update(s => ({ ...s, loading: false, error: err.message }));
@@ -156,7 +158,8 @@ function createParkingStore() {
     const bay = s.bays.find(b => b.space_id === spaceId);
     const holder = s.holders.find(h => h.id === holderId);
     if (!bay) throw new Error('That bay is not in the register.');
-    const problem = validateAgreement(terms, bay, holder, s.agreements);
+    const problem = validateAgreement(terms, bay, holder, s.agreements)
+      ?? offerBlocks(bay, holderId, s.applications);
     if (problem) throw new Error(problem);
     const userId = requireUserId();
 
@@ -357,6 +360,94 @@ function createParkingStore() {
     return [...(own ?? []), ...bayOnly].sort((a, b) => a.created_at.localeCompare(b.created_at));
   }
 
+  // ── The waiting list (P3) ───────────────────────────────────────────────
+
+  function patchApplication(saved) {
+    update(st => ({ ...st, applications: st.applications.map(a => a.id === saved.id ? saved : a) }));
+    remerge();
+  }
+
+  /** Put a holder on the waiting list for a bay size, or any size. */
+  async function addApplication(holderId, { wanted_size, joined_on, notes }) {
+    const s = state();
+    const app = { holder_id: holderId, wanted_size, joined_on };
+    const problem = validateApplication(app, s.applications);
+    if (problem) throw new Error(problem);
+    const userId = requireUserId();
+    const saved = await api.create('parking_applications', {
+      ...app, notes: String(notes ?? '').trim() || null, created_by: userId, updated_by: userId,
+    }, true);
+    update(st => ({ ...st, applications: [...st.applications, saved] }));
+    logAudit('create', 'parking_application', saved.id, 'waiting list',
+      { ...AUDIT, afterData: { wanted_size, joined_on } });
+    return saved;
+  }
+
+  /**
+   * Offer a bay to a waiting application. The bay is held for them until the
+   * offer is accepted, declined or lapses; one open offer per bay.
+   */
+  async function makeOffer(appId, spaceId, { made_on, expires_on }) {
+    const s = state();
+    const app = s.applications.find(a => a.id === appId);
+    const bay = s.bays.find(b => b.space_id === spaceId);
+    const problem = validateOffer(app, bay, s.agreements, s.applications, { made_on, expires_on });
+    if (problem) throw new Error(problem);
+    const userId = requireUserId();
+    const bayRow = await ensureBayRow(spaceId);
+    const saved = await api.update('parking_applications', appId, {
+      status: 'offered', offered_bay_id: bayRow.id, offer_made_on: made_on, offer_expires_on: expires_on,
+      last_offer_outcome: null, updated_by: userId,
+    }, true);
+    patchApplication(saved);
+    logAudit('update', 'parking_application', appId, 'waiting list',
+      { ...AUDIT, eventAction: 'offer_made', afterData: { bay: bay.ref, expires_on } });
+    return saved;
+  }
+
+  /**
+   * The offer did not become an agreement: declined, or lapsed. First come,
+   * first served: the application goes back to the queue KEEPING ITS PLACE.
+   */
+  async function returnToQueue(appId, outcome) {
+    if (outcome !== 'declined' && outcome !== 'lapsed') throw new Error('Say whether the offer was declined or lapsed.');
+    const app = state().applications.find(a => a.id === appId);
+    if (app?.status !== 'offered') throw new Error('There is no open offer on that application.');
+    const userId = requireUserId();
+    const saved = await api.update('parking_applications', appId,
+      { status: 'waiting', last_offer_outcome: outcome, updated_by: userId }, true);
+    patchApplication(saved);
+    logAudit('update', 'parking_application', appId, 'waiting list', { ...AUDIT, eventAction: `offer_${outcome}` });
+    return saved;
+  }
+
+  /** The offer was accepted and the agreement made. */
+  async function markAllocated(appId, agreementId) {
+    const userId = requireUserId();
+    const saved = await api.update('parking_applications', appId,
+      { status: 'allocated', agreement_id: agreementId, updated_by: userId }, true);
+    patchApplication(saved);
+    logAudit('update', 'parking_application', appId, 'waiting list', { ...AUDIT, eventAction: 'offer_accepted' });
+    return saved;
+  }
+
+  async function withdrawApplication(appId) {
+    const app = state().applications.find(a => a.id === appId);
+    if (!app || (app.status !== 'waiting' && app.status !== 'offered')) {
+      throw new Error('Only an open application can be withdrawn.');
+    }
+    const userId = requireUserId();
+    const saved = await api.update('parking_applications', appId, { status: 'withdrawn', updated_by: userId }, true);
+    patchApplication(saved);
+    logAudit('update', 'parking_application', appId, 'waiting list', { ...AUDIT, eventAction: 'withdrawn' });
+    return saved;
+  }
+
+  /** An application's timeline, written by the database. */
+  async function loadApplicationEvents(appId) {
+    return api.get('parking_events', { filters: { application_id: appId }, orderBy: 'created_at', ascending: true });
+  }
+
   /** Delete a mistaken DRAFT. Anything that went live is ended, not deleted. */
   async function deleteDraft(id) {
     const current = state().agreements.find(a => a.id === id);
@@ -428,6 +519,7 @@ function createParkingStore() {
     serveNotice, withdrawNotice,
     issueDevice, returnDevice, refundDeposit,
     moveToBay, loadEvents,
+    addApplication, makeOffer, returnToQueue, markAllocated, withdrawApplication, loadApplicationEvents,
     addVehicle, endVehicle,
     lookupRegistration,
   };

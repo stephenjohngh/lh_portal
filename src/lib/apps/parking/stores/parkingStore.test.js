@@ -212,3 +212,46 @@ describe('the timeline', () => {
     expect(writes).not.toContain('parking_events');
   });
 });
+
+// ── Phase 3 ────────────────────────────────────────────────────────────────
+
+describe('the waiting list', () => {
+  const waiting = { id: 'w1', holder_id: 'h1', wanted_size: 'Car', joined_on: '2026-01-01', status: 'waiting' };
+
+  it('an offered bay cannot be allocated to anyone but the person offered it', async () => {
+    tables.parking_holders = [holder, { id: 'h2', holder_type: 'leaseholder', display_name: 'Other', email: 'o@example.com' }];
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_applications = [{ ...waiting, status: 'offered', offered_bay_id: 'b1', offer_expires_on: '2026-10-10' }];
+    await parkingStore.load();
+    expect(get(parkingStore).bays[0].state).toBe('offered');
+    await expect(parkingStore.createAgreement('s22', 'h2', { basis: 'licence', starts_on: '2026-10-01' }))
+      .rejects.toThrow(/under offer/);
+    expect(h.api.create).not.toHaveBeenCalled();
+  });
+
+  it('makes an offer on the bay row, and a declined offer goes back to the queue with its reason', async () => {
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_applications = [waiting];
+    await parkingStore.load();
+    await parkingStore.makeOffer('w1', 's22', { made_on: '2026-09-26', expires_on: '2026-10-10' });
+    expect(h.api.update).toHaveBeenLastCalledWith('parking_applications', 'w1', expect.objectContaining({
+      status: 'offered', offered_bay_id: 'b1', offer_expires_on: '2026-10-10' }), true);
+
+    tables.parking_applications = [{ ...waiting, status: 'offered', offered_bay_id: 'b1', offer_expires_on: '2026-10-10' }];
+    await parkingStore.load();
+    await parkingStore.returnToQueue('w1', 'declined');
+    const patch = h.api.update.mock.calls.at(-1)[2];
+    expect(patch).toMatchObject({ status: 'waiting', last_offer_outcome: 'declined' });
+    // It never sends a joined date: the place in the queue is not the app's to move.
+    expect(patch).not.toHaveProperty('joined_on');
+  });
+
+  it('refuses an offer of the wrong size before writing anything', async () => {
+    tables.parking_bays = [{ id: 'b1', space_id: 's22', tenure: 'licensable' }];
+    tables.parking_applications = [{ ...waiting, wanted_size: 'Bicycle' }];
+    await parkingStore.load();
+    await expect(parkingStore.makeOffer('w1', 's22', { made_on: '2026-09-26', expires_on: '2026-10-10' }))
+      .rejects.toThrow(/they want Bicycle/);
+    expect(h.api.update).not.toHaveBeenCalled();
+  });
+});

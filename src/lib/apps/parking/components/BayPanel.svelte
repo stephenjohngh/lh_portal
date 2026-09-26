@@ -15,6 +15,7 @@
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import { fmtDate } from '$lib/utils/dates.js';
   import { basesForTenure, LIVE, STATUS_LABEL, BASIS_LABEL } from '../utils/agreementModel.js';
+  import { nextFor } from '../utils/waitingListModel.js';
 
   export let bay = null;
   export let canEdit = false;
@@ -73,6 +74,8 @@
     return h ? (h.company_name ? `${h.company_name} — ${h.display_name}` : h.display_name) : '—';
   };
   $: allocatable = bay && basesForTenure(bay.tenure).length > 0;
+  // First come, first served: who is next for a free bay of this size.
+  $: next = bay && bay.state === 'free' ? nextFor(bay, $parkingStore.applications) : null;
   $: isRecordBay = bay && (bay.tenure === 'demised' || bay.tenure === 'lease_right');
 </script>
 
@@ -122,6 +125,13 @@
         <p class="text-xs text-slate-500">Nobody.</p>
       {/each}
       {#if pastCount}<p class="text-[11px] text-slate-500">{pastCount} earlier agreement{pastCount === 1 ? '' : 's'} on the Agreements tab.</p>{/if}
+      {#if bay.offer}
+        <p class="text-xs text-amber-300">Offered to {holderName(bay.offer.holder_id)} until {fmtDate(bay.offer.offer_expires_on)}.
+          Only they can be allocated it while the offer stands.</p>
+      {:else if next}
+        <p class="text-xs text-slate-400">Next on the waiting list: <span class="text-slate-200">{holderName(next.holder_id)}</span>
+          (joined {fmtDate(next.joined_on)}). Offer it from the Waiting list tab.</p>
+      {/if}
       {#if canEdit && allocatable}
         <Button size="small" variant="primary" on:click={() => dispatch('allocate', bay.space_id)}>
           {isRecordBay ? 'Record the holder' : live.length ? 'Allocate from another date' : 'Allocate'}

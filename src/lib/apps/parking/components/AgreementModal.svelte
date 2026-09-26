@@ -20,6 +20,8 @@
 
   export let show = false;
   export let bay = null;
+  // Set when accepting a waiting-list offer: the person the bay was offered to.
+  export let presetHolderId = null;
 
   const dispatch = createEventDispatcher();
 
@@ -41,8 +43,8 @@
   $: if (key && key !== openedFor) {
     openedFor = key;
     const b = basesForTenure(bay.tenure);
-    holderMode = $parkingStore.holders.length ? 'existing' : 'new';
-    holderId = ''; newHolder = { holder_type: '' };
+    holderMode = presetHolderId || $parkingStore.holders.length ? 'existing' : 'new';
+    holderId = presetHolderId ?? ''; newHolder = { holder_type: '' };
     terms = {
       basis: b[0]?.value ?? '', unit_ref: bay.unit_ref ?? '',
       starts_on: todayISO(), ends_on: '', notice_days: '28',

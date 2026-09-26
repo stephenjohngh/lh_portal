@@ -29,15 +29,30 @@
   import AgreementsTab      from './components/AgreementsTab.svelte';
   import HoldersTab         from './components/HoldersTab.svelte';
   import RegistrationSearch from './components/RegistrationSearch.svelte';
+  import WaitingListTab     from './components/WaitingListTab.svelte';
 
   const TABS = [
     { key: 'bays',       label: 'Bays' },
     { key: 'agreements', label: 'Agreements' },
     { key: 'holders',    label: 'Holders' },
+    { key: 'waiting',    label: 'Waiting list' },
   ];
   let tab = 'bays';
   let selectedAgreementId = null;
   let allocateSpaceId = null;      // the bay the new-agreement form is open for
+  let presetHolderId = null;       // set when accepting a waiting-list offer
+  let acceptingApplicationId = null;
+
+  // Accepting an offer opens the agreement form for that bay and person; the
+  // application is marked allocated only once the agreement is saved.
+  function acceptOffer(e) {
+    presetHolderId = e.detail.holderId;
+    acceptingApplicationId = e.detail.applicationId;
+    allocateSpaceId = e.detail.spaceId;
+  }
+  function closeAllocate() {
+    allocateSpaceId = null; presetHolderId = null; acceptingApplicationId = null;
+  }
 
   function showAgreement(e) { selectedAgreementId = e.detail; tab = 'agreements'; }
   function showBay(e) {
@@ -45,9 +60,15 @@
     if (bay) { floorId = bay.floor_id; selectedSpaceId = bay.space_id; }
     tab = 'bays';
   }
-  function allocated(e) {
-    allocateSpaceId = null;
-    selectedAgreementId = e.detail.id;
+  async function allocated(e) {
+    const appId = acceptingApplicationId;     // captured before the await
+    const agreementId = e.detail.id;
+    closeAllocate();
+    if (appId) {
+      try { await parkingStore.markAllocated(appId, agreementId); }
+      catch { /* shown from state.error; the agreement itself is saved */ }
+    }
+    selectedAgreementId = agreementId;
     tab = 'agreements';
   }
   $: allocateBay = state.bays.find(b => b.space_id === allocateSpaceId) ?? null;
@@ -132,6 +153,8 @@
       <AgreementsTab {canEdit} bind:selectedId={selectedAgreementId} on:showBay={showBay} />
     {:else if tab === 'holders'}
       <HoldersTab {canEdit} on:showAgreement={showAgreement} />
+    {:else if tab === 'waiting'}
+      <WaitingListTab {canEdit} on:accept={acceptOffer} />
     {:else if state.bays.length === 0 && loaded}
       <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-sm text-slate-300">
         No parking bays are drawn yet. Draw each bay in <strong>Building Assets → Plan View</strong>
@@ -194,5 +217,5 @@
   {/if}
 </div>
 
-<AgreementModal show={!!allocateBay} bay={allocateBay}
-  on:close={() => allocateSpaceId = null} on:saved={allocated} />
+<AgreementModal show={!!allocateBay} bay={allocateBay} {presetHolderId}
+  on:close={closeAllocate} on:saved={allocated} />
