@@ -7,7 +7,7 @@
   import { parkingStore } from '../stores/parkingStore.js';
   import {
     basesForTenure, validateAgreement, validateHolder, normaliseReg,
-    FEE_PERIODS, VAT_TREATMENTS, todayISO, HOLDER_TYPE_LABEL,
+    FEE_PERIODS, VAT_TREATMENTS, DEFAULT_VAT, todayISO, HOLDER_TYPE_LABEL,
   } from '../utils/agreementModel.js';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
@@ -49,7 +49,7 @@
     terms = {
       basis: b[0]?.value ?? '', unit_ref: bay.unit_ref ?? '',
       starts_on: todayISO(), ends_on: '', notice_days: '28',
-      fee_amount: '', fee_period: 'month', vat_treatment: 'not_decided',
+      fee_amount: '', fee_period: 'month', vat_treatment: DEFAULT_VAT,
       deposit_amount: '', max_vehicles: '1', notes: '',
     };
     vehicles = [{ registration: '', make: '', model: '', colour: '', is_ev: false }];
@@ -176,7 +176,7 @@
               <FormInput label="Deposit (£)" bind:value={terms.deposit_amount} />
             </div>
             <FormSelect label="VAT" bind:value={terms.vat_treatment} options={VAT_TREATMENTS} placeholder=""
-              helpText="Set from the accountant's advice, never guessed." />
+              helpText="No VAT is charged at present. Change it only on the accountant's advice." />
           {/if}
           <FormSelect label="Vehicles allowed" bind:value={terms.max_vehicles} options={['1', '2', '3', '4']} placeholder="" />
           <FormTextarea label="Notes" bind:value={terms.notes} rows={2} />

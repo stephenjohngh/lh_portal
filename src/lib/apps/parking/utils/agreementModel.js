@@ -103,7 +103,12 @@ export function canTransition(from, to) {
 }
 
 export const FEE_PERIODS = ['week', 'month', 'quarter', 'year'];
+// D4 (user, 2026-09-27): no VAT is charged on parking at present, so that is
+// the default for every new agreement and price (migration 228). Change it
+// only on the accountant's advice.
+export const DEFAULT_VAT = 'not_charged';
 export const VAT_TREATMENTS = [
+  { value: 'not_charged',   label: 'No VAT charged' },
   { value: 'not_decided',   label: 'Not decided (ask the accountant)' },
   { value: 'standard',      label: 'Standard-rated' },
   { value: 'exempt',        label: 'Exempt' },
@@ -166,7 +171,7 @@ export function agreementRow(a) {
     notice_days:    num(a.notice_days),
     fee_amount:     num(a.fee_amount),
     fee_period:     a.fee_period || null,
-    vat_treatment:  a.vat_treatment || 'not_decided',
+    vat_treatment:  a.vat_treatment || DEFAULT_VAT,
     deposit_amount: num(a.deposit_amount),
     max_vehicles:   Number(a.max_vehicles) || 1,
     notes:          String(a.notes ?? '').trim() || null,

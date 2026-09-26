@@ -7,7 +7,7 @@
   import { parkingStore } from '../stores/parkingStore.js';
   import { permissions } from '$lib/stores/permissions';
   import { priceList, priceLabel, validateTariff, HOLDER_CLASSES, HOLDER_CLASS_LABEL } from '../utils/tariffModel.js';
-  import { FEE_PERIODS, VAT_TREATMENTS, todayISO } from '../utils/agreementModel.js';
+  import { FEE_PERIODS, VAT_TREATMENTS, DEFAULT_VAT, todayISO } from '../utils/agreementModel.js';
   import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
   import { fmtDate } from '$lib/utils/dates';
   import Modal          from '$lib/components/common/Modal.svelte';
@@ -35,7 +35,7 @@
 
   function openForm(size = '') {
     form = { bay_size: size, holder_class: 'all', amount: '', period: 'month',
-      vat_treatment: 'not_decided', deposit_amount: '', effective_from: today, notes: '' };
+      vat_treatment: DEFAULT_VAT, deposit_amount: '', effective_from: today, notes: '' };
     formError = '';
     showForm = true;
   }
@@ -126,7 +126,7 @@
     </div>
     <div class="grid grid-cols-2 gap-3">
       <FormSelect label="VAT" bind:value={form.vat_treatment} options={VAT_TREATMENTS} placeholder=""
-        helpText="From the accountant's advice, never guessed." />
+        helpText="No VAT is charged at present. Change it only on the accountant's advice." />
       <FormInput label="Starts" type="date" bind:value={form.effective_from}
         helpText="The current price for this size ends the day before." />
     </div>

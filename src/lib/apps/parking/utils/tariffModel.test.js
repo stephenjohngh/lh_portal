@@ -106,3 +106,15 @@ describe('priceList', () => {
     expect(list.find(r => r.size === 'Motorcycle').current).toEqual([]);
   });
 });
+
+describe('VAT (decision D4, 2026-09-27)', () => {
+  // No VAT is charged on parking at present, so a price or agreement that says
+  // nothing about VAT records that, not "ask the accountant".
+  it('defaults a new price and a new agreement to "No VAT charged"', async () => {
+    const { agreementRow, VAT_TREATMENTS, DEFAULT_VAT } = await import('./agreementModel.js');
+    expect(DEFAULT_VAT).toBe('not_charged');
+    expect(VAT_TREATMENTS[0]).toEqual({ value: 'not_charged', label: 'No VAT charged' });
+    expect(tariffRow({ bay_size: 'Car', amount: '5', period: 'month', effective_from: '2026-10-01' }).vat_treatment).toBe('not_charged');
+    expect(agreementRow({ basis: 'licence', starts_on: '2026-10-01' }).vat_treatment).toBe('not_charged');
+  });
+});

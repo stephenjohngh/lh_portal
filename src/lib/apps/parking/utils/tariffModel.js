@@ -10,7 +10,7 @@
 // ⚠ No accessibility dimension: an accessible bay costs what its size costs.
 
 import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
-import { FEE_PERIODS, VAT_TREATMENTS, addDaysISO } from './agreementModel.js';
+import { FEE_PERIODS, VAT_TREATMENTS, DEFAULT_VAT, addDaysISO } from './agreementModel.js';
 
 export const HOLDER_CLASSES = [
   { value: 'all',      label: 'Everyone' },
@@ -84,7 +84,7 @@ export function validateTariff(t, existing = []) {
   if (amount == null || !Number.isFinite(amount) || amount < 0) return 'Enter the price, in pounds.';
   if (Math.round(amount * 100) !== amount * 100) return 'A price has at most two decimal places.';
   if (!FEE_PERIODS.includes(t.period)) return 'Choose what the price is per.';
-  if (!VAT_TREATMENTS.some(v => v.value === (t.vat_treatment || 'not_decided'))) return 'Choose the VAT treatment.';
+  if (!VAT_TREATMENTS.some(v => v.value === (t.vat_treatment || DEFAULT_VAT))) return 'Choose the VAT treatment.';
   const dep = money(t.deposit_amount);
   if (dep != null && (!Number.isFinite(dep) || dep < 0)) return 'The deposit must be a sum of money, or blank.';
   if (!isISO(t.effective_from)) return 'Enter the date the price starts.';
@@ -119,7 +119,7 @@ export function tariffRow(t) {
     holder_class: t.holder_class || 'all',
     amount: money(t.amount),
     period: t.period,
-    vat_treatment: t.vat_treatment || 'not_decided',
+    vat_treatment: t.vat_treatment || DEFAULT_VAT,
     deposit_amount: money(t.deposit_amount),
     effective_from: t.effective_from,
     notes: String(t.notes ?? '').trim() || null,
