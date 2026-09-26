@@ -30,12 +30,14 @@
   import HoldersTab         from './components/HoldersTab.svelte';
   import RegistrationSearch from './components/RegistrationSearch.svelte';
   import WaitingListTab     from './components/WaitingListTab.svelte';
+  import ReportsTab         from './components/ReportsTab.svelte';
 
   const TABS = [
     { key: 'bays',       label: 'Bays' },
     { key: 'agreements', label: 'Agreements' },
     { key: 'holders',    label: 'Holders' },
     { key: 'waiting',    label: 'Waiting list' },
+    { key: 'reports',    label: 'Reports' },
   ];
   let tab = 'bays';
   let selectedAgreementId = null;
@@ -155,6 +157,8 @@
       <HoldersTab {canEdit} on:showAgreement={showAgreement} />
     {:else if tab === 'waiting'}
       <WaitingListTab {canEdit} on:accept={acceptOffer} />
+    {:else if tab === 'reports'}
+      <ReportsTab />
     {:else if state.bays.length === 0 && loaded}
       <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-sm text-slate-300">
         No parking bays are drawn yet. Draw each bay in <strong>Building Assets → Plan View</strong>

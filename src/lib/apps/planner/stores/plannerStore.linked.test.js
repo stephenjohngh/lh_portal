@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 
-const h = vi.hoisted(() => ({ jobsFail: false, obligations: [], morFail: false }));
+const h = vi.hoisted(() => ({ jobsFail: false, obligations: [], morFail: false, parkingFail: false, parkingCalls: 0 }));
 
 vi.mock('$lib/utils/api', () => ({ api: {} }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: vi.fn() }));
@@ -33,10 +33,38 @@ vi.mock('$lib/apps/mor/public.js', () => ({
   }),
 }));
 
+vi.mock('$lib/apps/parking/public.js', () => ({
+  listParkingDueDates: vi.fn(async () => {
+    h.parkingCalls += 1;
+    if (h.parkingFail) throw new Error('permission denied');
+    return [{ id: 'end:a1', kind: 'ending', date: '2026-10-31', title: 'Agreement ends: PA-0001 · L/PK/22',
+      detail: null, overdue: false, needsArranging: false }];
+  }),
+}));
+
 import { plannerStore } from './plannerStore.js';
 
 describe('plannerStore.loadLinked', () => {
-  beforeEach(() => { h.jobsFail = false; h.obligations = []; h.morFail = false; });
+  beforeEach(() => { h.jobsFail = false; h.obligations = []; h.morFail = false; h.parkingFail = false; h.parkingCalls = 0; });
+
+  // Parking, 2026-09-26. A source not granted is never fetched, and one that
+  // fails is named without emptying the rest.
+  it('reads Parking only for someone with it, and shows its rows', async () => {
+    await plannerStore.loadLinked('2026-01-01', '2026-12-31', new Set(['meeting']));
+    expect(h.parkingCalls).toBe(0);
+    await plannerStore.loadLinked('2026-01-01', '2026-12-31', new Set(['parking']));
+    expect(h.parkingCalls).toBe(1);
+    const row = get(plannerStore).linked.find(i => i.source === 'parking');
+    expect(row.series.title).toBe('Agreement ends: PA-0001 · L/PK/22');
+  });
+
+  it('names Parking when it cannot be read, and still shows the others', async () => {
+    h.parkingFail = true;
+    await plannerStore.loadLinked('2026-01-01', '2026-12-31', new Set(['parking', 'mor_bsr']));
+    const s = get(plannerStore);
+    expect(s.linkedFailures).toEqual(['parking dates']);
+    expect(s.linked.some(i => i.source === 'mor_bsr')).toBe(true);
+  });
 
   it('names a source it could not read', async () => {
     h.jobsFail = true;

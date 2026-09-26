@@ -51,6 +51,11 @@ export const SOURCES = {
   // Phase 3: open faults with no works schedule issued. The data is Building
   // Assets' components; the rule is the compliance position's fault band.
   fault:         { key: 'fault',         label: 'Open fault',         app: 'Building Assets', appId: 'building_assets', category: 'maintenance' },
+  // Parking, 2026-09-26: agreements ending, notice running out, drafts not
+  // activated, devices not returned, offers expiring, bays due back in use.
+  // Dates from parking/public.js `listParkingDueDates`. ⛔ A row names a
+  // licence and a bay, never a person: the Planner is granted separately.
+  parking:       { key: 'parking',       label: 'Parking',            app: 'Parking',         appId: 'parking',         category: 'other' },
 };
 
 /** How far ahead a contractor visit needs arranging. A walk is in-house and
@@ -317,6 +322,22 @@ export function fromUnaddressedFault(row, today) {
 }
 
 /**
+ * A dated Parking item. The rules — what is due, what is overdue, what needs
+ * arranging — are Parking's (utils/parkingDue.js); the Planner only shows them.
+ * @param {any} row  from parking/public.js `listParkingDueDates`
+ */
+export function fromParkingDue(row) {
+  return linkedOccurrence('parking', {
+    id: row?.id,
+    title: row?.title ?? 'Parking',
+    date: row?.date,
+    detail: row?.detail ?? null,
+    overdue: !!row?.overdue,
+    needsArranging: !!row?.needsArranging,
+  });
+}
+
+/**
  * Everything foreign, in one list.
  *
  * Each source is optional: a portal where somebody has no Golden Thread
@@ -326,7 +347,7 @@ export function fromUnaddressedFault(row, today) {
 export function linkedOccurrences({
   jobs = [], meetings = [], actions = [], gtDocuments = [], obligations = [],
   certificates = [], bsrDeadlines = [], complianceReviews = [], riskReviews = [], competences = [],
-  worksDue = [], faults = [],
+  worksDue = [], faults = [], parkingDue = [],
 } = {}, today = null) {
   return [
     ...jobs.map(fromMaintenanceJob),
@@ -341,6 +362,7 @@ export function linkedOccurrences({
     ...competences.map(fromCompetenceExpiry),
     ...worksDue.map(fromWorksDue),
     ...faults.map((f) => fromUnaddressedFault(f, today)),
+    ...parkingDue.map(fromParkingDue),
   ]
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));
