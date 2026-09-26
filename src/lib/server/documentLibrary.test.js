@@ -43,10 +43,15 @@ const h = vi.hoisted(() => ({
 vi.mock('./storage/index.js', () => ({
   // Another provider this deployment knows, holding files written before a
   // switch. Only its delete/url/stream are called by the provider-routing tests.
-  providerByName: (name) => ({
-    google_drive: { name: 'google_drive', deleteFile: h.deleteFile, getFileUrl: h.getFileUrl, getFileStream: h.getFileStream },
-    supabase:     { name: 'supabase', deleteFile: h.sbDelete, getFileUrl: h.sbUrl, getFileStream: h.sbStream },
-  })[name] ?? null,
+  ownerOf: (name) => {
+    const known = {
+      google_drive: { name: 'google_drive', deleteFile: h.deleteFile, getFileUrl: h.getFileUrl, getFileStream: h.getFileStream },
+      supabase:     { name: 'supabase', deleteFile: h.sbDelete, getFileUrl: h.sbUrl, getFileStream: h.sbStream },
+    };
+    if (!name) return known.google_drive;
+    if (!known[name]) throw new Error(`This file is stored in "${name}", which this deployment does not know how to reach.`);
+    return known[name];
+  },
   storageProvider: {
     name: 'google_drive',
     ensurePath:    h.ensurePath,

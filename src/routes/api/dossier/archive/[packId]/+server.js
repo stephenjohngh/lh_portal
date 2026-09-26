@@ -84,6 +84,7 @@ export async function GET({ params, request }) {
     files: (files ?? []).map(f => ({
       document_id:      f.id,
       provider_file_id: f.provider_file_id,
+      provider:         f.provider ?? null,
       display_name:     f.display_name,
       filename:         f.filename,
       file_size:        f.file_size,

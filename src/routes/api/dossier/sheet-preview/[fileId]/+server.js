@@ -10,7 +10,9 @@
 // should import readSheetPreview() rather than duplicate it.
 
 import { json }                 from '@sveltejs/kit';
-import { storageProvider }      from '$lib/server/storage/index.js';
+import { ownerOf }              from '$lib/server/storage/index.js';
+import { isStorageId }          from '$lib/server/storage/storageRef.js';
+import { providersForFileIds } from '$lib/server/documentLibrary.js';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
 import { requireAuth }          from '$lib/server/requireAuth.js';
 import { readSheetPreview, MAX_SHEET_BYTES } from '$lib/server/sheetReader.js';
@@ -20,15 +22,24 @@ export async function GET({ params, request, url }) {
   if (auth.error) return auth.error;
 
   const { fileId } = params;
-  // The same id guard the media proxy applies; a malformed id never reaches
-  // the storage provider.
-  if (!fileId || !/^[A-Za-z0-9_-]+$/.test(fileId)) {
+  // Which storage holds it comes from the document's row. A file id that is
+  // not in the library is not a shelf file, and is not read.
+  let provider;
+  try {
+    const owners = await providersForFileIds([String(fileId ?? '')]);
+    if (!owners.has(fileId)) return json({ error: 'File not found or inaccessible' }, { status: 404 });
+    provider = owners.get(fileId);
+  } catch {
+    return json({ error: 'File not found or inaccessible' }, { status: 404 });
+  }
+  // A malformed id never reaches the storage provider.
+  if (!isStorageId(fileId, provider)) {
     return json({ error: 'Invalid file ID' }, { status: 400 });
   }
 
   let data;
   try {
-    ({ data } = await storageProvider.getFileStream(fileId));
+    ({ data } = await ownerOf(provider).getFileStream(fileId));
   } catch (err) {
     console.error('[SheetPreview] fetch failed for', fileId, '—',
       friendlyStorageError(err), err?.code ?? '');

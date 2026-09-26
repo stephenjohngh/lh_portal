@@ -23,7 +23,8 @@
 // edited from outside the portal, so a publication measures its own — what it
 // needs is a record of what it actually sent.
 
-import { storageProvider }      from './storage/index.js';
+import { storageProvider, ownerOf } from './storage/index.js';
+import { isStorageId }          from './storage/storageRef.js';
 import { friendlyStorageError } from './storage/storageErrors.js';
 
 /**
@@ -54,27 +55,31 @@ export async function sha256Hex(buffer) {
  * author, beats a publish that will not go out. Failures come back as
  * `{ checksum: null, pinned_file_id: null }`.
  *
- * @param {{ providerFileId: string, filename?: string, mimeType?: string }[]} files
+ * @param {{ providerFileId: string, provider?: string|null, filename?: string, mimeType?: string }[]} files
+ *   `provider` is the one recorded for the ORIGINAL; the caller looks it up
+ *   from the document's row.
  * @param {{ pin?: boolean }} [opts]
- * @returns {Promise<Record<string, { checksum: string|null, pinned_file_id: string|null }>>}
- *          keyed by providerFileId
+ * @returns {Promise<Record<string, { checksum: string|null, pinned_file_id: string|null,
+ *                                     pinned_provider: string|null }>>}
+ *          keyed by providerFileId. A pinned copy is written to the provider
+ *          configured NOW, and `pinned_provider` records which — so it can be
+ *          read and deleted from there after any later switch.
  */
 export async function prepareAssets(files = [], { pin = false } = {}) {
   /** @type {Record<string, { checksum: string|null, pinned_file_id: string|null }>} */
   const out = {};
-  const empty = { checksum: null, pinned_file_id: null };
+  const empty = { checksum: null, pinned_file_id: null, pinned_provider: null };
 
   let budget = MAX_TOTAL_BYTES;
   let pinFolder = null;
 
   for (const file of files.slice(0, MAX_FILES)) {
     const id = String(file?.providerFileId ?? '');
-    // The same id guard the media proxy applies.
-    if (!/^[A-Za-z0-9_-]+$/.test(id)) { out[id] = { ...empty }; continue; }
+    if (!isStorageId(id, file?.provider)) { out[id] = { ...empty }; continue; }
 
     let data;
     try {
-      ({ data } = await storageProvider.getFileStream(id));
+      ({ data } = await ownerOf(file?.provider).getFileStream(id));
     } catch (err) {
       console.error('[PublicationAssets] read failed for', id, '—',
         friendlyStorageError(err));
@@ -106,7 +111,8 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
       }
     }
 
-    out[id] = { checksum, pinned_file_id: pinnedFileId };
+    out[id] = { checksum, pinned_file_id: pinnedFileId,
+      pinned_provider: pinnedFileId ? storageProvider.name : null };
   }
 
   // Anything past MAX_FILES is reported explicitly rather than omitted, so the
@@ -116,6 +122,27 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
   }
 
   return out;
+}
+
+/**
+ * A manifest with each ORIGINAL file's provider filled in. Manifests written
+ * before providers were recorded carry none, so it is looked up from the
+ * document's row; one already recorded is kept. `lookup` is
+ * documentLibrary.providersForFileIds, passed in so this module stays free of
+ * a database client.
+ * @param {object} manifest
+ * @param {(ids: string[]) => Promise<Map<string, string|null>>} lookup
+ */
+export async function withProviders(manifest, lookup) {
+  const files = manifest?.files ?? [];
+  const missing = files.filter(f => f.provider === undefined && f.provider_file_id).map(f => f.provider_file_id);
+  const owners = missing.length ? await lookup(missing) : new Map();
+  return {
+    ...manifest,
+    files: files.map(f => (f.provider === undefined
+      ? { ...f, provider: owners.get(f.provider_file_id) ?? null }
+      : f)),
+  };
 }
 
 /**
@@ -148,10 +175,12 @@ export async function verifyManifest(manifest) {
     // checking the pinned copy would answer a question nobody asked, always
     // with "no".
     const id = String(entry.provider_file_id ?? '');
-    if (!/^[A-Za-z0-9_-]+$/.test(id)) { unknown.push(entry); continue; }
+    if (!isStorageId(id, entry.provider)) { unknown.push(entry); continue; }
 
     try {
-      const { data } = await storageProvider.getFileStream(id);
+      // `provider` is on manifests written since it was recorded; the verify
+      // route fills it from the document's row for older ones.
+      const { data } = await ownerOf(entry.provider).getFileStream(id);
       checked++;
       if (await sha256Hex(data) !== entry.checksum) changed.push(entry);
     } catch {

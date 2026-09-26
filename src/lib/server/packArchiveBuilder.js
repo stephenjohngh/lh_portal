@@ -21,7 +21,8 @@
 
 import { Buffer }               from 'node:buffer';
 import { buildZip }             from './zip.js';
-import { storageProvider }      from './storage/index.js';
+import { ownerOf }              from './storage/index.js';
+import { isStorageId }          from './storage/storageRef.js';
 import { friendlyStorageError } from './storage/storageErrors.js';
 import { buildArchiveText, safeName, uniqueName } from '$lib/apps/dossier/utils/packArchive.js';
 import { getLogger }            from '$lib/utils/logger';
@@ -54,8 +55,10 @@ export const FILES_FOLDER = 'files';
  *
  * @param {object} input
  * @param {object} input.content   { pack, docs, datasets, records }
- * @param {{ document_id: string, provider_file_id: string, filename?: string,
- *           file_size?: number }[]} input.files
+ * @param {{ document_id: string, provider_file_id: string, provider?: string|null,
+ *           filename?: string, file_size?: number }[]} input.files
+ *   `provider` is the one recorded on the document's row: the file is read
+ *   from where it was written, not from wherever storage is configured today.
  * @param {string} input.notice    the confidentiality notice, verbatim
  * @returns {Promise<{ ok: true, zip: Buffer, filename: string }
  *                 | { ok: false, message: string }>}
@@ -74,7 +77,7 @@ export async function buildPackArchive({ content, files: entries = [], notice = 
     // The storage id comes from the row the server read, never from anything
     // the caller sent — the same discipline as the published file endpoint.
     const storageId = String(entry.provider_file_id || '');
-    if (!/^[A-Za-z0-9_-]+$/.test(storageId)) continue;
+    if (!isStorageId(storageId, entry.provider)) continue;
 
     const label = entry.display_name || entry.filename || 'file';
 
@@ -85,7 +88,7 @@ export async function buildPackArchive({ content, files: entries = [], notice = 
 
     let data;
     try {
-      ({ data } = await storageProvider.getFileStream(storageId));
+      ({ data } = await ownerOf(entry.provider).getFileStream(storageId));
     } catch (err) {
       logger('⚠ archive could not read', storageId, '—', friendlyStorageError(err));
       omitted.push(`${label} — could not be read`);

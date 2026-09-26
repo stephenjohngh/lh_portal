@@ -9,7 +9,7 @@ import { createHash }                from 'node:crypto';
 import { createClient }              from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }                 from '$env/dynamic/private';
-import { storageProvider, providerByName } from './storage/index.js';
+import { storageProvider, ownerOf } from './storage/index.js';
 import { sanitizeIlikeTerm }          from '$lib/utils/pgFilter.js';
 import { docTypeFromMime, isUnclassifiedDocType } from '$lib/utils/documentUtils.js';
 import { getLogger }                  from '$lib/utils/logger';
@@ -42,13 +42,24 @@ function getDb() {
  * @param {{ provider?: string|null }} doc
  */
 export function providerFor(doc) {
-  if (!doc?.provider) return storageProvider;
-  const owner = providerByName(doc.provider);
-  if (!owner) {
-    throw new Error(`This document is stored in "${doc.provider}", which this deployment does not `
-      + 'know how to reach. Nothing was changed.');
-  }
-  return owner;
+  return ownerOf(doc?.provider);
+}
+
+/**
+ * Which provider holds each of these files, by provider_file_id — for callers
+ * that were handed a bare file id (a publication manifest written before it
+ * recorded providers, or a client naming a shelf file). An id not in the
+ * library is absent from the map; the caller decides what that means.
+ * @param {string[]} fileIds
+ * @returns {Promise<Map<string, string|null>>}
+ */
+export async function providersForFileIds(fileIds = []) {
+  const ids = [...new Set((fileIds ?? []).filter(Boolean))];
+  if (!ids.length) return new Map();
+  const { data, error } = await getDb()
+    .from('document_library').select('provider_file_id, provider').in('provider_file_id', ids);
+  if (error) throw error;
+  return new Map((data ?? []).map(r => [r.provider_file_id, r.provider ?? null]));
 }
 
 /**

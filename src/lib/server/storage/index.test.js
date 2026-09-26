@@ -86,3 +86,20 @@ describe('storage provider selection', () => {
     expect(storageProviderName).toBe(storageProvider.name);
   });
 });
+
+// ⛔ A file's provider is a property of when it was written. ownerOf is the one
+// rule every read and delete of an existing file goes through.
+describe('ownerOf — the provider that holds an existing file', () => {
+  it('uses the recorded provider, whatever is configured today', async () => {
+    const { ownerOf } = await loadWith('google_drive');
+    expect(ownerOf('supabase').name).toBe('supabase');
+  });
+  it('falls back to the configured provider when nothing was recorded', async () => {
+    const { ownerOf } = await loadWith('supabase');
+    expect(ownerOf(null).name).toBe('supabase');
+  });
+  it('refuses a recorded provider it does not know, rather than guessing', async () => {
+    const { ownerOf } = await loadWith('google_drive');
+    expect(() => ownerOf('dropbox')).toThrow(/does not know how to reach/);
+  });
+});

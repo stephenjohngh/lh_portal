@@ -16,7 +16,8 @@ import { json }             from '@sveltejs/kit';
 import { createClient }     from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { requireAuth }      from '$lib/server/requireAuth.js';
-import { verifyManifest, describeVerification } from '$lib/server/publicationAssets.js';
+import { verifyManifest, describeVerification, withProviders } from '$lib/server/publicationAssets.js';
+import { providersForFileIds } from '$lib/server/documentLibrary.js';
 
 export async function POST({ params, request }) {
   const auth = await requireAuth(request);
@@ -38,6 +39,7 @@ export async function POST({ params, request }) {
 
   if (error || !data) return json({ error: 'Not found' }, { status: 404 });
 
-  const result = await verifyManifest(data.manifest);
+  // Each file is read from the provider that holds it.
+  const result = await verifyManifest(await withProviders(data.manifest, providersForFileIds));
   return json({ result, message: describeVerification(result, data.mode) });
 }

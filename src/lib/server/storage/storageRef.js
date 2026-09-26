@@ -33,6 +33,28 @@ export const STORAGE_PROVIDERS = ['google_drive', 'onedrive', 'supabase'];
 export const PROTECTED_BUCKETS = ['plan-images'];
 
 /**
+ * Is this a well-formed stored-file id for its provider? A guard, applied to
+ * ids that came from our own rows, so a malformed one never reaches a provider.
+ *
+ * Drive and OneDrive ids are opaque tokens. A Supabase id is an object PATH —
+ * slashes and dots included — which the old single pattern rejected outright,
+ * so a file stored in Supabase could never be read back through these routes.
+ * A path may not climb (`..`) or start at the root.
+ *
+ * @param {string|null|undefined} id
+ * @param {string|null|undefined} [provider]  the provider recorded for it
+ */
+export function isStorageId(id, provider = null) {
+  const s = String(id ?? '');
+  if (!s) return false;
+  if (provider === 'supabase') {
+    if (s.startsWith('/') || s.split('/').some(seg => seg === '..' || seg === '')) return false;
+    return /^[A-Za-z0-9_\-. ()]+(\/[A-Za-z0-9_\-. ()]+)*$/.test(s);
+  }
+  return /^[A-Za-z0-9_-]+$/.test(s);
+}
+
+/**
  * Google Drive file id from a raw storage_url or webViewLink.
  * Mirrors extractDriveFileId in $lib/utils/driveUtils.js — that one is the
  * client's display-side copy; this is the server's deletion-side copy, and they

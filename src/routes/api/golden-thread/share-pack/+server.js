@@ -15,7 +15,7 @@ import { createClient }  from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env }           from '$env/dynamic/private';
 import { requireAdmin }  from '$lib/server/requireAuth';
-import { storageProvider } from '$lib/server/storage/index.js';
+import { ownerOf } from '$lib/server/storage/index.js';
 import { buildZip }      from '$lib/server/zip.js';
 import { buildManifest, renderReadme, packPath } from '$lib/server/gtSharePack.js';
 import { getLogger }     from '$lib/utils/logger';
@@ -43,7 +43,7 @@ export async function POST({ request }) {
     if (ids.length) {
       const { data: lib, error: lErr } = await db
         .from('document_library')
-        .select('id, entity_id, provider_file_id, filename, mime_type, file_checksum')
+        .select('id, entity_id, provider, provider_file_id, filename, mime_type, file_checksum')
         .eq('entity_type', 'gt_document')
         .in('entity_id', ids);
       if (lErr) throw lErr;
@@ -77,7 +77,9 @@ export async function POST({ request }) {
       for (const l of (libByDoc.get(d.id) ?? [])) {
         const path = packPath(d.reference, l.filename ?? `${d.reference}.bin`, seen);
         try {
-          const { data } = await storageProvider.getFileStream(l.provider_file_id);
+          // From the provider recorded on the row: a file written before a
+          // storage switch is still where it was written.
+          const { data } = await ownerOf(l.provider).getFileStream(l.provider_file_id);
           const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
           const computed = createHash('sha256').update(buf).digest('hex');
           const stored   = l.file_checksum ?? d.file_checksum ?? null;

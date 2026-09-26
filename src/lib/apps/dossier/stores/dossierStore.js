@@ -659,6 +659,12 @@ function createDossierStore() {
    * The pinned copies go first. If the row were deleted first, the ids of the
    * copies would go with it and the bytes would be orphaned in Drive with
    * nothing left pointing at them.
+   *
+   * ⛔ And the row is KEPT if any copy could not be removed, for the same
+   * reason. This used to be best-effort through `Promise.allSettled` — which is
+   * how, after DELETE /api/media/file/<id> was retired on 2026-09-21, every
+   * call was refused and swallowed, and the row would have gone anyway. A
+   * failure now says so, and nothing is stranded.
    */
   async function deletePublication(publication) {
     const pinned = (publication?.manifest?.files ?? [])
@@ -666,9 +672,14 @@ function createDossierStore() {
 
     if (pinned.length) {
       const { del } = await import('$lib/utils/request');
-      // Storage cleanup is best-effort, as it is everywhere else in the portal:
-      // a copy that cannot be removed must not block the delete.
-      await Promise.allSettled(pinned.map(id => del(`/api/media/file/${id}`)));
+      const result = await del(`/api/dossier/publications/${publication.id}/pinned`,
+        'Could not remove the pinned copies');
+      const failed = result?.failed?.length ?? pinned.length;
+      if (failed) {
+        throw new Error(`${failed} of ${pinned.length} pinned ${pinned.length === 1 ? 'copy' : 'copies'} `
+          + 'could not be removed from storage, so the publication was kept: deleting it would leave '
+          + 'those files with nothing pointing at them. Try again, or report it.');
+      }
     }
 
     await api.delete('dossier_publications', publication.id);

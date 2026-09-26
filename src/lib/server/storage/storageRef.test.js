@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveStorageRef, driveFileId, supabaseObjectRef,
-  STORAGE_PROVIDERS, PROTECTED_BUCKETS,
+  STORAGE_PROVIDERS, PROTECTED_BUCKETS, isStorageId,
 } from './storageRef.js';
 
 // Real shapes, taken from the rows that had to be purged.
@@ -105,5 +105,22 @@ describe('the things it must refuse', () => {
 
   it('declares exactly the provider names the registry keys on', () => {
     expect(STORAGE_PROVIDERS).toEqual(['google_drive', 'onedrive', 'supabase']);
+  });
+});
+
+describe('isStorageId', () => {
+  it('accepts an opaque Drive id and refuses anything with a path in it', () => {
+    expect(isStorageId('1AbC_d-9')).toBe(true);
+    expect(isStorageId('a/b')).toBe(false);
+    expect(isStorageId('')).toBe(false);
+  });
+  // The old single pattern refused every Supabase object path, so a file in
+  // Supabase could never be read back through the Dossier routes.
+  it('accepts a Supabase object path, but never one that climbs or starts at the root', () => {
+    expect(isStorageId('documents/Pack (1)/a b.pdf', 'supabase')).toBe(true);
+    expect(isStorageId('../secret', 'supabase')).toBe(false);
+    expect(isStorageId('a/../b', 'supabase')).toBe(false);
+    expect(isStorageId('/root', 'supabase')).toBe(false);
+    expect(isStorageId('a//b', 'supabase')).toBe(false);
   });
 });

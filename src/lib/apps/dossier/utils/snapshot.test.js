@@ -212,6 +212,18 @@ describe('buildManifest', () => {
     expect(manifestEntry(buildManifest(snapshot()), 'f1').checksum).toBeNull();
   });
 
+  it('records which storage holds the original and the pinned copy', () => {
+    // So a published link reads each from where it was written, after any
+    // later change of storage provider.
+    const snap = buildSnapshot({
+      pack, docs: [page('d1', 'Overview', 0, assetNode('f1'))],
+      files: [shelfFile('f1', 'Notice', { provider: 'google_drive' })], generatedAt: AT,
+    });
+    const entry = manifestEntry(buildManifest(snap,
+      { f1: { checksum: 'x', pinned_file_id: 'p1', pinned_provider: 'supabase' } }), 'f1');
+    expect(entry).toMatchObject({ provider: 'google_drive', pinned_provider: 'supabase' });
+  });
+
   it('records the pinned copy, so the endpoint can prefer it', () => {
     // The pin is what makes a frozen publication genuinely immutable rather
     // than merely labelled so.

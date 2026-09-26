@@ -27,7 +27,9 @@
 // so an origin check would break legitimate use while defending nothing.
 
 import { json }                 from '@sveltejs/kit';
-import { storageProvider }      from '$lib/server/storage/index.js';
+import { ownerOf }              from '$lib/server/storage/index.js';
+import { isStorageId }          from '$lib/server/storage/storageRef.js';
+import { providersForFileIds } from '$lib/server/documentLibrary.js';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
 import { checkRateLimit }       from '$lib/server/publicRateLimit.js';
 import { declarableMime }       from '$lib/utils/mimeTypes';
@@ -85,12 +87,22 @@ export async function GET({ params, request, cookies }) {
   // they were at publication, and serving the original instead would quietly
   // undo the immutability the author was promised. Falling back to the original
   // is right for follow-latest links, and for a file that could not be pinned.
-  const storageId = String(entry.pinned_file_id || entry.provider_file_id || '');
-  if (!/^[A-Za-z0-9_-]+$/.test(storageId)) return refuse();
+  //
+  // And each is read from the provider that HOLDS it: a pinned copy from the
+  // one recorded when it was pinned, an original from its document's row.
+  // Neither is today's configured provider, which a storage switch changes.
+  const pinned = Boolean(entry.pinned_file_id);
+  const storageId = String(pinned ? entry.pinned_file_id : (entry.provider_file_id || ''));
 
   let data;
   try {
-    ({ data } = await storageProvider.getFileStream(storageId));
+    const provider = pinned
+      ? (entry.pinned_provider ?? null)
+      : (entry.provider !== undefined
+          ? entry.provider
+          : (await providersForFileIds([storageId])).get(storageId) ?? null);
+    if (!isStorageId(storageId, provider)) return refuse();
+    ({ data } = await ownerOf(provider).getFileStream(storageId));
   } catch (err) {
     // Deliberately the same refusal as every other failure — a recipient
     // learning that a file exists but cannot be read is of no use to them and

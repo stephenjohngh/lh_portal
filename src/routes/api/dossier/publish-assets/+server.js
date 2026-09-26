@@ -18,6 +18,7 @@
 import { json }           from '@sveltejs/kit';
 import { requireAuth }    from '$lib/server/requireAuth.js';
 import { prepareAssets }  from '$lib/server/publicationAssets.js';
+import { providersForFileIds } from '$lib/server/documentLibrary.js';
 
 export async function POST({ request }) {
   const auth = await requireAuth(request);
@@ -30,6 +31,16 @@ export async function POST({ request }) {
   const files = Array.isArray(body?.files) ? body.files : null;
   if (!files) return json({ error: 'files must be an array' }, { status: 400 });
 
-  const assets = await prepareAssets(files, { pin: body?.pin === true });
+  // Where each file actually is comes from the document's row, never from the
+  // caller. A file id not in the library is not a shelf file, and is left
+  // unread (it comes back with no checksum, which the review shows as a gap).
+  let owners;
+  try { owners = await providersForFileIds(files.map(f => String(f?.providerFileId ?? ''))); }
+  catch { return json({ error: 'Could not look the files up' }, { status: 500 }); }
+  const known = files
+    .map(f => ({ ...f, provider: owners.get(String(f?.providerFileId ?? '')) }))
+    .map(f => (f.provider === undefined ? { ...f, providerFileId: '' } : f));
+
+  const assets = await prepareAssets(known, { pin: body?.pin === true });
   return json({ assets });
 }

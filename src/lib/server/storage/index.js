@@ -39,3 +39,27 @@ export const storageProviderName = storageProvider.name;
 export function providerByName(name) {
   return (name && PROVIDERS[name]) ? PROVIDERS[name] : null;
 }
+
+/**
+ * The provider that holds an already-written file, given the name recorded
+ * for it — the ONE rule, used by documents, Dossier and Golden Thread alike.
+ *
+ * · a recorded name this deployment knows → that provider, whatever is
+ *   configured today;
+ * · nothing recorded (older than the record) → the configured provider,
+ *   because it is the only information there is;
+ * · a recorded name this deployment does NOT know → throw. Guessing would send
+ *   a file id to a provider that never issued it.
+ *
+ * @param {string|null|undefined} name
+ * @returns {import('./storageProvider.js').StorageProvider}
+ */
+export function ownerOf(name) {
+  if (!name) return storageProvider;
+  const owner = providerByName(name);
+  if (!owner) {
+    throw new Error(`This file is stored in "${name}", which this deployment does not `
+      + 'know how to reach. Nothing was changed.');
+  }
+  return owner;
+}

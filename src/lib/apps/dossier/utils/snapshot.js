@@ -46,6 +46,9 @@ function snapshotFile(file) {
     mime_type:        file.mime_type ?? '',
     file_size:        Number(file.file_size) || 0,
     provider_file_id: file.provider_file_id ?? '',
+    // Which storage holds it, so a published link reads it from there after
+    // any later change of provider. Null on a row that never recorded one.
+    provider:         file.provider ?? null,
   };
 }
 
@@ -157,11 +160,13 @@ export function buildManifest(snapshot, assets = {}, options = {}) {
       return {
         document_id:      id,
         provider_file_id: file.provider_file_id ?? '',
+        provider:         file.provider ?? null,
         filename:         file.display_name || file.filename || 'File',
         mime_type:        file.mime_type ?? '',
         file_size:        file.file_size ?? 0,
         checksum:         assets[id]?.checksum ?? null,
         pinned_file_id:   assets[id]?.pinned_file_id ?? null,
+        pinned_provider:  assets[id]?.pinned_provider ?? null,
       };
     });
 
@@ -223,7 +228,7 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
     const out = {};
     for (const file of usable) {
       out[file.id] = body?.assets?.[file.provider_file_id]
-        ?? { checksum: null, pinned_file_id: null };
+        ?? { checksum: null, pinned_file_id: null, pinned_provider: null };
     }
     return out;
   } catch {

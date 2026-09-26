@@ -18,21 +18,32 @@ const h = vi.hoisted(() => ({
   getFileStream: vi.fn(),
   uploadFile:    vi.fn(),
   ensurePath:    vi.fn(() => Promise.resolve('pin-folder')),
+  // A second provider, holding files written before a storage switch.
+  sbStream:      vi.fn(() => Promise.resolve({ data: Buffer.from('sb bytes') })),
 }));
 
-vi.mock('./storage/index.js', () => ({
-  storageProvider: {
+vi.mock('./storage/index.js', () => {
+  const configured = {
+    name: 'google_drive',
     getFileStream: h.getFileStream,
     uploadFile:    h.uploadFile,
     ensurePath:    h.ensurePath,
-  },
-}));
+  };
+  return {
+    storageProvider: configured,
+    ownerOf: (name) => {
+      if (!name || name === 'google_drive') return configured;
+      if (name === 'supabase') return { name: 'supabase', getFileStream: h.sbStream };
+      throw new Error(`unknown provider ${name}`);
+    },
+  };
+});
 vi.mock('./storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
 
 const {
-  prepareAssets, verifyManifest, describeVerification, sha256Hex, MAX_FILES,
+  prepareAssets, verifyManifest, describeVerification, sha256Hex, MAX_FILES, withProviders,
 } = await import('./publicationAssets.js');
 
 const file = (id, name = 'Notice.pdf') => ({
@@ -63,13 +74,13 @@ describe('prepareAssets — checksums', () => {
     h.getFileStream.mockRejectedValueOnce(new Error('gone'));
     const assets = await prepareAssets([file('drive-1'), file('drive-2')]);
 
-    expect(assets['drive-1']).toEqual({ checksum: null, pinned_file_id: null });
+    expect(assets['drive-1']).toEqual({ checksum: null, pinned_file_id: null, pinned_provider: null });
     expect(assets['drive-2'].checksum).toBeTruthy();
   });
 
   it('refuses an id that could not be a storage id, without asking storage', async () => {
     const assets = await prepareAssets([file('../../etc/passwd')]);
-    expect(assets['../../etc/passwd']).toEqual({ checksum: null, pinned_file_id: null });
+    expect(assets['../../etc/passwd']).toEqual({ checksum: null, pinned_file_id: null, pinned_provider: null });
     expect(h.getFileStream).not.toHaveBeenCalled();
   });
 
@@ -79,7 +90,7 @@ describe('prepareAssets — checksums', () => {
     const assets = await prepareAssets(many);
 
     expect(Object.keys(assets)).toHaveLength(MAX_FILES + 3);
-    expect(assets[`drive-${MAX_FILES + 1}`]).toEqual({ checksum: null, pinned_file_id: null });
+    expect(assets[`drive-${MAX_FILES + 1}`]).toEqual({ checksum: null, pinned_file_id: null, pinned_provider: null });
   });
 
   it('stops spending the byte budget once it is exhausted', async () => {
@@ -233,5 +244,39 @@ describe('describeVerification', () => {
     expect(describeVerification({ checked: 0, changed: [], unknown: [], missing: [] }))
       .toBe('Nothing to check.');
     expect(describeVerification(null)).toBe('');
+  });
+});
+
+// ⛔ A file's provider is a property of when it was written. Reading it through
+// today's configured provider breaks every publication made before a switch.
+describe('each file is read from the provider that holds it', () => {
+  it('reads an original from its recorded provider, and a Supabase path gets through the guard', async () => {
+    const out = await prepareAssets([{ providerFileId: 'documents/a b.pdf', provider: 'supabase', filename: 'a.pdf' }]);
+    expect(h.sbStream).toHaveBeenCalledWith('documents/a b.pdf');
+    expect(h.getFileStream).not.toHaveBeenCalled();
+    expect(out['documents/a b.pdf'].checksum).toBeTruthy();
+  });
+
+  it('records which provider a pinned copy was written to', async () => {
+    const out = await prepareAssets([file('drive-1')], { pin: true });
+    expect(out['drive-1']).toMatchObject({ pinned_file_id: 'pinned-1', pinned_provider: 'google_drive' });
+  });
+
+  it('verifies an original from its recorded provider', async () => {
+    const data = Buffer.from('sb bytes');
+    const checksum = await sha256Hex(data);
+    const result = await verifyManifest({ files: [{ provider_file_id: 'documents/a.pdf', provider: 'supabase', checksum }] });
+    expect(result.checked).toBe(1);
+    expect(result.changed).toEqual([]);
+  });
+
+  it('fills the provider from the library for a manifest written before it was recorded', async () => {
+    const lookup = vi.fn(async () => new Map([['drive-1', 'supabase']]));
+    const m = await withProviders({ files: [
+      { provider_file_id: 'drive-1' },
+      { provider_file_id: 'drive-2', provider: 'google_drive' },
+    ] }, lookup);
+    expect(lookup).toHaveBeenCalledWith(['drive-1']);
+    expect(m.files.map(f => f.provider)).toEqual(['supabase', 'google_drive']);
   });
 });

@@ -20,7 +20,8 @@ const h = vi.hoisted(() => {
   const logAudit = vi.fn();
   const listDocuments = vi.fn(() => Promise.resolve([]));
   const postJson = vi.fn(() => Promise.resolve({ map: {}, skipped: [] }));
-  return { api, logAudit, listDocuments, postJson };
+  const del = vi.fn(() => Promise.resolve({ removed: 0, failed: [] }));
+  return { api, logAudit, listDocuments, postJson, del };
 });
 
 vi.mock('$lib/utils/api',         () => ({ api: h.api }));
@@ -31,7 +32,7 @@ vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/utils/documentApi', () => ({ listDocuments: h.listDocuments }));
 // duplicatePack imports this lazily, so the file copy costs nothing when the
 // author left the files behind.
-vi.mock('$lib/utils/request', () => ({ postJson: h.postJson, del: vi.fn() }));
+vi.mock('$lib/utils/request', () => ({ postJson: h.postJson, del: h.del }));
 
 const { dossierStore: store } = await import('./dossierStore.js');
 const { buildSnapshot } = await import('../utils/snapshot.js');
@@ -940,5 +941,37 @@ describe('store contract', () => {
     expect(store.set).toBeUndefined();
     expect(store.update).toBeUndefined();
     expect(typeof store.subscribe).toBe('function');
+  });
+});
+
+describe('deletePublication', () => {
+  const pub = { id: 'pub1', version: 3, title: 'Pack',
+    manifest: { files: [{ pinned_file_id: 'pin-1' }, { pinned_file_id: 'pin-2' }, { pinned_file_id: null }] } };
+
+  it('removes the pinned copies through the publication route, then the row', async () => {
+    h.del.mockResolvedValueOnce({ removed: 2, failed: [] });
+    await store.deletePublication(pub);
+    expect(h.del.mock.calls[0][0]).toBe('/api/dossier/publications/pub1/pinned');
+    expect(h.api.delete).toHaveBeenCalledWith('dossier_publications', 'pub1');
+  });
+
+  // ⛔ The fault: the old per-file route was retired, every call was refused and
+  // swallowed, and the row went anyway, stranding the copies.
+  it('keeps the publication when any pinned copy could not be removed', async () => {
+    h.del.mockResolvedValueOnce({ removed: 1, failed: [{ id: 'pin-2', error: 'no' }] });
+    await expect(store.deletePublication(pub)).rejects.toThrow(/publication was kept/);
+    expect(h.api.delete).not.toHaveBeenCalled();
+  });
+
+  it('keeps it too when the route itself fails', async () => {
+    h.del.mockRejectedValueOnce(new Error('Could not remove the pinned copies'));
+    await expect(store.deletePublication(pub)).rejects.toThrow();
+    expect(h.api.delete).not.toHaveBeenCalled();
+  });
+
+  it('deletes a publication with no pinned copies without calling storage', async () => {
+    await store.deletePublication({ ...pub, manifest: { files: [] } });
+    expect(h.del).not.toHaveBeenCalled();
+    expect(h.api.delete).toHaveBeenCalled();
   });
 });

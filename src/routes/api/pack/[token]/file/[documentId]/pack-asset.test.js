@@ -16,11 +16,18 @@ const h = vi.hoisted(() => ({
   findServablePublication: vi.fn(),
   resolveManifest: vi.fn(),
   hasGrant: vi.fn(() => true),
+  sbStream: vi.fn(() => Promise.resolve({ data: Buffer.from('sb bytes') })),
+  providersForFileIds: vi.fn(async () => new Map([['drive-1', 'google_drive']])),
 }));
 
 vi.mock('$lib/server/storage/index.js', () => ({
-  storageProvider: { getFileStream: h.getFileStream },
+  ownerOf: (name) => {
+    if (!name || name === 'google_drive') return { getFileStream: h.getFileStream };
+    if (name === 'supabase') return { getFileStream: h.sbStream };
+    throw new Error(`unknown provider ${name}`);
+  },
 }));
+vi.mock('$lib/server/documentLibrary.js', () => ({ providersForFileIds: h.providersForFileIds }));
 vi.mock('$lib/server/storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
@@ -253,5 +260,30 @@ describe('rate limiting', () => {
     const res = await call();
     expect(res.status).toBe(429);
     expect(h.findServablePublication).not.toHaveBeenCalled();
+  });
+});
+
+describe('the provider that holds the file', () => {
+  it("serves a pinned copy from the provider it was pinned to, not the original's", async () => {
+    const m = { files: [{ ...MANIFEST.files[0], provider: 'google_drive',
+      pinned_file_id: 'pins/x.pdf', pinned_provider: 'supabase' }] };
+    h.resolveManifest.mockResolvedValue(m);
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(h.sbStream).toHaveBeenCalledWith('pins/x.pdf');
+    expect(h.getFileStream).not.toHaveBeenCalled();
+  });
+
+  it("looks up an original's provider from the library when an older manifest has none", async () => {
+    h.providersForFileIds.mockResolvedValueOnce(new Map([['drive-1', 'supabase']]));
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(h.sbStream).toHaveBeenCalledWith('drive-1');
+  });
+
+  it('refuses rather than guessing when the recorded provider is unknown', async () => {
+    h.resolveManifest.mockResolvedValue({ files: [{ ...MANIFEST.files[0], provider: 'dropbox' }] });
+    const res = await call();
+    expect(res.status).toBe(404);
   });
 });
