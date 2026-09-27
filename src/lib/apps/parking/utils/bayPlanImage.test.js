@@ -49,3 +49,11 @@ describe('bayPlanRows', () => {
     expect(rows[1]).toEqual(['L/PK/25', 'Large car', 'Free', 'Free', '']);
   });
 });
+
+describe('a reserved bay on the plan', () => {
+  it('names who has it from later, and is never printed FREE', () => {
+    expect(bayPlanLabel({ number: '7', state: 'reserved', reserved: { holder_id: 'h1' } }, holders))
+      .toEqual({ number: '7', who: 'Alice Example' });
+    expect(bayPlanLabel({ number: '8', state: 'reserved', reserved: {} }, holders).who).toBe('Reserved');
+  });
+});

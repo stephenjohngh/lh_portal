@@ -41,11 +41,17 @@
   $: vatLabel = VAT_TREATMENTS.find(v => v.value === agreement?.vat_treatment)?.label ?? '—';
   $: devices = s.devices.filter(d => d.agreement_id === agreement?.id);
   $: devicesOut = outstandingDevices(agreement?.id, s.devices);
-  $: refundProblem = agreement ? depositRefundProblem(agreement, s.devices) : null;
+  $: refundProblem = agreement ? depositRefundProblem(agreement, s.devices, s.agreements) : null;
+  $: transferredTo = agreement?.deposit_transferred_to
+    ? s.agreements.find(a => a.id === agreement.deposit_transferred_to)?.reference ?? 'the new agreement' : null;
+  // A draft made from an accepted waiting-list offer reopens it when deleted.
+  $: fromOffer = agreement ? s.applications.find(a => a.agreement_id === agreement.id && a.status === 'allocated') : null;
   $: live = agreement && ['draft', 'active', 'notice_given'].includes(agreement.status);
-  // Bays this licence could move to: licensable, in use, not this one.
+  // Bays this licence could move to: licensable, in use, not this one, and not
+  // under offer to someone else on the waiting list.
   $: moveTargets = s.bays.filter(b => b.bay_id !== agreement?.bay_id && b.in_service !== false
-    && basesForTenure(b.tenure).some(x => x.value === agreement?.basis));
+    && basesForTenure(b.tenure).some(x => x.value === agreement?.basis)
+    && !(b.offer && b.offer.holder_id !== agreement?.holder_id));
 
   let error = '';
   let busy = false;
@@ -193,7 +199,8 @@
             : 'Not from the price list: set by hand, or carried over from a previous bay.'}</span></dd>
         {#if agreement.deposit_amount != null}<dt class="text-slate-500">Deposit</dt>
           <dd class="text-slate-200">{money(agreement.deposit_amount)}
-            {#if agreement.deposit_refunded_on}<span class="text-slate-500"> · refunded {fmtDate(agreement.deposit_refunded_on)}</span>{/if}</dd>{/if}
+            {#if agreement.deposit_refunded_on}<span class="text-slate-500"> · refunded {fmtDate(agreement.deposit_refunded_on)}</span>
+            {:else if transferredTo}<span class="text-slate-500" data-testid="deposit-transferred"> · moved to {transferredTo} with the holder</span>{/if}</dd>{/if}
       {/if}
       {#if agreement.status === 'notice_given'}
         <dt class="text-slate-500">Notice</dt>
@@ -392,7 +399,7 @@
           <div class="pb-1"><Button size="small" variant="secondary" disabled={busy} on:click={issueDevice}>Issue</Button></div>
         </div>
       {/if}
-      {#if canEdit && agreement.deposit_amount && !agreement.deposit_refunded_on}
+      {#if canEdit && agreement.deposit_amount && !agreement.deposit_refunded_on && !transferredTo}
         <div class="flex items-center gap-3">
           <Button size="small" variant="secondary" disabled={busy || !!refundProblem} on:click={refund}>Deposit refunded</Button>
           {#if refundProblem}<span class="text-xs text-slate-500">{refundProblem}</span>{/if}
@@ -418,7 +425,8 @@
   <ConfirmDialog
     show={confirmDelete}
     title="Delete draft"
-    message={`Delete draft ${agreement.reference} and its vehicles? A draft that was never activated leaves no record worth keeping; anything that went live is ended instead.`}
+    message={`Delete draft ${agreement.reference} and its vehicles? A draft that was never activated leaves no record worth keeping; anything that went live is ended instead.`
+      + (fromOffer ? ` It was made from a waiting-list offer, which reopens: the bay stays offered to the same person until ${fmtDate(fromOffer.offer_expires_on)}.` : '')}
     confirmText="Delete"
     danger={true}
     processing={busy}

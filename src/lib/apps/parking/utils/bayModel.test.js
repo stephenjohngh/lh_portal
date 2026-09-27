@@ -136,3 +136,16 @@ describe('validateBayFacts and bayFactsRow', () => {
     }
   });
 });
+
+// A bay held by a draft, or by a licence starting later, read as Free — and
+// printed FREE on the caretaker's plan (review 2026-09-27).
+describe('reserved', () => {
+  it('a bay with a draft or a later licence is Reserved, not Free', async () => {
+    const { bayState } = await import('./bayModel.js');
+    expect(bayState({ in_service: true, tenure: 'licensable', reserved: { id: 'x' } })).toBe('reserved');
+    expect(bayState({ in_service: true, tenure: 'licensable' })).toBe('free');
+    // Out of use still wins, and so does a licence covering today.
+    expect(bayState({ in_service: false, tenure: 'licensable', reserved: { id: 'x' } })).toBe('out_of_use');
+    expect(bayState({ in_service: true, tenure: 'licensable', current: { basis: 'licence' }, reserved: { id: 'x' } })).toBe('allocated');
+  });
+});

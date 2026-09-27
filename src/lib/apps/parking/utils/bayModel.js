@@ -14,7 +14,7 @@ import { buildSpaceRef } from '$lib/utils/spaceRef.js';
 import { computeMetresPerUnit, measureArea, measureSides }
   from '$lib/apps/building_assets/components/plan/planMeasure.js';
 import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
-import { currentAgreement, todayISO } from './agreementModel.js';
+import { currentAgreement, reservingAgreement, todayISO } from './agreementModel.js';
 
 /** How a bay is held. Only `licensable` may ever be allocated (P1). */
 export const TENURES = [
@@ -36,6 +36,9 @@ export const BAY_STATES = [
   { value: 'out_of_use',         label: 'Out of use',         colour: '#ef4444' },
   { value: 'allocated',          label: 'Allocated',          colour: '#3b82f6' },
   { value: 'offered',            label: 'Offered',            colour: '#f59e0b' },
+  // Held by a draft, or by a licence that starts later: not free to allocate,
+  // and not somewhere to park either. Shown so it is never read as Free.
+  { value: 'reserved',           label: 'Reserved',           colour: '#06b6d4' },
   { value: 'demised',            label: 'Belongs to a flat',  colour: '#8b5cf6' },
   { value: 'not_for_allocation', label: 'Not for allocation', colour: '#64748b' },
   { value: 'free',               label: 'Free',               colour: '#22c55e' },
@@ -68,6 +71,7 @@ export function bayState(bay) {
   if (bay.current && (bay.current.basis === 'licence' || bay.current.basis === 'adjustment')) return 'allocated';
   // Offered to someone on the waiting list: held for them until the offer ends.
   if (bay.offer) return 'offered';
+  if (bay.reserved) return 'reserved';
   if (UNIT_TENURES.has(bay.tenure)) return 'demised';
   if (bay.tenure === 'not_for_allocation') return 'not_for_allocation';
   return 'free';
@@ -134,6 +138,7 @@ export function mergeBays(spaces, rows, floors = [], plans = [], agreements = []
       plan_id:   space.plan_id,
       measured:  measureBay(space, planById.get(space.plan_id)),
       current:   row ? currentAgreement(row.id, agreements, today) : null,
+      reserved:  row ? reservingAgreement(row.id, agreements, today) : null,
       offer:     row ? (applications ?? []).find(a => a.status === 'offered' && a.offered_bay_id === row.id) ?? null : null,
     };
     bay.state = bayState(bay);

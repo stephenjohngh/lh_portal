@@ -29,13 +29,19 @@
     <div class="absolute right-0 z-20 mt-1 w-96 bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-2 text-sm"
       data-testid="registration-results">
       {#if hits.length === 0}
-        <p class="text-slate-400 p-2">No vehicle registered as <span class="font-mono">{normaliseReg(q)}</span>.
-          It is not authorised to park here.</p>
+        <!-- Only what the app knows: holders of bays that belong to flats may
+             not be recorded, and visitors never are. -->
+        <p class="text-slate-400 p-2">No vehicle registered as <span class="font-mono">{normaliseReg(q)}</span>
+          on a parking agreement here.
+          <span class="block text-xs text-slate-500 mt-1">Bays that belong to flats may not have their holders
+            recorded, and visitors are not recorded at all.</span></p>
       {:else}
         {#each hits as h (h.vehicle.id)}
           <button class="w-full text-left p-2 rounded hover:bg-slate-700" on:click={() => h.agreement && open(h.agreement.id)}>
             <span class="font-mono text-white">{h.vehicle.registration}</span>
-            {#if h.current}<span class="text-xs text-green-400 ml-1">authorised</span>
+            {#if h.standing === 'authorised'}<span class="text-xs text-green-400 ml-1">authorised today</span>
+            {:else if h.standing === 'pending'}<span class="text-xs text-sky-400 ml-1">not yet authorised{h.agreement?.status === 'draft'
+              ? ' (agreement is a draft)' : ' — from ' + fmtDate([h.agreement?.starts_on, h.vehicle.from_date].filter(Boolean).sort().pop())}</span>
             {:else}<span class="text-xs text-amber-400 ml-1">no longer authorised{h.vehicle.to_date ? ' since ' + fmtDate(h.vehicle.to_date) : ''}</span>{/if}
             <span class="block text-xs text-slate-400">
               {h.bay?.ref ?? '—'} · {h.agreement?.reference ?? '—'} ({STATUS_LABEL[h.agreement?.status] ?? '—'})

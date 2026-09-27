@@ -47,7 +47,8 @@ export function bayRegisterSheet({ bays = [], holders = [], vehicles = [] }) {
       BAY_STATE[b.state]?.label ?? b.state, TENURE_LABEL[b.tenure] ?? b.tenure, b.unit_ref ?? '',
       b.is_accessible ? 'Yes' : '', b.is_tandem ? 'Yes' : '', b.planning_restricted ? 'Yes' : '',
       b.in_service === false ? (b.out_of_use_reason ?? '') : '', b.in_service === false ? d(b.out_of_use_until) : '',
-      b.current?.reference ?? '', name(hById.get(b.current?.holder_id)),
+      // A reserved bay names the draft or later licence holding it.
+      (b.current ?? b.reserved)?.reference ?? '', name(hById.get((b.current ?? b.reserved)?.holder_id)),
       vehicles.filter(v => v.agreement_id === b.current?.id && !v.to_date).map(v => v.registration).join(', '),
       b.max_height_m != null ? String(b.max_height_m) : '', b.notes ?? '',
     ]),
@@ -63,6 +64,7 @@ export function agreementsSheet({ agreements = [], holders = [], bays = [] }, { 
   const hById = new Map(holders.map(h => [h.id, h]));
   const bayRef = (id) => bays.find(b => b.bay_id === id)?.ref ?? '';
   const vat = Object.fromEntries(VAT_TREATMENTS.map(v => [v.value, v.label]));
+  const refOf = (id) => agreements.find(x => x.id === id)?.reference ?? 'another agreement';
   const list = agreements.filter(a => !liveOnly || LIVE.has(a.status))
     .sort((a, b) => a.reference.localeCompare(b.reference));
   const rows = list.map(a => [
@@ -72,7 +74,10 @@ export function agreementsSheet({ agreements = [], holders = [], bays = [] }, { 
     a.notice_days != null ? String(a.notice_days) : '', money(a.fee_amount), a.fee_period ?? '',
     annualFee(a) != null ? annualFee(a).toFixed(2) : '', vat[a.vat_treatment] ?? '',
     a.tariff_id ? 'List price' : 'Set by hand',
-    money(a.deposit_amount), d(a.deposit_refunded_on), a.ended_reason ?? '',
+    // A deposit moved with the holder is not owed back from this agreement.
+    money(a.deposit_amount),
+    a.deposit_refunded_on ? d(a.deposit_refunded_on) : a.deposit_transferred_to ? `Moved to ${refOf(a.deposit_transferred_to)}` : '',
+    a.ended_reason ?? '',
   ]);
   const live = list.filter(a => a.status === 'active' || a.status === 'notice_given');
   const total = live.reduce((t, a) => t + (annualFee(a) ?? 0), 0);

@@ -74,6 +74,9 @@
     return h ? (h.company_name ? `${h.company_name} — ${h.display_name}` : h.display_name) : '—';
   };
   $: allocatable = bay && basesForTenure(bay.tenure).length > 0;
+  // A licensable bay out of use cannot be allocated (migration 229); a demised
+  // bay's holder can still be recorded.
+  $: blockedOutOfUse = bay && bay.in_service === false && bay.tenure === 'licensable';
   // First come, first served: who is next for a free bay of this size.
   $: next = bay && bay.state === 'free' ? nextFor(bay, $parkingStore.applications) : null;
   $: isRecordBay = bay && (bay.tenure === 'demised' || bay.tenure === 'lease_right');
@@ -132,7 +135,9 @@
         <p class="text-xs text-slate-400">Next on the waiting list: <span class="text-slate-200">{holderName(next.holder_id)}</span>
           (joined {fmtDate(next.joined_on)}). Offer it from the Waiting list tab.</p>
       {/if}
-      {#if canEdit && allocatable}
+      {#if canEdit && allocatable && blockedOutOfUse}
+        <p class="text-[11px] text-slate-500">Out of use: bring it back into use before allocating it.</p>
+      {:else if canEdit && allocatable}
         <Button size="small" variant="primary" on:click={() => dispatch('allocate', bay.space_id)}>
           {isRecordBay ? 'Record the holder' : live.length ? 'Allocate from another date' : 'Allocate'}
         </Button>

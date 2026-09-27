@@ -30,6 +30,8 @@ export function bayPlanLabel(bay, holders = [], agreements = []) {
   switch (bay.state) {
     case 'allocated':  return { number, who: holderShort(hById.get(bay.current?.holder_id)) || 'Allocated' };
     case 'offered':    return { number, who: 'Offered' };
+    // Held by a draft or a licence that starts later: never printed as FREE.
+    case 'reserved':   return { number, who: holderShort(hById.get(bay.reserved?.holder_id)) || 'Reserved' };
     case 'out_of_use': return { number, who: 'OUT OF USE' };
     case 'not_for_allocation': return { number, who: 'Not allocated' };
     case 'demised': {
@@ -48,7 +50,7 @@ export function bayPlanRows(bays = [], holders = [], agreements = [], vehicles =
   const hById = new Map(holders.map(h => [h.id, h]));
   return bays.map(b => {
     const label = bayPlanLabel(b, holders, agreements);
-    const holding = b.current ?? agreements.find(a => a.bay_id === b.bay_id
+    const holding = b.current ?? b.reserved ?? agreements.find(a => a.bay_id === b.bay_id
       && (a.status === 'active' || a.status === 'notice_given'));
     const h = hById.get(holding?.holder_id);
     return [

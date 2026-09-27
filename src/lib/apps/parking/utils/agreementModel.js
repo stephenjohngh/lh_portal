@@ -143,6 +143,11 @@ export function validateAgreement(a, bay, holder, others = [], { allocating = tr
         ? 'This bay is not for allocation.'
         : `This bay is ${bay.tenure === 'demised' ? 'demised to a flat' : 'held under a lease right'}: it can only be recorded, not allocated.`;
   }
+  // Nobody can be given a bay they cannot park in (migration 229). A record of
+  // who holds a demised bay is a fact about the lease, and is still allowed.
+  if (allocating && bay.in_service === false && basis.tenure === 'licensable') {
+    return `${bay.ref ?? 'This bay'} is out of use. Bring it back into use before allocating it.`;
+  }
   if (!holder) return 'Choose or add a holder.';
   if (allocating && bay.planning_restricted && isExternal(holder.holder_type)) {
     return 'This bay is residents only and cannot go to an external holder.';
@@ -192,6 +197,21 @@ export function currentAgreement(bayId, agreements, today) {
     a.bay_id === bayId && (a.status === 'active' || a.status === 'notice_given') && covers(a, today)) ?? null;
 }
 
+/**
+ * A licence that holds the bay without covering today: a DRAFT (whatever its
+ * start date — it holds the bay against overlap until activated or deleted),
+ * or an active one that STARTS LATER. The earliest, or null. Only a licence:
+ * a demised bay's record is about the lease, and the bay already reads as
+ * belonging to a flat.
+ */
+export function reservingAgreement(bayId, agreements, today) {
+  return (agreements ?? [])
+    .filter(a => a.bay_id === bayId && (a.basis === 'licence' || a.basis === 'adjustment')
+      && (a.status === 'draft'
+        || ((a.status === 'active' || a.status === 'notice_given') && a.starts_on > today)))
+    .sort((a, b) => a.starts_on.localeCompare(b.starts_on))[0] ?? null;
+}
+
 /** Today as YYYY-MM-DD in local time, the date a person means. */
 export function todayISO(now = new Date()) {
   const p = n => String(n).padStart(2, '0');
@@ -219,10 +239,31 @@ export function validateVehicle(v, agreement, currentVehicles = []) {
 }
 
 /**
- * "Whose car is this?" — every vehicle whose registration contains the
- * search, with its agreement, holder and bay. Current vehicles first.
+ * Where a vehicle stands TODAY. `authorised` only when the vehicle is on an
+ * active agreement (or one under notice) that covers today, and the vehicle's
+ * own dates do too. A draft, or an agreement or vehicle that starts later, is
+ * `pending` — not yet allowed to park, which is what the old "authorised"
+ * claimed. Everything else is `ended`.
+ * @returns {'authorised'|'pending'|'ended'}
  */
-export function findByRegistration(q, { vehicles, agreements, holders, bays }) {
+export function vehicleStanding(v, agreement, today) {
+  if (!agreement) return 'ended';
+  if (v.to_date && v.to_date < today) return 'ended';
+  if (agreement.status === 'draft') return 'pending';
+  if (agreement.status !== 'active' && agreement.status !== 'notice_given') return 'ended';
+  if (agreement.ends_on && agreement.ends_on < today) return 'ended';
+  if (agreement.starts_on > today || (v.from_date && v.from_date > today)) return 'pending';
+  return 'authorised';
+}
+
+const STANDING_ORDER = { authorised: 0, pending: 1, ended: 2 };
+
+/**
+ * "Whose car is this?" — every vehicle whose registration contains the
+ * search, with its agreement, holder and bay, and where it stands today.
+ * Authorised first.
+ */
+export function findByRegistration(q, { vehicles, agreements, holders, bays }, today = todayISO()) {
   const needle = normaliseReg(q);
   if (needle.length < 2) return [];
   const agById = new Map((agreements ?? []).map(a => [a.id, a]));
@@ -237,10 +278,11 @@ export function findByRegistration(q, { vehicles, agreements, holders, bays }) {
         agreement,
         holder: agreement ? hById.get(agreement.holder_id) ?? null : null,
         bay: agreement ? bayById.get(agreement.bay_id) ?? null : null,
-        current: !v.to_date && !!agreement && LIVE.has(agreement.status),
+        standing: vehicleStanding(v, agreement, today),
       };
     })
-    .sort((a, b) => Number(b.current) - Number(a.current) || a.vehicle.registration.localeCompare(b.vehicle.registration));
+    .sort((a, b) => STANDING_ORDER[a.standing] - STANDING_ORDER[b.standing]
+      || a.vehicle.registration.localeCompare(b.vehicle.registration));
 }
 
 // ── Notice (P2) ────────────────────────────────────────────────────────────
@@ -312,9 +354,14 @@ export function outstandingDevices(agreementId, devices = []) {
  * Whether the deposit can be marked refunded, and if not, why. ⛔ Not while a
  * device it secures is still out — mirrors the trigger.
  */
-export function depositRefundProblem(agreement, devices = []) {
+export function depositRefundProblem(agreement, devices = [], agreements = []) {
   if (!agreement?.deposit_amount) return 'There is no deposit on this agreement.';
   if (agreement.deposit_refunded_on) return 'The deposit has already been refunded.';
+  // A move carries the deposit to the new agreement (migration 229).
+  if (agreement.deposit_transferred_to) {
+    const to = agreements.find(a => a.id === agreement.deposit_transferred_to)?.reference ?? 'the new agreement';
+    return `The deposit moved to ${to} with the holder; refund it from there.`;
+  }
   const out = outstandingDevices(agreement.id, devices);
   if (out.length) return `${out.length} device${out.length === 1 ? ' has' : 's have'} not been returned.`;
   return null;
@@ -337,7 +384,7 @@ export function unreturnedAfterEnd(agreements = [], devices = []) {
  * transaction: the old agreement ends the day before, a new one starts on the
  * new bay with the same holder and terms, and vehicles and devices go across.
  */
-export function validateMove(agreement, newBay, onDate, holder, agreements = []) {
+export function validateMove(agreement, newBay, onDate, holder, agreements = [], applications = []) {
   if (agreement?.status !== 'active') return 'Only an active agreement can be moved to another bay.';
   if (agreement.basis !== 'licence' && agreement.basis !== 'adjustment') {
     return 'Only a licence can be moved; a demised bay belongs to its flat.';
@@ -348,6 +395,10 @@ export function validateMove(agreement, newBay, onDate, holder, agreements = [])
   if (onDate <= agreement.starts_on) return 'The move must be after the agreement started.';
   if (agreement.ends_on && onDate > agreement.ends_on) return 'The agreement ends before that date.';
   if (newBay.in_service === false) return `${newBay.ref} is out of use.`;
+  // A bay under offer is held for the person offered it (migration 229).
+  const offer = (applications ?? []).find(a => a.status === 'offered' && newBay.bay_id
+    && a.offered_bay_id === newBay.bay_id && a.holder_id !== agreement.holder_id);
+  if (offer) return `${newBay.ref} is under offer to someone on the waiting list.`;
   return validateAgreement({ ...agreement, id: undefined, starts_on: onDate }, newBay, holder, agreements);
 }
 
@@ -369,6 +420,16 @@ export const EVENT_LABEL = {
   device_returned:  'Device returned',
   bay_out_of_use:   'Bay out of use',
   bay_back_in_use:  'Bay back in use',
+  deposit_transferred: 'Deposit transferred',
+  // Waiting-list entries that name this bay (migration 224, 229).
+  application_joined:    'Joined the waiting list',
+  offer_made:            'Bay offered from the waiting list',
+  offer_accepted:        'Offer accepted',
+  offer_declined:        'Offer declined',
+  offer_lapsed:          'Offer lapsed',
+  offer_returned:        'Offer returned to the queue',
+  offer_reopened:        'Offer reopened (its draft was deleted)',
+  application_withdrawn: 'Application withdrawn',
 };
 
 /** One line of detail for a timeline entry. */
@@ -383,6 +444,9 @@ export function eventSummary(e) {
     case 'device_issued':
     case 'device_returned':  return `${DEVICE_LABEL[d.type] ?? d.type} ${d.serial ?? ''}`;
     case 'deposit_refunded': return d.amount != null ? `£${Number(d.amount).toFixed(2)}` : '';
+    case 'deposit_transferred': return [d.amount != null && `£${Number(d.amount).toFixed(2)}`, d.to && `to ${d.to}`].filter(Boolean).join(' ');
+    case 'offer_made':
+    case 'offer_reopened':   return d.expires_on ? `open until ${d.expires_on}` : '';
     case 'terms_changed':    return Object.entries(d).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v?.from ?? '—'} → ${v?.to ?? '—'}`).join(' · ');
     case 'bay_out_of_use':   return [d.reason, d.until && `until ${d.until}`].filter(Boolean).join(' — ');
     default:                 return '';

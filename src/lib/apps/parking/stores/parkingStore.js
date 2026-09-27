@@ -318,7 +318,7 @@ function createParkingStore() {
   async function refundDeposit(id, onDate = todayISO()) {
     const s = state();
     const current = s.agreements.find(a => a.id === id);
-    const problem = depositRefundProblem(current, s.devices);
+    const problem = depositRefundProblem(current, s.devices, s.agreements);
     if (problem) throw new Error(problem);
     const userId = requireUserId();
     const saved = await api.update('parking_agreements', id,
@@ -340,7 +340,7 @@ function createParkingStore() {
     const current = s.agreements.find(a => a.id === id);
     const newBay = s.bays.find(b => b.space_id === newSpaceId);
     const holder = s.holders.find(h => h.id === current?.holder_id);
-    const problem = validateMove(current, newBay, onDate, holder, s.agreements);
+    const problem = validateMove(current, newBay, onDate, holder, s.agreements, s.applications);
     if (problem) throw new Error(problem);
 
     const bayRow = await ensureBayRow(newSpaceId);
@@ -459,17 +459,28 @@ function createParkingStore() {
     return api.get('parking_events', { filters: { application_id: appId }, orderBy: 'created_at', ascending: true });
   }
 
-  /** Delete a mistaken DRAFT. Anything that went live is ended, not deleted. */
+  /**
+   * Delete a mistaken DRAFT. Anything that went live is ended, not deleted.
+   * A draft made from an accepted waiting-list offer REOPENS that offer
+   * (migration 229): the person keeps the bay they were offered, until they
+   * accept again, decline or it lapses.
+   */
   async function deleteDraft(id) {
     const current = state().agreements.find(a => a.id === id);
     if (!current) return;
     if (current.status !== 'draft') throw new Error('Only a draft can be deleted. End or terminate it instead.');
+    const reopens = state().applications.some(a => a.agreement_id === id && a.status === 'allocated');
     await api.delete('parking_agreements', id);
+    // The database changed the application too; read it back rather than guess.
+    const applications = reopens
+      ? await api.getAll('parking_applications', { orderBy: 'joined_on' })
+      : state().applications;
     update(st => ({
       ...st,
       agreements: st.agreements.filter(a => a.id !== id),
       vehicles: st.vehicles.filter(v => v.agreement_id !== id),   // cascaded in the database
       devices: st.devices.filter(d => d.agreement_id !== id),
+      applications,
     }));
     remerge();
     logAudit('delete', 'parking_agreement', id, current.reference, { ...AUDIT });

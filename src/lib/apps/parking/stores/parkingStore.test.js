@@ -330,3 +330,19 @@ describe('retention', () => {
     expect(audit[4].afterData).toEqual({ agreements: 1, holders: 1 });
   });
 });
+
+describe('deleting a draft made from an accepted offer', () => {
+  // Migration 229 reopens the offer in the database; the screen must show it
+  // reopened, not still "allocated" to an agreement that no longer exists.
+  it('re-reads the waiting list, because the database reopened the offer', async () => {
+    tables.parking_agreements = [{ id: 'd1', reference: 'PA-0002', bay_id: 'b1', holder_id: 'h1', basis: 'licence', status: 'draft', starts_on: '2026-10-01' }];
+    tables.parking_applications = [{ id: 'app1', holder_id: 'h1', status: 'allocated', agreement_id: 'd1', joined_on: '2026-01-01' }];
+    await parkingStore.load();
+    tables.parking_applications = [{ id: 'app1', holder_id: 'h1', status: 'offered', agreement_id: null, joined_on: '2026-01-01' }];
+    h.api.getAll.mockClear();
+    await parkingStore.deleteDraft('d1');
+    expect(h.api.delete).toHaveBeenCalledWith('parking_agreements', 'd1');
+    expect(h.api.getAll.mock.calls.map(c => c[0])).toContain('parking_applications');
+    expect(get(parkingStore).applications[0].status).toBe('offered');
+  });
+});
