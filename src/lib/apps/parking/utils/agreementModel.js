@@ -285,6 +285,26 @@ export function findByRegistration(q, { vehicles, agreements, holders, bays }, t
       || a.vehicle.registration.localeCompare(b.vehicle.registration));
 }
 
+/**
+ * The problem with ending or terminating an agreement on a date, or null.
+ * Checked BEFORE anything is written: ending stops each current vehicle on the
+ * same date, and a vehicle whose authorisation starts after that date cannot
+ * be given an end before its start — which used to fail half way, with the
+ * agreement already ended and the vehicles not.
+ */
+export function endingProblem(agreement, endDate, vehicles = []) {
+  if (!endDate) return 'Enter the date it ended.';
+  if (endDate < agreement.starts_on) return 'The end date is before the start date.';
+  const later = vehicles.filter(v => v.agreement_id === agreement.id && !v.to_date
+    && v.from_date && v.from_date > endDate);
+  if (later.length) {
+    return `${later.map(v => v.registration).join(', ')} ${later.length === 1 ? 'is' : 'are'} only authorised from `
+      + `${later.map(v => v.from_date).sort()[0]}, after that end date. Remove ${later.length === 1 ? 'it' : 'them'} `
+      + 'from the agreement first, or choose a later end date.';
+  }
+  return null;
+}
+
 // ── Notice (P2) ────────────────────────────────────────────────────────────
 
 /** Add days to a YYYY-MM-DD date, in UTC so no clock change moves it. */

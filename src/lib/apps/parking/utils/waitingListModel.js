@@ -115,6 +115,19 @@ export function nextFor(bay, applications) {
 }
 
 /**
+ * The agreement already made for an open offer: a live agreement on the
+ * offered bay for the person it was offered to. It exists when accepting
+ * saved the agreement but marking the application accepted failed — and then
+ * accepting AGAIN would only be refused as an overlap, so the screen offers to
+ * finish the job instead.
+ */
+export function agreementForOffer(app, agreements = []) {
+  if (app?.status !== 'offered' || !app.offered_bay_id) return null;
+  return agreements.find(a => a.bay_id === app.offered_bay_id && a.holder_id === app.holder_id
+    && LIVE.has(a.status)) ?? null;
+}
+
+/**
  * ⛔ If a bay is under offer, only the person offered it may be allocated it.
  * Allocating it to someone else from the bay panel would jump the queue.
  */

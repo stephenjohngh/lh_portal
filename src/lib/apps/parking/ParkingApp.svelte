@@ -76,13 +76,20 @@
     if (bay) { floorId = bay.floor_id; selectedSpaceId = bay.space_id; }
     tab = 'bays';
   }
+  // The agreement saved but the waiting-list entry was not marked accepted.
+  // Said out loud: the Waiting list tab offers to finish it.
+  let acceptError = '';
   async function allocated(e) {
     const appId = acceptingApplicationId;     // captured before the await
     const agreementId = e.detail.id;
     closeAllocate();
+    acceptError = '';
     if (appId) {
       try { await parkingStore.markAllocated(appId, agreementId); }
-      catch { /* shown from state.error; the agreement itself is saved */ }
+      catch (/** @type {any} */ err) {
+        acceptError = `The agreement was saved, but the waiting-list entry could not be marked accepted (${err.message}). `
+          + 'Finish it from the Waiting list tab.';
+      }
     }
     selectedAgreementId = agreementId;
     tab = 'agreements';
@@ -153,6 +160,7 @@
     <LoadingSpinner />
   {:else}
     {#if state.error}<ErrorDisplay message={state.error} />{/if}
+    {#if acceptError}<ErrorDisplay message={acceptError} />{/if}
 
     <div class="flex space-x-2 border-b border-slate-600">
       {#each TABS as t (t.key)}

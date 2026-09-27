@@ -22,7 +22,7 @@ import { mergeBays, bayFactsRow, validateBayFacts, BAY_DEFAULTS } from '../utils
 import {
   validateHolder, holderRow, validateAgreement, agreementRow, canTransition,
   normaliseReg, validateVehicle, findByRegistration, todayISO,
-  validateNotice, validateDevice, depositRefundProblem, validateMove,
+  validateNotice, validateDevice, depositRefundProblem, validateMove, endingProblem,
 } from '../utils/agreementModel.js';
 import { validateApplication, validateOffer, offerBlocks } from '../utils/waitingListModel.js';
 import { validateTariff, tariffRow, tariffFor, matchesTariff, reopenedBy } from '../utils/tariffModel.js';
@@ -230,7 +230,10 @@ function createParkingStore() {
     if (current.status === 'notice_given' && to === 'active') return withdrawNotice(id);
     const ending = to === 'ended' || to === 'terminated';
     const endDate = ending ? (ends_on || current.ends_on || todayISO()) : current.ends_on;
-    if (ending && endDate < current.starts_on) throw new Error('The end date is before the start date.');
+    if (ending) {
+      const problem = endingProblem(current, endDate, state().vehicles);
+      if (problem) throw new Error(problem);
+    }
     const userId = requireUserId();
 
     const patch = { status: to, updated_by: userId,
@@ -311,6 +314,9 @@ function createParkingStore() {
     if (onDate < dev.issued_on) throw new Error('It cannot come back before it was issued.');
     const saved = await api.update('parking_access_devices', id, { returned_on: onDate }, true);
     update(st => ({ ...st, devices: st.devices.map(d => d.id === id ? saved : d) }));
+    const ref = state().agreements.find(a => a.id === dev.agreement_id)?.reference ?? '';
+    logAudit('update', 'parking_device', id, ref,
+      { ...AUDIT, eventAction: 'device_returned', afterData: { returned_on: onDate } });
     return saved;
   }
 
@@ -324,6 +330,8 @@ function createParkingStore() {
     const saved = await api.update('parking_agreements', id,
       { deposit_refunded_on: onDate, updated_by: userId }, true);
     update(st => ({ ...st, agreements: st.agreements.map(a => a.id === id ? saved : a) }));
+    logAudit('update', 'parking_agreement', id, saved.reference,
+      { ...AUDIT, eventAction: 'deposit_refunded', afterData: { deposit_refunded_on: onDate } });
     return saved;
   }
 

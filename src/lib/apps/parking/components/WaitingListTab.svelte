@@ -8,7 +8,7 @@
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import {
-    queue, positionOf, validateApplication, validateOffer, bayOfferProblem, offerLapsed, nextFor,
+    queue, positionOf, validateApplication, validateOffer, bayOfferProblem, offerLapsed, nextFor, agreementForOffer,
     defaultExpiry, ANY_SIZE, APPLICATION_STATUS_LABEL, OPEN,
   } from '../utils/waitingListModel.js';
   import { validateHolder, HOLDER_TYPE_LABEL, todayISO } from '../utils/agreementModel.js';
@@ -123,6 +123,7 @@
   const HISTORY_LABEL = {
     application_joined: 'Joined the list', offer_made: 'Offered a bay', offer_declined: 'Offer declined',
     offer_lapsed: 'Offer lapsed', offer_accepted: 'Offer accepted', application_withdrawn: 'Withdrawn',
+    offer_returned: 'Returned to the queue', offer_reopened: 'Offer reopened (its draft was deleted)',
   };
   async function toggleHistory(app) {
     if (historyFor === app.id) { historyFor = null; return; }
@@ -211,7 +212,14 @@
             {#if canEdit && app.status === 'waiting'}
               <button class="text-xs text-purple-400 hover:text-purple-300" on:click={() => startOffer(app)}>Offer a bay</button>
             {/if}
-            {#if canEdit && app.status === 'offered'}
+            {#if canEdit && app.status === 'offered' && agreementForOffer(app, s.agreements)}
+              {@const made = agreementForOffer(app, s.agreements)}
+              <!-- The agreement exists but marking the offer accepted failed:
+                   finish that, rather than drawing up a second agreement. -->
+              <button class="text-xs text-green-400 hover:text-green-300" disabled={busy}
+                on:click={() => { const a = app.id; const g = made.id; run(() => parkingStore.markAllocated(a, g)); }}>
+                Mark accepted ({made.reference})</button>
+            {:else if canEdit && app.status === 'offered'}
               <button class="text-xs text-green-400 hover:text-green-300" disabled={busy} on:click={() => accept(app)}>Accepted</button>
               <button class="text-xs text-slate-400 hover:text-white" disabled={busy} on:click={() => back(app, 'declined')}>Declined</button>
               <button class="text-xs text-slate-400 hover:text-white" disabled={busy} on:click={() => back(app, 'lapsed')}>Lapsed</button>

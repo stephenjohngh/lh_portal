@@ -87,3 +87,21 @@ describe('offers', () => {
     expect(offerBlocks(bay, 'anyone', [])).toBeNull();
   });
 });
+
+describe('an offer whose agreement is already made', () => {
+  // Accepting saves the agreement, then marks the application accepted. If the
+  // second step failed, accepting again would only hit the overlap rule; the
+  // screen finishes the job instead.
+  it('finds the live agreement for the person offered the bay, and nothing else', async () => {
+    const { agreementForOffer } = await import('./waitingListModel.js');
+    const app = { status: 'offered', offered_bay_id: 'b1', holder_id: 'h1' };
+    const ags = [
+      { id: 'x', bay_id: 'b1', holder_id: 'h2', status: 'draft' },
+      { id: 'y', bay_id: 'b1', holder_id: 'h1', status: 'ended' },
+      { id: 'z', bay_id: 'b1', holder_id: 'h1', status: 'draft' },
+    ];
+    expect(agreementForOffer(app, ags)?.id).toBe('z');
+    expect(agreementForOffer(app, ags.slice(0, 2))).toBeNull();
+    expect(agreementForOffer({ ...app, status: 'waiting' }, ags)).toBeNull();
+  });
+});

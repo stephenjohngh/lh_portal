@@ -346,3 +346,17 @@ describe('deleting a draft made from an accepted offer', () => {
     expect(get(parkingStore).applications[0].status).toBe('offered');
   });
 });
+
+describe('audit of devices and deposits', () => {
+  it('returning a device and refunding a deposit are both audited', async () => {
+    tables.parking_agreements = [{ id: 'a1', reference: 'PA-0001', bay_id: 'b1', holder_id: 'h1', basis: 'licence',
+      status: 'ended', starts_on: '2026-01-01', ends_on: '2026-06-30', deposit_amount: 20 }];
+    tables.parking_access_devices = [{ id: 'd1', agreement_id: 'a1', device_type: 'fob', serial: '1', issued_on: '2026-01-01', returned_on: null }];
+    await parkingStore.load();
+    h.api.update.mockImplementation(async (t, id, patch) => ({ ...(t === 'parking_agreements' ? tables.parking_agreements[0] : tables.parking_access_devices[0]), ...patch }));
+    await parkingStore.returnDevice('d1', '2026-07-01');
+    await parkingStore.refundDeposit('a1', '2026-07-02');
+    const actions = h.logAudit.mock.calls.map(c => c[4]?.eventAction);
+    expect(actions).toEqual(expect.arrayContaining(['device_returned', 'deposit_refunded']));
+  });
+});
