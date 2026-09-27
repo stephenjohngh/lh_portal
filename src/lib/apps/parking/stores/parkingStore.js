@@ -599,7 +599,7 @@ function createParkingStore() {
   }
 
   /**
-   * Remove what is due now, then re-read everything it may have touched.
+   * Delete outdated records, then re-read everything it may have touched.
    * Through the server, because a signed licence's file is in storage and must
    * be deleted before its agreement can go (migration 227).
    */

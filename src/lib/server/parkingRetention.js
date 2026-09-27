@@ -1,5 +1,5 @@
 // src/lib/server/parkingRetention.js
-// The admin's "remove what is due now" for Parking (migrations 226, 227).
+// The admin's "Delete outdated records" for Parking (migrations 226, 227).
 //
 // The rule and its periods live in the database function
 // `parking_apply_retention`. ⛔ It no longer runs on a timetable: the nightly

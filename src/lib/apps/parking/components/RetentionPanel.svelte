@@ -54,10 +54,10 @@
   <div class="flex items-start justify-between gap-4">
     <div>
       <p class="text-sm text-slate-200">How long this app keeps personal data</p>
-      <p class="text-xs text-slate-400">Nothing is removed automatically. An administrator decides when to remove what is due, and nothing removed can be recovered.</p>
+      <p class="text-xs text-slate-400">Nothing is removed automatically. An administrator decides when to delete outdated records, and nothing deleted can be recovered.</p>
     </div>
     {#if anythingDue}
-      <ProtectedButton requireAdmin={true} variant="danger" on:click={() => confirming = true}>Remove what is due now</ProtectedButton>
+      <ProtectedButton requireAdmin={true} variant="danger" on:click={() => confirming = true}>Delete outdated records</ProtectedButton>
     {/if}
   </div>
   {#if error}<ErrorDisplay message={error} />{/if}
@@ -81,9 +81,9 @@
 
 <ConfirmDialog
   show={confirming}
-  title="Remove what is due now?"
+  title="Delete outdated records?"
   message={due ? `${retentionSummary(due, { due: true })} Signed licence documents are deleted first. This cannot be undone.` : ''}
-  confirmText="Remove"
+  confirmText="Delete"
   danger={true}
   processing={running}
   on:confirm={run}

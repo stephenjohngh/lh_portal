@@ -3,7 +3,7 @@
 //
 // ⛔ Nothing is removed on a timetable: the nightly job was switched off by the
 // user on 2026-09-27 (migration 230). A period says when a record becomes DUE;
-// it goes only when an administrator presses "Remove what is due now". So the
+// it goes only when an administrator presses "Delete outdated records". So the
 // rules say "becomes due for removal", never "is removed".
 //
 // ⭐ The periods are NOT written here. The database function returns them with
@@ -46,7 +46,7 @@ export function retentionSummary(counts, { due = false } = {}) {
     ? ` ${plural(counts.held_back_device_out, 'agreement')} past ${counts.held_back_device_out === 1 ? 'its' : 'their'} period ${counts.held_back_device_out === 1 ? 'is' : 'are'} kept because a device is still out.`
     : '';
   const docs = counts?.held_back_documents
-    ? ` ${plural(counts.held_back_documents, 'agreement')} ${counts.held_back_documents === 1 ? 'is' : 'are'} ${due ? 'also due but waiting' : 'still waiting'} for ${counts.held_back_documents === 1 ? 'its' : 'their'} licence documents to be removed${due ? ': Remove what is due now does that' : ''}.`
+    ? ` ${plural(counts.held_back_documents, 'agreement')} ${counts.held_back_documents === 1 ? 'is' : 'are'} ${due ? 'also due but waiting' : 'still waiting'} for ${counts.held_back_documents === 1 ? 'its' : 'their'} licence documents to be removed${due ? ': Delete outdated records does that' : ''}.`
     : '';
   const failed = counts?.documents_failed
     ? ` ${plural(counts.documents_failed, 'licence document')} could not be deleted, so ${counts.documents_failed === 1 ? 'its' : 'their'} agreement stays.`
