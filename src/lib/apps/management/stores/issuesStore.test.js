@@ -59,6 +59,11 @@ const h = vi.hoisted(() => {
     create:     vi.fn(() => Promise.resolve({})),
   };
 
+  const del          = vi.fn(() => Promise.resolve({ ok: true }));
+  const docApi       = {
+    listDocuments:  vi.fn(() => Promise.resolve([])),
+    deleteDocument: vi.fn(() => Promise.resolve()),
+  };
   const logAudit     = vi.fn();
   const sanitizeHtml = vi.fn((s) => s);          // identity — assert it's CALLED
 
@@ -66,7 +71,7 @@ const h = vi.hoisted(() => {
   let meetingVal = null;
   const currentMeeting = { subscribe: (run) => { run(meetingVal); return () => {}; } };
 
-  return { supabase, api, logAudit, sanitizeHtml, currentMeeting,
+  return { supabase, api, del, docApi, logAudit, sanitizeHtml, currentMeeting,
            setSingle:  (r) => { singleResult = r; },
            setAwait:   (r) => { awaitResult = r; },
            setMeeting: (v) => { meetingVal = v; } };
@@ -74,6 +79,8 @@ const h = vi.hoisted(() => {
 
 vi.mock('$lib/supabaseClient',     () => ({ supabase: h.supabase }));
 vi.mock('$lib/utils/api',          () => ({ api: h.api }));
+vi.mock('$lib/utils/request',      () => ({ del: h.del }));
+vi.mock('$lib/utils/documentApi',  () => h.docApi);
 vi.mock('$lib/utils/auditLogger',  () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',       () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/utils/sanitizeHtml', () => ({ sanitizeHtml: h.sanitizeHtml }));
@@ -173,6 +180,42 @@ describe('deleteIssue', () => {
     expect(h.api.delete).toHaveBeenCalledWith('issues', 'i1');
     expect(h.api.get).toHaveBeenCalled(); // refetch
     expect(r).toEqual({ success: true });
+  });
+
+  // The activities go with the issue, but their documents used to stay in the
+  // library and in Drive with nothing pointing at them (2026-09-27).
+  it('deletes the issue’s documents too — found before the issue goes, removed after', async () => {
+    const order = [];
+    h.docApi.listDocuments.mockImplementationOnce(async () => { order.push('list'); return [{ id: 'd1' }, { id: 'd2' }]; });
+    h.api.delete.mockImplementationOnce(async () => { order.push('issue'); });
+    h.docApi.deleteDocument.mockImplementation(async (id) => { order.push(`doc ${id}`); });
+    await issuesStore.deleteIssue('i1');
+    expect(h.docApi.listDocuments).toHaveBeenCalledWith({ entity_type: 'issue', entity_id: 'i1' });
+    expect(order).toEqual(['list', 'issue', 'doc d1', 'doc d2']);
+  });
+
+  it('still deletes the issue when a document cannot be removed', async () => {
+    h.docApi.listDocuments.mockResolvedValueOnce([{ id: 'd1' }]);
+    h.docApi.deleteDocument.mockRejectedValueOnce(new Error('drive busy'));
+    expect(await issuesStore.deleteIssue('i1')).toEqual({ success: true });
+  });
+});
+
+describe('deleteActivity', () => {
+  // Through the server, which deletes a document activity's file with it.
+  it('deletes through the server route, not a bare table delete', async () => {
+    h.setSingle({ data: { activity_type: 'document', issue_id: 'i1', body: 'b' }, error: null });
+    const r = await issuesStore.deleteActivity('act1');
+    expect(h.del).toHaveBeenCalledWith('/api/management/activities/act1', expect.any(String));
+    expect(h.api.delete).not.toHaveBeenCalledWith('activities', 'act1');
+    expect(r).toEqual({ success: true });
+  });
+
+  it('reports the server’s refusal', async () => {
+    h.del.mockRejectedValueOnce(new Error('Only an administrator, or whoever added this within the last two hours, can delete it.'));
+    const r = await issuesStore.deleteActivity('act1');
+    expect(r.success).toBe(false);
+    expect(r.error).toMatch(/two hours/);
   });
 });
 

@@ -7,6 +7,8 @@ import { ISSUE_STATUS }     from '$lib/utils/constants';
 import { getLogger }        from '$lib/utils/logger';
 import { logAudit }         from '$lib/utils/auditLogger';
 import { sanitizeHtml }     from '$lib/utils/sanitizeHtml';
+import { del }              from '$lib/utils/request';
+import * as docApi          from '$lib/utils/documentApi';
 import { currentMeeting }   from './meetingsStore';
 
 const logger = getLogger('issuesStore');
@@ -291,10 +293,26 @@ function createIssuesStore() {
 
         logger('Issue to delete:', issue);
 
+        // Its documents. The activities go with the issue (FK cascade) but the
+        // library files they carried do not, and would stay in Drive with
+        // nothing pointing at them (2026-09-27). Listed BEFORE the issue goes:
+        // the document list checks the caller can read the parent issue.
+        let docs = [];
+        try {
+          docs = await docApi.listDocuments({ entity_type: 'issue', entity_id: issueId });
+        } catch (/** @type {any} */ err) {
+          logger('⚠ could not list the issue’s documents:', err.message);
+        }
+
         // Delete issue
         await api.delete('issues', issueId);
 
         logger('✅ Issue deleted');
+
+        // Then the documents — best-effort: the issue has gone either way.
+        const removed = await Promise.allSettled(docs.map((d) => docApi.deleteDocument(d.id)));
+        const failedDocs = removed.filter((r) => r.status === 'rejected').length;
+        if (failedDocs) logger(`⚠ ${failedDocs} of the issue’s documents could not be deleted`);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
         audit(
@@ -471,8 +489,11 @@ function createIssuesStore() {
           .eq('id', activity?.issue_id)
           .single();
 
-        // Delete activity
-        await api.delete('activities', activityId);
+        // Delete activity — through the server, which deletes a document
+        // activity's file with it, under the same rule as the table's own
+        // delete policy (src/routes/api/management/activities/[id]/+server.js).
+        // A plain browser delete left the document in Drive (2026-09-27).
+        await del(`/api/management/activities/${activityId}`, 'Could not delete this activity');
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
         const aType = activity?.activity_type ?? 'activity';

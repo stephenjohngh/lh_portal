@@ -151,6 +151,11 @@
   $: visibleItems       = sortActivities(filteredActivities, sortField, sortDir);
 
   $: historicCount = activities.filter(a => a.historic).length;
+  // The activity awaiting delete confirmation — a document activity's file is
+  // deleted with it, and the confirmation says so.
+  $: pendingDeleteDoc = activities.find(a => a.id === pendingDeleteId)?.fields?.doc_id
+    ? activities.find(a => a.id === pendingDeleteId)?.fields?.display_name ?? 'the attached document'
+    : null;
 
   // When an activity disappears from this issue's list (e.g. after being moved
   // to another issue), automatically close any open UI tied to it. Only judge
@@ -831,7 +836,9 @@
 <ConfirmDialog
   show={showDeleteConfirm}
   title="Delete Activity"
-  message="Are you sure you want to delete this entry? This action cannot be undone."
+  message={pendingDeleteDoc
+    ? `Delete this entry and its document, ${pendingDeleteDoc}? The file is removed from storage too. This cannot be undone.`
+    : 'Are you sure you want to delete this entry? This action cannot be undone.'}
   confirmText="Delete"
   cancelText="Cancel"
   danger={true}
