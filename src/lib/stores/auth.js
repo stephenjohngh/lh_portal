@@ -3,6 +3,7 @@
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
+import { openMediaSession, closeMediaSession } from '$lib/utils/mediaSession';
 
 const logger = getLogger('authStore');
 
@@ -22,9 +23,17 @@ function createAuthStore() {
     subscribe,
     initialize: async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      // The media session cookie must exist before the app renders any photo:
+      // <img src="/api/media/file/…"> cannot send the bearer token.
+      if (session) await openMediaSession(session.access_token);
       set({ user: session?.user ?? null, loading: false });
 
       supabase.auth.onAuthStateChange((event, session) => {
+        // Renewed with every token rotation, so the 12-hour cookie never lapses
+        // for someone who is signed in. Fire-and-forget.
+        if (session && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN')) {
+          openMediaSession(session.access_token);
+        }
         // TOKEN_REFRESHED only rotates the JWT — the user identity is unchanged.
         // Updating the store on that event causes reactive statements in +page.svelte
         // to re-run loadUserPermissions() every ~60 min, which the user sees as a reload.
@@ -68,6 +77,8 @@ function createAuthStore() {
           access_token:  body.session.access_token,
           refresh_token: body.session.refresh_token,
         });
+        // Before the app renders anything that shows a photo.
+        await openMediaSession(body.session.access_token);
 
         logger('✅ Login successful:', email);
         return { success: true, data: body };
@@ -77,31 +88,13 @@ function createAuthStore() {
       }
     },
     
-    signup: async (email, password, fullName) => {
-      try {
-        logger('Signup attempt for:', email);
-        
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName }
-          }
-        });
-        
-        if (error) {
-          logger('❌ Signup failed:', error.message);
-          return { success: false, error: error.message };
-        }
-        
-        logger('✅ Signup successful:', email);
-        return { success: true, data };
-      } catch (/** @type {any} */ error) {
-        logger('❌ Signup exception:', error.message);
-        return { success: false, error: error.message };
-      }
-    },
-    
+    // ⛔ There is no signup here (security review, 2026-09-27). Accounts are
+    // created by an administrator (POST /api/admin/create-user); the whole
+    // permission model assumes every account is a known person. A browser-side
+    // supabase.auth.signUp() was an unused path round that — and whether it
+    // would have worked is a Supabase Auth setting ("Allow new users to sign
+    // up"), which must be OFF.
+
     logout: async () => {
       try {
         // Get user info BEFORE logging out
@@ -132,6 +125,9 @@ function createAuthStore() {
             })
           }).catch(err => logger('Failed to log logout:', err.message));
         }
+
+        // The media cookie goes with the session.
+        await closeMediaSession();
 
         // Sign out from Supabase
         const { error } = await supabase.auth.signOut();

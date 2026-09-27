@@ -63,6 +63,23 @@ export async function providersForFileIds(fileIds = []) {
 }
 
 /**
+ * The library row that holds a storage file id, or null. For a route handed a
+ * raw file id, so it can ask canAccessDocument() about the DOCUMENT rather
+ * than only whether the file is in the library at all.
+ * @param {string} fileId
+ * @returns {Promise<{ id: string, entity_type: string|null, entity_id: string|null, provider: string|null } | null>}
+ */
+export async function getDocumentByFileId(fileId) {
+  const { data, error } = await getDb()
+    .from('document_library')
+    .select('id, entity_type, entity_id, provider')
+    .eq('provider_file_id', fileId)
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
+
+/**
  * Upload a file to storage and insert a record in document_library.
  *
  * @param {Buffer}  buffer
@@ -216,6 +233,12 @@ export async function getDocument(id) {
  */
 export async function getDocumentUrl(id) {
   const doc = await getDocument(id);
+  // ⛔ A Drive file is private to the Drive account since the security review
+  // (2026-09-27): Google's own link needs a Google sign-in with access. The
+  // portal's proxy is the way in, and it checks who is asking.
+  if (doc.provider === 'google_drive' && doc.provider_file_id) {
+    return `/api/media/file/${doc.provider_file_id}`;
+  }
   return providerFor(doc).getFileUrl(doc.provider_file_id);
 }
 

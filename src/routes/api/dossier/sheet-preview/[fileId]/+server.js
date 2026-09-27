@@ -2,17 +2,17 @@
 // GET /api/dossier/sheet-preview/:fileId — a bounded grid preview of a
 // spreadsheet on a pack's shelf. The parse itself is $lib/server/sheetReader.
 //
-// Why authenticated, unlike /api/media/file: that endpoint serves opaque bytes
-// whose id is unguessable, and the caller must already know the id. This one
-// EXTRACTS content and returns it as structured JSON, which is a different
-// thing to leave open. P3's published packs will need a token-scoped route —
-// the same piece of work as the deferred token-scoped asset endpoint, and it
-// should import readSheetPreview() rather than duplicate it.
+// Authenticated by bearer token, and — since the security review (2026-09-27) —
+// only for a caller who may read the DOCUMENT the file belongs to. It EXTRACTS
+// content and returns it as structured JSON. Published packs have their own
+// token-scoped route; a sheet preview there should import readSheetPreview()
+// rather than duplicate it.
 
 import { json }                 from '@sveltejs/kit';
 import { ownerOf }              from '$lib/server/storage/index.js';
 import { isStorageId }          from '$lib/server/storage/storageRef.js';
-import { providersForFileIds } from '$lib/server/documentLibrary.js';
+import { getDocumentByFileId }  from '$lib/server/documentLibrary.js';
+import { canAccessDocument, bearerToken } from '$lib/server/documentAccess.js';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
 import { requireAuth }          from '$lib/server/requireAuth.js';
 import { readSheetPreview, MAX_SHEET_BYTES } from '$lib/server/sheetReader.js';
@@ -24,11 +24,16 @@ export async function GET({ params, request, url }) {
   const { fileId } = params;
   // Which storage holds it comes from the document's row. A file id that is
   // not in the library is not a shelf file, and is not read.
+  // ⛔ And the caller must be able to read THAT document (security review,
+  // 2026-09-27) — it used to be enough that the file was in the library at
+  // all, which let any signed-in user preview a parking licence spreadsheet.
   let provider;
   try {
-    const owners = await providersForFileIds([String(fileId ?? '')]);
-    if (!owners.has(fileId)) return json({ error: 'File not found or inaccessible' }, { status: 404 });
-    provider = owners.get(fileId);
+    const doc = await getDocumentByFileId(String(fileId ?? ''));
+    if (!doc) return json({ error: 'File not found or inaccessible' }, { status: 404 });
+    const allowed = await canAccessDocument(doc, { isAdmin: auth.isAdmin, token: bearerToken(request) });
+    if (!allowed.ok) return json({ error: 'File not found or inaccessible' }, { status: 404 });
+    provider = doc.provider;
   } catch {
     return json({ error: 'File not found or inaccessible' }, { status: 404 });
   }

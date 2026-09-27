@@ -32,31 +32,12 @@ import { isStorageId }          from '$lib/server/storage/storageRef.js';
 import { providersForFileIds } from '$lib/server/documentLibrary.js';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
 import { checkRateLimit }       from '$lib/server/publicRateLimit.js';
-import { declarableMime }       from '$lib/utils/mimeTypes';
+import { fileHeaders }          from '$lib/server/fileResponse.js';
 import { manifestEntry }        from '$lib/apps/dossier/utils/snapshot.js';
 import {
   findServablePublication, resolveManifest, readerRefusal,
 } from '$lib/server/publicationReader.js';
 import { hasGrant } from '$lib/server/publicationPassphrase.js';
-
-/**
- * A Content-Disposition header that cannot break, whatever the file is called.
- *
- * Two hazards, both real with author-supplied names:
- *   * CR/LF and quotes would break out of the header — stripped.
- *   * A non-Latin-1 character (an accent, a dash, any non-Western script)
- *     THROWS when the Response is constructed, turning a perfectly ordinary
- *     filename into a 500. So the quoted form is ASCII-only, and the real name
- *     travels in RFC 5987 `filename*`, which every current browser prefers.
- */
-function contentDisposition(rawName, kind) {
-  const name = String(rawName ?? 'file');
-  const ascii = name
-    .replace(/[\r\n"\\]/g, '')        // cannot start a header or close the string
-    .replace(/[^\x20-\x7e]/g, '_')    // cannot be encoded in a header at all
-    .trim() || 'file';
-  return `${kind}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
-}
 
 /** Every refusal, whatever the cause. See publicationReader.readerRefusal(). */
 function refuse() {
@@ -116,18 +97,15 @@ export async function GET({ params, request, cookies }) {
   // everything else downloads as an opaque octet-stream under its own name. The
   // bytes are user-uploaded and served from our origin, so this is the same
   // caution the media proxy applies, with the same reasoning.
-  const inline = declarableMime(entry.mime_type);
-  const disposition = contentDisposition(entry.filename, inline ? 'inline' : 'attachment');
-
+  // The rule lives in $lib/server/fileResponse.js, shared with the media proxy.
   return new Response(data, {
     headers: {
-      'Content-Type':   inline || 'application/octet-stream',
-      'Content-Length': String(data.length),
-      'Content-Disposition': disposition,
-      // Private to whoever holds the link: no shared-proxy caching, and a short
-      // browser cache only, so a revoked link stops working promptly.
-      'Cache-Control': 'private, max-age=60',
-      'X-Content-Type-Options': 'nosniff',
+      ...fileHeaders({
+        mime: entry.mime_type, filename: entry.filename, length: data.length,
+        // Private to whoever holds the link: no shared-proxy caching, and a short
+        // browser cache only, so a revoked link stops working promptly.
+        cacheControl: 'private, max-age=60',
+      }),
       'X-Robots-Tag': 'noindex, nofollow, noarchive',
     },
   });

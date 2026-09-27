@@ -1,4 +1,5 @@
 <script>
+  import { fileViewUrl } from '$lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { mimeIcon, formatFileSize, docTypeLabel, getExpiryStatus } from '$lib/utils/documentUtils';
   import { fmtDate } from '$lib/utils/dates';
@@ -18,7 +19,7 @@
     : 'text-slate-400';
 
   function open() {
-    if (doc.web_view_url) window.open(doc.web_view_url, '_blank', 'noopener');
+    if (doc.web_view_url) window.open(fileViewUrl(doc.web_view_url), '_blank', 'noopener');
     else dispatch('geturl', doc);
   }
 </script>

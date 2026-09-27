@@ -11,6 +11,7 @@
   This file owns all suggestion-panel state and cross-cutting modals.
 -->
 <script>
+  import { fileViewUrl } from '$lib/utils/driveUtils.js';
   import { onMount, createEventDispatcher } from 'svelte';
   import { env as publicEnv } from '$env/dynamic/public';
   import { auth }             from '$lib/stores/auth';
@@ -679,7 +680,7 @@
           </div>
           {#if editingActivity.fields.web_view_url}
             <a
-              href={editingActivity.fields.web_view_url}
+              href={fileViewUrl(editingActivity.fields.web_view_url)}
               target="_blank"
               rel="noopener noreferrer"
               class="text-purple-400 hover:text-purple-300 transition-colors shrink-0 p-1"
@@ -757,7 +758,7 @@
             {/if}
           </div>
           <a
-            href={viewingItem.fields.web_view_url}
+            href={fileViewUrl(viewingItem.fields.web_view_url)}
             target="_blank"
             rel="noopener noreferrer"
             class="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200

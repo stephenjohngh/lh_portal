@@ -95,14 +95,13 @@ async function graph(method, path, body, extraHeaders = {}) {
   return res.json();
 }
 
-/** Create an anonymous view sharing link and return its webUrl */
-async function createSharingLink(driveId, itemId) {
-  const data = await graph('POST', `/drives/${driveId}/items/${itemId}/createLink`, {
-    type:  'view',
-    scope: 'anonymous',
-  });
-  return data?.link?.webUrl ?? null;
-}
+// ⛔ No anonymous sharing links (security review, 2026-09-27). This provider
+// used to create a "view, anonymous" link for every upload, so the link alone
+// opened the file for anyone, for ever — the same fault as Google Drive's
+// "anyone with the link". Files are private to the drive; `webUrl` needs a
+// Microsoft sign-in with access. ⚠ OneDrive is not the active provider, and
+// the portal's proxy does not yet accept OneDrive ids (they contain `!`), so
+// switching to it needs that work first — see PROJECT_STATUS §6 item 5.
 
 const SIMPLE_UPLOAD_LIMIT = 4 * 1024 * 1024; // 4 MB — Graph simple upload limit
 
@@ -166,23 +165,19 @@ export const oneDriveProvider = {
     logger('Uploading to OneDrive item:', parentId, '—', filename);
 
     const item = await uploadItem(driveId, parentId, filename, buffer, mimeType);
-    const url  = await createSharingLink(driveId, item.id);
 
     return {
       fileId:       item.id,
       folderId:     parentId,
-      webViewUrl:   url ?? item.webUrl ?? null,
+      webViewUrl:   item.webUrl ?? null,
       thumbnailUrl: null,
     };
   },
 
   async getFileUrl(itemId) {
     const { driveId } = cfg();
-    const data = await graph('POST', `/drives/${driveId}/items/${itemId}/createLink`, {
-      type:  'view',
-      scope: 'anonymous',
-    });
-    return data?.link?.webUrl ?? '';
+    const item = await graph('GET', `/drives/${driveId}/items/${itemId}?$select=webUrl`);
+    return item?.webUrl ?? '';
   },
 
   async getFileMetadata(itemId) {

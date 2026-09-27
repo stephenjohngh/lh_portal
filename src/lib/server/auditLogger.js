@@ -192,21 +192,12 @@ export async function logFailedLogin(userEmail, request, reason = 'invalid_crede
   });
 }
 
-/**
- * Log user logout
- */
-export async function logLogout(userId, userEmail, metadata = {}) {
-  logger('Logging logout:', userEmail);
-  return await logAudit({
-    userId,
-    userEmail,
-    eventType: 'logout',
-    eventCategory: 'auth',
-    eventAction: 'success',
-    severity: 'info',
-    metadata
-  });
-}
+// ⛔ There is no logLogout here any more, and no /api/auth/logout (security
+// review, 2026-09-27). That route was unauthenticated and wrote a logout entry
+// for whatever user id and email it was sent, with the service role. The
+// client logs out through /api/audit/log, which takes identity from the
+// verified token (src/lib/stores/auth.js). Do not add an audit writer that
+// accepts identity from a request body.
 
 /**
  * Log session expired
@@ -476,7 +467,6 @@ export default {
   // Auth
   logLogin,
   logFailedLogin,
-  logLogout,
   logSessionExpired,
   logPasswordReset,
   

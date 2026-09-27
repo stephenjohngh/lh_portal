@@ -19,6 +19,13 @@
 //
 // Non-Drive storage_url values (Supabase public URLs, OneDrive, etc.) pass
 // through unchanged — the helpers are safe to call on any URL.
+//
+// ⛔ NEVER SEND A BROWSER TO GOOGLE'S OWN LINK (security review, 2026-09-27).
+// Drive files used to be shared "anyone with the link", which is why a stored
+// `web_view_url` opened for everybody. They are private now; the portal's
+// proxy is the only way a person sees one, and it requires the media session
+// cookie. Every place that shows OR OPENS a stored file goes through
+// `fileViewUrl()` (the same conversion as `normalisePhotoUrl`).
 
 /**
  * Extract a Google Drive file ID from a raw storage_url or webViewLink.
@@ -53,4 +60,16 @@ export function normalisePhotoUrl(url) {
   const fileId = extractDriveFileId(url);
   if (fileId) return `/api/media/file/${fileId}`;
   return url;
+}
+
+/**
+ * Where to send a browser to OPEN a stored file (a document link, a download).
+ * The same conversion as `normalisePhotoUrl`, named for what it is used for:
+ * a Drive URL becomes the portal's proxy, anything else is unchanged.
+ *
+ * @param {string|null|undefined} url
+ * @returns {string|null|undefined}
+ */
+export function fileViewUrl(url) {
+  return normalisePhotoUrl(url);
 }

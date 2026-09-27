@@ -13,8 +13,13 @@
 // not do at all — a Supabase path failed its /^[A-Za-z0-9_-]+$/ guard before
 // reaching any provider.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fakeDb } from './fakeDb.js';
+
+const ME    = '11111111-1111-4111-8111-111111111111';
+const OTHER = '22222222-2222-4222-8222-222222222222';
 
 const driveDelete    = vi.fn();
+const h = vi.hoisted(() => ({ db: /** @type {any} */ (null) }));
 const supabaseDelete = vi.fn();
 const requireAuth    = vi.fn();
 
@@ -29,6 +34,9 @@ vi.mock('$lib/server/storage/storageErrors.js', () => ({
 }));
 vi.mock('$lib/server/requireAuth.js', () => ({ requireAuth: (...a) => requireAuth(...a) }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
+vi.mock('$env/static/public',  () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
+vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
+vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: (t) => h.db.from(t) }) }));
 
 const { DELETE } = await import('./+server.js');
 
@@ -38,9 +46,18 @@ const PLANS = 'https://x.supabase.co/storage/v1/object/public/plan-images/ground
 
 const call = (body) => DELETE({ request: { json: () => Promise.resolve(body) } });
 
+// The routing tests below are about WHERE a delete goes, so the caller owns
+// every attachment; the ownership rules have their own block.
+const ownedRows = () => ({
+  document_library:      [],
+  media_attachments:     [{ id: 'a', storage_url: DRIVE, created_by: ME }, { id: 'b', storage_url: SB, created_by: ME }],
+  maintenance_documents: [],
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
-  requireAuth.mockResolvedValue({ error: null });
+  h.db = fakeDb(ownedRows());
+  requireAuth.mockResolvedValue({ user: { id: ME }, isAdmin: false, error: null });
   driveDelete.mockResolvedValue(undefined);
   supabaseDelete.mockResolvedValue(undefined);
 });
@@ -126,5 +143,54 @@ describe('failures are reported, never swallowed', () => {
     const body = await (await call({ files: [{ url: DRIVE }, { url: SB }] })).json();
     expect(body).toMatchObject({ deleted: 1, failed: 1 });
     expect(supabaseDelete).toHaveBeenCalled();
+  });
+});
+
+describe('who may delete what (security review, 2026-09-27)', () => {
+  it('refuses a file no attachment names — anything else in the Drive', async () => {
+    const body = await (await call({ files: [{ url: 'https://drive.google.com/uc?export=view&id=NOT_OURS' }] })).json();
+    expect(body).toMatchObject({ deleted: 0, failed: 1 });
+    expect(driveDelete).not.toHaveBeenCalled();
+  });
+
+  it('refuses a library document, even for an admin', async () => {
+    h.db = fakeDb({ ...ownedRows(), document_library: [{ id: 'd', provider_file_id: 'ABC_123', entity_type: 'gt_document' }] });
+    requireAuth.mockResolvedValue({ user: { id: ME }, isAdmin: true, error: null });
+    const body = await (await call({ files: [{ url: DRIVE }] })).json();
+    expect(body.failed).toBe(1);
+    expect(body.results[0].error).toMatch(/library document/);
+    expect(driveDelete).not.toHaveBeenCalled();
+  });
+
+  it('refuses someone else’s photo to a non-admin, and allows it to an admin', async () => {
+    h.db = fakeDb({ ...ownedRows(), media_attachments: [{ id: 'a', storage_url: DRIVE, created_by: OTHER }] });
+    expect((await (await call({ files: [{ url: DRIVE }] })).json()).failed).toBe(1);
+    expect(driveDelete).not.toHaveBeenCalled();
+
+    requireAuth.mockResolvedValue({ user: { id: ME }, isAdmin: true, error: null });
+    expect((await (await call({ files: [{ url: DRIVE }] })).json()).deleted).toBe(1);
+  });
+
+  // Anyone signed in can insert an attachment row. Pointing one at another
+  // person's photo must not make that photo theirs to delete.
+  it('refuses when a row of the caller’s sits beside someone else’s', async () => {
+    h.db = fakeDb({ ...ownedRows(), media_attachments: [
+      { id: 'mine',   storage_url: DRIVE, created_by: ME },
+      { id: 'theirs', storage_url: DRIVE, created_by: OTHER },
+    ] });
+    expect((await (await call({ files: [{ url: DRIVE }] })).json()).failed).toBe(1);
+    expect(driveDelete).not.toHaveBeenCalled();
+  });
+
+  it('lets the uploader of a legacy maintenance document delete its file', async () => {
+    h.db = fakeDb({ document_library: [], media_attachments: [], maintenance_documents: [{ id: 'x', storage_path: DRIVE, uploaded_by: ME }] });
+    expect((await (await call({ files: [{ url: DRIVE }] })).json()).deleted).toBe(1);
+  });
+
+  it('fails closed when the check cannot run', async () => {
+    h.db = fakeDb(ownedRows(), { failTable: 'media_attachments' });
+    const body = await (await call({ files: [{ url: DRIVE }] })).json();
+    expect(body.failed).toBe(1);
+    expect(driveDelete).not.toHaveBeenCalled();
   });
 });

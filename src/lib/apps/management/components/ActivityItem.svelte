@@ -19,6 +19,7 @@
   Left-border colour by activity_type — see ACTIVITY_TYPE_CONFIG.
 -->
 <script>
+  import { fileViewUrl } from '$lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { sanitizeHtml }         from '$lib/utils/sanitizeHtml';
   import { fmtBytes, mimeIcon }   from '$lib/utils/files.js';
@@ -315,7 +316,7 @@
         </div>
         {#if editingActivity.fields.web_view_url}
           <a
-            href={editingActivity.fields.web_view_url}
+            href={fileViewUrl(editingActivity.fields.web_view_url)}
             target="_blank"
             rel="noopener noreferrer"
             class="text-purple-400 hover:text-purple-300 transition-colors shrink-0 p-1"
@@ -414,7 +415,7 @@
             <div class="flex items-center gap-2 mt-1.5">
               <span class="text-base shrink-0">{mimeIcon(activity.fields.mime_type)}</span>
               <a
-                href={activity.fields.web_view_url}
+                href={fileViewUrl(activity.fields.web_view_url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="text-xs text-purple-300 hover:text-purple-200 underline underline-offset-2

@@ -27,8 +27,22 @@
 // Always 200 with a per-file result: storage cleanup is best-effort by design
 // and must never block the database cleanup that follows it. The caller
 // decides what to do with failures; it is not free to be unaware of them.
+//
+// ⛔ WHO MAY DELETE WHAT (security review, 2026-09-27). This route used to
+// check only that the caller was signed in, and then permanently delete any
+// storage file it was given a URL for — any photo, certificate, parking
+// licence or Golden Thread record, and on an OAuth Drive anything in that
+// person's Drive. Each file must now pass canDeleteFile()
+// ($lib/server/mediaAccess.js): an attachment names it, no library document
+// does, and the caller is an admin or added every attachment that names it.
+// Both callers (mediaAttachments.js, maintenanceStore.deleteDocument) delete
+// the file BEFORE its row, which is what lets the rows be checked here.
 
 import { json }                 from '@sveltejs/kit';
+import { createClient }         from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL }  from '$env/static/public';
+import { env }                  from '$env/dynamic/private';
+import { findFileReferences, canDeleteFile } from '$lib/server/mediaAccess.js';
 import { providerByName }       from '$lib/server/storage/index.js';
 import { resolveStorageRef }    from '$lib/server/storage/storageRef.js';
 import { friendlyStorageError } from '$lib/server/storage/storageErrors.js';
@@ -40,6 +54,10 @@ const logger = getLogger('MediaFileDelete');
 // One entity's photo set, generously. A bound so a malformed caller cannot ask
 // for thousands of provider round trips in one request.
 const MAX_FILES = 200;
+
+/** @type {any} */
+let _db;
+const db = () => (_db ??= createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY ?? ''));
 
 export async function DELETE({ request }) {
   const auth = await requireAuth(request);
@@ -57,6 +75,7 @@ export async function DELETE({ request }) {
     return json({ error: `Too many files — ${MAX_FILES} at a time` }, { status: 400 });
   }
 
+  const caller = { userId: auth.user.id, isAdmin: auth.isAdmin === true };
   const results = [];
   for (const f of files) {
     const url      = typeof f?.url === 'string' ? f.url : null;
@@ -66,6 +85,19 @@ export async function DELETE({ request }) {
     if (!ref) {
       logger('⚠ not deletable:', url, '—', reason);
       results.push({ url, ok: false, error: reason });
+      continue;
+    }
+
+    // Fails closed: a lookup that errored leaves the file where it is.
+    let allowed;
+    try {
+      allowed = canDeleteFile(await findFileReferences(db(), ref), caller);
+    } catch (/** @type {any} */ err) {
+      allowed = { ok: false, reason: `Could not check who may delete this file (${err?.message ?? err}).` };
+    }
+    if (!allowed.ok) {
+      logger('⛔ delete refused:', url, '—', allowed.reason);
+      results.push({ url, ok: false, error: allowed.reason });
       continue;
     }
 

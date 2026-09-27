@@ -10,6 +10,7 @@
   hook in audit logging or their own state — the panel itself owns the list.
 -->
 <script>
+  import { fileViewUrl } from '$lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import * as docApi      from '$lib/utils/documentApi';
   import DocAttachInput   from '$lib/components/common/DocAttachInput.svelte';
@@ -311,7 +312,7 @@
             {/if}
           </div>
           <a
-            href={doc.web_view_url}
+            href={fileViewUrl(doc.web_view_url)}
             target="_blank"
             rel="noopener noreferrer"
             class="p-1.5 rounded text-slate-500 hover:text-purple-300 transition-colors shrink-0"

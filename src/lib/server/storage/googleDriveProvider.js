@@ -40,15 +40,55 @@ const _oauthRefresh  = env.GOOGLE_OAUTH_REFRESH_TOKEN  ?? '';
 const _saEmail       = env.GOOGLE_DRIVE_CLIENT_EMAIL   ?? '';
 const _saKey         = (env.GOOGLE_DRIVE_PRIVATE_KEY   ?? '').replace(/\\n/g, '\n');
 
-// ⛔ The delete guard (2026-09-23). Dev and prod share ONE Drive account; the
-// dev server only points its UPLOADS at a separate folder. A refreshed dev
-// holds prod's rows, whose file ids are prod's real files, and a delete goes by
-// absolute id. So on a server with this set to 'true', a delete is REFUSED
-// unless the file sits inside this server's own GOOGLE_DRIVE_ROOT_FOLDER_ID.
-// Set in .env.devdb. Left off on prod, where every legitimate delete is a prod
-// file and an extra Drive lookup per delete buys nothing.
-const _deleteWithinRootOnly =
-  String(env.STORAGE_DELETE_WITHIN_ROOT_ONLY ?? '').toLowerCase() === 'true';
+// ⛔ THE FOLDER GUARD — ON BY DEFAULT since the security review (2026-09-27).
+// Every read, delete, move or lookup by file id is REFUSED unless the file sits
+// inside this server's own GOOGLE_DRIVE_ROOT_FOLDER_ID.
+//
+// It began (2026-09-23) as a dev-only delete guard: dev and prod share one
+// Drive account and a refreshed dev holds prod's file ids. It is now on
+// everywhere, for reads too, because the credential can be a PERSON's Google
+// account (OAuth mode), which reaches their whole Drive — and the portal must
+// never serve or destroy a file that is not the portal's, whatever id a caller
+// hands it. Switch off only deliberately: STORAGE_WITHIN_ROOT_ONLY=false (the
+// older STORAGE_DELETE_WITHIN_ROOT_ONLY is still read).
+// ⚠ A consequence on dev: files uploaded by PROD (outside dev's folder) no
+// longer open on dev. That is the guard working.
+const _withinRootOnly = !['false', '0', 'no', 'off'].includes(
+  String(env.STORAGE_WITHIN_ROOT_ONLY ?? env.STORAGE_DELETE_WITHIN_ROOT_ONLY ?? 'true').trim().toLowerCase());
+
+// Positive answers are remembered: a file inside the root stays inside it (the
+// portal only moves files between folders inside it), so after the first
+// photo in a folder the rest cost nothing. Bounded, and never a "no".
+const _insideRoot = new Set();
+const MAX_REMEMBERED = 20000;
+
+/**
+ * Throw unless `fileId` is inside this server's root folder (when the guard is
+ * on). Thrown, not skipped: a caller must know the file was not touched.
+ * @param {any} drive
+ * @param {string} fileId
+ * @param {string} action  e.g. 'Delete', 'Read'
+ */
+async function assertInsideRoot(drive, fileId, action) {
+  if (!_withinRootOnly || _insideRoot.has(fileId)) return;
+  /** @type {string[]} */
+  const visited = [];
+  const inside = await isWithinFolder(fileId, _rootFolderId, async (id) => {
+    visited.push(id);
+    if (_insideRoot.has(id)) return [_rootFolderId];     // a folder already known to be inside
+    const res = await drive.files.get({ fileId: id, supportsAllDrives: true, fields: 'parents' });
+    return res.data.parents ?? [];
+  });
+  if (!inside) {
+    throw new Error(
+      `${action} refused: this file is outside this server’s Drive folder, and the portal `
+      + 'only touches its own files (STORAGE_WITHIN_ROOT_ONLY).',
+    );
+  }
+  // Drive files have a single parent, so everything walked is on the one path.
+  if (_insideRoot.size > MAX_REMEMBERED) _insideRoot.clear();
+  for (const id of visited) _insideRoot.add(id);
+}
 
 // Log warnings at startup so missing vars surface immediately.
 if (!_rootFolderId) {
@@ -203,19 +243,16 @@ export const googleDriveProvider = {
       fields:      FILE_FIELDS,
     });
 
-    // Grant "anyone with the link can view" so web_view_url works without Google login.
-    // supportsAllDrives is required here too — permissions on Shared Drive files
-    // fail without it.
-    await drive.permissions.create({
-      supportsAllDrives: true,
-      fileId:      res.data.id,
-      requestBody: { role: 'reader', type: 'anyone' },
-    });
-
-    // Return a direct-view URL so <img src={url}> renders the image bytes,
-    // not Google Drive's HTML viewer page.
-    // webViewLink  = https://drive.google.com/file/d/ID/view  (HTML viewer — not embeddable)
-    // uc?export=view = https://drive.google.com/uc?export=view&id=ID  (raw image bytes — embeddable)
+    // ⛔ NOT SHARED. Every upload used to be granted "anyone with the link can
+    // view", so a file id alone fetched it straight from Google — no login, no
+    // portal, for ever. Removed in the security review (2026-09-27): a file is
+    // private to the Drive account, and people see it only through the portal's
+    // proxy (/api/media/file/:id), which checks who is asking. Existing files
+    // were un-shared by scripts/unshare-drive-files.mjs.
+    //
+    // The URL below is still the form the rest of the portal stores and
+    // recognises (driveUtils.extractDriveFileId); the browser is sent to the
+    // proxy for it, never to Google.
     const fileId = res.data.id;
     return {
       fileId,
@@ -227,33 +264,21 @@ export const googleDriveProvider = {
 
   async getFileUrl(fileId) {
     const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Read');
     const res   = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'webViewLink' });
     return res.data.webViewLink ?? '';
   },
 
   async getFileMetadata(fileId) {
     const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Read');
     const res   = await drive.files.get({ fileId, supportsAllDrives: true, fields: FILE_FIELDS });
     return mapFile(res.data);
   },
 
   async deleteFile(fileId) {
     const drive = getDrive();
-    if (_deleteWithinRootOnly) {
-      const inside = await isWithinFolder(fileId, _rootFolderId, async (id) => {
-        const res = await drive.files.get({ fileId: id, supportsAllDrives: true, fields: 'parents' });
-        return res.data.parents ?? [];
-      });
-      if (!inside) {
-        // Thrown, not skipped: the caller must know the file is still there, so
-        // a document row is not removed as though its file had gone.
-        throw new Error(
-          'Delete refused: this file is outside this server’s Drive folder. On a copy of '
-          + 'production data it is probably a PRODUCTION file, so it has been left alone '
-          + '(STORAGE_DELETE_WITHIN_ROOT_ONLY).',
-        );
-      }
-    }
+    await assertInsideRoot(drive, fileId, 'Delete');
     await drive.files.delete({ fileId, supportsAllDrives: true });
     logger('Deleted Drive file:', fileId);
   },
@@ -322,6 +347,10 @@ export const googleDriveProvider = {
 
   async moveFile(fileId, newFolderId) {
     const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Move');
+    // The root itself is a fine destination; the check treats it as "not
+    // inside" only so a DELETE can never take the root.
+    if (newFolderId !== _rootFolderId) await assertInsideRoot(drive, newFolderId, 'Move');
     const meta  = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'parents' });
     const previousParents = (meta.data.parents ?? []).join(',');
     await drive.files.update({
@@ -335,6 +364,7 @@ export const googleDriveProvider = {
 
   async getFileStream(fileId) {
     const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Read');
     // responseType: 'arraybuffer' makes gaxios/axios return the raw bytes.
     // The second argument is passed through to the underlying HTTP client.
     const res = await drive.files.get(

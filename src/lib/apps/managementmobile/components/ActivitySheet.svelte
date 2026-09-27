@@ -1,4 +1,5 @@
 <script>
+  import { fileViewUrl } from '$lib/utils/driveUtils.js';
   // src/lib/apps/managementmobile/components/ActivitySheet.svelte
   // Bottom sheet showing a single activity in full.
   // Drag down >30% to dismiss; tap backdrop to dismiss.
@@ -138,7 +139,7 @@
           </div>
           {#if activity.fields.web_view_url}
             <a
-              href={activity.fields.web_view_url}
+              href={fileViewUrl(activity.fields.web_view_url)}
               target="_blank"
               rel="noopener noreferrer"
               class="doc-open"

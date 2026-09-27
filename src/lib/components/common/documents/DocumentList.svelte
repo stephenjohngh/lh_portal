@@ -1,4 +1,5 @@
 <script>
+  import { fileViewUrl } from '$lib/utils/driveUtils.js';
   import { createEventDispatcher } from 'svelte';
   import { mimeIcon, formatFileSize, docTypeLabel, categoryLabel, getExpiryStatus,
            folderLabel, sortDocsByFolder } from '$lib/utils/documentUtils';
@@ -26,7 +27,7 @@
   }
 
   function openDoc(doc) {
-    if (doc.web_view_url) window.open(doc.web_view_url, '_blank', 'noopener');
+    if (doc.web_view_url) window.open(fileViewUrl(doc.web_view_url), '_blank', 'noopener');
     else dispatch('geturl', doc);
   }
 </script>

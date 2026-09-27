@@ -1,6 +1,6 @@
 // src/routes/api/media/file/media-file-route.test.js
 //
-// Characterisation tests for the unauthenticated media proxy's file-id guard.
+// Characterisation tests for the media proxy's file-id guard.
 //
 // This exists to pin ONE documented trap. The guard is `/^[A-Za-z0-9_-]+$/`,
 // which fits Google Drive and OneDrive file ids — opaque, flat, no separators.
@@ -18,9 +18,26 @@
 // below is the one to change — deliberately, having read this note.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fakeDb } from './fakeDb.js';
 
 const getFileStream = vi.fn();
+const DRIVE_ID = '1AbC_dEfGhIjKlMnOpQrStUvWxYz-0123';
+const USER = '11111111-1111-4111-8111-111111111111';
 
+vi.mock('$env/static/public',  () => ({ PUBLIC_SUPABASE_URL: 'http://x' }));
+vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'test-secret' } }));
+// Since the security review the proxy needs a signed-in viewer and a file the
+// portal knows; both are supplied here so these tests stay about the id guard.
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => fakeDb({
+    profiles:          [{ id: USER, is_admin: false }],
+    app_permissions:   [],
+    document_library:  [],
+    media_attachments: [{ id: 'm', storage_url: `https://drive.google.com/uc?export=view&id=${DRIVE_ID}`, created_by: USER },
+                        { id: 'n', storage_url: 'uc?id=missingbutwellformedid', created_by: USER }],
+    maintenance_documents: [],
+  }),
+}));
 vi.mock('$lib/server/storage/index.js', () => ({
   storageProvider: {
     name: 'google_drive',
@@ -31,14 +48,17 @@ vi.mock('$lib/server/storage/index.js', () => ({
 vi.mock('$lib/server/storage/storageErrors.js', () => ({
   friendlyStorageError: (e) => String(e?.message ?? e),
 }));
-vi.mock('$lib/server/requireAuth.js', () => ({ requireAuth: vi.fn() }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
-vi.mock('$lib/utils/mimeTypes', () => ({ declarableMime: (m) => m }));
 
 const { GET } = await import('./[fileId]/+server.js');
+const { mediaSessionValue } = await import('$lib/server/mediaAccess.js');
 
 const call = (fileId) =>
-  GET({ params: { fileId }, url: new URL(`http://localhost/api/media/file/${fileId}`) });
+  GET({
+    params: { fileId },
+    url: new URL(`http://localhost/api/media/file/${fileId}`),
+    cookies: { get: () => mediaSessionValue(USER) },
+  });
 
 beforeEach(() => {
   getFileStream.mockReset();
@@ -46,13 +66,14 @@ beforeEach(() => {
     data: Buffer.from('bytes'),
     mimeType: 'image/jpeg',
   });
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 describe('media proxy file-id guard', () => {
   it('serves a Drive-style id', async () => {
-    const res = await call('1AbC_dEfGhIjKlMnOpQrStUvWxYz-0123');
+    const res = await call(DRIVE_ID);
     expect(res.status).toBe(200);
-    expect(getFileStream).toHaveBeenCalledWith('1AbC_dEfGhIjKlMnOpQrStUvWxYz-0123');
+    expect(getFileStream).toHaveBeenCalledWith(DRIVE_ID);
   });
 
   it('rejects an empty id without calling storage', async () => {
@@ -62,8 +83,8 @@ describe('media proxy file-id guard', () => {
   });
 
   it('rejects path traversal, and never reaches the provider', async () => {
-    // The guard is the only thing between an unauthenticated caller and
-    // whatever the provider would do with a crafted path.
+    // The guard is the first thing between a caller and whatever the provider
+    // would do with a crafted path.
     for (const bad of ['..', '../secret', 'a/../../b', '%2e%2e']) {
       const res = await call(bad);
       expect(res.status, bad).toBe(400);

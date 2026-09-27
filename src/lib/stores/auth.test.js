@@ -1,7 +1,8 @@
 // src/lib/stores/auth.test.js
 // The auth store. Login flows through /api/auth/login (server enforces rate
 // limiting + audit) and then hydrates the local Supabase client. These pin that
-// contract plus signup and the logout audit-before-signout sequence.
+// contract, the media session cookie (security review, 2026-09-27), the
+// absence of a signup path, and the logout audit-before-signout sequence.
 // Seams mocked: supabaseClient (auth methods), fetch, window.location.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -11,7 +12,6 @@ const h = vi.hoisted(() => ({
     auth: {
       getSession:  vi.fn(() => Promise.resolve({ data: { session: { user: { id: 'u1', email: 'u@x' }, access_token: 'tok' } } })),
       setSession:  vi.fn(() => Promise.resolve({})),
-      signUp:      vi.fn(() => Promise.resolve({ data: { user: { id: 'new' } }, error: null })),
       signOut:     vi.fn(() => Promise.resolve({ error: null })),
       onAuthStateChange: vi.fn(),
     },
@@ -56,18 +56,49 @@ describe('login', () => {
   });
 });
 
-describe('signup', () => {
-  it('calls supabase signUp and returns success', async () => {
-    const r = await auth.signup('a@b', 'pw', 'A B');
-    expect(h.supabase.auth.signUp).toHaveBeenCalledWith(expect.objectContaining({
-      email: 'a@b', password: 'pw', options: { data: { full_name: 'A B' } },
-    }));
-    expect(r.success).toBe(true);
+describe('no self-service signup', () => {
+  // Accounts are created by an administrator; the permission model assumes
+  // every account is a known person.
+  it('offers no signup at all', () => {
+    expect(/** @type {any} */ (auth).signup).toBeUndefined();
+  });
+});
+
+describe('the media session cookie', () => {
+  const mediaCalls = () => globalThis.fetch.mock.calls.filter(c => c[0] === '/api/auth/media-session');
+
+  it('is opened with the new token on login, before the app shows anything', async () => {
+    mockFetch({ session: { access_token: 'at', refresh_token: 'rt' } });
+    await auth.login('u@x', 'pw');
+    const post = mediaCalls().find(c => c[1].method === 'POST');
+    expect(post[1].headers.Authorization).toBe('Bearer at');
   });
 
-  it('returns the error when signUp fails', async () => {
-    h.supabase.auth.signUp.mockResolvedValueOnce({ data: null, error: { message: 'taken' } });
-    expect(await auth.signup('a@b', 'pw', 'A')).toEqual({ success: false, error: 'taken' });
+  it('is opened on startup when a session already exists', async () => {
+    await auth.initialize();
+    const post = mediaCalls().find(c => c[1].method === 'POST');
+    expect(post[1].headers.Authorization).toBe('Bearer tok');
+  });
+
+  it('is renewed on every token refresh', async () => {
+    await auth.initialize();
+    const listener = h.supabase.auth.onAuthStateChange.mock.calls.at(-1)[0];
+    globalThis.fetch.mockClear();
+    listener('TOKEN_REFRESHED', { access_token: 'fresh', user: { id: 'u1' } });
+    expect(mediaCalls()[0][1].headers.Authorization).toBe('Bearer fresh');
+  });
+
+  it('is cleared on logout', async () => {
+    mockFetch({ success: true });
+    await auth.logout();
+    expect(mediaCalls().some(c => c[1].method === 'DELETE')).toBe(true);
+  });
+
+  it('never stops a login when it fails', async () => {
+    globalThis.fetch = vi.fn((url) => url === '/api/auth/media-session'
+      ? Promise.reject(new Error('offline'))
+      : Promise.resolve({ ok: true, json: () => Promise.resolve({ session: { access_token: 'at', refresh_token: 'rt' } }) }));
+    expect((await auth.login('u@x', 'pw')).success).toBe(true);
   });
 });
 
