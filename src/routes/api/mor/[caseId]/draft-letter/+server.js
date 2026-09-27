@@ -8,17 +8,19 @@
 //
 // Returns: streamed .docx with Content-Disposition: attachment.
 //
-// Auth: requireAuth — any authenticated portal user (M7: there is NO per-app
-// permission check here; this matches the MOR tables' coarse any-authenticated
-// RLS posture, deferred alongside GT's S5). The endpoint never *sends*
-// anything; it produces a draft document for the staff member to edit and send
-// manually.
+// Auth: requireAppAccess(request, 'mor') — the MOR grant, or an admin.
+// ⛔ It used to be requireAuth alone ("M7: no per-app permission check"),
+// which stopped being true of the tables: `mor_cases` RLS requires the MOR
+// grant, and this route reads with the SERVICE ROLE, so any signed-in user
+// could get round it. Security review, 2026-09-27.
+// The endpoint never *sends* anything; it produces a draft document for the
+// staff member to edit and send manually.
 
 import { Packer } from 'docx';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }       from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAuth }   from '$lib/server/requireAuth';
+import { requireAppAccess } from '$lib/server/requireAuth';
 import { getLogger }     from '$lib/utils/logger';
 import {
   LETTER_BUILDERS,
@@ -41,7 +43,7 @@ function jsonErr(message, status) {
 
 export async function POST({ params, request }) {
   // ── Auth ────────────────────────────────────────────────────────────────
-  const auth = await requireAuth(request);
+  const auth = await requireAppAccess(request, 'mor');
   if (auth.error) return auth.error;
 
   // ── Parse body ──────────────────────────────────────────────────────────
@@ -56,10 +58,10 @@ export async function POST({ params, request }) {
   }
 
   // ── Fetch the case row ──────────────────────────────────────────────────
-  // Service-role read so a misconfigured app_permissions row doesn't block
-  // letter generation (the user is already authenticated and the endpoint
-  // never reveals the case data over the wire — it's encoded in a .docx
-  // streamed back to them).
+  // Service-role read, AFTER requireAppAccess has established that the caller
+  // holds the MOR grant. ⛔ The old note here said this was safe because the
+  // case data is "encoded in a .docx streamed back" — the .docx IS the case
+  // data, reporter details included.
   const svc = getSvc();
   const { data: caseRow, error: cErr } = await svc
     .from('mor_cases')

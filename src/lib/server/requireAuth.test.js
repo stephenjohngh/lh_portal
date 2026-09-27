@@ -9,13 +9,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => {
   const single = vi.fn();                                   // profiles .single()
+  const maybeSingle = vi.fn();                              // app_permissions .maybeSingle()
   const adminClient = {
     auth: { getUser: vi.fn() },
-    from: vi.fn(() => ({
-      select: () => ({ eq: () => ({ single }) }),
-    })),
+    from: vi.fn(() => {
+      const chain = { eq: () => chain, single, maybeSingle };
+      return { select: () => chain };
+    }),
   };
-  return { adminClient, single };
+  return { adminClient, single, maybeSingle };
 });
 
 vi.mock('@sveltejs/kit', () => ({ json: (body, init) => ({ body, status: init?.status ?? 200 }) }));
@@ -24,7 +26,7 @@ vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'http://local' }));
 vi.mock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'svc' } }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 
-const { requireAuth, requireAdmin } = await import('./requireAuth.js');
+const { requireAuth, requireAdmin, requireAppAccess } = await import('./requireAuth.js');
 
 const req = (authHeader) => ({ headers: { get: (k) => (k === 'authorization' && authHeader ? authHeader : null) } });
 
@@ -32,6 +34,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.adminClient.auth.getUser.mockResolvedValue({ data: { user: { id: 'u1', email: 'u@e' } }, error: null });
   h.single.mockResolvedValue({ data: { is_admin: false } });
+  h.maybeSingle.mockResolvedValue({ data: null, error: null });
 });
 
 describe('requireAuth', () => {
@@ -85,5 +88,39 @@ describe('requireAdmin', () => {
     const r = await requireAdmin(req('Bearer good'));
     expect(r.error).toBeNull();
     expect(r.isAdmin).toBe(true);
+  });
+});
+
+// For a route that reads with the service role, RLS no longer guards the read,
+// so the route must ask the table's question itself (security review,
+// 2026-09-27 — the MOR routes).
+describe('requireAppAccess', () => {
+  it('refuses a signed-in user without the grant', async () => {
+    const r = await requireAppAccess(req('Bearer good'), 'mor');
+    expect(r.error.status).toBe(403);
+    expect(r.user).toBeNull();
+  });
+
+  it('admits a user holding the grant, read-only included', async () => {
+    h.maybeSingle.mockResolvedValue({ data: { app_id: 'mor' }, error: null });
+    const r = await requireAppAccess(req('Bearer good'), 'mor');
+    expect(r.error).toBeNull();
+    expect(r.user.id).toBe('u1');
+  });
+
+  it('admits an admin without looking for a grant', async () => {
+    h.single.mockResolvedValue({ data: { is_admin: true } });
+    const r = await requireAppAccess(req('Bearer good'), 'mor');
+    expect(r.error).toBeNull();
+    expect(h.maybeSingle).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the grant cannot be read', async () => {
+    h.maybeSingle.mockResolvedValue({ data: null, error: { message: 'down' } });
+    expect((await requireAppAccess(req('Bearer good'), 'mor')).error.status).toBe(403);
+  });
+
+  it('still refuses with 401 when there is no login at all', async () => {
+    expect((await requireAppAccess(req(null), 'mor')).error.status).toBe(401);
   });
 });

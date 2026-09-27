@@ -8,10 +8,11 @@
 // POST /api/mor/period-summary
 // Body: { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' }
 //
-// Auth: requireAuth — any authenticated portal user (M7: there is NO per-app
-// permission check; matches the MOR tables' coarse any-authenticated RLS,
-// deferred alongside GT's S5). The data returned is the same the user could
-// already read via the UI/PostgREST under that RLS.
+// Auth: requireAppAccess(request, 'mor') — the MOR grant, or an admin.
+// ⛔ It used to be requireAuth alone ("M7: no per-app permission check"),
+// which stopped being true of the tables: `mor_cases` RLS requires the MOR
+// grant, and this route reads with the SERVICE ROLE, so any signed-in user
+// could get round it. Security review, 2026-09-27.
 
 import { json } from '@sveltejs/kit';
 import {
@@ -24,7 +25,7 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }       from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAppAccess } from '$lib/server/requireAuth';
 import { getLogger }   from '$lib/utils/logger';
 import {
   CONTENT_W, COLOURS, BORDERS,
@@ -146,7 +147,7 @@ function outcomeNote(c) {
 
 // ── Handler ──────────────────────────────────────────────────────────────────
 export async function POST({ request }) {
-  const auth = await requireAuth(request);
+  const auth = await requireAppAccess(request, 'mor');
   if (auth.error) return auth.error;
 
   let body;

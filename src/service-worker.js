@@ -1,13 +1,21 @@
-﻿// src/service-worker.js
+// src/service-worker.js
 // SvelteKit service worker — auto-registered by SvelteKit when this file exists.
 // Two caches:
-//   lh-shell-{version}   — app bundle (pre-cached on install)
-//   lh-plan-images-v1    — Supabase Storage plan images (cache-first)
+//   lh-shell-v2-{version} — app bundle (pre-cached on install)
+//   lh-plan-images-v1     — Supabase Storage plan images (cache-first)
+//
+// ⛔ WHAT IS NEVER CACHED (security review, 2026-09-27). The fallback below used
+// to store EVERY successful GET in the shell cache — /api/* included: document
+// lists, file downloads, photos, Dossier archive zips. They stayed on the
+// device after logout and were served to whoever used it while offline. Now
+// only this site's own pages and build files are cached; /api/* and other
+// origins go straight to the network. The cache name gained `v2-` so the
+// activate step below deletes every old cache, whatever the build version.
 
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
 
-const SHELL_CACHE  = `lh-shell-${version}`;
+const SHELL_CACHE  = `lh-shell-v2-${version}`;
 const IMAGES_CACHE = 'lh-plan-images-v1';
 
 // Assets to pre-cache (app shell)
@@ -46,8 +54,9 @@ self.addEventListener('fetch', event => {
   // Only handle GET requests
   if (request.method !== 'GET') return;
 
-  // Plan images from Supabase Storage → cache-first
-  if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/v1/object/')) {
+  // Plan images from Supabase Storage → cache-first. Only the public schematics
+  // bucket: anything else in storage is not ours to keep on a device.
+  if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/v1/object/public/plan-images/')) {
     event.respondWith(cacheFirst(request, IMAGES_CACHE));
     return;
   }
@@ -57,6 +66,11 @@ self.addEventListener('fetch', event => {
   if (url.hostname.endsWith('.supabase.co')) {
     return;
   }
+
+  // ⛔ Anything else from another origin, and anything from our own API, is
+  // never cached: it is personal or permissioned data, not the app.
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
 
   // App shell assets → cache-first (pre-cached on install)
   if (ASSETS.includes(url.pathname)) {

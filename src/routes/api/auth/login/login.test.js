@@ -1,14 +1,16 @@
 // src/routes/api/auth/login/login.test.js
 //
-// The server-routed login is a security control: it enforces a per-email
-// failed-attempt lockout BEFORE forwarding to Supabase Auth, returns generic
+// The server-routed login is a security control: it enforces a failed-attempt
+// lockout (5 per email from one address, 20 per email from anywhere —
+// $lib/server/loginLockout.js) BEFORE forwarding to Supabase Auth, returns generic
 // errors (no email enumeration), and fails OPEN if the attempts table is
 // unreachable (a DB blip shouldn't lock everyone out). These tests pin that.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => {
-  let countResult = { count: 0, error: null };
+  // The failed attempts the lookup returns, one row per failure.
+  let failures = { data: [], error: null };
   let signIn      = { data: { user: { id: 'u1', email: 'u@x' }, session: { access_token: 'tok-abcdefghijklmnopqrst' } }, error: null };
 
   // One fake serves both the anon and admin clients (createClient is called twice).
@@ -19,14 +21,14 @@ const h = vi.hoisted(() => {
       const chain = () => b;
       b.select = vi.fn(() => { b._select = true; return b; });
       b.insert = vi.fn(() => { b._insert = true; return b; });
-      for (const m of ['eq', 'gt']) b[m] = vi.fn(chain);
-      b.then = (res) => Promise.resolve(b._insert ? { error: null } : countResult).then(res);
+      for (const m of ['eq', 'gt', 'limit']) b[m] = vi.fn(chain);
+      b.then = (res) => Promise.resolve(b._insert ? { error: null } : failures).then(res);
       return b;
     }),
   };
   return {
     client,
-    setCount: (n, error = null) => { countResult = { count: n, error }; },
+    setFailures: (ips, error = null) => { failures = { data: error ? null : ips.map((ip) => ({ ip_address: ip })), error }; },
     setSignIn: (r) => { signIn = r; },
   };
 });
@@ -45,10 +47,12 @@ vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 
 const { POST } = await import('./+server.js');
 const req = (body) => ({ json: () => Promise.resolve(body), headers: { get: () => null } });
+// The caller's address as the platform reports it (getClientAddress).
+const from = (ip) => () => ip;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.setCount(0);
+  h.setFailures([]);
   h.setSignIn({ data: { user: { id: 'u1', email: 'u@x' }, session: { access_token: 'tok-abcdefghijklmnopqrst' } }, error: null });
 });
 
@@ -57,12 +61,26 @@ describe('POST /api/auth/login', () => {
     expect((await POST({ request: req({ email: 'a@b' }) })).status).toBe(400);
   });
 
-  it('locks out (429) once recent failures reach the limit, without calling Supabase Auth', async () => {
-    h.setCount(5);                                  // MAX_FAILED_ATTEMPTS
-    const res = await POST({ request: req({ email: 'a@b', password: 'x' }) });
+  it('locks out (429) after five failures from this address, without calling Supabase Auth', async () => {
+    h.setFailures(Array(5).fill('1.2.3.4'));
+    const res = await POST({ request: req({ email: 'a@b', password: 'x' }), getClientAddress: from('1.2.3.4') });
     expect(res.status).toBe(429);
     expect(res.body.locked).toBe(true);
     expect(h.client.auth.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  // The security review's finding: five wrong passwords from ANYWHERE locked
+  // the real owner out. A stranger's failures no longer do.
+  it("lets the owner in from elsewhere after a stranger's five failures", async () => {
+    h.setFailures(Array(5).fill('6.6.6.6'));
+    const res = await POST({ request: req({ email: 'u@x', password: 'right' }), getClientAddress: from('1.2.3.4') });
+    expect(res.status).toBe(200);
+  });
+
+  it('still locks after twenty failures from anywhere', async () => {
+    h.setFailures(Array.from({ length: 20 }, (_, i) => `10.0.0.${i}`));
+    const res = await POST({ request: req({ email: 'u@x', password: 'right' }), getClientAddress: from('1.2.3.4') });
+    expect(res.status).toBe(429);
   });
 
   it('returns a generic 401 on bad credentials and records the attempt', async () => {
@@ -85,7 +103,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('fails OPEN when the attempts lookup errors (does not lock everyone out)', async () => {
-    h.setCount(null, { message: 'db down' });        // count query errors → treated as 0
+    h.setFailures([], { message: 'db down' });       // lookup errors → treated as none
     const res = await POST({ request: req({ email: 'u@x', password: 'right' }) });
     expect(res.status).toBe(200);                     // proceeds to sign-in
     expect(h.client.auth.signInWithPassword).toHaveBeenCalled();

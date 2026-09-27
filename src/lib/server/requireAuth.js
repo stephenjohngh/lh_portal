@@ -69,3 +69,31 @@ export async function requireAdmin(request) {
   }
   return auth;
 }
+
+/**
+ * requireAuth, plus the caller must hold `appId` in app_permissions (a
+ * read-only grant counts) — or be an admin, who bypasses grants everywhere.
+ *
+ * For a route that reads an app's data with the SERVICE ROLE: RLS no longer
+ * guards that read, so the route must ask the question the table would have.
+ * Added in the security review (2026-09-27) for the MOR routes, which read
+ * `mor_cases` — a table whose own RLS requires the MOR grant — and checked
+ * nothing but a login.
+ *
+ * @param {Request} request
+ * @param {string} appId
+ */
+export async function requireAppAccess(request, appId) {
+  const auth = await requireAuth(request);
+  if (auth.error || auth.isAdmin) return auth;
+  const { data, error } = await adminClient
+    .from('app_permissions')
+    .select('app_id')
+    .eq('user_id', auth.user.id)
+    .eq('app_id', appId)
+    .maybeSingle();
+  if (error || !data) {
+    return { user: null, isAdmin: false, error: json({ error: 'Forbidden' }, { status: 403 }) };
+  }
+  return auth;
+}

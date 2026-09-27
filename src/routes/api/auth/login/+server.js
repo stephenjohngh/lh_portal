@@ -6,8 +6,9 @@
 //
 // Flow:
 //   1. POST { email, password } from auth.js (client)
-//   2. Look up failed-attempt count in login_attempts (last 15 min)
-//   3. If >= MAX_FAILED_ATTEMPTS, reject with 429 and audit-log it
+//   2. Look up this email's failed attempts in login_attempts (last 15 min)
+//   3. If locked (5 from this address, or 20 from anywhere —
+//      $lib/server/loginLockout.js), reject with 429 and audit-log it
 //   4. Otherwise call supabase.auth.signInWithPassword() using the anon
 //      key — this is the same call the client used to make directly,
 //      but going via the server lets us record the outcome
@@ -27,6 +28,7 @@ import { createClient }                               from '@supabase/supabase-j
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { env } from '$env/dynamic/private';
 import { logLogin, logFailedLogin, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
+import { lockoutState, PER_EMAIL_LIMIT, WINDOW_MINUTES } from '$lib/server/loginLockout';
 import { getLogger }                                  from '$lib/utils/logger';
 
 const logger = getLogger('AuthLogin');
@@ -34,28 +36,27 @@ const logger = getLogger('AuthLogin');
 const supabaseAnon  = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-const MAX_FAILED_ATTEMPTS = 5;
-const WINDOW_MINUTES      = 15;
-
 /**
- * Count failed login attempts for this email in the last WINDOW_MINUTES.
+ * This email's failed attempts in the last WINDOW_MINUTES, with the address
+ * each came from. $lib/server/loginLockout.js decides what they mean.
  * @param {string} emailLower
- * @returns {Promise<number>}
+ * @returns {Promise<Array<{ ip_address: string|null }>>}
  */
-async function recentFailureCount(emailLower) {
+async function recentFailures(emailLower) {
   const since = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString();
-  const { count, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('login_attempts')
-    .select('*', { count: 'exact', head: true })
+    .select('ip_address')
     .eq('email_lower', emailLower)
     .eq('succeeded',   false)
-    .gt('attempted_at', since);
+    .gt('attempted_at', since)
+    .limit(PER_EMAIL_LIMIT + 1);
   if (error) {
     // Fail open with a logged warning — DB outage shouldn't lock everyone out.
     logger('⚠ Rate-limit lookup failed, allowing attempt:', error.message);
-    return 0;
+    return [];
   }
-  return count ?? 0;
+  return data ?? [];
 }
 
 /**
@@ -76,7 +77,21 @@ async function recordAttempt(emailLower, ip, userAgent, succeeded) {
   if (error) logger('⚠ login_attempts insert failed:', error.message);
 }
 
-export async function POST({ request }) {
+/**
+ * The caller's address as the PLATFORM sees it — Netlify's own client IP —
+ * rather than a header a caller can write; the header is the fallback only.
+ * @param {Request} request
+ * @param {() => string} [getClientAddress]
+ */
+function clientAddress(request, getClientAddress) {
+  try {
+    const a = getClientAddress?.();
+    if (a) return a;
+  } catch { /* not available on this platform */ }
+  return getIpAddress(request);
+}
+
+export async function POST({ request, getClientAddress }) {
   let email, password;
   try {
     ({ email, password } = await request.json());
@@ -89,13 +104,15 @@ export async function POST({ request }) {
   }
 
   const emailLower = String(email).toLowerCase().trim();
-  const ip         = getIpAddress(request);
+  const ip         = clientAddress(request, getClientAddress);
   const userAgent  = getUserAgent(request);
 
   // 1. Rate-limit check
-  const recentFails = await recentFailureCount(emailLower);
-  if (recentFails >= MAX_FAILED_ATTEMPTS) {
-    logger('🚨 Locked out by rate limit:', emailLower, `(${recentFails} recent failures)`);
+  const lock = lockoutState(await recentFailures(emailLower), ip);
+  const recentFails = lock.fromAnywhere;
+  if (lock.locked) {
+    logger('🚨 Locked out by rate limit:', emailLower,
+      `(${lock.fromHere} from this address, ${lock.fromAnywhere} in all)`);
     await logFailedLogin(emailLower, request, 'account_locked_too_many_attempts');
     return json({
       error:  `Too many failed attempts. Please try again in ${WINDOW_MINUTES} minutes.`,
@@ -117,12 +134,12 @@ export async function POST({ request }) {
     logger('❌ Login failed:', emailLower);
     // Fire-and-forget audit log (logFailedLogin awaits internally; not blocking the response materially)
     logFailedLogin(emailLower, request,
-      `${error.message} (attempt ${recentFails + 1}/${MAX_FAILED_ATTEMPTS})`,
+      `${error.message} (${lock.fromHere + 1} from this address, ${recentFails + 1} in all)`,
     ).catch(err => logger('Audit log failed:', err.message));
 
     return json({
       error:             'Invalid email or password',  // generic — no email-enumeration
-      attemptsRemaining: Math.max(0, MAX_FAILED_ATTEMPTS - (recentFails + 1)),
+      attemptsRemaining: lock.remainingAfterFailure,
     }, { status: 401 });
   }
 

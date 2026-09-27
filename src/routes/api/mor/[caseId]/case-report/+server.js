@@ -5,10 +5,11 @@
 // lessons learned. Designed to be the canonical "send this to the regulator
 // / auditor / solicitor" document.
 //
-// Auth: requireAuth — any authenticated portal user (M7: there is NO per-app
-// permission check; matches the MOR tables' coarse any-authenticated RLS,
-// deferred alongside GT's S5). Service role bypasses RLS so the endpoint can
-// fetch joined profiles without per-row permission shuffling.
+// Auth: requireAppAccess(request, 'mor') — the MOR grant, or an admin.
+// ⛔ It used to be requireAuth alone ("M7: no per-app permission check"),
+// which stopped being true of the tables: `mor_cases` RLS requires the MOR
+// grant, and this route reads with the SERVICE ROLE, so any signed-in user
+// could get round it. Security review, 2026-09-27.
 //
 // POST /api/mor/<caseId>/case-report
 // Body: ignored (kept POST for parity with the rest of the docx endpoints).
@@ -24,7 +25,7 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL }       from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import { requireAuth } from '$lib/server/requireAuth';
+import { requireAppAccess } from '$lib/server/requireAuth';
 import { getLogger }   from '$lib/utils/logger';
 import {
   CONTENT_W, COLOURS, BORDERS,
@@ -173,7 +174,7 @@ function attachmentsTable(items) {
 
 // ── Handler ──────────────────────────────────────────────────────────────────
 export async function POST({ params, request }) {
-  const auth = await requireAuth(request);
+  const auth = await requireAppAccess(request, 'mor');
   if (auth.error) return auth.error;
 
   const svc = getSvc();
