@@ -79,7 +79,9 @@
 <ConfirmDialog
   show={confirming}
   title="Remove what is due now?"
-  message={due ? `${retentionSummary(due, { due: true })} This cannot be undone. The nightly job would remove the same things tonight.` : ''}
+  message={due ? `${retentionSummary(due, { due: true })} This cannot be undone.${due.held_back_documents
+    ? ' The nightly job would remove the rest tonight, but not an agreement with a licence document: only this can delete the file.'
+    : ' The nightly job would remove the same things tonight.'}` : ''}
   confirmText="Remove"
   danger={true}
   processing={running}

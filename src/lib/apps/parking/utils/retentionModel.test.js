@@ -32,9 +32,9 @@ describe('retention words', () => {
 });
 
 describe('licence documents', () => {
-  it('says an agreement is waiting for its documents, and that Remove now deals with it', () => {
+  it('says an agreement is waiting for its documents, and that Remove what is due now deals with it', () => {
     expect(retentionSummary({ held_back_documents: 1 }, { due: true }))
-      .toMatch(/1 agreement is also due but waiting for its licence documents to be removed: Remove now does that/);
+      .toMatch(/1 agreement is also due but waiting for its licence documents to be removed: Remove what is due now does that/);
   });
   it('reports documents removed and any that would not delete', () => {
     expect(retentionSummary({ agreements: 1, documents_removed: 2 })).toMatch(/1 ended agreement, 2 licence documents/);
