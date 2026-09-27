@@ -12,7 +12,10 @@
 
 import { supabase } from '$lib/supabaseClient';
 
-/** Authorization-only header (no Content-Type). */
+/**
+ * Authorization-only header (no Content-Type).
+ * @returns {Promise<Record<string, string>>}
+ */
 async function bearer() {
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
@@ -68,6 +71,21 @@ export async function getDocumentUrl(id) {
   const res = await fetch(`/api/documents/${id}/url`, { headers: await bearer() });
   const data = await parse(res, 'Failed to get URL');
   return data.url;
+}
+
+/**
+ * Ask, for each of these documents, whether its record and its file still
+ * exist (POST /api/documents/check, admin only). Changes nothing.
+ * @param {string[]} ids
+ * @returns {Promise<{ results: Record<string, { owner: string, file: string, fileDetail?: string }>, checkedAt: string }>}
+ */
+export async function checkDocuments(ids) {
+  const res = await fetch('/api/documents/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await bearer()) },
+    body: JSON.stringify({ ids }),
+  });
+  return parse(res, 'The check could not finish');
 }
 
 /** Update document metadata (PATCH /api/documents/:id). */

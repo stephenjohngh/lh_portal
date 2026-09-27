@@ -4,6 +4,7 @@
   import { mimeIcon, formatFileSize, docTypeLabel, categoryLabel, getExpiryStatus,
            folderLabel, sortDocsByFolder } from '$lib/utils/documentUtils';
   import { fmtDate } from '$lib/utils/dates';
+  import { checkProblems } from '$lib/utils/documentCheckLabels.js';
 
   /** @type {Object[]} document_library rows */
   export let docs       = [];
@@ -11,6 +12,14 @@
   export let canDelete  = false;
   /** @type {boolean} Show category + expiry columns */
   export let extended   = true;
+  /**
+   * Results of Check files, keyed by document id (Document Demo). A row with a
+   * result shows ✓ or what is wrong; a row without one shows nothing, which is
+   * why a checked-and-fine row must carry the ✓ — otherwise "fine" and "not
+   * checked" would look the same.
+   * @type {Record<string, { owner?: string, file?: string, fileDetail?: string }>|null}
+   */
+  export let checks     = null;
 
   const dispatch = createEventDispatcher();
 
@@ -66,7 +75,26 @@
                   on:click={() => openDoc(doc)}
                   title={doc.display_name ?? doc.filename}
                 >{doc.display_name ?? doc.filename}</button>
+                {#if checks?.[doc.id] && !checkProblems(checks[doc.id]).length}
+                  <span class="text-xs text-green-400 flex-shrink-0" data-testid="check-ok"
+                    title="Its record and its file were both found">✓</span>
+                {/if}
               </div>
+              {#if checks?.[doc.id]}
+                {@const problems = checkProblems(checks[doc.id])}
+                {#if problems.length}
+                  <div class="flex flex-wrap gap-1 mt-1 ml-7" data-testid="check-problems">
+                    {#each problems as p}
+                      <span
+                        class="text-[11px] px-1.5 py-0.5 rounded border {p.tone === 'red'
+                          ? 'bg-red-900/30 border-red-800 text-red-300'
+                          : 'bg-amber-900/30 border-amber-800 text-amber-300'}"
+                        title={p.detail ?? p.label}
+                      >{p.label}</span>
+                    {/each}
+                  </div>
+                {/if}
+              {/if}
             </td>
 
             {#if extended}

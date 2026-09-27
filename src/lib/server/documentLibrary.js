@@ -13,6 +13,7 @@ import { storageProvider, ownerOf } from './storage/index.js';
 import { sanitizeIlikeTerm }          from '$lib/utils/pgFilter.js';
 import { docTypeFromMime, isUnclassifiedDocType } from '$lib/utils/documentUtils.js';
 import { getLogger }                  from '$lib/utils/logger';
+import { checkDocuments }             from './documentCheck.js';
 
 const logger = getLogger('DocumentLibrary');
 
@@ -220,6 +221,24 @@ export async function listDocuments(opts = {}) {
   const { data, error } = await q;
   if (error) throw error;
   return data ?? [];
+}
+
+/**
+ * Check what each of these documents still stands for — its record and its
+ * file — changing nothing (Admin → Document Demo → Check files). The rows are
+ * read here, never taken from the caller: a check of what the CLIENT says a
+ * row holds would check the client. See documentCheck.js.
+ * @param {string[]} ids
+ */
+export async function checkDocumentsById(ids = []) {
+  const unique = [...new Set((ids ?? []).filter(Boolean))];
+  if (!unique.length) return {};
+  const { data, error } = await getDb()
+    .from('document_library')
+    .select('id, entity_type, entity_id, provider, provider_file_id')
+    .in('id', unique);
+  if (error) throw error;
+  return checkDocuments(getDb(), data ?? [], providerFor);
 }
 
 /**

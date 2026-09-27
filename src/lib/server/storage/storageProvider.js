@@ -76,6 +76,10 @@
  *   OPTIONAL (Drive only). Bin a record's folder once it is empty; never a
  *   category folder or the root. Callers treat a missing method as "nothing to
  *   tidy".
+ * @property {(fileId: string) => Promise<'present'|'in_bin'|'missing'|'outside_folder'>} [fileStatus]
+ *   OPTIONAL (Drive only). A file's state, changing nothing — for Document
+ *   Demo's Check files. Throws when it cannot tell. Callers treat a missing
+ *   method as "this storage cannot be checked".
  * @property {(segments: string[]) => Promise<string>} ensurePath
  *   Ensure a full path exists (creating missing folders) and return the leaf folder ID.
  *   Example: ensurePath(['LH', 'components', 'FD-042'])

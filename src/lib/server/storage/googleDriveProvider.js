@@ -320,6 +320,30 @@ export const googleDriveProvider = {
     return mapFile(res.data);
   },
 
+  /**
+   * What state a file is in, for a check that must change nothing (Admin →
+   * Document Demo → Check files, 2026-09-27). Reads metadata only, never the
+   * file: 'present' · 'in_bin' · 'missing' · 'outside_folder'.
+   * ⚠ Only a real 404 is 'missing'; any other failure is thrown, so the check
+   * says it could not tell rather than reporting a file gone that is not.
+   * @param {string} fileId
+   */
+  async fileStatus(fileId) {
+    const drive = getDrive();
+    let meta;
+    try {
+      const res = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'id, trashed' });
+      meta = res.data;
+    } catch (/** @type {any} */ err) {
+      if (isNotFound(err)) return 'missing';
+      throw err;
+    }
+    // Reported whether or not the guard is on: it is true either way, and with
+    // the guard on (the default) the portal refuses to open or delete it.
+    if (!(await isInsideRoot(drive, fileId))) return 'outside_folder';
+    return meta?.trashed ? 'in_bin' : 'present';
+  },
+
   async deleteFile(fileId) {
     const drive = getDrive();
     // ⚠ A file that is ALREADY GONE is deleted, not an error (2026-09-27). Its

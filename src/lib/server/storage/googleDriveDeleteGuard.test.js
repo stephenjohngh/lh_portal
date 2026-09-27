@@ -11,6 +11,8 @@ const h = vi.hoisted(() => ({
   parents: /** @type {Record<string, string[]>} */ ({}),
   deleted: /** @type {string[]} */ ([]),
   gone:    /** @type {Set<string>} */ (new Set()),
+  binned:  /** @type {Set<string>} */ (new Set()),
+  failing: /** @type {Set<string>} */ (new Set()),
 }));
 
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
@@ -28,8 +30,9 @@ vi.mock('googleapis', () => ({
       files: {
         get: async ({ fileId }) => {
           if (h.gone.has(fileId)) throw Object.assign(new Error('File not found'), { response: { status: 404 } });
+          if (h.failing.has(fileId)) throw Object.assign(new Error('Rate limit'), { response: { status: 403 } });
           if (!(fileId in h.parents)) throw new Error('not found');
-          return { data: { parents: h.parents[fileId] } };
+          return { data: { id: fileId, parents: h.parents[fileId], trashed: h.binned.has(fileId) } };
         },
         delete: async ({ fileId }) => { h.deleted.push(fileId); },
       },
@@ -103,5 +106,27 @@ describe('deleteFile with the guard on', () => {
     h.gone.add('longgone');
     await expect(googleDriveProvider.deleteFile('longgone')).resolves.toBeUndefined();
     expect(h.deleted).toEqual([]);
+  });
+});
+
+// Check files (Admin → Document Demo, 2026-09-27): a file's state, changing
+// nothing — and a failure to find out is thrown, never reported as "missing".
+describe('fileStatus', () => {
+  beforeEach(() => { h.parents = {}; h.deleted = []; h.gone = new Set(); h.binned = new Set(); h.failing = new Set(); });
+
+  it('says present, in the bin, missing or outside the folder', async () => {
+    h.parents = { ok: ['DEV_ROOT'], bin: ['DEV_ROOT'], away: ['PROD_ROOT'], PROD_ROOT: [] };
+    h.binned.add('bin');
+    h.gone.add('gone');
+    expect(await googleDriveProvider.fileStatus('ok')).toBe('present');
+    expect(await googleDriveProvider.fileStatus('bin')).toBe('in_bin');
+    expect(await googleDriveProvider.fileStatus('gone')).toBe('missing');
+    expect(await googleDriveProvider.fileStatus('away')).toBe('outside_folder');
+    expect(h.deleted).toEqual([]);
+  });
+
+  it('throws when Drive cannot say, rather than calling the file missing', async () => {
+    h.failing.add('busy');
+    await expect(googleDriveProvider.fileStatus('busy')).rejects.toThrow(/Rate limit/);
   });
 });

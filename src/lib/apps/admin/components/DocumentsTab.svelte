@@ -1,11 +1,14 @@
 <!-- src/lib/apps/admin/components/DocumentsTab.svelte -->
 <!-- "Document Demo" tab in the Admin app — a global, admin-only browser over
-     the shared document_library INDEX table. Lists every indexed document
-     across all apps/entities (newest first, capped at 200), reading the DB
-     index rather than the storage provider directly. Demo + admin cleanup
-     view: everyday document handling lives in each entity's own
-     AttachedDocuments panel, not here. Uploads made here are "loose" (no
-     entity_type/entity_id) and land in a Documents folder. -->
+     the shared document_library INDEX table. Lists the newest 200 indexed
+     documents across all apps/entities, grouped by folder, reading the DB
+     index rather than the storage provider. Demo + admin cleanup view:
+     everyday document handling lives in each entity's own AttachedDocuments
+     panel, not here. Uploads made here are "loose" (no entity_type/entity_id)
+     and land in a Documents folder.
+     ⚠ A row can outlive its file and the record it was attached to — nothing
+     links them (2026-09-27). "Check files" asks, per row shown, and changes
+     nothing: $lib/server/documentCheck.js. -->
 <script>
   import { onMount }        from 'svelte';
   import { documentsStore } from '$lib/stores/documentsStore';
@@ -17,6 +20,9 @@
   import { permissions }    from '$lib/stores/permissions';
   import { debounce }       from '$lib/utils/debounce';
   import { DOC_TYPES, CATEGORIES, DOC_FOLDERS } from '$lib/utils/documentUtils';
+  import { checkDocuments }  from '$lib/utils/documentApi';
+  import { checkSummary }    from '$lib/utils/documentCheckLabels.js';
+  import { fmtTime }         from '$lib/utils/dates';
 
   $: ({ docs, loading, error } = $documentsStore);
 
@@ -76,6 +82,33 @@
     });
   }
 
+  // ── Check files ──────────────────────────────────────────────────────────
+  // Asks, for each document SHOWN, whether its record and its file still
+  // exist. Results are kept by id: a row loaded later (a new filter, an upload)
+  // has none and counts as "not checked", never as fine.
+  /** @type {Record<string, any>} */
+  let checkResults = {};
+  let checkedAt    = '';
+  let checking     = false;
+  let checkError   = '';
+
+  async function runCheck() {
+    const ids = /** @type {Array<{ id: string }>} */ (docs).map((d) => d.id);   // capture before the await
+    if (!ids.length) return;
+    checking = true; checkError = '';
+    try {
+      const { results, checkedAt: at } = await checkDocuments(ids);
+      checkResults = { ...checkResults, ...results };
+      checkedAt    = at;
+    } catch (/** @type {any} */ err) {
+      checkError = err?.message ?? String(err);
+    } finally {
+      checking = false;
+    }
+  }
+
+  $: summary = checkSummary(docs, checkResults);
+
   // Summary stats
   $: total     = docs.length;
   $: expiring  = docs.filter(d => {
@@ -119,13 +152,22 @@
   <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 space-y-2">
     <p class="font-medium text-slate-200">What this tab shows</p>
     <p>
-      Every document indexed in the
+      The records in the
       <code class="px-1 py-0.5 rounded bg-slate-700/70 text-slate-200 text-xs">document_library</code>
-      table — the portal's shared document index — listed newest-first across all apps and entities.
-      It reads the database index, <strong>not</strong> Google Drive directly: you're seeing files
-      that have a library record (Info-note attachments, Golden Thread ingested copies, per-entity
-      uploads, plus loose files uploaded here). Maintenance documents and inspection photos live in
-      separate tables and won't appear.
+      table — the portal's shared index of stored documents — across every app: files attached to
+      Info notes, Management issues, Dossier packs, maintenance jobs (certificates) and parking
+      agreements (licences), the Golden Thread's own copies, and loose files uploaded here. The newest
+      200 are shown, grouped by folder.
+    </p>
+    <p>
+      Not here: <strong>photos</strong> (inspection and MOR photos are held in a separate table), and
+      the frozen copies behind a published Dossier link, which only that publication records.
+    </p>
+    <p>
+      ⚠ This lists <strong>records</strong>, not the files themselves: nothing ties a record to its
+      file in Google Drive, or to the thing it was attached to, so a record can outlive either.
+      <strong>Check files</strong> asks, for each document shown, whether both still exist, and
+      changes nothing. It cannot find the opposite case — a file in Drive with no record here.
     </p>
     <p>
       It exists as a demo and admin cleanup view. Everyday document handling happens in each entity's
@@ -193,6 +235,31 @@
 
   <!-- Error -->
   <ErrorDisplay message={error} onDismiss={() => documentsStore.clearError()} />
+  <ErrorDisplay message={checkError} onDismiss={() => (checkError = '')} />
+
+  <!-- Check files -->
+  {#if !loading && docs.length}
+    <div class="flex flex-wrap items-center gap-3 text-sm" data-testid="check-bar">
+      <button
+        class="px-3 py-1.5 rounded border border-slate-600 text-slate-200 hover:border-teal-500 hover:text-teal-300 disabled:opacity-50"
+        on:click={runCheck}
+        disabled={checking}
+      >{checking ? `Checking ${docs.length}…` : `Check files (${docs.length} shown)`}</button>
+      {#if summary.checked}
+        <span class="text-slate-300" data-testid="check-summary">
+          Checked {summary.checked}{checkedAt ? ` at ${fmtTime(checkedAt)}` : ''}:
+          <span class="text-green-400">{summary.fine} fine</span>{#if summary.withProblems}
+            · <span class="text-red-300">{summary.withProblems} with a problem</span>{/if}{#if summary.notChecked}
+            · <span class="text-slate-400">{summary.notChecked} shown since, not checked</span>{/if}
+        </span>
+        {#each summary.byLabel as p}
+          <span class="text-xs px-1.5 py-0.5 rounded border {p.tone === 'red'
+            ? 'bg-red-900/30 border-red-800 text-red-300'
+            : 'bg-amber-900/30 border-amber-800 text-amber-300'}">{p.count} × {p.label}</span>
+        {/each}
+      {/if}
+    </div>
+  {/if}
 
   <!-- Document list -->
   {#if loading}
@@ -200,6 +267,7 @@
   {:else}
     <DocumentList
       {docs}
+      checks={checkResults}
       canDelete={$permissions.isAdmin}
       extended={true}
       on:delete={handleDelete}
