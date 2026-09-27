@@ -300,7 +300,7 @@
   processing={!!deletingId}
   title="Delete pack?"
   message={pendingDelete
-    ? `"${pendingDelete.title}" and every document inside it will be permanently deleted. This cannot be undone.`
+    ? `"${pendingDelete.title}", every document inside it and its attached files will be permanently deleted, and any link sent from it will stop working. This cannot be undone.`
     : ''}
   confirmText="Delete"
   on:confirm={confirmDelete}

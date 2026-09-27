@@ -79,3 +79,36 @@ export async function updateDocument(id, patch) {
   });
   return parse(res, 'Update failed');
 }
+
+/**
+ * Delete every document attached to one record — call it BEFORE deleting the
+ * record itself.
+ *
+ * ⛔ document_library has no foreign key to anything (entity_type/entity_id
+ * name the owner), so deleting a record never removes its documents: its rows
+ * and its files in Drive stay behind, reachable by nothing. That happened in
+ * five places before 2026-09-27 — an Info section, a Dossier pack, a
+ * maintenance job, a parking draft and a Management activity.
+ *
+ * Throws if ANY could not be deleted, so the caller stops and KEEPS the
+ * record: a record whose documents are half gone can be deleted again, while
+ * documents whose record is gone can no longer be found from the screen.
+ * The library delete is admin-only, and so is deleting every record that
+ * calls this.
+ *
+ * @param {string} entity_type  e.g. 'dossier_pack', 'maintenance_document'
+ * @param {string} entity_id
+ * @returns {Promise<number>} how many were deleted
+ */
+export async function deleteDocumentsFor(entity_type, entity_id) {
+  const docs = await listDocuments({ entity_type, entity_id });
+  const results = await Promise.allSettled(docs.map((d) => deleteDocument(d.id)));
+  const failed  = /** @type {PromiseRejectedResult[]} */ (results.filter((r) => r.status === 'rejected'));
+  if (failed.length) {
+    throw new Error(
+      `${failed.length} of ${docs.length} attached document(s) could not be deleted `
+      + `(${failed[0].reason?.message ?? failed[0].reason}), so nothing else was deleted. Try again.`,
+    );
+  }
+  return docs.length;
+}

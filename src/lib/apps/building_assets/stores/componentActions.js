@@ -6,6 +6,7 @@ import { api }           from '$lib/utils/api';
 import { getLogger }     from '$lib/utils/logger';
 import { logAudit }      from '$lib/utils/auditLogger';
 import { requireUserId } from './helpers.js';
+import { purgeAttachments } from '$lib/utils/mediaAttachments.js';
 // The component write rules live in the app's public interface (../public.js),
 // so they are shared verbatim with the Inspection app rather than duplicated.
 import {
@@ -170,6 +171,13 @@ export function createComponentActions(update) {
   async function deleteComponent(id) {
     let before = null;
     update(s => { before = s.components.find(c => c.id === id) ?? null; return s; });
+    // ⛔ Its inspections' PHOTOS first (2026-09-27). The FK cascade removes the
+    // component's inspections, but their photos are media_attachments rows —
+    // polymorphic, no FK — so they and their files in Drive stayed behind with
+    // nothing left to reach them. The same order deleteWalkSession uses; if a
+    // photo cannot be deleted, purge throws and the component is kept.
+    const inspections = await api.getAll('component_inspections', { select: 'id', filters: { component_id: id } });
+    await purgeAttachments('component_inspection', (inspections ?? []).map(r => r.id));
     await api.delete('components', id);
     update(s => ({
       ...s,

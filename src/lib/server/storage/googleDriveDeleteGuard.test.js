@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const h = vi.hoisted(() => ({
   parents: /** @type {Record<string, string[]>} */ ({}),
   deleted: /** @type {string[]} */ ([]),
+  gone:    /** @type {Set<string>} */ (new Set()),
 }));
 
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
@@ -26,6 +27,7 @@ vi.mock('googleapis', () => ({
     drive: () => ({
       files: {
         get: async ({ fileId }) => {
+          if (h.gone.has(fileId)) throw Object.assign(new Error('File not found'), { response: { status: 404 } });
           if (!(fileId in h.parents)) throw new Error('not found');
           return { data: { parents: h.parents[fileId] } };
         },
@@ -74,7 +76,7 @@ describe('isWithinFolder', () => {
 });
 
 describe('deleteFile with the guard on', () => {
-  beforeEach(() => { h.parents = {}; h.deleted = []; });
+  beforeEach(() => { h.parents = {}; h.deleted = []; h.gone = new Set(); });
 
   it('deletes a file inside this server’s own folder', async () => {
     h.parents = { devfile: ['devsub'], devsub: ['DEV_ROOT'] };
@@ -91,6 +93,15 @@ describe('deleteFile with the guard on', () => {
 
   it('refuses when the file cannot be looked up', async () => {
     await expect(googleDriveProvider.deleteFile('missing')).rejects.toThrow(/refused/i);
+    expect(h.deleted).toEqual([]);
+  });
+
+  // A row that outlived its file must still be removable (2026-09-27): two
+  // library rows on prod name files already deleted from Drive, and every
+  // attempt to delete them was refused as "outside the folder".
+  it('treats a file Drive says is not there as already deleted', async () => {
+    h.gone.add('longgone');
+    await expect(googleDriveProvider.deleteFile('longgone')).resolves.toBeUndefined();
     expect(h.deleted).toEqual([]);
   });
 });

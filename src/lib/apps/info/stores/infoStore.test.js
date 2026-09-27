@@ -70,6 +70,31 @@ describe('sections', () => {
     await infoStore.deleteSection('s1', 'X');
     expect(get(infoStore).sections).toHaveLength(0);
   });
+
+  it("deleteSection deletes each note's documents first, then the notes, then the section", async () => {
+    // The notes go by FK cascade anyway; their documents would not — the
+    // library has no FK — so they were left in Drive (2026-09-27).
+    h.api.get.mockResolvedValueOnce([{ id: 'n1', title: 'A' }, { id: 'n2', title: 'B' }]);
+    const calls = [];
+    globalThis.fetch = vi.fn((url, init) => {
+      calls.push(`${init?.method ?? 'GET'} ${String(url).replace(/^\/api\/documents/, '')}`);
+      const body = String(url).includes('entity_id=n1') ? [{ id: 'd1' }] : [];
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    });
+    h.api.delete.mockImplementation((t, id) => { calls.push(`row ${t}:${id}`); return Promise.resolve(); });
+
+    await infoStore.deleteSection('s1', 'X');
+
+    expect(h.api.get).toHaveBeenCalledWith('info_notes', expect.objectContaining({ filters: { section_id: 's1' } }));
+    expect(calls).toEqual([
+      'GET ?entity_type=info_note&entity_id=n1',
+      'DELETE /d1',
+      'row info_notes:n1',
+      'GET ?entity_type=info_note&entity_id=n2',
+      'row info_notes:n2',
+      'row info_sections:s1',
+    ]);
+  });
 });
 
 describe('notes mutations', () => {
@@ -92,6 +117,19 @@ describe('notes mutations', () => {
     await infoStore.loadNotes();
     await infoStore.deleteNote('n1', 'X');
     expect(get(infoStore).notes).toHaveLength(0);
+  });
+
+  it('deleteNote KEEPS the note when one of its documents cannot be deleted', async () => {
+    // It used to delete the note regardless, leaving the file in Drive with
+    // nothing pointing at it (2026-09-27).
+    h.api.get.mockResolvedValueOnce([{ id: 'n1', title: 'X', is_pinned: false, updated_at: '2026-01-01' }]);
+    await infoStore.loadNotes();
+    globalThis.fetch = vi.fn((url, init) => Promise.resolve(init?.method === 'DELETE'
+      ? { ok: false, json: () => Promise.resolve({ error: 'drive busy' }) }
+      : { ok: true,  json: () => Promise.resolve([{ id: 'd1' }]) }));
+    await expect(infoStore.deleteNote('n1', 'X')).rejects.toThrow(/could not be deleted/);
+    expect(h.api.delete).not.toHaveBeenCalled();
+    expect(get(infoStore).notes).toHaveLength(1);
   });
 
   it('togglePin flips the flag and re-sorts pinned-first', async () => {

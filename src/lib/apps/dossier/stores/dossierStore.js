@@ -13,7 +13,7 @@ import { writable, get } from 'svelte/store';
 import { api }          from '$lib/utils/api';
 import { logAudit }     from '$lib/utils/auditLogger';
 import { getLogger }    from '$lib/utils/logger';
-import { listDocuments } from '$lib/utils/documentApi';
+import { listDocuments, deleteDocumentsFor } from '$lib/utils/documentApi';
 import { uniqueSlug }   from '../utils/slug.js';
 import { nextOrderIndex } from '../utils/docTree.js';
 import { extractLinks, diffLinks, linkSignature, groupBacklinks } from '../utils/docLinks.js';
@@ -180,14 +180,27 @@ function createDossierStore() {
 
   /**
    * Hard delete. Admin-only at RLS; cascades to the pack's docs and their
-   * revisions. Once publishing exists (P3) this must also refuse to delete a
-   * pack with a live publication — deleting one would break a recipient's link.
+   * revisions, and to its publications — so any link issued from it stops
+   * working, which the confirmation says.
+   *
+   * ⛔ FILES FIRST, ROWS LAST (2026-09-27). The cascade removes ROWS only. It
+   * used to leave, in Drive, every file attached to the pack (the library has
+   * no FK to it) and every pinned copy its publications had made (the manifest
+   * was the only thing naming them). Each publication now goes through
+   * deletePublication, which removes its pinned copies and refuses if it
+   * cannot; then the attached files; then the pack. Anything that cannot be
+   * deleted stops it there and the pack is kept, so trying again finishes.
    */
   async function deletePack(id, title) {
+    const publications = await api.get('dossier_publications', { filters: { pack_id: id } });
+    for (const publication of publications ?? []) await deletePublication(publication);
+    const files = await deleteDocumentsFor('dossier_pack', id);
+
     await api.delete('dossier_packs', id);
     update(s => ({ ...s, packs: s.packs.filter(p => p.id !== id) }));
     logAudit('delete', 'dossier_pack', id, title, {
       appId: 'dossier', eventCategory: 'dossier', severity: 'warning',
+      metadata: { publications_deleted: publications?.length ?? 0, files_deleted: files },
     });
     logger('🗑 pack deleted', id);
   }

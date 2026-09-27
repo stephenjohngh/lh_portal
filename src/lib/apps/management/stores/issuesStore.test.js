@@ -63,6 +63,7 @@ const h = vi.hoisted(() => {
   const docApi       = {
     listDocuments:  vi.fn(() => Promise.resolve([])),
     deleteDocument: vi.fn(() => Promise.resolve()),
+    deleteDocumentsFor: vi.fn(() => Promise.resolve(0)),
   };
   const logAudit     = vi.fn();
   const sanitizeHtml = vi.fn((s) => s);          // identity — assert it's CALLED
@@ -184,20 +185,21 @@ describe('deleteIssue', () => {
 
   // The activities go with the issue, but their documents used to stay in the
   // library and in Drive with nothing pointing at them (2026-09-27).
-  it('deletes the issue’s documents too — found before the issue goes, removed after', async () => {
+  it('deletes the issue’s documents FIRST, then the issue', async () => {
     const order = [];
-    h.docApi.listDocuments.mockImplementationOnce(async () => { order.push('list'); return [{ id: 'd1' }, { id: 'd2' }]; });
+    h.docApi.deleteDocumentsFor.mockImplementationOnce(async (t, id) => { order.push(`documents ${t}:${id}`); return 2; });
     h.api.delete.mockImplementationOnce(async () => { order.push('issue'); });
-    h.docApi.deleteDocument.mockImplementation(async (id) => { order.push(`doc ${id}`); });
     await issuesStore.deleteIssue('i1');
-    expect(h.docApi.listDocuments).toHaveBeenCalledWith({ entity_type: 'issue', entity_id: 'i1' });
-    expect(order).toEqual(['list', 'issue', 'doc d1', 'doc d2']);
+    expect(order).toEqual(['documents issue:i1', 'issue']);
   });
 
-  it('still deletes the issue when a document cannot be removed', async () => {
-    h.docApi.listDocuments.mockResolvedValueOnce([{ id: 'd1' }]);
-    h.docApi.deleteDocument.mockRejectedValueOnce(new Error('drive busy'));
-    expect(await issuesStore.deleteIssue('i1')).toEqual({ success: true });
+  // Files before rows, and a failure keeps the record so a retry finishes —
+  // the same rule as every other record with attached files (2026-09-27).
+  it('KEEPS the issue, and says so, when a document cannot be deleted', async () => {
+    h.docApi.deleteDocumentsFor.mockRejectedValueOnce(new Error('1 of 1 attached document(s) could not be deleted'));
+    const r = await issuesStore.deleteIssue('i1');
+    expect(r).toMatchObject({ success: false, error: expect.stringMatching(/could not be deleted/) });
+    expect(h.api.delete).not.toHaveBeenCalledWith('issues', 'i1');
   });
 });
 

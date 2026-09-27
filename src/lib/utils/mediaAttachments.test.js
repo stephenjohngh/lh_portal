@@ -133,6 +133,18 @@ describe('purgeAttachments hands the provider to the server', () => {
     expect(deleted).toBe(true);
   });
 
+  // ⛔ It used to remove the rows whatever storage said, stranding the files
+  // with nothing naming them (2026-09-27).
+  it('keeps every row, and throws, when any file could not be deleted', async () => {
+    h.setResult({ data: [{ entity_id: 'i1', storage_url: 'u1', storage_provider: 'google_drive' }], error: null });
+    globalThis.fetch = vi.fn(() => Promise.resolve({
+      ok: true, json: () => Promise.resolve({ deleted: 0, failed: 1, results: [] }),
+    }));
+    await expect(purgeAttachments('component_inspection', ['i1'])).rejects.toThrow(/could not be deleted/);
+    const deleted = h.supabase.from.mock.results.some(r => r.value.delete.mock.calls.length);
+    expect(deleted).toBe(false);
+  });
+
   it('sends a null provider for a legacy row rather than dropping it', async () => {
     h.setResult({ data: [{ entity_id: 'i1', storage_url: 'u1', storage_provider: null }], error: null });
     await purgeAttachments('x', ['i1']);
@@ -153,15 +165,17 @@ describe('purgeAttachments hands the provider to the server', () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  // ⚠ Storage cleanup is best-effort BY DESIGN — a row pointing at a missing
-  // file is recoverable, a file with no row naming it is not. So a network
-  // failure must not stop the database delete.
-  it('still removes the rows when the storage call fails outright', async () => {
+  // ⛔ REVERSED 2026-09-27. This test used to require the rows to go when
+  // storage failed, citing "a row pointing at a missing file is recoverable, a
+  // file with no row naming it is not" — and removing the rows is what CREATES
+  // the second, unrecoverable state. The principle was right; the behaviour
+  // pinned here contradicted it. A network failure now keeps the rows.
+  it('keeps the rows when the storage call fails outright', async () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new Error('network')));
     h.setResult({ data: [{ entity_id: 'i1', storage_url: 'u1', storage_provider: null }], error: null });
-    await expect(purgeAttachments('x', ['i1'])).resolves.toBeUndefined();
+    await expect(purgeAttachments('x', ['i1'])).rejects.toThrow(/could not be deleted/);
     const deleted = h.supabase.from.mock.results.some(r => r.value.delete.mock.calls.length);
-    expect(deleted).toBe(true);
+    expect(deleted).toBe(false);
   });
 });
 

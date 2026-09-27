@@ -104,6 +104,15 @@ async function isInsideRoot(drive, fileId) {
   return inside;
 }
 
+/**
+ * Did Drive answer "no such file"? The status only, never the message: a
+ * wording match would turn some other failure into a silent "already deleted".
+ * @param {any} err
+ */
+export function isNotFound(err) {
+  return err?.response?.status === 404 || err?.status === 404 || Number(err?.code) === 404;
+}
+
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
 /** Every folder directly inside `parentId`. */
@@ -313,8 +322,29 @@ export const googleDriveProvider = {
 
   async deleteFile(fileId) {
     const drive = getDrive();
+    // ⚠ A file that is ALREADY GONE is deleted, not an error (2026-09-27). Its
+    // row outlived it — a delete that removed the file and then failed, or
+    // someone emptying it in Drive — and refusing meant the row could never be
+    // removed, nor any record that deletes its documents first. Asked BEFORE
+    // the folder guard, which cannot walk the parents of a file that is not
+    // there and would call it "outside the folder": true, and not the point.
+    // ⛔ Only a real 404 counts. Any other failure to look it up still reaches
+    // the guard, which refuses — "could not tell" never means "delete".
+    try {
+      await drive.files.get({ fileId, supportsAllDrives: true, fields: 'id' });
+    } catch (/** @type {any} */ err) {
+      if (isNotFound(err)) {
+        logger('Drive file already gone:', fileId);
+        return;
+      }
+      // anything else: on to the guard, which cannot tell either and refuses
+    }
     await assertInsideRoot(drive, fileId, 'Delete');
-    await drive.files.delete({ fileId, supportsAllDrives: true });
+    try {
+      await drive.files.delete({ fileId, supportsAllDrives: true });
+    } catch (/** @type {any} */ err) {
+      if (!isNotFound(err)) throw err;        // gone between the two calls
+    }
     logger('Deleted Drive file:', fileId);
   },
 

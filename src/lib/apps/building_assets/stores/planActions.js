@@ -8,6 +8,7 @@ import { logAudit }   from '$lib/utils/auditLogger';
 import { buildComponentRef } from '$lib/utils/componentRef.js';
 import { buildSpaceCopyRows, targetSpaceGuards } from '../utils/spaceCopy.js';
 import { requireUserId } from './helpers.js';
+import { purgeAttachments } from '$lib/utils/mediaAttachments.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -561,6 +562,15 @@ export function createPlanActions(update, supabase) {
 
     // Delete components on this plan before the plan itself.
     if (componentIds.length > 0) {
+      // ⛔ Their inspections' PHOTOS first (2026-09-27) — the cascade takes the
+      // inspections and leaves the photos, in the table and in Drive. Read from
+      // the database, not state, so the purge covers exactly what the
+      // deleteMany below removes. If a photo cannot be deleted, purge throws
+      // and nothing else is deleted.
+      const onPlan = await api.getAll('components', { select: 'id', filters: { plan_id: planId } });
+      const inspections = await api.getAllIn('component_inspections', 'component_id',
+        (onPlan ?? []).map(c => c.id), { select: 'id' });
+      await purgeAttachments('component_inspection', (inspections ?? []).map(r => r.id));
       await api.deleteMany('components', { plan_id: planId });
     }
 

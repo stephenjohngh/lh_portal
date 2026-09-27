@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({
   listParkingBaySpaces: vi.fn(),
   logAudit: vi.fn(),
   postJson: vi.fn(),
+  deleteDocumentsFor: vi.fn(() => Promise.resolve(0)),
   auth: { subscribe(fn) { fn({ user: { id: 'u1' } }); return () => {}; } },
 }));
 
@@ -20,6 +21,7 @@ vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger', () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/apps/building_assets/public.js', () => ({ listParkingBaySpaces: h.listParkingBaySpaces }));
 vi.mock('$lib/utils/request', () => ({ postJson: h.postJson }));
+vi.mock('$lib/utils/documentApi', () => ({ deleteDocumentsFor: h.deleteDocumentsFor }));
 
 const { parkingStore } = await import('./parkingStore.js');
 
@@ -344,6 +346,23 @@ describe('deleting a draft made from an accepted offer', () => {
     expect(h.api.delete).toHaveBeenCalledWith('parking_agreements', 'd1');
     expect(h.api.getAll.mock.calls.map(c => c[0])).toContain('parking_applications');
     expect(get(parkingStore).applications[0].status).toBe('offered');
+  });
+
+  // A draft's licence file names a person who is not staff, and deleting the
+  // row used to leave it in Drive (2026-09-27).
+  it("deletes the draft's documents first, and keeps the draft if one cannot go", async () => {
+    tables.parking_agreements = [{ id: 'd1', reference: 'PA-0002', bay_id: 'b1', holder_id: 'h1', basis: 'licence', status: 'draft', starts_on: '2026-10-01' }];
+    tables.parking_applications = [];
+    await parkingStore.load();
+    h.deleteDocumentsFor.mockRejectedValueOnce(new Error('1 of 1 attached document(s) could not be deleted'));
+    await expect(parkingStore.deleteDraft('d1')).rejects.toThrow(/could not be deleted/);
+    expect(h.api.delete).not.toHaveBeenCalledWith('parking_agreements', 'd1');
+
+    const order = [];
+    h.deleteDocumentsFor.mockImplementationOnce((t, id) => { order.push(`files ${t}:${id}`); return Promise.resolve(1); });
+    h.api.delete.mockImplementationOnce((t, id) => { order.push(`row ${t}:${id}`); return Promise.resolve(); });
+    await parkingStore.deleteDraft('d1');
+    expect(order).toEqual(['files parking_agreement:d1', 'row parking_agreements:d1']);
   });
 });
 

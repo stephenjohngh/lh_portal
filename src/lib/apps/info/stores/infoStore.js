@@ -7,10 +7,7 @@ import { api }         from '$lib/utils/api';
 import * as docApi     from '$lib/utils/documentApi';
 import { logAudit }    from '$lib/utils/auditLogger';
 import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
-import { getLogger }   from '$lib/utils/logger';
 import { archiveNotePatch } from '../utils/infoHelpers.js';
-
-const logger = getLogger('infoStore');
 
 const NOTE_SELECT =
   '*, section:info_sections(id,name,colour)';
@@ -97,6 +94,13 @@ function createInfoStore() {
   }
 
   async function deleteSection(id, name) {
+    // ⛔ Its notes go with it (FK cascade) — but their documents would not: the
+    // library has no FK to notes, so they stayed in Drive with nothing pointing
+    // at them (2026-09-27). Each note is deleted first through deleteNote,
+    // which removes its documents, so the section goes last.
+    const notes = await api.get('info_notes', { select: 'id, title', filters: { section_id: id } });
+    for (const n of notes ?? []) await deleteNote(n.id, n.title);
+
     await api.delete('info_sections', id);
     update(s => ({ ...s, sections: s.sections.filter(sec => sec.id !== id) }));
     logAudit('delete', 'info_section', id, name,
@@ -200,20 +204,12 @@ function createInfoStore() {
   async function deleteNote(id, title) {
     // document_library is polymorphic (no FK to info_notes), so deleting the
     // note does NOT cascade to its attachments. Delete them first — Drive
-    // files + index rows — via the same endpoint single-delete uses, so they
-    // aren't orphaned. Best-effort: a failed attachment delete must not block
-    // deleting the note.
-    let docs = [];
-    try {
-      docs = await docApi.listDocuments({ entity_type: 'info_note', entity_id: id });
-    } catch (/** @type {any} */ err) {
-      logger('⚠ could not list attachments before note delete:', err.message);
-    }
-    if (docs.length) {
-      const results = await Promise.allSettled(docs.map(d => docApi.deleteDocument(d.id)));
-      const failed  = results.filter(r => r.status === 'rejected').length;
-      if (failed) logger(`⚠ ${failed}/${docs.length} attachment(s) may not have been deleted for note ${id}`);
-    }
+    // files + index rows. ⚠ No longer best-effort (2026-09-27): it used to
+    // delete the note whatever happened to its files, which is exactly how a
+    // file ends up in Drive with nothing pointing at it. Now a document that
+    // cannot be deleted stops here and the note is KEPT, so trying again
+    // finishes the job.
+    const deleted = await docApi.deleteDocumentsFor('info_note', id);
 
     await api.delete('info_notes', id);
     update(s => ({
@@ -223,7 +219,7 @@ function createInfoStore() {
     }));
     logAudit('delete', 'info_note', id, title,
       { appId: 'info', eventCategory: 'info', severity: 'info',
-        metadata: { deleted_attachments: docs.length } });
+        metadata: { deleted_attachments: deleted } });
   }
 
   async function togglePin(id, currentPinned) {

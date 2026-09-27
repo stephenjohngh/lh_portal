@@ -45,6 +45,8 @@ const h = vi.hoisted(() => {
     setUpdateExtra: (e) => { updateExtra = e; },
     setObligations: (o) => { obligations = o; },
     listPlannedObligations: vi.fn(() => Promise.resolve(obligations)),
+    deleteStorageObjects: vi.fn(() => Promise.resolve({ deleted: 1, failed: 0, results: [] })),
+    deleteDocumentsFor:   vi.fn(() => Promise.resolve(0)),
   };
 });
 
@@ -53,7 +55,10 @@ vi.mock('$lib/utils/api',           () => ({ api: h.api }));
 vi.mock('$lib/utils/auditLogger',   () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',        () => ({ getLogger: () => () => {} }));
 vi.mock('$lib/utils/mediaUpload.js',() => ({ uploadMedia: h.uploadMedia }));
-vi.mock('$lib/utils/mediaAttachments.js', () => ({ deleteStorageObjects: vi.fn(() => Promise.resolve({ deleted: 1, failed: 0, results: [] })) }));
+vi.mock('$lib/utils/mediaAttachments.js', () => ({ deleteStorageObjects: h.deleteStorageObjects }));
+vi.mock('$lib/utils/documentApi.js', () => ({
+  uploadDocument: vi.fn(), deleteDocument: vi.fn(), deleteDocumentsFor: h.deleteDocumentsFor,
+}));
 vi.mock('$lib/apps/compliance/public.js', () => ({ listPlannedObligations: h.listPlannedObligations }));
 
 const { maintenanceStore } = await import('./maintenanceStore.js');
@@ -147,6 +152,43 @@ describe('cancel / reopen / delete', () => {
     expect(h.api.delete).toHaveBeenCalledWith('maintenance_jobs', 'j1');
     expect(get(maintenanceStore).jobs).toHaveLength(0);
     expect(h.logAudit).toHaveBeenCalledWith('delete', 'maintenance_job', 'j1', 'j1', expect.any(Object));
+  });
+
+  // The cascade removed the document ROWS and left every certificate in Drive,
+  // while the confirmation promised "and all its documents" (2026-09-27).
+  it("deleteJob deletes the job's files first — library and older ones — then the job", async () => {
+    h.setTables({
+      maintenance_jobs: [{ id: 'j1', title: 'X', scheduled_date: '2026-01-01', status: 'scheduled' }],
+      maintenance_documents: [
+        { id: 'm1', storage_path: 'https://drive/new', library_doc_id: 'lib1' },
+        { id: 'm2', storage_path: 'https://drive/old', library_doc_id: null },
+      ],
+    });
+    await maintenanceStore.load();
+    const order = [];
+    h.deleteDocumentsFor.mockImplementationOnce((t, id) => { order.push(`library ${t}:${id}`); return Promise.resolve(1); });
+    h.deleteStorageObjects.mockImplementationOnce((rows) => {
+      order.push(`older ${rows.map(r => r.storage_url).join(',')}`);
+      return Promise.resolve({ deleted: rows.length, failed: 0, results: [] });
+    });
+    h.api.delete.mockImplementationOnce((t, id) => { order.push(`row ${t}:${id}`); return Promise.resolve(); });
+
+    await maintenanceStore.deleteJob('j1');
+    expect(order).toEqual(['library maintenance_document:j1', 'older https://drive/old', 'row maintenance_jobs:j1']);
+  });
+
+  it('deleteJob KEEPS the job when one of its files cannot be deleted', async () => {
+    h.setTables({
+      maintenance_jobs: [{ id: 'j1', title: 'X', scheduled_date: '2026-01-01', status: 'scheduled' }],
+      maintenance_documents: [{ id: 'm2', storage_path: 'https://drive/old', library_doc_id: null }],
+    });
+    await maintenanceStore.load();
+    h.deleteDocumentsFor.mockRejectedValueOnce(new Error('1 of 1 attached document(s) could not be deleted'));
+    await expect(maintenanceStore.deleteJob('j1')).rejects.toThrow(/could not be deleted/);
+    h.deleteStorageObjects.mockResolvedValueOnce({ deleted: 0, failed: 1, results: [] });
+    await expect(maintenanceStore.deleteJob('j1')).rejects.toThrow(/job was kept/);
+    expect(h.api.delete).not.toHaveBeenCalledWith('maintenance_jobs', 'j1');
+    expect(get(maintenanceStore).jobs).toHaveLength(1);
   });
 });
 

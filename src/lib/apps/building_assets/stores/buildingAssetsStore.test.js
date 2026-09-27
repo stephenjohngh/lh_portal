@@ -44,6 +44,7 @@ const h = vi.hoisted(() => {
 
   return {
     api, supabase, logAudit: vi.fn(),
+    purgeAttachments: vi.fn(() => Promise.resolve()),
     setTables:  (t) => { tables = t; },
     setThrow:   (s) => { throwSet = new Set(s); },
     setInspections: (i) => { inspections = i; },
@@ -54,6 +55,7 @@ vi.mock('$lib/utils/api',         () => ({ api: h.api }));
 vi.mock('$lib/supabaseClient',    () => ({ supabase: h.supabase }));
 vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
+vi.mock('$lib/utils/mediaAttachments.js', () => ({ purgeAttachments: h.purgeAttachments }));
 vi.mock('$lib/stores/auth',       () => ({
   auth: { subscribe: (run) => { run({ user: { id: 'u1' } }); return () => {}; } },
 }));
@@ -150,6 +152,27 @@ describe('updateComponent / moveComponent / deleteComponent', () => {
     expect(get(store).components.map(c => c.id)).toEqual(['c2']);
     expect(h.logAudit).toHaveBeenCalledWith('delete', 'component', 'c1', 'Gone',
       expect.objectContaining({ beforeData: expect.objectContaining({ id: 'c1' }) }));
+  });
+
+  // The cascade took the inspections and left their photos, in the table and
+  // in Drive, with nothing to reach them (2026-09-27).
+  it("deleteComponent purges its inspections' photos before the component goes", async () => {
+    await loadComps([{ id: 'c1', label: 'Gone' }]);
+    h.setTables({ component_inspections: [{ id: 'i1' }, { id: 'i2' }] });
+    const order = [];
+    h.purgeAttachments.mockImplementationOnce((t, ids) => { order.push(`photos ${t}:${ids.join(',')}`); return Promise.resolve(); });
+    h.api.delete.mockImplementationOnce((t, id) => { order.push(`row ${t}:${id}`); return Promise.resolve(); });
+    await store.deleteComponent('c1');
+    expect(h.api.getAll).toHaveBeenCalledWith('component_inspections', expect.objectContaining({ filters: { component_id: 'c1' } }));
+    expect(order).toEqual(['photos component_inspection:i1,i2', 'row components:c1']);
+  });
+
+  it('deleteComponent keeps the component when a photo cannot be deleted', async () => {
+    await loadComps([{ id: 'c1', label: 'Kept' }]);
+    h.purgeAttachments.mockRejectedValueOnce(new Error('1 of 1 photo(s) could not be deleted from storage'));
+    await expect(store.deleteComponent('c1')).rejects.toThrow(/could not be deleted/);
+    expect(h.api.delete).not.toHaveBeenCalledWith('components', 'c1');
+    expect(get(store).components.map(c => c.id)).toEqual(['c1']);
   });
 });
 
@@ -367,6 +390,32 @@ describe('planActions', () => {
     const s = get(store);
     expect(s.plans).toHaveLength(0);
     expect(s.components.map(c => c.id)).toEqual(['c2']);     // only the non-plan component remains
+  });
+
+  // Deleting a plan deletes its components, whose inspections' photos were
+  // left in the table and in Drive (2026-09-27).
+  it("deletePlan purges its components' inspection photos before deleting them", async () => {
+    h.setTables({ plans: [{ id: 'p1', building: 'A' }] });
+    await store.load();
+    await loadComps([{ id: 'c1', plan_id: 'p1' }]);
+    h.setTables({ components: [{ id: 'c1' }], component_inspections: [{ id: 'i1' }] });
+    const order = [];
+    h.purgeAttachments.mockImplementationOnce((t, ids) => { order.push(`photos ${t}:${ids.join(',')}`); return Promise.resolve(); });
+    h.api.deleteMany.mockImplementationOnce((t) => { order.push(`rows ${t}`); return Promise.resolve(); });
+    await store.deletePlan('p1');
+    expect(h.api.getAllIn).toHaveBeenCalledWith('component_inspections', 'component_id', ['c1'], expect.any(Object));
+    expect(order).toEqual(['photos component_inspection:i1', 'rows components']);
+  });
+
+  it('deletePlan keeps the plan and its components when a photo cannot be deleted', async () => {
+    h.setTables({ plans: [{ id: 'p1', building: 'A' }] });
+    await store.load();
+    await loadComps([{ id: 'c1', plan_id: 'p1' }]);
+    h.purgeAttachments.mockRejectedValueOnce(new Error('1 of 1 photo(s) could not be deleted from storage'));
+    await expect(store.deletePlan('p1')).rejects.toThrow(/could not be deleted/);
+    expect(h.api.deleteMany).not.toHaveBeenCalled();
+    expect(h.api.delete).not.toHaveBeenCalledWith('plans', 'p1');
+    expect(get(store).plans).toHaveLength(1);
   });
 
   it('copyPlan duplicates the source components onto a new plan and reports the count', async () => {

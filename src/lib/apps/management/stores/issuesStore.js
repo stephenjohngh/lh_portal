@@ -293,26 +293,17 @@ function createIssuesStore() {
 
         logger('Issue to delete:', issue);
 
-        // Its documents. The activities go with the issue (FK cascade) but the
-        // library files they carried do not, and would stay in Drive with
-        // nothing pointing at them (2026-09-27). Listed BEFORE the issue goes:
-        // the document list checks the caller can read the parent issue.
-        let docs = [];
-        try {
-          docs = await docApi.listDocuments({ entity_type: 'issue', entity_id: issueId });
-        } catch (/** @type {any} */ err) {
-          logger('⚠ could not list the issue’s documents:', err.message);
-        }
+        // Its documents FIRST. The activities go with the issue (FK cascade)
+        // but the library files they carried do not, and would stay in Drive
+        // with nothing pointing at them (2026-09-27). If one cannot be deleted
+        // this stops and the issue is KEPT, so trying again finishes the job —
+        // the rule every record with attached files now follows.
+        await docApi.deleteDocumentsFor('issue', issueId);
 
         // Delete issue
         await api.delete('issues', issueId);
 
         logger('✅ Issue deleted');
-
-        // Then the documents — best-effort: the issue has gone either way.
-        const removed = await Promise.allSettled(docs.map((d) => docApi.deleteDocument(d.id)));
-        const failedDocs = removed.filter((r) => r.status === 'rejected').length;
-        if (failedDocs) logger(`⚠ ${failedDocs} of the issue’s documents could not be deleted`);
 
         // ✨ LOG AUDIT EVENT (fire-and-forget)
         audit(

@@ -16,7 +16,7 @@ vi.mock('$lib/supabaseClient', () => ({
   supabase: { auth: { getSession: () => Promise.resolve({ data: { session: h.session } }) } },
 }));
 
-const { listDocuments, uploadDocument, deleteDocument, getDocumentUrl, updateDocument } =
+const { listDocuments, uploadDocument, deleteDocument, getDocumentUrl, updateDocument, deleteDocumentsFor } =
   await import('./documentApi.js');
 
 function mockFetch(body, { ok = true, status = 200 } = {}) {
@@ -114,5 +114,47 @@ describe('bearer header', () => {
     mockFetch([]);
     await listDocuments({ entity_id: 'n1' });
     expect(globalThis.fetch.mock.calls[0][1].headers).toEqual({});
+  });
+});
+
+describe('deleteDocumentsFor', () => {
+  /** @param {Record<string, boolean>} fails  doc id → refuse its delete */
+  function library(docs, fails = {}) {
+    globalThis.fetch = vi.fn((url, init) => {
+      if (init?.method === 'DELETE') {
+        const id = String(url).split('/').pop();
+        const ok = !fails[id];
+        return Promise.resolve({ ok, status: ok ? 200 : 502, json: () => Promise.resolve(ok ? {} : { error: 'drive busy' }) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(docs) });
+    });
+  }
+
+  it("lists one record's documents and deletes each", async () => {
+    library([{ id: 'd1' }, { id: 'd2' }]);
+    await expect(deleteDocumentsFor('dossier_pack', 'p1')).resolves.toBe(2);
+    const urls = globalThis.fetch.mock.calls.map(([u, i]) => `${i?.method ?? 'GET'} ${u}`);
+    expect(urls).toEqual([
+      'GET /api/documents?entity_type=dossier_pack&entity_id=p1',
+      'DELETE /api/documents/d1',
+      'DELETE /api/documents/d2',
+    ]);
+  });
+
+  it('is a no-op for a record with nothing attached', async () => {
+    library([]);
+    await expect(deleteDocumentsFor('dossier_pack', 'p1')).resolves.toBe(0);
+  });
+
+  // ⛔ The caller must stop and keep the record: throwing is the whole contract.
+  it('throws when any document could not be deleted, still trying the rest', async () => {
+    library([{ id: 'd1' }, { id: 'd2' }], { d1: true });
+    await expect(deleteDocumentsFor('dossier_pack', 'p1')).rejects.toThrow(/1 of 2.*drive busy.*nothing else was deleted/s);
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/documents/d2', expect.objectContaining({ method: 'DELETE' }));
+  });
+
+  it('throws when the list itself fails, so nothing is assumed empty', async () => {
+    globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ error: 'boom' }) }));
+    await expect(deleteDocumentsFor('dossier_pack', 'p1')).rejects.toThrow('boom');
   });
 });

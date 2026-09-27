@@ -14,6 +14,7 @@
 import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
 import { postJson } from '$lib/utils/request';
+import { deleteDocumentsFor } from '$lib/utils/documentApi';
 import { auth } from '$lib/stores/auth';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
@@ -478,6 +479,12 @@ function createParkingStore() {
     if (!current) return;
     if (current.status !== 'draft') throw new Error('Only a draft can be deleted. End or terminate it instead.');
     const reopens = state().applications.some(a => a.agreement_id === id && a.status === 'allocated');
+    // ⛔ Its documents first (2026-09-27): a draft may already carry a licence
+    // file, which names a person who is not staff. The library has no FK to the
+    // agreement, so deleting the row left the file in Drive, outside anything
+    // the portal — or its retention — could reach. If one cannot be deleted the
+    // draft is kept, so trying again finishes.
+    await deleteDocumentsFor('parking_agreement', id);
     await api.delete('parking_agreements', id);
     // The database changed the application too; read it back rather than guess.
     const applications = reopens

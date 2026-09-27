@@ -41,10 +41,11 @@ export async function listAttachments(entityType, entityIds) {
 }
 
 /**
- * Delete stored files, each from the provider that owns it. Best-effort: a
- * storage failure must never block the database cleanup that follows, because
- * a row pointing at a missing file is recoverable and a file with no row
- * naming it is not.
+ * Delete stored files, each from the provider that owns it. It never throws —
+ * it REPORTS, and the caller decides. ⛔ A caller about to remove the rows
+ * should check `failed` first and keep them if it is not zero: a row pointing
+ * at a missing file is recoverable, and a file with no row naming it is not
+ * (purgeAttachments does, since 2026-09-27).
  *
  * ⚠ Returns the per-file results rather than swallowing them. The old version
  * discarded everything, which is how 30 undeletable files went unnoticed —
@@ -183,9 +184,14 @@ export async function setAttachments(
 }
 
 /**
- * Delete all attachments for the given entities: clean up the storage files
- * (best-effort, swallowed on failure so the DB cleanup always runs) then remove
+ * Delete all attachments for the given entities: the storage files first, then
  * the rows. Safe to call when nothing matches.
+ *
+ * ⛔ THROWS, AND KEEPS EVERY ROW, IF ANY FILE COULD NOT BE DELETED (2026-09-27).
+ * It used to swallow the failure and remove the rows anyway — leaving files in
+ * storage that nothing names, the one state that cannot be recovered from the
+ * screen. The caller (a walk session, a component) then stops too, so trying
+ * again finishes the job. A file already gone from Drive counts as deleted.
  * @param {string} entityType
  * @param {string|string[]} entityIds
  */
@@ -198,7 +204,11 @@ export async function purgeAttachments(entityType, entityIds) {
     // ⚠ Whole rows, not just URLs — the provider travels with each file so the
     // server can route it. Passing `rows.map(r => r.storage_url)` here is
     // exactly the regression this fix removed.
-    await deleteStorageObjects(rows, session?.access_token);
+    const result = await deleteStorageObjects(rows, session?.access_token);
+    if (result?.failed) {
+      throw new Error(`${result.failed} of ${rows.length} photo(s) could not be deleted from storage, `
+        + 'so nothing else was deleted. Try again.');
+    }
   }
   const { error } = await supabase
     .from('media_attachments')

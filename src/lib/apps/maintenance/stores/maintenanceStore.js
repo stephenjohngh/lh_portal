@@ -17,7 +17,7 @@ import { api }           from '$lib/utils/api';
 import { supabase }      from '$lib/supabaseClient';
 import { uploadMedia }   from '$lib/utils/mediaUpload.js';
 import { deleteStorageObjects } from '$lib/utils/mediaAttachments.js';
-import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary } from '$lib/utils/documentApi.js';
+import { uploadDocument as uploadToLibrary, deleteDocument as deleteFromLibrary, deleteDocumentsFor } from '$lib/utils/documentApi.js';
 import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
 import { jobRag, addDaysISO } from '../utils/maintenanceHelpers.js';
 import { listPlannedObligations } from '$lib/apps/compliance/public.js';
@@ -455,6 +455,28 @@ function createMaintenanceStore() {
   }
 
   async function deleteJob(id) {
+    // ⛔ FILES FIRST, ROWS LAST (2026-09-27). The cascade removes the job's
+    // maintenance_documents ROWS; it never removed their FILES, so every
+    // certificate of a deleted job stayed in Drive with nothing pointing at it
+    // — while the confirmation promised "and all its documents". Anything that
+    // cannot be deleted stops it here and the job is kept, so trying again
+    // finishes. (A Golden Thread copy is its own library row and is untouched.)
+    const libraryDocs = await deleteDocumentsFor('maintenance_document', id);   // entity_id is the JOB
+    const legacy = (await api.get('maintenance_documents', {
+      select: 'id, storage_path, library_doc_id', filters: { job_id: id },
+    }) ?? []).filter(d => !d.library_doc_id && d.storage_path);
+    if (legacy.length) {
+      // Pre-library certificates: only the Drive URL was kept, and the server
+      // infers the provider from its shape (storageRef.js).
+      const { data: sessionData } = await supabase.auth.getSession();
+      const result = await deleteStorageObjects(
+        legacy.map(d => ({ storage_url: d.storage_path })), sessionData?.session?.access_token);
+      if (result.failed) {
+        throw new Error(`${result.failed} of ${legacy.length} older document file(s) could not be deleted, `
+          + 'so the job was kept. Try again.');
+      }
+    }
+
     await api.delete('maintenance_jobs', id);
     update(s => ({
       ...s,
@@ -463,6 +485,7 @@ function createMaintenanceStore() {
     }));
     logAudit('delete', 'maintenance_job', id, id, {
       appId: 'maintenance', eventCategory: 'maintenance', severity: 'warn',
+      metadata: { files_deleted: libraryDocs + legacy.length },
     });
     logger('✅ Deleted job:', id);
   }

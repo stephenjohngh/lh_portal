@@ -49,6 +49,7 @@
   let showDeleteConf = false;
   let downloading    = false;
   let downloadError  = '';
+  let deleteError    = '';
 
   onMount(async () => {
     if (job?.id) {
@@ -86,8 +87,16 @@
   }
 
   async function handleDelete() {
-    await maintenanceStore.deleteJob(job.id);
+    const jobId = job.id;               // capture before the await
     showDeleteConf = false;
+    deleteError = '';
+    try {
+      // Its files go first; if one cannot be deleted the job is kept and says so.
+      await maintenanceStore.deleteJob(jobId);
+    } catch (/** @type {any} */ err) {
+      deleteError = err?.message ?? String(err);
+      return;
+    }
     dispatch('changed');
     dispatch('close');
   }
@@ -150,6 +159,9 @@
 
       {#if downloadError}
         <ErrorDisplay message={downloadError} onDismiss={() => downloadError = ''} />
+      {/if}
+      {#if deleteError}
+        <ErrorDisplay message={deleteError} onDismiss={() => deleteError = ''} />
       {/if}
 
       <!-- Key details grid -->

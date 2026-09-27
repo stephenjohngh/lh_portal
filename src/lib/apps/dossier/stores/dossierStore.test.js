@@ -19,9 +19,10 @@ const h = vi.hoisted(() => {
   });
   const logAudit = vi.fn();
   const listDocuments = vi.fn(() => Promise.resolve([]));
+  const deleteDocumentsFor = vi.fn(() => Promise.resolve(0));
   const postJson = vi.fn(() => Promise.resolve({ map: {}, skipped: [] }));
   const del = vi.fn(() => Promise.resolve({ removed: 0, failed: [] }));
-  return { api, logAudit, listDocuments, postJson, del };
+  return { api, logAudit, listDocuments, deleteDocumentsFor, postJson, del };
 });
 
 vi.mock('$lib/utils/api',         () => ({ api: h.api }));
@@ -29,7 +30,9 @@ vi.mock('$lib/utils/auditLogger', () => ({ logAudit: h.logAudit }));
 vi.mock('$lib/utils/logger',      () => ({ getLogger: () => () => {} }));
 // documentApi transitively imports supabaseClient → $env/static/public, which
 // does not resolve without the SvelteKit vite plugin.
-vi.mock('$lib/utils/documentApi', () => ({ listDocuments: h.listDocuments }));
+vi.mock('$lib/utils/documentApi', () => ({
+  listDocuments: h.listDocuments, deleteDocumentsFor: h.deleteDocumentsFor,
+}));
 // duplicatePack imports this lazily, so the file copy costs nothing when the
 // author left the files behind.
 vi.mock('$lib/utils/request', () => ({ postJson: h.postJson, del: h.del }));
@@ -141,6 +144,43 @@ describe('deletePack', () => {
     expect(h.logAudit).toHaveBeenCalledWith(
       'delete', 'dossier_pack', 'p1', 'Gone',
       expect.objectContaining({ severity: 'warning' }));
+  });
+
+  // The cascade removed the ROWS and left the files: every file attached to
+  // the pack, and every pinned copy its publications made (2026-09-27).
+  it('removes publications (with their pinned copies) and attached files BEFORE the pack', async () => {
+    await seed([{ id: 'p1', title: 'Gone', created_at: '2026-01-01T00:00:00Z' }]);
+    const order = [];
+    h.api.get.mockImplementationOnce((t, o) => { order.push(`get ${t} ${o.filters.pack_id}`);
+      return Promise.resolve([{ id: 'pub1', title: 'Gone', version: 1, manifest: { files: [{ pinned_file_id: 'pin-1' }] } }]); });
+    h.del.mockImplementationOnce((url) => { order.push(`pinned ${url}`); return Promise.resolve({ removed: 1, failed: [] }); });
+    h.deleteDocumentsFor.mockImplementationOnce((t, id) => { order.push(`files ${t}:${id}`); return Promise.resolve(2); });
+    h.api.delete.mockImplementation((t, id) => { order.push(`row ${t}:${id}`); return Promise.resolve(); });
+
+    await store.deletePack('p1', 'Gone');
+
+    expect(order).toEqual([
+      'get dossier_publications p1',
+      'pinned /api/dossier/publications/pub1/pinned',
+      'row dossier_publications:pub1',
+      'files dossier_pack:p1',
+      'row dossier_packs:p1',
+    ]);
+    h.api.delete.mockImplementation(() => Promise.resolve());
+  });
+
+  it('keeps the pack when a file or a pinned copy cannot be deleted', async () => {
+    await seed([{ id: 'p1', title: 'Kept', created_at: '2026-01-01T00:00:00Z' }]);
+    h.deleteDocumentsFor.mockRejectedValueOnce(new Error('1 of 1 attached document(s) could not be deleted'));
+    await expect(store.deletePack('p1', 'Kept')).rejects.toThrow(/could not be deleted/);
+    expect(h.api.delete).not.toHaveBeenCalledWith('dossier_packs', 'p1');
+
+    h.api.get.mockResolvedValueOnce([{ id: 'pub1', manifest: { files: [{ pinned_file_id: 'pin-1' }] } }]);
+    h.del.mockResolvedValueOnce({ removed: 0, failed: [{ id: 'pin-1' }] });
+    await expect(store.deletePack('p1', 'Kept')).rejects.toThrow(/publication was kept/);
+    expect(h.deleteDocumentsFor).toHaveBeenCalledTimes(1);          // only the first attempt got that far
+    expect(h.api.delete).not.toHaveBeenCalledWith('dossier_packs', 'p1');
+    expect(get(store).packs.map(p => p.id)).toEqual(['p1']);
   });
 });
 
