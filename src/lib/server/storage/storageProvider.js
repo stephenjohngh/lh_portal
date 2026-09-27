@@ -69,6 +69,13 @@
  * @property {(name: string, parentId: string) => Promise<string>} getOrCreateFolder
  *   Return an existing folder ID or create it if absent.
  *
+ * @property {(fileId: string) => Promise<string|null>} [parentFolderOf]
+ *   OPTIONAL (Drive only). The folder a file sits in — asked before a delete so
+ *   the folder can be tidied afterwards.
+ * @property {(folderId: string) => Promise<boolean>} [trashFolderIfEmpty]
+ *   OPTIONAL (Drive only). Bin a record's folder once it is empty; never a
+ *   category folder or the root. Callers treat a missing method as "nothing to
+ *   tidy".
  * @property {(segments: string[]) => Promise<string>} ensurePath
  *   Ensure a full path exists (creating missing folders) and return the leaf folder ID.
  *   Example: ensurePath(['LH', 'components', 'FD-042'])

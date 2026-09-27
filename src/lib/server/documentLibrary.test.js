@@ -25,6 +25,7 @@ const h = vi.hoisted(() => ({
   getFileStream: vi.fn(() => Promise.resolve({ data: Buffer.from('copied bytes') })),
   getFileUrl:    vi.fn(() => Promise.resolve('https://drive.test/fresh')),
   deleteFile:    vi.fn(() => Promise.resolve()),
+  trashFolder:   vi.fn(() => Promise.resolve(true)),
   listFiles:     vi.fn(() => Promise.resolve([{ name: 'a folder', isFolder: true }])),
   sbDelete:      vi.fn(() => Promise.resolve()),
   sbUrl:         vi.fn(() => Promise.resolve('https://sb.test/object')),
@@ -45,7 +46,7 @@ vi.mock('./storage/index.js', () => ({
   // switch. Only its delete/url/stream are called by the provider-routing tests.
   ownerOf: (name) => {
     const known = {
-      google_drive: { name: 'google_drive', deleteFile: h.deleteFile, getFileUrl: h.getFileUrl, getFileStream: h.getFileStream },
+      google_drive: { name: 'google_drive', deleteFile: h.deleteFile, getFileUrl: h.getFileUrl, getFileStream: h.getFileStream, trashFolderIfEmpty: h.trashFolder },
       supabase:     { name: 'supabase', deleteFile: h.sbDelete, getFileUrl: h.sbUrl, getFileStream: h.sbStream },
     };
     if (!name) return known.google_drive;
@@ -78,6 +79,7 @@ vi.mock('@supabase/supabase-js', () => ({
         order()     { return q; },
         limit()     { return q; },
         eq(col, val) { h.filters[col] = val; return q; },
+        neq(col, val) { h.filters[`not ${col}`] = val; return q; },
         or(expr)     { h.orFilter = expr; return q; },
         single()     { return Promise.resolve({ data: h.selectRow, error: null }); },
         then(resolve) {
@@ -286,6 +288,38 @@ describe('deleteDocument', () => {
 
     await expect(deleteDocument('doc1')).rejects.toThrow('drive unavailable');
     expect(h.deletedFrom).toBeNull();
+  });
+});
+
+// Records get their own folder (entityFolderPath). Deleting one used to leave
+// the folder behind, and renaming one started a second folder (2026-09-27).
+describe('record folders', () => {
+  it('bins the folder a deleted document leaves behind, after the row is gone', async () => {
+    h.selectRow = { id: 'doc1', provider: 'google_drive', provider_file_id: 'drive-1', provider_folder_id: 'folder-9' };
+    await deleteDocument('doc1');
+    expect(h.trashFolder).toHaveBeenCalledWith('folder-9');
+    expect(h.deletedFrom).toBe(true);
+  });
+
+  it('never fails a delete because the folder could not be tidied', async () => {
+    h.selectRow = { id: 'doc1', provider: 'google_drive', provider_file_id: 'drive-1', provider_folder_id: 'folder-9' };
+    h.trashFolder.mockRejectedValueOnce(new Error('drive busy'));
+    await expect(deleteDocument('doc1')).resolves.toBeUndefined();
+  });
+
+  it('does not tidy when storage refused the delete', async () => {
+    h.selectRow = { id: 'doc1', provider: 'google_drive', provider_file_id: 'drive-1', provider_folder_id: 'folder-9' };
+    h.deleteFile.mockRejectedValueOnce(new Error('drive unavailable'));
+    await expect(deleteDocument('doc1')).rejects.toThrow();
+    expect(h.trashFolder).not.toHaveBeenCalled();
+  });
+
+  it('brings the recorded path of files already in the folder into step with an upload', async () => {
+    await uploadDocument(Buffer.from('x'), 'a.pdf', 'application/pdf',
+      { folder_path: 'Info Notes/New title (1a2b3c4d)' }, 'u1');
+    expect(h.updated).toEqual({ folder_path: 'Info Notes/New title (1a2b3c4d)' });
+    expect(h.filters.provider_folder_id).toBe('folder-1');
+    expect(h.filters['not folder_path']).toBe('Info Notes/New title (1a2b3c4d)');
   });
 });
 

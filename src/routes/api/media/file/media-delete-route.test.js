@@ -19,13 +19,18 @@ const ME    = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
 
 const driveDelete    = vi.fn();
-const h = vi.hoisted(() => ({ db: /** @type {any} */ (null) }));
+const h = vi.hoisted(() => ({
+  db: /** @type {any} */ (null),
+  parentOf: vi.fn(async () => 'WALK_FOLDER'),
+  trash: vi.fn(async () => true),
+}));
 const supabaseDelete = vi.fn();
 const requireAuth    = vi.fn();
 
 vi.mock('$lib/server/storage/index.js', () => ({
   providerByName: (name) => ({
-    google_drive: { name: 'google_drive', deleteFile: (...a) => driveDelete(...a) },
+    google_drive: { name: 'google_drive', deleteFile: (...a) => driveDelete(...a),
+                    parentFolderOf: (...a) => h.parentOf(...a), trashFolderIfEmpty: (...a) => h.trash(...a) },
     supabase:     { name: 'supabase',     deleteFile: (...a) => supabaseDelete(...a) },
   }[name] ?? null),
 }));
@@ -192,5 +197,36 @@ describe('who may delete what (security review, 2026-09-27)', () => {
     const body = await (await call({ files: [{ url: DRIVE }] })).json();
     expect(body.failed).toBe(1);
     expect(driveDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe('the folder a deleted photo leaves behind (2026-09-27)', () => {
+  const DRIVE2 = 'https://drive.google.com/uc?export=view&id=DEF_456';
+
+  it('checks each emptied folder once, after the last file in the batch has gone', async () => {
+    h.db = fakeDb({ document_library: [], maintenance_documents: [], media_attachments: [
+      { id: 'a', storage_url: DRIVE,  created_by: ME },
+      { id: 'b', storage_url: DRIVE2, created_by: ME },
+    ] });
+    const order = [];
+    driveDelete.mockImplementation(async (ref) => { order.push(`delete ${ref}`); });
+    h.trash.mockImplementation(async (id) => { order.push(`tidy ${id}`); return true; });
+    await call({ files: [{ url: DRIVE }, { url: DRIVE2 }] });
+    expect(order).toEqual(['delete ABC_123', 'delete DEF_456', 'tidy WALK_FOLDER']);
+  });
+
+  it('does not tidy after a refused or failed delete', async () => {
+    h.db = fakeDb({ ...ownedRows(), media_attachments: [{ id: 'a', storage_url: DRIVE, created_by: OTHER }] });
+    await call({ files: [{ url: DRIVE }] });                     // refused: someone else's
+    driveDelete.mockRejectedValueOnce(new Error('boom'));
+    h.db = fakeDb(ownedRows());
+    await call({ files: [{ url: DRIVE }] });                     // failed
+    expect(h.trash).not.toHaveBeenCalled();
+  });
+
+  it('reports the delete as done even if the tidy fails', async () => {
+    h.trash.mockRejectedValueOnce(new Error('drive busy'));
+    const body = await (await call({ files: [{ url: DRIVE }] })).json();
+    expect(body).toMatchObject({ deleted: 1, failed: 0 });
   });
 });

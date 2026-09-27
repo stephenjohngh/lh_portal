@@ -77,6 +77,10 @@ export async function DELETE({ request }) {
 
   const caller = { userId: auth.user.id, isAdmin: auth.isAdmin === true };
   const results = [];
+  // The folders the deleted files sat in, to tidy once the batch is done — a
+  // walk's photos share one folder, so each is checked once, after the last.
+  /** @type {Map<string, any>} */
+  const emptied = new Map();
   for (const f of files) {
     const url      = typeof f?.url === 'string' ? f.url : null;
     const declared = typeof f?.provider === 'string' ? f.provider : null;
@@ -109,9 +113,16 @@ export async function DELETE({ request }) {
       continue;
     }
 
+    // Asked before the delete: afterwards the file cannot say where it was.
+    let parent = null;
+    if (typeof impl.parentFolderOf === 'function') {
+      try { parent = await impl.parentFolderOf(ref); } catch { /* tidying is optional */ }
+    }
+
     try {
       await impl.deleteFile(ref, bucket ? { bucket } : undefined);
       results.push({ url, ok: true });
+      if (parent) emptied.set(parent, impl);
     } catch (/** @type {any} */ err) {
       // Already gone is the outcome we wanted; anything else is reported.
       const msg = friendlyStorageError(err);
@@ -119,6 +130,13 @@ export async function DELETE({ request }) {
       if (!gone) logger('⚠ deleteFile failed for', url, ':', msg);
       results.push({ url, ok: gone, ...(gone ? {} : { error: msg }) });
     }
+  }
+
+  // Bin any record folder left empty (never a category folder — the provider
+  // decides). Best-effort: an empty folder is untidy, not a failure.
+  for (const [folderId, impl] of emptied) {
+    try { await impl.trashFolderIfEmpty?.(folderId); }
+    catch (/** @type {any} */ err) { logger('⚠ could not tidy folder', folderId, ':', err?.message ?? err); }
   }
 
   return json({

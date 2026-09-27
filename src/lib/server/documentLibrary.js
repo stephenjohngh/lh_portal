@@ -98,6 +98,19 @@ export async function uploadDocument(buffer, filename, mimeType, meta = {}, user
   logger('Uploading:', filename, 'to', folderId);
   const result = await storageProvider.uploadFile(buffer, filename, mimeType, folderId);
 
+  // A record's folder is reused under its new name when the record has been
+  // renamed (the Drive provider finds it by its short-id ending). The files
+  // already in it still record the old path, so bring them into step. Only a
+  // label — best-effort, never a reason to fail the upload.
+  if (folderPath) {
+    const { error: pathErr } = await getDb()
+      .from('document_library')
+      .update({ folder_path: folderPath })
+      .eq('provider_folder_id', folderId)
+      .neq('folder_path', folderPath);
+    if (pathErr) logger('⚠ could not update folder paths:', pathErr.message);
+  }
+
   // SHA-256 of the bytes — file integrity (FR-STO-003); pinned by GT ingest.
   const file_checksum = createHash('sha256').update(buffer).digest('hex');
 
@@ -274,6 +287,26 @@ export async function deleteDocument(id) {
   const { error } = await db.from('document_library').delete().eq('id', id);
   if (error) throw error;
   logger('Removed from index:', id);
+
+  // The folder it leaves behind: binned if it is a record's folder and now
+  // empty (the provider decides what counts — never a category folder). Best-
+  // effort: an empty folder is untidy, not harmful, and must never fail a
+  // delete that has already happened.
+  await tidyFolder(providerFor(doc), doc.provider_folder_id);
+}
+
+/**
+ * Bin a record's folder if it is now empty, when the provider can.
+ * @param {any} provider
+ * @param {string|null|undefined} folderId
+ */
+export async function tidyFolder(provider, folderId) {
+  if (!folderId || typeof provider?.trashFolderIfEmpty !== 'function') return;
+  try {
+    await provider.trashFolderIfEmpty(folderId);
+  } catch (/** @type {any} */ err) {
+    logger('⚠ could not tidy folder', folderId, '—', err?.message ?? err);
+  }
 }
 
 /**

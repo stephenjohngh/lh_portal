@@ -29,6 +29,7 @@ import { getLogger } from '$lib/utils/logger';
 // require all six to be set in every deployment environment, causing build
 // failures on installations that only use OAuth2 mode.
 import { env } from '$env/dynamic/private';
+import { folderKey } from './folderNames.js';
 
 const logger = getLogger('GoogleDriveProvider');
 
@@ -70,7 +71,23 @@ const MAX_REMEMBERED = 20000;
  * @param {string} action  e.g. 'Delete', 'Read'
  */
 async function assertInsideRoot(drive, fileId, action) {
-  if (!_withinRootOnly || _insideRoot.has(fileId)) return;
+  if (!_withinRootOnly) return;
+  if (!(await isInsideRoot(drive, fileId))) {
+    throw new Error(
+      `${action} refused: this file is outside this server’s Drive folder, and the portal `
+      + 'only touches its own files (STORAGE_WITHIN_ROOT_ONLY).',
+    );
+  }
+}
+
+/**
+ * Is `fileId` inside this server's root folder? Whatever the guard flag says —
+ * used as-is where a "no" must never be overridden, such as binning a folder.
+ * @param {any} drive
+ * @param {string} fileId
+ */
+async function isInsideRoot(drive, fileId) {
+  if (_insideRoot.has(fileId)) return true;
   /** @type {string[]} */
   const visited = [];
   const inside = await isWithinFolder(fileId, _rootFolderId, async (id) => {
@@ -79,15 +96,33 @@ async function assertInsideRoot(drive, fileId, action) {
     const res = await drive.files.get({ fileId: id, supportsAllDrives: true, fields: 'parents' });
     return res.data.parents ?? [];
   });
-  if (!inside) {
-    throw new Error(
-      `${action} refused: this file is outside this server’s Drive folder, and the portal `
-      + 'only touches its own files (STORAGE_WITHIN_ROOT_ONLY).',
-    );
+  if (inside) {
+    // Drive files have a single parent, so everything walked is on the one path.
+    if (_insideRoot.size > MAX_REMEMBERED) _insideRoot.clear();
+    for (const id of visited) _insideRoot.add(id);
   }
-  // Drive files have a single parent, so everything walked is on the one path.
-  if (_insideRoot.size > MAX_REMEMBERED) _insideRoot.clear();
-  for (const id of visited) _insideRoot.add(id);
+  return inside;
+}
+
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+
+/** Every folder directly inside `parentId`. */
+async function childFolders(drive, parentId) {
+  /** @type {Array<{ id: string, name: string }>} */
+  const out = [];
+  let pageToken;
+  do {
+    const res = await drive.files.list({
+      supportsAllDrives: true, includeItemsFromAllDrives: true,
+      q: `'${parentId}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`,
+      fields: 'nextPageToken, files(id, name)',
+      pageSize: 1000,
+      pageToken,
+    });
+    out.push(...(res.data.files ?? []));
+    pageToken = res.data.nextPageToken;
+  } while (pageToken);
+  return out;
 }
 
 // Log warnings at startup so missing vars surface immediately.
@@ -333,7 +368,69 @@ export const googleDriveProvider = {
       pageSize: 1,
     });
     if (res.data.files?.length) return res.data.files[0].id;
+
+    // ⭐ A record's folder is found by the short id it ends with, not by its
+    // whole name (2026-09-27). `Old title (1a2b3c4d)` IS `New title (1a2b3c4d)`
+    // once the record is renamed — so it is renamed to match, and used, rather
+    // than a second folder being started beside it.
+    const key = folderKey(name);
+    if (key && parentId) {
+      const same = (await childFolders(drive, parentId)).find((f) => folderKey(f.name) === key);
+      if (same) {
+        await drive.files.update({ fileId: same.id, supportsAllDrives: true, requestBody: { name } });
+        logger('Renamed Drive folder:', same.name, '→', name);
+        return same.id;
+      }
+    }
     return this.createFolder(name, parentId);
+  },
+
+  /**
+   * The folder a file sits in, or null. Asked BEFORE a delete, so the folder
+   * can be tidied afterwards (trashFolderIfEmpty).
+   * @param {string} fileId
+   */
+  async parentFolderOf(fileId) {
+    const drive = getDrive();
+    await assertInsideRoot(drive, fileId, 'Read');
+    const res = await drive.files.get({ fileId, supportsAllDrives: true, fields: 'parents' });
+    return res.data.parents?.[0] ?? null;
+  },
+
+  /**
+   * Move a record's folder to the Drive bin once nothing is left in it
+   * (2026-09-27: deleting a note removed its files and left the folder).
+   *
+   * ⛔ Deliberately narrow. Never the root; never a folder directly under the
+   * root — those are the categories (`Info Notes`, `Inspections`, …) that
+   * every record's folder lives in; never anything outside the root, whatever
+   * STORAGE_WITHIN_ROOT_ONLY says; never a folder with anything in it. And
+   * BINNED, not deleted: Drive keeps it for 30 days, so a file that raced in
+   * between the check and the bin can still be recovered.
+   *
+   * @param {string|null|undefined} folderId
+   * @returns {Promise<boolean>} whether it was binned
+   */
+  async trashFolderIfEmpty(folderId) {
+    if (!folderId || folderId === _rootFolderId) return false;
+    const drive = getDrive();
+    const meta = await drive.files.get({
+      fileId: folderId, supportsAllDrives: true, fields: 'id, name, mimeType, parents, trashed',
+    });
+    if (meta.data.mimeType !== FOLDER_MIME || meta.data.trashed) return false;
+    if ((meta.data.parents ?? []).includes(_rootFolderId)) return false;   // a category folder
+    if (!(await isInsideRoot(drive, folderId))) return false;
+    const kids = await drive.files.list({
+      supportsAllDrives: true, includeItemsFromAllDrives: true,
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: 'files(id)',
+      pageSize: 1,
+    });
+    if (kids.data.files?.length) return false;
+    await drive.files.update({ fileId: folderId, supportsAllDrives: true, requestBody: { trashed: true } });
+    _insideRoot.delete(folderId);
+    logger('Binned empty Drive folder:', meta.data.name);
+    return true;
   },
 
   async ensurePath(segments) {
