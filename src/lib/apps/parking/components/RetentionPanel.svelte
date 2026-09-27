@@ -1,8 +1,11 @@
 <!-- src/lib/apps/parking/components/RetentionPanel.svelte -->
 <!-- How long Parking keeps personal data, what is due for removal today, and
-     when the nightly job last ran (migration 226, decision D8). The rules and
+     when anything was last removed (migration 226, decision D8). The rules and
      periods come from the database function, never from here. Anyone with the
-     grant can see it; only an admin can run it now. -->
+     grant can see it; only an admin can remove anything.
+     ⛔ Nothing is removed on a timetable: the nightly job was switched off by
+     the user on 2026-09-27 (migration 230). Do not word this panel as though
+     it runs by itself. -->
 <script>
   import { onMount } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
@@ -51,7 +54,7 @@
   <div class="flex items-start justify-between gap-4">
     <div>
       <p class="text-sm text-slate-200">How long this app keeps personal data</p>
-      <p class="text-xs text-slate-400">Removed automatically every night. Nothing removed can be recovered.</p>
+      <p class="text-xs text-slate-400">Nothing is removed automatically. An administrator decides when to remove what is due, and nothing removed can be recovered.</p>
     </div>
     {#if anythingDue}
       <ProtectedButton requireAdmin={true} variant="danger" on:click={() => confirming = true}>Remove what is due now</ProtectedButton>
@@ -71,7 +74,7 @@
     {#if runs.length}
       Last run {fmtDateTime(runs[0].ran_at)}{runs[0].run_by ? ' (by hand)' : ' (nightly)'}: {retentionSummary(runs[0].counts)}
     {:else if due}
-      The nightly job has not run yet.
+      Nothing has been removed yet.
     {/if}
   </p>
 </section>
@@ -79,9 +82,7 @@
 <ConfirmDialog
   show={confirming}
   title="Remove what is due now?"
-  message={due ? `${retentionSummary(due, { due: true })} This cannot be undone.${due.held_back_documents
-    ? ' The nightly job would remove the rest tonight, but not an agreement with a licence document: only this can delete the file.'
-    : ' The nightly job would remove the same things tonight.'}` : ''}
+  message={due ? `${retentionSummary(due, { due: true })} Signed licence documents are deleted first. This cannot be undone.` : ''}
   confirmText="Remove"
   danger={true}
   processing={running}

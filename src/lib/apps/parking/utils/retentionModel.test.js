@@ -14,6 +14,17 @@ describe('retention words', () => {
     expect(rules).toMatch(/30 days after it closed/);
     expect(retentionRules(null)).toEqual([]);
   });
+  // Nothing is removed on a timetable since migration 230 (user, 2026-09-27).
+  // A period only makes a record DUE; a rule that says a record "is removed"
+  // after it would tell the reader something happens by itself that does not.
+  it('says a period makes a record due, never that it is removed by itself', () => {
+    const timed = retentionRules(periods).filter(r => /\d+ (years?|months?|days?) after/.test(r));
+    expect(timed.length).toBe(5);
+    for (const r of timed) {
+      expect(r).toMatch(/becomes due/);
+      expect(r).not.toMatch(/\bis removed\b|automatic|nightly|every night/i);
+    }
+  });
   it('always says an unreturned device is kept', () => {
     expect(retentionRules(periods).some(r => /never returned is never removed/.test(r))).toBe(true);
   });

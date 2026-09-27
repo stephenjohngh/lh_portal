@@ -2,7 +2,9 @@
 // The admin's "remove what is due now" for Parking (migrations 226, 227).
 //
 // The rule and its periods live in the database function
-// `parking_apply_retention`; it runs every night by itself. It cannot remove
+// `parking_apply_retention`. ⛔ It no longer runs on a timetable: the nightly
+// job was switched off by the user on 2026-09-27 (migration 230), so this
+// route is the ONLY way anything is removed. The function cannot remove
 // an agreement that still has a signed licence attached, because the licence's
 // FILE is in storage, which SQL cannot reach — and deleting only the row would
 // strand the file where nothing names it. So this does the part SQL cannot:
@@ -13,7 +15,7 @@
 //
 // ⛔ A document that fails to delete is left, and so is its agreement: the
 // function still sees the row and holds the agreement back. Failing safe means
-// keeping personal data a day longer, never stranding a file.
+// keeping personal data longer, never stranding a file.
 
 /**
  * @param {{ rpc: Function }} db  a SERVICE-ROLE client

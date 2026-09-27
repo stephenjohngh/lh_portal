@@ -1,6 +1,11 @@
 // src/lib/apps/parking/utils/retentionModel.js
 // Words for the retention result (migration 226, design §3.2, decision D8).
 //
+// ⛔ Nothing is removed on a timetable: the nightly job was switched off by the
+// user on 2026-09-27 (migration 230). A period says when a record becomes DUE;
+// it goes only when an administrator presses "Remove what is due now". So the
+// rules say "becomes due for removal", never "is removed".
+//
 // ⭐ The periods are NOT written here. The database function returns them with
 // its counts, and these helpers print what they are given — so the screen can
 // never state a period the job does not apply.
@@ -12,13 +17,12 @@ export function retentionRules(periods) {
   if (!periods) return [];
   const p = periods;
   return [
-    `An ended agreement, with its vehicles, access devices, timeline and signed licence documents, is removed ${plural(p.agreement_years, 'year')} after it ended.`,
-    'An agreement with a licence document attached waits for an administrator to press Remove what is due now, which deletes the file first; the nightly job cannot reach stored files.',
-    `A vehicle is removed ${plural(p.vehicle_months, 'month')} after it came off the agreement, or after the agreement ended. Its registration is blanked in the timeline.`,
-    `A returned access device is removed ${plural(p.device_months, 'month')} after it was returned, or after the agreement ended.`,
+    `An ended agreement, with its vehicles, access devices, timeline and signed licence documents, becomes due for removal ${plural(p.agreement_years, 'year')} after it ended.`,
+    `A vehicle becomes due ${plural(p.vehicle_months, 'month')} after it came off the agreement, or after the agreement ended. Removing it blanks its registration in the timeline.`,
+    `A returned access device becomes due ${plural(p.device_months, 'month')} after it was returned, or after the agreement ended.`,
     '⛔ An access device that was never returned is never removed, and neither is its agreement: it still opens the gate.',
-    `A withdrawn or allocated waiting-list application is removed ${plural(p.application_grace_days, 'day')} after it closed.`,
-    `A holder left with no agreement and no application is removed ${plural(p.holder_months, 'month')} after their record was last changed.`,
+    `A withdrawn or allocated waiting-list application becomes due ${plural(p.application_grace_days, 'day')} after it closed.`,
+    `A holder left with no agreement and no application becomes due ${plural(p.holder_months, 'month')} after their record was last changed.`,
   ];
 }
 
