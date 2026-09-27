@@ -1,6 +1,6 @@
 // src/lib/apps/parking/utils/agreementModel.js
 // Parking, phase 1 — holders, agreements and vehicles, as pure functions.
-// docs/requirements/unbuilt/Parking_App_Design.md §3, §5.2–5.4.
+// docs/requirements/app_designs/Parking_App_Design.md §3, §5.2–5.4.
 //
 // The database enforces the same rules (migration 222: CHECKs, the no-overlap
 // exclusion and the parking_agreement_rules trigger). These exist so a person

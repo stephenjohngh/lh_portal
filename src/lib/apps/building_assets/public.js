@@ -234,7 +234,7 @@ export function deleteSpaceType(id) {
 // plan, its size is its Type (migration 220), and this app owns all of that:
 // the drawing, the floor, the assigned id that makes the reference L/PK/22.
 // Parking owns only what the drawing cannot say (parking_bays, migration 221).
-// docs/requirements/unbuilt/Parking_App_Design.md §4.
+// docs/requirements/app_designs/Parking_App_Design.md §4.
 
 /**
  * Every drawn Parking bay, with what Parking needs to list it, draw it on the

@@ -158,7 +158,7 @@ export const AVAILABLE_APPS = [
     // The basement bays and, from P1, who holds them. Granted per user on
     // Admin → Users; the parking tables' RLS is gated on the same grant,
     // because from P1 they hold the details of people who are not staff.
-    // docs/requirements/unbuilt/Parking_App_Design.md.
+    // docs/requirements/app_designs/Parking_App_Design.md.
     id: 'parking',
     name: 'Parking',
     icon: 'map',

@@ -1,6 +1,6 @@
 // src/lib/apps/parking/stores/parkingStore.js
 // Parking: the bay register (P0) and who holds each bay (P1).
-// docs/requirements/unbuilt/Parking_App_Design.md.
+// docs/requirements/app_designs/Parking_App_Design.md.
 //
 // Reads the DRAWN bays through Building Assets' public.js (they are that app's
 // records) and floors and plans directly (shared reference data, which any app

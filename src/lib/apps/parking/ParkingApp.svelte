@@ -1,6 +1,6 @@
 <!-- src/lib/apps/parking/ParkingApp.svelte -->
 <!-- Parking — the basement bays and, from P1, who holds them.
-     Design: docs/requirements/unbuilt/Parking_App_Design.md.
+     Design: docs/requirements/app_designs/Parking_App_Design.md.
 
      P0: the bay register. Every Parking bay drawn in Building Assets, on its
      plan, coloured by state, with the facts the drawing cannot hold.

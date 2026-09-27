@@ -1,5 +1,5 @@
 // src/lib/apps/parking/utils/tariffModel.js
-// The price list, by bay size. docs/requirements/unbuilt/Parking_App_Design.md §5.7.
+// The price list, by bay size. docs/requirements/app_designs/Parking_App_Design.md §5.7.
 // Mirrors migration 225, which enforces the same rules.
 //
 // ⭐ A price change is a NEW ROW from a date, never an edit: an old agreement

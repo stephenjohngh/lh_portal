@@ -3,7 +3,7 @@
      Draw the whole row once, then say how many bays, which way, the numbers
      and the size. All the bays are created in one insert (all or none), each
      a Parking bay of that size numbered in order along the row; the outline
-     is then removed unless kept. docs/requirements/unbuilt/Parking_App_Design.md §7. -->
+     is then removed unless kept. docs/requirements/app_designs/Parking_App_Design.md §7. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { buildingAssetsStore } from '../../stores/buildingAssetsStore.js';

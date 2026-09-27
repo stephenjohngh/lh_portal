@@ -1,6 +1,6 @@
 // src/lib/apps/parking/utils/parkingDue.js
 // Parking's dated items for the Planner (hub 1), as a pure function.
-// docs/requirements/unbuilt/Parking_App_Design.md §7.
+// docs/requirements/app_designs/Parking_App_Design.md §7.
 //
 // "What is due" is answered in ONE place (CLAUDE.md standing decision): the
 // Planner shows these rows, Notifications will read the Planner's registry,

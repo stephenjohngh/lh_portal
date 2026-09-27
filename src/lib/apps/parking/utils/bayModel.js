@@ -1,6 +1,6 @@
 // src/lib/apps/parking/utils/bayModel.js
 // Parking, phase 0 — the bay register, as pure functions.
-// docs/requirements/unbuilt/Parking_App_Design.md §5.1, §6.
+// docs/requirements/app_designs/Parking_App_Design.md §5.1, §6.
 //
 // A BAY is two things joined: the drawing, owned by Building Assets (a Space of
 // kind 'slot' with its size as its Type and its reference L/PK/22), and the

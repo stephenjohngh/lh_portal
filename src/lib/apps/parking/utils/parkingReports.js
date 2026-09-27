@@ -1,6 +1,6 @@
 // src/lib/apps/parking/utils/parkingReports.js
 // Parking's Excel reports, as pure sheet builders plus one download.
-// docs/requirements/unbuilt/Parking_App_Design.md §6 (Reports).
+// docs/requirements/app_designs/Parking_App_Design.md §6 (Reports).
 //
 // The rows are built HERE from what the screen already holds, and
 // /api/generate-xlsx only styles them — the same arrangement as the

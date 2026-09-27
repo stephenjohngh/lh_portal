@@ -4,7 +4,7 @@
      is PlanCanvas. This is a picture of that drawing, not a second editor, so
      it uses the same frame (plan image + an SVG overlay in 0–1 coordinates)
      without borrowing any of the editing behaviour.
-     docs/requirements/unbuilt/Parking_App_Design.md §6. -->
+     docs/requirements/app_designs/Parking_App_Design.md §6. -->
 <script>
   import { createEventDispatcher } from 'svelte';
   import { centroid } from '$lib/apps/building_assets/components/plan/planMeasure.js';

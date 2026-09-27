@@ -1,6 +1,6 @@
 // src/lib/apps/parking/utils/waitingListModel.js
 // Parking, phase 3 — the waiting list and offers, as pure functions.
-// docs/requirements/unbuilt/Parking_App_Design.md §5.6.
+// docs/requirements/app_designs/Parking_App_Design.md §5.6.
 //
 // ⭐ FIRST COME, FIRST SERVED (user, 2026-09-26, decision D5). The queue for a
 // bay size is every WAITING application wanting that size or any size, oldest

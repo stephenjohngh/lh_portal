@@ -1,6 +1,6 @@
 // src/lib/apps/building_assets/utils/bayRow.js
 // "Draw a row of bays": split one four-cornered outline into N parking bays.
-// docs/requirements/unbuilt/Parking_App_Design.md §7 — drawing bays one at a
+// docs/requirements/app_designs/Parking_App_Design.md §7 — drawing bays one at a
 // time is the setup cost that makes a car park tedious, and a cycle rack of
 // ten bays unbearable.
 //
