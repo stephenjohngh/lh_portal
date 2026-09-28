@@ -28,6 +28,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import * as docx from 'docx';
 
 /** Every .js file under src/, excluding tests. */
 function sourceFiles(dir, out = []) {
@@ -138,5 +139,80 @@ describe('every Word table declares its column grid', () => {
     expect(call).toContain('columnWidths');
     expect(call).toContain('rows: []');
     expect(tableCalls(`${sample}\n${sample}`)).toHaveLength(2);
+  });
+});
+
+// ⛔ THE RULE ABOVE CAUSED A CRASH, AND THIS IS WHAT WOULD HAVE CAUGHT IT.
+// On 2026-09-19 the fixed-layout fix wrote `TableLayoutType.FIXED` into two
+// builders — the issues report and the Golden Thread safety case — without
+// importing it. Both threw "TableLayoutType is not defined" on every export
+// until 2026-09-28. `npm run check` runs with checkJs off and cannot see an
+// undefined name, and the rule above checked the TEXT was present, which it
+// was. So: every docx name a file uses must be imported in that file.
+describe('every docx name a builder uses is imported', () => {
+  const DOCX_NAMES = new Set(Object.keys(docx).filter((k) => /^[A-Z]/.test(k)));
+
+  /** Source with comments removed, so a name mentioned in prose is not a use. */
+  // A line comment must start a line or follow whitespace, which leaves
+  // `http://` in a string alone. ⚠ No quote or backtick in these regexes:
+  // Vite's import scanner reads one inside a regex as the start of a string.
+  const code = (source) => source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|\s)\/\/.*$/gm, '$1');
+
+  /** docx names this file uses: `new Name(` and `Name.MEMBER`. */
+  function usedDocxNames(source) {
+    const used = new Set();
+    for (const m of source.matchAll(/\bnew\s+([A-Z]\w*)\s*\(|\b([A-Z]\w*)\.[A-Z_]/g)) {
+      const name = m[1] ?? m[2];
+      if (DOCX_NAMES.has(name)) used.add(name);
+    }
+    return used;
+  }
+
+  /** Names brought in by an import, or declared in the file itself. */
+  function declared(source) {
+    const names = new Set();
+    for (const m of source.matchAll(/import\s*\{([^}]*)\}\s*from/g)) {
+      for (const part of m[1].split(',')) {
+        const name = part.trim().split(/\s+as\s+/).pop()?.trim();
+        if (name) names.add(name);
+      }
+    }
+    for (const m of source.matchAll(/\b(?:const|let|var|function|class)\s+([A-Z]\w*)/g)) names.add(m[1]);
+    return names;
+  }
+
+  const builders = FILES
+    .map((f) => [f, code(readFileSync(f, 'utf8'))])
+    .filter(([, s]) => /from\s*['"]docx['"]/.test(s));
+
+  it('finds the builders it exists for', () => {
+    const names = builders.map(([f]) => f.replace(/\\/g, '/'));
+    for (const expected of [
+      'src/routes/api/reports/generate-docx/+server.js',
+      'src/routes/api/golden-thread/safety-case/+server.js',
+    ]) {
+      expect(names.some((n) => n.endsWith(expected)), expected).toBe(true);
+    }
+  });
+
+  it('imports every docx name it uses', () => {
+    const offenders = [];
+    for (const [file, source] of builders) {
+      const have = declared(source);
+      for (const name of usedDocxNames(source)) {
+        if (!have.has(name)) offenders.push(`${file.replace(/\\/g, '/')} — ${name}`);
+      }
+    }
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  it('sees a use that is not imported, and ignores one in a comment', () => {
+    const src = "import { Table } from 'docx';\n// TableLayoutType.FIXED in prose\nnew Table({ layout: TableLayoutType.FIXED });";
+    const stripped = code(src);
+    expect([...usedDocxNames(stripped)].sort()).toEqual(['Table', 'TableLayoutType']);
+    expect(declared(stripped).has('TableLayoutType')).toBe(false);
+    expect(usedDocxNames(code('// new Paragraph(')).size).toBe(0);
   });
 });

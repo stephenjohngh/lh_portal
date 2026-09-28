@@ -3,7 +3,7 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { maintenanceStore }      from '../stores/maintenanceStore.js';
-  import { frequencyLabel, today, addDays, toDateString } from '../utils/maintenanceHelpers.js';
+  import { frequencyLabel, today, addDaysISO } from '../utils/maintenanceHelpers.js';
   import DocumentUpload from './DocumentUpload.svelte';
   import Modal         from '$lib/components/common/Modal.svelte';
   import Button        from '$lib/components/common/Button.svelte';

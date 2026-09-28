@@ -5,7 +5,7 @@
 // Authenticated GT users; it is a formatted view of what they can already see.
 
 import { json } from '@sveltejs/kit';
-import { Document, Packer, Table, TableRow, WidthType } from 'docx';
+import { Document, Packer, Table, TableRow, WidthType, TableLayoutType } from 'docx';
 import { requireAuth } from '$lib/server/requireAuth';
 import {
   para, hCell, dCell, makeHeader, makeFooter, DOC_STYLES, pageProps,

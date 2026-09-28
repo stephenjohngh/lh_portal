@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
-         VerticalAlign, PageBreak } from 'docx';
+         VerticalAlign, PageBreak, TableLayoutType } from 'docx';
 import { getLogger }       from '$lib/utils/logger';
 import { getPriorityLabel } from '$lib/utils/constants';
 import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils';
