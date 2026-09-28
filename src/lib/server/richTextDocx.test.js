@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { Document, Packer, AlignmentType } from 'docx';
 import JSZip from 'jszip';
-import { parseHtmlToDocxParagraphs, htmlToText } from './richTextDocx.js';
+import { parseHtmlToDocxParagraphs, htmlToText, autoColumnWidths } from './richTextDocx.js';
 
 /** Pack blocks into a document shaped like the issues report, return its XML. */
 async function packedXml(blocks) {
@@ -70,6 +70,29 @@ describe('parseHtmlToDocxParagraphs', () => {
     expect(table).toMatch(/<w:tblLayout w:type="fixed"\/>/);
   });
 
+  // ⛔ The complaint, 2026-09-28: on screen a column of two-digit numbers is
+  // narrow, and in Word every column had the same width. Read from the packed
+  // grid, which is what Word lays out from.
+  it('sizes each column to its content, as the table is sized on screen', async () => {
+    const xml = await packedXml(parseHtmlToDocxParagraphs(
+      '<table><tbody>'
+      + '<tr><th><p>#</p></th><th><p>Item</p></th><th><p>Notes</p></th></tr>'
+      + '<tr><td><p>12</p></td><td><p>Fire doors</p></td><td><p>Closers on floors 3 to 7 need adjusting before the next survey, and two self-closers are missing entirely</p></td></tr>'
+      + '<tr><td><p>13</p></td><td><p>EICR</p></td><td><p>Booked</p></td></tr>'
+      + '</tbody></table>'));
+    const grid = [...xml.matchAll(/<w:gridCol w:w="(\d+)"/g)].map((m) => Number(m[1]));
+    expect(grid).toHaveLength(3);
+    const [num, item, notes] = grid;
+    expect(num).toBeLessThan(item);
+    expect(item).toBeLessThan(notes);
+    expect(num * 4).toBeLessThan(notes);
+    // The table still fits the page, and every cell agrees with its grid column.
+    expect(num + item + notes).toBeLessThanOrEqual(10800);
+    const cellWidths = [...xml.matchAll(/<w:tcW w:type="dxa" w:w="(\d+)"\/>|<w:tcW w:w="(\d+)" w:type="dxa"\/>/g)]
+      .map((m) => Number(m[1] ?? m[2]));
+    expect(cellWidths.slice(0, 3)).toEqual(grid);
+  });
+
   it('pads a ragged row rather than dropping a column', async () => {
     const xml = await packedXml(parseHtmlToDocxParagraphs(
       '<table><tbody><tr><th><p>A</p></th><th><p>B</p></th><th><p>C</p></th></tr>'
@@ -87,6 +110,40 @@ describe('parseHtmlToDocxParagraphs', () => {
     const text = textOf(await packedXml(parseHtmlToDocxParagraphs('plain one\nplain two')));
     expect(text).toContain('plain one');
     expect(text).toContain('plain two');
+  });
+});
+
+describe('autoColumnWidths', () => {
+  const cell = (text, bold = false) => ({ lines: [text], bold });
+  const total = (w) => w.reduce((t, n) => t + n, 0);
+
+  it('uses natural widths when everything fits, so a short table stays narrow', () => {
+    const w = autoColumnWidths([[cell('#', true), cell('Due', true)], [cell('12'), cell('March')]], 10800);
+    expect(total(w)).toBeLessThan(10800 / 2);
+    expect(w[0]).toBeLessThan(w[1]);
+  });
+
+  it('gives every column at least its longest word when the page is too narrow for the rest', () => {
+    const long = 'word '.repeat(80).trim();
+    const w = autoColumnWidths([[cell('12'), cell('Extraordinarily'), cell(long)]], 10800);
+    expect(total(w)).toBeLessThanOrEqual(10800);
+    expect(total(w)).toBeGreaterThan(10800 - 3);            // the page is used
+    const perChar = 20 * 5.5;
+    expect(w[1] - 200).toBeGreaterThanOrEqual('Extraordinarily'.length * perChar);
+    expect(w[0]).toBeLessThan(w[2]);
+  });
+
+  it('never exceeds the page, even when the minimums alone would', () => {
+    const huge = 'x'.repeat(200);
+    const w = autoColumnWidths([[cell(huge), cell(huge)]], 5000);
+    expect(total(w)).toBeLessThanOrEqual(5000);
+    expect(w[0]).toBe(w[1]);
+  });
+
+  it('reads a multi-line cell by its longest line, and keeps an empty column', () => {
+    const w = autoColumnWidths([[{ lines: ['a', 'much longer line'] }, { lines: [''] }]], 10800);
+    expect(w[0]).toBeGreaterThan(w[1]);
+    expect(w[1]).toBeGreaterThan(200);
   });
 });
 

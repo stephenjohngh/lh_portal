@@ -188,11 +188,85 @@ export function parseHtmlToDocxParagraphs(html, opts = {}) {
   return out;
 }
 
+/** A cell's text, one entry per line (a <br> or a second paragraph). */
+function cellLines(html) {
+  return String(html ?? '')
+    .split(/<br\s*\/?>/i)
+    .map((line) => decodeEntities(line.replace(/<[^>]+>/g, '')).trim());
+}
+
 /**
- * A pasted table as a real Word table. Equal columns across the available
- * width — the editor stores no widths (the sanitiser drops them) — with a
- * shaded header row. ⚠ columnWidths AND a fixed layout, or Word sizes the
- * columns from a placeholder grid (tableGridGuard.test.js).
+ * Column widths from content, the way a browser lays out a table on screen.
+ *
+ * ⛔ WHY THIS EXISTS. A pasted table first printed with equal columns, so a
+ * two-digit number got the same width as a paragraph — while the same table on
+ * screen was sized to its content. The grid rule (tableGridGuard) was met and
+ * the page was still wrong: declaring widths is necessary, and they must also
+ * FIT what is in the column.
+ *
+ * Each column has a MINIMUM (its longest word, so nothing breaks mid-word) and
+ * a NATURAL width (its longest line unwrapped):
+ *   · everything fits at natural width → use it; the table is as narrow as its
+ *     content, as on screen;
+ *   · even the minimums do not fit → share the space by minimum, and words
+ *     break (the only case they do);
+ *   · otherwise every column gets its minimum, and the remaining space goes in
+ *     proportion to how much each column still wants.
+ *
+ * Text is measured by characters: Arial averages about 0.55 of its size per
+ * character, bold a little wider. An estimate, deliberately generous — a column
+ * slightly wide reads fine; a number wrapping onto two lines does not.
+ *
+ * @param {Array<Array<{ lines: string[], bold?: boolean }>>} rows  padded to one width
+ * @param {number} available  twips
+ * @param {{ size?: number, padding?: number }} [opts]  size in half-points; padding in twips per cell
+ * @returns {number[]}  twips per column, summing to at most `available`
+ */
+export function autoColumnWidths(rows, available, { size = 20, padding = 200 } = {}) {
+  const charW = size * 5.5;                  // half-points × 10 → twips, × 0.55 average char width
+  const columns = Math.max(0, ...rows.map((r) => r.length));
+  if (!columns) return [];
+
+  const min = Array(columns).fill(0);
+  const natural = Array(columns).fill(0);
+  for (const row of rows) {
+    row.forEach((cell, i) => {
+      const scale = cell?.bold ? 1.08 : 1;
+      for (const line of cell?.lines ?? []) {
+        const longestWord = Math.max(0, ...line.split(/\s+/).map((w) => w.length));
+        min[i]     = Math.max(min[i], longestWord * charW * scale);
+        natural[i] = Math.max(natural[i], line.length * charW * scale);
+      }
+    });
+  }
+  // Padding and a floor, so an empty column is still a column.
+  const floor = 3 * charW;
+  for (let i = 0; i < columns; i++) {
+    min[i]     = Math.max(min[i], floor) + padding;
+    natural[i] = Math.max(natural[i], min[i] - padding) + padding;
+  }
+
+  const sum = (a) => a.reduce((t, n) => t + n, 0);
+  let widths;
+  if (sum(natural) <= available) {
+    widths = natural;
+  } else if (sum(min) >= available) {
+    widths = min.map((m) => (m / sum(min)) * available);
+  } else {
+    const spare = available - sum(min);
+    const want  = natural.map((n, i) => n - min[i]);
+    widths = min.map((m, i) => m + (spare * want[i]) / sum(want));
+  }
+
+  // Whole twips; flooring means rounding can never push the total past the page.
+  return widths.map((w) => Math.max(1, Math.floor(w)));
+}
+
+/**
+ * A pasted table as a real Word table, each column sized to its content
+ * (autoColumnWidths), with a shaded header row. ⚠ columnWidths AND a fixed
+ * layout, or Word sizes the columns from a placeholder grid
+ * (tableGridGuard.test.js).
  */
 function tableFromHtml(inner, { size, color, indent, contentWidth }) {
   const rows = [];
@@ -211,20 +285,27 @@ function tableFromHtml(inner, { size, color, indent, contentWidth }) {
 
   const columns = Math.max(...rows.map((row) => row.length));
   const width   = Math.max(contentWidth - indent, 1440);   // a quoted table narrows
-  const colW    = Math.floor(width / columns);
+  const colW    = autoColumnWidths(
+    rows.map((row) => Array.from({ length: columns }, (_, i) => ({
+      lines: cellLines(row[i]?.html),
+      bold:  !!row[i]?.header,
+    }))),
+    width,
+    { size: size - 2 },
+  );
   const border  = { style: BorderStyle.SINGLE, size: 4, color: 'BBBBBB' };
   const borders = { top: border, bottom: border, left: border, right: border };
 
   return new Table({
-    width:        { size: colW * columns, type: WidthType.DXA },
+    width:        { size: colW.reduce((t, n) => t + n, 0), type: WidthType.DXA },
     layout:       TableLayoutType.FIXED,
-    columnWidths: Array(columns).fill(colW),
+    columnWidths: colW,
     ...(indent > 0 ? { indent: { size: indent, type: WidthType.DXA } } : {}),
     rows: rows.map((row) => new TableRow({
       children: Array.from({ length: columns }, (_, i) => {
         const cell = row[i] ?? { header: false, html: '' };
         return new TableCell({
-          width:   { size: colW, type: WidthType.DXA },
+          width:   { size: colW[i], type: WidthType.DXA },
           borders,
           margins: { top: 40, bottom: 40, left: 80, right: 80 },
           ...(cell.header ? { shading: { type: ShadingType.CLEAR, fill: 'EEF2F6', color: 'auto' } } : {}),
