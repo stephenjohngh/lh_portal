@@ -191,4 +191,18 @@
   .article-body :global(blockquote) { border-left: 3px solid #cbd5e1; padding-left: 1rem; color: #64748b; margin: 1rem 0; font-style: italic; }
   .article-body :global(a)          { color: #3c9683; text-decoration: underline; }
   .article-body :global(hr)         { border: none; border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
+  /* What pasted markdown can produce (2026-09-28): a third heading level, code
+     and tables. Without these a published table read as loose words. */
+  .article-body :global(h4)         { font-size: 1rem; font-weight: 600; color: #334155; margin: 1.25rem 0 0.4rem; }
+  .article-body :global(s)          { text-decoration: line-through; }
+  .article-body :global(code)       { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+  .article-body :global(:not(pre) > code) { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 0.2rem; padding: 0.05em 0.3em; }
+  .article-body :global(pre)        { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.3rem; padding: 0.75rem 1rem; margin: 0 0 1rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; color: #1e293b; }
+  /* Scrolls rather than crushes — a phone is narrower than most tables. */
+  .article-body :global(table)      { border-collapse: collapse; margin: 0 0 1rem; font-size: 0.95rem; display: block; overflow-x: auto; max-width: 100%; }
+  .article-body :global(th),
+  .article-body :global(td)         { border: 1px solid #e2e8f0; padding: 0.45rem 0.75rem; text-align: left; vertical-align: top; color: #334155; }
+  .article-body :global(th)         { background: #f1f5f9; color: #0f172a; font-weight: 600; }
+  .article-body :global(th > p),
+  .article-body :global(td > p)     { margin: 0; font-size: inherit; line-height: 1.5; }
 </style>

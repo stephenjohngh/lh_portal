@@ -12,6 +12,7 @@ import {
 import { getLogger } from '$lib/utils/logger';
 import { fmtDateLong, fmtShortDate } from '$lib/utils/dates';
 import { buildFieldSummary } from '$lib/apps/management/components/reports/reportUtils.js';
+import { htmlToText } from '$lib/server/richTextDocx.js';
 
 const logger = getLogger('GenerateMinutesDocx');
 
@@ -76,35 +77,19 @@ const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 const fmt      = iso => iso ? fmtDateLong(iso)  : '';
 const fmtShort = iso => iso ? fmtShortDate(iso) : '';
 
-// Convert Tiptap/rich-text HTML to plain text for Word output.
-// Preserves paragraph breaks, list bullets, and line breaks.
-function htmlToText(html) {
-  if (!html || !html.startsWith('<')) return html ?? '';
-  return html
-    // Block-level closers → newline
-    .replace(/<\/p>/gi,   '\n')
-    .replace(/<\/li>/gi,  '\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    // List items — prefix with bullet / number
-    .replace(/<li[^>]*>/gi, '• ')
-    // Strip all remaining tags
-    .replace(/<[^>]+>/g, '')
-    // Decode common HTML entities
-    .replace(/&amp;/g,  '&')
-    .replace(/&lt;/g,   '<')
-    .replace(/&gt;/g,   '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g,  "'")
-    .replace(/&nbsp;/g, ' ')
-    // Collapse 3+ newlines → double newline; trim ends
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
+// htmlToText lives in $lib/server/richTextDocx.js (2026-09-28): it now ends a
+// line at a heading and a table row, and separates table cells.
 
 function p(text, opts = {}) {
+  const { _para, ...run } = opts;
+  // ⚠ One run per line, joined by a real break (2026-09-28). A "\n" inside a
+  // run reaches Word as a raw newline in <w:t>, which Word shows as a SPACE —
+  // so every multi-paragraph activity printed as one line, and so would a
+  // table's rows. htmlToText's line structure only survives this way.
+  const lines = String(text ?? '').split('\n');
   return new Paragraph({
-    children: [new TextRun({ text: String(text ?? ''), ...opts })],
-    ...(opts._para ?? {})
+    children: lines.map((line, i) => new TextRun({ text: line, ...run, ...(i ? { break: 1 } : {}) })),
+    ...(_para ?? {})
   });
 }
 

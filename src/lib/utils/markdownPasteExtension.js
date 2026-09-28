@@ -18,8 +18,8 @@
 // editor it is installed in can hold them: ProseMirror drops nodes its schema
 // does not define. An editor that turns this on should therefore ENABLE the
 // nodes markdown produces, or accept that pasting a document flattens it —
-// see common/RichTextEditor.svelte, which does the former behind its
-// `markdown` prop.
+// see utils/richTextExtensions.js, which does the former behind
+// RichTextEditor's `markdown` prop, tables included.
 
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
@@ -40,6 +40,12 @@ export const MarkdownPaste = Extension.create({
        * schema starts lower than h1 — see RichTextEditor's `levels: [2, 3]`.
        */
       minHeading: 1,
+      /**
+       * The deepest heading tag the schema holds. Raise it by as much as
+       * `minHeading`, or three levels of markdown arrive as two — see
+       * richTextExtensions.js, which holds h2–h4.
+       */
+      maxHeading: 3,
       /**
        * Convert a markdown table into a real table. Only where the editor has
        * the table nodes — without them ProseMirror drops the whole thing, so

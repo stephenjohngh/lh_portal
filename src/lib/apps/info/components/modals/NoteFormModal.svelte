@@ -153,9 +153,10 @@
     <div>
       <p class="text-sm font-medium text-gray-200 mb-2">Body</p>
       <!-- markdown: an Info note is the longest-form text in the portal, and
-           the one most likely to be drafted somewhere else and pasted in. It
-           was the only editor without this while three Management comment
-           boxes had it. -->
+           the one most likely to be drafted somewhere else and pasted in.
+           Pasted markdown arrives as Dossier makes it — three heading levels
+           under the note's title, lists, quotes, code and tables
+           (richTextExtensions.js). -->
       <RichTextEditor
         value={body}
         placeholder="Note content…"

@@ -1,7 +1,8 @@
 <!-- src/lib/components/common/RichTextEditor.svelte -->
 <!--
-  Lightweight WYSIWYG editor for note-type activities.
-  Built on Tiptap (headless ProseMirror wrapper).
+  Lightweight WYSIWYG editor for Info notes and Management activities.
+  Built on Tiptap (headless ProseMirror wrapper). Its extension list lives in
+  $lib/utils/richTextExtensions.js, where a test can build the same editor.
 
   Toolbar: Bold · Italic · Underline · Bullet list · Numbered list · Undo · Redo
   Keyboard shortcuts work natively: Ctrl+B, Ctrl+I, Ctrl+U.
@@ -18,11 +19,8 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Editor } from '@tiptap/core';
-  import StarterKit from '@tiptap/starter-kit';
-  import { MarkdownPaste } from '$lib/utils/markdownPasteExtension.js';
-  import { EditorSearch } from '$lib/utils/editorSearchExtension.js';
+  import { richTextExtensions } from '$lib/utils/richTextExtensions.js';
   import EditorFindBar from './EditorFindBar.svelte';
-  // Link is bundled into StarterKit v3 — configured via its `link` option below.
 
   export let value       = '';
   export let placeholder = 'Enter your note…';
@@ -40,18 +38,19 @@
   /**
    * Understand markdown when it is pasted in.
    *
-   * Someone who keeps notes in markdown pastes them into a comment box and gets
-   * a wall of asterisks. With this on, `## Heading` and `- item` arrive as a
-   * heading and a list.
+   * Someone who keeps notes in markdown pastes them into a note or a comment
+   * box and gets a wall of asterisks. With this on, markdown arrives as Dossier
+   * makes it: three levels of heading (h2–h4), lists, quotes, code, rules,
+   * links and tables.
    *
-   * It also ENABLES the nodes markdown produces — headings, quotes, code
-   * blocks, rules, strikethrough — which this editor otherwise turns off.
-   * Without that the paste converts and ProseMirror then drops what its schema
-   * cannot hold, which is worse than not converting: the text goes too.
+   * It also ENABLES the nodes markdown produces, which this editor otherwise
+   * turns off. Without that the paste converts and ProseMirror then drops what
+   * its schema cannot hold, which is worse than not converting: the text goes
+   * too. See richTextExtensions.js.
    *
    * The toolbar does not grow buttons for them. They arrive by paste, they
-   * render, they save (the sanitiser has always allowed these tags) — but
-   * writing a heading by hand is not what a comment box is for.
+   * render, they save (the sanitiser allows every one of these tags) — the
+   * same as Dossier, where a pasted table is edited by typing in its cells.
    */
   export let markdown = false;
 
@@ -112,47 +111,7 @@
   onMount(() => {
     editor = new Editor({
       element: editorEl,
-      extensions: [
-        StarterKit.configure({
-          // Keep: bold, italic, underline, bulletList, orderedList,
-          //       hardBreak, history, paragraph, text, document
-          //
-          // The rest are off because the toolbar does not offer them — except
-          // when `markdown` is set, where a paste can produce them and the
-          // schema has to be able to hold what it produces. h1 is still off:
-          // the top level of a comment is the comment.
-          heading:        markdown ? { levels: [2, 3] } : false,
-          blockquote:     markdown,
-          codeBlock:      markdown,
-          horizontalRule: markdown,
-          strike:         markdown,
-          code:           markdown,
-          // Link ships inside StarterKit v3 — configure it here rather than
-          // registering @tiptap/extension-link separately (which duplicates it).
-          link: {
-            // Auto-convert typed/pasted URLs to links
-            autolink:   true,
-            // Don't open in the editor on click (allows cursor placement)
-            openOnClick: false,
-            HTMLAttributes: {
-              target: '_blank',
-              rel:    'noopener noreferrer',
-              class:  'rte-link',
-            },
-          },
-        }),
-        // After StarterKit, and only when asked for: it reads the clipboard
-        // before Tiptap's own handler but after editorProps.handlePaste below,
-        // which is the order that matters — an email paste in an email
-        // activity is not a markdown paste.
-        // minHeading 2 to match `levels: [2, 3]` above — a converted `#`
-        // must be a tag this schema can hold, or the line is dropped.
-        ...(markdown ? [MarkdownPaste.configure({ minHeading: 2 })] : []),
-        // Find-in-editor. Always on: the browser's Ctrl+F searches the whole
-        // page, which for an editor inside a dialog means it matches — and
-        // scrolls to — text behind the dialog that nobody can see.
-        EditorSearch,
-      ],
+      extensions: richTextExtensions({ markdown }),
       content: initContent(value),
       editorProps: {
         attributes: { class: 'rte-prosemirror' },
@@ -477,10 +436,11 @@
     text-underline-offset: 2px;
   }
   /* Only reachable with `markdown` set — pasted, never typed. Sized close to
-     body text: this is a comment, and a pasted heading should organise it, not
+     body text: a pasted heading should organise a note or a comment, not
      dominate the thread it sits in. */
   :global(.rte-prosemirror h2),
-  :global(.rte-prosemirror h3) {
+  :global(.rte-prosemirror h3),
+  :global(.rte-prosemirror h4) {
     font-weight: 600;
     color: #f1f5f9;
     margin: 0.75em 0 0.35em;
@@ -488,6 +448,46 @@
   }
   :global(.rte-prosemirror h2) { font-size: 1.05em; }
   :global(.rte-prosemirror h3) { font-size: 0.95em; }
+  :global(.rte-prosemirror h4) { font-size: 0.9em; color: #cbd5e1; }
+
+  /* A pasted markdown table — styled as Dossier's pasted table is. Scrolls
+     rather than crushes: a table wider than the box has nowhere to go, and
+     the browser would squeeze the undeclared columns to nothing. */
+  :global(.rte-prosemirror table) {
+    border-collapse: collapse;
+    margin: 0.5em 0;
+    font-size: 0.95em;
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  :global(.rte-prosemirror th),
+  :global(.rte-prosemirror td) {
+    position: relative;               /* anchors the cell-selection overlay */
+    border: 1px solid #475569;        /* slate-600 */
+    padding: 0.3em 0.55em;
+    text-align: left;
+    vertical-align: top;
+    min-width: 3em;
+  }
+  :global(.rte-prosemirror th) {
+    background: #0f172a;              /* slate-900 */
+    color: #f1f5f9;
+    font-weight: 600;
+  }
+  /* Cells hold paragraphs; their bottom margin would double every row. */
+  :global(.rte-prosemirror th > p),
+  :global(.rte-prosemirror td > p) { margin: 0; }
+  /* ProseMirror's own cell-selection overlay — without a colour it is
+     invisible, and selecting every cell to delete a table looks like nothing
+     happened. */
+  :global(.rte-prosemirror .selectedCell:after) {
+    background: rgb(var(--lh-accent-rgb, 60 150 131) / 0.18);
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
 
   :global(.rte-prosemirror blockquote) {
     border-left: 2px solid #475569;

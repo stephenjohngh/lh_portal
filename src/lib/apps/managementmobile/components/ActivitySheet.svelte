@@ -356,6 +356,11 @@
   :global(.rich-content ul)         { padding-left: 1.4em; margin: 0.4em 0; }
   :global(.rich-content ol)         { padding-left: 1.4em; margin: 0.4em 0; }
   :global(.rich-content li)         { margin-bottom: 0.2em; }
+  /* Table cells hold paragraphs (a pasted markdown table, 2026-09-28). The
+     paragraph margin above is unlayered, so it beats app.css's cell rule and
+     would double every row's height; the rest of the table comes from app.css. */
+  :global(.rich-content th > p),
+  :global(.rich-content td > p)     { margin: 0; }
 
   /* Colour rules scoped to .sheet — dark theme only.
      Without .sheet these would bleed onto light-background report previews. */

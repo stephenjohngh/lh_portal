@@ -373,6 +373,22 @@ describe('markdownToHtml — heading levels follow the target schema', () => {
   it('refuses a nonsensical floor rather than emitting an h0', () => {
     expect(markdownToHtml('# Top', { minHeading: 0 })).toBe('<h1>Top</h1>');
   });
+
+  // The rich-text editor holds h2–h4 (2026-09-28). Shifted down WITHOUT a
+  // deeper ceiling, `##` and `###` both arrived as h3 and a document's
+  // sections and sub-sections merged — Dossier kept all three apart.
+  it('keeps three levels distinct when the ceiling moves down with the floor', () => {
+    const opts = { minHeading: 2, maxHeading: 4 };
+    expect(markdownToHtml('# One',   opts)).toBe('<h2>One</h2>');
+    expect(markdownToHtml('## Two',  opts)).toBe('<h3>Two</h3>');
+    expect(markdownToHtml('### Three', opts)).toBe('<h4>Three</h4>');
+    expect(markdownToHtml('###### Six', opts)).toBe('<h4>Six</h4>');
+  });
+
+  it('never goes deeper than h6, and a ceiling above the floor wins', () => {
+    expect(markdownToHtml('###### Six', { maxHeading: 9 })).toBe('<h6>Six</h6>');
+    expect(markdownToHtml('# One', { minHeading: 5, maxHeading: 3 })).toBe('<h3>One</h3>');
+  });
 });
 
 

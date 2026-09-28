@@ -27,24 +27,30 @@
 // already-escaped text, which is why they only ever match characters that
 // escaping leaves alone.
 
-/** Schema allows h1–h3; deeper headings clamp rather than disappear. */
+/** Dossier's schema allows h1–h3; deeper headings clamp rather than disappear. */
 const MAX_HEADING = 3;
 
 /**
  * Which heading tag a run of #s becomes.
  *
  * `minHeading` shifts the whole scale down for targets whose top level is not
- * h1 — a comment box, where the comment is the top level and an h1 inside it
- * would shout. Shifting rather than clamping keeps the document's own
- * hierarchy: `#` and `##` stay one step apart.
+ * h1 — an Info note or a comment, where the note's title or the comment is the
+ * top level and an h1 inside it would shout. Shifting rather than clamping
+ * keeps the document's own hierarchy: `#` and `##` stay one step apart.
+ *
+ * `maxHeading` is the deepest tag the target can hold (default h3, Dossier's).
+ * A target that shifts down should raise it by as much, or its three levels
+ * become two: RichTextEditor holds h2–h4, so `#`/`##`/`###` stay distinct
+ * (2026-09-28 — they used to arrive as h2/h3/h3).
  *
  * Anything past the bottom clamps rather than disappearing. A heading rendered
  * one size too small is a blemish; a heading dropped by the schema takes its
  * text with it.
  */
-function headingLevel(hashes, { minHeading = 1 } = {}) {
-  const floor = Math.min(Math.max(minHeading, 1), MAX_HEADING);
-  return Math.min(MAX_HEADING, hashes + floor - 1);
+function headingLevel(hashes, { minHeading = 1, maxHeading = MAX_HEADING } = {}) {
+  const ceiling = Math.min(Math.max(maxHeading, 1), 6);
+  const floor   = Math.min(Math.max(minHeading, 1), ceiling);
+  return Math.min(ceiling, hashes + floor - 1);
 }
 
 export function escapeHtml(value) {

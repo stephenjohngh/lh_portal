@@ -192,6 +192,7 @@ describe('every docx name a builder uses is imported', () => {
     for (const expected of [
       'src/routes/api/reports/generate-docx/+server.js',
       'src/routes/api/golden-thread/safety-case/+server.js',
+      'src/lib/server/richTextDocx.js',
     ]) {
       expect(names.some((n) => n.endsWith(expected)), expected).toBe(true);
     }

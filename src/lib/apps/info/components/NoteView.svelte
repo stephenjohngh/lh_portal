@@ -222,4 +222,21 @@
   .info-body :global(u)          { text-decoration: underline; text-underline-offset: 2px; }
   .info-body :global(a)          { color: #93c5fd; text-decoration: underline; }
   .info-body :global(blockquote) { border-left: 3px solid #475569; padding-left: 0.85rem; color: #94a3b8; margin: 0.75rem 0; }
+  /* What pasted markdown can produce, as Dossier shows it (2026-09-28). Without
+     these, code, rules and a third heading level rendered as plain text and a
+     table as loose words. */
+  .info-body :global(h4)         { font-size: 0.9rem; font-weight: 600; color: #cbd5e1; margin: 0.9rem 0 0.35rem; }
+  .info-body :global(s)          { text-decoration: line-through; }
+  .info-body :global(hr)         { border: 0; border-top: 1px solid #475569; margin: 1rem 0; }
+  .info-body :global(code)       { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+  .info-body :global(:not(pre) > code) { background: #0f172a; border: 1px solid #334155; border-radius: 0.2rem; padding: 0.05em 0.3em; }
+  .info-body :global(pre)        { background: #0f172a; border: 1px solid #334155; border-radius: 0.25rem; padding: 0.6rem 0.75rem; margin: 0 0 0.75rem; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  /* Scrolls rather than crushes: a table wider than the panel has nowhere to go. */
+  .info-body :global(table)      { border-collapse: collapse; margin: 0 0 0.75rem; font-size: 0.9em; display: block; overflow-x: auto; max-width: 100%; }
+  .info-body :global(th),
+  .info-body :global(td)         { border: 1px solid #334155; padding: 0.35rem 0.6rem; text-align: left; vertical-align: top; }
+  .info-body :global(th)         { background: #1e293b; color: #f1f5f9; font-weight: 600; }
+  .info-body :global(td)         { color: #cbd5e1; }
+  .info-body :global(th > p),
+  .info-body :global(td > p)     { margin: 0; line-height: 1.5; }
 </style>
