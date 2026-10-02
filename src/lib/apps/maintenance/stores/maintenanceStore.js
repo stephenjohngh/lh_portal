@@ -208,11 +208,10 @@ function createMaintenanceStore() {
       if (row?.library_doc_id) {
         await deleteFromLibrary(row.library_doc_id);   // storage file + library row
       } else {
-        const { data: sessionData } = await supabase.auth.getSession();
         // No provider was ever recorded on these legacy rows, so the server
         // infers it from the URL's shape (storageRef.js) — which is exactly
         // the case that routing exists for.
-        await deleteStorageObjects([{ storage_url: storagePath }], sessionData?.session?.access_token);
+        await deleteStorageObjects([{ storage_url: storagePath }]);
       }
     } catch (/** @type {any} */ err) {
       logger('⚠ file delete (non-fatal):', err.message);
@@ -453,9 +452,7 @@ function createMaintenanceStore() {
     if (legacy.length) {
       // Pre-library certificates: only the Drive URL was kept, and the server
       // infers the provider from its shape (storageRef.js).
-      const { data: sessionData } = await supabase.auth.getSession();
-      const result = await deleteStorageObjects(
-        legacy.map(d => ({ storage_url: d.storage_path })), sessionData?.session?.access_token);
+      const result = await deleteStorageObjects(legacy.map(d => ({ storage_url: d.storage_path })));
       if (result.failed) {
         throw new Error(`${result.failed} of ${legacy.length} older document file(s) could not be deleted, `
           + 'so the job was kept. Try again.');

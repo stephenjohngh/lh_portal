@@ -145,6 +145,14 @@ describe('purgeAttachments hands the provider to the server', () => {
     expect(deleted).toBe(false);
   });
 
+  it('keeps every row, and throws, when there is no session to delete the files with', async () => {
+    h.setResult({ data: [{ entity_id: 'i1', storage_url: 'u1', storage_provider: 'google_drive' }], error: null });
+    h.supabase.auth.getSession.mockResolvedValueOnce({ data: { session: null } });
+    await expect(purgeAttachments('component_inspection', ['i1'])).rejects.toThrow(/could not be deleted/);
+    const deleted = h.supabase.from.mock.results.some(r => r.value.delete.mock.calls.length);
+    expect(deleted).toBe(false);
+  });
+
   it('sends a null provider for a legacy row rather than dropping it', async () => {
     h.setResult({ data: [{ entity_id: 'i1', storage_url: 'u1', storage_provider: null }], error: null });
     await purgeAttachments('x', ['i1']);
@@ -181,19 +189,27 @@ describe('purgeAttachments hands the provider to the server', () => {
 
 describe('deleteStorageObjects', () => {
   it('reports what happened instead of swallowing it', async () => {
-    const out = await deleteStorageObjects([{ storage_url: 'u1', storage_provider: 'supabase' }], 'tok');
+    const out = await deleteStorageObjects([{ storage_url: 'u1', storage_provider: 'supabase' }]);
     expect(out).toEqual({ deleted: 1, failed: 0, results: [] });
   });
 
-  it('does nothing without a token or without files', async () => {
-    expect(await deleteStorageObjects([{ storage_url: 'u1' }], null)).toEqual({ deleted: 0, failed: 0, results: [] });
-    expect(await deleteStorageObjects([], 'tok')).toEqual({ deleted: 0, failed: 0, results: [] });
+  it('does nothing when there are no files', async () => {
+    expect(await deleteStorageObjects([])).toEqual({ deleted: 0, failed: 0, results: [] });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  // ⛔ It used to answer "0 failed" with no session, so purgeAttachments went on
+  // to delete the rows and left the files with nothing naming them.
+  it('with no session, every file FAILS and nothing is sent', async () => {
+    h.supabase.auth.getSession.mockResolvedValueOnce({ data: { session: null } });
+    expect(await deleteStorageObjects([{ storage_url: 'u1' }, { storage_url: 'u2' }]))
+      .toEqual({ deleted: 0, failed: 2, results: [] });
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it('counts a non-ok response as failed rather than silently succeeding', async () => {
     globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false }));
-    const out = await deleteStorageObjects([{ storage_url: 'u1' }], 'tok');
+    const out = await deleteStorageObjects([{ storage_url: 'u1' }]);
     expect(out.failed).toBe(1);
   });
 });

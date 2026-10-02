@@ -19,6 +19,7 @@
 // PROJECT_STATUS §6hh.
 
 import { supabase } from '$lib/supabaseClient';
+import { accessToken } from '$lib/utils/authHeaders';
 
 /**
  * List attachments for one or more owning entities.
@@ -51,15 +52,20 @@ export async function listAttachments(entityType, entityIds) {
  * discarded everything, which is how 30 undeletable files went unnoticed —
  * nothing failed loudly, nothing failed quietly, nothing was reported at all.
  *
+ * ⛔ With no session, every file FAILS. It used to return "0 failed" when it had
+ * no token, so a caller checking `failed` went on to remove the rows and left
+ * the files in storage with nothing naming them (fixed 2026-10-02).
+ *
  * @param {Array<{ storage_url: string, storage_provider?: string|null }>} rows
- * @param {string|null} token  Supabase access token
  * @returns {Promise<{ deleted: number, failed: number, results: any[] }>}
  */
-export async function deleteStorageObjects(rows, token) {
+export async function deleteStorageObjects(rows) {
   const files = (rows ?? [])
     .filter((r) => r?.storage_url)
     .map((r) => ({ url: r.storage_url, provider: r.storage_provider ?? null }));
-  if (!token || files.length === 0) return { deleted: 0, failed: 0, results: [] };
+  if (files.length === 0) return { deleted: 0, failed: 0, results: [] };
+  const token = await accessToken();
+  if (!token) return { deleted: 0, failed: files.length, results: [] };
 
   try {
     const res = await fetch('/api/media/file', {
@@ -161,8 +167,7 @@ export async function setAttachments(
   // Gone from the set → the file is genuinely unreferenced, so it goes.
   const removed = existing.filter((r) => !desiredUrls.has(r.storage_url));
   if (removed.length > 0) {
-    const { data: { session } } = await supabase.auth.getSession();
-    await deleteStorageObjects(removed, session?.access_token);
+    await deleteStorageObjects(removed);
     const { error } = await supabase
       .from('media_attachments')
       .delete()
@@ -200,11 +205,10 @@ export async function purgeAttachments(entityType, entityIds) {
   if (ids.length === 0) return;
   const rows = await listAttachments(entityType, ids);
   if (rows.length > 0) {
-    const { data: { session } } = await supabase.auth.getSession();
     // ⚠ Whole rows, not just URLs — the provider travels with each file so the
     // server can route it. Passing `rows.map(r => r.storage_url)` here is
     // exactly the regression this fix removed.
-    const result = await deleteStorageObjects(rows, session?.access_token);
+    const result = await deleteStorageObjects(rows);
     if (result?.failed) {
       throw new Error(`${result.failed} of ${rows.length} photo(s) could not be deleted from storage, `
         + 'so nothing else was deleted. Try again.');

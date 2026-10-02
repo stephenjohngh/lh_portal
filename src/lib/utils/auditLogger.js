@@ -11,7 +11,7 @@
 // sent in the Authorization header — the endpoint ignores any user fields
 // in the body, so audit entries cannot be forged.
 
-import { supabase } from '$lib/supabaseClient';
+import { accessToken } from '$lib/utils/authHeaders';
 import { getLogger } from '$lib/utils/logger';
 
 const logger = getLogger('auditLogger');
@@ -34,8 +34,8 @@ const logger = getLogger('auditLogger');
  */
 export async function logAudit(eventType, targetType, targetId, targetName, data = {}) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
+    const token = await accessToken();
+    if (!token) {
       logger('⚠️ No session found, skipping audit log');
       return;
     }
@@ -46,7 +46,7 @@ export async function logAudit(eventType, targetType, targetId, targetName, data
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
-        'Authorization': `Bearer ${session.access_token}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         eventType,

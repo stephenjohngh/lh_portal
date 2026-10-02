@@ -10,15 +10,15 @@
 // sent WITHOUT a Content-Type (the browser sets the multipart boundary). That
 // is why this can't reuse $lib/utils/authHeaders, which forces JSON.
 
-import { supabase } from '$lib/supabaseClient';
+import { accessToken } from '$lib/utils/authHeaders';
 
 /**
  * Authorization-only header (no Content-Type).
  * @returns {Promise<Record<string, string>>}
  */
 async function bearer() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  const token = await accessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function parse(res, fallback) {
