@@ -15,6 +15,7 @@ import { computeMetresPerUnit, measureArea, measureSides }
   from '$lib/apps/building_assets/components/plan/planMeasure.js';
 import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
 import { currentAgreement, reservingAgreement, todayISO } from './agreementModel.js';
+import { matchesSearch } from '$lib/utils/textSearch.js';
 
 /** How a bay is held. Only `licensable` may ever be allocated (P1). */
 export const TENURES = [
@@ -179,13 +180,11 @@ export function baySummary(bays) {
  * @param {{floorId?:string, size?:string, state?:string, q?:string}} f
  */
 export function filterBays(bays, f = {}) {
-  const q = String(f.q ?? '').trim().toLowerCase();
   return (bays ?? []).filter(b =>
     (!f.floorId || b.floor_id === f.floorId)
     && (!f.size  || (f.size === '__none' ? !b.size : b.size === f.size))
     && (!f.state || b.state === f.state)
-    && (!q || [b.ref, b.space?.name, b.space?.label, b.unit_ref, b.notes]
-      .some(v => String(v ?? '').toLowerCase().includes(q))));
+    && matchesSearch([b.ref, b.space?.name, b.space?.label, b.unit_ref, b.notes], f.q));
 }
 
 /**

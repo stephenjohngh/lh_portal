@@ -1,5 +1,6 @@
 <!-- src/lib/apps/mor/components/CaseList.svelte -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import CaseCard from '$lib/apps/mor/components/CaseCard.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -27,12 +28,9 @@
     if (filterStatus    && c.status    !== filterStatus)    return false;
     if (filterMechanism && c.mechanism !== filterMechanism) return false;
     if (filterUrgent    && !c.urgency)                      return false;
-    if (search) {
-      const q = search.toLowerCase();
-      if (!c.reference.toLowerCase().includes(q) &&
-          !c.description.toLowerCase().includes(q) &&
-          !(c.location_text ?? '').toLowerCase().includes(q)) return false;
-    }
+    // ⚠ Read `c.description.toLowerCase()` directly before, which threw on a
+    // case with no description and emptied the whole list.
+    if (!matchesSearch([c.reference, c.description, c.location_text], search)) return false;
     return true;
   });
 

@@ -1,5 +1,6 @@
 <!-- src/lib/apps/info/components/NoteList.svelte -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
   import Icon            from '$lib/components/icons/Icon.svelte';
@@ -30,13 +31,7 @@
     if (!showArchived && n.status === 'archived') return false;
     if (showArchived  && n.status !== 'archived') return false;
     if (visFilter !== 'all' && (n.visibility ?? 'internal') !== visFilter) return false;
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      n.title.toLowerCase().includes(q) ||
-      stripHtml(n.body).toLowerCase().includes(q) ||
-      (n.tags  ?? []).some(t => t.toLowerCase().includes(q))
-    );
+    return matchesSearch([n.title, stripHtml(n.body), n.tags], search);
   });
 
   $: activeCount   = notes.filter(n => n.status !== 'archived').length;

@@ -3,6 +3,7 @@
      Each group collects a set of building systems, component types, and spaces
      that should be planned for renewal together. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
   import Modal         from '$lib/components/common/Modal.svelte';
   import Button        from '$lib/components/common/Button.svelte';
@@ -48,12 +49,7 @@
     floorName: floorById[sp.floor_id]?.name ?? floorById[sp.floor_id]?.short_name ?? '—',
   })).sort((a, b) => a.floorName.localeCompare(b.floorName) || a.name.localeCompare(b.name));
 
-  $: filteredSpaces = spaceSearch.trim()
-    ? labelledSpaces.filter(sp =>
-        sp.name.toLowerCase().includes(spaceSearch.toLowerCase()) ||
-        sp.floorName.toLowerCase().includes(spaceSearch.toLowerCase()) ||
-        (sp.type ?? '').toLowerCase().includes(spaceSearch.toLowerCase()))
-    : labelledSpaces;
+  $: filteredSpaces = labelledSpaces.filter(sp => matchesSearch([sp.name, sp.floorName, sp.type], spaceSearch));
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   function systemName(id)   { return systems.find(s => s.id === id)?.name ?? id; }

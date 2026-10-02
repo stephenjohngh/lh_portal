@@ -71,6 +71,58 @@ export function stripHtml(html) {
     .trim();
 }
 
+// ── Filtering a list by a search box ─────────────────────────────────────────
+//
+// ONE rule for every search box that narrows a list (2026-10-02, PROJECT_STATUS
+// §6aaa item 5). Twenty-odd lists wrote their own, and they disagreed:
+//   · some trimmed the query and some did not — "lift " found nothing;
+//   · some read a field that can be empty without a guard — MOR's case list
+//     would throw on a case with no description;
+//   · the phone's issue list searched stored HTML, so "strong" found every
+//     comment with bold text in it;
+//   · "fire door" found "Fire door" and not "Door, fire" — the words had to be
+//     next to each other, in that order, in one field.
+//
+// The rule: the query is split into words, and a row matches when EVERY word
+// appears in at least one of its fields — case and accents ignored, empty
+// fields skipped, numbers read as text. An empty query matches everything.
+// ⚠ Searches that SHOW where they hit (Dossier's pack search, Management's
+// issue search) keep phrase matching: they highlight the phrase.
+
+/** Lower case, accents folded: "Café" and "cafe" are the same word to a reader. */
+function fold(value) {
+  return String(value ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/**
+ * The words of a query: trimmed, lower-cased, accents folded.
+ * @param {unknown} query
+ * @returns {string[]}
+ */
+export function searchWords(query) {
+  return fold(query).split(/\s+/).filter(Boolean);
+}
+
+/**
+ * Does a row match a search box? Every word of the query must appear in at
+ * least one of the values; arrays are searched item by item; null, undefined
+ * and empty values are skipped.
+ *
+ * Pass rich-text fields through `stripHtml` first, or tag names will match.
+ *
+ * @param {unknown[]} values  the fields a person can see for this row
+ * @param {unknown} query     what was typed
+ * @returns {boolean}
+ */
+export function matchesSearch(values, query) {
+  const words = searchWords(query);
+  if (!words.length) return true;
+  const hay = (values ?? []).flat(Infinity)
+    .filter((v) => v != null && v !== '')
+    .map(fold);
+  return words.every((w) => hay.some((h) => h.includes(w)));
+}
+
 /**
  * Does this text contain the query, case-insensitively?
  *

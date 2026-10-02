@@ -1,6 +1,7 @@
 <!-- src/lib/apps/admin/AdminApp.svelte -->
 <!-- User management, permissions, and audit log viewer -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { onMount } from 'svelte';
   import { permissions } from '$lib/stores/permissions';
   import { auth }        from '$lib/stores/auth';
@@ -69,10 +70,9 @@
   $: ({ users, loading, error } = $usersStore);
   
   // Filtered users based on search
-  $: filteredUsers = users.filter(user => 
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ⚠ Before matchesSearch, a user with no name and no email was hidden even
+  // with nothing typed.
+  $: filteredUsers = users.filter(user => matchesSearch([user.email, user.full_name], searchTerm));
 
   // Nothing reads as empty until the users have been read. Before it the
   // store is empty because it has not been read, and "No users found" with

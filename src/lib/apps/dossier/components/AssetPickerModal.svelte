@@ -4,6 +4,7 @@
      that is already on the shelf, so P3 can enumerate exactly what a
      publication exposes. Upload happens in the sidebar Files panel. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import Modal          from '$lib/components/common/Modal.svelte';
   import Button         from '$lib/components/common/Button.svelte';
@@ -21,14 +22,9 @@
 
   $: if (!show) { search = ''; selectedId = null; }
 
-  $: visible = files.filter(f => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    // Search what is shown, including the description — otherwise a file is
-    // visibly labelled with words that will not find it.
-    return `${f.display_name ?? ''} ${f.filename ?? ''} ${f.description ?? ''}`
-      .toLowerCase().includes(q);
-  });
+  // Search what is shown, including the description — otherwise a file is
+  // visibly labelled with words that will not find it.
+  $: visible = files.filter(f => matchesSearch([f.display_name, f.filename, f.description], search));
 
   const KIND_ICON = { image: '🖼', pdf: '📄', file: '📎' };
 

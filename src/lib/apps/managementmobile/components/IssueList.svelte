@@ -1,4 +1,6 @@
 <script context="module">
+
+  import { matchesSearch, stripHtml } from '$lib/utils/textSearch.js';
   // Persist status + search across open/close cycles.
   // Object wrapper avoids a vite-plugin-svelte "module-level reassignment" warning.
   const _persist = { status: 'current', query: '' };
@@ -69,15 +71,15 @@
     if (!matchStatus) return false;
 
     // Search
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return (issue.name ?? '').toLowerCase().includes(q)
-        || (issue.description ?? '').toLowerCase().includes(q)
-        || String(issue.issue_number ?? '').includes(q)
-        || (issue.activities ?? []).some(a =>
-            (a.body ?? '').toLowerCase().includes(q) ||
-            Object.values(a.fields ?? {}).some(v => typeof v === 'string' && v.toLowerCase().includes(q))
-          );
+    // ⚠ Activity bodies are stored HTML: stripped first, or "strong" found every
+    // comment with bold text in it. The desktop issue search already did this.
+    return matchesSearch([
+      issue.name, issue.description, issue.issue_number,
+      ...(issue.activities ?? []).flatMap(a => [
+        stripHtml(a.body),
+        ...Object.values(a.fields ?? {}).filter(v => typeof v === 'string'),
+      ]),
+    ], query);
   });
   // Store already sorts by priority → issue_number; preserve that order.
 

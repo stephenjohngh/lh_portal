@@ -23,6 +23,7 @@ import {
 } from './statutoryTemplate.js';
 import { computeObligationSchedule } from './obligationSchedule.js';
 import { currentDecisions } from './statutoryExclusions.js';
+import { matchesSearch } from '$lib/utils/textSearch.js';
 
 const BAND_RANK = { never_run: 0, overdue: 1, due_soon: 2, ok: 3, on_demand: 4 };
 
@@ -294,13 +295,12 @@ export function positionSummary(rows) {
  */
 export function filterRows(rows, f = {}) {
   const has = (list, v) => !list || list.length === 0 || list.includes(v);
-  const q = (f.search ?? '').trim().toLowerCase();
   return (rows ?? []).filter(r =>
     has(f.groups, r.group)
     && has(f.bases, r.basis)
     && has(f.statuses, r.status)
     && has(f.handledBy, r.handledBy)
-    && (!q || `${r.name} ${r.statutoryRef ?? ''} ${r.owner ?? ''}`.toLowerCase().includes(q)));
+    && matchesSearch([r.name, r.statutoryRef, r.owner], f.search));
 }
 
 export const SORTS = ['register', 'due', 'name', 'lastCompleted'];

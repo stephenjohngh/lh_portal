@@ -1,6 +1,7 @@
 <!-- src/lib/apps/maintenance/components/DocumentsTab.svelte -->
 <!-- All maintenance documents across all jobs, with expiry alerts and filters. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { dueSoonDays } from '$lib/utils/dueWindows';
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
@@ -60,11 +61,7 @@
       }
     }
     // Text search
-    if (search.trim()) {
-      const q   = search.toLowerCase();
-      const hay = `${d.filename} ${d.job?.title ?? ''} ${d.job?.scope_label ?? ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
+    if (!matchesSearch([d.filename, d.job?.title, d.job?.scope_label], search)) return false;
     return true;
   });
 

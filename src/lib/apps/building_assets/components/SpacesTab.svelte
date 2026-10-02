@@ -6,6 +6,7 @@
      time from the store (membership + area), reusing buildSpacesRegister() +
      spaceReport.js — the same helpers the sidebar used to expose as CSV. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { today } from '$lib/utils/dates';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { buildSpacesRegisterRows, spacesRegisterCsvRows } from '../utils/spaceReport.js';
@@ -53,10 +54,7 @@
     if (kindFilter !== 'all'  && r.kind  !== kindFilter)  return false;
     if (floorFilter !== 'all' && r.floor !== floorFilter) return false;
     if (typeFilter !== 'all' && (r.type ?? '') !== typeFilter) return false;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      if (!`${r.reference} ${r.name} ${r.type}`.toLowerCase().includes(q)) return false;
-    }
+    if (!matchesSearch([r.reference, r.name, r.type], search)) return false;
     return true;
   });
 

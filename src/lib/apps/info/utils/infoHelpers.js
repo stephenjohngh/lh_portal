@@ -105,20 +105,11 @@ export function tagsToString(tags) {
 
 /**
  * Strip HTML tags to plain text — for list previews and search now that note
- * bodies are rich HTML. Collapses whitespace; not a security boundary (use
- * sanitizeHtml for rendering).
+ * bodies are rich HTML. Not a security boundary (use sanitizeHtml for
+ * rendering). The shared one (2026-10-02): this file had its own copy, which
+ * left `&quot;` and `&#39;` in the text.
  */
-export function stripHtml(html) {
-  if (!html) return '';
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+export { stripHtml } from '$lib/utils/textSearch.js';
 
 /** Visibility badge metadata for a note. */
 export const VISIBILITY_BADGES = {

@@ -4,6 +4,7 @@
      agreements, and finding "who lives at Flat 12" is the one question it must
      not become a way to answer (design §3.2). Search is by name only. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import { parkingStore } from '../stores/parkingStore.js';
   import { HOLDER_TYPE_LABEL, STATUS_LABEL, LIVE } from '../utils/agreementModel.js';
@@ -18,10 +19,7 @@
   let modalOpen = false;
 
   $: s = $parkingStore;
-  $: rows = s.holders.filter(h => {
-    const n = q.trim().toLowerCase();
-    return !n || [h.display_name, h.company_name].some(v => String(v ?? '').toLowerCase().includes(n));
-  });
+  $: rows = s.holders.filter(h => matchesSearch([h.display_name, h.company_name], q));
   $: agreementsOf = (id) => s.agreements.filter(a => a.holder_id === id);
   $: bayRef = (bayId) => s.bays.find(b => b.bay_id === bayId)?.ref ?? '—';
 

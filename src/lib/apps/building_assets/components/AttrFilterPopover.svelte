@@ -16,6 +16,7 @@
   below the "+ Add filter" anchor in ComponentsTab.
 -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { createEventDispatcher, onMount } from 'svelte';
   import { defaultFilterFor, OP_SYMBOL } from '../utils/attrFilters.js';
 
@@ -46,9 +47,7 @@
 
   // Search filter — case-insensitive name + system/type scope hint
   $: filteredDefs = (() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return availableDefs;
-    return availableDefs.filter(d => d.name.toLowerCase().includes(q));
+    return availableDefs.filter(d => matchesSearch([d.name], search));
   })();
 
   // -- Group filteredDefs into a flat row list with system headers ------

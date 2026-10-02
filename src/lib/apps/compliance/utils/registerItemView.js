@@ -18,6 +18,7 @@ import {
   ACTION_CATEGORIES, ACTION_CATEGORY_LABEL, ACTION_PRIORITIES,
   PRIORITY_LABEL, priorityRank, ofKind,
 } from '$lib/utils/registerKinds.js';
+import { matchesSearch } from '$lib/utils/textSearch.js';
 
 const text = v => String(v ?? '').toLowerCase();
 
@@ -37,12 +38,10 @@ export function filterItems(items, kind, filters = {}) {
     if (!has(filters.category, item.category)) return false;
     if (!has(filters.priority, item.priority)) return false;
     if (!has(filters.status, item.actionStatus ?? 'open')) return false;
-    if (!q) return true;
     // ⚠ Searches the consequence too. It is the half that says why an action
     // matters, and somebody looking for "reg 7(4)" will find it there and
     // nowhere else.
-    return [item.name, item.description, item.consequence, item.unblocks, item.key]
-      .some(f => text(f).includes(q));
+    return matchesSearch([item.name, item.description, item.consequence, item.unblocks, item.key], q);
   });
 }
 

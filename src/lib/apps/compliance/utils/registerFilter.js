@@ -24,6 +24,7 @@ import { EVIDENCE_ROUTE_LABEL } from '$lib/utils/obligationEvidence.js';
 import {
   DUTY_HOLDER_ROLES, dutyHolderRole, unclassifiedDutyHolders, dutyHolderTally,
 } from '$lib/utils/dutyHolderRole.js';
+import { matchesSearch } from '$lib/utils/textSearch.js';
 
 /**
  * Every state a register entry can be in, most-actionable first. The order is
@@ -114,7 +115,7 @@ function haystack(entry) {
   return [
     entry.name, entry.statutoryRef, entry.description,
     entry.appliesWhen, entry.responsibleParty, entry.statutoryDutyHolder, entry.key,
-  ].filter(Boolean).join(' ').toLowerCase();
+  ];
 }
 
 /** True when every active facet admits this entry. An empty Set means "all",
@@ -140,12 +141,11 @@ function matches(entry, filters, status) {
  * @returns {{entry: Object, status: string}[]}
  */
 export function filterRegister(entries, filters = {}, ctx = {}) {
-  const q = String(filters.q ?? '').trim().toLowerCase();
   const out = [];
   for (const entry of entries) {
     const status = registerStatus(entry, ctx);
     if (!matches(entry, filters, status)) continue;
-    if (q && !haystack(entry).includes(q)) continue;
+    if (!matchesSearch(haystack(entry), filters.q)) continue;
     out.push({ entry, status });
   }
   return out;
@@ -471,7 +471,6 @@ export function hasEmptyScope(d) {
  * @param {Object} [filters]  { q, state, evidence, source }
  */
 export function filterObligations(defs, filters = {}) {
-  const q = String(filters.q ?? '').trim().toLowerCase();
   const has = (set, value) => !set || set.size === 0 || set.has(value);
   return defs.filter(d => {
     if (!has(filters.state, obligationState(d))) return false;
@@ -484,11 +483,7 @@ export function filterObligations(defs, filters = {}) {
       const scope = hasEmptyScope(d) ? 'unscoped' : 'scoped';
       if (!filters.scope.has(scope)) return false;
     }
-    if (q) {
-      const text = [d.name, d.description, d.statutory_ref, d.template_key]
-        .filter(Boolean).join(' ').toLowerCase();
-      if (!text.includes(q)) return false;
-    }
+    if (!matchesSearch([d.name, d.description, d.statutory_ref, d.template_key], filters.q)) return false;
     return true;
   });
 }

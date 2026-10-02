@@ -1,6 +1,7 @@
 <!-- src/lib/apps/maintenance/components/JobsTab.svelte -->
 <!-- Full filterable list of all maintenance jobs. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { permissions }   from '$lib/stores/permissions';
   import {
     ragConfig, resultConfig, scopeTypeLabel, daysRelative,
@@ -40,11 +41,7 @@
     // Scope filter
     if (scopeFilter !== 'all' && j.scope_type !== scopeFilter) return false;
     // Text search
-    if (search.trim()) {
-      const q   = search.toLowerCase();
-      const hay = `${j.title} ${j.scope_label ?? ''} ${j.contractor_name ?? ''} ${j.reference_number ?? ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
+    if (!matchesSearch([j.title, j.scope_label, j.contractor_name, j.reference_number], search)) return false;
     return true;
   }).sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
 

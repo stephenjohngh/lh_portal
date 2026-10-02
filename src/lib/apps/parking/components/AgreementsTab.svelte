@@ -1,6 +1,7 @@
 <!-- src/lib/apps/parking/components/AgreementsTab.svelte -->
 <!-- Every agreement, live ones first. Selecting one opens its panel. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { parkingStore } from '../stores/parkingStore.js';
   import { STATUSES, STATUS_LABEL, BASIS_LABEL, LIVE, unreturnedAfterEnd } from '../utils/agreementModel.js';
   import { fmtDate } from '$lib/utils/dates.js';
@@ -27,11 +28,7 @@
       || (status === 'live' ? LIVE.has(a.status)
         : status === 'devices_out' ? devicesOutIds.has(a.id)
         : a.status === status))
-    .filter(a => {
-      const needle = q.trim().toLowerCase();
-      return !needle || [a.reference, bayRef(a.bay_id), holderName(a.holder_id), a.unit_ref]
-        .some(v => String(v ?? '').toLowerCase().includes(needle));
-    })
+    .filter(a => matchesSearch([a.reference, bayRef(a.bay_id), holderName(a.holder_id), a.unit_ref], q))
     .sort((a, b) => Number(LIVE.has(b.status)) - Number(LIVE.has(a.status)) || b.starts_on.localeCompare(a.starts_on));
 
   $: selected = s.agreements.find(a => a.id === selectedId) ?? null;

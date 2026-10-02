@@ -6,6 +6,7 @@
        annotationDragController — annotation drag-to-reposition
        spaceEditController      — space drawing buffer, vertex drag, polygon move  -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { buildingAssetsStore }                 from '../stores/buildingAssetsStore.js';
   import { typeByCode, checkableDefs, resolveComponentHalo } from '../lookups.js';
   import { computeMetresPerUnit }         from './plan/planMeasure.js';
@@ -157,12 +158,7 @@
     if (hiddenTypes.has(c.type_code)) return false;
     const status = (c.status || 'ok').toLowerCase();
     if (hiddenStatuses.has(status)) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      if (!(c.label    ?? '').toLowerCase().includes(q) &&
-          !(c.asset_id ?? '').toLowerCase().includes(q) &&
-          !(c.notes    ?? '').toLowerCase().includes(q)) return false;
-    }
+    if (!matchesSearch([c.label, c.asset_id, c.notes], searchQuery)) return false;
     return true;
   });
 

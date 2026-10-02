@@ -1,4 +1,6 @@
 <script context="module">
+
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   // Persist search + scope across open/close cycles without lifting state.
   // Object wrapper avoids a vite-plugin-svelte "module-level reassignment" warning.
   const _persist = { query: '', scope: 'floor' };
@@ -104,16 +106,8 @@
   });
 
   $: baseList = sorted.filter(c => !isFiltered(c, hiddenTypes, hiddenStatuses));
-  $: filtered = query.trim()
-    ? baseList.filter(c => {
-        const q = query.toLowerCase();
-        return (c.asset_id  ?? '').toLowerCase().includes(q)
-            || (c.label     ?? '').toLowerCase().includes(q)
-            || (c.notes     ?? '').toLowerCase().includes(q)
-            || (c.type_code ?? '').toLowerCase().includes(q)
-            || (getType(c.type_code)?.name ?? '').toLowerCase().includes(q);
-      })
-    : baseList;
+  $: filtered = baseList.filter(c =>
+    matchesSearch([c.asset_id, c.label, c.notes, c.type_code, getType(c.type_code)?.name], query));
 
   function selectComponent(c) {
     if (c.plan_id != null) dispatch('navigateTo', c);

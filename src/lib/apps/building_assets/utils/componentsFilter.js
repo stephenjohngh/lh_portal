@@ -3,6 +3,7 @@
 // ComponentsTab.svelte so the multi-criteria filtering (the core list logic)
 // can be unit-tested without rendering. No store/DOM — all inputs passed in.
 import { matchesAllAttrFilters } from './attrFilters.js';
+import { matchesSearch } from '$lib/utils/textSearch.js';
 
 /**
  * Apply the Components-tab filters to the full component list.
@@ -66,12 +67,7 @@ export function filterComponents(components, criteria, ctx) {
 
   // Search (asset_id, label, linked_component_ref)
   if (searchQuery.trim()) {
-    const q = searchQuery.trim().toLowerCase();
-    list = list.filter(c =>
-      (c.asset_id ?? '').toLowerCase().includes(q) ||
-      (c.label ?? '').toLowerCase().includes(q) ||
-      (c.linked_component_ref ?? '').toLowerCase().includes(q)
-    );
+    list = list.filter(c => matchesSearch([c.asset_id, c.label, c.linked_component_ref], searchQuery));
   }
 
   // Attribute filters — fixed (componentAttrs) + condition (inspections).

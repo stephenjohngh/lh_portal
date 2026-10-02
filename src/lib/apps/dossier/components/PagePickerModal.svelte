@@ -1,6 +1,7 @@
 <!-- src/lib/apps/dossier/components/PagePickerModal.svelte -->
 <!-- Choose another page in this pack to link the selected text to. -->
 <script>
+  import { matchesSearch } from '$lib/utils/textSearch.js';
   import { createEventDispatcher } from 'svelte';
   import Modal     from '$lib/components/common/Modal.svelte';
   import Button    from '$lib/components/common/Button.svelte';
@@ -21,10 +22,7 @@
   $: if (!show) search = '';
 
   $: candidates = docs.filter(d => d.id !== currentDocId);
-  $: visible = candidates.filter(d => {
-    const q = search.trim().toLowerCase();
-    return !q || `${d.title} ${d.slug}`.toLowerCase().includes(q);
-  });
+  $: visible = candidates.filter(d => matchesSearch([d.title, d.slug], search));
 
   function choose(doc) {
     dispatch('pick', { doc, mode });
