@@ -19,6 +19,7 @@
  */
 
 /** Newest decision wins; ties break on id so the answer is never arbitrary. */
+import { DUE_SOON_DAYS } from './dueWindows.js';
 import { today as todayLondon, addDaysISO } from './dates.js';
 function newer(a, b) {
   const ta = Date.parse(a?.decided_at ?? '') || 0;
@@ -94,7 +95,7 @@ export function reviewsDue(rows, opts = {}) {
  * Thirty, matching the compliance report's due-soon horizon, so a review and a
  * check that fall in the same month read the same way to the same person.
  */
-export const REVIEW_SOON_DAYS = 30;
+export const REVIEW_SOON_DAYS = DUE_SOON_DAYS.exclusionReview;
 
 /**
  * The state of ONE exclusion's review date, for display.

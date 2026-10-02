@@ -18,6 +18,7 @@
 // for last March sorts among the planner's own arrears rather than in a
 // separate list nobody reads.
 
+import { DUE_SOON_DAYS } from '../../../utils/dueWindows.js';
 /**
  * Where each kind comes from, and how it should read.
  *
@@ -60,8 +61,8 @@ export const SOURCES = {
 
 /** How far ahead a contractor visit needs arranging. A walk is in-house and
  *  needs no booking, so it uses the ordinary notice window. */
-export const ARRANGING_LEAD_DAYS = 60;
-const WALK_LEAD_DAYS = 14;
+export const ARRANGING_LEAD_DAYS = DUE_SOON_DAYS.plannerArranging;
+const WALK_LEAD_DAYS = DUE_SOON_DAYS.plannerWalk;
 
 /**
  * Which sources this user may be shown, from the permissions store's own state.
@@ -239,7 +240,7 @@ export function fromCertificate(row) {
     title: `Certificate expires: ${row?.filename ?? 'certificate'}`,
     date: row?.expiry_date,
     detail: row?.job?.title ? `From job: ${row.job.title}` : null,
-    leadDays: 60,
+    leadDays: DUE_SOON_DAYS.certificateExpiry,
   });
 }
 
@@ -253,7 +254,7 @@ export function fromBsrDeadline(row) {
     title: `BSR full report due: ${row?.label ?? row?.reference ?? 'MOR case'}`,
     date: row?.deadline,
     detail: row?.decided ? 'Decided reportable' : 'Applies if the case is reportable — not yet decided',
-    leadDays: 10,
+    leadDays: DUE_SOON_DAYS.plannerBsrDeadline,
   });
 }
 
@@ -282,7 +283,7 @@ export function fromCompetenceExpiry(row) {
     title: `Competence expires: ${row?.full_name ?? 'person'}`,
     date: row?.competence_expiry,
     detail: row?.role ?? null,
-    leadDays: 60,
+    leadDays: DUE_SOON_DAYS.plannerCompetenceExpiry,
   });
 }
 

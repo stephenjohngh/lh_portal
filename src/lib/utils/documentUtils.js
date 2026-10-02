@@ -1,7 +1,7 @@
 // src/lib/utils/documentUtils.js
 // Client-side constants and helpers for the document library.
 
-import { DAY_MS } from './dates.js';
+import { DUE_SOON_DAYS, dueBandOf } from './dueWindows.js';
 export const MIME_ICONS = {
   'application/pdf':                                                         '📄',
   'application/msword':                                                      '📝',
@@ -120,11 +120,13 @@ export function isUnclassifiedDocType(docType) {
  * @returns {'expired'|'expiring-soon'|'ok'|null}
  */
 export function getExpiryStatus(expiryDate) {
-  if (!expiryDate) return null;
-  const diff = new Date(expiryDate).getTime() - Date.now();
-  if (diff < 0)           return 'expired';
-  if (diff < 30 * DAY_MS) return 'expiring-soon';
-  return 'ok';
+  // The shared rule (dueWindows.js): valid THROUGH its expiry date, in London
+  // calendar days. It counted milliseconds from UTC midnight, so a document
+  // read as expired on its own expiry date — while Maintenance said valid.
+  const band = dueBandOf(expiryDate, DUE_SOON_DAYS.documentExpiry);
+  if (band === 'overdue')  return 'expired';
+  if (band === 'due_soon') return 'expiring-soon';
+  return band ? 'ok' : null;
 }
 
 /** @param {string|null} expiryDate */

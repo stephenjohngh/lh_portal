@@ -5,6 +5,7 @@
      Bottom: the per-group setup/assumptions table, where every figure that drives
      the forecast is editable (R0 — derivation assists, the planner decides). -->
 <script>
+  import { DUE_SOON_DAYS } from '$lib/utils/dueWindows';
   import { onMount } from 'svelte';
   import { maintenanceGroupsStore } from '../stores/maintenanceGroupsStore.js';
   import { buildTenYearForecast, renewalOccurrences, addYearsFractionalISO } from '../utils/tenYearPlan.js';
@@ -137,7 +138,7 @@
     if (!renewalDate) return 'none';
     const days = daysUntil(renewalDate);
     if (days < 0)   return 'overdue';
-    if (days < 365) return 'soon';
+    if (days < DUE_SOON_DAYS.capitalRenewal) return 'soon';
     return 'ok';
   }
 

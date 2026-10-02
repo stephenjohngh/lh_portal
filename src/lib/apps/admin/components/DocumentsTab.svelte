@@ -19,10 +19,10 @@
   import LoadingSpinner     from '$lib/components/common/LoadingSpinner.svelte';
   import { permissions }    from '$lib/stores/permissions';
   import { debounce }       from '$lib/utils/debounce';
-  import { DOC_TYPES, CATEGORIES, DOC_FOLDERS } from '$lib/utils/documentUtils';
+  import { DOC_TYPES, CATEGORIES, DOC_FOLDERS, getExpiryStatus } from '$lib/utils/documentUtils';
   import { checkDocuments }  from '$lib/utils/documentApi';
   import { checkSummary }    from '$lib/utils/documentCheckLabels.js';
-  import { fmtTime, DAY_MS }         from '$lib/utils/dates';
+  import { fmtTime }                 from '$lib/utils/dates';
 
   $: ({ docs, loading, error } = $documentsStore);
 
@@ -111,12 +111,9 @@
 
   // Summary stats
   $: total     = docs.length;
-  $: expiring  = docs.filter(d => {
-    if (!d.expiry_date) return false;
-    const diff = new Date(d.expiry_date) - Date.now();
-    return diff >= 0 && diff < 30 * DAY_MS;
-  }).length;
-  $: expired   = docs.filter(d => d.expiry_date && new Date(d.expiry_date) < new Date()).length;
+  // The shared expiry rule (documentUtils → dueWindows.js), not a copy of it.
+  $: expiring  = docs.filter(d => getExpiryStatus(d.expiry_date) === 'expiring-soon').length;
+  $: expired   = docs.filter(d => getExpiryStatus(d.expiry_date) === 'expired').length;
 </script>
 
 <div class="space-y-6">

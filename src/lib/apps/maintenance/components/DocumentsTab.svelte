@@ -1,6 +1,7 @@
 <!-- src/lib/apps/maintenance/components/DocumentsTab.svelte -->
 <!-- All maintenance documents across all jobs, with expiry alerts and filters. -->
 <script>
+  import { DUE_SOON_DAYS } from '$lib/utils/dueWindows';
   import { maintenanceStore } from '../stores/maintenanceStore.js';
   import { docTypeLabel, docTypeIcon, expiryRag, fmtBytes } from '../utils/maintenanceHelpers.js';
   import { fmtDate }           from '$lib/utils/dates.js';
@@ -90,7 +91,7 @@
             {/if}
           {/if}
           {#if expiringDocs.length > 0}
-            <span class="text-amber-300 font-semibold">{expiringDocs.length} expiring within 60 days</span>
+            <span class="text-amber-300 font-semibold">{expiringDocs.length} expiring within {DUE_SOON_DAYS.certificateExpiry} days</span>
           {/if}
           <button
             class="ml-2 text-xs text-purple-400 underline"

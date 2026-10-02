@@ -37,6 +37,7 @@
 // inspectionSchedule.test.js is its regression net.
 
 
+import { DUE_SOON_DAYS } from './dueWindows.js';
 import { DAY_MS } from './dates.js';
 /**
  * @typedef {'completed'|'attempted'|'planned'} EvidenceStatus
@@ -195,7 +196,7 @@ export function jobEventsFromJobs(jobs) {
 export function computeObligationSchedule(obligations, events, opts = {}) {
   const now         = opts.now ?? new Date();
   const nowMs       = now.getTime();
-  const dueSoonDays = opts.dueSoonDays ?? 14;
+  const dueSoonDays = opts.dueSoonDays ?? DUE_SOON_DAYS.plannedObligation;
 
   /** @type {Record<string, number>} */ const lastCompleteMs = {};
   /** @type {Record<string, number>} */ const lastAttemptMs  = {};
