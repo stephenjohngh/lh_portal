@@ -88,10 +88,3 @@ export function stepMonth(year, month, step, { from, to } = {}) {
   return next;
 }
 
-/** Everything in the month, in date then time order — for a print or a list. */
-export function monthList(grid) {
-  return grid.weeks
-    .flat()
-    .filter(d => !d.outside)
-    .flatMap(d => d.items);
-}

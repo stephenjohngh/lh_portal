@@ -135,23 +135,3 @@ export function sortByDisplayOrder(states) {
     || (a.definition?.name ?? '').localeCompare(b.definition?.name ?? ''));
 }
 
-/**
- * Order most-urgent first: never-run and overdue at the top (by due time), then
- * due-soon / ok by due date, on-demand last, name as tiebreak.
- *
- * NOT currently used by any screen — the UI switched to sortByDisplayOrder so
- * every surface presents inspections in the admin-controlled order. Kept
- * because `sortKey` encodes the urgency ordering and this is the canonical way
- * to apply it; use it if a "worklist by urgency" view is ever wanted.
- *
- * Returns a new array; does not mutate the input.
- *
- * @param {ScheduleState[]} states
- * @returns {ScheduleState[]}
- */
-export function sortBySchedule(states) {
-  return [...(states ?? [])].sort((a, b) => {
-    if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
-    return (a.definition?.name ?? '').localeCompare(b.definition?.name ?? '');
-  });
-}

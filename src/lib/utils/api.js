@@ -2,7 +2,8 @@
 
 /**
  * Centralized API client for all Supabase operations
- * Provides consistent error handling, logging, and retry logic
+ * Provides consistent error handling and logging. It does NOT retry: a
+ * retry() helper that nothing called was removed 2026-10-02.
  */
 
 import { supabase }    from '$lib/supabaseClient';
@@ -14,11 +15,6 @@ const logger = getLogger('api');
  * API Client Class
  */
 class ApiClient {
-  constructor() {
-    this.retryAttempts = 3;
-    this.retryDelay = 1000; // ms
-  }
-
   /**
    * Handle API errors consistently
    * @private
@@ -35,21 +31,6 @@ class ApiClient {
     enhancedError.table = table;
     
     return enhancedError;
-  }
-
-  /**
-   * Retry logic for failed requests
-   * @private
-   */
-  async retry(fn, attempts = this.retryAttempts) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (attempts <= 1) throw error;
-      logger(`⚠️ Retrying... (${this.retryAttempts - attempts + 1}/${this.retryAttempts})`);
-      await new Promise(resolve => setTimeout(resolve, this.retryDelay));
-      return this.retry(fn, attempts - 1);
-    }
   }
 
   /**

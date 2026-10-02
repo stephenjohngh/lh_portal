@@ -23,11 +23,6 @@ export function listCases() {
   });
 }
 
-/** A single case as a lightweight reference, or null. */
-export function getCase(id) {
-  return api.getById('mor_cases', id, CASE_REF_SELECT);
-}
-
 /**
  * Human-readable one-line label for a case reference — `MOR-xxxx — <detail>`,
  * the detail being the first non-empty of description / location / mechanism,

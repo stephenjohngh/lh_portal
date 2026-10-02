@@ -133,9 +133,3 @@ export function yearsInWindow(from, to) {
   return Array.from({ length: last - first + 1 }, (_, i) => first + i);
 }
 
-/** A month's occurrences, in date order. */
-export function monthItems(grid, month) {
-  const row = grid.find(m => m.month === month);
-  if (!row) return [];
-  return row.slots.filter(Boolean).flatMap(d => d.items);
-}

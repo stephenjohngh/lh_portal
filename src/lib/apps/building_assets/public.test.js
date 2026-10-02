@@ -23,21 +23,10 @@ const h = vi.hoisted(() => ({
 vi.mock('$lib/utils/api', () => ({ api: h.api }));
 
 const {
-  getComponent, updateComponent, applyInspectionResult, replaceComponentAttributes,
-  getLatestInspections, createComponentInspection, updateComponentInspection,
-  listFloors, updateFloor,
+  updateComponent, applyInspectionResult, replaceComponentAttributes, createComponentInspection, updateFloor,
 } = await import('./public.js');
 
 beforeEach(() => vi.clearAllMocks());
-
-describe('getComponent', () => {
-  it('reads the components table by id', async () => {
-    h.api.getById.mockResolvedValueOnce({ id: 'c1', label: 'FD-01' });
-    const c = await getComponent('c1');
-    expect(h.api.getById).toHaveBeenCalledWith('components', 'c1');
-    expect(c).toEqual({ id: 'c1', label: 'FD-01' });
-  });
-});
 
 describe('updateComponent', () => {
   it('stamps updated_by and writes the components table, returning the row', async () => {
@@ -108,13 +97,6 @@ describe('component inspections', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-06-24T12:00:00.000Z')); });
   afterEach(() => vi.useRealTimers());
 
-  it('getLatestInspections delegates to the dedupe RPC', async () => {
-    h.api.latestInspections.mockResolvedValueOnce([{ component_id: 'c1' }]);
-    const out = await getLatestInspections(['c1', 'c2']);
-    expect(h.api.latestInspections).toHaveBeenCalledWith(['c1', 'c2']);
-    expect(out).toEqual([{ component_id: 'c1' }]);
-  });
-
   it('createComponentInspection stamps inspected_at when not supplied', async () => {
     await createComponentInspection({ component_id: 'c1', inspection_result: 'ok', inspected_by: 'u1' });
     expect(h.api.create).toHaveBeenCalledWith('component_inspections', expect.objectContaining({
@@ -130,17 +112,9 @@ describe('component inspections', () => {
     expect(fields.inspected_at).toBe('2020-01-01T00:00:00.000Z');
   });
 
-  it('updateComponentInspection updates the row by id', async () => {
-    await updateComponentInspection('insp-1', { inspection_result: 'failed' });
-    expect(h.api.update).toHaveBeenCalledWith('component_inspections', 'insp-1', { inspection_result: 'failed' });
-  });
 });
 
 describe('floors', () => {
-  it('listFloors reads in display order', async () => {
-    await listFloors();
-    expect(h.api.get).toHaveBeenCalledWith('floors', { orderBy: 'level_order', ascending: true });
-  });
 
   it('updateFloor writes the given fields', async () => {
     await updateFloor('f1', { walk_order: 3 });

@@ -7,7 +7,7 @@
 // tests).
 
 import { describe, it, expect } from 'vitest';
-import { makeGroupMembershipResolver, resolveGroupMembership } from './groupMembership.js';
+import { makeGroupMembershipResolver } from './groupMembership.js';
 
 // Two systems, three types (LIGHT+POWER in ELEC, LIFT in MECH).
 const types = [
@@ -79,8 +79,4 @@ describe('makeGroupMembershipResolver', () => {
     expect(r.byStatus).toEqual({ ok: 0, problem: 0, failed: 0, inactive: 0 });
   });
 
-  it('resolveGroupMembership one-shot matches the factory', () => {
-    const r = resolveGroupMembership({ type_codes: ['LIFT'] }, ctx);
-    expect(r.componentIds.sort()).toEqual(['c4', 'c5']);
-  });
 });

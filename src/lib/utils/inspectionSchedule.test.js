@@ -1,6 +1,6 @@
 // src/lib/utils/inspectionSchedule.test.js
 import { describe, it, expect } from 'vitest';
-import { computeInspectionSchedule, sortBySchedule, sortByDisplayOrder, frequencyLabel } from './inspectionSchedule.js';
+import { computeInspectionSchedule, sortByDisplayOrder, frequencyLabel } from './inspectionSchedule.js';
 
 const NOW = new Date('2026-07-03T12:00:00Z');
 
@@ -141,33 +141,6 @@ describe('computeInspectionSchedule', () => {
       { now: NOW, dueSoonDays: 3 },
     );
     expect(s.band).toBe('ok'); // 5 > 3, so not "due soon"
-  });
-});
-
-describe('sortBySchedule', () => {
-  it('orders never-run/overdue first, then by due date, on-demand last', () => {
-    const states = computeInspectionSchedule(
-      [
-        def({ id: 'ok',      name: 'OK',      frequency_days: 30 }),
-        def({ id: 'ondemand',name: 'Ad-hoc',  frequency_days: null }),
-        def({ id: 'overdue', name: 'Overdue', frequency_days: 7 }),
-        def({ id: 'never',   name: 'Never',   frequency_days: 7 }),
-      ],
-      [closed('ok', 1), closed('overdue', 20)],
-      { now: NOW },
-    );
-    const order = sortBySchedule(states).map((s) => s.definition.id);
-    expect(order[0]).toBe('never');     // -Infinity
-    expect(order[1]).toBe('overdue');   // past due
-    expect(order[2]).toBe('ok');        // future due
-    expect(order[3]).toBe('ondemand');  // Infinity, last
-  });
-
-  it('does not mutate the input array', () => {
-    const states = computeInspectionSchedule([def({ id: 'a', frequency_days: 7 })], [], { now: NOW });
-    const copy = [...states];
-    sortBySchedule(states);
-    expect(states).toEqual(copy);
   });
 });
 

@@ -59,20 +59,3 @@ export function findComponentByRef(ref, components, floors, facilities, types) {
   }) ?? null;
 }
 
-/**
- * Given a component, return all components that are linked FROM it.
- *
- * @param {string}   componentId    - the from-component's id
- * @param {object}   componentLinks - store.componentLinks map { [id]: link[] }
- * @param {object[]} components     - all components[]
- * @param {object[]} floors
- * @param {object[]} facilities
- * @param {object[]} types
- * @returns {object[]} resolved component objects (nulls filtered out)
- */
-export function resolveLinkedComponents(componentId, componentLinks, components, floors, facilities, types) {
-  const links = componentLinks[componentId] ?? [];
-  return links
-    .map(l => findComponentByRef(l.to_component_ref, components, floors, facilities, types))
-    .filter(Boolean);
-}

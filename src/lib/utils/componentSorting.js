@@ -26,15 +26,6 @@ export function sortByResultFloorAsset(a, b) {
   return sortByFloorAsset(a, b);
 }
 
-// -- Sort by system → type → asset_id -----------------------------------------
-// For pre-resolved components (server-side or payload) where system_name and
-// type_name are already strings (not IDs).
-export function sortBySystemTypeAsset(a, b) {
-  return (a.system_name ?? '').localeCompare(b.system_name ?? '') ||
-         (a.type_name   ?? '').localeCompare(b.type_name   ?? '') ||
-         (a.asset_id    ?? '').localeCompare(b.asset_id    ?? '', undefined, { numeric: true, sensitivity: 'base' });
-}
-
 // -- Sort by system presentation_order → inspection_sort_order → asset_id ------
 // The canonical report ROW order — matches the online Components inventory table
 // (ComponentInventoryTable): system presentation_order, then the manual

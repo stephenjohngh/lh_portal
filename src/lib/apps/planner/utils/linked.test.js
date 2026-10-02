@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   fromMaintenanceJob, fromMeeting, fromAction, fromGtDocument,
-  linkedOccurrences, filterLinked, SOURCES, visibleSources,
+  linkedOccurrences, SOURCES, visibleSources,
   fromObligationDue,
 } from './linked.js';
 import { agenda, bucketOf } from './agenda.js';
@@ -104,22 +104,6 @@ describe('linkedOccurrences', () => {
     // planner shows the rest rather than failing.
     expect(linkedOccurrences({ jobs: input.jobs })).toHaveLength(1);
     expect(linkedOccurrences()).toEqual([]);
-  });
-});
-
-describe('filterLinked', () => {
-  const items = linkedOccurrences({
-    jobs: [{ id: 'j1', scheduled_date: '2026-03-01' }],
-    meetings: [{ id: 'm1', meeting_date: '2026-03-02' }],
-  });
-
-  it('shows everything when nothing is switched off', () => {
-    expect(filterLinked(items, null)).toHaveLength(2);
-  });
-
-  it('keeps only the sources asked for', () => {
-    expect(filterLinked(items, ['maintenance']).map(i => i.source)).toEqual(['maintenance']);
-    expect(filterLinked(items, [])).toEqual([]);
   });
 });
 

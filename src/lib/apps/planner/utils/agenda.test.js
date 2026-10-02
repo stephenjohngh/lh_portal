@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   mergeOccurrences, buildOccurrences, bucketOf, agenda, describeAgenda,
-  byMonth, completionPatch, STATUS, firstLine,
+  completionPatch, STATUS, firstLine,
 } from './agenda.js';
 
 const TODAY = '2026-06-15';
@@ -179,15 +179,6 @@ describe('describeAgenda', () => {
   it('says so when there is nothing to do', () => {
     expect(describeAgenda({ overdue: [], due_soon: [], planned: [9], done: [9] }))
       .toBe('Nothing outstanding');
-  });
-});
-
-describe('byMonth', () => {
-  it('keys occurrences by their month', () => {
-    const out = byMonth([{ date: '2026-01-05' }, { date: '2026-01-20' }, { date: '2026-03-01' }]);
-    expect(out.get('2026-01')).toHaveLength(2);
-    expect(out.get('2026-03')).toHaveLength(1);
-    expect(out.has('2026-02')).toBe(false);
   });
 });
 

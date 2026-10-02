@@ -175,22 +175,6 @@ export function describeAgenda(groups) {
 }
 
 /**
- * Occurrences by month, for a calendar grid.
- *
- * Keyed 'YYYY-MM' so a caller can ask for a month without re-scanning, and so
- * an empty month is visibly empty rather than missing.
- */
-export function byMonth(occurrences = []) {
-  const out = new Map();
-  for (const item of occurrences) {
-    const key = item.date.slice(0, 7);
-    if (!out.has(key)) out.set(key, []);
-    out.get(key).push(item);
-  }
-  return out;
-}
-
-/**
  * The patch that records an occurrence, ready for the store.
  *
  * Pure so the RULE is testable without a database: what a tick means, what

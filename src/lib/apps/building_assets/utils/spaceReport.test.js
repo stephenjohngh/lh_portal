@@ -1,7 +1,7 @@
 // src/lib/apps/building_assets/utils/spaceReport.test.js
 import { describe, it, expect } from 'vitest';
 import {
-  spaceRollup, spaceMembersCsvRows, buildRegisterRow, spacesRegisterCsvRows,
+  spaceRollup, buildRegisterRow, spacesRegisterCsvRows,
   buildSpacesRegisterRows,
 } from './spaceReport.js';
 
@@ -22,15 +22,6 @@ describe('spaceRollup', () => {
   });
   it('handles an empty list', () => {
     expect(spaceRollup([])).toEqual({ total: 0, byStatus: { ok: 0, problem: 0, failed: 0, inactive: 0 } });
-  });
-});
-
-describe('spaceMembersCsvRows', () => {
-  it('emits a header and one escaped row per member', () => {
-    const rows = spaceMembersCsvRows(space, members, floors, types);
-    expect(rows[0]).toBe('Space Ref,Space Name,Component Ref,Type,Label,Status');
-    expect(rows).toHaveLength(4);
-    expect(rows[1]).toBe('G/SP/12,Plant Room,G/FD/FD-1,Fire Door,Door A,OK');
   });
 });
 

@@ -71,7 +71,3 @@ export function makeGroupMembershipResolver({ components = [], types = [], space
   };
 }
 
-/** One-shot convenience (builds a resolver and applies it to a single group). */
-export function resolveGroupMembership(group, ctx) {
-  return makeGroupMembershipResolver(ctx)(group);
-}

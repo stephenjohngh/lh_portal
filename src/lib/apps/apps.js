@@ -178,52 +178,11 @@ export const AVAILABLE_APPS = [
 ];
 
 /**
- * App ID constants for type safety
- * Use these instead of magic strings
- */
-export const APP_IDS = {
-  HOME:            'home',
-  ADMIN:           'admin',
-  MANAGEMENT:      'management',
-  BUILDING_ASSETS: 'building_assets',
-  INSPECTION:      'inspection',
-  MOBILEPLAN:          'mobileplan',
-  MANAGEMENT_MOBILE:   'managementmobile',
-  MAINTENANCE:     'maintenance',
-  INFO:            'info',
-  MOR:             'mor',
-  GOLDEN_THREAD:   'golden_thread',
-  DOSSIER:         'dossier',
-  PLANNER:         'planner',
-  COMPLIANCE:      'compliance',
-  COMPLAINTS:      'complaints',
-  PARKING:         'parking',
-  SETTINGS:        'settings'
-};
-
-/**
  * Get apps that require explicit permission
  * @returns {AppDefinition[]} Apps that need app_permissions entry
  */
 export function getPermissionedApps() {
   return AVAILABLE_APPS.filter(app => app.requiresPermission);
-}
-
-/**
- * Get apps that are always visible to all users
- * @returns {AppDefinition[]} Apps shown to everyone
- */
-export function getAlwaysVisibleApps() {
-  return AVAILABLE_APPS.filter(app => app.alwaysVisible);
-}
-
-/**
- * Get app definition by ID
- * @param {string} appId - App identifier
- * @returns {AppDefinition|undefined} App definition or undefined if not found
- */
-export function getAppById(appId) {
-  return AVAILABLE_APPS.find(app => app.id === appId);
 }
 
 /**
@@ -250,20 +209,3 @@ export function getAppsForUser(permittedAppIds = [], isAdmin = false) {
   });
 }
 
-/**
- * Validate if an app ID exists in the system
- * @param {string} appId - App identifier to validate
- * @returns {boolean} True if app exists
- */
-export function isValidAppId(appId) {
-  return AVAILABLE_APPS.some(app => app.id === appId);
-}
-
-/**
- * Get all app IDs that require permissions
- * Useful for permission management interfaces
- * @returns {string[]} Array of app IDs
- */
-export function getPermissionedAppIds() {
-  return getPermissionedApps().map(app => app.id);
-}

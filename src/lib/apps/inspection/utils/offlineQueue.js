@@ -62,9 +62,6 @@ export function isOfflineAvailable() {
   return isIdbAvailable();
 }
 
-// Test seam: reset the memoised handle between test files if ever needed.
-export function _resetHandle() { _handlePromise = null; }
-
 // -- Ops -----------------------------------------------------------------------
 
 /**

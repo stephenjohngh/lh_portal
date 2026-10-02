@@ -25,6 +25,7 @@ import {
   DUTY_HOLDER_ROLES, dutyHolderRole, unclassifiedDutyHolders, dutyHolderTally,
 } from '$lib/utils/dutyHolderRole.js';
 import { matchesSearch } from '$lib/utils/textSearch.js';
+import { isEmptyScope } from '$lib/apps/building_assets/utils/inspectionScope.js';
 
 /**
  * Every state a register entry can be in, most-actionable first. The order is
@@ -462,8 +463,11 @@ export function obligationState(d) {
  *  wrong in that direction, but each needs scoping by hand, so it is worth
  *  being able to list them. */
 export function hasEmptyScope(d) {
-  const scope = d.scope ?? {};
-  return Object.values(scope).every(v => v == null || (Array.isArray(v) && v.length === 0));
+  // ONE rule for "matches everything": the matcher's own (inspectionScope.js),
+  // which names the filters it reads. This was a second copy that treated any
+  // non-empty key as a constraint, so a key the matcher ignores would have
+  // made an obligation read as scoped while it matched every component.
+  return isEmptyScope(d.scope ?? {});
 }
 
 /**

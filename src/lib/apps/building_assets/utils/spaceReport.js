@@ -5,8 +5,6 @@
 
 import { csvEsc } from './componentsCsv.js';
 import { buildSpaceRef } from '$lib/utils/spaceRef.js';
-import { buildComponentRef } from '$lib/utils/componentRef.js';
-import { statusCfg } from '$lib/utils/resultConstants.js';
 import { componentsInSpace } from './spaceMembership.js';
 import { computeMetresPerUnit, measureArea } from '../components/plan/planMeasure.js';
 
@@ -23,27 +21,6 @@ export function spaceRollup(members = []) {
     byStatus[STATUS_KEYS.includes(c.status) ? c.status : 'inactive']++;
   }
   return { total: members.length, byStatus };
-}
-
-/**
- * CSV lines (header + one row per member) for a single space's components.
- * @returns {string[]}
- */
-export function spaceMembersCsvRows(space, members = [], floors = [], types = []) {
-  const spaceRef = buildSpaceRef(space, floors);
-  const header = ['Space Ref', 'Space Name', 'Component Ref', 'Type', 'Label', 'Status'];
-  const rows = members.map(c => {
-    const t = types.find(tt => tt.code === c.type_code);
-    return [
-      spaceRef,
-      space?.name ?? '',
-      buildComponentRef(c, floors, types),
-      t?.name ?? c.type_code ?? '',
-      c.label ?? '',
-      statusCfg(c.status).label,
-    ].map(csvEsc).join(',');
-  });
-  return [header.map(csvEsc).join(','), ...rows];
 }
 
 /**

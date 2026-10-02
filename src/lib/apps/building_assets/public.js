@@ -26,16 +26,6 @@
 import { api } from '$lib/utils/api';
 
 /**
- * Read a single component by id. Cross-app reads — e.g. Golden Thread citing an
- * asset — go through here rather than querying the table directly.
- * @param {string} id
- * @returns {Promise<object>} the component row
- */
-export function getComponent(id) {
-  return api.getById('components', id);
-}
-
-/**
  * Update component fields. The single canonical write: Building Assets' own store
  * and any other app both call this, so the write shape and the `updated_by`
  * stamp live in one place.
@@ -139,14 +129,6 @@ export async function replaceComponentAttributes(componentId, attrValues) {
 // between.
 
 /**
- * Latest inspection per component (deduped server-side RPC).
- * @param {string[]} componentIds
- */
-export function getLatestInspections(componentIds) {
-  return api.latestInspections(componentIds);
-}
-
-/**
  * Create a component_inspection row. `inspected_at` is stamped (now) unless the
  * caller supplies one. Returns the created row.
  * @param {object} fields  component_id, inspection_result, inspector_notes,
@@ -157,16 +139,6 @@ export function createComponentInspection(fields) {
     inspected_at: new Date().toISOString(),
     ...fields,
   });
-}
-
-/**
- * Update an existing component_inspection (e.g. re-inspecting the same component
- * in a walk). Returns the updated row.
- * @param {string} id
- * @param {object} fields
- */
-export function updateComponentInspection(id, fields) {
-  return api.update('component_inspections', id, fields);
 }
 
 /**
@@ -182,11 +154,6 @@ export function upsertComponentInspection(row) {
 // ── Floors ──────────────────────────────────────────────────────────────────
 // Building Assets owns the floor model; the Admin app provides a management UI
 // over it. Admin reaches floors through these functions rather than the table.
-
-/** List floors in display order. */
-export function listFloors() {
-  return api.get('floors', { orderBy: 'level_order', ascending: true });
-}
 
 /**
  * Update floor fields (e.g. walk_order from the Admin Floors panel).

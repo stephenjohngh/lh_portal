@@ -13,34 +13,6 @@
 
 import { api } from '$lib/utils/api';
 
-// -- Default state -------------------------------------------------------------
-// Mirrors the initial values in ComponentsTab.svelte.
-export const DEFAULT_CONFIG = {
-  filters: {
-    floorPreset:     'all',
-    filterFloorIds:  [],
-    filterSystemIds: [],
-    filterTypeCodes: [],
-    filterStatuses:  [],
-    searchQuery:     '',
-  },
-  columns: {
-    showNotes:           true,
-    showLinked:          true,
-    showInspectionNotes: false,
-    view:                'list',
-  },
-  report: {
-    includePlan:              false,
-    includeList:              true,
-    includeFloorSummary:      true,
-    includeFullSummary:       false,
-    includeFullComponentList: false,
-    planShowId:               true,
-    planShowLabel:            false,
-  },
-};
-
 // -- DB helpers ----------------------------------------------------------------
 
 function rowToPreset(row) {

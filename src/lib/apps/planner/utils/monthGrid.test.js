@@ -1,7 +1,7 @@
 // src/lib/apps/planner/utils/monthGrid.test.js
 
 import { describe, it, expect } from 'vitest';
-import { buildMonthGrid, mondayIndex, stepMonth, monthList, WEEKDAY_LABELS } from './monthGrid.js';
+import { buildMonthGrid, mondayIndex, stepMonth, WEEKDAY_LABELS } from './monthGrid.js';
 
 const occ = (date) => ({ date, status: 'due', series: { id: 'e1', title: 'Thing' } });
 
@@ -88,13 +88,6 @@ describe('stepMonth', () => {
     expect(stepMonth(2027, 12, 1, window)).toBeNull();
     expect(stepMonth(2026, 1, -1, window)).toBeNull();
     expect(stepMonth(2026, 6, 1, window)).toEqual({ year: 2026, month: 7 });
-  });
-});
-
-describe('monthList', () => {
-  it('lists only what belongs to the month', () => {
-    const grid = buildMonthGrid(2026, 3, [occ('2026-03-02'), occ('2026-02-25')]);
-    expect(monthList(grid).map(i => i.date)).toEqual(['2026-03-02']);
   });
 });
 

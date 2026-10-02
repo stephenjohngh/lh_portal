@@ -236,12 +236,6 @@ export async function prepareAssets(files = [], { pin = false } = {}) {
   }
 }
 
-/** Is this file id allowed through this publication's asset endpoint? */
-export function manifestAllows(manifest, documentId) {
-  if (!documentId) return false;
-  return (manifest?.files ?? []).some(f => f.document_id === documentId);
-}
-
 /** The manifest entry for a file id, or null. */
 export function manifestEntry(manifest, documentId) {
   return (manifest?.files ?? []).find(f => f.document_id === documentId) ?? null;

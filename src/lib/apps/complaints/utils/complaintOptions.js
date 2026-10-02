@@ -20,9 +20,6 @@ export const CATEGORIES = [
     hint: 'Noise, cleaning, service charge — recorded, then redirected' },
 ];
 
-/** The three in-scope categories, for the form's default guidance. */
-export const IN_SCOPE_CATEGORIES = CATEGORIES.filter(c => c.value !== 'out_of_scope');
-
 /** How it reached us. MOR's list, so the two read alike. */
 export const CHANNELS = [
   { value: 'staff_logged', label: 'Logged by staff' },
@@ -62,7 +59,5 @@ const labelFrom = (list, value, fallback) =>
 export const categoryLabel  = (v) => labelFrom(CATEGORIES, v, 'Uncategorised');
 export const channelLabel   = (v) => labelFrom(CHANNELS, v, 'Unknown');
 export const complainantLabel = (v) => labelFrom(COMPLAINANT_TYPES, v, 'Not given');
-export const outcomeLabel   = (v) => labelFrom(OUTCOMES, v, '—');
-
 /** For `FormSelect`, which wants `{ value, label }` and its own placeholder. */
 export const asOptions = (list) => list.map(({ value, label }) => ({ value, label }));

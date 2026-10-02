@@ -97,11 +97,6 @@ export function attrValue(componentAttrs, componentId, defId) {
   return (componentAttrs[componentId] ?? []).find(a => a.type_attribute_id === defId)?.value ?? null;
 }
 
-/** All raw attribute rows for a component. */
-export function attrsFor(componentAttrs, componentId) {
-  return componentAttrs[componentId] ?? [];
-}
-
 /** Look up a building_systems row by id. */
 export function systemById(systems, id) {
   return systems.find(s => s.id === id) ?? null;

@@ -7,8 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  generateToken, hashToken, isWellFormedToken, tokenPrefix, safeEqual,
-  publicationUrl, TOKEN_PREFIX_LENGTH,
+  generateToken, hashToken, isWellFormedToken, tokenPrefix, publicationUrl, TOKEN_PREFIX_LENGTH,
 } from './publicationToken.js';
 
 describe('generateToken', () => {
@@ -98,20 +97,6 @@ describe('tokenPrefix', () => {
     const token = generateToken();
     expect(token.startsWith(tokenPrefix(token))).toBe(true);
     expect(tokenPrefix(token).length).toBeLessThan(token.length / 4);
-  });
-});
-
-describe('safeEqual', () => {
-  it('compares equal and unequal digests correctly', () => {
-    expect(safeEqual('abc123', 'abc123')).toBe(true);
-    expect(safeEqual('abc123', 'abc124')).toBe(false);
-    expect(safeEqual('abc123', 'abc12')).toBe(false);
-  });
-
-  it('is false for anything missing rather than treating two blanks as a match', () => {
-    expect(safeEqual(null, null)).toBe(true);      // both '' — no secret involved
-    expect(safeEqual('abc', null)).toBe(false);
-    expect(safeEqual(null, 'abc')).toBe(false);
   });
 });
 

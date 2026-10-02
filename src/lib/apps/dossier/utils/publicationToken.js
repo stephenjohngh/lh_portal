@@ -66,22 +66,6 @@ export function tokenPrefix(token) {
 }
 
 /**
- * Compare two hex digests without leaking where they diverge.
- *
- * The lookup is by hash and the token is uniformly random, so a timing signal
- * here is not a practical attack — but a constant-time compare costs nothing
- * and removes the need for anyone to reason about that again.
- */
-export function safeEqual(a, b) {
-  const x = String(a ?? '');
-  const y = String(b ?? '');
-  if (x.length !== y.length) return false;
-  let diff = 0;
-  for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
-  return diff === 0;
-}
-
-/**
  * The link the author copies and sends.
  *
  * @param {string} origin - e.g. https://portal.example.com

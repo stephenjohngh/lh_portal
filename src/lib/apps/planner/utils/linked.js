@@ -367,14 +367,3 @@ export function linkedOccurrences({
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/**
- * Which sources a reader has switched on.
- *
- * All of them, by default: somebody opening a planner wants the year, not a
- * configuration exercise. The toggles exist for the case where one source
- * drowns the rest — a building with weekly maintenance jobs, most likely.
- */
-export function filterLinked(items = [], enabled = null) {
-  if (!enabled) return items;
-  return items.filter(i => enabled.includes(i.source));
-}

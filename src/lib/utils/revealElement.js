@@ -53,24 +53,6 @@ export function revealElement(
 }
 
 /**
- * Reveal by id, once the DOM has caught up.
- *
- * The usual caller has just opened a section to make the target exist, so the
- * element is not there yet when the click handler runs. A frame is the honest
- * wait: `tick()` alone returns before the browser has laid the new content out,
- * and a scroll computed against a stale layout lands somewhere arbitrary.
- *
- * @param {string} id
- * @param {{ behavior?: ScrollBehavior, block?: ScrollLogicalPosition }} [opts]
- */
-export function revealById(id, opts) {
-  if (!id || typeof document === 'undefined') return;
-  requestAnimationFrame(() => {
-    revealElement(document.getElementById(id), opts);
-  });
-}
-
-/**
  * How far down the window the first unobscured pixel is.
  *
  * The app shell's nav is fixed, and an app may put a sticky bar of its own

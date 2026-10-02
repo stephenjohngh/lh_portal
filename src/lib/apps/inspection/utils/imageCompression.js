@@ -39,20 +39,6 @@ export async function compressImage(imageBlob, options = {}) {
 }
 
 /**
- * Convert a File or Blob to a data URL (for previews).
- * @param {Blob|File} blob
- * @returns {Promise<string>}
- */
-export function blobToDataURL(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror   = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-/**
  * Get image dimensions from a blob.
  * @param {Blob} blob
  * @returns {Promise<{width: number, height: number}>}
@@ -67,16 +53,3 @@ export function getImageDimensions(blob) {
   });
 }
 
-/**
- * Validate image before compression.
- * @param {Blob} blob
- * @param {number} maxSize - Max bytes (default 10 MB)
- * @returns {Promise<boolean>}
- */
-export async function validateImage(blob, maxSize = 10 * 1024 * 1024) {
-  if (!blob.type.startsWith('image/')) throw new Error('File must be an image');
-  if (blob.size > maxSize) throw new Error(`Image too large. Maximum: ${(maxSize / 1024 / 1024).toFixed(0)}MB`);
-  const { width, height } = await getImageDimensions(blob);
-  if (width < 100 || height < 100) throw new Error('Image too small. Minimum: 100×100 pixels');
-  return true;
-}

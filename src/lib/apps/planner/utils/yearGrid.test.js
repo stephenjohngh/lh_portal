@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  buildYearGrid, cellMarks, yearsInWindow, monthItems, mondayIndex,
+  buildYearGrid, cellMarks, yearsInWindow, mondayIndex,
   columnWeekdays, MONTH_SHORT, WEEKDAY_SHORT, SLOTS,
 } from './yearGrid.js';
 
@@ -157,18 +157,6 @@ describe('yearsInWindow', () => {
   it('survives nonsense', () => {
     expect(yearsInWindow(null, null)).toEqual([]);
     expect(yearsInWindow('2028-01-01', '2026-01-01')).toEqual([]);
-  });
-});
-
-describe('monthItems', () => {
-  it('flattens one month in day order', () => {
-    const grid = buildYearGrid(2026, [occ('2026-03-20'), occ('2026-03-02'), occ('2026-04-01')]);
-    expect(monthItems(grid, 3).map(i => i.date)).toEqual(['2026-03-02', '2026-03-20']);
-  });
-
-  it('is empty for a month with nothing, and for a month that is not there', () => {
-    expect(monthItems(buildYearGrid(2026, []), 5)).toEqual([]);
-    expect(monthItems(buildYearGrid(2026, []), 13)).toEqual([]);
   });
 });
 

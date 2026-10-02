@@ -3,7 +3,7 @@
 // These helpers resolve a ref back to a component and follow component links.
 
 import { describe, it, expect } from 'vitest';
-import { fmtComponentRef, buildComponentRef, findComponentByRef, resolveLinkedComponents } from './componentRef.js';
+import { fmtComponentRef, buildComponentRef, findComponentByRef } from './componentRef.js';
 
 const floors = [{ id: 'f1', short_name: 'G' }, { id: 'f2', short_name: '1' }];
 const types  = [{ code: 'fd', initial: 'FD' }, { code: 'lt', initial: 'L' }];
@@ -49,16 +49,3 @@ describe('findComponentByRef', () => {
   });
 });
 
-describe('resolveLinkedComponents', () => {
-  it('resolves every link from a component, dropping unresolvable refs', () => {
-    const links = { c1: [
-      { to_component_ref: '1/L/L-007' },   // resolves to c2
-      { to_component_ref: 'X/Y/Z' },       // unresolvable → dropped
-    ] };
-    const out = resolveLinkedComponents('c1', links, components, floors, [], types);
-    expect(out.map(c => c.id)).toEqual(['c2']);
-  });
-  it('returns [] when the component has no links', () => {
-    expect(resolveLinkedComponents('c1', {}, components, floors, [], types)).toEqual([]);
-  });
-});

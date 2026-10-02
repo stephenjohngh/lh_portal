@@ -15,7 +15,7 @@
   import { createEventDispatcher } from 'svelte';
   import { renderBlocksToHtml } from '../utils/blockRender.js';
   import { isEmptyDoc }         from '../utils/blockSchema.js';
-  // Table styling is shared with DatasetTableView and the editor's node view,
+  // Table styling is shared with the editor's node view,
   // so it lives in its own stylesheet rather than in this component's styles.
   import '../dataset-table.css';
   import '../block-reveal.css';

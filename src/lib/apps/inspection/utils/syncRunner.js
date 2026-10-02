@@ -156,9 +156,3 @@ export function stopSync() {
   started = false;
 }
 
-/** Test seam: reset module state between tests. */
-export function _reset() {
-  draining = false; rerun = false; started = false; injectedDeps = null;
-  if (unsubOnline) { unsubOnline(); unsubOnline = null; }
-  _state.set({ pending: 0, syncing: 0, error: 0, online: true, items: [] });
-}

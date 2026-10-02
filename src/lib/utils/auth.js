@@ -241,47 +241,6 @@ export async function requireModifyPermission() {
 }
 
 /**
- * Check if user can perform specific action
- * @param {string} action - Action to check (e.g., 'create_issue', 'edit_comment')
- * @param {Object} resource - Resource being acted upon (optional)
- * @param {string} userId - User ID (optional, defaults to current user)
- * @returns {Promise<boolean>} True if user can perform action
- */
-export async function canPerformAction(action, resource = null, userId = null) {
-  try {
-    const user = userId || (await getCurrentUser())?.id;
-    if (!user) return false;
-
-    const permissionLevel = await getPermissionLevel(user);
-    
-    // Admins can do everything
-    if (permissionLevel === 'admin') return true;
-    
-    // Read-only users can't modify anything
-    if (permissionLevel === 'read-only') {
-      const readOnlyActions = ['view', 'read', 'list', 'search', 'filter'];
-      return readOnlyActions.some(a => action.startsWith(a));
-    }
-    
-    // Read-write users can do most things
-    if (permissionLevel === 'read-write') {
-      // Check if they own the resource for edit/delete
-      if (action.startsWith('edit') || action.startsWith('delete')) {
-        if (resource && resource.created_by !== user) {
-          return false;
-        }
-      }
-      return true;
-    }
-    
-    return false;
-  } catch (/** @type {any} */ err) {
-    logger('❌ Error checking action permission:', err.message);
-    return false;
-  }
-}
-
-/**
  * Get user's full profile with permission info
  * @param {string} userId - User ID
  * @returns {Promise<Object|null>} User profile with permission flags

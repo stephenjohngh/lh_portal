@@ -224,6 +224,13 @@ describe('hasEmptyScope', () => {
     expect(hasEmptyScope(obl({ scope: { typeCodes: [], floorIds: [] } }))).toBe(true);
     expect(hasEmptyScope(obl({ scope: { typeCodes: ['door_fire_door'] } }))).toBe(false);
   });
+
+  it('calls a scope empty exactly when the matcher matches every component', () => {
+    // A key the matcher does not read is not a constraint. The old copy of
+    // this rule counted it as one, so the obligation read as scoped.
+    expect(hasEmptyScope(obl({ scope: { note: 'check the lobby doors' } }))).toBe(true);
+    expect(hasEmptyScope(obl({ scope: { fixedAttrFilters: [{ defName: 'Emergency' }] } }))).toBe(false);
+  });
 });
 
 describe('filterObligations', () => {

@@ -208,19 +208,3 @@ export function getTodayDate() {
   return fmtDateLong(new Date().toISOString());
 }
 
-/**
- * Generate filter summary text (en-GB).
- */
-export function getFilterSummary(includeCurrent, includeParked, includeCompleted, filterDate) {
-  const statuses = [
-    includeCurrent && 'Current',
-    includeParked && 'Parked',
-    includeCompleted && 'Completed'
-  ].filter(Boolean).join(', ');
-
-  const dateInfo = filterDate
-    ? `Created since ${fmtDate(new Date(filterDate).toISOString())}`
-    : 'All dates';
-
-  return `Showing: ${statuses} • ${dateInfo}`;
-}

@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resultRankSort, sortByFloorAsset, sortByResultFloorAsset,
-  sortBySystemTypeAsset, sortBySystemInspectionAsset,
+  sortBySystemInspectionAsset,
 } from './componentSorting.js';
 
 describe('resultRankSort', () => {
@@ -62,26 +62,6 @@ describe('sortByResultFloorAsset', () => {
     ];
     rows.sort(sortByResultFloorAsset);
     expect(rows.map(r => r.asset_id)).toEqual(['B1', 'A1']);
-  });
-});
-
-describe('sortBySystemTypeAsset', () => {
-  it('sorts by system, then type, then numeric-aware asset id', () => {
-    const rows = [
-      { system_name: 'Fire', type_name: 'Door',  asset_id: 'FD10' },
-      { system_name: 'Fire', type_name: 'Door',  asset_id: 'FD2' },
-      { system_name: 'Fire', type_name: 'Alarm', asset_id: 'A1' },
-      { system_name: 'Electrical', type_name: 'Lamp', asset_id: 'L1' },
-    ];
-    rows.sort(sortBySystemTypeAsset);
-    expect(rows.map(r => r.asset_id)).toEqual(['L1', 'A1', 'FD2', 'FD10']);
-  });
-  it('tolerates missing fields', () => {
-    const rows = [
-      { system_name: null, type_name: null, asset_id: null },
-      { system_name: 'Fire', type_name: 'Door', asset_id: 'FD1' },
-    ];
-    expect(() => rows.sort(sortBySystemTypeAsset)).not.toThrow();
   });
 });
 

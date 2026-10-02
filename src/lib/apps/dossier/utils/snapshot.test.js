@@ -12,7 +12,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  buildSnapshot, buildManifest, referencedFileIds, manifestAllows, manifestEntry,
+  buildSnapshot, buildManifest, referencedFileIds, manifestEntry,
   describeInclusion, SNAPSHOT_FORMAT,
 } from './snapshot.js';
 import { buildTree } from './docTree.js';
@@ -191,16 +191,16 @@ describe('buildManifest', () => {
     const manifest = buildManifest(snapshot());
 
     expect(manifest.files.map(f => f.document_id)).toEqual(['f1']);
-    expect(manifestAllows(manifest, 'f1')).toBe(true);
-    expect(manifestAllows(manifest, 'f9')).toBe(false);
+    expect(!!manifestEntry(manifest, 'f1')).toBe(true);
+    expect(!!manifestEntry(manifest, 'f9')).toBe(false);
   });
 
   it('refuses an id it has never heard of', () => {
     const manifest = buildManifest(snapshot());
-    expect(manifestAllows(manifest, 'not-a-file')).toBe(false);
-    expect(manifestAllows(manifest, null)).toBe(false);
-    expect(manifestAllows(manifest, undefined)).toBe(false);
-    expect(manifestAllows({}, 'f1')).toBe(false);
+    expect(!!manifestEntry(manifest, 'not-a-file')).toBe(false);
+    expect(!!manifestEntry(manifest, null)).toBe(false);
+    expect(!!manifestEntry(manifest, undefined)).toBe(false);
+    expect(!!manifestEntry({}, 'f1')).toBe(false);
   });
 
   it('carries the checksums the caller computed from the bytes', () => {

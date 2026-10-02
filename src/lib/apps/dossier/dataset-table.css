@@ -1,12 +1,15 @@
 /* src/lib/apps/dossier/dataset-table.css
    How a table looks — chronology, correspondence, document index.
 
-   A plain stylesheet rather than a component <style> block because THREE
-   surfaces render this markup and all three must agree (merge doc D10):
+   A plain stylesheet rather than a component <style> block because TWO
+   surfaces render this markup and both must agree (merge doc D10):
 
      * BlockContent's read-mode renderer (a table embedded in a page)
      * the editor's embedded-table node view
-     * DatasetTableView, which the published reader uses for a table on its own
+
+   (A third, DatasetTableView, showed a table on its own in the published
+   reader. Tables stopped being reachable on their own in f3a84a4 — a table is
+   something a page shows — and the component was deleted 2026-10-02.)
 
    These rules lived inside BlockContent as :global() until the reader needed a
    table on a page with no prose on it — at which point BlockContent was not

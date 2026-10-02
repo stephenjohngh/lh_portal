@@ -3,7 +3,7 @@
 // mirroring componentRef.js. These build/find helpers must round-trip.
 
 import { describe, it, expect } from 'vitest';
-import { buildSpaceRef, findSpaceByRef, fmtSpaceRef, spaceKindInitial, KIND_LABEL, KIND_INITIAL, deriveSpaceName } from './spaceRef.js';
+import { buildSpaceRef, findSpaceByRef, spaceKindInitial, KIND_LABEL, KIND_INITIAL, deriveSpaceName } from './spaceRef.js';
 
 const floors = [{ id: 'f1', short_name: 'G' }, { id: 'b1', short_name: 'B1' }];
 const spaces = [
@@ -57,14 +57,6 @@ describe('findSpaceByRef', () => {
     expect(findSpaceByRef('G/SP', spaces, floors)).toBeNull();      // only 2 parts
     expect(findSpaceByRef('', spaces, floors)).toBeNull();
     expect(findSpaceByRef('G/SP/12', [], floors)).toBeNull();
-  });
-});
-
-describe('fmtSpaceRef', () => {
-  it('passes a ref through, or returns a dash when empty', () => {
-    expect(fmtSpaceRef('G/SP/12')).toBe('G/SP/12');
-    expect(fmtSpaceRef('')).toBe('—');
-    expect(fmtSpaceRef(null)).toBe('—');
   });
 });
 

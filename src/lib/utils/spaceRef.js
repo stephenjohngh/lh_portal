@@ -59,14 +59,6 @@ export function buildSpaceRef(space, floors = []) {
 }
 
 /**
- * Format a stored/derived ref for display — dash when empty.
- * @param {string} ref
- */
-export function fmtSpaceRef(ref) {
-  return ref || '—';
-}
-
-/**
  * Find the space whose composed ref matches the given ref string.
  * Format: "{floorShortName}/{Type}/{assignedId}".
  * @param {string}   ref

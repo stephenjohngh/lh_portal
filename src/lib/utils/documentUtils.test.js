@@ -5,8 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   formatFileSize, mimeIcon, docTypeFromMime, isUnclassifiedDocType,
-  getExpiryStatus, isExpired, isExpiringSoon,
-  docTypeLabel, categoryLabel, categoryFromFilename,
+  getExpiryStatus, docTypeLabel, categoryLabel, categoryFromFilename,
   folderSegments, folderLabel, compareFolderPath, sortDocsByFolder, docName,
   sanitiseFolderSegment, entityFolderPath, DOC_FOLDERS,
 } from './documentUtils.js';
@@ -52,12 +51,6 @@ describe('expiry status', () => {
     expect(getExpiryStatus(null)).toBeNull();
   });
 
-  it('isExpired / isExpiringSoon are derived predicates', () => {
-    expect(isExpired(inDays(-1))).toBe(true);
-    expect(isExpired(inDays(10))).toBe(false);
-    expect(isExpiringSoon(inDays(10))).toBe(true);
-    expect(isExpiringSoon(inDays(90))).toBe(false);
-  });
 });
 
 describe('label lookups', () => {

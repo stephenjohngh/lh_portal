@@ -22,7 +22,7 @@ const h = vi.hoisted(() => {
 vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
 vi.mock('$lib/utils/logger',   () => ({ getLogger: () => () => {} }));
 
-const { isAdmin, isReadOnly, canModify, getPermissionLevel, canPerformAction } = await import('./auth.js');
+const { isAdmin, isReadOnly, canModify, getPermissionLevel } = await import('./auth.js');
 
 beforeEach(() => { vi.clearAllMocks(); h.setProfile({ data: null, error: null }); });
 
@@ -79,20 +79,3 @@ describe('getPermissionLevel', () => {
   });
 });
 
-describe('canPerformAction', () => {
-  it('admins can do anything', async () => {
-    h.setProfile({ data: { is_admin: true }, error: null });
-    expect(await canPerformAction('delete_issue', null, 'u1')).toBe(true);
-  });
-  it('read-only users can only do view-style actions', async () => {
-    h.setProfile({ data: { is_admin: false, is_read_only: true }, error: null });
-    expect(await canPerformAction('view_issue', null, 'u1')).toBe(true);
-    expect(await canPerformAction('edit_issue', null, 'u1')).toBe(false);
-  });
-  it('read-write users can edit only resources they own', async () => {
-    h.setProfile({ data: { is_admin: false, is_read_only: false }, error: null });
-    expect(await canPerformAction('edit_issue', { created_by: 'u1' }, 'u1')).toBe(true);
-    expect(await canPerformAction('edit_issue', { created_by: 'other' }, 'u1')).toBe(false);
-    expect(await canPerformAction('create_issue', null, 'u1')).toBe(true);
-  });
-});

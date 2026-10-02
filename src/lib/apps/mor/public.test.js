@@ -7,7 +7,7 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock('$lib/utils/api', () => ({ api: h.api }));
 
-const { listCases, getCase, morCaseLabel } = await import('./public.js');
+const { listCases, morCaseLabel } = await import('./public.js');
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -48,11 +48,3 @@ describe('listCases', () => {
   });
 });
 
-describe('getCase', () => {
-  it('fetches a single case by id', async () => {
-    h.api.getById.mockResolvedValueOnce({ id: 'm1', reference: 'MOR-1', status: 'triage' });
-    const res = await getCase('m1');
-    expect(h.api.getById).toHaveBeenCalledWith('mor_cases', 'm1', expect.any(String));
-    expect(res).toMatchObject({ reference: 'MOR-1' });
-  });
-});

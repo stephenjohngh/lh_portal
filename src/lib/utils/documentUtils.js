@@ -50,15 +50,6 @@ export const CATEGORIES = [
   { value: 'other',                label: 'Other' },
 ];
 
-export const ENTITY_TYPES = [
-  { value: 'component',        label: 'Component' },
-  { value: 'maintenance_job',  label: 'Maintenance Job' },
-  { value: 'issue',            label: 'Issue' },
-  { value: 'activity',         label: 'Activity' },
-  { value: 'facility',         label: 'Facility' },
-  { value: 'inspection',       label: 'Inspection' },
-];
-
 /**
  * Human-readable file size string.
  * @param {number} bytes
@@ -127,16 +118,6 @@ export function getExpiryStatus(expiryDate) {
   if (band === 'overdue')  return 'expired';
   if (band === 'due_soon') return 'expiring-soon';
   return band ? 'ok' : null;
-}
-
-/** @param {string|null} expiryDate */
-export function isExpired(expiryDate) {
-  return getExpiryStatus(expiryDate) === 'expired';
-}
-
-/** @param {string|null} expiryDate */
-export function isExpiringSoon(expiryDate) {
-  return getExpiryStatus(expiryDate) === 'expiring-soon';
 }
 
 /**

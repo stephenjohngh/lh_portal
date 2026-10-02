@@ -26,7 +26,8 @@
   // Ordered by the WHOLE folder path, then by name within the folder — a
   // document's folder is only meaningful read as a hierarchy, so that is what
   // the list is grouped by. (This is the global admin view; the per-entity
-  // panel uses DocumentCard, where every document shares one folder.)
+  // panel, AttachedDocuments, draws its own rows, every document there sharing
+  // one folder.)
   $: sorted = sortDocsByFolder(docs);
 
   function expiryClass(status) {

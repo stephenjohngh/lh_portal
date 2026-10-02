@@ -65,3 +65,6 @@ CLAUDE_general_dev_rules.md
 
 # Local history backup (contains pre-purge history — must never be committed)
 /_history_backup/
+
+# vitest --coverage output (npm run test:coverage)
+/coverage/
