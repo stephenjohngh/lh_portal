@@ -19,6 +19,7 @@
   import Button  from '$lib/components/common/Button.svelte';
   import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
+  import { errMessage } from '$lib/utils/errors.js';
 
   export let job;
   export let show = true;
@@ -94,7 +95,7 @@
       // Its files go first; if one cannot be deleted the job is kept and says so.
       await maintenanceStore.deleteJob(jobId);
     } catch (/** @type {any} */ err) {
-      deleteError = err?.message ?? String(err);
+      deleteError = errMessage(err);
       return;
     }
     dispatch('changed');

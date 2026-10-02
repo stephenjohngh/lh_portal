@@ -9,27 +9,26 @@
 // at SYSTEM granularity — a system's checkbox toggles all of its types — so these
 // helpers translate between the two.
 
+import { statusLabel } from '$lib/utils/resultConstants.js';
+
 /** The four component statuses, in display order. */
 export const STATUSES = ['ok', 'problem', 'failed', 'inactive'];
 
-/** Short pill labels for the status filter chips. */
-export const STATUS_LABELS = {
-  ok:       '✓ OK',
-  problem:  '⚙ Problem',
-  failed:   '✗ Failed',
-  inactive: '— Inactive',
-};
+/** The symbol this app puts before each status word; the words are the portal's own. */
+const STATUS_SYMBOL = { ok: '✓', problem: '⚙', failed: '✗', inactive: '—' };
 
-/** Longer labels for a table's status cell. */
+/** Pill labels for the status filter chips. */
+export const STATUS_LABELS = Object.fromEntries(
+  STATUSES.map(s => [s, `${STATUS_SYMBOL[s]} ${statusLabel(s)}`]));
+
+/**
+ * The label for a status cell — a component status, or an inspection result,
+ * which may also be no_access (not a component status, so not in STATUSES).
+ */
 export function resultLabel(status) {
-  switch (status) {
-    case 'ok':        return '✓ OK';
-    case 'failed':    return '✗ Failed';
-    case 'problem':   return '⚙ Problem';
-    case 'inactive':  return '— Inactive';
-    case 'no_access': return '⊘ No access';
-    default:          return status ?? '—';
-  }
+  if (status === 'no_access') return '⊘ No access';
+  if (Object.hasOwn(STATUS_SYMBOL, status ?? '')) return `${STATUS_SYMBOL[status]} ${statusLabel(status)}`;
+  return status ?? '—';
 }
 
 /** CSS class for a status cell (ok/failed/problem/inactive). */

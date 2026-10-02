@@ -21,6 +21,7 @@
 // it starts from the rows. Document Demo's help text says so.
 
 import { ENTITY_PARENT_TABLE } from './documentAccess.js';
+import { errMessage } from '$lib/utils/errors.js';
 
 const OWNER_CHUNK = 100;       // ids per .in() — keeps the request URL short
 const FILE_CONCURRENCY = 5;    // storage lookups in flight at once
@@ -87,7 +88,7 @@ export async function checkFiles(docs, providerFor) {
     let provider;
     try { provider = providerFor(d); }
     catch (/** @type {any} */ err) {
-      out.set(d.id, { status: 'unchecked', detail: err?.message ?? String(err) });
+      out.set(d.id, { status: 'unchecked', detail: errMessage(err) });
       return;
     }
     if (typeof provider?.fileStatus !== 'function') {
@@ -97,7 +98,7 @@ export async function checkFiles(docs, providerFor) {
     try {
       out.set(d.id, { status: await provider.fileStatus(d.provider_file_id) });
     } catch (/** @type {any} */ err) {
-      out.set(d.id, { status: 'error', detail: err?.message ?? String(err) });
+      out.set(d.id, { status: 'error', detail: errMessage(err) });
     }
   }
 

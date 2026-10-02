@@ -6,7 +6,8 @@
 
   import { createEventDispatcher, onMount } from 'svelte';
   import { profiles, profilesStore } from '$lib/stores/profiles';
-  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE } from '$lib/utils/constants.js';
+  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getActionStatusLabel } from '$lib/utils/constants.js';
+  import { actionStatusColor } from '../utils/mobileTheme.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates.js';
   import { buildMeetingMinutes, meetingAttendees } from '$lib/apps/management/utils/meetingMinutes.js';
   import ActivitySheet from './ActivitySheet.svelte';
@@ -42,8 +43,6 @@
       || (a.activity_type === ACTIVITY_TYPE.DOCUMENT ? (a.fields?.display_name || a.fields?.filename || 'Document') : '');
   }
 
-  const ACTION_COLOR = { 'in-progress': '#818cf8', pending: '#64748b', completed: '#34d399' };
-  const ACTION_LABEL = { 'in-progress': 'In Progress', pending: 'Pending', completed: 'Completed' };
 
   // Activity sheet
   let selectedActivity = null;
@@ -118,11 +117,11 @@
             <p class="grp-title grp-action">Actions</p>
             {#each m.actions as a (a.id)}
               <div class="action-row">
-                <span class="action-dot" style="background:{ACTION_COLOR[a.status] ?? '#64748b'};"></span>
+                <span class="action-dot" style="background:{actionStatusColor(a.status)};"></span>
                 <div class="act-body">
                   <p class="act-text">{a.action_text}</p>
                   <div class="action-chips">
-                    <span class="a-chip">{ACTION_LABEL[a.status] ?? a.status}</span>
+                    <span class="a-chip">{getActionStatusLabel(a.status)}</span>
                     {#if a.name_text}<span class="a-chip a-assignee">{a.name_text}</span>{/if}
                     {#if a.date_deadline}<span class="a-chip">📅 {fmtDate(a.date_deadline)}</span>{/if}
                   </div>

@@ -23,6 +23,7 @@
   import { checkDocuments }  from '$lib/utils/documentApi';
   import { checkSummary }    from '$lib/utils/documentCheckLabels.js';
   import { fmtTime }                 from '$lib/utils/dates';
+  import { errMessage } from '$lib/utils/errors.js';
 
   $: ({ docs, loading, error } = $documentsStore);
 
@@ -101,7 +102,7 @@
       checkResults = { ...checkResults, ...results };
       checkedAt    = at;
     } catch (/** @type {any} */ err) {
-      checkError = err?.message ?? String(err);
+      checkError = errMessage(err);
     } finally {
       checking = false;
     }

@@ -4,7 +4,7 @@
      The parent container must be position:relative and exactly overlay the plan image. -->
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { statusTextCls } from '$lib/utils/resultConstants.js';
+  import { statusTextCls, statusLabel } from '$lib/utils/resultConstants.js';
   import { buildComponentRef } from '$lib/utils/componentRef.js';
 
   export let component;           // components row (x_position, y_position, status)
@@ -46,7 +46,7 @@
   // builder, which looks them up by component.floor_id / type_code.
   $: refStr     = buildComponentRef(component, floor ? [floor] : [], type ? [type] : []);
   $: typeName   = type?.name ?? component.type_code;
-  $: statusText = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' }[component.status] ?? component.status;
+  $: statusText = statusLabel(component.status);
   $: statusClass = statusTextCls(component.status);
 
   // Show popup above the marker when it is in the lower quarter of the plan

@@ -7,6 +7,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { mobileplanStore } from '../stores/mobileplanStore.js';
   import { fmtDateTime } from '$lib/utils/dates.js';
+  import { resultLabel as planResultLabel, resultClass } from '../utils/planFilter.js';
 
   const dispatch = createEventDispatcher();
 
@@ -75,27 +76,9 @@
 
   // -- Result display -----------------------------------------------------------
 
-  function resultLabel(r) {
-    switch (r) {
-      case 'ok':       return '✓ OK';
-      case 'failed':   return '✗ FAILED';
-      case 'problem':  return '⚙ PROBLEM';
-      case 'inactive': return '— INACTIVE';
-      case 'no_access': return '⊘ NO ACCESS';
-      default:         return r ?? '—';
-    }
-  }
-
-  function resultClass(r) {
-    switch (r) {
-      case 'ok':       return 'ok';
-      case 'failed':   return 'failed';
-      case 'problem':  return 'problem';
-      case 'inactive': return 'inactive';
-      case 'no_access': return 'inactive';
-      default:         return '';
-    }
-  }
+  // The words and classes are planFilter's — the same the component table uses.
+  // This sheet shows them in capitals.
+  const resultLabel = (r) => planResultLabel(r).toUpperCase();
 
   $: latestInsp = component ? inspections[component.id] : null;
 

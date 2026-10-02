@@ -44,6 +44,11 @@ export const ACTION_STATUS_OPTIONS = [
   { value: ACTION_STATUS.COMPLETED,   label: 'Completed'   }
 ];
 
+/** The label for an action status; an unknown value shows as itself. */
+export function getActionStatusLabel(status) {
+  return ACTION_STATUS_OPTIONS.find(o => o.value === status)?.label ?? status ?? '';
+}
+
 // ── Priorities ───────────────────────────────────────────────────────
 // Issue priority is an integer 1–6. The label/color shown on cards
 // comes from PRIORITIES; getPriorityLabel(n) is the safe accessor

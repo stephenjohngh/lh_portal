@@ -16,6 +16,8 @@
 //   • the status patch and the session-complete update set fixed values.
 // Running an op twice therefore lands on the same server state as running it once.
 
+import { errMessage } from '$lib/utils/errors.js';
+
 /**
  * @param {{ type: string, payload: object }} op
  * @param {object} deps  see makeSyncDeps() in inspectionSyncDeps.js
@@ -96,5 +98,5 @@ async function syncSessionComplete({ sessionId, fields }, deps) {
  */
 export function classifyError(e) {
   const permanent = !!(e && e.code != null);
-  return { ok: false, permanent, error: e?.message ?? String(e) };
+  return { ok: false, permanent, error: errMessage(e) };
 }

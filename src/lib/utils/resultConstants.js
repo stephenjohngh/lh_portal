@@ -75,6 +75,15 @@ export function statusCfg(value) {
   return STATUSES.find(s => s.value === (value ?? 'ok')) ?? STATUSES[0];
 }
 
+/**
+ * The display word for a component status ('ok' → 'OK'). Unlike statusCfg, an
+ * unknown value shows as ITSELF rather than as 'OK' — a label must never say
+ * a component is fine because the status was not recognised.
+ */
+export function statusLabel(value) {
+  return STATUSES.find(s => s.value === value)?.label ?? value ?? '—';
+}
+
 // -- Convenience helpers for components ---------------------------------------
 
 /** Badge background + text class for a status value (building assets theme). */

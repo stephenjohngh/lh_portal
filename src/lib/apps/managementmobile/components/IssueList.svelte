@@ -14,6 +14,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fmtDate, isOverdue } from '$lib/utils/dates.js';
   import MeetingChip from './MeetingChip.svelte';
+  import { priorityColor } from '../utils/mobileTheme.js';
 
   export let issues         = [];
   export let loading        = false;
@@ -30,20 +31,6 @@
   let query        = _persist.query;
 
   $: { _persist.status = statusFilter; _persist.query = query; }
-
-  // -- Priority colour map ---------------------------------------------
-  const PRIORITY_COLOR = {
-    1: '#ef4444',   // red   — Top Priority
-    2: '#f59e0b',   // amber — Major Project
-    3: '#818cf8',   // violet — Important (app accent)
-    4: '#64748b',   // slate — Minor
-    5: '#475569',   // dark slate — Admin
-    6: '#334155',   // darker slate — Pending
-  };
-
-  function priorityColor(p) {
-    return PRIORITY_COLOR[p] ?? PRIORITY_COLOR[4];
-  }
 
   // -- Activity / action summary helpers --------------------------------
   function activitySummary(issue) {

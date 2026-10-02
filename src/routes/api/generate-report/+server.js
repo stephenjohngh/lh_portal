@@ -26,6 +26,7 @@ import {
   AlignmentType, VerticalAlign, TableLayoutType
 } from 'docx';
 import { getLogger } from '$lib/utils/logger';
+import { statusLabel } from '$lib/utils/resultConstants.js';
 import {
   CONTENT_W, CONTENT_W_L, COLOURS, BORDERS, CELL_PAD,
   hCell, dCell, run, para,
@@ -84,7 +85,6 @@ function buildConditionSubRow(c, columnSpan, alt) {
 }
 
 // -- Status helpers ------------------------------------------------------------
-const STATUS_LABEL = { ok: 'OK', problem: 'Problem', failed: 'Failed', inactive: 'Inactive' };
 const STATUS_COLOUR = {
   ok:       COLOURS.passGreen,
   problem:  COLOURS.warnAmber,
@@ -94,7 +94,7 @@ const STATUS_COLOUR = {
 
 function statusCell(status, widthDxa, alt) {
   const colour = STATUS_COLOUR[status] ?? COLOURS.textDark;
-  const label  = STATUS_LABEL[status]  ?? (status ?? '—');
+  const label  = statusLabel(status);
   return new TableCell({
     width:         { size: widthDxa, type: WidthType.DXA },
     margins:       CELL_PAD,

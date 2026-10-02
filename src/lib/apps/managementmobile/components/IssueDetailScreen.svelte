@@ -4,7 +4,8 @@
   // Tap an activity row to open the ActivitySheet bottom sheet.
 
   import { createEventDispatcher } from 'svelte';
-  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE } from '$lib/utils/constants.js';
+  import { ACTIVITY_TYPE_CONFIG, ACTIVITY_TYPE, getPriorityLabel, getActionStatusLabel } from '$lib/utils/constants.js';
+  import { priorityColor, actionStatusColor } from '../utils/mobileTheme.js';
   import { fmtDate, fmtDateTime, isOverdue } from '$lib/utils/dates.js';
   import { sortActions } from '$lib/utils/actionSort.js';
   import ActivitySheet from './ActivitySheet.svelte';
@@ -27,26 +28,8 @@
   let showHistoric   = false;
   let showCompleted  = false;
 
-  // -- Priority colour map (matches IssueList) --------------------------
-  const PRIORITY_COLOR = {
-    1: '#ef4444',
-    2: '#f59e0b',
-    3: '#818cf8',
-    4: '#64748b',
-    5: '#475569',
-    6: '#334155',
-  };
-  function priorityColor(p) { return PRIORITY_COLOR[p] ?? PRIORITY_COLOR[4]; }
-
-  const PRIORITY_LABEL = {
-    1: 'Top Priority',
-    2: 'Major Project',
-    3: 'Important',
-    4: 'Minor',
-    5: 'Admin',
-    6: 'Pending',
-  };
-  function priorityLabel(p) { return PRIORITY_LABEL[p] ?? 'Important'; }
+  // Colours are this app's (mobileTheme.js); the words are the portal's (constants.js).
+  const priorityLabel = (p) => getPriorityLabel(p).label;
 
   // -- Activity helpers -------------------------------------------------
   $: allActivities = (issue.activities ?? [])
@@ -79,19 +62,6 @@
     : allActions.filter(a => a.status !== 'completed');
 
   $: completedCount = allActions.filter(a => a.status === 'completed').length;
-
-  const ACTION_STATUS_COLOR = {
-    'in-progress': '#818cf8',
-    'pending':     '#64748b',
-    'completed':   '#34d399',
-  };
-  const ACTION_STATUS_LABEL = {
-    'in-progress': 'In Progress',
-    'pending':     'Pending',
-    'completed':   'Completed',
-  };
-  function actionStatusColor(s) { return ACTION_STATUS_COLOR[s] ?? '#64748b'; }
-  function actionStatusLabel(s) { return ACTION_STATUS_LABEL[s] ?? s; }
 
   function deadlineChipClass(a) {
     if (a.status === 'completed') return 'deadline-done';
@@ -214,7 +184,7 @@
           <div
             class="action-dot"
             style="background:{actionStatusColor(action.status)};"
-            title={actionStatusLabel(action.status)}
+            title={getActionStatusLabel(action.status)}
             aria-hidden="true"
           ></div>
 
