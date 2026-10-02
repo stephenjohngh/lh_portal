@@ -23,6 +23,7 @@ import { jobRag, addDaysISO } from '../utils/maintenanceHelpers.js';
 import { listPlannedObligations } from '$lib/apps/compliance/public.js';
 import { isJobEvidenced } from '$lib/utils/obligationEvidence.js';
 import { plannedOccurrenceDates } from '../utils/obligationJobScope.js';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('maintenanceStore');
 
@@ -82,9 +83,7 @@ function createMaintenanceStore() {
 
   // ── Load ───────────────────────────────────────────────────────────────────
 
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
+  const load = storeLoader(update, async () => {
       // Detect current user's contractor status
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData?.user?.id ?? null;
@@ -125,24 +124,10 @@ function createMaintenanceStore() {
         }).catch(() => []),   // graceful fallback if column not yet migrated
       ]);
 
-      update(s => ({
-        ...s,
-        jobs:         jobs.map(enrichJob),
-        allDocs,
-        systems,
-        types,
-        obligations,
-        contractors,
-        isContractor,
-        loading: false,
-      }));
-      logger('✅ Loaded', jobs.length, 'jobs,', allDocs.length, 'docs,', contractors.length, 'contractors');
-    } catch (/** @type {any} */ err) {
-      logger('❌ Load failed:', err.message);
-      update(s => ({ ...s, loading: false, error: err.message }));
-      throw err;
-    }
-  }
+      return { jobs: jobs.map(enrichJob), allDocs, systems, types, obligations, contractors, isContractor };
+    },
+    (loaded) => loaded,
+    { what: 'maintenance', log: logger });
 
   // ── Documents ──────────────────────────────────────────────────────────────
 

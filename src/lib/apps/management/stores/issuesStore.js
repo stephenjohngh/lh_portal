@@ -10,6 +10,7 @@ import { sanitizeHtml }     from '$lib/utils/sanitizeHtml';
 import { del }              from '$lib/utils/request';
 import * as docApi          from '$lib/utils/documentApi';
 import { currentMeeting }   from './meetingsStore';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('issuesStore');
 
@@ -48,10 +49,8 @@ function createIssuesStore() {
   return {
     subscribe,
 
-    async fetchIssues() {
-      update(state => ({ ...state, loading: true, error: '' }));
-
-      try {
+    // A failure stays on the store (`error`) and is not re-thrown, as before.
+    fetchIssues: storeLoader(update, async () => {
         const data = await api.get('issues', {
           select: `
             *,
@@ -84,19 +83,10 @@ function createIssuesStore() {
             : (a.issue_number || 0) - (b.issue_number || 0)
         );
 
-        update(state => ({
-          ...state,
-          issues: data,
-          loading: false
-        }));
-      } catch (/** @type {any} */ err) {
-        update(state => ({
-          ...state,
-          error: err.message,
-          loading: false
-        }));
-      }
-    },
+        return data;
+      },
+      (issues) => ({ issues }),
+      { what: 'the issues', clearError: '', rethrow: false }),
 
     initializeRealtime() {
       if (realtimeChannel) {

@@ -15,6 +15,7 @@ import { getLogger }        from '$lib/utils/logger';
 import { logAudit }         from '$lib/utils/auditLogger';
 import { resolveHierarchy } from '$lib/utils/attrResolution.js';
 import { requireUserId }    from './helpers.js';
+import { storeLoader }      from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -25,9 +26,8 @@ const AUDIT_OPTS = { appId: 'building_assets', eventCategory: 'building_assets' 
 export function createTypeHierarchyActions(update) {
 
   // -- Reload all type hierarchy data ------------------------------------
-  async function reload() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
+  // A failure stays on the store (`error`) and is not re-thrown, as before.
+  const reload = storeLoader(update, async () => {
       const [systems, types, defs, options] = await Promise.all([
         api.get('building_systems',       { orderBy: 'presentation_order' }),
         api.get('component_types',        { orderBy: 'presentation_order' }),
@@ -38,17 +38,10 @@ export function createTypeHierarchyActions(update) {
       const { attrDefs, systemAttrDefs, attrOptions } =
         resolveHierarchy(systems, types, defs, options);
 
-      update(s => ({
-        ...s,
-        systems, types, attrDefs, systemAttrDefs, attrOptions,
-        loading: false
-      }));
-      logger('Reloaded type hierarchy');
-    } catch (/** @type {any} */ err) {
-      logger('Reload error:', err.message);
-      update(s => ({ ...s, loading: false, error: err.message }));
-    }
-  }
+      return { systems, types, attrDefs, systemAttrDefs, attrOptions };
+    },
+    (loaded) => loaded,
+    { what: 'the type hierarchy', rethrow: false, log: logger });
 
   // -- Building Systems CRUD ---------------------------------------------
   async function createSystem(data) {

@@ -5,6 +5,7 @@ import { writable }   from 'svelte/store';
 import { api }        from '$lib/utils/api';
 import { supabase }   from '$lib/supabaseClient';
 import { getLogger }  from '$lib/utils/logger';
+import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('MaintenanceGroups');
 
@@ -29,17 +30,10 @@ function createMaintenanceGroupsStore() {
     jobHistoryLoaded:  false,
   }));
 
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      const groups = await api.get('maintenance_groups', { orderBy: 'name' });
-      update(s => ({ ...s, groups, loading: false }));
-      logger('Loaded', groups.length, 'maintenance groups');
-    } catch (/** @type {any} */ err) {
-      update(s => ({ ...s, error: err.message, loading: false }));
-      throw err;
-    }
-  }
+  const load = storeLoader(update,
+    () => api.get('maintenance_groups', { orderBy: 'name' }),
+    (groups) => ({ groups }),
+    { what: 'the maintenance groups', log: logger });
 
   async function userId() {
     const { data } = await supabase.auth.getUser();

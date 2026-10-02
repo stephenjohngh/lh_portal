@@ -18,6 +18,7 @@ import {
   listRisks, getRisk, createRisk, updateRisk,
   listRiskLinks, listAllRiskLinks, addRiskLink, removeRiskLink,
 } from '$lib/apps/golden_thread/public.js';
+import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('gtRiskStore');
 
@@ -75,9 +76,8 @@ function createGtRiskStore() {
   // -- Loaders ----------------------------------------------------------------
 
   /** Load the full register + all links, and compute per-risk live alerts. */
-  async function load() {
-    update((s) => ({ ...s, loading: true, error: '' }));
-    try {
+  const load = storeLoader(update,
+    async () => {
       const [risks, links] = await Promise.all([listRisks(), listAllRiskLinks()]);
       let alertsByRisk = {};
       try {
@@ -86,13 +86,10 @@ function createGtRiskStore() {
       } catch (err) {
         logger('⚠ alert computation failed (non-fatal):', err?.message);
       }
-      update((s) => ({ ...s, risks, alertsByRisk, loading: false }));
-      return risks;
-    } catch (/** @type {any} */ err) {
-      update((s) => ({ ...s, loading: false, error: err.message }));
-      throw err;
-    }
-  }
+      return { risks, alertsByRisk };
+    },
+    ({ risks, alertsByRisk }) => ({ risks, alertsByRisk }),
+    { what: 'the risk register', clearError: '', log: logger });
 
   /** Load one risk into selectedRisk + its links. */
   async function loadRisk(id) {

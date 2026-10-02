@@ -19,6 +19,7 @@ import { api }      from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
 import { getLogger } from '$lib/utils/logger';
 import { STATUS, stampsFor, entryTypeFor, blockedReason } from '../utils/complaintLifecycle.js';
+import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('complaintsStore');
 
@@ -90,31 +91,20 @@ function createComplaintsStore() {
 
   // ── Reading ───────────────────────────────────────────────────────────────
 
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      const cases = await api.get('complaint_cases', {
-        select: CASE_SELECT,
-        orderBy: 'received_at',
-        ascending: false,
-      });
-      update(s => ({ ...s, cases, loading: false }));
-      return cases;
-    } catch (/** @type {any} */ err) {
-      logger(`✖ load failed: ${err.message}`);
-      update(s => ({ ...s, loading: false, error: err.message }));
-      throw err;
-    }
-  }
+  const load = storeLoader(update,
+    () => api.get('complaint_cases', { select: CASE_SELECT, orderBy: 'received_at', ascending: false }),
+    (cases) => ({ cases }),
+    { what: 'the complaints', log: logger });
 
-  /** One case, with its timeline and actions. */
-  async function select(id) {
-    if (!id) {
-      update(s => ({ ...s, selected: null, timeline: [], actions: [] }));
-      return null;
-    }
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
+  /**
+   * One case, with its timeline and actions; `select(null)` closes it.
+   * ⚠ Closing goes through the same loader on purpose: it is then the newest
+   * request, so a case still loading when Back was pressed cannot reopen
+   * itself when it arrives.
+   */
+  const loadCase = storeLoader(update,
+    async (id) => {
+      if (!id) return { selected: null, timeline: [], actions: [] };
       const [selected, timeline, actions] = await Promise.all([
         api.getById('complaint_cases', id, CASE_SELECT),
         api.get('complaint_timeline_entries', {
@@ -124,13 +114,14 @@ function createComplaintsStore() {
           filters: { case_id: id }, orderBy: 'created_at', ascending: true,
         }),
       ]);
-      update(s => ({ ...s, selected, timeline, actions, loading: false }));
-      return selected;
-    } catch (/** @type {any} */ err) {
-      logger(`✖ select(${id}) failed: ${err.message}`);
-      update(s => ({ ...s, loading: false, error: err.message }));
-      throw err;
-    }
+      return { selected, timeline, actions };
+    },
+    (one) => one,
+    { what: 'the complaint', log: logger });
+
+  async function select(id) {
+    const one = await loadCase(id ?? null);
+    return one?.selected ?? null;
   }
 
   /** Re-read one case into the list and, if it is open, the detail. */

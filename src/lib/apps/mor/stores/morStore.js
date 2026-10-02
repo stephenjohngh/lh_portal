@@ -8,6 +8,7 @@ import { getLogger } from '$lib/utils/logger';
 import { isValidTransition } from '$lib/apps/mor/utils/morHelpers';
 import { generateVerificationCode } from '$lib/utils/caseVerificationCode';
 import { listDocumentsCiting } from '$lib/apps/golden_thread/public.js';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('morStore');
 
@@ -166,24 +167,23 @@ function createMorStore() {
     }
   }
 
-  async function fetchCases() {
-    update(s => ({ ...s, loading: true, error: '' }));
-    try {
+  // A failure stays on the store (`error`) and is not re-thrown, as before.
+  const fetchCases = storeLoader(update,
+    async () => {
       const { data, error } = await supabase
         .from('mor_cases')
         .select(CASE_SELECT)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const cases = data ?? [];
-      update(s => ({ ...s, cases, loading: false }));
+      return data ?? [];
+    },
+    (cases) => {
       // Reporter-contact map is dashboard-only; load it in the background
       // and don't block the case list on it.
       loadReporterContactsForCases(cases.map(c => c.id));
-    } catch (/** @type {any} */ err) {
-      logger('❌ fetchCases:', err.message);
-      update(s => ({ ...s, error: err.message, loading: false }));
-    }
-  }
+      return { cases };
+    },
+    { what: 'the cases', clearError: '', rethrow: false, log: logger });
 
   async function fetchCase(id) {
     update(s => ({ ...s, loading: true, error: '' }));

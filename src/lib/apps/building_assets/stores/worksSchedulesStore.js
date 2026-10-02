@@ -17,6 +17,7 @@ import { logAudit }   from '$lib/utils/auditLogger';
 import { getLogger }  from '$lib/utils/logger';
 import { replaceComponentAttributes } from '../public.js';
 import { planApply, describeSummary, matchingLines } from '../utils/worksSchedule.js';
+import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('worksSchedules');
 
@@ -63,19 +64,10 @@ function createWorksSchedulesStore() {
 
   // ── Schedules ────────────────────────────────────────────────────────────
 
-  async function loadSchedules() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      const schedules = await api.get('works_schedules', {
-        orderBy: 'created_at', ascending: false,
-      });
-      update(s => ({ ...s, schedules, loading: false }));
-      return schedules;
-    } catch (err) {
-      update(s => ({ ...s, error: errMessage(err), loading: false }));
-      throw err;
-    }
-  }
+  const loadSchedules = storeLoader(update,
+    () => api.get('works_schedules', { orderBy: 'created_at', ascending: false }),
+    (schedules) => ({ schedules }),
+    { what: 'the works schedules' });
 
   /**
    * Create a schedule from a set of components — normally the filtered list on

@@ -22,6 +22,7 @@ import { listWorksDue } from '$lib/apps/building_assets/public.js';
 import { listParkingDueDates } from '$lib/apps/parking/public.js';
 import { listBsrReportDeadlines } from '$lib/apps/mor/public.js';
 import { today } from '$lib/utils/dates';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('planner');
 
@@ -79,23 +80,18 @@ function createPlannerStore() {
    * ever has thousands, the window is a filter on occurs_on and this comment is
    * where to start.
    */
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
+  const load = storeLoader(update,
+    async () => {
       const [events, occurrences, categories, dayMarks] = await Promise.all([
         api.get('planner_events', { orderBy: 'start_date', ascending: true }),
         api.getAll('planner_occurrences', { orderBy: 'occurs_on' }),
         api.get('planner_categories', { orderBy: 'position' }),
         api.getAll('planner_day_marks', { orderBy: 'date' }),
       ]);
-      update(s => ({ ...s, events, occurrences, categories, dayMarks, loading: false }));
-      logger('✅ loaded', events.length, 'series,', occurrences.length, 'recorded occurrences');
-      return events;
-    } catch (err) {
-      update(s => ({ ...s, error: errMessage(err), loading: false }));
-      throw err;
-    }
-  }
+      return { events, occurrences, categories, dayMarks };
+    },
+    (loaded) => loaded,
+    { what: 'the planner', log: logger });
 
   /**
    * What the other apps have in this window.

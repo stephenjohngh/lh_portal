@@ -25,6 +25,7 @@ import { planPackCopy } from '../utils/packCopy.js';
 import { buildSnapshot, buildManifest } from '../utils/snapshot.js';
 import { generateToken, hashToken, tokenPrefix } from '../utils/publicationToken.js';
 import { hashPassphrase } from '../utils/publicationPassphrase.js';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('dossierStore');
 
@@ -113,21 +114,12 @@ function createDossierStore() {
 
   // ── Packs ────────────────────────────────────────────────────────────────
 
-  async function loadPacks() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      // RLS scopes this to packs the caller owns (admins see all), so no filter
-      // is needed here — and adding one would be a false sense of security.
-      const packs = await api.get('dossier_packs', {
-        orderBy: 'created_at', ascending: false,
-      });
-      update(s => ({ ...s, packs: sortPacks(packs), loading: false }));
-      return packs;
-    } catch (err) {
-      update(s => ({ ...s, error: errMessage(err), loading: false }));
-      throw err;
-    }
-  }
+  // RLS scopes this to packs the caller owns (admins see all), so no filter
+  // is needed here — and adding one would be a false sense of security.
+  const loadPacks = storeLoader(update,
+    () => api.get('dossier_packs', { orderBy: 'created_at', ascending: false }),
+    (packs) => ({ packs: sortPacks(packs) }),
+    { what: 'the packs' });
 
   async function createPack(data, userId) {
     const pack = await api.create('dossier_packs', {

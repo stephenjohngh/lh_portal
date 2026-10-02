@@ -6,6 +6,7 @@
 
 import { writable } from 'svelte/store';
 import * as docApi from '$lib/utils/documentApi';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 function createDocumentsStore() {
   const { subscribe, update } = writable({
@@ -18,15 +19,11 @@ function createDocumentsStore() {
    * Load documents matching the given filters.
    * @param {Object} [opts]
    */
-  async function load(opts = {}) {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      const data = await docApi.listDocuments(opts);
-      update(s => ({ ...s, docs: data, loading: false }));
-    } catch (/** @type {any} */ err) {
-      update(s => ({ ...s, error: err.message, loading: false }));
-    }
-  }
+  // A failure stays on the store (`error`) and is not re-thrown, as before.
+  const load = storeLoader(update,
+    (opts = {}) => docApi.listDocuments(opts),
+    (docs) => ({ docs }),
+    { what: 'the documents', rethrow: false });
 
   /**
    * Upload a file with metadata. Appends the new doc to the local list.

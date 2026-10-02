@@ -8,6 +8,7 @@ import { supabase } from '$lib/supabaseClient';
 import { api } from '$lib/utils/api';
 import { postJson } from '$lib/utils/request';
 import { getLogger } from '$lib/utils/logger';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger("usersStore");
 
@@ -33,26 +34,10 @@ function createUsersStore() {
     appReadOnly:    { subscribe: appReadOnly.subscribe },
     loadingApps:    { subscribe: loadingApps.subscribe },
 
-    async fetchUsers() {
-      logger('Fetching users...');
-      update(state => ({ ...state, loading: true, error: null }));
-
-      try {
-        const users = await api.get('profiles', {
-          orderBy: 'created_at',
-          ascending: false
-        });
-
-        logger('Users loaded:', users.length);
-        update(state => ({ ...state, users, loading: false }));
-        return users;
-
-      } catch (/** @type {any} */ err) {
-        logger('Failed to fetch users:', err);
-        update(state => ({ ...state, loading: false, error: err.message }));
-        throw err;
-      }
-    },
+    fetchUsers: storeLoader(update,
+      () => api.get('profiles', { orderBy: 'created_at', ascending: false }),
+      (users) => ({ users }),
+      { what: 'the users', log: logger }),
 
     async createUser(userData) {
       logger('Creating user:', userData.email);

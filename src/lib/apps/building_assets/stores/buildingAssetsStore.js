@@ -19,6 +19,7 @@ import { createComponentActions }       from './componentActions.js';
 import { createPlanActions }            from './planActions.js';
 import { createSpaceActions }           from './spaceActions.js';
 import { createAnnotationActions }      from './annotationActions.js';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('BuildingAssets');
 
@@ -60,9 +61,8 @@ function createBuildingAssetsStore() {
   // -- Top-level load -----------------------------------------------------
   // Loads the full type hierarchy, location hierarchy, plans, spaces and
   // annotations in one shot. Called once on app mount.
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
+  // A failure stays on the store (`error`) and is not re-thrown, as before.
+  const load = storeLoader(update, async () => {
       const [facilities, floors, systems, types, defs, options, plans, spaces, spaceOverrides, annotations] =
         await Promise.all([
           api.get('facilities'),
@@ -89,19 +89,14 @@ function createBuildingAssetsStore() {
         logger('space_types unavailable (pre-migration?) — using fallback list:', e.message);
       }
 
-      update(s => ({
-        ...s,
+      return {
         facilities, floors,
         systems, types, attrDefs, systemAttrDefs, attrOptions,
         plans, spaces, spaceOverrides, spaceTypes, annotations,
-        loading: false
-      }));
-      logger('Loaded hierarchy, plans, spaces and annotations');
-    } catch (/** @type {any} */ err) {
-      logger('Load error:', err.message);
-      update(s => ({ ...s, loading: false, error: err.message }));
-    }
-  }
+      };
+    },
+    (loaded) => loaded,
+    { what: 'the building assets', rethrow: false, log: logger });
 
   // Refresh just the configurable space-type list (after admin CRUD) —
   // lighter than a full load(). Degrades gracefully if the table is absent.

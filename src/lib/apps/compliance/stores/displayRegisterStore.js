@@ -13,6 +13,7 @@ import { api }       from '$lib/utils/api';
 import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
 import { logAudit }  from '$lib/utils/auditLogger';
+import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('DisplayRegister');
 
@@ -60,18 +61,10 @@ function createDisplayRegisterStore() {
     return data?.user?.id ?? null;
   }
 
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      const items = await api.get('display_items', { orderBy: 'display_location' });
-      items.sort(byLocationThenTitle);
-      update(s => ({ ...s, items, loading: false }));
-      logger('Loaded', items.length, 'display items');
-    } catch (/** @type {any} */ err) {
-      update(s => ({ ...s, error: err.message, loading: false }));
-      throw err;
-    }
-  }
+  const load = storeLoader(update,
+    async () => (await api.get('display_items', { orderBy: 'display_location' })).sort(byLocationThenTitle),
+    (items) => ({ items }),
+    { what: 'the display register', log: logger });
 
   async function create(data) {
     const uid = await userId();

@@ -16,6 +16,7 @@ import { logAudit }  from '$lib/utils/auditLogger';
 import { EVIDENCE_ROUTES } from '$lib/utils/obligationEvidence.js';
 import { activeRegister, templateEntry, templateToObligation } from '$lib/utils/statutoryTemplate.js';
 import { excludedKeys, isRecordableReason } from '$lib/utils/statutoryExclusions.js';
+import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('InspectionDefinitions');
 
@@ -97,18 +98,10 @@ function createInspectionDefinitionsStore() {
     return data?.user?.id ?? null;
   }
 
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      const definitions = await api.get('statutory_obligations', { orderBy: 'presentation_order' });
-      definitions.sort(byOrderThenName);
-      update(s => ({ ...s, definitions, loading: false }));
-      logger('Loaded', definitions.length, 'inspection definitions');
-    } catch (/** @type {any} */ err) {
-      update(s => ({ ...s, error: err.message, loading: false }));
-      throw err;
-    }
-  }
+  const load = storeLoader(update,
+    async () => (await api.get('statutory_obligations', { orderBy: 'presentation_order' })).sort(byOrderThenName),
+    (definitions) => ({ definitions }),
+    { what: 'the planned obligations', log: logger });
 
   async function create(data) {
     const uid = await userId();

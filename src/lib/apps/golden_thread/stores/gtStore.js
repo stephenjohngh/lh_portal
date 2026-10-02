@@ -25,6 +25,7 @@ import {
   listAccountablePersons, createAccountablePerson, updateAccountablePerson,
   listSafetyCaseNotifications, createSafetyCaseNotification, markSafetyCaseNotified
 } from '$lib/apps/golden_thread/public.js';
+import { storeLoader } from '../../../utils/storeLoad.js';
 
 const logger = getLogger('gtStore');
 
@@ -99,16 +100,10 @@ function createGtStore() {
   // ── Reads ───────────────────────────────────────────────────────────────────
 
   /** Load the full register (all statuses), newest first. */
-  async function load() {
-    update((s) => ({ ...s, loading: true, error: '' }));
-    try {
-      const documents = await api.getAll('gt_documents', { orderBy: 'created_at', ascending: false });
-      update((s) => ({ ...s, documents, loading: false }));
-    } catch (/** @type {any} */ err) {
-      update((s) => ({ ...s, error: err.message, loading: false }));
-      throw err;
-    }
-  }
+  const load = storeLoader(update,
+    () => api.getAll('gt_documents', { orderBy: 'created_at', ascending: false }),
+    (documents) => ({ documents }),
+    { what: 'the Golden Thread register', clearError: '' });
 
   /** Load one document into selectedDocument. */
   async function loadDocument(id) {

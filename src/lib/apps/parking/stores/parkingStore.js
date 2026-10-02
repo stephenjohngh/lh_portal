@@ -27,6 +27,7 @@ import {
 } from '../utils/agreementModel.js';
 import { validateApplication, validateOffer, offerBlocks } from '../utils/waitingListModel.js';
 import { validateTariff, tariffRow, tariffFor, matchesTariff, reopenedBy } from '../utils/tariffModel.js';
+import { storeLoader } from '$lib/utils/storeLoad.js';
 
 const logger = getLogger('Parking');
 const AUDIT = { appId: 'parking', eventCategory: 'parking' };
@@ -61,10 +62,10 @@ function createParkingStore() {
     update(s => ({ ...s, bays: mergeBays(spaces, rows, s.floors, s.plans, s.agreements, todayISO(), s.applications) }));
   }
 
-  async function load() {
-    update(s => ({ ...s, loading: true, error: null }));
-    try {
-      const [bs, pb, floors, plans, holders, agreements, vehicles, devices, applications, tariffs] = await Promise.all([
+  // The two module-level copies (spaces, rows) are set in apply, which runs
+  // only for the newest load — a slower, older one must not overwrite them.
+  const load = storeLoader(update,
+    () => Promise.all([
         listParkingBaySpaces(),
         api.get('parking_bays'),
         api.get('floors', { orderBy: 'level_order', ascending: true }),
@@ -75,16 +76,13 @@ function createParkingStore() {
         api.getAll('parking_access_devices', { orderBy: 'issued_on' }),
         api.getAll('parking_applications', { orderBy: 'joined_on' }),
         api.getAll('parking_tariffs', { orderBy: 'effective_from' }),
-      ]);
+      ]),
+    ([bs, pb, floors, plans, holders, agreements, vehicles, devices, applications, tariffs]) => {
       spaces = bs; rows = pb;
-      update(s => ({ ...s, floors, plans, holders, agreements, vehicles, devices, applications, tariffs, loading: false,
-        bays: mergeBays(spaces, rows, floors, plans, agreements, todayISO(), applications) }));
-    } catch (/** @type {any} */ err) {
-      logger('load failed:', err.message);
-      update(s => ({ ...s, loading: false, error: err.message }));
-      throw err;
-    }
-  }
+      return { floors, plans, holders, agreements, vehicles, devices, applications, tariffs,
+        bays: mergeBays(spaces, rows, floors, plans, agreements, todayISO(), applications) };
+    },
+    { what: 'the car park', log: logger });
 
   // ── Bays ─────────────────────────────────────────────────────────────────
 
