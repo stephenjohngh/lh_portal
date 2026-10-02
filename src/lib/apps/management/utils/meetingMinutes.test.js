@@ -13,7 +13,7 @@ const action = (o) => ({ id: 'x' + Math.random(), status: 'pending', meeting_id:
 describe('buildMeetingMinutes', () => {
   it('returns empty for no meeting', () => {
     expect(buildMeetingMinutes(null, [issue()])).toEqual({
-      minutes: [], totals: { issues: 0, actions: 0, comments: 0, decisions: 0, notes: 0, emails: 0, letters: 0, documents: 0 },
+      minutes: [], totals: { issues: 0, actions: 0, comments: 0, decisions: 0, notes: 0, emails: 0, letters: 0, documents: 0, other: 0 },
     });
   });
 
@@ -88,5 +88,16 @@ describe('meetingAttendees', () => {
   it('tolerates no participants', () => {
     expect(meetingAttendees({}, {})).toEqual([]);
     expect(meetingAttendees(null, {})).toEqual([]);
+  });
+
+  it('keeps any other tagged activity — an issue that appears always has something under it', () => {
+    const i = issue({ activities: [act({ activity_type: 'meeting' }), act({ activity_type: 'call' })] });
+    const { minutes, totals } = buildMeetingMinutes(M, [i]);
+    expect(minutes).toHaveLength(1);
+    expect(minutes[0].other).toHaveLength(2);
+    expect(totals.other).toBe(2);
+    const shown = ['comments', 'decisions', 'notes', 'emails', 'letters', 'documents', 'other', 'actions']
+      .reduce((n, k) => n + minutes[0][k].length, 0);
+    expect(shown).toBe(2);
   });
 });

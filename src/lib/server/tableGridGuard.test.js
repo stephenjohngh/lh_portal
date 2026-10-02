@@ -190,7 +190,7 @@ describe('every docx name a builder uses is imported', () => {
   it('finds the builders it exists for', () => {
     const names = builders.map(([f]) => f.replace(/\\/g, '/'));
     for (const expected of [
-      'src/routes/api/reports/generate-docx/+server.js',
+      'src/lib/server/managementDocx.js',
       'src/routes/api/golden-thread/safety-case/+server.js',
       'src/lib/server/richTextDocx.js',
     ]) {

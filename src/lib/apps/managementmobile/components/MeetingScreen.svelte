@@ -24,7 +24,7 @@
 
   // Combined non-decision activity, newest first, for the "Other" list.
   function otherActivity(m) {
-    return [...m.comments, ...m.notes, ...m.emails, ...m.letters, ...m.documents]
+    return [...m.comments, ...m.notes, ...m.emails, ...m.letters, ...m.documents, ...m.other]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 

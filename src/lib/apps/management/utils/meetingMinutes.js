@@ -9,10 +9,13 @@
 // actions carry `meeting_id`. For each issue with any content tagged to the
 // meeting we bucket its activities by type and collect its actions.
 
-/** @returns {{issues:number,actions:number,comments:number,decisions:number,notes:number,emails:number,letters:number,documents:number}} */
+/** @returns {{issues:number,actions:number,comments:number,decisions:number,notes:number,emails:number,letters:number,documents:number,other:number}} */
 function emptyTotals() {
-  return { issues: 0, actions: 0, comments: 0, decisions: 0, notes: 0, emails: 0, letters: 0, documents: 0 };
+  return { issues: 0, actions: 0, comments: 0, decisions: 0, notes: 0, emails: 0, letters: 0, documents: 0, other: 0 };
 }
+
+/** The activity types the minutes show under their own heading. */
+const NAMED = new Set(['comment', 'decision', 'note', 'email', 'letter', 'document']);
 
 /**
  * Build the per-issue minutes entries + totals for a meeting.
@@ -42,11 +45,15 @@ export function buildMeetingMinutes(meeting, issues) {
     const emails    = allActivities.filter(a => a.activity_type === 'email');
     const letters   = allActivities.filter(a => a.activity_type === 'letter');
     const documents = allActivities.filter(a => a.activity_type === 'document');
+    // ⚠ Anything else tagged to the meeting — an issue's own meeting log, or a
+    // type added later. It made the issue appear in the minutes while nothing
+    // under it was printed, on screen, on the phone and in Word (2026-10-02).
+    const other     = allActivities.filter(a => !NAMED.has(a.activity_type ?? 'comment'));
 
     const isNew = issue.meeting_id === id;
     if (!isNew && actions.length === 0 && allActivities.length === 0) continue;
 
-    out.push({ issue, isNew, actions, comments, decisions, notes, emails, letters, documents });
+    out.push({ issue, isNew, actions, comments, decisions, notes, emails, letters, documents, other });
   }
 
   out.sort((a, b) => {
@@ -65,6 +72,7 @@ export function buildMeetingMinutes(meeting, issues) {
     emails:    acc.emails    + m.emails.length,
     letters:   acc.letters   + m.letters.length,
     documents: acc.documents + m.documents.length,
+    other:     acc.other     + m.other.length,
   }), emptyTotals());
 
   return { minutes: out, totals };

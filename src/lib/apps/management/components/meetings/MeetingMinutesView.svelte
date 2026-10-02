@@ -17,6 +17,8 @@
   import { profiles, profilesStore }           from '$lib/stores/profiles';
   import { buildFieldSummary }                 from '../reports/reportUtils.js';
   import { sanitizeHtml }                       from '$lib/utils/sanitizeHtml';
+  import { buildMeetingMinutes }               from '../../utils/meetingMinutes.js';
+  import { ACTIVITY_TYPE_CONFIG }              from '$lib/utils/constants';
 
   export let meeting = null;
   export let issues  = [];   // already filtered to this meeting's items
@@ -24,54 +26,9 @@
   onMount(() => profilesStore.load());
 
   // -- Build per-issue minutes entries ----------------------------------
-  $: minutes = (() => {
-    if (!meeting) return [];
-    const id  = meeting.id;
-    const out = [];
-    for (const issue of issues) {
-      // Split activities by type for separate display sections
-      const allActivities    = (issue.activities || []).filter(a => a.meeting_id === id);
-
-      // Include an action if it was directly tagged to this meeting (meeting_id),
-      // OR if its source_activity_id links it to a meeting-tagged activity (covers
-      // actions created from the suggestion panel when meeting_id wasn't propagated).
-      const meetingActivityIds = new Set(allActivities.map(a => a.id));
-      const meetingActions = (issue.actions || []).filter(
-        a => a.meeting_id === id ||
-             (a.source_activity_id && meetingActivityIds.has(a.source_activity_id))
-      );
-      const meetingComments  = allActivities.filter(a => (a.activity_type ?? 'comment') === 'comment');
-      const meetingDecisions = allActivities.filter(a => a.activity_type === 'decision');
-      const meetingNotes     = allActivities.filter(a => a.activity_type === 'note');
-      const meetingEmails    = allActivities.filter(a => a.activity_type === 'email');
-      const meetingLetters   = allActivities.filter(a => a.activity_type === 'letter');
-      const meetingDocuments = allActivities.filter(a => a.activity_type === 'document');
-      const isNew            = issue.meeting_id === id;
-      if (!isNew && meetingActions.length === 0 && allActivities.length === 0) continue;
-      out.push({ issue, isNew, actions: meetingActions, comments: meetingComments, decisions: meetingDecisions, notes: meetingNotes, emails: meetingEmails, letters: meetingLetters, documents: meetingDocuments });
-    }
-    out.sort((a, b) => {
-      const pa = a.issue.priority ?? 99;
-      const pb = b.issue.priority ?? 99;
-      if (pa !== pb) return pa - pb;
-      return (a.issue.issue_number ?? 0) - (b.issue.issue_number ?? 0);
-    });
-    return out;
-  })();
-
-  $: totals = minutes.reduce(
-    (acc, m) => ({
-      issues:    acc.issues    + (m.isNew ? 1 : 0),
-      actions:   acc.actions   + m.actions.length,
-      comments:  acc.comments  + m.comments.length,
-      decisions: acc.decisions + m.decisions.length,
-      notes:     acc.notes     + m.notes.length,
-      emails:    acc.emails    + m.emails.length,
-      letters:   acc.letters   + m.letters.length,
-      documents: acc.documents + m.documents.length,
-    }),
-    { issues: 0, actions: 0, comments: 0, decisions: 0, notes: 0, emails: 0, letters: 0, documents: 0 }
-  );
+  // The shared grouping (utils/meetingMinutes.js), which the phone's meeting
+  // screen and the Word minutes also use. This view had its own copy.
+  $: ({ minutes, totals } = buildMeetingMinutes(meeting, issues));
 
   // -- Resolve attendees to display names --------------------------------
   // participants = { profile_ids: uuid[], extras: text[] }
@@ -342,6 +299,37 @@
                           <p class="text-xs text-slate-500 mt-0.5">
                             {fmtDateTime(d.created_at, d.created_by_profile?.full_name)}
                             {#if d.historic}
+                              · <span class="text-amber-400">historic</span>
+                            {/if}
+                          </p>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+
+              {#if m.other.length > 0}
+                <div>
+                  <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold mb-2">
+                    Other
+                  </p>
+                  <ul class="space-y-2">
+                    {#each m.other as o (o.id)}
+                      <li class="flex items-start gap-2 text-sm">
+                        <span class="text-slate-400 shrink-0 mt-0.5">•</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-slate-400 mb-0.5">
+                            {ACTIVITY_TYPE_CONFIG[o.activity_type]?.label ?? o.activity_type}
+                          </p>
+                          {#if o.body?.startsWith('<')}
+                            <div class="rich-content text-slate-200 text-sm">{@html sanitizeHtml(o.body)}</div>
+                          {:else if o.body}
+                            <p class="text-slate-200 text-sm whitespace-pre-wrap">{o.body}</p>
+                          {/if}
+                          <p class="text-xs text-slate-500 mt-0.5">
+                            {fmtDateTime(o.created_at, o.created_by_profile?.full_name)}
+                            {#if o.historic}
                               · <span class="text-amber-400">historic</span>
                             {/if}
                           </p>
