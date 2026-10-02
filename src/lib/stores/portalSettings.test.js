@@ -26,8 +26,9 @@ vi.mock('$lib/supabaseClient', () => ({ supabase: h.supabase }));
 vi.mock('$lib/utils/logger',   () => ({ getLogger: () => () => {} }));
 
 const { portalSettings } = await import('./portalSettings.js');
+const { dueSoonDays, setDueWindows, DUE_SOON_DEFAULTS } = await import('$lib/utils/dueWindows.js');
 
-beforeEach(() => { vi.clearAllMocks(); h.setResult({ data: [], error: null }); });
+beforeEach(() => { vi.clearAllMocks(); h.setResult({ data: [], error: null }); setDueWindows(null); });
 
 describe('load', () => {
   it('parses the topbar_apps and app_order rows', async () => {
@@ -81,5 +82,56 @@ describe('save / saveOrder', () => {
   it('throws on an upsert error', async () => {
     h.setResult({ error: { message: 'denied' } });
     await expect(portalSettings.save(['x'])).rejects.toThrow('denied');
+  });
+});
+
+// The "due soon" windows (Admin → Due windows) ride in the same table and the
+// same query. What loads is put in force for every app at once.
+describe('due windows', () => {
+  it('reads due_soon_days in the same query and puts it in force', async () => {
+    h.setResult({ data: [{ key: 'due_soon_days', value: { maintenanceJob: 45 } }], error: null });
+    await portalSettings.load();
+    const b = h.supabase.from.mock.results[0].value;
+    expect(b.in).toHaveBeenCalledWith('key', expect.arrayContaining(['due_soon_days']));
+    expect(dueSoonDays('maintenanceJob')).toBe(45);
+    expect(get(portalSettings).dueWindows).toEqual({ maintenanceJob: 45 });
+    expect(get(portalSettings).windows.maintenanceJob).toBe(45);
+    expect(get(portalSettings).windows.certificateExpiry).toBe(DUE_SOON_DEFAULTS.certificateExpiry);
+  });
+
+  it('puts the defaults back when nothing is saved', async () => {
+    setDueWindows({ maintenanceJob: 45 });
+    await portalSettings.load();
+    expect(dueSoonDays('maintenanceJob')).toBe(DUE_SOON_DEFAULTS.maintenanceJob);
+  });
+
+  it('keeps the windows in force when a re-read fails, rather than dropping an admin’s settings', async () => {
+    h.setResult({ data: [{ key: 'due_soon_days', value: { maintenanceJob: 45 } }], error: null });
+    await portalSettings.load();
+    h.setResult({ data: null, error: new Error('network') });
+    await portalSettings.load();
+    expect(dueSoonDays('maintenanceJob')).toBe(45);
+    expect(get(portalSettings).loaded).toBe(true);
+  });
+
+  it('stores only the windows that differ from the default, and puts them in force', async () => {
+    h.setResult({ error: null });
+    const stored = await portalSettings.saveDueWindows({
+      ...DUE_SOON_DEFAULTS, maintenanceJob: 21, plannerArranging: 90, nonsense: 5,
+    });
+    expect(stored).toEqual({ maintenanceJob: 21, plannerArranging: 90 });
+    const b = h.supabase.from.mock.results[0].value;
+    expect(b.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'due_soon_days', value: { maintenanceJob: 21, plannerArranging: 90 }, updated_by: 'u1' }),
+      { onConflict: 'key' },
+    );
+    expect(dueSoonDays('plannerArranging')).toBe(90);
+    expect(get(portalSettings).dueWindows).toEqual({ maintenanceJob: 21, plannerArranging: 90 });
+  });
+
+  it('changes nothing in force when the save is refused', async () => {
+    h.setResult({ error: { message: 'denied' } });
+    await expect(portalSettings.saveDueWindows({ maintenanceJob: 21 })).rejects.toThrow('denied');
+    expect(dueSoonDays('maintenanceJob')).toBe(DUE_SOON_DEFAULTS.maintenanceJob);
   });
 });

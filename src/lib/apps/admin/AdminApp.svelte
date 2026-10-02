@@ -18,6 +18,7 @@
   import FloorPanel from './components/FloorPanel.svelte';
   import SpaceTypesPanel from './components/SpaceTypesPanel.svelte';
   import PortalSettingsPanel from './components/PortalSettingsPanel.svelte';
+  import DueWindowsPanel from './components/DueWindowsPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
   import Button from '$lib/components/common/Button.svelte';
@@ -38,6 +39,7 @@
     { id: 'floors',    icon: '🏢', label: 'Floors' },
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
     { id: 'portal',    icon: '⚙',  label: 'Portal' },
+    { id: 'due-windows', icon: '⏳', label: 'Due windows' },
     { id: 'documents', icon: '📁', label: 'Document Demo' },
   ];
   
@@ -309,6 +311,9 @@
 
   {:else if activeTab === 'portal'}
     <PortalSettingsPanel />
+
+  {:else if activeTab === 'due-windows'}
+    <DueWindowsPanel />
 
   {:else if activeTab === 'documents'}
     <DocumentsTab />

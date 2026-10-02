@@ -37,7 +37,7 @@
 // inspectionSchedule.test.js is its regression net.
 
 
-import { DUE_SOON_DAYS } from './dueWindows.js';
+import { dueSoonDays } from './dueWindows.js';
 import { DAY_MS } from './dates.js';
 /**
  * @typedef {'completed'|'attempted'|'planned'} EvidenceStatus
@@ -196,7 +196,7 @@ export function jobEventsFromJobs(jobs) {
 export function computeObligationSchedule(obligations, events, opts = {}) {
   const now         = opts.now ?? new Date();
   const nowMs       = now.getTime();
-  const dueSoonDays = opts.dueSoonDays ?? DUE_SOON_DAYS.plannedObligation;
+  const soonDays = opts.dueSoonDays ?? dueSoonDays('plannedObligation');
 
   /** @type {Record<string, number>} */ const lastCompleteMs = {};
   /** @type {Record<string, number>} */ const lastAttemptMs  = {};
@@ -252,7 +252,7 @@ export function computeObligationSchedule(obligations, events, opts = {}) {
         nextDue: new Date(planT).toISOString(),
         overdue, daysUntilDue,
         band: /** @type {'overdue'|'due_soon'|'ok'} */ (
-          overdue ? 'overdue' : (daysUntilDue <= dueSoonDays ? 'due_soon' : 'ok')),
+          overdue ? 'overdue' : (daysUntilDue <= soonDays ? 'due_soon' : 'ok')),
         sortKey: planT,
         basis: /** @type {const} */ ('planned'),
       };
@@ -280,7 +280,7 @@ export function computeObligationSchedule(obligations, events, opts = {}) {
       nextDue: new Date(nextDueMs).toISOString(),
       overdue, daysUntilDue,
       band: /** @type {'overdue'|'due_soon'|'ok'} */ (
-        overdue ? 'overdue' : (daysUntilDue <= dueSoonDays ? 'due_soon' : 'ok')),
+        overdue ? 'overdue' : (daysUntilDue <= soonDays ? 'due_soon' : 'ok')),
       sortKey: nextDueMs,
       basis: /** @type {const} */ ('derived'),
     };

@@ -43,7 +43,7 @@ import { computeObligationSchedule, walkEventsFromSessions } from '$lib/utils/ob
  *                                               definition_id contribute; others are ignored)
  * @param {Object} [opts]
  * @param {Date}   [opts.now]          reference time (injectable for tests)
- * @param {number} [opts.dueSoonDays]  window (days) counted as "due soon" (default 14)
+ * @param {number} [opts.dueSoonDays]  window (days) counted as "due soon" (default: the plannedObligation window, dueWindows.js)
  * @returns {ScheduleState[]}          one entry per input definition, input order preserved
  */
 export function computeInspectionSchedule(definitions, sessions, opts = {}) {

@@ -1,8 +1,9 @@
 // src/lib/utils/statutoryExclusions.test.js
 import { describe, it, expect } from 'vitest';
+import { dueSoonDays } from './dueWindows.js';
 import {
   currentDecisions, excludedKeys, decisionHistory, reviewsDue, isRecordableReason,
-  reviewState, REVIEW_SOON_DAYS,
+  reviewState,
 } from './statutoryExclusions.js';
 
 const d = (key, decision, decided_at, over = {}) =>
@@ -131,7 +132,7 @@ describe('reviewState', () => {
   });
 
   it('puts the boundary day itself inside the horizon', () => {
-    const boundary = new Date(Date.parse(`${today}T00:00:00Z`) + REVIEW_SOON_DAYS * 86_400_000)
+    const boundary = new Date(Date.parse(`${today}T00:00:00Z`) + dueSoonDays('exclusionReview') * 86_400_000)
       .toISOString().slice(0, 10);
     expect(reviewState(boundary, { today })).toBe('due_soon');
   });
@@ -150,10 +151,10 @@ describe('reviewState', () => {
       d('far',  'not_applicable', '2026-01-01T00:00:00Z', { review_due: '2027-01-01' }),
       d('none', 'not_applicable', '2026-01-01T00:00:00Z'),
     ];
-    const due = new Set(reviewsDue(sample, { today, withinDays: REVIEW_SOON_DAYS })
+    const due = new Set(reviewsDue(sample, { today, withinDays: dueSoonDays('exclusionReview') })
       .map(r => r.template_key));
     for (const r of sample) {
-      const state = reviewState(r.review_due, { today, withinDays: REVIEW_SOON_DAYS });
+      const state = reviewState(r.review_due, { today, withinDays: dueSoonDays('exclusionReview') });
       expect(due.has(r.template_key)).toBe(state === 'overdue' || state === 'due_soon');
     }
   });

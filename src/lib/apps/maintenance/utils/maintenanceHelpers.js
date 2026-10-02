@@ -1,7 +1,7 @@
 // src/lib/apps/maintenance/utils/maintenanceHelpers.js
 // Pure helpers for RAG status, display labels, and date arithmetic.
 
-import { DUE_SOON_DAYS, dueBandOf } from '../../../utils/dueWindows.js';
+import { dueSoonDays, dueBandOf } from '../../../utils/dueWindows.js';
 import { daysUntil } from '../../../utils/dates.js';
 
 // -- RAG / status --------------------------------------------------------------
@@ -22,7 +22,7 @@ export function jobRag(job) {
   const hard      = job.hard_expiry_date;
   const due       = (hard && hard < scheduled) ? hard : scheduled;
 
-  const band = dueBandOf(due, DUE_SOON_DAYS.maintenanceJob);
+  const band = dueBandOf(due, dueSoonDays('maintenanceJob'));
   if (band === 'overdue')  return 'overdue';
   if (band === 'due_soon') return 'due_soon';
   return 'scheduled';
@@ -104,7 +104,7 @@ export function fmtBytes(bytes) {
 }
 
 /** Is an expiry date past or within N days? */
-export function expiryRag(dateStr, warningDays = DUE_SOON_DAYS.certificateExpiry) {
+export function expiryRag(dateStr, warningDays = dueSoonDays('certificateExpiry')) {
   if (!dateStr) return null;
   const band = dueBandOf(dateStr, warningDays);
   if (band === 'overdue')  return 'expired';
@@ -134,7 +134,7 @@ export function expiryRag(dateStr, warningDays = DUE_SOON_DAYS.certificateExpiry
  * @returns {Array<object & { expiryState: 'expired'|'expiring' }>}
  */
 export function expiringCertificates(docs, opts = {}) {
-  const warningDays = opts.warningDays ?? DUE_SOON_DAYS.certificateExpiry;
+  const warningDays = opts.warningDays ?? dueSoonDays('certificateExpiry');
   return (docs ?? [])
     .filter(d => d?.expiry_date)
     .map(d => ({ ...d, expiryState: expiryRag(d.expiry_date, warningDays) }))

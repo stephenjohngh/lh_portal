@@ -13,7 +13,7 @@
 
 // Day arithmetic has one owner (dates.js, 2026-10-02); re-exported so this
 // module's callers keep their import.
-import { DUE_SOON_DAYS } from '../../../utils/dueWindows.js';
+import { dueSoonDays } from '../../../utils/dueWindows.js';
 import { daysBetween } from '$lib/utils/dates.js';
 export { daysBetween };
 
@@ -38,7 +38,7 @@ export function attentionReason(item, { todayISO, linkedDocUpdatedAt = null }) {
   if (item.review_date) {
     const days = daysBetween(todayISO, item.review_date);
     if (days < 0) return 'review_overdue';
-    if (days <= DUE_SOON_DAYS.displayItemReview) return 'review_due';
+    if (days <= dueSoonDays('displayItemReview')) return 'review_due';
   }
 
   return null;

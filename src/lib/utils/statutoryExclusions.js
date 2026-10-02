@@ -19,7 +19,7 @@
  */
 
 /** Newest decision wins; ties break on id so the answer is never arbitrary. */
-import { DUE_SOON_DAYS } from './dueWindows.js';
+import { dueSoonDays } from './dueWindows.js';
 import { today as todayLondon, addDaysISO } from './dates.js';
 function newer(a, b) {
   const ta = Date.parse(a?.decided_at ?? '') || 0;
@@ -90,14 +90,6 @@ export function reviewsDue(rows, opts = {}) {
 }
 
 /**
- * How soon counts as "coming up" for an exclusion review, in days.
- *
- * Thirty, matching the compliance report's due-soon horizon, so a review and a
- * check that fall in the same month read the same way to the same person.
- */
-export const REVIEW_SOON_DAYS = DUE_SOON_DAYS.exclusionReview;
-
-/**
  * The state of ONE exclusion's review date, for display.
  *
  * Exists so that the badge on a row and the count in the header cannot drift
@@ -115,7 +107,7 @@ export function reviewState(reviewDue, opts = {}) {
   const today = opts.today ?? todayLondon();
   if (reviewDue <= today) return 'overdue';
 
-  const withinDays = opts.withinDays ?? REVIEW_SOON_DAYS;
+  const withinDays = opts.withinDays ?? dueSoonDays('exclusionReview');
   const horizon = addDaysISO(today, withinDays) ?? today;
   return reviewDue <= horizon ? 'due_soon' : 'scheduled';
 }

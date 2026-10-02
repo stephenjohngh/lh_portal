@@ -4,9 +4,10 @@ import { describe, it, expect } from 'vitest';
 import {
   fromMaintenanceJob, fromMeeting, fromAction, fromGtDocument,
   linkedOccurrences, filterLinked, SOURCES, visibleSources,
-  fromObligationDue, ARRANGING_LEAD_DAYS,
+  fromObligationDue,
 } from './linked.js';
 import { agenda, bucketOf } from './agenda.js';
+import { dueSoonDays } from '../../../utils/dueWindows.js';
 
 describe('fromMaintenanceJob', () => {
   it('shows a scheduled job on its date', () => {
@@ -239,7 +240,7 @@ describe('fromObligationDue', () => {
   });
 
   it('leaves an unbooked contractor duty beyond its lead time as Planned', () => {
-    const far = new Date(Date.parse(TODAY) + (ARRANGING_LEAD_DAYS + 5) * 864e5).toISOString();
+    const far = new Date(Date.parse(TODAY) + (dueSoonDays('plannerArranging') + 5) * 864e5).toISOString();
     expect(bucket(due({ nextDue: far }))).toBe('planned');
   });
 

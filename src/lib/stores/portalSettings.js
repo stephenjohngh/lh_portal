@@ -11,18 +11,41 @@
 //                               null = no row saved yet → show all
 //     order:   string[] | null — app_order: display order for home grid + nav
 //                               null = no row saved yet → use AVAILABLE_APPS order
+//     dueWindows: object      — due_soon_days: the "due soon" windows an admin
+//                               changed from the shipped default ({} = none)
+//     windows:    object      — every window in force (defaults + those changes)
 //   }
+//
+// ⭐ The due windows are handed to dueWindows.js (setDueWindows) as they load,
+// so every app reads them through dueSoonDays(). The main shell WAITS for this
+// load before it opens an app; a screen that may open without waiting (the
+// phone Inspection app) reads `windows` from here so it recalculates when they
+// arrive.
 
 import { writable }  from 'svelte/store';
 import { supabase }  from '$lib/supabaseClient';
 import { getLogger } from '$lib/utils/logger';
+import { setDueWindows, cleanDueWindows, activeDueWindows } from '$lib/utils/dueWindows.js';
 
 const logger     = getLogger('portalSettings');
 const TOPBAR_KEY = 'topbar_apps';
 const ORDER_KEY  = 'app_order';
+const DUE_KEY    = 'due_soon_days';
+
+/**
+ * @typedef {{
+ *   loaded: boolean,
+ *   ids: string[] | null,
+ *   order: string[] | null,
+ *   dueWindows: Record<string, number>,
+ *   windows: Record<string, number>,
+ * }} PortalSettingsState
+ */
 
 function createPortalSettingsStore() {
-  const { subscribe, set, update } = writable({ loaded: false, ids: null, order: null });
+  const { subscribe, set, update } = writable(/** @type {PortalSettingsState} */ ({
+    loaded: false, ids: null, order: null, dueWindows: {}, windows: activeDueWindows(),
+  }));
 
   /**
    * Load topbar_apps and app_order from the DB.
@@ -33,20 +56,23 @@ function createPortalSettingsStore() {
       const { data, error } = await supabase
         .from('portal_settings')
         .select('key, value')
-        .in('key', [TOPBAR_KEY, ORDER_KEY]);
+        .in('key', [TOPBAR_KEY, ORDER_KEY, DUE_KEY]);
 
       if (error) throw error;
 
       const rows  = data ?? [];
-      const ids   = rows.find(r => r.key === TOPBAR_KEY)?.value ?? null;
-      const order = rows.find(r => r.key === ORDER_KEY)?.value  ?? null;
+      const ids   = /** @type {string[] | null} */ (rows.find(r => r.key === TOPBAR_KEY)?.value ?? null);
+      const order = /** @type {string[] | null} */ (rows.find(r => r.key === ORDER_KEY)?.value  ?? null);
+      const dueWindows = setDueWindows(rows.find(r => r.key === DUE_KEY)?.value ?? null);
 
-      set({ loaded: true, ids, order });
+      set({ loaded: true, ids, order, dueWindows, windows: activeDueWindows() });
       logger('✅ Loaded portal settings — topbar:', ids ?? 'all', '— order:', order ?? 'default');
     } catch (/** @type {any} */ err) {
       logger('⚠ Failed to load portal settings (non-fatal):', err.message);
-      // Treat failure as "show all, default order" rather than blocking the app
-      set({ loaded: true, ids: null, order: null });
+      // Treat failure as "show all, default order" rather than blocking the app.
+      // The due windows stay as they are: defaults on a first load, and an
+      // admin's settings already read are not thrown away by a failed re-read.
+      update(s => ({ ...s, loaded: true, ids: null, order: null }));
     }
   }
 
@@ -92,7 +118,34 @@ function createPortalSettingsStore() {
     logger('✅ Saved app order:', appIds);
   }
 
-  return { subscribe, load, save, saveOrder };
+  /**
+   * Save the "due soon" windows and put them in force at once. Only windows
+   * that differ from the shipped default are stored, so a window set back to
+   * its default follows the default again (dueWindows.js).
+   * @param {Record<string, number>} windows  `{ key: days }`
+   * @returns {Promise<Record<string, number>>} what was stored
+   */
+  async function saveDueWindows(windows) {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id ?? null;
+    const changed = cleanDueWindows(windows);
+
+    const { error } = await supabase
+      .from('portal_settings')
+      .upsert(
+        { key: DUE_KEY, value: changed, updated_by: userId },
+        { onConflict: 'key' }
+      );
+
+    if (error) throw new Error(error.message);
+
+    setDueWindows(changed);
+    update(s => ({ ...s, dueWindows: changed, windows: activeDueWindows() }));
+    logger('✅ Saved due windows:', changed);
+    return changed;
+  }
+
+  return { subscribe, load, save, saveOrder, saveDueWindows };
 }
 
 export const portalSettings = createPortalSettingsStore();

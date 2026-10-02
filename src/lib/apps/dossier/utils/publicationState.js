@@ -9,7 +9,7 @@
 // Time is injected everywhere. A gate that reads the clock itself cannot be
 // tested at its own boundary, and the boundary is the only interesting part.
 
-import { DUE_SOON_DAYS } from '../../../utils/dueWindows.js';
+import { dueSoonDays } from '../../../utils/dueWindows.js';
 import { DAY_MS } from '../../../utils/dates.js';
 /** @typedef {'live'|'expired'|'revoked'} PublicationState */
 
@@ -102,7 +102,7 @@ export function describePublication(publication, now = Date.now()) {
   if (days === null) return 'Live — no expiry';
   if (days <= 0)     return 'Expires today';
   if (days === 1)    return 'Expires tomorrow';
-  if (days <= DUE_SOON_DAYS.dossierLinkExpiry) return `Expires in ${days} days`;
+  if (days <= dueSoonDays('dossierLinkExpiry')) return `Expires in ${days} days`;
   return 'Live';
 }
 

@@ -2,6 +2,7 @@
 <!-- Summary counts: Overdue / Due Soon / Scheduled / Completed / Certificates -->
 <script>
   import { certificateExpirySummary } from '../utils/maintenanceHelpers.js';
+  import { dueSoonDays } from '$lib/utils/dueWindows';
 
   export let jobs = [];
   /** All maintenance_documents, for the certificate card (M5). */
@@ -31,7 +32,7 @@
     <div class="stat-dot bg-amber-400"></div>
     <div>
       <div class="stat-num text-amber-300">{dueSoon}</div>
-      <div class="stat-label">Due within 30 days</div>
+      <div class="stat-label">Due within {dueSoonDays('maintenanceJob')} days</div>
     </div>
   </div>
 

@@ -16,7 +16,7 @@
 // no longer produces (the rule changed after it was ticked). That row is
 // history and is kept — see `mergeOccurrences`.
 
-import { DUE_SOON_DAYS } from '../../../utils/dueWindows.js';
+import { dueSoonDays } from '../../../utils/dueWindows.js';
 import { expandSeries, daysBetween } from './recurrence.js';
 
 /** What an occurrence can be. */
@@ -135,7 +135,7 @@ export function bucketOf(occurrence, today) {
   // overdue duty still unbooked is overdue first, and its note says unbooked.
   if (away < 0 || occurrence.overdue === true) return 'overdue';
 
-  const notice = occurrence.series?.lead_days ?? DUE_SOON_DAYS.plannerDefaultNotice;
+  const notice = occurrence.series?.lead_days ?? dueSoonDays('plannerDefaultNotice');
   if (away > notice) return 'planned';
   return occurrence.needsArranging ? 'arranging' : 'due_soon';
 }

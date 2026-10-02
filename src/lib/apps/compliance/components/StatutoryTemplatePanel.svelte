@@ -17,10 +17,11 @@
     isRecurring, supersededNote, triggerTypeOf, TRIGGER_TYPE_LABEL,
   } from '$lib/utils/statutoryTemplate.js';
   import {
-    currentDecisions, isRecordableReason, reviewsDue, reviewState, REVIEW_SOON_DAYS,
+    currentDecisions, isRecordableReason, reviewsDue, reviewState,
   } from '$lib/utils/statutoryExclusions.js';
   import { frequencyLabel } from '$lib/utils/inspectionSchedule';
   import { fmtDate } from '$lib/utils/dates.js';
+  import { dueSoonDays } from '$lib/utils/dueWindows.js';
   import { profiles, profilesStore } from '$lib/stores/profiles.js';
   import { statutoryRegister } from '$lib/stores/statutoryRegister.js';
   import RegisterEntryModal from './RegisterEntryModal.svelte';
@@ -61,7 +62,7 @@
   // building changes underneath it — "no dwelling is let on a relevant tenancy"
   // is exactly the kind of statement that quietly stops being true. The review
   // date was already being recorded; until now nothing ever showed it back.
-  $: dueReviews = reviewsDue(exclusions, { withinDays: REVIEW_SOON_DAYS });
+  $: dueReviews = reviewsDue(exclusions, { withinDays: dueSoonDays('exclusionReview') });
   $: overdueReviews = dueReviews.filter(d => reviewState(d.review_due) === 'overdue');
   $: coverage    = templateCoverage(definitions, { dismissedKeys });
   $: suggestions = suggestMatches(definitions);

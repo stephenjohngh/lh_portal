@@ -5,7 +5,7 @@
      different things is the one-word-two-objects fault. This is a work list,
      so it is named for what it holds. -->
 <script>
-  import { DUE_SOON_DAYS } from '$lib/utils/dueWindows';
+  import { dueSoonDays } from '$lib/utils/dueWindows';
   import { permissions }   from '$lib/stores/permissions';
   import {
     ragConfig, resultConfig, scopeTypeLabel, daysRelative, frequencyLabel,
@@ -51,7 +51,7 @@
 
   const SECTIONS = [
     { key: 'overdue',   label: 'Overdue',            jobs: () => overdue,   hdr: 'bg-red-900/20 border-red-800/40',    count: () => overdue.length   },
-    { key: 'dueSoon',   label: `Due within ${DUE_SOON_DAYS.maintenanceJob} days`,  jobs: () => dueSoon,   hdr: 'bg-amber-900/20 border-amber-800/40', count: () => dueSoon.length   },
+    { key: 'dueSoon',   label: `Due within ${dueSoonDays('maintenanceJob')} days`,  jobs: () => dueSoon,   hdr: 'bg-amber-900/20 border-amber-800/40', count: () => dueSoon.length   },
     { key: 'upcoming',  label: 'Upcoming',            jobs: () => upcoming,  hdr: 'bg-green-900/10 border-green-800/30', count: () => upcoming.length  },
     { key: 'completed', label: 'Recently completed',  jobs: () => completed, hdr: 'bg-slate-800/40 border-slate-700',    count: () => completed.length },
   ];

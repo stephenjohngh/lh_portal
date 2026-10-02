@@ -18,7 +18,7 @@
 // for last March sorts among the planner's own arrears rather than in a
 // separate list nobody reads.
 
-import { DUE_SOON_DAYS } from '../../../utils/dueWindows.js';
+import { dueSoonDays } from '../../../utils/dueWindows.js';
 /**
  * Where each kind comes from, and how it should read.
  *
@@ -59,10 +59,6 @@ export const SOURCES = {
   parking:       { key: 'parking',       label: 'Parking',            app: 'Parking',         appId: 'parking',         category: 'other' },
 };
 
-/** How far ahead a contractor visit needs arranging. A walk is in-house and
- *  needs no booking, so it uses the ordinary notice window. */
-export const ARRANGING_LEAD_DAYS = DUE_SOON_DAYS.plannerArranging;
-const WALK_LEAD_DAYS = DUE_SOON_DAYS.plannerWalk;
 
 /**
  * Which sources this user may be shown, from the permissions store's own state.
@@ -198,7 +194,7 @@ export function fromGtDocument(row) {
  * obligation is dropped here: the same visit shown twice would read as two
  * things to do. On-demand obligations have no due date and are not shown.
  *
- * - Contractor route, not booked → **needs arranging** within 60 days.
+ * - Contractor route, not booked → **needs arranging** within the arranging window (dueWindows.js; Admin → Due windows).
  * - In-house walk → due on its date; nothing to arrange.
  * - Never done → due today, and OVERDUE because the scheduler says so: a duty
  *   with a cadence that has never been discharged is the most urgent state
@@ -223,7 +219,9 @@ export function fromObligationDue(row, today) {
     detail,
     overdue: !!row.overdue,
     needsArranging: contractor,
-    leadDays: contractor ? ARRANGING_LEAD_DAYS : WALK_LEAD_DAYS,
+    // A contractor visit needs arranging; a walk is in-house and needs no
+    // booking, so it takes the ordinary notice. Both are admin settings.
+    leadDays: dueSoonDays(contractor ? 'plannerArranging' : 'plannerWalk'),
   });
 }
 
@@ -240,7 +238,7 @@ export function fromCertificate(row) {
     title: `Certificate expires: ${row?.filename ?? 'certificate'}`,
     date: row?.expiry_date,
     detail: row?.job?.title ? `From job: ${row.job.title}` : null,
-    leadDays: DUE_SOON_DAYS.certificateExpiry,
+    leadDays: dueSoonDays('certificateExpiry'),
   });
 }
 
@@ -254,7 +252,7 @@ export function fromBsrDeadline(row) {
     title: `BSR full report due: ${row?.label ?? row?.reference ?? 'MOR case'}`,
     date: row?.deadline,
     detail: row?.decided ? 'Decided reportable' : 'Applies if the case is reportable — not yet decided',
-    leadDays: DUE_SOON_DAYS.plannerBsrDeadline,
+    leadDays: dueSoonDays('plannerBsrDeadline'),
   });
 }
 
@@ -283,7 +281,7 @@ export function fromCompetenceExpiry(row) {
     title: `Competence expires: ${row?.full_name ?? 'person'}`,
     date: row?.competence_expiry,
     detail: row?.role ?? null,
-    leadDays: DUE_SOON_DAYS.plannerCompetenceExpiry,
+    leadDays: dueSoonDays('plannerCompetenceExpiry'),
   });
 }
 

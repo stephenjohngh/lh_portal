@@ -160,7 +160,14 @@
 
   async function loadUserPermissions() {
     loading = true;
-    
+
+    // Portal settings — the top bar, the app order and the "due soon" windows —
+    // read alongside the permissions, and WAITED FOR before any app opens: an
+    // app computes due-soon bands as it opens, and one opened before the
+    // windows arrive would use the shipped defaults until it was reopened.
+    // load() never throws (it falls back to the defaults).
+    const settingsLoaded = portalSettings.load();
+
     try {
       isAdmin = await checkIsAdmin($auth.user.id);
 
@@ -177,9 +184,6 @@
       const permittedAppIds = (permissions || []).map(p => p.app_id);
       userApps = getAppsForUser(permittedAppIds, isAdmin);
 
-      // Load top-bar config (non-blocking — store defaults to "show all" on error)
-      portalSettings.load();
-
       logger('User permissions loaded');
       logger('Is admin:', isAdmin);
       logger('Permitted app IDs:', permittedAppIds);
@@ -189,6 +193,7 @@
       logger('Error loading user permissions:', err);
       userApps = getAppsForUser([], isAdmin);
     } finally {
+      await settingsLoaded;
       loading = false;
     }
   }

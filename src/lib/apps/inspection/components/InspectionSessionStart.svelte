@@ -16,6 +16,7 @@
   import { buildComponentRef } from '$lib/utils/componentRef.js';
   import { computeInspectionSchedule, sortByDisplayOrder, scheduleDueText } from '$lib/utils/inspectionSchedule';
   import { isWalkEvidenced } from '$lib/utils/obligationEvidence.js';
+  import { portalSettings } from '$lib/stores/portalSettings.js';
   import WalkButton from '$lib/apps/inspection/components/common/WalkButton.svelte';
   import WalkInput  from '$lib/apps/inspection/components/common/WalkInput.svelte';
   import WalkSelect from '$lib/apps/inspection/components/common/WalkSelect.svelte';
@@ -59,7 +60,12 @@
   // Display order (Compliance → Planned obligations) — the same sequence as the
   // upcoming list on Compliance → Inspection walks, so an inspection is always
   // in the position the admin put it. Each row still shows its own due state.
-  $: schedStates = sortByDisplayOrder(computeInspectionSchedule(definitions, $inspectionStore.scheduleSessions ?? []));
+  // The window comes from the store, not the default: on /inspection the
+  // settings may arrive after this list is first drawn, and it must redraw.
+  $: schedStates = sortByDisplayOrder(computeInspectionSchedule(
+    definitions, $inspectionStore.scheduleSessions ?? [],
+    { dueSoonDays: $portalSettings.windows.plannedObligation },
+  ));
   $: selectedDefinition = definitions.find(d => d.id === selectedDefinitionId) ?? null;
   // ctx for the shared scope filter engine — same shape the walk builder uses,
   // so the preview count always equals the real walk length.
