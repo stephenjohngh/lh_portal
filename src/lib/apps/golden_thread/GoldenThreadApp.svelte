@@ -7,6 +7,7 @@
   B–E all built.
 -->
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { onMount } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
@@ -105,7 +106,7 @@
       await downloadAuthedPost('/api/golden-thread/safety-case',
         `golden-thread-safety-case-${today()}.docx`, safetyCaseModel);
     } catch (e) {
-      scExportError = e instanceof Error ? e.message : String(e);
+      scExportError = errMessage(e);
     } finally {
       scExporting = false;
     }
@@ -142,7 +143,7 @@
       await downloadAuthedPost('/api/golden-thread/share-pack',
         `golden-thread-share-pack-${today()}.zip`);
     } catch (e) {
-      packError = e instanceof Error ? e.message : String(e);
+      packError = errMessage(e);
     } finally {
       packRunning = false;
     }
@@ -172,7 +173,7 @@
     try {
       verifyResult = await postJson('/api/golden-thread/verify-audit', {}, 'Verification failed');
     } catch (e) {
-      verifyError = e instanceof Error ? e.message : String(e);
+      verifyError = errMessage(e);
     } finally {
       verifyRunning = false;
     }

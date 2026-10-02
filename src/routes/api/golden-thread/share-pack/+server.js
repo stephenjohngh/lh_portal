@@ -8,6 +8,7 @@
 // register ever grows very large. The user must have GT access; admin is the
 // stricter gate here.
 
+import { errMessage } from '../../../../lib/utils/errors.js';
 import { json }          from '@sveltejs/kit';
 import { Buffer }        from 'node:buffer';
 import { createHash }    from 'node:crypto';
@@ -94,7 +95,7 @@ export async function POST({ request }) {
             checksum_ok: stored ? stored === computed : null,
           });
         } catch (err) {
-          logger('file fetch failed:', l.provider_file_id, err instanceof Error ? err.message : String(err));
+          logger('file fetch failed:', l.provider_file_id, errMessage(err));
           files.push({ path, filename: l.filename, error: 'file could not be retrieved' });
         }
       }
@@ -126,7 +127,7 @@ export async function POST({ request }) {
       },
     });
   } catch (err) {
-    logger('share pack failed:', err instanceof Error ? err.message : String(err));
-    return json({ error: err instanceof Error ? err.message : 'Share pack generation failed' }, { status: 500 });
+    logger('share pack failed:', errMessage(err));
+    return json({ error: errMessage(err, 'Share pack generation failed') }, { status: 500 });
   }
 }

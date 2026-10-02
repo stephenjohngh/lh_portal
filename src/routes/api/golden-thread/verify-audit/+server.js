@@ -5,6 +5,7 @@
 // it with the service client after requireAdmin. Returns { ok, checked,
 // first_broken_seq, reason }.
 
+import { errMessage } from '../../../../lib/utils/errors.js';
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
@@ -24,7 +25,7 @@ export async function POST({ request }) {
     const row = Array.isArray(data) ? data[0] : data;
     return json(row ?? { ok: true, checked: 0, first_broken_seq: null, reason: null });
   } catch (err) {
-    logger('verify failed:', err instanceof Error ? err.message : String(err));
-    return json({ error: err instanceof Error ? err.message : 'Verification failed' }, { status: 500 });
+    logger('verify failed:', errMessage(err));
+    return json({ error: errMessage(err, 'Verification failed') }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@
 // only — no DB reads here — so the document mirrors the view exactly.
 // Authenticated GT users; it is a formatted view of what they can already see.
 
+import { errMessage } from '../../../../lib/utils/errors.js';
 import { json } from '@sveltejs/kit';
 import { Document, Packer, Table, TableRow, WidthType, TableLayoutType } from 'docx';
 import { requireAuth } from '$lib/server/requireAuth';
@@ -160,7 +161,7 @@ export async function POST({ request }) {
       },
     });
   } catch (err) {
-    logger('safety case docx failed:', err instanceof Error ? err.message : String(err));
-    return json({ error: err instanceof Error ? err.message : 'Safety case generation failed' }, { status: 500 });
+    logger('safety case docx failed:', errMessage(err));
+    return json({ error: errMessage(err, 'Safety case generation failed') }, { status: 500 });
   }
 }

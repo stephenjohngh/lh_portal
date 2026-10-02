@@ -10,6 +10,7 @@
 // records, so nothing is written until a person has seen what will change.**
 // The decision itself is pure (utils/worksSchedule.js); this only persists it.
 
+import { errMessage } from '../../../utils/errors.js';
 import { writable, get } from 'svelte/store';
 import { api }        from '$lib/utils/api';
 import { logAudit }   from '$lib/utils/auditLogger';
@@ -24,9 +25,6 @@ const HIDDEN_SPECS_KEY = 'works_hidden_specs';
 
 const touch = (userId) => ({ updated_by: userId, updated_at: new Date().toISOString() });
 
-function errMessage(err) {
-  return err instanceof Error ? err.message : String(err);
-}
 
 function createWorksSchedulesStore() {
   /**

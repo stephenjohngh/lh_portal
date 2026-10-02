@@ -3,6 +3,7 @@
      P0: internal authoring only. Nothing published, nothing leaves the portal.
      Plan: docs/requirements/build_plans/Dossier_P0_Build_Plan.md -->
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { onMount, onDestroy } from 'svelte';
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
@@ -18,7 +19,6 @@
   import { copyTitle }    from './utils/packCopy.js';
 
   /** A caught value is `unknown`; narrow it without asserting a type. */
-  const errMessage = (err) => (err instanceof Error ? err.message : String(err));
 
   let appError      = '';
   let showPackModal = false;

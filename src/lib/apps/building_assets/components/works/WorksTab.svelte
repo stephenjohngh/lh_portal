@@ -5,6 +5,7 @@
 
      Two views in one tab: the list of schedules, and one schedule's lines. -->
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { onMount } from 'svelte';
   import { auth }         from '$lib/stores/auth';
   import { permissions }  from '$lib/stores/permissions';
@@ -32,7 +33,6 @@
   import WorksSpecsModal        from './WorksSpecsModal.svelte';
   import ComponentPlanPeek      from '../ComponentPlanPeek.svelte';
 
-  const errMessage = (e) => (e instanceof Error ? e.message : String(e));
 
   let error = '';
   let openId = null;

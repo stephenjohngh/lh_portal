@@ -1,4 +1,5 @@
 // src/lib/apps/mor/stores/morStore.js
+import { errMessage } from '../../../utils/errors.js';
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { api }      from '$lib/utils/api';
@@ -646,7 +647,7 @@ function createMorStore() {
       const gtCitations = await listDocumentsCiting('mor_case', caseId);
       update(s => ({ ...s, gtCitations }));
     } catch (err) {
-      logger('gtCitations load failed (non-fatal):', err instanceof Error ? err.message : String(err));
+      logger('gtCitations load failed (non-fatal):', errMessage(err));
       update(s => ({ ...s, gtCitations: [] }));
     }
   }

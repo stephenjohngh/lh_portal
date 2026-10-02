@@ -10,6 +10,7 @@
      are placed and moved; this answers one question — "which one is that?" —
      without leaving the list you are working through. -->
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { createEventDispatcher, tick } from 'svelte';
   import Modal from '$lib/components/common/Modal.svelte';
   import Button from '$lib/components/common/Button.svelte';
@@ -57,7 +58,7 @@
       });
       placed = result.placed;
     } catch (err) {
-      error = err instanceof Error ? err.message : String(err);
+      error = errMessage(err);
     } finally {
       loading = false;
     }

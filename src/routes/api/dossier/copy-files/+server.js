@@ -18,6 +18,7 @@
 // canListDocuments(), which asks the database rather than re-implementing
 // Dossier's owner-scoping here.
 
+import { errMessage } from '../../../../lib/utils/errors.js';
 import { json }                 from '@sveltejs/kit';
 import { requireAuth }          from '$lib/server/requireAuth.js';
 import { canListDocuments, bearerToken } from '$lib/server/documentAccess.js';
@@ -48,6 +49,6 @@ export async function POST({ request }) {
     const result = await copyPackFiles(sourcePackId, targetPackId, auth.user.id);
     return json(result);
   } catch (err) {
-    return json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    return json({ error: errMessage(err) }, { status: 500 });
   }
 }

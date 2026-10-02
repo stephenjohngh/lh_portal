@@ -11,6 +11,7 @@
      (P3). The columns those need already exist, so each is behaviour rather
      than schema. -->
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { onMount } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
@@ -84,7 +85,7 @@
       formOpen = false;
       await complaintsStore.select(row.id);
     } catch (err) {
-      formRef?.fail(err instanceof Error ? err.message : String(err));
+      formRef?.fail(errMessage(err));
     }
   }
 

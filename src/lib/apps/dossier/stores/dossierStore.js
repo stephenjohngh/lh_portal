@@ -9,6 +9,7 @@
 // Every create MUST pass the current user id or the insert is rejected — this is
 // the internal owner-scoping boundary, not a convention we can skip.
 
+import { errMessage } from '../../../utils/errors.js';
 import { writable, get } from 'svelte/store';
 import { api }          from '$lib/utils/api';
 import { logAudit }     from '$lib/utils/auditLogger';
@@ -59,9 +60,6 @@ function sortPacks(packs) {
 }
 
 /** A caught value is `unknown`; narrow it to a message without asserting a type. */
-function errMessage(err) {
-  return err instanceof Error ? err.message : String(err);
-}
 
 /** Stamp the audit columns carried on every write (portal convention). */
 function touch(userId) {

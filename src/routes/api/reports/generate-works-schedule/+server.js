@@ -9,6 +9,7 @@
 // they are holding. Second, the counts come before the detail: "Replace 38,
 // Remove 2" is the size of the job, and it is the first thing anyone reads.
 
+import { errMessage } from '../../../../lib/utils/errors.js';
 import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import {
@@ -183,7 +184,7 @@ export async function POST({ request }) {
     });
   } catch (err) {
     logger('❌', err);
-    return json({ error: err instanceof Error ? err.message : String(err) },
+    return json({ error: errMessage(err) },
       { status: 500 });
   }
 }

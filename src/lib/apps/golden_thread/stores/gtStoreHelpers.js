@@ -7,6 +7,7 @@
 // logger. LOADERS do NOT use run() — they throw so onMount/callers surface the
 // error state (the R6 convention).
 
+import { errMessage } from '../../../utils/errors.js';
 import { supabase } from '$lib/supabaseClient';
 
 /** The current auth user id, or null. */
@@ -32,7 +33,7 @@ export function makeRun(update, logger) {
       update((s) => ({ ...s, saving: false }));
       return { success: true, ...(r ?? {}) };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errMessage(err);
       logger('❌ ' + msg);
       update((s) => ({ ...s, saving: false, error: msg }));
       return { success: false, error: msg };

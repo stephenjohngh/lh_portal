@@ -10,6 +10,7 @@
      "what are the new values" in the abstract; it is "what changes", and that
      is only readable with the current values beside them. -->
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { createEventDispatcher, tick } from 'svelte';
   import Modal        from '$lib/components/common/Modal.svelte';
   import Button       from '$lib/components/common/Button.svelte';
@@ -156,7 +157,7 @@
       });
       planPlaced = result.placed;
     } catch (err) {
-      planError = err instanceof Error ? err.message : String(err);
+      planError = errMessage(err);
     }
   }
 

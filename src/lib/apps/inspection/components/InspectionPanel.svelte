@@ -4,6 +4,7 @@
      component's type. -->
 
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { createEventDispatcher, onMount } from 'svelte';
   import { getLogger }    from '$lib/utils/logger';
   import { inspectionStore }  from '../stores/inspectionStore.js';
@@ -103,7 +104,7 @@
       });
       dispatch('saved');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errMessage(err);
       logger('❌ recordInspection:', msg);
       error = msg;
     } finally {

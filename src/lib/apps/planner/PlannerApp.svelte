@@ -6,6 +6,7 @@
      (P2) come next, and the model was built first on purpose — the hard part is
      series-versus-occurrence, and everything else depends on it being right. -->
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { onMount, tick } from 'svelte';
   import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
@@ -270,7 +271,7 @@
       formOpen = false;
       editing = null;
     } catch (err) {
-      formRef?.fail(err instanceof Error ? err.message : String(err));
+      formRef?.fail(errMessage(err));
     }
   }
 
@@ -282,7 +283,7 @@
       // counts from this, and the two are often different.
       await plannerStore.recordOccurrence(occurrence,
         { status, on: status === STATUS.DONE ? now : null }, $auth.user.id);
-    } catch (err) { error = err instanceof Error ? err.message : String(err); }
+    } catch (err) { error = errMessage(err); }
   }
 
   async function toggleSkip(e) {
@@ -290,7 +291,7 @@
     const status = occurrence.status === STATUS.SKIPPED ? STATUS.DUE : STATUS.SKIPPED;
     try {
       await plannerStore.recordOccurrence(occurrence, { status }, $auth.user.id);
-    } catch (err) { error = err instanceof Error ? err.message : String(err); }
+    } catch (err) { error = errMessage(err); }
   }
 
   async function archiveEvent(e) {
@@ -299,7 +300,7 @@
       await plannerStore.archiveEvent(event.id, archived, $auth.user.id);
       formOpen = false;
       editing = null;
-    } catch (err) { error = err instanceof Error ? err.message : String(err); }
+    } catch (err) { error = errMessage(err); }
   }
 
   async function removeEvent(e) {
@@ -308,7 +309,7 @@
       await plannerStore.deleteEvent(target.id, target.title);
       formOpen = false;
       editing = null;
-    } catch (err) { error = err instanceof Error ? err.message : String(err); }
+    } catch (err) { error = errMessage(err); }
   }
 
   // ── Shaded days ───────────────────────────────────────────────────────────
@@ -316,12 +317,12 @@
   async function setDayMark(e) {
     const { date, label, colour } = e.detail;
     try { await plannerStore.setDayMark(date, { label, colour }, $auth.user.id); }
-    catch (err) { error = err instanceof Error ? err.message : String(err); }
+    catch (err) { error = errMessage(err); }
   }
 
   async function clearDayMark(e) {
     try { await plannerStore.clearDayMark(e.detail.date); }
-    catch (err) { error = err instanceof Error ? err.message : String(err); }
+    catch (err) { error = errMessage(err); }
   }
 
   // ── Promotion ─────────────────────────────────────────────────────────────
@@ -348,7 +349,7 @@
       await plannerStore.loadLinked(from, to, visibleSources($permissions));
       promoting = null;
     } catch (err) {
-      error = err instanceof Error ? err.message : String(err);
+      error = errMessage(err);
     } finally {
       promoteBusy = false;
     }
@@ -361,18 +362,18 @@
 
   async function createCategory(e) {
     try { await plannerStore.createCategory(e.detail, $auth.user.id); }
-    catch (err) { categoryError = err instanceof Error ? err.message : String(err); }
+    catch (err) { categoryError = errMessage(err); }
   }
 
   async function updateCategory(e) {
     const { id, ...fields } = e.detail;
     try { await plannerStore.updateCategory(id, fields, $auth.user.id); }
-    catch (err) { categoryError = err instanceof Error ? err.message : String(err); }
+    catch (err) { categoryError = errMessage(err); }
   }
 
   async function deleteCategory(e) {
     try { await plannerStore.deleteCategory(e.detail.id, e.detail.name); }
-    catch (err) { categoryError = err instanceof Error ? err.message : String(err); }
+    catch (err) { categoryError = errMessage(err); }
   }
 
   /** Moving one occurrence, which never touches the pattern. */
@@ -395,7 +396,7 @@
     if (!occurrence || !date) return;
     try {
       await plannerStore.moveOccurrence(occurrence, date, $auth.user.id);
-    } catch (err) { error = err instanceof Error ? err.message : String(err); }
+    } catch (err) { error = errMessage(err); }
   }
 
   // Nothing reads as empty until the year has been read. Before it the store
@@ -415,7 +416,7 @@
     await permissions.init($auth.user.id, 'planner');
     profilesStore.load();
     try { await plannerStore.load(); }
-    catch (err) { error = err instanceof Error ? err.message : String(err); }
+    catch (err) { error = errMessage(err); }
 
     // Not awaited into the first paint: the planner's own year is the app, and
     // four cross-app reads should not hold it back. Each of those four is

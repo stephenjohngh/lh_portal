@@ -6,6 +6,7 @@
 // it can be tested without a database. This file is the I/O seam and nothing
 // more, which is what makes the rest of the app testable.
 
+import { errMessage } from '../../../utils/errors.js';
 import { writable, get } from 'svelte/store';
 import { api } from '$lib/utils/api';
 import { logAudit } from '$lib/utils/auditLogger';
@@ -26,9 +27,6 @@ const logger = getLogger('planner');
 
 const touch = (userId) => ({ updated_by: userId, updated_at: new Date().toISOString() });
 
-function errMessage(err) {
-  return err instanceof Error ? err.message : String(err);
-}
 
 function createPlannerStore() {
   /**

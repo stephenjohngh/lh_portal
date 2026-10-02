@@ -27,26 +27,55 @@ export async function downloadAuthedPost(url, filename, body) {
 }
 
 /**
+ * Save a Blob as a file — the ONE place a download is triggered.
+ *
+ * ⚠ The object URL is released on a LATER turn, not straight after click():
+ * Safari has not begun the download when click() returns, and releasing it
+ * synchronously saves an empty file. Dossier's pack archive had learned this
+ * (2026-08); the shared helper and three MOR downloads had not, until
+ * 2026-10-02.
+ * @param {Blob}   blob
+ * @param {string} filename
+ */
+export function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/**
+ * The file name a response asks to be saved as (Content-Disposition), or the
+ * fallback. Understands both `filename*=UTF-8''…` and `filename="…"`.
+ * @param {Response} response
+ * @param {string}   fallback
+ */
+export function filenameFromResponse(response, fallback) {
+  const header = response.headers?.get?.('content-disposition') ?? '';
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star) { try { return decodeURIComponent(star[1]); } catch { /* fall through */ } }
+  return /filename="([^"]+)"/i.exec(header)?.[1] ?? fallback;
+}
+
+/**
  * Trigger a file download from a fetch Response object.
  *
  * Usage:
  *   const response = await fetch('/api/plans/generate-report', { ... });
  *   if (!response.ok) throw new Error(`HTTP ${response.status}`);
  *   await downloadResponse(response, 'MyReport.docx');
+ *   // or, to keep the name the server gave it:
+ *   await downloadResponse(response, filenameFromResponse(response, 'fallback.docx'));
  *
  * @param {Response} response  — A resolved fetch Response (caller must verify response.ok first)
  * @param {string}   filename  — The filename the browser will save as
  */
 export async function downloadResponse(response, filename) {
-  const blob = await response.blob();
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  URL.revokeObjectURL(url);
-  document.body.removeChild(a);
+  downloadBlob(await response.blob(), filename);
 }
 
 /**
@@ -56,12 +85,6 @@ export async function downloadResponse(response, filename) {
  * @param {string[]} rows      CSV lines (already escaped + column-joined)
  */
 export function downloadCsvRows(filename, rows) {
-  const csv  = '﻿' + rows.join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  const csv = '\uFEFF' + rows.join('\r\n');
+  downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), filename);
 }

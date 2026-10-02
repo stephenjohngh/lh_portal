@@ -5,6 +5,7 @@
      Floor presets: All · Residential (G–7) · Basement (X,L,G) · Single floor. -->
 
 <script>
+  import { errMessage } from '$lib/utils/errors';
   import { onMount }             from 'svelte';
   import { buildingAssetsStore } from '../stores/buildingAssetsStore.js';
   import { permissions }         from '$lib/stores/permissions';
@@ -268,7 +269,7 @@
         + `component${ids.length === 1 ? '' : 's'} — open the Works tab to price or issue it.`;
       worksModalRef?.done();
     } catch (err) {
-      worksModalRef?.fail(err instanceof Error ? err.message : String(err));
+      worksModalRef?.fail(errMessage(err));
     }
   }
 
