@@ -425,7 +425,7 @@
   <ConfirmDialog
     show={confirmDelete}
     title="Delete draft"
-    message={`Delete draft ${agreement.reference} and its vehicles? A draft that was never activated leaves no record worth keeping; anything that went live is ended instead.`
+    message={`Delete draft ${agreement.reference}, its vehicles and any documents attached to it, such as a signed licence? The documents are deleted from Drive first; if one cannot be, the draft is kept. A draft that was never activated leaves no record worth keeping; anything that went live is ended instead.`
       + (fromOffer ? ` It was made from a waiting-list offer, which reopens: the bay stays offered to the same person until ${fmtDate(fromOffer.offer_expires_on)}.` : '')}
     confirmText="Delete"
     danger={true}
