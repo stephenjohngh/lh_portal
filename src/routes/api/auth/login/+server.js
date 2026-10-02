@@ -12,8 +12,11 @@
 //   4. Otherwise call supabase.auth.signInWithPassword() using the anon
 //      key — this is the same call the client used to make directly,
 //      but going via the server lets us record the outcome
-//   5. Insert a row into login_attempts (success or fail) for the next
-//      attempt's lookup
+//   5. Insert a row into login_attempts for the next attempt's lookup —
+//      a success, or a WRONG PASSWORD. Any other Supabase error (email
+//      logins switched off, Supabase down) never checked the password, so it
+//      is not recorded as a failure and the person is told so
+//      ($lib/server/signInOutcome.js)
 //   6. On success, return the Supabase session so the client can hydrate
 //      its local Supabase client via supabase.auth.setSession(...)
 //   7. Audit log via logLogin / logFailedLogin (writes to audit_logs)
@@ -29,6 +32,7 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
 import { env } from '$env/dynamic/private';
 import { logLogin, logFailedLogin, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
 import { lockoutState, PER_EMAIL_LIMIT, WINDOW_MINUTES } from '$lib/server/loginLockout';
+import { signInOutcome }                              from '$lib/server/signInOutcome';
 import { getLogger }                                  from '$lib/utils/logger';
 
 const logger = getLogger('AuthLogin');
@@ -122,15 +126,35 @@ export async function POST({ request, getClientAddress }) {
 
   // 2. Forward to Supabase Auth via the anon client — same call the
   //    browser used to make directly, but server-side so we can audit.
-  const { data, error } = await supabaseAnon.auth.signInWithPassword({
-    email: emailLower,
-    password,
-  });
-
-  // 3. Record the outcome for the next attempt's rate-limit lookup
-  await recordAttempt(emailLower, ip, userAgent, !error);
+  //    A throw (network, SDK) is treated like any other error Supabase
+  //    returns: the password was not checked.
+  /** @type {any} */ let data = null, error = null;
+  try {
+    ({ data, error } = await supabaseAnon.auth.signInWithPassword({
+      email: emailLower,
+      password,
+    }));
+  } catch (/** @type {any} */ err) {
+    error = err ?? new Error('Sign-in failed');
+  }
 
   if (error) {
+    const outcome = signInOutcome(error);
+
+    // ⛔ Only a WRONG PASSWORD is a failed attempt ($lib/server/signInOutcome.js).
+    // Anything else — email logins switched off, Supabase down — never checked
+    // the password, so it must not count towards the lockout or read as one.
+    if (!outcome.countsAsFailure) {
+      logger('⚠ Sign-in not checked:', emailLower, outcome.reason, error?.message);
+      logFailedLogin(emailLower, request, `not checked (${outcome.reason}): ${error?.message ?? ''}`)
+        .catch(err => logger('Audit log failed:', err.message));
+      return json({ error: outcome.message, reason: outcome.reason, passwordChecked: false },
+        { status: outcome.status });
+    }
+
+    // 3. Record the failure for the next attempt's rate-limit lookup
+    await recordAttempt(emailLower, ip, userAgent, false);
+
     logger('❌ Login failed:', emailLower);
     // Fire-and-forget audit log (logFailedLogin awaits internally; not blocking the response materially)
     logFailedLogin(emailLower, request,
@@ -138,10 +162,13 @@ export async function POST({ request, getClientAddress }) {
     ).catch(err => logger('Audit log failed:', err.message));
 
     return json({
-      error:             'Invalid email or password',  // generic — no email-enumeration
+      error:             outcome.message,  // generic — no email-enumeration
       attemptsRemaining: lock.remainingAfterFailure,
-    }, { status: 401 });
+    }, { status: outcome.status });
   }
+
+  // 3. Record the success
+  await recordAttempt(emailLower, ip, userAgent, true);
 
   // 4. Success — audit log and return the session to the client
   logger('✅ Login successful:', emailLower);

@@ -94,6 +94,45 @@ describe('POST /api/auth/login', () => {
     expect(inserted).toBe(true);
   });
 
+  // ⛔ The incident of 2026-09-30: the Email provider was switched off, every
+  // sign-in came back 422, and the admin was told their password was wrong —
+  // and locked out by the retries. The password was never checked.
+  it('email logins switched off: says so, and neither reads as nor counts as a wrong password', async () => {
+    h.setSignIn({ data: null, error: { status: 422, code: 'email_provider_disabled', message: 'Email logins are disabled' } });
+    const res = await POST({ request: req({ email: 'u@x', password: 'right' }) });
+    expect(res.status).toBe(503);
+    expect(res.body.error).not.toBe('Invalid email or password');
+    expect(res.body.error).toMatch(/not checked/i);
+    expect(res.body.passwordChecked).toBe(false);
+    expect(res.body).not.toHaveProperty('attemptsRemaining');
+    const inserted = h.client.from.mock.results.some(r => r.value.insert.mock.calls.length > 0);
+    expect(inserted).toBe(false);                      // not a failed attempt
+  });
+
+  it('a thrown sign-in (network, SDK) is answered, not a bare 500, and does not count', async () => {
+    h.client.auth.signInWithPassword.mockImplementationOnce(() => Promise.reject(new Error('fetch failed')));
+    const res = await POST({ request: req({ email: 'u@x', password: 'right' }) });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toMatch(/not checked/i);
+    const inserted = h.client.from.mock.results.some(r => r.value.insert.mock.calls.length > 0);
+    expect(inserted).toBe(false);
+  });
+
+  it('a wrong password with the current error code still counts', async () => {
+    h.setSignIn({ data: null, error: { status: 400, code: 'invalid_credentials', message: 'Invalid login credentials' } });
+    const res = await POST({ request: req({ email: 'a@b', password: 'wrong' }) });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Invalid email or password');
+    const inserted = h.client.from.mock.results.some(r => r.value.insert.mock.calls.length > 0);
+    expect(inserted).toBe(true);
+  });
+
+  it('records a successful sign-in', async () => {
+    await POST({ request: req({ email: 'u@x', password: 'right' }) });
+    const inserted = h.client.from.mock.results.some(r => r.value.insert.mock.calls.length > 0);
+    expect(inserted).toBe(true);
+  });
+
   it('returns the session on success', async () => {
     const res = await POST({ request: req({ email: 'u@x', password: 'right' }) });
     expect(res.status).toBe(200);
