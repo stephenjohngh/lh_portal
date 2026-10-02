@@ -38,10 +38,12 @@
 <svelte:window on:click={onWindowClick} on:keydown={onWindowKey} />
 
 <div class="dd" bind:this={root}>
+  <!-- Styled as a TabBar tab, which it sits beside. -->
   <button
-    class="px-4 py-2 transition-colors {isActive
-      ? 'border-b-2 border-purple-500 text-white font-semibold'
-      : 'text-gray-400 hover:text-white'}"
+    type="button"
+    class="-mb-px border-b-2 px-4 py-2 text-sm transition-colors {isActive
+      ? 'border-purple-500 font-semibold text-white'
+      : 'border-transparent text-slate-400 hover:text-white'}"
     aria-haspopup="true"
     aria-expanded={open}
     on:click|stopPropagation={toggle}

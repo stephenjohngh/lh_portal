@@ -1,5 +1,6 @@
 <!-- src/lib/apps/management/ManagementApp.svelte -->
 <script>
+  import TabBar from '$lib/components/common/TabBar.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
   import { get }            from 'svelte/store';
   import { permissions }    from '$lib/stores/permissions';
@@ -304,6 +305,18 @@
     }
     return null;
   }
+
+  const TABS = [
+    { key: 'issues',   label: 'Issues' },
+    { key: 'meetings', label: 'Team Meetings' },
+    { key: 'reports',  label: 'Reports' },
+  ];
+  function selectTab(key) {
+    // Opening Team Meetings from its tab shows the list, not a meeting a
+    // badge elsewhere last pointed it at.
+    if (key === 'meetings') meetingTabTargetId = null;
+    setTab(key);
+  }
 </script>
 
 <div class="app-container" bind:this={containerElement}>
@@ -313,29 +326,7 @@
   <div class="sticky top-16 z-20 bg-slate-800 -mx-4 px-4 border-b border-slate-700/60 mb-4">
 
     <!-- Tab row -->
-    <div class="flex items-stretch">
-      <button
-        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-               {activeTab === 'issues'
-                 ? 'text-white border-purple-500'
-                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-        on:click={() => setTab('issues')}
-      >Issues</button>
-      <button
-        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-               {activeTab === 'meetings'
-                 ? 'text-white border-purple-500'
-                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-        on:click={() => { meetingTabTargetId = null; setTab('meetings'); }}
-      >Team Meetings</button>
-      <button
-        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-               {activeTab === 'reports'
-                 ? 'text-white border-purple-500'
-                 : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600'}"
-        on:click={() => setTab('reports')}
-      >Reports</button>
-
+    <TabBar tabs={TABS} active={activeTab} bordered={false} on:select={(e) => selectTab(e.detail)}>
       <!-- Active meeting indicator — right-aligned in the tab row -->
       {#if $meetingsStore.current}
         <div class="ml-auto flex items-center gap-1.5 self-center px-2.5 py-1 rounded
@@ -345,7 +336,7 @@
           <span class="font-medium truncate max-w-[18rem]">{$meetingsStore.current.title}</span>
         </div>
       {/if}
-    </div>
+    </TabBar>
 
     <!-- Toolbar (issues tab only) -->
     {#if activeTab === 'issues'}

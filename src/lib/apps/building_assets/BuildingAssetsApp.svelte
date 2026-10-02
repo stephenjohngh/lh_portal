@@ -2,11 +2,9 @@
 <!-- Thin tab shell: loads the store, renders tab navigation,
      and delegates to the active tab component. -->
 <script>
-  import { onMount } from 'svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { get } from 'svelte/store';
-  import { auth } from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
+  import AppGate from '$lib/components/common/AppGate.svelte';
+  import TabBar from '$lib/components/common/TabBar.svelte';
   import { buildingAssetsStore } from './stores/buildingAssetsStore.js';
 
   import TypeBrowser      from './components/TypeBrowser.svelte';
@@ -16,7 +14,6 @@
   import WorksTab       from './components/works/WorksTab.svelte';
 
   let activeTab   = 'components';
-  let initialized = false;   // true after the first load completes
 
   $: store      = $buildingAssetsStore;
   $: systems    = store.systems;
@@ -25,35 +22,20 @@
   $: attrOptions = store.attrOptions;
   $: components = store.components;
 
-  onMount(async () => {
-    // The store is a module singleton, but this component is destroyed and
-    // recreated every time the app is re-selected (the shell swaps it via
-    // <svelte:component>). Only load what's missing so re-entry shows the
-    // already-loaded data instantly instead of re-fetching + flashing.
-    const snapshot      = get(buildingAssetsStore);
-    const needsHierarchy = snapshot.systems.length === 0;
-    const needsComponents = snapshot.components.length === 0;
+  // The store is a module singleton, but this component is destroyed and
+  // recreated every time the app is re-selected (the shell swaps it via
+  // <svelte:component>). Only load what's missing, and when nothing is
+  // missing AppGate draws the app at once instead of re-fetching + flashing.
+  const snapshot        = get(buildingAssetsStore);
+  const needsHierarchy  = snapshot.systems.length === 0;
+  const needsComponents = snapshot.components.length === 0;
+  const alreadyLoaded   = !needsHierarchy && !needsComponents;
 
-    // Data already present from a previous mount → render it immediately.
-    if (!needsHierarchy && !needsComponents) initialized = true;
-
-    try {
-      if ($auth.user) {
-        await permissions.init($auth.user.id, 'building_assets');
-      }
-      if (needsHierarchy || needsComponents) {
-        // Independent fetch chains — run concurrently to halve startup latency.
-        await Promise.all([
-          needsHierarchy  ? buildingAssetsStore.load()           : Promise.resolve(),
-          needsComponents ? buildingAssetsStore.loadComponents() : Promise.resolve(),
-        ]);
-      }
-    } finally {
-      // Even on a failed load: the tabs then show the store's error rather
-      // than a spinner that never ends.
-      initialized = true;
-    }
-  });
+  // Independent fetch chains — run concurrently to halve startup latency.
+  const loadAssets = () => Promise.all([
+    needsHierarchy  ? buildingAssetsStore.load()           : Promise.resolve(),
+    needsComponents ? buildingAssetsStore.loadComponents() : Promise.resolve(),
+  ]);
 
   // ⛔ THERE IS NO INSPECTIONS TAB HERE ANY MORE (C4, 2026-09-21) and it must
   // not come back. It rendered the INSPECTION app's `walk_sessions` with the
@@ -64,61 +46,38 @@
   // `ComponentInspectionHistory` in the detail panel answers "what condition
   // is this component in", which is what a tab in THIS app should be for.
   // docs/design/compliance_app_design.md §1.1.
-  const TABS = [
-    { id: 'components',  label: 'Components',     icon: '🧩',  adminOnly: false },
-    { id: 'plans',       label: 'Plan View',      icon: '🗺',  adminOnly: false },
-    { id: 'spaces',      label: 'Spaces',         icon: '⬡',  adminOnly: false },
-    { id: 'works',       label: 'Works',          icon: '🛠',  adminOnly: false },
-    { id: 'types',       label: 'Type Browser',   icon: '🗂',  adminOnly: false },
+  $: TABS = [
+    { key: 'components', label: 'Components',   icon: '🧩', count: components.length || null },
+    { key: 'plans',      label: 'Plan View',    icon: '🗺' },
+    { key: 'spaces',     label: 'Spaces',       icon: '⬡' },
+    { key: 'works',      label: 'Works',        icon: '🛠' },
+    { key: 'types',      label: 'Type Browser', icon: '🗂', count: types.length || null },
   ];
 </script>
 
 <div class="text-white">
+  <!-- Nothing is drawn until the first load has finished: before it every list
+       is empty because it has not been read, and the tabs said "No components
+       yet" / "No spaces have been drawn yet" for the moment they showed. -->
+  <AppGate appId="building_assets" name="Building assets" load={loadAssets} {alreadyLoaded}>
 
-  <!-- A later reload (after an edit) keeps the tab on screen and says so here.
-       The FIRST load replaces the tab content instead — below. -->
-  {#if initialized && store.loading}
+  <!-- A later reload (after an edit) keeps the tab on screen and says so here. -->
+  {#if store.loading}
     <div class="text-slate-400 text-sm mb-4">Loading…</div>
   {/if}
 
   <!-- Data model banner — only shown after load completes and DB is genuinely empty -->
-  {#if initialized && !store.loading && systems.length === 0}
+  {#if !store.loading && systems.length === 0}
     <div class="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-300">
       <p class="font-semibold mb-1">⚠ No data found</p>
      </div>
   {/if}
 
-  <!-- Tabs -->
-  <div class="flex space-x-1 border-b border-slate-600 mb-6">
-    {#each TABS as tab}
-      {#if !tab.adminOnly || $permissions.isAdmin}
-        <button
-          class="px-4 py-2 text-sm transition-colors flex items-center gap-1.5
-                 {activeTab === tab.id
-                   ? 'border-b-2 border-purple-500 text-white font-semibold'
-                   : 'text-slate-400 hover:text-white'}"
-          on:click={() => activeTab = tab.id}
-        >
-          <span>{tab.icon}</span>
-          <span>{tab.label}</span>
-          {#if tab.id === 'types' && types.length > 0}
-            <span class="text-xs text-slate-500">({types.length})</span>
-          {/if}
-          {#if tab.id === 'components' && components.length > 0}
-            <span class="text-xs text-slate-500">({components.length})</span>
-          {/if}
-        </button>
-      {/if}
-    {/each}
+  <div class="mb-6">
+    <TabBar tabs={TABS} active={activeTab} on:select={(e) => activeTab = e.detail} />
   </div>
 
-  <!-- Tab content. Nothing is drawn until the first load has finished: before
-       it every list is empty because it has not been read, and the tabs said
-       "No components yet" / "No spaces have been drawn yet" for the moment
-       they showed. -->
-  {#if !initialized}
-    <LoadingSpinner text="Loading building assets…" />
-  {:else if activeTab === 'types'}
+  {#if activeTab === 'types'}
     <TypeBrowser {systems} {types} {attrDefs} {attrOptions} />
   {:else if activeTab === 'components'}
     <ComponentsTab />
@@ -130,4 +89,5 @@
     <WorksTab />
   {/if}
 
+  </AppGate>
 </div>

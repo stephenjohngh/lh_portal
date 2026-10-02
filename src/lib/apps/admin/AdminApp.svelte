@@ -21,6 +21,7 @@
   import DueWindowsPanel from './components/DueWindowsPanel.svelte';
   import DocumentsTab    from './components/DocumentsTab.svelte';
   import TabDropdown     from './components/TabDropdown.svelte';
+  import TabBar          from '$lib/components/common/TabBar.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -35,6 +36,11 @@
   // The ids match the activeTab values handled in the content section below.
   // (The capital-planning tabs — Maintenance Groups + 10-Year Plan — now live in
   // the Maintenance app; see MaintenanceApp.svelte.)
+  $: TABS = [
+    { key: 'users', icon: '👥', label: 'Users', count: users.length },
+    { key: 'audit', icon: '📋', label: 'Audit Logs',      adminOnly: true },
+    { key: 'types', icon: '🗂', label: 'Component Types', adminOnly: true },
+  ];
   const otherConfigTabs = [
     { id: 'floors',    icon: '🏢', label: 'Floors' },
     { id: 'space-types', icon: '🏷', label: 'Space Types' },
@@ -182,42 +188,8 @@
          Compliance app and still not portal administration. See
          docs/design/compliance_app_design.md. ⛔ Do not bring any of them
          back. -->
-    <div class="flex space-x-2 border-b border-slate-600">
-      <button
-        class="px-4 py-2 transition-colors {activeTab === 'users'
-          ? 'border-b-2 border-purple-500 text-white font-semibold'
-          : 'text-gray-400 hover:text-white'}"
-        on:click={() => activateTab('users')}
-      >
-        <span class="flex items-center space-x-2">
-          <span>👥</span>
-          <span>Users</span>
-          <span class="text-xs text-muted">({users.length})</span>
-        </span>
-      </button>
+    <TabBar tabs={TABS} active={activeTab} on:select={(e) => activateTab(e.detail)}>
       {#if $permissions.isAdmin}
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'audit'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('audit')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>📋</span>
-            <span>Audit Logs</span>
-          </span>
-        </button>
-        <button
-          class="px-4 py-2 transition-colors {activeTab === 'types'
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => activateTab('types')}
-        >
-          <span class="flex items-center space-x-2">
-            <span>🗂</span>
-            <span>Component Types</span>
-          </span>
-        </button>
         <TabDropdown
           label="Other Config"
           icon="🛠"
@@ -226,7 +198,7 @@
           on:select={(e) => activateTab(e.detail)}
         />
       {/if}
-    </div>
+    </TabBar>
   </div>
 
   <!-- Tab Content (NEW) -->

@@ -29,9 +29,9 @@
      action tracker and that declined G4. A compliance record may point at an
      app's record; it may never replace one. -->
 <script>
-  import { onMount } from 'svelte';
-  import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
+  import AppGate from '$lib/components/common/AppGate.svelte';
+  import TabBar  from '$lib/components/common/TabBar.svelte';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ComplianceObligationsTab from './components/ComplianceObligationsTab.svelte';
@@ -53,7 +53,6 @@
   // extended to the walk record that four Building Assets users used to see.
   // Still no new user type and no RLS change.
   $: isAdmin = $permissions.isAdmin;
-  $: hasAccess = isAdmin || !!$permissions.appPermissions?.compliance?.hasAccess;
 
   /** @type {'compliance-obligations'|'planned-obligations'|'compliance-position'|'inspection-walks'|'display-register'} */
   let activeTab = 'compliance-obligations';
@@ -85,9 +84,9 @@
     { key: 'display-register',       icon: '📌', label: 'Display register',       adminOnly: true },
   ];
 
-  $: visibleTabs = isAdmin ? TABS : TABS.filter((t) => !t.adminOnly);
-  // ⛔ Enforced on the ACTIVE tab, not only on the buttons: an admin-only tab
-  // reached any other way (a link, a stale value) falls back to the walks.
+  // ⛔ TabBar hides the admin-only buttons; this enforces it on the ACTIVE tab
+  // too: an admin-only tab reached any other way (a link, a stale value)
+  // falls back to the walks.
   $: if (permissionsChecked && !isAdmin && TABS.find((t) => t.key === activeTab)?.adminOnly) {
     activateTab(NON_ADMIN_TAB);
   }
@@ -115,11 +114,9 @@
     }
   }
 
-  // ⚠ `isAdmin` reads false until permissions.init resolves, so without this
-  // the "restricted" notice flashed on every open, even for the admin — and a
-  // first-time tester reads that as a permission fault. Admin never showed it
-  // only because its Users tab is visible to everyone. Nothing is decided
-  // until the check has actually run.
+  // ⚠ `isAdmin` reads false until permissions.init resolves, so nothing is
+  // decided until the check has run — AppGate's ready flag. Without it the
+  // "restricted" notice flashed on every open, even for the admin (0bafc45).
   let permissionsChecked = false;
 
   // The s.82 link runs both ways between the register and the Display register
@@ -136,13 +133,6 @@
     activateTab('compliance-obligations');
   }
 
-  onMount(async () => {
-    try {
-      if ($auth.user) await permissions.init($auth.user.id, 'compliance');
-    } finally {
-      permissionsChecked = true;
-    }
-  });
 </script>
 
 <div class="space-y-4">
@@ -154,27 +144,9 @@
     </p>
   </div>
 
-  {#if !hasAccess && !permissionsChecked}
-    <LoadingSpinner text="Loading compliance…" />
-  {:else if !hasAccess}
-    <!-- ⚠ Not an error state: the app has not been granted to this account.
-         It must read as a permission rather than as a fault. -->
-    <p class="empty">You do not have access to Compliance. An administrator can grant it under Admin → Users.</p>
-  {:else}
-    <div class="flex space-x-2 border-b border-slate-600">
-      {#each visibleTabs as t (t.key)}
-        <button
-          class="px-4 py-2 transition-colors {activeTab === t.key
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => openTab(t.key)}
-        >
-          <span class="flex items-center space-x-2">
-            <span>{t.icon}</span><span>{t.label}</span>
-          </span>
-        </button>
-      {/each}
-    </div>
+  <!-- ⚠ An account without the grant reads a permission, not a fault. -->
+  <AppGate appId="compliance" name="Compliance" requireGrant bind:ready={permissionsChecked}>
+    <TabBar tabs={TABS} active={activeTab} on:select={(e) => openTab(e.detail)} />
 
     {#if isAdmin && activeTab === 'compliance-obligations'}
       <!-- ⚠ No buildingAssetsStore gate: the register reads no component data,
@@ -211,13 +183,5 @@
            reads. -->
       <CompliancePositionTab />
     {/if}
-  {/if}
+  </AppGate>
 </div>
-
-<style>
-  .empty {
-    padding: 1.5rem; text-align: center; color: rgb(148 163 184);
-    background: rgb(30 41 59 / 0.3); border: 1px solid rgb(71 85 105 / 0.5);
-    border-radius: 10px;
-  }
-</style>

@@ -16,9 +16,9 @@
      horizon. ⚠ And that is about to matter — 57 of the 80 planned obligations
      are evidenced by a maintenance job, and this table has never held a row. -->
 <script>
-  import { onMount }          from 'svelte';
-  import { auth }             from '$lib/stores/auth';
   import { permissions }      from '$lib/stores/permissions';
+  import AppGate        from '$lib/components/common/AppGate.svelte';
+  import TabBar         from '$lib/components/common/TabBar.svelte';
   import { maintenanceStore } from './stores/maintenanceStore.js';
   import { maintenanceGroupsStore } from './stores/maintenanceGroupsStore.js';
   import { buildingAssetsStore }    from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
@@ -40,15 +40,13 @@
 
   // Operational horizon (day-to-day servicing) first, then the capital-planning
   // horizon (long-term asset renewal). The capital tabs are admin-only.
-  $: TABS = [
-    { key: 'due',      label: 'Due work' },
-    { key: 'jobs',     label: 'All Jobs' },
+  const TABS = [
+    { key: 'due',       label: 'Due work' },
+    { key: 'jobs',      label: 'All Jobs' },
     { key: 'documents', label: 'Documents' },
-    ...(canEdit ? [
-      { key: 'schedule',   label: 'Schedule' },
-      { key: 'groups',   label: 'Asset Groups' },
-      { key: 'capital',  label: 'Capital Plan' },
-    ] : []),
+    { key: 'schedule',  label: 'Schedule',     adminOnly: true },
+    { key: 'groups',    label: 'Asset Groups', adminOnly: true },
+    { key: 'capital',   label: 'Capital Plan', adminOnly: true },
   ];
   const CAPITAL_TABS = ['groups', 'capital'];
 
@@ -75,21 +73,9 @@
     }
   }
 
-  // Nothing reads as empty until the jobs have been read. Before it the store
-  // is empty because it has not been read, and "No maintenance jobs yet" and a
-  // row of zeros would be untrue for the moment they showed.
-  let ready = false;
-
-  onMount(async () => {
-    try {
-      if ($auth.user) {
-        await permissions.init($auth.user.id, 'maintenance');
-        await maintenanceStore.load();
-      }
-    } finally {
-      ready = true;
-    }
-  });
+  // Nothing reads as empty until the jobs have been read: AppGate holds the
+  // app back until the permission check and this load have both finished.
+  const loadJobs = () => maintenanceStore.load();
 </script>
 
 <div class="space-y-6">
@@ -102,6 +88,7 @@
     {/if}
   </div>
 
+  <AppGate appId="maintenance" name="Maintenance" load={loadJobs}>
   <!-- Error banner -->
   {#if store.error}
     <div class="rounded-lg bg-red-900/20 border border-red-800/40 px-4 py-3 text-sm text-red-300">
@@ -110,32 +97,21 @@
   {/if}
 
   <!-- Stats summary (hidden on documents/schedule tabs) -->
-  {#if ready && (activeTab === 'due' || activeTab === 'jobs')}
+  {#if activeTab === 'due' || activeTab === 'jobs'}
     <StatsBar {jobs} docs={allDocs} />
   {/if}
 
-  <!-- Tab bar -->
-  <div class="flex border-b border-slate-700">
-    {#each TABS as tab}
-      <button
-        class="tab-btn"
-        class:tab-btn-active={activeTab === tab.key}
-        on:click={() => activate(tab.key)}
-      >
-        {tab.label}
-      </button>
-    {/each}
-  </div>
+  <TabBar tabs={TABS} active={activeTab} on:select={(e) => activate(e.detail)} />
 
-  <!-- Tab content -->
-  {#if !ready && !CAPITAL_TABS.includes(activeTab)}
-    <LoadingSpinner text="Loading maintenance…" />
-  {:else if activeTab === 'due'}
+  <!-- Tab content. The admin-only tabs check the role as well as the button. -->
+  {#if activeTab === 'due'}
     <DueWorkTab {jobs} docs={allDocs} />
   {:else if activeTab === 'jobs'}
     <JobsTab {jobs} />
   {:else if activeTab === 'documents'}
     <DocumentsTab docs={allDocs} />
+  {:else if !canEdit}
+    <!-- an admin-only tab with no admin: nothing to show -->
   {:else if activeTab === 'schedule'}
     <SchedulerPanel {jobs} />
   {:else if activeTab === 'groups'}
@@ -162,17 +138,6 @@
       />
     {/if}
   {/if}
+  </AppGate>
 
 </div>
-
-<style>
-  .tab-btn {
-    padding: 0.5rem 1.25rem; font-size: 0.875rem; font-weight: 500;
-    color: #94a3b8; border-bottom: 2px solid transparent;
-    background: transparent; cursor: pointer;
-    transition: color 0.12s, border-color 0.12s;
-    margin-bottom: -1px;
-  }
-  .tab-btn:hover  { color: #cbd5e1; }
-  .tab-btn-active { color: #e2e8f0; border-bottom-color: var(--lh-accent); }
-</style>

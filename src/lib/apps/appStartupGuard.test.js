@@ -13,7 +13,11 @@
 //   · the shell AWAITS `permissions.init()` before it starts that load, so for
 //     the whole round trip the screen meets its own "nothing here" condition.
 //
-// THE RULE: an app shell that awaits `permissions.init` holds its content
+// THE RULE — the shared way: wrap the app in <AppGate> (common/AppGate.svelte),
+// which runs the check and the opening load and shows the spinner until both
+// are done. A shell that keeps its own start-up (Planner, Info, Dossier, the
+// phone apps — custom layouts) follows the older form of the same rule:
+// an app shell that awaits `permissions.init` holds its content
 // behind a readiness flag that is flipped in a `finally` — so a failed load
 // ends in the error, not a spinner that never stops — and shows
 // `<LoadingSpinner text="Loading …" />` until then. The flag is per app because
@@ -45,6 +49,11 @@ const EXEMPT = {
   // list shows the spinner until the first fetch, whichever app opens first.
   'src/lib/apps/management/ManagementApp.svelte':             'issues store starts loading',
   'src/lib/apps/managementmobile/ManagementMobileApp.svelte': 'issues store starts loading',
+};
+
+/** Shells with no app data and no permission to check, each with the reason. */
+const NO_DATA = {
+  'src/lib/apps/settings/SettingsApp.svelte': 'changes the signed-in account only; every user has it',
 };
 
 /**
@@ -93,7 +102,24 @@ describe('app shells do not show "nothing here" before they have read', () => {
 
   for (const shell of shells) {
     const source = readFileSync(shell, 'utf8');
-    if (!/permissions\.init\(/.test(source)) continue;   // no data to wait for (Settings)
+
+    // ⭐ The shared way (2026-10-02): <AppGate> runs the check and the opening
+    // load and holds the app back until both are done. A shell using it must
+    // not ALSO run the check — two inits race, and the second can reset the
+    // permissions the first one drew with.
+    if (/<AppGate\b/.test(source)) {
+      it(`${shell} leaves the permission check to AppGate`, () => {
+        expect(source, `${shell} uses AppGate and also calls permissions.init`).not.toMatch(/permissions\.init\(/);
+      });
+      continue;
+    }
+
+    if (!/permissions\.init\(/.test(source)) {
+      it(`${shell} has no data to wait for, and says so`, () => {
+        expect(NO_DATA[shell], `${shell} neither uses AppGate nor checks permissions — use AppGate`).toBeTruthy();
+      });
+      continue;
+    }
     if (EXEMPT[shell]) continue;
 
     it(`${shell} waits for its opening data`, () => {
@@ -106,7 +132,7 @@ describe('app shells do not show "nothing here" before they have read', () => {
   }
 
   it('the exemptions still rest on their reason', () => {
-    for (const shell of Object.keys(EXEMPT)) expect(existsSync(shell), shell).toBe(true);
+    for (const shell of [...Object.keys(EXEMPT), ...Object.keys(NO_DATA)]) expect(existsSync(shell), shell).toBe(true);
     const store = readFileSync(join(APPS, 'management/stores/issuesStore.js'), 'utf8');
     expect(store).toMatch(/writable\([^;]*?\bissues:\s*\[\][^;]*?\bloading:\s*true\b/s);
   });

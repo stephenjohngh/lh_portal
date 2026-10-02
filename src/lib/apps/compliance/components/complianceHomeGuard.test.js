@@ -44,7 +44,7 @@ describe('one thing is called Compliance', () => {
     const maint = read(MAINT);
     // The tab list, not the prose: the file's header explains at length why
     // there is no such tab, and a bare substring search would match that.
-    const tabs = maint.match(/\$: TABS = \[[\s\S]*?\];/);
+    const tabs = maint.match(/(?:const|\$:) TABS = \[[\s\S]*?\];/);
     expect(tabs, 'the Maintenance tab list has moved or been renamed').toBeTruthy();
     expect(tabs[0]).not.toMatch(/compliance/i);
     expect(maint).not.toContain('<ComplianceTab');
@@ -151,7 +151,7 @@ describe('corrective work stays beside the position, never inside it', () => {
 describe('the walk evidence lives with the compliance domain', () => {
   it('Building Assets has no inspections tab', () => {
     const ba = read(BA);
-    const tabs = ba.match(/const TABS = \[[\s\S]*?\];/);
+    const tabs = ba.match(/(?:const|\$:) TABS = \[[\s\S]*?\];/);
     expect(tabs, 'the Building Assets tab list has moved or been renamed').toBeTruthy();
     // ⚠ The tab LIST, not the file: its header now explains at length why
     // there is no such tab, and a bare substring search would match that.

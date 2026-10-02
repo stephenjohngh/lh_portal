@@ -12,9 +12,8 @@
      than schema. -->
 <script>
   import { errMessage } from '$lib/utils/errors';
-  import { onMount } from 'svelte';
-  import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
+  import AppGate from '$lib/components/common/AppGate.svelte';
   import { complaintsStore } from './stores/complaintsStore.js';
 
   import ProtectedButton from '$lib/components/common/ProtectedButton.svelte';
@@ -57,19 +56,14 @@
       : `${n} open`;
   })();
 
-  // Nothing reads as empty until the first load has finished. Before it the
-  // store is empty because it has not been read yet, and "No complaints
-  // recorded" or "0 open" would be untrue for the moment it showed.
+  // Nothing reads as empty until the first load has finished (AppGate). Before
+  // it "No complaints recorded" or "0 open" would be untrue.
+  // ⚠ The app's RLS gates on the grant, so an account without it would see an
+  // empty app; requireGrant says so in words instead.
   let ready = false;
-
-  onMount(async () => {
-    try {
-      await permissions.init($auth.user.id, 'complaints');
-      try { await complaintsStore.load(); } catch { /* surfaced in state.error */ }
-    } finally {
-      ready = true;
-    }
-  });
+  const loadComplaints = async () => {
+    try { await complaintsStore.load(); } catch { /* surfaced in state.error */ }
+  };
 
   async function openCase(e) {
     try { await complaintsStore.select(e.detail); } catch { /* surfaced */ }
@@ -160,7 +154,8 @@
   {/if}
 
   <!-- ── Body ──────────────────────────────────────────────────────────── -->
-  {#if !ready || (state.loading && !state.cases.length)}
+  <AppGate appId="complaints" name="Complaints" load={loadComplaints} requireGrant bind:ready>
+  {#if state.loading && !state.cases.length}
     <LoadingSpinner text="Loading complaints…" />
 
   {:else if state.selected}
@@ -195,6 +190,7 @@
                    emptyMessage="Nothing matches that status."
                    on:open={openCase} />
   {/if}
+  </AppGate>
 </div>
 
 <ComplaintFormModal

@@ -8,9 +8,9 @@
 -->
 <script>
   import { errMessage } from '$lib/utils/errors';
-  import { onMount } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
+  import AppGate from '$lib/components/common/AppGate.svelte';
+  import TabBar  from '$lib/components/common/TabBar.svelte';
   import { gtStore }     from '$lib/apps/golden_thread/stores/gtStore';
   import { GT_STATUS_LABELS, GT_STATUS_BADGE, GT_STATUSES } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
   import { REVIEW_BAND_LABEL, REVIEW_BAND_BADGE } from '$lib/apps/golden_thread/utils/gtConstants.js';
@@ -32,7 +32,6 @@
   import { listCases as listMorCases } from '$lib/apps/mor/public.js';
   import { fmtDate, today }   from '$lib/utils/dates';
 
-  $: userId  = $auth.user?.id;
 
   const todayISO = today();
   // Review band for a document — only meaningful for current documents with a
@@ -68,15 +67,17 @@
   $: canEdit      = $permissions.isAdmin || $permissions.canModify;
   $: isAdmin      = $permissions.isAdmin;
   $: currentDocs  = documents.filter((d) => d.status === 'current');
+  // Three tabs need edit rights rather than admin, so this list is filtered
+  // here; TabBar's own adminOnly covers Review.
   $: tabs = [
-    ['register', 'Register'],
-    ...(canEdit ? [['ingest', 'Ingest']] : []),
-    ['completeness', 'Completeness'],
-    ['safety-case', 'Safety Case'],
-    ['risks', 'Risks'],
-    ...(canEdit ? [['people', 'People']] : []),
-    ...(canEdit ? [['accountability', 'Accountability']] : []),
-    ...(isAdmin ? [['review', 'Review']] : [])
+    { key: 'register',       label: 'Register' },
+    ...(canEdit ? [{ key: 'ingest', label: 'Ingest' }] : []),
+    { key: 'completeness',   label: 'Completeness' },
+    { key: 'safety-case',    label: 'Safety Case' },
+    { key: 'risks',          label: 'Risks' },
+    ...(canEdit ? [{ key: 'people', label: 'People' }] : []),
+    ...(canEdit ? [{ key: 'accountability', label: 'Accountability' }] : []),
+    { key: 'review',         label: 'Review', adminOnly: true },
   ];
 
   $: accountablePersons = $gtStore.accountablePersons;
@@ -180,23 +181,14 @@
   }
 
   // Nothing reads as empty until it has been read. The register loads on
-  // open; the other tabs load the first time they are opened, and their
-  // loaders do not set the store's `loading`, so without these two flags
-  // each showed its "No … recorded" text until the rows arrived.
-  let ready = false;
+  // open (AppGate waits for it); the other tabs load the first time they are
+  // opened, and their loaders do not set the store's `loading`, so without
+  // tabLoading each showed its "No … recorded" text until the rows arrived.
   let tabLoading = false;
-
-  onMount(async () => {
-    try {
-      if (userId) {
-        await permissions.init(userId, 'golden_thread');
-        await gtStore.load();
-        await gtStore.loadCompleteness();
-      }
-    } finally {
-      ready = true;
-    }
-  });
+  const loadRegister = async () => {
+    await gtStore.load();
+    await gtStore.loadCompleteness();
+  };
 
   async function selectTab(tab) {
     activeTab = tab;
@@ -292,6 +284,7 @@
     </div>
   {/if}
 
+  <AppGate appId="golden_thread" name="Golden Thread" load={loadRegister}>
   {#if viewingDetail && selectedDoc}
     <GtDocumentDetail
       doc={selectedDoc}
@@ -300,21 +293,11 @@
       on:changed={handleChanged}
     />
   {:else}
-  <!-- Tab bar -->
-  <div class="flex gap-1 border-b border-slate-700 mb-5">
-    {#each tabs as [tab, label]}
-      <button
-        type="button"
-        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-               {activeTab === tab
-                 ? 'border-purple-500 text-white'
-                 : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}"
-        on:click={() => selectTab(tab)}
-      >{label}</button>
-    {/each}
+  <div class="mb-5">
+    <TabBar {tabs} active={activeTab} on:select={(e) => selectTab(e.detail)} />
   </div>
 
-  {#if loading || !ready || tabLoading}
+  {#if loading || tabLoading}
     <LoadingSpinner text="Loading the Golden Thread…" />
   {:else if activeTab === 'register'}
     <!-- ── Register list ─────────────────────────────────────────────────── -->
@@ -520,4 +503,5 @@
     </div>
   {/if}
   {/if}
+  </AppGate>
 </div>

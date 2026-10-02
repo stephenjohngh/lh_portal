@@ -1,18 +1,14 @@
 <!-- src/lib/apps/mor/MorApp.svelte -->
 <script>
-  import { onMount } from 'svelte';
-  import { auth }        from '$lib/stores/auth';
-  import { permissions } from '$lib/stores/permissions';
   import { morStore }    from '$lib/apps/mor/stores/morStore';
   import Button       from '$lib/components/common/Button.svelte';
   import ErrorDisplay from '$lib/components/common/ErrorDisplay.svelte';
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import AppGate      from '$lib/components/common/AppGate.svelte';
+  import TabBar       from '$lib/components/common/TabBar.svelte';
   import CaseList      from '$lib/apps/mor/components/CaseList.svelte';
   import CaseDetail    from '$lib/apps/mor/components/CaseDetail.svelte';
   import CaseForm      from '$lib/apps/mor/components/CaseForm.svelte';
   import MorDashboard  from '$lib/apps/mor/components/MorDashboard.svelte';
-
-  $: userId  = $auth.user?.id;
 
   let selectedCaseId = null;
   let showCreateForm = false;
@@ -23,21 +19,13 @@
   $: saving  = $morStore.saving;
   $: error   = $morStore.error;
 
-  // Nothing reads as empty until the first load has finished: before it the
-  // store is empty because it has not been read, and "No cases match the
-  // current filters" would be untrue for the moment it showed.
-  let ready = false;
-
-  onMount(async () => {
-    try {
-      if (userId) {
-        await permissions.init(userId, 'mor');
-        await morStore.fetchCases();
-      }
-    } finally {
-      ready = true;
-    }
-  });
+  // Nothing reads as empty until the first load has finished (AppGate): before
+  // it "No cases match the current filters" would be untrue.
+  const loadCases = () => morStore.fetchCases();
+  const TABS = [
+    { key: 'cases',     label: 'Cases' },
+    { key: 'dashboard', label: 'Dashboard' },
+  ];
 
   async function selectCase(c) {
     selectedCaseId = c.id;
@@ -81,18 +69,8 @@
       </Button>
     </div>
 
-    <!-- Tab bar -->
-    <div class="flex gap-1 border-b border-slate-700 mb-5">
-      {#each [['cases','Cases'],['dashboard','Dashboard']] as [tab, label]}
-        <button
-          type="button"
-          class="px-4 py-2 text-sm font-medium border-b-2 transition-colors
-                 {activeTab === tab
-                   ? 'border-purple-500 text-white'
-                   : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}"
-          on:click={() => activeTab = tab}
-        >{label}</button>
-      {/each}
+    <div class="mb-5">
+      <TabBar tabs={TABS} active={activeTab} on:select={(e) => activeTab = e.detail} />
     </div>
   {/if}
 
@@ -104,15 +82,15 @@
   {/if}
 
   <!-- ── Main content ─────────────────────────────────────────────────── -->
-  {#if !ready}
-    <LoadingSpinner text="Loading cases…" />
-  {:else if selectedCaseId}
-    <CaseDetail on:back={goBack} />
-  {:else if activeTab === 'dashboard'}
-    <MorDashboard on:selectCase={e => selectCase(e.detail)} />
-  {:else}
-    <CaseList {cases} {loading} on:select={e => selectCase(e.detail)} />
-  {/if}
+  <AppGate appId="mor" name="MOR" load={loadCases} loadingText="Loading cases…">
+    {#if selectedCaseId}
+      <CaseDetail on:back={goBack} />
+    {:else if activeTab === 'dashboard'}
+      <MorDashboard on:selectCase={e => selectCase(e.detail)} />
+    {:else}
+      <CaseList {cases} {loading} on:select={e => selectCase(e.detail)} />
+    {/if}
+  </AppGate>
 </div>
 
 <!-- ── Create modal ──────────────────────────────────────────────────── -->

@@ -13,14 +13,14 @@
      table's RLS is gated on the grant too, so the gate below is the screen's
      courtesy, not the control. -->
 <script>
-  import { onMount } from 'svelte';
-  import { auth } from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
+  import { hasAppAccess } from '$lib/utils/appAccess.js';
+  import AppGate from '$lib/components/common/AppGate.svelte';
+  import TabBar  from '$lib/components/common/TabBar.svelte';
   import { parkingStore } from './stores/parkingStore.js';
   import { filterBays, baySummary, BAY_STATES } from './utils/bayModel.js';
   import { PARKING_BAY_TYPES } from '$lib/apps/building_assets/utils/spaceTypeOptions.js';
 
-  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ErrorDisplay   from '$lib/components/common/ErrorDisplay.svelte';
   import BayMap   from './components/BayMap.svelte';
   import BayList  from './components/BayList.svelte';
@@ -98,13 +98,14 @@
 
   $: state = $parkingStore;
   $: isAdmin = $permissions.isAdmin;
-  $: hasAccess = isAdmin || !!$permissions.appPermissions?.parking?.hasAccess;
+  $: hasAccess = hasAppAccess($permissions, 'parking');
   $: canEdit = isAdmin || $permissions.canModify;
 
-  // Nothing is decided until the check has run, or an admin sees "no access"
-  // for a moment on every open — the flash fixed in ComplianceApp (0bafc45).
-  let permissionsChecked = false;
+  // AppGate decides access only after the check has run (or an admin sees "no
+  // access" flash on every open, 0bafc45) and loads only for an account with
+  // access. `loaded` is its ready flag, for the search in the header.
   let loaded = false;
+  const loadParking = () => parkingStore.load().catch(() => { /* shown from state.error */ });
 
   let floorId = '';          // the level shown on the map; '' until chosen
   let size = '';
@@ -125,19 +126,6 @@
   })();
   $: selected = state.bays.find(b => b.space_id === selectedSpaceId) ?? null;
 
-  onMount(async () => {
-    try {
-      if ($auth.user) await permissions.init($auth.user.id, 'parking');
-    } finally {
-      permissionsChecked = true;
-    }
-    // Read the store itself, not the `hasAccess` derivation: straight after
-    // an await, a $: statement may not have caught up yet.
-    if ($permissions.isAdmin || $permissions.appPermissions?.parking?.hasAccess) {
-      try { await parkingStore.load(); } catch { /* shown from state.error */ }
-      loaded = true;
-    }
-  });
 
   function select(e) { selectedSpaceId = e.detail; }
   function chooseLevel(id) { floorId = id; selectedSpaceId = null; }
@@ -152,26 +140,11 @@
     {#if hasAccess && loaded}<RegistrationSearch on:showAgreement={showAgreement} />{/if}
   </div>
 
-  {#if !hasAccess && !permissionsChecked}
-    <LoadingSpinner text="Loading parking…" />
-  {:else if !hasAccess}
-    <p class="text-sm text-slate-400">You do not have access to Parking. An administrator can grant it under Admin → Users.</p>
-  {:else if !loaded}
-    <LoadingSpinner text="Loading parking…" />
-  {:else}
+  <AppGate appId="parking" name="Parking" load={loadParking} requireGrant bind:ready={loaded}>
     {#if state.error}<ErrorDisplay message={state.error} />{/if}
     {#if acceptError}<ErrorDisplay message={acceptError} />{/if}
 
-    <div class="flex space-x-2 border-b border-slate-600">
-      {#each TABS as t (t.key)}
-        <button
-          class="px-4 py-2 transition-colors {tab === t.key
-            ? 'border-b-2 border-purple-500 text-white font-semibold'
-            : 'text-gray-400 hover:text-white'}"
-          on:click={() => tab = t.key}
-        >{t.label}</button>
-      {/each}
-    </div>
+    <TabBar tabs={TABS} active={tab} on:select={(e) => tab = e.detail} />
 
     {#if tab === 'agreements'}
       <AgreementsTab {canEdit} bind:selectedId={selectedAgreementId} on:showBay={showBay} />
@@ -247,7 +220,7 @@
         {/if}
       </div>
     {/if}
-  {/if}
+  </AppGate>
 </div>
 
 <AgreementModal show={!!allocateBay} bay={allocateBay} {presetHolderId}

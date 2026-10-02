@@ -50,7 +50,7 @@ import ComplianceApp from './ComplianceApp.svelte';
 
 const RESTRICTED = /do not have access to Compliance/i;
 const GRANTED = { compliance: { hasAccess: true, isReadOnly: false } };
-const tabButton = (name) => screen.queryByRole('button', { name: new RegExp(name, 'i') });
+const tabButton = (name) => screen.queryByRole('tab', { name: new RegExp(name, 'i') });
 
 describe('ComplianceApp admin gate', () => {
   beforeEach(() => {
