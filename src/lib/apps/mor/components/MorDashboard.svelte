@@ -19,6 +19,8 @@
     isAwaitingMyApproval, isMyProposalAwaitingApproval, isMineAndOpen,
   } from '$lib/apps/mor/utils/morHelpers';
   import { fmtDate, today, DAY_MS } from '$lib/utils/dates';
+  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
+  import { errMessage } from '$lib/utils/errors';
 
   const dispatch = createEventDispatcher();
 
@@ -153,17 +155,9 @@
         periodError = j.error ?? 'Could not generate the report.';
         return;
       }
-      const blob = await r.blob();
-      const dispo = r.headers.get('Content-Disposition') ?? '';
-      const m = dispo.match(/filename="([^"]+)"/);
-      const filename = m ? m[1] : `mor-summary-${periodStart}-to-${periodEnd}.docx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponse(r, filenameFromResponse(r, `mor-summary-${periodStart}-to-${periodEnd}.docx`));
     } catch (/** @type {any} */ err) {
-      periodError = `Could not generate: ${err.message}`;
+      periodError = `Could not generate: ${errMessage(err)}`;
     } finally {
       generating = false;
     }

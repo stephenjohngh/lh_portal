@@ -35,6 +35,8 @@
   import { formatVerificationCode } from '$lib/utils/caseVerificationCode';
   import { GT_STATUS_LABELS, GT_STATUS_BADGE } from '$lib/apps/golden_thread/utils/gtLifecycle.js';
   import { fmtDate, fmtDateTime } from '$lib/utils/dates';
+  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
+  import { errMessage } from '$lib/utils/errors';
 
   const dispatch = createEventDispatcher();
 
@@ -184,13 +186,16 @@
   let exporting = false;
   let exportError = '';
   async function exportCaseRecord() {
+    // Captured before the awaits: `c` follows the store's selected case.
+    const caseId = c.id;
+    const fallbackName = `${c.reference}-case-record.docx`;
     exporting = true;
     exportError = '';
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { exportError = 'Not signed in.'; return; }
-      const r = await fetch(`/api/mor/${encodeURIComponent(c.id)}/case-report`, {
+      const r = await fetch(`/api/mor/${encodeURIComponent(caseId)}/case-report`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       });
@@ -199,17 +204,9 @@
         exportError = j.error ?? 'Could not generate the report.';
         return;
       }
-      const blob = await r.blob();
-      const dispo = r.headers.get('Content-Disposition') ?? '';
-      const m = dispo.match(/filename="([^"]+)"/);
-      const filename = m ? m[1] : `${c.reference}-case-record.docx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponse(r, filenameFromResponse(r, fallbackName));
     } catch (/** @type {any} */ err) {
-      exportError = `Could not export: ${err.message}`;
+      exportError = `Could not export: ${errMessage(err)}`;
     } finally {
       exporting = false;
     }

@@ -6,6 +6,7 @@
   import { auth }        from '$lib/stores/auth';
   import { permissions } from '$lib/stores/permissions';
   import { getPref, setPref } from '$lib/utils/prefs';
+  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
   import { logAudit }    from '$lib/utils/auditLogger';
   import AttachedDocuments from '$lib/components/common/documents/AttachedDocuments.svelte';
   import { DOC_FOLDERS, entityFolderPath } from '$lib/utils/documentUtils.js';
@@ -632,6 +633,7 @@
   async function downloadArchive() {
     if (archiving) return;
     const packId = pack.id;               // capture before the await
+    const fallbackName = `${pack.title || 'pack'}.zip`;
     archiving = true; treeError = '';
     try {
       await editorRef?.flushNow();        // a pending edit belongs in the archive
@@ -645,16 +647,7 @@
         return;
       }
 
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url;
-      a.download = filenameFrom(res.headers.get('content-disposition'))
-        ?? `${pack.title || 'pack'}.zip`;
-      a.click();
-      // Revoked on a later turn: Safari has not begun the download when click()
-      // returns, and revoking synchronously yields an empty file.
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      await downloadResponse(res, filenameFromResponse(res, fallbackName));
     } catch (/** @type {any} */ err) {
       treeError = err.message;
     } finally {
@@ -663,13 +656,6 @@
   }
 
   /** The server's name for the file, preferring the RFC 5987 form. */
-  function filenameFrom(header) {
-    if (!header) return null;
-    const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
-    if (star) { try { return decodeURIComponent(star[1]); } catch { /* fall through */ } }
-    return /filename="([^"]+)"/i.exec(header)?.[1] ?? null;
-  }
-
   // ── Publishing (P3) ───────────────────────────────────────────────────────
 
   let showPublish   = false;

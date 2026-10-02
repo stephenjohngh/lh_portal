@@ -5,6 +5,7 @@
      selection state and calls reload() after any save. -->
 <script>
   import { today } from '$lib/utils/dates';
+  import { downloadCsvRows } from '$lib/utils/download';
   import { buildingAssetsStore } from '$lib/apps/building_assets/stores/buildingAssetsStore.js';
   import SystemPanel      from './SystemPanel.svelte';
   import TypePanel        from './TypePanel.svelte';
@@ -100,18 +101,10 @@
       }
     }
 
-    const csv  = rows
-      .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `component-types-${today()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    downloadCsvRows(
+      `component-types-${today()}.csv`,
+      rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')),
+    );
   }
 </script>
 

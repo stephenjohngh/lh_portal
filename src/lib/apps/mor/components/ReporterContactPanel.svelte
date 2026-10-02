@@ -10,6 +10,8 @@
 <script>
   import { supabase } from '$lib/supabaseClient';
   import { morStore } from '$lib/apps/mor/stores/morStore';
+  import { downloadResponse, filenameFromResponse } from '$lib/utils/download';
+  import { errMessage } from '$lib/utils/errors';
   import Button       from '$lib/components/common/Button.svelte';
   import RecordContactForm from '$lib/apps/mor/components/RecordContactForm.svelte';
   import {
@@ -50,6 +52,9 @@
   }
 
   async function downloadLetter(template, label) {
+    // Captured before the awaits: `c` is a prop and may change meanwhile.
+    const caseId = c.id;
+    const fallbackName = `${c.reference}-${template}.docx`;
     downloading = template;
     downloadError = '';
     try {
@@ -60,7 +65,7 @@
         return;
       }
 
-      const r = await fetch(`/api/mor/${encodeURIComponent(c.id)}/draft-letter`, {
+      const r = await fetch(`/api/mor/${encodeURIComponent(caseId)}/draft-letter`, {
         method: 'POST',
         headers: {
           'Content-Type':   'application/json',
@@ -73,21 +78,9 @@
         downloadError = j.error ?? `Could not generate ${label}.`;
         return;
       }
-      const blob = await r.blob();
-      const dispo = r.headers.get('Content-Disposition') ?? '';
-      const m = dispo.match(/filename="([^"]+)"/);
-      const filename = m ? m[1] : `${c.reference}-${template}.docx`;
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponse(r, filenameFromResponse(r, fallbackName));
     } catch (/** @type {any} */ err) {
-      downloadError = `Could not generate ${label}: ${err.message}`;
+      downloadError = `Could not generate ${label}: ${errMessage(err)}`;
     } finally {
       downloading = null;
     }

@@ -3,6 +3,7 @@
 // UPDATED: getStats() counts plan events; app_id selected in all queries
 
 import { today, DAY_MS } from '../../../utils/dates.js';
+import { downloadCsvRows } from '../../../utils/download.js';
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 import { sanitizeIlikeTerm } from '$lib/utils/pgFilter.js';
@@ -167,20 +168,10 @@ function createAuditLogsStore() {
           log.user_agent || ''
         ]);
 
-        const csv = [
+        downloadCsvRows(`audit_logs_${today()}.csv`, [
           headers.join(','),
           ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-        ].join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url  = window.URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `audit_logs_${today()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        ]);
 
         logger('CSV export complete:', data.length, 'logs');
         return { success: true, count: data.length };
