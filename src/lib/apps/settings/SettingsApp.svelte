@@ -1,7 +1,8 @@
 <!-- src/lib/apps/settings/SettingsApp.svelte -->
 <script>
   import { auth } from '$lib/stores/auth';
-  import { supabase } from '$lib/supabaseClient';
+  import { postJson } from '$lib/utils/request';
+  import { errMessage } from '$lib/utils/errors.js';
   import { getLogger } from '$lib/utils/logger';
   import Button from '$lib/components/common/Button.svelte';
   import FormInput from '$lib/components/common/FormInput.svelte';
@@ -32,18 +33,21 @@
     passwordLoading = true;
     passwordSuccess = '';
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: $auth.user.email,
-        password: passwordForm.currentPassword
+      // ⛔ Checked on the server, under the login lockout and with an audit
+      // entry ($lib/server/passwordCheck.js). It used to sign in from the
+      // browser, which skipped both and called every error a wrong password.
+      await postJson('/api/auth/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword:     passwordForm.newPassword,
       });
-      if (signInError) { passwordErrors.currentPassword = 'Current password is incorrect'; passwordLoading = false; return; }
-      const { error: updateError } = await supabase.auth.updateUser({ password: passwordForm.newPassword });
-      if (updateError) throw updateError;
       passwordSuccess = 'Password updated successfully!';
       setTimeout(() => { resetPasswordForm(); showPasswordModal = false; }, 2000);
     } catch (/** @type {any} */ err) {
       logger('❌ Password change error:', err);
-      passwordErrors.newPassword = err.message || 'Failed to update password';
+      // The server says which field its answer is about; anything else (the
+      // password was not checked, the session expired) goes under the first.
+      const field = err?.data?.field === 'newPassword' ? 'newPassword' : 'currentPassword';
+      passwordErrors[field] = errMessage(err, 'Failed to update password');
     } finally {
       passwordLoading = false;
     }

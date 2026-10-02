@@ -38,7 +38,15 @@ async function parse(res, fallback) {
   // actionable message regardless of the server's terse body ('Unauthorized').
   if (res.status === 401) throw new Error(SESSION_EXPIRED);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error ?? fallback ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    // The status and the whole body ride along, for a caller that needs more
+    // than the sentence (e.g. which form field the error belongs to).
+    const err = /** @type {Error & { status?: number, data?: any }} */ (
+      new Error(data?.error ?? fallback ?? `Request failed (${res.status})`));
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
   return data;
 }
 

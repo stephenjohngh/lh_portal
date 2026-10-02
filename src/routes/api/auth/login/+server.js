@@ -21,79 +21,15 @@
 //      its local Supabase client via supabase.auth.setSession(...)
 //   7. Audit log via logLogin / logFailedLogin (writes to audit_logs)
 //
-// Two Supabase clients:
-//   - anon   → used for the actual signInWithPassword call
-//   - admin  → used for login_attempts INSERT/SELECT (service role
-//              bypasses RLS, which is enabled with no policies)
+// Steps 2–5 are $lib/server/passwordCheck.js, shared with
+// /api/auth/change-password so a password is checked one way only.
 
-import { json }                                       from '@sveltejs/kit';
-import { createClient }                               from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { env } from '$env/dynamic/private';
-import { logLogin, logFailedLogin, getIpAddress, getUserAgent } from '$lib/server/auditLogger';
-import { lockoutState, PER_EMAIL_LIMIT, WINDOW_MINUTES } from '$lib/server/loginLockout';
-import { signInOutcome }                              from '$lib/server/signInOutcome';
-import { getLogger }                                  from '$lib/utils/logger';
+import { json }                     from '@sveltejs/kit';
+import { logLogin }                 from '$lib/server/auditLogger';
+import { checkPassword, WINDOW_MINUTES } from '$lib/server/passwordCheck';
+import { getLogger }                from '$lib/utils/logger';
 
 const logger = getLogger('AuthLogin');
-
-const supabaseAnon  = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-const supabaseAdmin = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-
-/**
- * This email's failed attempts in the last WINDOW_MINUTES, with the address
- * each came from. $lib/server/loginLockout.js decides what they mean.
- * @param {string} emailLower
- * @returns {Promise<Array<{ ip_address: string|null }>>}
- */
-async function recentFailures(emailLower) {
-  const since = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString();
-  const { data, error } = await supabaseAdmin
-    .from('login_attempts')
-    .select('ip_address')
-    .eq('email_lower', emailLower)
-    .eq('succeeded',   false)
-    .gt('attempted_at', since)
-    .limit(PER_EMAIL_LIMIT + 1);
-  if (error) {
-    // Fail open with a logged warning — DB outage shouldn't lock everyone out.
-    logger('⚠ Rate-limit lookup failed, allowing attempt:', error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
-/**
- * @param {string}  emailLower
- * @param {string?} ip
- * @param {string?} userAgent
- * @param {boolean} succeeded
- */
-async function recordAttempt(emailLower, ip, userAgent, succeeded) {
-  const { error } = await supabaseAdmin
-    .from('login_attempts')
-    .insert({
-      email_lower:  emailLower,
-      ip_address:   ip,
-      user_agent:   userAgent,
-      succeeded,
-    });
-  if (error) logger('⚠ login_attempts insert failed:', error.message);
-}
-
-/**
- * The caller's address as the PLATFORM sees it — Netlify's own client IP —
- * rather than a header a caller can write; the header is the fallback only.
- * @param {Request} request
- * @param {() => string} [getClientAddress]
- */
-function clientAddress(request, getClientAddress) {
-  try {
-    const a = getClientAddress?.();
-    if (a) return a;
-  } catch { /* not available on this platform */ }
-  return getIpAddress(request);
-}
 
 export async function POST({ request, getClientAddress }) {
   let email, password;
@@ -107,75 +43,33 @@ export async function POST({ request, getClientAddress }) {
     return json({ error: 'Email and password required' }, { status: 400 });
   }
 
-  const emailLower = String(email).toLowerCase().trim();
-  const ip         = clientAddress(request, getClientAddress);
-  const userAgent  = getUserAgent(request);
+  const result = await checkPassword({ email, password, request, getClientAddress });
 
-  // 1. Rate-limit check
-  const lock = lockoutState(await recentFailures(emailLower), ip);
-  const recentFails = lock.fromAnywhere;
-  if (lock.locked) {
-    logger('🚨 Locked out by rate limit:', emailLower,
-      `(${lock.fromHere} from this address, ${lock.fromAnywhere} in all)`);
-    await logFailedLogin(emailLower, request, 'account_locked_too_many_attempts');
+  if (result.kind === 'locked') {
     return json({
       error:  `Too many failed attempts. Please try again in ${WINDOW_MINUTES} minutes.`,
       locked: true,
     }, { status: 429 });
   }
-
-  // 2. Forward to Supabase Auth via the anon client — same call the
-  //    browser used to make directly, but server-side so we can audit.
-  //    A throw (network, SDK) is treated like any other error Supabase
-  //    returns: the password was not checked.
-  /** @type {any} */ let data = null, error = null;
-  try {
-    ({ data, error } = await supabaseAnon.auth.signInWithPassword({
-      email: emailLower,
-      password,
-    }));
-  } catch (/** @type {any} */ err) {
-    error = err ?? new Error('Sign-in failed');
+  if (result.kind === 'not_checked') {
+    const { outcome } = result;
+    return json({ error: outcome.message, reason: outcome.reason, passwordChecked: false },
+      { status: outcome.status });
   }
-
-  if (error) {
-    const outcome = signInOutcome(error);
-
-    // ⛔ Only a WRONG PASSWORD is a failed attempt ($lib/server/signInOutcome.js).
-    // Anything else — email logins switched off, Supabase down — never checked
-    // the password, so it must not count towards the lockout or read as one.
-    if (!outcome.countsAsFailure) {
-      logger('⚠ Sign-in not checked:', emailLower, outcome.reason, error?.message);
-      logFailedLogin(emailLower, request, `not checked (${outcome.reason}): ${error?.message ?? ''}`)
-        .catch(err => logger('Audit log failed:', err.message));
-      return json({ error: outcome.message, reason: outcome.reason, passwordChecked: false },
-        { status: outcome.status });
-    }
-
-    // 3. Record the failure for the next attempt's rate-limit lookup
-    await recordAttempt(emailLower, ip, userAgent, false);
-
-    logger('❌ Login failed:', emailLower);
-    // Fire-and-forget audit log (logFailedLogin awaits internally; not blocking the response materially)
-    logFailedLogin(emailLower, request,
-      `${error.message} (${lock.fromHere + 1} from this address, ${recentFails + 1} in all)`,
-    ).catch(err => logger('Audit log failed:', err.message));
-
+  if (result.kind === 'wrong') {
     return json({
-      error:             outcome.message,  // generic — no email-enumeration
-      attemptsRemaining: lock.remainingAfterFailure,
-    }, { status: outcome.status });
+      error:             result.outcome.message,  // generic — no email enumeration
+      attemptsRemaining: result.attemptsRemaining,
+    }, { status: result.outcome.status });
   }
 
-  // 3. Record the success
-  await recordAttempt(emailLower, ip, userAgent, true);
-
-  // 4. Success — audit log and return the session to the client
-  logger('✅ Login successful:', emailLower);
+  // Success — audit log and return the session to the client
+  const { data } = result;
+  logger('✅ Login successful:', data.user.email);
   logLogin(data.user.id, data.user.email, request, {
     session_id: data.session.access_token.substring(0, 20),
     provider:   'email',
-    previous_failed_attempts: recentFails,
+    previous_failed_attempts: result.recentFails,
   }).catch(err => logger('Audit log failed:', err.message));
 
   return json({
