@@ -17,13 +17,17 @@
 import { json } from '@sveltejs/kit';
 import { requireAuth } from '$lib/server/requireAuth';
 import { getLogger } from '$lib/utils/logger';
+import { today } from '$lib/utils/dates';
 import { buildComplianceDocument, printedRows, Packer } from '$lib/server/complianceDocx.js';
 
 const logger = getLogger('maintenance:generate-compliance-report');
 
 export async function POST({ request }) {
-  const authed = await requireAuth(request);
-  if (authed instanceof Response) return authed;
+  // ⛔ requireAuth returns { error }, never a Response. This read
+  // `authed instanceof Response`, which is never true, so until 2026-10-02 the
+  // route answered anyone, signed in or not.
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
 
   try {
     const payload = await request.json();
@@ -37,7 +41,7 @@ export async function POST({ request }) {
     return new Response(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': 'attachment; filename="Compliance_Position.docx"',
+        'Content-Disposition': `attachment; filename="Compliance_Position_${today()}.docx"`,
       },
     });
   } catch (/** @type {any} */ err) {
